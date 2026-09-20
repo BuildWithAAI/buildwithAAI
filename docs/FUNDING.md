@@ -16,3 +16,7 @@ The founder intends to receive all creator fees allocated to the AAI project and
 A proposed next step is a simple dated record of project receipts and expenses, with descriptions and appropriately shareable evidence. The reporting frequency and treatment of sensitive information need a founder decision before any reporting commitment is published.
 
 The actual fee routing and eligibility must be checked in the launch platform when the token configuration exists. Linking GitHub or publishing this roadmap does not itself configure a token's fees.
+
+Project-controlled wallets and any actual restrictions belong in the [wallet register](token/WALLETS.md) only after verification. Do not treat undisclosed allocations, intended expenses or personal rewards as verified project funding. Bounties need a separate reviewed agreement under the [bounty proposal](community/BOUNTIES.md).
+
+This funding intent concerns the Solana community experiment. It does not determine the economics of a future blockchain, whose name remains undecided between Zoora Blockchain and AAI Blockchain.

@@ -1,0 +1,4 @@
+# Proposed owner routing. This file alone does not enforce required approvals.
+# Verify write access and configure eligible branch protection/rulesets separately.
+# Sensitive changes also require qualified additional review under docs/community/PULL_REQUESTS.md.
+* @zooratechnologies

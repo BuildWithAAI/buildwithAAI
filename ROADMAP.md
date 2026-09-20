@@ -1,58 +1,24 @@
-# AAI community roadmap
+# Community development roadmap
 
-Prepared September 20, 2026. This is a proposed sequence for the founder and community to review, not a fixed delivery schedule.
+**PROPOSED sequence, September 20, 2026.** No dates, budgets, token economics, or launches are authorized here. The future blockchain name remains undecided between Zoora Blockchain and AAI Blockchain.
 
-## 1. Make the ideas easy to join
+Phase numbers organize work; they do not require a token launch before useful prototypes. Development and testing can happen before Phase 1. Every feature needs a scoped decision.
 
-**Current focus, before paid bot hosting.**
+| Phase | Scope | Completion evidence | Current position |
+| --- | --- | --- | --- |
+| 0 — Foundation | Repository, truthful status, contribution rules, security process, branding, verified links | Owner-reviewed docs, usable reporting route, license decision, first tasks | Public hub exists; expanded plan under review |
+| 1 — Launch, if approved separately | Pump.fun launch decision, verified mint and authorities, official links, basic website, scam guidance | Explicit launch authorization; real values and evidence recorded; support ready | FUTURE; no launch approval or verified mint recorded here |
+| 2 — Community infrastructure | Telegram/Discord tools, dashboard, development tracker, analytics | Approved specs; accurate metrics; tests; privacy/cost review; operating instructions | IDEA; private scanner prototype is an existing starting point |
+| 3 — Community development | Public proposals, contributor recognition, useful utilities, licensed experiments, reviewed bounties | Traceable decisions/releases; any bounty separately funded and agreed | IDEA; templates and backlog proposed |
+| 4 — Advanced experiments | Wallet identities, reputation, token-gated features, AI agents, Solana utilities | Proposal, explicit interactions, threat model, security review, tests | FUTURE; no automatic-trading or custody authorization |
+| 5 — Ecosystem research | Possible relationships with the future standalone chain and other Zoora projects | Research, design, security/legal review where required, public proposal, approval, testing | RESEARCH / FUTURE; no migration or conversion commitment |
 
-- Publish the community overview, project briefs, and contribution guide.
-- Turn the most useful starter tasks into GitHub issues with a clear completion condition.
-- Choose documentation and code licenses before describing repositories as open source.
-- Record which decisions are approved and which remain proposals.
+## Current priority
 
-**Complete when:** a newcomer can understand AAI, pick a task, and submit work without needing access to the private scanner code.
+Finish the foundation and contribution process before paid hosting. Validate AAI Scan privately only after hosting cost and deployment scope are approved. Offline results do not prove live service readiness.
 
-## 2. Validate AAI Scan privately
+See the [starter board](docs/community/PROJECT_BOARD.md) and [25 tasks](tasks/BACKLOG.md). No contributor is assigned by this document.
 
-**Built:** private pilot code for scans, saved observations, watches, comparisons, and change alerts. Offline tests passed; one live public market-data request succeeded.
+## Not promised
 
-**Still needed:** a decision on hosting cost, private Telegram setup, on-chain provider validation, persistent-storage checks, and a restart/restore exercise.
-
-**Complete when:** an allowed tester can scan, watch, compare, and retrieve saved history after restart; unsupported data and failures are shown accurately.
-
-Any wider release needs a separate decision on access, licensing, data costs, privacy, monitoring, and reliable alert delivery. No paid service is required to contribute to the documentation in this hub.
-
-## 3. Choose the next experiment
-
-Invite small proposals for:
-
-- A jellyfish-inspired Solana model evaluated against simple baselines in replay or paper trading.
-- One clearly specified XAUUSD expert advisor tested offline and on demo.
-- One Telegram utility with a specific user problem.
-
-**Complete when:** the selected experiment has an owner, a written specification, usable data, a reproducible evaluation, and published limitations. Selecting one does not commit the project to building every proposal at once.
-
-## 4. Design useful AAI payments
-
-Select a real service before designing token payment requirements. Specify the unit of service, pricing method, payment verification, access, failure handling, and refunds. Prototype the flow in a test environment.
-
-**Complete when:** the payment design can be demonstrated without claims that token demand or price will rise. No AAI payment integration is implemented by this roadmap.
-
-## 5. Review launch readiness
-
-Separately review the working product, funding disclosure, support capacity, launch research, and proposed token terms. Keep incomplete work visible. Only publish launch details after they have been decided and verified.
-
-The launch study can inform decisions, but it cannot establish a perfect launch or guarantee low volatility.
-
-## Status vocabulary
-
-| Status | Meaning |
-| --- | --- |
-| Idea | A problem or direction worth discussing |
-| Research | A question and evaluation plan are being developed |
-| Prototype | Code exists; operational validation may be incomplete |
-| Pilot | A limited test with documented acceptance results |
-| Released | A usable version with support and operating limits documented |
-
-Use dated evidence when changing status. A repository, a backtest, and a live service are different milestones.
+Migration, a bridge, 1:1 conversion, native-coin allocations, governance or validator rights, revenue, completed utility, profit, or a particular market cap. Future native-currency issuance belongs to the future network's genesis design.

@@ -1,28 +1,22 @@
 ---
-name: "Research proposal"
-about: "Propose a research question or share a sourced finding."
-title: "[Research] "
+name: "Design / branding contribution"
+about: "Propose art, UX, memes or reusable media."
+title: "[Design] "
 labels: ''
 assignees: ''
 ---
 
 Do not include seed phrases, private keys, bot tokens, credentials or private user records. Report sensitive vulnerabilities using [SECURITY.md](https://github.com/BuildWithAAI/buildwithAAI/blob/main/SECURITY.md).
 
-## Question and why it matters
+## Brief and intended audience
 
-## Primary sources, datasets and reuse terms
+## Preview, editable files and accessibility
 
-Include links, versions, dates, coverage and unknowns.
+## Sources and rights for artwork, fonts and other assets
 
-## Proposed method and comparison
+## Branding and claim check
 
-## Observations already collected, if any
-
-Separate evidence from interpretation. Label synthetic data and negative findings.
-
-## Reproduction, limitations and next decision
-
-Do not describe proposed research as completed.
+Do not invent official token addresses, imply guaranteed returns or decide the future blockchain name through artwork.
 
 ## Scope and token impact
 

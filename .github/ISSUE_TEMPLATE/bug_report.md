@@ -1,21 +1,29 @@
 ---
-name: Bug or documentation problem
-about: Report a reproducible issue without sensitive information
-title: '[Bug] '
+name: "Bug report"
+about: "Report a reproducible problem using redacted or synthetic evidence."
+title: "[Bug] "
 labels: ''
 assignees: ''
 ---
 
-## Project, version, and environment
+Do not include seed phrases, private keys, bot tokens, credentials or private user records. Report sensitive vulnerabilities using [SECURITY.md](https://github.com/BuildWithAAI/buildwithAAI/blob/main/SECURITY.md).
+
+## Project, version and environment
 
 ## Steps to reproduce
 
 ## Expected behavior
 
-## Actual behavior
+## Actual behavior and impact
 
-## Redacted evidence
+## Redacted evidence and possible workaround
 
-Use synthetic examples where possible. Do not include bot tokens, private keys, seed phrases, account credentials, or private user records.
+Include source timestamps for data problems. Do not post exploit details in this public issue.
 
-## Impact and possible workaround
+## Scope and token impact
+
+Does this affect only community tooling, or supply, minting, authorities, treasury, fees, migration, governance or project-controlled wallets? State unknowns. Protected changes require owner approval and additional review.
+
+## Contribution and evidence
+
+Related task/proposal: unassigned. Describe the smallest useful output, acceptance criteria, dependencies and costs. Identify material AI assistance, primary sources and reuse terms. No assignment, funding or deployment is implied by opening an issue.

@@ -1,28 +1,22 @@
 ---
-name: "Research proposal"
-about: "Propose a research question or share a sourced finding."
-title: "[Research] "
+name: "Documentation improvement"
+about: "Correct or clarify project documentation."
+title: "[Docs] "
 labels: ''
 assignees: ''
 ---
 
 Do not include seed phrases, private keys, bot tokens, credentials or private user records. Report sensitive vulnerabilities using [SECURITY.md](https://github.com/BuildWithAAI/buildwithAAI/blob/main/SECURITY.md).
 
-## Question and why it matters
+## File or section
 
-## Primary sources, datasets and reuse terms
+## What is unclear or inaccurate
 
-Include links, versions, dates, coverage and unknowns.
+## Suggested correction and supporting source
 
-## Proposed method and comparison
+## Effect on project status or promises
 
-## Observations already collected, if any
-
-Separate evidence from interpretation. Label synthetic data and negative findings.
-
-## Reproduction, limitations and next decision
-
-Do not describe proposed research as completed.
+Check that the future blockchain name remains undecided unless a recorded owner decision changes it.
 
 ## Scope and token impact
 

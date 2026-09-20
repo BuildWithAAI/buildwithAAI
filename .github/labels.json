@@ -1,0 +1,97 @@
+[
+  {
+    "name": "status: idea",
+    "color": "D4C5F9",
+    "description": "Possible work; not approved for implementation."
+  },
+  {
+    "name": "status: discussion",
+    "color": "C5DEF5",
+    "description": "Feedback or a decision is needed."
+  },
+  {
+    "name": "status: research",
+    "color": "BFDADC",
+    "description": "Evidence question selected; findings may still be pending."
+  },
+  {
+    "name": "status: proposed",
+    "color": "FBCA04",
+    "description": "Defined scope is ready for a decision."
+  },
+  {
+    "name": "status: approved",
+    "color": "0E8A16",
+    "description": "Exact scope accepted with a recorded decision."
+  },
+  {
+    "name": "status: development",
+    "color": "1D76DB",
+    "description": "Approved work has an accepting contributor and work record."
+  },
+  {
+    "name": "status: testing",
+    "color": "5319E7",
+    "description": "Implementation or pilot exists; validation is pending or underway."
+  },
+  {
+    "name": "status: released",
+    "color": "006B75",
+    "description": "Accepted output published with evidence and limitations."
+  },
+  {
+    "name": "status: deferred",
+    "color": "D4C5A8",
+    "description": "Paused with a reason and reconsideration condition."
+  },
+  {
+    "name": "status: rejected",
+    "color": "B60205",
+    "description": "Declined with recorded reasoning."
+  },
+  {
+    "name": "type: bot",
+    "color": "DDEEFF",
+    "description": "Telegram, Discord or other community bots."
+  },
+  {
+    "name": "type: website",
+    "color": "DDEEFF",
+    "description": "Community website and web interfaces."
+  },
+  {
+    "name": "type: analytics",
+    "color": "DDEEFF",
+    "description": "Metric definitions, dashboards and data analysis."
+  },
+  {
+    "name": "type: solana",
+    "color": "DDEEFF",
+    "description": "Solana observations or separately reviewed experiments."
+  },
+  {
+    "name": "type: community",
+    "color": "DDEEFF",
+    "description": "Participation, process and community tooling."
+  },
+  {
+    "name": "type: documentation",
+    "color": "DDEEFF",
+    "description": "Documentation, instructions and public records."
+  },
+  {
+    "name": "type: security",
+    "color": "DDEEFF",
+    "description": "Security policy, review or reporting process."
+  },
+  {
+    "name": "type: research",
+    "color": "DDEEFF",
+    "description": "Sourced questions, methods and experiments."
+  },
+  {
+    "name": "type: branding",
+    "color": "DDEEFF",
+    "description": "Art, memes, media, UX and brand proposals."
+  }
+]

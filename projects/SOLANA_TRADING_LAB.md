@@ -24,12 +24,12 @@ The data available at each simulated decision must reflect that time. Future pri
 
 Before using terms such as mapped brain or biological simulation, identify the primary research, species, dataset, resolution, license, and exact parts represented in software. A conceptual analogy should be called bio-inspired. This project currently makes no claim to reproduce a jellyfish nervous system or demonstrate a trading advantage.
 
-## Later questions
+## Current security boundary
 
-Wallet and Phantom integration, supported venues, signing authority, position limits, kill switches, transaction failures, and monitoring belong in a separate execution design. Real-money automation is outside the initial experiment.
+This work is restricted to offline replay and paper simulation. The community policy prohibits automatic trade execution and wallet-secret collection. A wallet connection, Phantom integration or execution system is not approved. Reconsidering execution would require an explicit owner-visible policy proposal, additional review and a separate design; this brief does not authorize it.
 
 ## First community output
 
 Produce a source-and-dataset inventory and a small evaluation specification. Include a conclusion that the proposed model is unsuitable if the evidence supports it.
 
-See [starter task AAI-003](../tasks/STARTER_TASKS.md).
+See [task AAI-T-023](../tasks/BACKLOG.md#aai-t-023) and the [earlier starter task AAI-003](../tasks/STARTER_TASKS.md).

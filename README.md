@@ -1,41 +1,63 @@
 # Build With AAI
 
-**An AI development community building useful technology together.**
+**Memes bring people together. Useful tools give us something to build.**
 
-AAI brings developers, researchers, designers, and testers together to turn ideas into products. Our starting interests are Solana research tools, experimental trading systems, XAUUSD expert advisors, and Telegram utilities. We also want to explore practical ways for AAI to be used to pay for useful services.
+AAI is a community development experiment exploring Solana / Pump.fun, bots, research, art, and practical software within the broader Zoora ecosystem.
 
-This repository is the community's starting point: what we want to build, what exists, what remains uncertain, and where you can help.
+> **Future blockchain name: UNDECIDED — Zoora Blockchain or AAI Blockchain. Neither name has been chosen.** The Solana/Pump.fun community experiment is separate from that future blockchain under either name. Its future native currency, if launched, is intended to originate through its own documented genesis process.
+
+**Planning revision — pending owner review.** The expanded operating process and backlog are proposals. Existing project facts and the founder's explicit boundaries are recorded in the [decision register](docs/DECISIONS.md).
+
+## What this is
+
+A public place for developers, designers, researchers, meme creators, and curious users to propose and build things together. Ideas can include Telegram and Discord bots, dashboards, analytics, websites, media tools, wallet utilities, games, and AI experiments. Public development is the aim where access, security, and licensing permit it.
+
+Community members propose and discuss; contributors build; maintainers review. Final acceptance currently remains with the owner and maintainers. This is **community-driven development, not fully decentralized governance**.
+
+## What this is not
+
+- The future blockchain's official native currency or a presale for it.
+- Equity in Zoora Technologies, ownership of Zoora, protocol ownership, or civilization ownership.
+- Automatic governance, validator, revenue, or native-coin rights.
+- A promise of migration, a bridge, 1:1 conversion, future utility, token allocations, profit, or any return.
+
+See the [project boundaries](DISCLAIMER.md) and [future blockchain relationship](docs/future-zoora-relationship.md). A name change would not change these boundaries.
 
 ## Start here
 
-- **Explore the plan:** [Roadmap](ROADMAP.md)
-- **Pick something useful:** [Starter tasks](tasks/STARTER_TASKS.md)
-- **Join the work:** [Contributing](CONTRIBUTING.md)
-- **Understand the funding intent:** [Founder funding](docs/FUNDING.md)
+| Your question | Where to look |
+| --- | --- |
+| What exists today? | [Current status](docs/CURRENT_STATUS.md) |
+| What is the plan? | [Roadmap](ROADMAP.md) and [development-plan index](DEVELOPMENT_PLAN.md) |
+| What is being worked on? | [Starter board](docs/community/PROJECT_BOARD.md) |
+| Where can I help? | [First 25 tasks](tasks/BACKLOG.md) and [contribution guide](CONTRIBUTING.md) |
+| How do I propose an idea? | [Proposal process](proposals/README.md) and [template](proposals/template.md) |
+| What is official? | [Official links](OFFICIAL-LINKS.md), [token record](docs/token/TOKEN-INFO.md), and [decision register](docs/DECISIONS.md) |
+| How are funds described? | [Funding intent](docs/FUNDING.md) and [wallet register](docs/token/WALLETS.md) |
+| How do I report a security concern? | [Security policy and setup status](SECURITY.md) |
 
-## Projects
+## What already exists
 
-| Project | What we want to build | Current status | First contribution |
-| --- | --- | --- | --- |
-| [AAI Scan](projects/AAI_SCAN.md) | A Telegram journal showing what changed in a Solana token since your last scan | Private pilot code exists; hosting and live Telegram validation pending | Improve report clarity and document pilot acceptance checks |
-| [Solana Trading Lab](projects/SOLANA_TRADING_LAB.md) | A research and paper-trading system, including a jellyfish-inspired model experiment | Idea and research brief | Identify a reproducible model and define comparison baselines |
-| [XAUUSD EA Lab](projects/XAUUSD_EA_LAB.md) | Expert advisors for gold with reproducible research and execution controls | Idea and research brief | Specify one strategy and its broker assumptions |
-| [Telegram Tools](projects/TELEGRAM_TOOLS.md) | Bots that solve everyday community and developer problems | Idea collection | Propose one small workflow with a clear user benefit |
-| [AAI Utility](projects/AAI_UTILITY.md) | AAI as a way to pay for useful products or services | Design exploration | Define a useful service, payment flow, and refund behavior |
-| [Launch Research](research/LAUNCH_STUDY.md) | Evidence about launch behavior, liquidity, volatility, and longer-lived projects | Research protocol proposal; no findings established here | Define the sample and outcome measurements |
+This public hub contains project documentation. A separate **private AAI Scan prototype** has Scan → Watch → Compare, saved observations, a short timeline, and change alerts. The earlier build passed 29 offline tests and one live public market-data check. It is **not a live public service**; hosting is paused, and Telegram delivery, production on-chain data, and operational recovery still need validation.
 
-**Status snapshot: September 20, 2026.** Research ideas are not shipped products. The proposed sequence can change as the community brings evidence and working prototypes.
+This plan supplies no new token, wallet, smart contract, blockchain, or trading executor. No verified community-token mint is recorded here. Unknown token fields remain **TBD — DO NOT GUESS**.
 
-## Our first working project
+## What we want to explore
 
-AAI Scan has a private Python pilot with **Scan → Watch → Compare**, saved observations, a short timeline, and change alerts. Its 29 offline tests passed, and one live public market-data request succeeded during development. Live Telegram delivery, production hosting, and end-to-end operation still need validation.
+| Workstream | Current stage | First useful result |
+| --- | --- | --- |
+| [AAI Scan](projects/AAI_SCAN.md) | Prototype awaiting pilot validation | Clear reports and an acceptance record |
+| [Community tools](projects/COMMUNITY_TOOLS.md) | IDEA | Specs for bots, dashboard, development tracker, and media tools |
+| [Solana Trading Lab](projects/SOLANA_TRADING_LAB.md) | RESEARCH direction | Reproducible jellyfish-inspired replay or paper-trading experiment |
+| [XAUUSD EA Lab](projects/XAUUSD_EA_LAB.md) | IDEA | One rule specification and offline evaluation |
+| [AAI utility](projects/AAI_UTILITY.md) | IDEA | A useful service and test-asset payment design |
+| [Launch study](research/LAUNCH_STUDY.md) | RESEARCH direction | A defined cohort and data-quality plan |
+| [Future blockchain relationship](docs/future-zoora-relationship.md) | FUTURE / RESEARCH | Questions for review, with no integration commitment |
 
-The pilot does not execute trades. Its reports distinguish observed data, interpretations, and unknowns. It does not yet verify Pump.fun origin, identify creator trades, or predict runners. The code repository is currently private; this public hub is where research, documentation, and proposals can begin.
+## Join the build
 
-## How to help
+Read the [contribution guide](CONTRIBUTING.md), choose a task or propose an idea, and explain what a small successful result would look like. AI-assisted work is welcome when sources and results are checked. Credit people for their work and label simulations, prototypes, and unknowns clearly.
 
-Choose a [starter task](tasks/STARTER_TASKS.md), open an issue describing your approach, and link a focused pull request when you have something reviewable. Contributions can be research, writing, design, test cases, or code; they do not have to start with a large feature.
+Licensing is [undecided](LICENSE-STATUS.md). Bounties, contributor compensation, and token allocations are not offered by the backlog. No release calendar or token launch date is committed.
 
-Project maintainers review scope and changes. AI-assisted work is welcome when the contributor can explain it, identify its sources, and verify the result. Compensation, token allocation, and repository licensing are separate decisions; this roadmap does not offer them.
-
-We will record progress as evidence and working results become available. No release date, token launch date, trading return, or token-price target is promised by this repository.
+**Snapshot: September 20, 2026.** The draft board and issue bodies are repository documents, not a live GitHub Projects board or 25 opened issues.
