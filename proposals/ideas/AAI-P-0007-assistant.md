@@ -5,7 +5,7 @@
 | Author / source | Founder discussion, organized with AI assistance |
 | Date | September 22, 2026 |
 | Work status | IDEA |
-| Commitment | IDEA |
+| Commitment category | IDEA |
 | Maintainer | Unassigned — no implementation owner accepted |
 | Estimated complexity | Unknown until scoped; review data, rights, operating cost, and evaluation first |
 | Related brief | [Detailed brief](../../projects/PERSONAL_ASSISTANT.md) |
@@ -30,4 +30,4 @@ A reviewable specification and example reports with stale, missing, and conflict
 
 ## Community feedback and decision
 
-Open for discussion. The owner authorized publication of the updated roadmap; implementation, spending, live execution, releases, and any protected change require their own scoped decision. No community consensus or reviewer sign-off is invented. For AAI-P-0011, the founder explicitly prioritizes early research; the nickname and architecture remain open.
+Open for discussion. The owner authorized publication of the updated roadmap; implementation, spending, live execution, releases, and any protected change require their own scoped decision. No community consensus or reviewer sign-off is invented.

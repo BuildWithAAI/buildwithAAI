@@ -1,6 +1,6 @@
 # Public project-wallet register
 
-**No verified project wallet is entered in this draft.** All actual addresses and control facts are **TBD — DO NOT GUESS**. This is not a claim that no wallet exists elsewhere.
+**No verified project wallet is entered in this register.** All actual addresses and control facts are **TBD — DO NOT GUESS**. This is not a claim that no wallet exists elsewhere.
 
 Do not insert sample addresses that could be mistaken for a real payment destination. Add a row only when a real project-controlled wallet exists, control has been checked, and the owner approves disclosure. Never include secrets or undisclosed personal wallets.
 

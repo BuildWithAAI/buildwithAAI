@@ -183,7 +183,7 @@ Extend the funding record for the proposed creator-fee-funded trading account, r
 
 ### Risks and approval limits
 
-Do not create wallets, expose secrets, move funds, promise holder revenue or treat personal callout rewards as project funds.
+Do not create wallets, expose secrets, move funds, promise holder revenue, or include unrelated personal transactions in project accounts.
 
 ### Token impact
 
@@ -393,7 +393,7 @@ Status: **TESTING** · Commitment: **APPROVED** · Priority: **P1** · Phase: 2 
 
 Owner: Unassigned. Live issue: not created by this revision.
 
-Prepare and, only when deployment is separately authorized, complete checks for the existing AAI Scan private pilot. Current evidence: merged code, 29 offline tests and one public-data request; live operation remains pending.
+Prepare and, only when deployment is separately authorized, complete checks for the existing AAI Scan private pilot. Historical development evidence: merged code, 29 passing offline tests and one public-data request; these checks were not rerun for this documentation review and live operation remains pending.
 
 ### Dependencies
 
@@ -575,7 +575,7 @@ Review the supplied opaque-black AAI raster logo concept, prepare usage decision
 
 ### Risks and approval limits
 
-Review concepts before publication; no domain purchase, advertising spend or token naming decision.
+The existing raster concept is published. Review new or revised assets before publication; no domain purchase, advertising spend or token naming decision.
 
 ### Token impact
 
@@ -1009,7 +1009,7 @@ Status: **RESEARCH** · Commitment: **FUTURE** · Priority: **P2** · Phase: 5 �
 
 Owner: Unassigned. Live issue: not created by this revision.
 
-Define AI-artist provenance, voice/likeness permissions, provider questions, and a possible separate label or Zoora Productions integration.
+Define AI-artist provenance, voice/likeness permissions, provider questions, and the possible later label. Treat a Zoora Productions connection as an optional suggestion for community review, not a founder-selected requirement.
 
 ### Dependencies
 

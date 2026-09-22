@@ -1,6 +1,6 @@
 # Telegram Tools
 
-**Status:** idea collection. AAI Scan is the first implemented Telegram project; other tools are proposals.
+**Status:** idea collection. AAI Scan has private prototype code for a Telegram workflow; live Telegram delivery remains unvalidated and hosting is paused. Other tools are proposals.
 
 ## The idea
 

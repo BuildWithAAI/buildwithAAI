@@ -5,7 +5,7 @@
 | Author / source | Founder discussion, organized with AI assistance |
 | Date | September 22, 2026 |
 | Work status | IDEA |
-| Commitment | IDEA |
+| Commitment category | IDEA |
 | Maintainer | Unassigned — no implementation owner accepted |
 | Estimated complexity | Unknown until scoped; review data, rights, operating cost, and evaluation first |
 | Related brief | [Detailed brief](../../projects/MUSIC_COLLABORATION.md) |
@@ -22,6 +22,8 @@ Specify original uploads, invitations, submissions, approval, credits/agreed spl
 
 Recording/composition/sample rights, consent, onward remixes, external distribution, takedowns, and voice/likeness permissions require review.
 
+The possible later record label comes from the founder's direction. A Zoora Productions connection is an additional assistant suggestion for community review and is not a selected requirement.
+
 Dependencies, technical alternatives, security requirements, and later milestones are detailed in the linked brief. No implementation architecture, provider, budget, or operating permission is chosen by creating this record.
 
 ## Acceptance criteria
@@ -30,4 +32,4 @@ An authorized-material demonstration flow and rights specification; no automatic
 
 ## Community feedback and decision
 
-Open for discussion. The owner authorized publication of the updated roadmap; implementation, spending, live execution, releases, and any protected change require their own scoped decision. No community consensus or reviewer sign-off is invented. For AAI-P-0011, the founder explicitly prioritizes early research; the nickname and architecture remain open.
+Open for discussion. The owner authorized publication of the updated roadmap; implementation, spending, live execution, releases, and any protected change require their own scoped decision. No community consensus or reviewer sign-off is invented.

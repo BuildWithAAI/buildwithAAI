@@ -17,3 +17,5 @@ Protected changes include supply, minting, authorities, treasury, fees, migratio
 Record decisions with scope, alternatives, reasoning, risks, token impact, reviewer evidence, date and follow-up conditions. Add links in [DECISIONS.md](../DECISIONS.md). Rejected ideas remain searchable. Conflicts of interest and proposed compensation should be disclosed before acceptance.
 
 Polls and reactions can collect feedback. They are not binding votes over the token, a treasury, Zoora Technologies or the future blockchain. Contributor recognition is based on documented contributions, not token purchases or trading volume. Governance can evolve only through a separate explicit proposal.
+
+The founder's commitment to AAI as the only community coin project has a specific exception: a separate software-related coin can be considered only with documented community support through a public proposal, followed by review and an owner decision. A poll alone does not authorize launching it; an owner decision alone does not replace the requirement for community support. No voting method or threshold is selected here.

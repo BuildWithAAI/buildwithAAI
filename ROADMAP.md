@@ -17,7 +17,7 @@ Hosting remains paused until costs and deployment are separately approved. Found
 
 **Position:** public community documentation exists; Telegram setup is underway; the scanner has private prototype code.
 
-Foundation work includes clear project purpose, official links, license decisions, contribution rules, security reporting, truthful statuses, and selected tasks with observable completion criteria. The founder's launch focus is AAI; additional software coins would need community discussion, a separate proposal, review, and owner acceptance.
+Foundation work includes clear project purpose, official links, license decisions, contribution rules, security reporting, truthful statuses, and selected tasks with observable completion criteria. AAI is the founder's only planned community coin project; a software-specific exception would need documented community support through a public proposal, review, and owner acceptance.
 
 The scanner supports Scan → Watch → Compare, saved observations, a short timeline, and change alerts. Historical development evidence reports 29 offline tests and one live public-data request. Still pending: permitted-user access checks, Telegram delivery, provider coverage, persistence after restart, restore, and failure handling. This is not a public service or a trading executor. Pump.fun provenance, creator-trade identification, and runner prediction are not verified pilot features.
 
@@ -62,7 +62,7 @@ Possible uses of resulting profits: further development, developer thank-you gif
 
 ## 5. Future blockchain, civilization, and community process
 
-**Position: FUTURE / RESEARCH.** The future chain name remains undecided. Its economic research covers agent spending permissions, civilization treasuries, policy-controlled vaults, machine-readable constitutions, governance, settlement, and auditable histories. The intended starting direction is one native base currency originating from that network's own genesis; later civilization currencies remain a research possibility.
+**Position: FUTURE / RESEARCH.** The future chain name remains undecided. Its economic research covers agent spending permissions, civilization treasuries, policy-controlled vaults, machine-readable constitutions, governance, settlement, and auditable histories. The intended starting direction is one native base currency originating from that network's own genesis. The founder's direction is that any later civilization currencies would require governance/community decisions and remain anchored to the base currency. The mechanism, monetary parameters, and implementation remain research questions.
 
 The Solana/Pump.fun community token is separate. No automatic migration, bridge, conversion, native coins, equity, governance, validator, civilization ownership, or revenue rights arise from it. Any relationship needs research, technical design, security review, applicable legal review, public proposal, approval, and testing.
 
@@ -90,7 +90,7 @@ Each song could branch into an unlimited number of permitted remixes. A song fam
 
 Clearly labeled AI artists could develop identities and release histories alongside human artists, with a responsible operator identified. Another person's voice or likeness requires permission. Discovery could reflect listening, saves, shares, and real collaborations; attention and earnings are not guaranteed.
 
-Possible later stages include a Zoora Productions sharing workflow and a record label offering production, promotion, or distribution through separate agreements. Neither exists as an integration or label here; uploading music would not automatically sign an artist.
+If audience and usefulness justify it, a later record label could offer production, promotion, or distribution through separate agreements. A Zoora Productions sharing workflow is an additional suggestion for community review, not a founder-selected integration. Neither an integration nor a label is established here; uploading music would not automatically sign an artist.
 
 **Milestone:** an original track, an open-verse invitation, a submitted contribution, and an approved credited release linked to its source. No music-specific token is proposed. [Music collaboration](projects/MUSIC_COLLABORATION.md).
 

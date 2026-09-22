@@ -3,7 +3,7 @@
 | Question | Current answer |
 | --- | --- |
 | Why was AAI started? | The founder is tired of rugs and disappearing projects and wants to build useful software with transparent progress. This motivation is not a safety guarantee. |
-| Is the founder launching lots of coins? | AAI is the only currently planned community coin launch. A software-related exception needs a separate community proposal, review, and owner decision. No brain or music coin is proposed. |
+| Is the founder launching lots of coins? | AAI is the only planned community coin project. A software-specific exception needs documented community support through a public proposal, review, and owner decision. No brain or music coin is proposed. |
 | Is the future chain Zoora or AAI? | Undecided. Future protocol research is separate and is not a scheduled second launch. |
 | Is the Solana token the future chain's native coin? | No. Future native currency is intended to originate through that network's documented genesis. No automatic conversion, bridge, or allocation rights arise. |
 | Has a mint been authenticated here? | No. Use the canonical token record; unknown values remain TBD. |

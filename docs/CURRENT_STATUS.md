@@ -1,10 +1,10 @@
 # Current project status
 
-**Snapshot: September 22, 2026.** Repository baseline was inspected at main `25e073781984919d833a5e55250087c672f90e9e` and draft PR #2 head `81b7b916ddd439aa14d4b6bf5cb9e6cd2ecd16aa`. This revision updates that plan following the owner's publication request. It is documentation and branding, not a software release audit.
+**Verified snapshot: September 22, 2026.** [PR #2](https://github.com/BuildWithAAI/buildwithAAI/pull/2) is merged. Its published main commit, [`01d98e7`](https://github.com/BuildWithAAI/buildwithAAI/commit/01d98e760e7404081f6ab30b2b7b1853ba7041b5), was checked against all 71 prepared files by Git blob hash before this follow-up documentation review. The earlier pre-publication baseline is preserved in [VALIDATION.md](VALIDATION.md). This is a documentation and branding verification, not a software release audit.
 
 | Item | Evidence / current state | Pending or unverified |
 | --- | --- | --- |
-| Public hub | Initial community documents published through [PR #1](https://github.com/BuildWithAAI/buildwithAAI/pull/1); this update extends [PR #2](https://github.com/BuildWithAAI/buildwithAAI/pull/2) with eight roadmap topics | Product implementations and operational settings are separate |
+| Public hub | Initial documents published through [PR #1](https://github.com/BuildWithAAI/buildwithAAI/pull/1); all eight roadmap topics published on main through merged [PR #2](https://github.com/BuildWithAAI/buildwithAAI/pull/2) | Product implementations and operational settings are separate |
 | AAI Scan | Separate private prototype; prior record reports 29 offline tests and one live public-data request | Live Telegram, production providers/RPC, persistence/restore, hosting, and sustained operation; no tests rerun for this revision |
 | Hosting | Paused under prior founder direction | Cost and deployment decision |
 | Telegram | Founder shared an Anything AI group setup showing Roadmap, About Dev, and General | Invite URL and later topic/bot setup not verified |
@@ -20,7 +20,10 @@
 | Future blockchain | Separate agent-economy research; one initial base-currency/genesis intent | Zoora-versus-AAI name undecided; no implementation audited by this hub |
 | Backlog and board | 40 task briefs and repository planning board | Not 40 live issues or a native Projects board; no contributor assigned by this update |
 | Proposal records | Six original ideas plus five newer proposals, each scoped and dated | No implementation/funding approval implied by publication |
-| GitHub labels, Discussions, reporting, and protections | Configuration definitions and setup tasks | Not activated or verified by this documentation revision; do not claim enforcement |
+| GitHub Issues and templates | Issues enabled; eight issue-template files published on main | Template files do not create the 40 planned issues |
+| GitHub Discussions | Disabled at this verification; optional category form prepared | Activation remains a separate task |
+| GitHub review controls | Main-branch API reported `protected: false`; CODEOWNERS routing is published | Required-review enforcement is not established; configuration remains separate |
+| GitHub labels, native board, and private reporting | Definitions and setup tasks remain documented | Live configuration and private reporting delivery not verified by this review |
 | Licenses and compensation | Status and process documented | No project-wide license chosen or funded bounty offered |
 
 Do not convert a document, code merge, historical test, graphic, or simulation into a claim of live service, autonomous income, biological intelligence, or token entitlement. [Validation scope](VALIDATION.md).
