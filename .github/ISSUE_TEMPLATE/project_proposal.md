@@ -1,31 +1,31 @@
 ---
-name: Project or starter task
-about: Propose a useful contribution or take a starter task
-title: '[Proposal] '
+name: "Community idea"
+about: "Propose an experiment or discuss an existing starter task."
+title: "[Idea] "
 labels: ''
 assignees: ''
 ---
 
-## Project and task ID
+Do not include seed phrases, private keys, bot tokens, credentials or private user records. Report sensitive vulnerabilities using [SECURITY.md](https://github.com/BuildWithAAI/buildwithAAI/blob/main/SECURITY.md).
 
-Which project or starter task is this about?
-
-## User problem
-
-Who benefits, and what should become easier?
+## Problem and who benefits
 
 ## Proposed output
 
-Describe one small, reviewable result.
+## What already exists versus what is new
 
-## Completion condition
+## Skills and maintainer needs
 
-How can another contributor verify it works?
+Do not assign another contributor without their agreement.
 
-## Dependencies and cost
+## Risks and unanswered questions
 
-What data, access, external services, or maintainer decisions are needed? State unknowns. Do not include credentials.
+A community suggestion is not automatically an approved feature.
 
-## Contribution plan
+## Scope and token impact
 
-What would you like to work on? Identify material AI assistance and third-party sources or licensing requirements.
+Does this affect only community tooling, or supply, minting, authorities, treasury, fees, migration, governance or project-controlled wallets? State unknowns. Protected changes require owner approval and additional review.
+
+## Contribution and evidence
+
+Related task/proposal: unassigned. Describe the smallest useful output, acceptance criteria, dependencies and costs. Identify material AI assistance, primary sources and reuse terms. No assignment, funding or deployment is implied by opening an issue.

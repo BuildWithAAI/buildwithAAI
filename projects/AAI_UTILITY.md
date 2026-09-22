@@ -8,7 +8,7 @@ The founder wants useful technology that can use AAI as transactional value. The
 
 ## Proposed first version
 
-A written payment-and-access design followed by a test-environment prototype:
+A written payment-and-access design. A test-environment prototype could follow only after the scope is approved:
 
 - Define what a payment buys, how long access lasts, and any usage limits.
 - Specify the network and exact asset identity once those decisions exist.
@@ -21,10 +21,12 @@ Evaluate whether token settlement actually improves the selected workflow. The d
 
 ## Unresolved decisions
 
-The exact token, launch terms, service pricing, custody model, and licensing remain separate founder decisions. This brief does not create an allocation, revenue-sharing right, reward, or promise of future access for holders.
+The exact token, launch terms, service pricing and licensing remain separate founder decisions. No custody system is approved; applications must not collect or store wallet secrets. This brief does not create an allocation, revenue-sharing right, reward, or promise of future access for holders.
+
+The future blockchain name is undecided between Zoora Blockchain and AAI Blockchain. AAI community branding or a proposed service payment does not make the Solana token that network's native currency or grant migration, conversion or governance rights.
 
 ## First community output
 
 Describe one complete service-credit flow using test assets and synthetic users. Include failure cases and a simple operating-cost estimate.
 
-See [starter task AAI-006](../tasks/STARTER_TASKS.md).
+See [task AAI-T-020](../tasks/BACKLOG.md#aai-t-020) and the [earlier starter task AAI-006](../tasks/STARTER_TASKS.md).

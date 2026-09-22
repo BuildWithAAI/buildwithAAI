@@ -1,6 +1,18 @@
 # Starter tasks
 
-These are proposed tasks, ready to discuss in GitHub issues once the hub is published. They are not assigned, funded, or completed. Reference the task ID in the issue title so contributors can avoid duplicate work.
+These earlier task descriptions are retained for continuity. They are not assigned, funded, or completed. The [40-task backlog](BACKLOG.md) is the current planning index; these older IDs map to it below. Do not open duplicate issues for both identifiers.
+
+| Earlier ID | Current task |
+| --- | --- |
+| AAI-001 | [AAI-T-013: report examples and pilot acceptance](BACKLOG.md#aai-t-013) |
+| AAI-002 | [AAI-T-013: pilot acceptance](BACKLOG.md#aai-t-013) |
+| AAI-003 | [AAI-T-023: biological sources](BACKLOG.md#aai-t-023) |
+| AAI-004 | [AAI-T-024: offline XAUUSD specification](BACKLOG.md#aai-t-024) |
+| AAI-005 | [AAI-T-012: Telegram workflow](BACKLOG.md#aai-t-012) |
+| AAI-006 | [AAI-T-020: service utility design](BACKLOG.md#aai-t-020) |
+| AAI-007 | [AAI-T-022: launch research](BACKLOG.md#aai-t-022) |
+| AAI-008 | [AAI-T-014: durable alerts](BACKLOG.md#aai-t-014) |
+| AAI-009 | [AAI-T-006: licensing decision](BACKLOG.md#aai-t-006) |
 
 | ID | Task | Useful skills | Starting point |
 | --- | --- | --- | --- |
@@ -28,7 +40,7 @@ These are proposed tasks, ready to discuss in GitHub issues once the hub is publ
 
 ## AAI-003: Biological source inventory
 
-**Output:** primary papers, dataset links, species, model scope, licenses, and availability for candidate jellyfish-inspired architectures. Crow-inspired alternatives can be listed separately.
+**Output:** primary papers, dataset links, species, model scope, licenses, and availability for the expanded multi-brain and jellyfish-inspired source inventory. Cat, monkey, crow, and other species remain explicit verification targets rather than assumed available complete brains.
 
 **Complete when:** every candidate has traceable evidence or an explicit unavailable/unknown status, and one candidate is accepted or rejected for a small reproducible experiment. A public animal-themed coin alone is not supporting model evidence.
 

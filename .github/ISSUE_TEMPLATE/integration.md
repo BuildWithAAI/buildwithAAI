@@ -1,28 +1,24 @@
 ---
-name: "Research proposal"
-about: "Propose a research question or share a sourced finding."
-title: "[Research] "
+name: "New integration"
+about: "Propose a provider or platform connection for review."
+title: "[Integration] "
 labels: ''
 assignees: ''
 ---
 
 Do not include seed phrases, private keys, bot tokens, credentials or private user records. Report sensitive vulnerabilities using [SECURITY.md](https://github.com/BuildWithAAI/buildwithAAI/blob/main/SECURITY.md).
 
-## Question and why it matters
+## User need and proposed provider
 
-## Primary sources, datasets and reuse terms
+## Data flow, permissions and retention
 
-Include links, versions, dates, coverage and unknowns.
+## API terms, dependencies and costs
 
-## Proposed method and comparison
+## Failure, rate-limit and removal behavior
 
-## Observations already collected, if any
+## Security and user-consent requirements
 
-Separate evidence from interpretation. Label synthetic data and negative findings.
-
-## Reproduction, limitations and next decision
-
-Do not describe proposed research as completed.
+Do not request credentials in the issue or activate the connection as part of this proposal.
 
 ## Scope and token impact
 

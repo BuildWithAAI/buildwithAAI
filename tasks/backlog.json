@@ -1,0 +1,896 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-09-22",
+  "kind": "planning_backlog_not_live_issues",
+  "tasks": [
+    {
+      "id": "AAI-T-001",
+      "title": "Review remaining community workflow choices",
+      "status": "PROPOSED",
+      "commitment": "APPROVED",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: documentation",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "The owner authorized publishing the updated documentation and founder directions. Review remaining detailed workflow choices and implementation scopes without treating publication as blanket approval.",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Confirm the README makes the undecided future blockchain name visible near the top.",
+        "Record that this Solana experiment is separate from a future genesis-native currency with no migration or entitlement promises.",
+        "Record owner decisions on the proposed workflow and leave unresolved choices explicitly open."
+      ],
+      "risks_and_gates": "Documentation publication is authorized by B-009; platform settings, product implementation, spending, and launches remain separate decisions.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-002",
+      "title": "Decide or explicitly defer future blockchain branding",
+      "status": "DISCUSSION",
+      "commitment": "RESEARCH",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: branding",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Record whether naming remains undecided between Zoora Blockchain and AAI Blockchain. Deferral is a valid outcome; the community working brand does not decide the chain name.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Record the owner's decision or explicit deferral and date.",
+        "Keep the distinction between community token, future chain and future native currency in every affected introduction.",
+        "Do not select a token ticker, genesis economics or conversion rights as part of a naming decision."
+      ],
+      "risks_and_gates": "Brand research is not approval to rename an external project, register accounts or buy domains.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-003",
+      "title": "Verify the official-links register",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: security",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Check control and intended purpose of each proposed official account, then prepare evidence-backed link updates.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Verify the repository and organization addresses; document how account control was confirmed.",
+        "Leave website, X, Telegram and Discord unverified entries as TBD until checked.",
+        "Require owner approval for canonical token/link changes and record review date and evidence."
+      ],
+      "risks_and_gates": "Do not request passwords or publish private account information. Verification is scoped evidence, not a guarantee against later compromise.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-004",
+      "title": "Prepare the token-information verification record",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P0",
+      "phase": "1",
+      "type": "type: solana",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Review the canonical token-information template and evidence requirements. Populate launch facts only after an actual separately approved launch and verified mint exist.",
+      "dependencies": [
+        "AAI-T-001",
+        "AAI-T-003"
+      ],
+      "acceptance_criteria": [
+        "Cover exact name, ticker, mint, launch time, decimals, supply, token program, authorities, metadata controls and liquidity evidence.",
+        "Record source, observation time/slot, verifier and unknowns separately from revoked controls.",
+        "Keep all absent launch data as TBD — DO NOT GUESS; official links reference this one token record."
+      ],
+      "risks_and_gates": "No mint is created, chosen or funded by this task; a launch gate remains separate.",
+      "token_impact": "Sensitive identity/authority disclosure only; no tokenomics or authority change authorized."
+    },
+    {
+      "id": "AAI-T-005",
+      "title": "Design creator-fee, account, and distribution disclosures",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: documentation",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Extend the funding record for the proposed creator-fee-funded trading account, retaining development/marketing/DEX uses, separate receipts/results, controller disclosures, and unknown allocations.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Document actual fee-eligibility/recipient verification requirements without inventing wallets or receipts.",
+        "Separate fees, transfers, capital, realized/unrealized results, costs, gifts, contracted compensation, and token purchases.",
+        "Link account-policy and ledger tasks AAI-T-028 and AAI-T-029; do not imply operating funds or distributions exist."
+      ],
+      "risks_and_gates": "Do not create wallets, expose secrets, move funds, promise holder revenue or treat personal callout rewards as project funds.",
+      "token_impact": "Protected funding/wallet disclosure; owner review required, no routing or expenditure change authorized."
+    },
+    {
+      "id": "AAI-T-006",
+      "title": "Choose licenses for documentation, code and media",
+      "status": "DISCUSSION",
+      "commitment": "RESEARCH",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: documentation",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Prepare license options with official texts and compatibility notes for existing material and future contributions.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Separate documentation, source code, research data and artwork requirements.",
+        "Identify dependency/source restrictions and ask the owner for an explicit selection.",
+        "Keep LICENSE-STATUS.md truthful until a choice is approved; do not claim the project is licensed open source prematurely."
+      ],
+      "risks_and_gates": "No license grant or contributor agreement is added without owner approval.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-007",
+      "title": "Review community conduct and moderation",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: community",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Review respectful participation rules and how maintainers handle spam, impersonation, harassment and disagreements.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Define proportionate moderation steps and a way to reconsider a decision.",
+        "Verify a usable reporting route without publishing an invented email address.",
+        "Explain that criticism and negative research results are welcome and token purchases confer no authority."
+      ],
+      "risks_and_gates": "Do not appoint people, invite members or promise staffed response times without agreement.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-008",
+      "title": "Configure and verify private security reporting",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: security",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "After policy approval, verify an owner-controlled private route and update SECURITY.md accurately. Prepare a redacted incident-response exercise.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Check whether GitHub private vulnerability reporting can be enabled and record the actual configuration.",
+        "Verify receipt using a harmless test report with no exploit or credentials.",
+        "Document triage ownership, remediation communications and reporting fallback without inventing an SLA."
+      ],
+      "risks_and_gates": "Configuration needs appropriate admin access. The policy file and public security-question template do not themselves enable private reporting.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-009",
+      "title": "Activate the selected proposal, label and board workflow",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: community",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "After plan review, configure the selected labels and optionally a native GitHub Project. Open only the tasks the owner chooses, retaining planning IDs.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Apply the 10 defined status labels and chosen type labels without duplicating existing equivalents.",
+        "Create agreed board fields/views and map actual issue URLs to planning IDs.",
+        "Keep a single status record; verify label/board consistency and mark optional Discussions as inactive unless actually enabled."
+      ],
+      "risks_and_gates": "This revision contains a board specification and 40 task bodies. Bulk issue creation and platform changes remain separate scoped actions.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-010",
+      "title": "Verify protected-change review controls",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P0",
+      "phase": "0",
+      "type": "type: security",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Review CODEOWNERS and available main-branch protections, then select enforceable review settings with the owner.",
+      "dependencies": [
+        "AAI-T-001",
+        "AAI-T-008"
+      ],
+      "acceptance_criteria": [
+        "Document owner approval and additional review requirements for all protected economic/control changes.",
+        "Check available ruleset or branch-protection features and bypass permissions rather than assuming enforcement.",
+        "Use a harmless PR to verify the configured process; identify a qualified additional reviewer before sensitive work."
+      ],
+      "risks_and_gates": "Do not invent required CI checks or review evidence. A sole author cannot provide their own approving GitHub review.",
+      "token_impact": "Protects supply, authorities, fees, migration, governance, treasury and wallets; no such changes are implemented."
+    },
+    {
+      "id": "AAI-T-011",
+      "title": "Specify a small mobile community website",
+      "status": "IDEA",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "1",
+      "type": "type: website",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Propose one mobile-friendly page explaining the experiment, its current status, contribution paths and canonical links.",
+      "dependencies": [
+        "AAI-T-001",
+        "AAI-T-003",
+        "AAI-T-006"
+      ],
+      "acceptance_criteria": [
+        "Produce a wireframe and content draft with visible future-chain name uncertainty.",
+        "Use clearly marked unknown data and links to the canonical token record.",
+        "Estimate operating cost and define accessibility checks before selecting hosting."
+      ],
+      "risks_and_gates": "No paid service, website publication, wallet connection or token sale is authorized.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-012",
+      "title": "Specify Telegram community commands",
+      "status": "IDEA",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "2",
+      "type": "type: bot",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use AAI-P-0001 to design one useful read-only conversation first, then evaluate additional commands.",
+      "dependencies": [
+        "AAI-T-003",
+        "AAI-T-008",
+        "AAI-T-015"
+      ],
+      "acceptance_criteria": [
+        "Show /help, official-info and missing/stale-data examples; command names are proposals.",
+        "Document permissions, retention, provider limits and notification consent.",
+        "Clarify how the new idea relates to the private scanner without duplicating or publishing private code."
+      ],
+      "risks_and_gates": "No wallet secrets or trade execution. Do not post messages, install group bots or expose BotFather tokens.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-013",
+      "title": "Complete the private scanner acceptance record",
+      "status": "TESTING",
+      "commitment": "APPROVED",
+      "priority": "P1",
+      "phase": "2",
+      "type": "type: bot",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Prepare and, only when deployment is separately authorized, complete checks for the existing AAI Scan private pilot. Current evidence: merged code, 29 offline tests and one public-data request; live operation remains pending.",
+      "dependencies": [
+        "AAI-T-008"
+      ],
+      "acceptance_criteria": [
+        "Record version, date, procedure and evidence for permitted-user access, scan/watch/compare and report clarity.",
+        "Cover Telegram delivery, restart persistence, restore and provider failures; leave unperformed checks pending.",
+        "Use three synthetic report examples for ordinary, missing-data and pool-change cases; do not label token accounts as distinct holders."
+      ],
+      "risks_and_gates": "APPROVED covers the existing pilot development scope only. Hosting remains paused; no automatic deployment, paid resources or release claim.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-014",
+      "title": "Research durable scanner alert delivery",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "2",
+      "type": "type: bot",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Describe queue/outbox options for the scanner, including retry, expiry, deduplication and restart behavior.",
+      "dependencies": [
+        "AAI-T-013"
+      ],
+      "acceptance_criteria": [
+        "Specify successful, failed, timed-out and ambiguous-delivery cases.",
+        "Show how alerts survive restarts and avoid uncontrolled duplicate notification loops.",
+        "Document costs and limits; do not claim exactly-once delivery without evidence."
+      ],
+      "risks_and_gates": "Design only; implementation requires private-repository access and a separately accepted scope.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-015",
+      "title": "Define token, pool and holder metrics",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "2",
+      "type": "type: analytics",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Create a data dictionary for sources and definitions before charts, rankings or holder claims are implemented.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Distinguish supply, market cap, liquidity, volume, token accounts and unique owners.",
+        "Specify timestamps, refresh expectations, pool-selection rules, missing values and deduplication.",
+        "Record provider terms, cost, coverage and confidence limitations without fabricating data."
+      ],
+      "risks_and_gates": "Token account counts, price rises and historical peaks must not be presented as safety, user profit or causal proof.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-016",
+      "title": "Draft the read-only dashboard MVP",
+      "status": "IDEA",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "2",
+      "type": "type: analytics",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use AAI-P-0002 to design a synthetic dashboard showing project activity alongside sourced token and disclosed-wallet observations.",
+      "dependencies": [
+        "AAI-T-005",
+        "AAI-T-015"
+      ],
+      "acceptance_criteria": [
+        "Provide mobile wireframes for normal, unknown, stale and unavailable states.",
+        "Show proposal/work status and distinguish documentation, code and deployed services.",
+        "Make any optional contributor recognition criteria reviewable and resistant to spam."
+      ],
+      "risks_and_gates": "No wallet connection, trading, hidden ranking incentives or invented treasury balances.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-017",
+      "title": "Draft a public GitHub development feed",
+      "status": "IDEA",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "2",
+      "type": "type: community",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use AAI-P-0003 to specify a feed of public tasks, PRs, releases, milestones and contributions.",
+      "dependencies": [
+        "AAI-T-009"
+      ],
+      "acceptance_criteria": [
+        "Display actual public issue/PR URLs and task statuses without implying private code access.",
+        "Differentiate merged source from a published release and a deployed service.",
+        "Define caching, API-failure behavior and opt-in notification preferences."
+      ],
+      "risks_and_gates": "Do not leak private scanner metadata or send unsolicited messages; begin with a read-only design.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-018",
+      "title": "Specify a minimal Discord integration",
+      "status": "IDEA",
+      "commitment": "IDEA",
+      "priority": "P2",
+      "phase": "2",
+      "type": "type: bot",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Describe an optional community command or development-update integration with minimal permissions.",
+      "dependencies": [
+        "AAI-T-003",
+        "AAI-T-008",
+        "AAI-T-017"
+      ],
+      "acceptance_criteria": [
+        "Identify one user need, one channel flow and the required permissions.",
+        "Define opt-in behavior, retention, moderation controls and removal steps.",
+        "Estimate operating cost and leave real installation and Discord account verification pending."
+      ],
+      "risks_and_gates": "No server creation, invitations, token collection or unsolicited notifications.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-019",
+      "title": "Prepare community branding and meme-tool concepts",
+      "status": "IDEA",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "0",
+      "type": "type: branding",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Review the supplied opaque-black AAI raster logo concept, prepare usage decisions and an editable/vector source if accepted, and optionally propose a later meme tool.",
+      "dependencies": [
+        "AAI-T-002",
+        "AAI-T-006"
+      ],
+      "acceptance_criteria": [
+        "Provide asset provenance, font/media usage terms and editable sources.",
+        "Test avatar-scale readability and mobile contrast with clearly labeled mockups.",
+        "Avoid mint-like placeholders, profit promises or branding that settles the undecided future-chain name."
+      ],
+      "risks_and_gates": "Review concepts before publication; no domain purchase, advertising spend or token naming decision.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-020",
+      "title": "Research wallet profiles and service-payment utility",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P2",
+      "phase": "4",
+      "type": "type: solana",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Compare wallet identity, badges/token gates and one AAI service-credit idea; select at most one narrow design for a later proposal.",
+      "dependencies": [
+        "AAI-T-005",
+        "AAI-T-008",
+        "AAI-T-015"
+      ],
+      "acceptance_criteria": [
+        "Explain user benefit and compare a wallet-free approach.",
+        "For a payment concept, specify quote, consent, confirmation, duplicate/incorrect/late payment, service failure and refund states using test assets only.",
+        "Document privacy, replay and permission risks; state no future-chain or native-currency rights."
+      ],
+      "risks_and_gates": "No custody, wallet secrets, mainnet transfers, automated trades or token utility promise. Separate security/program review precedes any implementation.",
+      "token_impact": "Potential future token utility only; asset identity, pricing, wallets and governance remain undecided."
+    },
+    {
+      "id": "AAI-T-021",
+      "title": "Review a future bounty policy",
+      "status": "DEFERRED",
+      "commitment": "FUTURE",
+      "priority": "P2",
+      "phase": "3",
+      "type": "type: community",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use AAI-P-0006 and the bounty policy draft to define reviewed work and payment terms before any paid offer.",
+      "dependencies": [
+        "AAI-T-005",
+        "AAI-T-006",
+        "AAI-T-010"
+      ],
+      "acceptance_criteria": [
+        "Specify scope, acceptance criteria, reviewer, dispute/cancellation rules and source of approved funding.",
+        "Use the proposed bounty stages with evidence requirements and actual payment confirmation.",
+        "Record owner acceptance of the arrangement before publishing any bounty."
+      ],
+      "risks_and_gates": "Deferred until funding and review structure exist. No amounts, recipients, custody design or real-money payouts are authorized.",
+      "token_impact": "Potential project expenditure only; no token-holder revenue or rewards promised."
+    },
+    {
+      "id": "AAI-T-022",
+      "title": "Design the launch-history research cohort",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "1",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Extend the launch-study protocol to compare complete eligible cohorts, including failures, with reproducible definitions of liquidity, volatility and large runs.",
+      "dependencies": [
+        "AAI-T-015"
+      ],
+      "acceptance_criteria": [
+        "Define inclusion windows, success/failure outcomes, censoring, missing data and observation dates before analysis.",
+        "Prevent future-data leakage and report survivorship, coverage and selection limitations.",
+        "Compare hypotheses with baselines; distinguish correlation from causation and publish negative findings."
+      ],
+      "risks_and_gates": "No claim of a perfect launch, guaranteed runner or volatility control; no purchase of datasets or manipulation strategy.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-023",
+      "title": "Audit multi-brain and jellyfish model sources — early priority",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "0",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Expand the earlier jellyfish source task into the founder-prioritized multi-brain inventory. Verify primary sources, scope, reuse terms, and tractability before selecting modules. Start from research/BRAIN_DATASETS.md.",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Record each candidate species, specimen/version, measured or modeled scope, completeness, resolution, available files, and source URLs.",
+        "Distinguish published biology, simulated circuits, regional atlases, and animal-themed crypto claims; leave unsupported cat/monkey/crow/jellyfish sources unknown.",
+        "Review dataset/code permission and compute needs; propose one manageable offline module and a benchmark with simple, random-network, and no-trade comparisons."
+      ],
+      "risks_and_gates": "Early research priority only. No complete dataset collection, architecture approval, downloads at scale, model intelligence, trading edge, wallet access, or creator-fee account permission is claimed.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-024",
+      "title": "Specify one offline XAUUSD strategy experiment",
+      "status": "IDEA",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "4",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Write an unambiguous strategy and evaluation specification for the gold EA research idea, without executing orders.",
+      "dependencies": [
+        "AAI-T-001"
+      ],
+      "acceptance_criteria": [
+        "Define entry, exit, invalidation, session, sizing and exposure rules.",
+        "Record data/broker assumptions and spread, commissions, swaps, slippage and data limitations.",
+        "Reserve a later evaluation period; report drawdowns, losing periods and negative results."
+      ],
+      "risks_and_gates": "Initial scope is offline. A later demo test and potential creator-fee account are proposals requiring separate acceptance; no demo/live orders or profitable EA is established.",
+      "token_impact": "Community tooling/documentation only; no token behavior change authorized."
+    },
+    {
+      "id": "AAI-T-025",
+      "title": "Define future-blockchain relationship research boundaries",
+      "status": "DEFERRED",
+      "commitment": "FUTURE",
+      "priority": "P2",
+      "phase": "5",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Record questions for a separate future protocol research process under an undecided Zoora or AAI name. Preserve native-genesis intent and separation from the Solana experiment.",
+      "dependencies": [
+        "AAI-T-001",
+        "AAI-T-002",
+        "AAI-T-010"
+      ],
+      "acceptance_criteria": [
+        "List research questions and unresolved governance, technical, security and applicable legal-review needs.",
+        "Preserve the seven-step research/design/review/proposal/approval/testing path before any relationship is considered.",
+        "Explain that conceptual migration mechanisms and backing constraints confer no conversion, native currency, bridge, validator, revenue or governance rights."
+      ],
+      "risks_and_gates": "Deferred until a separate research scope is accepted. No bridge design, migration announcement, token allocation or chain implementation is approved.",
+      "token_impact": "Potential future relationship only; NOT PROMISED and no current monetary-architecture change."
+    },
+    {
+      "id": "AAI-T-026",
+      "title": "Specify the user-named personal assistant",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "2",
+      "type": "type: bot",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use AAI-P-0007 to define Pump.fun/trenching and spot/leverage research modes, question types, interaction options, and clear permission levels.",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Produce one normal, stale, contradictory, and unavailable-data report with source/observation times.",
+        "Define user preferences, retention, alert control, providers/cost questions, and text/voice feasibility.",
+        "Separate reading, alerting, order preparation, confirmation, and future autonomy; first scope remains research-only."
+      ],
+      "risks_and_gates": "No deployed assistant, user credentials, voice integration, exchange support, or order execution assumed.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-027",
+      "title": "Design evidence review and external agent budgets",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "2",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Specify a small task/work/review/ledger/rule-promotion loop with controls outside the model.",
+      "dependencies": [
+        "AAI-T-026"
+      ],
+      "acceptance_criteria": [
+        "Define actual artifact/source checks, independent-review limits, costs, and pending-request reserves.",
+        "Specify missing-source, repeat-error, provider-failure, and budget-exhaustion cases.",
+        "Keep operating spend separate from trading capital and define versioned rule acceptance based on meaningful evaluations."
+      ],
+      "risks_and_gates": "Another model is not automatically an independent verifier; no system is implemented or allowed to change its own permissions.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-028",
+      "title": "Specify the creator-fee account policy",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "0",
+      "type": "type: community",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use AAI-P-0008 to make allocation, controls, strategy review, stopping, withdrawals, and distribution decisions concrete before operation.",
+      "dependencies": [
+        "AAI-T-005"
+      ],
+      "acceptance_criteria": [
+        "List undecided allocations and account/provider/control requirements without opening or funding an account.",
+        "Specify risk/exposure/loss limits, handling of outstanding positions/orders, approval roles, and restart conditions for review.",
+        "Separate developer gifts, contracted work, community rewards, and optional token purchases; identify applicable specialist review needs."
+      ],
+      "risks_and_gates": "No capital, trade, payout, buyback, return, or chart-support promise is authorized.",
+      "token_impact": "Potential future project expenditure and token purchases; explicit owner approval and additional review required before operation."
+    },
+    {
+      "id": "AAI-T-029",
+      "title": "Design the funding and results ledger",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "0",
+      "type": "type: analytics",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Create a reviewable ledger schema and clearly synthetic example for receipts, allocations, net account results, and distributions.",
+      "dependencies": [
+        "AAI-T-028"
+      ],
+      "acceptance_criteria": [
+        "Retain original asset/currency, quantities, timestamps, valuation basis, controller, approval, and evidence references.",
+        "Reconcile opening/closing equity and distinguish transfers from trading profit, realized/unrealized results, and all costs.",
+        "Define redaction, exchange-statement reconciliation, token inventory treatment, and a reporting cadence decision."
+      ],
+      "risks_and_gates": "Synthetic examples must never appear as actual project income, wallet balances, or payouts.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-030",
+      "title": "Study EVE economics for agent service markets",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P2",
+      "phase": "5",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use AAI-P-0009 to compare EVE economic roles, wallet permissions, flows, and reporting with agent/civilization needs.",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Cite official evidence and distinguish game mechanisms from proposed real resource/accounting rules.",
+        "Separate transfers, issuance, burns, costs, useful output, and common-owner circular activity.",
+        "Propose a bounded simulation consistent with a separate future-chain genesis and no community-token entitlements."
+      ],
+      "risks_and_gates": "No protocol, currency schedule, affiliation, or live treasury implementation selected.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-031",
+      "title": "Specify an agent-only market discussion surface",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P2",
+      "phase": "4",
+      "type": "type: community",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Define registered-agent posting, human observation, source records, moderator review, and operator disclosures.",
+      "dependencies": [
+        "AAI-T-030"
+      ],
+      "acceptance_criteria": [
+        "Specify identity/version, common operator/source detection, timestamps, claims, uncertainty, invalidation, and corrections.",
+        "Document limits of agent authentication and counter reputation spam, impersonation, and prompt injection.",
+        "Keep discussion data separate from transaction authorization; do not imply Moltbook integration."
+      ],
+      "risks_and_gates": "No forum deployment, autonomous identity guarantee, or consensus-based trading instruction.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-032",
+      "title": "Design a test-balance agent task market",
+      "status": "PROPOSED",
+      "commitment": "RESEARCH",
+      "priority": "P2",
+      "phase": "5",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Specify one commissioned service and one rejected/disputed service using test balances without monetary value.",
+      "dependencies": [
+        "AAI-T-030",
+        "AAI-T-031"
+      ],
+      "acceptance_criteria": [
+        "Cover scope, price, deadlines, acceptance, budget reservation, cancellation, retries, and dispute/refund paths.",
+        "Distinguish on-chain record/settlement from off-chain truth and reviewer trust.",
+        "Measure accepted work, costs, failures, concentration, and circular payments rather than message or transaction count."
+      ],
+      "risks_and_gates": "No real payments, smart contract, escrow custody, public deposits, or currency issuance.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-033",
+      "title": "Specify music participation and release rights",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P2",
+      "phase": "3",
+      "type": "type: community",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use AAI-P-0010 to define permissions and records for originals, open verses, features, remixes, and AI contributions.",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Cover recordings/compositions/samples, allowed stems/lyrics, publication approval, credits, split records, onward remixes, and external distribution.",
+        "Show how contributions with different permissions compose and how unauthorized uploads/disputes/takedowns are addressed.",
+        "Use authorized or synthetic examples and list specialist review prerequisites before public distribution."
+      ],
+      "risks_and_gates": "No default royalties, rights grants, legal conclusions, or promise of unlimited unlicensed remixing.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-034",
+      "title": "Design the open-verse collaboration prototype",
+      "status": "IDEA",
+      "commitment": "IDEA",
+      "priority": "P2",
+      "phase": "3",
+      "type": "type: website",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Map an original track through invitation, contribution, approval, credit records, and a linked collaborative version.",
+      "dependencies": [
+        "AAI-T-033"
+      ],
+      "acceptance_criteria": [
+        "Produce an inspectable artist/submission/approval flow with a song family tree.",
+        "Represent human/AI/mixed contributions and the responsible operator clearly.",
+        "Document listening/save/share/collaboration discovery questions and abuse risks without guaranteeing virality."
+      ],
+      "risks_and_gates": "No public music service, royalty payout engine, distribution integration, or artist signing.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-035",
+      "title": "Research AI artists and possible later label support",
+      "status": "RESEARCH",
+      "commitment": "FUTURE",
+      "priority": "P2",
+      "phase": "5",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Define AI-artist provenance, voice/likeness permissions, provider questions, and a possible separate label or Zoora Productions integration.",
+      "dependencies": [
+        "AAI-T-033"
+      ],
+      "acceptance_criteria": [
+        "Identify responsible operators, AI contribution disclosures, and permission checks for voice/likeness.",
+        "Describe possible production/promotion/distribution support through separate reviewed agreements.",
+        "State that uploads do not sign artists and no music-specific token or integration exists."
+      ],
+      "risks_and_gates": "No label, superstar outcome, copyright classification, or blanket licensing claim.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-036",
+      "title": "Specify one reproducible biological module",
+      "status": "PROPOSED",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "4",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "After source review, propose a small connectivity-derived module and a fixed market-data task.",
+      "dependencies": [
+        "AAI-T-023",
+        "AAI-T-015",
+        "AAI-T-006"
+      ],
+      "acceptance_criteria": [
+        "Pin dataset/code versions and permitted use; identify measured, inferred, random, and learned parameters.",
+        "Specify dynamics, feature encoding, output readout, seeds, and compute/data budgets.",
+        "Provide a reproducibility plan before implementation; avoid unneeded raw imaging downloads."
+      ],
+      "risks_and_gates": "Frankenbrain is a working nickname; source topology is not proof of biological behavior or a trading edge.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-037",
+      "title": "Design the two-module offline benchmark",
+      "status": "PROPOSED",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "4",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Compare an engineered combination with each module alone and fair baselines after a concrete architecture decision.",
+      "dependencies": [
+        "AAI-T-036"
+      ],
+      "acceptance_criteria": [
+        "Specify combiner/coupling alternatives, interface assumptions, module ablations, and randomized topology controls.",
+        "Use chronological train/validation/test separation, an untouched evaluation set, realistic costs, and failed-fill assumptions.",
+        "Report losses, drawdown, uncertainty, compute cost, negative results, and a no-trade baseline."
+      ],
+      "risks_and_gates": "Research specification first; no future-data leakage, profitable-model claim, live orders, or fee-account access.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-038",
+      "title": "Specify an honest multi-brain activity display",
+      "status": "IDEA",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "4",
+      "type": "type: analytics",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Design a display tied to actual logged module activity, disagreements, outputs, and outcomes.",
+      "dependencies": [
+        "AAI-T-037"
+      ],
+      "acceptance_criteria": [
+        "Map each visual element to a recorded field, timestamp, and model version.",
+        "Label synthetic/replayed data and missing observations.",
+        "Avoid visual claims of consciousness or neuron-level realism beyond the evidence."
+      ],
+      "risks_and_gates": "An animation or screenshot cannot substitute for experiment records.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-039",
+      "title": "Specify the civilization activity view",
+      "status": "IDEA",
+      "commitment": "FUTURE",
+      "priority": "P2",
+      "phase": "5",
+      "type": "type: analytics",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Propose a small view of actual agent task events and authorized resource use.",
+      "dependencies": [
+        "AAI-T-027"
+      ],
+      "acceptance_criteria": [
+        "Show task, agent, action, state, timestamp, result, and recorded cost.",
+        "Distinguish actual work/resources from replay, synthetic data, and missing values.",
+        "Document privacy controls and keep economic growth tied to evidence rather than animation."
+      ],
+      "risks_and_gates": "No running world, autonomous economic ownership, game token, or guaranteed earnings.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-040",
+      "title": "Reconcile Telegram orientation and verified links",
+      "status": "PROPOSED",
+      "commitment": "IDEA",
+      "priority": "P1",
+      "phase": "0",
+      "type": "type: documentation",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Match Start Here and the eight Telegram roadmap topics to current repo facts and verify actual invite links before recording them.",
+      "dependencies": [
+        "AAI-T-003"
+      ],
+      "acceptance_criteria": [
+        "Confirm group ownership and invite destination with the founder; leave unknown destinations TBD.",
+        "Keep purpose, launch focus, project stages, and creator-fee account proposal consistent across community text.",
+        "Use the opaque-black AAI logo concept and retain its provenance/reuse status; record actual topic setup only when verified."
+      ],
+      "risks_and_gates": "No messages, invitations, group settings, bot installation, or private screenshots are published by this task.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    }
+  ]
+}

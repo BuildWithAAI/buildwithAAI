@@ -1,28 +1,22 @@
 ---
-name: "Research proposal"
-about: "Propose a research question or share a sourced finding."
-title: "[Research] "
+name: "Feature request"
+about: "Propose an improvement to an existing tool."
+title: "[Feature] "
 labels: ''
 assignees: ''
 ---
 
 Do not include seed phrases, private keys, bot tokens, credentials or private user records. Report sensitive vulnerabilities using [SECURITY.md](https://github.com/BuildWithAAI/buildwithAAI/blob/main/SECURITY.md).
 
-## Question and why it matters
+## Existing tool and user problem
 
-## Primary sources, datasets and reuse terms
+## Proposed behavior and benefit
 
-Include links, versions, dates, coverage and unknowns.
+## Alternatives and what is outside scope
 
-## Proposed method and comparison
+## Acceptance criteria and validation
 
-## Observations already collected, if any
-
-Separate evidence from interpretation. Label synthetic data and negative findings.
-
-## Reproduction, limitations and next decision
-
-Do not describe proposed research as completed.
+## Risks, permissions and failure behavior
 
 ## Scope and token impact
 

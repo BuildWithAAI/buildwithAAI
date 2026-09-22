@@ -1,0 +1,33 @@
+title: "[Idea] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are not automatically approved. Do not post secrets or vulnerabilities.
+        The future blockchain name is undecided between Zoora Blockchain and AAI Blockchain.
+  - type: input
+    id: problem
+    attributes:
+      label: Who has the problem?
+      description: State one user need.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Smallest useful output
+      description: Include benefit, alternatives, dependencies and estimated complexity.
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risks and token impact
+      description: Address security, data, costs and whether token behavior or wallets are affected.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sources and related tasks
+      description: Link public evidence and task IDs. Identify unknowns and reuse terms.

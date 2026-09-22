@@ -1,45 +1,44 @@
-# Contributing to AAI
+# Contributing to Build With AAI
 
-Start with the [project overview](README.md) and [starter tasks](tasks/STARTER_TASKS.md). The first contributions can happen here without paying for hosting or obtaining access to private repositories.
+**Published contribution guide; detailed operating choices remain reviewable.** The [security boundaries](SECURITY.md) and separation from the future blockchain come from the founder's instructions.
 
-## Bring a small, reviewable contribution
+Contribute code, research, design, art, music concepts, documentation, test cases, or a thoughtful problem statement. Buying a token is not part of this contribution workflow.
 
-1. Search existing issues for the problem or task.
-2. Open an issue with the task ID or project name, what you propose, and how someone can tell it is complete.
-3. For substantial work, discuss the approach with the maintainer before investing time in implementation.
-4. Submit a focused pull request linking the issue. Explain what changed and the checks you performed.
+## From idea to contribution
 
-The issue templates support project proposals, research notes, and bug reports. Include enough detail for another contributor to reproduce the result.
+1. Read the [README](README.md), [current status](docs/CURRENT_STATUS.md), and [official links](OFFICIAL-LINKS.md).
+2. Search issues and the [backlog](tasks/BACKLOG.md). Reference an existing task ID where relevant.
+3. Open the appropriate issue with a user problem, proposed result, and completion condition. New proposals begin as IDEA or PROPOSED, never self-approved.
+4. Discuss scope and evidence. A substantial feature needs a [proposal](proposals/README.md) before implementation. Small factual documentation corrections can use a focused PR directly.
+5. A maintainer records scope, decision, and a willing contributor before IN DEVELOPMENT. Approval applies only to the recorded scope and budget.
+6. Use a branch or fork and submit a focused PR using the [PR process](docs/community/PULL_REQUESTS.md).
+7. Include actual checks, limitations, sources, security impact, and any change to token functionality. Visual changes need an inspectable preview.
+8. Maintainers review; the owner explicitly approves protected changes. Merge and release are separate events. Record release evidence before RELEASED.
 
-## Work we welcome
+## Good proposals and evidence
 
-| Contribution | Useful output |
-| --- | --- |
-| Research | Primary sources, dataset limitations, and a reproducible comparison |
-| Product design | A specific user problem, a short flow, and example inputs/outputs |
-| Documentation | Accurate setup instructions, definitions, or clearer examples |
-| Testing | Reproduction steps, synthetic fixtures, or an acceptance record |
-| Engineering | A small change with behavior and limitations explained |
+Explain who benefits, technical requirements, dependencies, complexity, risks, security, maintainer, feedback, and how success is verified. State whether the proposal concerns community tooling, the Solana token, or future blockchain research.
 
-## Evidence and AI-assisted work
+Popularity, polls, merged discussion notes, and AI-generated plans do not make an idea official. See [governance and decision authority](docs/community/GOVERNANCE.md). The future chain name remains undecided between Zoora Blockchain and AAI Blockchain.
 
-- Separate what you observed, what you infer, and what is still unknown.
-- State data sources, collection dates, versions, and reuse restrictions.
-- Use synthetic or appropriately shareable examples. Clearly label simulations.
-- Disclose material AI assistance and verify generated code and citations.
-- For trading research, include fees, execution assumptions, failed cases, and a later period kept out of model selection.
-- Report negative findings. A failed hypothesis can save the community time and money.
+Separate observations, inferences, and unknowns. Include primary sources, dates, versions, and reuse terms. Label synthetic data and simulations. Disclose material AI assistance and verify generated code and citations. Do not claim implemented features, audits, biological models, or profitable strategies without evidence.
 
-## Repository access and review
+The scanner code is private. Tasks requiring it remain blocked until access is granted. Do not move private code or data into this hub without explicit authorization and a licensing decision.
 
-The public hub accepts proposals and documentation. The AAI Scan implementation is currently private. If a task needs that code, request a maintainer decision in the issue; access is not automatic.
+## Protected changes
 
-The founder, `zooratechnologies`, is the current project maintainer. Scope changes, merges, paid services, live trading, and product releases require the relevant maintainer decision. Comments and proposals do not authorize spending or wallet access.
+Supply, minting, authorities, metadata control, treasury, fees, migration, governance, and project-controlled wallets require explicit owner approval and additional documented review. The rule includes dependencies or documentation that would quietly change those behaviors or promises. See [PR requirements](docs/community/PULL_REQUESTS.md).
 
-No compensation or token allocation is offered by these tasks. Any paid arrangement should be agreed explicitly before that work starts. License selection is still open; do not add third-party code or data without documenting its applicable terms.
+Community tooling must not ask for or store wallet secrets or sign transactions without clear user approval. Current trading research is offline/replay/paper; live or demo automatic execution, account access, and creator-fee account operation require a separate explicit policy and scope decision. Documenting future execution questions does not grant permission to implement them.
 
-## Keep collaboration useful
+## Participation and compensation
 
-Be respectful, critique ideas with evidence, and keep discussion relevant to the project. Do not submit harassment, spam, fake performance results, undisclosed promotion, or instructions intended to mislead users.
+Follow the [code of conduct](CODE_OF_CONDUCT.md). Tasks are unassigned until someone agrees to them. No bounty, wage, token allocation, or revenue entitlement is created by opening an issue or submitting work. Paid scope needs a separate explicit agreement before work begins.
 
-Never place bot tokens, seed phrases, private keys, credential-bearing URLs, or private user records in issues or pull requests. For a security concern, use a repository's private reporting channel if enabled; otherwise ask the maintainer for a private route without publishing the sensitive details.
+See [license status](LICENSE-STATUS.md) before submitting reusable code or media. Include attribution and third-party terms. Report sensitive vulnerabilities through the [security process](SECURITY.md), never a public issue containing exploit details or secrets.
+
+## New research and creative contributions
+
+The founder has prioritized the [multi-brain source audit](research/BRAIN_DATASETS.md) early. Distinguish measured connectivity from synthetic model assumptions, retain exact versions and reuse terms, and compare proposals with simple/randomized alternatives. Do not upload large datasets or private material before a scope and rights check.
+
+For [music](projects/MUSIC_COLLABORATION.md), use authorized demo material and document recording/composition interests, contributor consent, credit/split terms, and AI/voice involvement. A submitted file is not proof of permission for onward release. For [agent discussions](projects/AGENT_ECONOMY.md), preserve source lineage, operator relationships, and the distinction between a claim and transaction authorization.

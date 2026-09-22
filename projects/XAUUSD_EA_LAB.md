@@ -17,8 +17,10 @@ Record the broker's symbol, contract size, price precision, volume steps, execut
 - Reserve a later time period that was not used to select the rules.
 - Compare results across different conditions and modest parameter changes.
 - Report drawdown, trade counts, costs, exposure, and losing periods alongside returns.
-- Reconcile simulated behavior with a demo-account forward test.
-- Document restart recovery, rejected orders, duplicate-order prevention, and loss/exposure limits before considering live execution.
+- Evaluate later data in an offline forward simulation without submitting broker orders.
+- Document simulated rejected fills, duplicate-event handling, restart behavior and loss/exposure limits.
+
+Under the current [security policy](../SECURITY.md), this research must not automatically trade or connect a broker account. Demo-account or live automatic execution is not approved. Any reconsideration would need a separate owner-visible policy decision and review.
 
 No profit target or strategy advantage is asserted by this brief. A good first result can be a reproducible demonstration that a strategy should not proceed.
 
@@ -26,4 +28,10 @@ No profit target or strategy advantage is asserted by this brief. A good first r
 
 Write one complete strategy specification and an evaluation plan. Avoid supplying live account credentials or using a backtest image as the sole evidence.
 
-See [starter task AAI-004](../tasks/STARTER_TASKS.md).
+See [task AAI-T-024](../tasks/BACKLOG.md#aai-t-024) and the [earlier starter task AAI-004](../tasks/STARTER_TASKS.md).
+
+## Updated funding context
+
+The founder has proposed using an undecided allocation of creator fees to fund a dedicated account and potentially operating reviewed XAUUSD technology if the evidence supports it. [Funding and community-benefit rules](../docs/FUNDING.md) remain unresolved. This possibility is not a statement that an EA is profitable or that an account has been funded.
+
+The roadmap describes a later demo-account forward test as a possible separately approved stage. Initial work stays offline. Publishing the idea does not authorize demo/live orders, allocate capital, or promise payouts.
