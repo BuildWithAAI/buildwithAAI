@@ -4,7 +4,7 @@
 
 The founder intends to use creator fees allocated to AAI for development, marketing, and relevant DEX-related costs. The later clarification adds a proposal to fund a dedicated trading account from creator fees, with technology such as an XAUUSD system considered only if research and testing support it. The funding source is creator fees; the earlier assumption of an account funded solely from unrelated personal savings is superseded.
 
-This describes intended use. It is not evidence that fees have been routed, an account has been funded, a bot is profitable, or a distribution has occurred. Personal callout rewards or screenshots are not proof of AAI project income.
+This describes intended use. It is not evidence that fees have been routed, an account has been funded, a bot is profitable, or a distribution has occurred. Project income requires records attributable to AAI.
 
 ## Proposed flow
 

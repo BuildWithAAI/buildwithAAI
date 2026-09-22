@@ -26,4 +26,4 @@ Any future chain relationship requires research, technical design, security revi
 
 The creator-fee trading account, possible gifts/rewards/buybacks, personal assistant, multi-brain experiment, agent economy/forum, music collaboration, AI artists, potential label, and civilization display are explicitly scoped proposals or research. Publishing them does not fund an account, authorize trading, establish distributions, select a license, certify an animal simulation, or promise a product or profitable result.
 
-The founder's AAI-only current launch focus is an intention with a separately reviewed software-coin exception. It neither announces another token nor cancels the distinction between the community token and any future genesis-native currency.
+AAI is the founder's only planned community coin project. A software-specific exception would require documented community support, a public proposal, review, and owner acceptance. This neither announces another token nor cancels the distinction between the community token and any future genesis-native currency.

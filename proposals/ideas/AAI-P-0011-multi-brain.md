@@ -5,7 +5,7 @@
 | Author / source | Founder discussion, organized with AI assistance |
 | Date | September 22, 2026 |
 | Work status | RESEARCH |
-| Commitment | RESEARCH |
+| Commitment category | RESEARCH |
 | Maintainer | Unassigned — no implementation owner accepted |
 | Estimated complexity | Unknown until scoped; review data, rights, operating cost, and evaluation first |
 | Related brief | [Detailed brief](../../projects/MULTI_BRAIN_LAB.md) |
@@ -30,4 +30,4 @@ An initial inventory and accepted benchmark specification before implementation;
 
 ## Community feedback and decision
 
-Open for discussion. The owner authorized publication of the updated roadmap; implementation, spending, live execution, releases, and any protected change require their own scoped decision. No community consensus or reviewer sign-off is invented. For AAI-P-0011, the founder explicitly prioritizes early research; the nickname and architecture remain open.
+Open for discussion. The owner authorized publication of the updated roadmap; implementation, spending, live execution, releases, and any protected change require their own scoped decision. No community consensus or reviewer sign-off is invented. The founder explicitly prioritizes early research for this proposal; the nickname and architecture remain open.

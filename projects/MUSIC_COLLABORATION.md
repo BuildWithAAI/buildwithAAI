@@ -34,7 +34,7 @@ Design artist profiles, upload/invitation flows, contribution submissions, appro
 
 ## Possible later stages
 
-- Explore preparing music/stems in Zoora Productions and sharing selected material into this community; no integration is verified here.
+- Additional suggestion for community review: explore preparing music/stems in Zoora Productions and sharing selected material into this community. This is an assistant-suggested option, not a founder-selected requirement or verified integration.
 - If audience and usefulness justify it, research a label offering production, promotion, or distribution through separate artist agreements. An upload must not automatically sign someone to a label.
 
 [Proposal AAI-P-0010](../proposals/ideas/AAI-P-0010-music.md) · [Tasks AAI-T-033–035](../tasks/BACKLOG.md#aai-t-033)

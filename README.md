@@ -12,7 +12,7 @@ AAI welcomes developers, researchers, designers, musicians, testers, meme creato
 
 The founder is tired of rugs, scam coins, and communities investing money, time, and energy in projects that disappear after the attention fades. AAI aims to earn trust through inspectable work: code, decisions, setbacks, expenses, and actual deliverables. This motivation is not a certification that any token or experiment is safe.
 
-**AAI is the founder's only currently planned community coin launch.** A separate software-related coin would only be considered if the community identifies a real purpose and it passes a separate public proposal, review, and owner decision. Software does not need its own coin to belong here. The separate future-blockchain research is not a scheduled second launch; no native launch is approved by this statement.
+**AAI is the founder's only planned community coin project.** A separate software-related coin would only be considered with documented community support through a public proposal, followed by the existing review and owner decision. Software does not need its own coin to belong here. The separate future-blockchain research is not a scheduled second launch; no native launch is approved by this statement.
 
 ## Start here
 

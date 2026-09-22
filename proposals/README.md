@@ -1,6 +1,6 @@
 # Proposal system
 
-This proposed process makes community ideas reviewable without making them official features. Start with an issue using the Community idea template, or copy [template.md](template.md) into a draft PR. Issue discussion works even while GitHub Discussions is disabled.
+This proposed process makes community ideas reviewable without making them official features. Start with an issue using the Community idea template, or copy [template.md](template.md) into a draft PR. Issues were enabled and GitHub Discussions was disabled at the September 22, 2026 verification; issue comments provide the current discussion route.
 
 ## Records and identifiers
 

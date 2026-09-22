@@ -14,7 +14,7 @@ A token's current numbers do not explain what changed since someone last looked.
 - Keep missing data explicit and suppress liquidity comparisons across different pools.
 - Limit the initial pilot to allowed private users and a small watch list.
 
-The implementation has 29 passing offline tests and a successful live public market-data smoke test from development. These results do not validate live Telegram delivery, production on-chain data, hosting, or uninterrupted operation.
+The earlier development record reports 29 passing offline tests and one successful live public market-data request. Those checks were not rerun during this documentation verification. These historical results do not validate live Telegram delivery, production on-chain data, hosting, or uninterrupted operation.
 
 ## What makes it worth exploring
 

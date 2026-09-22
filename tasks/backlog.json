@@ -109,7 +109,7 @@
         "Separate fees, transfers, capital, realized/unrealized results, costs, gifts, contracted compensation, and token purchases.",
         "Link account-policy and ledger tasks AAI-T-028 and AAI-T-029; do not imply operating funds or distributions exist."
       ],
-      "risks_and_gates": "Do not create wallets, expose secrets, move funds, promise holder revenue or treat personal callout rewards as project funds.",
+      "risks_and_gates": "Do not create wallets, expose secrets, move funds, promise holder revenue, or include unrelated personal transactions in project accounts.",
       "token_impact": "Protected funding/wallet disclosure; owner review required, no routing or expenditure change authorized."
     },
     {
@@ -281,7 +281,7 @@
       "type": "type: bot",
       "owner": "Unassigned",
       "issue_url": null,
-      "scope": "Prepare and, only when deployment is separately authorized, complete checks for the existing AAI Scan private pilot. Current evidence: merged code, 29 offline tests and one public-data request; live operation remains pending.",
+      "scope": "Prepare and, only when deployment is separately authorized, complete checks for the existing AAI Scan private pilot. Historical development evidence: merged code, 29 passing offline tests and one public-data request; these checks were not rerun for this documentation review and live operation remains pending.",
       "dependencies": [
         "AAI-T-008"
       ],
@@ -426,7 +426,7 @@
         "Test avatar-scale readability and mobile contrast with clearly labeled mockups.",
         "Avoid mint-like placeholders, profit promises or branding that settles the undecided future-chain name."
       ],
-      "risks_and_gates": "Review concepts before publication; no domain purchase, advertising spend or token naming decision.",
+      "risks_and_gates": "The existing raster concept is published. Review new or revised assets before publication; no domain purchase, advertising spend or token naming decision.",
       "token_impact": "Community tooling/documentation only; no token behavior change authorized."
     },
     {
@@ -768,7 +768,7 @@
       "type": "type: research",
       "owner": "Unassigned",
       "issue_url": null,
-      "scope": "Define AI-artist provenance, voice/likeness permissions, provider questions, and a possible separate label or Zoora Productions integration.",
+      "scope": "Define AI-artist provenance, voice/likeness permissions, provider questions, and the possible later label. Treat a Zoora Productions connection as an optional suggestion for community review, not a founder-selected requirement.",
       "dependencies": [
         "AAI-T-033"
       ],
