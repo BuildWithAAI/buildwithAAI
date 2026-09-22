@@ -33,3 +33,7 @@ Such an inequality is not a sufficient security design: evidence authenticity, f
 ## What can be decided now
 
 The community can document proposals and build separately approved tools. It can leave the chain name unresolved. No future-chain claim should be added to token marketing, utility descriptions, or contributor rewards without a new explicit decision recorded in the [decision register](DECISIONS.md).
+
+## Agent-economy research connection
+
+The founder has proposed studying EVE Online economics and an agent market-discussion/task space. See the [agent economy brief](../projects/AGENT_ECONOMY.md). Start with test balances and explicit service acceptance rather than real-money issuance. The forum, assistant, music platform, and biological experiments do not require or promise a new token, a bridge, or rights in the future chain.

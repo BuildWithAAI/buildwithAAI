@@ -1,19 +1,26 @@
 # Current project status
 
-Snapshot: September 20, 2026. Evidence is scoped to the inspected GitHub repositories and development record, not a claim about unseen systems.
+**Snapshot: September 22, 2026.** Repository baseline was inspected at main `25e073781984919d833a5e55250087c672f90e9e` and draft PR #2 head `81b7b916ddd439aa14d4b6bf5cb9e6cd2ecd16aa`. This revision updates that plan following the owner's publication request. It is documentation and branding, not a software release audit.
 
-| Item | What exists or is known | What remains open |
+| Item | Evidence / current state | Pending or unverified |
 | --- | --- | --- |
-| Public community hub | Prior overview, six project/research briefs, starter tasks, templates merged in [community PR 1](https://github.com/BuildWithAAI/buildwithAAI/pull/1) | This expanded plan is a draft awaiting review |
-| AAI Scan | Private source merged; 29 offline tests passed; one public-data request succeeded during development | Live Telegram, production RPC, hosting, persistence/restore and sustained operation |
-| Paid hosting | Setup discussion paused before deployment in this workflow | Budget and deployment decision |
-| Community token | AAI is the working community brand | All official launch metadata and mint verification remain TBD |
-| Future standalone chain | Founder describes an AI-economy research vision | Name undecided: Zoora Blockchain or AAI Blockchain; no implementation audited here |
-| Governance | Owner/maintainers currently accept changes | Proposed process and any later evolution need decisions |
-| Native GitHub Projects board | No board created by this revision | Repository board supplied; native setup specified |
-| Issues and labels | Prior repository had no open issues before this planning revision | 25 task bodies and label definitions prepared; not bulk-created |
-| Discussions | Disabled in the inspected repository settings | Optional category setup and enablement proposed |
-| Security settings | Policy and review design prepared | Private reporting and ruleset enforcement not verified |
-| Licenses and bounties | No license selected or funded bounty offered here | Separate owner decisions |
+| Public hub | Initial community documents published through [PR #1](https://github.com/BuildWithAAI/buildwithAAI/pull/1); this update extends [PR #2](https://github.com/BuildWithAAI/buildwithAAI/pull/2) with eight roadmap topics | Product implementations and operational settings are separate |
+| AAI Scan | Separate private prototype; prior record reports 29 offline tests and one live public-data request | Live Telegram, production providers/RPC, persistence/restore, hosting, and sustained operation; no tests rerun for this revision |
+| Hosting | Paused under prior founder direction | Cost and deployment decision |
+| Telegram | Founder shared an Anything AI group setup showing Roadmap, About Dev, and General | Invite URL and later topic/bot setup not verified |
+| Branding | AAI/Anything AI raster logo concept with opaque black background | Vector master, broader identity/reuse license, and any trademark review |
+| Personal assistant / agent workflow | Product and research briefs | No deployed assistant, voice/session integration, or execution system |
+| Creator-fee trading account | Funding proposal and unresolved-control/accounting list | No funded account, actual allocation, profitable strategy, distribution, or buyback verified |
+| Multi-brain experiment | Early research priority; initial source-pointer inventory | No complete data collection, selected architecture, trained model, or trading edge |
+| XAUUSD / Solana / launch research | Written research scopes | No verified profitable strategy or completed cohort study |
+| Agent economy and forum | EVE/Moltbook reference questions and test-balance proposal | No forum, marketplace, contract, or chain implementation |
+| Music collaboration | Open-verse/remix/AI-artist brief | No platform, rights-cleared catalogue, distributor, label, or music token |
+| Civilization | Vision of a display tied to real work/resources | No operational world audited here |
+| Community token | AAI is the community brand | Canonical launch metadata and authenticated mint remain TBD |
+| Future blockchain | Separate agent-economy research; one initial base-currency/genesis intent | Zoora-versus-AAI name undecided; no implementation audited by this hub |
+| Backlog and board | 40 task briefs and repository planning board | Not 40 live issues or a native Projects board; no contributor assigned by this update |
+| Proposal records | Six original ideas plus five newer proposals, each scoped and dated | No implementation/funding approval implied by publication |
+| GitHub labels, Discussions, reporting, and protections | Configuration definitions and setup tasks | Not activated or verified by this documentation revision; do not claim enforcement |
+| Licenses and compensation | Status and process documented | No project-wide license chosen or funded bounty offered |
 
-Do not turn a document, test result, prototype, or renamed project into a claim of a deployed product or token entitlement.
+Do not convert a document, code merge, historical test, graphic, or simulation into a claim of live service, autonomous income, biological intelligence, or token entitlement. [Validation scope](VALIDATION.md).

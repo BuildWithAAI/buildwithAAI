@@ -29,3 +29,9 @@ No profit target or strategy advantage is asserted by this brief. A good first r
 Write one complete strategy specification and an evaluation plan. Avoid supplying live account credentials or using a backtest image as the sole evidence.
 
 See [task AAI-T-024](../tasks/BACKLOG.md#aai-t-024) and the [earlier starter task AAI-004](../tasks/STARTER_TASKS.md).
+
+## Updated funding context
+
+The founder has proposed using an undecided allocation of creator fees to fund a dedicated account and potentially operating reviewed XAUUSD technology if the evidence supports it. [Funding and community-benefit rules](../docs/FUNDING.md) remain unresolved. This possibility is not a statement that an EA is profitable or that an account has been funded.
+
+The roadmap describes a later demo-account forward test as a possible separately approved stage. Initial work stays offline. Publishing the idea does not authorize demo/live orders, allocate capital, or promise payouts.

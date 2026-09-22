@@ -1,6 +1,6 @@
 # Starter tasks
 
-These earlier task descriptions are retained for continuity. They are not assigned, funded, or completed. The [25-task backlog](BACKLOG.md) is the current planning index; these older IDs map to it below. Do not open duplicate issues for both identifiers.
+These earlier task descriptions are retained for continuity. They are not assigned, funded, or completed. The [40-task backlog](BACKLOG.md) is the current planning index; these older IDs map to it below. Do not open duplicate issues for both identifiers.
 
 | Earlier ID | Current task |
 | --- | --- |
@@ -40,7 +40,7 @@ These earlier task descriptions are retained for continuity. They are not assign
 
 ## AAI-003: Biological source inventory
 
-**Output:** primary papers, dataset links, species, model scope, licenses, and availability for candidate jellyfish-inspired architectures. Crow-inspired alternatives can be listed separately.
+**Output:** primary papers, dataset links, species, model scope, licenses, and availability for the expanded multi-brain and jellyfish-inspired source inventory. Cat, monkey, crow, and other species remain explicit verification targets rather than assumed available complete brains.
 
 **Complete when:** every candidate has traceable evidence or an explicit unavailable/unknown status, and one candidate is accepted or rejected for a small reproducible experiment. A public animal-themed coin alone is not supporting model evidence.
 

@@ -1,18 +1,24 @@
 # Architectural boundaries
 
-**Documentation boundary model, not a new runtime architecture.**
+**Documentation of current scope and proposals; no new runtime architecture is selected.**
 
 | Area | Role | Current scope |
 | --- | --- | --- |
-| Public community hub | Ideas, proposals, documentation, transparent development | Existing repository; expanded process proposed |
-| Solana/Pump.fun community asset | Separate experimental community token | Exact launch facts unverified; no tokenomics invented |
-| Community applications | Bots, dashboards, art/media tools, analytics, optional wallet experiments | Ideas; each implementation needs a scoped decision |
-| Private AAI Scan | Current scanner implementation | Separate private repo; hosting paused |
-| Future standalone blockchain | Long-term AI-civilization economic research | Name undecided: Zoora Blockchain or AAI Blockchain |
-| Future native currency | Currency originating through the future network's genesis | Not this community token; monetary design remains separate |
+| Public community hub | Ideas, proposals, sources, status, and contribution workflow | Public documentation |
+| Solana/Pump.fun community asset | Separate community experiment | Launch facts unverified; no tokenomics invented |
+| Private AAI Scan | Existing scanner prototype | Separate private repo; hosting paused |
+| Personal assistant | User-facing market research, attention management, and potential later approved integrations | Product proposal; no trading permission implied by a mode |
+| Agent work controller | Tool permissions, budgets, reviews, and records outside the model | Research proposal |
+| Solana / XAUUSD / multi-brain labs | Evaluate models and strategies | Offline/replay/paper first; no live or demo orders authorized |
+| Creator-fee account | Potential future use of allocated project fees and profits | Funding/control proposal only; separate from operating compute budgets |
+| Agent forum/task market | Structured evidence exchange and useful commissioned work | Test-balance research; human influence and common ownership remain explicit |
+| Music platform | Open verses, versions, credits, permissions, and AI artists | Product proposal; no rights/payment infrastructure implemented |
+| Civilization display | Visualize actual recorded work and resources | Future vision |
+| Future standalone blockchain | Agent/civilization economic infrastructure | Separate research; name undecided: Zoora Blockchain or AAI Blockchain |
+| Future native currency | Currency from that network's documented genesis | Separate from the community asset; monetary design not set here |
 
-There is no implemented bridge, automatic conversion, shared treasury, shared governance, or claim on genesis allocations in this architecture. Shared branding does not create a technical or economic dependency.
+Shared branding creates no bridge, automatic conversion, treasury sharing, governance rights, or claim on genesis allocations. Discussion/settlement records do not prove market-analysis truth or delivery quality.
 
-Public tooling should begin with read-only data or synthetic demonstrations. Any wallet interaction, program, custody proposal, monetary change, or future-chain relationship is a separately reviewed scope. Automatic trade execution and wallet-secret collection are outside the current approved boundaries.
+External content and agent messages are untrusted inputs, never authority to expand permissions. Separate reporting from money movement, and a model's recommendation from an approved transaction. Never collect users' wallet secrets.
 
-The proposed folder structure does not impose a monorepo runtime, framework, chain stack, cloud provider, or data vendor. Choose those only for a concrete approved feature with its dependencies and costs understood.
+Future funded account operation, demo/live execution, wallet interactions, programs, integrations, monetary changes, or chain relationships require a specific owner-visible proposal and review before implementation. The updated roadmap describes those possibilities without authorizing them. Technical choices, vendors, hosting, and costs remain open until a concrete scope is accepted.

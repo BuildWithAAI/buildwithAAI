@@ -2,19 +2,25 @@
 
 | Question | Current answer |
 | --- | --- |
-| Is the future chain called Zoora Blockchain or AAI Blockchain? | Undecided. Both are possible names; neither is selected. |
-| Is this Solana token that chain's native currency? | No. The future chain's native currency is intended to come from its own documented genesis. |
-| Does the shared AAI name grant migration or native coins? | No. Names do not create conversion, bridge, governance, validator, or revenue rights. |
-| Is this a presale or equity in Zoora Technologies? | No such entitlement is offered by the community project. |
-| Has an official mint been verified here? | No mint is recorded in the canonical token file. Do not infer one from a ticker, screenshot, DM, or address suffix. |
-| What actually works? | A private scanner prototype has offline tests and one live market-data check. It still needs operational validation. |
-| Can I propose a bot, dashboard, game, artwork, or integration? | Yes. Use the proposal process and show a small reviewable outcome. Proposing does not make it official. |
-| Is development decentralized? | Community-driven; owner/maintainers retain final acceptance now. |
-| Are contributors paid? | No payment is offered by the backlog. A separate explicit agreement would be needed. |
-| Can I reuse the code and branding? | Check LICENSE-STATUS.md and component terms. No license is chosen by this draft. |
-| Can we keep working before paid hosting? | Yes. Documentation, design, offline research, and proposal review can proceed. |
-| Can the trading ideas place orders automatically? | Not under this plan. They are offline/replay/paper research. |
-| Who controls creator-fee funding? | The founder's stated plan is founder-managed funding for development, marketing, and DEX costs; details are in FUNDING.md. |
-| What should I do first? | Read the README, inspect the board, and choose a task or submit one well-scoped idea. |
+| Why was AAI started? | The founder is tired of rugs and disappearing projects and wants to build useful software with transparent progress. This motivation is not a safety guarantee. |
+| Is the founder launching lots of coins? | AAI is the only currently planned community coin launch. A software-related exception needs a separate community proposal, review, and owner decision. No brain or music coin is proposed. |
+| Is the future chain Zoora or AAI? | Undecided. Future protocol research is separate and is not a scheduled second launch. |
+| Is the Solana token the future chain's native coin? | No. Future native currency is intended to originate through that network's documented genesis. No automatic conversion, bridge, or allocation rights arise. |
+| Has a mint been authenticated here? | No. Use the canonical token record; unknown values remain TBD. |
+| What actually exists? | Public documentation and a separate private scanner prototype with historical tests. The scanner is not a validated live public service. |
+| What is the new early priority? | A source audit and proposed offline/paper multi-brain experiment inside the Solana Trading Lab. No combined model is built by this update. |
+| Are all those animal brains mapped and usable? | No such claim is made. The inventory distinguishes partial maps, models, unknowns, and dataset-specific license questions. |
+| Can I name my own assistant? | That is part of the proposed product direction; no assistant service is released here. |
+| Can the labs or assistant trade automatically now? | No. Execution modes may be researched, but live/demo automated orders and account access need a separately accepted scope and controls. |
+| How would the trading account be funded? | The founder proposes an undecided allocation of creator fees. It is not described as funded solely from unrelated personal savings. No account operation is verified. |
+| Will holders receive payouts or buybacks? | Developer gifts, community rewards, and token purchases are possible separately reviewed uses of profits. No guaranteed payment, holder right, schedule, or price outcome exists. |
+| Does the agent forum guarantee independent AI opinions? | No. It should disclose operator affiliation, shared sources, and verification limits. Registration does not prove absence of human influence. |
+| Can anyone remix a song without permission? | The music idea allows many versions within the actual rights and release terms. An open submission is not automatically a commercial release license. |
+| Is there a record label or an AI music star already? | No. These are possible future directions. No artist agreement or music-specific token is established here. |
+| Are there 40 active GitHub issues? | No. There are 40 issue-ready planning records and a repository board; native issue/board setup is separate. |
+| Are contributions paid? | The backlog offers no payment. Funded work needs a separate explicit agreement; discretionary gifts are not promised compensation. |
+| Is governance decentralized? | Development invites community participation; owner/maintainers retain acceptance responsibility. |
+| Can I reuse code, music, data, or branding? | Check project/component licenses and actual rights. No global license is selected by this update. |
+| What can I do now? | Read the roadmap, review sources, propose a small task, or offer a contribution. Paid hosting is not required for documentation and design work. |
 
-Use the linked [official directory](../OFFICIAL-LINKS.md), [token record](token/TOKEN-INFO.md), [licensing status](../LICENSE-STATUS.md), and [funding record](FUNDING.md) as the corresponding source documents.
+[Current status](CURRENT_STATUS.md) · [Official links](../OFFICIAL-LINKS.md) · [Token record](token/TOKEN-INFO.md) · [Funding](FUNDING.md) · [Licenses](../LICENSE-STATUS.md)

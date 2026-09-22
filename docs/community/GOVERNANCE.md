@@ -8,9 +8,9 @@
 | Contributor | Offer to implement a defined task; disclose dependencies and results | Volunteering does not create employment, payment or repository access |
 | Task maintainer | Accept ownership, clarify scope, review progress | Must be named and willing; unassigned means no one has accepted responsibility |
 | Project owner / authorized maintainers | Accept ordinary changes, document reasons, maintain official records | Cannot treat an ordinary merge as approval of unrelated monetary or protocol changes |
-| Project owner | Explicitly approve protected changes after additional review | Approval cannot override the current no-secret/no-automatic-trading boundaries through an unnoticed PR |
+| Project owner | Explicitly approve protected changes after additional review | Approval cannot silently override current secret-handling, spending, or execution boundaries; policy changes need an explicit scoped decision |
 
-Current owner identity: [zooratechnologies](https://github.com/zooratechnologies). No additional maintainer or reviewer has been appointed by this draft. Before sensitive changes proceed, identify a qualified additional reviewer. If one is unavailable, defer the change; do not record nonexistent independent review.
+Current owner identity: [zooratechnologies](https://github.com/zooratechnologies). No additional maintainer or reviewer has been appointed by this documentation update. Before sensitive changes proceed, identify a qualified additional reviewer. If one is unavailable, defer the change; do not record nonexistent independent review.
 
 Protected changes include supply, minting, authorities, treasury, fees, migration, governance, project-controlled wallets and official token identity. They require a public proposal, evidence, an explicit owner decision and additional review. Sensitive vulnerability details stay in the private reporting process. Any proposed change to these boundaries must be shown to the owner before substantive implementation.
 

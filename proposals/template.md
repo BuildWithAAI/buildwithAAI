@@ -26,7 +26,7 @@ Identify platforms, sources, permissions, data terms, staffing and estimated ope
 
 ## Risks and security considerations
 
-Cover privacy, abuse, data errors, outages and wallet interaction where relevant. Does this affect supply, minting, authorities, treasury, fees, migration, governance or project-controlled wallets? Do not collect wallet secrets, implement automatic trading or imply future-chain rights.
+Cover privacy, abuse, data errors, outages and wallet interaction where relevant. Does this affect supply, minting, authorities, treasury, fees, migration, governance or project-controlled wallets? Do not collect wallet secrets, implement unapproved automatic trading, or imply future-chain rights. Label future execution questions separately from current offline/paper work.
 
 ## Acceptance criteria and validation
 

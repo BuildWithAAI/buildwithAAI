@@ -1,29 +1,33 @@
-# Planning-package validation
+# Documentation validation record
 
-Checked September 20, 2026 against community-hub main commit `25e073781984919d833a5e55250087c672f90e9e`. This is a documentation/template review, not a token, program, legal or security audit.
+**Checked September 22, 2026.** Baseline: public main `25e073781984919d833a5e55250087c672f90e9e` and PR #2 head `81b7b916ddd439aa14d4b6bf5cb9e6cd2ecd16aa`. All 56 local baseline files were matched to remote Git blob hashes before editing. The owner requested publication of the updated information and roadmap after the eight-topic discussion.
+
+This is a documentation, data-file, template, and branding check. It is not a software, token, neuroscience, financial, legal, or security audit.
 
 | Check | Result |
 | --- | --- |
-| Requested deliverables | All 17 mapped in [DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md) |
-| Relative links and task anchors | 237 references resolved during the package check |
-| Backlog | 25 unique task IDs; dependencies exist and contain no cycle; acceptance criteria and gates included |
-| Board | All 25 task IDs appear once across 10 lanes; states match the task data |
-| Proposals | Six IDEA records; no invented accepting maintainer or implementation approval |
-| GitHub templates | Eight Markdown issue templates; YAML front matter/configuration and optional Discussion form parse successfully |
-| Label specification | 10 statuses and 9 types; names/colors/descriptions checked; labels not created by this file |
-| Canonical identity | Missing launch facts remain TBD; no sample mint or project-wallet addresses supplied |
-| Naming and relationship | Undecided Zoora/AAI chain name appears early; no migration/native-currency entitlement introduced |
-| Sensitive content | No wallet addresses, credentials or unrelated personal payout details found in the prepared Markdown |
-| Existing work | Private scanner source unchanged; earlier starter IDs retain a crosswalk |
+| Eight roadmap topics | Foundation/scanner; assistant; trading/launch research; tools/utility/funding; future chain/civilization; agent economy/forum; music; multi-brain experiment all present |
+| New founder directions | Project purpose and launch focus recorded; creator fees identified as the proposed account funding source; multi-brain research prioritized early |
+| Existing work preserved | Original task/proposal IDs and project briefs retained; private scanner source not copied or changed |
+| Relative references and anchors | All local Markdown links, task anchors, and embedded logo reference resolved in the final check |
+| Backlog | 40 unique sequential task IDs, valid dependencies, no cycles, explicit acceptance criteria and approval limits |
+| Board | All 40 task IDs appear exactly once across ten lanes with matching statuses |
+| Proposals | Eleven records with index links; five new records do not invent funding, assignees, or implementation approval |
+| GitHub templates | Eight issue-template front matters and YAML configuration parse; 19 existing label definitions are unique |
+| Logo | RGB PNG, 1254 × 1254, no alpha channel, black corner pixel; prior transparent preview excluded |
+| Data-source honesty | Initial primary-source inventory is explicitly non-exhaustive; dataset licenses and unsupported species remain visible; no bulk data acquisition claimed |
+| Canonical identity | Unknown mint, wallet, launch, and social-link facts remain TBD; no sample financial addresses invented |
+| Naming and rights | Future Zoora/AAI chain name remains undecided; genesis separation and no automatic native-coin/migration rights retained |
+| Private/internal content | Prepared text checked for unrelated payout figures, private email, local paths, Library IDs, and private-key markers |
 
-The PR-template filename is standardized; earlier project briefs remain, with automatic-execution language brought into line with the founder's current security rules. No software runtime, dependency, CI job, blockchain or trading executor is added.
+## Scope limits
 
-## Still pending
+No runtime code, dependency, CI workflow, trading executor, account, program, new token, or blockchain is implemented. No strategy or model is verified profitable. The scanner's 29 offline tests and single public-data request are historical evidence from the prior development record; they were not rerun for this change.
 
-Owner review, merge decision, license choice, native GitHub Project/issue/label setup, optional Discussions activation, private reporting and review-setting verification, actual official-account verification, any token launch, and any paid hosting. No deployment or spending is authorized by this package. Templates and CODEOWNERS do not establish enforced settings merely by existing on a draft branch.
+GitHub issue/label/native-board creation, Discussions activation, private security reporting, required-review enforcement, license selection, contributor compensation, verified official destinations, token launch, hosting, and financial operations remain separate tasks. Publishing documents and owner routing does not establish those settings as enforced.
 
-The scanner's earlier test results are historical evidence recorded in [CURRENT_STATUS.md](CURRENT_STATUS.md); they were not rerun for this documentation change. Live Telegram/RPC and operational recovery checks remain pending.
+## Evidence basis
 
-## Source basis
+Project purpose and scope come from the founder's visible requests and eight Telegram roadmap drafts. Current repository status was read through GitHub. Existing scanner claims are qualified historical records. Scientific and platform facts cite original papers and project-maintained documentation in [BRAIN_DATASETS.md](../research/BRAIN_DATASETS.md) and the [agent-economy brief](../projects/AGENT_ECONOMY.md). Those source pointers are not an exhaustive literature review or reuse approval.
 
-Project scope and policy come from the founder's handoff and subsequent naming clarification. Existing implementation claims come from the development record and inspected repository state. Platform behavior is grounded in the official GitHub and Solana documentation linked next to relevant claims. No claim is made to verify future token economics or biological-model performance.
+[Current facts](CURRENT_STATUS.md) · [Decision record](DECISIONS.md) · [Roadmap](../ROADMAP.md)

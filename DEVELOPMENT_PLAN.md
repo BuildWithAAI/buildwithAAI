@@ -1,65 +1,59 @@
-# GitHub development plan — review edition
+# GitHub development plan and document index
 
-**Future blockchain name: UNDECIDED — Zoora Blockchain or AAI Blockchain.** Build With AAI is the existing community brand. This plan does not select the chain name, the official token launch name/ticker, or any token economics.
+**Updated September 22, 2026.** The owner authorized publication of the consolidated project information after the eight Telegram roadmap topics. This preserves the earlier framework and adds the latest directions. Product builds, financial operations, platform settings, and detailed workflow choices retain their own approval/status requirements.
 
-**PROPOSED documentation and workflow revision, September 20, 2026.** Review this draft before merging or activating repository settings. It preserves the Solana community experiment's separation from the future chain and its genesis-native currency.
+**Future blockchain name: UNDECIDED — Zoora Blockchain or AAI Blockchain.** No tokenomics, mint, license, launch, or migration decision is made by this update.
 
-## The 17 requested deliverables
+## What changed
 
-| # | Deliverable | Prepared location |
+- Project purpose, Anything AI identity, current logo concept, and founder's AAI-only current community-launch focus.
+- Eight-part roadmap covering the scanner/foundation, assistant, trading research, tools/funding, future chain/civilization, agent economy/forum, music, and multi-brain experiment.
+- Creator fees as the proposed account funding source, potential community-benefit uses, and unresolved allocation/control/accounting decisions.
+- Early prioritization of the multi-brain source audit, preserving the existing jellyfish research direction and adding a scoped initial source inventory.
+- New project, research, and community briefs plus branding provenance, five new proposal records, and 15 additional tasks for **40** total. The original 25 planning IDs and earlier starter crosswalk are preserved.
+
+## The original 17 deliverables and current locations
+
+| # | Deliverable | Location |
 | --- | --- | --- |
-| 1 | Recommended repository structure | Structure table below |
-| 2 | README draft | [README.md](README.md) |
-| 3 | Contribution guide | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| 4 | Project disclaimer | [DISCLAIMER.md](DISCLAIMER.md) |
-| 5 | Honest phase roadmap | [ROADMAP.md](ROADMAP.md) |
-| 6 | Security policy and activation plan | [SECURITY.md](SECURITY.md) |
-| 7 | Proposal system | [Process](proposals/README.md), [template](proposals/template.md), six seeded idea briefs |
+| 1 | Repository structure | Table below |
+| 2 | Public overview and purpose | [README](README.md) |
+| 3 | Contribution workflow | [CONTRIBUTING](CONTRIBUTING.md) |
+| 4 | Project boundaries | [DISCLAIMER](DISCLAIMER.md) |
+| 5 | Roadmap | [ROADMAP](ROADMAP.md) |
+| 6 | Security and setup requirements | [SECURITY](SECURITY.md) |
+| 7 | Proposal system | [Process and 11 records](proposals/README.md), [template](proposals/template.md) |
 | 8 | Issue structure | [Issue process](docs/community/ISSUES.md) and eight issue templates |
-| 9 | PR process | [Review process](docs/community/PULL_REQUESTS.md), PR template, proposed CODEOWNERS |
-| 10 | Development-status system | [Status definitions](docs/community/STATUS.md) and [label definitions](.github/labels.json) |
-| 11 | Initial project board | [Repository board](docs/community/PROJECT_BOARD.md), plus native-board setup specification |
-| 12 | First 25 tasks | [Issue-ready backlog](tasks/BACKLOG.md) and [task data](tasks/backlog.json) |
-| 13 | Contribution workflow | [CONTRIBUTING.md](CONTRIBUTING.md) and proposal lifecycle |
-| 14 | Official-links security design | [OFFICIAL-LINKS.md](OFFICIAL-LINKS.md) |
-| 15 | Token-information template | [TOKEN-INFO.md](docs/token/TOKEN-INFO.md) and [wallet register](docs/token/WALLETS.md) |
-| 16 | Future-chain relationship | [Relationship document](docs/future-zoora-relationship.md) |
-| 17 | APPROVED / IDEA / FUTURE / RESEARCH / NOT PROMISED | [Decision register](docs/DECISIONS.md) and [current status](docs/CURRENT_STATUS.md) |
+| 9 | Pull-request process | [PR process](docs/community/PULL_REQUESTS.md) and ownership routing |
+| 10 | Status system | [Work status](docs/community/STATUS.md), [label definitions](.github/labels.json) |
+| 11 | Initial project board | [Repository planning board](docs/community/PROJECT_BOARD.md) |
+| 12 | Task backlog | [40 task briefs](tasks/BACKLOG.md), [structured data](tasks/backlog.json) |
+| 13 | Community participation | [Contributing](CONTRIBUTING.md), [Telegram setup](docs/community/TELEGRAM.md) |
+| 14 | Official-link security | [OFFICIAL-LINKS](OFFICIAL-LINKS.md) |
+| 15 | Token and wallet records | [Token facts](docs/token/TOKEN-INFO.md), [wallet template](docs/token/WALLETS.md) |
+| 16 | Future-chain relationship | [Separate-chain boundaries](docs/future-zoora-relationship.md) |
+| 17 | Commitment distinctions | [Decisions](docs/DECISIONS.md), [current facts](docs/CURRENT_STATUS.md) |
 
-## Recommended structure
+## Structure
 
-Use the existing public repository. Keep the private scanner in its current repository until separately approved for wider access. Create application folders only when there is actual code or an accepted design to put in them.
+| Path | Purpose |
+| --- | --- |
+| Root Markdown | Overview, roadmap, contribution/security/licensing guidance, official destinations |
+| `projects/` | Project briefs, first milestones, open decisions, and boundaries |
+| `research/` | Launch-study protocol and initial brain-data inventory |
+| `docs/` | Facts, decisions, funding, vision, FAQ, and validation scope |
+| `docs/architecture/` | Separation of proposals, runtime, permissions, funds, and future chain |
+| `docs/token/` | Canonical unknown/verified token and wallet fields |
+| `docs/community/` | Governance, issues, review, statuses, board, bounties, and Telegram orientation |
+| `proposals/` | One authoritative record per proposal; stages remain explicit |
+| `tasks/` | Stable IDs, issue-ready text, structured data, and earlier ID crosswalk |
+| `assets/branding/` | AAI logo concept and provenance/reuse note |
+| `.github/` | Issue/PR templates, label definitions, and owner routing |
 
-| Path | Content now | Why |
-| --- | --- | --- |
-| Root Markdown files | Overview, plan, roadmap, rules, licensing status, official links | New visitors can orient themselves immediately |
-| `docs/` | Current facts, decisions, vision, FAQ, future relationship | Keeps claims and decisions traceable |
-| `docs/architecture/` | Scope and security boundaries | Prevents accidental coupling to the future chain |
-| `docs/token/` | Canonical token record and wallet-register template | One place for verified token facts |
-| `docs/community/` | Status, issues, reviews, governance, board, bounty plan | Makes contribution and authority clear |
-| `projects/` | Existing briefs plus community-tool catalogue | Preserves prior work and explains new ideas |
-| `proposals/` | Process, template, and six IDEA briefs | Gives discussion a repeatable format |
-| `tasks/` | 25 tasks and the earlier starter-task crosswalk | Makes work reviewable and discoverable |
-| `research/` | Existing launch-study protocol | Retains the research-first approach |
-| `.github/` | Templates, label specification, proposed ownership rules | Prepares GitHub workflow without pretending settings are active |
+Keep the private scanner separate. Add app/package folders only when an implementation is accepted and has actual code; the directory structure does not choose a monorepo runtime, hosting provider, data vendor, or chain stack.
 
-Later, create `apps/website`, `apps/telegram-bot`, `apps/discord-bot`, `apps/dashboard`, or `apps/experiments` only for approved implementations. Introduce `packages/solana`, `packages/analytics`, and `packages/shared` only when code is actually shared. Create `community/memes`, `community/branding`, `community/assets`, and `community/campaigns` when approved assets and usage terms exist. Research subfolders and approved/rejected/deferred proposal folders grow as records exist; no empty scaffolding is needed now.
+## Next operational decisions
 
-## Proposed organizational choices for your review
+Publishing these documents does not enable private reporting, required reviews, labels, Discussions, a native Projects board, or 40 live issues. Review and verify those settings separately. Assign tasks only with a contributor's agreement. Keep token facts unknown until verified. Paid hosting and real-money execution remain unapproved.
 
-| Choice | Why | Effect |
-| --- | --- | --- |
-| Use “future blockchain” as the neutral term | Zoora vs AAI branding is undecided | Documentation wording only |
-| Preserve this repo and private scanner separately | Avoid duplicating the existing implementation or publishing private code | No repository move or visibility change |
-| Keep exact token identity in one file | Prevent inconsistent mint copies | Official links point to the token record |
-| Separate work status from commitments | APPROVED must not look like RELEASED | Clear status fields and decision evidence |
-| Start with a repository board and issue-ready bodies | You requested a plan before substantive activation | No live board, labels, or bulk issues created in this draft |
-| Route sensitive security concerns privately | Public issue templates must not solicit exploits or credentials | Reporting setup remains a tracked prerequisite |
-
-These are organizational proposals, not a new chain architecture. No bridge, custody system, governance contract, allocation, token launch, monetary change, or signing flow is added.
-
-## Activation after review
-
-First review the README and [decision register](docs/DECISIONS.md). Resolve the process choices above; leaving the chain name undecided is valid. Then merge the approved documentation. Separately configure labels, private reporting, review protections, and optional Discussions/Projects; verify each setting before describing it as enforced. Open the chosen tasks as issues with their original IDs and actual GitHub URLs. Discuss one useful implementation next; paid hosting remains paused.
-
-Native GitHub Projects, Discussions activation, and protection settings are not created merely by committing these files. [Current delivery record](docs/VALIDATION.md).
+Start with [AAI-T-023](tasks/BACKLOG.md#aai-t-023) for the early biological-source audit and the foundation/scanner tasks for current project readiness. [Validation scope](docs/VALIDATION.md).

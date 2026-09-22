@@ -33,3 +33,9 @@ This work is restricted to offline replay and paper simulation. The community po
 Produce a source-and-dataset inventory and a small evaluation specification. Include a conclusion that the proposed model is unsuitable if the evidence supports it.
 
 See [task AAI-T-023](../tasks/BACKLOG.md#aai-t-023) and the [earlier starter task AAI-003](../tasks/STARTER_TASKS.md).
+
+## New early priority: Multi-Brain Trading Experiment
+
+The founder wants the [multi-brain source audit and proposed module experiment](MULTI_BRAIN_LAB.md) brought forward early. It expands this lab and preserves jellyfish-inspired exploration. See the [initial, non-exhaustive source inventory](../research/BRAIN_DATASETS.md). Cat, monkey, crow, and jellyfish candidates remain verification targets where no suitable resource has been established.
+
+The first step is source/permission/scope research, then a separately accepted small offline/paper prototype. Compare each module, the combination, simple/no-trade approaches, and comparable randomized networks. No model, biological advantage, or creator-fee account access is delivered here.

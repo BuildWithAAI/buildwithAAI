@@ -16,3 +16,7 @@ These are founder-supplied ideas, not a list of approved or deployed products. U
 Existing [AAI Scan](AAI_SCAN.md) is a private pilot with a separate codebase. This catalogue neither republishes that code nor turns proposed community-bot commands into working features. Wallet/payments ideas in [AAI utility](AAI_UTILITY.md) remain design research. A tool must be useful before a token-related feature is considered.
 
 The future blockchain name is undecided between Zoora Blockchain and AAI Blockchain. None of these tools creates native currency, migration, governance or ownership rights on that future network.
+
+## Additional product directions
+
+The [personal assistant](PERSONAL_ASSISTANT.md), [agent economy/forum](AGENT_ECONOMY.md), and [music collaboration platform](MUSIC_COLLABORATION.md) have dedicated briefs. They remain proposals and should not be treated as already implemented community-bot features. [Telegram setup](../docs/community/TELEGRAM.md) records the current group context and unknown invitation URL.

@@ -1,8 +1,8 @@
 # Contributing to Build With AAI
 
-**Process draft for owner review.** The [security boundaries](SECURITY.md) and separation from the future blockchain come from the founder's instructions.
+**Published contribution guide; detailed operating choices remain reviewable.** The [security boundaries](SECURITY.md) and separation from the future blockchain come from the founder's instructions.
 
-Contribute code, research, design, art, documentation, test cases, or a thoughtful problem statement. Buying a token is not part of this contribution workflow.
+Contribute code, research, design, art, music concepts, documentation, test cases, or a thoughtful problem statement. Buying a token is not part of this contribution workflow.
 
 ## From idea to contribution
 
@@ -29,10 +29,16 @@ The scanner code is private. Tasks requiring it remain blocked until access is g
 
 Supply, minting, authorities, metadata control, treasury, fees, migration, governance, and project-controlled wallets require explicit owner approval and additional documented review. The rule includes dependencies or documentation that would quietly change those behaviors or promises. See [PR requirements](docs/community/PULL_REQUESTS.md).
 
-Community tooling must not ask for or store wallet secrets, execute automatic trades, or sign transactions without clear user approval. Trading research here is restricted to offline/replay/paper environments; a different execution policy is not approved.
+Community tooling must not ask for or store wallet secrets or sign transactions without clear user approval. Current trading research is offline/replay/paper; live or demo automatic execution, account access, and creator-fee account operation require a separate explicit policy and scope decision. Documenting future execution questions does not grant permission to implement them.
 
 ## Participation and compensation
 
 Follow the [code of conduct](CODE_OF_CONDUCT.md). Tasks are unassigned until someone agrees to them. No bounty, wage, token allocation, or revenue entitlement is created by opening an issue or submitting work. Paid scope needs a separate explicit agreement before work begins.
 
 See [license status](LICENSE-STATUS.md) before submitting reusable code or media. Include attribution and third-party terms. Report sensitive vulnerabilities through the [security process](SECURITY.md), never a public issue containing exploit details or secrets.
+
+## New research and creative contributions
+
+The founder has prioritized the [multi-brain source audit](research/BRAIN_DATASETS.md) early. Distinguish measured connectivity from synthetic model assumptions, retain exact versions and reuse terms, and compare proposals with simple/randomized alternatives. Do not upload large datasets or private material before a scope and rights check.
+
+For [music](projects/MUSIC_COLLABORATION.md), use authorized demo material and document recording/composition interests, contributor consent, credit/split terms, and AI/voice involvement. A submitted file is not proof of permission for onward release. For [agent discussions](projects/AGENT_ECONOMY.md), preserve source lineage, operator relationships, and the distinction between a claim and transaction authorization.

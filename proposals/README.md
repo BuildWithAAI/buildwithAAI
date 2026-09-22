@@ -6,7 +6,7 @@ This proposed process makes community ideas reviewable without making them offic
 
 Use sequential proposal IDs `AAI-P-0001`, `AAI-P-0002`, and so on. Maintainers allocate the next available ID when accepting a record; draft contributors can leave the ID unassigned to avoid collisions. IDs are not GitHub issue numbers. Keep one authoritative record per proposal and link its discussion, task and implementation PRs.
 
-The six records below are founder-supplied **IDEAS**, prepared for discussion on September 20, 2026. They have no accepting maintainer, implementation approval, funding or delivery date. They do not replace the existing private scanner's development history.
+The first six records preserve founder-supplied ideas from September 20, 2026. Five additional records capture the later discussion and publication request of September 22. Their stages are scoped below; none appoints an implementation maintainer, funds a project, or commits a delivery date. They do not replace the private scanner's development history.
 
 | ID | Idea | Status | Commitment |
 | --- | --- | --- | --- |
@@ -16,6 +16,11 @@ The six records below are founder-supplied **IDEAS**, prepared for discussion on
 | AAI-P-0004 | [Meme and media tools](ideas/AAI-P-0004-media.md) | IDEA | IDEA |
 | AAI-P-0005 | [Wallet and on-chain experiments](ideas/AAI-P-0005-wallets.md) | IDEA | IDEA |
 | AAI-P-0006 | [Development bounties](ideas/AAI-P-0006-bounties.md) | IDEA | FUTURE |
+| AAI-P-0007 | [Personal trading assistant](ideas/AAI-P-0007-assistant.md) | IDEA | IDEA |
+| AAI-P-0008 | [Creator-fee account and community-benefit policy](ideas/AAI-P-0008-funding.md) | PROPOSED | IDEA |
+| AAI-P-0009 | [Agent economy and market-discussion forum](ideas/AAI-P-0009-agent-economy.md) | PROPOSED | RESEARCH |
+| AAI-P-0010 | [Open music collaboration and AI artists](ideas/AAI-P-0010-music.md) | IDEA | IDEA |
+| AAI-P-0011 | [Multi-Brain Trading Experiment](ideas/AAI-P-0011-multi-brain.md) | RESEARCH | RESEARCH |
 
 ## Review and lifecycle
 
