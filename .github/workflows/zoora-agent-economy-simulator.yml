@@ -1,0 +1,22 @@
+name: Zoora Agent Economy Simulator
+
+on:
+  push:
+    paths:
+      - "projects/zoora-agent-economy-simulator/**"
+      - ".github/workflows/zoora-agent-economy-simulator.yml"
+  pull_request:
+    paths:
+      - "projects/zoora-agent-economy-simulator/**"
+      - ".github/workflows/zoora-agent-economy-simulator.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-economy-simulator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --all-targets
