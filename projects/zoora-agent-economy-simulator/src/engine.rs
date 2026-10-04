@@ -12,25 +12,48 @@ pub struct SimulationEngine {
     pub metrics: Metrics,
     next_event_id: u64,
     next_sequence: u64,
+    rng_state: u64,
 }
 
 impl SimulationEngine {
     pub fn new(config: SimulationConfig) -> Self {
         let state = SimulationState::new(config.agent_count, config.starting_balance);
-        Self { config, state, metrics: Metrics::default(), next_event_id: 0, next_sequence: 0 }
+        let rng_state = if config.seed == 0 { 0x9E3779B97F4A7C15 } else { config.seed };
+        Self {
+            config,
+            state,
+            metrics: Metrics::default(),
+            next_event_id: 0,
+            next_sequence: 0,
+            rng_state,
+        }
+    }
+
+    fn next_random(&mut self) -> u64 {
+        // Small deterministic PRNG for simulation use only.
+        self.rng_state ^= self.rng_state << 13;
+        self.rng_state ^= self.rng_state >> 7;
+        self.rng_state ^= self.rng_state << 17;
+        self.rng_state
     }
 
     pub fn run(&mut self) -> Result<(), String> {
         for tick in 0..self.config.ticks {
             self.state.tick = tick;
             if self.state.agents.len() > 1 {
-                let to = (tick as usize + 1) % self.state.agents.len();
+                let agent_count = self.state.agents.len() as u64;
+                let from = self.next_random() % agent_count;
+                let mut to = self.next_random() % agent_count;
+                if from == to {
+                    to = (to + 1) % agent_count;
+                }
+
                 let event = Event::transfer(
                     self.next_event_id,
                     tick,
                     self.next_sequence,
-                    0,
-                    to as u64,
+                    from,
+                    to,
                     1,
                 );
                 self.next_event_id += 1;
