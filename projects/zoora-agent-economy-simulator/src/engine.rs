@@ -42,21 +42,21 @@ impl SimulationEngine {
     }
 
     pub fn process(&mut self, event: Event) -> Result<(), String> {
-        match event.event_type {
+        match &event.event_type {
             EventType::Transfer { from, to, amount } => {
-                if amount <= 0 {
+                if *amount <= 0 {
                     return Err("transfer amount must be positive".into());
                 }
                 if from == to {
                     return Err("transfer parties must differ".into());
                 }
-                let sender_balance = self.state.agent(from).ok_or("sender not found")?.balance;
-                if sender_balance < amount {
+                let sender_balance = self.state.agent(*from).ok_or("sender not found")?.balance;
+                if sender_balance < *amount {
                     return Err("insufficient balance".into());
                 }
-                self.state.agent_mut(from).ok_or("sender not found")?.balance -= amount;
-                self.state.agent_mut(to).ok_or("recipient not found")?.balance += amount;
-                self.metrics.record_transfer(amount);
+                self.state.agent_mut(*from).ok_or("sender not found")?.balance -= *amount;
+                self.state.agent_mut(*to).ok_or("recipient not found")?.balance += *amount;
+                self.metrics.record_transfer(*amount);
             }
         }
 
