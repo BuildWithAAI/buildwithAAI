@@ -22,9 +22,14 @@ pub struct SimulationEngine {
 
 impl SimulationEngine {
     pub fn new(config: SimulationConfig) -> Self {
+        Self::try_new(config).expect("invalid simulation configuration")
+    }
+
+    pub fn try_new(config: SimulationConfig) -> Result<Self, String> {
+        config.validate()?;
         let state = SimulationState::new(config.agent_count, config.starting_balance);
         let rng = DeterministicRng::from_seed(config.seed);
-        Self {
+        Ok(Self {
             config,
             state,
             metrics: Metrics::default(),
@@ -33,7 +38,7 @@ impl SimulationEngine {
             rng,
             next_event_id: 0,
             next_sequence: 0,
-        }
+        })
     }
 
     pub fn schedule(&mut self, event: Event) {
@@ -42,37 +47,21 @@ impl SimulationEngine {
 
     pub fn run(&mut self) -> Result<(), String> {
         self.schedule_normal_scenario();
-
         while let Some(event) = self.scheduler.pop_next() {
             self.state.tick = event.simulation_tick;
             self.process(event)?;
         }
-
         Ok(())
     }
 
     fn schedule_normal_scenario(&mut self) {
-        if self.state.agents.len() <= 1 {
-            return;
-        }
-
         let agent_count = self.state.agents.len() as u64;
-
         for tick in 0..self.config.ticks {
             let from = self.rng.next_u64() % agent_count;
             let mut to = self.rng.next_u64() % agent_count;
-            if from == to {
-                to = (to + 1) % agent_count;
-            }
+            if from == to { to = (to + 1) % agent_count; }
 
-            let event = Event::transfer(
-                self.next_event_id,
-                tick,
-                self.next_sequence,
-                from,
-                to,
-                1,
-            );
+            let event = Event::transfer(self.next_event_id, tick, self.next_sequence, from, to, 1);
             self.next_event_id += 1;
             self.next_sequence += 1;
             self.scheduler.schedule(event);
@@ -82,24 +71,16 @@ impl SimulationEngine {
     pub fn process(&mut self, event: Event) -> Result<(), String> {
         match &event.event_type {
             EventType::Transfer { from, to, amount } => {
-                if *amount <= 0 {
-                    return Err("transfer amount must be positive".into());
-                }
-                if from == to {
-                    return Err("transfer parties must differ".into());
-                }
+                if *amount <= 0 { return Err("transfer amount must be positive".into()); }
+                if from == to { return Err("transfer parties must differ".into()); }
 
                 let sender_balance = self.state.agent(*from).ok_or("sender not found")?.balance;
-                if sender_balance < *amount {
-                    return Err("insufficient balance".into());
-                }
-
+                if sender_balance < *amount { return Err("insufficient balance".into()); }
                 let recipient_balance = self.state.agent(*to).ok_or("recipient not found")?.balance;
-                let new_sender_balance = sender_balance
-                    .checked_sub(*amount)
+
+                let new_sender_balance = sender_balance.checked_sub(*amount)
                     .ok_or("sender balance arithmetic overflow")?;
-                let new_recipient_balance = recipient_balance
-                    .checked_add(*amount)
+                let new_recipient_balance = recipient_balance.checked_add(*amount)
                     .ok_or("recipient balance arithmetic overflow")?;
 
                 self.state.agent_mut(*from).ok_or("sender not found")?.balance = new_sender_balance;
@@ -107,9 +88,18 @@ impl SimulationEngine {
                 self.metrics.record_transfer(*amount);
             }
         }
-
         self.journal.append(event.clone());
         self.state.event_log.push(event);
         Ok(())
+    }
+
+    pub fn replay(config: SimulationConfig, journal: &EventJournal) -> Result<SimulationState, String> {
+        config.validate()?;
+        let mut engine = Self::try_new(config)?;
+        for event in journal.entries() {
+            engine.state.tick = event.simulation_tick;
+            engine.process(event.clone())?;
+        }
+        Ok(engine.state)
     }
 }
