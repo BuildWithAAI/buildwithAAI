@@ -1,82 +1,54 @@
 # AE-001 Simulation Foundation Design
 
-**Status:** DESIGN BASELINE  
+**Status:** LOCKED ARCHITECTURE - IMPLEMENTATION IN PROGRESS
 **Milestone:** AE-001
 
 ## Purpose
+Provide a deterministic, replayable laboratory for testing agent-economy mechanisms before production implementation.
 
-Provide a deterministic, replayable environment for testing agent-economy mechanisms.
-
-The simulator is a laboratory, not a production economy implementation.
+## Locked development sequence
+1. AE-001A - Simulation Kernel: clock, scheduler, deterministic event queue, deterministic RNG, processor, journal, replay.
+2. AE-001B - Minimal Economy: agents, simulated accounts, integer balances, transfer requests/outcomes, invariants.
+3. AE-001C - Observation Layer: observer metrics, run summaries, concentration measures, fingerprints.
+4. AE-001D - Normal Scenario: configurable baseline scenario and reproducibility tests.
 
 ## Architecture
+Scenario or policy -> command/intent -> scheduler -> deterministic event queue -> processor -> simulation state -> journal and metric observers.
 
-SimulationConfig -> SimulationEngine -> Agents / Economy State / Environment -> Deterministic Event Queue -> Event Processor -> Simulation State -> Event Log / Metrics
+The processor is the only component that mutates global simulation state.
 
-Events are the state-transition boundary. Agents may propose actions/events, but they must not directly mutate global simulation state.
+Events are ordered by simulation tick, event priority, then deterministic sequence number.
+
+## Outcomes
+Requested actions and outcomes are distinct. Expected economic rejection is recorded as simulation data rather than terminating the world. Engine or invariant corruption remains a hard error.
 
 ## Determinism
+Reproducibility requires identical simulator version, configuration, initial state, RNG algorithm/version, seed, and ordering rules.
 
-A run is reproducible when simulator version/code, configuration, initial state, random seed, and event-ordering rules are identical.
+The simulator must not depend on wall-clock time, operating-system scheduling, unordered iteration, or external network state.
 
-The simulator must not depend on wall-clock time, operating-system scheduling, unordered iteration order, external network state, or real blockchain state.
-
-Event ordering is:
-1. simulation tick
-2. event priority
-3. sequence number
-
-The sequence number is assigned deterministically by the engine.
-
-## Core state
-
-AE-001 models simulation configuration, agents, simulated balances, simulation tick, event queue, and event history.
-
-Balances are simulation values only and have no monetary value.
-
-## Event model
-
-Each event contains, at minimum: event ID, simulation tick, sequence, event type, actor, event payload, and metadata.
-
-State-changing logic occurs through event processing. The event log records the resulting event history.
+## Economic values
+Balances use integer smallest units. Balance arithmetic is checked. Negative balances are prohibited unless a later explicitly approved model introduces debt.
 
 ## Configuration
+TOML -> parse -> validate -> validated SimulationConfig -> engine.
 
-TOML is the planned configuration format. It should eventually control random seed, agent count, starting balance, tick count, event rates, economic parameters, and scenario selection.
+Invalid configuration is rejected before execution.
+
+## Journal and replay
+The journal records processed simulation outcomes. Replay must reconstruct the same final economic state from the same initial state and journal.
+
+Run fingerprints identify simulator version, configuration, seed, RNG algorithm/version, initial state, journal, and final state.
 
 ## Metrics
+Metrics observe outcomes and do not control economic state transitions.
 
-Metrics use an observer/collector architecture rather than hard-coded reporting inside economic rules.
+Initial metrics cover processed events, requested/completed/rejected transfers, simulated volume, balances, and basic concentration.
 
-Initial metrics should support event count, transaction count, successful transactions, failed transactions, total simulated volume, per-agent balance, and basic wealth concentration.
+## AE-001 exclusions
+Marketplace, contracts, escrow, auctions, reputation, disputes, adversarial scenarios, AI-agent integration, blockchain adapters, production integrations, and UI are deferred.
 
-Later milestones can add reputation, disputes, attack success/cost, liquidity, inequality, throughput, and other research metrics.
+## Required verification
+AE-001 is complete only when builds and CI pass; deterministic runs, ordering, unique IDs, monotonic sequences, conservation, rejection behavior, configuration validation, non-negative balances, replay, fingerprints, and documentation consistency are tested.
 
-## Security boundary
-
-The simulator must never request seed phrases or private keys, submit real blockchain transactions, connect to production wallets by default, represent simulated transactions as real transactions, or silently cross an integration boundary.
-
-## AE-001 scenario
-
-The first scenario is a normal economy using configurable parameters.
-
-Illustrative baseline values:
-- 100 agents
-- 1,000 simulated starting units per agent
-- 1,000 simulation ticks
-- fixed seed
-
-These values are test defaults, not final economic policy.
-
-## Acceptance criteria
-
-AE-001 is complete only when:
-- the simulator builds cleanly
-- tests pass
-- identical configuration and seed produce identical results
-- event ordering is deterministic
-- the normal scenario completes without invariant violations
-- the event log describes the run
-- basic metrics are collected
-- CI executes the test suite
-- documentation matches implementation
+Only after these criteria pass should AE-001 be merged and AE-002 begin.
