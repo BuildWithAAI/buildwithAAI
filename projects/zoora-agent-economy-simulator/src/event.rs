@@ -23,10 +23,22 @@ impl Event {
         to: AgentId,
         amount: i64,
     ) -> Self {
+        Self::transfer_with_priority(event_id, simulation_tick, 0, sequence, from, to, amount)
+    }
+
+    pub fn transfer_with_priority(
+        event_id: u64,
+        simulation_tick: u64,
+        priority: u32,
+        sequence: u64,
+        from: AgentId,
+        to: AgentId,
+        amount: i64,
+    ) -> Self {
         Self {
             event_id,
             simulation_tick,
-            priority: 0,
+            priority,
             sequence,
             event_type: EventType::Transfer { from, to, amount },
         }
