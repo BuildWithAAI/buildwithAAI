@@ -2,12 +2,18 @@ pub mod agent;
 pub mod config;
 pub mod engine;
 pub mod event;
+pub mod journal;
 pub mod metrics;
+pub mod rng;
+pub mod scheduler;
 pub mod state;
 
 pub use agent::Agent;
 pub use config::SimulationConfig;
 pub use engine::SimulationEngine;
 pub use event::{Event, EventType};
+pub use journal::EventJournal;
 pub use metrics::Metrics;
+pub use rng::{DeterministicRng, RNG_ALGORITHM};
+pub use scheduler::EventScheduler;
 pub use state::SimulationState;
