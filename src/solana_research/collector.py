@@ -5,7 +5,7 @@ from typing import Any, Callable
 
 from .fixture import FixtureManifest, records_hash
 from .model import RawEnvelope, sha256_json
-from .normalize import normalize_block
+from .normalize import NormalizationError, normalize_block
 
 MAX_FIXTURE_SLOTS = 32
 
