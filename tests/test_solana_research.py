@@ -3,6 +3,7 @@ import unittest
 from src.solana_research.model import RawEnvelope, sha256_json
 from src.solana_research.normalize import UnsupportedTransactionVersion, normalize_block
 from src.solana_research.replay import ReplayMode, replay
+from src.solana_research.fixture import detect_gaps, jsonl, parse_jsonl, records_hash
 
 
 def envelope(version=0, received_at="2026-10-05T12:00:00Z", error=None):
@@ -62,6 +63,19 @@ class HarnessTests(unittest.TestCase):
                       minimum_commitment="finalized")
         self.assertEqual(len(result),1)
         self.assertEqual(result[0]["commitment"],"FINALIZED")
+
+    def test_cluster_is_recorded_explicitly(self):
+        block=normalize_block(envelope(),slot=42,commitment="finalized",cluster="devnet")
+        self.assertEqual(block["cluster"],"devnet")
+
+    def test_gap_detection_distinguishes_available_slots(self):
+        self.assertEqual(detect_gaps(range(40,44),[40,42,43]),[41])
+
+    def test_jsonl_round_trip_and_hash_are_deterministic(self):
+        records=[{"slot":42,"b":2,"a":1},{"slot":43}]
+        payload=jsonl(records)
+        self.assertEqual(parse_jsonl(payload),records)
+        self.assertEqual(records_hash(records),records_hash(parse_jsonl(payload)))
 
     def test_canonical_replay_is_deterministic(self):
         a=normalize_block(envelope(received_at="2026-10-05T12:01:00Z"),
