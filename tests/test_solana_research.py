@@ -110,6 +110,17 @@ class CollectorTests(unittest.TestCase):
                 ingestion_build="test",normalizer_version="test",
                 available_blocks=lambda start,end:[],acquire_block=lambda slot: envelope())
 
+    def test_collector_does_not_hide_programming_errors(self):
+        from src.solana_research.collector import collect_bounded_fixture
+        def bug(slot):
+            raise TypeError("programming defect")
+        with self.assertRaises(TypeError):
+            collect_bounded_fixture(
+                start_slot=42,end_slot=42,cluster="mainnet-beta",source_id="fixture",
+                commitment="finalized",max_supported_transaction_version=1,
+                ingestion_build="test",normalizer_version="test",
+                available_blocks=lambda start,end:[42],acquire_block=bug)
+
     def test_collector_records_acquisition_failure(self):
         from src.solana_research.collector import collect_bounded_fixture
         def fail(slot):
