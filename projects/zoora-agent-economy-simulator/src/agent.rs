@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub type AgentId = u64;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Agent {
     pub id: AgentId,
     pub balance: i64,
