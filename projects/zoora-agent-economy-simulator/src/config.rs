@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SimulationConfig {
     pub agent_count: usize,
     pub starting_balance: i64,
@@ -22,15 +22,9 @@ impl SimulationConfig {
     }
 
     pub fn validate(&self) -> Result<(), String> {
-        if self.agent_count < 2 {
-            return Err("agent_count must be at least 2".into());
-        }
-        if self.starting_balance < 0 {
-            return Err("starting_balance must be non-negative".into());
-        }
-        if self.ticks == 0 {
-            return Err("ticks must be greater than zero".into());
-        }
+        if self.agent_count < 2 { return Err("agent_count must be at least 2".into()); }
+        if self.starting_balance < 0 { return Err("starting_balance must be non-negative".into()); }
+        if self.ticks == 0 { return Err("ticks must be greater than zero".into()); }
         Ok(())
     }
 }
