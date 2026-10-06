@@ -31,3 +31,12 @@ def acquire_block(*, slot: int, endpoint: str = DEFAULT_PUBLIC_RPC,
                                 requested_commitment=commitment, payload=payload,
                                 parser_target_version=max_supported_transaction_version,
                                 ingestion_build=ingestion_build)
+
+
+def get_blocks(endpoint: str, start_slot: int, end_slot: int,
+               *, commitment: str = "finalized", timeout: float = 15.0) -> list[int]:
+    payload = rpc_call(endpoint, "getBlocks",
+                       [start_slot, end_slot, {"commitment": commitment}], timeout=timeout)
+    if "error" in payload:
+        raise RuntimeError("getBlocks RPC error")
+    return payload.get("result") or []
