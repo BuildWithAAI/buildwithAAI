@@ -86,5 +86,42 @@ class HarnessTests(unittest.TestCase):
                          replay([b,a],mode=ReplayMode.CANONICAL_ORDER))
 
 
+class CollectorTests(unittest.TestCase):
+    def test_bounded_collector_tracks_skips_and_manifest(self):
+        from src.solana_research.collector import collect_bounded_fixture
+        result=collect_bounded_fixture(
+            start_slot=42,end_slot=44,cluster="mainnet-beta",source_id="fixture",
+            commitment="finalized",max_supported_transaction_version=1,
+            ingestion_build="test",normalizer_version="test",
+            available_blocks=lambda start,end:[42,44],
+            acquire_block=lambda slot: envelope(received_at=f"2026-10-05T12:00:{slot-42:02d}Z"))
+        self.assertEqual(result.skipped_slots,[43])
+        self.assertEqual(result.manifest.raw_record_count,2)
+        self.assertEqual(result.manifest.normalized_block_count,2)
+        self.assertEqual(result.manifest.failure_count,0)
+        self.assertEqual(len(result.manifest.records_hash),64)
+
+    def test_collector_refuses_unbounded_window(self):
+        from src.solana_research.collector import collect_bounded_fixture
+        with self.assertRaises(ValueError):
+            collect_bounded_fixture(
+                start_slot=1,end_slot=100,cluster="mainnet-beta",source_id="fixture",
+                commitment="finalized",max_supported_transaction_version=1,
+                ingestion_build="test",normalizer_version="test",
+                available_blocks=lambda start,end:[],acquire_block=lambda slot: envelope())
+
+    def test_collector_records_acquisition_failure(self):
+        from src.solana_research.collector import collect_bounded_fixture
+        def fail(slot):
+            raise TimeoutError("fixture timeout")
+        result=collect_bounded_fixture(
+            start_slot=42,end_slot=42,cluster="mainnet-beta",source_id="fixture",
+            commitment="finalized",max_supported_transaction_version=1,
+            ingestion_build="test",normalizer_version="test",
+            available_blocks=lambda start,end:[42],acquire_block=fail)
+        self.assertEqual(result.manifest.failure_count,1)
+        self.assertEqual(result.failures[0]["error_type"],"TimeoutError")
+
+
 if __name__ == "__main__":
     unittest.main()
