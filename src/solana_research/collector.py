@@ -46,7 +46,7 @@ def collect_bounded_fixture(
                 envelope, slot=slot, commitment=commitment, cluster=cluster,
                 max_supported_transaction_version=max_supported_transaction_version,
                 normalizer_version=normalizer_version))
-        except Exception as exc:
+        except (OSError, TimeoutError, RuntimeError, NormalizationError) as exc:
             failures.append({"slot": slot, "error_type": type(exc).__name__,
                              "message": str(exc)})
 
