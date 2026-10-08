@@ -22,7 +22,7 @@ def decode_address(address: str) -> bytes:
             raise ValueError("Invalid base58 character")
         n = n * 58 + ALPHABET.index(char)
     zeros = len(address) - len(address.lstrip("1"))
-    data = b"\\x00" * zeros + (n.to_bytes((n.bit_length() + 7) // 8, "big") if n else b"")
+    data = bytes([0]) * zeros + (n.to_bytes((n.bit_length() + 7) // 8, "big") if n else b"")
     if len(data) != 32:
         raise ValueError("Solana public keys must decode to 32 bytes")
     return data
