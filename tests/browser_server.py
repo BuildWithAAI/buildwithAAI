@@ -14,5 +14,7 @@ with tempfile.TemporaryDirectory() as directory:
     store = Store(config.database)
     market = FakeMarket()
     market.name = 'SYNTHETIC TEST <img src=x onerror=alert(1)>'
-    scanner = Scanner(config, store, rpc=FakeRPC(), market=market)
+    rpc = FakeRPC()
+    rpc.fail.add("getTokenLargestAccounts")  # Explicit missing source for UI coverage QA.
+    scanner = Scanner(config, store, rpc=rpc, market=market)
     serve(Application(config, store, scanner), host='127.0.0.1', port=8787)

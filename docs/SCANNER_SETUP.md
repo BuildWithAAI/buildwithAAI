@@ -16,14 +16,19 @@ python -m src.aai_scanner serve
 
 Open http://127.0.0.1:8787 and submit a public token mint. The default RPC is Solana mainnet; the genesis hash is checked before accepting RPC evidence. Markets use DEX Screener's documented base-token pool endpoint. Public providers may throttle requests or return gaps. An operator can configure an HTTPS mainnet RPC using `AAI_RPC_URL`; provider credentials and URL paths are omitted from source receipts.
 
+Configure up to two explicit backup HTTPS mainnet RPC URLs in comma-separated `AAI_RPC_FALLBACK_URLS`. There are no automatic third-party defaults. Each provider verifies the mainnet genesis before serving reads and rechecks it after five minutes. Recovery is attempted only for connection/deadline failures and HTTP 429/502/503/504; wrong-network, malformed data, authentication/403 and RPC application errors fail closed. Every failed attempt is retained with provider ID and hostname. A single recovery call has a scheduling budget of at most 30 seconds (twice the configured provider timeout); socket reads remain individually bounded and can overrun the scheduling budget while in progress. Identity-lock waits are bounded by that budget. No request loop sleeps or retries a throttled provider immediately.
+
+HTTP `Retry-After` supports delay-seconds and dates. Cooldowns are shared across methods in one process; absent headers use 30 seconds for HTTP 429 and 3 seconds for connection/gateway failures. Numeric delays are bounded at 2^31-1 seconds. Another already-started request may finish during a cooldown. `/api/status` exposes safe provider counters, cooldowns and identity verification time. These are process-local observations, not an uptime guarantee. Backup providers can also deny expensive methods; recovery is not a substitute for a reliable operator-provisioned RPC. Solana documents that its shared public endpoints are not intended for production: https://solana.com/docs/rpc.
+
 `.env.scanner.example` lists configuration names. It contains no secrets and is **not automatically loaded**. Export environment variables before starting the process. On Windows activate `.venv\Scripts\Activate.ps1` and set variables with `$env:NAME='value'`.
 
 ```sh
 python -m src.aai_scanner smoke --output data/live-smoke.json
+python -m src.aai_scanner smoke --require-holders --require-activity --output data/live-launch-gates.json
 python -m src.aai_scanner backup data/backup-2026-10-08.sqlite3
 ```
 
-The smoke command exits nonzero when mint or price evidence is missing. It records separate optional-source results. It does not certify every launch gate. Historical verification receipts in `docs/verification/` are dated evidence, never current prices.
+The smoke command exits nonzero when mint or price evidence is missing. It records separate optional-source results. `--require-holders` and `--require-activity` make those sources mandatory for the command to pass. A successful basic smoke is not a successful strict smoke or every launch gate. `coverage` lists the five selected core sections and does not imply that every metric or advanced feature is available. The web report and Telegram summary explicitly identify partial coverage. Historical verification receipts in `docs/verification/` are dated evidence, never current prices.
 
 SQLite stores watches, up to 100 observations per mint and 5,000 total observations, and Telegram polling offsets. Backups use SQLite's online backup API and integrity checks. Stop the service before restoring a backup to the configured database path; preserve the original database and its WAL/SHM files for recovery. Backups contain address history and must remain private. Watchlists are operator/workspace-wide, not per-user. This is a single-process private beta; multi-tenant accounts and distributed limits are not implemented.
 

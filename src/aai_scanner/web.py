@@ -97,6 +97,8 @@ class Application:
                     "timestamp": now(), "read_only": True, "storage": self.store.counts(),
                     "provider_sources": self.scanner.last_sources,
                     "provider_status_note": "Last observed results, not continuous health checks",
+                    "rpc_providers": self.scanner.rpc.diagnostics() if hasattr(self.scanner.rpc, "diagnostics") else [],
+                    "last_report_coverage": self.scanner.last_coverage,
                     "refresh": {"normal_cache_seconds": 30, "minimum_refresh_seconds": 5},
                     "execution": "DISABLED", "payments": "NOT_IMPLEMENTED",
                 }

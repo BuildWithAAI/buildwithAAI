@@ -50,6 +50,7 @@ class Commands:
             source = market["source"] or {}
             return (f"AAI: {market['symbol'] or 'Unknown token'}\nMint: {parts[1]}\n"
                     f"Report: {report['status']} | On-chain mint: {mint['status']}\n"
+                    f"Coverage gaps: {', '.join(report['coverage']['missing_sections']) or 'None in core sections'}\n"
                     f"USD price: {value('price_usd')}\nSOL price: {value('price_sol')}\n"
                     f"Selected-pool liquidity USD: {value('liquidity_usd')}\n"
                     f"24h selected-pool volume USD: {value('volume_24h_usd')}\n"

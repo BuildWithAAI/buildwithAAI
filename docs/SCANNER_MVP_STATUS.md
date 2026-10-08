@@ -1,29 +1,41 @@
 # Scanner development status — 2026-10-08
 
-Branch: `feat/aai-scanner-mvp`; existing draft PR #10. Public deployment: **NOT STARTED**.
+Candidate version: **0.1.1**. Existing branch: `feat/aai-scanner-mvp`; draft PR #10. Public deployment: **NOT STARTED**. Code and docs are git-backed in this repository.
 
-## Implemented and locally tested
+## Implemented
 
-- Read-only mint inspection for legacy SPL and Token-2022 with exact supply and authority state.
-- Mainnet identity verification; bounded HTTPS RPC and documented DEX Screener base-token pool integration.
-- Source-backed API, USD/SOL prices, distinct market cap/FDV, explicit missingness and source failures.
-- Responsive dark interface: token report, wallet balance/activity, risk/evidence, observations, saved watches and process/provider status.
-- SQLite persistence and tested backup recovery, configurable access adapter, same-origin/Host checks, bounded requests, provider budgets and safe error handling.
-- Disabled-by-default allowlisted Telegram adapter; all commands and delivery failures tested offline.
-- 62 Python tests passed on local Python 3.12.14; compilation, JavaScript syntax and Ruff E9/F static checks passed. Browser CI run #3 (37834242975) passed desktop/mobile checks on 7601af6966b68d16af354668a5d8ced9d4c01e52; screenshots were reviewed. The final candidate adds access-dialog checks and must pass CI again. Pinned runtime dependency audit found no known Waitress 3.0.2 vulnerabilities; this is not a security certification.
+The local read-only API and responsive report UI support exact SPL/Token-2022 mint state, attributed USD/SOL market snapshots, wallet balance/address activity, saved watches, observations, evidence receipts and process status. Telegram commands are implemented and disabled by default. Signing, trades and token payments are absent.
 
-## Real integrations verified
+This reliability milestone adds:
 
-The dated receipt `verification/scanner-live-smoke-2026-10-08.json` records a successful read-only wrapped-SOL smoke against actual Solana mainnet RPC and DEX Screener. Mint slot: 454639308; collected 2026-10-08T19:33:54.949+00:00. USD/SOL price evidence and address activity returned; largest-token-account source failed.
+- Up to two explicitly configured backup HTTPS RPCs; each verifies and periodically rechecks mainnet identity.
+- One attempt per provider, structured failure diagnostics, shared response cooldowns and bounded recovery/identity waits. No immediate repeat of a 429 request.
+- No recovery around wrong-network, malformed responses, RPC application errors or authentication/403 errors.
+- Actual provider attribution on both successful and failed receipts, recovery attempts and mixed-provider/slot quality flags.
+- Explicit finalized request options matching receipt claims; one shared market snapshot for wrapped SOL.
+- Partial core-section coverage in web/Telegram summaries and safe RPC counters/cooldowns in authenticated system status.
+- Strict smoke flags requiring holder and/or activity retrieval. The basic smoke does not certify the complete launch checklist.
 
-A real Waitress HTTP/API check on 2026-10-08T19:41:41.613+00:00 also returned USDC mint/market/activity evidence, slot 454641046. Holder retrieval failed and remains a provider coverage limitation. Prices in historical receipts are not current prices. Public RPC failures were also observed during this session; configured provider reliability must be established before public beta.
+## Tested
+
+All **86 offline tests** pass locally in Python 3.12, including 24 new recovery, coverage, timing, attribution, request-finality and strict CLI regressions. Compilation, Ruff E9/F and JavaScript syntax checks pass. The pinned runtime dependency audit found no known Waitress 3.0.2 advisories; this is not a full security certification.
+
+Current browser tests cover desktop/mobile authenticated access, partial coverage, literal provider metadata, missing values, capacity errors, watches, wallet, risk and status. Verify their run and all Python checks against the new final commit before merging. Earlier run #4 (37834821723) passed on historical head `2fe2966bbffdabb80384b7ab44eba89a56f11b85`; it does not certify new changes.
+
+## Real source evidence
+
+`verification/scanner-reliability-live-2026-10-08.json` records an actual strict USDC check collected at **2026-10-08T21:25:51.497+00:00** (16:25 Chicago), mint slot **454664244**. Mint, USD/SOL market snapshots and address activity returned. Mainnet identity verified independently on both configured RPC providers.
+
+The strict command correctly exited **1 / FAILED** because required holder retrieval encountered primary HTTP 429 and backup HTTP 403. Both attempts, source hosts and timestamps are retained. Successful live recovery of holder data is **not verified**; fake fallback success is used only in clearly marked offline tests. Dated receipts are historical observations, never production display data.
+
+Earlier wrapped-SOL and real Waitress/USDC HTTP checks are recorded in the previous status/report history and dated receipt. Shared public RPC availability varied during testing; no uptime promise is made.
 
 ## Remaining launch gates
 
-- Live Telegram commands: **BLOCKED** pending bot credentials and an authorized private test chat; no messages sent.
-- Holder integration: **BLOCKED** on successful provider response; missing accounts are shown explicitly, never fabricated.
-- Browser report/layout checks: **VERIFIED** by run #3 and screenshot review. Final-head CI/authentication browser checks: must be reverified after the last changes.
-- Public hosting, TLS, monitoring, operational checks and deployment: **NOT STARTED**; require a target and authorization.
-- Complete P/L ledger, relationship inference, token creation time, interpreted Token-2022 extensions, per-user tenancy and alerts: **NOT STARTED**. These are not simulated in the product.
+- Reliable holder-capable mainnet RPC: **BLOCKED** on successful permitted provider access. No paid infrastructure purchased or secrets changed.
+- Live Telegram commands: **BLOCKED** pending secure credentials and an authorized private test chat; no messages sent.
+- New final-head CI/browser checks: required before claiming verification of this milestone.
+- Public hosting/TLS, monitoring, sustained operation and deployment: **NOT STARTED**, require a target and authorization.
+- Complete accounting/P&L, token creation time, relationship inference, interpreted extension semantics, per-user tenancy and alerts: **NOT STARTED**. Their values are not simulated in the product.
 
-Reproduce setup and smoke verification using `SCANNER_SETUP.md`. Research PR #9 remains isolated from scanner launch. Its audit fixes at 1ffffe30122f855b69e639ddd58ff6344949e905 passed 27 tests and CI run #9 (37834405514); it remains unmerged. This is a working local candidate, not a deployed or fully launch-gated MVP.
+Research PR #9 remains isolated and unmerged. Audited head `1ffffe30122f855b69e639ddd58ff6344949e905` passed 27 offline tests and CI run #9 (37834405514). Setup and provider configuration are documented in `SCANNER_SETUP.md`. This is a local development candidate with explicit external gates.

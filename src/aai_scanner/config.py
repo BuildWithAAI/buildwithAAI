@@ -28,9 +28,16 @@ class Config:
     database: str = "data/scanner.sqlite3"
     public_mode: bool = False
     timeout: int = 10
+    rpc_fallback_urls: tuple[str, ...] = ()
 
     def validate(self):
         https_url(self.rpc_url)
+        if not isinstance(self.rpc_fallback_urls, tuple) or len(self.rpc_fallback_urls) > 2:
+            raise ValueError("Configure at most two RPC fallback URLs")
+        for endpoint in self.rpc_fallback_urls:
+            https_url(endpoint)
+        if len(set((self.rpc_url,) + self.rpc_fallback_urls)) != 1 + len(self.rpc_fallback_urls):
+            raise ValueError("RPC URLs must be distinct")
         if not 1 <= self.port <= 65535 or not 1 <= self.timeout <= 15:
             raise ValueError("Invalid port or provider timeout")
         origin = urlsplit(self.public_url)
@@ -61,4 +68,5 @@ class Config:
             database=os.environ.get("AAI_DATABASE", cls.database),
             public_mode=os.environ.get("AAI_PUBLIC_MODE") == "1",
             timeout=int(os.environ.get("AAI_PROVIDER_TIMEOUT", "10")),
+            rpc_fallback_urls=tuple(value.strip() for value in os.environ.get("AAI_RPC_FALLBACK_URLS", "").split(",") if value.strip()),
         ).validate()

@@ -56,6 +56,9 @@ function receipts(target, sources) {
     row(section, "Source", source.endpoint_host);
     row(section, "Slot / commitment", String(source.slot ?? "Not provided") + " / " + (source.commitment || "Not provided"));
     if (source.reason) section.append(el("p", source.reason, "footnote"));
+    if (source.provider_id) row(section, "RPC provider", source.provider_id);
+    if (source.quality_flags?.includes("RPC_FAILOVER_USED")) section.append(el("p", "Backup RPC used. Previous failed attempts are retained below.", "footnote"));
+    if (source.error?.retry_after_seconds) row(section, "Retry after", source.error.retry_after_seconds + " seconds");
     const details = el("details"); details.append(el("summary", "Inspect evidence receipt"), el("pre", JSON.stringify(source, null, 2))); section.append(details);
     target.append(section);
   }
@@ -73,8 +76,12 @@ async function render(report) {
   $("empty").hidden = true; $("report").hidden = false;
   $("token-name").textContent = m.name || m.symbol || "Unknown token";
   $("token-address").textContent = report.mint;
-  $("report-badge").textContent = report.status;
-  $("report-badge").className = "badge " + (report.status === "AVAILABLE" ? "good" : "gap");
+  const coverage = report.coverage;
+  const partial = !coverage || !coverage.complete;
+  $("report-badge").textContent = report.status + (partial ? " · Partial report" : "");
+  $("coverage-notice").hidden = !partial;
+  $("coverage-notice").textContent = coverage ? "Partial report — missing: " + coverage.missing_sections.join(", ").replaceAll("_", " ") + ". Review source receipts before relying on these fields." : "Coverage unverified.";
+  $("report-badge").className = "badge " + (report.status === "AVAILABLE" && !partial ? "good" : "gap");
   freshness();
   clear($("metrics"));
   metric("Token price · USD", usd(m.price_usd.value), "DEX Screener · selected pool", m.price_usd.value);
@@ -147,6 +154,14 @@ async function loadStatus() {
   row(card, "Saved watches / observations", result.storage.watches + " / " + result.storage.observations);
   row(card, "Signing & execution", result.execution);
   row(card, "Payments", result.payments);
+  if (result.last_report_coverage) {
+    row(card, "Last core-section coverage", result.last_report_coverage.complete ? "Core sections available" : "Partial · " + result.last_report_coverage.missing_sections.join(", ").replaceAll("_", " "));
+    row(card, "Last report collection", timestamp(result.last_report_coverage.available_at));
+  }
+  for (const provider of result.rpc_providers || []) {
+    row(card, provider.provider_id + " · " + provider.endpoint_host, provider.network_status + (provider.cooldown_seconds ? " · cooldown " + provider.cooldown_seconds + "s" : ""));
+    row(card, "RPC requests / failures", provider.requests + " / " + provider.failures);
+  }
   card.append(el("p", result.provider_status_note, "footnote"));
   $("system-status").append(card);
   const sources = el("article", undefined, "card"); sources.append(el("h3", "Last observed provider results"));

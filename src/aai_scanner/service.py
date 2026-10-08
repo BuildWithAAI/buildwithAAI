@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from .evidence import failed_source, measurement, now, number, ratio, units
 from .market import MARKET_URL, WRAPPED_SOL, MarketClient, summarize_market
 from .mint import ALPHABET, decode_address, parse_mint
-from .transport import ProviderError, RpcClient
+from .transport import ProviderError, RpcPool
 
 
 class BusyError(RuntimeError):
@@ -48,11 +48,12 @@ def safe_signature(value):
 class Scanner:
     def __init__(self, config, store, rpc=None, market=None):
         self.config, self.store = config, store
-        self.rpc = rpc or RpcClient(config.rpc_url, config.timeout)
+        self.rpc = rpc or RpcPool((config.rpc_url,) + config.rpc_fallback_urls, config.timeout)
         self.market = market or MarketClient(config.timeout)
         self.slots, self.limiter = threading.BoundedSemaphore(2), Limiter()
         self.lock, self.cache = threading.Lock(), OrderedDict()
         self.last_sources = {}
+        self.last_coverage = None
 
     def _collect(self, function, provider, endpoint, method):
         try:
@@ -60,7 +61,15 @@ class Scanner:
         except (ProviderError, ValueError, TypeError, KeyError, IndexError) as error:
             # No untrusted exception text or credential-bearing URLs.
             reason = str(error) if isinstance(error, ProviderError) else "Source failed validation"
-            return None, failed_source(provider, endpoint, method, reason)
+            gap = failed_source(provider, endpoint, method, reason)
+            if isinstance(error, ProviderError):
+                gap["error"] = error.details()
+                if error.attempts:
+                    gap["endpoint_host"] = error.attempts[-1]["endpoint_host"]
+                    gap["provider_id"] = error.attempts[-1]["provider_id"]
+                if len(error.attempts) > 1:
+                    gap["quality_flags"].append("MULTIPLE_RPC_PROVIDERS_ATTEMPTED")
+            return None, gap
 
     def _mint(self, address):
         result = self.rpc.call("getAccountInfo", [address, {"encoding": "base64", "commitment": "finalized"}])
@@ -111,7 +120,7 @@ class Scanner:
             if token_account in seen or not isinstance(amount, str) or not amount.isdigit() or len(amount) > 20:
                 raise ProviderError("Invalid or duplicate token-account balance")
             raw = int(amount)
-            if raw > 2**64 - 1 or row.get("decimals") != mint["decimals"]:
+            if raw > 2**64 - 1 or type(row.get("decimals")) is not int or row["decimals"] != mint["decimals"]:
                 raise ProviderError("Token balance units differ from mint")
             seen.add(token_account)
             balances.append((token_account, raw))
@@ -119,6 +128,8 @@ class Scanner:
         valid_denominator = supply > 0 and total <= supply
         if not valid_denominator:
             flags.append("SUPPLY_DENOMINATOR_UNAVAILABLE_OR_INCONSISTENT")
+        if mint["evidence"].get("provider_id") != response["_evidence"].get("provider_id"):
+            flags.append("NON_ATOMIC_PROVIDERS")
         sources = [mint["evidence"], response["_evidence"]]
         return {
             "status": "AVAILABLE", "source": response["_evidence"], "quality_flags": flags,
@@ -144,9 +155,13 @@ class Scanner:
                 tasks = [
                     pool.submit(self._collect, lambda: self._mint(address), "Solana RPC", self.config.rpc_url, "getAccountInfo"),
                     pool.submit(self._collect, lambda: self.market.pools(address), "DEX Screener", MARKET_URL, "token-pairs"),
-                    pool.submit(self._collect, lambda: self.market.pools(WRAPPED_SOL), "DEX Screener", MARKET_URL, "SOL price reference"),
+
                 ]
-                (mint, mint_gap), (market_result, market_gap), (sol_result, sol_gap) = [task.result() for task in tasks]
+                if address != WRAPPED_SOL:
+                    tasks.append(pool.submit(self._collect, lambda: self.market.pools(WRAPPED_SOL),
+                                             "DEX Screener", MARKET_URL, "SOL price reference"))
+                (mint, mint_gap), (market_result, market_gap) = [task.result() for task in tasks[:2]]
+                sol_result, sol_gap = tasks[2].result() if len(tasks) == 3 else (market_result, market_gap)
             mint = mint or {"mint": address, "status": "FAILED", "reason": "Mint source unavailable", "evidence": mint_gap}
             pools, market_proof = market_result if market_result else ([], market_gap)
             sol_pools, sol_proof = sol_result if sol_result else ([], sol_gap)
@@ -188,7 +203,7 @@ class Scanner:
             report = {
                 "mint": address, "available_at": now(), "cached": False,
                 "status": "AVAILABLE" if mint["status"] == market["status"] == "AVAILABLE" else "UNVERIFIED",
-                "network": "solana-mainnet", "network_evidence": self.rpc.network_receipt,
+                "network": "solana-mainnet", "network_evidence": mint["evidence"].get("network_evidence") or self.rpc.network_receipt,
                 "mint_info": mint, "market": market, "holders": holders, "activity": activity,
                 "risk_findings": findings,
                 "accounting": {"realized_pnl_usd": None, "unrealized_pnl_usd": None, "realized_pnl_sol": None,
@@ -198,12 +213,14 @@ class Scanner:
                                 "Pool creation is not mint creation", "Retrieval freshness is not upstream tick freshness",
                                 "Largest token accounts are not unique holders", "No signing or trade execution"],
             }
+            report["coverage"] = report_coverage(report)
             self.store.save(report)
             with self.lock:
                 self.cache[address] = (time.monotonic(), copy.deepcopy(report))
                 self.cache.move_to_end(address)
                 while len(self.cache) > 256:
                     self.cache.popitem(last=False)
+                self.last_coverage = dict(report["coverage"], available_at=report["available_at"])
                 self.last_sources = {"mint": mint["evidence"], "market": market_proof, "sol_reference": sol_proof,
                                      "holders": holders.get("source"), "activity": activity.get("source")}
             return report
@@ -230,7 +247,7 @@ class Scanner:
             reference = next((pool for pool in sol_pools if pool["price_usd"] is not None), None)
             sol_price = number(reference["price_usd"], True) if reference else None
             balance_sol = units(lamports, 9) if lamports is not None else None
-            return {"wallet": address, "available_at": now(), "network_evidence": self.rpc.network_receipt,
+            return {"wallet": address, "available_at": now(), "network_evidence": proof.get("network_evidence") or self.rpc.network_receipt,
                     "balance_sol": measurement(balance_sol, proof),
                     "balance_usd": measurement(format(number(balance_sol) * sol_price, "f") if balance_sol is not None and sol_price is not None else None,
                                                [proof, sol_proof], "DERIVED", flags=["NON_ATOMIC_PRICE_SNAPSHOTS"]),
@@ -240,3 +257,16 @@ class Scanner:
                                    "reason": "Balance and transaction mentions do not establish profit or cost basis"}}
         finally:
             self.slots.release()
+
+
+def report_coverage(report):
+    """Coverage of supported MVP fields only; unavailable advanced fields stay explicit."""
+    sections = {"mint": report["mint_info"]["status"],
+                "usd_price": report["market"]["price_usd"]["status"],
+                "sol_price": report["market"]["price_sol"]["status"],
+                "largest_token_accounts": report["holders"]["status"],
+                "address_activity": report["activity"]["status"]}
+    gaps = [name for name, status in sections.items() if status != "AVAILABLE"]
+    return {"scope": "SELECTED_CORE_SECTIONS", "complete": not gaps,
+            "sections": sections, "missing_sections": gaps,
+            "note": "Section coverage does not establish every metric, token safety, complete accounting or full history"}

@@ -81,7 +81,7 @@ def summarize_market(pools, proof, sol_pools, sol_proof):
         "price_usd": measurement(format(price, "f") if price is not None else None, proof),
         "sol_price_usd": measurement(format(sol_price, "f") if sol_price is not None else None, sol_proof),
         "price_sol": measurement(ratio(price, sol_price) if price is not None and sol_price is not None else None,
-                                 [proof, sol_proof], "DERIVED", flags=["NON_ATOMIC_PRICE_SNAPSHOTS"]),
+                                 [proof, sol_proof], "DERIVED", flags=[] if proof is sol_proof else ["NON_ATOMIC_PRICE_SNAPSHOTS"]),
     }
     for key in ("liquidity_usd", "volume_24h_usd", "market_cap_usd", "fdv_usd", "buys_24h", "sells_24h"):
         market[key] = measurement(selected[key] if selected else None, proof)

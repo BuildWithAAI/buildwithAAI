@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, localcontext
 from urllib.parse import urlsplit
 
-TRANSFORMATION_VERSION = "aai-scanner/0.1.0"
+TRANSFORMATION_VERSION = "aai-scanner/0.1.1"
 
 
 def now():

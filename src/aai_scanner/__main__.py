@@ -21,6 +21,8 @@ def main():
     smoke = actions.add_parser("smoke")
     smoke.add_argument("--mint", default=WRAPPED_SOL)
     smoke.add_argument("--output")
+    smoke.add_argument("--require-holders", action="store_true")
+    smoke.add_argument("--require-activity", action="store_true")
     args = parser.parse_args()
     config = Config.from_env()
     store = Store(config.database)
@@ -59,11 +61,20 @@ def main():
                 "holder_status": report["holders"]["status"],
                 "activity_status": report["activity"]["status"],
                 "limitations": report["limitations"],
+                "coverage": report["coverage"],
+                "rpc_providers": scanner.rpc.diagnostics(),
+                "mint_receipt": report["mint_info"]["evidence"],
+                "holder_receipt": report["holders"].get("source"),
+                "activity_receipt": report["activity"].get("source"),
             }
             passed = (evidence["mint_status"] == "AVAILABLE"
                       and evidence["market_price_usd"]["status"] == "AVAILABLE"
                       and evidence["market_price_sol"]["status"] == "AVAILABLE"
                       and evidence["network_evidence"] is not None)
+            passed = passed and (not args.require_holders or evidence["holder_status"] == "AVAILABLE")
+            passed = passed and (not args.require_activity or evidence["activity_status"] == "AVAILABLE")
+            evidence["required_optional_sources"] = [key for key, required in (("holders", args.require_holders),
+                                                                             ("activity", args.require_activity)) if required]
             evidence["status"] = "PASSED" if passed else "FAILED"
             output = json.dumps(evidence, indent=2, allow_nan=False)
             if args.output:

@@ -20,7 +20,7 @@
       <button class="nav" data-page="watchlist"><span class="nav-icon">☆</span><span>Saved watchlist</span></button>
       <button class="nav" data-page="status"><span class="nav-icon">◎</span><span>System status</span></button>
     </nav>
-    <div class="rail-bottom"><span class="dot"></span> READ-ONLY SCANNER<small>BuildWithAAI · v0.1</small></div>
+    <div class="rail-bottom"><span class="dot"></span> READ-ONLY SCANNER<small>BuildWithAAI · v0.1.1</small></div>
   </aside>
   <div class="workspace">
     <header class="topbar"><div><span class="muted">AAI /</span> <span id="breadcrumb">Token report</span></div><div class="top-meta"><span id="connection" class="badge">Connecting</span><span class="network">SOLANA</span></div></header>
@@ -38,6 +38,7 @@
         </div>
         <div id="report" hidden>
           <div class="report-head"><div><div class="eyebrow">TOKEN REPORT <span id="report-badge" class="badge"></span></div><h2 id="token-name"></h2><div id="token-address" class="mono muted address"></div></div><div class="actions"><button id="watch" class="secondary">☆ Save watch</button><button id="refresh" class="secondary">↻ Refresh</button></div></div>
+          <div id="coverage-notice" class="notice" role="status" hidden></div>
           <div id="freshness" class="freshness"></div>
           <div id="metrics" class="metrics"></div>
           <div class="report-grid"><article class="card"><div class="section-title"><h3>Chain state</h3><span class="micro">SOLANA RPC</span></div><div id="chain-state"></div></article><article class="card"><div class="section-title"><h3>Findings to review</h3><span class="micro">EVIDENCE FIRST</span></div><div id="findings"></div></article></div>
