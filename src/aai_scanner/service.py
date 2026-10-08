@@ -83,7 +83,7 @@ class Scanner:
                     pass
             records.append({
                 "signature": safe_signature(row.get("signature")), "slot": row["slot"],
-                "block_time": timestamp, "result": "FAILED" if row.get("err") is not None else "SUCCESSFUL",
+                "block_time": timestamp, "result": ("FAILED" if row["err"] is not None else "SUCCESSFUL") if "err" in row else "UNVERIFIED",
                 "confirmation_status": row.get("confirmationStatus"),
                 "classification": "OBSERVED", "source": response["_evidence"],
                 "quality_flags": ["LIMITED_ADDRESS_MENTIONS_NOT_ALL_TOKEN_TRADES"],

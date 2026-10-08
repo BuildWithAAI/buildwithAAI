@@ -89,7 +89,7 @@ async function render(report) {
   row($("chain-state"), "Decimals", String(chain.decimals ?? "Unavailable"));
   row($("chain-state"), "Mint authority", chain.status !== "AVAILABLE" ? "Unverified" : chain.mint_authority ? "Active · " + short(chain.mint_authority) : "Absent");
   row($("chain-state"), "Freeze authority", chain.status !== "AVAILABLE" ? "Unverified" : chain.freeze_authority ? "Active · " + short(chain.freeze_authority) : "Absent");
-  row($("chain-state"), "Finalized snapshot slot", String(chain.slot ?? "Unavailable"));
+  row($("chain-state"), "Snapshot slot · finalized requested", String(chain.slot ?? "Unavailable"));
   row($("chain-state"), "Exact base-unit supply", chain.supply_raw ?? "Unavailable");
   findings($("findings"), report); findings($("risk-findings"), report);
   clear($("pools"));

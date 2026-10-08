@@ -11,6 +11,17 @@ const fs = require('node:fs');
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:8787');
     await page.locator('#connection').filter({hasText:'API available'}).waitFor();
+    if (process.env.AAI_TEST_ACCESS_TOKEN) {
+      await page.locator('#access-dialog').waitFor({state:'visible'});
+      await page.locator('#access-token').fill('wrong_application_access_token_12345');
+      await page.locator('#access-form button').click();
+      await page.locator('#access-error').filter({hasText:'not accepted'}).waitFor();
+      await page.locator('#access-token').fill(process.env.AAI_TEST_ACCESS_TOKEN);
+      await page.locator('#access-form button').click();
+      await page.locator('#access-dialog').waitFor({state:'hidden'});
+      assert.equal(await page.locator('#access-token').inputValue(), '');
+      assert(await page.evaluate(() => localStorage.length === 0 && sessionStorage.length === 0), 'no persisted access token');
+    }
     const mint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
     await page.locator('#mint').fill(mint);
     await page.locator('#scan-form button').click();
@@ -41,5 +52,5 @@ const fs = require('node:fs');
   }
   assert.deepEqual(errors, [], 'no uncaught browser errors');
   await browser.close();
-  console.log('PASS: desktop/mobile scan, literal metadata, missingness, watch persistence, wallet, risk, status and overflow');
+  console.log('PASS: desktop/mobile authenticated access, scan, literal metadata, missingness, watch persistence, wallet, risk, status and overflow');
 })().catch(error => {console.error(error);process.exit(1);});

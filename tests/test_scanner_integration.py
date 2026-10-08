@@ -57,6 +57,13 @@ class ScannerIntegrationTests(unittest.TestCase):
         self.assertEqual(report["market"]["price_usd"]["status"], "AVAILABLE")
         self.assertEqual(report["holders"]["status"], "UNAVAILABLE")
 
+    def test_missing_transaction_error_field_does_not_imply_success(self):
+        response = self.rpc.call("getSignaturesForAddress", [MINT])
+        response["result"][0].pop("err")
+        with patch.object(self.rpc, "call", return_value=response):
+            activity = self.scanner.activity(MINT)
+        self.assertEqual(activity["records"][0]["result"], "UNVERIFIED")
+
     def test_failed_holder_and_activity_sources_are_recorded(self):
         self.rpc.fail.update({"getTokenLargestAccounts", "getSignaturesForAddress"})
         report = self.scanner.scan(MINT)

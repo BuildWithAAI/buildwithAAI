@@ -19,7 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install -r requirements-scanner.txt ruff==0.16.10
+      - run: python -m pip install -r requirements-scanner.txt ruff==0.16.10 pip-audit==2.10.1
+      - run: python -m pip_audit -r requirements-scanner.txt --no-deps --disable-pip
       - run: python -m compileall -q src tests
       - run: python -m ruff check src/aai_scanner tests --select E9,F
       - run: python -m unittest discover -s tests -v
@@ -42,6 +43,7 @@ jobs:
       - name: Desktop and mobile functional checks
         env:
           NODE_PATH: ${{ runner.temp }}/aai-browser/node_modules
+          AAI_TEST_ACCESS_TOKEN: synthetic_test_access_1234567890123456
         run: |
           python -m tests.browser_server > "$RUNNER_TEMP/aai-ui-server.log" 2>&1 &
           SERVER_PID=$!
@@ -54,4 +56,3 @@ jobs:
           name: scanner-ui-checks
           path: ui-results/
           if-no-files-found: ignore
-
