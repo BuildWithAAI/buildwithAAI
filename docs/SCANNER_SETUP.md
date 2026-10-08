@@ -11,6 +11,7 @@ python -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements-scanner.txt
 python -m unittest discover -s tests -v
+python -m src.aai_scanner doctor
 python -m src.aai_scanner serve
 ```
 
@@ -26,15 +27,19 @@ HTTP `Retry-After` supports delay-seconds and dates. Cooldowns are shared across
 python -m src.aai_scanner smoke --output data/live-smoke.json
 python -m src.aai_scanner smoke --require-holders --require-activity --output data/live-launch-gates.json
 python -m src.aai_scanner backup data/backup-2026-10-08.sqlite3
+python -m src.aai_scanner verify-backup data/backup-2026-10-08.sqlite3
+python -m src.aai_scanner restore data/backup-2026-10-08.sqlite3 data/restored-new.sqlite3
 ```
 
 The smoke command exits nonzero when mint or price evidence is missing. It records separate optional-source results. `--require-holders` and `--require-activity` make those sources mandatory for the command to pass. A successful basic smoke is not a successful strict smoke or every launch gate. `coverage` lists the five selected core sections and does not imply that every metric or advanced feature is available. The web report and Telegram summary explicitly identify partial coverage. Historical verification receipts in `docs/verification/` are dated evidence, never current prices.
 
-SQLite stores watches, up to 100 observations per mint and 5,000 total observations, and Telegram polling offsets. Backups use SQLite's online backup API and integrity checks. Stop the service before restoring a backup to the configured database path; preserve the original database and its WAL/SHM files for recovery. Backups contain address history and must remain private. Watchlists are operator/workspace-wide, not per-user. This is a single-process private beta; multi-tenant accounts and distributed limits are not implemented.
+SQLite stores watches, up to 100 observations per mint and 5,000 total observations, and Telegram polling offsets. Backups use SQLite's online backup API with a 30-second progress budget, schema/integrity verification and exclusive atomic publication. Existing files, symlinks and SQLite sidecars are never replaced. The destination filesystem must support hard links; otherwise the command fails without overwriting anything. `verify-backup` opens a standalone snapshot read-only and does not initialize or migrate it. `restore` always writes a NEW database file and never opens the configured live database, even if environment configuration is invalid. Stop the service, preserve the original DB/WAL/SHM, restore to a new file, update `AAI_DATABASE`, run `doctor`, and restart. Backups contain address history and must remain private. Watchlists are operator/workspace-wide, not per-user. This is a single-process private beta; multi-tenant accounts and distributed limits are not implemented.
 
 ## API and evidence
 
 `POST /api/scan` accepts `{"mint":"...","refresh":false}`; `POST /api/wallet` accepts `{"address":"..."}`. Use `GET /api/history?mint=...`, `GET /api/watchlist`, `POST /api/watchlist`, `DELETE /api/watchlist`, and `GET /api/status`. Writes only modify local watches. Remote API calls require `Authorization: Bearer <application access token>`. `GET /api/health` checks process availability only, not provider health.
+
+`GET /api/ready` uses the same access/Host/origin/rate controls. HTTP 200 means local configuration, supported runtime, interface assets and a SQLite read/write probe pass; HTTP 503 means at least one fails. It never contacts providers. Its independent `data.status` is UNVERIFIED before a scan, UNAVAILABLE for fresh partial core-section coverage, AVAILABLE for complete core-section coverage, and STALE after 120 seconds from retrieval. Future or invalid timestamps remain UNVERIFIED. This describes the LAST report, not all tokens or current upstream tick health. `public_launch` remains UNVERIFIED. Status UI shows these separate states. `doctor` additionally checks full SQLite integrity; `doctor --deployment` also checks the supplied loopback/HTTPS/access/persistent-path host configuration. Neither certifies public readiness.
 
 Supply and unit calculations preserve exact strings; the interface rounds display values and exposes exact values in tooltips/receipts. Price in SOL and USD wallet value use independently collected snapshots with non-atomic quality flags. Market cap and FDV remain distinct. Transactions mentioning a mint are not a complete trade or transfer ledger. Largest token accounts are not unique wallets. Token-2022 extension IDs are identified, but extension semantics remain unverified. Creation time, relationship inference, historical profit/loss, and unsupported metadata remain unavailable. No safety or fraud verdict is inferred.
 
@@ -54,6 +59,8 @@ python -m src.aai_scanner telegram
 ## Public deployment preparation
 
 No public deployment has been performed. Choose the hosting target and provide deployment authorization before publishing. Use a supported host, an unprivileged service account, a dedicated persistent database directory, and a TLS reverse proxy. Keep Waitress bound to loopback; configure the HTTPS external origin in `AAI_PUBLIC_URL`, `AAI_PUBLIC_MODE=1`, and a strong application token. Generate a token privately with `python -c 'import secrets; print(secrets.token_urlsafe(32))'`. Do not commit it or put it in URLs. The browser holds it in memory only.
+
+The [operations runbook](SCANNER_OPERATIONS.md) and `deploy/scanner/` include a systemd unit, Caddy template, secure environment example, monitoring contract and upgrade/recovery procedure. Repeat the production CLI/proxy rehearsal with `python -m tests.operations_rehearsal --caddy /path/to/caddy`. It uses only loopback listeners and disposable private SQLite state; it does not send provider requests, Telegram messages or certificate requests. Linux/systemd tooling is required for that rehearsal. Local application commands remain usable on Windows.
 
 Keep the original external Host header through the reverse proxy. This application intentionally rejects unexpected Host and cross-origin API requests and does not trust forwarded client headers. All clients behind a proxy may share an application rate bucket; configure stronger per-client limits at the edge. Do not expose the database or backup files as static content. Do not put this single shared token beta behind a public paid subscription without adding tenant separation and access lifecycle controls.
 

@@ -151,6 +151,12 @@ async function loadStatus() {
   const card = el("article", undefined, "card");
   row(card, "Process", result.status);
   row(card, "Started", timestamp(result.started_at));
+  if (result.readiness) {
+    row(card, "Application checks", result.readiness.status);
+    row(card, "Last report data", result.readiness.data.status);
+    row(card, "Data freshness limit", result.readiness.data.max_age_seconds + "s after retrieval");
+    card.append(el("p", result.readiness.note, "footnote"));
+  }
   row(card, "Saved watches / observations", result.storage.watches + " / " + result.storage.observations);
   row(card, "Signing & execution", result.execution);
   row(card, "Payments", result.payments);

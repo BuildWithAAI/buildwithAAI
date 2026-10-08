@@ -1,41 +1,41 @@
 # Scanner development status — 2026-10-08
 
-Candidate version: **0.1.1**. Existing branch: `feat/aai-scanner-mvp`; draft PR #10. Public deployment: **NOT STARTED**. Code and docs are git-backed in this repository.
+Candidate version: **0.1.2**. Existing branch: `feat/aai-scanner-mvp`; draft PR #10. Public deployment: **NOT STARTED**. Code/docs remain in the existing repository.
 
 ## Implemented
 
-The local read-only API and responsive report UI support exact SPL/Token-2022 mint state, attributed USD/SOL market snapshots, wallet balance/address activity, saved watches, observations, evidence receipts and process status. Telegram commands are implemented and disabled by default. Signing, trades and token payments are absent.
+The local read-only API and responsive web UI support exact SPL/Token-2022 mint state, attributed USD/SOL market snapshots, wallet balance/address activity, saved watches, observations, provenance and process status. Telegram commands are implemented and disabled by default. Signing, trades and token payments are absent. The 0.1.1 bounded RPC recovery and explicit partial coverage behavior is preserved; measurement transformation remains `aai-scanner/0.1.1` because this milestone does not change financial transformations.
 
-This reliability milestone adds:
+This operational milestone adds:
 
-- Up to two explicitly configured backup HTTPS RPCs; each verifies and periodically rechecks mainnet identity.
-- One attempt per provider, structured failure diagnostics, shared response cooldowns and bounded recovery/identity waits. No immediate repeat of a 429 request.
-- No recovery around wrong-network, malformed responses, RPC application errors or authentication/403 errors.
-- Actual provider attribution on both successful and failed receipts, recovery attempts and mixed-provider/slot quality flags.
-- Explicit finalized request options matching receipt claims; one shared market snapshot for wrapped SOL.
-- Partial core-section coverage in web/Telegram summaries and safe RPC counters/cooldowns in authenticated system status.
-- Strict smoke flags requiring holder and/or activity retrieval. The basic smoke does not certify the complete launch checklist.
+- Authenticated `/api/ready` with separate local application checks and last-report data coverage/freshness. A passing process/app check does not certify providers or public launch.
+- Offline `doctor`, plus `doctor --deployment` for the supplied loopback/HTTPS/access/persistent-path host layout.
+- Schema/read/write probes without persistent state changes; full integrity verification in the operator doctor.
+- Verified private SQLite snapshots, exclusive atomic publication, symlink/overwrite refusal, progress budget and cleanup after failure.
+- Read-only `verify-backup` and `restore` into a new file, independent of live configuration. Existing databases and sidecars are preserved; invalid/future schema backups are refused.
+- Linux systemd and Caddy templates, secure environment example, monitoring contract, release/recovery runbook and an actual production CLI/proxy rehearsal in CI.
+- Separate application/data state in the desktop/mobile status UI.
 
-## Tested
+## Tested and verified locally
 
-All **86 offline tests** pass locally in Python 3.12, including 24 new recovery, coverage, timing, attribution, request-finality and strict CLI regressions. Compilation, Ruff E9/F and JavaScript syntax checks pass. The pinned runtime dependency audit found no known Waitress 3.0.2 advisories; this is not a full security certification.
+All **104 offline tests** pass on Python 3.12: the previous 86 plus 18 operational boundary/recovery regressions. Compilation, Ruff E9/F and JavaScript syntax pass. The pinned Waitress 3.0.2 advisory check reports no known vulnerabilities; this is not a full security certification.
 
-Current browser tests cover desktop/mobile authenticated access, partial coverage, literal provider metadata, missing values, capacity errors, watches, wallet, risk and status. Verify their run and all Python checks against the new final commit before merging. Earlier run #4 (37834821723) passed on historical head `2fe2966bbffdabb80384b7ab44eba89a56f11b85`; it does not certify new changes.
+`verification/scanner-operations-local-2026-10-08.json` records an actual local rehearsal: production Waitress CLI behind the Caddy 2.11.7 template, authentication, readiness, persistent watch write, forced disposable-process crash/restart, online snapshot, read-only verification, safe rejection, new-file restore, polling-state preservation and restarted HTTP persistence. Caddy's release archive digest was checked. systemd unit syntax passed with install paths expanded to the checkout; systemd supervision, boot/sandbox behavior and public TLS remain **NOT TESTED**. No live provider calls or messages occurred during this rehearsal.
+
+CI now repeats the real loopback proxy/recovery rehearsal, Python 3.11/3.12 tests, compilation, lint/advisory checks and authenticated desktop/mobile flows including application/data status. Verify every job against the final new commit before merging. Historical CI #5 (37846950372) passed on `1ef90343500b301b4aa273cf46323a075d67508b`; it does not certify new changes.
 
 ## Real source evidence
 
-`verification/scanner-reliability-live-2026-10-08.json` records an actual strict USDC check collected at **2026-10-08T21:25:51.497+00:00** (16:25 Chicago), mint slot **454664244**. Mint, USD/SOL market snapshots and address activity returned. Mainnet identity verified independently on both configured RPC providers.
+`verification/scanner-reliability-live-2026-10-08.json` preserves the actual strict USDC check at **2026-10-08T21:25:51.497+00:00**, mint slot **454664244**. Mint, USD/SOL market snapshots and address activity returned; both configured providers verified mainnet genesis.
 
-The strict command correctly exited **1 / FAILED** because required holder retrieval encountered primary HTTP 429 and backup HTTP 403. Both attempts, source hosts and timestamps are retained. Successful live recovery of holder data is **not verified**; fake fallback success is used only in clearly marked offline tests. Dated receipts are historical observations, never production display data.
-
-Earlier wrapped-SOL and real Waitress/USDC HTTP checks are recorded in the previous status/report history and dated receipt. Shared public RPC availability varied during testing; no uptime promise is made.
+The strict command correctly exited **1 / FAILED** because required holders encountered primary HTTP 429 and backup HTTP 403. Both attempts and source timestamps are retained. Successful live holder recovery is **not verified**. Mocked success is explicitly SYNTHETIC and only in tests. Historical receipts never feed production prices. Earlier real Waitress/USDC and wrapped-SOL checks remain historical evidence.
 
 ## Remaining launch gates
 
-- Reliable holder-capable mainnet RPC: **BLOCKED** on successful permitted provider access. No paid infrastructure purchased or secrets changed.
-- Live Telegram commands: **BLOCKED** pending secure credentials and an authorized private test chat; no messages sent.
-- New final-head CI/browser checks: required before claiming verification of this milestone.
-- Public hosting/TLS, monitoring, sustained operation and deployment: **NOT STARTED**, require a target and authorization.
-- Complete accounting/P&L, token creation time, relationship inference, interpreted extension semantics, per-user tenancy and alerts: **NOT STARTED**. Their values are not simulated in the product.
+- Holder-capable mainnet provider access: **BLOCKED** on successful permitted access; no infrastructure purchased or secrets changed.
+- Actual Telegram commands: **BLOCKED** pending secure credentials and an authorized private chat; no messages sent.
+- New exact-head CI/browser/operational checks: required before claiming release verification.
+- Approved host/domain, public TLS, real systemd supervision/sandbox, monitoring delivery and sustained operation: **NOT STARTED**. Templates and local rehearsals do not satisfy these external gates.
+- Full accounting/P&L, creation time, relationship inference, interpreted extensions, per-user tenancy and alerts: **NOT STARTED**, not simulated in the UI.
 
-Research PR #9 remains isolated and unmerged. Audited head `1ffffe30122f855b69e639ddd58ff6344949e905` passed 27 offline tests and CI run #9 (37834405514). Setup and provider configuration are documented in `SCANNER_SETUP.md`. This is a local development candidate with explicit external gates.
+Research PR #9 remains independent and unmerged. Audited head `1ffffe30122f855b69e639ddd58ff6344949e905` passed 27 tests and CI #9 (37834405514). See [setup](SCANNER_SETUP.md) and [operations](SCANNER_OPERATIONS.md). Next milestone: resolve permitted provider and authorized Telegram access, then rehearse deployment on an approved host after separate public deployment authorization.

@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from .config import Config
 from .evidence import now
+from .operations import readiness
 from .service import BusyError, Limiter, Scanner
 from .storage import Store
 from .transport import ProviderError, reject_constant
@@ -91,6 +92,9 @@ class Application:
                 code, result = 403, {"error": "Cross-origin requests are not permitted"}
             elif not self.limiter.allow("global", 120) or not self.limiter.allow(peer, 60):
                 code, result = 429, {"error": "Request rate limit reached"}
+            elif path == "/api/ready" and method == "GET":
+                result = readiness(self.config, self.store, self.scanner.last_coverage)
+                code = 200 if result["application_ready"] else 503
             elif path == "/api/status" and method == "GET":
                 result = {
                     "status": "AVAILABLE", "scope": "PROCESS_ONLY", "started_at": self.started_at,
@@ -99,6 +103,7 @@ class Application:
                     "provider_status_note": "Last observed results, not continuous health checks",
                     "rpc_providers": self.scanner.rpc.diagnostics() if hasattr(self.scanner.rpc, "diagnostics") else [],
                     "last_report_coverage": self.scanner.last_coverage,
+                    "readiness": readiness(self.config, self.store, self.scanner.last_coverage),
                     "refresh": {"normal_cache_seconds": 30, "minimum_refresh_seconds": 5},
                     "execution": "DISABLED", "payments": "NOT_IMPLEMENTED",
                 }
@@ -127,7 +132,7 @@ class Application:
                         result = self.scanner.scan(body.get("mint"), refresh=refresh)
                     else:
                         result = self.scanner.wallet(body.get("address"))
-            elif path in ("/api/scan", "/api/wallet", "/api/status", "/api/watchlist", "/api/history"):
+            elif path in ("/api/scan", "/api/wallet", "/api/status", "/api/ready", "/api/watchlist", "/api/history"):
                 code, result = 405, {"error": "Method not allowed"}
             else:
                 code, result = 404, {"error": "Route not found"}

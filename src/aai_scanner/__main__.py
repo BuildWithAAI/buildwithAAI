@@ -1,12 +1,14 @@
 """Run the scanner, explicitly authorized bot, backups, or live smoke checks."""
 import argparse
 import json
+import sqlite3
 import sys
 from pathlib import Path
 from .config import Config
 from .market import WRAPPED_SOL
 from .service import Scanner
-from .storage import Store
+from .operations import readiness
+from .storage import Store, restore_backup, verify_backup
 from .web import Application
 
 
@@ -16,6 +18,13 @@ def main():
     actions.add_parser("serve")
     actions.add_parser("telegram")
     actions.add_parser("telegram-check")
+    doctor = actions.add_parser("doctor")
+    doctor.add_argument("--deployment", action="store_true", help="Also require the supplied host-template configuration")
+    verify = actions.add_parser("verify-backup")
+    verify.add_argument("source")
+    restore = actions.add_parser("restore")
+    restore.add_argument("source")
+    restore.add_argument("destination", help="New database file; existing paths are never replaced")
     backup = actions.add_parser("backup")
     backup.add_argument("destination")
     smoke = actions.add_parser("smoke")
@@ -24,11 +33,20 @@ def main():
     smoke.add_argument("--require-holders", action="store_true")
     smoke.add_argument("--require-activity", action="store_true")
     args = parser.parse_args()
+    # Offline recovery must not open or initialize the configured live database.
+    if args.action in ("restore", "verify-backup"):
+        result = restore_backup(args.source, args.destination) if args.action == "restore" else verify_backup(args.source)
+        print(json.dumps(result))
+        return 0
     config = Config.from_env()
     store = Store(config.database)
     scanner = Scanner(config, store)
     try:
-        if args.action == "serve":
+        if args.action == "doctor":
+            result = readiness(config, store, integrity=True, deployment=args.deployment)
+            print(json.dumps(result, allow_nan=False))
+            return 0 if result["application_ready"] else 1
+        elif args.action == "serve":
             try:
                 from waitress import serve
             except ImportError:
@@ -91,6 +109,6 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (ValueError, RuntimeError):
+    except (ValueError, RuntimeError, OSError, sqlite3.Error):
         print("Scanner command failed. Check configuration, provider availability and setup instructions.", file=sys.stderr)
         sys.exit(1)
