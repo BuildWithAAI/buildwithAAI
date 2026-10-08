@@ -26,12 +26,15 @@ HTTP `Retry-After` supports delay-seconds and dates. Cooldowns are shared across
 ```sh
 python -m src.aai_scanner smoke --output data/live-smoke.json
 python -m src.aai_scanner smoke --require-holders --require-activity --output data/live-launch-gates.json
+python -m src.aai_scanner provider-check --require-all --output data/provider-capabilities.json
 python -m src.aai_scanner backup data/backup-2026-10-08.sqlite3
 python -m src.aai_scanner verify-backup data/backup-2026-10-08.sqlite3
 python -m src.aai_scanner restore data/backup-2026-10-08.sqlite3 data/restored-new.sqlite3
 ```
 
 The smoke command exits nonzero when mint or price evidence is missing. It records separate optional-source results. `--require-holders` and `--require-activity` make those sources mandatory for the command to pass. A successful basic smoke is not a successful strict smoke or every launch gate. `coverage` lists the five selected core sections and does not imply that every metric or advanced feature is available. The web report and Telegram summary explicitly identify partial coverage. Historical verification receipts in `docs/verification/` are dated evidence, never current prices.
+
+`provider-check` tests only configured providers independently: mainnet genesis, validated mint, finalized activity, exact balance and largest token accounts. It does no database writes, market requests, fallback recovery or provider discovery. Expensive holder reads run last, with no immediate retries after cooldowns. Supply `--mint`/`--wallet` for public addresses. Default exit 0 means at least one provider qualifies; `--require-all` requires every configured provider. Per-provider failures and the policy remain explicit. Qualification is a point-in-time capability observation, not production capacity or verified failover. The scanner still refuses recovery around primary auth/403 or validation failures.
 
 SQLite stores watches, up to 100 observations per mint and 5,000 total observations, and Telegram polling offsets. Backups use SQLite's online backup API with a 30-second progress budget, schema/integrity verification and exclusive atomic publication. Existing files, symlinks and SQLite sidecars are never replaced. The destination filesystem must support hard links; otherwise the command fails without overwriting anything. `verify-backup` opens a standalone snapshot read-only and does not initialize or migrate it. `restore` always writes a NEW database file and never opens the configured live database, even if environment configuration is invalid. Stop the service, preserve the original DB/WAL/SHM, restore to a new file, update `AAI_DATABASE`, run `doctor`, and restart. Backups contain address history and must remain private. Watchlists are operator/workspace-wide, not per-user. This is a single-process private beta; multi-tenant accounts and distributed limits are not implemented.
 
@@ -47,14 +50,14 @@ Evidence distinguishes retrieval time from unknown upstream tick time, requested
 
 ## Telegram: authorized test required
 
-Provide `AAI_TELEGRAM_ENABLED=1`, `AAI_TELEGRAM_BOT_TOKEN`, and `AAI_TELEGRAM_ALLOWED_CHAT_IDS` through secure process configuration. Only allowlisted private chats receive replies. Never enter seed phrases or signing keys.
+Provide `AAI_TELEGRAM_ENABLED=1`, `AAI_TELEGRAM_BOT_TOKEN`, and `AAI_TELEGRAM_ALLOWED_CHAT_IDS` through secure process configuration. Only allowlisted positive private chat IDs receive replies. Use optional `AAI_TELEGRAM_EXPECTED_USERNAME=AAIScanBot` to require the intended bot identity. Never enter seed phrases or signing keys.
 
 ```sh
 python -m src.aai_scanner telegram-check
 python -m src.aai_scanner telegram
 ```
 
-`telegram-check` verifies bot identity and rejects an existing webhook rather than deleting it. Polling supports `/start`, `/help`, `/scan <mint>`, `/wallet <address>`, and `/status`; there are no execution commands. Test all commands in the authorized private chat and verify report links use the operator's `AAI_PUBLIC_URL`. Polling retries delivery without advancing the offset; this gives at-least-once delivery, so duplicates can occur after an interrupted send. Rate limits suppress floods. Run one poller per bot. Bot credentials and chat access have not been supplied or live verified in this development session.
+`telegram-check` validates bot identity and webhook response structure and rejects an existing webhook rather than deleting it. It sends no messages and explicitly does NOT certify command delivery. Polling supports `/start`, `/help`, `/scan <mint>`, `/wallet <address>`, and `/status`; there are no execution commands. Test all commands in the authorized private chat and verify links use `AAI_PUBLIC_URL`. A valid delivery receipt for the intended private chat is required before persisting an offset; failures preserve it. Delivery is at-least-once, so interrupted replies can repeat. HTTP/JSON Retry-After delays are respected across methods; fatal auth, polling conflicts and invalid responses stop rather than retry forever. Run one poller per bot. The [integration runbook](SCANNER_INTEGRATIONS.md) provides secure setup and the actual command-verification procedure. No bot credentials/chat access have been supplied or live verified in this session.
 
 ## Public deployment preparation
 

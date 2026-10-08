@@ -91,13 +91,14 @@ def run(caddy=None):
             checks.append("offline_doctor_with_integrity")
             # Validate the unit with only install paths expanded for this checkout.
             # This does not install/start systemd, provision a host, or prove supervision.
-            unit = (ROOT / "deploy/scanner/aai-scanner.service").read_text()
-            unit = unit.replace("/opt/buildwithaai/current/.venv/bin/python", sys.executable)
-            unit = unit.replace("/opt/buildwithaai/current", str(ROOT))
-            service = root / "aai-scanner.service"
-            service.write_text(unit)
-            subprocess.run(["systemd-analyze", "verify", "--man=no", str(service)],
-                           check=True, capture_output=True, timeout=20)
+            for name in ("aai-scanner.service", "aai-scanner-telegram.service"):
+                unit = (ROOT / "deploy/scanner" / name).read_text()
+                unit = unit.replace("/opt/buildwithaai/current/.venv/bin/python", sys.executable)
+                unit = unit.replace("/opt/buildwithaai/current", str(ROOT))
+                service = root / name
+                service.write_text(unit)
+                subprocess.run(["systemd-analyze", "verify", "--man=no", str(service)],
+                               check=True, capture_output=True, timeout=20)
             checks.append("systemd_unit_validation_with_expanded_install_paths")
             process = start()
             if caddy:

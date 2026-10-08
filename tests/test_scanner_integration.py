@@ -269,7 +269,8 @@ class TelegramAdapterTests(unittest.TestCase):
             {"update_id": 2, "message": {"chat": {"id": 42, "type": "group"}, "text": "/help"}},
             {"update_id": 3, "message": {"chat": {"id": 42, "type": "private"}, "text": "/help"}},
         ]
-        with patch.object(bot, "_api", side_effect=[updates, {}]) as api:
+        delivery = {"message_id": 7, "chat": {"id": 42, "type": "private"}}
+        with patch.object(bot, "_api", side_effect=[updates, delivery]) as api:
             bot.poll_once()
         self.assertEqual(api.call_count, 2)
         self.assertEqual(api.call_args[0][1]["chat_id"], 42)

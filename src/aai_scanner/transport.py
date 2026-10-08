@@ -58,7 +58,22 @@ def retry_after_seconds(value):
         return None
 
 
-def fetch_json(url, payload=None, *, timeout=6, limit=2_000_000):
+def bounded_body(response, deadline, limit):
+    chunks, count = [], 0
+    while True:
+        if time.monotonic() > deadline:
+            raise ProviderError("Provider response exceeded read deadline", code="DEADLINE_EXCEEDED")
+        chunk = response.read1(min(65536, limit + 1 - count))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        count += len(chunk)
+        if count > limit:
+            raise ProviderError("Provider response exceeds size limit")
+    return b"".join(chunks)
+
+
+def fetch_json(url, payload=None, *, timeout=6, limit=2_000_000, json_retry_after=False):
     https_url(url)
     encoded = None if payload is None else json.dumps(payload, allow_nan=False).encode()
     request = urllib.request.Request(url, data=encoded, headers={
@@ -68,21 +83,23 @@ def fetch_json(url, payload=None, *, timeout=6, limit=2_000_000):
     deadline = time.monotonic() + timeout
     try:
         with urllib.request.build_opener(NoRedirect()).open(request, timeout=timeout) as response:
-            chunks, count = [], 0
-            while True:
-                if time.monotonic() > deadline:
-                    raise ProviderError("Provider response exceeded read deadline", code="DEADLINE_EXCEEDED")
-                chunk = response.read1(min(65536, limit + 1 - count))
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                count += len(chunk)
-                if count > limit:
-                    raise ProviderError("Provider response exceeds size limit")
-        raw = b"".join(chunks)
+            raw = bounded_body(response, deadline, limit)
         return json.loads(raw, parse_float=Decimal, parse_constant=reject_constant), hashlib.sha256(raw).hexdigest()
     except urllib.error.HTTPError as error:
         delay = retry_after_seconds(error.headers.get("Retry-After")) if error.headers else None
+        try:
+            if json_retry_after and error.code == 429:
+                # Telegram supplies flood-control delay in the HTTP error's JSON body.
+                # Read only bounded data; never expose description, body or URL credentials.
+                body = json.loads(bounded_body(error, deadline, min(limit, 65536)), parse_constant=reject_constant)
+                parameters = body.get("parameters") if isinstance(body, dict) else None
+                value = parameters.get("retry_after") if isinstance(parameters, dict) else None
+                if type(value) is int and value > 0:
+                    delay = max(delay or 0, min(value, 2**31 - 1))
+        except (ProviderError, ValueError, UnicodeError, OSError, RecursionError, AttributeError):
+            pass  # Retain known HTTP status/header delay even when the error body is invalid.
+        finally:
+            error.close()
         raise ProviderError(f"Provider HTTP {error.code}", code="HTTP_ERROR", http_status=error.code,
                             retry_after=delay) from None
     except (urllib.error.URLError, TimeoutError, OSError):

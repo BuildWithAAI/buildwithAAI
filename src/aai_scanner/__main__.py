@@ -8,6 +8,7 @@ from .config import Config
 from .market import WRAPPED_SOL
 from .service import Scanner
 from .operations import readiness
+from .qualification import DEFAULT_WALLET, qualify_providers
 from .storage import Store, restore_backup, verify_backup
 from .web import Application
 
@@ -25,6 +26,11 @@ def main():
     restore = actions.add_parser("restore")
     restore.add_argument("source")
     restore.add_argument("destination", help="New database file; existing paths are never replaced")
+    provider = actions.add_parser("provider-check")
+    provider.add_argument("--mint", default=WRAPPED_SOL)
+    provider.add_argument("--wallet", default=DEFAULT_WALLET)
+    provider.add_argument("--output")
+    provider.add_argument("--require-all", action="store_true")
     backup = actions.add_parser("backup")
     backup.add_argument("destination")
     smoke = actions.add_parser("smoke")
@@ -39,6 +45,15 @@ def main():
         print(json.dumps(result))
         return 0
     config = Config.from_env()
+    if args.action == "provider-check":
+        result = qualify_providers(config, args.mint, args.wallet, args.require_all)
+        output = json.dumps(result, indent=2, allow_nan=False)
+        if args.output:
+            target = Path(args.output)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(output + "\n", encoding="utf-8")
+        print(output)
+        return 0 if result["status"] == "PASSED" else 1
     store = Store(config.database)
     scanner = Scanner(config, store)
     try:
