@@ -1,42 +1,29 @@
-# AAI Scanner MVP — verified development state
+# Scanner development status — 2026-10-08
 
-Verification date: 2026-10-08. Scope: the public scanner branch in this repository, not the separate scanner repository or a deployed service. AI-assisted maintenance under the founder's master development directive.
+Branch: `feat/aai-scanner-mvp`; existing draft PR #10. Public deployment: **NOT STARTED**.
 
-## Existing branch audit
+## Implemented and locally tested
 
-- Scanner draft PR: https://github.com/BuildWithAAI/buildwithAAI/pull/10
-- Branch: `feat/aai-scanner-mvp`.
-- Audited baseline: `9e244a039827790b82d2c05476245352e937ab0e`.
-- Baseline had no recorded commit checks or PR workflow runs when queried.
-- Running its six existing tests on Python 3.12 produced two passes and four errors.
-- The confirmed defect encoded leading Base58 zero bytes as literal backslash text, rejecting valid addresses.
+- Read-only mint inspection for legacy SPL and Token-2022 with exact supply and authority state.
+- Mainnet identity verification; bounded HTTPS RPC and documented DEX Screener base-token pool integration.
+- Source-backed API, USD/SOL prices, distinct market cap/FDV, explicit missingness and source failures.
+- Responsive dark interface: token report, wallet balance/activity, risk/evidence, observations, saved watches and process/provider status.
+- SQLite persistence and tested backup recovery, configurable access adapter, same-origin/Host checks, bounded requests, provider budgets and safe error handling.
+- Disabled-by-default allowlisted Telegram adapter; all commands and delivery failures tested offline.
+- 61 Python tests passed on local Python 3.12.14; compilation, JavaScript syntax and Ruff E9/F static checks passed. Browser CI added; its result must be checked on the final commit before claiming visual/functional verification.
 
-## This change
+## Real integrations verified
 
-- Correct the leading-zero byte construction without changing the scanner's read-only scope.
-- Add a five-minute, read-only GitHub Actions workflow using the existing replay workflow's Python setup. It checks Python syntax and runs unittest discovery on Python 3.11.
-- Keep the existing regression tests unchanged.
-- Locally verify all six tests pass on Python 3.12, and `python -m compileall -q src tests` succeeds.
-- Require passing CI on the published commit; local results alone are not release evidence. Current CI is shown in the PR checks.
+The dated receipt `verification/scanner-live-smoke-2026-10-08.json` records a successful read-only wrapped-SOL smoke against actual Solana mainnet RPC and DEX Screener. Mint slot: 454639308; collected 2026-10-08T19:33:54.949+00:00. USD/SOL price evidence and address activity returned; largest-token-account source failed.
 
-## Capability states
+A real Waitress HTTP/API check on 2026-10-08T19:41:41.613+00:00 also returned USDC mint/market/activity evidence, slot 454641046. Holder retrieval failed and remains a provider coverage limitation. Prices in historical receipts are not current prices. Public RPC failures were also observed during this session; configured provider reliability must be established before public beta.
 
-| Capability | State | Evidence or limitation |
-| --- | --- | --- |
-| SPL Token mint inspector and transaction-method rejection | IMPLEMENTED / TESTED offline | Six unit tests, including mocked synthetic RPC responses; no live integration demonstrated |
-| Leading-zero address decoding | VERIFIED locally | Previously failing existing tests now pass |
-| Scanner core HTTP API | NOT STARTED on this branch | Only a Python mint-inspection function exists |
-| Real Solana RPC coverage | UNVERIFIED | No successful live source-backed scan recorded for this change |
-| Token-2022 support | NOT STARTED | Disabled in the current inspector |
-| Market data, web UI and Telegram adapter | NOT STARTED on this branch | No integration or deployment evidence |
-| Complete provenance and defensive RPC/account validation | INCOMPLETE | Additional validation and observation metadata remain necessary |
-| Wallet accounting and advanced intelligence | NOT STARTED on this branch | No defensible P/L implementation |
-| Deployment | NOT STARTED | No public launch or live trading performed |
+## Remaining launch gates
 
-## Replay harness continuity
+- Live Telegram commands: **BLOCKED** pending bot credentials and an authorized private test chat; no messages sent.
+- Holder integration: **BLOCKED** on successful provider response; missing accounts are shown explicitly, never fabricated.
+- Browser checks and final-head CI: **UNVERIFIED** until the candidate workflow completes and screenshots are reviewed.
+- Public hosting, TLS, monitoring, operational checks and deployment: **NOT STARTED**; require a target and authorization.
+- Complete P/L ledger, relationship inference, token creation time, interpreted Token-2022 extensions, per-user tenancy and alerts: **NOT STARTED**. These are not simulated in the product.
 
-PR #9 remains draft and unmerged at `ae18eb8ae23c45bd8c423d77b924427bf9f32b25`. Its Python research Actions run #8 was rechecked and reports success. That confirms the recorded CI result, not a completed independent security review or merge authorization.
-
-## Next milestone
-
-Finish the P0 scanner audit and CI verification, then implement and verify the read-only scanner API with complete provenance and at least one real Solana integration. Verify permitted market data before building the report, web interface and Telegram adapter. Keep live execution, token payments and other ecosystem modules outside this slice.
+Reproduce setup and smoke verification using `SCANNER_SETUP.md`. Research PR #9 remains isolated from scanner launch and must pass its own final-head review/CI before merging. This is a working local candidate, not a deployed or fully launch-gated MVP.
