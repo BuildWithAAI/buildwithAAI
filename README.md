@@ -30,6 +30,10 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 
 ## What exists today
 
+Scanner 0.1.4 adds a bounded check of the running API with matching package identity, authenticated readiness and strict token/wallet source coverage. Its actual HTTP rehearsal rejects synthetic live evidence. See [HTTP release verification](docs/SCANNER_HTTP_VERIFICATION.md); live holder and Telegram access remain unresolved launch gates.
+
+Current development: a read-only scanner candidate is available on branch `feat/aai-scanner-mvp` in [PR #10](https://github.com/BuildWithAAI/buildwithAAI/pull/10), with a local web interface, attributed RPC/market reports, persistent watches and a disabled-by-default Telegram adapter. See [scanner setup](docs/SCANNER_SETUP.md), [operations runbook](docs/SCANNER_OPERATIONS.md) and [verified candidate status](docs/SCANNER_MVP_STATUS.md). Operational checks, safe recovery commands, independent provider qualification and hardened Telegram delivery are implemented; real host/TLS, holder-capable provider access and actual Telegram commands remain launch gates. See [integration verification](docs/SCANNER_INTEGRATIONS.md). It remains draft and undeployed. The record below describes the earlier private prototype.
+
 This repository contains public planning and contribution material. A separate **private AAI Scan prototype** implements Scan → Watch → Compare, saved observations, a short timeline, and change alerts. The earlier development record reports 29 passing offline tests and one successful live public market-data request. Those checks were not rerun for this documentation update.
 
 **AAI Scan is not a validated live public service.** Hosting remains paused. Live Telegram delivery, production provider coverage, persistence/restore, and sustained operation remain to be demonstrated. It does not execute trades, verify Pump.fun origin, identify creator trades, or predict runners.

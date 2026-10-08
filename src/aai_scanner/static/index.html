@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="AAI read-only Solana token intelligence with attributed data and explicit uncertainty.">
+  <title>AAI — Solana Intelligence</title>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="rail">
+    <a class="brand" href="/" aria-label="AAI home"><span>AA<span class="violet">I</span></span><small>INTELLIGENCE</small></a>
+    <div class="rail-label">WORKSPACE</div>
+    <nav aria-label="Main navigation">
+      <button class="nav active" data-page="overview"><span class="nav-icon">⌕</span><span>Token report</span></button>
+      <button class="nav" data-page="wallet"><span class="nav-icon">◈</span><span>Wallet intelligence</span></button>
+      <button class="nav" data-page="activity"><span class="nav-icon">≋</span><span>Transaction activity</span></button>
+      <button class="nav" data-page="risk"><span class="nav-icon">◇</span><span>Risk &amp; evidence</span></button>
+      <button class="nav" data-page="watchlist"><span class="nav-icon">☆</span><span>Saved watchlist</span></button>
+      <button class="nav" data-page="status"><span class="nav-icon">◎</span><span>System status</span></button>
+    </nav>
+    <div class="rail-bottom"><span class="dot"></span> READ-ONLY SCANNER<small>BuildWithAAI · v0.1.4</small></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div><span class="muted">AAI /</span> <span id="breadcrumb">Token report</span></div><div class="top-meta"><span id="connection" class="badge">Connecting</span><span class="network">SOLANA</span></div></header>
+    <main>
+      <div id="error" class="notice error" role="alert" hidden></div>
+      <div id="loading" class="notice" role="status" aria-live="polite" hidden>Collecting source-backed data…</div>
+      <section id="page-overview" class="page">
+        <div class="intro"><div class="eyebrow">SOLANA INTELLIGENCE</div><h1>Start with the evidence.</h1><p>Inspect a token’s chain state, reported markets, and the gaps between them.</p></div>
+        <form id="scan-form" class="search"><label class="sr-only" for="mint">Solana token mint address</label><span class="search-symbol">⌕</span><input id="mint" name="mint" minlength="32" maxlength="44" autocomplete="off" spellcheck="false" placeholder="Paste a Solana token mint address" required><button class="primary" type="submit">Scan token <span>↗</span></button></form>
+        <div class="search-note">Public mint addresses only <span>·</span> Source attribution on every report <span>·</span> Manual refresh</div>
+        <div id="empty" class="empty-grid">
+          <article class="card empty-card"><span class="feature-number">01 / CHAIN</span><h2>What the mint permits</h2><p>Supply, token program, and mint/freeze authority state from Solana RPC.</p></article>
+          <article class="card empty-card"><span class="feature-number">02 / MARKET</span><h2>What venues report</h2><p>USD and SOL prices, reported liquidity, volume, and pool identification.</p></article>
+          <article class="card empty-card"><span class="feature-number">03 / EVIDENCE</span><h2>What remains unknown</h2><p>Collection timestamps, source failures, and clearly stated coverage limits.</p></article>
+        </div>
+        <div id="report" hidden>
+          <div class="report-head"><div><div class="eyebrow">TOKEN REPORT <span id="report-badge" class="badge"></span></div><h2 id="token-name"></h2><div id="token-address" class="mono muted address"></div></div><div class="actions"><button id="watch" class="secondary">☆ Save watch</button><button id="refresh" class="secondary">↻ Refresh</button></div></div>
+          <div id="coverage-notice" class="notice" role="status" hidden></div>
+          <div id="freshness" class="freshness"></div>
+          <div id="metrics" class="metrics"></div>
+          <div class="report-grid"><article class="card"><div class="section-title"><h3>Chain state</h3><span class="micro">SOLANA RPC</span></div><div id="chain-state"></div></article><article class="card"><div class="section-title"><h3>Findings to review</h3><span class="micro">EVIDENCE FIRST</span></div><div id="findings"></div></article></div>
+          <article class="card table-card"><div class="section-title"><h3>Reported pools</h3><span class="micro">DEX SCREENER</span></div><div class="table-scroll"><table><thead><tr><th>Venue / pool</th><th>USD price</th><th>Liquidity</th><th>24h volume</th></tr></thead><tbody id="pools"></tbody></table></div><p class="footnote">USD prices describe the requested base token. Pool coverage is incomplete; liquidity lock or burn status is unverified.</p></article>
+          <article class="card table-card"><div class="section-title"><h3>Saved observations</h3><span class="micro">COLLECTED BY THIS SCANNER</span></div><div class="table-scroll"><table><thead><tr><th>Collection time</th><th>USD price</th><th>SOL price</th><th>Evidence state</th></tr></thead><tbody id="history"></tbody></table></div></article>
+        </div>
+      </section>
+      <section id="page-wallet" class="page" hidden>
+        <div class="intro"><div class="eyebrow">ADDRESS INTELLIGENCE</div><h1>A balance is not profit.</h1><p>Read the SOL balance and recent transactions mentioning a public address.</p></div>
+        <form id="wallet-form" class="search"><label class="sr-only" for="wallet-address">Public wallet or account address</label><input id="wallet-address" minlength="32" maxlength="44" placeholder="Public wallet / account address" autocomplete="off" spellcheck="false" required><button class="primary" type="submit">Inspect address ↗</button></form>
+        <div id="wallet-result" class="card wallet-card" hidden></div>
+        <article class="card"><h3>Accounting coverage</h3><p class="muted">Realized and unrealized P/L, deposits, withdrawals, and fees remain unavailable until a complete historical ledger and cost basis are supported. Address activity does not prove ownership or identify every trade.</p></article>
+      </section>
+      <section id="page-activity" class="page" hidden><div class="intro"><div class="eyebrow">ACTIVITY</div><h1>Transactions, with context.</h1><p>Latest transactions mentioning the scanned mint. This is not a complete token trade or transfer ledger.</p></div><article class="card table-card"><div class="table-scroll"><table><thead><tr><th>Signature</th><th>Slot</th><th>Block time</th><th>Result</th></tr></thead><tbody id="activity"></tbody></table></div><div id="activity-note" class="footnote">Scan a token first.</div></article></section>
+      <section id="page-risk" class="page" hidden><div class="intro"><div class="eyebrow">RISK &amp; DATA QUALITY</div><h1>Keep uncertainty visible.</h1><p>Authority controls and concentration are evidence to examine, not a fraud verdict.</p></div><div id="risk-findings" class="card"><p class="muted">Scan a token to inspect its evidence.</p></div><article class="card table-card"><div class="section-title"><h3>Largest token accounts</h3><span class="micro">NOT UNIQUE WALLETS</span></div><div class="table-scroll"><table><thead><tr><th>Token account</th><th>Token units</th><th>Supply share</th></tr></thead><tbody id="holders"></tbody></table></div><p id="holder-note" class="footnote">Pool, burn, treasury and wallet roles are not resolved.</p></article><article class="card"><div class="section-title"><h3>Source receipts</h3><span class="micro">OBSERVED / DERIVED</span></div><div id="receipts"></div></article></section>
+      <section id="page-watchlist" class="page" hidden><div class="intro"><div class="eyebrow">WATCHLIST</div><h1>Keep the addresses that matter.</h1><p>Watches persist locally. Open a watch to collect a report; background alerts are not enabled.</p></div><div id="watchlist" class="watch-grid"></div></section>
+      <section id="page-status" class="page" hidden><div class="intro"><div class="eyebrow">SYSTEM STATUS</div><h1>Know what is connected.</h1><p>Process availability and the last observed provider results are separate.</p></div><button id="status-refresh" class="secondary">↻ Refresh status</button><div id="system-status"></div></section>
+      <footer>AAI / BuildWithAAI <span>Read-only intelligence · No signing or trade execution</span></footer>
+    </main>
+  </div>
+  <dialog id="access-dialog"><form id="access-form"><div class="eyebrow">PRIVATE BETA ACCESS</div><h2>Open your workspace.</h2><p>Enter the application access token supplied by your operator. Never enter wallet secrets.</p><label for="access-token">Application access token</label><input id="access-token" type="password" autocomplete="off" minlength="32" maxlength="128" required><button class="primary" type="submit">Continue ↗</button><p id="access-error" class="muted" role="alert"></p></form></dialog>
+</body>
+</html>

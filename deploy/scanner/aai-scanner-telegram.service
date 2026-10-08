@@ -1,0 +1,39 @@
+[Unit]
+Description=BuildWithAAI authorized private-chat Telegram scanner
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=aai-scanner
+Group=aai-scanner
+WorkingDirectory=/opt/buildwithaai/current
+EnvironmentFile=/etc/buildwithaai/scanner.env
+EnvironmentFile=/etc/buildwithaai/telegram.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/opt/buildwithaai/current/.venv/bin/python -m src.aai_scanner telegram-check
+ExecStart=/opt/buildwithaai/current/.venv/bin/python -m src.aai_scanner telegram
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=45
+StateDirectory=aai-scanner
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,109 @@
+{
+  "verification_type": "LIVE_READ_ONLY_SMOKE",
+  "available_at": "2026-10-08T19:33:54.949+00:00",
+  "mint": "So11111111111111111111111111111111111111112",
+  "network_evidence": {
+    "provider": "Solana RPC",
+    "endpoint_host": "api.mainnet-beta.solana.com",
+    "method": "getGenesisHash",
+    "timestamp": "2026-10-08T19:33:45.405+00:00",
+    "available_at": "2026-10-08T19:33:45.405+00:00",
+    "timestamp_basis": "RETRIEVAL_TIME",
+    "upstream_observed_at": null,
+    "slot": null,
+    "commitment": null,
+    "transformation_version": "aai-scanner/0.1.0",
+    "raw_sha256": "072c547ad3321ad6379bf249c218bcf112eaa3bd0138f07ace4077db1785a37d",
+    "status": "AVAILABLE",
+    "quality_flags": [],
+    "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
+  },
+  "mint_status": "AVAILABLE",
+  "token_program": "SPL Token",
+  "slot": 454639308,
+  "market_price_usd": {
+    "value": "109.095",
+    "status": "AVAILABLE",
+    "classification": "OBSERVED",
+    "missingness": null,
+    "source": {
+      "provider": "DEX Screener",
+      "endpoint_host": "api.dexscreener.com",
+      "method": "token-pairs/v1/solana",
+      "timestamp": "2026-10-08T19:33:47.261+00:00",
+      "available_at": "2026-10-08T19:33:47.261+00:00",
+      "timestamp_basis": "RETRIEVAL_TIME",
+      "upstream_observed_at": null,
+      "slot": null,
+      "commitment": null,
+      "transformation_version": "aai-scanner/0.1.0",
+      "raw_sha256": "5ca3d7480bbf78e27022a7b51dcc6bfc7a84d8b39c2512bf467e7234cf491077",
+      "status": "AVAILABLE",
+      "quality_flags": [
+        "PROVIDER_TICK_TIME_UNAVAILABLE",
+        "POOL_COVERAGE_NOT_EXHAUSTIVE"
+      ]
+    },
+    "transformation_version": "aai-scanner/0.1.0",
+    "quality_flags": []
+  },
+  "market_price_sol": {
+    "value": "1",
+    "status": "AVAILABLE",
+    "classification": "DERIVED",
+    "missingness": null,
+    "source": [
+      {
+        "provider": "DEX Screener",
+        "endpoint_host": "api.dexscreener.com",
+        "method": "token-pairs/v1/solana",
+        "timestamp": "2026-10-08T19:33:47.261+00:00",
+        "available_at": "2026-10-08T19:33:47.261+00:00",
+        "timestamp_basis": "RETRIEVAL_TIME",
+        "upstream_observed_at": null,
+        "slot": null,
+        "commitment": null,
+        "transformation_version": "aai-scanner/0.1.0",
+        "raw_sha256": "5ca3d7480bbf78e27022a7b51dcc6bfc7a84d8b39c2512bf467e7234cf491077",
+        "status": "AVAILABLE",
+        "quality_flags": [
+          "PROVIDER_TICK_TIME_UNAVAILABLE",
+          "POOL_COVERAGE_NOT_EXHAUSTIVE"
+        ]
+      },
+      {
+        "provider": "DEX Screener",
+        "endpoint_host": "api.dexscreener.com",
+        "method": "token-pairs/v1/solana",
+        "timestamp": "2026-10-08T19:33:47.258+00:00",
+        "available_at": "2026-10-08T19:33:47.258+00:00",
+        "timestamp_basis": "RETRIEVAL_TIME",
+        "upstream_observed_at": null,
+        "slot": null,
+        "commitment": null,
+        "transformation_version": "aai-scanner/0.1.0",
+        "raw_sha256": "5ca3d7480bbf78e27022a7b51dcc6bfc7a84d8b39c2512bf467e7234cf491077",
+        "status": "AVAILABLE",
+        "quality_flags": [
+          "PROVIDER_TICK_TIME_UNAVAILABLE",
+          "POOL_COVERAGE_NOT_EXHAUSTIVE"
+        ]
+      }
+    ],
+    "transformation_version": "aai-scanner/0.1.0",
+    "quality_flags": [
+      "NON_ATOMIC_PRICE_SNAPSHOTS"
+    ]
+  },
+  "holder_status": "FAILED",
+  "activity_status": "AVAILABLE",
+  "limitations": [
+    "No fraud or safety verdict",
+    "Liquidity is provider-reported; lock/burn status unverified",
+    "Pool creation is not mint creation",
+    "Retrieval freshness is not upstream tick freshness",
+    "Largest token accounts are not unique holders",
+    "No signing or trade execution"
+  ],
+  "status": "PASSED"
+}

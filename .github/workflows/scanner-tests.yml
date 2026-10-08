@@ -1,0 +1,84 @@
+name: AAI scanner tests
+on:
+  pull_request:
+    paths: ["src/**", "tests/**", "deploy/scanner/**", "requirements-scanner.txt", ".github/workflows/scanner-tests.yml"]
+  push:
+    branches: [main]
+    paths: ["src/**", "tests/**", "deploy/scanner/**", "requirements-scanner.txt", ".github/workflows/scanner-tests.yml"]
+permissions:
+  contents: read
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements-scanner.txt ruff==0.16.10 pip-audit==2.10.1
+      - run: python -m pip_audit -r requirements-scanner.txt --no-deps --disable-pip
+      - run: python -m compileall -q src tests
+      - run: python -m ruff check src/aai_scanner tests --select E9,F
+      - run: python -m unittest discover -s tests -v
+      - run: node --check src/aai_scanner/static/app.js
+  operations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements-scanner.txt
+      - name: Download pinned Caddy and verify release digest
+        run: |
+          curl --fail --location --retry 2 --max-time 60 -o "$RUNNER_TEMP/caddy.tar.gz" https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_linux_amd64.tar.gz
+          python -c 'import hashlib,os,pathlib; p=pathlib.Path(os.environ["RUNNER_TEMP"])/"caddy.tar.gz"; assert hashlib.sha256(p.read_bytes()).hexdigest()=="727b91701a392de6ebc5027509f548bf39979e5216340d0faed8fa5e69c84f8b"'
+          tar -xzf "$RUNNER_TEMP/caddy.tar.gz" -C "$RUNNER_TEMP" caddy
+      - name: Rehearse production CLI and local proxy recovery
+        run: python -m tests.operations_rehearsal --caddy "$RUNNER_TEMP/caddy" --output data/operations-results.json
+      - name: Rehearse running HTTP verifier and reject synthetic live evidence
+        run: python -m tests.http_rehearsal --output data/http-verification-results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scanner-operations-checks
+          path: |
+            data/operations-results.json
+            data/http-verification-results.json
+          if-no-files-found: ignore
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: python -m pip install -r requirements-scanner.txt
+      - run: npm install --prefix "$RUNNER_TEMP/aai-browser" playwright@1.64.0
+      - run: |
+          "$RUNNER_TEMP/aai-browser/node_modules/.bin/playwright" install --with-deps chromium --only-shell
+      - name: Desktop and mobile functional checks
+        env:
+          NODE_PATH: ${{ runner.temp }}/aai-browser/node_modules
+          AAI_TEST_ACCESS_TOKEN: synthetic_test_access_1234567890123456
+        run: |
+          python -m tests.browser_server > "$RUNNER_TEMP/aai-ui-server.log" 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          python -c 'import time,urllib.request; time.sleep(2); urllib.request.urlopen("http://127.0.0.1:8787/api/health",timeout=5)'
+          node tests/browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scanner-ui-checks
+          path: ui-results/
+          if-no-files-found: ignore

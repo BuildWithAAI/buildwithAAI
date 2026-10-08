@@ -1,0 +1,246 @@
+{
+  "verification_type": "EXACT_HEAD_LIVE_HTTP_AND_READINESS",
+  "commit": "c5fb4d74f1d024e581bec62ba24f675db7863815",
+  "verified_at": "2026-10-08T21:59:55.855955+00:00",
+  "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "available_at": "2026-10-08T21:59:55.851+00:00",
+  "mint_status": "AVAILABLE",
+  "slot": 454671900,
+  "price_usd_status": "AVAILABLE",
+  "price_sol_status": "AVAILABLE",
+  "holders": "FAILED",
+  "activity": "AVAILABLE",
+  "coverage": {
+    "scope": "SELECTED_CORE_SECTIONS",
+    "complete": false,
+    "sections": {
+      "mint": "AVAILABLE",
+      "usd_price": "AVAILABLE",
+      "sol_price": "AVAILABLE",
+      "largest_token_accounts": "FAILED",
+      "address_activity": "AVAILABLE"
+    },
+    "missing_sections": [
+      "largest_token_accounts"
+    ],
+    "note": "Section coverage does not establish every metric, token safety, complete accounting or full history"
+  },
+  "before_data": {
+    "status": "UNVERIFIED",
+    "scope": "LAST_REPORT_CORE_SECTIONS",
+    "max_age_seconds": 120,
+    "available_at": null,
+    "age_seconds": null,
+    "complete": false,
+    "missing_sections": []
+  },
+  "after_data": {
+    "status": "UNAVAILABLE",
+    "scope": "LAST_REPORT_CORE_SECTIONS",
+    "max_age_seconds": 120,
+    "available_at": "2026-10-08T21:59:55.851+00:00",
+    "age_seconds": 0.005,
+    "complete": false,
+    "missing_sections": [
+      "largest_token_accounts"
+    ]
+  },
+  "application_ready": true,
+  "note": "Historical actual source-backed HTTP/readiness check on the recorded commit; no complete core coverage or public launch claimed.",
+  "sources": {
+    "network": {
+      "provider": "Solana RPC",
+      "endpoint_host": "api.mainnet-beta.solana.com",
+      "method": "getGenesisHash",
+      "timestamp": "2026-10-08T21:59:47.278+00:00",
+      "available_at": "2026-10-08T21:59:47.278+00:00",
+      "timestamp_basis": "RETRIEVAL_TIME",
+      "upstream_observed_at": null,
+      "slot": null,
+      "commitment": null,
+      "transformation_version": "aai-scanner/0.1.1",
+      "raw_sha256": "072c547ad3321ad6379bf249c218bcf112eaa3bd0138f07ace4077db1785a37d",
+      "status": "AVAILABLE",
+      "quality_flags": [],
+      "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+      "provider_id": "rpc-1"
+    },
+    "mint": {
+      "provider": "Solana RPC",
+      "endpoint_host": "api.mainnet-beta.solana.com",
+      "method": "getAccountInfo",
+      "timestamp": "2026-10-08T21:59:51.864+00:00",
+      "available_at": "2026-10-08T21:59:51.864+00:00",
+      "timestamp_basis": "RETRIEVAL_TIME",
+      "upstream_observed_at": null,
+      "slot": 454671900,
+      "commitment": "finalized",
+      "transformation_version": "aai-scanner/0.1.1",
+      "raw_sha256": "7c1fee6e95b5a1376f676d82567b680093afa99e4d6c2765109ef65f084c297d",
+      "status": "AVAILABLE",
+      "quality_flags": [],
+      "commitment_basis": "REQUESTED",
+      "provider_id": "rpc-1",
+      "network_evidence": {
+        "provider": "Solana RPC",
+        "endpoint_host": "api.mainnet-beta.solana.com",
+        "method": "getGenesisHash",
+        "timestamp": "2026-10-08T21:59:47.278+00:00",
+        "available_at": "2026-10-08T21:59:47.278+00:00",
+        "timestamp_basis": "RETRIEVAL_TIME",
+        "upstream_observed_at": null,
+        "slot": null,
+        "commitment": null,
+        "transformation_version": "aai-scanner/0.1.1",
+        "raw_sha256": "072c547ad3321ad6379bf249c218bcf112eaa3bd0138f07ace4077db1785a37d",
+        "status": "AVAILABLE",
+        "quality_flags": [],
+        "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+        "provider_id": "rpc-1"
+      },
+      "recovery_attempts": []
+    },
+    "usd_price": {
+      "value": "1.00059",
+      "status": "AVAILABLE",
+      "classification": "OBSERVED",
+      "missingness": null,
+      "source": {
+        "provider": "DEX Screener",
+        "endpoint_host": "api.dexscreener.com",
+        "method": "token-pairs/v1/solana",
+        "timestamp": "2026-10-08T21:59:47.065+00:00",
+        "available_at": "2026-10-08T21:59:47.065+00:00",
+        "timestamp_basis": "RETRIEVAL_TIME",
+        "upstream_observed_at": null,
+        "slot": null,
+        "commitment": null,
+        "transformation_version": "aai-scanner/0.1.1",
+        "raw_sha256": "ca7c1ba38a2fc18d884414e27cf2b1ddd290ef58eefdde0a4feb677f3ab5a6f9",
+        "status": "AVAILABLE",
+        "quality_flags": [
+          "PROVIDER_TICK_TIME_UNAVAILABLE",
+          "POOL_COVERAGE_NOT_EXHAUSTIVE"
+        ]
+      },
+      "transformation_version": "aai-scanner/0.1.1",
+      "quality_flags": []
+    },
+    "sol_price": {
+      "value": "0.009055932663589465109964702688026065707304",
+      "status": "AVAILABLE",
+      "classification": "DERIVED",
+      "missingness": null,
+      "source": [
+        {
+          "provider": "DEX Screener",
+          "endpoint_host": "api.dexscreener.com",
+          "method": "token-pairs/v1/solana",
+          "timestamp": "2026-10-08T21:59:47.065+00:00",
+          "available_at": "2026-10-08T21:59:47.065+00:00",
+          "timestamp_basis": "RETRIEVAL_TIME",
+          "upstream_observed_at": null,
+          "slot": null,
+          "commitment": null,
+          "transformation_version": "aai-scanner/0.1.1",
+          "raw_sha256": "ca7c1ba38a2fc18d884414e27cf2b1ddd290ef58eefdde0a4feb677f3ab5a6f9",
+          "status": "AVAILABLE",
+          "quality_flags": [
+            "PROVIDER_TICK_TIME_UNAVAILABLE",
+            "POOL_COVERAGE_NOT_EXHAUSTIVE"
+          ]
+        },
+        {
+          "provider": "DEX Screener",
+          "endpoint_host": "api.dexscreener.com",
+          "method": "token-pairs/v1/solana",
+          "timestamp": "2026-10-08T21:59:47.177+00:00",
+          "available_at": "2026-10-08T21:59:47.177+00:00",
+          "timestamp_basis": "RETRIEVAL_TIME",
+          "upstream_observed_at": null,
+          "slot": null,
+          "commitment": null,
+          "transformation_version": "aai-scanner/0.1.1",
+          "raw_sha256": "bea98b3595d928dd854974d7b777c6b86d5bf83412d1aaef801a46d9b9e67cf1",
+          "status": "AVAILABLE",
+          "quality_flags": [
+            "PROVIDER_TICK_TIME_UNAVAILABLE",
+            "POOL_COVERAGE_NOT_EXHAUSTIVE"
+          ]
+        }
+      ],
+      "transformation_version": "aai-scanner/0.1.1",
+      "quality_flags": [
+        "NON_ATOMIC_PRICE_SNAPSHOTS"
+      ]
+    },
+    "holders": {
+      "provider": "Solana RPC",
+      "endpoint_host": "api.mainnet-beta.solana.com",
+      "method": "getTokenLargestAccounts",
+      "timestamp": "2026-10-08T21:59:55.819+00:00",
+      "available_at": "2026-10-08T21:59:55.819+00:00",
+      "timestamp_basis": "RETRIEVAL_TIME",
+      "upstream_observed_at": null,
+      "slot": null,
+      "commitment": null,
+      "transformation_version": "aai-scanner/0.1.1",
+      "raw_sha256": null,
+      "status": "FAILED",
+      "quality_flags": [
+        "SOURCE_GAP"
+      ],
+      "reason": "Provider HTTP 429",
+      "error": {
+        "code": "HTTP_ERROR",
+        "http_status": 429,
+        "retry_after_seconds": 10,
+        "attempts": [
+          {
+            "provider_id": "rpc-1",
+            "endpoint_host": "api.mainnet-beta.solana.com",
+            "code": "HTTP_ERROR",
+            "http_status": 429,
+            "retry_after_seconds": 10
+          }
+        ]
+      },
+      "provider_id": "rpc-1"
+    },
+    "activity": {
+      "provider": "Solana RPC",
+      "endpoint_host": "api.mainnet-beta.solana.com",
+      "method": "getSignaturesForAddress",
+      "timestamp": "2026-10-08T21:59:55.849+00:00",
+      "available_at": "2026-10-08T21:59:55.849+00:00",
+      "timestamp_basis": "RETRIEVAL_TIME",
+      "upstream_observed_at": null,
+      "slot": null,
+      "commitment": "finalized",
+      "transformation_version": "aai-scanner/0.1.1",
+      "raw_sha256": "d56ed7729810e386eb3044927de6b79ca37f904f58cce5ebd481770c390a7c83",
+      "status": "AVAILABLE",
+      "quality_flags": [],
+      "commitment_basis": "REQUESTED",
+      "provider_id": "rpc-1",
+      "network_evidence": {
+        "provider": "Solana RPC",
+        "endpoint_host": "api.mainnet-beta.solana.com",
+        "method": "getGenesisHash",
+        "timestamp": "2026-10-08T21:59:47.278+00:00",
+        "available_at": "2026-10-08T21:59:47.278+00:00",
+        "timestamp_basis": "RETRIEVAL_TIME",
+        "upstream_observed_at": null,
+        "slot": null,
+        "commitment": null,
+        "transformation_version": "aai-scanner/0.1.1",
+        "raw_sha256": "072c547ad3321ad6379bf249c218bcf112eaa3bd0138f07ace4077db1785a37d",
+        "status": "AVAILABLE",
+        "quality_flags": [],
+        "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+        "provider_id": "rpc-1"
+      },
+      "recovery_attempts": []
+    }
+  }
+}
