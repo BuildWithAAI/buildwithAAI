@@ -22,13 +22,15 @@ All **104 offline tests** pass on Python 3.12: the previous 86 plus 18 operation
 
 `verification/scanner-operations-local-2026-10-08.json` records an actual local rehearsal: production Waitress CLI behind the Caddy 2.11.7 template, authentication, readiness, persistent watch write, forced disposable-process crash/restart, online snapshot, read-only verification, safe rejection, new-file restore, polling-state preservation and restarted HTTP persistence. Caddy's release archive digest was checked. systemd unit syntax passed with install paths expanded to the checkout; systemd supervision, boot/sandbox behavior and public TLS remain **NOT TESTED**. No live provider calls or messages occurred during this rehearsal.
 
-CI now repeats the real loopback proxy/recovery rehearsal, Python 3.11/3.12 tests, compilation, lint/advisory checks and authenticated desktop/mobile flows including application/data status. Verify every job against the final new commit before merging. Historical CI #5 (37846950372) passed on `1ef90343500b301b4aa273cf46323a075d67508b`; it does not certify new changes.
+CI now repeats the real loopback proxy/recovery rehearsal, Python 3.11/3.12 tests, compilation, lint/advisory checks and authenticated desktop/mobile flows including application/data status. Historical CI #6 (37850442349) passed all four jobs on `c5fb4d74f1d024e581bec62ba24f675db7863815`. A clean-checkout artifact-writing check then caught a missing parent directory in the rehearsal CLI; the script now creates it and CI writes to a fresh nested `data/` path. Verify every job on the final new commit; exact-head CI evidence is recorded in PR #10.
 
 ## Real source evidence
 
 `verification/scanner-reliability-live-2026-10-08.json` preserves the actual strict USDC check at **2026-10-08T21:25:51.497+00:00**, mint slot **454664244**. Mint, USD/SOL market snapshots and address activity returned; both configured providers verified mainnet genesis.
 
 The strict command correctly exited **1 / FAILED** because required holders encountered primary HTTP 429 and backup HTTP 403. Both attempts and source timestamps are retained. Successful live holder recovery is **not verified**. Mocked success is explicitly SYNTHETIC and only in tests. Historical receipts never feed production prices. Earlier real Waitress/USDC and wrapped-SOL checks remain historical evidence.
+
+`verification/scanner-operations-live-2026-10-08.json` records an actual HTTP/readiness check on `c5fb4d74f1d024e581bec62ba24f675db7863815` at **2026-10-08T21:59:55.851+00:00**, mint slot **454671900**. Real mint, USD/SOL snapshots and activity returned; holders remained FAILED. Local application readiness was AVAILABLE while data readiness correctly changed from UNVERIFIED to UNAVAILABLE with the holder gap. This is historical evidence on the recorded commit, not proof of complete coverage or deployment.
 
 ## Remaining launch gates
 

@@ -181,7 +181,9 @@ def main():
     result = run(args.caddy)
     output = json.dumps(result, indent=2)
     if args.output:
-        Path(args.output).write_text(output + "\n", encoding="utf-8")
+        target = Path(args.output)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(output + "\n", encoding="utf-8")
     print(output)
 
 

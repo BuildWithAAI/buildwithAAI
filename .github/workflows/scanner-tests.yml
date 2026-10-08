@@ -40,12 +40,12 @@ jobs:
           python -c 'import hashlib,os,pathlib; p=pathlib.Path(os.environ["RUNNER_TEMP"])/"caddy.tar.gz"; assert hashlib.sha256(p.read_bytes()).hexdigest()=="727b91701a392de6ebc5027509f548bf39979e5216340d0faed8fa5e69c84f8b"'
           tar -xzf "$RUNNER_TEMP/caddy.tar.gz" -C "$RUNNER_TEMP" caddy
       - name: Rehearse production CLI and local proxy recovery
-        run: python -m tests.operations_rehearsal --caddy "$RUNNER_TEMP/caddy" --output operations-results.json
+        run: python -m tests.operations_rehearsal --caddy "$RUNNER_TEMP/caddy" --output data/operations-results.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: scanner-operations-checks
-          path: operations-results.json
+          path: data/operations-results.json
           if-no-files-found: ignore
   browser:
     runs-on: ubuntu-latest
