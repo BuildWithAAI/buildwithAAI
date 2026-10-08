@@ -1,6 +1,7 @@
 """Read-only Solana mint inspection. No wallet access or transaction submission."""
 from __future__ import annotations
 import json
+from decimal import Decimal
 import urllib.request
 from urllib.parse import urlparse
 
@@ -25,6 +26,16 @@ def decode_address(address: str) -> bytes:
     if len(data) != 32:
         raise ValueError("Solana public keys must decode to 32 bytes")
     return data
+
+def encode_address(data: bytes) -> str:
+    if len(data) != 32:
+        raise ValueError("Expected 32 bytes")
+    number = int.from_bytes(data, "big")
+    digits = ""
+    while number:
+        number, rem = divmod(number, 58)
+        digits = ALPHABET[rem] + digits
+    return "1" * (len(data) - len(data.lstrip(bytes([0])))) + digits
 
 def rpc(endpoint: str, method: str, params: list) -> dict:
     if method != "getAccountInfo":
@@ -65,9 +76,9 @@ def inspect_mint(address: str, *, endpoint: str) -> dict:
     return {
         "mint": address, "status": "AVAILABLE", "token_program": TOKEN_PROGRAMS[owner],
         "supply_raw": str(supply), "decimals": decimals,
-        "supply": str(supply / (10 ** decimals)) if decimals <= 18 else None,
-        "mint_authority": None if mint_option == 0 else raw[4:36].hex(),
-        "freeze_authority": None if freeze_option == 0 else raw[50:82].hex(),
+        "supply": format(Decimal(supply) / (Decimal(10) ** decimals), "f"),
+        "mint_authority": None if mint_option == 0 else encode_address(raw[4:36]),
+        "freeze_authority": None if freeze_option == 0 else encode_address(raw[50:82]),
         "slot": response.get("result", {}).get("context", {}).get("slot"),
         "commitment": "finalized", "source": endpoint,
         "market_price_usd": None, "liquidity_usd": None,
