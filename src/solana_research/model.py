@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -12,7 +13,7 @@ def utc_now_iso() -> str:
 
 
 def canonical_json(value: Any) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
 
 
 def sha256_json(value: Any) -> str:
@@ -38,6 +39,7 @@ class RawEnvelope:
                  requested_commitment: str, payload: dict[str, Any],
                  parser_target_version: int, ingestion_build: str,
                  received_at: str | None = None) -> "RawEnvelope":
+        payload = deepcopy(payload)
         timestamp = received_at or utc_now_iso()
         payload_hash = sha256_json(payload)
         params_hash = sha256_json(params)
@@ -48,5 +50,10 @@ class RawEnvelope:
                    params_hash, requested_commitment, timestamp, payload,
                    payload_hash, parser_target_version, ingestion_build)
 
+    def validate_payload(self) -> None:
+        if sha256_json(self.payload) != self.payload_hash:
+            raise ValueError("raw payload hash mismatch")
+
     def to_dict(self) -> dict[str, Any]:
+        self.validate_payload()
         return asdict(self)

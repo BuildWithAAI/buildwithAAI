@@ -13,6 +13,10 @@ def normalize_block(envelope: RawEnvelope, *, slot: int, commitment: str,
                     cluster: str = "mainnet-beta",
                     max_supported_transaction_version: int = 1,
                     normalizer_version: str = "bt003-v1") -> dict[str, Any]:
+    try:
+        envelope.validate_payload()
+    except ValueError:
+        raise NormalizationError("raw payload hash mismatch") from None
     if envelope.method != "getBlock":
         raise NormalizationError("expected getBlock envelope")
     if "error" in envelope.payload:
@@ -23,22 +27,23 @@ def normalize_block(envelope: RawEnvelope, *, slot: int, commitment: str,
     transactions = []
     versions: dict[str, int] = {}
     for index, item in enumerate(block.get("transactions") or []):
-        version = item.get("version", "legacy")
-        if version is None:
-            version = "legacy"
-        if isinstance(version, int) and version > max_supported_transaction_version:
+        version = item.get("version")
+        if version != "legacy" and (type(version) is not int or version < 0
+                                    or version > max_supported_transaction_version):
             raise UnsupportedTransactionVersion(
                 f"transaction version {version} exceeds supported version {max_supported_transaction_version}")
         versions[str(version)] = versions.get(str(version), 0) + 1
         tx = item.get("transaction") or {}
         message = tx.get("message") or {}
-        meta = item.get("meta") or {}
+        meta = item.get("meta")
+        known_result = isinstance(meta, dict) and "err" in meta
+        meta = meta if isinstance(meta, dict) else {}
         signatures = tx.get("signatures") or []
         transactions.append({
             "signature": signatures[0] if signatures else None, "slot": slot,
             "block_time": block.get("blockTime"), "commitment": commitment.upper(),
             "transaction_index": index, "transaction_version": version,
-            "success": meta.get("err") is None, "error": meta.get("err"),
+            "success": (meta["err"] is None) if known_result else None, "error": meta.get("err"),
             "fee_lamports": meta.get("fee"),
             "compute_units_consumed": meta.get("computeUnitsConsumed"),
             "account_keys": message.get("accountKeys"),
@@ -51,7 +56,7 @@ def normalize_block(envelope: RawEnvelope, *, slot: int, commitment: str,
             "log_messages": meta.get("logMessages"), "source_id": envelope.source_id,
             "observed_time": envelope.received_at, "available_time": envelope.received_at,
             "raw_event_id": envelope.raw_event_id, "normalizer_version": normalizer_version,
-            "quality_flags": [],
+            "quality_flags": [] if known_result else ["TRANSACTION_RESULT_UNAVAILABLE"],
         })
     return {
         "cluster": cluster, "slot": slot, "block_height": block.get("blockHeight"),

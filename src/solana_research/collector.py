@@ -26,13 +26,19 @@ def collect_bounded_fixture(
     available_blocks: Callable[[int, int], list[int]],
     acquire_block: Callable[[int], RawEnvelope],
 ) -> CollectionResult:
+    if type(start_slot) is not int or type(end_slot) is not int or start_slot < 0:
+        raise ValueError("slots must be nonnegative integers")
     if end_slot < start_slot:
         raise ValueError("end_slot must be >= start_slot")
-    requested = list(range(start_slot, end_slot + 1))
-    if len(requested) > MAX_FIXTURE_SLOTS:
+    if end_slot - start_slot + 1 > MAX_FIXTURE_SLOTS:
         raise ValueError(f"fixture window exceeds {MAX_FIXTURE_SLOTS} slots")
 
-    available = set(available_blocks(start_slot, end_slot))
+    requested = list(range(start_slot, end_slot + 1))
+    returned = available_blocks(start_slot, end_slot)
+    if not isinstance(returned, list) or len(returned) > MAX_FIXTURE_SLOTS or any(
+            type(slot) is not int or not start_slot <= slot <= end_slot for slot in returned):
+        raise ValueError("invalid available block slots")
+    available = set(returned)
     skipped = sorted(set(requested) - available)
     raw_records: list[dict[str, Any]] = []
     normalized: list[dict[str, Any]] = []
