@@ -27,6 +27,7 @@ HTTP `Retry-After` supports delay-seconds and dates. Cooldowns are shared across
 python -m src.aai_scanner smoke --output data/live-smoke.json
 python -m src.aai_scanner smoke --require-holders --require-activity --output data/live-launch-gates.json
 python -m src.aai_scanner provider-check --require-all --output data/provider-capabilities.json
+python -m src.aai_scanner verify-http --output data/http-release-check.json
 python -m src.aai_scanner backup data/backup-2026-10-08.sqlite3
 python -m src.aai_scanner verify-backup data/backup-2026-10-08.sqlite3
 python -m src.aai_scanner restore data/backup-2026-10-08.sqlite3 data/restored-new.sqlite3
@@ -40,7 +41,9 @@ SQLite stores watches, up to 100 observations per mint and 5,000 total observati
 
 ## API and evidence
 
-`POST /api/scan` accepts `{"mint":"...","refresh":false}`; `POST /api/wallet` accepts `{"address":"..."}`. Use `GET /api/history?mint=...`, `GET /api/watchlist`, `POST /api/watchlist`, `DELETE /api/watchlist`, and `GET /api/status`. Writes only modify local watches. Remote API calls require `Authorization: Bearer <application access token>`. `GET /api/health` checks process availability only, not provider health.
+`POST /api/scan` accepts `{"mint":"...","refresh":false}`; `POST /api/wallet` accepts `{"address":"..."}`. Use `GET /api/history?mint=...`, `GET /api/watchlist`, `POST /api/watchlist`, `DELETE /api/watchlist`, and `GET /api/status`. Scans persist local observations; watch writes modify the local watchlist. Remote API calls require `Authorization: Bearer <application access token>`. `GET /api/health` checks process availability only, not provider health, and includes scanner package identity captured at startup.
+
+Run `verify-http` in a separate process while the server is running. It targets the configured `AAI_PUBLIC_URL`, checks matching package bytes, authentication/readiness, requested mint/wallet, complete selected core coverage and fresh declared source receipts. It refuses synthetic or unavailable data and returns a safe FAILED result for partial coverage. It sends no Telegram messages and never opens the verifier's local database; the target scan can persist an observation. Use the same approved RPC settings to validate expected source hosts. See the [HTTP verification runbook](SCANNER_HTTP_VERIFICATION.md) for scope, bounds, an offline actual-Waitress rehearsal and the explicit disposable live-check utility. This does not certify public launch.
 
 `GET /api/ready` uses the same access/Host/origin/rate controls. HTTP 200 means local configuration, supported runtime, interface assets and a SQLite read/write probe pass; HTTP 503 means at least one fails. It never contacts providers. Its independent `data.status` is UNVERIFIED before a scan, UNAVAILABLE for fresh partial core-section coverage, AVAILABLE for complete core-section coverage, and STALE after 120 seconds from retrieval. Future or invalid timestamps remain UNVERIFIED. This describes the LAST report, not all tokens or current upstream tick health. `public_launch` remains UNVERIFIED. Status UI shows these separate states. `doctor` additionally checks full SQLite integrity; `doctor --deployment` also checks the supplied loopback/HTTPS/access/persistent-path host configuration. Neither certifies public readiness.
 

@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 from .config import Config
 from .evidence import now
 from .operations import readiness
+from .release import package_identity
 from .service import BusyError, Limiter, Scanner
 from .storage import Store
 from .transport import ProviderError, reject_constant
@@ -37,6 +38,7 @@ class Application:
         self.access = access or AccessPolicy(self.config.api_token)
         self.limiter = Limiter()
         self.started_at = now()
+        self.release = package_identity()
         origin = urlsplit(self.config.public_url)
         self.hosts = {origin.netloc}
         self.origins = {self.config.public_url.rstrip("/")}
@@ -83,7 +85,7 @@ class Application:
                 result = (STATIC / filename).read_bytes()
             elif path == "/api/health" and method == "GET":
                 result = {"status": "AVAILABLE", "scope": "PROCESS_ONLY", "timestamp": now(),
-                          "read_only": True, "access_required": bool(self.config.api_token)}
+                          "read_only": True, "access_required": bool(self.config.api_token), "release": self.release}
             elif not path.startswith("/api/"):
                 code, result = 404, {"error": "Route not found"}
             elif not self.access.allows(environ):
@@ -99,6 +101,7 @@ class Application:
                 result = {
                     "status": "AVAILABLE", "scope": "PROCESS_ONLY", "started_at": self.started_at,
                     "timestamp": now(), "read_only": True, "storage": self.store.counts(),
+                    "release": self.release,
                     "provider_sources": self.scanner.last_sources,
                     "provider_status_note": "Last observed results, not continuous health checks",
                     "rpc_providers": self.scanner.rpc.diagnostics() if hasattr(self.scanner.rpc, "diagnostics") else [],

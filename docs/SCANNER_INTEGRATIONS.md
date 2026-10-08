@@ -1,4 +1,6 @@
-# Scanner 0.1.3: provider qualification and authorized Telegram verification
+# Scanner: provider qualification and authorized Telegram verification
+
+Scanner 0.1.4 also provides [verification of the running HTTP API](SCANNER_HTTP_VERIFICATION.md). Qualify providers independently, then verify the installed application's package, authentication, reports and declared source receipts through its actual origin. Actual bot delivery remains its own authorized test gate.
 
 This stage prepares the remaining live integrations. **No public deployment, bot messages, trading or funds movement have occurred.** Public launch still requires permitted provider capacity, actual private-chat command delivery, an approved host/domain, working TLS/supervision and monitoring. Provider credentials and bot tokens belong in private operator configuration, not chat, URLs, logs or git.
 

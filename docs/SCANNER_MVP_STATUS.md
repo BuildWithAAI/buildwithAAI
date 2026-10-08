@@ -1,6 +1,6 @@
 # Scanner development status — 2026-10-08
 
-Candidate version: **0.1.3**. Existing branch: `feat/aai-scanner-mvp`; draft PR #10. Public deployment: **NOT STARTED**. Code/docs remain in the existing repository.
+Candidate version: **0.1.4**. Existing branch: `feat/aai-scanner-mvp`; draft PR #10. Public deployment: **NOT STARTED**. Code/docs remain in the existing repository.
 
 ## Implemented
 
@@ -16,14 +16,27 @@ This operational milestone adds:
 - Linux systemd and Caddy templates, secure environment example, monitoring contract, release/recovery runbook and an actual production CLI/proxy rehearsal in CI.
 - Separate application/data state in the desktop/mobile status UI.
 
-## Provider and Telegram milestone — 0.1.3
+## Running HTTP verification milestone — 0.1.4
+
+- `verify-http` checks the actual configured server through bounded HTTP: package identity, anonymous access rejection, authenticated application readiness, requested mint/wallet, selected core coverage and fresh declared source receipts. It never opens the client database; the server scan can persist an observation.
+- Health/status expose a deterministic scanner Python/static-asset hash captured at startup. Client/server package mismatch stops before authenticated scans. This identifies package bytes, not a Git SHA, signature or host attestation.
+- Redirect refusal, size/deadline limits, no immediate retries, safe HTTP/provider failure metadata and explicit separation from Telegram/public launch. Synthetic, stale, missing, inferred or malformed evidence cannot qualify.
+- An actual offline Waitress/CLI wire rehearsal requires synthetic data to fail the live gate; CI publishes its result alongside the existing Caddy recovery rehearsal. An explicit disposable live utility preserves only operator RPC settings and never starts Telegram.
+
+All **154 offline tests** pass locally (131 prior + 23 HTTP/identity/boundary regressions). Compilation, Ruff E9/F, JS syntax and the pinned Waitress advisory check pass. Both actual HTTP and Caddy recovery rehearsals pass locally. Malformed HTTP status-line exceptions also become safe connection failures. New exact-head CI/browser/operational evidence must be verified and recorded in PR #10; earlier CI #8 on 791ec7e verifies 0.1.3 only.
+
+Actual production CLI/HTTP verification completed at **2026-10-08T23:33:59.389+00:00** after the final protocol-error fix. Process, package identity, authentication, application readiness and wallet SOL balance passed. Token mint, USD/SOL prices, mainnet identity and address activity passed declared-receipt validation. Largest token accounts remained FAILED: primary HTTP429 (Retry-After 10s), approved backup HTTP403. The overall command correctly returned **FAILED/exit 1**, with no fabricated coverage or live Telegram/public-launch claim.
+
+`verification/scanner-http-verification-live-2026-10-08.json` retains that actual read-only Solana/market proof, including source failures and response hashes. Its package hash is `5d1ceed6db97d10edfb36ba01a084b6f41c6e691e8a810e9334992afa71fd6e3`; the checkout head is the pre-publication parent and dirty state is explicit. Compare the hash against the final tested scanner package. Historical receipts never populate production UI data. See [HTTP verification](SCANNER_HTTP_VERIFICATION.md).
+
+## Historical provider and Telegram milestone — 0.1.3
 
 - `provider-check` qualifies each configured provider independently with mainnet identity, mint, activity, balance and largest-account validation; `--require-all` records/enforces the strict policy. No database writes, provider discovery, immediate retry or market requests.
 - Telegram validates identity, optional expected username, webhook shape and matching private-chat delivery receipts before offset advancement. Invalid/missing acknowledgements are not delivery.
 - Bounded HTTP429 JSON Retry-After parsing, shared cooldowns, finite transient waits, fatal auth/conflict/schema failure handling and source/freshness summaries.
 - Optional disabled-by-default Telegram service/environment templates, syntax validation alongside the scanner service, and an authorized live-command verification runbook.
 
-All **131 offline tests** pass locally (104 prior + 27 provider/Telegram regressions). They cover actual bounded error-body transport, credentials redaction, independent providers, CLI evidence/exit codes, all five bot commands through SYNTHETIC polling, delivery failure, stale/partial status, cooldowns, and fatal errors. Compilation, Ruff E9/F and JS syntax pass; runtime advisory check reports no known Waitress 3.0.2 vulnerabilities. New exact-head CI/browser/operations evidence must be verified in PR #10; previous run #7 on 452d401 is historical.
+All **131 offline tests** passed (104 prior + 27 provider/Telegram regressions). They cover bounded error-body transport, credentials redaction, independent providers, CLI evidence/exit codes, all five bot commands through SYNTHETIC polling, delivery failure, stale/partial status, cooldowns and fatal errors. Exact-head CI #8 (37853343371) on 791ec7e passed all four Python/browser/operational jobs, including lint, compilation and pinned runtime advisory checks. This is historical evidence for 0.1.3, not a full security certification or the new release's CI.
 
 The real strict provider capability check at **2026-10-08T22:15:59.728+00:00** is preserved in `verification/scanner-provider-qualification-live-2026-10-08.json`. Both configured endpoints verified mainnet and returned valid mint/activity/balance data. Primary largest-account retrieval failed HTTP429 (Retry-After 10s); approved backup failed HTTP403. Exit **1 / FAILED** was correct. Neither is claimed fully qualified; no live holder success or live Telegram delivery is verified. No bot credential/private-chat configuration is present in this coding environment.
 

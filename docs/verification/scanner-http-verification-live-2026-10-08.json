@@ -1,0 +1,160 @@
+{
+  "verification_type": "RUNNING_SCANNER_HTTP_CHECK",
+  "scope": "SELECTED_CORE_HTTP_AND_DECLARED_SOURCE_RECEIPTS",
+  "status": "FAILED",
+  "available_at": "2026-10-08T23:33:29.880+00:00",
+  "target_host": "127.0.0.1:37093",
+  "transport": "LOOPBACK_HTTP",
+  "expected_release": {
+    "version": "0.1.4",
+    "scope": "SCANNER_PACKAGE_CONTENTS",
+    "status": "AVAILABLE",
+    "sha256": "5d1ceed6db97d10edfb36ba01a084b6f41c6e691e8a810e9334992afa71fd6e3",
+    "note": "Package bytes at process startup; not a Git SHA, signature or deployment attestation"
+  },
+  "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "wallet": "11111111111111111111111111111111",
+  "checks": {
+    "process": {
+      "status": "PASSED",
+      "http": {
+        "http_status": 200,
+        "raw_sha256": "7fe134b0c303e7565c4824b1ada824e3f4693ceb45e8c328d0c271e06b4b9718",
+        "available_at": "2026-10-08T23:33:29.889+00:00",
+        "retry_after_seconds": null,
+        "no_store": true
+      }
+    },
+    "release_identity": {
+      "status": "PASSED",
+      "scope": "SCANNER_PACKAGE_CONTENTS",
+      "sha256": "5d1ceed6db97d10edfb36ba01a084b6f41c6e691e8a810e9334992afa71fd6e3"
+    },
+    "authentication": {
+      "status": "PASSED",
+      "http": {
+        "http_status": 401,
+        "raw_sha256": "856527bed96011331fd43f33efd414ae1089c8dffe2bf4cdd22aa4c589919c7f",
+        "available_at": "2026-10-08T23:33:29.891+00:00",
+        "retry_after_seconds": null,
+        "no_store": true
+      }
+    },
+    "application": {
+      "status": "PASSED",
+      "http": {
+        "http_status": 200,
+        "raw_sha256": "0dee8bcb9f2d4506ead54af06daae9c26a6a2e0594e5550729f2e6b2dfec4a2c",
+        "available_at": "2026-10-08T23:33:29.896+00:00",
+        "retry_after_seconds": null,
+        "no_store": true
+      }
+    },
+    "token_report": {
+      "status": "FAILED",
+      "http": {
+        "http_status": 200,
+        "raw_sha256": "e581047d68f09b4ab7ba29a9ff97d022c736210f3a86540cffffdb40132c408f",
+        "available_at": "2026-10-08T23:33:47.456+00:00",
+        "retry_after_seconds": null,
+        "no_store": true
+      },
+      "sections": {
+        "mint": {
+          "status": "PASSED",
+          "issues": [],
+          "provider_failures": []
+        },
+        "usd_price": {
+          "status": "PASSED",
+          "issues": []
+        },
+        "sol_price": {
+          "status": "PASSED",
+          "issues": []
+        },
+        "largest_token_accounts": {
+          "status": "FAILED",
+          "issues": [
+            "FINALITY_REQUEST_UNVERIFIED",
+            "HOLDERS_UNAVAILABLE",
+            "SLOT_UNVERIFIED",
+            "SOURCE_HASH_UNVERIFIED",
+            "SOURCE_MISSING",
+            "SOURCE_UNAVAILABLE"
+          ],
+          "provider_failures": [
+            {
+              "endpoint_host": "api.mainnet-beta.solana.com",
+              "code": "HTTP_ERROR",
+              "http_status": 429,
+              "retry_after_seconds": 10
+            },
+            {
+              "endpoint_host": "solana-rpc.publicnode.com",
+              "code": "HTTP_ERROR",
+              "http_status": 403,
+              "retry_after_seconds": null
+            }
+          ]
+        },
+        "address_activity": {
+          "status": "PASSED",
+          "issues": [],
+          "provider_failures": []
+        },
+        "network": {
+          "status": "PASSED",
+          "issues": []
+        },
+        "report_freshness": {
+          "status": "PASSED",
+          "issues": []
+        },
+        "coverage_contract": {
+          "status": "PASSED",
+          "issues": []
+        }
+      },
+      "coverage": {
+        "scope": "SELECTED_CORE_SECTIONS",
+        "complete": false,
+        "sections": {
+          "mint": "AVAILABLE",
+          "usd_price": "AVAILABLE",
+          "sol_price": "AVAILABLE",
+          "largest_token_accounts": "FAILED",
+          "address_activity": "AVAILABLE"
+        },
+        "missing_sections": [
+          "largest_token_accounts"
+        ],
+        "note": "Section coverage does not establish every metric, token safety, complete accounting or full history"
+      },
+      "server_report_available_at": "2026-10-08T23:33:47.452+00:00"
+    },
+    "wallet_report": {
+      "status": "PASSED",
+      "http": {
+        "http_status": 200,
+        "raw_sha256": "f0fe53e78a0db37b0448e9b4b8b98d84105bd551c7b44c6ca4ab905f096d22b5",
+        "available_at": "2026-10-08T23:33:59.389+00:00",
+        "retry_after_seconds": null,
+        "no_store": true
+      },
+      "issues": [],
+      "provider_failures": []
+    }
+  },
+  "execution": "DISABLED",
+  "public_launch": "UNVERIFIED",
+  "telegram_commands": "UNVERIFIED",
+  "note": "One attempt per route, no redirects or signing. The scan can save an observation on the target server. Server-declared source receipts are validated, not independently attested. This does not verify Telegram, sustained capacity, monitoring, host supervision or public launch.",
+  "completed_at": "2026-10-08T23:33:59.389+00:00",
+  "test_environment": "DISPOSABLE_LOOPBACK_PRODUCTION_CLI_WITH_REAL_PROVIDER_READS",
+  "checkout_head": "791ec7e5e3c4b83f8056fda5ef80ce9eb576598a",
+  "working_tree_dirty": true,
+  "telegram_messages": 0,
+  "public_deployment": "NOT_STARTED",
+  "command_exit_code": 1
+}

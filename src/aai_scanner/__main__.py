@@ -9,6 +9,7 @@ from .market import WRAPPED_SOL
 from .service import Scanner
 from .operations import readiness
 from .qualification import DEFAULT_WALLET, qualify_providers
+from .http_verification import verify_http
 from .storage import Store, restore_backup, verify_backup
 from .web import Application
 
@@ -31,6 +32,10 @@ def main():
     provider.add_argument("--wallet", default=DEFAULT_WALLET)
     provider.add_argument("--output")
     provider.add_argument("--require-all", action="store_true")
+    http_check = actions.add_parser("verify-http")
+    http_check.add_argument("--mint", default=WRAPPED_SOL)
+    http_check.add_argument("--wallet", default=DEFAULT_WALLET)
+    http_check.add_argument("--output")
     backup = actions.add_parser("backup")
     backup.add_argument("destination")
     smoke = actions.add_parser("smoke")
@@ -45,8 +50,9 @@ def main():
         print(json.dumps(result))
         return 0
     config = Config.from_env()
-    if args.action == "provider-check":
-        result = qualify_providers(config, args.mint, args.wallet, args.require_all)
+    if args.action in ("provider-check", "verify-http"):
+        result = (qualify_providers(config, args.mint, args.wallet, args.require_all) if args.action == "provider-check"
+                  else verify_http(config, args.mint, args.wallet))
         output = json.dumps(result, indent=2, allow_nan=False)
         if args.output:
             target = Path(args.output)
