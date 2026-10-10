@@ -105,7 +105,7 @@ fn metrics_overflow_preserves_all_observer_fields() {
     let record = EventRecord {
         processed_index: 0,
         event: Event::transfer(0, 0, 0, 0, 1, 1),
-        outcome: EventOutcome::Completed,
+        outcome: EventOutcome::Completed {},
     };
     for mut metrics in [
         Metrics {
@@ -155,7 +155,7 @@ fn invalid_completed_record_cannot_poison_metrics() {
     let record = EventRecord {
         processed_index: 0,
         event: Event::transfer(0, 0, 0, 0, 1, 0),
-        outcome: EventOutcome::Completed,
+        outcome: EventOutcome::Completed {},
     };
     assert!(metrics.observe(&record).is_err());
     assert_eq!(metrics, Metrics::default());
@@ -383,11 +383,30 @@ fn bounded_rng_supports_edge_bounds_and_repeatable_sampling() {
 }
 
 #[test]
+fn maximum_supported_run_conserves_wide_supply_and_fits_report_limit() {
+    let cfg = SimulationConfig {
+        agent_count: MAX_AGENTS,
+        starting_balance: i64::MAX,
+        ticks: MAX_EVENTS as u64,
+        seed: 42,
+    };
+    let mut engine = SimulationEngine::new(cfg.clone());
+    engine.run().unwrap();
+    assert_eq!(engine.metrics().events_processed, MAX_EVENTS as u64);
+    assert_eq!(engine.metrics().transfers_rejected, MAX_EVENTS as u64);
+    assert_eq!(engine.state().total_balance().unwrap(), cfg.initial_supply().unwrap());
+    let report = RunReport::from_engine(&engine).unwrap();
+    report.verify().unwrap();
+    let bytes = serde_json::to_vec_pretty(&report).unwrap();
+    assert!(bytes.len() < 64 * 1024 * 1024);
+}
+
+#[test]
 fn forged_outcomes_are_rejected_by_replay() {
     let mut engine = SimulationEngine::new(config(0));
     engine.run().unwrap();
     let mut records = engine.journal().entries().to_vec();
-    records[0].outcome = EventOutcome::Completed;
+    records[0].outcome = EventOutcome::Completed {};
     let journal = EventJournal::from_records(records).unwrap();
     assert!(SimulationEngine::replay(config(0), &journal).is_err());
 }

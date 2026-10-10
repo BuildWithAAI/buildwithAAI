@@ -48,7 +48,7 @@ impl Metrics {
             .checked_add(1)
             .ok_or_else(|| overflow.clone())?;
         match record.outcome {
-            EventOutcome::Completed => {
+            EventOutcome::Completed {} => {
                 let EventType::Transfer { amount, .. } = record.event.event_type;
                 if amount <= 0 {
                     return Err(SimulationError::Integrity(

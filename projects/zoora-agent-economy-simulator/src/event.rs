@@ -74,7 +74,7 @@ pub enum RejectionReason {
     deny_unknown_fields
 )]
 pub enum EventOutcome {
-    Completed,
+    Completed {},
     Rejected { reason: RejectionReason },
 }
 

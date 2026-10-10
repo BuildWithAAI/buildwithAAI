@@ -154,7 +154,7 @@ impl SimulationEngine {
         };
         // Positive amount <= nonnegative sender balance makes subtraction safe.
         (
-            EventOutcome::Completed,
+            EventOutcome::Completed {},
             Some((
                 from as usize,
                 sender.balance - amount,

@@ -103,7 +103,7 @@ impl RunFingerprint {
             journal_hash.u64(to);
             journal_hash.i64(amount);
             match record.outcome {
-                EventOutcome::Completed => journal_hash.u32(0),
+                EventOutcome::Completed {} => journal_hash.u32(0),
                 EventOutcome::Rejected { reason } => {
                     journal_hash.u32(1);
                     journal_hash.u32(match reason {
