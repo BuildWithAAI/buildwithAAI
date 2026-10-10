@@ -1,13 +1,13 @@
 #![forbid(unsafe_code)]
-mod bounded;
 pub mod allocation;
-pub mod direct;
-pub mod experiments;
-pub mod viewer;
+mod bounded;
 pub mod config;
+pub mod direct;
 pub mod engine;
+pub mod experiments;
 pub mod report;
 pub mod types;
+pub mod viewer;
 pub use config::ReviewConfig;
 pub use engine::{ReviewEngine, Scenario};
 pub use report::{ReviewMetrics, ReviewReport};

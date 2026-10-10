@@ -5,7 +5,12 @@ use std::{
     path::Path,
     time::Instant,
 };
-use zoora_review_market::{direct::DirectReport, allocation::AllocationReport, experiments::{ExperimentConfig, ExperimentSuite}, viewer, ReviewConfig, ReviewEngine, ReviewReport};
+use zoora_review_market::{
+    allocation::AllocationReport,
+    direct::DirectReport,
+    experiments::{ExperimentConfig, ExperimentSuite},
+    viewer, ReviewConfig, ReviewEngine, ReviewReport,
+};
 fn read(path: &Path, limit: u64) -> Result<String, String> {
     let meta = fs::symlink_metadata(path).map_err(|_| "input cannot be inspected")?;
     if !meta.is_file() || meta.len() > limit {

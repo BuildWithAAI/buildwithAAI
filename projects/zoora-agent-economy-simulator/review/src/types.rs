@@ -158,7 +158,10 @@ impl Command {
         matches!(self, Self::CloseReview { .. } | Self::Deadline { .. })
     }
     pub fn needs_timer(&self) -> bool {
-        matches!(self, Self::Post { .. } | Self::PostAllocated { .. } | Self::Review { .. })
+        matches!(
+            self,
+            Self::Post { .. } | Self::PostAllocated { .. } | Self::Review { .. }
+        )
     }
     pub fn within_bounds(&self) -> bool {
         match self {
@@ -167,7 +170,11 @@ impl Command {
                 criteria_digest,
                 ..
             }
-            | Self::PostAllocated { title, criteria_digest, .. } => title.len() <= 128 && criteria_digest.len() <= 64,
+            | Self::PostAllocated {
+                title,
+                criteria_digest,
+                ..
+            } => title.len() <= 128 && criteria_digest.len() <= 64,
             Self::Submit {
                 artifact_digest, ..
             } => artifact_digest.len() <= 64,

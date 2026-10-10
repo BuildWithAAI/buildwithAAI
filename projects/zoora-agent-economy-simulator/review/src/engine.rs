@@ -297,13 +297,35 @@ impl ReviewEngine {
         let id = event.command.task_id();
         let tick = event.simulation_tick;
         let post = match &event.command {
-            Command::Post { client, reviewer, title, criteria_digest, reward, deadline_tick, .. } => {
+            Command::Post {
+                client,
+                reviewer,
+                title,
+                criteria_digest,
+                reward,
+                deadline_tick,
+                ..
+            } => {
                 if self.allocation.is_some() {
                     return Ok(Self::rejection(Rejection::PolicyMismatch));
                 }
-                Some((*client, *reviewer, title, criteria_digest, *reward, *deadline_tick))
+                Some((
+                    *client,
+                    *reviewer,
+                    title,
+                    criteria_digest,
+                    *reward,
+                    *deadline_tick,
+                ))
             }
-            Command::PostAllocated { client, title, criteria_digest, reward, deadline_tick, .. } => {
+            Command::PostAllocated {
+                client,
+                title,
+                criteria_digest,
+                reward,
+                deadline_tick,
+                ..
+            } => {
                 let Some(allocation) = &self.allocation else {
                     return Ok(Self::rejection(Rejection::PolicyMismatch));
                 };
@@ -314,7 +336,14 @@ impl ReviewEngine {
                     Ok(value) => value,
                     Err(reason) => return Ok(Self::rejection(reason)),
                 };
-                Some((*client, reviewer, title, criteria_digest, *reward, *deadline_tick))
+                Some((
+                    *client,
+                    reviewer,
+                    title,
+                    criteria_digest,
+                    *reward,
+                    *deadline_tick,
+                ))
             }
             _ => None,
         };
@@ -325,22 +354,40 @@ impl ReviewEngine {
             if self.same_operator(client, reviewer) {
                 return Ok(Self::rejection(Rejection::OperatorConflict));
             }
-            let (market_id, outcome) = self.forward(tick, MarketCommand::PostTask {
-                task_id: id, client, title: title.clone(),
-                acceptance_digest: criteria_digest.clone(), reward, deadline_tick,
-            })?;
+            let (market_id, outcome) = self.forward(
+                tick,
+                MarketCommand::PostTask {
+                    task_id: id,
+                    client,
+                    title: title.clone(),
+                    acceptance_digest: criteria_digest.clone(),
+                    reward,
+                    deadline_tick,
+                },
+            )?;
             if matches!(outcome, MarketOutcome::Applied { .. }) {
                 self.timer(deadline_tick, Command::Deadline { task_id: id })?;
                 if let Some(allocation) = &mut self.allocation {
                     allocation.assign(event, Stage::Primary, reviewer)?;
                 }
-                self.cases.insert(id, ReviewCase {
-                    task_id: id, primary_reviewer: reviewer, status: CaseStatus::Open,
-                    dispute: None, primary_decision: None, appeal: None,
-                    appeal_decision: None, appeal_closes_at: None,
-                });
+                self.cases.insert(
+                    id,
+                    ReviewCase {
+                        task_id: id,
+                        primary_reviewer: reviewer,
+                        status: CaseStatus::Open,
+                        dispute: None,
+                        primary_decision: None,
+                        appeal: None,
+                        appeal_decision: None,
+                        appeal_closes_at: None,
+                    },
+                );
             }
-            return Ok(Outcome::Forwarded { market_event_id: market_id, market_outcome: outcome });
+            return Ok(Outcome::Forwarded {
+                market_event_id: market_id,
+                market_outcome: outcome,
+            });
         }
         let Some(mut case) = self.cases.get(&id).cloned() else {
             if event.command.is_timer() {
@@ -558,9 +605,14 @@ impl ReviewEngine {
                     return Ok(Self::rejection(Rejection::InvalidEvidence));
                 }
                 let reviewer = if let Some(allocation) = &self.allocation {
-                    let worker = task.worker.ok_or(SimulationError::Integrity("appeal worker missing"))?;
-                    let excluded = [self.config.operator(task.client), self.config.operator(worker),
-                        self.config.operator(case.primary_reviewer)];
+                    let worker = task
+                        .worker
+                        .ok_or(SimulationError::Integrity("appeal worker missing"))?;
+                    let excluded = [
+                        self.config.operator(task.client),
+                        self.config.operator(worker),
+                        self.config.operator(case.primary_reviewer),
+                    ];
                     let excluded: Vec<_> = excluded.into_iter().flatten().collect();
                     match allocation.select(&excluded) {
                         Ok(value) => value,
@@ -613,7 +665,10 @@ impl ReviewEngine {
                 case.appeal_decision = Some(decision);
                 self.settle(tick, &task, &mut case, *verdict)?
             }
-            Command::Post { .. } | Command::PostAllocated { .. } | Command::CloseReview { .. } | Command::Deadline { .. } => {
+            Command::Post { .. }
+            | Command::PostAllocated { .. }
+            | Command::CloseReview { .. }
+            | Command::Deadline { .. } => {
                 unreachable!()
             }
         };
@@ -622,8 +677,14 @@ impl ReviewEngine {
         Ok(result)
     }
     fn release_reservations(&mut self, event: &Event, case: &ReviewCase) -> Result<()> {
-        let closed = matches!(case.status, CaseStatus::Completed | CaseStatus::Refunded
-            | CaseStatus::Cancelled | CaseStatus::Failed | CaseStatus::Expired);
+        let closed = matches!(
+            case.status,
+            CaseStatus::Completed
+                | CaseStatus::Refunded
+                | CaseStatus::Cancelled
+                | CaseStatus::Failed
+                | CaseStatus::Expired
+        );
         if let Some(allocation) = &mut self.allocation {
             if closed || case.primary_decision.is_some() {
                 allocation.release(event, Stage::Primary)?;
@@ -724,11 +785,15 @@ impl ReviewEngine {
                 ));
             }
             if let Some(appeal) = &case.appeal {
-                if (self.allocation.is_none() && self.reviewer(task, case.primary_reviewer) != Some(appeal.reviewer))
+                if (self.allocation.is_none()
+                    && self.reviewer(task, case.primary_reviewer) != Some(appeal.reviewer))
                     || self.config.operator(appeal.reviewer).is_none()
                     || self.same_operator(appeal.reviewer, task.client)
-                    || task.worker.is_some_and(|w| self.same_operator(appeal.reviewer, w))
-                    || self.same_operator(appeal.reviewer, case.primary_reviewer) {
+                    || task
+                        .worker
+                        .is_some_and(|w| self.same_operator(appeal.reviewer, w))
+                    || self.same_operator(appeal.reviewer, case.primary_reviewer)
+                {
                     return Err(SimulationError::Integrity(
                         "appeal independence invariant failed",
                     ));
@@ -750,14 +815,27 @@ impl ReviewEngine {
         }
         Self::replay(config, scenario, operations, None)
     }
-    pub fn from_allocated_operations(config: ReviewConfig, policy: AllocationConfig, operations: &[Operation]) -> Result<Self> {
+    pub fn from_allocated_operations(
+        config: ReviewConfig,
+        policy: AllocationConfig,
+        operations: &[Operation],
+    ) -> Result<Self> {
         Self::replay(config, Scenario::ManualReviewV1, operations, Some(policy))
     }
-    fn replay(config: ReviewConfig, scenario: Scenario, operations: &[Operation], policy: Option<AllocationConfig>) -> Result<Self> {
+    fn replay(
+        config: ReviewConfig,
+        scenario: Scenario,
+        operations: &[Operation],
+        policy: Option<AllocationConfig>,
+    ) -> Result<Self> {
         if operations.len() > MAX_OPERATIONS {
             return Err(SimulationError::Capacity("operation history too large"));
         }
-        let mut engine = if let Some(policy) = policy { Self::with_allocation(config, policy)? } else { Self::new(config)? };
+        let mut engine = if let Some(policy) = policy {
+            Self::with_allocation(config, policy)?
+        } else {
+            Self::new(config)?
+        };
         engine.scenario = scenario;
         for operation in operations {
             match operation {
@@ -781,7 +859,9 @@ impl ReviewEngine {
     }
     pub fn run_scenario(&mut self) -> Result<()> {
         if self.allocation.is_some() {
-            return Err(SimulationError::Configuration("legacy scenario cannot use allocated policy"));
+            return Err(SimulationError::Configuration(
+                "legacy scenario cannot use allocated policy",
+            ));
         }
         if self.next_id != 0 || !self.operations.is_empty() || self.finished || self.faulted {
             return Err(SimulationError::Integrity(

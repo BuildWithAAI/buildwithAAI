@@ -139,7 +139,9 @@ impl ReviewReport {
     }
     pub fn from_engine(engine: &ReviewEngine) -> Result<Self, SimulationError> {
         if engine.allocation_config().is_some() {
-            return Err(SimulationError::Integrity("allocated policy requires allocation report"));
+            return Err(SimulationError::Integrity(
+                "allocated policy requires allocation report",
+            ));
         }
         Self::snapshot(engine, "DECLARED_OPERATOR_REVIEW_ONE_APPEAL_V1")
     }
