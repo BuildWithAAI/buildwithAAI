@@ -50,14 +50,18 @@ Balances and amounts are exact `i64` values. Totals and cumulative transfer volu
 ## Library use
 
 ```rust
-use zoora_agent_economy_simulator::{Event, RunReport, SimulationConfig, SimulationEngine};
+use zoora_agent_economy_simulator::{
+    Event, RunReport, SimulationConfig, SimulationEngine, SimulationError,
+};
 
-let mut engine = SimulationEngine::try_new(SimulationConfig::default())?;
-engine.schedule(Event::transfer(0, 0, 0, 0, 1, 5))?;
-engine.run_pending()?;
-let report = RunReport::from_engine(&engine)?;
-report.verify()?;
-# Ok::<(), zoora_agent_economy_simulator::SimulationError>(())
+fn main() -> Result<(), SimulationError> {
+    let mut engine = SimulationEngine::try_new(SimulationConfig::default())?;
+    engine.schedule(Event::transfer(0, 0, 0, 0, 1, 5))?;
+    engine.run_pending()?;
+    let report = RunReport::from_engine(&engine)?;
+    report.verify()?;
+    Ok(())
+}
 ```
 
 The engine exposes read-only getters. Account state changes only through its processor. Standalone state, journal, and metric values can be inspected or copied without granting mutation of an engine. Use `try_new` for external configuration; `new` is a convenience constructor that panics on invalid trusted configuration.
