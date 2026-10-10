@@ -1,0 +1,4 @@
+agent_count = 100
+starting_balance = 1000
+ticks = 1000
+seed = 42

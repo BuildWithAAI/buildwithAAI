@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "kind": "AE001_CI_VERIFICATION_EVIDENCE",
+  "recorded_date_utc": "2026-10-10",
+  "repository": "BuildWithAAI/buildwithAAI",
+  "pull_request": 4,
+  "branch": "feature/ae-001-simulation-foundation",
+  "tested_commit_sha": "b327c3504f5fdb260fc1252fc134bee31a95cc23",
+  "workflow_run": {
+    "id": 38034901104,
+    "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38034901104",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "test_results": {
+    "linux": {
+      "debug_passed": 44,
+      "release_passed": 44,
+      "failed": 0
+    },
+    "windows": {
+      "debug_passed": 43,
+      "release_passed": 43,
+      "failed": 0
+    }
+  },
+  "checks": {
+    "formatting": "passed",
+    "clippy_warnings_denied": "passed",
+    "release_build": "passed",
+    "cli_run_replay": "passed",
+    "debug_release_report_bytes_equal": true,
+    "linux_windows_report_bytes_equal": true,
+    "maximum_agents_and_events": 100000
+  },
+  "jobs": [
+    {
+      "id": 114163194145,
+      "name": "test (ubuntu-latest)",
+      "conclusion": "success"
+    },
+    {
+      "id": 114163194284,
+      "name": "test (windows-latest)",
+      "conclusion": "success"
+    },
+    {
+      "id": 114163194250,
+      "name": "dependencies",
+      "conclusion": "success"
+    }
+  ],
+  "execution_environments": {
+    "linux": {
+      "kind": "CI_EXECUTION_EVIDENCE",
+      "commit_sha": "b327c3504f5fdb260fc1252fc134bee31a95cc23",
+      "workflow_run_id": "38034901104",
+      "os": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "machine": "x86_64",
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "debug_release_reports_equal": true
+    },
+    "windows": {
+      "kind": "CI_EXECUTION_EVIDENCE",
+      "commit_sha": "b327c3504f5fdb260fc1252fc134bee31a95cc23",
+      "workflow_run_id": "38034901104",
+      "os": "Windows-2025Server-10.0.26100-SP0",
+      "machine": "AMD64",
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "debug_release_reports_equal": true
+    }
+  },
+  "dependency_audit": {
+    "database": {
+      "advisory-count": 1296,
+      "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+      "last-updated": "2026-10-09T10:12:02+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 37
+    },
+    "settings": {
+      "target_arch": [],
+      "target_os": [],
+      "severity": null,
+      "ignore": [],
+      "informational_warnings": [
+        "unmaintained",
+        "unsound",
+        "notice"
+      ]
+    },
+    "vulnerabilities": {
+      "found": false,
+      "count": 0,
+      "list": []
+    },
+    "warnings": {}
+  },
+  "reports": {
+    "normal": {
+      "data_classification": "SYNTHETIC",
+      "summary": {
+        "initial_supply": "100000",
+        "final_supply": "100000",
+        "conservation_passed": true,
+        "agents": 100,
+        "processed_requests": 1000,
+        "completed_transfers": 1000,
+        "rejected_transfers": 0,
+        "minimum_balance": 987,
+        "maximum_balance": 1009,
+        "zero_balance_accounts": 0,
+        "top_one_share_bps": 100,
+        "top_ten_share_bps": 1007
+      },
+      "fingerprint": {
+        "schema_version": 1,
+        "simulator_version": "0.2.0",
+        "rng_algorithm": "ChaCha8Rng/rand_chacha-0.3.1/rand_core-0.6.4/seed_from_u64",
+        "config_hash": "2ab447852a68ad10e3ffa4c708f548ff98bd7e360441fc94d5ad5518e512c283",
+        "initial_state_hash": "9bc9403a970fb2c78003cd9fb1f07636262af160cdecddacc6cdd39809ce986c",
+        "journal_hash": "aa7a4c5d1dc60cb3ae2415fea109e23149a4d5827da2acf537cb57994ef98298",
+        "final_state_hash": "06701ba4ae77f49851d35d4a2ba0ef2826347b8842cb38ae83406a514676591a",
+        "run_hash": "e9866cdb999d643f74c74ec0b0c14b9a149774b7a6e5a38f7a8746b37dde469c"
+      }
+    },
+    "zero_budget": {
+      "data_classification": "SYNTHETIC",
+      "summary": {
+        "initial_supply": "0",
+        "final_supply": "0",
+        "conservation_passed": true,
+        "agents": 20,
+        "processed_requests": 1000,
+        "completed_transfers": 0,
+        "rejected_transfers": 1000,
+        "minimum_balance": 0,
+        "maximum_balance": 0,
+        "zero_balance_accounts": 20,
+        "top_one_share_bps": null,
+        "top_ten_share_bps": null
+      },
+      "fingerprint": {
+        "schema_version": 1,
+        "simulator_version": "0.2.0",
+        "rng_algorithm": "ChaCha8Rng/rand_chacha-0.3.1/rand_core-0.6.4/seed_from_u64",
+        "config_hash": "099a6300c5af8646b8e99998bc79fb54b5fff30de6f532acd370eb9a368eafec",
+        "initial_state_hash": "67b91c3cfaad199cec022d4a3e235c5f348bea5f687837831b7bb61aa1acf4c4",
+        "journal_hash": "2145d547956d6e4ddf5f11b9a2b6001c452234f2e2a2794e573e36f20deaf0bc",
+        "final_state_hash": "84212b0e7e4f253456aceae0df5c4df925b92b993d7156f80a6e80707e35a3ec",
+        "run_hash": "08e39b4fa3cfc8f390edf522de65bbfac9e8fb247615ebfb68a1d9bb7d11c632"
+      }
+    }
+  },
+  "report_sha256": {
+    "normal-debug.json": "c5cf77040cc7309170b855f0b19a21a66342c24f80ec72abef32ce514d3e96cc",
+    "normal-release.json": "c5cf77040cc7309170b855f0b19a21a66342c24f80ec72abef32ce514d3e96cc",
+    "zero-budget-debug.json": "7ce6742c21503ebb9df6725b0a80fe5b3b8836f721068728c487d7af635e76e0",
+    "zero-budget-release.json": "7ce6742c21503ebb9df6725b0a80fe5b3b8836f721068728c487d7af635e76e0"
+  },
+  "scaling": {
+    "linux": {
+      "schema_version": 1,
+      "kind": "MEASURED_OFFLINE_SCALING",
+      "data_classification": "SYNTHETIC",
+      "simulator_version": "0.2.0",
+      "timing_note": "Wall-clock measurements cover engine.run including its audit; exclude setup, report creation, and replay. Hardware/build dependent; not a throughput guarantee. Timings are excluded from run fingerprints.",
+      "cases": [
+        {
+          "agent_count": 100,
+          "ticks": 10000,
+          "seed": 42,
+          "elapsed_microseconds": "4540",
+          "completed_transfers": 10000,
+          "rejected_transfers": 0,
+          "conservation_passed": true,
+          "replay_verified": true,
+          "run_hash": "86ad12bd98402e12b8e05b74f930aa6879976124095ab92b7dd1333899e4e910"
+        },
+        {
+          "agent_count": 1000,
+          "ticks": 10000,
+          "seed": 42,
+          "elapsed_microseconds": "4220",
+          "completed_transfers": 10000,
+          "rejected_transfers": 0,
+          "conservation_passed": true,
+          "replay_verified": true,
+          "run_hash": "9aa88f20a85f8f12070836d7d6d7e6126985efd3141e0b8fbc88891d53dce6fa"
+        },
+        {
+          "agent_count": 10000,
+          "ticks": 10000,
+          "seed": 42,
+          "elapsed_microseconds": "4271",
+          "completed_transfers": 10000,
+          "rejected_transfers": 0,
+          "conservation_passed": true,
+          "replay_verified": true,
+          "run_hash": "7c3652f7b584ec4e6e8b5008f972f60734ed5a38041bb577af9d94afc08ae474"
+        }
+      ]
+    },
+    "windows": {
+      "schema_version": 1,
+      "kind": "MEASURED_OFFLINE_SCALING",
+      "data_classification": "SYNTHETIC",
+      "simulator_version": "0.2.0",
+      "timing_note": "Wall-clock measurements cover engine.run including its audit; exclude setup, report creation, and replay. Hardware/build dependent; not a throughput guarantee. Timings are excluded from run fingerprints.",
+      "cases": [
+        {
+          "agent_count": 100,
+          "ticks": 10000,
+          "seed": 42,
+          "elapsed_microseconds": "4637",
+          "completed_transfers": 10000,
+          "rejected_transfers": 0,
+          "conservation_passed": true,
+          "replay_verified": true,
+          "run_hash": "86ad12bd98402e12b8e05b74f930aa6879976124095ab92b7dd1333899e4e910"
+        },
+        {
+          "agent_count": 1000,
+          "ticks": 10000,
+          "seed": 42,
+          "elapsed_microseconds": "4763",
+          "completed_transfers": 10000,
+          "rejected_transfers": 0,
+          "conservation_passed": true,
+          "replay_verified": true,
+          "run_hash": "9aa88f20a85f8f12070836d7d6d7e6126985efd3141e0b8fbc88891d53dce6fa"
+        },
+        {
+          "agent_count": 10000,
+          "ticks": 10000,
+          "seed": 42,
+          "elapsed_microseconds": "4703",
+          "completed_transfers": 10000,
+          "rejected_transfers": 0,
+          "conservation_passed": true,
+          "replay_verified": true,
+          "run_hash": "7c3652f7b584ec4e6e8b5008f972f60734ed5a38041bb577af9d94afc08ae474"
+        }
+      ]
+    }
+  },
+  "artifacts": [
+    {
+      "id": 11663895038,
+      "name": "simulator-dependency-audit",
+      "digest": "sha256:ab0a0dbaee8bf4146a7888deb673dc7203ed4da2ba59758f36db1f7f1ac06336",
+      "head_sha": "b327c3504f5fdb260fc1252fc134bee31a95cc23"
+    },
+    {
+      "id": 11663875459,
+      "name": "simulator-validation-windows-latest",
+      "digest": "sha256:baecca87382e3866572e71a1955d3cc3e6db3eb291c99a1adfb3ea03952fb94a",
+      "head_sha": "b327c3504f5fdb260fc1252fc134bee31a95cc23"
+    },
+    {
+      "id": 11662499837,
+      "name": "simulator-validation-ubuntu-latest",
+      "digest": "sha256:128c584856c12b7ed906d6367587c65491ed067cab07a83cf4e799e4f857ce7d",
+      "head_sha": "b327c3504f5fdb260fc1252fc134bee31a95cc23"
+    }
+  ],
+  "audit_findings_fixed": [
+    "Economic refusals halted execution",
+    "Rejected requests were absent from observers",
+    "Replay did not validate ordering and recorded outcomes",
+    "DefaultHasher lacked a stable cross-version contract",
+    "Scheduler tie equality and duplicate admissions were unsafe",
+    "Extra fields on completed outcomes were silently ignored"
+  ],
+  "review_status": "Draft PR; coding-agent source audit complete; maintainer review and merge pending",
+  "deployment_status": "Not deployed; offline simulator only",
+  "local_toolchain_status": "Rust unavailable in coding workspace; executable evidence obtained from Actions"
+}
