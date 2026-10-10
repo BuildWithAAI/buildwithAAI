@@ -8,6 +8,7 @@ def run(profile,*args,ok=True):
     assert (p.returncode==0)==ok,(args,p.returncode,p.stdout,p.stderr)
     return p.stdout
 reports={}
+golden={'default':'1d8284e43872298c5a1dbf3778a72c31bd27e56802fd8e3d1f95935d6d1e4d16','no-budget':'5f2bb3492d0df6536e84d39c72e3feb02e2c9dd52f1be8fe34d044299590cc9e'}
 with tempfile.TemporaryDirectory() as directory:
     temp=pathlib.Path(directory)
     for config in ['default','no-budget']:
@@ -19,7 +20,7 @@ with tempfile.TemporaryDirectory() as directory:
         data=json.loads(paths[0].read_bytes());reports[config]=data
         payload=[data[k] for k in ['schema_version','model','classification','units','rng','scenario','config','final_state','metrics','journal']]
         digest=hashlib.sha256(b'ZOORA_AE002_JSON_FINGERPRINT_V1\0'+json.dumps(payload,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
-        assert digest==data['fingerprint'],(digest,data['fingerprint'])
+        assert digest==data['fingerprint']==golden[config],(digest,data['fingerprint'],golden[config])
         (out/(config+'.json')).write_bytes(paths[0].read_bytes())
     invalid=temp/'invalid.toml';invalid.write_text('agent_count = -1\n');run('release','run',invalid,temp/'bad.json',ok=False)
     run('release','nonsense',ok=False)

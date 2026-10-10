@@ -1,22 +1,47 @@
-use std::{env,fs::{self,OpenOptions},io::{Read,Write},path::Path,time::Instant};
-use zoora_task_market::{MarketConfig,MarketEngine,MarketReport};
-fn read(path:&Path,limit:u64)->Result<String,String>{
-    let meta=fs::symlink_metadata(path).map_err(|_|"input cannot be inspected")?;
-    if !meta.is_file() || meta.len()>limit{return Err("input must be a bounded regular file".into());}
-    let file=fs::File::open(path).map_err(|_|"input cannot be opened")?;
-    let mut bytes=Vec::new();file.take(limit+1).read_to_end(&mut bytes).map_err(|_|"input cannot be read")?;
-    if bytes.len() as u64>limit{return Err("input exceeds size limit".into());}
-    String::from_utf8(bytes).map_err(|_|"input is not UTF-8".into())
+use std::{
+    env,
+    fs::{self, OpenOptions},
+    io::{Read, Write},
+    path::Path,
+    time::Instant,
+};
+use zoora_task_market::{MarketConfig, MarketEngine, MarketReport};
+fn read(path: &Path, limit: u64) -> Result<String, String> {
+    let meta = fs::symlink_metadata(path).map_err(|_| "input cannot be inspected")?;
+    if !meta.is_file() || meta.len() > limit {
+        return Err("input must be a bounded regular file".into());
+    }
+    let file = fs::File::open(path).map_err(|_| "input cannot be opened")?;
+    let mut bytes = Vec::new();
+    file.take(limit + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "input cannot be read")?;
+    if bytes.len() as u64 > limit {
+        return Err("input exceeds size limit".into());
+    }
+    String::from_utf8(bytes).map_err(|_| "input is not UTF-8".into())
 }
-fn write(path:&Path,bytes:&[u8])->Result<(),String>{
-    if bytes.len()>64*1024*1024{return Err("output exceeds size limit".into());}
-    let mut options=OpenOptions::new();options.write(true).create_new(true);
-    #[cfg(unix)] {use std::os::unix::fs::OpenOptionsExt;options.mode(0o600);}
-    let mut file=options.open(path).map_err(|_|"output must be a new writable file")?;
-    if file.write_all(bytes).and_then(|_|file.sync_all()).is_err(){return Err("output write failed; discard incomplete file".into());}Ok(())
+fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    if bytes.len() > 64 * 1024 * 1024 {
+        return Err("output exceeds size limit".into());
+    }
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options
+        .open(path)
+        .map_err(|_| "output must be a new writable file")?;
+    if file.write_all(bytes).and_then(|_| file.sync_all()).is_err() {
+        return Err("output write failed; discard incomplete file".into());
+    }
+    Ok(())
 }
-fn execute()->Result<(),String>{
-    let args:Vec<_>=env::args().skip(1).collect();
+fn execute() -> Result<(), String> {
+    let args: Vec<_> = env::args().skip(1).collect();
     let result=match args.as_slice(){
         [mode,config,output] if mode=="run"=>{
             let config=MarketConfig::from_toml(&read(Path::new(config),1024*1024)?).map_err(|e|e.to_string())?;
@@ -40,6 +65,13 @@ fn execute()->Result<(),String>{
             write(Path::new(output),&serde_json::to_vec_pretty(&measurements).map_err(|_|"benchmark encoding failed")?)?;"SYNTHETIC scaling verified".into()
         },
         _=>return Err("usage: zoora-task-market run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json".into()),
-    };println!("{result}");Ok(())
+    };
+    println!("{result}");
+    Ok(())
 }
-fn main(){if let Err(message)=execute(){eprintln!("{message}");std::process::exit(1);}}
+fn main() {
+    if let Err(message) = execute() {
+        eprintln!("{message}");
+        std::process::exit(1);
+    }
+}

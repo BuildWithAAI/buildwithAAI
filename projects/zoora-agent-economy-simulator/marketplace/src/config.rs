@@ -23,9 +23,17 @@ pub struct MarketConfig {
 impl Default for MarketConfig {
     fn default() -> Self {
         Self {
-            agent_count: 100, starting_balance: 1_000, ticks: 5, seed: 42,
-            max_tasks: 1_000, max_active_tasks_per_worker: 10, fee_bps: 250,
-            scenario_tasks: 100, reward_per_task: 100, failure_bps: 2_000, cancellation_bps: 1_000,
+            agent_count: 100,
+            starting_balance: 1_000,
+            ticks: 5,
+            seed: 42,
+            max_tasks: 1_000,
+            max_active_tasks_per_worker: 10,
+            fee_bps: 250,
+            scenario_tasks: 100,
+            reward_per_task: 100,
+            failure_bps: 2_000,
+            cancellation_bps: 1_000,
         }
     }
 }
@@ -35,23 +43,34 @@ impl MarketConfig {
         if !(2..=MAX_AGENTS).contains(&self.agent_count) || self.starting_balance < 0 {
             return Err(error("invalid market accounts"));
         }
-        if self.ticks == 0 || self.ticks > MAX_TICKS { return Err(error("invalid tick horizon")); }
-        if !(1..=MAX_TASKS).contains(&self.max_tasks) || !(1..=self.max_tasks).contains(&self.max_active_tasks_per_worker) {
+        if self.ticks == 0 || self.ticks > MAX_TICKS {
+            return Err(error("invalid tick horizon"));
+        }
+        if !(1..=MAX_TASKS).contains(&self.max_tasks)
+            || !(1..=self.max_tasks).contains(&self.max_active_tasks_per_worker)
+        {
             return Err(error("invalid task capacity"));
         }
         if self.scenario_tasks > self.max_tasks || (self.scenario_tasks > 0 && self.ticks < 5) {
             return Err(error("scenario exceeds task capacity or tick horizon"));
         }
-        if self.reward_per_task <= 0 || self.fee_bps > 10_000 || self.failure_bps > 10_000 || self.cancellation_bps > 10_000 {
+        if self.reward_per_task <= 0
+            || self.fee_bps > 10_000
+            || self.failure_bps > 10_000
+            || self.cancellation_bps > 10_000
+        {
             return Err(error("invalid reward or basis-point rate"));
         }
         Ok(())
     }
     pub fn from_toml(text: &str) -> Result<Self, SimulationError> {
-        let config: Self = toml::from_str(text).map_err(|_| SimulationError::Configuration("invalid market TOML"))?;
-        config.validate()?; Ok(config)
+        let config: Self = toml::from_str(text)
+            .map_err(|_| SimulationError::Configuration("invalid market TOML"))?;
+        config.validate()?;
+        Ok(config)
     }
     pub fn initial_supply(&self) -> Result<u128, SimulationError> {
-        self.validate()?; Ok(self.agent_count as u128 * self.starting_balance as u128)
+        self.validate()?;
+        Ok(self.agent_count as u128 * self.starting_balance as u128)
     }
 }
