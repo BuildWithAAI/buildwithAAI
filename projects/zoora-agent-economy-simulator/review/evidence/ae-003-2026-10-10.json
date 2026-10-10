@@ -1,0 +1,460 @@
+{
+  "milestone": "AE-003",
+  "status": "VERIFIED_OFFLINE_CANDIDATE",
+  "verified_source_head": "af51482cc96fb23d082ee273f8b3c27c68f56ad3",
+  "base_head": "772cac0b3945390f27289ada834ebee5c6e1676b",
+  "branch": "feature/ae-003-review-policy",
+  "pr": "https://github.com/BuildWithAAI/buildwithAAI/pull/12",
+  "ci": {
+    "review": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38067521693",
+    "market_regression": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38067521572",
+    "foundation_regression": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38067521608"
+  },
+  "tests_per_profile": {
+    "review_linux": 39,
+    "review_windows": 39,
+    "market_linux": 31,
+    "market_windows": 31,
+    "foundation_linux": 44,
+    "foundation_windows": 43
+  },
+  "profiles": [
+    "debug",
+    "release"
+  ],
+  "cross_platform_reports_byte_identical": true,
+  "independent_python_fingerprints_and_supply_verified": true,
+  "recomputed_hash_forgery_rejected": true,
+  "dependency_audit": {
+    "database": {
+      "advisory-count": 1296,
+      "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+      "last-updated": "2026-10-09T10:12:02+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 39
+    },
+    "settings": {
+      "target_arch": [],
+      "target_os": [],
+      "severity": null,
+      "ignore": [],
+      "informational_warnings": [
+        "unmaintained",
+        "unsound",
+        "notice"
+      ]
+    },
+    "vulnerabilities": {
+      "found": false,
+      "count": 0,
+      "list": []
+    },
+    "warnings": {}
+  },
+  "reports": {
+    "default": {
+      "sha256": "c95b4e3ef76eb9b3b643fc36c39f89bba5975484c266cefe37c6a818d789357b",
+      "fingerprint": "2084161175d885e7ec66a1d381e2d2a60fc609b5acef3b036dd348f6490b9c12",
+      "market_fingerprint": "e65167b1bcffb58d4bc59531af410e09479f46ec76fbc5bd4365c4022512d302",
+      "review_metrics": {
+        "processed_events": 549,
+        "rejected_commands": 0,
+        "disputes": 17,
+        "primary_verdicts": 53,
+        "appeals": 23,
+        "appeal_verdicts": 16,
+        "overturned_verdicts": 5,
+        "successful_settlements": 46,
+        "blocked_settlements": 0,
+        "deadline_refunds": 13,
+        "decisions_by_reviewer": {
+          "0": 51,
+          "1": 16,
+          "2": 2
+        }
+      },
+      "market_metrics": {
+        "processed_events": 433,
+        "requested_commands": 333,
+        "rejected_commands": 0,
+        "timer_events": 100,
+        "timer_noops": 87,
+        "transitions": {
+          "POSTED": 100,
+          "ACCEPTED": 87,
+          "SUBMITTED": 59,
+          "COMPLETED": 38,
+          "FAILED": 36,
+          "CANCELLED": 13,
+          "EXPIRED": 13
+        },
+        "rejections": {},
+        "escrow_funded": "10000",
+        "worker_payments": "3724",
+        "fees_collected": "76",
+        "client_refunds": "6200"
+      },
+      "statuses": {
+        "CANCELLED": 13,
+        "COMPLETED": 38,
+        "EXPIRED": 13,
+        "FAILED": 28,
+        "REFUNDED": 8
+      }
+    },
+    "no-budget": {
+      "sha256": "22104fab2ea6f71508862962b167d1fa5d71b62e76883c3c01667f4c2b000d69",
+      "fingerprint": "8c7623df42223be79bde2fc6550716cb37b28d097b232ed3e45a9535d00e6525",
+      "market_fingerprint": "4e9af1dcfe6a56f1740765627de9de68f1ebc9bbc5d13e15613b5a0179153fc2",
+      "review_metrics": {
+        "processed_events": 396,
+        "rejected_commands": 396,
+        "disputes": 0,
+        "primary_verdicts": 0,
+        "appeals": 0,
+        "appeal_verdicts": 0,
+        "overturned_verdicts": 0,
+        "successful_settlements": 0,
+        "blocked_settlements": 0,
+        "deadline_refunds": 0,
+        "decisions_by_reviewer": {}
+      },
+      "market_metrics": {
+        "processed_events": 100,
+        "requested_commands": 100,
+        "rejected_commands": 100,
+        "timer_events": 0,
+        "timer_noops": 0,
+        "transitions": {},
+        "rejections": {
+          "INSUFFICIENT_FUNDS": 100
+        },
+        "escrow_funded": "0",
+        "worker_payments": "0",
+        "fees_collected": "0",
+        "client_refunds": "0"
+      },
+      "statuses": {}
+    }
+  },
+  "platforms": {
+    "ubuntu": {
+      "environment": {
+        "source_head_sha": "af51482cc96fb23d082ee273f8b3c27c68f56ad3",
+        "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+        "independent_json_fingerprint_verified": true,
+        "independent_supply_accounting_verified": true,
+        "forged_journal_with_recomputed_hash_rejected": true,
+        "debug_release_byte_identical": true
+      },
+      "scaling": [
+        {
+          "agents": 100,
+          "classification": "SYNTHETIC",
+          "fingerprint": "3e8e51c0a95264533e0b44d5c28a99dbcafa4c60a92e80d7a02111b91ef31c96",
+          "market_events": 22559,
+          "market_metrics": {
+            "client_refunds": "295100",
+            "escrow_funded": "500000",
+            "fees_collected": "4098",
+            "processed_events": 22559,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 17559,
+            "timer_events": 5000,
+            "timer_noops": 4471,
+            "transitions": {
+              "ACCEPTED": 4506,
+              "CANCELLED": 494,
+              "COMPLETED": 2049,
+              "EXPIRED": 529,
+              "FAILED": 1928,
+              "POSTED": 5000,
+              "SUBMITTED": 3582
+            },
+            "worker_payments": "200802"
+          },
+          "review_events": 29523,
+          "review_metrics": {
+            "appeal_verdicts": 1116,
+            "appeals": 1324,
+            "blocked_settlements": 0,
+            "deadline_refunds": 529,
+            "decisions_by_reviewer": {
+              "0": 3200,
+              "1": 1133,
+              "2": 43,
+              "3": 1
+            },
+            "disputes": 1055,
+            "overturned_verdicts": 565,
+            "primary_verdicts": 3261,
+            "processed_events": 29523,
+            "rejected_commands": 0,
+            "successful_settlements": 3053
+          },
+          "run_microseconds": "34856",
+          "tasks": 5000,
+          "verify_microseconds": "233723"
+        },
+        {
+          "agents": 1000,
+          "classification": "SYNTHETIC",
+          "fingerprint": "7a8acf6d8b4331c44f1cc3cd2a4463b67cdbe0af481925fbef13f00912252502",
+          "market_events": 22559,
+          "market_metrics": {
+            "client_refunds": "295100",
+            "escrow_funded": "500000",
+            "fees_collected": "4098",
+            "processed_events": 22559,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 17559,
+            "timer_events": 5000,
+            "timer_noops": 4471,
+            "transitions": {
+              "ACCEPTED": 4506,
+              "CANCELLED": 494,
+              "COMPLETED": 2049,
+              "EXPIRED": 529,
+              "FAILED": 1928,
+              "POSTED": 5000,
+              "SUBMITTED": 3582
+            },
+            "worker_payments": "200802"
+          },
+          "review_events": 29523,
+          "review_metrics": {
+            "appeal_verdicts": 1116,
+            "appeals": 1324,
+            "blocked_settlements": 0,
+            "deadline_refunds": 529,
+            "decisions_by_reviewer": {
+              "0": 3250,
+              "1": 1123,
+              "2": 4
+            },
+            "disputes": 1055,
+            "overturned_verdicts": 565,
+            "primary_verdicts": 3261,
+            "processed_events": 29523,
+            "rejected_commands": 0,
+            "successful_settlements": 3053
+          },
+          "run_microseconds": "25399",
+          "tasks": 5000,
+          "verify_microseconds": "229521"
+        },
+        {
+          "agents": 10000,
+          "classification": "SYNTHETIC",
+          "fingerprint": "cfbe270e6c787b4f0c0728ebda8c7ac23f09c02a042eefc485cce009d27d496c",
+          "market_events": 22559,
+          "market_metrics": {
+            "client_refunds": "295100",
+            "escrow_funded": "500000",
+            "fees_collected": "4098",
+            "processed_events": 22559,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 17559,
+            "timer_events": 5000,
+            "timer_noops": 4471,
+            "transitions": {
+              "ACCEPTED": 4506,
+              "CANCELLED": 494,
+              "COMPLETED": 2049,
+              "EXPIRED": 529,
+              "FAILED": 1928,
+              "POSTED": 5000,
+              "SUBMITTED": 3582
+            },
+            "worker_payments": "200802"
+          },
+          "review_events": 29523,
+          "review_metrics": {
+            "appeal_verdicts": 1116,
+            "appeals": 1324,
+            "blocked_settlements": 0,
+            "deadline_refunds": 529,
+            "decisions_by_reviewer": {
+              "0": 3261,
+              "1": 1115,
+              "2": 1
+            },
+            "disputes": 1055,
+            "overturned_verdicts": 565,
+            "primary_verdicts": 3261,
+            "processed_events": 29523,
+            "rejected_commands": 0,
+            "successful_settlements": 3053
+          },
+          "run_microseconds": "27484",
+          "tasks": 5000,
+          "verify_microseconds": "225184"
+        }
+      ]
+    },
+    "windows": {
+      "environment": {
+        "source_head_sha": "af51482cc96fb23d082ee273f8b3c27c68f56ad3",
+        "platform": "Windows-2025Server-10.0.26100-SP0",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+        "independent_json_fingerprint_verified": true,
+        "independent_supply_accounting_verified": true,
+        "forged_journal_with_recomputed_hash_rejected": true,
+        "debug_release_byte_identical": true
+      },
+      "scaling": [
+        {
+          "agents": 100,
+          "classification": "SYNTHETIC",
+          "fingerprint": "3e8e51c0a95264533e0b44d5c28a99dbcafa4c60a92e80d7a02111b91ef31c96",
+          "market_events": 22559,
+          "market_metrics": {
+            "client_refunds": "295100",
+            "escrow_funded": "500000",
+            "fees_collected": "4098",
+            "processed_events": 22559,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 17559,
+            "timer_events": 5000,
+            "timer_noops": 4471,
+            "transitions": {
+              "ACCEPTED": 4506,
+              "CANCELLED": 494,
+              "COMPLETED": 2049,
+              "EXPIRED": 529,
+              "FAILED": 1928,
+              "POSTED": 5000,
+              "SUBMITTED": 3582
+            },
+            "worker_payments": "200802"
+          },
+          "review_events": 29523,
+          "review_metrics": {
+            "appeal_verdicts": 1116,
+            "appeals": 1324,
+            "blocked_settlements": 0,
+            "deadline_refunds": 529,
+            "decisions_by_reviewer": {
+              "0": 3200,
+              "1": 1133,
+              "2": 43,
+              "3": 1
+            },
+            "disputes": 1055,
+            "overturned_verdicts": 565,
+            "primary_verdicts": 3261,
+            "processed_events": 29523,
+            "rejected_commands": 0,
+            "successful_settlements": 3053
+          },
+          "run_microseconds": "53599",
+          "tasks": 5000,
+          "verify_microseconds": "396817"
+        },
+        {
+          "agents": 1000,
+          "classification": "SYNTHETIC",
+          "fingerprint": "7a8acf6d8b4331c44f1cc3cd2a4463b67cdbe0af481925fbef13f00912252502",
+          "market_events": 22559,
+          "market_metrics": {
+            "client_refunds": "295100",
+            "escrow_funded": "500000",
+            "fees_collected": "4098",
+            "processed_events": 22559,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 17559,
+            "timer_events": 5000,
+            "timer_noops": 4471,
+            "transitions": {
+              "ACCEPTED": 4506,
+              "CANCELLED": 494,
+              "COMPLETED": 2049,
+              "EXPIRED": 529,
+              "FAILED": 1928,
+              "POSTED": 5000,
+              "SUBMITTED": 3582
+            },
+            "worker_payments": "200802"
+          },
+          "review_events": 29523,
+          "review_metrics": {
+            "appeal_verdicts": 1116,
+            "appeals": 1324,
+            "blocked_settlements": 0,
+            "deadline_refunds": 529,
+            "decisions_by_reviewer": {
+              "0": 3250,
+              "1": 1123,
+              "2": 4
+            },
+            "disputes": 1055,
+            "overturned_verdicts": 565,
+            "primary_verdicts": 3261,
+            "processed_events": 29523,
+            "rejected_commands": 0,
+            "successful_settlements": 3053
+          },
+          "run_microseconds": "51939",
+          "tasks": 5000,
+          "verify_microseconds": "402583"
+        },
+        {
+          "agents": 10000,
+          "classification": "SYNTHETIC",
+          "fingerprint": "cfbe270e6c787b4f0c0728ebda8c7ac23f09c02a042eefc485cce009d27d496c",
+          "market_events": 22559,
+          "market_metrics": {
+            "client_refunds": "295100",
+            "escrow_funded": "500000",
+            "fees_collected": "4098",
+            "processed_events": 22559,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 17559,
+            "timer_events": 5000,
+            "timer_noops": 4471,
+            "transitions": {
+              "ACCEPTED": 4506,
+              "CANCELLED": 494,
+              "COMPLETED": 2049,
+              "EXPIRED": 529,
+              "FAILED": 1928,
+              "POSTED": 5000,
+              "SUBMITTED": 3582
+            },
+            "worker_payments": "200802"
+          },
+          "review_events": 29523,
+          "review_metrics": {
+            "appeal_verdicts": 1116,
+            "appeals": 1324,
+            "blocked_settlements": 0,
+            "deadline_refunds": 529,
+            "decisions_by_reviewer": {
+              "0": 3261,
+              "1": 1115,
+              "2": 1
+            },
+            "disputes": 1055,
+            "overturned_verdicts": 565,
+            "primary_verdicts": 3261,
+            "processed_events": 29523,
+            "rejected_commands": 0,
+            "successful_settlements": 3053
+          },
+          "run_microseconds": "61252",
+          "tasks": 5000,
+          "verify_microseconds": "421514"
+        }
+      ]
+    }
+  },
+  "limits": "Synthetic declared operators and verdicts. No authenticated independence, artifact quality verification, reputation, penalties, real agents, real funds, network integration or deployment. Lowest-ID reviewer selection concentrates reviews; timings are single CI samples. Evidence names this implementation candidate, not the later evidence/golden-check commit."
+}
