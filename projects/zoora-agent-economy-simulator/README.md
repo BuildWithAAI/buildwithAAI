@@ -33,6 +33,8 @@ TOML requires exactly `agent_count`, `starting_balance`, `ticks`, and `seed`. Un
 - `ticks`: 1 through 100,000; valid event ticks are zero through `ticks - 1`.
 - `seed`: unsigned 64-bit seed for pinned ChaCha8Rng.
 
+TOML numeric literals are signed 64-bit values, so the CLI configuration accepts nonnegative seeds through `i64::MAX`. The Rust library and JSON reports preserve the full `u64` seed range.
+
 The normal scenario requests one one-unit transfer per tick. Sender selection uses unbiased bounded sampling; recipient selection samples the other accounts uniformly. Zero-balance senders produce an `INSUFFICIENT_FUNDS` record and the simulation continues. A normal scenario can run once on a fresh engine.
 
 ## Saved reports

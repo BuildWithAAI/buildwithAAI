@@ -78,7 +78,10 @@ fn missing_unknown_and_noncanonical_json_fields_are_rejected() {
                     "340282366920938463463374607431768211456".into()
             }
         }
-        assert!(serde_json::from_value::<RunReport>(value).is_err(), "mutation {mutation}");
+        assert!(
+            serde_json::from_value::<RunReport>(value).is_err(),
+            "mutation {mutation}"
+        );
     }
 }
 #[test]

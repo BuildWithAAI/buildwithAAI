@@ -394,7 +394,10 @@ fn maximum_supported_run_conserves_wide_supply_and_fits_report_limit() {
     engine.run().unwrap();
     assert_eq!(engine.metrics().events_processed, MAX_EVENTS as u64);
     assert_eq!(engine.metrics().transfers_rejected, MAX_EVENTS as u64);
-    assert_eq!(engine.state().total_balance().unwrap(), cfg.initial_supply().unwrap());
+    assert_eq!(
+        engine.state().total_balance().unwrap(),
+        cfg.initial_supply().unwrap()
+    );
     let report = RunReport::from_engine(&engine).unwrap();
     report.verify().unwrap();
     let bytes = serde_json::to_vec_pretty(&report).unwrap();
