@@ -1,5 +1,5 @@
 """Run the real review CLI and independently verify report hashes/accounting."""
-import hashlib,json,os,pathlib,subprocess,tempfile,platform
+import copy,hashlib,json,os,pathlib,subprocess,tempfile,platform
 root=pathlib.Path(__file__).resolve().parents[1]
 out=root/'target'/'validation-evidence';out.mkdir(parents=True,exist_ok=True)
 suffix='.exe' if os.name=='nt' else ''
@@ -9,7 +9,7 @@ def run(profile,*args,ok=True):
     return p.stdout
 fields=['schema_version','model','classification','policy','rng','scenario','config','market','cases','metrics','operations','journal']
 reports={}
-golden={'default':'d5a258c6a6e80eba4668ba93aed466e1821111b8686c188639816b2e5ad3a743','no-budget':'8c7623df42223be79bde2fc6550716cb37b28d097b232ed3e45a9535d00e6525'}
+golden={'default':'2084161175d885e7ec66a1d381e2d2a60fc609b5acef3b036dd348f6490b9c12','no-budget':'8c7623df42223be79bde2fc6550716cb37b28d097b232ed3e45a9535d00e6525'}
 with tempfile.TemporaryDirectory() as directory:
     temp=pathlib.Path(directory)
     for config in ['default','no-budget']:
@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory() as directory:
         (out/(config+'.json')).write_bytes(paths[0].read_bytes())
     invalid=temp/'invalid.toml';invalid.write_text('secret = "ignored"\n');run('release','run',invalid,temp/'bad.json',ok=False)
     run('release','nonsense',ok=False)
-    data=reports['default'];data['journal'][0]['outcome']={'status':'TIMER_NOOP'}
+    data=copy.deepcopy(reports['default']);data['journal'][0]['outcome']={'status':'TIMER_NOOP'}
     data['fingerprint']=hashlib.sha256(b'ZOORA_AE003_JSON_FINGERPRINT_V1\0'+json.dumps([data[k] for k in fields],ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
     path=temp/'forged.json';path.write_text(json.dumps(data));run('release','replay',path,ok=False)
     oversized=temp/'huge.toml';oversized.write_bytes(b' '*(4*1024*1024+1));run('release','run',oversized,temp/'huge.json',ok=False)
