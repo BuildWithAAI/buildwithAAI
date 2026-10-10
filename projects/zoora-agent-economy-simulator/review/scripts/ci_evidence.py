@@ -9,6 +9,7 @@ def run(profile,*args,ok=True):
     return p.stdout
 fields=['schema_version','model','classification','policy','rng','scenario','config','market','cases','metrics','operations','journal']
 reports={}
+golden={'default':'d5a258c6a6e80eba4668ba93aed466e1821111b8686c188639816b2e5ad3a743','no-budget':'8c7623df42223be79bde2fc6550716cb37b28d097b232ed3e45a9535d00e6525'}
 with tempfile.TemporaryDirectory() as directory:
     temp=pathlib.Path(directory)
     for config in ['default','no-budget']:
@@ -19,7 +20,7 @@ with tempfile.TemporaryDirectory() as directory:
         assert paths[0].read_bytes()==paths[1].read_bytes()
         data=json.loads(paths[0].read_bytes());reports[config]=data
         digest=hashlib.sha256(b'ZOORA_AE003_JSON_FINGERPRINT_V1\0'+json.dumps([data[k] for k in fields],ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
-        assert digest==data['fingerprint'],(digest,data['fingerprint'])
+        assert digest==data['fingerprint']==golden[config],(digest,data['fingerprint'],golden[config])
         market=data['market'];m=market['metrics'];assert int(m['escrow_funded'])==sum(int(m[k]) for k in ['worker_payments','fees_collected','client_refunds'])
         state=market['final_state'];assert all(not a['refundable_escrow'] for a in state['accounts']);assert sum(a['balance'] for a in state['accounts'])+int(state['treasury'])==data['config']['market']['agent_count']*data['config']['market']['starting_balance']
         (out/(config+'.json')).write_bytes(paths[0].read_bytes())

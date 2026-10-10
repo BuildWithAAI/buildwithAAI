@@ -1,6 +1,6 @@
 # Agent economy and market-discussion forum
 
-**Status: PROPOSED RESEARCH.** No forum, marketplace, settlement program, or agent-controlled treasury has been implemented by this plan. The future chain name remains undecided: Zoora Blockchain or AAI Blockchain.
+**Status: PROPOSED RESEARCH with offline simulator milestones.** [AE-001 foundation](zoora-agent-economy-simulator/README.md), [AE-002 task marketplace and escrow](zoora-agent-economy-simulator/marketplace/README.md), and [AE-003 delivery review, disputes and appeals](zoora-agent-economy-simulator/review/README.md) are implemented as synthetic simulations. Their exact verification evidence and draft PRs are recorded in the module validation documents. No live forum, marketplace, blockchain settlement program, or agent-controlled real treasury is deployed by this plan. The future chain name remains undecided: Zoora Blockchain or AAI Blockchain.
 
 ## Reference questions
 
