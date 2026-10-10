@@ -82,6 +82,10 @@ impl MarketEngine {
     pub fn journal(&self) -> &[Record] {
         &self.journal
     }
+    /// Read-only lookup for policy adapters; no state copy or mutation.
+    pub fn task(&self, task_id: u64) -> Option<&Task> {
+        self.tasks.get(&task_id)
+    }
     pub fn metrics(&self) -> &MarketMetrics {
         &self.metrics
     }
@@ -462,7 +466,9 @@ impl MarketEngine {
         }
         self.commit_effect(event, effect)
     }
-    pub fn advance_to(&mut self, tick: u64) -> Result<()> {
+    /// Process checked transitions in a batch. Call `audit` at batch boundaries;
+    /// `advance_to`, `run` and final reports still require the full audit.
+    pub fn process_until(&mut self, tick: u64) -> Result<()> {
         if self.finished || self.faulted || tick < self.clock || tick >= self.config.ticks {
             return Err(SimulationError::Integrity("invalid engine advance"));
         }
@@ -481,6 +487,10 @@ impl MarketEngine {
             }
         }
         self.clock = tick;
+        Ok(())
+    }
+    pub fn advance_to(&mut self, tick: u64) -> Result<()> {
+        self.process_until(tick)?;
         if let Err(error) = self.audit() {
             self.faulted = true;
             return Err(error);
