@@ -54,6 +54,8 @@ with tempfile.TemporaryDirectory() as directory:
  allocation=copy.deepcopy(suite['experiments'][0]['allocated']);path=temp/'allocated.json';path.write_text(json.dumps(allocation));run('release','replay-allocated',path)
  allocation['allocation_journal'][0]['reviewer']=99;allocation['fingerprint']=fingerprint('allocation',allocation);path.write_text(json.dumps(allocation));run('release','replay-allocated',path,ok=False)
  failed_output=temp/'must-not-export.html';run('release','viewer',path,failed_output,ok=False);assert not failed_output.exists()
+ for name in ['direct.json','direct.html']:
+  assert (root/'examples'/name).read_bytes()==(out/name).read_bytes(),('committed example differs',name)
  direct=reports['direct'];assert all(not b for b in direct['wallet_boundary'].values())
  assert [direct['metrics'][k] for k in ['payments_recorded','voluntary_refunds_recorded','net_transferred']]==['500','150','350']
  assert int(direct['metrics']['payments_recorded'])==int(direct['metrics']['net_transferred'])+int(direct['metrics']['voluntary_refunds_recorded'])

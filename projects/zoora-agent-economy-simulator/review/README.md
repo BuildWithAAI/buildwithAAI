@@ -48,3 +48,5 @@ See [VALIDATION.md](VALIDATION.md) for the verified source, test evidence and re
 ## AE-004 connected development
 
 See [AE004.md](AE004.md) for direct payments from user-controlled agent wallets, voluntary-refund semantics, fair/capacity-aware research allocation, matched adversarial experiments and the verified local viewer. The escrow/refund rules above describe the historical **SYNTHETIC research ledger**, not platform custody or reversal of direct payments.
+
+[AE-004 verification report](VALIDATION_AE004.md) · [Offline direct-payment demo](examples/direct.html) · [Original synthetic report](examples/direct.json).

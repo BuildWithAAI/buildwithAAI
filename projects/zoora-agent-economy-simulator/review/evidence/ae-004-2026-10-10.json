@@ -1,0 +1,483 @@
+{
+  "schema_version": 1,
+  "milestone": "AE-004",
+  "classification": "SYNTHETIC",
+  "verified_date_utc": "2026-10-10",
+  "verified_candidate_sha": "4316408e26df85ce8e4a72a5ebbc40397f94d2e0",
+  "verified_candidate_tree": "c891062730e74150f3e6ff52a30deb2ec2db1737",
+  "branch": "feature/ae-004-noncustodial-allocation",
+  "pull_request": "https://github.com/BuildWithAAI/buildwithAAI/pull/13",
+  "ci_runs": {
+    "review": 38072227396,
+    "marketplace_regression": 38072227399,
+    "foundation_regression": 38072227395
+  },
+  "jobs_passed": 9,
+  "jobs_failed": 0,
+  "tests_per_platform_per_profile": {
+    "review": {
+      "allocation_and_experiments": 25,
+      "direct_workflow": 18,
+      "legacy_review": 39,
+      "total": 82
+    },
+    "marketplace": 31,
+    "foundation": {
+      "linux": 44,
+      "windows": 43
+    }
+  },
+  "profiles": [
+    "debug",
+    "release"
+  ],
+  "platforms": [
+    "ubuntu-latest",
+    "windows-latest"
+  ],
+  "strict_fmt_check": true,
+  "strict_clippy": true,
+  "locked_builds": true,
+  "cross_platform_byte_identical": [
+    "direct.json",
+    "experiments.json",
+    "default.json",
+    "no-budget.json",
+    "direct.html",
+    "experiments.html"
+  ],
+  "golden_fingerprints": {
+    "experiments": "caad08ff832700c7bc3ae47d9233b344374310aebb1bd7728ba5c31ac9e2db9e",
+    "direct": "d80b7f813b2e6afae0995131248a4817f8026e8a024e21ca06859b919c59bc94"
+  },
+  "independent_canonical_hashes_verified": true,
+  "independent_accounting_verified": true,
+  "forged_reports_with_recomputed_hashes_rejected": true,
+  "examples_sha256": {
+    "direct.json": "092574e2565e05fcfcfb5905dea3c1b93554d030a8f045c63d73542ca1aad58e",
+    "direct.html": "02e7c3a098d27215b5d496ecd9346a1ad588767b0f8803f5a801ac54635c3dcd"
+  },
+  "direct_metrics": {
+    "payments_recorded": "500",
+    "voluntary_refunds_recorded": "150",
+    "net_transferred": "350",
+    "refund_requests": 3,
+    "declined_refunds": 1,
+    "unresolved_refund_requests": 2,
+    "overdue_deliveries": 4,
+    "unresolved_disputes": 2,
+    "rejected_commands": 0
+  },
+  "experiment_results": [
+    {
+      "name": "balanced",
+      "baseline_decisions": {
+        "2": 88,
+        "3": 29
+      },
+      "allocated_metrics": {
+        "assignments_by_operator": {
+          "2": 16,
+          "3": 17,
+          "4": 17,
+          "5": 17,
+          "6": 17,
+          "7": 17,
+          "8": 16,
+          "9": 16
+        },
+        "assignments_by_account": {
+          "2": 16,
+          "3": 17,
+          "4": 17,
+          "5": 17,
+          "6": 17,
+          "7": 17,
+          "8": 16,
+          "9": 16
+        },
+        "peak_active_by_operator": {
+          "2": 13,
+          "3": 13,
+          "4": 13,
+          "5": 13,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12
+        },
+        "decisions_by_operator": {
+          "2": 12,
+          "3": 15,
+          "4": 15,
+          "5": 15,
+          "6": 16,
+          "7": 16,
+          "8": 14,
+          "9": 14
+        },
+        "largest_operator_decision_share_bps": 1367,
+        "capacity_rejections": 0,
+        "independence_rejections": 0,
+        "active_at_finish": 0
+      },
+      "baseline_tasks": 100,
+      "allocated_tasks": 100
+    },
+    {
+      "name": "declared_aliases",
+      "baseline_decisions": {
+        "2": 88,
+        "11": 29
+      },
+      "allocated_metrics": {
+        "assignments_by_operator": {
+          "2": 16,
+          "3": 17,
+          "4": 17,
+          "5": 17,
+          "6": 17,
+          "7": 17,
+          "8": 16,
+          "9": 16
+        },
+        "assignments_by_account": {
+          "2": 2,
+          "3": 2,
+          "4": 2,
+          "5": 2,
+          "6": 2,
+          "7": 2,
+          "8": 2,
+          "9": 1,
+          "10": 1,
+          "11": 17,
+          "12": 17,
+          "13": 17,
+          "14": 17,
+          "15": 17,
+          "16": 16,
+          "17": 16
+        },
+        "peak_active_by_operator": {
+          "2": 13,
+          "3": 13,
+          "4": 13,
+          "5": 13,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12
+        },
+        "decisions_by_operator": {
+          "2": 12,
+          "3": 15,
+          "4": 15,
+          "5": 15,
+          "6": 16,
+          "7": 16,
+          "8": 14,
+          "9": 14
+        },
+        "largest_operator_decision_share_bps": 1367,
+        "capacity_rejections": 0,
+        "independence_rejections": 0,
+        "active_at_finish": 0
+      },
+      "baseline_tasks": 100,
+      "allocated_tasks": 100
+    },
+    {
+      "name": "capacity_stress",
+      "baseline_decisions": {
+        "2": 88,
+        "3": 29
+      },
+      "allocated_metrics": {
+        "assignments_by_operator": {
+          "2": 3,
+          "3": 3,
+          "4": 3,
+          "5": 3,
+          "6": 3,
+          "7": 3,
+          "8": 2,
+          "9": 3
+        },
+        "assignments_by_account": {
+          "2": 3,
+          "3": 3,
+          "4": 3,
+          "5": 3,
+          "6": 3,
+          "7": 3,
+          "8": 2,
+          "9": 3
+        },
+        "peak_active_by_operator": {
+          "2": 2,
+          "3": 2,
+          "4": 2,
+          "5": 2,
+          "6": 2,
+          "7": 2,
+          "8": 2,
+          "9": 2
+        },
+        "decisions_by_operator": {
+          "2": 2,
+          "3": 3,
+          "4": 3,
+          "5": 3,
+          "6": 3,
+          "7": 3,
+          "8": 1,
+          "9": 3
+        },
+        "largest_operator_decision_share_bps": 1428,
+        "capacity_rejections": 84,
+        "independence_rejections": 0,
+        "active_at_finish": 0
+      },
+      "baseline_tasks": 100,
+      "allocated_tasks": 16
+    },
+    {
+      "name": "collusion_attempts",
+      "baseline_decisions": {
+        "2": 88,
+        "3": 29
+      },
+      "allocated_metrics": {
+        "assignments_by_operator": {
+          "2": 16,
+          "3": 17,
+          "4": 17,
+          "5": 17,
+          "6": 17,
+          "7": 17,
+          "8": 16,
+          "9": 16
+        },
+        "assignments_by_account": {
+          "2": 16,
+          "3": 17,
+          "4": 17,
+          "5": 17,
+          "6": 17,
+          "7": 17,
+          "8": 16,
+          "9": 16
+        },
+        "peak_active_by_operator": {
+          "2": 13,
+          "3": 13,
+          "4": 13,
+          "5": 13,
+          "6": 12,
+          "7": 12,
+          "8": 12,
+          "9": 12
+        },
+        "decisions_by_operator": {
+          "2": 12,
+          "3": 15,
+          "4": 15,
+          "5": 15,
+          "6": 16,
+          "7": 16,
+          "8": 14,
+          "9": 14
+        },
+        "largest_operator_decision_share_bps": 1367,
+        "capacity_rejections": 0,
+        "independence_rejections": 100,
+        "active_at_finish": 0
+      },
+      "baseline_tasks": 100,
+      "allocated_tasks": 100
+    },
+    {
+      "name": "spam_missing_reviews",
+      "baseline_decisions": {
+        "2": 88,
+        "3": 29
+      },
+      "allocated_metrics": {
+        "assignments_by_operator": {
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5,
+          "7": 4,
+          "8": 4,
+          "9": 4
+        },
+        "assignments_by_account": {
+          "2": 5,
+          "3": 5,
+          "4": 5,
+          "5": 5,
+          "6": 5,
+          "7": 4,
+          "8": 4,
+          "9": 4
+        },
+        "peak_active_by_operator": {
+          "2": 4,
+          "3": 4,
+          "4": 4,
+          "5": 4,
+          "6": 4,
+          "7": 4,
+          "8": 4,
+          "9": 4
+        },
+        "decisions_by_operator": {
+          "2": 2,
+          "3": 2,
+          "4": 2,
+          "5": 2,
+          "6": 2,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "largest_operator_decision_share_bps": 1538,
+        "capacity_rejections": 92,
+        "independence_rejections": 0,
+        "active_at_finish": 0
+      },
+      "baseline_tasks": 124,
+      "allocated_tasks": 32
+    }
+  ],
+  "scaling": [
+    {
+      "agents": 100,
+      "allocation_events": 10000,
+      "classification": "SYNTHETIC",
+      "fingerprint": "46a0d38b1c51635d0e08d3f04dcb906fd557232e96fe7514ea9326a0afb73ba2",
+      "review_events": 30000,
+      "run_microseconds": "60605",
+      "tasks": 5000,
+      "verify_microseconds": "277032",
+      "active_at_finish": 0,
+      "largest_operator_decision_share_bps": 104,
+      "market_totals": {
+        "escrow_funded": "500000",
+        "worker_payments": "490000",
+        "fees_collected": "10000",
+        "client_refunds": "0"
+      }
+    },
+    {
+      "agents": 1000,
+      "allocation_events": 10000,
+      "classification": "SYNTHETIC",
+      "fingerprint": "ac232250220cedde3a5a354c6dc6f22e0a84f7898d2a58b24e95358be7703c01",
+      "review_events": 30000,
+      "run_microseconds": "238679",
+      "tasks": 5000,
+      "verify_microseconds": "461966",
+      "active_at_finish": 0,
+      "largest_operator_decision_share_bps": 12,
+      "market_totals": {
+        "escrow_funded": "500000",
+        "worker_payments": "490000",
+        "fees_collected": "10000",
+        "client_refunds": "0"
+      }
+    },
+    {
+      "agents": 10000,
+      "allocation_events": 10000,
+      "classification": "SYNTHETIC",
+      "fingerprint": "51a162d36601fd46a91e7434766c3121f6a6515ced1bcf2e9f1b7082bf85afbb",
+      "review_events": 30000,
+      "run_microseconds": "3503429",
+      "tasks": 5000,
+      "verify_microseconds": "3772452",
+      "active_at_finish": 0,
+      "largest_operator_decision_share_bps": 2,
+      "market_totals": {
+        "escrow_funded": "500000",
+        "worker_payments": "490000",
+        "fees_collected": "10000",
+        "client_refunds": "0"
+      }
+    }
+  ],
+  "browser": {
+    "source_head_sha": "4316408e26df85ce8e4a72a5ebbc40397f94d2e0",
+    "chrome": "Google Chrome 154.0.8037.97",
+    "node": "v22.23.3",
+    "tests": [
+      "actual exported HTML renders",
+      "report selection",
+      "pagination",
+      "search empty state",
+      "status filtering",
+      "mobile no page overflow",
+      "direct-mode labels",
+      "hostile title stays text",
+      "CSP blocks connections",
+      "invalid ledger error state",
+      "exact large atomic amounts"
+    ],
+    "uncaught_exceptions": 0,
+    "external_page_requests": 0
+  },
+  "dependency_audit": {
+    "database": {
+      "advisory-count": 1296,
+      "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+      "last-updated": "2026-10-09T10:12:02+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 39
+    },
+    "settings": {
+      "target_arch": [],
+      "target_os": [],
+      "severity": null,
+      "ignore": [],
+      "informational_warnings": [
+        "unmaintained",
+        "unsound",
+        "notice"
+      ]
+    },
+    "vulnerabilities": {
+      "found": false,
+      "count": 0,
+      "list": []
+    },
+    "warnings": {}
+  },
+  "wallet_boundary": {
+    "holds_customer_funds": false,
+    "has_signing_keys": false,
+    "can_freeze_wallets": false,
+    "can_reverse_payments": false,
+    "can_force_refunds": false,
+    "chain_receipts_verified": false,
+    "network_enabled": false
+  },
+  "states": {
+    "direct_workflow": "VERIFIED_OFFLINE",
+    "allocation_and_experiments": "VERIFIED_OFFLINE",
+    "local_viewer": "VERIFIED_OFFLINE",
+    "live_chain_receipt_adapter": "NOT_STARTED",
+    "wallet_signing": "NOT_STARTED",
+    "public_deployment": "NOT_DEPLOYED"
+  },
+  "limits": [
+    "Synthetic fixture receipts only; replay does not authenticate wallet ownership or verify a chain transaction.",
+    "Historical escrow/refunds are research comparisons, not the product custody model.",
+    "Undeclared identities and hidden collusion are not solved; front-loaded nonresponsive tasks still cause starvation.",
+    "Advisory scanning and internal code review are not an independent security audit.",
+    "Final commit verification is linked in the PR; this evidence records its earlier source candidate to avoid circular commit evidence."
+  ]
+}
