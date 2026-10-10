@@ -73,6 +73,13 @@ fn execute() -> Result<(), String> {
             "SYNTHETIC review scaling verified".into()
         },
         _ => return Err("usage: zoora-review-market run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json".into()),
-    }; println!("{result}"); Ok(())
+    };
+    println!("{result}");
+    Ok(())
 }
-fn main() {if let Err(message) = execute() {eprintln!("{message}"); std::process::exit(1);}}
+fn main() {
+    if let Err(message) = execute() {
+        eprintln!("{message}");
+        std::process::exit(1);
+    }
+}
