@@ -2,7 +2,12 @@ use zoora_agent_economy_simulator::{RunFingerprint, SimulationConfig, Simulation
 
 #[test]
 fn identical_runs_have_identical_fingerprints() {
-    let config = SimulationConfig { agent_count: 10, starting_balance: 100, ticks: 25, seed: 77 };
+    let config = SimulationConfig {
+        agent_count: 10,
+        starting_balance: 100,
+        ticks: 25,
+        seed: 77,
+    };
     let mut first = SimulationEngine::try_new(config.clone()).unwrap();
     let mut second = SimulationEngine::try_new(config.clone()).unwrap();
     first.run().unwrap();
@@ -15,8 +20,16 @@ fn identical_runs_have_identical_fingerprints() {
 
 #[test]
 fn different_seed_changes_run_fingerprint() {
-    let a_config = SimulationConfig { agent_count: 10, starting_balance: 100, ticks: 25, seed: 77 };
-    let b_config = SimulationConfig { seed: 78, ..a_config.clone() };
+    let a_config = SimulationConfig {
+        agent_count: 10,
+        starting_balance: 100,
+        ticks: 25,
+        seed: 77,
+    };
+    let b_config = SimulationConfig {
+        seed: 78,
+        ..a_config.clone()
+    };
     let mut first = SimulationEngine::try_new(a_config.clone()).unwrap();
     let mut second = SimulationEngine::try_new(b_config.clone()).unwrap();
     first.run().unwrap();
@@ -30,7 +43,12 @@ fn different_seed_changes_run_fingerprint() {
 
 #[test]
 fn produced_journal_satisfies_integrity_rules() {
-    let config = SimulationConfig { agent_count: 10, starting_balance: 100, ticks: 25, seed: 77 };
+    let config = SimulationConfig {
+        agent_count: 10,
+        starting_balance: 100,
+        ticks: 25,
+        seed: 77,
+    };
     let mut engine = SimulationEngine::try_new(config).unwrap();
     engine.run().unwrap();
     engine.journal().validate().unwrap();

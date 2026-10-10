@@ -1,18 +1,24 @@
+use crate::{config::MAX_EVENTS, error::SimulationError, event::Event};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
-use crate::{config::MAX_EVENTS, error::SimulationError, event::Event};
 
 #[derive(Debug, Clone)]
 struct ScheduledEvent(Event);
 impl PartialEq for ScheduledEvent {
-    fn eq(&self, other: &Self) -> bool { self.0.order_key() == other.0.order_key() }
+    fn eq(&self, other: &Self) -> bool {
+        self.0.order_key() == other.0.order_key()
+    }
 }
 impl Eq for ScheduledEvent {}
 impl PartialOrd for ScheduledEvent {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 impl Ord for ScheduledEvent {
-    fn cmp(&self, other: &Self) -> Ordering { other.0.order_key().cmp(&self.0.order_key()) }
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.0.order_key().cmp(&self.0.order_key())
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -38,7 +44,13 @@ impl EventScheduler {
         self.queue.push(ScheduledEvent(event));
         Ok(())
     }
-    pub fn pop_next(&mut self) -> Option<Event> { self.queue.pop().map(|entry| entry.0) }
-    pub fn len(&self) -> usize { self.queue.len() }
-    pub fn is_empty(&self) -> bool { self.queue.is_empty() }
+    pub fn pop_next(&mut self) -> Option<Event> {
+        self.queue.pop().map(|entry| entry.0)
+    }
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
 }

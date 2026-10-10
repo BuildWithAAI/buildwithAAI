@@ -1,1 +1,5 @@
-/target
+/target/
+/bootstrap-source.json
+/audit.json
+/*-run.json
+/scaling.json

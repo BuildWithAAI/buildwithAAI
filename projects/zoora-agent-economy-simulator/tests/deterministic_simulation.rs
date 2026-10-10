@@ -48,6 +48,11 @@ fn event_log_is_deterministically_ordered() {
     let mut engine = SimulationEngine::new(config);
     engine.run().unwrap();
 
-    let ticks: Vec<u64> = engine.state().event_log.iter().map(|e| e.event.simulation_tick).collect();
+    let ticks: Vec<u64> = engine
+        .state()
+        .event_log
+        .iter()
+        .map(|e| e.event.simulation_tick)
+        .collect();
     assert_eq!(ticks, (0..8).collect::<Vec<_>>());
 }

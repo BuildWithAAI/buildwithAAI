@@ -9,5 +9,7 @@ pub struct Agent {
 }
 
 impl Agent {
-    pub fn new(id: AgentId, balance: i64) -> Self { Self { id, balance } }
+    pub fn new(id: AgentId, balance: i64) -> Self {
+        Self { id, balance }
+    }
 }

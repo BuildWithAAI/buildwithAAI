@@ -1,6 +1,9 @@
+use crate::{
+    EventJournal, EventOutcome, EventType, RejectionReason, SimulationConfig, SimulationError,
+    SimulationState, RNG_ALGORITHM,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use crate::{EventJournal, EventOutcome, EventType, RejectionReason, SimulationConfig, SimulationError, SimulationState, RNG_ALGORITHM};
 
 pub const FINGERPRINT_SCHEMA: u32 = 1;
 
@@ -26,27 +29,56 @@ impl Canonical {
         hash.text(domain);
         hash
     }
-    fn u64(&mut self, value: u64) { self.0.update(value.to_be_bytes()); }
-    fn u32(&mut self, value: u32) { self.0.update(value.to_be_bytes()); }
-    fn i64(&mut self, value: i64) { self.0.update(value.to_be_bytes()); }
-    fn text(&mut self, value: &str) { self.u64(value.len() as u64); self.0.update(value.as_bytes()); }
-    fn finish(self) -> String { format!("{:x}", self.0.finalize()) }
+    fn u64(&mut self, value: u64) {
+        self.0.update(value.to_be_bytes());
+    }
+    fn u32(&mut self, value: u32) {
+        self.0.update(value.to_be_bytes());
+    }
+    fn i64(&mut self, value: i64) {
+        self.0.update(value.to_be_bytes());
+    }
+    fn text(&mut self, value: &str) {
+        self.u64(value.len() as u64);
+        self.0.update(value.as_bytes());
+    }
+    fn finish(self) -> String {
+        format!("{:x}", self.0.finalize())
+    }
 }
 
 fn state_hash(domain: &str, state: &SimulationState) -> String {
     let mut hash = Canonical::new(domain);
     hash.u64(state.tick);
     hash.u64(state.agents.len() as u64);
-    for agent in &state.agents { hash.u64(agent.id); hash.i64(agent.balance); }
+    for agent in &state.agents {
+        hash.u64(agent.id);
+        hash.i64(agent.balance);
+    }
     hash.finish()
 }
 
 impl RunFingerprint {
-    pub fn build(config: &SimulationConfig, journal: &EventJournal, state: &SimulationState) -> Result<Self, SimulationError> {
+    pub fn build(
+        config: &SimulationConfig,
+        journal: &EventJournal,
+        state: &SimulationState,
+    ) -> Result<Self, SimulationError> {
         config.validate()?;
         journal.validate()?;
-        if state.agents.len() != config.agent_count || state.tick >= config.ticks || state.total_balance()? != config.initial_supply()? || state.event_log != journal.entries() {
-            return Err(SimulationError::Integrity("fingerprint input state is inconsistent"));
+        let last_tick = journal
+            .entries()
+            .last()
+            .map_or(0, |record| record.event.simulation_tick);
+        if state.agents.len() != config.agent_count
+            || state.tick != last_tick
+            || state.tick >= config.ticks
+            || state.total_balance()? != config.initial_supply()?
+            || state.event_log != journal.entries()
+        {
+            return Err(SimulationError::Integrity(
+                "fingerprint input state is inconsistent",
+            ));
         }
         let mut config_hash = Canonical::new("CONFIG");
         config_hash.u64(config.agent_count as u64);
@@ -89,12 +121,22 @@ impl RunFingerprint {
             schema_version: FINGERPRINT_SCHEMA,
             simulator_version: env!("CARGO_PKG_VERSION").into(),
             rng_algorithm: RNG_ALGORITHM.into(),
-            config_hash: config_hash.finish(), initial_state_hash,
-            journal_hash: journal_hash.finish(), final_state_hash, run_hash: String::new(),
+            config_hash: config_hash.finish(),
+            initial_state_hash,
+            journal_hash: journal_hash.finish(),
+            final_state_hash,
+            run_hash: String::new(),
         };
         let mut combined = Canonical::new("RUN");
         combined.u32(fingerprint.schema_version);
-        for value in [&fingerprint.simulator_version, &fingerprint.rng_algorithm, &fingerprint.config_hash, &fingerprint.initial_state_hash, &fingerprint.journal_hash, &fingerprint.final_state_hash] {
+        for value in [
+            &fingerprint.simulator_version,
+            &fingerprint.rng_algorithm,
+            &fingerprint.config_hash,
+            &fingerprint.initial_state_hash,
+            &fingerprint.journal_hash,
+            &fingerprint.final_state_hash,
+        ] {
             combined.text(value);
         }
         fingerprint.run_hash = combined.finish();

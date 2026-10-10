@@ -1,6 +1,9 @@
-use std::collections::BTreeMap;
+use crate::{
+    error::SimulationError,
+    event::{EventOutcome, EventRecord, EventType, RejectionReason},
+};
 use serde::{Deserialize, Serialize};
-use crate::{error::SimulationError, event::{EventOutcome, EventRecord, EventType, RejectionReason}};
+use std::collections::BTreeMap;
 
 pub(crate) mod decimal_u128 {
     use serde::{Deserialize, Deserializer, Serializer};
@@ -9,7 +12,9 @@ pub(crate) mod decimal_u128 {
     }
     pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u128, D::Error> {
         let text = String::deserialize(deserializer)?;
-        let value: u128 = text.parse().map_err(|_| serde::de::Error::custom("invalid unsigned decimal"))?;
+        let value: u128 = text
+            .parse()
+            .map_err(|_| serde::de::Error::custom("invalid unsigned decimal"))?;
         if value.to_string() != text {
             return Err(serde::de::Error::custom("non-canonical unsigned decimal"));
         }
@@ -34,17 +39,36 @@ impl Metrics {
     pub fn observe(&mut self, record: &EventRecord) -> Result<(), SimulationError> {
         let mut next = self.clone();
         let overflow = SimulationError::Arithmetic("metrics overflow");
-        next.events_processed = next.events_processed.checked_add(1).ok_or_else(|| overflow.clone())?;
-        next.transfers_requested = next.transfers_requested.checked_add(1).ok_or_else(|| overflow.clone())?;
+        next.events_processed = next
+            .events_processed
+            .checked_add(1)
+            .ok_or_else(|| overflow.clone())?;
+        next.transfers_requested = next
+            .transfers_requested
+            .checked_add(1)
+            .ok_or_else(|| overflow.clone())?;
         match record.outcome {
             EventOutcome::Completed => {
                 let EventType::Transfer { amount, .. } = record.event.event_type;
-                if amount <= 0 { return Err(SimulationError::Integrity("completed transfer amount is not positive")); }
-                next.transfers_completed = next.transfers_completed.checked_add(1).ok_or_else(|| overflow.clone())?;
-                next.total_transferred = next.total_transferred.checked_add(amount as u128).ok_or_else(|| overflow.clone())?;
+                if amount <= 0 {
+                    return Err(SimulationError::Integrity(
+                        "completed transfer amount is not positive",
+                    ));
+                }
+                next.transfers_completed = next
+                    .transfers_completed
+                    .checked_add(1)
+                    .ok_or_else(|| overflow.clone())?;
+                next.total_transferred = next
+                    .total_transferred
+                    .checked_add(amount as u128)
+                    .ok_or_else(|| overflow.clone())?;
             }
             EventOutcome::Rejected { reason } => {
-                next.transfers_rejected = next.transfers_rejected.checked_add(1).ok_or_else(|| overflow.clone())?;
+                next.transfers_rejected = next
+                    .transfers_rejected
+                    .checked_add(1)
+                    .ok_or_else(|| overflow.clone())?;
                 let count = next.rejection_counts.entry(reason).or_default();
                 *count = count.checked_add(1).ok_or(overflow)?;
             }
