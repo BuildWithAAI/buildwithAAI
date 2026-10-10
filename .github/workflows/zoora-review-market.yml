@@ -40,6 +40,15 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python scripts/ci_evidence.py
+      - name: Allocation, noncustodial transcript and verified viewer integration
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/allocation_evidence.py
+      - name: Real Chrome viewer integration and screenshots
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/viewer_browser.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:

@@ -1,0 +1,3 @@
+# Five matched SYNTHETIC workloads, replayed under legacy and allocated policies.
+seed = 42
+tasks = 100

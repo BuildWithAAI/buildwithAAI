@@ -70,6 +70,14 @@ pub struct ReviewCase {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)]
 pub enum Command {
+    PostAllocated {
+        task_id: u64,
+        client: u64,
+        title: String,
+        criteria_digest: String,
+        reward: i64,
+        deadline_tick: u64,
+    },
     Post {
         task_id: u64,
         client: u64,
@@ -133,6 +141,7 @@ impl Command {
     pub fn task_id(&self) -> u64 {
         match self {
             Self::Post { task_id, .. }
+            | Self::PostAllocated { task_id, .. }
             | Self::Accept { task_id, .. }
             | Self::Submit { task_id, .. }
             | Self::Fail { task_id, .. }
@@ -149,11 +158,19 @@ impl Command {
         matches!(self, Self::CloseReview { .. } | Self::Deadline { .. })
     }
     pub fn needs_timer(&self) -> bool {
-        matches!(self, Self::Post { .. } | Self::Review { .. })
+        matches!(
+            self,
+            Self::Post { .. } | Self::PostAllocated { .. } | Self::Review { .. }
+        )
     }
     pub fn within_bounds(&self) -> bool {
         match self {
             Self::Post {
+                title,
+                criteria_digest,
+                ..
+            }
+            | Self::PostAllocated {
                 title,
                 criteria_digest,
                 ..
@@ -188,6 +205,8 @@ impl Command {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Rejection {
     InvalidActor,
+    PolicyMismatch,
+    ReviewerCapacity,
     OperatorConflict,
     UnknownTask,
     WrongState,

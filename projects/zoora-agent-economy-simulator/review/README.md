@@ -44,3 +44,9 @@ CLI inputs are bounded regular files: 4 MiB TOML and 128 MiB JSON. Deserializati
 The normal workload overlaps all tasks: post at 0, accept/cancel at 1, submit/fail at 2, dispute/primary verdict at 3, appeal at 4, uncontested settlement at 5, appellate verdict at 6 and deadline refunds at 9. Draws use pinned ChaCha8. Clients use bounded random draws; worker selection scans cyclically from a random account for an eligible operator; reviewer selection is deterministic. Configured failure, refund, appeal, missing-review and overturn rates describe an experiment, not predictions. Scaling uses 5,000 tasks at 100/1,000/10,000 accounts.
 
 See [VALIDATION.md](VALIDATION.md) for the verified source, test evidence and remaining work.
+
+## AE-004 connected development
+
+See [AE004.md](AE004.md) for direct payments from user-controlled agent wallets, voluntary-refund semantics, fair/capacity-aware research allocation, matched adversarial experiments and the verified local viewer. The escrow/refund rules above describe the historical **SYNTHETIC research ledger**, not platform custody or reversal of direct payments.
+
+[AE-004 verification report](VALIDATION_AE004.md) · [Offline direct-payment demo](examples/direct.html) · [Original synthetic report](examples/direct.json).
