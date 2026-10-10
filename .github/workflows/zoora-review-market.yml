@@ -31,11 +31,7 @@ jobs:
         with:
           toolchain: 1.99.0
           components: rustfmt, clippy
-      - name: Bootstrap formatting (removed before release candidate)
-        run: cargo fmt --all
-      - name: Archive formatter output for source-only import
-        if: matrix.os == 'ubuntu-latest'
-        run: python -c "import json,pathlib; p=pathlib.Path('target/validation-evidence'); p.mkdir(parents=True,exist_ok=True); (p/'formatted-source.json').write_text(json.dumps({str(f):f.read_text() for folder in ['src','tests'] for f in pathlib.Path(folder).rglob('*.rs')}))"
+      - run: cargo fmt --all -- --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked --all-targets
       - run: cargo test --locked --release --all-targets

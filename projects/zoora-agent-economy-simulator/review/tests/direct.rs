@@ -344,27 +344,116 @@ fn finished_history_required_and_finished_engine_cannot_accept_events() {
 }
 #[test]
 fn fulfilling_partial_request_does_not_mislabel_full_payment_refunded() {
-    let mut e=paid();e.record(2,DirectCommand::RequestRefund{agreement_id:0,client:0,amount:20,reason_digest:"a".repeat(64)}).unwrap();
-    e.record(3,DirectCommand::VoluntaryRefundReceipt{receipt:Receipt::synthetic(0,1,1,0,20,3)}).unwrap();
-    e.record(4,DirectCommand::DeclineRefund{agreement_id:0,provider:1}).unwrap();let r=done(e);
-    assert_eq!(r.metrics.unresolved_refund_requests,0);assert_eq!(r.agreements[0].refund_request_remaining,Some(0));assert_eq!(r.agreements[0].status,DirectStatus::PartiallyRefunded);assert_eq!(r.metrics.net_transferred,80);assert_eq!(r.metrics.rejected_commands,1);
+    let mut e = paid();
+    e.record(
+        2,
+        DirectCommand::RequestRefund {
+            agreement_id: 0,
+            client: 0,
+            amount: 20,
+            reason_digest: "a".repeat(64),
+        },
+    )
+    .unwrap();
+    e.record(
+        3,
+        DirectCommand::VoluntaryRefundReceipt {
+            receipt: Receipt::synthetic(0, 1, 1, 0, 20, 3),
+        },
+    )
+    .unwrap();
+    e.record(
+        4,
+        DirectCommand::DeclineRefund {
+            agreement_id: 0,
+            provider: 1,
+        },
+    )
+    .unwrap();
+    let r = done(e);
+    assert_eq!(r.metrics.unresolved_refund_requests, 0);
+    assert_eq!(r.agreements[0].refund_request_remaining, Some(0));
+    assert_eq!(r.agreements[0].status, DirectStatus::PartiallyRefunded);
+    assert_eq!(r.metrics.net_transferred, 80);
+    assert_eq!(r.metrics.rejected_commands, 1);
 }
 #[test]
 fn earlier_returns_do_not_count_toward_a_later_refund_request() {
-    let mut e=paid();e.record(2,DirectCommand::VoluntaryRefundReceipt{receipt:Receipt::synthetic(0,1,1,0,40,2)}).unwrap();
-    e.record(3,DirectCommand::RequestRefund{agreement_id:0,client:0,amount:30,reason_digest:"a".repeat(64)}).unwrap();
-    e.record(4,DirectCommand::VoluntaryRefundReceipt{receipt:Receipt::synthetic(0,2,1,0,20,4)}).unwrap();let r=done(e);
-    assert_eq!(r.agreements[0].refund_request_remaining,Some(10));assert_eq!(r.metrics.unresolved_refund_requests,1);assert_eq!(r.metrics.voluntary_refunds_recorded,60);assert_eq!(r.metrics.net_transferred,40);
+    let mut e = paid();
+    e.record(
+        2,
+        DirectCommand::VoluntaryRefundReceipt {
+            receipt: Receipt::synthetic(0, 1, 1, 0, 40, 2),
+        },
+    )
+    .unwrap();
+    e.record(
+        3,
+        DirectCommand::RequestRefund {
+            agreement_id: 0,
+            client: 0,
+            amount: 30,
+            reason_digest: "a".repeat(64),
+        },
+    )
+    .unwrap();
+    e.record(
+        4,
+        DirectCommand::VoluntaryRefundReceipt {
+            receipt: Receipt::synthetic(0, 2, 1, 0, 20, 4),
+        },
+    )
+    .unwrap();
+    let r = done(e);
+    assert_eq!(r.agreements[0].refund_request_remaining, Some(10));
+    assert_eq!(r.metrics.unresolved_refund_requests, 1);
+    assert_eq!(r.metrics.voluntary_refunds_recorded, 60);
+    assert_eq!(r.metrics.net_transferred, 40);
 }
 #[test]
 fn large_atomic_amounts_remain_exact_decimal_strings_in_report_and_viewer() {
-    let mut e=engine();let mut t=terms(0);t.amount=u64::MAX;e.record(0,DirectCommand::Agree{terms:t}).unwrap();
-    e.record(1,DirectCommand::PaymentReceipt{receipt:Receipt::synthetic(0,0,0,1,u64::MAX,1)}).unwrap();let r=done(e);
-    assert_eq!(r.metrics.payments_recorded,u128::from(u64::MAX));let json=serde_json::to_string(&r).unwrap();assert!(json.contains("\"payments_recorded\":\"18446744073709551615\""));
-    let html=zoora_review_market::viewer::export(&json).unwrap();assert!(html.contains("\"paid\":\"18446744073709551615\""));
+    let mut e = engine();
+    let mut t = terms(0);
+    t.amount = u64::MAX;
+    e.record(0, DirectCommand::Agree { terms: t }).unwrap();
+    e.record(
+        1,
+        DirectCommand::PaymentReceipt {
+            receipt: Receipt::synthetic(0, 0, 0, 1, u64::MAX, 1),
+        },
+    )
+    .unwrap();
+    let r = done(e);
+    assert_eq!(r.metrics.payments_recorded, u128::from(u64::MAX));
+    let json = serde_json::to_string(&r).unwrap();
+    assert!(json.contains("\"payments_recorded\":\"18446744073709551615\""));
+    let html = zoora_review_market::viewer::export(&json).unwrap();
+    assert!(html.contains("\"paid\":\"18446744073709551615\""));
 }
 #[test]
 fn event_budget_reserves_finalization_and_unknown_agreements_never_create_funds() {
-    let mut e=engine();for _ in 0..49_999{e.record(0,DirectCommand::Acknowledge{agreement_id:99,client:0}).unwrap();}
-    assert!(e.record(0,DirectCommand::Acknowledge{agreement_id:99,client:0}).is_err());let r=done(e);assert_eq!(r.journal.len(),50_000);assert_eq!(r.metrics.payments_recorded,0);assert!(r.agreements.is_empty());
+    let mut e = engine();
+    for _ in 0..49_999 {
+        e.record(
+            0,
+            DirectCommand::Acknowledge {
+                agreement_id: 99,
+                client: 0,
+            },
+        )
+        .unwrap();
+    }
+    assert!(e
+        .record(
+            0,
+            DirectCommand::Acknowledge {
+                agreement_id: 99,
+                client: 0
+            }
+        )
+        .is_err());
+    let r = done(e);
+    assert_eq!(r.journal.len(), 50_000);
+    assert_eq!(r.metrics.payments_recorded, 0);
+    assert!(r.agreements.is_empty());
 }

@@ -37,7 +37,12 @@ struct Distribution {
     decisions: u64,
 }
 #[derive(Serialize)]
-struct DirectSummary { requests: u64, unresolved_requests: u64, declined: u64, overdue: u64 }
+struct DirectSummary {
+    requests: u64,
+    unresolved_requests: u64,
+    declined: u64,
+    overdue: u64,
+}
 #[derive(Serialize)]
 struct Ledger {
     mode: String,
@@ -97,7 +102,9 @@ fn view(
         }
         if let Some(task) = tasks.get(&case.task_id) {
             cases.push(Case {
-                paid: "—".into(), returned: "—".into(), refund_remaining: "—".into(),
+                paid: "—".into(),
+                returned: "—".into(),
+                refund_remaining: "—".into(),
                 overdue: false,
                 id: case.task_id.to_string(),
                 title: task.title.clone(),
@@ -142,7 +149,8 @@ fn view(
     };
     let m = &report.market.metrics;
     View {
-        direct_summary: None,        label,
+        direct_summary: None,
+        label,
         description,
         policy: report.policy.clone(),
         source_fingerprint: source,
@@ -294,10 +302,16 @@ pub fn export(text: &str) -> Result<String, SimulationError> {
         .replace('>', "\\u003e")
         .replace('\u{2028}', "\\u2028")
         .replace('\u{2029}', "\\u2029");
-    let css = include_str!("../viewer/style.css").replace("\r\n", "\n").replace('\r', "\n");
-    let js = include_str!("../viewer/app.js").replace("\r\n", "\n").replace('\r', "\n");
+    let css = include_str!("../viewer/style.css")
+        .replace("\r\n", "\n")
+        .replace('\r', "\n");
+    let js = include_str!("../viewer/app.js")
+        .replace("\r\n", "\n")
+        .replace('\r', "\n");
     let csp = format!("default-src 'none'; script-src 'sha256-{}'; style-src 'sha256-{}'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'", base64(&Sha256::digest(js.as_bytes())), base64(&Sha256::digest(css.as_bytes())));
-    let html = include_str!("../viewer/index.html").replace("\r\n", "\n").replace('\r', "\n")
+    let html = include_str!("../viewer/index.html")
+        .replace("\r\n", "\n")
+        .replace('\r', "\n")
         .replace("{{CSP}}", &csp)
         .replace("{{STYLE}}", &css)
         .replace("{{SCRIPT}}", &js)

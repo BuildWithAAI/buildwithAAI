@@ -24,6 +24,7 @@ def accounting(review):
 with tempfile.TemporaryDirectory() as directory:
  temp=pathlib.Path(directory)
  reports={}
+ golden={'experiments': 'caad08ff832700c7bc3ae47d9233b344374310aebb1bd7728ba5c31ac9e2db9e', 'direct': 'd80b7f813b2e6afae0995131248a4817f8026e8a024e21ca06859b919c59bc94'}
  for kind in ['experiments','direct']:
   paths=[]
   for profile in ['debug','release']:
@@ -32,7 +33,7 @@ with tempfile.TemporaryDirectory() as directory:
    run(profile,*args);run(profile,'replay-'+kind,path);paths.append(path)
    run(profile,*args,ok=False)
   assert paths[0].read_bytes()==paths[1].read_bytes()
-  data=json.loads(paths[0].read_bytes());assert data['fingerprint']==fingerprint(kind,data)
+  data=json.loads(paths[0].read_bytes());assert data['fingerprint']==fingerprint(kind,data)==golden[kind]
   reports[kind]=data;(out/(kind+'.json')).write_bytes(paths[0].read_bytes())
   viewer=out/(kind+'.html');run('release','viewer',paths[0],viewer);run('release','viewer',paths[0],viewer,ok=False)
   html=viewer.read_text(encoding='utf-8');assert 'REPLAY_VERIFIED_AT_EXPORT' in html and 'connect-src \'none\'' in html

@@ -604,7 +604,8 @@ impl DirectReport {
             metrics.net_transferred += a.net_transferred();
             metrics.refund_requests += u64::from(a.refund_request_digest.is_some());
             metrics.declined_refunds += u64::from(a.recipient_declined_refund);
-            metrics.unresolved_refund_requests += u64::from(a.refund_request_remaining.is_some_and(|n| n > 0));
+            metrics.unresolved_refund_requests +=
+                u64::from(a.refund_request_remaining.is_some_and(|n| n > 0));
             metrics.overdue_deliveries += u64::from(a.delivery_overdue);
             metrics.unresolved_disputes +=
                 u64::from(a.dispute_digest.is_some() && a.net_transferred() > 0);
