@@ -2,6 +2,7 @@ name: Zoora Agent Economy Simulator
 
 on:
   push:
+    branches: [main]
     paths:
       - "projects/zoora-agent-economy-simulator/**"
       - ".github/workflows/zoora-agent-economy-simulator.yml"
@@ -10,13 +11,71 @@ on:
       - "projects/zoora-agent-economy-simulator/**"
       - ".github/workflows/zoora-agent-economy-simulator.yml"
 
+permissions:
+  contents: read
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: projects/zoora-agent-economy-simulator
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        with:
+          toolchain: 1.99.0
+          components: rustfmt, clippy
+      - name: Generate bootstrap lock and formatting
+        run: |
+          cargo generate-lockfile
+          cargo fmt --all
+          python -c "import json,pathlib; p=pathlib.Path('.'); files=[p/'Cargo.lock',*p.glob('src/*.rs'),*p.glob('tests/*.rs')]; pathlib.Path('bootstrap-source.json').write_text(json.dumps({str(f): f.read_text() for f in files}))"
+      - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all-targets
+      - run: cargo test --release --all-targets
+      - run: cargo build --release
+      - name: CLI, replay, determinism and measured scaling
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/ci_evidence.py
+      - name: Collect generated lock, source and evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: simulator-validation-${{ matrix.os }}
+          path: |
+            projects/zoora-agent-economy-simulator/bootstrap-source.json
+            projects/zoora-agent-economy-simulator/Cargo.lock
+            projects/zoora-agent-economy-simulator/target/validation-evidence/
+          retention-days: 14
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-economy-simulator
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        with:
+          toolchain: 1.99.0
+      - run: cargo generate-lockfile
+      - run: cargo install cargo-audit --version 0.22.2 --locked
+      - run: cargo audit --json > audit.json
+      - name: Preserve dependency audit
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: simulator-dependency-audit
+          path: projects/zoora-agent-economy-simulator/audit.json
+          retention-days: 14

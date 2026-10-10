@@ -8,8 +8,8 @@ fn identical_runs_have_identical_fingerprints() {
     first.run().unwrap();
     second.run().unwrap();
 
-    let a = RunFingerprint::build(&config, &first.journal, &first.state);
-    let b = RunFingerprint::build(&config, &second.journal, &second.state);
+    let a = RunFingerprint::build(&config, first.journal(), first.state()).unwrap();
+    let b = RunFingerprint::build(&config, second.journal(), second.state()).unwrap();
     assert_eq!(a, b);
 }
 
@@ -23,8 +23,8 @@ fn different_seed_changes_run_fingerprint() {
     second.run().unwrap();
 
     assert_ne!(
-        RunFingerprint::build(&a_config, &first.journal, &first.state),
-        RunFingerprint::build(&b_config, &second.journal, &second.state)
+        RunFingerprint::build(&a_config, first.journal(), first.state()).unwrap(),
+        RunFingerprint::build(&b_config, second.journal(), second.state()).unwrap()
     );
 }
 
@@ -33,5 +33,5 @@ fn produced_journal_satisfies_integrity_rules() {
     let config = SimulationConfig { agent_count: 10, starting_balance: 100, ticks: 25, seed: 77 };
     let mut engine = SimulationEngine::try_new(config).unwrap();
     engine.run().unwrap();
-    engine.journal.validate().unwrap();
+    engine.journal().validate().unwrap();
 }

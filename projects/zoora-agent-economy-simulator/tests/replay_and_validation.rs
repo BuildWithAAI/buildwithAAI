@@ -18,6 +18,6 @@ fn journal_replay_reconstructs_final_state() {
     let mut engine = SimulationEngine::try_new(config.clone()).unwrap();
     engine.run().unwrap();
 
-    let replayed = SimulationEngine::replay(config, &engine.journal).unwrap();
-    assert_eq!(replayed, engine.state);
+    let replayed = SimulationEngine::replay(config, engine.journal()).unwrap();
+    assert_eq!(&replayed, engine.state());
 }
