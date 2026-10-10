@@ -27,7 +27,7 @@ pub struct ReviewMetrics {
     pub decisions_by_reviewer: BTreeMap<u64, u64>,
 }
 impl ReviewMetrics {
-    fn compute(records: &[Record], cases: &[ReviewCase]) -> Self {
+    pub(crate) fn compute(records: &[Record], cases: &[ReviewCase]) -> Self {
         let mut metrics = Self {
             processed_events: records.len() as u64,
             ..Self::default()
@@ -138,6 +138,12 @@ impl ReviewReport {
         Ok(format!("{:x}", writer.0.finalize()))
     }
     pub fn from_engine(engine: &ReviewEngine) -> Result<Self, SimulationError> {
+        if engine.allocation_config().is_some() {
+            return Err(SimulationError::Integrity("allocated policy requires allocation report"));
+        }
+        Self::snapshot(engine, "DECLARED_OPERATOR_REVIEW_ONE_APPEAL_V1")
+    }
+    pub(crate) fn snapshot(engine: &ReviewEngine, policy: &str) -> Result<Self, SimulationError> {
         if !engine.is_finished() {
             return Err(SimulationError::Integrity(
                 "review report requires completed healthy engine",
@@ -151,7 +157,7 @@ impl ReviewReport {
             schema_version: 1,
             model: format!("zoora-review-market/{}", env!("CARGO_PKG_VERSION")),
             classification: "SYNTHETIC".into(),
-            policy: "DECLARED_OPERATOR_REVIEW_ONE_APPEAL_V1".into(),
+            policy: policy.into(),
             rng: RNG_ALGORITHM.into(),
             scenario: engine.scenario(),
             config: engine.config().clone(),

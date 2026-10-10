@@ -73,3 +73,5 @@ Manual event runs use a separate scenario identity. Event IDs and scheduling seq
 AE-001 covers the kernel, minimal transfer economy, observation layer, and normal scenario. Marketplace/task lifecycle, escrow, incentives, reputation, failures of service, and adversarial agents belong to a separate AE-002 design. UI and production integrations are deferred. The scanner and biological research remain separate modules.
 
 [DESIGN.md](DESIGN.md) specifies ordering, rejection precedence, and fingerprints. [SECURITY.md](SECURITY.md) describes resource/file boundaries and limitations. An unmerged draft PR is a review candidate, not a public deployment.
+
+AE-004 adds a [direct-payment workflow and connected review laboratory](review/AE004.md). The product direction is user-controlled agent wallets; research escrow is an explicit comparison model. Payment records, delivery, requests and voluntary returns remain separate, and the platform has no freezing, signing or reversal authority in this implementation.
