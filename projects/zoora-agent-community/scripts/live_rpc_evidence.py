@@ -46,6 +46,9 @@ def run():
                     report = observed["report"]
                     entry.update({"signature": signature, "observation_state": report["state"],
                                   "quality_flags": report["quality_flags"]})
+                    for key in ("provider_error_code", "failed_rpc_method", "provider_error_response_sha256"):
+                        if key in report:
+                            entry[key] = report[key]
                     assert report["state"] == "AVAILABLE", "Read-only observation did not return verified-schema data"
                     assert report["genesis_hash"] == NETWORKS[cluster][1]
                     assert report["classification"] == "OBSERVED"

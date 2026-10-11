@@ -19,6 +19,16 @@ BASE_FLAGS = ["SINGLE_RPC_SOURCE", "PROVIDER_REPORTED_FINALITY", "SUBSET_INSTRUC
               "NO_PAYMENT_ATTRIBUTION", "NOT_VALIDATOR_VERIFIED", "WALLET_PROOF_HISTORICAL"]
 
 
+class ProviderError(Problem):
+    """Retain bounded numeric diagnostics; provider messages are never exposed."""
+    def __init__(self, method, error, data):
+        super().__init__(502, "RPC_PROVIDER_ERROR")
+        code = error.get("code") if type(error) is dict else None
+        self.rpc_error_code = code if type(code) is int and -(2**31) <= code < 2**31 else None
+        self.rpc_method = method
+        self.rpc_error_response_sha256 = hashlib.sha256(data).hexdigest()
+
+
 def network(value):
     if type(value) is not str or value not in NETWORKS:
         raise Problem(400, "UNSUPPORTED_NETWORK")
@@ -196,7 +206,7 @@ class SolanaRPC:
             if payload.get("jsonrpc") != "2.0" or type(payload.get("id")) is not int or payload["id"] != 1 or ("error" in payload) == ("result" in payload):
                 raise Problem(502, "RPC_ENVELOPE_REJECTED")
             if "error" in payload:
-                raise Problem(502, "RPC_PROVIDER_ERROR")
+                raise ProviderError(method, payload["error"], data)
             return payload["result"], bytes(data).decode("utf-8"), hashlib.sha256(data).hexdigest()
         except TimeoutError:
             raise Problem(504, "RPC_TIMEOUT") from None
@@ -227,6 +237,11 @@ class SolanaRPC:
         except Problem as problem:
             state = "UNVERIFIED" if problem.code in {"RPC_NETWORK_MISMATCH", "RPC_SCHEMA_REJECTED", "RPC_SIGNATURE_MISMATCH",
                 "RPC_ENVELOPE_REJECTED", "INVALID_WALLET_ADDRESS", "INVALID_TRANSACTION_SIGNATURE", "INVALID_JSON", "DUPLICATE_JSON_FIELD"} else "FAILED"
-            return empty_report(network_name, signature, state, [problem.code]), None
+            report = empty_report(network_name, signature, state, [problem.code])
+            if isinstance(problem, ProviderError):
+                report.update({"provider_error_code": problem.rpc_error_code,
+                               "failed_rpc_method": problem.rpc_method,
+                               "provider_error_response_sha256": problem.rpc_error_response_sha256})
+            return report, None
         finally:
             self.workers.release()

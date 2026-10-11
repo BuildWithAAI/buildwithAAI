@@ -159,6 +159,22 @@ class RpcTests(unittest.TestCase):
             self.assertNotIn("sensitive", json.dumps(report))
             connection.close.assert_called_once()
 
+    def test_provider_error_keeps_numeric_method_and_digest_without_message(self):
+        for value, expected in ((-32015, -32015), (True, None), ("private metadata", None), (2**40, None)):
+            body = canonical({"jsonrpc": "2.0", "id": 1, "error": {"code": value,
+                "message": "private metadata must not escape", "data": "sensitive"}}).encode()
+            connection = self.transport(body)
+            with patch("zoora_community.solana_rpc.http.client.HTTPSConnection", return_value=connection):
+                report, raw = SolanaRPC().observe("solana:devnet", SIGNATURE, address("rpc_agent"))
+            self.assertEqual(report["state"], "FAILED")
+            self.assertEqual(report["provider_error_code"], expected)
+            self.assertEqual(report["failed_rpc_method"], "getGenesisHash")
+            self.assertEqual(report["provider_error_response_sha256"], hashlib.sha256(body).hexdigest())
+            self.assertIsNone(raw)
+            self.assertNotIn("private metadata", json.dumps(report))
+            self.assertNotIn("sensitive", json.dumps(report))
+            connection.close.assert_called_once()
+
     def test_concurrency_limit_returns_failure_without_fetch(self):
         rpc = FixtureRPC()
         for _ in range(4):
