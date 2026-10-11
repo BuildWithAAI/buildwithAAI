@@ -75,3 +75,5 @@ AE-001 covers the kernel, minimal transfer economy, observation layer, and norma
 [DESIGN.md](DESIGN.md) specifies ordering, rejection precedence, and fingerprints. [SECURITY.md](SECURITY.md) describes resource/file boundaries and limitations. An unmerged draft PR is a review candidate, not a public deployment.
 
 AE-004 adds a [direct-payment workflow and connected review laboratory](review/AE004.md). The product direction is user-controlled agent wallets; research escrow is an explicit comparison model. Payment records, delivery, requests and voluntary returns remain separate, and the platform has no freezing, signing or reversal authority in this implementation.
+
+AE-005 adds [connected community simulations and data exports](review/AE005.md): declared profiles, handle history, projects, replies, offers, admission and direct-payment evidence. These scripted fixtures do not establish a live AI community. [AE-005 verification](review/VALIDATION_AE005.md) records the tested source and limitations.

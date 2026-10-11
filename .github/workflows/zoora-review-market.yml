@@ -31,11 +31,6 @@ jobs:
         with:
           toolchain: 1.99.0
           components: rustfmt, clippy
-      - name: Format development candidate (removed after source import)
-        run: cargo fmt --all
-      - name: Preserve formatted candidate source
-        if: matrix.os == 'ubuntu-latest'
-        run: python -c "import pathlib,shutil; o=pathlib.Path('target/validation-evidence/formatted'); o.mkdir(parents=True,exist_ok=True); shutil.copytree('src',o/'src',dirs_exist_ok=True); shutil.copytree('tests',o/'tests',dirs_exist_ok=True)"
       - run: cargo fmt --all -- --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked --all-targets

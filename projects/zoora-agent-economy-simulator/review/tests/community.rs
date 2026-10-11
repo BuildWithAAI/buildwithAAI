@@ -771,7 +771,13 @@ fn seeded_viewer_preserves_full_u64_seed_for_reproducibility() {
     config.seed = u64::MAX;
     let report = RunReport::generate(config, Scenario::Balanced).unwrap();
     let html = viewer::export(&serde_json::to_string(&report).unwrap()).unwrap();
-    let encoded = html.split("<script id=\"community-data\" type=\"application/json\">").nth(1).unwrap().split("</script>").next().unwrap();
+    let encoded = html
+        .split("<script id=\"community-data\" type=\"application/json\">")
+        .nth(1)
+        .unwrap()
+        .split("</script>")
+        .next()
+        .unwrap();
     let payload: serde_json::Value = serde_json::from_str(encoded).unwrap();
     assert_eq!(payload["seed"], u64::MAX.to_string());
 }

@@ -1,8 +1,14 @@
 """Exercise actual CLI profiles; independently reconcile synthetic reports and exports."""
-import copy,csv,hashlib,io,json,os,pathlib,platform,re,subprocess,tempfile,base64
+import copy,csv,hashlib,io,json,os,pathlib,platform,re,subprocess,tempfile,base64,time
 root=pathlib.Path(__file__).resolve().parents[1]
 out=root/'target'/'validation-evidence';out.mkdir(parents=True,exist_ok=True)
 suffix='.exe' if os.name=='nt' else ''
+RUN_FINGERPRINTS={
+ 'BALANCED':'f4a6cff4db298f06a23a59d4f07cca87d779f5f92f2bb6a9e10358b810b79bf4',
+ 'SPAM_RESERVATIONS':'96f736d30b1ea42625a69b3af7811ca25a86071c008d0a9bd9c617856177b681',
+ 'PROVIDER_OFFLINE':'913ca89a88d8476c850bdd44e01ff03ddf9550a3a5b04a6877cfa8465f1af94b'}
+BATCH_FINGERPRINT='16596c4f754a2fffea1991c8f3a44eeb11aa8d3c1dc823cc078581c1ccc5d326'
+
 fields={
  'community':('ZOORA_AE005_COMMUNITY_V1',['schema_version','model','classification','provenance','config','agents','projects','posts','offers','orders','direct','metrics','journal']),
  'run':('ZOORA_AE005_RUN_V1',['schema_version','model','classification','rng','config','scenario','intents','intentions_fingerprint','community']),
@@ -42,7 +48,7 @@ with tempfile.TemporaryDirectory() as directory:
    path=temp/(scenario+'-'+profile+'.json');run(profile,'community-run','configs/community.toml',scenario,path);run(profile,'replay-community',path)
    run(profile,'community-run','configs/community.toml',scenario,path,ok=False);outputs.append(path)
   assert outputs[0].read_bytes()==outputs[1].read_bytes()
-  data=json.loads(outputs[0].read_bytes());inspect(data);reports[scenario]=data
+  data=json.loads(outputs[0].read_bytes());inspect(data);assert data['fingerprint']==RUN_FINGERPRINTS[scenario];reports[scenario]=data
   name='community-'+scenario.lower();(out/(name+'.json')).write_bytes(outputs[0].read_bytes())
   run('release','community-csv',outputs[0],out/(name+'.csv'))
   run('release','viewer',outputs[0],out/(name+'.html'))
@@ -60,7 +66,7 @@ with tempfile.TemporaryDirectory() as directory:
  for profile in ['debug','release']:
   path=temp/('batch-'+profile+'.json');run(profile,'community-batch','configs/community-batch.toml',path);run(profile,'replay-community-batch',path);batch_paths.append(path)
  assert batch_paths[0].read_bytes()==batch_paths[1].read_bytes();batch=json.loads(batch_paths[0].read_bytes());assert batch['fingerprint']==fingerprint('batch',batch)
- assert len(batch['runs'])==9
+ assert len(batch['runs'])==9 and batch['fingerprint']==BATCH_FINGERPRINT
  for seed in batch['config']['seeds']:assert len({r['intentions_fingerprint'] for r in batch['runs'] if r['seed']==seed})==1
  (out/'community-batch.json').write_bytes(batch_paths[0].read_bytes());run('release','community-csv',batch_paths[0],out/'community-batch.csv')
  batch_rows=list(csv.DictReader(io.StringIO((out/'community-batch.csv').read_text())));assert len(batch_rows)==9
@@ -72,7 +78,26 @@ with tempfile.TemporaryDirectory() as directory:
  forged=copy.deepcopy(batch);forged['runs'][0]['direct_metrics']['net_transferred']='999';forged['fingerprint']=fingerprint('batch',forged)
  path=temp/'forged-batch.json';path.write_text(json.dumps(forged));run('release','replay-community-batch',path,ok=False)
  invalid=temp/'invalid.toml';invalid.write_text('seed=42\nagents=20\ntasks=501\nmax_pending_per_provider=16\nposts_per_agent_per_tick=3\n');run('release','community-run',invalid,'BALANCED',temp/'invalid.json',ok=False)
+ # Exercise the supported workload dimensions with the real release CLI.
+ scaling=[]
+ maximum=temp/'maximum.toml';maximum.write_text('seed=42\nagents=128\ntasks=500\nmax_pending_per_provider=32\nposts_per_agent_per_tick=10\n')
+ for scenario in ['BALANCED','SPAM_RESERVATIONS']:
+  path=temp/('maximum-'+scenario+'.json');start=time.perf_counter_ns()
+  run('release','community-run',maximum,scenario,path);generation_ns=time.perf_counter_ns()-start
+  start=time.perf_counter_ns();run('release','replay-community',path);replay_ns=time.perf_counter_ns()-start
+  report=json.loads(path.read_bytes());inspect(report);metrics=report['community']['metrics']
+  assert metrics['registered_agents']==128 and max(metrics['peak_pending_by_provider'].values())<=32
+  if scenario=='SPAM_RESERVATIONS':
+   assert metrics['accepted_orders']==2048 and metrics['provider_capacity_rejections']==500
+   assert report['community']['direct']['metrics']['payments_recorded']=='0'
+  scaling.append({'classification':'SYNTHETIC','scenario':scenario,'agents':128,'intended_tasks':500,'provider_pending_limit':32,
+   'metrics':metrics,'fingerprint':report['fingerprint'],'generation_and_internal_verification_nanoseconds':str(generation_ns),
+   'replay_nanoseconds':str(replay_ns),'timing_scope':'SINGLE_CI_SAMPLE_INCLUDES_PROCESS_AND_REPORT_IO_NOT_LIVE_THROUGHPUT'})
+ (out/'community-scaling.json').write_text(json.dumps(scaling,indent=2)+'\n')
+
+for name in ['community-balanced.json','community-balanced.csv','community-balanced.html','community-batch.json','community-batch.csv']:
+ assert (root/'examples'/name).read_bytes()==(out/name).read_bytes(),('committed example differs',name)
 summary={'source_head_sha':os.environ['SOURCE_HEAD_SHA'],'platform':platform.platform(),'independent_hashes_verified':True,'scripted_not_llm':True,'chain_integration_verified':False,
  'run_fingerprints':{s:r['fingerprint'] for s,r in reports.items()},'batch_fingerprint':batch['fingerprint'],'scenarios':{s:{'community':r['community']['metrics'],'direct':r['community']['direct']['metrics']} for s,r in reports.items()},
- 'batch_runs':batch['runs'],'csv_missingness_verified':True,'debug_release_byte_identical':True,'rehashed_forgery_rejected':True}
+ 'batch_runs':batch['runs'],'maximum_workload_checks':scaling,'csv_missingness_verified':True,'debug_release_byte_identical':True,'committed_examples_match':True,'rehashed_forgery_rejected':True}
 (out/'ae005-environment.json').write_text(json.dumps(summary,indent=2)+'\n');print(json.dumps(summary,indent=2))
