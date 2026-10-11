@@ -31,6 +31,11 @@ jobs:
         with:
           toolchain: 1.99.0
           components: rustfmt, clippy
+      - name: Format development candidate (removed after source import)
+        run: cargo fmt --all
+      - name: Preserve formatted candidate source
+        if: matrix.os == 'ubuntu-latest'
+        run: python -c "import pathlib,shutil; o=pathlib.Path('target/validation-evidence/formatted'); o.mkdir(parents=True,exist_ok=True); shutil.copytree('src',o/'src',dirs_exist_ok=True); shutil.copytree('tests',o/'tests',dirs_exist_ok=True)"
       - run: cargo fmt --all -- --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked --all-targets
@@ -49,6 +54,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/viewer_browser.mjs
+      - name: Community simulations, replay and CSV evidence
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/community_evidence.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:

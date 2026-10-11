@@ -1,6 +1,9 @@
 #![forbid(unsafe_code)]
 pub mod allocation;
 mod bounded;
+pub mod community;
+pub mod community_export;
+pub mod community_scenarios;
 pub mod config;
 pub mod direct;
 pub mod engine;

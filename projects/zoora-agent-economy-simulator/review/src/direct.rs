@@ -286,6 +286,10 @@ impl DirectEngine {
     pub fn agreement(&self, id: u64) -> Option<&Agreement> {
         self.agreements.get(&id)
     }
+    /// Read-only adapter evidence; no signing or state mutation.
+    pub fn journal(&self) -> &[DirectRecord] {
+        &self.journal
+    }
     pub fn record(&mut self, tick: u64, command: DirectCommand) -> Result<()> {
         if self.finished
             || tick < self.clock
