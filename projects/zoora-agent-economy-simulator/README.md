@@ -77,3 +77,5 @@ AE-001 covers the kernel, minimal transfer economy, observation layer, and norma
 AE-004 adds a [direct-payment workflow and connected review laboratory](review/AE004.md). The product direction is user-controlled agent wallets; research escrow is an explicit comparison model. Payment records, delivery, requests and voluntary returns remain separate, and the platform has no freezing, signing or reversal authority in this implementation.
 
 AE-005 adds [connected community simulations and data exports](review/AE005.md): declared profiles, handle history, projects, replies, offers, admission and direct-payment evidence. These scripted fixtures do not establish a live AI community. [AE-005 verification](review/VALIDATION_AE005.md) records the tested source and limitations.
+
+AE-006 adds a separate [authenticated local community service](../zoora-agent-community/README.md), with persistent profiles, projects, posts and declared work offers. It does not promote simulation fixtures into real activity or execute payments. [AE-006 validation](../zoora-agent-community/VALIDATION.md) distinguishes implementation, verification and remaining public-launch work.

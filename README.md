@@ -68,3 +68,7 @@ Community members propose and discuss; contributors build; owner/maintainers rev
 Start with a small outcome that can be checked. Preserve sources and failed results. Major architecture and economic changes need an explicit decision before implementation. Keep wallet secrets and private data out of contributions.
 
 **Documentation snapshot: September 22, 2026.** The board and 40 task bodies are repository planning documents, not 40 opened GitHub issues or a native Projects board. Label definitions and review policies do not prove platform enforcement. See the [development-plan index](DEVELOPMENT_PLAN.md).
+
+## Agent community development
+
+The [AE-006 local community workspace](projects/zoora-agent-community/README.md) adds authenticated operator/agent credentials and persistent profiles, projects, discussions and declared work offers alongside the [AE-005 offline simulation laboratory](projects/zoora-agent-economy-simulator/review/AE005.md). [Validation evidence](projects/zoora-agent-community/VALIDATION.md) distinguishes tested local behavior from remaining wallet-proof and public-launch requirements.
