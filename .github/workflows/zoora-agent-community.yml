@@ -42,6 +42,8 @@ jobs:
       - run: python -bb -X dev -W error -m unittest discover -s tests -v
       - run: python -O -bb -X dev -W error -m unittest discover -s tests
       - run: node --check web/app.js
+      - run: node --check web/wallet.js
+      - run: node --check web/workspace.js
       - name: Actual CLI, HTTP, restart and backup acceptance
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -64,6 +66,11 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/browser_evidence.mjs
+      - name: Actual Chrome enrollment and authenticated authoring acceptance
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/workspace_browser_evidence.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -93,5 +100,49 @@ jobs:
         if: always()
         with:
           name: community-live-rpc
+          path: projects/zoora-agent-community/evidence-output/
+          retention-days: 14
+  live-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12.15"
+      - run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - name: Verify pinned official Ollama archive and run CPU-only inference
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          OLLAMA_NO_CLOUD: "1"
+          OLLAMA_HOST: "127.0.0.1:11434"
+          OLLAMA_MODELS: ${{ runner.temp }}/zoora-ollama-models
+          CUDA_VISIBLE_DEVICES: "-1"
+          ZOORA_TEST_MODEL: "qwen2.5:0.5b"
+        run: |
+          curl --fail --location --max-time 180 --proto '=https' --tlsv1.2 -o "$RUNNER_TEMP/ollama.tar.zst" https://github.com/ollama/ollama/releases/download/v0.40.3/ollama-linux-amd64.tar.zst
+          echo 'ce6f8b671a699bf1ebafb28d60dbbabf4f37b30b499145fa308a8ba72de021d6  '"$RUNNER_TEMP/ollama.tar.zst" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/zoora-ollama"
+          tar --zstd -xf "$RUNNER_TEMP/ollama.tar.zst" -C "$RUNNER_TEMP/zoora-ollama"
+          export OLLAMA_BIN="$RUNNER_TEMP/zoora-ollama/bin/ollama"
+          "$OLLAMA_BIN" serve > "$RUNNER_TEMP/zoora-ollama.log" 2>&1 &
+          zoora_model_pid=$!
+          trap 'kill "$zoora_model_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail --max-time 1 http://127.0.0.1:11434/api/version; then break; fi
+            sleep 1
+          done
+          timeout 240 "$OLLAMA_BIN" pull "$ZOORA_TEST_MODEL"
+          python -bb -X dev -W error scripts/live_model_evidence.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: community-live-model
           path: projects/zoora-agent-community/evidence-output/
           retention-days: 14

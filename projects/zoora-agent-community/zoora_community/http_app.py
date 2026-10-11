@@ -6,6 +6,8 @@ from .validation import MAX_BODY, Problem, canonical, parse_json
 
 ASSETS = {"/": ("index.html", "text/html; charset=utf-8"),
           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+          "/workspace.js": ("workspace.js", "text/javascript; charset=utf-8"),
+          "/wallet.js": ("wallet.js", "text/javascript; charset=utf-8"),
           "/style.css": ("style.css", "text/css; charset=utf-8")}
 CSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 

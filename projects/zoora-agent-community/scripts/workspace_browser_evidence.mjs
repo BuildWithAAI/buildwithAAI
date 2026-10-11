@@ -1,0 +1,118 @@
+// Actual Chrome + actual HTTP/SQLite; the wallet is explicitly SYNTHETIC and never funded.
+import {spawn,execFileSync} from 'node:child_process';
+import {mkdtemp,writeFile,readFile,rm,mkdir} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {createHash,createPrivateKey,createPublicKey} from 'node:crypto';
+const output=path.resolve('evidence-output');await mkdir(output,{recursive:true});
+const folder=await mkdtemp(path.join(tmpdir(),'zoora-workspace-browser-'));
+const python=process.env.PYTHON_BIN||'python',chrome=process.env.CHROME_BIN||'google-chrome';
+let socket,child,service;
+async function stop(process){if(!process||process.exitCode!==null||process.signalCode!==null)return;process.kill('SIGTERM');await new Promise(resolve=>{const timer=setTimeout(()=>{process.kill('SIGKILL');resolve();},2000);process.once('exit',()=>{clearTimeout(timer);resolve();});timer.unref();});}
+async function ready(process,stream,pattern){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Start timed out')),20000);let log='';process[stream].on('data',chunk=>{log+=chunk;const match=log.match(pattern);if(match){clearTimeout(timer);resolve(match[1]);}});process.on('error',reject);process.on('exit',()=>{clearTimeout(timer);reject(new Error('Test process exited before ready'));});});}
+try{
+  service=spawn(python,['scripts/workspace_fixture.py',folder],{stdio:['ignore','pipe','pipe']});
+  const origin=await ready(service,'stdout',/"url":"(http:\/\/127\.0\.0\.1:\d+)"/);
+  const owner=JSON.parse(await readFile(path.join(folder,'owner.credential.json'),'utf8'));
+  child=spawn(chrome,['--headless','--no-sandbox','--disable-gpu','--disable-background-networking','--remote-debugging-address=127.0.0.1','--remote-debugging-port=0','--user-data-dir='+path.join(folder,'chrome'),'about:blank'],{stdio:['ignore','ignore','pipe']});
+  const endpoint=await ready(child,'stderr',/DevTools listening on (ws:\/\/[^\s]+)/);
+  const targets=await(await fetch('http://'+new URL(endpoint).host+'/json')).json();
+  socket=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);
+  await new Promise((resolve,reject)=>{socket.addEventListener('open',resolve,{once:true});socket.addEventListener('error',reject,{once:true});});
+  let id=0;const pending=new Map(),exceptions=[],requests=[],checks=[];
+  socket.addEventListener('message',event=>{const message=JSON.parse(event.data);if(message.id){const p=pending.get(message.id);if(!p)return;pending.delete(message.id);clearTimeout(p.timer);message.error?p.reject(new Error(JSON.stringify(message.error))):p.resolve(message.result);}else if(message.method==='Runtime.exceptionThrown')exceptions.push(message.params);else if(message.method==='Network.requestWillBeSent')requests.push(message.params.request);});
+  const send=(method,params={})=>new Promise((resolve,reject)=>{const key=++id;const timer=setTimeout(()=>{pending.delete(key);reject(new Error('CDP timed out: '+method));},15000);pending.set(key,{resolve,reject,timer});socket.send(JSON.stringify({id:key,method,params}));});
+  const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});assert.ok(!r.exceptionDetails,'Browser evaluation failed');return r.result.value;};
+  const until=async expression=>{for(let n=0;n<160;n++){if(await evaluate(expression))return;await new Promise(r=>setTimeout(r,50));}throw new Error('Expected UI state not reached: '+expression);};
+  const fill=async(form,fields)=>{await evaluate(`(()=>{const form=document.getElementById(${JSON.stringify(form)});for(const[key,value]of Object.entries(${JSON.stringify(fields)}))form.elements[key].value=value;form.requestSubmit();})()`);};
+  const check=(name,condition)=>{assert.ok(condition,name);checks.push(name);};
+  await send('Page.enable');await send('Runtime.enable');await send('Network.enable');await send('DOM.enable');
+  await send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:folder});
+  await send('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
+  const seed=createHash('sha256').update('PUBLIC-AE009-BROWSER-TEST-KEY-NEVER-FUND').digest();
+  const der=Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),seed]);
+  const publicBytes=createPublicKey(createPrivateKey({key:der,format:'der',type:'pkcs8'})).export({format:'der',type:'spki'}).subarray(-32);
+  let number=BigInt('0x'+publicBytes.toString('hex')),address='';while(number){address='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Number(number%58n)]+address;number/=58n;}for(const byte of publicBytes){if(byte)break;address='1'+address;}
+  const source=`(()=>{const raw=new Uint8Array(${JSON.stringify([...publicBytes])});const account={address:${JSON.stringify(address)},publicKey:raw,chains:['solana:devnet'],features:['solana:signMessage']};let changed;
+    globalThis.walletScenario='normal';globalThis.syntheticWallet={version:'1.0.0',name:'SYNTHETIC test wallet (never fund)',chains:['solana:devnet'],accounts:[account],features:{'standard:connect':{version:'1.0.0',connect:async()=>({accounts:[account]})},'standard:events':{version:'1.0.0',on:(event,callback)=>{changed=callback;return()=>{changed=null;};}},'solana:signMessage':{version:'1.0.0',signMessage:async({message})=>{if(walletScenario==='reject')throw new Error('Fixture user declined');if(walletScenario==='defer')await new Promise(resolve=>globalThis.releaseWallet=resolve);const key=await crypto.subtle.importKey('pkcs8',new Uint8Array(${JSON.stringify([...der])}),{name:'Ed25519'},false,['sign']);const signature=new Uint8Array(await crypto.subtle.sign('Ed25519',key,message));return[{signedMessage:walletScenario==='mutate'?new Uint8Array([1,...message]):message,signature,signatureType:'ed25519'}];}}}};
+    globalThis.changeWallet=()=>{syntheticWallet.accounts=[];if(changed)changed({accounts:[]});};
+    window.addEventListener('wallet-standard:app-ready',event=>event.detail.register(syntheticWallet));})();`;
+  await send('Page.addScriptToEvaluateOnNewDocument',{source});
+  await send('Page.navigate',{url:origin+'/'});await until('document.getElementById("connection").textContent.includes("Connected")');
+  await evaluate('document.getElementById("account-panel").open=true');
+  check('empty state and signed-out workspace',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.querySelector("#records .empty")!==null'));
+  async function openCredential(filename){const root=(await send('DOM.getDocument')).root.nodeId;const input=(await send('DOM.querySelector',{nodeId:root,selector:'#credential-file'})).nodeId;await send('DOM.setFileInputFiles',{nodeId:input,files:[filename]});}
+  await openCredential(path.join(folder,'owner.credential.json'));await until('!document.getElementById("operator-form").hidden');
+  check('owner credential file authenticated by real API',await evaluate('document.getElementById("session-status").textContent.startsWith("OWNER")'));
+  await fill('operator-form',{handle:'workspace_operator'});await until('!document.getElementById("enrollment").hidden');
+  check('owner provisions operator and switches scoped session',await evaluate('document.getElementById("session-status").textContent.startsWith("OPERATOR") && !document.getElementById("save-issued").hidden'));
+  await evaluate('document.getElementById("save-issued").click()');
+  const operatorFile=path.join(folder,'zoora-operator.credential.json');
+  for(let n=0;n<100;n++){try{JSON.parse(await readFile(operatorFile,'utf8'));break;}catch{await new Promise(r=>setTimeout(r,50));}}
+  const operator=JSON.parse(await readFile(operatorFile,'utf8'));check('issued operator credential downloadable and valid',operator.role==='OPERATOR');
+  await evaluate('document.getElementById("connect-wallet").click()');await until('!document.getElementById("challenge-button").disabled');
+  check('Wallet Standard discovery and correct public account',await evaluate(`document.getElementById("wallet-account").textContent.includes(${JSON.stringify(address)})`));
+  const profile={handle:'workspace_agent',capabilities:'research, development',bio:'<img src=x onerror="globalThis.injected=1">'};
+  await fill('enroll-form',profile);await until('!document.getElementById("challenge-preview").hidden');
+  check('exact raw challenge preview states no payment',await evaluate('document.getElementById("challenge-message").textContent.includes("No payment or transaction is authorized.")'));
+  await evaluate('globalThis.walletScenario="reject";document.getElementById("sign-proof").click()');await until('!document.getElementById("workspace-error").hidden');
+  check('user-declined signature retains operator and creates no agent',(await(await fetch(origin+'/v1/status')).json()).counts.agents===0);
+  await evaluate('globalThis.walletScenario="mutate";document.getElementById("sign-proof").click()');await until('document.getElementById("workspace-error").textContent.includes("changed the raw message")');
+  check('modified signing bytes rejected before enrollment',(await(await fetch(origin+'/v1/status')).json()).counts.agents===0);
+  await evaluate('globalThis.walletScenario="defer";document.getElementById("sign-proof").click()');await until('typeof globalThis.releaseWallet==="function"');
+  await evaluate('document.getElementById("sign-out").click();globalThis.releaseWallet()');await until('document.getElementById("credential-file").disabled===false');
+  check('sign out during wallet approval does not restore session or enroll',(await(await fetch(origin+'/v1/status')).json()).counts.agents===0 && await evaluate('document.getElementById("session-status").textContent==="Signed out"'));
+  await openCredential(operatorFile);await until('!document.getElementById("enrollment").hidden');
+  await evaluate('globalThis.walletScenario="normal";document.getElementById("connect-wallet").click()');await until('!document.getElementById("challenge-button").disabled');
+  await fill('enroll-form',profile);await until('!document.getElementById("challenge-preview").hidden');
+  await evaluate('globalThis.changeWallet()');check('wallet account changes clear challenge and disable signing',await evaluate('document.getElementById("challenge-preview").hidden && document.getElementById("challenge-button").disabled'));
+  await evaluate('syntheticWallet.accounts=(await syntheticWallet.features["standard:connect"].connect()).accounts;globalThis.walletScenario="normal";document.getElementById("connect-wallet").click()');await until('!document.getElementById("challenge-button").disabled');
+  await fill('enroll-form',profile);await until('!document.getElementById("challenge-preview").hidden');
+  await evaluate('document.getElementById("sign-proof").click()');await until('!document.getElementById("agent-workspace").hidden');
+  check('real Ed25519 signature enrolled atomically',await evaluate('document.getElementById("session-status").textContent.startsWith("AGENT")'));
+  await evaluate('document.getElementById("save-issued").click()');
+  const agentFile=path.join(folder,'zoora-agent.credential.json');
+  for(let n=0;n<100;n++){try{JSON.parse(await readFile(agentFile,'utf8'));break;}catch{await new Promise(r=>setTimeout(r,50));}}
+  const agent=JSON.parse(await readFile(agentFile,'utf8'));
+  const proof=await(await fetch(origin+'/v1/agents/'+agent.principal_id+'/wallet-proof')).json();
+  check('server retained verifiable historical proof',proof.status==='SIGNATURE_VERIFIED'&&proof.wallet===address);
+  await fill('project-form',{title:'AE009 browser project',summary:'Actual writes from a synthetic wallet fixture'});await until('document.getElementById("workspace-result").textContent.startsWith("Recorded")');
+  const projects=await(await fetch(origin+'/v1/projects')).json(),project=projects.items[0];check('browser project has authenticated agent ownership',project.owner_id===agent.principal_id);
+  await fill('post-form',{project_id:project.id,body:'<script>globalThis.injected=1</script> actual discussion'});await until('document.getElementById("workspace-result").textContent.startsWith("Recorded")');
+  const posts=await(await fetch(origin+'/v1/posts')).json();check('discussion persisted with agent attribution',posts.items[0].author_id===agent.principal_id);
+  const artifactFile=path.join(folder,'sample.txt');await writeFile(artifactFile,'Actual artifact bytes; never executed');
+  const root=(await send('DOM.getDocument')).root.nodeId,input=(await send('DOM.querySelector',{nodeId:root,selector:'#artifact-form input[type=file]'})).nodeId;
+  await send('DOM.setFileInputFiles',{nodeId:input,files:[artifactFile]});await fill('artifact-form',{project_id:project.id,title:'Local digest'});await until('document.getElementById("workspace-result").textContent.startsWith("Recorded")');
+  const artifacts=await(await fetch(origin+'/v1/projects/'+project.id+'/artifacts')).json();check('browser SHA256 matches independently hashed file',artifacts.items[0].digest===createHash('sha256').update(await readFile(artifactFile)).digest('hex'));
+  await fill('offer-form',{project_id:project.id,title:'Fixture offer',criteria_digest:'a'.repeat(64),quote:'Declared only; no payment',delivery_terms:'Fixture terms'});await until('document.getElementById("workspace-result").textContent.startsWith("Recorded")');
+  check('work offer persisted without payment operations',(await(await fetch(origin+'/v1/offers')).json()).items[0].provider_id===agent.principal_id);
+  await fill('task-form',{prompt:'Use text_metrics on Zoora builds, then write a report.'});
+  for(let n=0;n<100;n++){try{JSON.parse(await readFile(path.join(folder,'zoora-task.json'),'utf8'));break;}catch{await new Promise(r=>setTimeout(r,50));}}
+  check('task downloaded without implicit model invocation',JSON.parse(await readFile(path.join(folder,'zoora-task.json'),'utf8')).prompt.includes('text_metrics'));
+  await evaluate('document.querySelector("[data-tab=posts]").click()');await until('document.getElementById("records").textContent.includes("actual discussion")');
+  check('submitted hostile content remains text',await evaluate('globalThis.injected===undefined && document.querySelector("img")==null && document.querySelectorAll("#records script").length===0'));
+  check('credentials absent from page storage and visible content',await evaluate(`localStorage.length===0 && sessionStorage.length===0 && !document.body.textContent.includes(${JSON.stringify(agent.token)}) && !document.body.textContent.includes(${JSON.stringify(operator.token)}) && !document.body.textContent.includes(${JSON.stringify(owner.token)})`));
+  await writeFile(path.join(output,'workspace-authoring-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  check('authoring forms have no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
+  await writeFile(path.join(output,'workspace-authoring-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  await evaluate('document.getElementById("sign-out").click()');check('sign out clears role and all work controls',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("agent-workspace").hidden && document.getElementById("save-issued").hidden'));
+  await send('Page.reload');await until('document.getElementById("connection").textContent.includes("Connected")');
+  check('page reload does not restore bearer session',await evaluate('document.getElementById("session-status").textContent==="Signed out"'));
+  await openCredential(agentFile);await until('!document.getElementById("agent-workspace").hidden');
+  await fetch(origin+'/v1/agents/'+agent.principal_id+'/credentials',{method:'POST',headers:{Authorization:'Bearer '+operator.token,'Content-Type':'application/json'},body:'{}'});
+  await fill('post-form',{project_id:'',body:'Revoked credential must not author'});await until('document.getElementById("workspace-error").textContent.includes("UNAUTHORIZED")');
+  check('revoked session fails actual API writes',(await(await fetch(origin+'/v1/posts')).json()).items.length===1);
+  await evaluate('document.getElementById("sign-out").click()');await openCredential(operatorFile);await until('!document.getElementById("enrollment").hidden');
+  await evaluate('document.getElementById("connect-wallet").click()');await until('!document.getElementById("challenge-button").disabled');
+  await fill('enroll-form',{...profile,handle:'second_agent'});await until('document.getElementById("workspace-error").textContent.includes("WALLET_RESERVED")');
+  check('claimed wallet cannot enroll a second agent',(await(await fetch(origin+'/v1/status')).json()).counts.agents===1);
+  const audit=JSON.parse(execFileSync(python,['-bb','-X','dev','-W','error','-m','zoora_community','audit','--state',path.join(folder,'state')],{encoding:'utf8'}));
+  check('authored state and wallet proof pass full offline audit',audit.database_integrity==='OK');
+  check('no uncaught browser exceptions',exceptions.length===0);
+  check('no external page requests',requests.filter(r=>/^https?:/.test(r.url)&&!r.url.startsWith(origin+'/')).length===0);
+  check('no uploaded artifact bytes',requests.filter(r=>r.url.endsWith('/artifacts')).every(r=>r.postData&&!r.postData.includes('Actual artifact bytes')));
+  const evidence={source_head_sha:process.env.SOURCE_HEAD_SHA||'LOCAL_UNCOMMITTED',activity:'AUTOMATED_TEST_FIXTURE',wallet_classification:'SYNTHETIC',wallet_vendor_extension_verified:false,real_ed25519_server_verification:true,checks,uncaught_exceptions:exceptions.length,external_page_requests:0,chrome:execFileSync(chrome,['--version'],{encoding:'utf8'}).trim(),audit};
+  await writeFile(path.join(output,'workspace-browser.json'),JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence,null,2));
+}finally{if(socket)socket.close();await stop(child);await stop(service);await rm(folder,{recursive:true,force:true,maxRetries:10,retryDelay:100});}

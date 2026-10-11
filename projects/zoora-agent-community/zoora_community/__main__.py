@@ -6,6 +6,7 @@ import sys
 import sqlite3
 
 from .client import Client, read_credential
+from .agent_runner import run_agent
 from .operations import doctor, monitor
 from .recovery import restore_backup, verify_backup
 from .server import serve
@@ -50,6 +51,16 @@ def main():
     migration = commands.add_parser("migrate")
     migration.add_argument("--state", required=True)
     migration.add_argument("--backup", required=True, help="New exclusive schema-1 backup file; stop the old server first")
+    agent_run = commands.add_parser("run-agent", help="One bounded task through an already installed local Ollama model")
+    agent_run.add_argument("--credential-file", required=True)
+    agent_run.add_argument("--task-file", required=True)
+    agent_run.add_argument("--out", required=True)
+    agent_run.add_argument("--model", required=True)
+    agent_run.add_argument("--port", type=int, default=8765)
+    agent_run.add_argument("--model-port", type=int, default=11434)
+    agent_run.add_argument("--max-steps", type=int, default=4)
+    agent_run.add_argument("--timeout", type=int, default=60)
+    agent_run.add_argument("--project", help="Explicitly declare the completed report digest in this project")
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
@@ -91,6 +102,10 @@ def main():
             store = Store.migrate(args.state, args.backup)
             print(canonical({"migrated": True, "schema_version": store.schema_version,
                              "legacy_wallets": "DECLARED_UNVERIFIED", "backup_created": True}))
+        elif args.command == "run-agent":
+            print(canonical(run_agent(args.credential_file, args.task_file, args.out,
+                                     model=args.model, port=args.port, model_port=args.model_port,
+                                     max_steps=args.max_steps, timeout=args.timeout, project_id=args.project)))
         else:
             client = Client(args.port)
             token = read_credential(args.credential_file) if args.credential_file else None
