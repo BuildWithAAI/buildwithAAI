@@ -36,7 +36,7 @@ class Client:
             if len(payload) > 16384:
                 raise Problem(413, "BODY_TOO_LARGE")
             headers["Content-Type"] = "application/json"
-        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=6)
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=12)
         try:
             connection.request(method, path, payload, headers)
             response = connection.getresponse()

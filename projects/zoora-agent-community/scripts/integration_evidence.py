@@ -1,6 +1,5 @@
 """Actual subprocess CLI + HTTP + restart + restore acceptance; no live customer data."""
 
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,17 +13,8 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from zoora_community.client import Client, read_credential  # noqa: E402
-from zoora_community.validation import BASE58, canonical  # noqa: E402
-
-
-def address(label):
-    raw = hashlib.sha256(label.encode()).digest()
-    number = int.from_bytes(raw, "big")
-    result = ""
-    while number:
-        number, remainder = divmod(number, 58)
-        result = BASE58[remainder] + result
-    return "1" * (len(raw) - len(raw.lstrip(b"\0"))) + result
+from zoora_community.validation import canonical  # noqa: E402
+from fixture_signatures import address, signed_body  # noqa: E402
 
 
 def command(*args, expected=0):
@@ -35,10 +25,13 @@ def command(*args, expected=0):
 
 
 class Running:
-    def __init__(self, state, folder):
+    def __init__(self, state, folder, enable_solana=False):
         self.path = folder / "server-log.txt"
         self.log = self.path.open("wb")
-        self.child = subprocess.Popen([sys.executable, "-bb", "-X", "dev", "-W", "error", "-m", "zoora_community", "serve", "--state", str(state), "--port", "0"],
+        arguments = [sys.executable, "-bb", "-X", "dev", "-W", "error", "-m", "zoora_community", "serve", "--state", str(state), "--port", "0"]
+        if enable_solana:
+            arguments.append("--solana-rpc")
+        self.child = subprocess.Popen(arguments,
                                       cwd=ROOT, stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log)
         try:
             started = time.monotonic()
@@ -98,10 +91,13 @@ def run():
             request("POST", "/v1/operators", {"handle": "test_operator"}, owner_file, operator_file)
             tokens.append(read_credential(operator_file))
             agent_file = folder / "agent.credential.json"
-            agent = request("POST", "/v1/agents", {"handle": "test_agent", "wallet": address("acceptance-fixture"), "capabilities": ["research", "coding"]}, operator_file, agent_file)["result"]["agent"]
+            challenge = request("POST", "/v1/wallet/challenges", {"handle": "test_agent", "wallet": address("acceptance-fixture"), "capabilities": ["research", "coding"]}, operator_file)["result"]
+            agent = request("POST", "/v1/agents", signed_body(challenge, "acceptance-fixture"), operator_file, agent_file)["result"]["agent"]
             tokens.append(read_credential(agent_file))
-            assert agent["wallet_status"] == "DECLARED_UNVERIFIED"
-            checks.append("actual CLI enrolls operator and scoped agent without printing credentials")
+            assert agent["wallet_status"] == "SIGNATURE_VERIFIED"
+            checks.append("actual CLI verifies a wallet challenge and enrolls a scoped agent without printing credentials")
+            assert request("POST", "/v1/agents", signed_body(challenge, "acceptance-fixture"), operator_file, folder / "replay.credential.json", expected=1)["error"] == "CHALLENGE_CONSUMED"
+            checks.append("reused wallet signature is rejected without issuing a second credential")
             project = request("POST", "/v1/projects", {"title": "Acceptance fixture", "summary": "Automated test, not customer activity"}, agent_file)["result"]
             request("POST", "/v1/projects/" + project["id"] + "/artifacts", {"title": "Declared test output", "digest": "a" * 64}, agent_file)
             post = request("POST", "/v1/posts", {"body": "Test discussion", "project_id": project["id"]}, agent_file)["result"]
@@ -123,7 +119,7 @@ def run():
             backup_file = folder / "backup.sqlite3"
             command("backup", "--state", state, "--out", backup_file)
             audit = json.loads(command("audit", "--state", state).stdout)
-            assert audit["audit_events"] == 11
+            assert audit["audit_events"] == 12
             assert audit["sqlite_defensive"] is True
             assert audit["extension_loading"] is False
             assert all(token.encode() not in state.joinpath("community.sqlite3").read_bytes() for token in tokens)
@@ -155,6 +151,7 @@ def run():
                 "checks": checks, "persisted_counts": status["counts"], "audit_events": audit["audit_events"],
                 "sqlite_defensive": audit["sqlite_defensive"], "extension_loading": audit["extension_loading"],
                 "runtime_patch_audit": "UNVERIFIED",
+                "pynacl": __import__("nacl").__version__,
                 "customer_wallets": 0, "chain_requests": 0, "transactions_submitted": 0}
     output = ROOT / "evidence-output"
     output.mkdir(exist_ok=True)

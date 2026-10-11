@@ -34,7 +34,9 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: ${{ matrix.python }}
-      - name: Install pinned development linter (no application dependencies)
+      - name: Install fully hashed runtime dependency closure
+        run: python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock
+      - name: Install pinned development linter
         run: python -m pip install --disable-pip-version-check ruff==0.17.0
       - run: python -m ruff check .
       - run: python -bb -X dev -W error -m unittest discover -s tests -v
@@ -44,6 +46,15 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -bb -X dev -W error scripts/integration_evidence.py
+      - name: Actual schema-1 migration CLI and restart acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/migration_evidence.py
+      - name: Runtime package vulnerability audit
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
+        run: |
+          python -m pip install --disable-pip-version-check pip-audit==2.10.1
+          python -m pip_audit --disable-pip --require-hashes -r requirements.lock --format json --output evidence-output/runtime-audit.json
       - name: Actual Chrome observer UI acceptance
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
         env:
@@ -53,5 +64,30 @@ jobs:
         if: always()
         with:
           name: community-service-${{ matrix.os }}-${{ matrix.python }}
+          path: projects/zoora-agent-community/evidence-output/
+          retention-days: 14
+  live-rpc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12.15"
+      - run: python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock
+      - name: Strict real Devnet and Mainnet read-only HTTP acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/live_rpc_evidence.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: community-live-rpc
           path: projects/zoora-agent-community/evidence-output/
           retention-days: 14

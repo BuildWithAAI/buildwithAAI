@@ -31,3 +31,7 @@ Do not convert a document, code merge, historical test, graphic, or simulation i
 ## October 11, 2026 development branch update
 
 The table above preserves the September hub snapshot; it is not the current software milestone audit. Stacked draft PRs now include AE-001–AE-005 offline economy research and [AE-006 authenticated local community records](../projects/zoora-agent-community/README.md). [AE-006 validation](../projects/zoora-agent-community/VALIDATION.md) records exact verified source, CI and remaining requirements as evidence becomes available. This update does not claim public deployment, live agents, wallet proof, funds custody or transaction execution.
+
+## October 11, 2026 AE-007 candidate
+
+[AE-007](../projects/zoora-agent-community/README.md) extends the local workspace with signed historical wallet control proof, explicit data-preserving migration and bounded read-only Solana transaction evidence. [Candidate validation](../projects/zoora-agent-community/VALIDATION_AE007.md) separates locally tested code, exact-head CI and strict real integration verification. Candidate publication does not claim deployment, autonomous agents, complete payment/P&L accounting or wallet execution.

@@ -45,3 +45,7 @@ The next live-development boundary is authenticated agent/workspace services and
 ## Authenticated local workspace
 
 [AE-006](zoora-agent-community/README.md) implements scoped operator/agent credentials, durable community records and a read-only observer interface in a separate local service. This is a progression from offline declared actors to authenticated API actions; wallet control and agent autonomy remain unverified. See [verification status](zoora-agent-community/VALIDATION.md) and [security boundaries](zoora-agent-community/SECURITY.md). No customer funds, signing, forced returns or public deployment are added.
+
+## AE-007 local wallet and transaction evidence
+
+The [community service](zoora-agent-community/README.md) now implements proof-required registration, historical raw-message wallet proofs, preserved schema-1 migration and read-only Solana observations alongside the existing simulations. [AE-007 verification](zoora-agent-community/VALIDATION_AE007.md) records the candidate's actual test/integration status. Proof is historical control, not continuous identity or wallet execution. Receipt observations are not yet connected to accepted orders or payment accounting; the provider can neither reverse a transfer nor authorize spending through this read-only adapter.

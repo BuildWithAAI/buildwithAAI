@@ -5,6 +5,8 @@ import unittest
 
 from helpers import Fixture
 from zoora_community.client import read_credential
+from zoora_community.store import Store
+from zoora_community.validation import Problem
 
 
 class CliTests(unittest.TestCase):
@@ -51,6 +53,26 @@ class CliTests(unittest.TestCase):
         token = read_credential(output)
         self.assertNotIn(token, result.stdout + result.stderr)
         self.assertNotEqual(token, self.f.owner)
+
+    def test_sensitive_restore_recovery_revokes_all_credentials_and_preserves_proof(self):
+        _, operator = self.f.operator()
+        agent_id, agent = self.f.agent(operator)
+        backup = self.f.root / "snapshot.sqlite3"
+        self.f.store.backup(backup)
+        restored = self.f.root / "restored"
+        restored.mkdir(mode=0o700)
+        backup.replace(restored / "community.sqlite3")
+        output = self.f.root / "restore-owner.credential.json"
+        result = self.run_cli("recover-owner", "--state", str(restored), "--owner-file", str(output), "--invalidate-all-credentials")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        store = Store(restored)
+        for token in (self.f.owner, operator, agent):
+            with self.assertRaises(Problem) as rejected:
+                store.call("GET", "/v1/me", token=token)
+            self.assertEqual(rejected.exception.code, "UNAUTHORIZED")
+        self.assertEqual(store.call("GET", "/v1/me", token=read_credential(output))[1]["role"], "OWNER")
+        self.assertEqual(store.call("GET", "/v1/agents/" + agent_id)[1]["wallet_status"], "SIGNATURE_VERIFIED")
+        store.audit()
 
 
 if __name__ == "__main__":

@@ -83,30 +83,32 @@ class StoreTests(unittest.TestCase):
 
     def test_handle_history_and_wallet_permanent(self):
         self.f.store.call("PATCH", "/v1/agents/" + self.agent_id, {"handle": "renamed_agent"}, self.agent)
-        self.refused(409, lambda: self.f.agent(self.operator), "HANDLE_RESERVED")
+        self.refused(409, lambda: self.f.store.call("POST", "/v1/wallet/challenges", {"handle": "agent_one", "wallet": address("unused"), "capabilities": ["research"]}, self.operator), "HANDLE_RESERVED")
         self.refused(400, lambda: self.f.store.call("PATCH", "/v1/agents/" + self.agent_id, {"wallet": address("else")}, self.operator))
-        self.refused(409, lambda: self.f.store.call("POST", "/v1/agents", {"handle": "new_handle", "wallet": address("agent_one"), "capabilities": ["research"]}, self.operator))
+        self.refused(409, lambda: self.f.store.call("POST", "/v1/wallet/challenges", {"handle": "new_handle", "wallet": address("agent_one"), "capabilities": ["research"]}, self.operator))
         self.assertEqual(self.f.store.call("GET", "/v1/status")[1]["counts"]["agents"], 1)
 
     def test_concurrent_duplicate_wallet_registers_once(self):
+        body = self.f.enrollment(self.operator, "race_agent")
         def register(number):
             try:
-                self.f.store.call("POST", "/v1/agents", {"handle": "racer_" + str(number), "wallet": address("race"), "capabilities": ["research"]}, self.operator)
+                self.f.store.call("POST", "/v1/agents", body, self.operator)
                 return "APPLIED"
             except Problem as problem:
                 return problem.code
         with ThreadPoolExecutor(max_workers=8) as pool:
             outcomes = list(pool.map(register, range(8)))
         self.assertEqual(outcomes.count("APPLIED"), 1)
-        self.assertEqual(outcomes.count("RECORD_CONFLICT"), 7)
+        self.assertEqual(outcomes.count("CHALLENGE_CONSUMED"), 7)
         self.assertEqual(self.f.store.call("GET", "/v1/status")[1]["counts"]["agents"], 2)
         self.f.store.audit()
 
     def test_failure_after_insert_rolls_back_everything(self):
+        body = self.f.enrollment(self.operator, "failed_agent")
         before = self.f.store.audit()
         with patch.object(self.f.store, "_event", side_effect=RuntimeError("injected storage failure")):
             with self.assertRaises(RuntimeError):
-                self.f.store.call("POST", "/v1/agents", {"handle": "failed_agent", "wallet": address("failed"), "capabilities": ["research"]}, self.operator)
+                self.f.store.call("POST", "/v1/agents", body, self.operator)
         self.assertEqual(before, self.f.store.audit())
         with closing(sqlite3.connect(self.f.store.path, autocommit=True)) as connection:
             for table in ("agents", "handles"):
@@ -166,9 +168,10 @@ class StoreTests(unittest.TestCase):
         self.refused(429, lambda: self.f.store.call("POST", "/v1/credentials/rotate", {}, self.agent), "WRITE_RATE_LIMIT")
 
     def test_storage_bound_rejects_before_any_partial_change(self):
+        body = self.f.enrollment(self.operator, "overflow_agent")
         before = self.f.store.audit()
         with patch.dict(LIMITS, {"credentials": 3}):
-            self.refused(409, lambda: self.f.agent(self.operator, "overflow_agent"), "STORAGE_LIMIT")
+            self.refused(409, lambda: self.f.store.call("POST", "/v1/agents", body, self.operator), "STORAGE_LIMIT")
         self.assertEqual(self.f.store.audit(), before)
         self.assertEqual(len(self.f.store.call("GET", "/v1/agents")[1]["items"]), 1)
 
@@ -181,7 +184,8 @@ class StoreTests(unittest.TestCase):
         row = page["items"][0]
         self.assertEqual(row["provenance"]["classification"], "OBSERVED")
         self.assertEqual(row["content_classification"], "LABEL")
-        self.assertEqual(row["wallet_status"], "DECLARED_UNVERIFIED")
+        self.assertEqual(row["wallet_status"], "SIGNATURE_VERIFIED")
+        self.assertEqual(row["wallet_proof"]["classification"], "DERIVED")
         self.assertIsNone(row["provenance"]["slot"])
         self.refused(400, lambda: self.f.store.call("GET", "/v1/agents", limit=True))
 
@@ -214,7 +218,7 @@ class StoreTests(unittest.TestCase):
 
     def test_unknown_schema_and_missing_state_fail_without_create(self):
         with closing(sqlite3.connect(self.f.store.path, autocommit=True)) as connection:
-            connection.execute("PRAGMA user_version=2")
+            connection.execute("PRAGMA user_version=999")
         self.refused(503, lambda: Store(self.f.state), "UNSUPPORTED_SCHEMA")
         missing = self.f.root / "missing"
         self.refused(503, lambda: Store(missing))

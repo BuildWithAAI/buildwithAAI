@@ -1,0 +1,92 @@
+from contextlib import closing
+import json
+from pathlib import Path
+import sqlite3
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+from legacy_fixture import create  # noqa: E402
+from fixture_signatures import signed_body  # noqa: E402
+from zoora_community.store import Store  # noqa: E402
+from zoora_community.validation import Problem  # noqa: E402
+
+
+class MigrationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.at = 1_800_000_000_000
+        self.legacy, self.files, self.ids = create(self.root, clock=lambda: self.at)
+        self.agent = json.loads(self.files["agent"].read_text())["token"]
+
+    def refused(self, code, fn):
+        with self.assertRaises(Problem) as caught:
+            fn()
+        self.assertEqual(caught.exception.code, code)
+
+    def test_migration_preserves_records_credentials_audit_and_reproof(self):
+        before = self.legacy.audit()
+        with closing(sqlite3.connect(self.legacy.path)) as connection:
+            saved = {name: connection.execute("SELECT * FROM " + name).fetchall() for name in
+                     ("metadata", "operators", "agents", "handles", "credentials", "projects", "members", "posts", "offers", "audit")}
+        self.refused("UNSUPPORTED_SCHEMA", lambda: Store(self.legacy.state))
+        backup = self.root / "before-upgrade.sqlite3"
+        current = Store.migrate(self.legacy.state, backup, clock=lambda: self.at)
+        with closing(sqlite3.connect(backup)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 1)
+            for name, rows in saved.items():
+                self.assertEqual(connection.execute("SELECT * FROM " + name).fetchall(), rows)
+        with closing(sqlite3.connect(current.path)) as connection:
+            for name, rows in saved.items():
+                actual = connection.execute("SELECT * FROM " + name).fetchall()
+                self.assertEqual(actual[:len(rows)], rows)
+                if name != "audit":
+                    self.assertEqual(len(actual), len(rows))
+        self.assertEqual(current.audit()["audit_events"], before["audit_events"] + 1)
+        self.assertEqual(current.call("GET", "/v1/me", token=self.agent)[1]["principal_id"], self.ids["agent_id"])
+        route = "/v1/agents/" + self.ids["agent_id"]
+        self.assertEqual(current.call("GET", route)[1]["wallet_status"], "DECLARED_UNVERIFIED")
+        challenge = current.call("POST", route + "/wallet-challenges", {}, self.agent)[1]
+        current.call("POST", route + "/wallet-proof", signed_body(challenge, "legacy-fixture"), self.agent)
+        self.assertEqual(current.call("GET", route)[1]["wallet_status"], "SIGNATURE_VERIFIED")
+        current.audit()
+
+    def test_migration_failure_rolls_back_ddl_and_keeps_valid_backup(self):
+        before = self.legacy.audit()
+        backup = self.root / "before.sqlite3"
+        with patch.object(Store, "_event", side_effect=RuntimeError("injected failure")):
+            with self.assertRaises(RuntimeError):
+                Store.migrate(self.legacy.state, backup, clock=lambda: self.at)
+        self.assertEqual(self.legacy.audit(), before)
+        self.assertTrue(backup.exists())
+        with closing(sqlite3.connect(self.legacy.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='wallet_proofs'").fetchone()[0], 0)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 1)
+
+    def test_existing_backup_is_never_replaced_and_repeat_migration_is_refused(self):
+        backup = self.root / "existing.sqlite3"
+        backup.write_bytes(b"preserve")
+        with self.assertRaises(FileExistsError):
+            Store.migrate(self.legacy.state, backup)
+        self.assertEqual(backup.read_bytes(), b"preserve")
+        Store.migrate(self.legacy.state, self.root / "new.sqlite3", clock=lambda: self.at)
+        self.refused("UNSUPPORTED_SCHEMA", lambda: Store.migrate(self.legacy.state, self.root / "second.sqlite3"))
+        self.assertFalse(self.root.joinpath("second.sqlite3").exists())
+
+    def test_intervening_write_aborts_instead_of_migrating_unbacked_state(self):
+        backup_impl = Store.backup
+
+        def concurrent_change(store, destination):
+            backup_impl(store, destination)
+            with closing(store._connection()) as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                store._event(connection, {"role": "OWNER", "principal_id": "owner"}, "TEST_INTERVENING_WRITE", "test", {}, self.at)
+                connection.execute("COMMIT")
+
+        with patch.object(Store, "backup", concurrent_change):
+            self.refused("STATE_CHANGED_DURING_MIGRATION", lambda: Store.migrate(self.legacy.state, self.root / "snapshot.sqlite3", clock=lambda: self.at))
+        self.assertEqual(self.legacy.audit()["schema_version"], 1)

@@ -20,6 +20,7 @@ def main():
     run = commands.add_parser("serve")
     run.add_argument("--state", required=True)
     run.add_argument("--port", type=int, default=8765)
+    run.add_argument("--solana-rpc", action="store_true", help="Enable fixed-endpoint read-only RPC; no signing")
     audit = commands.add_parser("audit")
     audit.add_argument("--state", required=True)
     backup = commands.add_parser("backup")
@@ -28,6 +29,10 @@ def main():
     recovery = commands.add_parser("recover-owner")
     recovery.add_argument("--state", required=True)
     recovery.add_argument("--owner-file", required=True)
+    recovery.add_argument("--invalidate-all-credentials", action="store_true", help="Revoke all previous API credentials after a sensitive restore")
+    migration = commands.add_parser("migrate")
+    migration.add_argument("--state", required=True)
+    migration.add_argument("--backup", required=True, help="New exclusive schema-1 backup file; stop the old server first")
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
@@ -46,15 +51,20 @@ def main():
         elif args.command == "serve":
             if not 0 <= args.port <= 65535:
                 raise Problem(400, "INVALID_PORT")
-            serve(args.state, args.port)
+            serve(args.state, args.port, enable_solana=args.solana_rpc)
         elif args.command == "audit":
             print(canonical(Store(args.state).audit()))
         elif args.command == "backup":
             Store(args.state).backup(args.out)
             print(canonical({"backup_created": True, "includes_credential_digests": True}))
         elif args.command == "recover-owner":
-            Store(args.state).recover_owner(args.owner_file)
-            print(canonical({"owner_recovered": True, "old_owner_credentials_revoked": True}))
+            Store(args.state).recover_owner(args.owner_file, invalidate_all=args.invalidate_all_credentials)
+            print(canonical({"owner_recovered": True, "old_owner_credentials_revoked": True,
+                             "all_previous_credentials_revoked": args.invalidate_all_credentials}))
+        elif args.command == "migrate":
+            store = Store.migrate(args.state, args.backup)
+            print(canonical({"migrated": True, "schema_version": store.schema_version,
+                             "legacy_wallets": "DECLARED_UNVERIFIED", "backup_created": True}))
         else:
             client = Client(args.port)
             token = read_credential(args.credential_file) if args.credential_file else None
