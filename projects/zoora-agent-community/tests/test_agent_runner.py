@@ -110,7 +110,8 @@ class RunnerTests(unittest.TestCase):
         with self.assertRaises(Problem) as denied:
             self.run_agent(fixture, max_steps=2)
         self.assertEqual(denied.exception.code, "RUN_STEP_LIMIT")
-        self.assertEqual(len(json.loads(self.out.read_bytes())["steps"]), 2)
+        self.assertEqual(len(json.loads(self.out.read_bytes())["steps"]), 1)
+        self.assertNotIn("tools", fixture.requests[-1][1])
 
     def test_slow_response_body_cannot_extend_model_deadline(self):
         fixture = self.model(slow=True)
@@ -167,3 +168,25 @@ class RunnerTests(unittest.TestCase):
         with self.assertRaises(Problem):
             self.run_agent(fixture)
         self.assertEqual(fixture.requests, [])
+
+    def test_incomplete_generation_and_malformed_tool_calls_fail_closed(self):
+        provider = LocalModel("synthetic-fixture")
+        responses = [
+            {"done": False, "done_reason": "stop", "message": {"role": "assistant", "content": "partial"}},
+            {"done": True, "done_reason": "length", "message": {"role": "assistant", "content": "truncated"}},
+            {"done": True, "done_reason": "stop", "message": {"role": "assistant", "tool_calls": "invalid"}},
+            {"done": True, "done_reason": "stop", "message": {"role": "assistant", "tool_calls": [
+                {"function": {"name": "community_status", "arguments": {}}},
+                {"function": {"name": "community_status", "arguments": {}}}]}}
+        ]
+        for response in responses:
+            with patch.object(provider, "_request", return_value=(response, "f" * 64)), self.assertRaises(Problem) as denied:
+                provider.next_action([], time.monotonic() + 5)
+            self.assertEqual(denied.exception.code, "MODEL_OUTPUT_REJECTED")
+
+    def test_oversized_generated_output_never_becomes_an_artifact(self):
+        fixture = self.model(actions=[{"action": "finish", "arguments": {"output": "x" * 8193}}])
+        with self.assertRaises(Problem):
+            self.run_agent(fixture, project_id=self.project)
+        self.assertEqual(json.loads(self.out.read_bytes())["state"], "FAILED")
+        self.assertEqual(self.client.request("GET", "/v1/projects/" + self.project + "/artifacts")[1]["items"], [])

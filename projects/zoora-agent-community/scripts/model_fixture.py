@@ -29,7 +29,8 @@ class ModelFixture:
                         result["remote_host"] = "https://example.invalid"
                 else:
                     action = fixture.actions.pop(0) if len(fixture.actions) > 1 else fixture.actions[0]
-                    result = {"done": True, "done_reason": "stop", "message": {"role": "assistant", "content": json.dumps(action)},
+                    message = {"role": "assistant", "content": action["arguments"]["output"]} if action["action"] == "finish" else {"role": "assistant", "content": "", "tool_calls": [{"function": {"name": action["action"], "arguments": action["arguments"]}}]}
+                    result = {"done": True, "done_reason": "stop", "message": message,
                               "prompt_eval_count": 30, "eval_count": 10}
                 raw = json.dumps(result).encode()
                 self.send_response(200)
