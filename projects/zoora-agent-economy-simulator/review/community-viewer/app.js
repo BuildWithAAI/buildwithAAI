@@ -39,12 +39,12 @@
     text('projects-count',m.projects + ' projects · ' + m.offers + ' offers');
     for(const p of data.projects) {
       const details = node('details'); details.append(node('summary',p.title)); details.append(node('p',p.summary),node('p','Owner ' + p.owner + ' · contributors ' + p.contributors.join(', ') + ' · ' + p.artifacts.length + ' artifact digests'));
-      for(const o of data.offers.filter(o => o.project_id === p.project_id)) details.append(node('p',o.title + ' · provider ' + o.provider + ' · ' + format(o.amount) + ' synthetic units · ' + (o.active ? 'Available offer' : 'Withdrawn offer')));
+      for(const o of data.offers.filter(o => o.project_id === p.project_id)) { const provider = data.agents.find(a => a.registration.agent_id === o.provider); details.append(node('p',o.title + ' · provider ' + o.provider + ' · ' + format(o.amount) + ' synthetic units · ' + (o.active && provider.active ? 'Active fixture offer' : 'Unavailable fixture offer'))); }
       el('projects').append(details);
     }
     const totals = el('totals'); for(const [label, value] of [['Payments recorded',d.payments_recorded],['Voluntary returns',d.voluntary_refunds_recorded],['Net transferred',d.net_transferred],['Unresolved requests',d.unresolved_refund_requests]]) totals.append(node('dt',label),node('dd',format(value)));
     text('posts-count',data.posts.length + ' posts · ' + m.post_rate_rejections + ' rate refusals');
-    for(const p of [...data.posts].sort((a,b) => a.simulation_tick - b.simulation_tick || a.post_id - b.post_id).slice(0,100)) {
+    for(const p of [...data.posts].sort((a,b) => a.simulation_tick - b.simulation_tick || (BigInt(a.post_id) < BigInt(b.post_id) ? -1 : BigInt(a.post_id) > BigInt(b.post_id) ? 1 : 0)).slice(0,100)) {
       const item = node('article'); item.append(node('h3','Agent ' + p.author + ' · tick ' + p.simulation_tick),node('p',p.body),node('small','Post #' + p.post_id + (p.reply_to === null ? '' : ' · reply to #' + p.reply_to))); el('posts').append(item);
     }
     if(data.posts.length > 100) el('posts').append(node('p','Showing the first 100 posts. The source JSON contains the complete history.'));

@@ -47,7 +47,7 @@ pub fn csv(text:&str)->Result<String>{
         csv_row(&["classification","source","time_basis","observed_at","available_at","slot","commitment","transformation_version","seed","scenario","agreement_id","offer_id","project_id","client","provider","related_declared_operator","accepted_tick","deadline_tick","deadline_elapsed","quoted_units","payments_recorded","voluntary_returns","net_transferred","return_request_remaining","delivery_acknowledged","delivery_overdue","status","title","community_fingerprint","source_fingerprint","quality_flags"].map(str::to_string),&mut output);
         for order in &report.orders {
             let a=agreements.get(&order.agreement_id).ok_or(SimulationError::Integrity("verified order lacks agreement"))?;
-            csv_row(&[report.classification.clone(),report.provenance.source.clone(),report.provenance.time_basis.clone(),"UNAVAILABLE".into(),"UNAVAILABLE".into(),"UNAVAILABLE".into(),report.provenance.commitment.clone(),report.provenance.transformation_version.to_string(),run.map(|r|r.0.to_string()).unwrap_or_else(||"UNAVAILABLE".into()),run.map(|r|format!("{:?}",r.1)).unwrap_or_else(||"Manual".into()),order.agreement_id.to_string(),order.offer_id.to_string(),order.project_id.to_string(),order.client.to_string(),order.provider.to_string(),order.related_operator.to_string(),order.accepted_tick.to_string(),a.terms.delivery_deadline.to_string(),(report.config.ticks-1>=a.terms.delivery_deadline).to_string(),a.terms.amount.to_string(),a.payments_received.to_string(),a.voluntary_refunds_received.to_string(),a.net_transferred().to_string(),a.refund_request_remaining.map(|n|n.to_string()).unwrap_or_else(||"UNAVAILABLE".into()),a.delivery_acknowledged.to_string(),a.delivery_overdue.to_string(),format!("{:?}",a.status),a.terms.title.clone(),report.fingerprint.clone(),source_hash.clone(),format!("{}|CSV_TEXT_GUARD_V1",report.provenance.quality_flags.join("|"))],&mut output);
+            csv_row(&[report.classification.clone(),report.provenance.source.clone(),report.provenance.time_basis.clone(),"UNAVAILABLE".into(),"UNAVAILABLE".into(),"UNAVAILABLE".into(),report.provenance.commitment.clone(),report.provenance.transformation_version.to_string(),run.map(|r|r.0.to_string()).unwrap_or_else(||"UNAVAILABLE".into()),run.map(|r|format!("{:?}",r.1)).unwrap_or_else(||"Manual".into()),order.agreement_id.to_string(),order.offer_id.to_string(),order.project_id.to_string(),order.client.to_string(),order.provider.to_string(),order.related_operator.to_string(),order.accepted_tick.to_string(),a.terms.delivery_deadline.to_string(),(report.config.ticks>a.terms.delivery_deadline).to_string(),a.terms.amount.to_string(),a.payments_received.to_string(),a.voluntary_refunds_received.to_string(),a.net_transferred().to_string(),a.refund_request_remaining.map(|n|n.to_string()).unwrap_or_else(||"UNAVAILABLE".into()),a.delivery_acknowledged.to_string(),a.delivery_overdue.to_string(),format!("{:?}",a.status),a.terms.title.clone(),report.fingerprint.clone(),source_hash.clone(),format!("{}|CSV_TEXT_GUARD_V1",report.provenance.quality_flags.join("|"))],&mut output);
         }
     }
     Ok(output)
@@ -61,10 +61,27 @@ fn base64(bytes:&[u8])->String {
 }
 pub fn viewer(text:&str)->Result<String>{
     let (r,run,source_hash)=parse(text)?;
-    let data=json!({"schema_version":1,"classification":"SYNTHETIC","verification":"REPLAY_VERIFIED_AT_EXPORT","model":r.model,
+    let mut payload=json!({"schema_version":1,"classification":"SYNTHETIC","verification":"REPLAY_VERIFIED_AT_EXPORT","model":r.model,
         "source_fingerprint":source_hash,"community_fingerprint":r.fingerprint,"seed":run.map(|v|v.0),"scenario":run.map(|v|v.1),
         "provenance":r.provenance,"metrics":r.metrics,"agents":r.agents,"projects":r.projects,"posts":r.posts,"offers":r.offers,"orders":r.orders,
-        "direct":{"agreements":r.direct.agreements,"metrics":r.direct.metrics,"wallet_boundary":r.direct.wallet_boundary}}).to_string()
+        "direct":{"agreements":r.direct.agreements,"metrics":r.direct.metrics,"wallet_boundary":r.direct.wallet_boundary}});
+    // JSON numbers above 2^53 lose precision in browsers. Preserve arbitrary IDs and quoted/requested amounts as strings.
+    for key in ["projects","posts","offers","orders"] {
+        for value in payload[key].as_array_mut().expect("serialized collection") {
+            for field in ["project_id","post_id","reply_to","offer_id","agreement_id","amount"] {
+                if let Some(n)=value.get(field).and_then(Value::as_u64){value[field]=Value::String(n.to_string());}
+            }
+        }
+    }
+    for value in payload["direct"]["agreements"].as_array_mut().expect("agreements") {
+        for field in ["agreement_id","amount"] {
+            let n=value["terms"][field].as_u64().expect("serialized u64");value["terms"][field]=Value::String(n.to_string());
+        }
+        for field in ["refund_requested_amount","refund_request_remaining"] {
+            if let Some(n)=value[field].as_u64(){value[field]=Value::String(n.to_string());}
+        }
+    }
+    let data=payload.to_string()
         .replace('&',"\\u0026").replace('<',"\\u003c").replace('>',"\\u003e").replace('\u{2028}',"\\u2028").replace('\u{2029}',"\\u2029");
     let css=include_str!("../viewer/style.css").replace("\r\n","\n").replace('\r',"\n");
     let js=include_str!("../community-viewer/app.js").replace("\r\n","\n").replace('\r',"\n");

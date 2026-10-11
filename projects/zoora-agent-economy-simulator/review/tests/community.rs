@@ -171,3 +171,15 @@ fn viewer_escapes_scripted_content_and_never_connects_to_a_wallet(){
     let mut e=setup();e.record(2,actor(1),CommunityCommand::Post{post_id:0,project_id:None,reply_to:None,body:"</script><img src=x onerror=alert(1)>".into()}).unwrap();
     let html=viewer::export(&serde_json::to_string(&finish(e)).unwrap()).unwrap();assert!(html.contains("\\u003c/script\\u003e"));assert_eq!(html.matches("</script>").count(),2);assert!(!html.contains("<img src=x"));assert!(html.contains("connect-src 'none'"));assert!(html.contains("NO_WALL_CLOCK_OR_CHAIN_PROOF"));
 }
+#[test]
+fn browser_export_preserves_large_u64_ids_quotes_and_request_amounts(){
+    let mut e=setup();e.record(1,actor(0),CommunityCommand::PublishOffer{offer_id:u64::MAX,project_id:0,title:"Exact quote".into(),criteria_digest:"c".repeat(64),amount:u64::MAX,delivery_ticks:6}).unwrap();
+    e.record(2,actor(1),CommunityCommand::AcceptOffer{offer_id:u64::MAX,agreement_id:u64::MAX}).unwrap();
+    workflow(&mut e,3,1,DirectCommand::PaymentReceipt{receipt:Receipt::synthetic(u64::MAX,0,1,0,u64::MAX,3)});
+    workflow(&mut e,4,1,DirectCommand::RequestRefund{agreement_id:u64::MAX,client:1,amount:u64::MAX,reason_digest:"f".repeat(64)});
+    let report=finish(e);let html=viewer::export(&serde_json::to_string(&report).unwrap()).unwrap();
+    let encoded=html.split("<script id=\"community-data\" type=\"application/json\">").nth(1).unwrap().split("</script>").next().unwrap();
+    let payload:serde_json::Value=serde_json::from_str(encoded).unwrap();
+    assert_eq!(payload["offers"][1]["amount"],u64::MAX.to_string());assert_eq!(payload["offers"][1]["offer_id"],u64::MAX.to_string());
+    assert_eq!(payload["direct"]["agreements"][0]["refund_request_remaining"],u64::MAX.to_string());
+}

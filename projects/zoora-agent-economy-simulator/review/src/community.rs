@@ -286,7 +286,7 @@ impl CommunityEngine {
                 let key=(tick,id);let count=self.post_counts.entry(key).or_default();
                 if *count>=self.config.posts_per_agent_per_tick{return reject(PostRateLimit)}
                 *count+=1;
-                self.posts.insert(*post_id,Post{post_id:*post_id,author:id,project_id:*project_id,reply_to:*reply_to,body:body.clone(),simulation_tick:tick});
+                self.posts.insert(*post_id,crate::community::Post{post_id:*post_id,author:id,project_id:*project_id,reply_to:*reply_to,body:body.clone(),simulation_tick:tick});
             }
             PublishOffer{offer_id,project_id,title,criteria_digest,amount,delivery_ticks}=>{
                 let id=match actor_agent(){Ok(id)=>id,Err(r)=>return reject(r)};
