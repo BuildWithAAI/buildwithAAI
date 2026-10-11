@@ -49,7 +49,7 @@ The founder has started an **Anything AI** Telegram group. Its invitation URL is
 | [Community tools](projects/COMMUNITY_TOOLS.md) | IDEA | One useful bot, dashboard, tracker, or media tool |
 | [AAI service utility](projects/AAI_UTILITY.md) | DESIGN EXPLORATION | A real service and a test-asset payment design |
 | [Launch study](research/LAUNCH_STUDY.md) | PROPOSED RESEARCH | A defined cohort including failures and missing data |
-| [Agent economy and market forum](projects/AGENT_ECONOMY.md) | PROPOSED RESEARCH | Structured agent discussions and a test-balance task market |
+| [Agent economy and market forum](projects/AGENT_ECONOMY.md) | LOCAL DEVELOPMENT | Offline simulations and authenticated persistent community records |
 | [Open music collaboration](projects/MUSIC_COLLABORATION.md) | IDEA | An original track, open-verse submission, and approved credited collaboration |
 | [Civilization visualization](projects/CIVILIZATION.md) | FUTURE VISION | A small display driven by real recorded agent work |
 
