@@ -1,37 +1,62 @@
 # BUILDWITHAAI DEVELOPMENT REPORT — AE-007
 
-Status as the first source candidate is prepared: IMPLEMENTED and TESTED locally; exact-head cross-platform CI and real Solana integrations are PENDING. DEPLOYED: none. Public launch remains BLOCKED.
+**IMPLEMENTED, TESTED and VERIFIED for documented local use. NOT DEPLOYED. The entire BuildWithAAI roadmap and public launch are not complete.**
 
-Base: `ce6f2d354232b326ea53b03880535bef550fa9ee` / draft PR #15. New branch: `feature/ae-007-wallet-evidence`; local worktree branch `work/community-wallet-evidence`. This stacked draft preserves earlier AE-001–AE-006 and scanner/replay work.
+Verified source: `d26d9f0f6d45255a72653f82c0f44707cdab28f4`. Branch: `feature/ae-007-wallet-evidence`. [Draft PR #16](https://github.com/BuildWithAAI/buildwithAAI/pull/16) is stacked on AE-006 #15, base `ce6f2d354232b326ea53b03880535bef550fa9ee`. This report and the [evidence JSON](evidence/ae-007-2026-10-11.json) pin the independently verified source. The PR description records the later report/evidence commit and its final exact-head CI. Neither is merged or deployed.
 
-## Implemented
+## Completed work
 
-Single-use, credential/operator/instance/profile-bound raw Ed25519 wallet challenges and historical public proof records; proof-required new registration; legacy re-proof without rewriting prior data; explicit schema-1 migration with consistent exclusive backup, audit-prefix preservation and rollback; fixed-host, bounded read-only Solana observations; persistent attempt/rate controls; completion reauthorization; source/time/slot/commitment/classification/missingness/quality evidence; exact integer units; raw JSON retention; observer proof/transaction inspection and mobile states.
+- New agent registration requires a five-minute, single-use raw Ed25519 challenge bound to the instance, profile, operator and issuing credential. Challenge consumption, registration, proof and audit are atomic. Legacy profiles stay unverified until re-proven; public proof records preserve signed messages and historical control time.
+- Explicit schema-1 migration preserves existing content, credentials and audit prefix, creates a consistent exclusive backup, rejects intervening audited writes and rolls back failed DDL/audit changes. Offline sensitive-restore recovery can revoke all earlier API credentials.
+- Opt-in, fixed-host read-only Solana observations support Devnet and Mainnet. Attempt/rate controls persist across restart; network calls run outside SQL locks; completion rechecks authorization. Interrupted or revoked attempts remain UNVERIFIED. No signing or transaction-submission method exists.
+- Reports preserve source, observation/availability time, exact decimal-string slot/units, requested commitment, transformation, classification, missingness, quality flags, response hashes and retained raw JSON. Failed instructions stay NOT_SETTLED. Unrelated observations are retained; payment attribution and P/L remain unavailable.
+- The responsive observer reads actual records and exposes wallet proofs, transaction evidence, refresh, loading/error/empty states and freshness. Untrusted content stays text. Its browser fixtures are explicitly synthetic/test activity.
 
-Application runtime closure: PyNaCl 1.6.2, CFFI 2.1.1 and pycparser 3.0, with official wheel SHA256 hashes. No handwritten signing/curve verification. The audit found that the earlier local library candidate accepted low-order keys/signatures; the published candidate instead requires patched libsodium canonical main-subgroup validation and strict verification. Regression vectors cover zero/identity/off-curve/mixed-order keys and an independent RFC 8032 vector.
+Changed areas: `wallet_proof.py`, `solana_rpc.py`, `observations.py`, `migration_002.sql`, store/server/CLI/client/validation modules, UI assets, the hashed runtime lock, wallet/migration/RPC/HTTP/CLI tests, integration/browser/migration/live-read harnesses, `.github/workflows/zoora-agent-community.yml` and connected README/status/security documents. The evidence JSON lists every changed source file. Existing Rust source, lockfiles and workflows are byte-preserved.
 
-No wallets sign or send transactions through this service. Financial instructions and native balance changes are observations, not payment attribution or trading P/L. Failed transaction instructions remain not settled. Unrelated records are retained, not discarded to fit an order model.
+## Tests and CI
 
-## Local evidence
+All **15 jobs passed on the exact verified source**:
 
-86 unit/HTTP/CLI tests pass in normal and optimized Python with development warnings treated as errors. Fresh CLI/restart/restore, migration CLI and pinned runtime dependency audit pass locally. Recovery can invalidate all earlier API credentials after a sensitive restore while preserving historical content/proof. Real RPC is blocked by local DNS policy; real integration verification must come from the strict CI acceptance job. No local mock is counted as a verified chain integration.
+| Workflow | Actual verification |
+|---|---|
+| [Community 38126819276](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38126819276) | Five Python environments plus strict real-RPC acceptance. Linux 3.12.15/3.13.16/3.14.8: 86 tests each in normal and optimized modes. Windows 3.13.16/3.14.8: 85 pass and one explicitly Unix-only permission/symlink test skipped in each mode. |
+| [Review 38126819378](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38126819378) | Existing 108 tests per Linux/Windows Debug/Release profile; CLI, replay, scenarios, exports and browser checks; dependency audit. |
+| [Marketplace 38126819273](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38126819273) | Existing 31 tests per platform/profile; CLI, replay and canonical/scaling checks; dependency audit. |
+| [Foundation 38126819334](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38126819334) | Existing 44 Linux/43 Windows tests per profile; conservation, replay, CLI and scaling; dependency audit. |
 
-Current GitHub baseline was independently rechecked: all 14 AE-006 exact-head jobs passed. Applicable workflow runs for current heads of all eight existing open draft PRs (#4, #9–#15) were successful. No default-branch merge or deployment is implied.
+Ruff 0.17.0, JavaScript syntax, strict formatting/Clippy/locked Rust checks pass. All five service environments pass seven actual CLI/HTTP/restart/backup-restore checks and four migration/re-proof checks. All 15 job logs were inspected without resource warnings, tracebacks or error/warning markers. Local Python 3.12.14 also passes 86 tests in both normal/optimized modes, CLI/restart/restore and migration; Rust/Chrome were executed in CI. Local real RPC is blocked by DNS policy and is not counted as live verification.
 
-## Changed files and audit scope
+Actual Chrome 154.0.8037.97 passes **22 observer checks**, with zero uncaught exceptions or external page requests. Desktop/mobile screenshots were visually inspected. The u64/failed-transaction renderer test uses a labeled SYNTHETIC response that is never stored as chain data.
 
-The changed source is confined to `projects/zoora-agent-community/`, its workflow, and connected repository status/README documents. New wallet proof, RPC, observations and migration modules/tests/harnesses extend the established service. Existing Rust sources, lockfiles and workflows are preserved.
+Nine CI archive SHA256 digests and source associations were independently checked: five service archives, one live-read archive and three Rust audit archives. The three hash-locked runtime packages—PyNaCl 1.6.2, CFFI 2.1.1 and pycparser 3.0—have zero reported known advisories in pip-audit. RustSec checked 37/38/39-package lockfiles against database commit `7eebec69c352c7191b1f13eb95dd510eeca5d1de`: zero vulnerabilities, informational warnings or ignored advisories. These are dated package checks, not complete security certification or verified Python/SQLite/OS patch state.
 
-This is implementation review plus automated testing, not independent security certification. Remaining launch requirements include reviewed production transport/provider and operational access, Windows ACL/runtime patch checks, moderation/enrollment, legacy-address claim resolution, retention/restore procedures, monitoring and review/merge of the stacked draft chain. Browser wallet interoperability, real agent/LLM runtime, complete token accounting/payment attribution and user-authorized execution are unfinished. Signatures prove control only at a recorded time. Database rollback/cloning can restore prior consumed/revoked state; the database/audit is not externally immutable.
+Current heads of all eight earlier open draft PRs (#4, #9–#15) and their applicable workflow runs were also rechecked successfully. PR #9 remains at `1ffffe30122f855b69e639ddd58ff6344949e905`; its historical `ae18…` head is not current.
 
-Next milestone after verification: production transport and operational hardening of the authenticated workspace, with a reviewed wallet connector/enrollment flow. Public deployment and wallet execution require their separate authorization.
+## Real integrations verified
 
-## Initial CI defect
+Both **https://api.devnet.solana.com** and **https://api.mainnet.solana.com** returned real public chain data through the actual production CLI → authenticated HTTP → SQLite → fresh server process path. The restarted process retained identical evidence with RPC disabled. Genesis pins matched both networks. Each network used three read requests; the harness used temporary test agents, zero customer wallets and zero submitted transactions.
 
-Source candidate `bfcb5d8c9e4d17420d2ae51909ffa7db63bddb7b` produced failed workflow run `38125795747` before any service jobs started. Its unquoted YAML command contained a colon followed by a space in `--only-binary=:all: -r`. The command is now quoted; all repository workflow YAML is parsed locally before publishing the correction. This run is retained, not bypassed. Snapshot count provenance now carries count-specific quality flags.
+Source observations: Devnet slot `509849943`, fee `10000` lamports; Mainnet slot `455594083`, fee `5000` lamports. Raw response SHA256, signature, slot, fee, block time and execution fields were independently reconciled against reports. Both transactions were unrelated to the test wallet. Source reports are OBSERVED/AVAILABLE; they establish no income, payment for work, current wallet ownership or trading profit. Finality is provider-reported, not independently validated consensus.
 
-Source `0e42cd5a073d66be9d56610377d628593332ea46` strictly verified real Devnet and Mainnet RPC/HTTP/storage/restart reads in job `114430470346` of run `38126033332`. Its browser job failed because the fixture needed an explicit module root on the Python path. That fixture is corrected and locally started with all 51 signed profiles. Resource review also made backup-check SQLite and early-return HTTP response closure explicit, with regression coverage; prior successful job badges alone were insufficient evidence of warning-free cleanup. Corrected-source CI remains pending.
+## Audit fixes and retained failures
 
-Source `80adc324c1d91f11dd9d0f31083eda6980656721` passed 14 of 15 jobs, including both real-network reads and all five normal/optimized Python matrices. Browser acceptance failed because the proof-detail wait dereferenced its element before the asynchronous API response created it. The wait now tolerates an absent element until its existing deadline without weakening the proof assertion. Current security documentation was also reconciled with schema 2, hash-locked runtime dependencies and legacy-wallet boundaries. Verification of the corrected candidate is pending.
+An earlier local verifier accepted crafted low-order public keys/signatures. Published verification uses patched libsodium via PyNaCl, canonical main-subgroup point validation and strict signatures; low-order/off-curve/mixed-order regressions and an independent RFC 8032 vector pass. No handwritten curve/signing verifier is used. Historical proof is not continuous control, AI autonomy or human identity.
 
-Source `8b563761d2ff0edf66ac36f91d22c34f7e2c4594` passed the proof-panel assertion and produced both browser screenshots, then exposed a second fixture timing issue: the transaction tab's immediate empty state appeared while its real API fetch was still pending, so the synthetic rendering refresh clicked a disabled button. Acceptance now waits for the actual fetch to finish without an error before exercising the explicitly labeled renderer fixture. Production UI behavior and the 22 acceptance requirements are preserved; failed CI is retained.
+Initial service CI rejected an unquoted YAML colon-space command; a later browser fixture lacked an explicit module path. Resource review made SQLite backup-check and early-return HTTP response closure explicit. Further browser checks exposed an asynchronous proof-element dereference and a refresh clicked before transaction loading finished. These checks now wait for the real API result while preserving all assertions. Failed runs on `bfcb5d8…`, `0e42cd5…`, `80adc32…` and `8b56376…` remain in GitHub; no tests or live checks were bypassed to obtain the final pass.
+
+## Completion boundaries and next milestone
+
+No known blocking defect remains for this documented local milestone. Source review was performed by the coding agent; independent review is not claimed. Raw-message interoperability with actual wallet connectors/hardware is unfinished. Legacy reservations need a claim-resolution policy. Database rollback/cloning can restore revocations and consumed challenges; guarantees assume one authoritative database. Privileged host access can rewrite the local audit. DNS is not hard-wall-clock bounded; provider restrictions, outages or retention can still produce explicit failures.
+
+| Area | Verified scope | Still incomplete |
+|---|---|---|
+| AE-001–AE-005 | Reproducible offline simulations and synthetic datasets | Real autonomous agents, useful-work measurements and live economic operation |
+| AE-006–AE-007 | Local authenticated persistent workspace, historical wallet proofs, migration and actual read-only chain observations | Wallet connector/enrollment, real agent/tool runtime, production service operations |
+| Scanner / [PR #10](https://github.com/BuildWithAAI/buildwithAAI/pull/10) | Separate tested local candidate; current exact-head CI passed | Last complete live check failed required holder coverage; permitted holder-capable RPC, authorized live Telegram testing and deployment remain blocked |
+| Public operations/security | Automated boundary tests and dated advisory checks | Reviewed production transport/TLS, host/domain, credential delivery, moderation, Windows ACLs/runtime patch verification, monitoring, retention and operational restore |
+| Payments/trading/future chain | Synthetic policy research and read-only observations | Order/payment attribution, complete accounting/P&L, authorized user-wallet execution and blockchain consensus/economics |
+
+**We can run simulations and produce labeled synthetic datasets now, and can collect real read-only transaction evidence when permitted providers are reachable. We cannot claim a complete publicly running AI agent economy or scanner launch.**
+
+Next milestone: production transport and operational hardening of the authenticated workspace, then reviewed wallet connector/enrollment and a bounded real-agent test environment. Maintainer review/integration of the draft chain remains pending. Public deployment and user-wallet execution have separate authorization gates; no deployment, custody, live trades, token-payment operations or consensus/economic changes occurred.

@@ -1,0 +1,2472 @@
+{
+  "schema_version": 1,
+  "milestone": "AE-007",
+  "repository": "BuildWithAAI/buildwithAAI",
+  "branch": "feature/ae-007-wallet-evidence",
+  "pull_request": 16,
+  "base_sha": "ce6f2d354232b326ea53b03880535bef550fa9ee",
+  "verified_source_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+  "recorded_at_utc": "2026-10-11T09:05:55.478Z",
+  "scope": "Authenticated LOCAL_ONLY workspace, historical wallet control proof, offline migration and read-only Solana observations. No deployment or wallet execution.",
+  "workflows": [
+    {
+      "id": 38126819276,
+      "name": "Zoora Authenticated Community",
+      "head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38126819276",
+      "created_at": "2026-10-11T09:00:29Z",
+      "updated_at": "2026-10-11T09:02:59Z",
+      "jobs": [
+        {
+          "id": 114432798274,
+          "name": "test (ubuntu-latest, 3.13.16)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install fully hashed runtime dependency closure",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual schema-1 migration CLI and restart acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Runtime package vulnerability audit",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798341,
+          "name": "test (ubuntu-latest, 3.14.8)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install fully hashed runtime dependency closure",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual schema-1 migration CLI and restart acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Runtime package vulnerability audit",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798371,
+          "name": "test (windows-latest, 3.14.8)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install fully hashed runtime dependency closure",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual schema-1 migration CLI and restart acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Runtime package vulnerability audit",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798384,
+          "name": "test (windows-latest, 3.13.16)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install fully hashed runtime dependency closure",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual schema-1 migration CLI and restart acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Runtime package vulnerability audit",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798431,
+          "name": "live-rpc",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Strict real Devnet and Mainnet read-only HTTP acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798490,
+          "name": "test (ubuntu-latest, 3.12.15)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install fully hashed runtime dependency closure",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual schema-1 migration CLI and restart acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Runtime package vulnerability audit",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38126819334,
+      "name": "Zoora Agent Economy Simulator",
+      "head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38126819334",
+      "created_at": "2026-10-11T09:00:29Z",
+      "updated_at": "2026-10-11T09:03:48Z",
+      "jobs": [
+        {
+          "id": 114432798563,
+          "name": "test (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, determinism and measured scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Collect validation evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798756,
+          "name": "dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo audit --json > audit.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Preserve dependency audit",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798766,
+          "name": "test (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, determinism and measured scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Collect validation evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38126819273,
+      "name": "Zoora Task Market",
+      "head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38126819273",
+      "created_at": "2026-10-11T09:00:29Z",
+      "updated_at": "2026-10-11T09:03:32Z",
+      "jobs": [
+        {
+          "id": 114432798173,
+          "name": "dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo metadata --locked --format-version 1 > dependency-metadata.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo audit --json > audit.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798331,
+          "name": "test (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, independent fingerprint and concurrent scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798349,
+          "name": "test (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, independent fingerprint and concurrent scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38126819378,
+      "name": "Zoora Review Market",
+      "head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38126819378",
+      "created_at": "2026-10-11T09:00:29Z",
+      "updated_at": "2026-10-11T09:04:16Z",
+      "jobs": [
+        {
+          "id": 114432798562,
+          "name": "dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo metadata --locked --format-version 1 > dependency-metadata.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo audit --json > audit.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798724,
+          "name": "test (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, independent fingerprint and concurrent scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Allocation, noncustodial transcript and verified viewer integration",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Community simulations, replay and CSV evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Real Chrome viewer integration and screenshots",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114432798803,
+          "name": "test (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, independent fingerprint and concurrent scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Allocation, noncustodial transcript and verified viewer integration",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Community simulations, replay and CSV evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Real Chrome viewer integration and screenshots",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "job_log_checks": [
+    {
+      "job_id": 114432798274,
+      "job_name": "test (ubuntu-latest, 3.13.16)",
+      "run_id": 38126819276,
+      "log_characters": 46321,
+      "python_test_runs": [
+        "2026-10-11T09:00:40.9199037Z Ran 86 tests in 2.001s",
+        "2026-10-11T09:00:45.1905748Z Ran 86 tests in 1.944s"
+      ],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798341,
+      "job_name": "test (ubuntu-latest, 3.14.8)",
+      "run_id": 38126819276,
+      "log_characters": 46259,
+      "python_test_runs": [
+        "2026-10-11T09:00:40.1168516Z Ran 86 tests in 2.087s",
+        "2026-10-11T09:00:44.5022686Z Ran 86 tests in 1.843s"
+      ],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798371,
+      "job_name": "test (windows-latest, 3.14.8)",
+      "run_id": 38126819276,
+      "log_characters": 56701,
+      "python_test_runs": [
+        "2026-10-11T09:02:05.2793847Z Ran 86 tests in 26.023s\r",
+        "2026-10-11T09:02:05.2793997Z OK (skipped=1)\r",
+        "2026-10-11T09:02:31.4173043Z Ran 86 tests in 24.746s\r",
+        "2026-10-11T09:02:31.4175810Z OK (skipped=1)\r"
+      ],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798384,
+      "job_name": "test (windows-latest, 3.13.16)",
+      "run_id": 38126819276,
+      "log_characters": 56458,
+      "python_test_runs": [
+        "2026-10-11T09:02:09.3852416Z Ran 86 tests in 29.673s\r",
+        "2026-10-11T09:02:09.3852967Z OK (skipped=1)\r",
+        "2026-10-11T09:02:44.0661222Z Ran 86 tests in 33.409s\r",
+        "2026-10-11T09:02:44.0661468Z OK (skipped=1)\r"
+      ],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798431,
+      "job_name": "live-rpc",
+      "run_id": 38126819276,
+      "log_characters": 31111,
+      "python_test_runs": [],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798490,
+      "job_name": "test (ubuntu-latest, 3.12.15)",
+      "run_id": 38126819276,
+      "log_characters": 60206,
+      "python_test_runs": [
+        "2026-10-11T09:00:40.7861288Z Ran 86 tests in 2.105s",
+        "2026-10-11T09:00:45.1390810Z Ran 86 tests in 2.068s"
+      ],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798563,
+      "job_name": "test (windows-latest)",
+      "run_id": 38126819334,
+      "log_characters": 65763,
+      "python_test_runs": [],
+      "rust_test_results": [
+        "2026-10-11T09:01:27.4418420Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.94s\r",
+        "2026-10-11T09:01:27.4558305Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:01:27.4694916Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:01:33.0468591Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.57s\r",
+        "2026-10-11T09:01:33.0605693Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:01:33.0744526Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:01:34.2058971Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s\r",
+        "2026-10-11T09:01:34.2224783Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:02:11.3771196Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s\r",
+        "2026-10-11T09:02:11.3930273Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:02:11.4065022Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:02:11.8860441Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s\r",
+        "2026-10-11T09:02:11.8995935Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:02:11.9125475Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+        "2026-10-11T09:02:12.4600406Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s\r",
+        "2026-10-11T09:02:12.4757854Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r"
+      ],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798756,
+      "job_name": "dependencies",
+      "run_id": 38126819334,
+      "log_characters": 81512,
+      "python_test_runs": [],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798766,
+      "job_name": "test (ubuntu-latest)",
+      "run_id": 38126819334,
+      "log_characters": 64651,
+      "python_test_runs": [],
+      "rust_test_results": [
+        "2026-10-11T09:00:51.5906992Z test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s",
+        "2026-10-11T09:00:51.5924338Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:00:51.5940475Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:00:54.2408641Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.65s",
+        "2026-10-11T09:00:54.2425714Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:00:54.2439919Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:00:54.9580112Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s",
+        "2026-10-11T09:00:54.9592899Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:01:05.2556079Z test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+        "2026-10-11T09:01:05.2569416Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:01:05.2579679Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:01:05.4178846Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s",
+        "2026-10-11T09:01:05.4193453Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:01:05.4205382Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-11T09:01:05.7678092Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s",
+        "2026-10-11T09:01:05.7694668Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798173,
+      "job_name": "dependencies",
+      "run_id": 38126819273,
+      "log_characters": 83980,
+      "python_test_runs": [],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798331,
+      "job_name": "test (windows-latest)",
+      "run_id": 38126819273,
+      "log_characters": 60759,
+      "python_test_runs": [],
+      "rust_test_results": [
+        "2026-10-11T09:01:20.4273289Z test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s\r",
+        "2026-10-11T09:01:38.4757894Z test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s\r"
+      ],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798349,
+      "job_name": "test (ubuntu-latest)",
+      "run_id": 38126819273,
+      "log_characters": 59548,
+      "python_test_runs": [],
+      "rust_test_results": [
+        "2026-10-11T09:00:58.8749218Z test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s",
+        "2026-10-11T09:01:15.9380563Z test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s"
+      ],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798562,
+      "job_name": "dependencies",
+      "run_id": 38126819378,
+      "log_characters": 83975,
+      "python_test_runs": [],
+      "rust_test_results": [],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798724,
+      "job_name": "test (ubuntu-latest)",
+      "run_id": 38126819378,
+      "log_characters": 146006,
+      "python_test_runs": [],
+      "rust_test_results": [
+        "2026-10-11T09:01:08.7744999Z test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.37s",
+        "2026-10-11T09:01:10.0950579Z test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.32s",
+        "2026-10-11T09:01:11.5987286Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.50s",
+        "2026-10-11T09:01:11.9789424Z test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s",
+        "2026-10-11T09:01:53.1422488Z test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s",
+        "2026-10-11T09:01:53.2021854Z test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+        "2026-10-11T09:01:53.2630677Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+        "2026-10-11T09:01:53.3140416Z test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+      ],
+      "warning_or_error_lines": []
+    },
+    {
+      "job_id": 114432798803,
+      "job_name": "test (windows-latest)",
+      "run_id": 38126819378,
+      "log_characters": 145700,
+      "python_test_runs": [],
+      "rust_test_results": [
+        "2026-10-11T09:01:57.2380217Z test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.43s\r",
+        "2026-10-11T09:01:59.1514097Z test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.90s\r",
+        "2026-10-11T09:02:01.5629598Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.40s\r",
+        "2026-10-11T09:02:02.1331986Z test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s\r",
+        "2026-10-11T09:03:28.2041551Z test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s\r",
+        "2026-10-11T09:03:28.3008346Z test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s\r",
+        "2026-10-11T09:03:28.3947887Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s\r",
+        "2026-10-11T09:03:28.4734083Z test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s\r"
+      ],
+      "warning_or_error_lines": []
+    }
+  ],
+  "existing_draft_head_ci_rechecked": [
+    {
+      "pr": 15,
+      "head": "ce6f2d354232b326ea53b03880535bef550fa9ee",
+      "runs": [
+        {
+          "id": 38122818729,
+          "name": "Zoora Authenticated Community",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "ce6f2d354232b326ea53b03880535bef550fa9ee"
+        },
+        {
+          "id": 38122818772,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "ce6f2d354232b326ea53b03880535bef550fa9ee"
+        },
+        {
+          "id": 38122818730,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "ce6f2d354232b326ea53b03880535bef550fa9ee"
+        },
+        {
+          "id": 38122818750,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "ce6f2d354232b326ea53b03880535bef550fa9ee"
+        }
+      ]
+    },
+    {
+      "pr": 14,
+      "head": "9287f85a7fd59a5769bd330b549ef914963014d4",
+      "runs": [
+        {
+          "id": 38111119208,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "9287f85a7fd59a5769bd330b549ef914963014d4"
+        },
+        {
+          "id": 38111119158,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "9287f85a7fd59a5769bd330b549ef914963014d4"
+        },
+        {
+          "id": 38111119216,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "9287f85a7fd59a5769bd330b549ef914963014d4"
+        }
+      ]
+    },
+    {
+      "pr": 13,
+      "head": "a38452719ced469472e94a5aa6295001079cfe2f",
+      "runs": [
+        {
+          "id": 38072766885,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "a38452719ced469472e94a5aa6295001079cfe2f"
+        },
+        {
+          "id": 38072766453,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "a38452719ced469472e94a5aa6295001079cfe2f"
+        },
+        {
+          "id": 38072766404,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "a38452719ced469472e94a5aa6295001079cfe2f"
+        }
+      ]
+    },
+    {
+      "pr": 12,
+      "head": "70a3b42986c80e77dc8fde203866c2a5f9f7143b",
+      "runs": [
+        {
+          "id": 38067993833,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "70a3b42986c80e77dc8fde203866c2a5f9f7143b"
+        },
+        {
+          "id": 38067993838,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "70a3b42986c80e77dc8fde203866c2a5f9f7143b"
+        },
+        {
+          "id": 38067993829,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "70a3b42986c80e77dc8fde203866c2a5f9f7143b"
+        }
+      ]
+    },
+    {
+      "pr": 11,
+      "head": "772cac0b3945390f27289ada834ebee5c6e1676b",
+      "runs": [
+        {
+          "id": 38037858303,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "772cac0b3945390f27289ada834ebee5c6e1676b"
+        },
+        {
+          "id": 38037858272,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "772cac0b3945390f27289ada834ebee5c6e1676b"
+        }
+      ]
+    },
+    {
+      "pr": 10,
+      "head": "97108a271face220aef6296fddb2e18abdb210b5",
+      "runs": [
+        {
+          "id": 37860394183,
+          "name": "AAI scanner tests",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "97108a271face220aef6296fddb2e18abdb210b5"
+        }
+      ]
+    },
+    {
+      "pr": 9,
+      "head": "1ffffe30122f855b69e639ddd58ff6344949e905",
+      "runs": [
+        {
+          "id": 37834405514,
+          "name": "Python research tests",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "1ffffe30122f855b69e639ddd58ff6344949e905"
+        }
+      ]
+    },
+    {
+      "pr": 4,
+      "head": "8a58702718b86bc75da0b271b6943e50ee0af2a7",
+      "runs": [
+        {
+          "id": 38035366113,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "8a58702718b86bc75da0b271b6943e50ee0af2a7"
+        }
+      ]
+    }
+  ],
+  "public_response_reconciliation": [
+    {
+      "network": "solana:devnet",
+      "response_sha256_verified": true,
+      "raw_slot_fee_signature_time_and_execution_match": true,
+      "test_wallet_unrelated": true,
+      "pnl_unavailable": true
+    },
+    {
+      "network": "solana:mainnet",
+      "response_sha256_verified": true,
+      "raw_slot_fee_signature_time_and_execution_match": true,
+      "test_wallet_unrelated": true,
+      "pnl_unavailable": true
+    }
+  ],
+  "local_checks": {
+    "python": "3.12.14",
+    "unit_tests_normal": 86,
+    "unit_tests_optimized": 86,
+    "ruff": "0.17.0",
+    "javascript_syntax": "PASSED",
+    "warnings_as_errors": true,
+    "live_rpc_local": "BLOCKED_BY_DNS_POLICY",
+    "rust_local": "UNAVAILABLE"
+  },
+  "screenshots_visually_inspected": [
+    "workspace-desktop.png",
+    "workspace-mobile.png"
+  ],
+  "remaining_launch_gates": [
+    "Independent production/security review and stacked PR integration",
+    "Reviewed production transport, TLS and operator-owned host/domain",
+    "Enrollment, credential distribution, moderation and legacy-wallet claim resolution",
+    "Runtime patch verification, Windows ACLs, monitoring, retention and tested operational restore",
+    "Wallet connector interoperability and real agent/tool runtime",
+    "Scanner holder-capable permitted RPC access and authorized live Telegram tests",
+    "Complete payment attribution, token accounting and defensible P/L remain unimplemented"
+  ],
+  "deployment": "NOT_DEPLOYED",
+  "transactions_submitted": 0,
+  "customer_wallets": 0,
+  "artifacts": [
+    {
+      "id": 11697906800,
+      "name": "community-live-rpc",
+      "run_id": 38126819276,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 8873,
+      "sha256": "8be15335c73145743bd89d124c3a22360a5b1079ac1ea95c6cbd6f4a6ee53294",
+      "files": [
+        {
+          "name": "live-devnet-rpc.json",
+          "size": 6208,
+          "sha256": "dc2daccdbe78062623c2aa82bf9e630c852026bf6f1d09989b22d4fa18d20873",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "classification": "OBSERVED",
+            "source": "https://api.devnet.solana.com",
+            "response": {
+              "agent_id": "0aeed04892464dbcb17fe4d972d51594",
+              "created_ms": 1791709235475,
+              "id": "71d444b3dcd544b283c5e1e73cc8127e",
+              "provenance": {
+                "available_at_ms": 1791709235646,
+                "classification": "OBSERVED",
+                "commitment": "finalized",
+                "missingness": [],
+                "observed_at_ms": "1791709234000",
+                "quality_flags": [
+                  "SINGLE_RPC_SOURCE",
+                  "PROVIDER_REPORTED_FINALITY",
+                  "SUBSET_INSTRUCTION_PARSER",
+                  "NO_PAYMENT_ATTRIBUTION",
+                  "NOT_VALIDATOR_VERIFIED",
+                  "WALLET_PROOF_HISTORICAL",
+                  "UNRELATED_TO_AGENT",
+                  "UNSUPPORTED_INSTRUCTIONS_PRESERVED_IN_RAW_RPC"
+                ],
+                "slot": "509849943",
+                "source": "https://api.devnet.solana.com",
+                "state": "AVAILABLE",
+                "transformation_version": 1
+              },
+              "raw_rpc_json": "{\"jsonrpc\":\"2.0\",\"result\":{\"blockTime\":1791709234,\"meta\":{\"computeUnitsConsumed\":19513,\"costUnits\":22004,\"err\":null,\"fee\":10000,\"innerInstructions\":[{\"index\":0,\"instructions\":[{\"parsed\":{\"info\":{\"destination\":\"8naLKjUrUN7eXs8NhX1VYHoP4LSTjnrHkQqUHWG9tkV2\",\"lamports\":1,\"source\":\"8oYvqBeCAhQYhA7Fw2fxG2ZvYgmhUtEdtXhteT7xdbti\"},\"type\":\"transfer\"},\"program\":\"system\",\"programId\":\"11111111111111111111111111111111\",\"stackHeight\":2},{\"accounts\":[\"5DCBCvzeTLrbWpgm2zJbiSVYkVRy5dGifyxBk3BWdzJU\"],\"data\":\"3nwpZHrCmZ4vefTkEo3dy9jbcQYEvo3HQh2Kpcm3GLq1opVkf4qNNmMaET5QzoH1sZ2VqVkQeCRixqv5JpYyXZrVUPzDFK4TW3MT9JHPmsdWgZxQTeTbTXvUte5rMxHBn5XM1fBermLVSMapAwFka4M6Q44PCU3s4CxPZDWnGQ9RaaGQ3ntFapkj6K3B3B5hLvZBpVK7ihs6cxAvF8sAQ8jLgP1iwDcjx3Yh2EQSNSK3vJLptoBJMhitKqDx\",\"programId\":\"SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM\",\"stackHeight\":2}]}],\"logMessages\":[\"Program SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM invoke [1]\",\"Program log: Instruction: Sign\",\"Program 11111111111111111111111111111111 invoke [2]\",\"Program 11111111111111111111111111111111 success\",\"Program SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM invoke [2]\",\"Program SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM consumed 2003 of 183057 compute units\",\"Program SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM success\",\"Program SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM consumed 19513 of 200000 compute units\",\"Program SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM success\"],\"postBalances\":[6334838159,0,2393597,1,0,1038612],\"postTokenBalances\":[],\"preBalances\":[6334848160,0,2393596,1,0,1038612],\"preTokenBalances\":[],\"rewards\":[],\"status\":{\"Ok\":null}},\"slot\":509849943,\"transaction\":{\"message\":{\"accountKeys\":[{\"pubkey\":\"8oYvqBeCAhQYhA7Fw2fxG2ZvYgmhUtEdtXhteT7xdbti\",\"signer\":true,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"8FCXS5i56iEzCDHncGmgD18SGAuioJK2zWK17XWhY9DF\",\"signer\":true,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"8naLKjUrUN7eXs8NhX1VYHoP4LSTjnrHkQqUHWG9tkV2\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"11111111111111111111111111111111\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"5DCBCvzeTLrbWpgm2zJbiSVYkVRy5dGifyxBk3BWdzJU\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM\",\"signer\":false,\"source\":\"transaction\",\"writable\":false}],\"instructions\":[{\"accounts\":[\"8naLKjUrUN7eXs8NhX1VYHoP4LSTjnrHkQqUHWG9tkV2\",\"8FCXS5i56iEzCDHncGmgD18SGAuioJK2zWK17XWhY9DF\",\"8oYvqBeCAhQYhA7Fw2fxG2ZvYgmhUtEdtXhteT7xdbti\",\"11111111111111111111111111111111\",\"5DCBCvzeTLrbWpgm2zJbiSVYkVRy5dGifyxBk3BWdzJU\",\"SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM\",\"5DCBCvzeTLrbWpgm2zJbiSVYkVRy5dGifyxBk3BWdzJU\",\"SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM\",\"8FCXS5i56iEzCDHncGmgD18SGAuioJK2zWK17XWhY9DF\"],\"data\":\"23HjYnXj3JkU2kpEvhUmK7xguEAtM8JJGBx2jWaYiUN6DxB5vt8whk3DTgMaSjcECTp42b348PuvGhWWdV\",\"programId\":\"SigDHT99hPznk4d9SAxWLoBnKWT8jcob5pV8X7ti8SM\",\"stackHeight\":1}],\"recentBlockhash\":\"7nxCrT89dXGiCD5t13ErQ3ZsFb5mwYNMPazcsJBdGfDs\"},\"signatures\":[\"4debpLvT5yKxtSvcSyVZAytoALdQAXsrRPexdSu1uhDcd9SMJRS18PmpKA5AMeJVmwbM71PUV2Jk2soJP48J7sJD\",\"5sCu6qnDYTZyGBDZgSsPSe67UMLDc827nqap9hF8WZGFUS19kXmBRtJ1w7XQzEz3SLLzFfPMP1MyA9X7no7T7Lgu\"]},\"transactionIndex\":5,\"version\":\"legacy\"},\"id\":1}\n",
+              "report": {
+                "available_at_ms": 1791709235646,
+                "classification": "OBSERVED",
+                "commitment": "finalized",
+                "execution": "SUCCEEDED",
+                "fee_lamports": "10000",
+                "genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+                "genesis_response_sha256": "9d0f36530a5526131672857c8ff1d2b6dbcbab3e18f347161fc36b2c3a0825c3",
+                "missingness": [],
+                "native_balance_change_lamports": null,
+                "native_transfer_instruction_count": 1,
+                "native_transfer_instructions": [
+                  {
+                    "classification": "DERIVED",
+                    "destination": "8naLKjUrUN7eXs8NhX1VYHoP4LSTjnrHkQqUHWG9tkV2",
+                    "lamports": "1",
+                    "outer_index": 0,
+                    "scope": "INNER",
+                    "settlement": "RPC_REPORTED_SUCCESS",
+                    "source": "8oYvqBeCAhQYhA7Fw2fxG2ZvYgmhUtEdtXhteT7xdbti"
+                  }
+                ],
+                "network": "solana:devnet",
+                "observed_at_ms": "1791709234000",
+                "pnl": "UNAVAILABLE",
+                "quality_flags": [
+                  "SINGLE_RPC_SOURCE",
+                  "PROVIDER_REPORTED_FINALITY",
+                  "SUBSET_INSTRUCTION_PARSER",
+                  "NO_PAYMENT_ATTRIBUTION",
+                  "NOT_VALIDATOR_VERIFIED",
+                  "WALLET_PROOF_HISTORICAL",
+                  "UNRELATED_TO_AGENT",
+                  "UNSUPPORTED_INSTRUCTIONS_PRESERVED_IN_RAW_RPC"
+                ],
+                "related_to_agent": false,
+                "response_sha256": "ef84cbcabf9f14e1467ddae7f7d2874b81685de924847ba41103993c2440aba4",
+                "signature": "4debpLvT5yKxtSvcSyVZAytoALdQAXsrRPexdSu1uhDcd9SMJRS18PmpKA5AMeJVmwbM71PUV2Jk2soJP48J7sJD",
+                "slot": "509849943",
+                "source": "https://api.devnet.solana.com",
+                "state": "AVAILABLE",
+                "token_transfer_accounting": "UNAVAILABLE",
+                "transformation_version": 1
+              },
+              "updated_ms": 1791709235646
+            }
+          }
+        },
+        {
+          "name": "live-mainnet-rpc.json",
+          "size": 21423,
+          "sha256": "a2dcae346ddec4aba890f2ce741aa55c7e22830943c61f5e3febd789c8dd7014",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "classification": "OBSERVED",
+            "source": "https://api.mainnet.solana.com",
+            "response": {
+              "agent_id": "ee32f668f82247198644bdb865147fee",
+              "created_ms": 1791709235964,
+              "id": "644fc79f6f3b412aa54b18d40e8556bd",
+              "provenance": {
+                "available_at_ms": 1791709236158,
+                "classification": "OBSERVED",
+                "commitment": "finalized",
+                "missingness": [],
+                "observed_at_ms": "1791709228000",
+                "quality_flags": [
+                  "SINGLE_RPC_SOURCE",
+                  "PROVIDER_REPORTED_FINALITY",
+                  "SUBSET_INSTRUCTION_PARSER",
+                  "NO_PAYMENT_ATTRIBUTION",
+                  "NOT_VALIDATOR_VERIFIED",
+                  "WALLET_PROOF_HISTORICAL",
+                  "UNRELATED_TO_AGENT",
+                  "UNSUPPORTED_INSTRUCTIONS_PRESERVED_IN_RAW_RPC"
+                ],
+                "slot": "455594083",
+                "source": "https://api.mainnet.solana.com",
+                "state": "AVAILABLE",
+                "transformation_version": 1
+              },
+              "raw_rpc_json": "{\"jsonrpc\":\"2.0\",\"result\":{\"blockTime\":1791709228,\"meta\":{\"computeUnitsConsumed\":86793,\"costUnits\":93403,\"err\":null,\"fee\":5000,\"innerInstructions\":[{\"index\":0,\"instructions\":[{\"parsed\":{\"info\":{\"extensionTypes\":[\"immutableOwner\"],\"mint\":\"So11111111111111111111111111111111111111112\"},\"type\":\"getAccountDataSize\"},\"program\":\"spl-token\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"stackHeight\":2},{\"parsed\":{\"info\":{\"lamports\":1488440,\"newAccount\":\"9fdsbcpKsFCzTJYZZv2PsQbcYVVZ3V4RU6Zp4L84Nzjg\",\"owner\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"source\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\",\"space\":165},\"type\":\"createAccount\"},\"program\":\"system\",\"programId\":\"11111111111111111111111111111111\",\"stackHeight\":2},{\"parsed\":{\"info\":{\"account\":\"9fdsbcpKsFCzTJYZZv2PsQbcYVVZ3V4RU6Zp4L84Nzjg\"},\"type\":\"initializeImmutableOwner\"},\"program\":\"spl-token\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"stackHeight\":2},{\"parsed\":{\"info\":{\"account\":\"9fdsbcpKsFCzTJYZZv2PsQbcYVVZ3V4RU6Zp4L84Nzjg\",\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\"},\"type\":\"initializeAccount3\"},\"program\":\"spl-token\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"stackHeight\":2}]},{\"index\":1,\"instructions\":[{\"accounts\":[\"5PHirr8joyTMp9JMm6nW7hNDVyEYdkzDqazxPD7RaTjx\",\"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA\"],\"data\":\"KX69VKtJ7u4EB3FbSj7ZZLtYXhmPNDGEPyRttZgAmk9XzKiZHo8wwh1FyLQKZvR9DLcq2RWsPZ3X4C\",\"programId\":\"pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ\",\"stackHeight\":2},{\"parsed\":{\"info\":{\"authority\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\",\"destination\":\"5YHWRQUDL5EGnjSU262uaDzfKmG5V9CoHbQCfJPSKErD\",\"mint\":\"DPqa2iYa4sAJUqzixTvbBh9e6gkagForGtGxAaWpump\",\"source\":\"8fbq5WdGszYoGySL2x2S1YiURfbp1KVETmopoh8fM1JH\",\"tokenAmount\":{\"amount\":\"22550417\",\"decimals\":6,\"uiAmount\":22.550417,\"uiAmountString\":\"22.550417\"}},\"type\":\"transferChecked\"},\"program\":\"spl-token\",\"programId\":\"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb\",\"stackHeight\":2},{\"parsed\":{\"info\":{\"authority\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"destination\":\"9fdsbcpKsFCzTJYZZv2PsQbcYVVZ3V4RU6Zp4L84Nzjg\",\"mint\":\"So11111111111111111111111111111111111111112\",\"source\":\"8yR6uVuUkCsitbrECPro2kPEcfBmqfraf8K5Y1S5vPd3\",\"tokenAmount\":{\"amount\":\"102783\",\"decimals\":9,\"uiAmount\":0.000102783,\"uiAmountString\":\"0.000102783\"}},\"type\":\"transferChecked\"},\"program\":\"spl-token\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"stackHeight\":2},{\"parsed\":{\"info\":{\"authority\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"destination\":\"DWpvfqzGWuVy9jVSKSShdM2733nrEsnnhsUStYbkj6Nn\",\"mint\":\"So11111111111111111111111111111111111111112\",\"source\":\"8yR6uVuUkCsitbrECPro2kPEcfBmqfraf8K5Y1S5vPd3\",\"tokenAmount\":{\"amount\":\"26\",\"decimals\":9,\"uiAmount\":2.6e-8,\"uiAmountString\":\"0.000000026\"}},\"type\":\"transferChecked\"},\"program\":\"spl-token\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"stackHeight\":2},{\"parsed\":{\"info\":{\"authority\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"destination\":\"7ZmkpEkNcmSw7xY2LxfQCNYvA9MuEm567W2ysu3msW8i\",\"mint\":\"So11111111111111111111111111111111111111112\",\"source\":\"8yR6uVuUkCsitbrECPro2kPEcfBmqfraf8K5Y1S5vPd3\",\"tokenAmount\":{\"amount\":\"779\",\"decimals\":9,\"uiAmount\":7.79e-7,\"uiAmountString\":\"0.000000779\"}},\"type\":\"transferChecked\"},\"program\":\"spl-token\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"stackHeight\":2},{\"parsed\":{\"info\":{\"authority\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"destination\":\"AktftA98kSWAxn6kVSoqBXBELUArjKu2H9WmKB48ULFY\",\"mint\":\"So11111111111111111111111111111111111111112\",\"source\":\"8yR6uVuUkCsitbrECPro2kPEcfBmqfraf8K5Y1S5vPd3\",\"tokenAmount\":{\"amount\":\"26\",\"decimals\":9,\"uiAmount\":2.6e-8,\"uiAmountString\":\"0.000000026\"}},\"type\":\"transferChecked\"},\"program\":\"spl-token\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"stackHeight\":2},{\"accounts\":[\"GS4CU59F31iL7aR2Q8zVS8DRrcRnXX1yjQ66TqNVQnaR\"],\"data\":\"2rerrzSaKmbarSSaQantaMeMCTtkdABSvhrP6u4DwQ9yfVMd5jW8hzk58pxJo2YK4ysKW3LFgYaXGEBTB2BRTGpTifZ7PW1crWz456LgmxxqefGGV6jssKXmcT5AbGcLxhcqNXd4k4i8X2RgQLJzGACqquncJ4PWJufnGZtor53pwtPhzyVAeh3JshtAQeoe8HgPSWDYdSeUTUtCdbKxWZv7wJ59ABCMyiDKa33v1Va1PAVqc4MoHzpkb9AJvAdLRcMvcVnfccVeCZnvLokRuL7MRRJAjZ2zSXko9udGnQoQPwJX3qnrhupdgNr5CKUmmGwHUxErcGP8eNrvqSF2Skwjxt3bbdpFLC1eJyZkgdHpHgKsZuBneuAhLJwBs4yHtXPw5xUNft4gafWzzCwz6mx7fyKqDG4ZGbZEVS53sZ3t3B7DSQij4dZSDEquuJGkAgAn3346RZr5uST3R3FCrL7CtmDJAyNybYMDpjdCTQ5cUDoVm289AMsBqPMQvNKuCr3tWANQyczvyP8ubtqExKECLdmEkJ9vUEyYehSEWGzh2JqiBPe1EE3mzTRYnnb1JDzKoQ95SXipJj9rrmS2QbMtgLpKVq8krNzgeB\",\"programId\":\"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA\",\"stackHeight\":2}]}],\"logMessages\":[\"Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [1]\",\"Program log: CreateIdempotent\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 179 of 593149 compute units\",\"Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success\",\"Program 11111111111111111111111111111111 invoke [2]\",\"Program 11111111111111111111111111111111 success\",\"Program log: Initialize the associated token account\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 37 of 588060 compute units\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 229 of 585599 compute units\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success\",\"Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 14913 of 600000 compute units\",\"Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success\",\"Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA invoke [1]\",\"Program log: Instruction: Sell\",\"Program pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ invoke [2]\",\"Program log: Instruction: GetFeesWithQuoteMint\",\"Program pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ consumed 6051 of 551812 compute units\",\"Program return: pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ FAAAAAAAAAAFAAAAAAAAAEsAAAAAAAAA\",\"Program pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ success\",\"Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [2]\",\"Program log: Instruction: TransferChecked\",\"Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 2562 of 541907 compute units\",\"Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 112 of 536705 compute units\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 112 of 533670 compute units\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 112 of 529278 compute units\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 112 of 524692 compute units\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success\",\"Program data: Pi83CqUD3CosUMtqAAAAAJEXWAEAAAAAfXwBAAAAAACRhSg+AAAAAAAAAAAAAAAAQ98kBUE4AAD7QhM2PgAAAI6VAQAAAAAAFAAAAAAAAADQAAAAAAAAAAUAAAAAAAAANAAAAAAAAAC+lAEAAAAAAH+RAQAAAAAAjTepcjwggYD1Tcot0W/j5V2jxGkRLNqB2AxSF0rnbwQIY42RD5I6ZvcMQVB9yYPHC1ibAE1W73V3O+7XiJmnznHlQqsQp9sllQaOVfXI5x8QOdwTFiEAuZcSLX9roN7KgMNCA3mgIXtczjHswTplX4JSsS+7WS+acLwtzs9pa8f/g4OBi6j6KMPNO21ek/n6uPCXm8NyFazFskaHe6jDybnwRqOiz07iErT6kv2dAPpPsLP8/TYeQK5TkflgNepjNbvMGxSQaAs110mFJ1ak5R3HhoOyaR3c0rCGpKyyO/VLAAAAAAAAAAsDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIgTAAAAAAAAGgAAAAAAAAAvdFAXBAAAAAAAAAAAAAAAAVxkX38aiQMAAAAAAAAAAAAAAAAAAAAAAM6IxwAAAAAA\",\"Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA invoke [2]\",\"Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA consumed 2116 of 517251 compute units\",\"Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA success\",\"Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA consumed 71762 of 585087 compute units\",\"Program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA success\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 118 of 513325 compute units\",\"Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success\"],\"postBalances\":[297092700,1513840,1853320430,1513840,267196589173,0,427174792,2179320,871430927610,1,33103977,0,0,9272823,3388612899,2682240,4641093,1172985042,4256151797963,1260746836,6046721,1851952043390,230130698,70228638],\"postTokenBalances\":[{\"accountIndex\":1,\"mint\":\"DPqa2iYa4sAJUqzixTvbBh9e6gkagForGtGxAaWpump\",\"owner\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"programId\":\"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb\",\"uiTokenAmount\":{\"amount\":\"61851932882644\",\"decimals\":6,\"uiAmount\":61851932.882644,\"uiAmountString\":\"61851932.882644\"}},{\"accountIndex\":2,\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"7SxikFTchj47gyyjqkQh1q3CnQoR16wcjbmFG5HH83td\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"uiTokenAmount\":{\"amount\":\"1851831990\",\"decimals\":9,\"uiAmount\":1.85183199,\"uiAmountString\":\"1.85183199\"}},{\"accountIndex\":3,\"mint\":\"DPqa2iYa4sAJUqzixTvbBh9e6gkagForGtGxAaWpump\",\"owner\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\",\"programId\":\"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb\",\"uiTokenAmount\":{\"amount\":\"1020292608\",\"decimals\":6,\"uiAmount\":1020.292608,\"uiAmountString\":\"1020.292608\"}},{\"accountIndex\":4,\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"uiTokenAmount\":{\"amount\":\"267195100733\",\"decimals\":9,\"uiAmount\":267.195100733,\"uiAmountString\":\"267.195100733\"}},{\"accountIndex\":6,\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"GXPFM2caqTtQYC2cJ5yJRi9VDkpsYZXzYdwYpGnLmtDL\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"uiTokenAmount\":{\"amount\":\"425686352\",\"decimals\":9,\"uiAmount\":0.425686352,\"uiAmountString\":\"0.425686352\"}},{\"accountIndex\":8,\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"JCRGumoE9Qi5BBgULTgdgTLjSgkCMSbF62ZZfGs84JeU\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"uiTokenAmount\":{\"amount\":\"871429439170\",\"decimals\":9,\"uiAmount\":871.42943917,\"uiAmountString\":\"871.42943917\"}}],\"preBalances\":[296994917,1513840,1853319651,1513840,267196692787,0,427174766,2179320,871430927584,1,33103977,0,0,9272823,3388612899,2682240,4641093,1172985042,4256151797963,1260746836,6046721,1851952043390,230130698,70228638],\"preTokenBalances\":[{\"accountIndex\":1,\"mint\":\"DPqa2iYa4sAJUqzixTvbBh9e6gkagForGtGxAaWpump\",\"owner\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"programId\":\"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb\",\"uiTokenAmount\":{\"amount\":\"61851910332227\",\"decimals\":6,\"uiAmount\":61851910.332227,\"uiAmountString\":\"61851910.332227\"}},{\"accountIndex\":2,\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"7SxikFTchj47gyyjqkQh1q3CnQoR16wcjbmFG5HH83td\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"uiTokenAmount\":{\"amount\":\"1851831211\",\"decimals\":9,\"uiAmount\":1.851831211,\"uiAmountString\":\"1.851831211\"}},{\"accountIndex\":3,\"mint\":\"DPqa2iYa4sAJUqzixTvbBh9e6gkagForGtGxAaWpump\",\"owner\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\",\"programId\":\"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb\",\"uiTokenAmount\":{\"amount\":\"1042843025\",\"decimals\":6,\"uiAmount\":1042.843025,\"uiAmountString\":\"1042.843025\"}},{\"accountIndex\":4,\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"uiTokenAmount\":{\"amount\":\"267195204347\",\"decimals\":9,\"uiAmount\":267.195204347,\"uiAmountString\":\"267.195204347\"}},{\"accountIndex\":6,\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"GXPFM2caqTtQYC2cJ5yJRi9VDkpsYZXzYdwYpGnLmtDL\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"uiTokenAmount\":{\"amount\":\"425686326\",\"decimals\":9,\"uiAmount\":0.425686326,\"uiAmountString\":\"0.425686326\"}},{\"accountIndex\":8,\"mint\":\"So11111111111111111111111111111111111111112\",\"owner\":\"JCRGumoE9Qi5BBgULTgdgTLjSgkCMSbF62ZZfGs84JeU\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"uiTokenAmount\":{\"amount\":\"871429439144\",\"decimals\":9,\"uiAmount\":871.429439144,\"uiAmountString\":\"871.429439144\"}}],\"rewards\":[],\"status\":{\"Ok\":null}},\"slot\":455594083,\"transaction\":{\"message\":{\"accountKeys\":[{\"pubkey\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\",\"signer\":true,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"5YHWRQUDL5EGnjSU262uaDzfKmG5V9CoHbQCfJPSKErD\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"7ZmkpEkNcmSw7xY2LxfQCNYvA9MuEm567W2ysu3msW8i\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"8fbq5WdGszYoGySL2x2S1YiURfbp1KVETmopoh8fM1JH\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"8yR6uVuUkCsitbrECPro2kPEcfBmqfraf8K5Y1S5vPd3\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"9fdsbcpKsFCzTJYZZv2PsQbcYVVZ3V4RU6Zp4L84Nzjg\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"AktftA98kSWAxn6kVSoqBXBELUArjKu2H9WmKB48ULFY\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"DWpvfqzGWuVy9jVSKSShdM2733nrEsnnhsUStYbkj6Nn\",\"signer\":false,\"source\":\"transaction\",\"writable\":true},{\"pubkey\":\"11111111111111111111111111111111\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"5PHirr8joyTMp9JMm6nW7hNDVyEYdkzDqazxPD7RaTjx\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"7fs3dUHMzVPc3UPCzHduciLoNGjRMvYh7xtGpcBVXy77\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"7SxikFTchj47gyyjqkQh1q3CnQoR16wcjbmFG5HH83td\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"DPqa2iYa4sAJUqzixTvbBh9e6gkagForGtGxAaWpump\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"GS4CU59F31iL7aR2Q8zVS8DRrcRnXX1yjQ66TqNVQnaR\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"GXPFM2caqTtQYC2cJ5yJRi9VDkpsYZXzYdwYpGnLmtDL\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"JCRGumoE9Qi5BBgULTgdgTLjSgkCMSbF62ZZfGs84JeU\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"So11111111111111111111111111111111111111112\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"signer\":false,\"source\":\"transaction\",\"writable\":false},{\"pubkey\":\"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb\",\"signer\":false,\"source\":\"transaction\",\"writable\":false}],\"instructions\":[{\"parsed\":{\"info\":{\"account\":\"9fdsbcpKsFCzTJYZZv2PsQbcYVVZ3V4RU6Zp4L84Nzjg\",\"mint\":\"So11111111111111111111111111111111111111112\",\"source\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\",\"systemProgram\":\"11111111111111111111111111111111\",\"tokenProgram\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"wallet\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\"},\"type\":\"createIdempotent\"},\"program\":\"spl-associated-token-account\",\"programId\":\"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL\",\"stackHeight\":1},{\"accounts\":[\"AWFiMhfe8jbA1Bz5Cun7hWub1JWuQo9rwvRW4p2KBiaw\",\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\",\"ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw\",\"DPqa2iYa4sAJUqzixTvbBh9e6gkagForGtGxAaWpump\",\"So11111111111111111111111111111111111111112\",\"8fbq5WdGszYoGySL2x2S1YiURfbp1KVETmopoh8fM1JH\",\"9fdsbcpKsFCzTJYZZv2PsQbcYVVZ3V4RU6Zp4L84Nzjg\",\"5YHWRQUDL5EGnjSU262uaDzfKmG5V9CoHbQCfJPSKErD\",\"8yR6uVuUkCsitbrECPro2kPEcfBmqfraf8K5Y1S5vPd3\",\"JCRGumoE9Qi5BBgULTgdgTLjSgkCMSbF62ZZfGs84JeU\",\"DWpvfqzGWuVy9jVSKSShdM2733nrEsnnhsUStYbkj6Nn\",\"TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb\",\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"11111111111111111111111111111111\",\"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL\",\"GS4CU59F31iL7aR2Q8zVS8DRrcRnXX1yjQ66TqNVQnaR\",\"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA\",\"7ZmkpEkNcmSw7xY2LxfQCNYvA9MuEm567W2ysu3msW8i\",\"7SxikFTchj47gyyjqkQh1q3CnQoR16wcjbmFG5HH83td\",\"5PHirr8joyTMp9JMm6nW7hNDVyEYdkzDqazxPD7RaTjx\",\"pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ\",\"7fs3dUHMzVPc3UPCzHduciLoNGjRMvYh7xtGpcBVXy77\",\"GXPFM2caqTtQYC2cJ5yJRi9VDkpsYZXzYdwYpGnLmtDL\",\"AktftA98kSWAxn6kVSoqBXBELUArjKu2H9WmKB48ULFY\"],\"data\":\"5jRcjdixRUDXz7yQtRRwVu69eUDh8YyiF\",\"programId\":\"pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA\",\"stackHeight\":1},{\"parsed\":{\"info\":{\"account\":\"9fdsbcpKsFCzTJYZZv2PsQbcYVVZ3V4RU6Zp4L84Nzjg\",\"destination\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\",\"owner\":\"ZkJnvds5i1vcg3udq9miVCPbyDMouXLDLuB5JDH95rd\"},\"type\":\"closeAccount\"},\"program\":\"spl-token\",\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"stackHeight\":1}],\"recentBlockhash\":\"7mNKUuAvf7MoQGpXUNFEMU3tkRXTic59KFWW4mUqrECN\"},\"signatures\":[\"2owTVbzh85jvNQ4cNyjKf8fTbBH18QQKPZyqHT76P5VRVEcZ3Kfru5tTc2SSK6ztk12QY148T9cHrjFYXmXXhRHb\"]},\"transactionIndex\":850,\"version\":\"legacy\"},\"id\":1}\n",
+              "report": {
+                "available_at_ms": 1791709236158,
+                "classification": "OBSERVED",
+                "commitment": "finalized",
+                "execution": "SUCCEEDED",
+                "fee_lamports": "5000",
+                "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+                "genesis_response_sha256": "072c547ad3321ad6379bf249c218bcf112eaa3bd0138f07ace4077db1785a37d",
+                "missingness": [],
+                "native_balance_change_lamports": null,
+                "native_transfer_instruction_count": 0,
+                "native_transfer_instructions": [],
+                "network": "solana:mainnet",
+                "observed_at_ms": "1791709228000",
+                "pnl": "UNAVAILABLE",
+                "quality_flags": [
+                  "SINGLE_RPC_SOURCE",
+                  "PROVIDER_REPORTED_FINALITY",
+                  "SUBSET_INSTRUCTION_PARSER",
+                  "NO_PAYMENT_ATTRIBUTION",
+                  "NOT_VALIDATOR_VERIFIED",
+                  "WALLET_PROOF_HISTORICAL",
+                  "UNRELATED_TO_AGENT",
+                  "UNSUPPORTED_INSTRUCTIONS_PRESERVED_IN_RAW_RPC"
+                ],
+                "related_to_agent": false,
+                "response_sha256": "0ccda7f79ff81b89422a2d0f80f790901183856c8bdbb041031c5bb4308505c9",
+                "signature": "2owTVbzh85jvNQ4cNyjKf8fTbBH18QQKPZyqHT76P5VRVEcZ3Kfru5tTc2SSK6ztk12QY148T9cHrjFYXmXXhRHb",
+                "slot": "455594083",
+                "source": "https://api.mainnet.solana.com",
+                "state": "AVAILABLE",
+                "token_transfer_accounting": "UNAVAILABLE",
+                "transformation_version": 1
+              },
+              "updated_ms": 1791709236158
+            }
+          }
+        },
+        {
+          "name": "live-rpc.json",
+          "size": 5269,
+          "sha256": "8a1ddfc7e71ace678f193607c61e7998a9e6ed5724648e11ce80ac0a78e030b3",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "activity": "OBSERVED_PUBLIC_CHAIN_RECORD_WITH_AUTOMATED_TEST_AGENT",
+            "customer_wallets": 0,
+            "transactions_submitted": 0,
+            "networks": [
+              {
+                "network": "solana:devnet",
+                "source": "https://api.devnet.solana.com",
+                "status": "VERIFIED",
+                "signature": "4debpLvT5yKxtSvcSyVZAytoALdQAXsrRPexdSu1uhDcd9SMJRS18PmpKA5AMeJVmwbM71PUV2Jk2soJP48J7sJD",
+                "observation_state": "AVAILABLE",
+                "quality_flags": [
+                  "SINGLE_RPC_SOURCE",
+                  "PROVIDER_REPORTED_FINALITY",
+                  "SUBSET_INSTRUCTION_PARSER",
+                  "NO_PAYMENT_ATTRIBUTION",
+                  "NOT_VALIDATOR_VERIFIED",
+                  "WALLET_PROOF_HISTORICAL",
+                  "UNRELATED_TO_AGENT",
+                  "UNSUPPORTED_INSTRUCTIONS_PRESERVED_IN_RAW_RPC"
+                ],
+                "report": {
+                  "available_at_ms": 1791709235646,
+                  "classification": "OBSERVED",
+                  "commitment": "finalized",
+                  "execution": "SUCCEEDED",
+                  "fee_lamports": "10000",
+                  "genesis_hash": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+                  "genesis_response_sha256": "9d0f36530a5526131672857c8ff1d2b6dbcbab3e18f347161fc36b2c3a0825c3",
+                  "missingness": [],
+                  "native_balance_change_lamports": null,
+                  "native_transfer_instruction_count": 1,
+                  "native_transfer_instructions": [
+                    {
+                      "classification": "DERIVED",
+                      "destination": "8naLKjUrUN7eXs8NhX1VYHoP4LSTjnrHkQqUHWG9tkV2",
+                      "lamports": "1",
+                      "outer_index": 0,
+                      "scope": "INNER",
+                      "settlement": "RPC_REPORTED_SUCCESS",
+                      "source": "8oYvqBeCAhQYhA7Fw2fxG2ZvYgmhUtEdtXhteT7xdbti"
+                    }
+                  ],
+                  "network": "solana:devnet",
+                  "observed_at_ms": "1791709234000",
+                  "pnl": "UNAVAILABLE",
+                  "quality_flags": [
+                    "SINGLE_RPC_SOURCE",
+                    "PROVIDER_REPORTED_FINALITY",
+                    "SUBSET_INSTRUCTION_PARSER",
+                    "NO_PAYMENT_ATTRIBUTION",
+                    "NOT_VALIDATOR_VERIFIED",
+                    "WALLET_PROOF_HISTORICAL",
+                    "UNRELATED_TO_AGENT",
+                    "UNSUPPORTED_INSTRUCTIONS_PRESERVED_IN_RAW_RPC"
+                  ],
+                  "related_to_agent": false,
+                  "response_sha256": "ef84cbcabf9f14e1467ddae7f7d2874b81685de924847ba41103993c2440aba4",
+                  "signature": "4debpLvT5yKxtSvcSyVZAytoALdQAXsrRPexdSu1uhDcd9SMJRS18PmpKA5AMeJVmwbM71PUV2Jk2soJP48J7sJD",
+                  "slot": "509849943",
+                  "source": "https://api.devnet.solana.com",
+                  "state": "AVAILABLE",
+                  "token_transfer_accounting": "UNAVAILABLE",
+                  "transformation_version": 1
+                },
+                "audit_events": 6,
+                "discovery_response_sha256": "b44c802666517e6779e99bf22b12e0b8c0a23a0eb98060cba8141db7f38d5e88",
+                "read_only_rpc_requests": 3
+              },
+              {
+                "network": "solana:mainnet",
+                "source": "https://api.mainnet.solana.com",
+                "status": "VERIFIED",
+                "signature": "2owTVbzh85jvNQ4cNyjKf8fTbBH18QQKPZyqHT76P5VRVEcZ3Kfru5tTc2SSK6ztk12QY148T9cHrjFYXmXXhRHb",
+                "observation_state": "AVAILABLE",
+                "quality_flags": [
+                  "SINGLE_RPC_SOURCE",
+                  "PROVIDER_REPORTED_FINALITY",
+                  "SUBSET_INSTRUCTION_PARSER",
+                  "NO_PAYMENT_ATTRIBUTION",
+                  "NOT_VALIDATOR_VERIFIED",
+                  "WALLET_PROOF_HISTORICAL",
+                  "UNRELATED_TO_AGENT",
+                  "UNSUPPORTED_INSTRUCTIONS_PRESERVED_IN_RAW_RPC"
+                ],
+                "report": {
+                  "available_at_ms": 1791709236158,
+                  "classification": "OBSERVED",
+                  "commitment": "finalized",
+                  "execution": "SUCCEEDED",
+                  "fee_lamports": "5000",
+                  "genesis_hash": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+                  "genesis_response_sha256": "072c547ad3321ad6379bf249c218bcf112eaa3bd0138f07ace4077db1785a37d",
+                  "missingness": [],
+                  "native_balance_change_lamports": null,
+                  "native_transfer_instruction_count": 0,
+                  "native_transfer_instructions": [],
+                  "network": "solana:mainnet",
+                  "observed_at_ms": "1791709228000",
+                  "pnl": "UNAVAILABLE",
+                  "quality_flags": [
+                    "SINGLE_RPC_SOURCE",
+                    "PROVIDER_REPORTED_FINALITY",
+                    "SUBSET_INSTRUCTION_PARSER",
+                    "NO_PAYMENT_ATTRIBUTION",
+                    "NOT_VALIDATOR_VERIFIED",
+                    "WALLET_PROOF_HISTORICAL",
+                    "UNRELATED_TO_AGENT",
+                    "UNSUPPORTED_INSTRUCTIONS_PRESERVED_IN_RAW_RPC"
+                  ],
+                  "related_to_agent": false,
+                  "response_sha256": "0ccda7f79ff81b89422a2d0f80f790901183856c8bdbb041031c5bb4308505c9",
+                  "signature": "2owTVbzh85jvNQ4cNyjKf8fTbBH18QQKPZyqHT76P5VRVEcZ3Kfru5tTc2SSK6ztk12QY148T9cHrjFYXmXXhRHb",
+                  "slot": "455594083",
+                  "source": "https://api.mainnet.solana.com",
+                  "state": "AVAILABLE",
+                  "token_transfer_accounting": "UNAVAILABLE",
+                  "transformation_version": 1
+                },
+                "audit_events": 6,
+                "discovery_response_sha256": "9712d3de34abd80262c9121766d5d301f0edb0e27628d8592c5e86200866f177",
+                "read_only_rpc_requests": 3
+              }
+            ],
+            "checks": [
+              "solana:devnet: real RPC response persists through authenticated HTTP and restart without wallet execution",
+              "solana:mainnet: real RPC response persists through authenticated HTTP and restart without wallet execution"
+            ],
+            "result": "VERIFIED"
+          }
+        }
+      ]
+    },
+    {
+      "id": 11697896832,
+      "name": "community-service-ubuntu-latest-3.14.8",
+      "run_id": 38126819276,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 1231,
+      "sha256": "dbff7ab4e2831a1589999921dac7d8cd7b69c98ff0b0a1103314126a3d250929",
+      "files": [
+        {
+          "name": "integration.json",
+          "size": 1104,
+          "sha256": "855d515b399a9791b2b89bd60392c461cf8d164d1b38662c811586bb7d1a5c86",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "python": "3.14.8",
+            "sqlite": "3.45.1",
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "checks": [
+              "actual CLI verifies a wallet challenge and enrolls a scoped agent without printing credentials",
+              "reused wallet signature is rejected without issuing a second credential",
+              "HTTP persists authored projects, artifact references, replies and offers",
+              "deactivation denies writes and offers; rotation revokes old credential",
+              "consistent backup and audit contain no plaintext bearer values",
+              "fresh server process restores records and credential authentication",
+              "backup restored into independent directory and served over HTTP"
+            ],
+            "persisted_counts": {
+              "agents": 1,
+              "offers": 1,
+              "posts": 2,
+              "projects": 1
+            },
+            "audit_events": 12,
+            "sqlite_defensive": true,
+            "extension_loading": false,
+            "runtime_patch_audit": "UNVERIFIED",
+            "pynacl": "1.6.2",
+            "customer_wallets": 0,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        },
+        {
+          "name": "migration.json",
+          "size": 534,
+          "sha256": "62de2be753da4b8420f18ff6d0dea695ae314c06ff19d26bc454e3c4cdd128de",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "from_schema": 1,
+            "to_schema": 2,
+            "checks": [
+              "actual migration CLI retains schema-1 backup and audit prefix",
+              "restarted HTTP service preserves content and old credentials",
+              "legacy declaration stays unverified until actual signed challenge",
+              "new proof and migration pass internal audit"
+            ],
+            "before_audit_events": 6,
+            "after_audit_events": 9,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 11697757222,
+      "name": "community-service-ubuntu-latest-3.12.15",
+      "run_id": 38126819276,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 196869,
+      "sha256": "beac16129d64306ea07a1140bebfe3d799c5614ab3e373da8c1298f36538b7b4",
+      "files": [
+        {
+          "name": "browser.json",
+          "size": 1106,
+          "sha256": "97561ddf86f073ce666e234d808e16895c13cec913198c211f68920685b5e64d",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "chrome": "Google Chrome 154.0.8037.97",
+            "node": "v22.23.3",
+            "checks": [
+              "served API records render",
+              "local status and real counts",
+              "cursor pagination without duplicates",
+              "search and empty state",
+              "inactive profile",
+              "historical wallet proof marked signature verified",
+              "hostile biography stays text",
+              "project navigation",
+              "hostile discussion stays text",
+              "inactive provider offer unavailable",
+              "mobile no page overflow",
+              "loading failure marks records stale",
+              "refresh recovers",
+              "same-origin CSP and frame protection",
+              "public wallet proof inspection",
+              "transaction empty state",
+              "exact u64 slot and units",
+              "synthetic render test explicitly labeled",
+              "failed instructions not settled and P/L unavailable",
+              "transaction hostile flags stay text",
+              "mobile transaction no overflow",
+              "transaction refresh returns to stored empty records"
+            ],
+            "uncaught_exceptions": 0,
+            "external_page_requests": 0
+          }
+        },
+        {
+          "name": "integration.json",
+          "size": 1105,
+          "sha256": "bd95fec8622f8fe8bd341ece8b38c9c2660e6ffdc4d778d3b6fd5dd4196e7ed3",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "python": "3.12.15",
+            "sqlite": "3.45.1",
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "checks": [
+              "actual CLI verifies a wallet challenge and enrolls a scoped agent without printing credentials",
+              "reused wallet signature is rejected without issuing a second credential",
+              "HTTP persists authored projects, artifact references, replies and offers",
+              "deactivation denies writes and offers; rotation revokes old credential",
+              "consistent backup and audit contain no plaintext bearer values",
+              "fresh server process restores records and credential authentication",
+              "backup restored into independent directory and served over HTTP"
+            ],
+            "persisted_counts": {
+              "agents": 1,
+              "offers": 1,
+              "posts": 2,
+              "projects": 1
+            },
+            "audit_events": 12,
+            "sqlite_defensive": true,
+            "extension_loading": false,
+            "runtime_patch_audit": "UNVERIFIED",
+            "pynacl": "1.6.2",
+            "customer_wallets": 0,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        },
+        {
+          "name": "migration.json",
+          "size": 534,
+          "sha256": "62de2be753da4b8420f18ff6d0dea695ae314c06ff19d26bc454e3c4cdd128de",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "from_schema": 1,
+            "to_schema": 2,
+            "checks": [
+              "actual migration CLI retains schema-1 backup and audit prefix",
+              "restarted HTTP service preserves content and old credentials",
+              "legacy declaration stays unverified until actual signed challenge",
+              "new proof and migration pass internal audit"
+            ],
+            "before_audit_events": 6,
+            "after_audit_events": 9,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        },
+        {
+          "name": "runtime-audit.json",
+          "size": 190,
+          "sha256": "fd068d8ac601f57b2830f1115c11d020c19902f44a62d1e2feaee55273267737",
+          "evidence": {
+            "dependencies": [
+              {
+                "name": "pynacl",
+                "version": "1.6.2",
+                "vulns": []
+              },
+              {
+                "name": "cffi",
+                "version": "2.1.1",
+                "vulns": []
+              },
+              {
+                "name": "pycparser",
+                "version": "3.0",
+                "vulns": []
+              }
+            ],
+            "fixes": []
+          }
+        },
+        {
+          "name": "workspace-desktop.png",
+          "size": 107234,
+          "sha256": "a9d28993d9cf530ba2db94758b34eacd0c9c26353eceb57bc196645756f95407"
+        },
+        {
+          "name": "workspace-mobile.png",
+          "size": 100250,
+          "sha256": "e8c9a1543f160aca103d3f25f01a5a4e5b36607f81240d5d9105ca199ffb20de"
+        }
+      ]
+    },
+    {
+      "id": 11697452961,
+      "name": "community-service-windows-latest-3.13.16",
+      "run_id": 38126819276,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 1235,
+      "sha256": "91602bd831fc5ff027f69a2cc44a3d22da26598ef8bb0d387f83e25d3fdab7b0",
+      "files": [
+        {
+          "name": "integration.json",
+          "size": 1123,
+          "sha256": "db1bb174e0ebd6c77e748d226e662e9dfa41c78d24982322f4a34f13e0c91fb8",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "python": "3.13.16",
+            "sqlite": "3.50.4",
+            "platform": "Windows-2025Server-10.0.26100-SP0",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "checks": [
+              "actual CLI verifies a wallet challenge and enrolls a scoped agent without printing credentials",
+              "reused wallet signature is rejected without issuing a second credential",
+              "HTTP persists authored projects, artifact references, replies and offers",
+              "deactivation denies writes and offers; rotation revokes old credential",
+              "consistent backup and audit contain no plaintext bearer values",
+              "fresh server process restores records and credential authentication",
+              "backup restored into independent directory and served over HTTP"
+            ],
+            "persisted_counts": {
+              "agents": 1,
+              "offers": 1,
+              "posts": 2,
+              "projects": 1
+            },
+            "audit_events": 12,
+            "sqlite_defensive": true,
+            "extension_loading": false,
+            "runtime_patch_audit": "UNVERIFIED",
+            "pynacl": "1.6.2",
+            "customer_wallets": 0,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        },
+        {
+          "name": "migration.json",
+          "size": 550,
+          "sha256": "a17eefbd3b2ff07a465bf8d48f4dd1d912191f66b2166037101caeb765e82f13",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "from_schema": 1,
+            "to_schema": 2,
+            "checks": [
+              "actual migration CLI retains schema-1 backup and audit prefix",
+              "restarted HTTP service preserves content and old credentials",
+              "legacy declaration stays unverified until actual signed challenge",
+              "new proof and migration pass internal audit"
+            ],
+            "before_audit_events": 6,
+            "after_audit_events": 9,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 11696928252,
+      "name": "community-service-ubuntu-latest-3.13.16",
+      "run_id": 38126819276,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 1232,
+      "sha256": "dea0e8efac3db6997e70d149721188fce5e319044a28a728355865a5fa615797",
+      "files": [
+        {
+          "name": "integration.json",
+          "size": 1105,
+          "sha256": "8ddf9ed186a8d3f61a55fdc211b744ed64a7ac04854edb304715ecbc1a6032e8",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "python": "3.13.16",
+            "sqlite": "3.45.1",
+            "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "checks": [
+              "actual CLI verifies a wallet challenge and enrolls a scoped agent without printing credentials",
+              "reused wallet signature is rejected without issuing a second credential",
+              "HTTP persists authored projects, artifact references, replies and offers",
+              "deactivation denies writes and offers; rotation revokes old credential",
+              "consistent backup and audit contain no plaintext bearer values",
+              "fresh server process restores records and credential authentication",
+              "backup restored into independent directory and served over HTTP"
+            ],
+            "persisted_counts": {
+              "agents": 1,
+              "offers": 1,
+              "posts": 2,
+              "projects": 1
+            },
+            "audit_events": 12,
+            "sqlite_defensive": true,
+            "extension_loading": false,
+            "runtime_patch_audit": "UNVERIFIED",
+            "pynacl": "1.6.2",
+            "customer_wallets": 0,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        },
+        {
+          "name": "migration.json",
+          "size": 534,
+          "sha256": "62de2be753da4b8420f18ff6d0dea695ae314c06ff19d26bc454e3c4cdd128de",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "from_schema": 1,
+            "to_schema": 2,
+            "checks": [
+              "actual migration CLI retains schema-1 backup and audit prefix",
+              "restarted HTTP service preserves content and old credentials",
+              "legacy declaration stays unverified until actual signed challenge",
+              "new proof and migration pass internal audit"
+            ],
+            "before_audit_events": 6,
+            "after_audit_events": 9,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 11696883486,
+      "name": "community-service-windows-latest-3.14.8",
+      "run_id": 38126819276,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 1234,
+      "sha256": "0a6fa902e0a34dbe9d2777d7d33e36692ccf9227ec19ac0053d969c6d01e49cd",
+      "files": [
+        {
+          "name": "integration.json",
+          "size": 1122,
+          "sha256": "35247a8a78ea88b06b7f07f03ac6689ec5cdfb1a23c4533fc227b7a4a5fb9d38",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "python": "3.14.8",
+            "sqlite": "3.50.4",
+            "platform": "Windows-2025Server-10.0.26100-SP0",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "checks": [
+              "actual CLI verifies a wallet challenge and enrolls a scoped agent without printing credentials",
+              "reused wallet signature is rejected without issuing a second credential",
+              "HTTP persists authored projects, artifact references, replies and offers",
+              "deactivation denies writes and offers; rotation revokes old credential",
+              "consistent backup and audit contain no plaintext bearer values",
+              "fresh server process restores records and credential authentication",
+              "backup restored into independent directory and served over HTTP"
+            ],
+            "persisted_counts": {
+              "agents": 1,
+              "offers": 1,
+              "posts": 2,
+              "projects": 1
+            },
+            "audit_events": 12,
+            "sqlite_defensive": true,
+            "extension_loading": false,
+            "runtime_patch_audit": "UNVERIFIED",
+            "pynacl": "1.6.2",
+            "customer_wallets": 0,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        },
+        {
+          "name": "migration.json",
+          "size": 550,
+          "sha256": "a17eefbd3b2ff07a465bf8d48f4dd1d912191f66b2166037101caeb765e82f13",
+          "evidence": {
+            "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+            "activity": "AUTOMATED_TEST_FIXTURE",
+            "from_schema": 1,
+            "to_schema": 2,
+            "checks": [
+              "actual migration CLI retains schema-1 backup and audit prefix",
+              "restarted HTTP service preserves content and old credentials",
+              "legacy declaration stays unverified until actual signed challenge",
+              "new proof and migration pass internal audit"
+            ],
+            "before_audit_events": 6,
+            "after_audit_events": 9,
+            "chain_requests": 0,
+            "transactions_submitted": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 11696808864,
+      "name": "simulator-dependency-audit",
+      "run_id": 38126819334,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 384,
+      "sha256": "ae0c268b1b718845044e51d1532c456aceea9787fd39686b872b6e37a14d45f1",
+      "files": [
+        {
+          "name": "audit.json",
+          "size": 374,
+          "sha256": "7896cfd455e637b86185f573039d681458d052f38aae9adef1ed23350dc2360a",
+          "evidence": {
+            "database": {
+              "advisory-count": 1296,
+              "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+              "last-updated": "2026-10-09T10:12:02+02:00"
+            },
+            "lockfile": {
+              "dependency-count": 37
+            },
+            "settings": {
+              "target_arch": [],
+              "target_os": [],
+              "severity": null,
+              "ignore": [],
+              "informational_warnings": [
+                "unmaintained",
+                "unsound",
+                "notice"
+              ]
+            },
+            "vulnerabilities": {
+              "found": false,
+              "count": 0,
+              "list": []
+            },
+            "warnings": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 11697168086,
+      "name": "market-dependency-audit",
+      "run_id": 38126819273,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 384,
+      "sha256": "c089e64b87004e4de439ea024da8d190647f94d3e0a5ebc2c0e97b0832333a46",
+      "files": [
+        {
+          "name": "audit.json",
+          "size": 374,
+          "sha256": "40442b01c63f99a3e4c2a3516460e381e6de605b9779a7f3aee9add0744c0999",
+          "evidence": {
+            "database": {
+              "advisory-count": 1296,
+              "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+              "last-updated": "2026-10-09T10:12:02+02:00"
+            },
+            "lockfile": {
+              "dependency-count": 38
+            },
+            "settings": {
+              "target_arch": [],
+              "target_os": [],
+              "severity": null,
+              "ignore": [],
+              "informational_warnings": [
+                "unmaintained",
+                "unsound",
+                "notice"
+              ]
+            },
+            "vulnerabilities": {
+              "found": false,
+              "count": 0,
+              "list": []
+            },
+            "warnings": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 11697214217,
+      "name": "review-dependency-audit",
+      "run_id": 38126819378,
+      "source_head_sha": "d26d9f0f6d45255a72653f82c0f44707cdab28f4",
+      "size": 384,
+      "sha256": "b19d86eebefaf4bfe40ecfd070fe469c508db0768fb36b9d32f37f1277b2d1f7",
+      "files": [
+        {
+          "name": "audit.json",
+          "size": 374,
+          "sha256": "9c0fd82eba4c8c468c870e9219757955b0d14030462f28d1dd6f1032a6341efe",
+          "evidence": {
+            "database": {
+              "advisory-count": 1296,
+              "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+              "last-updated": "2026-10-09T10:12:02+02:00"
+            },
+            "lockfile": {
+              "dependency-count": 39
+            },
+            "settings": {
+              "target_arch": [],
+              "target_os": [],
+              "severity": null,
+              "ignore": [],
+              "informational_warnings": [
+                "unmaintained",
+                "unsound",
+                "notice"
+              ]
+            },
+            "vulnerabilities": {
+              "found": false,
+              "count": 0,
+              "list": []
+            },
+            "warnings": {}
+          }
+        }
+      ]
+    }
+  ],
+  "changed_files": [
+    ".github/workflows/zoora-agent-community.yml",
+    "README.md",
+    "docs/CURRENT_STATUS.md",
+    "projects/AGENT_ECONOMY.md",
+    "projects/zoora-agent-community/.gitignore",
+    "projects/zoora-agent-community/README.md",
+    "projects/zoora-agent-community/SECURITY.md",
+    "projects/zoora-agent-community/VALIDATION_AE007.md",
+    "projects/zoora-agent-community/requirements.lock",
+    "projects/zoora-agent-community/scripts/browser_evidence.mjs",
+    "projects/zoora-agent-community/scripts/browser_fixture.py",
+    "projects/zoora-agent-community/scripts/fixture_signatures.py",
+    "projects/zoora-agent-community/scripts/integration_evidence.py",
+    "projects/zoora-agent-community/scripts/legacy_fixture.py",
+    "projects/zoora-agent-community/scripts/live_rpc_evidence.py",
+    "projects/zoora-agent-community/scripts/migration_evidence.py",
+    "projects/zoora-agent-community/tests/helpers.py",
+    "projects/zoora-agent-community/tests/test_cli.py",
+    "projects/zoora-agent-community/tests/test_http.py",
+    "projects/zoora-agent-community/tests/test_migration.py",
+    "projects/zoora-agent-community/tests/test_solana_rpc.py",
+    "projects/zoora-agent-community/tests/test_store.py",
+    "projects/zoora-agent-community/tests/test_wallet_proof.py",
+    "projects/zoora-agent-community/web/app.js",
+    "projects/zoora-agent-community/web/index.html",
+    "projects/zoora-agent-community/web/style.css",
+    "projects/zoora-agent-community/zoora_community/__init__.py",
+    "projects/zoora-agent-community/zoora_community/__main__.py",
+    "projects/zoora-agent-community/zoora_community/client.py",
+    "projects/zoora-agent-community/zoora_community/migration_002.sql",
+    "projects/zoora-agent-community/zoora_community/observations.py",
+    "projects/zoora-agent-community/zoora_community/server.py",
+    "projects/zoora-agent-community/zoora_community/solana_rpc.py",
+    "projects/zoora-agent-community/zoora_community/store.py",
+    "projects/zoora-agent-community/zoora_community/validation.py",
+    "projects/zoora-agent-community/zoora_community/wallet_proof.py",
+    "projects/zoora-agent-economy-simulator/README.md"
+  ]
+}
