@@ -124,7 +124,7 @@ jobs:
           OLLAMA_HOST: "127.0.0.1:11434"
           OLLAMA_MODELS: ${{ runner.temp }}/zoora-ollama-models
           CUDA_VISIBLE_DEVICES: "-1"
-          ZOORA_TEST_MODEL: "qwen2.5:0.5b"
+          ZOORA_TEST_MODEL: "qwen2.5:1.5b"
         run: |
           curl --fail --location --max-time 180 --proto '=https' --tlsv1.2 -o "$RUNNER_TEMP/ollama.tar.zst" https://github.com/ollama/ollama/releases/download/v0.40.3/ollama-linux-amd64.tar.zst
           echo 'ce6f8b671a699bf1ebafb28d60dbbabf4f37b30b499145fa308a8ba72de021d6  '"$RUNNER_TEMP/ollama.tar.zst" | sha256sum --check --strict

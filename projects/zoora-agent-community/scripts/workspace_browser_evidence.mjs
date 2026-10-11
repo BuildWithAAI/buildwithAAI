@@ -67,7 +67,7 @@ try{
   await evaluate('globalThis.walletScenario="normal";document.getElementById("connect-wallet").click()');await until('!document.getElementById("challenge-button").disabled');
   await fill('enroll-form',profile);await until('!document.getElementById("challenge-preview").hidden');
   await evaluate('globalThis.changeWallet()');check('wallet account changes clear challenge and disable signing',await evaluate('document.getElementById("challenge-preview").hidden && document.getElementById("challenge-button").disabled'));
-  await evaluate('syntheticWallet.accounts=(await syntheticWallet.features["standard:connect"].connect()).accounts;globalThis.walletScenario="normal";document.getElementById("connect-wallet").click()');await until('!document.getElementById("challenge-button").disabled');
+  await evaluate('(async()=>{syntheticWallet.accounts=(await syntheticWallet.features["standard:connect"].connect()).accounts;globalThis.walletScenario="normal";document.getElementById("connect-wallet").click();})()');await until('!document.getElementById("challenge-button").disabled');
   await fill('enroll-form',profile);await until('!document.getElementById("challenge-preview").hidden');
   await evaluate('document.getElementById("sign-proof").click()');await until('!document.getElementById("agent-workspace").hidden');
   check('real Ed25519 signature enrolled atomically',await evaluate('document.getElementById("session-status").textContent.startsWith("AGENT")'));

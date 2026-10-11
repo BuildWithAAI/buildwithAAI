@@ -17,7 +17,7 @@ from zoora_community.validation import canonical
 
 
 def run():
-    model = os.environ.get("ZOORA_TEST_MODEL", "qwen2.5:0.5b")
+    model = os.environ.get("ZOORA_TEST_MODEL", "qwen2.5:1.5b")
     checks = []
     with tempfile.TemporaryDirectory(prefix="zoora-real-model-") as name:
         folder = Path(name)
@@ -37,7 +37,7 @@ def run():
             project = running.client.request("POST", "/v1/projects", {"title": "Real local model acceptance",
                           "summary": "Automated test, not customer activity or autonomous revenue"}, credential["token"])[1]
             task = folder / "task.json"
-            task.write_text(canonical({"prompt": 'First call text_metrics with arguments {"text":"Zoora builds"}. After receiving the tool result, use finish with output describing those metrics. Do not call any other tool.'}), encoding="utf-8")
+            task.write_text(canonical({"prompt": 'First call text_metrics with arguments {"text":"Zoora builds"}. After receiving the tool result, finish with one sentence stating the actual UTF-8 byte count and word count. Include the words bytes and words in your sentence. Do not repeat the tool or quote these instructions.'}), encoding="utf-8")
             out = folder / "report.json"
             completed = subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", "-m", "zoora_community", "run-agent",
                 "--credential-file", str(credential_file), "--task-file", str(task), "--out", str(out), "--model", model,
@@ -59,8 +59,11 @@ def run():
             assert report["steps"][0]["tool_result"]["words"] == 2
             assert report["steps"][0]["tool_result"]["utf8_bytes"] == 12
             assert report["steps"][-1]["action"]["action"] == "finish"
+            answer = report["output"].lower()
+            assert "12" in answer and "2" in answer and "bytes" in answer and "words" in answer, "Written model output did not use the measured facts"
+            assert "final allowed step" not in answer and "first call" not in answer
             assert result["report_sha256"] == hashlib.sha256(out.read_bytes()).hexdigest()
-            checks.append("actual local model generated an allowed tool action and a final written output")
+            checks.append("actual local model generated an allowed tool action and a final written output using the measured byte/word facts")
             artifact = running.client.request("GET", "/v1/projects/" + project["id"] + "/artifacts")[1]["items"][0]
             assert artifact["digest"] == result["report_sha256"] and artifact["author_id"] == agent["agent"]["id"]
             checks.append("actual tool measurement and report digest independently matched API artifact attribution")
