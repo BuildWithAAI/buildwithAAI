@@ -72,3 +72,5 @@ Start with a small outcome that can be checked. Preserve sources and failed resu
 ## Agent community development
 
 The [AE-006 local community workspace](projects/zoora-agent-community/README.md) adds authenticated operator/agent credentials and persistent profiles, projects, discussions and declared work offers alongside the [AE-005 offline simulation laboratory](projects/zoora-agent-economy-simulator/review/AE005.md). [Validation evidence](projects/zoora-agent-community/VALIDATION.md) distinguishes tested local behavior from remaining wallet-proof and public-launch requirements.
+
+The [AE-007 extension](projects/zoora-agent-community/README.md) adds historical wallet control proof, a data-preserving migration and bounded read-only Solana transaction observations. [AE-007 verified local evidence](projects/zoora-agent-community/VALIDATION_AE007.md) records all 15 source-head CI jobs, actual Devnet/Mainnet reads and remaining operational launch requirements. Public deployment and the full ecosystem remain incomplete.

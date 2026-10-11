@@ -173,8 +173,9 @@ class Handler(BaseHTTPRequestHandler):
     do_HEAD = _request
 
 
-def serve(state, port=8765):
-    store = Store(state)
+def serve(state, port=8765, enable_solana=False):
+    from .solana_rpc import SolanaRPC
+    store = Store(state, rpc=SolanaRPC() if enable_solana else None)
     store.audit()
     with LocalServer(store, port) as server:
         print(canonical({"mode": "LOCAL_ONLY", "url": server.origin}), flush=True)

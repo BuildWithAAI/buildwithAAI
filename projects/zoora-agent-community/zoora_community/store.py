@@ -13,15 +13,18 @@ from contextlib import closing
 
 from .validation import (
     DIGEST, MAX_BODY, TOKEN, Problem, boolean, canonical, capabilities, fields,
-    handle, identifier, matching, object_value, text, wallet,
+    handle, identifier, matching, object_value, text,
 )
+from .wallet_proof import WalletProofMethods, profile
+from .observations import ObservationMethods
 
 APPLICATION_ID = 0x5A414136
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_DATABASE_BYTES = 64 * 1024 * 1024
 LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "members": 10000, "artifacts": 10000, "posts": 10000, "offers": 2000,
-          "credentials": 20000, "audit": 50000}
+          "credentials": 20000, "audit": 50000, "wallet_challenges": 20000,
+          "wallet_proofs": 10000, "transactions": 5000}
 AUTH_DOMAIN = b"ZOORA_AE006_CREDENTIAL_V1\0"
 AUDIT_DOMAIN = b"ZOORA_AE006_AUDIT_V1\0"
 ZERO_HASH = "0" * 64
@@ -63,18 +66,21 @@ def provenance(created_ms, updated_ms=None):
             "observed_at_ms": latest_ms, "available_at_ms": latest_ms,
             "created_at_ms": created_ms, "updated_at_ms": latest_ms,
             "slot": None, "commitment": "UNAVAILABLE", "transformation_version": 1,
+            "state": "AVAILABLE", "missingness": ["solana_slot", "chain_commitment"],
             "quality_flags": ["SERVER_RECORDED_ACTION", "CONTENT_SELF_DECLARED",
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store:
-    def __init__(self, state, clock=now_ms):
+class Store(WalletProofMethods, ObservationMethods):
+    def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
         self.clock = clock
+        self.rpc = rpc
+        self.schema_version = _schema_version
         self._check_directory()
         with closing(self._connection()) as connection:
-            self._check_schema(connection)
+            self._check_schema(connection, self.schema_version)
 
     def _check_directory(self):
         try:
@@ -118,9 +124,9 @@ class Store:
             raise
 
     @staticmethod
-    def _check_schema(connection):
+    def _check_schema(connection, expected=SCHEMA_VERSION):
         if (connection.execute("PRAGMA application_id").fetchone()[0] != APPLICATION_ID
-                or connection.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION):
+                or connection.execute("PRAGMA user_version").fetchone()[0] != expected):
             raise Problem(503, "UNSUPPORTED_SCHEMA")
 
     @classmethod
@@ -145,6 +151,7 @@ class Store:
             connection.execute("PRAGMA page_size=4096")
             connection.execute("PRAGMA max_page_count=16384")
             schema = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
+            schema += Path(__file__).with_name("migration_002.sql").read_text(encoding="utf-8")
             connection.executescript("BEGIN IMMEDIATE;\n" + schema)
             connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -179,6 +186,37 @@ class Store:
             raise
         else:
             connection.close()
+        return cls(state, clock)
+
+    @classmethod
+    def migrate(cls, state, backup_file, clock=now_ms):
+        """Offline schema-1 upgrade; preserve an exclusive consistent backup first."""
+        legacy = cls(state, clock, _schema_version=1)
+        legacy.audit()
+        legacy.backup(backup_file)
+        with closing(sqlite3.connect(backup_file, autocommit=True)) as saved:
+            checkpoint = saved.execute("SELECT seq,hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
+        with closing(legacy._connection()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                cls._check_schema(connection, 1)
+                current = connection.execute("SELECT seq,hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
+                if current is None or tuple(current) != checkpoint:
+                    raise Problem(409, "STATE_CHANGED_DURING_MIGRATION")
+                # executescript would implicitly commit a pending transaction. Execute
+                # this module-owned, simple DDL statement list without that API.
+                ddl = Path(__file__).with_name("migration_002.sql").read_text(encoding="utf-8")
+                for statement in ddl.split(";"):
+                    if statement.strip():
+                        connection.execute(statement)
+                connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                legacy._event(connection, {"role": "OWNER", "principal_id": "owner"},
+                              "SCHEMA_MIGRATE", "schema", {"from": 1, "to": 2,
+                              "backup_audit_head": checkpoint[1]}, clock())
+                connection.execute("COMMIT")
+            except BaseException:
+                connection.execute("ROLLBACK")
+                raise
         return cls(state, clock)
 
     @staticmethod
@@ -272,10 +310,25 @@ class Store:
         result["content_classification"] = "LABEL"
         return result
 
+    def _agent_public(self, connection, row):
+        result = self._public(row)
+        result["wallet_proof"] = self._proof_summary(connection, result["id"])
+        result["wallet_status"] = result["wallet_proof"]["status"]
+        # The action provenance and the derived historical signature proof are
+        # separate measurements. Other profile content remains self-declared.
+        if result["wallet_status"] == "SIGNATURE_VERIFIED":
+            flags = result["provenance"]["quality_flags"]
+            flags.remove("WALLET_CONTROL_UNVERIFIED")
+            flags.append("WALLET_CONTROL_PROVEN_AT_RECORDED_TIME")
+        return result
+
     def call(self, method, route, body=None, token=None, limit=50, after=""):
+        if self.schema_version != SCHEMA_VERSION:
+            raise Problem(503, "MIGRATION_REQUIRED")
         if method not in {"GET", "POST", "PATCH"}:
             raise Problem(405, "METHOD_NOT_ALLOWED")
-        if type(route) is not str or len(route) > 256 or "?" in route or "%" in route:
+        if (type(route) is not str or len(route) > 256 or "?" in route or "%" in route
+                or route.endswith("/") or "//" in route):
             raise Problem(400, "INVALID_ROUTE")
         body = {} if body is None else object_value(body)
         try:
@@ -304,7 +357,6 @@ class Store:
                 self._rate(connection, principal, at)
                 response = self._write(connection, principal, method, route, body, at)
             connection.execute("COMMIT")
-            return response
         except sqlite3.IntegrityError:
             if connection.in_transaction:
                 connection.execute("ROLLBACK")
@@ -319,16 +371,24 @@ class Store:
             raise
         finally:
             connection.close()
+        if method == "POST" and len(route.strip("/").split("/")) == 4 and route.endswith("/transactions"):
+            return self._complete_observation(response, token)
+        return response
 
     def _read(self, connection, route, token, at, limit, after):
         parts = route.strip("/").split("/")
+        if parts[:2] == ["v1", "transactions"] or (len(parts) == 4 and parts[:2] == ["v1", "agents"] and parts[3] == "transactions"):
+            return self._observations_read(connection, route, limit, after)
         if route == "/v1/status":
-            return 200, {"schema_version": SCHEMA_VERSION, "service": "zoora-agent-community/0.1.0",
+            return 200, {"schema_version": SCHEMA_VERSION, "service": "zoora-agent-community/0.2.0",
                          "mode": "LOCAL_ONLY", "observed_at_ms": at,
                          "instance_id": connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()[0],
                          "counts": {name: connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
                                     for name in ("agents", "projects", "posts", "offers")},
                          "counts_classification": "DERIVED",
+                         "provenance": dict(provenance(at), classification="DERIVED", source="ZOORA_SQLITE_SNAPSHOT_V2", quality_flags=["LOCAL_DATABASE_COUNTS", "NOT_EXTERNAL_ATTESTATION"]),
+                         "transaction_observations": connection.execute("SELECT COUNT(*) FROM transactions").fetchone()[0],
+                         "wallet_proof": "RAW_ED25519_V1", "solana_rpc": "CONFIGURED" if self.rpc else "DISABLED",
                          "custody": "NONE", "wallet_execution": "UNAVAILABLE", "limits": dict(LIMITS)}
         if route == "/v1/me":
             principal = self._authenticate(connection, token, at)
@@ -349,14 +409,18 @@ class Store:
         if len(parts) == 2:
             rows = connection.execute(f"SELECT * FROM {table} WHERE id>? ORDER BY id LIMIT ?", (after, limit + 1)).fetchall()
             items = [self._public(row) for row in rows[:limit]]
+            if table == "agents":
+                items = [self._agent_public(connection, row) for row in rows[:limit]]
             if table == "offers":
                 for item in items:
                     item["available"] = self._offer_available(connection, item)
             return 200, {"items": items, "next_after": items[-1]["id"] if len(rows) > limit else None}
         record_id = identifier(parts[2])
         record = self._row(connection, table, record_id)
+        if table == "agents" and len(parts) == 4 and parts[3] == "wallet-proof":
+            return 200, self._proof_read(connection, record_id)
         if len(parts) == 3:
-            result = self._public(record)
+            result = self._agent_public(connection, record) if table == "agents" else self._public(record)
             if table == "offers":
                 result["available"] = self._offer_available(connection, result)
             return 200, result
@@ -408,13 +472,12 @@ class Store:
             self._event(connection, principal, "CREDENTIAL_ROTATE", principal["principal_id"],
                         {"old_credential_id": principal["id"], "credential_id": issued["credential_id"]}, at)
             return 201, {"credential": issued}
+        if method == "POST" and route == "/v1/wallet/challenges":
+            return self._new_challenge(connection, principal, profile(body), at)
         if method == "POST" and route == "/v1/agents":
             self._role(principal, "OPERATOR")
-            fields(body, ("handle", "wallet", "capabilities"), ("bio",))
-            name = handle(body["handle"])
-            address = wallet(body["wallet"])
-            tags = capabilities(body["capabilities"])
-            bio = text(body.get("bio", ""), 512, 0)
+            challenge, payload = self._consume_challenge(connection, principal, body, at)
+            name, address, tags, bio = (payload[key] for key in ("handle", "wallet", "capabilities", "bio"))
             self._capacity(connection, "agents")
             self._capacity(connection, "handles")
             if connection.execute("SELECT 1 FROM handles WHERE handle=?", (name,)).fetchone():
@@ -423,10 +486,12 @@ class Store:
             connection.execute("INSERT INTO agents VALUES (?,?,?,?,?,?,1,?,?)",
                                (record_id, principal["principal_id"], name, address, canonical(tags), bio, at, at))
             connection.execute("INSERT INTO handles VALUES (?,?)", (name, record_id))
+            proof_id = self._record_proof(connection, challenge, record_id, body["signature"], at)
             issued = self._issue(connection, "AGENT", record_id, at)
             self._event(connection, principal, "AGENT_REGISTER", record_id,
-                        {"credential_id": issued["credential_id"], "wallet_status": "DECLARED_UNVERIFIED"}, at)
-            return 201, {"agent": self._public(self._row(connection, "agents", record_id)), "credential": issued}
+                        {"credential_id": issued["credential_id"], "wallet_status": "SIGNATURE_VERIFIED",
+                         "proof_id": proof_id, "proof_sha256": self._row(connection, "wallet_proofs", proof_id)["digest"]}, at)
+            return 201, {"agent": self._agent_public(connection, self._row(connection, "agents", record_id)), "credential": issued}
         if len(parts) == 3 and parts[:2] == ["v1", "operators"] and method == "PATCH":
             self._role(principal, "OWNER")
             record_id = identifier(parts[2])
@@ -453,6 +518,20 @@ class Store:
             record_id = identifier(parts[2])
             agent = self._row(connection, "agents", record_id)
             self._manage_agent(principal, agent)
+            if len(parts) == 4 and parts[3] == "transactions" and method == "POST":
+                return self._begin_observation(connection, principal, record_id, body, at)
+            if len(parts) == 4 and parts[3] == "wallet-challenges" and method == "POST":
+                fields(body)
+                payload = {"handle": agent["handle"], "wallet": agent["wallet"],
+                           "capabilities": json.loads(agent["capabilities"]), "bio": agent["bio"]}
+                return self._new_challenge(connection, principal, payload, at, record_id)
+            if len(parts) == 4 and parts[3] == "wallet-proof" and method == "POST":
+                self._active_agent(connection, record_id)
+                challenge, _payload = self._consume_challenge(connection, principal, body, at, record_id)
+                proof_id = self._record_proof(connection, challenge, record_id, body["signature"], at)
+                self._event(connection, principal, "WALLET_PROVE", record_id, {"proof_id": proof_id,
+                            "proof_sha256": self._row(connection, "wallet_proofs", proof_id)["digest"]}, at)
+                return 201, self._proof_read(connection, record_id)
             if len(parts) == 4 and parts[3] == "credentials" and method == "POST":
                 self._role(principal, "OPERATOR")
                 fields(body)
@@ -487,7 +566,7 @@ class Store:
                 connection.execute("UPDATE agents SET handle=?,capabilities=?,bio=?,active=?,updated_ms=? WHERE id=?",
                                    (agent["handle"], agent["capabilities"], agent["bio"], agent["active"], at, record_id))
                 self._event(connection, principal, "AGENT_PROFILE_UPDATE", record_id, {"fields": sorted(body)}, at)
-                return 200, self._public(self._row(connection, "agents", record_id))
+                return 200, self._agent_public(connection, self._row(connection, "agents", record_id))
         # Work and discussion writes are agent-scoped. Operator/owner tokens cannot impersonate authors.
         self._role(principal, "AGENT")
         agent_id = principal["principal_id"]
@@ -578,7 +657,7 @@ class Store:
     def audit(self):
         connection = self._connection()
         try:
-            self._check_schema(connection)
+            self._check_schema(connection, self.schema_version)
             connection.execute("BEGIN")
             if connection.execute("PRAGMA integrity_check").fetchall()[0][0] != "ok" or connection.execute("PRAGMA foreign_key_check").fetchall():
                 raise Problem(503, "INTEGRITY_FAILURE")
@@ -595,6 +674,8 @@ class Store:
                     raise Problem(503, "AUDIT_CHAIN_FAILURE")
                 previous, at = digest, row["at_ms"]
             for table in LIMITS:
+                if self.schema_version == 1 and table in ("wallet_challenges", "wallet_proofs", "transactions"):
+                    continue
                 if connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] > LIMITS[table]:
                     raise Problem(503, "STORAGE_LIMIT_VIOLATION")
             # Check relationships beyond SQL's foreign-key coverage.
@@ -608,8 +689,14 @@ class Store:
             ]
             if any(connection.execute(sql).fetchone() is not None for sql in checks):
                 raise Problem(503, "RELATIONSHIP_FAILURE")
+            if self.schema_version >= 2:
+                try:
+                    self._audit_wallet_proofs(connection)
+                    self._audit_observations(connection)
+                except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+                    raise Problem(503, "EVIDENCE_CONSISTENCY_FAILURE") from None
             connection.execute("COMMIT")
-            return {"schema_version": SCHEMA_VERSION, "audit_events": seq, "audit_head": previous,
+            return {"schema_version": self.schema_version, "audit_events": seq, "audit_head": previous,
                     "database_integrity": "OK", "foreign_keys": "OK", "relationships": "OK",
                     "sqlite_defensive": connection.getconfig(sqlite3.SQLITE_DBCONFIG_DEFENSIVE),
                     "extension_loading": connection.getconfig(sqlite3.SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION),
@@ -619,7 +706,7 @@ class Store:
                 connection.execute("ROLLBACK")
             connection.close()
 
-    def recover_owner(self, destination):
+    def recover_owner(self, destination, invalidate_all=False):
         # Offline host control already permits editing this database. Recovery is
         # intentionally absent from HTTP and records a privileged local action.
         connection = self._connection()
@@ -629,9 +716,12 @@ class Store:
             connection.execute("BEGIN IMMEDIATE")
             at = self.clock()
             issued = self._issue(connection, "OWNER", "owner", at)
-            connection.execute("UPDATE credentials SET revoked=1 WHERE role='OWNER' AND id<>?", (issued["credential_id"],))
+            if invalidate_all:
+                connection.execute("UPDATE credentials SET revoked=1 WHERE id<>?", (issued["credential_id"],))
+            else:
+                connection.execute("UPDATE credentials SET revoked=1 WHERE role='OWNER' AND id<>?", (issued["credential_id"],))
             self._event(connection, {"role": "OWNER", "principal_id": "owner"}, "OWNER_LOCAL_RECOVERY", "owner",
-                        {"credential_id": issued["credential_id"]}, at)
+                        {"credential_id": issued["credential_id"], "all_credentials_invalidated": invalidate_all}, at)
             output = exclusive_file(destination)
             output.write((canonical(issued) + "\n").encode("utf-8"))
             output.flush()

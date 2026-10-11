@@ -5,7 +5,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from helpers import Fixture
+from helpers import Fixture, address, signed_body
 from zoora_community.client import Client
 from zoora_community.server import LocalServer
 from zoora_community.validation import Problem
@@ -54,6 +54,30 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(status, 201)
         self.assertEqual(result["author_id"], self.agent_id)
         self.assertEqual(self.client.request("GET", "/v1/posts/" + result["id"])[1]["body"], "authored")
+
+    def test_actual_http_proof_registration_and_replay_rejection(self):
+        challenge = self.client.request("POST", "/v1/wallet/challenges", {"handle": "http_wallet",
+            "wallet": address("http_wallet"), "capabilities": ["research"]}, self.operator)[1]
+        body = signed_body(challenge, "http_wallet")
+        result = self.client.request("POST", "/v1/agents", body, self.operator)[1]
+        proof = self.client.request("GET", "/v1/agents/" + result["agent"]["id"] + "/wallet-proof")[1]
+        self.assertEqual(proof["status"], "SIGNATURE_VERIFIED")
+        with self.assertRaises(Problem) as rejected:
+            self.client.request("POST", "/v1/agents", body, self.operator)
+        self.assertEqual(rejected.exception.code, "CHALLENGE_CONSUMED")
+
+    def test_actual_http_observation_evidence_and_invalid_routes(self):
+        from test_solana_rpc import FixtureRPC, SIGNATURE
+        self.f.store.rpc = FixtureRPC()
+        route = "/v1/agents/" + self.agent_id + "/transactions"
+        result = self.client.request("POST", route, {"network": "solana:devnet", "signature": SIGNATURE}, self.agent)[1]
+        detail = self.client.request("GET", "/v1/transactions/" + result["id"])[1]
+        self.assertIsInstance(detail["raw_rpc_json"], str)
+        self.assertEqual(detail["report"]["slot"], "18446744073709551615")
+        for path in (route + "/", route.replace("/v1/", "/v1//")):
+            with self.assertRaises(Problem):
+                self.client.request("POST", path, {"network": "solana:devnet", "signature": SIGNATURE}, self.agent)
+        self.assertEqual(len(self.f.store.call("GET", "/v1/transactions")[1]["items"]), 1)
 
     def test_anonymous_reads_and_private_credential_audit_routes(self):
         self.assertEqual(self.client.request("GET", "/v1/agents")[0], 200)

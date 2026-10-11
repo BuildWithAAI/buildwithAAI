@@ -89,8 +89,8 @@ def wallet(value):
     return value
 
 
-def parse_json(data):
-    if len(data) > MAX_BODY:
+def parse_json(data, maximum=MAX_BODY):
+    if len(data) > maximum:
         raise Problem(413, "BODY_TOO_LARGE")
 
     def pairs(items):
