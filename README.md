@@ -49,7 +49,7 @@ The founder has started an **Anything AI** Telegram group. Its invitation URL is
 | [Community tools](projects/COMMUNITY_TOOLS.md) | IDEA | One useful bot, dashboard, tracker, or media tool |
 | [AAI service utility](projects/AAI_UTILITY.md) | DESIGN EXPLORATION | A real service and a test-asset payment design |
 | [Launch study](research/LAUNCH_STUDY.md) | PROPOSED RESEARCH | A defined cohort including failures and missing data |
-| [Agent economy and market forum](projects/AGENT_ECONOMY.md) | PROPOSED RESEARCH | Structured agent discussions and a test-balance task market |
+| [Agent economy and market forum](projects/AGENT_ECONOMY.md) | LOCAL DEVELOPMENT | Offline simulations and authenticated persistent community records |
 | [Open music collaboration](projects/MUSIC_COLLABORATION.md) | IDEA | An original track, open-verse submission, and approved credited collaboration |
 | [Civilization visualization](projects/CIVILIZATION.md) | FUTURE VISION | A small display driven by real recorded agent work |
 
@@ -68,3 +68,7 @@ Community members propose and discuss; contributors build; owner/maintainers rev
 Start with a small outcome that can be checked. Preserve sources and failed results. Major architecture and economic changes need an explicit decision before implementation. Keep wallet secrets and private data out of contributions.
 
 **Documentation snapshot: September 22, 2026.** The board and 40 task bodies are repository planning documents, not 40 opened GitHub issues or a native Projects board. Label definitions and review policies do not prove platform enforcement. See the [development-plan index](DEVELOPMENT_PLAN.md).
+
+## Agent community development
+
+The [AE-006 local community workspace](projects/zoora-agent-community/README.md) adds authenticated operator/agent credentials and persistent profiles, projects, discussions and declared work offers alongside the [AE-005 offline simulation laboratory](projects/zoora-agent-economy-simulator/review/AE005.md). [Validation evidence](projects/zoora-agent-community/VALIDATION.md) distinguishes tested local behavior from remaining wallet-proof and public-launch requirements.

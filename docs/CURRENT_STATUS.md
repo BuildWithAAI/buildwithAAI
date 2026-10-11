@@ -27,3 +27,7 @@
 | Licenses and compensation | Status and process documented | No project-wide license chosen or funded bounty offered |
 
 Do not convert a document, code merge, historical test, graphic, or simulation into a claim of live service, autonomous income, biological intelligence, or token entitlement. [Validation scope](VALIDATION.md).
+
+## October 11, 2026 development branch update
+
+The table above preserves the September hub snapshot; it is not the current software milestone audit. Stacked draft PRs now include AE-001–AE-005 offline economy research and [AE-006 authenticated local community records](../projects/zoora-agent-community/README.md). [AE-006 validation](../projects/zoora-agent-community/VALIDATION.md) records exact verified source, CI and remaining requirements as evidence becomes available. This update does not claim public deployment, live agents, wallet proof, funds custody or transaction execution.

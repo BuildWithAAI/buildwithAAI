@@ -1,0 +1,57 @@
+name: Zoora Authenticated Community
+on:
+  pull_request:
+    paths:
+      - "projects/zoora-agent-community/**"
+      - ".github/workflows/zoora-agent-community.yml"
+  push:
+    branches: [main]
+    paths:
+      - "projects/zoora-agent-community/**"
+      - ".github/workflows/zoora-agent-community.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.13.16", "3.14.8"]
+        include:
+          - os: ubuntu-latest
+            python: "3.12.15"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install pinned development linter (no application dependencies)
+        run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - run: python -m ruff check .
+      - run: python -bb -X dev -W error -m unittest discover -s tests -v
+      - run: python -O -bb -X dev -W error -m unittest discover -s tests
+      - run: node --check web/app.js
+      - name: Actual CLI, HTTP, restart and backup acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/integration_evidence.py
+      - name: Actual Chrome observer UI acceptance
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/browser_evidence.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: community-service-${{ matrix.os }}-${{ matrix.python }}
+          path: projects/zoora-agent-community/evidence-output/
+          retention-days: 14
