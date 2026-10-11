@@ -45,7 +45,7 @@ class HttpTests(unittest.TestCase):
         try:
             connection.request(method, path, body, headers or {})
             response = connection.getresponse()
-            return response.status, dict(response.getheaders()), response.read()
+            return response.status, response.headers, response.read()
         finally:
             connection.close()
 

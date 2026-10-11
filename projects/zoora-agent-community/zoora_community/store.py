@@ -11,6 +11,7 @@ import time
 import uuid
 from contextlib import closing
 
+from . import VERSION
 from .validation import (
     DIGEST, MAX_BODY, TOKEN, Problem, boolean, canonical, capabilities, fields,
     handle, identifier, matching, object_value, text,
@@ -380,7 +381,7 @@ class Store(WalletProofMethods, ObservationMethods):
         if parts[:2] == ["v1", "transactions"] or (len(parts) == 4 and parts[:2] == ["v1", "agents"] and parts[3] == "transactions"):
             return self._observations_read(connection, route, limit, after)
         if route == "/v1/status":
-            return 200, {"schema_version": SCHEMA_VERSION, "service": "zoora-agent-community/0.2.0",
+            return 200, {"schema_version": SCHEMA_VERSION, "service": "zoora-agent-community/" + VERSION,
                          "mode": "LOCAL_ONLY", "observed_at_ms": at,
                          "instance_id": connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()[0],
                          "counts": {name: connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
@@ -740,26 +741,35 @@ class Store(WalletProofMethods, ObservationMethods):
             connection.close()
 
     def backup(self, destination):
-        destination = Path(destination).absolute()
-        source = self._connection()
-        created = False
-        target = None
+        from .recovery import create_backup
+        return create_backup(self, destination)
+
+    def storage_probe(self, token=None, *, local=False):
+        """Authenticate, test a real journal write, then roll it back completely."""
+        connection = self._connection()
         try:
-            with exclusive_file(destination):
-                created = True
-            target = sqlite3.connect(destination, autocommit=True)
-            source.backup(target)
-            if target.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
-                raise Problem(503, "BACKUP_FAILED")
-            target.close()
-            target = None
-            with destination.open("r+b") as output:
-                os.fsync(output.fileno())
-        except BaseException:
-            if target is not None:
-                target.close()
-            if created:
-                destination.unlink(missing_ok=True)
-            raise
+            self._check_schema(connection)
+            connection.execute("BEGIN IMMEDIATE")
+            at = self.clock()
+            if not local:
+                principal = self._authenticate(connection, token, at)
+                if principal["role"] not in ("OWNER", "OPERATOR"):
+                    raise Problem(403, "FORBIDDEN")
+            last = connection.execute("SELECT at_ms FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
+            if last is None or at < last[0]:
+                raise Problem(503, "CLOCK_REGRESSION")
+            instance = connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()
+            if instance is None:
+                raise Problem(503, "INTEGRITY_FAILURE")
+            identifier(instance[0])
+            connection.execute("UPDATE metadata SET value=? WHERE key='instance_id'", (new_id(),))
+            connection.execute("ROLLBACK")
+            return {"instance_id": instance[0], "schema_version": self.schema_version,
+                    "database_read": "AVAILABLE", "database_write_rollback": "AVAILABLE",
+                    "observed_at_ms": at}
+        except sqlite3.Error:
+            raise Problem(503, "STORAGE_UNAVAILABLE") from None
         finally:
-            source.close()
+            if connection.in_transaction:
+                connection.execute("ROLLBACK")
+            connection.close()

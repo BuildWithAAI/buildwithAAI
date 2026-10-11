@@ -41,6 +41,8 @@ class Running:
                 lines = self.path.read_text().splitlines()
                 if lines:
                     info = json.loads(lines[0])
+                    self.transport = info["transport"]
+                    self.package_digest = info["package_digest"]
                     self.origin = info["url"]
                     self.port = int(self.origin.rsplit(":", 1)[1])
                     self.client = Client(self.port)
@@ -152,6 +154,7 @@ def run():
                 "sqlite_defensive": audit["sqlite_defensive"], "extension_loading": audit["extension_loading"],
                 "runtime_patch_audit": "UNVERIFIED",
                 "pynacl": __import__("nacl").__version__,
+                "transport": running.transport,
                 "customer_wallets": 0, "chain_requests": 0, "transactions_submitted": 0}
     output = ROOT / "evidence-output"
     output.mkdir(exist_ok=True)
