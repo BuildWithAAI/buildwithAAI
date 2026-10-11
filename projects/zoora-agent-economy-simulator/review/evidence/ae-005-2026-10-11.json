@@ -1,0 +1,1710 @@
+{
+  "schema_version": 1,
+  "milestone": "AE-005",
+  "recorded_at_utc": "2026-10-11",
+  "status": {
+    "implemented": true,
+    "tested": true,
+    "verified_offline": true,
+    "deployed": false,
+    "chain_integration_verified": false,
+    "llm_runtime_verified": false,
+    "wallet_ownership_verified": false
+  },
+  "branch": "feature/ae-005-community-simulations",
+  "base_head_sha": "a38452719ced469472e94a5aa6295001079cfe2f",
+  "pull_request": "https://github.com/BuildWithAAI/buildwithAAI/pull/14",
+  "ci": {
+    "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+    "runs": [
+      {
+        "id": 38110446846,
+        "name": "Zoora Task Market",
+        "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38110446846",
+        "head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "id": 114384718690,
+            "name": "test (ubuntu-latest)",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo fmt --all -- --check",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --release --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo build --locked --release",
+                "conclusion": "success"
+              },
+              {
+                "name": "CLI, replay, independent fingerprint and concurrent scaling",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          },
+          {
+            "id": 114384718761,
+            "name": "test (windows-latest)",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo fmt --all -- --check",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --release --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo build --locked --release",
+                "conclusion": "success"
+              },
+              {
+                "name": "CLI, replay, independent fingerprint and concurrent scaling",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          },
+          {
+            "id": 114384718784,
+            "name": "dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo metadata --locked --format-version 1 > dependency-metadata.json",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo audit --json > audit.json",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 38110447002,
+        "name": "Zoora Review Market",
+        "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38110447002",
+        "head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "id": 114384719142,
+            "name": "test (windows-latest)",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo fmt --all -- --check",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --release --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo build --locked --release",
+                "conclusion": "success"
+              },
+              {
+                "name": "CLI, replay, independent fingerprint and concurrent scaling",
+                "conclusion": "success"
+              },
+              {
+                "name": "Allocation, noncustodial transcript and verified viewer integration",
+                "conclusion": "success"
+              },
+              {
+                "name": "Community simulations, replay and CSV evidence",
+                "conclusion": "success"
+              },
+              {
+                "name": "Real Chrome viewer integration and screenshots",
+                "conclusion": "skipped"
+              },
+              {
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          },
+          {
+            "id": 114384719228,
+            "name": "test (ubuntu-latest)",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo fmt --all -- --check",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --release --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo build --locked --release",
+                "conclusion": "success"
+              },
+              {
+                "name": "CLI, replay, independent fingerprint and concurrent scaling",
+                "conclusion": "success"
+              },
+              {
+                "name": "Allocation, noncustodial transcript and verified viewer integration",
+                "conclusion": "success"
+              },
+              {
+                "name": "Community simulations, replay and CSV evidence",
+                "conclusion": "success"
+              },
+              {
+                "name": "Real Chrome viewer integration and screenshots",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          },
+          {
+            "id": 114384719276,
+            "name": "dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo metadata --locked --format-version 1 > dependency-metadata.json",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo audit --json > audit.json",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 38110446796,
+        "name": "Zoora Agent Economy Simulator",
+        "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38110446796",
+        "head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "id": 114384718709,
+            "name": "dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo audit --json > audit.json",
+                "conclusion": "success"
+              },
+              {
+                "name": "Preserve dependency audit",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          },
+          {
+            "id": 114384718861,
+            "name": "test (windows-latest)",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo fmt --all -- --check",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --release --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo build --locked --release",
+                "conclusion": "success"
+              },
+              {
+                "name": "CLI, replay, determinism and measured scaling",
+                "conclusion": "success"
+              },
+              {
+                "name": "Collect validation evidence",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          },
+          {
+            "id": 114384718888,
+            "name": "test (ubuntu-latest)",
+            "status": "completed",
+            "conclusion": "success",
+            "steps": [
+              {
+                "name": "Set up job",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo fmt --all -- --check",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo test --locked --release --all-targets",
+                "conclusion": "success"
+              },
+              {
+                "name": "Run cargo build --locked --release",
+                "conclusion": "success"
+              },
+              {
+                "name": "CLI, replay, determinism and measured scaling",
+                "conclusion": "success"
+              },
+              {
+                "name": "Collect validation evidence",
+                "conclusion": "success"
+              },
+              {
+                "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "conclusion": "success"
+              },
+              {
+                "name": "Complete job",
+                "conclusion": "success"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "test_summaries": [
+      {
+        "run": 38110446796,
+        "name": "Zoora Agent Economy Simulator",
+        "job": 114384718861,
+        "platform": "test (windows-latest)",
+        "passed_test_groups": [
+          0,
+          0,
+          6,
+          3,
+          3,
+          18,
+          1,
+          2,
+          8,
+          2,
+          0,
+          0,
+          6,
+          3,
+          3,
+          18,
+          1,
+          2,
+          8,
+          2
+        ],
+        "failed_test_results": []
+      },
+      {
+        "run": 38110446796,
+        "name": "Zoora Agent Economy Simulator",
+        "job": 114384718888,
+        "platform": "test (ubuntu-latest)",
+        "passed_test_groups": [
+          0,
+          0,
+          7,
+          3,
+          3,
+          18,
+          1,
+          2,
+          8,
+          2,
+          0,
+          0,
+          7,
+          3,
+          3,
+          18,
+          1,
+          2,
+          8,
+          2
+        ],
+        "failed_test_results": []
+      },
+      {
+        "run": 38110446846,
+        "name": "Zoora Task Market",
+        "job": 114384718690,
+        "platform": "test (ubuntu-latest)",
+        "passed_test_groups": [
+          0,
+          0,
+          31,
+          0,
+          0,
+          31
+        ],
+        "failed_test_results": []
+      },
+      {
+        "run": 38110446846,
+        "name": "Zoora Task Market",
+        "job": 114384718761,
+        "platform": "test (windows-latest)",
+        "passed_test_groups": [
+          0,
+          0,
+          31,
+          0,
+          0,
+          31
+        ],
+        "failed_test_results": []
+      },
+      {
+        "run": 38110447002,
+        "name": "Zoora Review Market",
+        "job": 114384719142,
+        "platform": "test (windows-latest)",
+        "passed_test_groups": [
+          0,
+          0,
+          25,
+          26,
+          18,
+          39,
+          0,
+          0,
+          25,
+          26,
+          18,
+          39
+        ],
+        "failed_test_results": []
+      },
+      {
+        "run": 38110447002,
+        "name": "Zoora Review Market",
+        "job": 114384719228,
+        "platform": "test (ubuntu-latest)",
+        "passed_test_groups": [
+          0,
+          0,
+          25,
+          26,
+          18,
+          39,
+          0,
+          0,
+          25,
+          26,
+          18,
+          39
+        ],
+        "failed_test_results": []
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 11691139423,
+        "name": "market-dependency-audit",
+        "zip_digest": "sha256:9996079cc7db8b0e49b7235cc6e5ba243e0f3380c8748d09687f036a457448a1",
+        "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+        "digest_verified": true
+      },
+      {
+        "id": 11691299281,
+        "name": "review-validation-ubuntu-latest",
+        "zip_digest": "sha256:701995ccbfeb114f511949a147078779bde3bfe96606f33248f9d937de2248e4",
+        "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+        "digest_verified": true
+      },
+      {
+        "id": 11690959552,
+        "name": "review-dependency-audit",
+        "zip_digest": "sha256:4b4ed6a9cada8def2e9c6906e0ef338db01bd577ecdc38a498443bb65985b71e",
+        "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+        "digest_verified": true
+      },
+      {
+        "id": 11690858145,
+        "name": "review-validation-windows-latest",
+        "zip_digest": "sha256:17554e44cfe5d0d50f5adf337b08b84b3392857e851ede00aa12677c76e23f65",
+        "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+        "digest_verified": true
+      },
+      {
+        "id": 11691655538,
+        "name": "simulator-dependency-audit",
+        "zip_digest": "sha256:69c3ad9813caf672c4b68687204f65129ee590718cbccc6b78d91965741a6f82",
+        "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+        "digest_verified": true
+      }
+    ]
+  },
+  "test_counts_per_platform_per_profile": {
+    "review": 108,
+    "new_community": 26,
+    "marketplace": 31,
+    "foundation_linux": 44,
+    "foundation_windows": 43
+  },
+  "rust_toolchain": "1.99.0",
+  "cargo_audit_version": "0.22.2",
+  "dependency_audits": {
+    "simulator-dependency-audit": {
+      "database": {
+        "advisory-count": 1296,
+        "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+        "last-updated": "2026-10-09T10:12:02+02:00"
+      },
+      "lockfile": {
+        "dependency-count": 37
+      },
+      "settings": {
+        "target_arch": [],
+        "target_os": [],
+        "severity": null,
+        "ignore": [],
+        "informational_warnings": [
+          "unmaintained",
+          "unsound",
+          "notice"
+        ]
+      },
+      "vulnerabilities": {
+        "found": false,
+        "count": 0,
+        "list": []
+      },
+      "warnings": {}
+    },
+    "market-dependency-audit": {
+      "database": {
+        "advisory-count": 1296,
+        "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+        "last-updated": "2026-10-09T10:12:02+02:00"
+      },
+      "lockfile": {
+        "dependency-count": 38
+      },
+      "settings": {
+        "target_arch": [],
+        "target_os": [],
+        "severity": null,
+        "ignore": [],
+        "informational_warnings": [
+          "unmaintained",
+          "unsound",
+          "notice"
+        ]
+      },
+      "vulnerabilities": {
+        "found": false,
+        "count": 0,
+        "list": []
+      },
+      "warnings": {}
+    },
+    "review-dependency-audit": {
+      "database": {
+        "advisory-count": 1296,
+        "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+        "last-updated": "2026-10-09T10:12:02+02:00"
+      },
+      "lockfile": {
+        "dependency-count": 39
+      },
+      "settings": {
+        "target_arch": [],
+        "target_os": [],
+        "severity": null,
+        "ignore": [],
+        "informational_warnings": [
+          "unmaintained",
+          "unsound",
+          "notice"
+        ]
+      },
+      "vulnerabilities": {
+        "found": false,
+        "count": 0,
+        "list": []
+      },
+      "warnings": {}
+    }
+  },
+  "independent_artifact_checks": {
+    "candidate4-linux": {
+      "canonical_hash_checks": 13,
+      "scenarios": [
+        {
+          "scenario": "BALANCED",
+          "orders": 100,
+          "acknowledgments": 62,
+          "payments": "10000",
+          "voluntary_returns": "1150",
+          "net": "8850"
+        },
+        {
+          "scenario": "SPAM_RESERVATIONS",
+          "orders": 160,
+          "acknowledgments": 0,
+          "payments": "0",
+          "voluntary_returns": "0",
+          "net": "0"
+        },
+        {
+          "scenario": "PROVIDER_OFFLINE",
+          "orders": 49,
+          "acknowledgments": 29,
+          "payments": "4900",
+          "voluntary_returns": "450",
+          "net": "4450"
+        }
+      ],
+      "batch_runs": 9,
+      "matched_intentions": true,
+      "csv_accounting_and_missingness": true,
+      "html_csp_hashes": true
+    },
+    "candidate4-windows": {
+      "canonical_hash_checks": 13,
+      "scenarios": [
+        {
+          "scenario": "BALANCED",
+          "orders": 100,
+          "acknowledgments": 62,
+          "payments": "10000",
+          "voluntary_returns": "1150",
+          "net": "8850"
+        },
+        {
+          "scenario": "SPAM_RESERVATIONS",
+          "orders": 160,
+          "acknowledgments": 0,
+          "payments": "0",
+          "voluntary_returns": "0",
+          "net": "0"
+        },
+        {
+          "scenario": "PROVIDER_OFFLINE",
+          "orders": 49,
+          "acknowledgments": 29,
+          "payments": "4900",
+          "voluntary_returns": "450",
+          "net": "4450"
+        }
+      ],
+      "batch_runs": 9,
+      "matched_intentions": true,
+      "csv_accounting_and_missingness": true,
+      "html_csp_hashes": true
+    }
+  },
+  "cross_platform_byte_identical_files": [
+    "community-balanced.json",
+    "community-balanced.csv",
+    "community-balanced.html",
+    "community-spam_reservations.json",
+    "community-spam_reservations.csv",
+    "community-spam_reservations.html",
+    "community-provider_offline.json",
+    "community-provider_offline.csv",
+    "community-provider_offline.html",
+    "community-batch.json",
+    "community-batch.csv",
+    "default.json",
+    "no-budget.json",
+    "experiments.json",
+    "direct.json",
+    "experiments.html",
+    "direct.html"
+  ],
+  "committed_examples": {
+    "community-balanced.json": "9f8cdede32b24f4fd9eba19fec0e7e8250a429ab6740d18d1c23f0ebc4557736",
+    "community-balanced.csv": "980b378ef2ad80a9c78bcade209d8a5d9b497562ad53cf69b4ff46786fa61245",
+    "community-balanced.html": "a21b60c9f6169a1f54b283f3731a422d0ee5e065ccea851428c5922192f91503",
+    "community-batch.json": "2e6ff66915b76611f42161436a14d09426b08beca7d2b12417e74ad871e0a844",
+    "community-batch.csv": "28494a7e59644bf3640d4367879dd9a450e9aa1201fde5f0e60889ef38fbff74"
+  },
+  "community_integration": {
+    "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "independent_hashes_verified": true,
+    "scripted_not_llm": true,
+    "chain_integration_verified": false,
+    "run_fingerprints": {
+      "BALANCED": "f4a6cff4db298f06a23a59d4f07cca87d779f5f92f2bb6a9e10358b810b79bf4",
+      "SPAM_RESERVATIONS": "96f736d30b1ea42625a69b3af7811ca25a86071c008d0a9bd9c617856177b681",
+      "PROVIDER_OFFLINE": "913ca89a88d8476c850bdd44e01ff03ddf9550a3a5b04a6877cfa8465f1af94b"
+    },
+    "batch_fingerprint": "16596c4f754a2fffea1991c8f3a44eeb11aa8d3c1dc823cc078581c1ccc5d326",
+    "scenarios": {
+      "BALANCED": {
+        "community": {
+          "registered_agents": 20,
+          "active_agents": 20,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 11,
+          "offers": 10,
+          "accepted_orders": 100,
+          "acknowledged_deliveries": 62,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 32,
+          "accepted_order_requests": 100,
+          "rejected_commands": 0,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 13,
+            "1": 16,
+            "2": 7,
+            "3": 8,
+            "4": 9,
+            "5": 10,
+            "6": 7,
+            "7": 8,
+            "8": 15,
+            "9": 7
+          }
+        },
+        "direct": {
+          "payments_recorded": "10000",
+          "voluntary_refunds_recorded": "1150",
+          "net_transferred": "8850",
+          "refund_requests": 26,
+          "declined_refunds": 9,
+          "unresolved_refund_requests": 20,
+          "overdue_deliveries": 38,
+          "unresolved_disputes": 20,
+          "rejected_commands": 0
+        }
+      },
+      "SPAM_RESERVATIONS": {
+        "community": {
+          "registered_agents": 20,
+          "active_agents": 20,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 13,
+          "offers": 10,
+          "accepted_orders": 160,
+          "acknowledged_deliveries": 0,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 160,
+          "pending_deliveries_at_finish": 0,
+          "accepted_order_requests": 260,
+          "rejected_commands": 103,
+          "provider_capacity_rejections": 100,
+          "post_rate_rejections": 3,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 16,
+            "1": 16,
+            "2": 16,
+            "3": 16,
+            "4": 16,
+            "5": 16,
+            "6": 16,
+            "7": 16,
+            "8": 16,
+            "9": 16
+          }
+        },
+        "direct": {
+          "payments_recorded": "0",
+          "voluntary_refunds_recorded": "0",
+          "net_transferred": "0",
+          "refund_requests": 0,
+          "declined_refunds": 0,
+          "unresolved_refund_requests": 0,
+          "overdue_deliveries": 0,
+          "unresolved_disputes": 0,
+          "rejected_commands": 0
+        }
+      },
+      "PROVIDER_OFFLINE": {
+        "community": {
+          "registered_agents": 20,
+          "active_agents": 15,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 11,
+          "offers": 10,
+          "accepted_orders": 49,
+          "acknowledged_deliveries": 29,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 18,
+          "accepted_order_requests": 100,
+          "rejected_commands": 51,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "1": 16,
+            "3": 8,
+            "5": 10,
+            "7": 8,
+            "9": 7
+          }
+        },
+        "direct": {
+          "payments_recorded": "4900",
+          "voluntary_refunds_recorded": "450",
+          "net_transferred": "4450",
+          "refund_requests": 12,
+          "declined_refunds": 5,
+          "unresolved_refund_requests": 10,
+          "overdue_deliveries": 20,
+          "unresolved_disputes": 10,
+          "rejected_commands": 0
+        }
+      }
+    },
+    "batch_runs": [
+      {
+        "seed": 7,
+        "scenario": "BALANCED",
+        "intentions_fingerprint": "07c97b5b0ef3645722996fc270491e61142fce01604bcd450f26e99d9953b11c",
+        "report_fingerprint": "14c40aba3f2e21ebddf49b4baaa0a61cb923ad0165ef71a1cf20e5f44998995d",
+        "community_fingerprint": "1eda6d89794f8afd71bba0ee5b4f3d60128a698138038c9f5572281706ad7646",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 20,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 11,
+          "offers": 10,
+          "accepted_orders": 100,
+          "acknowledged_deliveries": 56,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 31,
+          "accepted_order_requests": 100,
+          "rejected_commands": 0,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 11,
+            "1": 10,
+            "2": 5,
+            "3": 8,
+            "4": 10,
+            "5": 14,
+            "6": 14,
+            "7": 9,
+            "8": 8,
+            "9": 11
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "10000",
+          "voluntary_refunds_recorded": "1950",
+          "net_transferred": "8050",
+          "refund_requests": 34,
+          "declined_refunds": 8,
+          "unresolved_refund_requests": 21,
+          "overdue_deliveries": 44,
+          "unresolved_disputes": 21,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 5600
+      },
+      {
+        "seed": 7,
+        "scenario": "SPAM_RESERVATIONS",
+        "intentions_fingerprint": "07c97b5b0ef3645722996fc270491e61142fce01604bcd450f26e99d9953b11c",
+        "report_fingerprint": "123e2675eed09b0a85f9c6da30e2cfdb561c51690a71b649f1012ef4b886b5f5",
+        "community_fingerprint": "06af03428bdb64e0d51725601817890e6d82856858e55c5c875b7ae87a633b1c",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 20,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 13,
+          "offers": 10,
+          "accepted_orders": 160,
+          "acknowledged_deliveries": 0,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 160,
+          "pending_deliveries_at_finish": 0,
+          "accepted_order_requests": 260,
+          "rejected_commands": 103,
+          "provider_capacity_rejections": 100,
+          "post_rate_rejections": 3,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 16,
+            "1": 16,
+            "2": 16,
+            "3": 16,
+            "4": 16,
+            "5": 16,
+            "6": 16,
+            "7": 16,
+            "8": 16,
+            "9": 16
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "0",
+          "voluntary_refunds_recorded": "0",
+          "net_transferred": "0",
+          "refund_requests": 0,
+          "declined_refunds": 0,
+          "unresolved_refund_requests": 0,
+          "overdue_deliveries": 0,
+          "unresolved_disputes": 0,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 0
+      },
+      {
+        "seed": 7,
+        "scenario": "PROVIDER_OFFLINE",
+        "intentions_fingerprint": "07c97b5b0ef3645722996fc270491e61142fce01604bcd450f26e99d9953b11c",
+        "report_fingerprint": "244fd5ec7c9bede3487cf5fa4a88763bec6c877f7cd0827c720d98983428b88f",
+        "community_fingerprint": "aa4e3a0bf523829f3a035529fa104372c773f6afba8c9e0ced6e3213389092a8",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 15,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 11,
+          "offers": 10,
+          "accepted_orders": 52,
+          "acknowledged_deliveries": 28,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 16,
+          "accepted_order_requests": 100,
+          "rejected_commands": 48,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "1": 10,
+            "3": 8,
+            "5": 14,
+            "7": 9,
+            "9": 11
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "5200",
+          "voluntary_refunds_recorded": "1250",
+          "net_transferred": "3950",
+          "refund_requests": 18,
+          "declined_refunds": 1,
+          "unresolved_refund_requests": 10,
+          "overdue_deliveries": 24,
+          "unresolved_disputes": 10,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 5384
+      },
+      {
+        "seed": 42,
+        "scenario": "BALANCED",
+        "intentions_fingerprint": "8d0d5a81a107172579f30d0a0299ad34f67ba150fe1eb398b3b57054c8ebc0d9",
+        "report_fingerprint": "f4a6cff4db298f06a23a59d4f07cca87d779f5f92f2bb6a9e10358b810b79bf4",
+        "community_fingerprint": "882dffd535ea851752db75820456fa529ffe9e737c25a0f4e26690deaa6dccfe",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 20,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 11,
+          "offers": 10,
+          "accepted_orders": 100,
+          "acknowledged_deliveries": 62,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 32,
+          "accepted_order_requests": 100,
+          "rejected_commands": 0,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 13,
+            "1": 16,
+            "2": 7,
+            "3": 8,
+            "4": 9,
+            "5": 10,
+            "6": 7,
+            "7": 8,
+            "8": 15,
+            "9": 7
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "10000",
+          "voluntary_refunds_recorded": "1150",
+          "net_transferred": "8850",
+          "refund_requests": 26,
+          "declined_refunds": 9,
+          "unresolved_refund_requests": 20,
+          "overdue_deliveries": 38,
+          "unresolved_disputes": 20,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 6200
+      },
+      {
+        "seed": 42,
+        "scenario": "SPAM_RESERVATIONS",
+        "intentions_fingerprint": "8d0d5a81a107172579f30d0a0299ad34f67ba150fe1eb398b3b57054c8ebc0d9",
+        "report_fingerprint": "96f736d30b1ea42625a69b3af7811ca25a86071c008d0a9bd9c617856177b681",
+        "community_fingerprint": "7e1d6fdc4dcca7928da1fdd88a440730c22fb88208099aa9959c30c043693cf6",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 20,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 13,
+          "offers": 10,
+          "accepted_orders": 160,
+          "acknowledged_deliveries": 0,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 160,
+          "pending_deliveries_at_finish": 0,
+          "accepted_order_requests": 260,
+          "rejected_commands": 103,
+          "provider_capacity_rejections": 100,
+          "post_rate_rejections": 3,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 16,
+            "1": 16,
+            "2": 16,
+            "3": 16,
+            "4": 16,
+            "5": 16,
+            "6": 16,
+            "7": 16,
+            "8": 16,
+            "9": 16
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "0",
+          "voluntary_refunds_recorded": "0",
+          "net_transferred": "0",
+          "refund_requests": 0,
+          "declined_refunds": 0,
+          "unresolved_refund_requests": 0,
+          "overdue_deliveries": 0,
+          "unresolved_disputes": 0,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 0
+      },
+      {
+        "seed": 42,
+        "scenario": "PROVIDER_OFFLINE",
+        "intentions_fingerprint": "8d0d5a81a107172579f30d0a0299ad34f67ba150fe1eb398b3b57054c8ebc0d9",
+        "report_fingerprint": "913ca89a88d8476c850bdd44e01ff03ddf9550a3a5b04a6877cfa8465f1af94b",
+        "community_fingerprint": "f5d8f6ab7ef2048a56d948f647d2cace60a986fea930438e49acbc6f0d5a0c20",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 15,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 11,
+          "offers": 10,
+          "accepted_orders": 49,
+          "acknowledged_deliveries": 29,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 18,
+          "accepted_order_requests": 100,
+          "rejected_commands": 51,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "1": 16,
+            "3": 8,
+            "5": 10,
+            "7": 8,
+            "9": 7
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "4900",
+          "voluntary_refunds_recorded": "450",
+          "net_transferred": "4450",
+          "refund_requests": 12,
+          "declined_refunds": 5,
+          "unresolved_refund_requests": 10,
+          "overdue_deliveries": 20,
+          "unresolved_disputes": 10,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 5918
+      },
+      {
+        "seed": 99,
+        "scenario": "BALANCED",
+        "intentions_fingerprint": "52e176653b549bb59827dec40a37591f06e0ac7edb49b66264526b3bee9baba5",
+        "report_fingerprint": "346b2869f13db37b0cdb3c7c1120df2ec72c19cd9d30a0704dd7f03fa8f9c3ae",
+        "community_fingerprint": "fb24b65426c5ba5a06dca63acce8551616e5cd30babcfc20ec133b06ac846a22",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 20,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 11,
+          "offers": 10,
+          "accepted_orders": 100,
+          "acknowledged_deliveries": 61,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 32,
+          "accepted_order_requests": 100,
+          "rejected_commands": 0,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 11,
+            "1": 8,
+            "2": 13,
+            "3": 12,
+            "4": 8,
+            "5": 9,
+            "6": 8,
+            "7": 13,
+            "8": 6,
+            "9": 12
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "10000",
+          "voluntary_refunds_recorded": "1000",
+          "net_transferred": "9000",
+          "refund_requests": 27,
+          "declined_refunds": 14,
+          "unresolved_refund_requests": 20,
+          "overdue_deliveries": 39,
+          "unresolved_disputes": 20,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 6100
+      },
+      {
+        "seed": 99,
+        "scenario": "SPAM_RESERVATIONS",
+        "intentions_fingerprint": "52e176653b549bb59827dec40a37591f06e0ac7edb49b66264526b3bee9baba5",
+        "report_fingerprint": "c39153bea6ac3657ae1dea7d33160b42636be033540ff8b696ec9561602a0da8",
+        "community_fingerprint": "29316208a48982e5aa9bd754c36c6ff2db1ca7763a68f3042d83f1d6c7393fb7",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 20,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 13,
+          "offers": 10,
+          "accepted_orders": 160,
+          "acknowledged_deliveries": 0,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 160,
+          "pending_deliveries_at_finish": 0,
+          "accepted_order_requests": 260,
+          "rejected_commands": 103,
+          "provider_capacity_rejections": 100,
+          "post_rate_rejections": 3,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 16,
+            "1": 16,
+            "2": 16,
+            "3": 16,
+            "4": 16,
+            "5": 16,
+            "6": 16,
+            "7": 16,
+            "8": 16,
+            "9": 16
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "0",
+          "voluntary_refunds_recorded": "0",
+          "net_transferred": "0",
+          "refund_requests": 0,
+          "declined_refunds": 0,
+          "unresolved_refund_requests": 0,
+          "overdue_deliveries": 0,
+          "unresolved_disputes": 0,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 0
+      },
+      {
+        "seed": 99,
+        "scenario": "PROVIDER_OFFLINE",
+        "intentions_fingerprint": "52e176653b549bb59827dec40a37591f06e0ac7edb49b66264526b3bee9baba5",
+        "report_fingerprint": "be1060a375245442bc1ef450ca1d59180135943ee1ba0bce89e6caa351f084e5",
+        "community_fingerprint": "6881791051e91ac5e10b94100616c09761404bbb11dc4f58e57969ab38db1732",
+        "metrics": {
+          "registered_agents": 20,
+          "active_agents": 15,
+          "projects": 10,
+          "artifacts": 1,
+          "posts": 11,
+          "offers": 10,
+          "accepted_orders": 54,
+          "acknowledged_deliveries": 34,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 17,
+          "accepted_order_requests": 100,
+          "rejected_commands": 46,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "1": 8,
+            "3": 12,
+            "5": 9,
+            "7": 13,
+            "9": 12
+          }
+        },
+        "direct_metrics": {
+          "payments_recorded": "5400",
+          "voluntary_refunds_recorded": "500",
+          "net_transferred": "4900",
+          "refund_requests": 16,
+          "declined_refunds": 9,
+          "unresolved_refund_requests": 13,
+          "overdue_deliveries": 20,
+          "unresolved_disputes": 13,
+          "rejected_commands": 0
+        },
+        "acknowledged_delivery_bps": 6296
+      }
+    ],
+    "maximum_workload_checks": [
+      {
+        "classification": "SYNTHETIC",
+        "scenario": "BALANCED",
+        "agents": 128,
+        "intended_tasks": 500,
+        "provider_pending_limit": 32,
+        "metrics": {
+          "registered_agents": 128,
+          "active_agents": 128,
+          "projects": 64,
+          "artifacts": 1,
+          "posts": 65,
+          "offers": 64,
+          "accepted_orders": 500,
+          "acknowledged_deliveries": 296,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 0,
+          "pending_deliveries_at_finish": 159,
+          "accepted_order_requests": 500,
+          "rejected_commands": 0,
+          "provider_capacity_rejections": 0,
+          "post_rate_rejections": 0,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 10,
+            "1": 9,
+            "2": 12,
+            "3": 6,
+            "4": 10,
+            "5": 5,
+            "6": 8,
+            "7": 7,
+            "8": 7,
+            "9": 8,
+            "10": 7,
+            "11": 4,
+            "12": 7,
+            "13": 5,
+            "14": 11,
+            "15": 12,
+            "16": 7,
+            "17": 11,
+            "18": 8,
+            "19": 3,
+            "20": 13,
+            "21": 8,
+            "22": 4,
+            "23": 12,
+            "24": 4,
+            "25": 9,
+            "26": 10,
+            "27": 5,
+            "28": 7,
+            "29": 7,
+            "30": 8,
+            "31": 7,
+            "32": 7,
+            "33": 8,
+            "34": 7,
+            "35": 4,
+            "36": 9,
+            "37": 6,
+            "38": 4,
+            "39": 9,
+            "40": 8,
+            "41": 14,
+            "42": 11,
+            "43": 6,
+            "44": 4,
+            "45": 5,
+            "46": 15,
+            "47": 7,
+            "48": 12,
+            "49": 10,
+            "50": 5,
+            "51": 7,
+            "52": 8,
+            "53": 8,
+            "54": 12,
+            "55": 3,
+            "56": 7,
+            "57": 12,
+            "58": 5,
+            "59": 7,
+            "60": 1,
+            "61": 7,
+            "62": 11,
+            "63": 10
+          }
+        },
+        "fingerprint": "12b1c1f1ab2116f1840357dbcc7da24a7f261a59ea91ba74665b1c5acda0af03",
+        "generation_and_internal_verification_nanoseconds": "86501087",
+        "replay_nanoseconds": "81350756",
+        "timing_scope": "SINGLE_CI_SAMPLE_INCLUDES_PROCESS_AND_REPORT_IO_NOT_LIVE_THROUGHPUT"
+      },
+      {
+        "classification": "SYNTHETIC",
+        "scenario": "SPAM_RESERVATIONS",
+        "agents": 128,
+        "intended_tasks": 500,
+        "provider_pending_limit": 32,
+        "metrics": {
+          "registered_agents": 128,
+          "active_agents": 128,
+          "projects": 64,
+          "artifacts": 1,
+          "posts": 74,
+          "offers": 64,
+          "accepted_orders": 2048,
+          "acknowledged_deliveries": 0,
+          "related_operator_orders": 0,
+          "unpaid_at_finish": 2048,
+          "pending_deliveries_at_finish": 0,
+          "accepted_order_requests": 2548,
+          "rejected_commands": 503,
+          "provider_capacity_rejections": 500,
+          "post_rate_rejections": 3,
+          "downstream_rejections": 0,
+          "peak_pending_by_provider": {
+            "0": 32,
+            "1": 32,
+            "2": 32,
+            "3": 32,
+            "4": 32,
+            "5": 32,
+            "6": 32,
+            "7": 32,
+            "8": 32,
+            "9": 32,
+            "10": 32,
+            "11": 32,
+            "12": 32,
+            "13": 32,
+            "14": 32,
+            "15": 32,
+            "16": 32,
+            "17": 32,
+            "18": 32,
+            "19": 32,
+            "20": 32,
+            "21": 32,
+            "22": 32,
+            "23": 32,
+            "24": 32,
+            "25": 32,
+            "26": 32,
+            "27": 32,
+            "28": 32,
+            "29": 32,
+            "30": 32,
+            "31": 32,
+            "32": 32,
+            "33": 32,
+            "34": 32,
+            "35": 32,
+            "36": 32,
+            "37": 32,
+            "38": 32,
+            "39": 32,
+            "40": 32,
+            "41": 32,
+            "42": 32,
+            "43": 32,
+            "44": 32,
+            "45": 32,
+            "46": 32,
+            "47": 32,
+            "48": 32,
+            "49": 32,
+            "50": 32,
+            "51": 32,
+            "52": 32,
+            "53": 32,
+            "54": 32,
+            "55": 32,
+            "56": 32,
+            "57": 32,
+            "58": 32,
+            "59": 32,
+            "60": 32,
+            "61": 32,
+            "62": 32,
+            "63": 32
+          }
+        },
+        "fingerprint": "209580c3a3f787736cc6b32c409b32dd4e57b2144e585b132838e6e5ac09ca79",
+        "generation_and_internal_verification_nanoseconds": "230463030",
+        "replay_nanoseconds": "182542527",
+        "timing_scope": "SINGLE_CI_SAMPLE_INCLUDES_PROCESS_AND_REPORT_IO_NOT_LIVE_THROUGHPUT"
+      }
+    ],
+    "csv_missingness_verified": true,
+    "debug_release_byte_identical": true,
+    "committed_examples_match": true,
+    "rehashed_forgery_rejected": true
+  },
+  "community_browser": {
+    "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+    "chrome": "Google Chrome 154.0.8037.97",
+    "node": "v22.23.3",
+    "tests": [
+      "community export renders",
+      "order pagination",
+      "historical handle search",
+      "profile empty state",
+      "contributor and reply display",
+      "mobile no page overflow",
+      "inactive profile filter",
+      "unavailable offer labels",
+      "hostile post stays text",
+      "CSP blocks connections",
+      "exact large quote and requested amount",
+      "exact large seed",
+      "invalid wallet boundary error"
+    ],
+    "uncaught_exceptions": 0,
+    "external_page_requests": 0
+  },
+  "legacy_browser": {
+    "source_head_sha": "676331a1e32c867cb6db88dcce7390ccc13ffaf2",
+    "chrome": "Google Chrome 154.0.8037.97",
+    "node": "v22.23.3",
+    "tests": [
+      "actual exported HTML renders",
+      "report selection",
+      "pagination",
+      "search empty state",
+      "status filtering",
+      "mobile no page overflow",
+      "direct-mode labels",
+      "hostile title stays text",
+      "CSP blocks connections",
+      "invalid ledger error state",
+      "exact large atomic amounts"
+    ],
+    "uncaught_exceptions": 0,
+    "external_page_requests": 0
+  },
+  "screenshots_visually_reviewed": true,
+  "limitations": [
+    "Declared actor/operator/wallet labels are fixtures, not authentication.",
+    "No LLM agent runtime, blockchain verification, signer, fee accounting or live service.",
+    "Unpaid reservations can starve legitimate work.",
+    "Delivery digests and acknowledgments do not establish useful output or quality.",
+    "Synthetic quote-bound receipt admission cannot replace a complete chain observation ledger.",
+    "Timing samples include CLI processes and report I/O; they are not live throughput or an SLA.",
+    "HTML export is editable and unsigned; source JSON requires Rust replay verification."
+  ]
+}

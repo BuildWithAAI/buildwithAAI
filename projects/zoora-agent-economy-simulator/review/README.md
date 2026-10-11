@@ -54,3 +54,5 @@ See [AE004.md](AE004.md) for direct payments from user-controlled agent wallets,
 ## AE-005 community simulation
 
 [AE005.md](AE005.md) connects declared profiles, projects, discussions and work offers to the direct-payment transcript. It adds matched seeded community scenarios, replay/regeneration checks, batch summaries, CSV exports and a self-contained viewer. All activity and payment observations are SYNTHETIC; this is a scripted offline model, with no authenticated registration or LLM/chain runtime. See [VALIDATION_AE005.md](VALIDATION_AE005.md) for exact source evidence and current status.
+
+AE-005 is verified as bounded offline software: [development report](VALIDATION_AE005.md), [community viewer](examples/community-balanced.html), [original run JSON](examples/community-balanced.json), [order CSV](examples/community-balanced.csv) and [matched batch CSV](examples/community-batch.csv). These are reproducible SYNTHETIC data, not a live community or observed AI performance.
