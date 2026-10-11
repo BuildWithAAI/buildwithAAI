@@ -7,6 +7,11 @@ use std::{
 };
 use zoora_review_market::{
     allocation::AllocationReport,
+    community::CommunityReport,
+    community_export,
+    community_scenarios::{
+        BatchConfig, BatchReport, RunReport, Scenario as CommunityScenario, WorkloadConfig,
+    },
     direct::DirectReport,
     experiments::{ExperimentConfig, ExperimentSuite},
     viewer, ReviewConfig, ReviewEngine, ReviewReport,
@@ -48,6 +53,37 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 fn execute() -> Result<(), String> {
     let args: Vec<_> = env::args().skip(1).collect();
     let result = match args.as_slice() {
+        [mode, config, scenario, output] if mode == "community-run" => {
+            let config = WorkloadConfig::from_toml(&read(Path::new(config), 4 * 1024 * 1024)?).map_err(|e|e.to_string())?;
+            let scenario=match scenario.as_str(){"BALANCED"=>CommunityScenario::Balanced,"SPAM_RESERVATIONS"=>CommunityScenario::SpamReservations,"PROVIDER_OFFLINE"=>CommunityScenario::ProviderOffline,_=>return Err("unknown community scenario".into())};
+            let report=RunReport::generate(config,scenario).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"community report encoding failed")?)?;
+            format!("SYNTHETIC scripted community run verified: {}",report.fingerprint)
+        },
+        [mode, config, output] if mode == "community-batch" => {
+            let config=BatchConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
+            let report=BatchReport::generate(config).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"community batch encoding failed")?)?;
+            format!("SYNTHETIC community batch verified: {}",report.fingerprint)
+        },
+        [mode,input] if mode=="replay-community" => {
+            let text=read(Path::new(input),128*1024*1024)?;
+            let identity:serde_json::Value=serde_json::from_str(&text).map_err(|_|"invalid community report")?;
+            match identity.get("model").and_then(|v|v.as_str()){
+                Some("zoora-community-run/0.1.0")=>{let report:RunReport=serde_json::from_str(&text).map_err(|_|"invalid scripted community report")?;report.verify().map_err(|e|e.to_string())?;},
+                Some("zoora-agent-community/0.1.0")=>{let report:CommunityReport=serde_json::from_str(&text).map_err(|_|"invalid community report")?;report.verify().map_err(|e|e.to_string())?;},
+                _=>return Err("unsupported community replay identity".into()),
+            }
+            "SYNTHETIC community replay verified; no identity or chain authentication".into()
+        },
+        [mode,input] if mode=="replay-community-batch" => {
+            let report:BatchReport=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid community batch")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC community batch regenerated and verified".into()
+        },
+        [mode,input,output] if mode=="community-csv" => {
+            let csv=community_export::csv(&read(Path::new(input),128*1024*1024)?).map_err(|e|e.to_string())?;
+            write(Path::new(output),csv.as_bytes())?;"SYNTHETIC community CSV exported from verified report".into()
+        },
         [mode, config, output] if mode == "run" => {
             let config = ReviewConfig::from_toml(&read(Path::new(config), 4 * 1024 * 1024)?).map_err(|e| e.to_string())?;
             let mut engine = ReviewEngine::new(config).map_err(|e| e.to_string())?;
@@ -131,7 +167,7 @@ fn execute() -> Result<(), String> {
             write(Path::new(output), &serde_json::to_vec_pretty(&results).map_err(|_| "benchmark encoding failed")?)?;
             "SYNTHETIC review scaling verified".into()
         },
-        _ => return Err("usage: zoora-review-market run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json | experiments CONFIG.toml NEW_SUITE.json | replay-experiments SUITE.json | replay-allocated REPORT.json | benchmark-allocated NEW_RESULTS.json | direct-demo NEW_DIRECT.json | replay-direct DIRECT.json | viewer REPORT.json NEW_VIEWER.html".into()),
+        _ => return Err("usage: zoora-review-market run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json | experiments CONFIG.toml NEW_SUITE.json | replay-experiments SUITE.json | replay-allocated REPORT.json | benchmark-allocated NEW_RESULTS.json | direct-demo NEW_DIRECT.json | replay-direct DIRECT.json | community-run CONFIG.toml SCENARIO NEW_REPORT.json | community-batch CONFIG.toml NEW_BATCH.json | replay-community REPORT.json | replay-community-batch BATCH.json | community-csv REPORT.json NEW_DATA.csv | viewer REPORT.json NEW_VIEWER.html".into()),
     };
     println!("{result}");
     Ok(())

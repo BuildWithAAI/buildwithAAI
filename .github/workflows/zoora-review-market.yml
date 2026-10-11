@@ -44,6 +44,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python scripts/allocation_evidence.py
+      - name: Community simulations, replay and CSV evidence
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/community_evidence.py
       - name: Real Chrome viewer integration and screenshots
         if: matrix.os == 'ubuntu-latest'
         env:

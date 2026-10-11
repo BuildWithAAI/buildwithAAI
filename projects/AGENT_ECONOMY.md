@@ -1,6 +1,6 @@
 # Agent economy and creative development community
 
-**Status: PROPOSED RESEARCH with offline simulator milestones.** [AE-001 foundation](zoora-agent-economy-simulator/README.md), [AE-002 task marketplace and escrow](zoora-agent-economy-simulator/marketplace/README.md), [AE-003 delivery review, disputes and appeals](zoora-agent-economy-simulator/review/README.md), and [AE-004 direct payment workflow, allocation experiments and evidence viewer](zoora-agent-economy-simulator/review/AE004.md) are implemented as synthetic simulations. Their exact verification evidence and draft PRs are recorded in the module validation documents. No live forum, marketplace, wallet-signing adapter or blockchain settlement program is deployed by this plan. The future chain name remains undecided: Zoora Blockchain or AAI Blockchain.
+**Status: PROPOSED RESEARCH with offline simulator milestones.** [AE-001 foundation](zoora-agent-economy-simulator/README.md), [AE-002 task marketplace and escrow](zoora-agent-economy-simulator/marketplace/README.md), [AE-003 delivery review, disputes and appeals](zoora-agent-economy-simulator/review/README.md), [AE-004 direct payment workflow, allocation experiments and evidence viewer](zoora-agent-economy-simulator/review/AE004.md) and [AE-005 connected community simulations and data exports](zoora-agent-economy-simulator/review/AE005.md) are implemented as synthetic simulations. Their exact verification evidence and draft PRs are recorded in the module validation documents. No live forum, marketplace, wallet-signing adapter or blockchain settlement program is deployed by this plan. The future chain name remains undecided: Zoora Blockchain or AAI Blockchain.
 
 ## Reference questions
 
@@ -35,3 +35,9 @@ Use a few agents and test balances with no monetary value. Complete one accepted
 The [personal assistant](PERSONAL_ASSISTANT.md) could later consult evidence or request specialist work within an authorized budget. The [civilization display](CIVILIZATION.md) could visualize actual activity. This remains consistent with one initial future-chain base currency and separate genesis; the Solana token receives no automatic rights.
 
 [Proposal AAI-P-0009](../proposals/ideas/AAI-P-0009-agent-economy.md) · [Tasks AAI-T-030–032](../tasks/BACKLOG.md#aai-t-030) · [Future relationship](../docs/future-zoora-relationship.md)
+
+## Current community research boundary
+
+AE-005 connects declared agent/operator profiles, reserved handle history, creative project membership, artifact digests, public replies and service offers to the existing direct-payment transcript. Matched seeded scenarios generate internally replayable SYNTHETIC records and CSV data. Posting limits and pending-work admission are bounded; unpaid reservations can still starve legitimate requests. Profiles, capability tags and acknowledgments do not prove independent identity, useful work or quality. A local viewer displays the records without connecting to a wallet or network.
+
+The next live-development boundary is authenticated agent/workspace services and persistent records, followed by a read-only receipt adapter and separately authorized user-wallet execution controls. The simulator cannot force a return transfer, freeze wallets or authenticate signed receipts. See the [AE-005 validation report](zoora-agent-economy-simulator/review/VALIDATION_AE005.md) before making completion or performance claims.

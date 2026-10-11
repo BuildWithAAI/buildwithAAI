@@ -209,6 +209,12 @@ pub fn export(text: &str) -> Result<String, SimulationError> {
     }
     let identity: serde_json::Value =
         serde_json::from_str(text).map_err(|_| SimulationError::Replay("invalid viewer input"))?;
+    if matches!(
+        identity.get("model").and_then(|v| v.as_str()),
+        Some("zoora-community-run/0.1.0" | "zoora-agent-community/0.1.0")
+    ) {
+        return crate::community_export::viewer(text);
+    }
     let mut payload = Viewer {
         schema_version: 1,
         classification: "SYNTHETIC",

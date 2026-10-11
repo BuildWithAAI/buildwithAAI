@@ -43,8 +43,39 @@ try {
  const precise=path.join(folder,'precise.html');await writeFile(precise,build(data));await open(precise);assert.equal(await evaluate('document.body.dataset.ready'),'true');
  assert.equal(await evaluate('document.getElementById("decision-count").textContent'),'18,446,744,073,709,552,015');
  data.reports[0].ledger.funded='999';const invalid=path.join(folder,'invalid.html');await writeFile(invalid,build(data));await open(invalid);assert.equal(await evaluate('document.body.dataset.ready'),'error');assert.equal(await evaluate('document.getElementById("content").hidden'),true);
+ await open(path.join(output,'community-balanced.html'));assert.equal(await evaluate('document.body.dataset.ready'),'true');
+ assert.equal(await evaluate('document.querySelectorAll("#agents tr").length'),20);
+ assert.equal(await evaluate('document.querySelectorAll("#orders tr").length'),20);
+ const firstOrder=await evaluate('document.querySelector("#orders tr").textContent');await evaluate('document.getElementById("orders-next").click()');assert.notEqual(await evaluate('document.querySelector("#orders tr").textContent'),firstOrder);
+ await evaluate('document.getElementById("agent-search").value="agent_0";document.getElementById("agent-search").dispatchEvent(new Event("input"))');assert.equal(await evaluate('document.querySelectorAll("#agents tr").length'),1);assert.equal(await evaluate('document.getElementById("agents").textContent.includes("agent_zero")'),true);
+ await evaluate('document.getElementById("agent-search").value="no-such-agent";document.getElementById("agent-search").dispatchEvent(new Event("input"))');assert.equal(await evaluate('document.getElementById("agents-empty").hidden'),false);
+ await evaluate('document.getElementById("agent-search").value="";document.getElementById("agent-search").dispatchEvent(new Event("input"))');
+ assert.equal(await evaluate('document.getElementById("projects").textContent.includes("contributors 0, 10")'),true);assert.equal(await evaluate('document.getElementById("posts").textContent.includes("reply to #0")'),true);
+ await evaluate('Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})))');await writeFile(path.join(output,'community-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+ await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});assert.equal(await evaluate('document.documentElement.scrollWidth<=window.innerWidth'),true);await evaluate('Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})))');await writeFile(path.join(output,'community-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+ await open(path.join(output,'community-provider_offline.html'));await evaluate('document.getElementById("agent-state").value="inactive";document.getElementById("agent-state").dispatchEvent(new Event("change"))');assert.equal(await evaluate('document.querySelectorAll("#agents tr").length'),5);assert.equal(await evaluate('document.getElementById("projects").textContent.includes("Unavailable fixture offer")'),true);
+ const communityOriginal=await readFile(path.join(output,'community-balanced.html'),'utf8');const communityMatch=communityOriginal.match(/<script id="community-data" type="application\/json">([\s\S]*?)<\/script>/);const communityData=JSON.parse(communityMatch[1]);
+ const communityBuild=value=>communityOriginal.replace(communityMatch[0],'<script id="community-data" type="application/json">'+JSON.stringify(value).replaceAll('<','\\u003c').replaceAll('&','\\u0026')+'</script>');
+ communityData.posts[0].body='</script><img src=x onerror="globalThis.injected=1">';const communityHostile=path.join(folder,'community-hostile.html');await writeFile(communityHostile,communityBuild(communityData));await open(communityHostile);assert.equal(await evaluate('document.body.dataset.ready'),'true');assert.equal(await evaluate('globalThis.injected===undefined && document.querySelector("img")===null'),true);assert.equal(await evaluate('document.getElementById("posts").textContent.includes("<img src=x")'),true);assert.equal(await evaluate('fetch("https://example.invalid/").then(()=>false).catch(()=>true)'),true);
+ communityData.seed='18446744073709551615';communityData.offers[0].amount='18446744073709551615';communityData.direct.agreements[0].refund_request_remaining='18446744073709551615';const communityPrecise=path.join(folder,'community-precise.html');await writeFile(communityPrecise,communityBuild(communityData));await open(communityPrecise);assert.equal(await evaluate('document.body.dataset.ready'),'true');assert.equal(await evaluate('document.getElementById("projects").textContent.includes("18,446,744,073,709,551,615")'),true);assert.equal(await evaluate('document.getElementById("orders").textContent.includes("18,446,744,073,709,551,615")'),true);assert.equal(await evaluate('document.getElementById("scenario").textContent.includes("18446744073709551615")'),true);
+ communityData.direct.wallet_boundary.can_freeze_wallets=true;const communityInvalid=path.join(folder,'community-invalid.html');await writeFile(communityInvalid,communityBuild(communityData));await open(communityInvalid);assert.equal(await evaluate('document.body.dataset.ready'),'error');assert.equal(await evaluate('document.getElementById("content").hidden'),true);
  assert.equal(exceptions.length,0);assert.equal(requests.filter(url=>/^https?:/.test(url)).length,0);
+ const communityEvidence={source_head_sha:process.env.SOURCE_HEAD_SHA,chrome:execFileSync(chrome,['--version'],{encoding:'utf8'}).trim(),node:process.version,
+  tests:['community export renders','order pagination','historical handle search','profile empty state','contributor and reply display','mobile no page overflow','inactive profile filter','unavailable offer labels','hostile post stays text','CSP blocks connections','exact large quote and requested amount','exact large seed','invalid wallet boundary error'],uncaught_exceptions:0,external_page_requests:0};
+ await writeFile(path.join(output,'community-browser-evidence.json'),JSON.stringify(communityEvidence,null,2)+'\n');console.log(JSON.stringify(communityEvidence,null,2));
  const evidence={source_head_sha:process.env.SOURCE_HEAD_SHA,chrome:execFileSync(chrome,['--version'],{encoding:'utf8'}).trim(),node:process.version,
   tests:['actual exported HTML renders','report selection','pagination','search empty state','status filtering','mobile no page overflow','direct-mode labels','hostile title stays text','CSP blocks connections','invalid ledger error state','exact large atomic amounts'],uncaught_exceptions:0,external_page_requests:0};
  await writeFile(path.join(output,'browser-evidence.json'),JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence,null,2));
-} finally {if(socket)socket.close();child.kill('SIGTERM');await new Promise(resolve=>{if(child.exitCode!==null)resolve();else{child.once('exit',resolve);setTimeout(()=>{child.kill('SIGKILL');resolve();},2000).unref();}});await rm(folder,{recursive:true,force:true});}
+} finally {
+ if(socket)socket.close();
+ if(child.exitCode===null && child.signalCode===null){
+  child.kill('SIGTERM');
+  await new Promise(resolve=>{
+   const timer=setTimeout(()=>{child.kill('SIGKILL');resolve();},2000);
+   child.once('exit',()=>{clearTimeout(timer);resolve();});timer.unref();
+  });
+ }
+ // Chromium helpers can still write the profile while shutting down. Use documented bounded fs.rm retries.
+ // https://nodejs.org/docs/latest-v22.x/api/fs.html#fspromisesrmpath-options
+ await rm(folder,{recursive:true,force:true,maxRetries:10,retryDelay:100});
+}
