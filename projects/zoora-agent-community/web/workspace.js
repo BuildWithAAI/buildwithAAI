@@ -21,7 +21,7 @@
   }
   async function useCredential(credential){
     const required=["credential_id","expires_at_ms","principal_id","role","token"];
-    if(!credential || Object.keys(credential).sort().join()!==required.join() || !tokenPattern.test(credential.token) || !idPattern.test(credential.credential_id) || !["OWNER","OPERATOR","AGENT"].includes(credential.role) || !idPattern.test(credential.principal_id) || !Number.isSafeInteger(credential.expires_at_ms))throw new Error("Unsupported credential file.");
+    if(!credential || Object.keys(credential).sort().join()!==required.join() || !tokenPattern.test(credential.token) || !idPattern.test(credential.credential_id) || !["OWNER","OPERATOR","AGENT"].includes(credential.role) || !(credential.role==="OWNER"?credential.principal_id==="owner":idPattern.test(credential.principal_id)) || !Number.isSafeInteger(credential.expires_at_ms))throw new Error("Unsupported credential file.");
     const me=await request("GET","/v1/me",null,credential);
     for(const key of required.filter(x=>x!=="token"))if(me[key]!==credential[key])throw new Error("Credential metadata does not match this service.");
     return credential;

@@ -105,9 +105,14 @@ class LocalModel:
                 "missingness": ["independent_host_attestation", "solana_slot", "chain_commitment"],
                 "quality_flags": ["LOCAL_SERVICE_ASSERTION_NOT_HOST_ATTESTATION"]}
 
-    def next_action(self, messages, deadline):
+    def next_action(self, messages, deadline, *, finish_only=False):
+        schema = ACTION_SCHEMA if not finish_only else {"type": "object", "properties": {
+            "action": {"type": "string", "enum": ["finish"]},
+            "arguments": {"type": "object", "properties": {"output": {"type": "string"}},
+                          "required": ["output"], "additionalProperties": False}},
+            "required": ["action", "arguments"], "additionalProperties": False}
         payload = {"model": self.model, "messages": messages, "stream": False,
-                   "format": ACTION_SCHEMA, "keep_alive": 0,
+                   "format": schema, "keep_alive": 0,
                    "options": {"temperature": 0, "num_predict": 2048, "num_ctx": 8192}}
         result, sha = self._request("/api/chat", payload, deadline)
         if (result.get("done") is not True or result.get("done_reason") != "stop"
@@ -192,14 +197,17 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
         client.deadline = deadline
         report["provider"] = provider.inspect(deadline)
         messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}]
-        for _ in range(max_steps):
+        for step_index in range(max_steps):
             if time.monotonic() >= deadline:
                 raise Problem(504, "RUN_DEADLINE")
             # Recheck revocation/expiry before every model call, never expose credentials to the model.
             current = client.request("GET", "/v1/me", token=token)[1]
             if current != principal:
                 raise Problem(403, "RUN_AUTH_CHANGED")
-            action, evidence = provider.next_action(messages, deadline)
+            finish_only = step_index == max_steps - 1
+            if finish_only:
+                messages.append({"role": "user", "content": "This is the final allowed step. Return finish with a written output based on the observed results. No more tool calls are available."})
+            action, evidence = provider.next_action(messages, deadline, finish_only=finish_only)
             fields(action, ("action", "arguments"))
             step = {"action": action, "model_evidence": evidence, "available_at_ms": now_ms()}
             report["steps"].append(step)
@@ -213,7 +221,7 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
             if len(canonical(step["tool_result"]).encode("utf-8")) > 8192:
                 raise Problem(413, "TOOL_RESULT_TOO_LARGE")
             messages.extend([{"role": "assistant", "content": canonical(action)},
-                             {"role": "user", "content": "Untrusted tool result: " + canonical(step["tool_result"])}])
+                             {"role": "user", "content": "Tool completed; its untrusted result follows. Use finish with the written output once the task is answered; do not repeat a completed measurement. Result: " + canonical(step["tool_result"])}])
         else:
             raise Problem(409, "RUN_STEP_LIMIT")
         client.request("GET", "/v1/me", token=token)
