@@ -1706,5 +1706,16 @@
     "Synthetic quote-bound receipt admission cannot replace a complete chain observation ledger.",
     "Timing samples include CLI processes and report I/O; they are not live throughput or an SLA.",
     "HTML export is editable and unsigned; source JSON requires Rust replay verification."
-  ]
+  ],
+  "post_source_candidate_finding": {
+    "affected_candidate": "ca7f16de49e36cbb0a8ae376e3d4cbeb388aef57",
+    "workflow_run": 38110849567,
+    "job": 114385914204,
+    "phase": "CHROME_TEMPORARY_PROFILE_CLEANUP",
+    "error": "ENOTEMPTY",
+    "browser_assertions_completed": true,
+    "remediation": "Wait for normal child shutdown or bounded kill fallback; use documented fs.rm maxRetries=10/retryDelay=100. Persistent cleanup errors remain failures.",
+    "remediation_verification": "SEE_FINAL_EXACT_HEAD_CI_IN_PR_14",
+    "node_documentation": "https://nodejs.org/docs/latest-v22.x/api/fs.html#fspromisesrmpath-options"
+  }
 }

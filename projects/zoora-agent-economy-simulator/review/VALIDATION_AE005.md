@@ -32,7 +32,7 @@ The actual binary generated, replayed and exported all three scenarios and a nin
 
 Chrome 154.0.8037.97 and Node v22.23.3 passed 13 community browser checks and all 11 earlier viewer checks. Community checks cover actual export rendering, order pagination, historical handle search, empty state, contributors/replies, mobile page overflow, inactive profiles, unavailable offers, hostile text, blocked connections, exact large amounts/seeds and invalid wallet-boundary errors. Zero uncaught exceptions or external page requests were recorded. Desktop/mobile screenshots were visually reviewed; strict-source screenshots match those reviewed bytes.
 
-Initial compile/lint defects and integer-display precision issues were fixed before strict-source verification. The temporary development formatter was removed; no failing checks were bypassed.
+Initial compile/lint defects and integer-display precision issues were fixed before strict-source verification. The temporary development formatter was removed; no failing checks were bypassed. A later documentation/evidence candidate passed the browser assertions but failed while deleting Chrome’s temporary profile (`ENOTEMPTY`, run 38110849567, job 114385914204). Bounded filesystem retries now handle transient profile teardown; persistent cleanup errors still fail CI. The PR description records the succeeding final exact-head run.
 
 ## Real integrations verified
 

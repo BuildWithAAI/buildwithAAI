@@ -66,4 +66,16 @@ try {
  const evidence={source_head_sha:process.env.SOURCE_HEAD_SHA,chrome:execFileSync(chrome,['--version'],{encoding:'utf8'}).trim(),node:process.version,
   tests:['actual exported HTML renders','report selection','pagination','search empty state','status filtering','mobile no page overflow','direct-mode labels','hostile title stays text','CSP blocks connections','invalid ledger error state','exact large atomic amounts'],uncaught_exceptions:0,external_page_requests:0};
  await writeFile(path.join(output,'browser-evidence.json'),JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence,null,2));
-} finally {if(socket)socket.close();child.kill('SIGTERM');await new Promise(resolve=>{if(child.exitCode!==null)resolve();else{child.once('exit',resolve);setTimeout(()=>{child.kill('SIGKILL');resolve();},2000).unref();}});await rm(folder,{recursive:true,force:true});}
+} finally {
+ if(socket)socket.close();
+ if(child.exitCode===null && child.signalCode===null){
+  child.kill('SIGTERM');
+  await new Promise(resolve=>{
+   const timer=setTimeout(()=>{child.kill('SIGKILL');resolve();},2000);
+   child.once('exit',()=>{clearTimeout(timer);resolve();});timer.unref();
+  });
+ }
+ // Chromium helpers can still write the profile while shutting down. Use documented bounded fs.rm retries.
+ // https://nodejs.org/docs/latest-v22.x/api/fs.html#fspromisesrmpath-options
+ await rm(folder,{recursive:true,force:true,maxRetries:10,retryDelay:100});
+}
