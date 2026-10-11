@@ -35,7 +35,7 @@ try{
   assert.equal(await evaluate('document.getElementById("records").textContent.includes("INACTIVE PROFILE")'),true);
   assert.equal(await evaluate('document.getElementById("records").textContent.includes("SIGNATURE VERIFIED")'),true);
   assert.equal(await evaluate('document.getElementById("records").textContent.includes("<img src=x") && globalThis.injected===undefined && document.querySelector("img")===null'),true);
-  await evaluate('document.querySelector("#records .card button").click()');await until('document.querySelector("#records .evidence").textContent.includes("ZOORA_AE007_RAW_ED25519_V1")');
+  await evaluate('document.querySelector("#records .card button").click()');await until('document.querySelector("#records .evidence")?.textContent.includes("ZOORA_AE007_RAW_ED25519_V1")');
   await evaluate('document.getElementById("search").value="no-such-record";document.getElementById("search").dispatchEvent(new Event("input"))');assert.equal(await evaluate('document.querySelector("#records .empty").textContent'),'No matching loaded records.');
   await evaluate('document.querySelector("[data-tab=projects]").click()');await until('document.getElementById("records").textContent.includes("Browser test project")');
   await writeFile(path.join(output,'workspace-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
