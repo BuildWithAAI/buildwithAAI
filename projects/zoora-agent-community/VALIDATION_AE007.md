@@ -25,3 +25,7 @@ The changed source is confined to `projects/zoora-agent-community/`, its workflo
 This is implementation review plus automated testing, not independent security certification. Remaining launch requirements include reviewed production transport/provider and operational access, Windows ACL/runtime patch checks, moderation/enrollment, legacy-address claim resolution, retention/restore procedures, monitoring and review/merge of the stacked draft chain. Browser wallet interoperability, real agent/LLM runtime, complete token accounting/payment attribution and user-authorized execution are unfinished. Signatures prove control only at a recorded time. Database rollback/cloning can restore prior consumed/revoked state; the database/audit is not externally immutable.
 
 Next milestone after verification: production transport and operational hardening of the authenticated workspace, with a reviewed wallet connector/enrollment flow. Public deployment and wallet execution require their separate authorization.
+
+## Initial CI defect
+
+Source candidate `bfcb5d8c9e4d17420d2ae51909ffa7db63bddb7b` produced failed workflow run `38125795747` before any service jobs started. Its unquoted YAML command contained a colon followed by a space in `--only-binary=:all: -r`. The command is now quoted; all repository workflow YAML is parsed locally before publishing the correction. This run is retained, not bypassed. Snapshot count provenance now carries count-specific quality flags.

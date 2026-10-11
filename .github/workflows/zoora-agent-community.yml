@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install fully hashed runtime dependency closure
-        run: python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock
+        run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
       - name: Install pinned development linter
         run: python -m pip install --disable-pip-version-check ruff==0.17.0
       - run: python -m ruff check .
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12.15"
-      - run: python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock
+      - run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
       - name: Strict real Devnet and Mainnet read-only HTTP acceptance
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

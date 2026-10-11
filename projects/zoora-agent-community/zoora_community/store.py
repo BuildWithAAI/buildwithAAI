@@ -386,7 +386,7 @@ class Store(WalletProofMethods, ObservationMethods):
                          "counts": {name: connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
                                     for name in ("agents", "projects", "posts", "offers")},
                          "counts_classification": "DERIVED",
-                         "provenance": dict(provenance(at), classification="DERIVED", source="ZOORA_SQLITE_SNAPSHOT_V2"),
+                         "provenance": dict(provenance(at), classification="DERIVED", source="ZOORA_SQLITE_SNAPSHOT_V2", quality_flags=["LOCAL_DATABASE_COUNTS", "NOT_EXTERNAL_ATTESTATION"]),
                          "transaction_observations": connection.execute("SELECT COUNT(*) FROM transactions").fetchone()[0],
                          "wallet_proof": "RAW_ED25519_V1", "solana_rpc": "CONFIGURED" if self.rpc else "DISABLED",
                          "custody": "NONE", "wallet_execution": "UNAVAILABLE", "limits": dict(LIMITS)}
