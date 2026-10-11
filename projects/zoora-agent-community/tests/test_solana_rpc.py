@@ -117,13 +117,48 @@ class RpcTests(unittest.TestCase):
         report, _raw = FixtureRPC(value).observe("solana:devnet", SIGNATURE, address("rpc_agent"))
         self.assertIn("RPC_SIGNATURE_MISMATCH", report["quality_flags"])
 
-    def test_adapter_uses_only_fixed_hosts_finalized_parsed_and_version_zero(self):
+    def test_adapter_uses_only_fixed_hosts_finalized_parsed_and_version_one(self):
         rpc = FixtureRPC()
         rpc.observe("solana:devnet", SIGNATURE, address("rpc_agent"))
         self.assertEqual([x[1] for x in rpc.requests], ["getGenesisHash", "getTransaction"])
-        self.assertEqual(rpc.requests[1][2], [SIGNATURE, {"encoding": "jsonParsed", "commitment": "finalized", "maxSupportedTransactionVersion": 0}])
+        self.assertEqual(rpc.requests[1][2], [SIGNATURE, {"encoding": "jsonParsed", "commitment": "finalized", "maxSupportedTransactionVersion": 1}])
         self.refused(lambda: rpc.observe("http://localhost/", SIGNATURE, address("rpc_agent")))
         self.refused(lambda: SolanaRPC()._request("solana:devnet", "sendTransaction", [], time.monotonic() + 8))
+
+    def v1(self):
+        value = transaction()
+        value["version"] = 1
+        message = value["transaction"]["message"]
+        message["accountKeys"][1]["source"] = "transaction"
+        message["transactionConfig"] = {"priorityFeeLamports": 2000, "computeUnitLimit": 20000}
+        value["meta"]["fee"] = 7000
+        value["meta"]["postBalances"][0] = 2000
+        return value
+
+    def test_v1_preserves_actual_total_fee_and_opaque_config_without_budget_inference(self):
+        value = self.v1()
+        report, raw = FixtureRPC(value).observe("solana:devnet", SIGNATURE, address("rpc_agent"))
+        self.assertEqual(report["state"], "AVAILABLE")
+        self.assertEqual(report["fee_lamports"], "7000")
+        self.assertEqual(report["native_balance_change_lamports"], "-8000")
+        self.assertEqual(report["transaction_version"], 1)
+        self.assertEqual(report["transformation_version"], 2)
+        self.assertEqual(report["transaction_config_analysis"], "UNAVAILABLE")
+        self.assertIn("V1_RESOURCE_CONFIG_NOT_INTERPRETED", report["quality_flags"])
+        self.assertIn("v1_resource_configuration_analysis", report["missingness"])
+        self.assertEqual(json.loads(raw)["result"]["transaction"]["message"]["transactionConfig"], value["transaction"]["message"]["transactionConfig"])
+
+    def test_v1_config_lookup_source_and_unknown_versions_fail_closed(self):
+        for mutate in (lambda x: x["transaction"]["message"].pop("transactionConfig"),
+                       lambda x: x["transaction"]["message"].update(transactionConfig=False),
+                       lambda x: x["transaction"]["message"]["accountKeys"][1].update(source="lookupTable"),
+                       lambda x: x.update(version=2)):
+            value = self.v1()
+            mutate(value)
+            report, raw = FixtureRPC(value).observe("solana:devnet", SIGNATURE, address("rpc_agent"))
+            self.assertEqual(report["state"], "UNVERIFIED")
+            self.assertIn("RPC_SCHEMA_REJECTED", report["quality_flags"])
+            self.assertIsNone(raw)
 
     def transport(self, body, status=200, encoding=None):
         response = Mock()
@@ -156,6 +191,22 @@ class RpcTests(unittest.TestCase):
             self.assertEqual(report["state"], "FAILED")
             self.assertIn(flag, report["quality_flags"])
             self.assertIsNone(raw)
+            self.assertNotIn("sensitive", json.dumps(report))
+            connection.close.assert_called_once()
+
+    def test_provider_error_keeps_numeric_method_and_digest_without_message(self):
+        for value, expected in ((-32015, -32015), (True, None), ("private metadata", None), (2**40, None)):
+            body = canonical({"jsonrpc": "2.0", "id": 1, "error": {"code": value,
+                "message": "private metadata must not escape", "data": "sensitive"}}).encode()
+            connection = self.transport(body)
+            with patch("zoora_community.solana_rpc.http.client.HTTPSConnection", return_value=connection):
+                report, raw = SolanaRPC().observe("solana:devnet", SIGNATURE, address("rpc_agent"))
+            self.assertEqual(report["state"], "FAILED")
+            self.assertEqual(report["provider_error_code"], expected)
+            self.assertEqual(report["failed_rpc_method"], "getGenesisHash")
+            self.assertEqual(report["provider_error_response_sha256"], hashlib.sha256(body).hexdigest())
+            self.assertIsNone(raw)
+            self.assertNotIn("private metadata", json.dumps(report))
             self.assertNotIn("sensitive", json.dumps(report))
             connection.close.assert_called_once()
 
@@ -204,6 +255,25 @@ class ObservationStoreTests(unittest.TestCase):
         self.f.at += 60_000
         self.assertEqual(restarted.call("POST", self.route, self.body, self.agent)[0], 201)
         restarted.audit()
+
+    def test_legacy_transform_and_v1_survive_restart_and_audited_snapshot_together(self):
+        original = self.f.store.call("POST", self.route, self.body, self.agent)[1]
+        value = transaction()
+        value["version"] = 1
+        value["transaction"]["message"]["accountKeys"][1]["source"] = "transaction"
+        value["transaction"]["message"]["transactionConfig"] = {}
+        self.f.store.rpc = FixtureRPC(value)
+        modern = self.f.store.call("POST", self.route, self.body, self.agent)[1]
+        self.assertEqual(original["report"]["transformation_version"], 1)
+        self.assertEqual(modern["report"]["transformation_version"], 2)
+        restarted = Store(self.f.state, clock=lambda: self.f.at)
+        for item in (original, modern):
+            self.assertEqual(restarted.call("GET", "/v1/transactions/" + item["id"])[1]["report"], item["report"])
+        audit = restarted.audit()
+        snapshot = self.f.root / "mixed.sqlite3"
+        self.assertEqual(restarted.backup(snapshot), audit)
+        from zoora_community.recovery import verify_backup
+        self.assertEqual(verify_backup(snapshot)["audit"], audit)
 
     def test_unauthorized_role_network_overrides_and_unsigned_wallet_rejected(self):
         self.refused("FORBIDDEN", lambda: self.f.store.call("POST", self.route, self.body, self.operator))

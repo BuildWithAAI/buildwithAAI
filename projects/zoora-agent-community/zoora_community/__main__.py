@@ -6,6 +6,8 @@ import sys
 import sqlite3
 
 from .client import Client, read_credential
+from .operations import doctor, monitor
+from .recovery import restore_backup, verify_backup
 from .server import serve
 from .store import Store, exclusive_file
 from .validation import Problem, canonical, parse_json
@@ -20,12 +22,27 @@ def main():
     run = commands.add_parser("serve")
     run.add_argument("--state", required=True)
     run.add_argument("--port", type=int, default=8765)
+    run.add_argument("--transport", choices=("waitress", "development"), default="waitress")
     run.add_argument("--solana-rpc", action="store_true", help="Enable fixed-endpoint read-only RPC; no signing")
     audit = commands.add_parser("audit")
     audit.add_argument("--state", required=True)
     backup = commands.add_parser("backup")
     backup.add_argument("--state", required=True)
     backup.add_argument("--out", required=True)
+    verify = commands.add_parser("verify-backup")
+    verify.add_argument("--backup", required=True)
+    restore = commands.add_parser("restore")
+    restore.add_argument("--backup", required=True)
+    restore.add_argument("--state", required=True, help="New private directory; never reuse an existing state")
+    check = commands.add_parser("doctor")
+    check.add_argument("--state", required=True)
+    polling = commands.add_parser("monitor")
+    polling.add_argument("--state", required=True)
+    polling.add_argument("--port", type=int, default=8765)
+    polling.add_argument("--credential-file", required=True)
+    polling.add_argument("--samples", type=int, default=1)
+    polling.add_argument("--interval", type=float, default=1.0)
+    polling.add_argument("--out")
     recovery = commands.add_parser("recover-owner")
     recovery.add_argument("--state", required=True)
     recovery.add_argument("--owner-file", required=True)
@@ -51,12 +68,21 @@ def main():
         elif args.command == "serve":
             if not 0 <= args.port <= 65535:
                 raise Problem(400, "INVALID_PORT")
-            serve(args.state, args.port, enable_solana=args.solana_rpc)
+            serve(args.state, args.port, enable_solana=args.solana_rpc, transport=args.transport)
         elif args.command == "audit":
             print(canonical(Store(args.state).audit()))
         elif args.command == "backup":
-            Store(args.state).backup(args.out)
-            print(canonical({"backup_created": True, "includes_credential_digests": True}))
+            audit = Store(args.state).backup(args.out)
+            print(canonical({"backup_created": True, "includes_credential_digests": True, "audit": audit}))
+        elif args.command == "verify-backup":
+            print(canonical(verify_backup(args.backup)))
+        elif args.command == "restore":
+            print(canonical(restore_backup(args.backup, args.state)))
+        elif args.command == "doctor":
+            print(canonical(doctor(args.state)))
+        elif args.command == "monitor":
+            print(canonical(monitor(args.state, args.port, args.credential_file,
+                                    samples=args.samples, interval=args.interval, out=args.out)))
         elif args.command == "recover-owner":
             Store(args.state).recover_owner(args.owner_file, invalidate_all=args.invalidate_all_credentials)
             print(canonical({"owner_recovered": True, "old_owner_credentials_revoked": True,

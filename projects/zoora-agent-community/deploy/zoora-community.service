@@ -1,0 +1,27 @@
+# Uninstalled template: local Linux rehearsal only. Initialize state separately.
+[Unit]
+Description=Zoora community loopback service
+After=network.target
+
+[Service]
+Type=simple
+User=zoora-community
+Group=zoora-community
+WorkingDirectory=/opt/buildwithaai/checkout/projects/zoora-agent-community
+ExecStart=/opt/buildwithaai/checkout/projects/zoora-agent-community/.venv/bin/python -B -m zoora_community serve --state /var/lib/zoora-community --port 8765
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+UMask=0077
+StateDirectory=zoora-community
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_UNIX
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

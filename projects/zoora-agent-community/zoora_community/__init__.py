@@ -1,3 +1,3 @@
-"""AE-007 authenticated local community records and evidence; no wallet execution."""
+"""AE-008 bounded serving, local monitoring and audited recovery; no wallet execution."""
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"

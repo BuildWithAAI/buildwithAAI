@@ -129,3 +129,7 @@ cffi==2.1.1 \
 
 pycparser==3.0 \
     --hash=sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992
+
+# Production WSGI transport, official PyPI wheel (no runtime dependencies).
+waitress==3.0.2 \
+    --hash=sha256:c56d67fd6e87c2ee598b76abdd4e96cfad1f24cacdea5078d382b1f9d7b5ed2e
