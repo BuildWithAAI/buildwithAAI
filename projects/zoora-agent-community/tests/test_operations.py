@@ -67,7 +67,7 @@ class OperationsTests(unittest.TestCase):
 
     def test_tampered_audit_rejected_before_publication(self):
         backup = self.backup()
-        with sqlite3.connect(backup) as connection:
+        with closing(sqlite3.connect(backup, autocommit=True)) as connection:
             connection.execute("UPDATE audit SET hash=? WHERE seq=1", ("f" * 64,))
         for action in (lambda: verify_backup(backup), lambda: restore_backup(backup, self.f.root / "rejected")):
             with self.assertRaises(Problem) as rejected:
