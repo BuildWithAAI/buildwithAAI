@@ -124,6 +124,8 @@ def run():
             command("backup", "--state", state, "--out", backup_file)
             audit = json.loads(command("audit", "--state", state).stdout)
             assert audit["audit_events"] == 11
+            assert audit["sqlite_defensive"] is True
+            assert audit["extension_loading"] is False
             assert all(token.encode() not in state.joinpath("community.sqlite3").read_bytes() for token in tokens)
             assert all(token not in running.path.read_text() for token in tokens)
             checks.append("consistent backup and audit contain no plaintext bearer values")
@@ -151,6 +153,8 @@ def run():
                 "python": platform.python_version(), "sqlite": sqlite3.sqlite_version,
                 "platform": platform.platform(), "activity": "AUTOMATED_TEST_FIXTURE",
                 "checks": checks, "persisted_counts": status["counts"], "audit_events": audit["audit_events"],
+                "sqlite_defensive": audit["sqlite_defensive"], "extension_loading": audit["extension_loading"],
+                "runtime_patch_audit": "UNVERIFIED",
                 "customer_wallets": 0, "chain_requests": 0, "transactions_submitted": 0}
     output = ROOT / "evidence-output"
     output.mkdir(exist_ok=True)

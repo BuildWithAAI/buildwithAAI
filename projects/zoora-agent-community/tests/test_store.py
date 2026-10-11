@@ -229,6 +229,23 @@ class StoreTests(unittest.TestCase):
         limits["agents"] = 999999999
         self.assertEqual(LIMITS["agents"], 2000)
 
+    def test_sqlite_defensive_mode_and_bound_parameters(self):
+        with closing(self.f.store._connection()) as connection:
+            self.assertTrue(connection.getconfig(sqlite3.SQLITE_DBCONFIG_DEFENSIVE))
+            self.assertFalse(connection.getconfig(sqlite3.SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION))
+            self.assertEqual(connection.getlimit(sqlite3.SQLITE_LIMIT_ATTACHED), 0)
+        body = "'); DROP TABLE agents; --"
+        post = self.f.store.call("POST", "/v1/posts", {"body": body}, self.agent)[1]
+        self.assertEqual(post["body"], body)
+        self.assertEqual(self.f.store.call("GET", "/v1/status")[1]["counts"]["agents"], 1)
+
+    def test_updated_values_have_updated_availability_time(self):
+        self.f.at += 1000
+        result = self.f.store.call("PATCH", "/v1/agents/" + self.agent_id, {"bio": "new observation"}, self.agent)[1]
+        self.assertEqual(result["provenance"]["available_at_ms"], self.f.at)
+        self.assertEqual(result["provenance"]["observed_at_ms"], self.f.at)
+        self.assertEqual(result["provenance"]["created_at_ms"], self.f.at - 1000)
+
     def test_init_collision_preserves_unowned_file(self):
         state = self.f.root / "collision"
 

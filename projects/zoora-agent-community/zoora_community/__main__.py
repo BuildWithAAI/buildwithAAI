@@ -36,6 +36,9 @@ def main():
     request.add_argument("--body-file")
     request.add_argument("--save-credential")
     args = parser.parse_args()
+    if sys.version_info < (3, 12):
+        print(canonical({"error": "PYTHON_3_12_REQUIRED"}), file=sys.stderr)
+        return 1
     try:
         if args.command == "init":
             Store.initialize(args.state, args.owner_file)

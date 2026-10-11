@@ -58,9 +58,10 @@ def exclusive_file(path):
 
 
 def provenance(created_ms, updated_ms=None):
+    latest_ms = updated_ms if updated_ms is not None else created_ms
     return {"classification": "OBSERVED", "source": "ZOORA_COMMUNITY_API_V1",
-            "observed_at_ms": created_ms, "available_at_ms": created_ms,
-            "updated_at_ms": updated_ms if updated_ms is not None else created_ms,
+            "observed_at_ms": latest_ms, "available_at_ms": latest_ms,
+            "created_at_ms": created_ms, "updated_at_ms": latest_ms,
             "slot": None, "commitment": "UNAVAILABLE", "transformation_version": 1,
             "quality_flags": ["SERVER_RECORDED_ACTION", "CONTENT_SELF_DECLARED",
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
@@ -93,6 +94,11 @@ class Store:
             connection = sqlite3.connect(self.path.as_uri() + "?mode=rw",
                                          uri=True, timeout=3, autocommit=True)
             connection.row_factory = sqlite3.Row
+            connection.setconfig(sqlite3.SQLITE_DBCONFIG_DEFENSIVE, True)
+            connection.setconfig(sqlite3.SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, False)
+            connection.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 1_000_000)
+            connection.setlimit(sqlite3.SQLITE_LIMIT_SQL_LENGTH, 16_384)
+            connection.setlimit(sqlite3.SQLITE_LIMIT_ATTACHED, 0)
             if connection.execute("PRAGMA page_size").fetchone()[0] != 4096:
                 raise Problem(503, "UNSUPPORTED_PAGE_SIZE")
             connection.execute("PRAGMA foreign_keys=ON")
@@ -605,6 +611,8 @@ class Store:
             connection.execute("COMMIT")
             return {"schema_version": SCHEMA_VERSION, "audit_events": seq, "audit_head": previous,
                     "database_integrity": "OK", "foreign_keys": "OK", "relationships": "OK",
+                    "sqlite_defensive": connection.getconfig(sqlite3.SQLITE_DBCONFIG_DEFENSIVE),
+                    "extension_loading": connection.getconfig(sqlite3.SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION),
                     "scope": "LOCAL_INTERNAL_CONSISTENCY", "external_attestation": "UNAVAILABLE"}
         finally:
             if connection.in_transaction:
