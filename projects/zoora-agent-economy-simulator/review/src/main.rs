@@ -8,8 +8,10 @@ use std::{
 use zoora_review_market::{
     allocation::AllocationReport,
     community::CommunityReport,
-    community_scenarios::{BatchConfig, BatchReport, RunReport, Scenario as CommunityScenario, WorkloadConfig},
     community_export,
+    community_scenarios::{
+        BatchConfig, BatchReport, RunReport, Scenario as CommunityScenario, WorkloadConfig,
+    },
     direct::DirectReport,
     experiments::{ExperimentConfig, ExperimentSuite},
     viewer, ReviewConfig, ReviewEngine, ReviewReport,

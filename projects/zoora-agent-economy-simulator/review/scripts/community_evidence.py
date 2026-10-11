@@ -63,7 +63,8 @@ with tempfile.TemporaryDirectory() as directory:
  assert len(batch['runs'])==9
  for seed in batch['config']['seeds']:assert len({r['intentions_fingerprint'] for r in batch['runs'] if r['seed']==seed})==1
  (out/'community-batch.json').write_bytes(batch_paths[0].read_bytes());run('release','community-csv',batch_paths[0],out/'community-batch.csv')
- assert len(list(csv.DictReader(io.StringIO((out/'community-batch.csv').read_text()))))==9
+ batch_rows=list(csv.DictReader(io.StringIO((out/'community-batch.csv').read_text())));assert len(batch_rows)==9
+ assert all(row['observed_at']=='UNAVAILABLE' and row['available_at']=='UNAVAILABLE' and row['slot']=='UNAVAILABLE' for row in batch_rows)
  forged=copy.deepcopy(balanced);forged['community']['orders'][0]['offer_id']=999;forged['community']['fingerprint']=fingerprint('community',forged['community']);forged['fingerprint']=fingerprint('run',forged)
  path=temp/'forged.json';path.write_text(json.dumps(forged));run('release','replay-community',path,ok=False)
  for command,extension in [('viewer','html'),('community-csv','csv')]:
