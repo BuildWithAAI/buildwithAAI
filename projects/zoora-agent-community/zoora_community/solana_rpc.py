@@ -64,7 +64,7 @@ def summarize(result, network_name, signature, address):
         report["state"] = "UNAVAILABLE"
         report["quality_flags"].append("NOT_FOUND_AT_FINALIZED_OR_OUTSIDE_PROVIDER_RETENTION")
         return report
-    if type(result) is not dict or not (result.get("version") == "legacy" or type(result.get("version")) is int and result["version"] == 0):
+    if type(result) is not dict or not (result.get("version") == "legacy" or type(result.get("version")) is int and result["version"] in (0, 1)):
         raise Problem(502, "RPC_SCHEMA_REJECTED")
     report["slot"] = str(unsigned(result.get("slot")))
     stamp = result.get("blockTime")
@@ -89,6 +89,17 @@ def summarize(result, network_name, signature, address):
         keys.append(wallet(entry.get("pubkey")))
     if len(keys) != len(set(keys)):
         raise Problem(502, "RPC_SCHEMA_REJECTED")
+    v1 = type(result["version"]) is int and result["version"] == 1
+    if v1:
+        # v1 removes ALTs and moves resource settings into transactionConfig.
+        # Retain that opaque config in raw evidence; total fees below are the
+        # provider's meta.fee in lamports, never inferred from ComputeBudget.
+        if (type(message.get("transactionConfig")) is not dict or len(keys) > 64
+                or any(entry.get("source") == "lookupTable" for entry in message["accountKeys"])):
+            raise Problem(502, "RPC_SCHEMA_REJECTED")
+        report.update({"transformation_version": 2, "transaction_version": 1,
+                       "transaction_config_analysis": "UNAVAILABLE"})
+        report["quality_flags"].append("V1_RESOURCE_CONFIG_NOT_INTERPRETED")
     report["related_to_agent"] = address in keys
     if not report["related_to_agent"]:
         report["quality_flags"].append("UNRELATED_TO_AGENT")
@@ -99,6 +110,8 @@ def summarize(result, network_name, signature, address):
         report["missingness"] = ["fee", "execution", "balances", "inner_instructions"]
         if stamp is None:
             report["missingness"].append("block_time")
+        if v1:
+            report["missingness"].append("v1_resource_configuration_analysis")
         return report
     if type(meta) is not dict or "err" not in meta or (meta["err"] is not None and type(meta["err"]) not in (str, dict)):
         raise Problem(502, "RPC_SCHEMA_REJECTED")
@@ -112,11 +125,13 @@ def summarize(result, network_name, signature, address):
         index = keys.index(address)
         report["native_balance_change_lamports"] = str(after[index] - before[index])
     instructions = message.get("instructions")
-    if type(instructions) is not list or len(instructions) > 256:
+    if type(instructions) is not list or len(instructions) > (64 if v1 else 256):
         raise Problem(502, "RPC_SCHEMA_REJECTED")
     work = [("OUTER", index, item) for index, item in enumerate(instructions)]
     inner = meta.get("innerInstructions")
     missing = ["block_time"] if stamp is None else []
+    if v1:
+        missing.append("v1_resource_configuration_analysis")
     if inner is None:
         missing.append("inner_instructions")
     else:
@@ -229,7 +244,7 @@ class SolanaRPC:
             if genesis != NETWORKS[network_name][1]:
                 raise Problem(502, "RPC_NETWORK_MISMATCH")
             result, raw, digest = self._request(network_name, "getTransaction",
-                [signature, {"encoding": "jsonParsed", "commitment": "finalized", "maxSupportedTransactionVersion": 0}], deadline)
+                [signature, {"encoding": "jsonParsed", "commitment": "finalized", "maxSupportedTransactionVersion": 1}], deadline)
             report = summarize(result, network_name, signature, address)
             report.update({"response_sha256": digest, "genesis_response_sha256": genesis_digest,
                            "genesis_hash": genesis})

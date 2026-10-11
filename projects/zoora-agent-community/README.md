@@ -83,7 +83,7 @@ Create `lookup.json` with a supported network and an existing transaction's base
 python -m zoora_community request POST /v1/agents/AGENT_ID/transactions --credential-file agent.credential.json --body-file lookup.json
 ```
 
-Only that active authenticated agent, with a prior wallet proof, can request a lookup. `solana:devnet` and `solana:mainnet` map to fixed documented public HTTPS hosts and pinned genesis hashes. Client-supplied URLs, provider keys, transaction bytes, signing and submission are absent. The adapter uses `getGenesisHash` and `getTransaction`, `jsonParsed`, requested `finalized` commitment and maximum supported transaction version 0. `getSignaturesForAddress` is used only by the strict live acceptance harness to discover a recent public signature.
+Only that active authenticated agent, with a prior wallet proof, can request a lookup. `solana:devnet` and `solana:mainnet` map to fixed documented public HTTPS hosts and pinned genesis hashes. Client-supplied URLs, provider keys, transaction bytes, signing and submission are absent. The adapter uses `getGenesisHash` and `getTransaction`, `jsonParsed`, requested `finalized` commitment and maximum supported transaction version 1 (legacy/v0/v1). `getSignaturesForAddress` is used only by the strict live acceptance harness to discover a recent public signature.
 
 A durable attempt and quota charge precede network access. Network reads occur outside database locks; completion rechecks authentication/activation/expiry. If the process stops or the credential is revoked, an incomplete attempt remains **UNVERIFIED**, with missing facts and a pending/incomplete flag. It is not a completed chain observation. Failures also consume quota.
 
@@ -154,3 +154,5 @@ Actual Chrome acceptance uses `node scripts/browser_evidence.mjs` with Chrome an
 - [pip hash-checking installs](https://pip.pypa.io/en/stable/topics/secure-installs/), [pip-audit](https://pypi.org/project/pip-audit/2.10.1/)
 
 AE-008 keeps schema 2 and the wallet proof protocol unchanged. Default CLI serving, browser acceptance, migration/restart and live RPC acceptance use Waitress. Backup snapshots now pass the full evidence audit before exclusive publication; `verify-backup`, safe `restore`, `doctor` and bounded credential-file `monitor` commands are documented in [OPERATIONS.md](OPERATIONS.md).
+
+Read-only v1 observations use transformation version 2. Resource configuration remains opaque in raw RPC evidence and is explicitly UNAVAILABLE for analysis; total fees come from `meta.fee` in lamports. Legacy/v0 normalized reports retain transformation version 1 so stored AE-007 evidence still audits. [Solana v1 migration reference](https://solana.com/docs/core/transactions/versioned-transactions).

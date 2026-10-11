@@ -57,3 +57,7 @@ Before public beta, independently verify the chosen host's Python/SQLite/OS patc
 
 - [Waitress deployment arguments](https://docs.pylonsproject.org/projects/waitress/en/stable/arguments.html), [3.0.2 release](https://pypi.org/project/waitress/3.0.2/)
 - [SQLite online backup API](https://www.sqlite.org/backup.html), [Python Connection.backup](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.backup)
+
+## RPC diagnostics and current transaction versions
+
+Numeric provider-error codes, the fixed read method and an error-response hash are retained on failed observations; arbitrary provider messages/data are redacted. This exposed Mainnet error -32015: the previous maximum-version-0 request rejected current v1 transactions. Read-only requests now opt into maximum transaction version 1. V1 parsed reports validate inline accounts, bounded outer instructions and the presence of message transactionConfig, preserve config in raw evidence, and mark its analysis UNAVAILABLE. They use transformation version 2; existing legacy/v0 reports retain version 1 and remain auditable. Total fees use the provider meta.fee in lamports, without ComputeBudget/priority-fee inference. Unknown transaction versions fail closed. This is bounded subset observation, not a v1 binary decoder or transaction executor. See [Solana’s current version reference](https://solana.com/docs/core/transactions/versioned-transactions).
