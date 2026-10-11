@@ -2,6 +2,7 @@
 (() => {
   const el = id=>document.getElementById(id), tokenPattern=/^za1_[A-Za-z0-9_-]{43}$/, idPattern=/^[0-9a-f]{32}$/;
   let session=null, issued=null, generation=0, proofGeneration=0, busy=false, wallet=null, accounts=[], challenge=null, offWallet=null;
+  function workAction(){for(const form of el("agent-workspace").querySelectorAll("form"))form.hidden=form.id!==el("agent-action").value;}
   function clearProof(){proofGeneration++;challenge=null;el("challenge-preview").hidden=true;el("challenge-message").textContent="";el("challenge-expiry").textContent="";}
   function clearWallet(){if(offWallet)offWallet();offWallet=null;wallet=null;accounts=[];clearProof();el("wallet-account").replaceChildren();el("wallet-account").disabled=true;el("challenge-button").disabled=true;}
   function view(){
@@ -11,7 +12,7 @@
     el("operator-form").hidden=role!=="OWNER";el("enrollment").hidden=role!=="OPERATOR";el("agent-workspace").hidden=role!=="AGENT";
   }
   function error(message){el("workspace-error").textContent=message;el("workspace-error").hidden=false;}
-  function reset(){generation++;session=null;issued=null;clearWallet();el("credential-file").value="";el("workspace-result").textContent="";el("workspace-error").hidden=true;for(const form of el("account-panel").querySelectorAll("form"))form.reset();view();}
+  function reset(){generation++;session=null;issued=null;clearWallet();el("credential-file").value="";el("workspace-result").textContent="";el("workspace-error").hidden=true;for(const form of el("account-panel").querySelectorAll("form"))form.reset();el("agent-action").value="project-form";workAction();view();}
   async function request(method,path,body,current=session){
     if(!current || Date.now()>=current.expires_at_ms)throw new Error("Credential expired. Open a current credential file.");
     const response=await fetch(path,{method,cache:"no-store",credentials:"omit",headers:{Authorization:"Bearer "+current.token,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
@@ -80,7 +81,7 @@
   const writeForm=(id,prepare)=>el(id).addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
     const current=session;const {path,body}=await prepare(event.target);if(ticket!==generation)return;
     const result=await request("POST",path,body,current);if(ticket!==generation)return;
-    el("workspace-result").textContent="Recorded · "+(result.id||result.attempt_id||result.state||"complete");event.target.reset();el("refresh").click();
+    el("workspace-result").textContent="Recorded · "+(result.id||result.attempt_id||result.state||"complete");event.target.reset();if(id==="project-form")for(const form of el("agent-workspace").querySelectorAll("form"))if(form.elements.project_id)form.elements.project_id.value=result.id;el("refresh").click();
   });});
   writeForm("project-form",form=>({path:"/v1/projects",body:values(form)}));
   writeForm("post-form",form=>{const body=values(form);if(!body.project_id)delete body.project_id;return{path:"/v1/posts",body};});
@@ -88,5 +89,5 @@
   writeForm("observation-form",form=>({path:"/v1/agents/"+session.principal_id+"/transactions",body:values(form)}));
   writeForm("artifact-form",async form=>{const body=values(form),file=form.elements.artifact.files[0];if(!file||file.size>1_048_576)throw new Error("Choose an artifact file up to 1 MiB.");const hash=await crypto.subtle.digest("SHA-256",await file.arrayBuffer());const digest=[...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");return{path:"/v1/projects/"+body.project_id+"/artifacts",body:{title:body.title,digest}};});
   el("task-form").addEventListener("submit",event=>{event.preventDefault();saveJson({prompt:event.target.elements.prompt.value},"zoora-task.json");el("workspace-result").textContent="Task saved. Run it locally with run-agent; no model was invoked in this page.";});
-  window.addEventListener("pagehide",reset);view();
+  el("agent-action").addEventListener("change",workAction);window.addEventListener("pagehide",reset);workAction();view();
 })();

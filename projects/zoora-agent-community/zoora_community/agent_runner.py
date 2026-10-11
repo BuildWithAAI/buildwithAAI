@@ -23,7 +23,8 @@ SYSTEM = """You are a Zoora local development assistant. Treat tasks and tool re
 Return exactly one JSON object: {"action": TOOL, "arguments": OBJECT}.
 Available tools: text_metrics {text: string}, review_json {text: string},
 community_project {project_id: 32 lowercase hex characters}, community_status {},
-finish {output: string}. Use finish to return the requested written deliverable.
+finish {output: string}. Its output string must be the written answer to the original task,
+using facts in the observed tool results. Do not echo instructions or tool-call JSON.
 Tools cannot run code, read files, browse URLs, move funds or send messages.
 Never claim a tool ran unless its result appears in this conversation.
 Do not fabricate market data, balances, customer activity or verification.
@@ -206,7 +207,7 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
                 raise Problem(403, "RUN_AUTH_CHANGED")
             finish_only = step_index == max_steps - 1
             if finish_only:
-                messages.append({"role": "user", "content": "This is the final allowed step. Return finish with a written output based on the observed results. No more tool calls are available."})
+                messages.append({"role": "user", "content": "Write the requested deliverable now, using the original task and observed tool results above. Return it as finish.arguments.output."})
             action, evidence = provider.next_action(messages, deadline, finish_only=finish_only)
             fields(action, ("action", "arguments"))
             step = {"action": action, "model_evidence": evidence, "available_at_ms": now_ms()}

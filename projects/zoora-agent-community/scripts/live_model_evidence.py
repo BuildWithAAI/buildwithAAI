@@ -5,6 +5,7 @@ import http.client
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -53,6 +54,11 @@ def run():
                 raise AssertionError("Strict real model acceptance failed: " + completed.stderr)
             report = json.loads(out.read_bytes())
             result = json.loads(completed.stdout)
+            Path("evidence-output").mkdir(exist_ok=True)
+            candidate = Path("evidence-output/live-model-candidate.json")
+            candidate.write_text(canonical({"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
+                "activity": "AUTOMATED_REAL_LOCAL_MODEL_TEST", "real_model_verified": False,
+                "state": "UNVERIFIED_PENDING_ACCEPTANCE", "report": report, "result": result}) + "\n", encoding="utf-8")
             assert credential["token"] not in out.read_text() + completed.stdout + completed.stderr
             assert report["state"] == "AVAILABLE" and report["output_classification"] == "LEARNED"
             assert report["steps"][0]["action"] == {"action": "text_metrics", "arguments": {"text": "Zoora builds"}}
@@ -60,7 +66,7 @@ def run():
             assert report["steps"][0]["tool_result"]["utf8_bytes"] == 12
             assert report["steps"][-1]["action"]["action"] == "finish"
             answer = report["output"].lower()
-            assert "12" in answer and "2" in answer and "bytes" in answer and "words" in answer, "Written model output did not use the measured facts"
+            assert re.search(r"\b12\b", answer) and re.search(r"\b2\b", answer) and "bytes" in answer and "words" in answer, "Written model output did not use the measured facts"
             assert "final allowed step" not in answer and "first call" not in answer
             assert result["report_sha256"] == hashlib.sha256(out.read_bytes()).hexdigest()
             checks.append("actual local model generated an allowed tool action and a final written output using the measured byte/word facts")
