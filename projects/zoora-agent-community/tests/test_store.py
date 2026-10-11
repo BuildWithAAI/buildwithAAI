@@ -45,7 +45,7 @@ class StoreTests(unittest.TestCase):
 
     def test_owner_and_operator_cannot_impersonate_agent(self):
         for token in (self.f.owner, self.operator):
-            self.refused(403, lambda: self.f.store.call("POST", "/v1/posts", {"body": "hello"}, token))
+            self.refused(403, lambda token=token: self.f.store.call("POST", "/v1/posts", {"body": "hello"}, token))
         self.refused(400, lambda: self.f.store.call("POST", "/v1/posts", {"body": "hello", "author_id": self.agent_id}, self.agent))
 
     def test_cross_operator_profile_and_recovery_refused(self):
@@ -79,7 +79,7 @@ class StoreTests(unittest.TestCase):
         self.refused(403, lambda: self.f.store.call("PATCH", route, {"active": False}, self.agent))
         self.f.store.call("PATCH", "/v1/operators/" + self.operator_id, {"active": False}, self.f.owner)
         for token in (self.operator, self.agent):
-            self.refused(401, lambda: self.f.store.call("GET", "/v1/me", token=token))
+            self.refused(401, lambda token=token: self.f.store.call("GET", "/v1/me", token=token))
 
     def test_handle_history_and_wallet_permanent(self):
         self.f.store.call("PATCH", "/v1/agents/" + self.agent_id, {"handle": "renamed_agent"}, self.agent)
@@ -220,6 +220,27 @@ class StoreTests(unittest.TestCase):
         self.refused(503, lambda: Store(missing))
         self.assertFalse(missing.exists())
 
+    def test_corrupt_database_fails_with_fixed_error(self):
+        self.f.store.path.write_bytes(b"not a SQLite database")
+        self.refused(503, lambda: Store(self.f.state), "STATE_UNAVAILABLE")
+
+    def test_returned_status_cannot_mutate_admission_limits(self):
+        limits = self.f.store.call("GET", "/v1/status")[1]["limits"]
+        limits["agents"] = 999999999
+        self.assertEqual(LIMITS["agents"], 2000)
+
+    def test_init_collision_preserves_unowned_file(self):
+        state = self.f.root / "collision"
+
+        def collision(path):
+            path.write_bytes(b"preexisting work")
+            raise FileExistsError()
+
+        with patch("zoora_community.store.exclusive_file", side_effect=collision):
+            with self.assertRaises(FileExistsError):
+                Store.initialize(state, self.f.root / "unused.credential.json")
+        self.assertEqual((state / "community.sqlite3").read_bytes(), b"preexisting work")
+
     def test_init_recovery_refuse_overwrite_and_remove_only_owned_files(self):
         raw = self.f.owner_path.read_bytes()
         with self.assertRaises(FileExistsError):
@@ -247,19 +268,19 @@ class StoreTests(unittest.TestCase):
 
     def test_strict_json_utf8_and_field_validation(self):
         for raw in (b'{"body":"a","body":"b"}', b'{"x":NaN}', b'[]', b'"no"', b'\xff', b'[' * 2000):
-            self.refused(400, lambda: parse_json(raw))
+            self.refused(400, lambda raw=raw: parse_json(raw))
         for body in ({"body": "\ud800"}, {"body": "\x00"}, {"body": "x" * 2049}, {"body": "ok", "actor": "owner"}):
-            self.refused(400, lambda: self.f.store.call("POST", "/v1/posts", body, self.agent))
+            self.refused(400, lambda body=body: self.f.store.call("POST", "/v1/posts", body, self.agent))
         self.refused(413, lambda: self.f.store.call("POST", "/v1/posts", {"body": "x" * 17000}, self.agent))
 
     def test_address_validation_is_not_control_proof(self):
         for value in ("bad", "0" * 32, "1" * 31, "1" * 33, "z" * 44):
-            self.refused(400, lambda: wallet(value))
+            self.refused(400, lambda value=value: wallet(value))
         self.assertEqual(wallet(address("valid")), address("valid"))
 
     def test_no_fund_actions_or_wallet_secrets(self):
         for path in ("/v1/payments", "/v1/trades", "/v1/refunds", "/v1/withdraw", "/v1/freeze"):
-            self.refused(404, lambda: self.f.store.call("POST", path, {}, self.agent))
+            self.refused(404, lambda path=path: self.f.store.call("POST", path, {}, self.agent))
         self.refused(400, lambda: self.f.store.call("POST", "/v1/agents", {"handle": "secret_agent", "wallet": address("safe"), "capabilities": ["research"], "seed_phrase": "never accept"}, self.operator))
 
 

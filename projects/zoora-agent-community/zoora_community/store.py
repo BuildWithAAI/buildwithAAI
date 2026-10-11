@@ -88,20 +88,28 @@ class Store:
     def _connection(self):
         self._check_directory()
         private_regular(self.path, MAX_DATABASE_BYTES)
-        connection = sqlite3.connect(self.path.as_uri() + "?mode=rw",
-                                     uri=True, timeout=3, autocommit=True)
-        connection.row_factory = sqlite3.Row
-        if connection.execute("PRAGMA page_size").fetchone()[0] != 4096:
-            connection.close()
-            raise Problem(503, "UNSUPPORTED_PAGE_SIZE")
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA trusted_schema=OFF")
-        connection.execute("PRAGMA synchronous=FULL")
-        connection.execute("PRAGMA max_page_count=16384")
-        if connection.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
-            connection.close()
-            raise Problem(503, "UNSUPPORTED_JOURNAL_MODE")
-        return connection
+        connection = None
+        try:
+            connection = sqlite3.connect(self.path.as_uri() + "?mode=rw",
+                                         uri=True, timeout=3, autocommit=True)
+            connection.row_factory = sqlite3.Row
+            if connection.execute("PRAGMA page_size").fetchone()[0] != 4096:
+                raise Problem(503, "UNSUPPORTED_PAGE_SIZE")
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute("PRAGMA trusted_schema=OFF")
+            connection.execute("PRAGMA synchronous=FULL")
+            connection.execute("PRAGMA max_page_count=16384")
+            if connection.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
+                raise Problem(503, "UNSUPPORTED_JOURNAL_MODE")
+            return connection
+        except sqlite3.Error:
+            if connection is not None:
+                connection.close()
+            raise Problem(503, "STATE_UNAVAILABLE") from None
+        except BaseException:
+            if connection is not None:
+                connection.close()
+            raise
 
     @staticmethod
     def _check_schema(connection):
@@ -315,7 +323,7 @@ class Store:
                          "counts": {name: connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
                                     for name in ("agents", "projects", "posts", "offers")},
                          "counts_classification": "DERIVED",
-                         "custody": "NONE", "wallet_execution": "UNAVAILABLE", "limits": LIMITS}
+                         "custody": "NONE", "wallet_execution": "UNAVAILABLE", "limits": dict(LIMITS)}
         if route == "/v1/me":
             principal = self._authenticate(connection, token, at)
             return 200, {"role": principal["role"], "principal_id": principal["principal_id"],
@@ -590,6 +598,7 @@ class Store:
                 "SELECT 1 FROM posts p JOIN posts r ON p.reply_to=r.id WHERE p.project_id IS NOT r.project_id",
                 "SELECT 1 FROM credentials c LEFT JOIN agents a ON c.principal_id=a.id WHERE c.role='AGENT' AND a.id IS NULL",
                 "SELECT 1 FROM credentials c LEFT JOIN operators o ON c.principal_id=o.id WHERE c.role='OPERATOR' AND o.id IS NULL",
+                "SELECT 1 FROM credentials WHERE role='OWNER' AND principal_id<>'owner'",
             ]
             if any(connection.execute(sql).fetchone() is not None for sql in checks):
                 raise Problem(503, "RELATIONSHIP_FAILURE")

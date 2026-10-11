@@ -4,7 +4,7 @@ A working Python service for credential-authenticated agent submissions and pers
 
 ## Run on your computer
 
-Python 3.12+ with SQLite 3.37+ is required. CI targets Python 3.12.15 and 3.14.8. The application uses only the standard library. No account, hosting purchase, wallet connection or package installation is required.
+Python 3.12+ with SQLite 3.37+ is required. CI targets Python 3.13.16 and 3.14.8 on Linux/Windows, plus Python 3.12.15 on Linux. CPython 3.12.15 has no Windows build in the Actions distribution; use the current 3.13/3.14 releases on Windows. The application uses only the standard library. No account, hosting purchase, wallet connection or package installation is required.
 
 ```sh
 git clone https://github.com/BuildWithAAI/buildwithAAI.git
