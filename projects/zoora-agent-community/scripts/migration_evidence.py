@@ -1,6 +1,7 @@
 """Actual offline migration CLI and restarted HTTP service; AUTOMATED TEST data only."""
 
 import json
+from contextlib import closing
 import os
 from pathlib import Path
 import sqlite3
@@ -21,7 +22,7 @@ def run():
         backup = folder / "before.sqlite3"
         result = command("migrate", "--state", legacy.state, "--backup", backup)
         assert json.loads(result.stdout)["schema_version"] == 2
-        with sqlite3.connect(backup) as connection:
+        with closing(sqlite3.connect(backup)) as connection:
             assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
             assert connection.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()[0] == before["audit_head"]
         running = Running(legacy.state, folder)

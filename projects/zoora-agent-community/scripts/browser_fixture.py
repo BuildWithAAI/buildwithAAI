@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 import sys
 
-from fixture_signatures import address, signed_body
-from zoora_community.server import serve
-from zoora_community.store import Store, now_ms
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from fixture_signatures import address, signed_body  # noqa: E402
+from zoora_community.server import serve  # noqa: E402
+from zoora_community.store import Store, now_ms  # noqa: E402
 
 folder = Path(sys.argv[1])
 state = folder / "state"

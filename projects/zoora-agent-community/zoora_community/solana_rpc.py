@@ -163,6 +163,7 @@ class SolanaRPC:
         if remaining <= 0:
             raise Problem(504, "RPC_TIMEOUT")
         connection = http.client.HTTPSConnection(host, timeout=min(3, remaining), context=ssl.create_default_context())
+        response = None
         try:
             connection.request("POST", "/", canonical({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}),
                                {"Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "identity"})
@@ -202,6 +203,8 @@ class SolanaRPC:
         except (OSError, http.client.HTTPException):
             raise Problem(502, "RPC_UNAVAILABLE") from None
         finally:
+            if response is not None:
+                response.close()
             connection.close()
 
     def observe(self, network_name, signature, address):

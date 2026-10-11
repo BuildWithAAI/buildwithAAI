@@ -29,3 +29,5 @@ Next milestone after verification: production transport and operational hardenin
 ## Initial CI defect
 
 Source candidate `bfcb5d8c9e4d17420d2ae51909ffa7db63bddb7b` produced failed workflow run `38125795747` before any service jobs started. Its unquoted YAML command contained a colon followed by a space in `--only-binary=:all: -r`. The command is now quoted; all repository workflow YAML is parsed locally before publishing the correction. This run is retained, not bypassed. Snapshot count provenance now carries count-specific quality flags.
+
+Source `0e42cd5a073d66be9d56610377d628593332ea46` strictly verified real Devnet and Mainnet RPC/HTTP/storage/restart reads in job `114430470346` of run `38126033332`. Its browser job failed because the fixture needed an explicit module root on the Python path. That fixture is corrected and locally started with all 51 signed profiles. Resource review also made backup-check SQLite and early-return HTTP response closure explicit, with regression coverage; prior successful job badges alone were insufficient evidence of warning-free cleanup. Corrected-source CI remains pending.

@@ -143,6 +143,7 @@ class RpcTests(unittest.TestCase):
             with patch("zoora_community.solana_rpc.http.client.HTTPSConnection", return_value=connection):
                 self.refused(lambda: SolanaRPC()._request("solana:devnet", "getTransaction", [], time.monotonic() + 8))
                 connection.close.assert_called_once()
+                connection.getresponse.return_value.close.assert_called_once()
 
     def test_transport_failures_redact_provider_details_and_always_close(self):
         for exception, flag in ((OSError("sensitive proxy information"), "RPC_UNAVAILABLE"),
