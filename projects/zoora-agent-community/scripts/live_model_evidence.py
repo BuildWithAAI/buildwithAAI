@@ -18,6 +18,16 @@ from zoora_community.store import Store, exclusive_file
 from zoora_community.validation import canonical
 
 
+def check_measured_answer(answer):
+    answer = answer.lower()
+    byte_count = r"\b12\s+(?:utf-?8\s+)?bytes\b|\b(?:utf-?8\s+)?bytes?(?:\s+count)?\s*(?:[:=]|is|are|of)?\s*12\b"
+    word_count = r"\b2\s+words\b|\bwords?(?:\s+count)?\s*(?:[:=]|is|are|of)?\s*2\b"
+    if not (re.search(byte_count, answer) and re.search(word_count, answer)):
+        raise AssertionError("Written model output did not associate the measured values with their correct units")
+    if "final allowed step" in answer or "first call" in answer:
+        raise AssertionError("Written model output echoed runner instructions")
+
+
 def run():
     model = os.environ.get("ZOORA_TEST_MODEL", "qwen3:1.7b")
     checks = []
@@ -68,9 +78,7 @@ def run():
             assert report["steps"][0]["tool_result"]["words"] == 2
             assert report["steps"][0]["tool_result"]["utf8_bytes"] == 12
             assert report["steps"][-1]["action"]["action"] == "finish"
-            answer = report["output"].lower()
-            assert re.search(r"\b12\b", answer) and re.search(r"\b2\b", answer) and "bytes" in answer and "words" in answer, "Written model output did not use the measured facts"
-            assert "final allowed step" not in answer and "first call" not in answer
+            check_measured_answer(report["output"])
             assert result["report_sha256"] == hashlib.sha256(out.read_bytes()).hexdigest()
             checks.append("actual local model generated an allowed tool action and a final written output using the measured byte/word facts")
             artifact = running.client.request("GET", "/v1/projects/" + project["id"] + "/artifacts")[1]["items"][0]
