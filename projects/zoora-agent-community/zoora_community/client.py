@@ -1,6 +1,9 @@
 """Small local-only SDK. Credentials belong in private files, never command arguments."""
 
 import http.client
+import socket
+import threading
+import time
 from pathlib import Path
 
 from .store import private_regular
@@ -21,6 +24,7 @@ class Client:
         if type(port) is not int or not 1 <= port <= 65535:
             raise Problem(400, "INVALID_PORT")
         self.port = port
+        self.deadline = None
 
     def request(self, method, path, body=None, token=None):
         if not path.startswith("/v1/") or len(path) > 512:
@@ -36,12 +40,26 @@ class Client:
             if len(payload) > 16384:
                 raise Problem(413, "BODY_TOO_LARGE")
             headers["Content-Type"] = "application/json"
-        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=12)
+        remaining = 12 if self.deadline is None else min(12, self.deadline - time.monotonic())
+        if remaining <= 0:
+            raise Problem(504, "RUN_DEADLINE")
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=remaining)
         response = None
+        timer = None
         try:
+            if self.deadline is not None:
+                connection.connect()
+                remaining = self.deadline - time.monotonic()
+                if remaining <= 0:
+                    raise Problem(504, "RUN_DEADLINE")
+                timer = threading.Timer(remaining, self._abort, args=(connection.sock,))
+                timer.daemon = True
+                timer.start()
             connection.request(method, path, payload, headers)
             response = connection.getresponse()
             raw = response.read(1_048_577)
+            if self.deadline is not None and time.monotonic() >= self.deadline:
+                raise Problem(504, "RUN_DEADLINE")
             if len(raw) > 1_048_576:
                 raise Problem(502, "INVALID_RESPONSE")
             # Server list responses can exceed the request-size bound, but remain bounded.
@@ -50,7 +68,21 @@ class Client:
             if response.status >= 400:
                 raise Problem(response.status, result.get("error", "REQUEST_FAILED"))
             return response.status, result
+        except (OSError, http.client.HTTPException):
+            if self.deadline is not None and time.monotonic() >= self.deadline:
+                raise Problem(504, "RUN_DEADLINE") from None
+            raise
         finally:
+            if timer is not None:
+                timer.cancel()
+                timer.join()
             if response is not None:
                 response.close()
             connection.close()
+
+    @staticmethod
+    def _abort(channel):
+        try:
+            channel.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
