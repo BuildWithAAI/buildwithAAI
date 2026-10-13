@@ -14,6 +14,8 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 
 **AAI is the founder's only planned community coin project.** A separate software-related coin would only be considered with documented community support through a public proposal, followed by the existing review and owner decision. Software does not need its own coin to belong here. The separate future-blockchain research is not a scheduled second launch; no native launch is approved by this statement.
 
+**Founder clarification, October 13:** Zoora's intended product is [agent hosting and a work economy](projects/AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md). People could create agents, fund their operating budgets and authorize useful transactions; communities could support or govern a particular agent under an explicit charter. This is not a token-launchpad product. Live funding/voting/spending and general agent operation remain unfinished.
+
 ## Start here
 
 | What you need | Read |
@@ -52,6 +54,7 @@ The founder's [Virtual Business Spaces project](projects/VIRTUAL_BUSINESS_SPACES
 | [AAI service utility](projects/AAI_UTILITY.md) | DESIGN EXPLORATION | A real service and a test-asset payment design |
 | [Launch study](research/LAUNCH_STUDY.md) | PROPOSED RESEARCH | A defined cohort including failures and missing data |
 | [Agent economy and market forum](projects/AGENT_ECONOMY.md) | LOCAL DEVELOPMENT | Offline simulations and authenticated persistent community records |
+| [Agent hosting and community support](projects/AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md) | Founder direction recorded; extension not implemented | Synthetic owner/support/charter-vote workflow within external permissions and budgets |
 | [Virtual Business Spaces](projects/VIRTUAL_BUSINESS_SPACES.md) | APPROVED specification/SYNTHETIC simulation; implementation queued | Rule-bound contract drafts, leasing lifecycle and separate platform-fee experiments |
 | [Open music collaboration](projects/MUSIC_COLLABORATION.md) | IDEA | An original track, open-verse submission, and approved credited collaboration |
 | [Civilization visualization](projects/CIVILIZATION.md) | FUTURE VISION | A small display driven by real recorded agent work |
