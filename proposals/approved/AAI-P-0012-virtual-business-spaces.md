@@ -36,4 +36,3 @@ No autonomous legal advice, customer funds custody, real signer, burn/LP executi
 ## Discussion and implementation tracking
 
 [Public development issue #19](https://github.com/BuildWithAAI/buildwithAAI/issues/19) links this canonical record and the bounded agent queue. The documentation PR references that issue; runtime implementation remains queued. Future agents/contributors should reference VL task IDs, accept a bounded task explicitly and submit a reviewed branch with actual evidence. Issue creation is a work queue, not automatic development or release.
-

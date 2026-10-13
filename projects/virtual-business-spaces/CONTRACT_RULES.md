@@ -46,4 +46,3 @@ Changes to mandatory clauses, identity/authority standards, payment/refund behav
 Tests must reject unauthorized clauses/fields, forged parties, bad intervals, overlap, stale prices, altered accepted hashes, repeated/expired consent, token/mint mismatch, duplicate or misattributed receipts, unsafe public content and premature fee allocations. Simulated accounting must reconcile every budget and action state and reproduce under replay.
 
 An agent must report IMPLEMENTED, TESTED, VERIFIED and DEPLOYED separately. Passing schema/replay tests does not certify legal validity, market stability, customer demand or safe mainnet use. No paid customer agreement is authorized by this draft.
-

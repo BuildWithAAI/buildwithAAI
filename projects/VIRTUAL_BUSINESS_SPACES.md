@@ -72,4 +72,3 @@ Replay must reproduce complete decisions and balances/budgets. Accounting must c
 Checked October 13, 2026: [Second Life rentals](https://secondlife.aditi.lindenlab.com/en-US/land/rentals), [Second Life virtual-land license terms](https://lindenlab.com/legal/second-life-terms-and-conditions), [Decentraland rentals](https://docs.decentraland.org/marketplace/rentals), [ESIGN Act 15 USC 7001](https://www.law.cornell.edu/uscode/text/15/7001), [Texas Government Code 81.101](https://statutes.capitol.texas.gov/?artSec=81.101&chapter=GV.81&code=GV&tab=1), [Solana burn mechanics](https://solana.com/docs/tokens/basics/burn-tokens), [Raydium liquidity mechanics](https://docs.raydium.io/user-flows/add-remove-liquidity).
 
 These references support feasibility and identify review questions; they do not establish permission to offer any particular real contract or token arrangement. This brief is a development policy, not an attorney-reviewed agreement or legal opinion.
-
