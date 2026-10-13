@@ -19,7 +19,7 @@ from zoora_community.validation import canonical
 
 
 def run():
-    model = os.environ.get("ZOORA_TEST_MODEL", "qwen2.5:1.5b")
+    model = os.environ.get("ZOORA_TEST_MODEL", "qwen3:1.7b")
     checks = []
     with tempfile.TemporaryDirectory(prefix="zoora-real-model-") as name:
         folder = Path(name)

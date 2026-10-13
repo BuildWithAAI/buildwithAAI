@@ -25,7 +25,7 @@ def capture(model, test_prompt):
         probe = {"name": name}
         try:
             reply, sha = provider._request("/api/chat", {"model": model, "messages": messages,
-                "tools": tools, "stream": False, "keep_alive": 0,
+                "tools": tools, "stream": False, "think": False, "keep_alive": 0,
                 "options": {"temperature": 0, "num_predict": 2048, "num_ctx": 8192}},
                 time.monotonic() + 40)
             probe.update(response=reply, response_sha256=sha)

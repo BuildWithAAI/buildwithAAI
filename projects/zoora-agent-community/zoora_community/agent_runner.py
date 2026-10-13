@@ -107,7 +107,7 @@ class LocalModel:
                 "quality_flags": ["LOCAL_SERVICE_ASSERTION_NOT_HOST_ATTESTATION"]}
 
     def next_action(self, messages, deadline, *, finish_only=False):
-        payload = {"model": self.model, "messages": messages, "stream": False,
+        payload = {"model": self.model, "messages": messages, "stream": False, "think": False,
                    "keep_alive": 0,
                    "options": {"temperature": 0, "num_predict": 2048, "num_ctx": 8192}}
         if not finish_only:

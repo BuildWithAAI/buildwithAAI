@@ -70,6 +70,7 @@ class RunnerTests(unittest.TestCase):
         self.assertNotIn(self.agent, raw.decode())
         self.assertNotIn(self.agent, canonical(fixture.requests))
         self.assertNotIn(self.operator, canonical(fixture.requests))
+        self.assertTrue(all(body["think"] is False for path, body in fixture.requests if path == "/api/chat"))
         if sys.platform != "win32":
             self.assertEqual(self.out.stat().st_mode & 0o077, 0)
         self.assertEqual(self.f.store.audit()["database_integrity"], "OK")
