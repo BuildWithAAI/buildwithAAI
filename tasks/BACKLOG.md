@@ -1168,3 +1168,8 @@ No messages, invitations, group settings, bot installation, or private screensho
 ### Token impact
 
 Community documentation/research only; no token behavior, wallet operation, or launch authorized.
+
+
+## October 13 project queue
+
+The historical 40-task snapshot above is retained. The new approved [Virtual Business Spaces project](../projects/VIRTUAL_BUSINESS_SPACES.md) has VL-001–007 specification/simulation tasks and mandatory contract controls. These are queued and unassigned; they are not included in the historical lane counts and do not activate a native GitHub Projects board or unattended agent. Current software readiness is recorded separately in the ecosystem status page.

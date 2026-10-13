@@ -30,17 +30,19 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 
 ## What exists today
 
-This repository contains public planning and contribution material. A separate **private AAI Scan prototype** implements Scan → Watch → Compare, saved observations, a short timeline, and change alerts. The earlier development record reports 29 passing offline tests and one successful live public market-data request. Those checks were not rerun for this documentation update.
+**Updated October 13, 2026.** [Current source status](docs/CURRENT_STATUS.md) separates working software, research, queued projects and public-launch work.
 
-**AAI Scan is not a validated live public service.** Hosting remains paused. Live Telegram delivery, production provider coverage, persistence/restore, and sustained operation remain to be demonstrated. It does not execute trades, verify Pump.fun origin, identify creator trades, or predict runners.
+The existing repository now has verified offline economy/community simulations and an authenticated persistent local workspace with browser authoring, historical wallet proofs, read-only Solana observations, backup/recovery and a bounded real-model/tool/report workflow. [AE-009 / draft PR #18](https://github.com/BuildWithAAI/buildwithAAI/pull/18) has seven passing final-head CI jobs. These candidates are unmerged and remain LOCAL_ONLY.
 
-The founder has started an **Anything AI** Telegram group. Its invitation URL is not yet verified in the official-links register. This update supplies no deployed assistant, trading strategy, agent marketplace, music service, blockchain, or funded trading account. No official mint has been authenticated here; missing token details remain **TBD — DO NOT GUESS**.
+The separate [AAI Scanner candidate / PR #10](https://github.com/BuildWithAAI/buildwithAAI/pull/10) has 154 tests and four passing recorded CI jobs. Its last real complete-coverage check failed holder-provider access; authorized live Telegram testing and public operations remain blocked. [Replay research / PR #9](https://github.com/BuildWithAAI/buildwithAAI/pull/9) has 27 offline tests. Neither module executes trades.
+
+The founder's [Virtual Business Spaces project](projects/VIRTUAL_BUSINESS_SPACES.md) is approved for specification and SYNTHETIC simulation under strict contract rules. Its proposed treasury/burn/liquidity fee policy is not live. No public iPhone start/control service, paid leasing program, AAI burn/LP operation or native-chain launch is verified here. Canonical token details must be authenticated before any later token operation.
 
 ## What we are exploring
 
 | Workstream | Current stage | First useful output |
 | --- | --- | --- |
-| [AAI Scan](projects/AAI_SCAN.md) | Private prototype; validation pending | Repeatable scan/watch/compare and recovery checks |
+| [AAI Scan](projects/AAI_SCAN.md) | Tested local read-only candidate; launch gates blocked | Permitted complete holder data and authorized Telegram/production verification |
 | [Multi-Brain Experiment](projects/MULTI_BRAIN_LAB.md) | RESEARCH direction; early founder priority | Verified source inventory, then two reproducible modules and benchmark |
 | [Personal Trading Assistant](projects/PERSONAL_ASSISTANT.md) | IDEA / PROPOSED product direction | User-named, evidence-based research assistant for Pump.fun and spot/leverage |
 | [Agent work controls](projects/AGENT_WORKFLOW.md) | RESEARCH | A narrow, budgeted workflow with review and durable records |
@@ -50,6 +52,7 @@ The founder has started an **Anything AI** Telegram group. Its invitation URL is
 | [AAI service utility](projects/AAI_UTILITY.md) | DESIGN EXPLORATION | A real service and a test-asset payment design |
 | [Launch study](research/LAUNCH_STUDY.md) | PROPOSED RESEARCH | A defined cohort including failures and missing data |
 | [Agent economy and market forum](projects/AGENT_ECONOMY.md) | LOCAL DEVELOPMENT | Offline simulations and authenticated persistent community records |
+| [Virtual Business Spaces](projects/VIRTUAL_BUSINESS_SPACES.md) | APPROVED specification/SYNTHETIC simulation; implementation queued | Rule-bound contract drafts, leasing lifecycle and separate platform-fee experiments |
 | [Open music collaboration](projects/MUSIC_COLLABORATION.md) | IDEA | An original track, open-verse submission, and approved credited collaboration |
 | [Civilization visualization](projects/CIVILIZATION.md) | FUTURE VISION | A small display driven by real recorded agent work |
 

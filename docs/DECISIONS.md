@@ -37,6 +37,7 @@ Work status is separate from commitment. See [STATUS.md](community/STATUS.md). P
 | B-015 | Bring the multi-brain experiment forward early | APPROVED research-priority direction; source audit and proposed offline/paper prototype. “Frankenbrain” remains a working nickname; architecture, datasets, budget, implementation, and live execution are not approved |
 | B-016 | Preserve a civilization visualization tied to actual work/resources | FUTURE vision; no running system verified in this hub |
 | B-017 | Use the AAI/Anything AI logo concept in community material | Generated concept prepared and corrected for Telegram; reused with this documentation update, with no new trademark/asset license decision |
+| B-018 | Publish Virtual Business Spaces as an agent development project with strict contract rules and disclosed platform fee purpose | APPROVED October 13, 2026 for specification and SYNTHETIC simulation; [AAI-P-0012](../proposals/approved/AAI-P-0012-virtual-business-spaces.md). Treasury/burn/liquidity direction recorded. Production fee/split, templates, mint/recipients/pool, signing, funding and paid launch remain separately reviewed; no promised price stability or returns |
 
 B-009 changes the earlier blanket “awaiting owner permission to publish the plan” state. It does not resolve unrelated product, financial, security, licensing, or settings decisions. Earlier proposal records retain their dates and scope.
 

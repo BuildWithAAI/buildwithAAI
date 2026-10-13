@@ -1,5 +1,31 @@
 # Current project status
 
+**Current BuildWithAAI software snapshot: October 13, 2026.** This review rechecked the current heads and recorded CI of 11 software development PRs. Their 27 recorded workflow runs pass. These are draft, unmerged local candidates; passing CI is not a public deployment or full security certification. This documentation review did not freshly execute every module's tests or retry the scanner's real providers/Telegram.
+
+[Recorded head/run metadata](development/verified-status-2026-10-13.json) · [AE-009 source evidence](../projects/zoora-agent-community/VALIDATION_AE009.md) · [New virtual-leasing project](../projects/VIRTUAL_BUSINESS_SPACES.md)
+
+## Current implementation and readiness
+
+| Workstream | Developed and evidenced | Remaining scope |
+|---|---|---|
+| AE-001–005 economy laboratory | Deterministic transfers, task market, simulated escrow comparison, reviews/appeals, direct-payment transcripts, allocation experiments, community profiles/projects/posts/offers, matched scenarios, replay, CSV and responsive HTML. [PR #14](https://github.com/BuildWithAAI/buildwithAAI/pull/14) has nine passing jobs; review suite 108 tests per platform/profile. | SYNTHETIC actors and payments. No proof of actual economic output, useful autonomous agents or production marketplace. |
+| AE-006–008 persistent community | Scoped credentials, SQLite persistence, projects/discussions/offers, historical signed wallet proofs, bounded read-only Solana observations, monitoring, audited backup/restore and crash/restart checks. [PR #17](https://github.com/BuildWithAAI/buildwithAAI/pull/17). | Public onboarding/moderation, host patches/ACLs, transport/operations, production providers and complete payment attribution. |
+| AE-009 browser and local model | [PR #18](https://github.com/BuildWithAAI/buildwithAAI/pull/18), head 6b073b1ea9aaab35d07aba8499fcb246784b6aa2: all seven jobs pass. Linux/local normal and optimized Python: 136 tests. Windows: 135 pass, one explicit Unix-only skip per profile. Chrome: 22 observer + 28 authoring checks. Actual CPU Qwen3 tool/report/artifact/restart workflow verified. | Model answer quality, real vendor wallets/Safari and broad agent autonomy remain unverified. Current runner cannot edit repositories, run generated code, sign or spend. |
+| AAI Scanner 0.1.4 | [PR #10](https://github.com/BuildWithAAI/buildwithAAI/pull/10), head 97108a271face220aef6296fddb2e18abdb210b5: four passing jobs, 154 tests; read-only mint/market/wallet reports, persisted watches, authenticated UI and operational/HTTP rehearsals. | Last real complete-coverage check on Oct 8 failed holder reads: primary HTTP429, backup HTTP403. Permitted holder provider, authorized live Telegram tests and reviewed public hosting/operations remain blocked. No execution or full P/L. |
+| Solana replay research | [PR #9](https://github.com/BuildWithAAI/buildwithAAI/pull/9), head 1ffffe30122f855b69e639ddd58ff6344949e905: 27 offline tests and passing recorded CI. Bounded read-only acquisition/replay provenance. | Live block acquisition was not reverified. No trained biological brain, proven trading edge or trading executor. |
+| Virtual Business Spaces | [AAI-P-0012](../proposals/approved/AAI-P-0012-virtual-business-spaces.md): founder approved specification/SYNTHETIC simulation. Seven queued agent tasks and 14 mandatory contract-policy controls are documented. | Implementation has not started. Templates, validator, lease engine, fees, payments, burns and LP deposits are not live. Production parameters and legal/protected review remain pending. |
+| iPhone access | Responsive Chrome mobile layouts and self-contained exported research viewers are tested. | Local community binds to 127.0.0.1; no deployed remote start/control surface. Browser task export still needs the local model CLI. Safari and mobile vendor-wallet interoperability are unverified. |
+| Broader projects | Personal trading assistant, multi-brain modules, civilization, music collaboration and future-chain relationship have research/planning records. | They do not have verified deployed implementations in this review. Other Zoora repositories/products were outside this BuildWithAAI source review. |
+
+**Current product position:** functioning offline research software plus a verified local authenticated community and one bounded real-model workflow. Public/paid ecosystem launch remains incomplete. No live leasing fee, customer-fund custody, automatic wallet execution, token burn or liquidity program has been added by these records.
+
+The existing community branch includes the AE-001–009 stack; scanner and replay research remain separate branches. Integration, review/merge, deployment and operating verification are separate release steps. There is no reliable whole-project completion percentage without a fixed release scope.
+
+## Historical September and earlier milestone records
+
+The records below retain their original dates. They do not override the current snapshot above.
+
+
 **Verified snapshot: September 22, 2026.** [PR #2](https://github.com/BuildWithAAI/buildwithAAI/pull/2) is merged. Its published main commit, [`01d98e7`](https://github.com/BuildWithAAI/buildwithAAI/commit/01d98e760e7404081f6ab30b2b7b1853ba7041b5), was checked against all 71 prepared files by Git blob hash before this follow-up documentation review. The earlier pre-publication baseline is preserved in [VALIDATION.md](VALIDATION.md). This is a documentation and branding verification, not a software release audit.
 
 | Item | Evidence / current state | Pending or unverified |

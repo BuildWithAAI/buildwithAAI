@@ -1,0 +1,360 @@
+{
+  "checked_on": "2026-10-13",
+  "repository": "BuildWithAAI/buildwithAAI",
+  "scope": "Current open software development PRs; recorded CI status and published source evidence, not a fresh execution of every test or an audit of unrelated Zoora repositories.",
+  "all_current_development_prs_draft": true,
+  "public_deployment_verified": false,
+  "verified_community_head": "6b073b1ea9aaab35d07aba8499fcb246784b6aa2",
+  "checks": [
+    {
+      "pr": 18,
+      "head": "6b073b1ea9aaab35d07aba8499fcb246784b6aa2",
+      "runs": [
+        {
+          "id": 38426099504,
+          "name": "Zoora Authenticated Community",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "6b073b1ea9aaab35d07aba8499fcb246784b6aa2",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38426099504",
+          "created_at": "2026-10-13T15:54:51Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 17,
+      "head": "850ec47c7fa704eb8efe61aaff8dbe549d36a0ba",
+      "runs": [
+        {
+          "id": 38131756746,
+          "name": "Zoora Authenticated Community",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "850ec47c7fa704eb8efe61aaff8dbe549d36a0ba",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38131756746",
+          "created_at": "2026-10-11T10:23:06Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38131756739,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "850ec47c7fa704eb8efe61aaff8dbe549d36a0ba",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38131756739",
+          "created_at": "2026-10-11T10:23:06Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38131756738,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "850ec47c7fa704eb8efe61aaff8dbe549d36a0ba",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38131756738",
+          "created_at": "2026-10-11T10:23:06Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38131756762,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "850ec47c7fa704eb8efe61aaff8dbe549d36a0ba",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38131756762",
+          "created_at": "2026-10-11T10:23:06Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 16,
+      "head": "f2fb4804a417fc5eb873714e98d0e694bf9c1d82",
+      "runs": [
+        {
+          "id": 38128293795,
+          "name": "Zoora Authenticated Community",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "f2fb4804a417fc5eb873714e98d0e694bf9c1d82",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38128293795",
+          "created_at": "2026-10-11T09:25:04Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38128293765,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "f2fb4804a417fc5eb873714e98d0e694bf9c1d82",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38128293765",
+          "created_at": "2026-10-11T09:25:04Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38128293769,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "f2fb4804a417fc5eb873714e98d0e694bf9c1d82",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38128293769",
+          "created_at": "2026-10-11T09:25:04Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38128293757,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "f2fb4804a417fc5eb873714e98d0e694bf9c1d82",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38128293757",
+          "created_at": "2026-10-11T09:25:04Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 15,
+      "head": "ce6f2d354232b326ea53b03880535bef550fa9ee",
+      "runs": [
+        {
+          "id": 38122818729,
+          "name": "Zoora Authenticated Community",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ce6f2d354232b326ea53b03880535bef550fa9ee",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38122818729",
+          "created_at": "2026-10-11T07:52:01Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38122818772,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ce6f2d354232b326ea53b03880535bef550fa9ee",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38122818772",
+          "created_at": "2026-10-11T07:52:01Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38122818730,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ce6f2d354232b326ea53b03880535bef550fa9ee",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38122818730",
+          "created_at": "2026-10-11T07:52:01Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38122818750,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "ce6f2d354232b326ea53b03880535bef550fa9ee",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38122818750",
+          "created_at": "2026-10-11T07:52:01Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 14,
+      "head": "9287f85a7fd59a5769bd330b549ef914963014d4",
+      "runs": [
+        {
+          "id": 38111119208,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "9287f85a7fd59a5769bd330b549ef914963014d4",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38111119208",
+          "created_at": "2026-10-11T04:17:38Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38111119158,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "9287f85a7fd59a5769bd330b549ef914963014d4",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38111119158",
+          "created_at": "2026-10-11T04:17:38Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38111119216,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "9287f85a7fd59a5769bd330b549ef914963014d4",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38111119216",
+          "created_at": "2026-10-11T04:17:38Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 13,
+      "head": "a38452719ced469472e94a5aa6295001079cfe2f",
+      "runs": [
+        {
+          "id": 38072766885,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a38452719ced469472e94a5aa6295001079cfe2f",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38072766885",
+          "created_at": "2026-10-10T17:41:31Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38072766453,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a38452719ced469472e94a5aa6295001079cfe2f",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38072766453",
+          "created_at": "2026-10-10T17:41:30Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38072766404,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a38452719ced469472e94a5aa6295001079cfe2f",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38072766404",
+          "created_at": "2026-10-10T17:41:30Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 12,
+      "head": "70a3b42986c80e77dc8fde203866c2a5f9f7143b",
+      "runs": [
+        {
+          "id": 38067993833,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "70a3b42986c80e77dc8fde203866c2a5f9f7143b",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38067993833",
+          "created_at": "2026-10-10T16:31:12Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38067993838,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "70a3b42986c80e77dc8fde203866c2a5f9f7143b",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38067993838",
+          "created_at": "2026-10-10T16:31:12Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38067993829,
+          "name": "Zoora Review Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "70a3b42986c80e77dc8fde203866c2a5f9f7143b",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38067993829",
+          "created_at": "2026-10-10T16:31:12Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 11,
+      "head": "772cac0b3945390f27289ada834ebee5c6e1676b",
+      "runs": [
+        {
+          "id": 38037858303,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "772cac0b3945390f27289ada834ebee5c6e1676b",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38037858303",
+          "created_at": "2026-10-10T08:26:02Z",
+          "run_attempt": 1
+        },
+        {
+          "id": 38037858272,
+          "name": "Zoora Task Market",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "772cac0b3945390f27289ada834ebee5c6e1676b",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38037858272",
+          "created_at": "2026-10-10T08:26:02Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 10,
+      "head": "97108a271face220aef6296fddb2e18abdb210b5",
+      "runs": [
+        {
+          "id": 37860394183,
+          "name": "AAI scanner tests",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "97108a271face220aef6296fddb2e18abdb210b5",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/37860394183",
+          "created_at": "2026-10-08T23:36:43Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 9,
+      "head": "1ffffe30122f855b69e639ddd58ff6344949e905",
+      "runs": [
+        {
+          "id": 37834405514,
+          "name": "Python research tests",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "1ffffe30122f855b69e639ddd58ff6344949e905",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/37834405514",
+          "created_at": "2026-10-08T19:46:03Z",
+          "run_attempt": 1
+        }
+      ]
+    },
+    {
+      "pr": 4,
+      "head": "8a58702718b86bc75da0b271b6943e50ee0af2a7",
+      "runs": [
+        {
+          "id": 38035366113,
+          "name": "Zoora Agent Economy Simulator",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "8a58702718b86bc75da0b271b6943e50ee0af2a7",
+          "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38035366113",
+          "created_at": "2026-10-10T07:42:50Z",
+          "run_attempt": 1
+        }
+      ]
+    }
+  ],
+  "scanner_real_provider_check": {
+    "date": "2026-10-08",
+    "result": "FAILED_PARTIAL_COVERAGE",
+    "primary_holder_error": "HTTP429",
+    "backup_holder_error": "HTTP403",
+    "telegram_live_test": "UNVERIFIED"
+  },
+  "new_virtual_leasing": {
+    "status": "APPROVED_FOR_SPECIFICATION_AND_SYNTHETIC_SIMULATION",
+    "implementation": "NOT_STARTED",
+    "live_payments": "NOT_AUTHORIZED",
+    "production_fee_parameters": "PROPOSED_PENDING_REVIEW"
+  }
+}
+
