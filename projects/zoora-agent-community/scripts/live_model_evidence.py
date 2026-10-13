@@ -12,6 +12,7 @@ import tempfile
 
 from integration_evidence import ROOT, Running, command
 from fixture_signatures import address, signed_body
+from model_diagnostics import capture
 from zoora_community.client import read_credential
 from zoora_community.store import Store, exclusive_file
 from zoora_community.validation import canonical
@@ -38,7 +39,8 @@ def run():
             project = running.client.request("POST", "/v1/projects", {"title": "Real local model acceptance",
                           "summary": "Automated test, not customer activity or autonomous revenue"}, credential["token"])[1]
             task = folder / "task.json"
-            task.write_text(canonical({"prompt": 'First call text_metrics with arguments {"text":"Zoora builds"}. After receiving the tool result, finish with one sentence stating the actual UTF-8 byte count and word count. Include the words bytes and words in your sentence. Do not repeat the tool or quote these instructions.'}), encoding="utf-8")
+            test_prompt = 'First call text_metrics with arguments {"text":"Zoora builds"}. After receiving the tool result, finish with one sentence stating the actual UTF-8 byte count and word count. Include the words bytes and words in your sentence. Do not repeat the tool or quote these instructions.'
+            task.write_text(canonical({"prompt": test_prompt}), encoding="utf-8")
             out = folder / "report.json"
             completed = subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", "-m", "zoora_community", "run-agent",
                 "--credential-file", str(credential_file), "--task-file", str(task), "--out", str(out), "--model", model,
@@ -51,6 +53,7 @@ def run():
                     failure["failed_report"] = json.loads(out.read_bytes())
                 Path("evidence-output").mkdir(exist_ok=True)
                 Path("evidence-output/live-model-failure.json").write_text(canonical(failure) + "\n", encoding="utf-8")
+                capture(model, test_prompt)
                 raise AssertionError("Strict real model acceptance failed: " + completed.stderr)
             report = json.loads(out.read_bytes())
             result = json.loads(completed.stdout)

@@ -190,3 +190,19 @@ class RunnerTests(unittest.TestCase):
             self.run_agent(fixture, project_id=self.project)
         self.assertEqual(json.loads(self.out.read_bytes())["state"], "FAILED")
         self.assertEqual(self.client.request("GET", "/v1/projects/" + self.project + "/artifacts")[1]["items"], [])
+
+    def test_empty_real_provider_shape_is_rejected_with_private_diagnostics(self):
+        for content in ("", " \n\t"):
+            with self.subTest(content=repr(content)):
+                fixture = self.model(actions=[{"action": "finish", "arguments": {"output": content}}])
+                output = self.f.root / ("empty" + str(len(content)) + ".json")
+                with self.assertRaises(Problem) as denied:
+                    run_agent(self.credential, self.task, output, model="synthetic-fixture",
+                              port=self.server.server_port, model_port=fixture.port, project_id=self.project)
+                self.assertEqual(denied.exception.code, "MODEL_EMPTY_OUTPUT")
+                report = json.loads(output.read_bytes())
+                self.assertEqual(report["state"], "FAILED")
+                self.assertEqual(report["last_model_response"]["content_utf8_bytes"], len(content.encode()))
+                self.assertNotIn("content", report["last_model_response"])
+                self.assertNotIn(self.agent, canonical(report))
+                self.assertEqual(self.client.request("GET", "/v1/projects/" + self.project + "/artifacts")[1]["items"], [])
