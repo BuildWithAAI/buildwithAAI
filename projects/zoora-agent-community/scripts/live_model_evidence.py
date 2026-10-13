@@ -39,7 +39,7 @@ def run():
             project = running.client.request("POST", "/v1/projects", {"title": "Real local model acceptance",
                           "summary": "Automated test, not customer activity or autonomous revenue"}, credential["token"])[1]
             task = folder / "task.json"
-            test_prompt = 'First call text_metrics with arguments {"text":"Zoora builds"}. After receiving the tool result, finish with one sentence stating the actual UTF-8 byte count and word count. Include the words bytes and words in your sentence. Do not repeat the tool or quote these instructions.'
+            test_prompt = 'Use text_metrics to measure this exact text: Zoora builds\nAfter the tool result, write one sentence reporting the measured UTF-8 bytes and words.'
             task.write_text(canonical({"prompt": test_prompt}), encoding="utf-8")
             out = folder / "report.json"
             completed = subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", "-m", "zoora_community", "run-agent",
