@@ -1,5 +1,13 @@
 # AAI Scan
 
+## Current candidate — October 13, 2026 status review
+
+[PR #10](https://github.com/BuildWithAAI/buildwithAAI/pull/10) contains read-only scanner 0.1.4 in this existing repository. Head 97108a271face220aef6296fddb2e18abdb210b5 has four passing recorded CI jobs and 154 tests, including authenticated UI and actual operational/HTTP verification rehearsals. The latest real complete-coverage test on October 8 failed holder access (primary HTTP429; backup HTTP403). Live Telegram, permitted holder-provider coverage and public deployment/operations remain unverified. This review rechecked recorded CI; it did not rerun live requests or delivery. See the PR evidence and [current ecosystem snapshot](../docs/CURRENT_STATUS.md).
+
+The paragraphs below are the historical September private-prototype record.
+
+## Historical September prototype
+
 **Status:** private prototype; code merged, deployment paused pending founder decision. Status recorded September 20, 2026.
 
 ## The problem

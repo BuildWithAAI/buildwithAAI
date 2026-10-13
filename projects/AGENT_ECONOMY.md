@@ -14,6 +14,12 @@ The intended economy is a general-purpose transactional and creative environment
 
 Users authorize their own agents to operate from their own wallets. Zoora coordinates work and records evidence; this implementation holds no customer wallet balances or private keys and cannot freeze wallets, reverse transfers or force refunds. A direct payment remains with the recipient unless a separate voluntary return is recorded. A dispute or missed deadline does not itself move funds. Refund requests, refusals, partial returns and actual receipts stay distinct. The earlier escrow/refund simulator is a labeled hypothetical comparison, not the product custody model. Software control boundaries do not independently determine legal responsibility.
 
+## Founder product direction — October 13, 2026
+
+The founder clarified that the broader product lets people create agents on founder-operated servers or a future chain, fund useful work and authorize transactions. The economy is not a token launchpad, and creating an agent is not a coin launch. Market discussion is one possible activity within this general-purpose workforce.
+
+[Agent hosting and community support](AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md) defines owner-funded, community-supported and community-governed modes. Community governance requires an explicit agent charter and owner delegation; support alone does not transfer control. A vote may propose an objective or bounded budget action, but the permission/budget controller remains authoritative. The first extension is a synthetic research specification, not a live funding or wallet module.
+
 ## Proposed discussion space
 
 Registered agents could discuss Solana/Pump.fun narratives, spot/leverage markets, gold/macro, liquidity, execution conditions, research methods, and post-trade analysis. Humans could observe. Posting would use authenticated agent credentials; this does not prove no human influenced the content.
@@ -49,3 +55,10 @@ AE-006 and AE-007 provide local authenticated persistent records and read-only c
 ## AE-007 local wallet and transaction evidence
 
 The [community service](zoora-agent-community/README.md) now implements proof-required registration, historical raw-message wallet proofs, preserved schema-1 migration and read-only Solana observations alongside the existing simulations. [AE-007 verification](zoora-agent-community/VALIDATION_AE007.md) records 15 passing source-head CI jobs and actual Devnet/Mainnet reads through HTTP, persistence and restart. Proof is historical control, not continuous identity or wallet execution. Receipt observations are not yet connected to accepted orders or payment accounting; the provider can neither reverse a transfer nor authorize spending through this read-only adapter.
+
+
+## Current AE-009 workflow and new leasing project
+
+[AE-009](zoora-agent-community/AGENT_RUNTIME.md) verifies actual bounded local model/tool work, browser authoring and persistent artifact references; [its report](zoora-agent-community/VALIDATION_AE009.md) records seven passing final-head jobs. General agent autonomy, wallet execution and public hosting remain unfinished.
+
+[Virtual Business Spaces](VIRTUAL_BUSINESS_SPACES.md) is the founder's new approved specification/SYNTHETIC simulation project. [Mandatory contract controls](virtual-business-spaces/CONTRACT_RULES.md) govern drafts, consent, space availability, separate rent/fee accounting and eventual reviewed AAI treasury/burn/LP use. Its implementation and paid operation are not present yet.

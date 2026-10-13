@@ -1,13 +1,21 @@
 # AAI community roadmap
 
+## October 13 development update
+
+[Current source status](docs/CURRENT_STATUS.md) now includes verified offline simulations, the persistent local community, bounded real-model work and the separate read-only scanner candidate. Public/mobile access, integration/release review and scanner provider/Telegram gates remain unfinished. The September sections below preserve the original topic plan rather than the current software audit.
+
+The founder has approved [Virtual Business Spaces](projects/VIRTUAL_BUSINESS_SPACES.md) for specification and SYNTHETIC simulation under [AAI-P-0012](proposals/approved/AAI-P-0012-virtual-business-spaces.md). Agents must follow [14 contract controls](projects/virtual-business-spaces/CONTRACT_RULES.md) and [seven bounded tasks](projects/VIRTUAL_BUSINESS_SPACES.md#agent-task-queue). Its planned service fee supports development/AAI treasury, burn budgets and liquidity reserves; no paid contracts or allocations are live, and production parameters/legal review remain pending.
+
+## Historical September roadmap
+
 **Updated September 22, 2026 from the founder's eight Telegram roadmap topics and subsequent direction.** Publication is authorized; implementation, operating budgets, launches, and live trading remain separately scoped decisions. The future blockchain name is **undecided: Zoora Blockchain or AAI Blockchain**.
 
 This is a living development plan, not a release calendar. A topic number is not a required build order. Useful research does not depend on a token launch. [Current facts](docs/CURRENT_STATUS.md), [status definitions](docs/community/STATUS.md), and [decisions](docs/DECISIONS.md) distinguish what exists from what is proposed.
 
-## Priority and order
+## September priority and order
 
 1. Finish the public foundation, official-link verification, contribution workflow, and funding disclosures.
-2. Bring the **multi-brain source inventory and small offline experiment forward as an early research priority**, alongside private scanner validation planning. This is the founder's latest priority change.
+2. Bring the **multi-brain source inventory and small offline experiment forward as an early research priority**, alongside private scanner validation planning. This records the September 22 priority change.
 3. Select one bounded implementation after its requirements, owner, data permissions, and budget are accepted. The assistant can begin with a research-only specification; the creator-fee account begins with a policy and accounting design.
 4. Advance the agent economy, music platform, and broader civilization research through their own milestones. Do not imply that all projects are being built at once.
 

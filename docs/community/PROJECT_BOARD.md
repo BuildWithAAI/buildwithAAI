@@ -24,3 +24,8 @@ Optional future title: **Build With AAI — Community Development**. Fields: pla
 Views could include foundation, early multi-brain research, research/ideas, work stages, and accepted releases. No automated rule should equate issue closure with release. Configure selected labels/fields and verify actual visibility before claiming a live board. [GitHub documentation](https://docs.github.com/en/issues/planning-and-tracking-with-projects/creating-projects/creating-a-project).
 
 Keep each decision in the repository/issue record and reconcile labels/board fields after changes. Popularity does not approve a task. [Backlog](../../tasks/BACKLOG.md) · [Status](STATUS.md) · [Governance](GOVERNANCE.md).
+
+
+## October 13 project queue
+
+The historical 40-task snapshot above is retained. The new approved [Virtual Business Spaces project](../../projects/VIRTUAL_BUSINESS_SPACES.md) has VL-001–007 specification/simulation tasks and mandatory contract controls. These are queued and unassigned; they are not included in the historical lane counts and do not activate a native GitHub Projects board or unattended agent. Current software readiness is recorded separately in the ecosystem status page.
