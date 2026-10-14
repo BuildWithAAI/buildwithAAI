@@ -12,6 +12,6 @@ The documentation states a 720-entry limit; current public observations can cont
 
 Source format references: [Kraken OHLC](https://docs.kraken.com/api-reference/market-data/get-ohlc-data), [market identity](https://docs.kraken.com/api-reference/market-data/get-tradable-asset-pairs). The adapter uses assetVersion=1 to require the explicit SOL/USD display identity.
 
-Capture checksum: 28083e969359d24e741bcf19cfb2e44116bed728a348b9d4fea64cb5e03ed8c2.
+Capture checksum: 8021dfd6def9c1103f6eb2a0111c5d723d2b218ee909ebc9e6e09f0df4654664.
 
 Funds transferred: 0. Tokens purchased: 0. Tokens burned: 0. Funded readiness remains blocked.

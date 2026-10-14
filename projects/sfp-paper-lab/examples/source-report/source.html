@@ -4,7 +4,7 @@
 <title>BuildWithAAI · Source receipt</title><style>
 *{box-sizing:border-box}body{margin:0;background:#0c1116;color:#e3eaf0;font:16px/1.6 system-ui,sans-serif}
 main{max-width:1050px;margin:auto;padding:32px 18px}h1{font-size:clamp(27px,5vw,43px);line-height:1.2}
-h2{font-size:22px;margin-top:32px}.label,a{color:#69e4cc}a{text-underline-offset:3px}p{max-width:80ch}
+h2{font-size:22px;margin-top:32px}.label,a{color:#69e4cc}a{text-underline-offset:3px}p{max-width:80ch;overflow-wrap:anywhere}
 .notice{background:#191c20;border-left:3px solid #ecbb64;padding:15px 18px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .card{border:1px solid #303b44;border-radius:10px;padding:18px}.card strong{display:block;color:#69e4cc;font-size:30px}
 code{overflow-wrap:anywhere;font-size:12px}.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:14px}
@@ -22,10 +22,10 @@ The declared pair key, base, quote and spot asset classes are checked against th
 <h2>What was retained</h2><p id="transport"><code>LOCAL_FILE_IMPORT_NOT_WITNESSED</code></p>
 <div class="scroll"><table id="requests"><thead><tr><th>Response</th><th>Status</th><th>Bytes</th><th>Request time</th><th>Body hash</th></tr></thead><tbody><tr><td>PAIR</td><td>200</td><td>169</td><td>1788136200000</td><td><code>4a16ffc63c338059</code></td></tr><tr><td>OHLC</td><td>200</td><td>46435</td><td>1788136200000</td><td><code>886db50c202dece5</code></td></tr></tbody></table></div>
 <p class="muted">Swipe tables on a small screen. Times are local host milliseconds for HTTPS capture, or supplied assertions for file import. Saved receipts do not independently witness transport.</p>
-<h2>Provider contract</h2><p id="contract">OBSERVED_721_ROWS_VS_DOCUMENTED_720_LIMIT</p>
+<h2>Provider contract</h2><p id="contract">The provider returned 721 rows; the documentation states a 720-entry limit. The current row is excluded.</p>
 <h2>Study coverage</h2><p>The documentation states a 720-entry limit. Observed 721-row responses are bounded as 720 completed rows plus the uncommitted final row and flagged above. The default three-fold study needs longer history.
 No frozen plan is automatically shortened to fit this sample. A smaller retrospective research plan must be declared explicitly.</p>
 <p>Availability is reconstructed at close plus delay. All prices are provider reports, and all fills/costs remain synthetic scenarios. These observations do not establish an independently untouched test.</p>
 <h2>Inspect the records</h2><p><a href="SOURCE_NOTES.md">Source notes</a> · <a href="quality.json">Quality record</a> · <a href="history.csv">Hourly CSV</a></p>
-<p><code>28083e969359d24e741bcf19cfb2e44116bed728a348b9d4fea64cb5e03ed8c2</code></p><p class="muted">Funds moved: 0. Tokens purchased: 0. Tokens burned: 0. No price floor or economic allocation is established.</p>
+<p><code>8021dfd6def9c1103f6eb2a0111c5d723d2b218ee909ebc9e6e09f0df4654664</code></p><p class="muted">Funds moved: 0. Tokens purchased: 0. Tokens burned: 0. No price floor or economic allocation is established.</p>
 </main></body></html>

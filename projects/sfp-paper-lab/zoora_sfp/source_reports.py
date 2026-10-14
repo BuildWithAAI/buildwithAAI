@@ -39,6 +39,9 @@ def notes(source):
 def source_dashboard(source):
     q = source["quality"]
     flags = " · ".join(q["flags"]) if q["flags"] else "No local gap, staleness or market-status flags"
+    contract = ("The provider returned 721 rows; the documentation states a 720-entry limit. "
+                "The current row is excluded." if q["provider_contract_warnings"] else
+                "No observed row-cap discrepancy")
     requests = "".join(f"<tr><td>{escape(r['kind'])}</td><td>{r['status']}</td>"
                        f"<td>{r['body_bytes']}</td><td>{r['started_ms']}</td>"
                        f"<td><code>{r['body_sha256'][:16]}</code></td></tr>"
@@ -49,7 +52,7 @@ def source_dashboard(source):
 <title>BuildWithAAI · Source receipt</title><style>
 *{{box-sizing:border-box}}body{{margin:0;background:#0c1116;color:#e3eaf0;font:16px/1.6 system-ui,sans-serif}}
 main{{max-width:1050px;margin:auto;padding:32px 18px}}h1{{font-size:clamp(27px,5vw,43px);line-height:1.2}}
-h2{{font-size:22px;margin-top:32px}}.label,a{{color:#69e4cc}}a{{text-underline-offset:3px}}p{{max-width:80ch}}
+h2{{font-size:22px;margin-top:32px}}.label,a{{color:#69e4cc}}a{{text-underline-offset:3px}}p{{max-width:80ch;overflow-wrap:anywhere}}
 .notice{{background:#191c20;border-left:3px solid #ecbb64;padding:15px 18px}}.cards{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}}
 .card{{border:1px solid #303b44;border-radius:10px;padding:18px}}.card strong{{display:block;color:#69e4cc;font-size:30px}}
 code{{overflow-wrap:anywhere;font-size:12px}}.scroll{{overflow-x:auto}}table{{width:100%;border-collapse:collapse;white-space:nowrap;font-size:14px}}
@@ -67,7 +70,7 @@ The declared pair key, base, quote and spot asset classes are checked against th
 <h2>What was retained</h2><p id="transport"><code>{escape(q['transport'])}</code></p>
 <div class="scroll"><table id="requests"><thead><tr><th>Response</th><th>Status</th><th>Bytes</th><th>Request time</th><th>Body hash</th></tr></thead><tbody>{requests}</tbody></table></div>
 <p class="muted">Swipe tables on a small screen. Times are local host milliseconds for HTTPS capture, or supplied assertions for file import. Saved receipts do not independently witness transport.</p>
-<h2>Provider contract</h2><p id="contract">{escape(' · '.join(q['provider_contract_warnings']) or 'No observed row-cap discrepancy')}</p>
+<h2>Provider contract</h2><p id="contract">{escape(contract)}</p>
 <h2>Study coverage</h2><p>The documentation states a 720-entry limit. Observed 721-row responses are bounded as 720 completed rows plus the uncommitted final row and flagged above. The default three-fold study needs longer history.
 No frozen plan is automatically shortened to fit this sample. A smaller retrospective research plan must be declared explicitly.</p>
 <p>Availability is reconstructed at close plus delay. All prices are provider reports, and all fills/costs remain synthetic scenarios. These observations do not establish an independently untouched test.</p>

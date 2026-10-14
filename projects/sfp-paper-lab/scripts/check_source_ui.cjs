@@ -20,7 +20,7 @@ async function main() {
       if (!boundary.includes('SYNTHETIC') || !boundary.includes('funded trading blocked')) throw Error('Missing source boundary');
       if (await page.locator('.cards .card').count() !== 3) throw Error('Missing source cards');
       if (!(await page.locator('#screen').innerText()).includes('PASS_LOCAL_DATA_SCREEN_ONLY')) throw Error('Missing local-only data screen');
-      if (!(await page.locator('#contract').innerText()).includes('721_ROWS_VS_DOCUMENTED_720')) throw Error('Hidden provider discrepancy');
+      if (!(await page.locator('#contract').innerText()).includes('provider returned 721 rows')) throw Error('Hidden provider discrepancy');
       if (!(await page.locator('#transport').innerText()).includes('LOCAL_FILE_IMPORT_NOT_WITNESSED')) throw Error('False transport claim');
       if (await page.locator('#requests tbody tr').count() !== 2) throw Error('Missing raw receipts');
       if (!(await page.locator('body').innerText()).includes('not an AAI token')) throw Error('Missing market boundary');
