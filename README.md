@@ -20,7 +20,8 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 | --- | --- |
 | The full eight-part roadmap | [Roadmap](ROADMAP.md) |
 | What actually exists | [Current status](docs/CURRENT_STATUS.md) |
-| Work to pick up | [Planning board](docs/community/PROJECT_BOARD.md) and [40 task briefs](tasks/BACKLOG.md) |
+| Work to pick up | [Planning board](docs/community/PROJECT_BOARD.md) and [41 task briefs](tasks/BACKLOG.md) |
+| SFP trading research | [Swing failure patterns and evaluation protocol](research/SWING_FAILURE_PATTERNS.md) |
 | How to participate | [Contributing](CONTRIBUTING.md) and [proposal process](proposals/README.md) |
 | Funding and community benefit | [Creator-fee funding proposal](docs/FUNDING.md) |
 | Decisions and limits | [Decision register](docs/DECISIONS.md) and [project boundaries](DISCLAIMER.md) |
@@ -67,4 +68,4 @@ Community members propose and discuss; contributors build; owner/maintainers rev
 
 Start with a small outcome that can be checked. Preserve sources and failed results. Major architecture and economic changes need an explicit decision before implementation. Keep wallet secrets and private data out of contributions.
 
-**Documentation snapshot: September 22, 2026.** The board and 40 task bodies are repository planning documents, not 40 opened GitHub issues or a native Projects board. Label definitions and review policies do not prove platform enforcement. See the [development-plan index](DEVELOPMENT_PLAN.md).
+**SFP/backlog update: October 14, 2026; broader documents retain their dated snapshots.** The board and 41 task bodies are repository planning documents, not 41 opened GitHub issues or a native Projects board. Label definitions and review policies do not prove platform enforcement. See the [development-plan index](DEVELOPMENT_PLAN.md).

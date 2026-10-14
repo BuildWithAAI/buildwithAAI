@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_date": "2026-09-22",
+  "snapshot_date": "2026-10-14",
   "kind": "planning_backlog_not_live_issues",
   "tasks": [
     {
@@ -890,6 +890,31 @@
         "Use the opaque-black AAI logo concept and retain its provenance/reuse status; record actual topic setup only when verified."
       ],
       "risks_and_gates": "No messages, invitations, group settings, bot installation, or private screenshots are published by this task.",
+      "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
+    },
+    {
+      "id": "AAI-T-041",
+      "title": "Research swing failure patterns for the swing strategy",
+      "status": "RESEARCH",
+      "commitment": "RESEARCH",
+      "priority": "P1",
+      "phase": "4",
+      "type": "type: research",
+      "owner": "Unassigned",
+      "issue_url": null,
+      "scope": "Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, with a separate Forex/XAUUSD replication note. This revision delivers source research and an evaluation specification, not a detector or measured trading edge.",
+      "dependencies": [
+        "AAI-T-015",
+        "AAI-T-006"
+      ],
+      "acceptance_criteria": [
+        "Separate observable wick/reclaim events, inferred stop-running explanations, RSI failure swings and future performance labels; cite original/first-party sources and preserve negative evidence.",
+        "Verify market/venue identities, price and executable-quote history, terms, gaps, ordering and point-in-time availability before claiming performance coverage.",
+        "Freeze causal confirmed-pivot rules, reclaim/trend/structure variants, baseline triggers, holding/risk rules, trial ledger and numerical go/no-go gates before replay.",
+        "After separately accepted implementation scope, validate synthetic geometry and timing fixtures, then compare event studies, costed replay and unseen offline-forward simulation with fair baselines.",
+        "Report failed/ambiguous fills, fees/slippage/latency, loss tails, drawdown, exposure, sample adequacy and selection uncertainty; permit a rejection or underpowered result."
+      ],
+      "risks_and_gates": "Research specification first. Offline replay and paper simulation only; no automatic orders, broker/wallet connection, borrowing, leverage, profitable-release claim, paid provider or creator-fee-account access. Bearish labels do not authorize spot shorts.",
       "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
     }
   ]

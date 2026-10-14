@@ -39,3 +39,9 @@ See [task AAI-T-023](../tasks/BACKLOG.md#aai-t-023) and the [earlier starter tas
 The founder wants the [multi-brain source audit and proposed module experiment](MULTI_BRAIN_LAB.md) brought forward early. It expands this lab and preserves jellyfish-inspired exploration. See the [initial, non-exhaustive source inventory](../research/BRAIN_DATASETS.md). Cat, monkey, crow, and jellyfish candidates remain verification targets where no suitable resource has been established.
 
 The first step is source/permission/scope research, then a separately accepted small offline/paper prototype. Compare each module, the combination, simple/no-trade approaches, and comparable randomized networks. No model, biological advantage, or creator-fee account access is delivered here.
+
+## Swing failure pattern research — October 14, 2026
+
+The founder requested SFPs as an addition to the swing-strategy research. [BT-004: research dossier and evaluation protocol](../research/SWING_FAILURE_PATTERNS.md) separates observable sweep/reclaim geometry from inferred stop activity, defines causal pivots and three proposed entry variants, and specifies costs, baselines, unseen testing and rejection criteria. [AAI-T-041](../tasks/BACKLOG.md#aai-t-041) tracks the remaining evidence and study work.
+
+SFP source research and a protocol are available; no detector, historical performance study or profitable strategy is delivered. Bearish events do not create spot-short permission. Offline replay and paper simulation boundaries remain in force; Forex/XAUUSD replication has its own data, broker and evaluation requirements.
