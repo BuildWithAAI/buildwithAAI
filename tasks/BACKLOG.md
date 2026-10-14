@@ -1,6 +1,6 @@
 # Community development backlog
 
-**40 planning task briefs — updated September 22, 2026.** These IDs are not GitHub issue numbers. No contributor is assigned or compensation offered by this file. Native issue/board activation is separate.
+**41 planning task briefs — SFP research added October 14, 2026.** Existing 40 task records retain their earlier scope/status. These IDs are not GitHub issue numbers. No contributor is assigned or compensation offered by this file. Native issue/board activation is separate.
 
 The founder prioritizes **AAI-T-023** early; module specifications **AAI-T-036–038** depend on the source and scope decisions. Publishing documentation does not approve implementation, spending, or trading.
 
@@ -48,6 +48,7 @@ Canonical structured data: [backlog.json](backlog.json). [Board](../docs/communi
 | [AAI-T-038](#aai-t-038) | Specify an honest multi-brain activity display | IDEA | P1 |
 | [AAI-T-039](#aai-t-039) | Specify the civilization activity view | IDEA | P2 |
 | [AAI-T-040](#aai-t-040) | Reconcile Telegram orientation and verified links | PROPOSED | P1 |
+| [AAI-T-041](#aai-t-041) | Research swing failure patterns for the swing strategy | RESEARCH | P1 |
 
 ## AAI-T-001
 
@@ -1164,6 +1165,36 @@ Match Start Here and the eight Telegram roadmap topics to current repo facts and
 ### Risks and approval limits
 
 No messages, invitations, group settings, bot installation, or private screenshots are published by this task.
+
+### Token impact
+
+Community documentation/research only; no token behavior, wallet operation, or launch authorized.
+
+## AAI-T-041
+
+**Research swing failure patterns for the swing strategy**
+
+Status: **RESEARCH** · Commitment: **RESEARCH** · Priority: **P1** · Phase: 4 · Type: `type: research`
+
+Owner: Unassigned. Live issue: not created by this revision.
+
+Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, with a separate Forex/XAUUSD replication note. This revision delivers source research and an evaluation specification, not a detector or measured trading edge. See [BT-004](../research/SWING_FAILURE_PATTERNS.md).
+
+### Dependencies
+
+[AAI-T-015](#aai-t-015), [AAI-T-006](#aai-t-006)
+
+### Acceptance criteria
+
+- Separate observable wick/reclaim events, inferred stop-running explanations, RSI failure swings and future performance labels; cite original/first-party sources and preserve negative evidence.
+- Verify market/venue identities, price and executable-quote history, terms, gaps, ordering and point-in-time availability before claiming performance coverage.
+- Freeze causal confirmed-pivot rules, reclaim/trend/structure variants, baseline triggers, holding/risk rules, trial ledger and numerical go/no-go gates before replay.
+- After separately accepted implementation scope, validate synthetic geometry and timing fixtures, then compare event studies, costed replay and unseen offline-forward simulation with fair baselines.
+- Report failed/ambiguous fills, fees/slippage/latency, loss tails, drawdown, exposure, sample adequacy and selection uncertainty; permit a rejection or underpowered result.
+
+### Risks and approval limits
+
+Research specification first. Offline replay and paper simulation only; no automatic orders, broker/wallet connection, borrowing, leverage, profitable-release claim, paid provider or creator-fee-account access. Bearish labels do not authorize spot shorts.
 
 ### Token impact
 
