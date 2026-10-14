@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 evidence-output/
 local-reports/
+local-notebooks/
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm

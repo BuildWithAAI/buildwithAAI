@@ -1,6 +1,6 @@
 # BT-005 — SFP Offline Paper Lab
 
-Version 0.2.0. An executable testing module inside BuildWithAAI's [Solana Trading Lab](../SOLANA_TRADING_LAB.md), following [BT-004](../../research/SWING_FAILURE_PATTERNS.md).
+Version 0.3.0. An executable testing module inside BuildWithAAI's [Solana Trading Lab](../SOLANA_TRADING_LAB.md), following [BT-004](../../research/SWING_FAILURE_PATTERNS.md).
 
 The module detects closed-bar SFP events, simulates three long entry variants and two benchmarks, and exports a community report with an exact accounting record. Python 3.12+ is required; runtime dependencies are standard library only. No server or paid provider is started.
 
@@ -86,3 +86,7 @@ Reports are prepared files; the module sends no community messages. The user can
 ## BT-006: chronological study and portable report
 
 The [study guide](STUDY.md) documents frozen plans, training-only selection, holding/decision embargoes, independent fold accounts, buy-and-hold/time controls and doubled-cost/one-hour-delay scenarios. A seven-file export includes a phone-readable HTML report with expandable fold ledgers. The [sample report](examples/chronological-report/study.html) uses engineered synthetic prices; its source-head field is deliberately undeclared and its code/data hashes are recorded. [Current validation](VALIDATION_BT006.md).
+
+## BT-007: persistent data receipts and evaluation history
+
+The [research notebook](NOTEBOOK.md) retains the frozen baseline, original appended CSVs and every recorded evaluation in a transactional SQLite history. It rejects revised/backfilled history, duplicate captures and stale exports. Its [ten-file portable example](examples/notebook-report/audit.html) keeps all three synthetic evaluations and data receipts; optional matching-engine replay reruns the full history. [Validation](VALIDATION_BT007.md). Source/unseen verification and funded strategy acceptance remain unresolved.

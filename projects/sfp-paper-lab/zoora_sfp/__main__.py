@@ -8,6 +8,8 @@ from pathlib import Path
 
 from .data import MAX_BYTES, Config, ResearchError, canonical, decode, number, parse_dataset, require
 from .importer import import_csv
+from .notebook import capture_csv, evaluate_notebook, load_notebook, notebook_status, open_notebook
+from .notebook_reports import EXPORT_PROTOCOL, render_notebook, verify_notebook_export
 from .reports import publish, render, run, verify
 from .study import make_plan, run_study
 from .study_reports import render_study, verify_study
@@ -59,6 +61,8 @@ def parser():
     r.add_argument("--source-head", default=os.environ.get("SOURCE_HEAD_SHA"))
     v = commands.add_parser("verify", help="Check local file hashes and paper accounting.")
     v.add_argument("--report-dir", required=True)
+    v.add_argument("--expected-head")
+    v.add_argument("--replay", action="store_true", help="Rerun notebook evaluations with matching engine bytes.")
     c = commands.add_parser("import-csv", help="Import supplied 1-hour Kraken-format CSV offline.")
     c.add_argument("--csv", required=True)
     c.add_argument("--base", required=True)
@@ -88,6 +92,30 @@ def parser():
     s.add_argument("--plan", required=True)
     s.add_argument("--out", required=True)
     s.add_argument("--source-head", default=os.environ.get("SOURCE_HEAD_SHA"))
+    for command, help_text in [
+        ("notebook-open", "Create a persistent notebook for a frozen plan and its original dataset."),
+        ("notebook-capture", "Retain original CSV bytes and append matching, unrevised history."),
+        ("notebook-evaluate", "Record the complete chronological evaluation without removing old results."),
+        ("notebook-status", "Verify notebook inputs, checkpoints and evaluation history."),
+        ("notebook-export", "Export all recorded evidence and the latest study for community review."),
+    ]:
+        n = commands.add_parser(command, help=help_text)
+        n.add_argument("--notebook", required=True)
+        if command == "notebook-open":
+            n.add_argument("--dataset", required=True)
+            n.add_argument("--plan", required=True)
+            n.add_argument("--delay-ms", type=int, default=0)
+        else:
+            n.add_argument("--expected-head")
+        if command == "notebook-capture":
+            n.add_argument("--csv", required=True)
+            n.add_argument("--captured-ms", type=int, required=True)
+        elif command == "notebook-evaluate":
+            n.add_argument("--source-head", default=os.environ.get("SOURCE_HEAD_SHA"))
+        elif command == "notebook-status":
+            n.add_argument("--replay", action="store_true")
+        elif command == "notebook-export":
+            n.add_argument("--out", required=True)
     return p
 
 
@@ -105,8 +133,12 @@ def main(argv=None):
         elif args.command == "verify":
             manifest = decode(read_input(Path(args.report_dir) / "manifest.json"))
             require(isinstance(manifest, dict), "INVALID_MANIFEST")
-            result = (verify_study(args.report_dir) if manifest.get("protocol") ==
-                      "ZOORA_SFP_STUDY_EVIDENCE_V1" else verify(args.report_dir))
+            if manifest.get("protocol") == EXPORT_PROTOCOL:
+                result = verify_notebook_export(args.report_dir, args.expected_head, args.replay)
+            else:
+                require(args.expected_head is None and not args.replay, "NOTEBOOK_VERIFY_OPTIONS_REQUIRED")
+                result = (verify_study(args.report_dir) if manifest.get("protocol") ==
+                          "ZOORA_SFP_STUDY_EVIDENCE_V1" else verify(args.report_dir))
         elif args.command == "prepare-study":
             dataset = parse_dataset(read_input(args.dataset))
             plan = make_plan(dataset, config_for(args), warmup_hours=args.warmup_hours,
@@ -132,6 +164,21 @@ def main(argv=None):
                                       classification=args.classification)
             exclusive_file(args.out, body)
             result["status"] = "IMPORTED_UNVERIFIED_HISTORY"
+        elif args.command == "notebook-open":
+            result = open_notebook(args.notebook, read_input(args.dataset), decode(read_input(args.plan)),
+                                   args.delay_ms)
+        elif args.command == "notebook-capture":
+            result = capture_csv(args.notebook, read_input(args.csv), args.captured_ms, args.expected_head)
+        elif args.command == "notebook-evaluate":
+            result = evaluate_notebook(args.notebook, args.source_head, args.expected_head)
+        elif args.command == "notebook-status":
+            result = notebook_status(load_notebook(args.notebook, args.expected_head, args.replay))
+            result["full_evaluation_replay"] = args.replay
+        elif args.command == "notebook-export":
+            state = load_notebook(args.notebook, args.expected_head)
+            publish(args.out, render_notebook(state))
+            result = {"status": "SAVED_RESEARCH_NOTEBOOK", "head_sha256": state["head_sha256"],
+                      "members": 10, "funds_transferred": "0", "tokens_burned": "0"}
         print(json.dumps(result, sort_keys=True))
         return 0
     except ResearchError as exc:

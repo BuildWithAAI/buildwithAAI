@@ -65,3 +65,7 @@ Start with [AAI-T-023](tasks/BACKLOG.md#aai-t-023) for the early biological-sour
 ## BT-006: runnable chronological study
 
 The [study module](projects/sfp-paper-lab/STUDY.md) adds frozen plans, expanding train/test windows, a holding/latency embargo, training-only A/B/C selection with cash fallback, independent-account controls, cost/delay trials and a portable HTML/data export. [Current development status](docs/DEVELOPMENT_STATUS_2026-10-14.md) separates the recorded scanner and local-agent checks from this trading batch. Market performance, external unseen verification and funded execution remain unresolved.
+
+## BT-007: persistent research input and evaluation history
+
+The [notebook workflow](projects/sfp-paper-lab/NOTEBOOK.md) adds transactional retention of a frozen baseline, original CSV bytes, append receipts and every recorded evaluation. It rejects revised/backfilled history, uses checked head hashes for concurrent writes, blocks stale exports and exports a phone-readable audit history with all failed screens retained. Optional matching-engine replay reruns the entire recorded study history. This is software acceptance on synthetic data; source/quote truth, independently untouched evaluation and funded strategy acceptance remain unresolved.

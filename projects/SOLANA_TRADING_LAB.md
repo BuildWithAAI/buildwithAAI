@@ -49,3 +49,7 @@ SFP source research and a protocol are available. The subsequent [BT-005 tester]
 ## BT-006: chronological testing and community data
 
 Version 0.2.0 adds the [frozen-plan study workflow](sfp-paper-lab/STUDY.md). It runs A/B/C plus cash, trend, full-capital buy-and-hold and training-density time controls, retains doubled-cost/delayed trials and exports a portable HTML ledger. The generated example has three folds and 72 trials. Inputs and fills are synthetic; numeric screens do not authorize a strategy. Independent fold accounts are not a treasury and their results cannot be summed into buy/burn funding. Exact exposure matching, historical executable quotes, untouched forward evaluation and selection-risk analysis remain pending.
+
+## BT-007: persistent notebook and original data receipts
+
+[The local research notebook](sfp-paper-lab/NOTEBOOK.md) retains a frozen baseline, original incremental CSVs and all recorded study reports. History revisions/backfills, duplicate captures and stale exports are rejected; explicit checkpoint verification and full matching-engine replay are available. A ten-file portable report carries the raw history and latest study. This establishes local software consistency, not source truth, independent unseen evaluation or an accepted funded strategy.

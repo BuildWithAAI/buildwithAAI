@@ -166,16 +166,28 @@ def verify_study(folder):
             require(expected == {"sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)},
                     "EVIDENCE_HASH_MISMATCH")
         plan = decode((folder / "plan.json").read_bytes())
+        report = decode((folder / "study.json").read_bytes(), OUTPUT_LIMIT)
+        require(report["run_id"] == manifest["run_id"], "RUN_ID_MISMATCH")
+        validate_study(report, plan)
+    except (KeyError, TypeError, ValueError, UnicodeError, IndexError) as exc:
+        if isinstance(exc, ResearchError):
+            raise
+        raise ResearchError("INVALID_STUDY_EVIDENCE") from exc
+    return {"protocol": manifest["protocol"], "run_id": report["run_id"],
+            "members_verified": len(STUDY_FILES), "scope": manifest["audit_scope"]}
+
+
+def validate_study(report, plan):
+    """Validate report semantics without claiming a rerun or external attestation."""
+    try:
         cfg = parse_plan(plan)
         stresses = stress_configs(cfg)
-        report = decode((folder / "study.json").read_bytes(), OUTPUT_LIMIT)
         require(report["protocol"] == "ZOORA_SFP_STUDY_REPORT_V1" and report["rules"] == STUDY_RULES and
                 report["plan_sha256"] == plan["plan_sha256"], "INVALID_STUDY_REPORT")
         fingerprint = report["code_fingerprint"]
         require(fingerprint["sha256"] == digest(fingerprint["files"]), "CODE_FINGERPRINT_MISMATCH")
         identity = {k: report[k] for k in ["rules", "plan_sha256", "dataset_sha256", "code_sha256", "source_head_sha"]}
-        require(report["code_sha256"] == fingerprint["sha256"] and digest(identity) == report["run_id"] ==
-                manifest["run_id"], "RUN_ID_MISMATCH")
+        require(report["code_sha256"] == fingerprint["sha256"] and digest(identity) == report["run_id"], "RUN_ID_MISMATCH")
         require(report["readiness"] == "BLOCKED_NOT_A_FUNDED_STRATEGY" and
                 report["funds_transferred"] == report["tokens_purchased"] == report["tokens_burned"] == "0" and
                 report["account_policy"] == "INDEPENDENT_FOLD_ACCOUNTS_NOT_A_COMPOUNDED_TREASURY",
@@ -269,5 +281,3 @@ def verify_study(folder):
         if isinstance(exc, ResearchError):
             raise
         raise ResearchError("INVALID_STUDY_EVIDENCE") from exc
-    return {"protocol": manifest["protocol"], "run_id": report["run_id"],
-            "members_verified": len(STUDY_FILES), "scope": manifest["audit_scope"]}

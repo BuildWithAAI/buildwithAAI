@@ -17,6 +17,12 @@ BT-006 adds executable frozen-plan preparation, expanding training/test windows 
 
 The module rejects a buy/burn allocation in an independent-fold study. It preserves realized vs unrealized accounting and does not convert refreshed starting capital, repeated random seeds or summed simulated results into project income. No funds or tokens moved and no new paid service, community message, public deployment or merge was performed.
 
+## Additional implemented batch: BT-007
+
+The [persistent notebook](../projects/sfp-paper-lab/NOTEBOOK.md) now stores original baseline and CSV bytes, a frozen plan, derived append receipts and all recorded evaluations. SQLite transactions and expected-head comparisons protect concurrent updates; changed history/backfills, duplicate captures and stale exports fail. The ten-file portable bundle includes an audit history, all prior reports, latest dataset and study. Full matching-engine replay is optional.
+
+Local validation passes 116 tests in both normal and optimized Python modes, plus the existing six/seven paper/study acceptance checks and nine new notebook CLI checks. One synthetic workflow retains three evaluations with 9/30/72 trials and eight failed screens each. Exact-head cross-platform/browser results belong in the notebook development PR. Other product heads/tests above are the earlier snapshot and were not rerun for this batch. No real historical dataset has been collected or verified, and no trade, token operation or deployment was performed.
+
 ## Work still needed for release
 
 Verify suitable historical data/quotes and an untouched evaluation protocol; review the stacked implementations as an integrated release; finish the scanner's provider/Telegram gates; demonstrate host/TLS, real Safari/wallet and sustained operator controls; implement and test the lease/funding/voting rules before presenting those as services. These are separate concrete deliverables, not completed by additional planning documents or a green unit suite.

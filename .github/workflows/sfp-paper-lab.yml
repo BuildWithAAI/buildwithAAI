@@ -49,6 +49,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -bb -X dev -W error scripts/study_acceptance.py
+      - name: Transactional notebook, original CSV receipts, retained evaluations and independent export replay
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/notebook_acceptance.py
       - name: Install pinned development browser for portable-report checks
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
         run: |
@@ -59,6 +63,11 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: NODE_PATH="$RUNNER_TEMP/bt006-ui/node_modules" node scripts/check_study_ui.cjs
+      - name: Actual desktop and phone-sized notebook history and navigation checks
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: NODE_PATH="$RUNNER_TEMP/bt006-ui/node_modules" node scripts/check_notebook_ui.cjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
