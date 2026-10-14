@@ -1178,7 +1178,7 @@ Status: **TESTING** · Commitment: **RESEARCH** · Priority: **P1** · Phase: 4 
 
 Owner: Unassigned. Live issue: not created by this revision.
 
-Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, with a separate Forex/XAUUSD replication note. BT-005 delivers the causal detector/paper ledger; BT-006 adds frozen chronological studies, controls, stress trials and a portable report. Synthetic engine acceptance is available; verified historical performance, exact exposure matching and independently unseen evaluation remain unfinished. See [BT-005](../projects/sfp-paper-lab/README.md). See [BT-004](../research/SWING_FAILURE_PATTERNS.md).
+Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, with a separate Forex/XAUUSD replication note. BT-005 delivers the causal detector/paper ledger; BT-006 adds frozen chronological studies, controls, stress trials and a portable report. BT-007 retains original CSV captures and every recorded evaluation in a persistent notebook with checkpoint verification and full replay. Synthetic engine acceptance is available; verified historical performance, exact exposure matching and independently unseen evaluation remain unfinished. See [BT-005](../projects/sfp-paper-lab/README.md). See [BT-004](../research/SWING_FAILURE_PATTERNS.md).
 
 ### Dependencies
 

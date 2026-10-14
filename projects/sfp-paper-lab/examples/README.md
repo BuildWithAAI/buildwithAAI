@@ -13,3 +13,13 @@ python -m zoora_sfp verify --report-dir examples/chronological-report
 ```
 
 [Study guide](../STUDY.md) · [Validation](../VALIDATION_BT006.md). The CSV/JSON data and community text are alongside the HTML. Python execution requires an appropriate machine; opening the file on a phone only displays the report. Actual Safari acceptance remains unverified.
+
+## BT-007 notebook example
+
+[Open the notebook history](notebook-report/audit.html). This ten-file bundle retains one actual local synthetic acceptance run: six events, two appended raw CSVs, three evaluations with 9/30/72 trials and all eight research screens failing in each. Source heads are UNDECLARED; local host times, package/data/plan hashes and exact original inputs are recorded. It does not attest unseen data or historical source truth. CI creates its own notebook and declares the checked-out head separately.
+
+```sh
+python -m zoora_sfp verify --report-dir examples/notebook-report --replay
+```
+
+The example belongs to version 0.3.0 package bytes. If engine bytes change, omit --replay to verify its recorded inputs/accounting, or use that exact source checkout for the full rerun. [Notebook guide](../NOTEBOOK.md) · [Validation](../VALIDATION_BT007.md).
