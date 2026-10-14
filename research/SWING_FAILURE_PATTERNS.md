@@ -6,7 +6,7 @@ This adds the founder's SFP research request to the existing [Solana Trading Lab
 
 ## Implementation follow-up — BT-005
 
-The subsequent [offline paper lab](../projects/sfp-paper-lab/README.md) implements the causal detector, A/B/C long paper paths, cash and frozen trend baselines, input validation and report exports. Its engineered synthetic fixture tests timing, winning/losing/ambiguous paths and unresolved inventory. Actual quotes/fills, matched-random and buy-and-hold baselines, registered numerical study gates, selection adjustment and unseen walk-forward remain unfinished. This research dossier is not a performance result.
+The subsequent [offline paper lab](../projects/sfp-paper-lab/README.md) implements the causal detector, A/B/C long paper paths, cash and frozen trend baselines, input validation and report exports. Its engineered synthetic fixture tests timing, winning/losing/ambiguous paths and unresolved inventory. The subsequent [BT-006 study](../projects/sfp-paper-lab/STUDY.md) adds buy-and-hold and frozen training-density time controls, expanding chronological windows and explicit research screens. Actual quotes/fills, exact exposure matching, justified acceptance thresholds, selection adjustment and independently unseen evaluation remain unfinished. This research dossier is not a performance result.
 
 ## Research judgment
 

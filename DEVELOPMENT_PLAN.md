@@ -61,3 +61,7 @@ Keep the private scanner separate. Add app/package folders only when an implemen
 Publishing these documents does not enable private reporting, required reviews, labels, Discussions, a native Projects board, or 41 live issues. Review and verify those settings separately. Assign tasks only with a contributor's agreement. Keep token facts unknown until verified. Paid hosting and real-money execution remain unapproved.
 
 Start with [AAI-T-023](tasks/BACKLOG.md#aai-t-023) for the early biological-source audit and the foundation/scanner tasks for current project readiness. [Validation scope](docs/VALIDATION.md).
+
+## BT-006: runnable chronological study
+
+The [study module](projects/sfp-paper-lab/STUDY.md) adds frozen plans, expanding train/test windows, a holding/latency embargo, training-only A/B/C selection with cash fallback, independent-account controls, cost/delay trials and a portable HTML/data export. [Current development status](docs/DEVELOPMENT_STATUS_2026-10-14.md) separates the recorded scanner and local-agent checks from this trading batch. Market performance, external unseen verification and funded execution remain unresolved.
