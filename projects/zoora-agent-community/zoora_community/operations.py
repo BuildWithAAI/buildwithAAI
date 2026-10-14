@@ -22,6 +22,7 @@ def package_snapshot(root=ROOT):
     """Pin module/schema/lock/static bytes at startup; not a signed release hash."""
     paths = sorted([*root.joinpath("zoora_community").glob("*.py"),
                     root / "zoora_community/schema.sql", root / "zoora_community/migration_002.sql",
+                    root / "zoora_community/migration_003.sql",
                     root / "requirements.lock", *(root / "web" / name for name, _ in ASSETS.values())])
     digest = hashlib.sha256(b"ZOORA_AE008_LOCAL_PACKAGE_V1\0")
     blobs = {}
