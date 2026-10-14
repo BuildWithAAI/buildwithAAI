@@ -129,6 +129,9 @@ try{
   await evaluate('document.getElementById("save-invitation").click()');
   const inviteFile=path.join(folder,'zoora-invitation.json');for(let n=0;n<100;n++){try{JSON.parse(await readFile(inviteFile,'utf8'));break;}catch{await new Promise(r=>setTimeout(r,50));}}
   const invite=JSON.parse(await readFile(inviteFile,'utf8'));check('invitation file downloads the exact secret',invite.token===inviteToken);
+  await send('Page.navigate',{url:inviteLink});await until('document.getElementById("workspace-error").textContent.includes("Sign out and reopen") && location.hash===""');
+  check('incoming invitation preserves the signed-in account',await evaluate('document.getElementById("session-status").textContent.startsWith("OWNER") && document.getElementById("invitation-claim-form").hidden'));
+  check('signed-in invitation fragment is erased without retaining a claim secret',await evaluate('location.hash==="" && document.getElementById("invitation-claim-form").elements.invitation_token.value===""'));
   const ownerHeaders={Authorization:'Bearer '+owner.token,'Content-Type':'application/json'};
   await evaluate(`globalThis.inviteOriginalFetch=fetch;globalThis.loseInvite=true;globalThis.fetch=async(input,options)=>{const response=await inviteOriginalFetch(input,options);if(input==='/v1/invitations'&&options?.method==='POST'&&loseInvite){loseInvite=false;throw new Error('SYNTHETIC lost invitation response');}return response;};`);
   await fill('invitation-form',{label:'Lost invitation',ttl_minutes:'60'});await until('document.getElementById("workspace-error").textContent.includes("lost invitation response") && !document.getElementById("refresh-access").disabled');
@@ -160,6 +163,7 @@ try{
   await evaluate(`document.getElementById('access-reason').value='<img src=x onerror="globalThis.injected=1"> Pilot review';[...document.querySelector('[data-access-id="${agent.principal_id}"]').querySelectorAll('button')].find(b=>b.textContent==='Suspend access').click()`);
   await until(`document.querySelector('#managed-agent-list [data-access-id="${agent.principal_id}"]')?.textContent.includes('SUSPENDED') && !document.getElementById('refresh-access').disabled`);
   check('owner agent suspension revokes access and atomically retires running and queued tasks',(await fetch(origin+'/v1/me',{headers:{Authorization:'Bearer '+freshAgent.token}})).status===401 && (await(await fetch(origin+'/v1/jobs/'+runningJob.id,{headers:ownerHeaders})).json()).recorded_state==='INTERRUPTED' && (await(await fetch(origin+'/v1/jobs/'+queuedJob.id,{headers:ownerHeaders})).json()).recorded_state==='CANCELLED');
+  await until('document.getElementById("records").textContent.includes("INACTIVE PROFILE")');check('access change refreshes the public profile state',await evaluate('document.getElementById("records").textContent.includes("INACTIVE PROFILE")'));
   check('moderation reason stays text and private',await evaluate('globalThis.injected===undefined&&document.querySelector("img")==null') && !JSON.stringify(await(await fetch(origin+'/v1/agents')).json()).includes('Pilot review'));
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   check('pilot access controls have no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
