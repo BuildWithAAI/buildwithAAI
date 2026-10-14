@@ -15,7 +15,7 @@ python -m zoora_sfp verify --report-dir new-paper-report
 
 Open new-paper-report/COMMUNITY_UPDATE.md. Machine-readable report.json, signals.csv, trades.csv, equity.csv and a SHA-256 manifest are exported alongside it. The output directory must be new; existing evidence is never overwritten. The report verifier checks file hashes, configuration/run identity, trade totals, NAV and budget reconciliation. It checks internal consistency, not external source/host attestation.
 
-The supplied 380-bar SOL/USDC-labeled dataset is **synthetic engine acceptance data**. It deliberately contains a winner, a loser, an ambiguous stop/target path and an open position. It is not historical SOL pricing, a trained model, proof of profitability or an untouched strategy test. Exact results and source-head checks belong in [VALIDATION.md](VALIDATION.md).
+The supplied 380-bar SOL/USDC-labeled dataset is **synthetic engine acceptance data**. It deliberately contains a winner, a loser, an ambiguous stop/target path and an open position. It is not historical SOL pricing, a trained model, proof of profitability or an untouched strategy test. Exact results and source-head checks belong in [VALIDATION.md](VALIDATION.md). A [saved source export](evidence/2026-10-14-source-e175443/README.md) and [community update](../../docs/community/SFP_UPDATE_2026-10-14.md) are included.
 
 ## What runs
 
@@ -78,7 +78,7 @@ python -O -bb -X dev -W error -m unittest discover -s tests
 python -bb -X dev -W error scripts/acceptance.py
 ```
 
-The acceptance script exercises actual CLI/import/export processes, deterministic replay, wins/losses/ambiguous/unresolved paths, doubled costs, a one-hour decision delay, tamper rejection and zero financial activity. CI runs the exact PR head on Linux Python 3.12.15/3.14.8 and Windows Python 3.14.8.
+The acceptance script exercises actual CLI/import/export processes, deterministic replay, wins/losses/ambiguous/unresolved paths, doubled costs, a one-hour decision delay, tamper rejection and zero financial activity. It retains the complete six-file export under evidence-output/base-report so the archive can be checked with the same verify command. CI runs the exact PR head on Linux Python 3.12.15/3.14.8 and Windows Python 3.14.8.
 
 Reports are prepared files; the module sends no community messages. The user can review/share the Markdown and CSV results. A real source/quote coverage audit, strategy acceptance thresholds, matched controls, chronological/untouched evaluation and independent production controls remain. No live trading, wallet secrets, signing, burn instructions, paid resources or customer-fund custody is implemented. Material AI assistance: implementation, synthetic fixture, tests and reporting.
 

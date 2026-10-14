@@ -12,3 +12,7 @@ Cross-platform current-head CI results, exact commit and evidence archive hashes
 
 No historical market dataset/quote study, walk-forward, independent strategy certification, numerical go/no-go decision or untouched forward experiment is claimed. No actual orders, purchases, token burns, wallet/account integration or funding occurred. Reports separate observed-source assertions, reconstructed availability, synthetic fill/cost assumptions and future labels.
 
+
+## Verified source acceptance snapshot
+
+Source commit e175443ca9d3691b0e6ad0b37da13928e81744bf passed all three jobs in [run 38605707606](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38605707606): 59 normal and 59 optimized tests, lint and six actual acceptance checks per job. Downloaded ZIP bytes/digests, declared source, zero financial activity and report hashes were checked. Cross-platform signals, future labels and paper accounting agree; Windows CRLF Python hashes are separately verified. The [saved snapshot](evidence/2026-10-14-source-e175443/README.md) records provenance and preserves a complete export matching the original CI manifest. The [community update](../../docs/community/SFP_UPDATE_2026-10-14.md) labels the sample explicitly.

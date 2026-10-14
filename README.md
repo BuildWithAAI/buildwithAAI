@@ -22,6 +22,7 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 | What actually exists | [Current status](docs/CURRENT_STATUS.md) |
 | Work to pick up | [Planning board](docs/community/PROJECT_BOARD.md) and [41 task briefs](tasks/BACKLOG.md) |
 | SFP trading research and testing | [Research protocol](research/SWING_FAILURE_PATTERNS.md) and [BT-005 offline paper tester](projects/sfp-paper-lab/README.md) |
+| SFP community testing update | [October 14 software milestone and synthetic data](docs/community/SFP_UPDATE_2026-10-14.md) |
 | How to participate | [Contributing](CONTRIBUTING.md) and [proposal process](proposals/README.md) |
 | Funding and community benefit | [Creator-fee funding proposal](docs/FUNDING.md) |
 | Decisions and limits | [Decision register](docs/DECISIONS.md) and [project boundaries](DISCLAIMER.md) |

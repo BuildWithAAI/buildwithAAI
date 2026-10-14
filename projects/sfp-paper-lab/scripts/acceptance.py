@@ -71,6 +71,12 @@ def main():
         with (again / "signals.csv").open("ab") as stream:
             stream.write(b"SYNTHETIC_TAMPER")
         cli("verify", "--report-dir", again, success=False)
+        # Retain the complete CLI export, including CSVs, for independent re-verification.
+        saved = output / "base-report"
+        saved.mkdir(exist_ok=True)
+        for path in base.iterdir():
+            (saved / path.name).write_bytes(path.read_bytes())
+        cli("verify", "--report-dir", saved)
         checks = [
             "actual CLI creates and verifies five bound exports without overwriting evidence",
             "two CLI runs produce byte-identical reports, CSVs, community text and manifests",
