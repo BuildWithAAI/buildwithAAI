@@ -4,6 +4,10 @@
 
 This adds the founder's SFP research request to the existing [Solana Trading Lab](../projects/SOLANA_TRADING_LAB.md). [AAI-T-041](../tasks/BACKLOG.md#aai-t-041) tracks the remaining evidence and evaluation work. [BT-000](BIOLOGICAL_COMPUTE_PROTOCOL.md), [BT-001](DATA_MEASUREMENT_PROTOCOL.md) and [BT-002](SOLANA_GROUND_TRUTH_REPLAY.md) govern the experiment. The current boundary remains offline replay and paper simulation. The existing read-only replay work is a data foundation, not an SFP implementation or market-price performance dataset.
 
+## Implementation follow-up — BT-005
+
+The subsequent [offline paper lab](../projects/sfp-paper-lab/README.md) implements the causal detector, A/B/C long paper paths, cash and frozen trend baselines, input validation and report exports. Its engineered synthetic fixture tests timing, winning/losing/ambiguous paths and unresolved inventory. Actual quotes/fills, matched-random and buy-and-hold baselines, registered numerical study gates, selection adjustment and unseen walk-forward remain unfinished. This research dossier is not a performance result.
+
 ## Research judgment
 
 SFPs deserve a defined experiment as possible entry, exit and abstention features for a swing strategy. Their appeal is an identifiable failed attempt to move beyond a previously known price level. Whether that event predicts a useful multi-day move after costs remains unanswered for our market and rules.

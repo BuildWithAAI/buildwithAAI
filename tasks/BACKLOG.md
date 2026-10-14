@@ -48,7 +48,7 @@ Canonical structured data: [backlog.json](backlog.json). [Board](../docs/communi
 | [AAI-T-038](#aai-t-038) | Specify an honest multi-brain activity display | IDEA | P1 |
 | [AAI-T-039](#aai-t-039) | Specify the civilization activity view | IDEA | P2 |
 | [AAI-T-040](#aai-t-040) | Reconcile Telegram orientation and verified links | PROPOSED | P1 |
-| [AAI-T-041](#aai-t-041) | Research swing failure patterns for the swing strategy | RESEARCH | P1 |
+| [AAI-T-041](#aai-t-041) | Research swing failure patterns for the swing strategy | TESTING | P1 |
 
 ## AAI-T-001
 
@@ -1174,11 +1174,11 @@ Community documentation/research only; no token behavior, wallet operation, or l
 
 **Research swing failure patterns for the swing strategy**
 
-Status: **RESEARCH** · Commitment: **RESEARCH** · Priority: **P1** · Phase: 4 · Type: `type: research`
+Status: **TESTING** · Commitment: **RESEARCH** · Priority: **P1** · Phase: 4 · Type: `type: research`
 
 Owner: Unassigned. Live issue: not created by this revision.
 
-Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, with a separate Forex/XAUUSD replication note. This revision delivers source research and an evaluation specification, not a detector or measured trading edge. See [BT-004](../research/SWING_FAILURE_PATTERNS.md).
+Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, with a separate Forex/XAUUSD replication note. BT-005 delivers a causal offline detector, paper ledger and community reports; synthetic engine acceptance is available, while verified historical performance and unseen evaluation remain unfinished. See [BT-005](../projects/sfp-paper-lab/README.md). See [BT-004](../research/SWING_FAILURE_PATTERNS.md).
 
 ### Dependencies
 
@@ -1194,7 +1194,7 @@ Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, w
 
 ### Risks and approval limits
 
-Research specification first. Offline replay and paper simulation only; no automatic orders, broker/wallet connection, borrowing, leverage, profitable-release claim, paid provider or creator-fee-account access. Bearish labels do not authorize spot shorts.
+TESTING applies to the offline software component, not strategy acceptance. Offline replay and paper simulation only; no automatic orders, broker/wallet connection, borrowing, leverage, profitable-release claim, paid provider or creator-fee-account access. Bearish labels do not authorize spot shorts.
 
 ### Token impact
 

@@ -6,7 +6,7 @@
 
 ## Trading research follow-up — October 14, 2026
 
-The founder requested a deep dive into swing failure patterns. [BT-004](research/SWING_FAILURE_PATTERNS.md) adds source evidence, causal event rules, three proposed variants and a costed evaluation plan in the existing Solana Trading Lab. [AAI-T-041](tasks/BACKLOG.md#aai-t-041) raises the planning backlog to 41 records; the previous 40 records and existing priorities are preserved. This is research documentation, with performance and implementation unfinished.
+The founder requested a deep dive into swing failure patterns. [BT-004](research/SWING_FAILURE_PATTERNS.md) adds source evidence, causal event rules, three proposed variants and a costed evaluation plan in the existing Solana Trading Lab. [AAI-T-041](tasks/BACKLOG.md#aai-t-041) raises the planning backlog to 41 records; the previous 40 records and existing priorities are preserved. The subsequent [BT-005 offline tester](projects/sfp-paper-lab/README.md) implements the detector, paper ledger, CSV import and reproducible community reports. AAI-T-041 is TESTING for this software component; historical strategy performance and unseen evaluation remain unfinished. The founder's [future AAI purchase/burn objective](research/TRADING_BUY_BURN_OBJECTIVE.md) is recorded with allocation/execution still unresolved.
 
 ## September 22 changes
 

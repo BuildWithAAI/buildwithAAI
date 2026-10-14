@@ -895,14 +895,14 @@
     {
       "id": "AAI-T-041",
       "title": "Research swing failure patterns for the swing strategy",
-      "status": "RESEARCH",
+      "status": "TESTING",
       "commitment": "RESEARCH",
       "priority": "P1",
       "phase": "4",
       "type": "type: research",
       "owner": "Unassigned",
       "issue_url": null,
-      "scope": "Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, with a separate Forex/XAUUSD replication note. This revision delivers source research and an evaluation specification, not a detector or measured trading edge.",
+      "scope": "Use BT-004 to study price-based SFPs in the existing Solana Trading Lab first, with a separate Forex/XAUUSD replication note. BT-005 delivers a causal offline detector, paper ledger and community reports; synthetic engine acceptance is available, while verified historical performance and unseen evaluation remain unfinished.",
       "dependencies": [
         "AAI-T-015",
         "AAI-T-006"
@@ -914,7 +914,7 @@
         "After separately accepted implementation scope, validate synthetic geometry and timing fixtures, then compare event studies, costed replay and unseen offline-forward simulation with fair baselines.",
         "Report failed/ambiguous fills, fees/slippage/latency, loss tails, drawdown, exposure, sample adequacy and selection uncertainty; permit a rejection or underpowered result."
       ],
-      "risks_and_gates": "Research specification first. Offline replay and paper simulation only; no automatic orders, broker/wallet connection, borrowing, leverage, profitable-release claim, paid provider or creator-fee-account access. Bearish labels do not authorize spot shorts.",
+      "risks_and_gates": "TESTING applies to the offline software component, not strategy acceptance. Offline replay and paper simulation only; no automatic orders, broker/wallet connection, borrowing, leverage, profitable-release claim, paid provider or creator-fee-account access. Bearish labels do not authorize spot shorts.",
       "token_impact": "Community documentation/research only; no token behavior, wallet operation, or launch authorized."
     }
   ]
