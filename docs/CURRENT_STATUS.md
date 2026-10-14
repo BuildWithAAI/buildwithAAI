@@ -1,5 +1,7 @@
 # Current project status
 
+**Targeted development update: October 14, 2026 — AE-012 economy campaigns.** The existing laboratory now has a source candidate for sustained normal/stress/recovery rounds, eight shocks, paired admission policies, finite synthetic budgets, exact stock/flow fee routing, replay, checkpoint/resume, CSV and an offline campaign viewer. The first reference and illustrative fee experiments cover **320 unique configurations**. [Method](../projects/zoora-agent-economy-simulator/review/AE012.md) and [source-specific validation/findings](../projects/zoora-agent-economy-simulator/review/VALIDATION_AE012.md) separate local verification from published CI. This is an offline development milestone, not deployed economic activity or approved live AAI fee parameters. The dated wider project review below is preserved; this update does not claim to re-audit every other branch.
+
 **Current BuildWithAAI software snapshot: October 13, 2026.** This review rechecked the current heads and recorded CI of 11 software development PRs. Their 27 recorded workflow runs pass. These are draft, unmerged local candidates; passing CI is not a public deployment or full security certification. This documentation review did not freshly execute every module's tests or retry the scanner's real providers/Telegram.
 
 [Recorded head/run metadata](development/verified-status-2026-10-13.json) · [AE-009 source evidence](../projects/zoora-agent-community/VALIDATION_AE009.md) · [New virtual-leasing project](../projects/VIRTUAL_BUSINESS_SPACES.md)

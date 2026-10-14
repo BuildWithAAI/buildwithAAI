@@ -48,6 +48,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python scripts/community_evidence.py
+      - name: Sustained economy campaigns, accounting and checkpoint recovery
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/economy_evidence.py
       - name: Real Chrome viewer integration and screenshots
         if: matrix.os == 'ubuntu-latest'
         env:
