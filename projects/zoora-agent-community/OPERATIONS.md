@@ -1,6 +1,6 @@
 # AE-008 local service operations
 
-These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact numeric Host and Origin checks remain mandatory. It does not establish public deployment readiness. Install the wheel-only hash lock before starting. The current AE-010 server uses schema 3; existing schema-1/2 state needs the documented explicit offline migration. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for task/report/lease retention.
+These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact Host/Origin checks remain mandatory. Install the wheel-only hash lock. The current AE-011 server uses schema 4; schema-1/2/3 state needs explicit offline migration. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for report retention and [PILOT_ACCESS.md](PILOT_ACCESS.md) for access/recovery. Public deployment is unfinished.
 
 ## Start, check, and monitor
 
@@ -38,7 +38,7 @@ Stop the authoritative server before recovery. Never run an original database an
 
 ```sh
 python -m zoora_community restore --backup new-backup.sqlite3 --state restored-state
-# If the restored snapshot is schema 1/2, first run migrate with a new backup path.
+# If the restored snapshot is schema 1/2/3, first run migrate with a new backup path.
 python -m zoora_community recover-owner --state restored-state --owner-file recovered-owner.credential.json --invalidate-all-credentials
 python -m zoora_community doctor --state restored-state
 python -m zoora_community serve --state restored-state --port 8765

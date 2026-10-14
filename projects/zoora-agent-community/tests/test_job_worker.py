@@ -141,6 +141,28 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(len(self.client.request("GET", "/v1/projects/" + self.project + "/artifacts")[1]["items"]), 1)
         self.f.store.audit()
 
+    def test_owner_suspension_during_model_call_blocks_tool_and_persistently_interrupts(self):
+        job = self.submit()
+        fixture = self.model()
+        original = LocalModel.next_action
+
+        def suspend(provider, *args, **kwargs):
+            response = original(provider, *args, **kwargs)
+            self.client.request("POST", "/v1/agents/" + self.agent_id + "/suspend",
+                                {"reason": "Owner fixture review"}, self.f.owner)
+            return response
+
+        with patch.object(LocalModel, "next_action", suspend), patch("zoora_community.agent_runner.run_tool") as tool:
+            result = self.worker(fixture)["jobs"][0]
+            tool.assert_not_called()
+        self.assertEqual(result["state"], "UNCONFIRMED")
+        self.assertTrue(result["report_sha256"])
+        saved = self.client.request("GET", "/v1/jobs/" + job["id"], token=self.f.owner)[1]
+        self.assertEqual(saved["recorded_state"], "INTERRUPTED")
+        self.assertIsNone(saved["artifact_id"])
+        self.assertEqual(len(fixture.requests), 2)
+        self.f.store.audit()
+
     def test_revocation_between_calls_keeps_report_but_cannot_settle_or_retry(self):
         job = self.submit()
         fixture = self.model()

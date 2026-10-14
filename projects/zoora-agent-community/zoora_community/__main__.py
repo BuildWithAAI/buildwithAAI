@@ -11,7 +11,7 @@ from .job_worker import work_jobs
 from .operations import doctor, monitor
 from .recovery import restore_backup, verify_backup
 from .server import serve
-from .store import Store, exclusive_file
+from .store import Store, exclusive_file, private_regular
 from .validation import Problem, canonical, parse_json
 
 
@@ -51,7 +51,7 @@ def main():
     recovery.add_argument("--invalidate-all-credentials", action="store_true", help="Revoke all previous API credentials after a sensitive restore")
     migration = commands.add_parser("migrate")
     migration.add_argument("--state", required=True)
-    migration.add_argument("--backup", required=True, help="New exclusive schema-1/2 backup file; stop the old server first")
+    migration.add_argument("--backup", required=True, help="New exclusive older-schema backup file; stop the old server/workers first")
     agent_run = commands.add_parser("run-agent", help="One bounded task through an already installed local Ollama model")
     agent_run.add_argument("--credential-file", required=True)
     agent_run.add_argument("--task-file", required=True)
@@ -79,6 +79,7 @@ def main():
     request.add_argument("--credential-file")
     request.add_argument("--body-file")
     request.add_argument("--save-credential")
+    request.add_argument("--save-invitation")
     args = parser.parse_args()
     if sys.version_info < (3, 12):
         print(canonical({"error": "PYTHON_3_12_REQUIRED"}), file=sys.stderr)
@@ -127,6 +128,8 @@ def main():
             body = None
             if args.body_file:
                 path = Path(args.body_file)
+                if args.path == "/v1/invitations/claim":
+                    private_regular(path, 16384)
                 if path.is_symlink() or not path.is_file():
                     raise Problem(400, "INVALID_BODY_FILE")
                 with path.open("rb") as source:
@@ -134,29 +137,34 @@ def main():
             if args.method != "GET" and body is None:
                 body = {}
             issues_credential = (args.method == "POST" and
-                                 (args.path in ("/v1/operators", "/v1/agents", "/v1/credentials/rotate")
+                                 (args.path in ("/v1/operators", "/v1/agents", "/v1/credentials/rotate", "/v1/invitations/claim")
                                   or args.path.endswith("/credentials")))
             if issues_credential != bool(args.save_credential):
                 raise Problem(400, "CREDENTIAL_OUTPUT_REQUIRED" if issues_credential else "UNEXPECTED_CREDENTIAL_OUTPUT")
+            issues_invitation = args.method == "POST" and args.path == "/v1/invitations"
+            if issues_invitation != bool(args.save_invitation):
+                raise Problem(400, "INVITATION_OUTPUT_REQUIRED" if issues_invitation else "UNEXPECTED_INVITATION_OUTPUT")
             output = None
             try:
-                if args.save_credential:
-                    output = exclusive_file(args.save_credential)
+                if args.save_credential or args.save_invitation:
+                    output = exclusive_file(args.save_credential or args.save_invitation)
                 status, result = client.request(args.method, args.path, body, token)
                 if output is not None:
-                    issued = result.pop("credential")
+                    issued = result.pop("credential" if args.save_credential else "secret")
+                    if issued is None:
+                        raise Problem(409, "INVITATION_SECRET_UNAVAILABLE")
                     output.write((canonical(issued) + "\n").encode("utf-8"))
                     output.flush()
                     import os
                     os.fsync(output.fileno())
                     output.close()
                     output = None
-                    result["credential_saved"] = True
+                    result["credential_saved" if args.save_credential else "invitation_saved"] = True
                 print(canonical({"status": status, "result": result}))
             except BaseException:
                 if output is not None:
                     output.close()
-                    Path(args.save_credential).unlink(missing_ok=True)
+                    Path(args.save_credential or args.save_invitation).unlink(missing_ok=True)
                 raise
     except Problem as problem:
         print(canonical({"error": problem.code}), file=sys.stderr)

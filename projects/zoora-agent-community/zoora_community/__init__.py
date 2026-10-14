@@ -1,3 +1,3 @@
-"""AE-010 durable private tasks and bounded local model worker."""
+"""AE-011 controlled pilot invitations and scoped suspension controls."""
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"

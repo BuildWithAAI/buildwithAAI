@@ -1,0 +1,13 @@
+# AE-011 verification — controlled pilot access
+
+Date: October 14, 2026 (UTC). Local implementation/verification are complete; current review-head CI results are recorded in the PR description. Public deployment is unfinished.
+
+The change adds schema-4 owner-issued invitations, exact bounded claim retry, private account/access lists and durable scoped suspensions with browser/CLI controls. Wallet proof, native chain and funding/economics remain separate. See [PILOT_ACCESS.md](PILOT_ACCESS.md).
+
+Local CPython 3.12.14 / SQLite 3.53.1 passes 184 tests in normal/optimized Python with development warnings treated as errors, Ruff and JavaScript syntax checks. The 23 added tests cover concurrency/single use, secret privacy, role escalation, expiry/revocation/creator rotation, reconciliation, capacity/atomic rollback, owner suspension precedence, revoked/interrupted work, private reasons, snapshot recovery and schema-3 job-preserving migration. Real HTTP/subprocess tests verify exclusive private output and cross-origin claim rejection. Model protocol fixtures are explicitly synthetic.
+
+Actual local CLI/Waitress HTTP, signed enrollment, restart, migration, monitoring/crash and credential-invalidating restore checks pass. `scripts/pilot_access_evidence.py` exercises invitation CLI issuance/claim retry, wallet-backed enrollment, fresh process, suspension and audited restore/recovery. It makes no model/chain requests and creates no customer accounts.
+
+CI runs five Linux/Windows profiles, actual Chrome observer/workspace acceptance, the locked-package audit, strict read-only live RPC and actual CPU Ollama direct/queued model acceptance. Workspace tests now cover creation/lost response/revocation/claim retry, fragment secrecy, private scope, owner suspension, durable task retirement and resume without restoring revoked credentials. Passing current-source CI is required before completion; its exact head/results belong in the PR description.
+
+Remaining: compatible hosting/reviewed TLS/origin/transport for zoora.ai; real iPhone/Safari/vendor-wallet, host patch/ACL/resource review, public abuse limits/invitation distribution/moderation/claim resolution and operational retention/off-host recovery/alerts. No paid hosting, DNS change, real invitation send, customer funds, community funding/voting, live virtual lease/AAI fee action or production chain is performed. The $0 operating-spend constraint is preserved.

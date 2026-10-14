@@ -102,7 +102,7 @@ class MigrationTests(unittest.TestCase):
         before = old.audit()
         backup = self.root / "schema-two.sqlite3"
         current = Store.migrate(old.state, backup, clock=lambda: self.at)
-        self.assertEqual(current.schema_version, 3)
+        self.assertEqual(current.schema_version, 4)
         self.assertEqual(current.audit()["audit_events"], before["audit_events"] + 1)
         self.assertEqual(verify_backup(backup)["audit"], before)
         restored = self.root / "restored-two"
@@ -110,5 +110,30 @@ class MigrationTests(unittest.TestCase):
         self.assertTrue(result["next_action"].startswith("MIGRATE_THEN_"))
         self.refused("UNSUPPORTED_SCHEMA", lambda: Store(restored))
         migrated = Store.migrate(restored, self.root / "second-snapshot.sqlite3", clock=lambda: self.at)
-        self.assertEqual(migrated.audit()["schema_version"], 3)
+        self.assertEqual(migrated.audit()["schema_version"], 4)
         self.assertEqual(migrated.call("GET", "/v1/me", token=self.agent)[1]["principal_id"], self.ids["agent_id"])
+
+    def test_schema_three_upgrade_preserves_queued_job_and_original_credential(self):
+        with closing(sqlite3.connect(self.legacy.path, autocommit=True)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            for version in (2, 3):
+                ddl = Path(__file__).resolve().parent.parent / "zoora_community" / f"migration_{version:03}.sql"
+                for statement in ddl.read_text().split(";"):
+                    if statement.strip():
+                        connection.execute(statement)
+            connection.execute("PRAGMA user_version=3")
+            connection.execute("COMMIT")
+        old = Store(self.legacy.state, clock=lambda: self.at, _schema_version=3)
+        with closing(old._connection()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            principal = old._authenticate(connection, self.agent, self.at)
+            job = old._jobs_write(connection, principal, "POST", "/v1/jobs",
+                                  {"request_id": "a" * 32, "title": "Legacy queued task", "prompt": "Preserved private task"}, self.at)[1]["job"]
+            connection.execute("COMMIT")
+        before = old.audit()
+        backup = self.root / "schema-three.sqlite3"
+        current = Store.migrate(old.state, backup, clock=lambda: self.at)
+        self.assertEqual(verify_backup(backup)["audit"], before)
+        self.assertEqual(current.call("GET", "/v1/jobs/" + job["id"], token=self.agent)[1]["state"], "QUEUED")
+        self.assertEqual(current.call("POST", "/v1/jobs/claim", {"max_steps": 4, "timeout_seconds": 60}, self.agent)[1]["job"]["id"], job["id"])
+        current.audit()

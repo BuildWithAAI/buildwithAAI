@@ -87,7 +87,7 @@ def stage_backup(backup, staging):
         source.setlimit(sqlite3.SQLITE_LIMIT_SQL_LENGTH, 16_384)
         source.setlimit(sqlite3.SQLITE_LIMIT_ATTACHED, 0)
         version = source.execute("PRAGMA user_version").fetchone()[0]
-        if version not in (1, 2, SCHEMA_VERSION):
+        if version not in range(1, SCHEMA_VERSION + 1):
             raise Problem(503, "UNSUPPORTED_SCHEMA")
         Store._check_schema(source, version)
         if (source.execute("PRAGMA page_size").fetchone()[0] != 4096 or
