@@ -104,6 +104,7 @@ def main(argv=None):
                       "tokens_purchased": "0", "tokens_burned": "0"}
         elif args.command == "verify":
             manifest = decode(read_input(Path(args.report_dir) / "manifest.json"))
+            require(isinstance(manifest, dict), "INVALID_MANIFEST")
             result = (verify_study(args.report_dir) if manifest.get("protocol") ==
                       "ZOORA_SFP_STUDY_EVIDENCE_V1" else verify(args.report_dir))
         elif args.command == "prepare-study":

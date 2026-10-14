@@ -177,6 +177,11 @@ def verify_study(folder):
                 report["price_classification"] == plan["price_classification"] and
                 report["market"] == plan["market"] and
                 report["unseen_status"] == "CHRONOLOGICAL_WINDOWS_NOT_ATTESTED_UNSEEN", "UNSUPPORTED_SOURCE_CLAIM")
+        source = report["source_head_sha"]
+        require(source is None or (isinstance(source, str) and len(source) == 40 and
+                all(c in "0123456789abcdef" for c in source)), "INVALID_SOURCE_HEAD")
+        require(report["source_head_status"] == ("DECLARED_NOT_ATTESTED" if source else "UNDECLARED"),
+                "UNSUPPORTED_SOURCE_ATTESTATION")
         for i, fold in enumerate(report["folds"]):
             start = plan["start_ms"]
             train_end = start + (plan["train_hours"] + i * plan["test_hours"]) * 3600000

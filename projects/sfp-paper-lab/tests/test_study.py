@@ -220,7 +220,7 @@ class StudyTests(unittest.TestCase):
                     verify_study(out)
 
     def test_rehashed_false_claims_schedule_and_selection_are_rejected(self):
-        for case in ["burn", "source", "nav", "selection", "schedule", "missing_trial", "summary"]:
+        for case in ["burn", "source", "attestation", "nav", "selection", "schedule", "missing_trial", "summary"]:
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temp:
                 out = Path(temp) / "report"
                 publish(out, render_study(self.report, self.plan))
@@ -229,6 +229,8 @@ class StudyTests(unittest.TestCase):
                     r["tokens_burned"] = "1"
                 elif case == "source":
                     r["source_verification"] = "VERIFIED"
+                elif case == "attestation":
+                    r["source_head_status"] = "VERIFIED"
                 elif case == "nav":
                     r["trials"][0]["metrics"]["ending_marked_nav"] = "NaN"
                 elif case == "selection":
@@ -280,6 +282,8 @@ class StudyCLITests(unittest.TestCase):
             before = plan.read_bytes()
             self.assertEqual(self.cli(*args).returncode, 2)
             self.assertEqual(plan.read_bytes(), before)
+            # Windows checkout line endings do not change the frozen JSON contract.
+            plan.write_bytes(before.replace(b"\n", b"\r\n"))
             r = self.cli("study", "--dataset", "fixtures/demo.json", "--plan", plan, "--out", out)
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertEqual(json.loads(r.stdout)["trials"], 42)
@@ -297,6 +301,17 @@ class StudyCLITests(unittest.TestCase):
             r = self.cli("study", "--dataset", "fixtures/demo.json", "--plan", path, "--out", out, optimized=True)
             self.assertEqual(r.returncode, 2)
             self.assertFalse(out.exists())
+
+    def test_non_object_manifest_fails_without_a_traceback(self):
+        with tempfile.TemporaryDirectory() as temp:
+            p = Path(temp) / "manifest.json"
+            for invalid in [[], 1, None]:
+                with self.subTest(invalid=invalid):
+                    p.write_bytes(canonical(invalid))
+                    r = self.cli("verify", "--report-dir", temp, optimized=True)
+                    self.assertEqual(r.returncode, 2)
+                    self.assertEqual(json.loads(r.stderr)["error"], "INVALID_MANIFEST")
+                    self.assertNotIn("Traceback", r.stderr)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts.acceptance import cli  # noqa: E402
-from zoora_sfp.data import canonical, require  # noqa: E402
+from zoora_sfp.data import canonical, decode, require  # noqa: E402
 
 
 def main():
@@ -20,7 +20,8 @@ def main():
         plan = folder / "plan.json"
         dataset = ROOT / "fixtures/study-demo.json"
         cli("prepare-study", "--dataset", dataset, "--out", plan)
-        require(plan.read_bytes() == (ROOT / "fixtures/study-plan.json").read_bytes(), "PLAN_FIXTURE_MISMATCH")
+        require(canonical(decode(plan.read_bytes())) ==
+                canonical(decode((ROOT / "fixtures/study-plan.json").read_bytes())), "PLAN_FIXTURE_MISMATCH")
         before = plan.read_bytes()
         cli("prepare-study", "--dataset", dataset, "--out", plan, success=False)
         require(plan.read_bytes() == before, "PLAN_OVERWRITTEN")
