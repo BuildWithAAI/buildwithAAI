@@ -1,6 +1,8 @@
 # AE-012 validation and measured findings
 
-Status: source candidate prepared on AE-011 head `28a54dd53458c503cda141471565ec6c2513992a`. Local development verification is recorded below. Exact published source/CI and final artifact review will be added after the draft source runs in CI. This is a synthetic offline software milestone, not a merged or deployed economy.
+**Verified source:** [`73ae81f638c16f388639ef58a3937f1b2065f345`](https://github.com/BuildWithAAI/buildwithAAI/commit/73ae81f638c16f388639ef58a3937f1b2065f345), stacked on AE-011 in [draft PR #28](https://github.com/BuildWithAAI/buildwithAAI/pull/28). All **nine source CI jobs pass**: [foundation run 38649185156](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38649185156), [market run 38649185257](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38649185257), and [review/campaign run 38649185271](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38649185271). Actual checkout hashes were checked in all nine job logs. All nine evidence archives were downloaded and SHA-256 verified against the artifact metadata; their source heads match. [Machine-readable evidence](evidence/ae-012-2026-10-14.json).
+
+This is verified offline research software in a draft, unmerged development candidate. Public deployment, real economic output and live AAI economics are outside this milestone.
 
 ## Reproducible campaigns
 
@@ -33,8 +35,12 @@ In the budget-squeeze fee sensitivity, ordinary acknowledgments fall from **611 
 ## Verification scope
 
 - Existing community schemas, foundation semantics, noncustodial direct transfers and prior pinned AE-005 example fingerprints are preserved.
-- Local normal and optimized suites each pass all 122 tests, including 14 new economy tests. Formatting and Clippy with warnings denied pass. A transient local cached-object linker failure was resolved by the subsequent optimized rebuild; it is not recorded as a passing attempt.
+- Local normal and optimized suites each pass all 122 tests, including 14 new economy tests. Formatting and Clippy with warnings denied pass.
+- All **320 full journals** were subsequently retained by the coordinator and independently reconstructed in Python: every entry matches a direct receipt, balances remain nonnegative, fee routes and exposure totals reconcile, and full-run metrics/fingerprints match the two campaign summaries. This supplements the CI acceptance sample.
 - The actual CLI acceptance script has passed 30 checks: both complete campaigns, independent campaign hashes, all row stock/fee reconciliations, 16 independently reconstructed full journals, debug/release byte equality for two full transcripts, forged-hash rejection, CSV/report exports, checkpoint pause/resume, cache preservation, corrupt-cache/config rejection and output bounds/overwrite refusal.
-- Source CI will run Linux/Windows normal and optimized checks, Clippy/formatting, dependency audit, historical CLI evidence, new campaign evidence and real Chrome viewer tests. Planned Chrome checks cover comparisons, filters, paired delta, run selection, stocks/round tables/timeline, 390px page fit, hostile text, blocked connections, full-u64 precision and invalid-conservation error state. They do not establish actual iPhone/Safari acceptance.
+- Published-source Linux and Windows each pass all **122 tests per normal/optimized profile**, formatting, Clippy with warnings denied, the 30 new CLI acceptance checks and the pre-existing review/allocation/community acceptance suites. The foundation suites pass 44 tests on Linux and 43 on Windows per profile (one Unix-specific test is not built on Windows); the task market passes 31 per platform/profile.
+- The three dependency audits report no known vulnerabilities and no warnings at this run. This is not a complete security certification.
+- Chrome 154 passes **11 new economy viewer conditions**, in addition to the existing 11 review and 13 community conditions. New checks cover comparisons, filters, paired delta, run selection, stocks/round tables/timeline, 390px page fit, hostile text, blocked connections, full-u64 precision and invalid-conservation error state. Desktop and mobile screenshots were visually reviewed. These checks do not establish actual iPhone/Safari acceptance.
+- Both platforms produce byte-identical reference/sensitivity JSON, CSV and HTML, and all six files match the retained local full-journal campaigns. Full campaigns contain 320 unique configurations; the CLI and replay verify them without treating replays as new independent observations.
 
 The complete-journal Python checkpoint runner is available for retaining larger campaigns. Campaign summaries can reproduce every full run from the stored config/seed/scenario/policy, but a summary is not a substitute for retaining original external observations when a future real adapter is introduced. Current observations are deliberately synthetic.
