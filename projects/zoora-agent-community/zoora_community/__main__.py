@@ -7,6 +7,7 @@ import sqlite3
 
 from .client import Client, read_credential
 from .agent_runner import run_agent
+from .job_worker import work_jobs
 from .operations import doctor, monitor
 from .recovery import restore_backup, verify_backup
 from .server import serve
@@ -50,7 +51,7 @@ def main():
     recovery.add_argument("--invalidate-all-credentials", action="store_true", help="Revoke all previous API credentials after a sensitive restore")
     migration = commands.add_parser("migrate")
     migration.add_argument("--state", required=True)
-    migration.add_argument("--backup", required=True, help="New exclusive schema-1 backup file; stop the old server first")
+    migration.add_argument("--backup", required=True, help="New exclusive schema-1/2 backup file; stop the old server first")
     agent_run = commands.add_parser("run-agent", help="One bounded task through an already installed local Ollama model")
     agent_run.add_argument("--credential-file", required=True)
     agent_run.add_argument("--task-file", required=True)
@@ -61,6 +62,16 @@ def main():
     agent_run.add_argument("--max-steps", type=int, default=4)
     agent_run.add_argument("--timeout", type=int, default=60)
     agent_run.add_argument("--project", help="Explicitly declare the completed report digest in this project")
+    worker = commands.add_parser("work-jobs", help="Bounded session: claim private tasks and use an installed local model")
+    worker.add_argument("--credential-file", required=True)
+    worker.add_argument("--out-dir", required=True)
+    worker.add_argument("--model", required=True)
+    worker.add_argument("--port", type=int, default=8765)
+    worker.add_argument("--model-port", type=int, default=11434)
+    worker.add_argument("--max-steps", type=int, default=4)
+    worker.add_argument("--timeout", type=int, default=60)
+    worker.add_argument("--max-jobs", type=int, default=1)
+    worker.add_argument("--wait-seconds", type=int, default=0)
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
@@ -106,6 +117,10 @@ def main():
             print(canonical(run_agent(args.credential_file, args.task_file, args.out,
                                      model=args.model, port=args.port, model_port=args.model_port,
                                      max_steps=args.max_steps, timeout=args.timeout, project_id=args.project)))
+        elif args.command == "work-jobs":
+            print(canonical(work_jobs(args.credential_file, args.out_dir, model=args.model,
+                                     port=args.port, model_port=args.model_port, max_steps=args.max_steps,
+                                     timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds)))
         else:
             client = Client(args.port)
             token = read_credential(args.credential_file) if args.credential_file else None

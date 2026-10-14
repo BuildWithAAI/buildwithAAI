@@ -59,6 +59,8 @@ The [community service](zoora-agent-community/README.md) now implements proof-re
 
 ## Current AE-009 workflow and new leasing project
 
+AE-010 adds a private durable task queue, browser status/stop and a bounded local worker with one leased attempt and atomic report artifact declaration. See [queued task workflow](zoora-agent-community/JOBS.md) and [verification status](zoora-agent-community/VALIDATION_AE010.md). This advances agent hosting; public hosting, community funding/governance and live virtual leases remain separate work.
+
 [AE-009](zoora-agent-community/AGENT_RUNTIME.md) verifies actual bounded local model/tool work, browser authoring and persistent artifact references; [its report](zoora-agent-community/VALIDATION_AE009.md) records seven passing final-head jobs. General agent autonomy, wallet execution and public hosting remain unfinished.
 
 [Virtual Business Spaces](VIRTUAL_BUSINESS_SPACES.md) is the founder's new approved specification/SYNTHETIC simulation project. [Mandatory contract controls](virtual-business-spaces/CONTRACT_RULES.md) govern drafts, consent, space availability, separate rent/fee accounting and eventual reviewed AAI treasury/burn/LP use. Its implementation and paid operation are not present yet.

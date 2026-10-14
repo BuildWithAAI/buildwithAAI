@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from legacy_fixture import create  # noqa: E402
 from fixture_signatures import signed_body  # noqa: E402
 from zoora_community.store import Store  # noqa: E402
+from zoora_community.recovery import restore_backup, verify_backup  # noqa: E402
 from zoora_community.validation import Problem  # noqa: E402
 
 
@@ -90,3 +91,24 @@ class MigrationTests(unittest.TestCase):
         with patch.object(Store, "backup", concurrent_change):
             self.refused("STATE_CHANGED_DURING_MIGRATION", lambda: Store.migrate(self.legacy.state, self.root / "snapshot.sqlite3", clock=lambda: self.at))
         self.assertEqual(self.legacy.audit()["schema_version"], 1)
+
+    def test_schema_two_upgrade_and_legacy_backup_restore_require_explicit_migration(self):
+        ddl = Path(__file__).resolve().parent.parent / "zoora_community" / "migration_002.sql"
+        with closing(sqlite3.connect(self.legacy.path, autocommit=True)) as connection:
+            connection.executescript("BEGIN IMMEDIATE;\n" + ddl.read_text())
+            connection.execute("PRAGMA user_version=2")
+            connection.execute("COMMIT")
+        old = Store(self.legacy.state, clock=lambda: self.at, _schema_version=2)
+        before = old.audit()
+        backup = self.root / "schema-two.sqlite3"
+        current = Store.migrate(old.state, backup, clock=lambda: self.at)
+        self.assertEqual(current.schema_version, 3)
+        self.assertEqual(current.audit()["audit_events"], before["audit_events"] + 1)
+        self.assertEqual(verify_backup(backup)["audit"], before)
+        restored = self.root / "restored-two"
+        result = restore_backup(backup, restored)
+        self.assertTrue(result["next_action"].startswith("MIGRATE_THEN_"))
+        self.refused("UNSUPPORTED_SCHEMA", lambda: Store(restored))
+        migrated = Store.migrate(restored, self.root / "second-snapshot.sqlite3", clock=lambda: self.at)
+        self.assertEqual(migrated.audit()["schema_version"], 3)
+        self.assertEqual(migrated.call("GET", "/v1/me", token=self.agent)[1]["principal_id"], self.ids["agent_id"])

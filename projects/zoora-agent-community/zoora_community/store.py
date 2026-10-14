@@ -18,14 +18,15 @@ from .validation import (
 )
 from .wallet_proof import WalletProofMethods, profile
 from .observations import ObservationMethods
+from .jobs import JobMethods
 
 APPLICATION_ID = 0x5A414136
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 MAX_DATABASE_BYTES = 64 * 1024 * 1024
 LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "members": 10000, "artifacts": 10000, "posts": 10000, "offers": 2000,
           "credentials": 20000, "audit": 50000, "wallet_challenges": 20000,
-          "wallet_proofs": 10000, "transactions": 5000}
+          "wallet_proofs": 10000, "transactions": 5000, "jobs": 2000}
 AUTH_DOMAIN = b"ZOORA_AE006_CREDENTIAL_V1\0"
 AUDIT_DOMAIN = b"ZOORA_AE006_AUDIT_V1\0"
 ZERO_HASH = "0" * 64
@@ -72,7 +73,7 @@ def provenance(created_ms, updated_ms=None):
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store(WalletProofMethods, ObservationMethods):
+class Store(WalletProofMethods, ObservationMethods, JobMethods):
     def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
@@ -153,6 +154,7 @@ class Store(WalletProofMethods, ObservationMethods):
             connection.execute("PRAGMA max_page_count=16384")
             schema = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_002.sql").read_text(encoding="utf-8")
+            schema += Path(__file__).with_name("migration_003.sql").read_text(encoding="utf-8")
             connection.executescript("BEGIN IMMEDIATE;\n" + schema)
             connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -191,8 +193,15 @@ class Store(WalletProofMethods, ObservationMethods):
 
     @classmethod
     def migrate(cls, state, backup_file, clock=now_ms):
-        """Offline schema-1 upgrade; preserve an exclusive consistent backup first."""
-        legacy = cls(state, clock, _schema_version=1)
+        """Offline schema-1/2 upgrade; preserve an exclusive audited backup first."""
+        # Only known older schemas may be opened for an explicit migration.
+        database = Path(state).absolute() / "community.sqlite3"
+        private_regular(database, MAX_DATABASE_BYTES)
+        with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, autocommit=True)) as source:
+            version = source.execute("PRAGMA user_version").fetchone()[0]
+        if version not in (1, 2):
+            raise Problem(503, "UNSUPPORTED_SCHEMA")
+        legacy = cls(state, clock, _schema_version=version)
         legacy.audit()
         legacy.backup(backup_file)
         with closing(sqlite3.connect(backup_file, autocommit=True)) as saved:
@@ -200,19 +209,20 @@ class Store(WalletProofMethods, ObservationMethods):
         with closing(legacy._connection()) as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
-                cls._check_schema(connection, 1)
+                cls._check_schema(connection, version)
                 current = connection.execute("SELECT seq,hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
                 if current is None or tuple(current) != checkpoint:
                     raise Problem(409, "STATE_CHANGED_DURING_MIGRATION")
                 # executescript would implicitly commit a pending transaction. Execute
                 # this module-owned, simple DDL statement list without that API.
-                ddl = Path(__file__).with_name("migration_002.sql").read_text(encoding="utf-8")
-                for statement in ddl.split(";"):
-                    if statement.strip():
-                        connection.execute(statement)
+                for target in range(version + 1, SCHEMA_VERSION + 1):
+                    ddl = Path(__file__).with_name(f"migration_{target:03}.sql").read_text(encoding="utf-8")
+                    for statement in ddl.split(";"):
+                        if statement.strip():
+                            connection.execute(statement)
                 connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 legacy._event(connection, {"role": "OWNER", "principal_id": "owner"},
-                              "SCHEMA_MIGRATE", "schema", {"from": 1, "to": 2,
+                              "SCHEMA_MIGRATE", "schema", {"from": version, "to": SCHEMA_VERSION,
                               "backup_audit_head": checkpoint[1]}, clock())
                 connection.execute("COMMIT")
             except BaseException:
@@ -378,6 +388,8 @@ class Store(WalletProofMethods, ObservationMethods):
 
     def _read(self, connection, route, token, at, limit, after):
         parts = route.strip("/").split("/")
+        if parts[:2] == ["v1", "jobs"]:
+            return self._jobs_read(connection, route, token, at, limit, after)
         if parts[:2] == ["v1", "transactions"] or (len(parts) == 4 and parts[:2] == ["v1", "agents"] and parts[3] == "transactions"):
             return self._observations_read(connection, route, limit, after)
         if route == "/v1/status":
@@ -456,6 +468,8 @@ class Store(WalletProofMethods, ObservationMethods):
 
     def _write(self, connection, principal, method, route, body, at):
         parts = route.strip("/").split("/")
+        if parts[:2] == ["v1", "jobs"]:
+            return self._jobs_write(connection, principal, method, route, body, at)
         if method == "POST" and route == "/v1/operators":
             self._role(principal, "OWNER")
             fields(body, ("handle",))
@@ -675,6 +689,8 @@ class Store(WalletProofMethods, ObservationMethods):
                     raise Problem(503, "AUDIT_CHAIN_FAILURE")
                 previous, at = digest, row["at_ms"]
             for table in LIMITS:
+                if self.schema_version < 3 and table == "jobs":
+                    continue
                 if self.schema_version == 1 and table in ("wallet_challenges", "wallet_proofs", "transactions"):
                     continue
                 if connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] > LIMITS[table]:
@@ -696,6 +712,11 @@ class Store(WalletProofMethods, ObservationMethods):
                     self._audit_observations(connection)
                 except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
                     raise Problem(503, "EVIDENCE_CONSISTENCY_FAILURE") from None
+            if self.schema_version >= 3:
+                try:
+                    self._audit_jobs(connection)
+                except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+                    raise Problem(503, "JOB_CONSISTENCY_FAILURE") from None
             connection.execute("COMMIT")
             return {"schema_version": self.schema_version, "audit_events": seq, "audit_head": previous,
                     "database_integrity": "OK", "foreign_keys": "OK", "relationships": "OK",
