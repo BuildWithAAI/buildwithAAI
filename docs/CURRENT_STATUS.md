@@ -14,6 +14,10 @@ The [chronological study workflow](../projects/sfp-paper-lab/STUDY.md) now provi
 
 The [persistent research notebook](../projects/sfp-paper-lab/NOTEBOOK.md) now retains original baseline/CSV inputs, receipt lineage and every recorded evaluation. It rejects rewritten history and stale exports, verifies saved checkpoints and supports complete engine replay. [The portable example](../projects/sfp-paper-lab/examples/notebook-report/audit.html) contains only synthetic acceptance data; all research screens fail. Other application suites and deployments were not reverified in this batch.
 
+## BT-008 follow-up
+
+The [public source adapter](../projects/sfp-paper-lab/SOURCE.md) now supports bounded read-only Kraken SOL/USD capture, strict identity/closed-bar parsing, complete raw response retention, quality reports and source-preserving notebook events. Offline CI uses synthetic responses; the explicit public pilot is a separate retrospective operation. The documented 720-entry cap versus an observed 721-row response is recorded as a bounded compatibility warning. Real source truth, executable quotes, independently unseen testing and funded readiness remain unresolved.
+
 ## September 22, 2026 snapshot
 
 **Verified snapshot: September 22, 2026.** [PR #2](https://github.com/BuildWithAAI/buildwithAAI/pull/2) is merged. Its published main commit, [`01d98e7`](https://github.com/BuildWithAAI/buildwithAAI/commit/01d98e760e7404081f6ab30b2b7b1853ba7041b5), was checked against all 71 prepared files by Git blob hash before this follow-up documentation review. The earlier pre-publication baseline is preserved in [VALIDATION.md](VALIDATION.md). This is a documentation and branding verification, not a software release audit.

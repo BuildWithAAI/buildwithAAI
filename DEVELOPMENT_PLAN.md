@@ -69,3 +69,7 @@ The [study module](projects/sfp-paper-lab/STUDY.md) adds frozen plans, expanding
 ## BT-007: persistent research input and evaluation history
 
 The [notebook workflow](projects/sfp-paper-lab/NOTEBOOK.md) adds transactional retention of a frozen baseline, original CSV bytes, append receipts and every recorded evaluation. It rejects revised/backfilled history, uses checked head hashes for concurrent writes, blocks stale exports and exports a phone-readable audit history with all failed screens retained. Optional matching-engine replay reruns the entire recorded study history. This is software acceptance on synthetic data; source/quote truth, independently untouched evaluation and funded strategy acceptance remain unresolved.
+
+## BT-008: read-only public source intake
+
+[The source adapter](projects/sfp-paper-lab/SOURCE.md) validates Kraken SOL/USD identity and hourly responses, archives original inputs and produces a quality/provenance bundle. Source-preserving notebook events retain those responses through appends and replay. A separate explicit recent-window retrospective profile can exercise public observations; it never shortens an existing plan or establishes independent source truth, unseen performance, realistic quotes/costs or funded readiness.

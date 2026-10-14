@@ -23,3 +23,13 @@ python -m zoora_sfp verify --report-dir examples/notebook-report --replay
 ```
 
 The example belongs to version 0.3.0 package bytes. If engine bytes change, omit --replay to verify its recorded inputs/accounting, or use that exact source checkout for the full rerun. [Notebook guide](../NOTEBOOK.md) · [Validation](../VALIDATION_BT007.md).
+
+## BT-008 synthetic source example
+
+[Open the source receipt](source-report/source.html). The nine-file bundle uses engineered SYNTHETIC SOL/USD-labelled inputs and LOCAL_FILE_IMPORT_NOT_WITNESSED transport. It contains 721 raw rows, 720 completed bars and an explicit documentation/observed-row-cap warning. No real upstream prices are committed in this sample. Source-head declaration is UNDECLARED; original inputs and package hashes are recorded.
+
+```sh
+python -m zoora_sfp verify --report-dir examples/source-report
+```
+
+[Source guide](../SOURCE.md) · [Validation](../VALIDATION_BT008.md). The actual public pilot and its raw market observations are separate research outputs.

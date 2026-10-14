@@ -83,3 +83,7 @@ The ten-file export contains:
 | manifest.json | Hashes/lengths for the other nine files and the notebook head |
 
 Export directories must be new. No external assets, runtime JavaScript, service or credentials are needed to read the HTML. Reports are prepared for review; nothing is posted or deployed by these commands. Simulated fold accounts remain separate from treasury funds. Actual transferred funds, purchased tokens and burned tokens remain zero; no price floor or trading-profit allocation is established.
+
+## BT-008 source-preserving events
+
+Version 0.4.0 adds [OPEN_SOURCE/CAPTURE_SOURCE intake](SOURCE.md) for verified local bundle mappings. These events retain exact provider response bytes and receipts alongside the derived CSV, bind the capture in the dataset/history chain and require receipt completion before the notebook event. They preserve all existing revision, overlap, checkpoint and stale-export rules. Source truth and historical live receipt remain unverified.

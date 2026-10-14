@@ -23,6 +23,12 @@ The [persistent notebook](../projects/sfp-paper-lab/NOTEBOOK.md) now stores orig
 
 Local validation passes 116 tests in both normal and optimized Python modes, plus the existing six/seven paper/study acceptance checks and nine new notebook CLI checks. One synthetic workflow retains three evaluations with 9/30/72 trials and eight failed screens each. Exact-head cross-platform/browser results belong in the notebook development PR. Other product heads/tests above are the earlier snapshot and were not rerun for this batch. No real historical dataset has been collected or verified, and no trade, token operation or deployment was performed.
 
+## Additional implemented batch: BT-008
+
+[Public source intake](../projects/sfp-paper-lab/SOURCE.md) adds a bounded read-only SOL/USD adapter, exact provider response/receipt retention, a quality screen and source-preserving notebook events. A preliminary public capture yielded 720 completed bars with no recorded gaps after excluding the current row; an observed 721-vs-documented-720 cap discrepancy is explicit. Those observations remain provider-reported with reconstructed availability. The fixed one-fold retrospective pilot is separate from the original longer three-fold plan.
+
+Local checks pass 150 tests in both modes and 30 actual CLI acceptance checks; exact-head CI/browser proof belongs in the BT-008 development PR. Real public pilot results belong in their separately saved snapshot. No account/wallet/order integration, trade, token operation, deployment or merge is performed. Other product suites were not rerun for this source-intake batch.
+
 ## Work still needed for release
 
 Verify suitable historical data/quotes and an untouched evaluation protocol; review the stacked implementations as an integrated release; finish the scanner's provider/Telegram gates; demonstrate host/TLS, real Safari/wallet and sustained operator controls; implement and test the lease/funding/voting rules before presenting those as services. These are separate concrete deliverables, not completed by additional planning documents or a green unit suite.

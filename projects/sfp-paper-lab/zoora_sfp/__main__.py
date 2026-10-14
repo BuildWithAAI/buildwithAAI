@@ -8,9 +8,18 @@ from pathlib import Path
 
 from .data import MAX_BYTES, Config, ResearchError, canonical, decode, number, parse_dataset, require
 from .importer import import_csv
-from .notebook import capture_csv, evaluate_notebook, load_notebook, notebook_status, open_notebook
+from .notebook import (
+    capture_csv,
+    capture_source,
+    evaluate_notebook,
+    load_notebook,
+    notebook_status,
+    open_notebook,
+)
 from .notebook_reports import EXPORT_PROTOCOL, render_notebook, verify_notebook_export
+from .provider import capture_public, make_capture
 from .reports import publish, render, run, verify
+from .source_reports import SOURCE_PROTOCOL, save_source, verify_source
 from .study import make_plan, run_study
 from .study_reports import render_study, verify_study
 
@@ -92,6 +101,26 @@ def parser():
     s.add_argument("--plan", required=True)
     s.add_argument("--out", required=True)
     s.add_argument("--source-head", default=os.environ.get("SOURCE_HEAD_SHA"))
+    for name, text in [("capture-kraken", "Read only the public SOL/USD identity and hourly OHLC endpoints."),
+                       ("import-kraken", "Import declared saved Kraken response files; no witnessed transport.")]:
+        k = commands.add_parser(name, help=text)
+        k.add_argument("--out", required=True)
+        k.add_argument("--delay-ms", type=int, default=0)
+        k.add_argument("--source-head", default=os.environ.get("SOURCE_HEAD_SHA"))
+        if name == "import-kraken":
+            k.add_argument("--pair-response", required=True)
+            k.add_argument("--ohlc-response", required=True)
+            k.add_argument("--captured-ms", required=True, type=int)
+            k.add_argument("--classification", required=True,
+                           choices=["SYNTHETIC", "SOURCE_ASSERTED_OBSERVATIONS"])
+    for name in ["notebook-open-source", "notebook-capture-source"]:
+        k = commands.add_parser(name, help="Retain verified bundle mappings and exact raw provider inputs.")
+        k.add_argument("--notebook", required=True)
+        k.add_argument("--source-dir", required=True)
+        if name == "notebook-open-source":
+            k.add_argument("--plan", required=True)
+        else:
+            k.add_argument("--expected-head")
     for command, help_text in [
         ("notebook-open", "Create a persistent notebook for a frozen plan and its original dataset."),
         ("notebook-capture", "Retain original CSV bytes and append matching, unrevised history."),
@@ -135,6 +164,12 @@ def main(argv=None):
             require(isinstance(manifest, dict), "INVALID_MANIFEST")
             if manifest.get("protocol") == EXPORT_PROTOCOL:
                 result = verify_notebook_export(args.report_dir, args.expected_head, args.replay)
+            elif manifest.get("protocol") == SOURCE_PROTOCOL:
+                require(args.expected_head is None and not args.replay, "SOURCE_VERIFY_OPTIONS_UNSUPPORTED")
+                source = verify_source(args.report_dir)
+                result = {"protocol": SOURCE_PROTOCOL, "members_verified": 8,
+                          "capture_sha256": source["capture"]["capture_sha256"],
+                          "scope": "INTERNAL_SOURCE_MAPPING_NOT_EXTERNAL_ATTESTATION"}
             else:
                 require(args.expected_head is None and not args.replay, "NOTEBOOK_VERIFY_OPTIONS_REQUIRED")
                 result = (verify_study(args.report_dir) if manifest.get("protocol") ==
@@ -167,6 +202,21 @@ def main(argv=None):
         elif args.command == "notebook-open":
             result = open_notebook(args.notebook, read_input(args.dataset), decode(read_input(args.plan)),
                                    args.delay_ms)
+        elif args.command == "capture-kraken":
+            require(not Path(args.out).exists() and not Path(args.out).is_symlink(), "OUTPUT_ALREADY_EXISTS")
+            require(Path(args.out).parent.is_dir(), "OUTPUT_PARENT_UNAVAILABLE")
+            result = save_source(args.out, capture_public(args.delay_ms, args.source_head))
+        elif args.command == "import-kraken":
+            raw = make_capture(read_input(args.pair_response), read_input(args.ohlc_response),
+                               classification=args.classification, captured_ms=args.captured_ms,
+                               delay_ms=args.delay_ms, source_head=args.source_head)
+            result = save_source(args.out, raw)
+        elif args.command == "notebook-open-source":
+            source = verify_source(args.source_dir)
+            result = open_notebook(args.notebook, source["raw"], decode(read_input(args.plan)), source_capture=True)
+        elif args.command == "notebook-capture-source":
+            source = verify_source(args.source_dir)
+            result = capture_source(args.notebook, source["raw"], args.expected_head)
         elif args.command == "notebook-capture":
             result = capture_csv(args.notebook, read_input(args.csv), args.captured_ms, args.expected_head)
         elif args.command == "notebook-evaluate":
