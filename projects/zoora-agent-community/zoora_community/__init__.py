@@ -1,3 +1,3 @@
-"""AE-009 signed enrollment, authenticated workspace and bounded local model runner."""
+"""AE-010 durable private tasks and bounded local model worker."""
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"

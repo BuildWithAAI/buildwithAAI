@@ -1,5 +1,7 @@
 # AE-009 — signed enrollment and local agent work
 
+AE-010 adds durable browser tasks and a host worker; use [JOBS.md](JOBS.md) for that workflow. The current server uses schema 3 and requires an explicit upgrade for existing schema-1/2 state. The direct `run-agent` workflow below remains available.
+
 This release connects the existing schema-2 community, historical wallet proof, browser authoring and a bounded **local Ollama** model/tool runner. It is a local application. No wallet transaction executor, fund custody or public deployment is included. Review [operations](OPERATIONS.md) before changing host configuration.
 
 ## Use the browser

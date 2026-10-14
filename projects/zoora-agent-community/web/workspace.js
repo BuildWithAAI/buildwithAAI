@@ -2,6 +2,7 @@
 (() => {
   const el = id=>document.getElementById(id), tokenPattern=/^za1_[A-Za-z0-9_-]{43}$/, idPattern=/^[0-9a-f]{32}$/;
   let session=null, issued=null, generation=0, proofGeneration=0, busy=false, wallet=null, accounts=[], challenge=null, offWallet=null;
+  let taskPending=null, jobAfter=null;
   function workAction(){for(const form of el("agent-workspace").querySelectorAll("form"))form.hidden=form.id!==el("agent-action").value;}
   function clearProof(){proofGeneration++;challenge=null;el("challenge-preview").hidden=true;el("challenge-message").textContent="";el("challenge-expiry").textContent="";}
   function clearWallet(){if(offWallet)offWallet();offWallet=null;wallet=null;accounts=[];clearProof();el("wallet-account").replaceChildren();el("wallet-account").disabled=true;el("challenge-button").disabled=true;}
@@ -10,9 +11,11 @@
     el("session-status").textContent=session?role+" · "+session.principal_id+" · expires "+new Date(session.expires_at_ms).toLocaleString():"Signed out";
     el("sign-out").hidden=!session;el("save-issued").hidden=!issued;el("credential-note").hidden=!issued;
     el("operator-form").hidden=role!=="OWNER";el("enrollment").hidden=role!=="OPERATOR";el("agent-workspace").hidden=role!=="AGENT";
+    el("job-panel").hidden=!session;
   }
   function error(message){el("workspace-error").textContent=message;el("workspace-error").hidden=false;}
-  function reset(){generation++;session=null;issued=null;clearWallet();el("credential-file").value="";el("workspace-result").textContent="";el("workspace-error").hidden=true;for(const form of el("account-panel").querySelectorAll("form"))form.reset();el("agent-action").value="project-form";workAction();view();}
+  function clearJobs(){taskPending=null;jobAfter=null;el("job-list").replaceChildren();el("more-jobs").hidden=true;}
+  function reset(){generation++;session=null;issued=null;clearWallet();clearJobs();el("credential-file").value="";el("workspace-result").textContent="";el("workspace-error").hidden=true;for(const form of el("account-panel").querySelectorAll("form"))form.reset();el("agent-action").value="project-form";workAction();view();}
   async function request(method,path,body,current=session){
     if(!current || Date.now()>=current.expires_at_ms)throw new Error("Credential expired. Open a current credential file.");
     const response=await fetch(path,{method,cache:"no-store",credentials:"omit",headers:{Authorization:"Bearer "+current.token,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
@@ -40,11 +43,11 @@
   el("credential-file").addEventListener("change",()=>action(async ticket=>{
     const file=el("credential-file").files[0];if(!file)return;if(file.size>2048)throw new Error("Credential file exceeds 2 KiB.");
     const credential=await useCredential(JSON.parse(await file.text()));if(ticket!==generation)return;
-    clearWallet();session=credential;issued=null;el("credential-file").value="";el("workspace-result").textContent="Credential verified by this service.";view();
+    clearWallet();clearJobs();session=credential;issued=null;el("credential-file").value="";el("workspace-result").textContent="Credential verified by this service.";view();
   }));
   el("operator-form").addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
     const result=await request("POST","/v1/operators",{handle:event.target.elements.handle.value});
-    if(ticket!==generation)return;const credential=await useCredential(result.credential);if(ticket!==generation)return;session=credential;issued=session;clearWallet();el("workspace-result").textContent="Operator created. Save its new credential now.";view();
+    if(ticket!==generation)return;const credential=await useCredential(result.credential);if(ticket!==generation)return;session=credential;issued=session;clearWallet();clearJobs();el("workspace-result").textContent="Operator created. Save its new credential now.";view();
   });});
   function walletsChanged(){
     if(wallet&&!ZooraWallet.get().includes(wallet))clearWallet();
@@ -75,7 +78,7 @@
     const proof=await ZooraWallet.sign(wallet,account,prepared);if(ticket!==generation || prepared!==challenge)throw new Error("Session or challenge changed. Start again.");
     const result=await request("POST","/v1/agents",proof,current);if(ticket!==generation)return;
     const credential=await useCredential(result.credential);if(ticket!==generation)return;
-    session=credential;issued=credential;clearWallet();el("workspace-result").textContent="Agent enrolled with a verified historical wallet proof. Save its credential now.";view();el("refresh").click();
+    session=credential;issued=credential;clearWallet();clearJobs();el("workspace-result").textContent="Agent enrolled with a verified historical wallet proof. Save its credential now.";view();el("refresh").click();
   }));
   const values=form=>Object.fromEntries([...new FormData(form)].filter(([,v])=>typeof v==="string"));
   const writeForm=(id,prepare)=>el(id).addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
@@ -88,6 +91,29 @@
   writeForm("offer-form",form=>({path:"/v1/offers",body:values(form)}));
   writeForm("observation-form",form=>({path:"/v1/agents/"+session.principal_id+"/transactions",body:values(form)}));
   writeForm("artifact-form",async form=>{const body=values(form),file=form.elements.artifact.files[0];if(!file||file.size>1_048_576)throw new Error("Choose an artifact file up to 1 MiB.");const hash=await crypto.subtle.digest("SHA-256",await file.arrayBuffer());const digest=[...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");return{path:"/v1/projects/"+body.project_id+"/artifacts",body:{title:body.title,digest}};});
-  el("task-form").addEventListener("submit",event=>{event.preventDefault();saveJson({prompt:event.target.elements.prompt.value},"zoora-task.json");el("workspace-result").textContent="Task saved. Run it locally with run-agent; no model was invoked in this page.";});
+  async function jobs(ticket,more=false){
+    const result=await request("GET","/v1/jobs?limit=50"+(more&&jobAfter?"&after="+jobAfter:""));if(ticket!==generation)return;
+    if(!more)el("job-list").replaceChildren();
+    for(const job of result.items){
+      const article=document.createElement("article");article.className="card";article.dataset.jobId=job.id;
+      const heading=document.createElement("h3");heading.textContent=job.title;article.append(heading);
+      const status=document.createElement("p");status.textContent=job.state+(job.stop_requested?" · stop requested":"")+" · "+job.id;article.append(status);
+      const detail=document.createElement("p");detail.textContent=job.error_code||("Budget: "+job.max_steps+" steps, "+job.timeout_seconds+" seconds");article.append(detail);
+      if(job.report_sha256){const hash=document.createElement("p");hash.textContent="Report SHA256: "+job.report_sha256;article.append(hash);}
+      if(["QUEUED","RUNNING"].includes(job.state)&&!job.stop_requested){const stop=document.createElement("button");stop.type="button";stop.textContent="Stop task";stop.addEventListener("click",()=>action(async currentTicket=>{await request("POST","/v1/jobs/"+job.id+"/stop",{});if(currentTicket!==generation)return;await jobs(currentTicket);if(currentTicket===generation)el("workspace-result").textContent="Stop recorded. Refresh to inspect the worker's final status.";}));article.append(stop);}
+      el("job-list").append(article);
+    }
+    jobAfter=result.next_after;el("more-jobs").hidden=!jobAfter;
+    if(!more&&!result.items.length)el("job-list").textContent="No tasks recorded for this account.";
+  }
+  el("refresh-jobs").addEventListener("click",()=>action(async ticket=>{await jobs(ticket);if(ticket===generation)el("workspace-result").textContent="Private task status refreshed.";}));
+  el("more-jobs").addEventListener("click",()=>action(async ticket=>{await jobs(ticket,true);if(ticket===generation)el("workspace-result").textContent="More private tasks loaded.";}));
+  el("task-form").addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
+    const form=event.target,body=values(form);body.max_steps=Number(body.max_steps);body.timeout_seconds=Number(body.timeout_seconds);if(!body.project_id)delete body.project_id;
+    const signature=JSON.stringify(body);if(!taskPending||taskPending.signature!==signature)taskPending={signature,request_id:crypto.randomUUID().replaceAll("-","")};
+    const result=await request("POST","/v1/jobs",{...body,request_id:taskPending.request_id});if(ticket!==generation)return;
+    form.reset();taskPending=null;el("workspace-result").textContent="Task recorded · "+result.job.id+" · "+result.job.state;await jobs(ticket);
+  });});
+  el("export-task").addEventListener("click",()=>{saveJson({prompt:el("task-form").elements.prompt.value},"zoora-task.json");el("workspace-result").textContent="Prompt exported for the local runner.";});
   el("agent-action").addEventListener("change",workAction);window.addEventListener("pagehide",reset);workAction();view();
 })();

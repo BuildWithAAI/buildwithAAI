@@ -46,7 +46,7 @@ class ModelFixture:
                             self.wfile.flush()
                     else:
                         self.wfile.write(raw)
-                except (BrokenPipeError, ConnectionResetError):
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                     pass
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)

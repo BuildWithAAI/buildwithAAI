@@ -1,0 +1,137 @@
+"""Bounded host worker: existing local model, private reports, no automatic retries.
+
+The task lease coordinates honest clients in one database. It is not a process
+sandbox or a hardware resource governor. Stop is checked between network calls.
+"""
+
+import hashlib
+import http.client
+import os
+from pathlib import Path
+import stat
+import time
+
+from .agent_runner import MAX_REPORT, LocalModel, run_agent
+from .client import Client, read_credential
+from .jobs import bounded
+from .store import exclusive_file, private_regular
+from .validation import Problem, fields, identifier, parse_json
+
+
+def report_directory(folder):
+    folder = Path(folder).absolute()
+    folder.mkdir(mode=0o700, exist_ok=True)
+    info = folder.lstat()
+    if not stat.S_ISDIR(info.st_mode) or (os.name == "posix" and
+            (stat.S_IMODE(info.st_mode) & 0o077 or info.st_uid != os.getuid())):
+        raise Problem(400, "UNSAFE_REPORT_DIRECTORY")
+    return folder
+
+
+def report_metadata(path, job):
+    """Read only the exclusive report for this exact job/attempt, never a task path."""
+    private_regular(path, MAX_REPORT)
+    raw = path.read_bytes()
+    report = parse_json(raw, MAX_REPORT)
+    fields(report["job"], ("job_id", "attempt_id"))
+    if (report["job"] != {"job_id": job["id"], "attempt_id": job["attempt_id"]}
+            or report["agent_id"] != job["agent_id"] or report["credential_id"] != job["credential_id"]
+            or report["task"] != {"prompt": job["prompt"]}
+            or report["max_steps"] != job["run_max_steps"] or report["timeout_seconds"] != job["run_timeout_seconds"]
+            or report["state"] not in {"AVAILABLE", "FAILED"}
+            or type(report["steps"]) is not list or len(report["steps"]) > job["run_max_steps"]):
+        raise Problem(503, "JOB_REPORT_MISMATCH")
+    return {"report_sha256": hashlib.sha256(raw).hexdigest(), "report_bytes": len(raw), "steps": len(report["steps"])}
+
+
+def complete(client, token, job, payload):
+    # A lost response may follow a committed transaction. Retry only this exact
+    # completion once; never run inference again or alter a failed declaration.
+    path = "/v1/jobs/" + job["id"] + "/complete"
+    for attempt in range(2):
+        try:
+            return client.request("POST", path, payload, token)[1]["job"]
+        except (OSError, http.client.HTTPException):
+            if attempt:
+                raise
+    raise RuntimeError("unreachable")
+
+
+def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
+              max_steps=4, timeout=60, max_jobs=1, wait_seconds=0):
+    bounded(max_steps, 1, 6, "INVALID_RUN_LIMIT")
+    bounded(timeout, 1, 120, "INVALID_RUN_LIMIT")
+    bounded(max_jobs, 1, 16, "INVALID_WORKER_LIMIT")
+    bounded(wait_seconds, 0, 300, "INVALID_WORKER_LIMIT")
+    LocalModel(model, model_port)  # Validate local model naming/port before claiming.
+    client = Client(port)
+    token = read_credential(credential_file)
+    principal = client.request("GET", "/v1/me", token=token)[1]
+    if principal["role"] != "AGENT":
+        raise Problem(403, "AGENT_REQUIRED")
+    folder = report_directory(out_dir)
+    expires = time.monotonic() + wait_seconds
+    outcomes = []
+    while len(outcomes) < max_jobs:
+        response = client.request("POST", "/v1/jobs/claim", {"max_steps": max_steps, "timeout_seconds": timeout}, token)[1]
+        job = response["job"]
+        if job is None:
+            remaining = expires - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(0.5, remaining))
+            continue
+        identifier(job["id"])
+        identifier(job["attempt_id"])
+        report = folder / (job["id"] + "-" + job["attempt_id"] + ".json")
+
+        def guard(deadline, current_job=job):
+            client.deadline = deadline
+            current = client.request("GET", "/v1/jobs/" + current_job["id"], token=token)[1]
+            if current["stop_requested"]:
+                raise Problem(409, "JOB_STOPPED")
+            if current["state"] != "RUNNING" or current["attempt_id"] != current_job["attempt_id"]:
+                raise Problem(409, "JOB_NOT_RUNNING")
+
+        error = None
+        created = False
+        output = None
+        try:
+            # There is no task-file input controlled by the model or the browser.
+            # Reserve collisions fail; preexisting files are never used as evidence.
+            output = exclusive_file(report)
+            created = True
+            run_agent(credential_file, None, report, model=model, port=port, model_port=model_port,
+                      max_steps=job["run_max_steps"], timeout=job["run_timeout_seconds"],
+                      _task={"prompt": job["prompt"]}, _guard=guard,
+                      _context={"job_id": job["id"], "attempt_id": job["attempt_id"]}, _output=output)
+        except Problem as problem:
+            error = problem.code
+        except (OSError, ValueError, http.client.HTTPException):
+            error = "JOB_RUN_FAILED"
+        finally:
+            if output is not None:
+                output.close()
+            client.deadline = None
+        metadata = {"report_sha256": None, "report_bytes": None, "steps": 0}
+        if created and report.exists():
+            try:
+                metadata = report_metadata(report, job)
+            except (Problem, KeyError, TypeError, ValueError, OSError):
+                error = "JOB_REPORT_UNAVAILABLE"
+        payload = {"attempt_id": job["attempt_id"], "claim_token": response["claim_token"],
+                   "state": "SUCCEEDED" if error is None else "FAILED", "error_code": error, **metadata}
+        try:
+            settled = complete(client, token, job, payload)
+            outcomes.append({"job_id": job["id"], "attempt_id": job["attempt_id"], "state": settled["state"],
+                             "error_code": settled["error_code"], "report_sha256": settled["report_sha256"],
+                             "artifact_id": settled["artifact_id"], "completion_recorded": True})
+        except (Problem, OSError, http.client.HTTPException):
+            # Credential expiry, stop/lease races or lost transport must never
+            # silently requeue a task. A report may exist while settlement is unknown.
+            outcomes.append({"job_id": job["id"], "attempt_id": job["attempt_id"], "state": "UNCONFIRMED",
+                             "error_code": "JOB_COMPLETION_UNCONFIRMED", "report_sha256": metadata["report_sha256"],
+                             "artifact_id": None, "completion_recorded": False})
+            break
+    return {"mode": "LOCAL_ONLY", "jobs": outcomes, "processed": len(outcomes),
+            "automatic_retry": False, "wallet_execution": "UNAVAILABLE"}

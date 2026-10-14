@@ -86,12 +86,15 @@ def stage_backup(backup, staging):
         source.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 1_000_000)
         source.setlimit(sqlite3.SQLITE_LIMIT_SQL_LENGTH, 16_384)
         source.setlimit(sqlite3.SQLITE_LIMIT_ATTACHED, 0)
-        Store._check_schema(source)
+        version = source.execute("PRAGMA user_version").fetchone()[0]
+        if version not in (1, 2, SCHEMA_VERSION):
+            raise Problem(503, "UNSUPPORTED_SCHEMA")
+        Store._check_schema(source, version)
         if (source.execute("PRAGMA page_size").fetchone()[0] != 4096 or
                 source.execute("PRAGMA journal_mode").fetchone()[0] != "delete"):
             raise Problem(503, "UNSUPPORTED_BACKUP_FORMAT")
         copy_snapshot(source, staging / "community.sqlite3")
-    return audit_snapshot(staging)
+    return audit_snapshot(staging, version)
 
 
 def verify_backup(backup):
@@ -124,5 +127,7 @@ def restore_backup(backup, state):
             raise
     return {"restored": True, "scope": "OFFLINE_NEW_STATE_DIRECTORY", "audit": audit,
             "all_previous_credentials_revoked": False,
-            "next_action": "RECOVER_OWNER_INVALIDATE_ALL_CREDENTIALS_BEFORE_SERVING",
+            "next_action": ("MIGRATE_THEN_RECOVER_OWNER_INVALIDATE_ALL_CREDENTIALS_BEFORE_SERVING"
+                            if audit["schema_version"] < SCHEMA_VERSION else
+                            "RECOVER_OWNER_INVALIDATE_ALL_CREDENTIALS_BEFORE_SERVING"),
             "windows_durability": "UNVERIFIED" if os.name == "nt" else "NOT_APPLICABLE"}

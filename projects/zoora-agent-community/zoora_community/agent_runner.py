@@ -183,17 +183,23 @@ def run_tool(action, client):
 
 
 def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=11434,
-              max_steps=4, timeout=60, project_id=None):
+              max_steps=4, timeout=60, project_id=None, _task=None, _guard=None, _context=None,
+              _output=None):
     if (type(max_steps) is not int or not 1 <= max_steps <= 6
             or type(timeout) is not int or not 1 <= timeout <= 120):
         raise Problem(400, "INVALID_RUN_LIMITS")
     provider = LocalModel(model, model_port)
     token = read_credential(credential_file)
-    task_path = Path(task_file)
-    if task_path.is_symlink() or not task_path.is_file():
-        raise Problem(400, "INVALID_TASK_FILE")
-    with task_path.open("rb") as source:
-        task = parse_json(source.read(8193), 8192)
+    if _task is None:
+        task_path = Path(task_file)
+        if task_path.is_symlink() or not task_path.is_file():
+            raise Problem(400, "INVALID_TASK_FILE")
+        with task_path.open("rb") as source:
+            task = parse_json(source.read(8193), 8192)
+    else:
+        if task_file is not None or project_id is not None:
+            raise Problem(400, "INVALID_QUEUED_RUN")
+        task = _task
     fields(task, ("prompt",))
     prompt = text(task["prompt"], 4096)
     client = Client(port)
@@ -211,12 +217,17 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
               "slot": None, "commitment": None, "transformation_version": 1,
               "missingness": ["independent_model_attestation", "output_correctness", "solana_slot", "chain_commitment"],
               "quality_flags": ["MODEL_OUTPUT_NOT_EXECUTED", "NO_SPENDING_AUTHORITY", "NOT_PROOF_OF_INDEPENDENT_AGENT"]}
+    if _context is not None:
+        fields(_context, ("job_id", "attempt_id"))
+        report["job"] = {key: identifier(value) for key, value in _context.items()}
     # Reserve private output before inference; preserve failed/partial evidence for diagnosis.
-    output = exclusive_file(out)
+    output = _output if _output is not None else exclusive_file(out)
     failure = None
     try:
         deadline = time.monotonic() + timeout
         client.deadline = deadline
+        if _guard is not None:
+            _guard(deadline)
         report["provider"] = provider.inspect(deadline)
         messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}]
         for step_index in range(max_steps):
@@ -226,10 +237,14 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
             current = client.request("GET", "/v1/me", token=token)[1]
             if current != principal:
                 raise Problem(403, "RUN_AUTH_CHANGED")
+            if _guard is not None:
+                _guard(deadline)
             finish_only = step_index == max_steps - 1
             if finish_only:
                 messages.append({"role": "user", "content": "Write the requested deliverable now, using the original task and observed tool results above. No more tool calls are available."})
             action, evidence = provider.next_action(messages, deadline, finish_only=finish_only)
+            if _guard is not None:
+                _guard(deadline)
             fields(action, ("action", "arguments"))
             step = {"action": action, "model_evidence": evidence, "available_at_ms": now_ms()}
             report["steps"].append(step)
@@ -248,6 +263,8 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
         else:
             raise Problem(409, "RUN_STEP_LIMIT")
         client.request("GET", "/v1/me", token=token)
+        if _guard is not None:
+            _guard(deadline)
         if time.monotonic() >= deadline:
             raise Problem(504, "RUN_DEADLINE")
     except (Problem, OSError, ValueError, http.client.HTTPException) as exc:

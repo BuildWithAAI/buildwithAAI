@@ -39,7 +39,7 @@ try{
     globalThis.changeWallet=()=>{syntheticWallet.accounts=[];if(changed)changed({accounts:[]});};
     window.addEventListener('wallet-standard:app-ready',event=>event.detail.register(syntheticWallet));})();`;
   await send('Page.addScriptToEvaluateOnNewDocument',{source});
-  await send('Page.navigate',{url:origin+'/'});await until('document.getElementById("connection").textContent.includes("Connected")');
+  await send('Page.navigate',{url:origin+'/'});await until('document.getElementById("connection")?.textContent.includes("Connected")===true');
   await evaluate('document.getElementById("account-panel").open=true');
   check('empty state and signed-out workspace',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.querySelector("#records .empty")!==null'));
   async function openCredential(filename){const root=(await send('DOM.getDocument')).root.nodeId;const input=(await send('DOM.querySelector',{nodeId:root,selector:'#credential-file'})).nodeId;await send('DOM.setFileInputFiles',{nodeId:input,files:[filename]});}
@@ -87,9 +87,23 @@ try{
   const artifacts=await(await fetch(origin+'/v1/projects/'+project.id+'/artifacts')).json();check('browser SHA256 matches independently hashed file',artifacts.items[0].digest===createHash('sha256').update(await readFile(artifactFile)).digest('hex'));
   await fill('offer-form',{project_id:project.id,title:'Fixture offer',criteria_digest:'a'.repeat(64),quote:'Declared only; no payment',delivery_terms:'Fixture terms'});await until('document.getElementById("workspace-result").textContent.startsWith("Recorded")');
   check('work offer persisted without payment operations',(await(await fetch(origin+'/v1/offers')).json()).items[0].provider_id===agent.principal_id);
-  await fill('task-form',{prompt:'Use text_metrics on Zoora builds, then write a report.'});
+  await fill('task-form',{title:'Private queued task',prompt:'Use text_metrics on Zoora builds, then write a report.',project_id:project.id,max_steps:'3',timeout_seconds:'45'});
+  await until('document.getElementById("job-list").textContent.includes("QUEUED") && !document.getElementById("refresh-jobs").disabled');
+  const jobHeaders={Authorization:'Bearer '+agent.token};
+  const queued=(await(await fetch(origin+'/v1/jobs',{headers:jobHeaders})).json()).items[0];
+  check('browser submission persisted a private queued task without model execution',queued.state==='QUEUED'&&queued.max_steps===3&&queued.timeout_seconds===45&&queued.attempt_id===null);
+  check('anonymous task listing denied and list omits prompts',(await fetch(origin+'/v1/jobs')).status===401 && !Object.hasOwn(queued,'prompt'));
+  await evaluate('document.getElementById("task-form").elements.prompt.value="Use text_metrics on Zoora builds, then write a report.";document.getElementById("export-task").click()');
   for(let n=0;n<100;n++){try{JSON.parse(await readFile(path.join(folder,'zoora-task.json'),'utf8'));break;}catch{await new Promise(r=>setTimeout(r,50));}}
   check('task downloaded without implicit model invocation',JSON.parse(await readFile(path.join(folder,'zoora-task.json'),'utf8')).prompt.includes('text_metrics'));
+  await evaluate('document.querySelector("#job-list button").click()');await until('document.getElementById("job-list").textContent.includes("CANCELLED") && !document.getElementById("refresh-jobs").disabled');
+  check('browser stop persists queued cancellation',(await(await fetch(origin+'/v1/jobs/'+queued.id,{headers:jobHeaders})).json()).state==='CANCELLED');
+  await evaluate(`globalThis.originalTaskFetch=globalThis.fetch;globalThis.loseTaskResponse=true;globalThis.fetch=async(input,options)=>{const response=await originalTaskFetch(input,options);if(input==='/v1/jobs'&&options?.method==='POST'&&loseTaskResponse){loseTaskResponse=false;throw new Error('SYNTHETIC lost response after commit');}return response;};`);
+  const retryTask={title:'Retry task',prompt:'Private retry prompt',project_id:'',max_steps:'2',timeout_seconds:'30'};
+  await fill('task-form',retryTask);await until('document.getElementById("workspace-error").textContent.includes("lost response") && !document.getElementById("refresh-jobs").disabled');
+  await fill('task-form',retryTask);await until('document.getElementById("job-list").textContent.includes("Retry task") && !document.getElementById("refresh-jobs").disabled');
+  check('browser retries a lost submission response without duplicate tasks',(await(await fetch(origin+'/v1/jobs',{headers:jobHeaders})).json()).items.length===2);
+  await evaluate('globalThis.fetch=globalThis.originalTaskFetch;');
   await evaluate('document.querySelector("[data-tab=posts]").click()');await until('document.getElementById("records").textContent.includes("actual discussion")');
   check('submitted hostile content remains text',await evaluate('globalThis.injected===undefined && document.querySelector("img")==null && document.querySelectorAll("#records script").length===0'));
   check('credentials absent from page storage and visible content',await evaluate(`localStorage.length===0 && sessionStorage.length===0 && !document.body.textContent.includes(${JSON.stringify(agent.token)}) && !document.body.textContent.includes(${JSON.stringify(operator.token)}) && !document.body.textContent.includes(${JSON.stringify(owner.token)})`));
@@ -97,8 +111,8 @@ try{
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   check('authoring forms have no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
   await writeFile(path.join(output,'workspace-authoring-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
-  await evaluate('document.getElementById("sign-out").click()');check('sign out clears role and all work controls',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("agent-workspace").hidden && document.getElementById("save-issued").hidden'));
-  await send('Page.reload');await until('document.getElementById("connection").textContent.includes("Connected")');
+  await evaluate('document.getElementById("sign-out").click()');check('sign out clears role, private task content and all work controls',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("agent-workspace").hidden && document.getElementById("save-issued").hidden && document.getElementById("job-panel").hidden && document.getElementById("job-list").textContent===""'));
+  await send('Page.reload');await until('document.getElementById("connection")?.textContent.includes("Connected")===true');
   check('page reload does not restore bearer session',await evaluate('document.getElementById("session-status").textContent==="Signed out"'));
   await openCredential(agentFile);await until('!document.getElementById("agent-workspace").hidden');
   await fetch(origin+'/v1/agents/'+agent.principal_id+'/credentials',{method:'POST',headers:{Authorization:'Bearer '+operator.token,'Content-Type':'application/json'},body:'{}'});
