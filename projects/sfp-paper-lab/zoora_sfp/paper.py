@@ -123,8 +123,23 @@ def budget_scenario(realized_net, cash, initial_cash, rate_bps, unresolved=False
             "price_floor": "NOT_ESTABLISHED"}
 
 
-def simulate(dataset, config, signals, variant):
-    plans, skips = plans_for(dataset, config, signals, variant)
+def simulate(dataset, config, signals, variant, *, entry_window=None, prepared_plans=None):
+    if prepared_plans is None:
+        plans, skips = plans_for(dataset, config, signals, variant)
+    else:
+        require(variant == "RANDOM_TIME", "INVALID_PREPARED_VARIANT")
+        plans, skips = list(prepared_plans), {}
+        for plan in plans:
+            require(isinstance(plan, Plan) and type(plan.index) is int and
+                    0 <= plan.index < len(dataset.bars) and
+                    plan.available_ms <= dataset.bars[plan.index].open_ms and
+                    isinstance(plan.stop, D) and plan.stop.is_finite() and plan.stop > 0,
+                    "INVALID_PREPARED_PLAN")
+            integer(plan.available_ms, 0, 253_402_300_799_000)
+    if entry_window is not None:
+        start, end = entry_window
+        require(type(start) is int and type(end) is int and start < end, "INVALID_ENTRY_WINDOW")
+        plans = [p for p in plans if start <= dataset.bars[p.index].open_ms < end]
     skips = Counter(skips)
     by_index = {}
     for plan in plans:

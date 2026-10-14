@@ -1,6 +1,6 @@
 # BT-005 — SFP Offline Paper Lab
 
-Version 0.1.0. An executable testing module inside BuildWithAAI's [Solana Trading Lab](../SOLANA_TRADING_LAB.md), following [BT-004](../../research/SWING_FAILURE_PATTERNS.md).
+Version 0.2.0. An executable testing module inside BuildWithAAI's [Solana Trading Lab](../SOLANA_TRADING_LAB.md), following [BT-004](../../research/SWING_FAILURE_PATTERNS.md).
 
 The module detects closed-bar SFP events, simulates three long entry variants and two benchmarks, and exports a community report with an exact accounting record. Python 3.12+ is required; runtime dependencies are standard library only. No server or paid provider is started.
 
@@ -27,7 +27,7 @@ The supplied 380-bar SOL/USDC-labeled dataset is **synthetic engine acceptance d
 | NO_TRADE | Simulated cash held unchanged |
 | TREND_ONLY | One daily UTC close decision in the same upward 4-hour context, without requiring an SFP; prior-ATR stop |
 
-Only long spot positions are simulated. Bearish patterns are logged and have separate forward-price labels; they are not executable shorts. One position at a time, no borrowing/leverage. The trend-only trigger is now frozen as specified above; the matched-random benchmark, walk-forward selection and an unseen offline-forward study remain future work.
+Only long spot positions are simulated. Bearish patterns are logged and have separate forward-price labels; they are not executable shorts. One position at a time, no borrowing/leverage. The trend-only trigger is frozen as specified above. [BT-006](STUDY.md) adds frozen plans, expanding chronological evaluation, training-derived seeded time controls and cost/delay trials. Exact exposure matching, an independently untouched forward study and statistical selection review remain future work.
 
 The detector chooses the latest eligible strict pivot using two completed bars on each side, already available before the candidate opens. It uses prior available contiguous data for a 20-true-range arithmetic volatility estimate. Minimum sweep is 0.05 times that estimate and the stop buffer is 0.10 times it. Exact level equality, two-sided rejections, gaps, stale candidates and unavailable context abstain. Qualifying levels are consumed once; an ambiguous two-sided event consumes both references.
 
@@ -80,5 +80,9 @@ python -bb -X dev -W error scripts/acceptance.py
 
 The acceptance script exercises actual CLI/import/export processes, deterministic replay, wins/losses/ambiguous/unresolved paths, doubled costs, a one-hour decision delay, tamper rejection and zero financial activity. It retains the complete six-file export under evidence-output/base-report so the archive can be checked with the same verify command. CI runs the exact PR head on Linux Python 3.12.15/3.14.8 and Windows Python 3.14.8.
 
-Reports are prepared files; the module sends no community messages. The user can review/share the Markdown and CSV results. A real source/quote coverage audit, strategy acceptance thresholds, matched controls, chronological/untouched evaluation and independent production controls remain. No live trading, wallet secrets, signing, burn instructions, paid resources or customer-fund custody is implemented. Material AI assistance: implementation, synthetic fixture, tests and reporting.
+Reports are prepared files; the module sends no community messages. The user can review/share the Markdown and CSV results. A real source/quote coverage audit, strategy acceptance thresholds, exact exposure-matched controls, independently untouched evaluation, statistical selection review and independent production controls remain. No live trading, wallet secrets, signing, burn instructions, paid resources or customer-fund custody is implemented. Material AI assistance: implementation, synthetic fixture, tests and reporting.
 
+
+## BT-006: chronological study and portable report
+
+The [study guide](STUDY.md) documents frozen plans, training-only selection, holding/decision embargoes, independent fold accounts, buy-and-hold/time controls and doubled-cost/one-hour-delay scenarios. A seven-file export includes a phone-readable HTML report with expandable fold ledgers. The [sample report](examples/chronological-report/study.html) uses engineered synthetic prices; its source-head field is deliberately undeclared and its code/data hashes are recorded. [Current validation](VALIDATION_BT006.md).

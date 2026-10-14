@@ -24,6 +24,7 @@ from .paper import VARIANTS, budget_scenario, simulate
 
 OUTPUT_LIMIT = 64 * 1024 * 1024
 FILES = {"report.json", "signals.csv", "trades.csv", "equity.csv", "COMMUNITY_UPDATE.md"}
+STUDY_FILES = {"plan.json", "study.json", "folds.csv", "trials.csv", "study.html", "COMMUNITY_UPDATE.md"}
 
 
 def code_fingerprint():
@@ -48,7 +49,8 @@ def run(dataset, config=None, source_head=None):
                     "declared_source_head": source_head}
         report = {"protocol": "ZOORA_SFP_PAPER_REPORT_V1", "version": __version__,
                   "rule_version": RULE_VERSION, "run_id": digest(identity),
-                  "source_head_sha": source_head, "source_head_status": "DECLARED_NOT_ATTESTED",
+                  "source_head_sha": source_head,
+                  "source_head_status": "DECLARED_NOT_ATTESTED" if source_head else "UNDECLARED",
                   "code_fingerprint": fingerprint,
                   "activity": "OFFLINE_RESEARCH_PAPER_SIMULATION",
                   "execution_model": "CONSERVATIVE_OHLC_BOUND_NOT_EXECUTABLE_QUOTE",
@@ -66,9 +68,9 @@ def run(dataset, config=None, source_head=None):
                   "sample_status": "ENGINE_FIXTURE_NOT_PERFORMANCE_EVIDENCE" if
                   dataset.classification == "SYNTHETIC" else "RESEARCH_PILOT_NOT_RELEASE_EVIDENCE",
                   "go_no_go_status": "NOT_EVALUATED",
-                  "walk_forward_status": "NOT_IMPLEMENTED_IN_THIS_MILESTONE",
+                  "walk_forward_status": "SEPARATE_FROZEN_STUDY_COMMAND_NOT_PERFORMANCE_PROOF",
                   "multiple_testing_status": "NOT_EVALUATED",
-                  "matched_random_baseline": "NOT_IMPLEMENTED_IN_THIS_MILESTONE",
+                  "matched_random_baseline": "TRAIN_DENSITY_TIME_CONTROLS_AVAILABLE_EXACT_MATCHING_UNIMPLEMENTED",
                   "risk_control": "CLOSED_BAR_PAPER_CIRCUIT_NOT_LIVE_GOVERNOR",
                   "quantity_resolution": "SYNTHETIC_0.00000001_BASE_UNITS",
                   "customer_activity": False, "funds_transferred": "0",
@@ -82,7 +84,7 @@ def run(dataset, config=None, source_head=None):
                       "A missing interval while invested leaves the position unresolved.",
                       "Source attribution and receipt timing are input assertions, not verified providers.",
                       "Open inventory marks are not realized profit or guaranteed exit value.",
-                      "No matched-random, full walk-forward, unseen forward or selection-risk acceptance yet.",
+                      "Exact exposure-matched controls, independently unseen market evaluation and selection-risk acceptance are absent.",
                       "No wallet, network, trading, buyback or burn execution exists in this package."]}
     return report, results
 
@@ -150,7 +152,7 @@ def community_update(report):
         "**Funds moved: 0. Tokens purchased: 0. Tokens burned: 0. No price floor established.**",
         "",
         ("Testing is available. Real historical source/quote verification, numerical strategy "
-         "acceptance gates, matched-random comparison, full walk-forward and an unseen offline "
+         "acceptance gates, exact exposure matching, independently unseen market evaluation and "
          "forward evaluation remain unfinished. These results do not authorize a funded strategy, "
          "token purchase, burn or a selected allocation."),
         ""]
@@ -186,7 +188,8 @@ def render(report, results):
 def publish(folder, payloads):
     folder = Path(folder)
     created = []
-    require(set(payloads) == FILES | {"manifest.json"} and
+    require((set(payloads) == FILES | {"manifest.json"} or
+             set(payloads) == STUDY_FILES | {"manifest.json"}) and
             all(isinstance(body, bytes) for body in payloads.values()), "INVALID_EXPORT")
     require(sum(len(v) for v in payloads.values()) <= OUTPUT_LIMIT + 8192, "OUTPUT_SIZE_LIMIT")
     try:
@@ -195,7 +198,7 @@ def publish(folder, payloads):
         raise ResearchError("OUTPUT_ALREADY_EXISTS") from exc
     try:
         for name, body in sorted(payloads.items()):
-            require(name in FILES | {"manifest.json"}, "INVALID_OUTPUT_NAME")
+            require(name in FILES | STUDY_FILES | {"manifest.json"}, "INVALID_OUTPUT_NAME")
             path = folder / name
             fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             created.append(path)

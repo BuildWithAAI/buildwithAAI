@@ -6,9 +6,11 @@ import os
 import sys
 from pathlib import Path
 
-from .data import MAX_BYTES, Config, ResearchError, number, parse_dataset, require
+from .data import MAX_BYTES, Config, ResearchError, canonical, decode, number, parse_dataset, require
 from .importer import import_csv
 from .reports import publish, render, run, verify
+from .study import make_plan, run_study
+from .study_reports import render_study, verify_study
 
 
 def read_input(path):
@@ -29,12 +31,7 @@ def exclusive_file(path, body):
         os.fsync(stream.fileno())
 
 
-def parser():
-    p = argparse.ArgumentParser(description="Offline SFP research and paper reports; no live execution.")
-    commands = p.add_subparsers(dest="command", required=True)
-    r = commands.add_parser("run", help="Analyze one declared dataset and export paper scenarios.")
-    r.add_argument("--dataset", required=True)
-    r.add_argument("--out", required=True)
+def config_arguments(r):
     r.add_argument("--initial-cash", default="10000")
     r.add_argument("--risk-bps", type=int, default=10)
     r.add_argument("--daily-loss-bps", type=int, default=50)
@@ -43,6 +40,21 @@ def parser():
     r.add_argument("--fixed-cost", default="0.01")
     r.add_argument("--latency-ms", type=int, default=0)
     r.add_argument("--hold-bars", type=int, default=168)
+
+
+def config_for(args):
+    return Config(number(args.initial_cash), args.risk_bps, args.daily_loss_bps,
+                  args.fee_bps, args.slippage_bps, number(args.fixed_cost),
+                  args.latency_ms, args.hold_bars, getattr(args, "buy_burn_scenario_bps", None))
+
+
+def parser():
+    p = argparse.ArgumentParser(description="Offline SFP research and paper reports; no live execution.")
+    commands = p.add_subparsers(dest="command", required=True)
+    r = commands.add_parser("run", help="Analyze one declared dataset and export paper scenarios.")
+    r.add_argument("--dataset", required=True)
+    r.add_argument("--out", required=True)
+    config_arguments(r)
     r.add_argument("--buy-burn-scenario-bps", type=int)
     r.add_argument("--source-head", default=os.environ.get("SOURCE_HEAD_SHA"))
     v = commands.add_parser("verify", help="Check local file hashes and paper accounting.")
@@ -58,6 +70,24 @@ def parser():
     c.add_argument("--captured-ms", required=True, type=int)
     c.add_argument("--delay-ms", type=int, default=0)
     c.add_argument("--out", required=True)
+    f = commands.add_parser("prepare-study", help="Freeze a chronological research plan before evaluation.")
+    f.add_argument("--dataset", required=True)
+    f.add_argument("--out", required=True)
+    config_arguments(f)
+    f.add_argument("--warmup-hours", type=int, default=204)
+    f.add_argument("--train-hours", type=int, default=240)
+    f.add_argument("--test-hours", type=int, default=192)
+    f.add_argument("--folds", type=int, default=3)
+    f.add_argument("--embargo-hours", type=int)
+    f.add_argument("--seeds", type=int, nargs="+", default=[11, 23, 47, 89, 131])
+    f.add_argument("--min-train-trades", type=int, default=3)
+    f.add_argument("--min-test-trades", type=int, default=30)
+    f.add_argument("--max-drawdown-bps", type=int, default=300)
+    s = commands.add_parser("study", help="Run frozen chronological trials and export a portable dashboard.")
+    s.add_argument("--dataset", required=True)
+    s.add_argument("--plan", required=True)
+    s.add_argument("--out", required=True)
+    s.add_argument("--source-head", default=os.environ.get("SOURCE_HEAD_SHA"))
     return p
 
 
@@ -66,17 +96,35 @@ def main(argv=None):
     try:
         if args.command == "run":
             dataset = parse_dataset(read_input(args.dataset))
-            config = Config(number(args.initial_cash), args.risk_bps, args.daily_loss_bps,
-                            args.fee_bps, args.slippage_bps, number(args.fixed_cost),
-                            args.latency_ms, args.hold_bars, args.buy_burn_scenario_bps)
+            config = config_for(args)
             report, results = run(dataset, config, args.source_head)
             publish(args.out, render(report, results))
             result = {"status": "SAVED_PAPER_REPORT", "run_id": report["run_id"],
                       "signals": report["signal_count"], "funds_transferred": "0",
                       "tokens_purchased": "0", "tokens_burned": "0"}
         elif args.command == "verify":
-            result = verify(args.report_dir)
-        else:
+            manifest = decode(read_input(Path(args.report_dir) / "manifest.json"))
+            result = (verify_study(args.report_dir) if manifest.get("protocol") ==
+                      "ZOORA_SFP_STUDY_EVIDENCE_V1" else verify(args.report_dir))
+        elif args.command == "prepare-study":
+            dataset = parse_dataset(read_input(args.dataset))
+            plan = make_plan(dataset, config_for(args), warmup_hours=args.warmup_hours,
+                             train_hours=args.train_hours, test_hours=args.test_hours, folds=args.folds,
+                             seeds=args.seeds, min_train_trades=args.min_train_trades,
+                             min_test_trades=args.min_test_trades, max_drawdown_bps=args.max_drawdown_bps,
+                             embargo_hours=args.embargo_hours)
+            exclusive_file(args.out, canonical(plan) + b"\n")
+            result = {"status": "FROZEN_LOCAL_RESEARCH_PLAN", "plan_sha256": plan["plan_sha256"],
+                      "preregistration": plan["preregistration"]}
+        elif args.command == "study":
+            dataset = parse_dataset(read_input(args.dataset))
+            plan = decode(read_input(args.plan))
+            report = run_study(dataset, plan, args.source_head)
+            publish(args.out, render_study(report, plan))
+            result = {"status": "SAVED_CHRONOLOGICAL_STUDY", "run_id": report["run_id"],
+                      "folds": len(report["folds"]), "trials": len(report["trials"]),
+                      "readiness": report["readiness"], "funds_transferred": "0", "tokens_burned": "0"}
+        elif args.command == "import-csv":
             body, result = import_csv(read_input(args.csv), base=args.base, quote=args.quote,
                                       venue=args.venue, source_id=args.source_id,
                                       captured_ms=args.captured_ms, delay_ms=args.delay_ms,

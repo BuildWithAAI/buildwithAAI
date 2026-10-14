@@ -16,3 +16,7 @@ No historical market dataset/quote study, walk-forward, independent strategy cer
 ## Verified source acceptance snapshot
 
 Source commit e175443ca9d3691b0e6ad0b37da13928e81744bf passed all three jobs in [run 38605707606](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38605707606): 59 normal and 59 optimized tests, lint and six actual acceptance checks per job. Downloaded ZIP bytes/digests, declared source, zero financial activity and report hashes were checked. Cross-platform signals, future labels and paper accounting agree; Windows CRLF Python hashes are separately verified. The [saved snapshot](evidence/2026-10-14-source-e175443/README.md) records provenance and preserves a complete export matching the original CI manifest. The [community update](../../docs/community/SFP_UPDATE_2026-10-14.md) labels the sample explicitly.
+
+## Subsequent BT-006 implementation
+
+The above 59-test record and source snapshot describe BT-005 0.1.0. Version 0.2.0 adds the chronological study, controls, stress ledger and portable report; see [VALIDATION_BT006.md](VALIDATION_BT006.md). The historical source snapshot is not regenerated or relabelled as the new code.
