@@ -1087,5 +1087,14 @@
     "community funding/agent charters/governance",
     "live virtual leases and AAI fee routing/burn/liquidity operations",
     "native production chain and live transaction execution"
-  ]
+  ],
+  "post_verification_browser_harness_correction": {
+    "source": "281494fe618f666b774268a7109829eb16fdff63",
+    "run_id": 38498093224,
+    "job_id": 115638376851,
+    "error": "Readiness poll evaluated connection.textContent before the element existed after Page.navigate",
+    "correction": "Null-safe navigation/reload polling waits for the page element; exceptions elsewhere still fail",
+    "application_runtime_sql_assets_changed": false,
+    "latest_head_ci": "RECORDED_IN_PULL_REQUEST_DESCRIPTION"
+  }
 }

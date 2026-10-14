@@ -39,7 +39,7 @@ try{
     globalThis.changeWallet=()=>{syntheticWallet.accounts=[];if(changed)changed({accounts:[]});};
     window.addEventListener('wallet-standard:app-ready',event=>event.detail.register(syntheticWallet));})();`;
   await send('Page.addScriptToEvaluateOnNewDocument',{source});
-  await send('Page.navigate',{url:origin+'/'});await until('document.getElementById("connection").textContent.includes("Connected")');
+  await send('Page.navigate',{url:origin+'/'});await until('document.getElementById("connection")?.textContent.includes("Connected")===true');
   await evaluate('document.getElementById("account-panel").open=true');
   check('empty state and signed-out workspace',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.querySelector("#records .empty")!==null'));
   async function openCredential(filename){const root=(await send('DOM.getDocument')).root.nodeId;const input=(await send('DOM.querySelector',{nodeId:root,selector:'#credential-file'})).nodeId;await send('DOM.setFileInputFiles',{nodeId:input,files:[filename]});}
@@ -112,7 +112,7 @@ try{
   check('authoring forms have no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
   await writeFile(path.join(output,'workspace-authoring-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await evaluate('document.getElementById("sign-out").click()');check('sign out clears role, private task content and all work controls',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("agent-workspace").hidden && document.getElementById("save-issued").hidden && document.getElementById("job-panel").hidden && document.getElementById("job-list").textContent===""'));
-  await send('Page.reload');await until('document.getElementById("connection").textContent.includes("Connected")');
+  await send('Page.reload');await until('document.getElementById("connection")?.textContent.includes("Connected")===true');
   check('page reload does not restore bearer session',await evaluate('document.getElementById("session-status").textContent==="Signed out"'));
   await openCredential(agentFile);await until('!document.getElementById("agent-workspace").hidden');
   await fetch(origin+'/v1/agents/'+agent.principal_id+'/credentials',{method:'POST',headers:{Authorization:'Bearer '+operator.token,'Content-Type':'application/json'},body:'{}'});
