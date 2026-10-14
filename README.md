@@ -21,7 +21,7 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 | The full eight-part roadmap | [Roadmap](ROADMAP.md) |
 | What actually exists | [Current status](docs/CURRENT_STATUS.md) |
 | Work to pick up | [Planning board](docs/community/PROJECT_BOARD.md) and [41 task briefs](tasks/BACKLOG.md) |
-| SFP trading research | [Swing failure patterns and evaluation protocol](research/SWING_FAILURE_PATTERNS.md) |
+| SFP trading research and testing | [Research protocol](research/SWING_FAILURE_PATTERNS.md) and [BT-005 offline paper tester](projects/sfp-paper-lab/README.md) |
 | How to participate | [Contributing](CONTRIBUTING.md) and [proposal process](proposals/README.md) |
 | Funding and community benefit | [Creator-fee funding proposal](docs/FUNDING.md) |
 | Decisions and limits | [Decision register](docs/DECISIONS.md) and [project boundaries](DISCLAIMER.md) |
@@ -31,7 +31,7 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 
 ## What exists today
 
-This repository contains public planning and contribution material. A separate **private AAI Scan prototype** implements Scan → Watch → Compare, saved observations, a short timeline, and change alerts. The earlier development record reports 29 passing offline tests and one successful live public market-data request. Those checks were not rerun for this documentation update.
+This repository contains public planning and contribution material plus the [BT-005 offline SFP tester](projects/sfp-paper-lab/README.md). The tester exports signals, paper trades, equity, an evidence manifest and a community update. Its acceptance sample is synthetic and demonstrates software behavior; it is not market performance evidence. A separate **private AAI Scan prototype** implements Scan → Watch → Compare, saved observations, a short timeline, and change alerts. The earlier development record reports 29 passing offline tests and one successful live public market-data request. Those checks were not rerun for this documentation update.
 
 **AAI Scan is not a validated live public service.** Hosting remains paused. Live Telegram delivery, production provider coverage, persistence/restore, and sustained operation remain to be demonstrated. It does not execute trades, verify Pump.fun origin, identify creator trades, or predict runners.
 
@@ -45,7 +45,7 @@ The founder has started an **Anything AI** Telegram group. Its invitation URL is
 | [Multi-Brain Experiment](projects/MULTI_BRAIN_LAB.md) | RESEARCH direction; early founder priority | Verified source inventory, then two reproducible modules and benchmark |
 | [Personal Trading Assistant](projects/PERSONAL_ASSISTANT.md) | IDEA / PROPOSED product direction | User-named, evidence-based research assistant for Pump.fun and spot/leverage |
 | [Agent work controls](projects/AGENT_WORKFLOW.md) | RESEARCH | A narrow, budgeted workflow with review and durable records |
-| [Solana Trading Lab](projects/SOLANA_TRADING_LAB.md) | RESEARCH | Offline/paper experiments including jellyfish-inspired ideas |
+| [Solana Trading Lab](projects/SOLANA_TRADING_LAB.md) | RESEARCH; SFP engine in TESTING | Causal SFP paper testing and community exports; strategy performance unverified |
 | [XAUUSD EA Lab](projects/XAUUSD_EA_LAB.md) | IDEA / RESEARCH | One strategy specification and reproducible evaluation |
 | [Community tools](projects/COMMUNITY_TOOLS.md) | IDEA | One useful bot, dashboard, tracker, or media tool |
 | [AAI service utility](projects/AAI_UTILITY.md) | DESIGN EXPLORATION | A real service and a test-asset payment design |
@@ -58,7 +58,7 @@ The multi-brain experiment is an early research priority, not an implemented tra
 
 ## Funding intent
 
-The founder intends to use creator fees for development, marketing, and relevant DEX costs. A newer proposal would allocate an undecided portion to a dedicated trading account using reviewed technology, potentially an XAUUSD system if testing supports it. Possible uses of any profits include further development, developer thank-you gifts, community rewards, and disclosed token purchases at prevailing market prices.
+The founder intends to use creator fees for development, marketing, and relevant DEX costs. A newer proposal would allocate an undecided portion to a dedicated trading account using reviewed technology, potentially an XAUUSD system if testing supports it. Possible uses of any profits include further development, developer thank-you gifts, community rewards, and disclosed token purchases at prevailing market prices. The October 14 [purchase/burn objective](research/TRADING_BUY_BURN_OBJECTIVE.md) records the founder's desired future supply reduction. Test budgets default to unselected/zero; allocation and funded execution remain unresolved.
 
 This is a **proposal**, not evidence of a funded account, profitable bot, payout schedule, buyback program, or community-controlled treasury. Allocated funds can be lost. Read the [funding record](docs/FUNDING.md) for unresolved allocation, control, loss-limit, accounting, and distribution decisions.
 

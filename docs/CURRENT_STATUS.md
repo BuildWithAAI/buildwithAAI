@@ -1,5 +1,13 @@
 # Current project status
 
+## Trading follow-up — October 14, 2026
+
+The [BT-005 SFP offline paper tester](../projects/sfp-paper-lab/README.md) now has a reviewable implementation, synthetic acceptance tests, a CSV importer and reproducible community/evidence exports. [AAI-T-041](../tasks/BACKLOG.md#aai-t-041) is in TESTING for that software component, bringing the planning backlog to 41 records. Real historical performance, unseen evaluation and funded execution remain unfinished. The [future purchase/burn objective](../research/TRADING_BUY_BURN_OBJECTIVE.md) is recorded; no actual purchase, burn or price floor is established. Exact current-head verification belongs in the development pull request and [module validation record](../projects/sfp-paper-lab/VALIDATION.md).
+
+The table below preserves the September 22 documentation snapshot. It is not a fresh audit of every other application or service.
+
+## September 22, 2026 snapshot
+
 **Verified snapshot: September 22, 2026.** [PR #2](https://github.com/BuildWithAAI/buildwithAAI/pull/2) is merged. Its published main commit, [`01d98e7`](https://github.com/BuildWithAAI/buildwithAAI/commit/01d98e760e7404081f6ab30b2b7b1853ba7041b5), was checked against all 71 prepared files by Git blob hash before this follow-up documentation review. The earlier pre-publication baseline is preserved in [VALIDATION.md](VALIDATION.md). This is a documentation and branding verification, not a software release audit.
 
 | Item | Evidence / current state | Pending or unverified |

@@ -21,7 +21,7 @@ The amount or percentage allocated to trading is undecided. Existing development
 
 The founder wants giving back to become a recurring practice if resources and results permit it. No schedule, minimum amount, holder entitlement, or guaranteed return is offered. A discretionary gift is different from promised compensation. A buyback does not guarantee increased or maintained token price and must not be presented as guaranteed chart support.
 
-For any proposed token purchase, record its purpose, approved budget, controller, execution records, and treatment of acquired tokens. Holding, redistributing, and burning tokens are distinct decisions; none is chosen by this document.
+For any proposed token purchase, record its purpose, approved budget, controller, execution records, and treatment of acquired tokens. Holding, redistributing, and burning tokens are distinct decisions. The October 14 founder direction below adds a desired future burn objective; the actual allocation, quantity and transaction remain undecided.
 
 ## Decisions before operation
 
@@ -49,3 +49,7 @@ Publish project-controlled wallets and any real restrictions in the [wallet regi
 This account proposal does not authorize pooled public deposits, trade execution, a distribution contract, or a token-economics change. It does not alter the future blockchain's separate genesis or grant native-coin, revenue, or governance rights.
 
 [Proposal AAI-P-0008](../proposals/ideas/AAI-P-0008-funding.md) · [Tasks AAI-T-028 and AAI-T-029](../tasks/BACKLOG.md#aai-t-028) · [Bounty process](community/BOUNTIES.md)
+
+## October 14, 2026: purchase/burn testing objective
+
+The founder requested continued development, testing and community data with a future goal of purchasing AAI and burning acquired supply. [The objective record](../research/TRADING_BUY_BURN_OBJECTIVE.md) separates realized net results and available cash from hypothetical budgets, completed purchases and verified burns. [BT-005](../projects/sfp-paper-lab/README.md) now provides an offline tester/report exporter, with any optional allocation explicitly a simulation proposal. The default allocation is unselected/zero. No account funding, trade, purchase, burn or price floor is established. Earlier access/platform fee proposals are not automatically trading-profit allocations.

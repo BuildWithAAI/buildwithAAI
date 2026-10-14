@@ -1,6 +1,6 @@
 # Solana Trading Lab
 
-**Status:** research idea; no trading model or execution system is delivered by this brief.
+**Status:** research with a reviewable [BT-005 offline SFP paper tester](sfp-paper-lab/README.md). Synthetic engine tests exist; market performance and any execution system remain unverified/unimplemented.
 
 ## The idea
 
@@ -44,4 +44,4 @@ The first step is source/permission/scope research, then a separately accepted s
 
 The founder requested SFPs as an addition to the swing-strategy research. [BT-004: research dossier and evaluation protocol](../research/SWING_FAILURE_PATTERNS.md) separates observable sweep/reclaim geometry from inferred stop activity, defines causal pivots and three proposed entry variants, and specifies costs, baselines, unseen testing and rejection criteria. [AAI-T-041](../tasks/BACKLOG.md#aai-t-041) tracks the remaining evidence and study work.
 
-SFP source research and a protocol are available; no detector, historical performance study or profitable strategy is delivered. Bearish events do not create spot-short permission. Offline replay and paper simulation boundaries remain in force; Forex/XAUUSD replication has its own data, broker and evaluation requirements.
+SFP source research and a protocol are available. The subsequent [BT-005 tester](sfp-paper-lab/README.md) implements causal pivots, A/B/C long paper variants, cash/trend baselines, costs/latency, loss and open-position accounting, offline CSV import and verifiable report exports. Its synthetic acceptance fixture demonstrates software behavior; it establishes no historical performance study or profitable strategy. Bearish events do not create spot-short permission. Offline replay and paper simulation boundaries remain in force; Forex/XAUUSD replication has its own data, broker and evaluation requirements.
