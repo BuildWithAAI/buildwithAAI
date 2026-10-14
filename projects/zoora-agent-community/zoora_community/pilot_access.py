@@ -125,7 +125,8 @@ class PilotAccessMethods:
             connection.execute("INSERT INTO invitations(id,creator_credential_id,request_id,request_digest,token_digest,label,created_ms,expires_ms) VALUES (?,?,?,?,?,?,?,?)",
                                (record_id, principal["id"], value["request_id"], fingerprint, invite_digest(secret), value["label"], at, at + value["ttl_seconds"] * 1000))
             self._event(connection, principal, "INVITATION_CREATE", record_id,
-                        {"creator_credential_id": principal["id"], "ttl_seconds": value["ttl_seconds"]}, at)
+                        {"creator_credential_id": principal["id"], "ttl_seconds": value["ttl_seconds"],
+                         "request_digest": fingerprint, "token_digest": invite_digest(secret)}, at)
             return 201, {"invitation": self._invitation_view(connection, self._row(connection, "invitations", record_id), at),
                          "secret": {"token": secret, "invitation_id": record_id, "expires_at_ms": at + value["ttl_seconds"] * 1000}, "replayed": False}
         parts = route.strip("/").split("/")
@@ -165,7 +166,8 @@ class PilotAccessMethods:
         connection.execute("UPDATE invitations SET claimed_ms=?,claim_digest=?,operator_id=?,credential_id=? WHERE id=?",
                            (at, fingerprint, operator_id, issued["credential_id"], row["id"]))
         self._event(connection, {"role": "INVITEE", "principal_id": row["id"]}, "INVITATION_CLAIM", row["id"],
-                    {"operator_id": operator_id, "credential_id": issued["credential_id"]}, at)
+                    {"operator_id": operator_id, "credential_id": issued["credential_id"], "claim_digest": fingerprint,
+                     "credential_digest": self._row(connection, "credentials", issued["credential_id"])["digest"]}, at)
         return 201, {"credential": issued, "replayed": False}
 
     def _suspend_access(self, connection, principal, kind, subject_id, action, body, at):
@@ -217,8 +219,14 @@ class PilotAccessMethods:
             if remaining or invitation_fingerprint(value) != row["request_digest"]:
                 raise ValueError("invitation request mismatch")
             events = connection.execute("SELECT * FROM audit WHERE resource_id=? AND action='INVITATION_CREATE'", (row["id"],)).fetchall()
-            if len(events) != 1 or events[0]["at_ms"] != row["created_ms"] or json.loads(events[0]["details"])["creator_credential_id"] != creator["id"]:
+            if len(events) != 1:
                 raise ValueError("invitation creation evidence")
+            details = json.loads(events[0]["details"])
+            if (events[0]["actor_role"], events[0]["actor_id"], events[0]["at_ms"], details["creator_credential_id"], details["ttl_seconds"], details["request_digest"], details["token_digest"]) != ("OWNER", "owner", row["created_ms"], creator["id"], ttl, row["request_digest"], row["token_digest"]):
+                raise ValueError("invitation creation mismatch")
+            revocations = connection.execute("SELECT * FROM audit WHERE resource_id=? AND action='INVITATION_REVOKE'", (row["id"],)).fetchall()
+            if len(revocations) != row["revoked"] or any(event["actor_role"] != "OWNER" or event["actor_id"] != "owner" for event in revocations):
+                raise ValueError("invitation revocation evidence")
             claims = connection.execute("SELECT * FROM audit WHERE resource_id=? AND action='INVITATION_CLAIM'", (row["id"],)).fetchall()
             if len(claims) != int(row["claimed_ms"] is not None):
                 raise ValueError("invitation claim count")
@@ -230,6 +238,8 @@ class PilotAccessMethods:
                 details = json.loads(claims[0]["details"])
                 if (claims[0]["actor_role"], claims[0]["actor_id"], claims[0]["at_ms"], details["operator_id"], details["credential_id"]) != ("INVITEE", row["id"], row["claimed_ms"], row["operator_id"], row["credential_id"]):
                     raise ValueError("invitation claim evidence")
+                if details["claim_digest"] != row["claim_digest"] or details["credential_digest"] != credential["digest"]:
+                    raise ValueError("invitation credential evidence")
         for row in connection.execute("SELECT * FROM access_holds"):
             identifier(row["id"])
             identifier(row["subject_id"])
@@ -242,6 +252,9 @@ class PilotAccessMethods:
             elif row["kind"] != "AGENT" or subject["operator_id"] != row["controller_id"]:
                 raise ValueError("suspension operator")
             event = connection.execute("SELECT * FROM audit WHERE resource_id=? AND action IN ('ACCESS_SUSPEND','ACCESS_RESUME') ORDER BY seq DESC LIMIT 1", (row["id"],)).fetchone()
+            first = connection.execute("SELECT at_ms FROM audit WHERE resource_id=? AND action IN ('ACCESS_SUSPEND','ACCESS_RESUME') ORDER BY seq LIMIT 1", (row["id"],)).fetchone()
+            if first is None or row["created_ms"] != first[0]:
+                raise ValueError("suspension creation evidence")
             if event is None or event["action"] != ("ACCESS_SUSPEND" if row["active"] else "ACCESS_RESUME"):
                 raise ValueError("suspension action evidence")
             details = json.loads(event["details"])

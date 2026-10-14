@@ -138,7 +138,7 @@ try{
   await evaluate(`document.querySelector('[data-access-id="${lostInvite.id}"] button').click()`);await until(`document.querySelector('[data-access-id="${lostInvite.id}"]')?.textContent.includes('REVOKED') && !document.getElementById('refresh-access').disabled`);
   check('owner can revoke an unusable invitation',(await(await fetch(origin+'/v1/invitations',{headers:ownerHeaders})).json()).items.find(item=>item.id===lostInvite.id).state==='REVOKED');
   await evaluate('globalThis.fetch=inviteOriginalFetch');
-  await send('Page.navigate',{url:inviteLink});await until('document.getElementById("invitation-claim-form")?.elements.invitation_token.value.length===47');
+  await evaluate('document.getElementById("sign-out").click()');await send('Page.navigate',{url:inviteLink});await until('document.getElementById("invitation-claim-form")?.elements.invitation_token.value.length===47');
   check('invitation fragment is consumed without a server URL or persistent page history',await evaluate('location.hash==="" && document.getElementById("session-status").textContent==="Signed out"'));
   await evaluate(`globalThis.claimOriginalFetch=fetch;globalThis.loseClaim=true;globalThis.fetch=async(input,options)=>{const response=await claimOriginalFetch(input,options);if(input==='/v1/invitations/claim'&&options?.method==='POST'&&loseClaim){loseClaim=false;throw new Error('SYNTHETIC lost claim response');}return response;};`);
   await fill('invitation-claim-form',{handle:'pilot_invited'});await until('document.getElementById("workspace-error").textContent.includes("lost claim response") && !document.getElementById("refresh-access").disabled');

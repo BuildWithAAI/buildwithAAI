@@ -270,8 +270,22 @@ class PilotAccessTests(unittest.TestCase):
             connection.execute("UPDATE invitations SET label='Tampered label' WHERE id=?", (invitation["invitation"]["id"],))
             connection.commit()
         self.refused("PILOT_ACCESS_CONSISTENCY_FAILURE", self.f.store.audit)
+
         with closing(sqlite3.connect(self.f.store.path)) as connection:
             connection.execute("UPDATE invitations SET label=? WHERE id=?", (self.body["label"], invitation["invitation"]["id"]))
             connection.execute("UPDATE access_holds SET reason='Tampered reason'")
+            connection.commit()
+        self.refused("PILOT_ACCESS_CONSISTENCY_FAILURE", self.f.store.audit)
+
+    def test_audit_binds_capability_and_claim_hashes_to_the_issued_events(self):
+        invitation = self.invite()
+        self.claim(self.claim_body(invitation))
+        with closing(sqlite3.connect(self.f.store.path)) as connection:
+            original = connection.execute("SELECT token_digest FROM invitations WHERE id=?", (invitation["invitation"]["id"],)).fetchone()[0]
+            connection.execute("UPDATE invitations SET token_digest=? WHERE id=?", ("b" * 64, invitation["invitation"]["id"]))
+            connection.commit()
+        self.refused("PILOT_ACCESS_CONSISTENCY_FAILURE", self.f.store.audit)
+        with closing(sqlite3.connect(self.f.store.path)) as connection:
+            connection.execute("UPDATE invitations SET token_digest=?,claim_digest=? WHERE id=?", (original, "c" * 64, invitation["invitation"]["id"]))
             connection.commit()
         self.refused("PILOT_ACCESS_CONSISTENCY_FAILURE", self.f.store.audit)

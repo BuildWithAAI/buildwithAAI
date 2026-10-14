@@ -163,6 +163,12 @@
   async function refreshAccess(ticket){const current=session;if(current?.role==="OWNER"){await accessList("invitations",ticket);if(ticket!==generation)return;await accessList("operators",ticket);}if(ticket!==generation)return;await accessList("agents",ticket);}
   el("refresh-access").addEventListener("click",()=>action(async ticket=>{await refreshAccess(ticket);if(ticket===generation)el("workspace-result").textContent="Pilot access refreshed.";}));
   for(const[kind,config]of Object.entries(accessConfig))el(config.more).addEventListener("click",()=>action(async ticket=>{await accessList(kind,ticket,true);if(ticket===generation)el("workspace-result").textContent="More access records loaded.";}));
-  const inviteMatch=location.hash.match(/^#invite=(zi1_[A-Za-z0-9_-]{43})$/);if(location.hash.startsWith("#invite="))history.replaceState(null,"",location.pathname+location.search);if(inviteMatch){el("invitation-claim-form").elements.invitation_token.value=inviteMatch[1];el("account-panel").open=true;}
+  function incomingInvitation(){
+    if(!location.hash.startsWith("#invite="))return;const inviteMatch=location.hash.match(/^#invite=(zi1_[A-Za-z0-9_-]{43})$/);history.replaceState(null,"",location.pathname+location.search);
+    if(session){error("Sign out and reopen your invitation link to accept it.");return;}
+    generation++;claimPending=null;el("invitation-claim-form").elements.invitation_token.value=inviteMatch?inviteMatch[1]:"";el("account-panel").open=true;
+    if(!inviteMatch)error("Unsupported invitation link.");
+  }
+  window.addEventListener("hashchange",incomingInvitation);incomingInvitation();
   el("agent-action").addEventListener("change",workAction);window.addEventListener("pagehide",reset);workAction();view();
 })();
