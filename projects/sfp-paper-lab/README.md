@@ -1,6 +1,6 @@
 # BT-005 — SFP Offline Paper Lab
 
-Version 0.3.0. An executable testing module inside BuildWithAAI's [Solana Trading Lab](../SOLANA_TRADING_LAB.md), following [BT-004](../../research/SWING_FAILURE_PATTERNS.md).
+Version 0.4.0. An executable testing module inside BuildWithAAI's [Solana Trading Lab](../SOLANA_TRADING_LAB.md), following [BT-004](../../research/SWING_FAILURE_PATTERNS.md).
 
 The module detects closed-bar SFP events, simulates three long entry variants and two benchmarks, and exports a community report with an exact accounting record. Python 3.12+ is required; runtime dependencies are standard library only. No server or paid provider is started.
 
@@ -66,7 +66,7 @@ python -m zoora_sfp run --dataset new-dataset.json --out new-history-scenario
 
 Replace the source ID and actual capture timestamp; no source is automatically verified by its label. Use SYNTHETIC for generated/fixture CSV. Hashes preserve the supplied bytes. Availability is explicitly SYNTHETIC_RECONSTRUCTION at bar close plus optional --delay-ms, never fabricated historical receipt evidence. Unfinished/not-yet-available rows are excluded; missing intervals are recorded, not zero-filled. Volume/trade counts are syntax-checked but not used as a stop-run or intrabar-volume feature.
 
-The Kraken [OHLC endpoint documentation](https://docs.kraken.com/api-reference/market-data/get-ohlc-data) says the current final row is unfinished and the endpoint only returns up to 720 recent entries. Its [historical archive description](https://support.kraken.com/articles/360047124832-downloadable-historical-ohlcvt-open-high-low-close-volume-trades-data) describes seven-column CSV and absent no-trade intervals. These are format references, not a selected provider, reuse approval or collected historical dataset. The package makes no network requests.
+The Kraken [OHLC endpoint documentation](https://docs.kraken.com/api-reference/market-data/get-ohlc-data) says the current final row is unfinished and the endpoint only returns up to 720 recent entries. Its [historical archive description](https://support.kraken.com/articles/360047124832-downloadable-historical-ohlcvt-open-high-low-close-volume-trades-data) describes seven-column CSV and absent no-trade intervals. These are format references, not a selected provider, reuse approval or collected historical dataset. Only the explicit [BT-008 capture command](SOURCE.md) makes network requests; the CSV importer and paper/study commands remain offline.
 
 Dataset JSON uses ZOORA_SFP_DATASET_V1 with market identity, source hash, data/availability classification, capture time and explicit hourly OHLC/availability records. Prices are plain decimal strings. Invalid/duplicate fields, nonfinite prices, unfinished/overlapping observations or incompatible times fail. File input is limited to 8 MiB/20,000 bars; exported evidence to 64 MiB. Do not split a position-holding evaluation arbitrarily to evade a limit or turn an open loss into a new fresh start.
 
@@ -90,3 +90,7 @@ The [study guide](STUDY.md) documents frozen plans, training-only selection, hol
 ## BT-007: persistent data receipts and evaluation history
 
 The [research notebook](NOTEBOOK.md) retains the frozen baseline, original appended CSVs and every recorded evaluation in a transactional SQLite history. It rejects revised/backfilled history, duplicate captures and stale exports. Its [ten-file portable example](examples/notebook-report/audit.html) keeps all three synthetic evaluations and data receipts; optional matching-engine replay reruns the full history. [Validation](VALIDATION_BT007.md). Source/unseen verification and funded strategy acceptance remain unresolved.
+
+## BT-008: public source capture and raw-input notebooks
+
+[Source intake](SOURCE.md) adds two fixed public Kraken SOL/USD GET requests, strict market identity and closed-hourly parsing, original response retention, data-quality reporting and source-preserving notebook events. [The synthetic source example](examples/source-report/source.html) exposes the observed 721-vs-documented-720 row discrepancy. An explicit recent-window retrospective pilot is available; the original three-fold plan is never silently shortened. [Validation](VALIDATION_BT008.md). Public observations remain provider-reported, with reconstructed availability and unverified execution costs.

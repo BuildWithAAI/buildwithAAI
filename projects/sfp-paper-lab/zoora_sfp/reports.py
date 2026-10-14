@@ -26,6 +26,8 @@ OUTPUT_LIMIT = 64 * 1024 * 1024
 FILES = {"report.json", "signals.csv", "trades.csv", "equity.csv", "COMMUNITY_UPDATE.md"}
 STUDY_FILES = {"plan.json", "study.json", "folds.csv", "trials.csv", "study.html", "COMMUNITY_UPDATE.md"}
 NOTEBOOK_FILES = STUDY_FILES | {"notebook.json", "dataset.json", "audit.html"}
+SOURCE_FILES = {"capture.json", "pair-response.json", "ohlc-response.json", "dataset.json",
+                "history.csv", "quality.json", "SOURCE_NOTES.md", "source.html"}
 
 
 def code_fingerprint():
@@ -191,7 +193,8 @@ def publish(folder, payloads):
     created = []
     require((set(payloads) == FILES | {"manifest.json"} or
              set(payloads) == STUDY_FILES | {"manifest.json"} or
-             set(payloads) == NOTEBOOK_FILES | {"manifest.json"}) and
+             set(payloads) == NOTEBOOK_FILES | {"manifest.json"} or
+             set(payloads) == SOURCE_FILES | {"manifest.json"}) and
             all(isinstance(body, bytes) for body in payloads.values()), "INVALID_EXPORT")
     require(sum(len(v) for v in payloads.values()) <= OUTPUT_LIMIT + 8192, "OUTPUT_SIZE_LIMIT")
     try:
@@ -200,7 +203,7 @@ def publish(folder, payloads):
         raise ResearchError("OUTPUT_ALREADY_EXISTS") from exc
     try:
         for name, body in sorted(payloads.items()):
-            require(name in FILES | NOTEBOOK_FILES | {"manifest.json"}, "INVALID_OUTPUT_NAME")
+            require(name in FILES | NOTEBOOK_FILES | SOURCE_FILES | {"manifest.json"}, "INVALID_OUTPUT_NAME")
             path = folder / name
             fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             created.append(path)

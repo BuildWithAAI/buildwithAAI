@@ -53,3 +53,7 @@ Version 0.2.0 adds the [frozen-plan study workflow](sfp-paper-lab/STUDY.md). It 
 ## BT-007: persistent notebook and original data receipts
 
 [The local research notebook](sfp-paper-lab/NOTEBOOK.md) retains a frozen baseline, original incremental CSVs and all recorded study reports. History revisions/backfills, duplicate captures and stale exports are rejected; explicit checkpoint verification and full matching-engine replay are available. A ten-file portable report carries the raw history and latest study. This establishes local software consistency, not source truth, independent unseen evaluation or an accepted funded strategy.
+
+## BT-008: public observations and source-preserving intake
+
+[Source capture](sfp-paper-lab/SOURCE.md) adds two fixed public SOL/USD requests, strict spot market identity, exact raw bodies, closed-only hourly mapping and data-quality/provenance exports. The notebook can retain these inputs through opening and appending. Offline acceptance remains synthetic; a separate declared one-fold recent-window pilot uses provider-reported public observations. No AAI market identity, executable quote, independently unseen evaluation or economic operation is established.

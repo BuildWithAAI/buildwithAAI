@@ -20,6 +20,7 @@ from .data import (
     require,
 )
 from .importer import import_csv
+from .provider import parse_capture
 from .reports import code_fingerprint
 from .study import STUDY_RULES, bar_record, known_prefix, parse_plan, run_study
 from .study_reports import validate_study
@@ -56,7 +57,8 @@ def _clock():
 def event_record(seq, kind, recorded_ms, previous, metadata, artifact):
     integer(seq, 1, MAX_EVENTS)
     integer(recorded_ms, 0, 253_402_300_799_000)
-    require(kind in {"OPEN", "CAPTURE", "EVALUATION"} and isinstance(metadata, dict), "INVALID_EVENT")
+    require(kind in {"OPEN", "CAPTURE", "OPEN_SOURCE", "CAPTURE_SOURCE", "EVALUATION"} and
+            isinstance(metadata, dict), "INVALID_EVENT")
     require(isinstance(artifact, bytes) and len(artifact) <= MAX_ARTIFACT, "ARTIFACT_SIZE_LIMIT")
     identity = {"protocol": PROTOCOL, "seq": seq, "kind": kind, "recorded_ms": recorded_ms,
                 "previous_sha256": previous, "metadata": metadata,
@@ -118,12 +120,32 @@ def merge_csv(previous, raw, captured_ms, delay_ms, recorded_ms):
     return ds, receipt
 
 
+def merge_source(previous, raw, delay_ms, recorded_ms):
+    source = parse_capture(raw)
+    require(source["capture"]["requests"][-1]["received_ms"] <= recorded_ms,
+            "PROVIDER_RECEIPT_AFTER_NOTEBOOK_EVENT")
+    incoming = source["dataset"]
+    require(incoming.market == previous.market and incoming.classification == previous.classification and
+            source["capture"]["delay_ms"] == delay_ms, "SOURCE_NOTEBOOK_CONTRACT_MISMATCH")
+    ds, receipt = merge_csv(previous, source["csv_raw"], incoming.captured_ms, delay_ms, recorded_ms)
+    value = dataset_value(ds)
+    value["source_sha256"] = digest({"protocol": "ZOORA_SFP_PROVIDER_APPEND_V1",
+                                     "csv_chain_sha256": ds.source_sha256,
+                                     "capture_sha256": source["capture"]["capture_sha256"]})
+    ds = parse_dataset(canonical(value))
+    receipt.update({"dataset_sha256": ds.dataset_sha256,
+                    "provider_capture_sha256": source["capture"]["capture_sha256"],
+                    "provider_transport": source["capture"]["mode"],
+                    "uncommitted_final_rows_excluded": source["quality"]["uncommitted_final_rows_excluded"]})
+    return ds, receipt
+
+
 def replay_events(events, artifacts, expected_head=None, rerun=False):
     """Replay inputs and accounting. Optional full replay requires matching engine bytes."""
     require(isinstance(events, list) and isinstance(artifacts, list) and
             1 <= len(events) == len(artifacts) <= MAX_EVENTS, "INVALID_EVENT_COUNT")
     previous, last_time, stored = ZERO, 0, 0
-    ds, plan, delay, capture_head = None, None, None, None
+    ds, initial_ds, plan, delay, capture_head = None, None, None, None, None
     evaluations, captures, run_ids = [], [], set()
     for seq, (event, raw) in enumerate(zip(events, artifacts, strict=True), 1):
         exact(event, {"protocol", "seq", "kind", "recorded_ms", "previous_sha256", "metadata",
@@ -135,15 +157,25 @@ def replay_events(events, artifacts, expected_head=None, rerun=False):
         require(stored <= MAX_STORED, "NOTEBOOK_STORAGE_LIMIT")
         meta = event["metadata"]
         if seq == 1:
-            require(event["kind"] == "OPEN", "OPEN_EVENT_REQUIRED")
+            require(event["kind"] in {"OPEN", "OPEN_SOURCE"}, "OPEN_EVENT_REQUIRED")
             exact(meta, {"plan", "delay_ms", "dataset_sha256"})
             plan, delay = meta["plan"], meta["delay_ms"]
-            ds = _initial(raw, plan, delay, event["recorded_ms"])
+            if event["kind"] == "OPEN_SOURCE":
+                source = parse_capture(raw)
+                require(source["capture"]["requests"][-1]["received_ms"] <= event["recorded_ms"],
+                        "PROVIDER_RECEIPT_AFTER_NOTEBOOK_EVENT")
+                initial_raw = source["dataset_raw"]
+            else:
+                initial_raw = raw
+            ds = initial_ds = _initial(initial_raw, plan, delay, event["recorded_ms"])
             require(meta["dataset_sha256"] == ds.dataset_sha256, "DATASET_ID_MISMATCH")
             capture_head = event["event_sha256"]
-        elif event["kind"] == "CAPTURE":
+        elif event["kind"] in {"CAPTURE", "CAPTURE_SOURCE"}:
             exact(meta, {"receipt"})
-            ds, receipt = merge_csv(ds, raw, meta["receipt"]["captured_ms"], delay, event["recorded_ms"])
+            if event["kind"] == "CAPTURE_SOURCE":
+                ds, receipt = merge_source(ds, raw, delay, event["recorded_ms"])
+            else:
+                ds, receipt = merge_csv(ds, raw, meta["receipt"]["captured_ms"], delay, event["recorded_ms"])
             require(canonical(meta["receipt"]) == canonical(receipt), "CAPTURE_RECEIPT_MISMATCH")
             capture_head = event["event_sha256"]
             captures.append(dict(event_seq=seq, event_sha256=capture_head, **receipt))
@@ -166,7 +198,7 @@ def replay_events(events, artifacts, expected_head=None, rerun=False):
                                 "recorded_ms": event["recorded_ms"], "report": report})
         previous, last_time = event["event_sha256"], event["recorded_ms"]
     require(expected_head is None or expected_head == previous, "EXPECTED_HEAD_MISMATCH")
-    return {"events": events, "artifacts": artifacts, "dataset": ds, "plan": plan,
+    return {"events": events, "artifacts": artifacts, "dataset": ds, "initial_dataset": initial_ds, "plan": plan,
             "delay_ms": delay, "head_sha256": previous, "capture_head": capture_head,
             "captures": captures, "evaluations": evaluations, "stored_bytes": stored}
 
@@ -228,10 +260,18 @@ def _insert(con, event, raw):
                  canonical(event["metadata"]), raw, event["event_sha256"]))
 
 
-def open_notebook(path, raw, plan, delay_ms=0):
+def open_notebook(path, raw, plan, delay_ms=0, *, source_capture=False):
     stamp = _clock()
-    ds = _initial(raw, plan, delay_ms, stamp)
-    event = event_record(1, "OPEN", stamp, ZERO,
+    if source_capture:
+        source = parse_capture(raw)
+        require(source["capture"]["requests"][-1]["received_ms"] <= stamp,
+                "PROVIDER_RECEIPT_AFTER_NOTEBOOK_EVENT")
+        delay_ms = source["capture"]["delay_ms"]
+        initial_raw = source["dataset_raw"]
+    else:
+        initial_raw = raw
+    ds = _initial(initial_raw, plan, delay_ms, stamp)
+    event = event_record(1, "OPEN_SOURCE" if source_capture else "OPEN", stamp, ZERO,
                          {"plan": plan, "delay_ms": delay_ms, "dataset_sha256": ds.dataset_sha256}, raw)
     path = Path(path)
     try:
@@ -278,6 +318,18 @@ def capture_csv(path, raw, captured_ms, expected_head=None):
             "dataset_sha256": ds.dataset_sha256, "receipt": receipt, "evaluation_status": "REQUIRED"}
 
 
+def capture_source(path, raw, expected_head=None):
+    state = load_notebook(path, expected_head)
+    source = parse_capture(raw)
+    capture_hash = source["capture"]["capture_sha256"]
+    require(not any(c.get("provider_capture_sha256") == capture_hash for c in state["captures"]),
+            "DUPLICATE_CAPTURE")
+    ds, receipt = merge_source(state["dataset"], raw, state["delay_ms"], _clock())
+    event = _append(path, state, "CAPTURE_SOURCE", {"receipt": receipt}, raw)
+    return {"status": "APPENDED_PROVIDER_REPORTED_HISTORY", "head_sha256": event["event_sha256"],
+            "dataset_sha256": ds.dataset_sha256, "receipt": receipt, "evaluation_status": "REQUIRED"}
+
+
 def evaluate_notebook(path, source_head=None, expected_head=None):
     state = load_notebook(path, expected_head)
     report = run_study(state["dataset"], state["plan"], source_head)
@@ -298,10 +350,12 @@ def notebook_status(state):
     ds, plan = state["dataset"], state["plan"]
     latest = state["evaluations"][-1]["report"] if state["evaluations"] else None
     first_test = plan["start_ms"] + (plan["train_hours"] + plan["embargo_hours"]) * HOUR
-    initial = parse_dataset(state["artifacts"][0])
+    initial = state["initial_dataset"]
     return {"protocol": PROTOCOL, "head_sha256": state["head_sha256"],
             "plan_sha256": plan["plan_sha256"], "events": len(state["events"]),
             "csv_captures": len(state["captures"]), "evaluations": len(state["evaluations"]),
+            "provider_response_events": sum(e["kind"] in {"OPEN_SOURCE", "CAPTURE_SOURCE"}
+                                            for e in state["events"]),
             "bars": len(ds.bars), "coverage_gaps": list(ds.gaps), "captured_ms": ds.captured_ms,
             "dataset_sha256": ds.dataset_sha256, "classification": ds.classification,
             "evaluation_status": "CURRENT" if latest and latest["dataset_sha256"] == ds.dataset_sha256
