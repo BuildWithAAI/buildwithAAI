@@ -2,7 +2,7 @@
 
 **SYNTHETIC SOFTWARE ACCEPTANCE DATA. NO VERIFIED MARKET PERFORMANCE.**
 
-[Open the portable report](chronological-report/study.html). The seven-file bundle was generated locally from source commit 596b65820ddd56689c780c3fbd0434294c3ac79f and its study-demo.json and study-plan.json; the source-head field is intentionally UNDECLARED. Package/data/plan hashes and run identity are included. Current CI source-head declarations and downloaded proof belong in the development PR, not this local snapshot.
+[Open the portable report](chronological-report/study.html). The seven-file bundle was regenerated locally for the final presentation/validation follow-up. Its folds, all 72 trial records and numerical summaries are unchanged from source commit 596b65820ddd56689c780c3fbd0434294c3ac79f; the source-head field is intentionally UNDECLARED. Package/data/plan hashes and run identity are included. Current CI source-head declarations and downloaded proof belong in the development PR, not this local snapshot.
 
 Three chronological folds retain 72 trials; all base research screens fail. Future-price changes do not select an earlier fold's candidate. This is one engineered history, not 72 independent market experiments. Independent accounts and repeated seeds do not create project income or a buy/burn budget. All real funds and token activity are zero.
 

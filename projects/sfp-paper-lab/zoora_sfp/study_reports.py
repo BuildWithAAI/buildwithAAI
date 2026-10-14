@@ -65,9 +65,17 @@ def dashboard(report):
     esc = html.escape
     body = []
     for row in report["summary"]:
-        cells = [row["variant"], str(row["evaluated_folds"]), str(row["closed_trades"]),
-                 human(row["mean_marked_return"], True), human(row["max_close_mark_drawdown"], True),
-                 row["numeric_screen"], ", ".join(row["screen_reasons"]) or "Research screen only"]
+        labels = {"TOO_FEW_CLOSED_TRADES": "Too few closed trades", "INCOMPLETE_FOLDS": "Incomplete test windows",
+                  "INCOMPLETE_TRAINING_FOLDS": "Incomplete training windows",
+                  "NONPOSITIVE_MEAN_MARKED_RETURN": "Mean marked return is not positive",
+                  "DRAWDOWN_SCREEN_EXCEEDED": "Drawdown exceeds the proposed screen",
+                  "UNRESOLVED_TERMINAL_POSITIONS": "End positions remain open",
+                  "CONTROL_NOT_A_STRATEGY_ACCEPTANCE": "Comparison control; not a strategy approval"}
+        status = "Fail" if row["numeric_screen"] == "FAIL" else "Research pass only"
+        cells = [row["variant"], status, human(row["mean_marked_return"], True),
+                 str(row["closed_trades"]), str(row["evaluated_folds"]),
+                 human(row["max_close_mark_drawdown"], True),
+                 ", ".join(labels.get(r, r) for r in row["screen_reasons"]) or "Research screen only"]
         body.append("<tr>" + "".join("<td>" + esc(c) + "</td>" for c in cells) + "</tr>")
     details = []
     for f in report["folds"]:
@@ -102,8 +110,8 @@ th{color:#67e8f9}details{margin:14px 0}summary{cursor:pointer;font-weight:650}co
 </style></head><body><main><div class="tag">BUILD WITH AAI · BT-006</div><h1>SFP research, inspectable.</h1>
 <div class="notice"><strong>Offline paper testing · funded strategy blocked</strong><p>INPUT_CLASSIFICATION prices. All fills, costs and performance screens are simulated. This report establishes no trading edge, earnings or price floor.</p></div>
 <div class="cards"><div class="card">Planned folds<strong>FOLD_COUNT</strong>Chronological windows</div><div class="card">Recorded trials<strong>TRIAL_COUNT</strong>Failures retained</div><div class="card">Funds moved<strong>0</strong>Tokens bought/burned: 0</div></div>
-<h2>Base scenarios</h2><p>Marked returns include open inventory. Numeric gates are research proposals. Buy-and-hold uses full affordable capital; the other strategies use bounded nominal risk. These exposures are different. Random seeds share the same price history and are not independent market samples.</p>
-<div class="scroll"><table><thead><tr><th>Variant</th><th>Folds</th><th>Closed</th><th>Mean marked return</th><th>Max DD</th><th>Screen</th><th>Reasons</th></tr></thead><tbody>SUMMARY_ROWS</tbody></table></div>
+<h2>Base scenarios</h2><p>A: reclaim. B: upward 4-hour context. C: later structure confirmation. Marked returns include open inventory. Numeric gates are research proposals. Buy-and-hold uses full affordable capital; the other strategies use bounded nominal risk. These exposures are different. Random seeds share the same price history and are not independent market samples. Swipe tables sideways for more metrics.</p>
+<div class="scroll"><table><thead><tr><th>Variant</th><th>Screen</th><th>Mean marked return</th><th>Closed</th><th>Folds</th><th>Max DD</th><th>Reasons</th></tr></thead><tbody>SUMMARY_ROWS</tbody></table></div>
 <h2>Fold ledger · costs and delay</h2><p>Training scores select only that fold's candidate. Test outcomes do not change its choice. Failed coverage yields an incomplete fold, not a compressed period. End positions stay open. Costs are already deducted from net.</p>FOLD_DETAILS
 <footer><p>Independent simulated accounts; no combined treasury or burn budget. Local plan hashes prove internal consistency, not external preregistration or untouched data. Historical sources, executable quotes and selection uncertainty remain unverified.</p><p><a href="study.json">Full study JSON</a> · <a href="trials.csv">Trial CSV</a> · <a href="plan.json">Frozen plan</a> · <a href="COMMUNITY_UPDATE.md">Community text</a></p><p>Run <code>RUN_ID</code><br>Plan <code>PLAN_ID</code></p></footer></main></body></html>"""
     for marker, value in {"INPUT_CLASSIFICATION": esc(report["price_classification"]),

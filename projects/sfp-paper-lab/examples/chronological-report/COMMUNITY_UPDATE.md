@@ -3,7 +3,7 @@
 **OFFLINE RESEARCH. SYNTHETIC EXECUTION. NO VERIFIED TRADING EDGE OR EARNINGS.**
 
 Input: SYNTHETIC. Source verification: UNAVAILABLE.
-Run: c3b6ddcc67b63a4138c98ac04ecfff9ac0a11ad4006cc47388c3ef00583e33ba. Frozen plan: 37fcbfcd5aaa469a3864b70a6bd4cf0b49ef7ef46527a103d40ec288f5f52a88.
+Run: 5640d4404cd4114ac9061e63ca5688492bb1b08de11606af498920e18ca2a992. Frozen plan: 37fcbfcd5aaa469a3864b70a6bd4cf0b49ef7ef46527a103d40ec288f5f52a88.
 Planned folds: 3; recorded trials: 72.
 
 A: reclaim. B: upward 4-hour context. C: later structure confirmation.
