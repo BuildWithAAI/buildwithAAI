@@ -1,5 +1,7 @@
 # AE-010 — durable private agent tasks
 
+The current AE-011 server uses schema 4 and adds [pilot access controls](PILOT_ACCESS.md). Explicitly upgrade schema-1/2/3 state before serving. The one-attempt task workflow below remains available.
+
 The authenticated browser can submit a task, inspect its private status and request a stop. A separately started host worker claims it and uses an already installed local Ollama model. This connects browser submission to the existing limited model/tool runner. It does not install an unattended service, publish the application, accept funds or execute generated code.
 
 ## Start a bounded worker session

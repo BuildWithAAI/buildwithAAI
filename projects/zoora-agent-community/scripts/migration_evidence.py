@@ -21,7 +21,7 @@ def run():
         before = legacy.audit()
         backup = folder / "before.sqlite3"
         result = command("migrate", "--state", legacy.state, "--backup", backup)
-        assert json.loads(result.stdout)["schema_version"] == 3
+        assert json.loads(result.stdout)["schema_version"] == 4
         with closing(sqlite3.connect(backup)) as connection:
             assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
             assert connection.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()[0] == before["audit_head"]
@@ -43,7 +43,7 @@ def run():
         after = json.loads(command("audit", "--state", legacy.state).stdout)
         assert after["audit_events"] == before["audit_events"] + 3
     evidence = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
-                "activity": "AUTOMATED_TEST_FIXTURE", "from_schema": 1, "to_schema": 3,
+                "activity": "AUTOMATED_TEST_FIXTURE", "from_schema": 1, "to_schema": 4,
                 "checks": ["actual migration CLI retains schema-1 backup and audit prefix",
                            "restarted HTTP service preserves content and old credentials",
                            "legacy declaration stays unverified until actual signed challenge",

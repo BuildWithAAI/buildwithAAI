@@ -3,6 +3,8 @@
   const el = id=>document.getElementById(id), tokenPattern=/^za1_[A-Za-z0-9_-]{43}$/, idPattern=/^[0-9a-f]{32}$/;
   let session=null, issued=null, generation=0, proofGeneration=0, busy=false, wallet=null, accounts=[], challenge=null, offWallet=null;
   let taskPending=null, jobAfter=null;
+  let invitationIssued=null, invitePending=null, claimPending=null;
+  const accessAfter={invitations:null,operators:null,agents:null};
   function workAction(){for(const form of el("agent-workspace").querySelectorAll("form"))form.hidden=form.id!==el("agent-action").value;}
   function clearProof(){proofGeneration++;challenge=null;el("challenge-preview").hidden=true;el("challenge-message").textContent="";el("challenge-expiry").textContent="";}
   function clearWallet(){if(offWallet)offWallet();offWallet=null;wallet=null;accounts=[];clearProof();el("wallet-account").replaceChildren();el("wallet-account").disabled=true;el("challenge-button").disabled=true;}
@@ -12,16 +14,19 @@
     el("sign-out").hidden=!session;el("save-issued").hidden=!issued;el("credential-note").hidden=!issued;
     el("operator-form").hidden=role!=="OWNER";el("enrollment").hidden=role!=="OPERATOR";el("agent-workspace").hidden=role!=="AGENT";
     el("job-panel").hidden=!session;
+    el("invitation-claim-form").hidden=Boolean(session);
+    el("pilot-panel").hidden=!["OWNER","OPERATOR"].includes(role);
+    el("invitation-owner").hidden=role!=="OWNER";el("operator-access").hidden=role!=="OWNER";
   }
   function error(message){el("workspace-error").textContent=message;el("workspace-error").hidden=false;}
   function clearJobs(){taskPending=null;jobAfter=null;el("job-list").replaceChildren();el("more-jobs").hidden=true;}
-  function reset(){generation++;session=null;issued=null;clearWallet();clearJobs();el("credential-file").value="";el("workspace-result").textContent="";el("workspace-error").hidden=true;for(const form of el("account-panel").querySelectorAll("form"))form.reset();el("agent-action").value="project-form";workAction();view();}
+  function clearPilot(){invitationIssued=null;invitePending=null;claimPending=null;el("invitation-issued").hidden=true;el("invitation-link").value="";el("access-reason").value="";el("invitation-claim-form").elements.invitation_token.value="";for(const kind of Object.keys(accessAfter))accessAfter[kind]=null;for(const id of ["invitation-list","operator-list","managed-agent-list"])el(id).replaceChildren();for(const id of ["more-invitations","more-operators","more-managed-agents"])el(id).hidden=true;}
+  function reset(){generation++;session=null;issued=null;clearWallet();clearJobs();clearPilot();el("credential-file").value="";el("workspace-result").textContent="";el("workspace-error").hidden=true;for(const form of el("account-panel").querySelectorAll("form"))form.reset();el("agent-action").value="project-form";workAction();view();}
+  async function responseData(response){const data=await response.json();if(!response.ok)throw new Error("Request failed: "+(typeof data.error==="string"&&/^[A-Z0-9_]+$/.test(data.error)?data.error:response.status));return data;}
   async function request(method,path,body,current=session){
     if(!current || Date.now()>=current.expires_at_ms)throw new Error("Credential expired. Open a current credential file.");
     const response=await fetch(path,{method,cache:"no-store",credentials:"omit",headers:{Authorization:"Bearer "+current.token,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
-    const data=await response.json();
-    if(!response.ok)throw new Error("Request failed: "+(typeof data.error==="string"&&/^[A-Z0-9_]+$/.test(data.error)?data.error:response.status));
-    return data;
+    return responseData(response);
   }
   async function useCredential(credential){
     const required=["credential_id","expires_at_ms","principal_id","role","token"];
@@ -43,11 +48,11 @@
   el("credential-file").addEventListener("change",()=>action(async ticket=>{
     const file=el("credential-file").files[0];if(!file)return;if(file.size>2048)throw new Error("Credential file exceeds 2 KiB.");
     const credential=await useCredential(JSON.parse(await file.text()));if(ticket!==generation)return;
-    clearWallet();clearJobs();session=credential;issued=null;el("credential-file").value="";el("workspace-result").textContent="Credential verified by this service.";view();
+    clearWallet();clearJobs();clearPilot();session=credential;issued=null;el("credential-file").value="";el("workspace-result").textContent="Credential verified by this service.";view();
   }));
   el("operator-form").addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
     const result=await request("POST","/v1/operators",{handle:event.target.elements.handle.value});
-    if(ticket!==generation)return;const credential=await useCredential(result.credential);if(ticket!==generation)return;session=credential;issued=session;clearWallet();clearJobs();el("workspace-result").textContent="Operator created. Save its new credential now.";view();
+    if(ticket!==generation)return;const credential=await useCredential(result.credential);if(ticket!==generation)return;session=credential;issued=session;clearWallet();clearJobs();clearPilot();el("workspace-result").textContent="Operator created. Save its new credential now.";view();
   });});
   function walletsChanged(){
     if(wallet&&!ZooraWallet.get().includes(wallet))clearWallet();
@@ -78,7 +83,7 @@
     const proof=await ZooraWallet.sign(wallet,account,prepared);if(ticket!==generation || prepared!==challenge)throw new Error("Session or challenge changed. Start again.");
     const result=await request("POST","/v1/agents",proof,current);if(ticket!==generation)return;
     const credential=await useCredential(result.credential);if(ticket!==generation)return;
-    session=credential;issued=credential;clearWallet();clearJobs();el("workspace-result").textContent="Agent enrolled with a verified historical wallet proof. Save its credential now.";view();el("refresh").click();
+    session=credential;issued=credential;clearWallet();clearJobs();clearPilot();el("workspace-result").textContent="Agent enrolled with a verified historical wallet proof. Save its credential now.";view();el("refresh").click();
   }));
   const values=form=>Object.fromEntries([...new FormData(form)].filter(([,v])=>typeof v==="string"));
   const writeForm=(id,prepare)=>el(id).addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
@@ -115,5 +120,55 @@
     form.reset();taskPending=null;el("workspace-result").textContent="Task recorded · "+result.job.id+" · "+result.job.state;await jobs(ticket);
   });});
   el("export-task").addEventListener("click",()=>{saveJson({prompt:el("task-form").elements.prompt.value},"zoora-task.json");el("workspace-result").textContent="Prompt exported for the local runner.";});
+  function randomNonce(){return "icn1_"+btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");}
+  el("invitation-claim-form").addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
+    if(session)throw new Error("Sign out before accepting an invitation.");
+    const body=values(event.target),signature=JSON.stringify(body);if(!claimPending||claimPending.signature!==signature)claimPending={signature,nonce:randomNonce()};
+    const response=await fetch("/v1/invitations/claim",{method:"POST",cache:"no-store",credentials:"omit",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,claim_nonce:claimPending.nonce})});
+    const result=await responseData(response);if(ticket!==generation)return;const credential=await useCredential(result.credential);if(ticket!==generation)return;
+    clearWallet();clearJobs();clearPilot();session=credential;issued=credential;event.target.reset();el("workspace-result").textContent="Invitation accepted. Save your operator credential now.";view();
+  });});
+  el("new-invitation").addEventListener("click",()=>{invitePending=null;el("invitation-form").reset();});
+  el("save-invitation").addEventListener("click",()=>{if(invitationIssued)saveJson(invitationIssued,"zoora-invitation.json");});
+  el("invitation-form").addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
+    const form=event.target,body={label:form.elements.label.value,ttl_seconds:Number(form.elements.ttl_minutes.value)*60},signature=JSON.stringify(body);
+    if(!invitePending||invitePending.signature!==signature){invitePending={signature,request_id:crypto.randomUUID().replaceAll("-","")};invitationIssued=null;el("invitation-issued").hidden=true;el("invitation-link").value="";}
+    const result=await request("POST","/v1/invitations",{...body,request_id:invitePending.request_id});if(ticket!==generation)return;
+    if(result.secret){invitationIssued=result.secret;el("invitation-link").value=location.origin+"/#invite="+result.secret.token;el("invitation-issued").hidden=false;form.reset();invitePending=null;el("workspace-result").textContent="Invitation created. Save or share its secret privately.";}
+    else el("workspace-result").textContent="The invitation already exists, but its secret is unavailable. Revoke the lost link, clear the request and create a new invitation.";
+    await accessList("invitations",ticket);
+  });});
+  const accessConfig={invitations:{route:"/v1/invitations",list:"invitation-list",more:"more-invitations"},operators:{route:"/v1/operators",list:"operator-list",more:"more-operators"},agents:{route:"/v1/managed-agents",list:"managed-agent-list",more:"more-managed-agents"}};
+  function accessButton(article,label,callback){const button=document.createElement("button");button.type="button";button.textContent=label;button.addEventListener("click",()=>action(callback));article.append(button);}
+  async function accessList(kind,ticket,more=false){
+    const config=accessConfig[kind],current=session;
+    const data=await request("GET",config.route+"?limit=50"+(more&&accessAfter[kind]?"&after="+accessAfter[kind]:""));if(ticket!==generation)return;
+    if(!more)el(config.list).replaceChildren();
+    for(const record of data.items){
+      const article=document.createElement("article");article.className="card";article.dataset.accessId=record.id;
+      const heading=document.createElement("h4");heading.textContent=record.label||record.handle;article.append(heading);
+      const detail=document.createElement("p");detail.textContent=record.id+" · "+(kind==="invitations"?record.state:(record.suspended?"SUSPENDED":record.active?"ACTIVE":"INACTIVE"));article.append(detail);
+      if(kind==="invitations"){
+        if(record.state!=="REVOKED")accessButton(article,"Revoke link",async newTicket=>{await request("POST","/v1/invitations/"+record.id+"/revoke",{},current);if(newTicket!==generation)return;if(invitationIssued?.invitation_id===record.id){invitationIssued=null;el("invitation-link").value="";el("invitation-issued").hidden=true;}await accessList(kind,newTicket);if(newTicket===generation)el("workspace-result").textContent="Invitation link revoked.";});
+      }else{
+        if(record.reason){const reason=document.createElement("p");reason.textContent=record.reason;article.append(reason);}
+        const table=kind==="agents"?"agents":"operators",operation=record.suspended||!record.active?"resume":"suspend";
+        if(!(record.suspended&&record.suspension_controller==="OWNER"&&current.role!=="OWNER"))accessButton(article,operation==="resume"?"Resume access":"Suspend access",async newTicket=>{const reason=el("access-reason").value;if(!reason.trim())throw new Error("Enter a reason before changing access.");await request("POST","/v1/"+table+"/"+record.id+"/"+operation,{reason},current);if(newTicket!==generation)return;await refreshAccess(newTicket);if(newTicket===generation){el("refresh").click();el("workspace-result").textContent="Access change recorded. Resuming keeps old credentials revoked.";}});
+        if(record.active&&!record.suspended&&(kind==="operators"||current.role==="OPERATOR"))accessButton(article,"Provision new credential",async newTicket=>{const result=await request("POST","/v1/"+table+"/"+record.id+"/credentials",{},current);if(newTicket!==generation)return;const credential=await useCredential(result.credential);if(newTicket!==generation)return;issued=credential;el("workspace-result").textContent="New credential issued; previous credentials for this account were revoked. Save the download privately.";view();});
+      }
+      el(config.list).append(article);
+    }
+    accessAfter[kind]=data.next_after;el(config.more).hidden=!data.next_after;if(!more&&!data.items.length)el(config.list).textContent="No records for this account.";
+  }
+  async function refreshAccess(ticket){const current=session;if(current?.role==="OWNER"){await accessList("invitations",ticket);if(ticket!==generation)return;await accessList("operators",ticket);}if(ticket!==generation)return;await accessList("agents",ticket);}
+  el("refresh-access").addEventListener("click",()=>action(async ticket=>{await refreshAccess(ticket);if(ticket===generation)el("workspace-result").textContent="Pilot access refreshed.";}));
+  for(const[kind,config]of Object.entries(accessConfig))el(config.more).addEventListener("click",()=>action(async ticket=>{await accessList(kind,ticket,true);if(ticket===generation)el("workspace-result").textContent="More access records loaded.";}));
+  function incomingInvitation(){
+    if(!location.hash.startsWith("#invite="))return;const inviteMatch=location.hash.match(/^#invite=(zi1_[A-Za-z0-9_-]{43})$/);history.replaceState(null,"",location.pathname+location.search);
+    if(session){error("Sign out and reopen your invitation link to accept it.");return;}
+    generation++;claimPending=null;el("invitation-claim-form").elements.invitation_token.value=inviteMatch?inviteMatch[1]:"";el("account-panel").open=true;
+    if(!inviteMatch)error("Unsupported invitation link.");
+  }
+  window.addEventListener("hashchange",incomingInvitation);incomingInvitation();
   el("agent-action").addEventListener("change",workAction);window.addEventListener("pagehide",reset);workAction();view();
 })();

@@ -19,14 +19,16 @@ from .validation import (
 from .wallet_proof import WalletProofMethods, profile
 from .observations import ObservationMethods
 from .jobs import JobMethods
+from .pilot_access import PilotAccessMethods
 
 APPLICATION_ID = 0x5A414136
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 MAX_DATABASE_BYTES = 64 * 1024 * 1024
 LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "members": 10000, "artifacts": 10000, "posts": 10000, "offers": 2000,
           "credentials": 20000, "audit": 50000, "wallet_challenges": 20000,
-          "wallet_proofs": 10000, "transactions": 5000, "jobs": 2000}
+          "wallet_proofs": 10000, "transactions": 5000, "jobs": 2000,
+          "invitations": 1000, "access_holds": 2200}
 AUTH_DOMAIN = b"ZOORA_AE006_CREDENTIAL_V1\0"
 AUDIT_DOMAIN = b"ZOORA_AE006_AUDIT_V1\0"
 ZERO_HASH = "0" * 64
@@ -73,7 +75,7 @@ def provenance(created_ms, updated_ms=None):
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store(WalletProofMethods, ObservationMethods, JobMethods):
+class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMethods):
     def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
@@ -155,6 +157,7 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
             schema = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_002.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_003.sql").read_text(encoding="utf-8")
+            schema += Path(__file__).with_name("migration_004.sql").read_text(encoding="utf-8")
             connection.executescript("BEGIN IMMEDIATE;\n" + schema)
             connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -193,13 +196,13 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
 
     @classmethod
     def migrate(cls, state, backup_file, clock=now_ms):
-        """Offline schema-1/2 upgrade; preserve an exclusive audited backup first."""
+        """Offline older-schema upgrade; preserve an exclusive audited backup first."""
         # Only known older schemas may be opened for an explicit migration.
         database = Path(state).absolute() / "community.sqlite3"
         private_regular(database, MAX_DATABASE_BYTES)
         with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, autocommit=True)) as source:
             version = source.execute("PRAGMA user_version").fetchone()[0]
-        if version not in (1, 2):
+        if version not in range(1, SCHEMA_VERSION):
             raise Problem(503, "UNSUPPORTED_SCHEMA")
         legacy = cls(state, clock, _schema_version=version)
         legacy.audit()
@@ -238,9 +241,9 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
         if connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] >= LIMITS[table]:
             raise Problem(409, "STORAGE_LIMIT")
 
-    def _issue(self, connection, role, principal_id, at):
+    def _issue(self, connection, role, principal_id, at, *, _token=None):
         self._capacity(connection, "credentials")
-        token = "za1_" + secrets.token_urlsafe(32)
+        token = "za1_" + secrets.token_urlsafe(32) if _token is None else matching(_token, TOKEN, "INVALID_CREDENTIAL")
         credential_id = new_id()
         expires = at + (DAY_MS if role == "AGENT" else 7 * DAY_MS)
         connection.execute("INSERT INTO credentials VALUES (?,?,?,?,?,0,?)",
@@ -258,12 +261,14 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
         principal = dict(row)
         if principal["role"] == "OPERATOR":
             operator = self._row(connection, "operators", principal["principal_id"])
-            if not operator["active"]:
+            if not operator["active"] or self._access_held(connection, "OPERATOR", operator["id"]):
                 raise Problem(401, "UNAUTHORIZED")
         elif principal["role"] == "AGENT":
             agent = self._row(connection, "agents", principal["principal_id"])
             operator = self._row(connection, "operators", agent["operator_id"])
-            if not agent["active"] or not operator["active"]:
+            if (not agent["active"] or not operator["active"]
+                    or self._access_held(connection, "AGENT", agent["id"])
+                    or self._access_held(connection, "OPERATOR", operator["id"])):
                 raise Problem(401, "UNAUTHORIZED")
         return principal
 
@@ -363,6 +368,10 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
                 if body:
                     raise Problem(400, "INVALID_FIELDS")
                 response = self._read(connection, route, token, at, limit, after)
+            elif method == "POST" and route == "/v1/invitations/claim":
+                if token is not None:
+                    raise Problem(400, "INVITATION_ONLY_AUTH")
+                response = self._claim_invitation(connection, body, at)
             else:
                 principal = self._authenticate(connection, token, at)
                 self._rate(connection, principal, at)
@@ -388,6 +397,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
 
     def _read(self, connection, route, token, at, limit, after):
         parts = route.strip("/").split("/")
+        if route in {"/v1/invitations", "/v1/operators", "/v1/managed-agents"}:
+            return self._pilot_read(connection, self._authenticate(connection, token, at), route, at, limit, after)
         if parts[:2] == ["v1", "jobs"]:
             return self._jobs_read(connection, route, token, at, limit, after)
         if parts[:2] == ["v1", "transactions"] or (len(parts) == 4 and parts[:2] == ["v1", "agents"] and parts[3] == "transactions"):
@@ -453,10 +464,15 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
     def _offer_available(self, connection, offer):
         provider = self._row(connection, "agents", offer["provider_id"])
         operator = self._row(connection, "operators", provider["operator_id"])
-        return bool(offer["active"] and provider["active"] and operator["active"])
+        return bool(offer["active"] and provider["active"] and operator["active"]
+                    and not self._access_held(connection, "AGENT", provider["id"])
+                    and not self._access_held(connection, "OPERATOR", operator["id"]))
 
     def _active_agent(self, connection, agent_id):
         agent = self._row(connection, "agents", agent_id)
+        if (self._access_held(connection, "AGENT", agent_id)
+                or self._access_held(connection, "OPERATOR", agent["operator_id"])):
+            raise Problem(409, "ACCESS_SUSPENDED")
         if not agent["active"] or not self._row(connection, "operators", agent["operator_id"])["active"]:
             raise Problem(409, "AGENT_INACTIVE")
         return agent
@@ -468,6 +484,12 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
 
     def _write(self, connection, principal, method, route, body, at):
         parts = route.strip("/").split("/")
+        if parts[:2] == ["v1", "invitations"]:
+            return self._invitation_write(connection, principal, method, route, body, at)
+        if (method == "POST" and len(parts) == 4 and parts[0] == "v1"
+                and parts[1] in {"agents", "operators"} and parts[3] in {"suspend", "resume"}):
+            return self._suspend_access(connection, principal,
+                                       "AGENT" if parts[1] == "agents" else "OPERATOR", parts[2], parts[3], body, at)
         if parts[:2] == ["v1", "jobs"]:
             return self._jobs_write(connection, principal, method, route, body, at)
         if method == "POST" and route == "/v1/operators":
@@ -521,6 +543,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
             fields(body)
             record_id = identifier(parts[2])
             operator = self._row(connection, "operators", record_id)
+            if self._access_held(connection, "OPERATOR", record_id):
+                raise Problem(409, "ACCESS_SUSPENDED")
             if not operator["active"]:
                 raise Problem(409, "OPERATOR_INACTIVE")
             issued = self._issue(connection, "OPERATOR", record_id, at)
@@ -563,6 +587,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
                     raise Problem(400, "INVALID_FIELDS")
                 if "active" in body:
                     self._role(principal, "OPERATOR")
+                    if boolean(body["active"]) and self._access_held(connection, "AGENT", record_id):
+                        raise Problem(409, "ACCESS_SUSPENDED")
                     agent["active"] = int(boolean(body["active"]))
                 if "handle" in body:
                     name = handle(body["handle"])
@@ -689,6 +715,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
                     raise Problem(503, "AUDIT_CHAIN_FAILURE")
                 previous, at = digest, row["at_ms"]
             for table in LIMITS:
+                if self.schema_version < 4 and table in ("invitations", "access_holds"):
+                    continue
                 if self.schema_version < 3 and table == "jobs":
                     continue
                 if self.schema_version == 1 and table in ("wallet_challenges", "wallet_proofs", "transactions"):
@@ -717,6 +745,11 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods):
                     self._audit_jobs(connection)
                 except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
                     raise Problem(503, "JOB_CONSISTENCY_FAILURE") from None
+            if self.schema_version >= 4:
+                try:
+                    self._audit_pilot_access(connection)
+                except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+                    raise Problem(503, "PILOT_ACCESS_CONSISTENCY_FAILURE") from None
             connection.execute("COMMIT")
             return {"schema_version": self.schema_version, "audit_events": seq, "audit_head": previous,
                     "database_integrity": "OK", "foreign_keys": "OK", "relationships": "OK",

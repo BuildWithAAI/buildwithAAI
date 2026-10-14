@@ -1,6 +1,6 @@
 # AE-008 local service operations
 
-These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact numeric Host and Origin checks remain mandatory. It does not establish public deployment readiness. Install the wheel-only hash lock before starting. The current AE-010 server uses schema 3; existing schema-1/2 state needs the documented explicit offline migration. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for task/report/lease retention.
+These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact Host/Origin checks remain mandatory. Install the wheel-only hash lock. The current AE-011 server uses schema 4; schema-1/2/3 state needs explicit offline migration. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for report retention and [PILOT_ACCESS.md](PILOT_ACCESS.md) for access/recovery. Public deployment is unfinished.
 
 ## Start, check, and monitor
 
@@ -32,13 +32,13 @@ python -m zoora_community backup --state state --out new-backup.sqlite3
 python -m zoora_community verify-backup --backup new-backup.sqlite3
 ```
 
-Backups contain private credential digests, pending challenges, proofs, content, chain observations and schema-3 task prompts/leases. Private model reports are separate files and require their own retention. Protect them like the authoritative state. SQLite's backup API copies into private staging with a bounded progress deadline, validates the saved snapshot, fsyncs it and publishes by exclusive hard link. An existing destination is never replaced; a filesystem without required hard-link support fails closed. Verification opens the source read-only, rejects sidecars/symlinks/unsupported schema, copies to private temporary state and reaudits it. Known schema-1/2 snapshots can be verified/restored; explicit migration is required before owner recovery and serving.
+Backups contain private credential digests, pending challenges, proofs, content, chain observations, task prompts/leases and schema-4 invitation/access-hold records. Private model reports are separate files and require their own retention. Protect them like the authoritative state. SQLite's backup API copies into private staging with a bounded progress deadline, validates the saved snapshot, fsyncs it and publishes by exclusive hard link. An existing destination is never replaced; a filesystem without required hard-link support fails closed. Verification opens the source read-only, rejects sidecars/symlinks/unsupported schema, copies to private temporary state and reaudits it. Known schema-1/2/3 snapshots can be verified/restored; explicit migration is required before owner recovery and serving.
 
 Stop the authoritative server before recovery. Never run an original database and its restored clone concurrently: a clone preserves the same instance identity, revocations and challenge-consumption history at the snapshot time. A rollback can reinstate earlier credentials or unconsumed challenges. Restore only into a **new** directory, then invalidate all previous API credentials before serving:
 
 ```sh
 python -m zoora_community restore --backup new-backup.sqlite3 --state restored-state
-# If the restored snapshot is schema 1/2, first run migrate with a new backup path.
+# If the restored snapshot is schema 1/2/3, first run migrate with a new backup path.
 python -m zoora_community recover-owner --state restored-state --owner-file recovered-owner.credential.json --invalidate-all-credentials
 python -m zoora_community doctor --state restored-state
 python -m zoora_community serve --state restored-state --port 8765

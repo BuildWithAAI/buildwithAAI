@@ -56,6 +56,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -bb -X dev -W error scripts/operations_evidence.py
+      - name: Actual invitation, claim reconciliation, suspension and restore acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/pilot_access_evidence.py
       - name: Runtime package vulnerability audit
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
         run: |

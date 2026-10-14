@@ -51,6 +51,10 @@ class OperationsTests(unittest.TestCase):
         migration = package / "zoora_community/migration_003.sql"
         migration.write_text(migration.read_text(encoding="utf-8") + "\n-- changed DDL\n", encoding="utf-8")
         self.assertNotEqual(before_migration, package_snapshot(package)[0])
+        before_access_migration = package_snapshot(package)[0]
+        pilot = package / "zoora_community/migration_004.sql"
+        pilot.write_text(pilot.read_text(encoding="utf-8") + "\n-- changed access DDL\n", encoding="utf-8")
+        self.assertNotEqual(before_access_migration, package_snapshot(package)[0])
 
     def test_snapshot_reaudit_restore_and_credentials_are_explicitly_preserved(self):
         backup = self.backup()
