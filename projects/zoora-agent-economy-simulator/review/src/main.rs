@@ -13,6 +13,8 @@ use zoora_review_market::{
         BatchConfig, BatchReport, RunReport, Scenario as CommunityScenario, WorkloadConfig,
     },
     direct::DirectReport,
+    economy::{AdmissionPolicy, EconomyCampaign, EconomyConfig, EconomyRun, StressScenario},
+    economy_export,
     experiments::{ExperimentConfig, ExperimentSuite},
     viewer, ReviewConfig, ReviewEngine, ReviewReport,
 };
@@ -53,6 +55,39 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 fn execute() -> Result<(), String> {
     let args: Vec<_> = env::args().skip(1).collect();
     let result = match args.as_slice() {
+        [mode, config, output] if mode == "economy-campaign" => {
+            let config = EconomyConfig::from_toml(&read(Path::new(config), 4 * 1024 * 1024)?).map_err(|e| e.to_string())?;
+            let report = EconomyCampaign::generate(config).map_err(|e| e.to_string())?;
+            report.verify().map_err(|e| e.to_string())?;
+            write(Path::new(output), &serde_json::to_vec_pretty(&report).map_err(|_| "economy campaign encoding failed")?)?;
+            format!("SYNTHETIC economy campaign: {} matched runs verified; {}", report.runs.len(), report.fingerprint)
+        },
+        [mode, config, seed, scenario, policy, output] if mode == "economy-run" => {
+            let config = EconomyConfig::from_toml(&read(Path::new(config), 4 * 1024 * 1024)?).map_err(|e| e.to_string())?;
+            let seed = seed.parse::<u64>().map_err(|_| "seed must be an unsigned integer")?;
+            let scenario = StressScenario::parse(scenario).ok_or("unknown economy scenario")?;
+            let policy = AdmissionPolicy::parse(policy).ok_or("unknown admission policy")?;
+            let report = EconomyRun::generate(config, seed, scenario, policy).map_err(|e| e.to_string())?;
+            report.verify().map_err(|e| e.to_string())?;
+            write(Path::new(output), &serde_json::to_vec_pretty(&report).map_err(|_| "economy run encoding failed")?)?;
+            format!("SYNTHETIC economy run and ledger verified: {}", report.fingerprint)
+        },
+        [mode, input] if mode == "replay-economy" => {
+            let report: EconomyRun = serde_json::from_str(&read(Path::new(input), 128 * 1024 * 1024)?).map_err(|_| "invalid economy run")?;
+            report.verify().map_err(|e| e.to_string())?;
+            "SYNTHETIC economy run regenerated; balances, fees, admissions and community verified".into()
+        },
+        [mode, input] if mode == "replay-economy-campaign" => {
+            let report: EconomyCampaign = serde_json::from_str(&read(Path::new(input), 128 * 1024 * 1024)?).map_err(|_| "invalid economy campaign")?;
+            report.verify().map_err(|e| e.to_string())?;
+            "SYNTHETIC economy campaign regenerated and verified".into()
+        },
+        [mode, input, output] if mode == "economy-csv" || mode == "economy-viewer" => {
+            let report: EconomyCampaign = serde_json::from_str(&read(Path::new(input), 128 * 1024 * 1024)?).map_err(|_| "invalid economy campaign")?;
+            let content = if mode == "economy-csv" { economy_export::csv(&report) } else { economy_export::html(&report) }.map_err(|e| e.to_string())?;
+            write(Path::new(output), content.as_bytes())?;
+            "SYNTHETIC economy export created after campaign regeneration".into()
+        },
         [mode, config, scenario, output] if mode == "community-run" => {
             let config = WorkloadConfig::from_toml(&read(Path::new(config), 4 * 1024 * 1024)?).map_err(|e|e.to_string())?;
             let scenario=match scenario.as_str(){"BALANCED"=>CommunityScenario::Balanced,"SPAM_RESERVATIONS"=>CommunityScenario::SpamReservations,"PROVIDER_OFFLINE"=>CommunityScenario::ProviderOffline,_=>return Err("unknown community scenario".into())};
@@ -167,7 +202,7 @@ fn execute() -> Result<(), String> {
             write(Path::new(output), &serde_json::to_vec_pretty(&results).map_err(|_| "benchmark encoding failed")?)?;
             "SYNTHETIC review scaling verified".into()
         },
-        _ => return Err("usage: zoora-review-market run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json | experiments CONFIG.toml NEW_SUITE.json | replay-experiments SUITE.json | replay-allocated REPORT.json | benchmark-allocated NEW_RESULTS.json | direct-demo NEW_DIRECT.json | replay-direct DIRECT.json | community-run CONFIG.toml SCENARIO NEW_REPORT.json | community-batch CONFIG.toml NEW_BATCH.json | replay-community REPORT.json | replay-community-batch BATCH.json | community-csv REPORT.json NEW_DATA.csv | viewer REPORT.json NEW_VIEWER.html".into()),
+        _ => return Err("usage: zoora-review-market run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json | experiments CONFIG.toml NEW_SUITE.json | replay-experiments SUITE.json | replay-allocated REPORT.json | benchmark-allocated NEW_RESULTS.json | direct-demo NEW_DIRECT.json | replay-direct DIRECT.json | community-run CONFIG.toml SCENARIO NEW_REPORT.json | community-batch CONFIG.toml NEW_BATCH.json | replay-community REPORT.json | replay-community-batch BATCH.json | community-csv REPORT.json NEW_DATA.csv | viewer REPORT.json NEW_VIEWER.html | economy-campaign CONFIG.toml NEW_CAMPAIGN.json | economy-run CONFIG.toml SEED SCENARIO POLICY NEW_RUN.json | replay-economy RUN.json | replay-economy-campaign CAMPAIGN.json | economy-csv CAMPAIGN.json NEW_DATA.csv | economy-viewer CAMPAIGN.json NEW_VIEWER.html".into()),
     };
     println!("{result}");
     Ok(())

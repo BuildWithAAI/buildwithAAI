@@ -6,6 +6,8 @@ pub mod community_export;
 pub mod community_scenarios;
 pub mod config;
 pub mod direct;
+pub mod economy;
+pub mod economy_export;
 pub mod engine;
 pub mod experiments;
 pub mod report;
