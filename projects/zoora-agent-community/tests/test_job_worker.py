@@ -193,9 +193,22 @@ class WorkerTests(unittest.TestCase):
     def test_slow_model_deadline_settles_failure_and_does_not_hang(self):
         self.submit()
         fixture = self.model(slow=True)
-        started = time.monotonic()
-        result = self.worker(fixture, timeout=1)["jobs"][0]
-        self.assertLess(time.monotonic() - started, 2)
+        original = LocalModel.next_action
+        calls = []
+
+        def measured_call(provider, *args, **kwargs):
+            started = time.monotonic()
+            try:
+                return original(provider, *args, **kwargs)
+            finally:
+                calls.append(time.monotonic() - started)
+
+        # The inference deadline excludes claiming, private report fsync and
+        # HTTP settlement. Measure the call that actually drips response bytes.
+        with patch.object(LocalModel, "next_action", measured_call):
+            result = self.worker(fixture, timeout=1)["jobs"][0]
+        self.assertEqual(len(calls), 1)
+        self.assertLess(calls[0], 2)
         self.assertEqual(result["state"], "FAILED")
         self.assertEqual(result["error_code"], "RUN_DEADLINE")
         self.assertIsNone(result["artifact_id"])
