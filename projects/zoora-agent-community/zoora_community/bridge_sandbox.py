@@ -18,6 +18,8 @@ from .validation import Problem, canonical, fields, identifier, matching, parse_
 HOST = "api.sandbox.bridge.xyz"
 MAX_RESPONSE = 65_536
 REQUEST_SECONDS = 10
+DISCOVERY_PAGE_SIZE = 20
+DISCOVERY_PAGES = 5
 KEY = re.compile(r"sk-test[A-Za-z0-9_-]{10,240}\Z")
 AMOUNT = re.compile(r"(0|[1-9][0-9]{0,6})(?:\.([0-9]{1,6}))?\Z")
 STATE = re.compile(r"[a-z][a-z0-9_]{0,47}\Z")
@@ -126,20 +128,29 @@ class BridgeSandboxClient:
     def credential_fingerprint(self):
         return hashlib.sha256(b"ZOORA_BRIDGE_SANDBOX_KEY_V1\0" + self._key.encode()).hexdigest()
 
-    def _request(self, method, path, body=None, idempotency_key=None):
+    def _request(self, method, path, body=None, idempotency_key=None, *, deadline=None):
         # No URL/base-host argument, environment override, proxy, redirect or generic path API.
+        listing = path == f"/v0/transfers?limit={DISCOVERY_PAGE_SIZE}" or path.startswith(f"/v0/transfers?limit={DISCOVERY_PAGE_SIZE}&starting_after=")
         if not ((method == "POST" and path == "/v0/transfers" and body is not None and idempotency_key)
-                or (method == "GET" and path.startswith("/v0/transfers/") and body is None and idempotency_key is None)):
+                or (method == "GET" and (path.startswith("/v0/transfers/") or listing)
+                    and body is None and idempotency_key is None)):
             raise Problem(400, "BRIDGE_OPERATION_REJECTED")
         if method == "GET":
-            provider_id(path.removeprefix("/v0/transfers/"))
+            if listing:
+                if "starting_after=" in path:
+                    provider_id(path.split("starting_after=", 1)[1])
+            else:
+                provider_id(path.removeprefix("/v0/transfers/"))
         else:
             provider_id(idempotency_key)
             body_value(body)
             if idempotency_key != body["client_reference_id"]:
                 raise Problem(400, "BRIDGE_REFERENCE_KEY_MISMATCH")
-        deadline = time.monotonic() + REQUEST_SECONDS
-        connection = HTTPSConnection(HOST, timeout=3, context=ssl.create_default_context())
+        deadline = time.monotonic() + REQUEST_SECONDS if deadline is None else deadline
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise Problem(504, "BRIDGE_TIMEOUT")
+        connection = HTTPSConnection(HOST, timeout=min(3, remaining), context=ssl.create_default_context())
         response = None
         try:
             headers = {"Api-Key": self._key, "Accept": "application/json", "Accept-Encoding": "identity"}
@@ -202,6 +213,41 @@ class BridgeSandboxClient:
         value, response_hash = self._request("GET", "/v0/transfers/" + provider_id(transfer_id))
         return {**observation(value, body, transfer_id), "response_sha256": response_hash}
 
+    def discover(self, body):
+        """Bounded candidate search only. A miss is never proof that a POST had no effect."""
+        body_value(body)
+        deadline = time.monotonic() + REQUEST_SECONDS
+        cursor, seen, candidates, hashes, scanned, complete = None, set(), [], [], 0, False
+        for _ in range(DISCOVERY_PAGES):
+            path = f"/v0/transfers?limit={DISCOVERY_PAGE_SIZE}" + ("&starting_after=" + cursor if cursor else "")
+            value, digest = self._request("GET", path, deadline=deadline)
+            if (type(value.get("data")) is not list or type(value.get("count")) is not int
+                    or value["count"] != len(value["data"]) or len(value["data"]) > DISCOVERY_PAGE_SIZE):
+                raise Problem(502, "BRIDGE_DISCOVERY_SCHEMA_REJECTED")
+            hashes.append(digest)
+            for item in value["data"]:
+                try:
+                    transfer_id = provider_id(item.get("id"))
+                except (Problem, AttributeError):
+                    raise Problem(502, "BRIDGE_DISCOVERY_SCHEMA_REJECTED") from None
+                if transfer_id in seen:
+                    raise Problem(502, "BRIDGE_DISCOVERY_PAGINATION_REJECTED")
+                seen.add(transfer_id)
+                scanned += 1
+                cursor = transfer_id
+                if item.get("client_reference_id") == body["client_reference_id"]:
+                    match = observation(item, body)
+                    candidates.append(match["id"])
+            if len(value["data"]) < DISCOVERY_PAGE_SIZE:
+                complete = True
+                break
+        return {"candidate_ids": candidates, "pages_scanned": len(hashes), "records_scanned": scanned,
+                "scan_reached_short_page": complete, "page_response_sha256": hashes,
+                "status": "NO_MATCH_IN_SCAN" if not candidates else "ONE_CANDIDATE_IN_SCAN" if len(candidates) == 1 else "MULTIPLE_CANDIDATES_IN_SCAN",
+                "body_sha256": sha(body), "classification": "BOUNDED_READ_ONLY_DISCOVERY",
+                "negative_result_proves_absence": False, "automatic_binding": False,
+                "may_authorize_new_post": False, "provider_account_verified": False}
+
 
 def main():
     from .bridge_journal import BridgeJournal
@@ -210,11 +256,15 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     prepare = sub.add_parser("prepare")
     prepare.add_argument("--intent-file", type=Path, required=True)
-    for name in ("show", "advance"):
+    migrate = sub.add_parser("migrate")
+    migrate.add_argument("--backup", type=Path, required=True)
+    for name in ("show", "advance", "discover", "reconcile"):
         cmd = sub.add_parser(name)
         cmd.add_argument("--request-id", required=True)
-        if name == "advance":
+        if name != "show":
             cmd.add_argument("--key-file", type=Path, required=True)
+        if name == "reconcile":
+            cmd.add_argument("--transfer-id", required=True)
     args = parser.parse_args()
     try:
         journal = BridgeJournal(args.state)
@@ -223,10 +273,18 @@ def main():
             value = journal.prepare(read_json(args.intent_file, 4096))
         elif args.command == "show":
             value = journal.show(args.request_id)
+        elif args.command == "migrate":
+            value = journal.migrate(args.backup)
         else:
-            value = journal.advance(args.request_id, BridgeSandboxClient(read_key(args.key_file)))
+            client = BridgeSandboxClient(read_key(args.key_file))
+            if args.command == "reconcile":
+                value = journal.reconcile(args.request_id, client, args.transfer_id)
+            elif args.command == "discover":
+                value = journal.discover(args.request_id, client)
+            else:
+                value = journal.advance(args.request_id, client)
         print(canonical(value))
-        return 2 if args.command == "advance" and value["state"] == "UNKNOWN" else 0
+        return 2 if args.command in {"advance", "reconcile"} and value["state"] == "UNKNOWN" else 0
     except (Problem, OSError) as error:
         print(canonical({"error": error.code if isinstance(error, Problem) else "BRIDGE_LOCAL_IO_FAILED"}), file=sys.stderr)
         return 1

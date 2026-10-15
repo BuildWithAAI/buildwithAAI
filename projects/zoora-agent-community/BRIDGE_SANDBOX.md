@@ -1,6 +1,6 @@
 # AE-024 — durable Bridge sandbox connector
 
-October 15, 2026. This adds executable provider transport and an operator-run CLI. The only destination is `https://api.sandbox.bridge.xyz/v0`; the only operations are creating a narrowly specified Solana/USDC transfer object and retrieving that same object. The implementation accepts only `sk-test…` keys. There is no production endpoint switch, arbitrary URL, redirect following, card-details endpoint or wallet signer.
+October 15, 2026. This adds executable provider transport and an operator-run CLI. The only destination is `https://api.sandbox.bridge.xyz/v0`; operations cover a narrow Solana/USDC transfer object and, as extended by [AE-025](BRIDGE_RECONCILIATION.md), bounded read-only discovery and explicit ID reconciliation. The implementation accepts only `sk-test…` keys. There is no production endpoint switch, arbitrary URL, redirect following, card-details endpoint or wallet signer.
 
 **External Bridge account acceptance remains UNVERIFIED.** All retained acceptance traffic goes to a local TLS contract fixture, using a public test certificate/key and a fake API key. It exercises real HTTPS and independent CLI processes, not Bridge's actual sandbox service. No external Bridge request, blockchain transaction, bank payment or card issuance has been performed by this milestone. Provider route availability and response compatibility still require a credentialed vendor test.
 
@@ -45,14 +45,14 @@ Bridge documents required POST idempotency keys, unchanged request bodies, a 24-
 | Worker died with an incomplete attempt | Keep uncertainty; refuse dispatch during its 60-second lease; same-key retry after the lease within the retry boundary |
 | A bound transfer ID is known | GET that exact transfer ID, including beyond the POST retry boundary |
 | Poll fails or returns mismatched terms | Report latest outcome as UNKNOWN; retain prior observation, its timestamp and the known ID; continue GET rather than POST |
-| Unknown ID beyond the retry boundary | Stop automatic submission and require external reconciliation |
+| Unknown ID beyond the retry boundary | Stop POST submission; use bounded discovery and explicit matching-ID GET reconciliation |
 | Credential fingerprint changes or wall clock moves backward | Refuse before HTTP and require reconciliation |
 
 The response must bind the customer, client reference, exact normalized amount, currency, rails and source/destination addresses. GET additionally binds the retained transfer UUID. Missing or conflicting terms are refused. Provider state strings are bounded observations; even `payment_processed` does not credit the community ledger or verify settlement. Funding instructions, receipt URLs, personal/card data and provider error text are not returned or retained. Only a response hash and selected bound fields are stored.
 
 SQLite commits claims before network activity and completes them afterward. A second process cannot claim a live lease. A stale worker cannot overwrite a newer attempt's result. Network errors and process death leave uncertainty retained. These checks depend on Bridge's documented idempotency behavior; they do not prove universal exactly-once side effects, service availability, or an honest local host.
 
-The journal is private host state, with up to 64 intents and 32 attempts per intent. It stores a one-way credential fingerprint, not the bearer key. Automatic credential rotation is intentionally blocked because account continuity has not been authenticated. A known-ID import/recovery workflow is not implemented. This journal is separate from the community database and **is not included in community backup/restore commands**. Lost, cloned or rolled-back journals can forget earlier attempts; independently created journals do not provide global request deduplication. Complete host rewriting, clock manipulation and restored stale state are outside its consistency guarantee.
+The journal is private host state, with up to 64 intents and 32 attempts per intent. It stores a one-way credential fingerprint, not the bearer key. Automatic credential rotation is intentionally blocked because account continuity has not been authenticated. AE-025 implements read-only ID reconciliation and an explicit backup migration from journal schema 1 to 2; it does not reconstruct a lost journal. This journal is separate from the community database and **is not included in community backup/restore commands**. Lost, cloned or rolled-back journals can forget earlier attempts; independently created journals do not provide global request deduplication. Complete host rewriting, clock manipulation and restored stale state are outside its consistency guarantee.
 
 ## Evidence and remaining integration
 

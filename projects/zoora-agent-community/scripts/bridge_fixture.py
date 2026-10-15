@@ -8,10 +8,13 @@ import json
 import os
 from pathlib import Path
 import ssl
+import sqlite3
 import subprocess
 import sys
 import threading
 from unittest.mock import patch
+from contextlib import closing
+from urllib.parse import parse_qs, urlsplit
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +33,16 @@ def intent(index=1):
             "destination_address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "amount_usdc": "12.500001"}
 
 
+def version_one_journal(path):
+    """Test-only reconstruction of v1's exact columns; histories must be CREATE/POLL only."""
+    with closing(sqlite3.connect(path, autocommit=True)) as connection:
+        if connection.execute("SELECT COUNT(*) FROM attempts WHERE kind NOT IN ('CREATE','POLL')").fetchone()[0]:
+            raise ValueError("Not a legacy history")
+        connection.execute("ALTER TABLE attempts DROP COLUMN candidate_id")
+        connection.execute("DROP TABLE bridge_migrations")
+        connection.execute("PRAGMA user_version=1")
+
+
 class ProviderFixture:
     def __init__(self):
         self.requests, self.effects = [], {}
@@ -40,6 +53,8 @@ class ProviderFixture:
         self.encoding = None
         self.content_type = "application/json"
         self.declared_length = None
+        self.listing = None
+        self.repeat_page = False
         self.entered, self.release = threading.Event(), threading.Event()
 
     @contextmanager
@@ -73,7 +88,20 @@ class ProviderFixture:
             def do_GET(self):
                 with fixture.lock:
                     fixture.requests.append({"method": "GET", "path": self.path, "headers": dict(self.headers), "body": None})
-                    value = next((copy.deepcopy(v) for v in fixture.effects.values() if self.path == "/v0/transfers/" + v["id"]), {})
+                    if self.path.startswith("/v0/transfers?"):
+                        query = parse_qs(urlsplit(self.path).query)
+                        data = copy.deepcopy(fixture.listing if fixture.listing is not None else list(reversed(list(fixture.effects.values()))))
+                        cursor = query.get("starting_after", [None])[0]
+                        if cursor and not fixture.repeat_page:
+                            index = next((i for i, item in enumerate(data) if item["id"] == cursor), len(data))
+                            data = data[index + 1:]
+                        data = data[:int(query["limit"][0])]
+                        value = {"count": len(data), "data": data}
+                    else:
+                        value = next((copy.deepcopy(v) for v in fixture.effects.values() if self.path == "/v0/transfers/" + v["id"]), {})
+                fixture.entered.set()
+                if fixture.mode == "block_reads":
+                    fixture.release.wait(timeout=5)
                 self.respond(value, fixture.status if value else 404)
 
             def respond(self, value, status):
@@ -114,14 +142,14 @@ class ProviderFixture:
         def connection(host, *, timeout, context):
             if host != HOST or context.verify_mode != ssl.CERT_REQUIRED or not context.check_hostname:
                 raise AssertionError("Test requires the production factory's sandbox host and strict TLS settings")
-            return original("localhost", self.port, timeout=timeout, context=trusted)
+            return original("127.0.0.1", self.port, timeout=timeout, context=trusted)
 
         with patch("zoora_community.bridge_sandbox.HTTPSConnection", connection):
             yield
 
     def cli(self, state, args, *, at=1_800_000_000_000, crash=False):
         return subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", str(Path(__file__).resolve()),
-            "_cli", str(self.port), str(at), "crash" if crash else "normal", "--state", str(state), *map(str, args)],
+            "_cli", str(self.port), str(at), "poll-crash" if crash == "poll" else "crash" if crash else "normal", "--state", str(state), *map(str, args)],
             cwd=ROOT, capture_output=True, text=True, timeout=15)
 
 
@@ -129,18 +157,26 @@ def cli_fixture():
     # Only this test harness redirects transport; the shipped CLI has no endpoint/test-clock switch.
     fixture = ProviderFixture()
     fixture.port = int(sys.argv[2])
-    at, crash = int(sys.argv[3]), sys.argv[4] == "crash"
+    at, crash = int(sys.argv[3]), sys.argv[4]
     args = sys.argv[5:]
     original_create = BridgeSandboxClient.create
+    original_poll = BridgeSandboxClient.poll
 
     def create_then_crash(client, body, key):
         result = original_create(client, body, key)
-        if crash:
+        if crash == "crash":
             os._exit(79)
         return result
 
+    def poll_then_crash(client, transfer_id, body):
+        result = original_poll(client, transfer_id, body)
+        if crash == "poll-crash":
+            os._exit(80)
+        return result
+
     with fixture.transport(), patch("zoora_community.bridge_journal.time.time_ns", lambda: at * 1_000_000), \
-            patch.object(BridgeSandboxClient, "create", create_then_crash), patch.object(sys, "argv", ["bridge-sandbox", *args]):
+            patch.object(BridgeSandboxClient, "create", create_then_crash), \
+            patch.object(BridgeSandboxClient, "poll", poll_then_crash), patch.object(sys, "argv", ["bridge-sandbox", *args]):
         return main()
 
 
