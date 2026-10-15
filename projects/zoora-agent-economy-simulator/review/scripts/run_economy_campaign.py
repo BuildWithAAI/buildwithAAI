@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = {"BALANCED", "SHARED_OPERATOR_SPAM", "SYBIL_SPAM", "PROVIDER_OUTAGE",
              "DEMAND_SURGE", "BUDGET_SQUEEZE", "REFUND_STRESS", "DIGEST_ONLY"}
 POLICIES = ("BASELINE", "OPERATOR_CAP")
+PAYMENT_SCENARIOS = {"NORMAL_DELAY", "UNPAID_SYBIL_FLOOD", "PAID_SYBIL_FLOOD", "OBSERVATION_LAG", "LATE_PAYMENT", "DUPLICATE_RECEIPTS", "OUT_OF_TERMS", "UNBACKED_CLAIMS"}
+PAYMENT_POLICIES = ("RESERVE_ON_QUOTE", "STRICT_OBSERVATION", "EVIDENCE_GRACE")
 LIMIT = 128 * 1024 * 1024
 
 def sha(path: Path) -> str:
@@ -68,10 +70,14 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--binary", type=Path, default=ROOT / "target" / "release" /
                         ("zoora-review-market.exe" if os.name == "nt" else "zoora-review-market"))
+    parser.add_argument("--model", choices=["economy", "payment"], default="economy")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--max-new-runs", type=int, help="Checkpoint early; remains INCOMPLETE")
     parser.add_argument("--timeout", type=int, default=180)
     args = parser.parse_args()
+    mode = args.model
+    allowed_scenarios = PAYMENT_SCENARIOS if mode == "payment" else SCENARIOS
+    policies = PAYMENT_POLICIES if mode == "payment" else POLICIES
     if not 1 <= args.timeout <= 3600 or (args.max_new_runs is not None and args.max_new_runs < 1):
         raise ValueError("Invalid timeout/run limit")
     config_path, binary = args.config.resolve(strict=True), args.binary.resolve(strict=True)
@@ -82,7 +88,7 @@ def main() -> int:
     seeds, scenarios = config.get("seeds"), config.get("scenarios")
     if not isinstance(seeds, list) or not 1 <= len(seeds) <= 16 or any(type(s) is not int or not 0 <= s <= 2**64-1 for s in seeds) or seeds != sorted(set(seeds)):
         raise ValueError("Expected sorted distinct bounded seeds")
-    if not isinstance(scenarios, list) or not 1 <= len(scenarios) <= 8 or any(s not in SCENARIOS for s in scenarios) or len(set(scenarios)) != len(scenarios):
+    if not isinstance(scenarios, list) or not 1 <= len(scenarios) <= 8 or any(s not in allowed_scenarios for s in scenarios) or len(set(scenarios)) != len(scenarios):
         raise ValueError("Invalid scenarios")
     folder = args.output_dir.absolute()
     if folder.is_symlink():
@@ -91,7 +97,9 @@ def main() -> int:
     binary_sha = sha(binary)
     identity = {"schema_version": 1, "classification": "SYNTHETIC", "unit": "SIMULATED_UNITS",
                 "config_sha256": config_sha, "binary_sha256": binary_sha,
-                "expected_runs": len(seeds) * len(scenarios) * 2}
+                "expected_runs": len(seeds) * len(scenarios) * len(policies)}
+    if mode == "payment":
+        identity["model"] = "AE013_PAYMENT_WINDOWS_V1"
     if folder.exists():
         if not args.resume:
             raise ValueError("Output directory exists; use --resume or choose a new directory")
@@ -112,13 +120,13 @@ def main() -> int:
     new_runs = 0
     for seed in seeds:
         for scenario in scenarios:
-            for policy in POLICIES:
+            for policy in policies:
                 name = f"{seed}-{scenario}-{policy}.json"
                 target = runs_dir / name
                 if target.exists() or target.is_symlink():
                     if not args.resume:
                         raise ValueError("Unexpected pre-existing run")
-                    execute(binary, "replay-economy", target, timeout=args.timeout)
+                    execute(binary, "replay-" + mode, target, timeout=args.timeout)
                 else:
                     if args.max_new_runs is not None and new_runs >= args.max_new_runs:
                         print(json.dumps({"state": "INCOMPLETE", "completed_runs": progress["completed_runs"], "expected_runs": identity["expected_runs"]}))
@@ -127,7 +135,7 @@ def main() -> int:
                     # partial file with a valid checkpoint name. Publish without overwriting.
                     with tempfile.TemporaryDirectory(prefix="stage-", dir=folder) as stage:
                         temporary = Path(stage) / name
-                        execute(binary, "economy-run", config_path, seed, scenario, policy,
+                        execute(binary, mode + "-run", config_path, seed, scenario, policy,
                                 temporary, timeout=args.timeout)
                         publish(temporary, target, False)
                     new_runs += 1
@@ -145,11 +153,11 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="exports-", dir=folder) as stage:
         stage = Path(stage)
         campaign = stage / "campaign.json"
-        execute(binary, "economy-campaign", config_path, campaign, timeout=args.timeout)
+        execute(binary, mode + "-campaign", config_path, campaign, timeout=args.timeout)
         summary = json_file(campaign)
         if [r["run_fingerprint"] for r in summary["runs"]] != [r["run_fingerprint"] for r in progress["runs"]]:
             raise ValueError("Campaign regeneration differs from checkpointed runs")
-        for command, name in [("economy-csv", "campaign.csv"), ("economy-viewer", "campaign.html")]:
+        for command, name in [(mode + "-csv", "campaign.csv"), (mode + "-viewer", "campaign.html")]:
             execute(binary, command, campaign, stage / name, timeout=args.timeout)
         for name in ["campaign.json", "campaign.csv", "campaign.html"]:
             publish(stage / name, folder / name, args.resume)

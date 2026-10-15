@@ -52,6 +52,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python scripts/economy_evidence.py
+      - name: Payment evidence timing, funded queues and independent accounting
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/payment_evidence.py
       - name: Real Chrome viewer integration and screenshots
         if: matrix.os == 'ubuntu-latest'
         env:

@@ -16,6 +16,8 @@ use zoora_review_market::{
     economy::{AdmissionPolicy, EconomyCampaign, EconomyConfig, EconomyRun, StressScenario},
     economy_export,
     experiments::{ExperimentConfig, ExperimentSuite},
+    payment_export,
+    payments::{PaymentCampaign, PaymentConfig, PaymentPolicy, PaymentRun, PaymentScenario},
     viewer, ReviewConfig, ReviewEngine, ReviewReport,
 };
 fn read(path: &Path, limit: u64) -> Result<String, String> {
@@ -55,6 +57,34 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 fn execute() -> Result<(), String> {
     let args: Vec<_> = env::args().skip(1).collect();
     let result = match args.as_slice() {
+        [mode,config,output] if mode=="payment-campaign"=>{
+            let config=PaymentConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
+            let report=PaymentCampaign::generate(config).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"payment campaign encoding failed")?)?;
+            format!("SYNTHETIC payment campaign: {} matched runs verified; {}",report.runs.len(),report.fingerprint)
+        },
+        [mode,config,seed,scenario,policy,output] if mode=="payment-run"=>{
+            let config=PaymentConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
+            let seed=seed.parse::<u64>().map_err(|_|"seed must be unsigned")?;
+            let scenario=PaymentScenario::parse(scenario).ok_or("unknown payment scenario")?;
+            let policy=PaymentPolicy::parse(policy).ok_or("unknown payment policy")?;
+            let report=PaymentRun::generate(config,seed,scenario,policy).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"payment run encoding failed")?)?;
+            format!("SYNTHETIC payment observations and work queue verified: {}",report.fingerprint)
+        },
+        [mode,input] if mode=="replay-payment"=>{
+            let report:PaymentRun=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid payment report")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC payment run regenerated and verified".into()
+        },
+        [mode,input] if mode=="replay-payment-campaign"=>{
+            let report:PaymentCampaign=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid payment campaign")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC payment campaign regenerated and verified".into()
+        },
+        [mode,input,output] if mode=="payment-csv"||mode=="payment-viewer"=>{
+            let report:PaymentCampaign=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid payment campaign")?;
+            let content=if mode=="payment-csv"{payment_export::csv(&report)}else{payment_export::html(&report)}.map_err(|e|e.to_string())?;
+            write(Path::new(output),content.as_bytes())?;"SYNTHETIC payment export created after full replay".into()
+        },
         [mode, config, output] if mode == "economy-campaign" => {
             let config = EconomyConfig::from_toml(&read(Path::new(config), 4 * 1024 * 1024)?).map_err(|e| e.to_string())?;
             let report = EconomyCampaign::generate(config).map_err(|e| e.to_string())?;
@@ -202,7 +232,7 @@ fn execute() -> Result<(), String> {
             write(Path::new(output), &serde_json::to_vec_pretty(&results).map_err(|_| "benchmark encoding failed")?)?;
             "SYNTHETIC review scaling verified".into()
         },
-        _ => return Err("usage: zoora-review-market run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json | experiments CONFIG.toml NEW_SUITE.json | replay-experiments SUITE.json | replay-allocated REPORT.json | benchmark-allocated NEW_RESULTS.json | direct-demo NEW_DIRECT.json | replay-direct DIRECT.json | community-run CONFIG.toml SCENARIO NEW_REPORT.json | community-batch CONFIG.toml NEW_BATCH.json | replay-community REPORT.json | replay-community-batch BATCH.json | community-csv REPORT.json NEW_DATA.csv | viewer REPORT.json NEW_VIEWER.html | economy-campaign CONFIG.toml NEW_CAMPAIGN.json | economy-run CONFIG.toml SEED SCENARIO POLICY NEW_RUN.json | replay-economy RUN.json | replay-economy-campaign CAMPAIGN.json | economy-csv CAMPAIGN.json NEW_DATA.csv | economy-viewer CAMPAIGN.json NEW_VIEWER.html".into()),
+        _ => return Err("usage: zoora-review-market run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json | experiments CONFIG.toml NEW_SUITE.json | replay-experiments SUITE.json | replay-allocated REPORT.json | benchmark-allocated NEW_RESULTS.json | direct-demo NEW_DIRECT.json | replay-direct DIRECT.json | community-run CONFIG.toml SCENARIO NEW_REPORT.json | community-batch CONFIG.toml NEW_BATCH.json | replay-community REPORT.json | replay-community-batch BATCH.json | community-csv REPORT.json NEW_DATA.csv | viewer REPORT.json NEW_VIEWER.html | economy-campaign CONFIG.toml NEW_CAMPAIGN.json | economy-run CONFIG.toml SEED SCENARIO POLICY NEW_RUN.json | replay-economy RUN.json | replay-economy-campaign CAMPAIGN.json | economy-csv CAMPAIGN.json NEW_DATA.csv | economy-viewer CAMPAIGN.json NEW_VIEWER.html | payment-campaign CONFIG.toml NEW_CAMPAIGN.json | payment-run CONFIG.toml SEED SCENARIO POLICY NEW_RUN.json | replay-payment RUN.json | replay-payment-campaign CAMPAIGN.json | payment-csv CAMPAIGN.json NEW_DATA.csv | payment-viewer CAMPAIGN.json NEW_VIEWER.html".into()),
     };
     println!("{result}");
     Ok(())

@@ -10,6 +10,8 @@ pub mod economy;
 pub mod economy_export;
 pub mod engine;
 pub mod experiments;
+pub mod payment_export;
+pub mod payments;
 pub mod report;
 pub mod types;
 pub mod viewer;
