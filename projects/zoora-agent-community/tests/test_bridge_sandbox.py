@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from bridge_fixture import KEY, ProviderFixture, intent
-from zoora_community.bridge_journal import LEASE_MS, RETRY_MS, BridgeJournal
+from zoora_community.bridge_journal import JOURNAL_VERSION, LEASE_MS, RETRY_MS, BridgeJournal
 from zoora_community.bridge_sandbox import (
     MAX_RESPONSE, BridgeSandboxClient, amount, body_value, read_key, transfer_body,
 )
@@ -311,7 +311,7 @@ class BridgeJournalTests(SandboxCase):
 
     def test_private_directory_and_schema_are_checked_before_dispatch(self):
         with closing(sqlite3.connect(self.journal.path, autocommit=True)) as connection:
-            connection.execute("PRAGMA user_version=3")
+            connection.execute(f"PRAGMA user_version={JOURNAL_VERSION + 1}")
         self.error("BRIDGE_JOURNAL_SCHEMA_REJECTED", self.advance)
         if os.name == "posix":
             self.journal.state.chmod(0o755)

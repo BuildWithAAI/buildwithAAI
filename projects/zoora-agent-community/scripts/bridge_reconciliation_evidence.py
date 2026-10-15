@@ -11,7 +11,7 @@ import tempfile
 import uuid
 
 from bridge_fixture import KEY, ROOT, ProviderFixture, intent, version_one_journal
-from zoora_community.bridge_journal import LEASE_MS, RETRY_MS, BridgeJournal
+from zoora_community.bridge_journal import JOURNAL_VERSION, LEASE_MS, RETRY_MS, BridgeJournal
 from zoora_community.validation import canonical
 
 
@@ -73,7 +73,7 @@ def run():
                 saved_schema = connection.execute("PRAGMA user_version").fetchone()[0]
                 saved_attempts = connection.execute("SELECT COUNT(*) FROM attempts").fetchone()[0]
             check("actual migration CLI saves and pins the audited old schema before upgrade",
-                  saved_schema == 1 and saved_attempts == 3 and migration["journal_schema_version"] == 2
+                  saved_schema == 1 and saved_attempts == 3 and migration["journal_schema_version"] == JOURNAL_VERSION
                   and migration["backup_sha256"] == hashlib.sha256(backup.read_bytes()).hexdigest())
             after = journal.show(intent()["request_id"])
             check("migration preserves uncertain original request key body and first-attempt time",
@@ -167,7 +167,7 @@ def run():
     evidence = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
                 "classification": "LOCAL_HTTPS_RECONCILIATION_FIXTURE", "transport": "ACTUAL_VERIFIED_LOCAL_TLS",
                 "clock": "INJECTED_FOR_EXPIRY_AND_LEASE_BOUNDARIES", "checks": checks,
-                "journal_schema_version": 2, "backup_schema_version": saved_schema, "migration": migration,
+                "journal_schema_version": JOURNAL_VERSION, "backup_schema_version": saved_schema, "migration": migration,
                 "journal_intents": count, "attempt_kinds": kinds, "journal_attempts": sum(kinds.values()),
                 "http_requests": len(wire), "post_requests": sum(r["method"] == "POST" for r in wire),
                 "unique_fixture_transfers": len(provider.effects), "wire": wire,

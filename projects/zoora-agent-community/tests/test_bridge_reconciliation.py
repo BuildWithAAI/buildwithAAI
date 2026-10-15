@@ -11,7 +11,7 @@ import uuid
 
 from test_bridge_sandbox import SandboxCase
 from bridge_fixture import KEY, intent
-from zoora_community.bridge_journal import LEASE_MS, RETRY_MS, BridgeJournal
+from zoora_community.bridge_journal import JOURNAL_VERSION, LEASE_MS, RETRY_MS, BridgeJournal
 from zoora_community.bridge_sandbox import BridgeSandboxClient, transfer_body
 from zoora_community.validation import Problem, canonical
 
@@ -21,6 +21,7 @@ def legacy(journal):
     with closing(sqlite3.connect(journal.path, autocommit=True)) as connection:
         connection.execute("ALTER TABLE attempts DROP COLUMN candidate_id")
         connection.execute("DROP TABLE bridge_migrations")
+        connection.execute("DROP TABLE bridge_control")
         connection.execute("PRAGMA user_version=1")
 
 
@@ -241,7 +242,7 @@ class JournalMigrationTests(SandboxCase):
         self.assertEqual(known["last_candidate_id"], self.known["observation"]["id"])
         self.assertEqual(pending["idempotency_key"], self.pending["idempotency_key"])
         self.assertEqual(pending["state"], "UNKNOWN")
-        self.assertEqual(result["journal_schema_version"], 2)
+        self.assertEqual(result["journal_schema_version"], JOURNAL_VERSION)
 
     def test_existing_backup_is_never_overwritten_and_upgrade_does_not_start(self):
         self.backup.write_bytes(b"keep original")
