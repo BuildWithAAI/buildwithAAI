@@ -12,6 +12,8 @@ pub mod economy;
 pub mod economy_export;
 pub mod engine;
 pub mod experiments;
+pub mod ownership;
+pub mod ownership_scenarios;
 pub mod payment_export;
 pub mod payments;
 pub mod recovery;

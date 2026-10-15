@@ -326,6 +326,15 @@ pub struct TrustTranscript {
     pub profiles: Vec<TrustProfile>,
     pub direct: DirectReport,
 }
+/// Internal, read-only exposure facts; no new legacy report fields.
+pub(crate) struct WorkExposure {
+    pub id: u64,
+    pub workers: Vec<u64>,
+    pub lead: u64,
+    pub payment_units: u64,
+    pub net_paid: u128,
+    pub active: bool,
+}
 pub struct TrustEngine {
     config: TrustConfig,
     clock: u64,
@@ -427,6 +436,19 @@ impl TrustEngine {
             TrustDisposition::Accepted { .. } => !self.credit_proof(id, control),
             _ => true,
         }
+    }
+    pub(crate) fn controlled_exposures(&self, control: &dyn TrustControl) -> Vec<WorkExposure> {
+        self.contracts
+            .iter()
+            .map(|(id, c)| WorkExposure {
+                id: *id,
+                workers: c.plan.shares.iter().map(|s| s.agent).collect(),
+                lead: c.plan.lead,
+                payment_units: c.plan.payment_units,
+                net_paid: self.agreement(*id).net_transferred(),
+                active: self.active(*id, control),
+            })
+            .collect()
     }
     pub fn profile(&self, agent: u64) -> Result<TrustProfile> {
         self.controlled_profile(agent, &NoTrustControl)
