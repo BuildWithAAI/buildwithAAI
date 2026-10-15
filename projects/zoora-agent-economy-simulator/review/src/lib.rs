@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 pub mod allocation;
+pub mod authorization;
+pub mod authorization_export;
 mod bounded;
 pub mod community;
 pub mod community_export;
