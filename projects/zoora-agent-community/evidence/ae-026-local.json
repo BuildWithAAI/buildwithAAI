@@ -1,0 +1,40 @@
+{
+  "classification": "LOCAL_WORKTREE_CHECKPOINT",
+  "source_parent_sha": "e2ce77ce4180baadacadd5d31b1dca92bfa2850e",
+  "canonical_parent_sha": "e1c32062d870b662c26e5098c22e308d2795ebc7",
+  "source_worktree_dirty": true,
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "normal_tests": 405,
+  "optimized_tests": 405,
+  "new_regressions": 29,
+  "acceptance_checks": 26,
+  "journal_schema_version": 3,
+  "http_requests": 10,
+  "post_requests": 3,
+  "get_requests": 7,
+  "unique_fixture_transfers": 3,
+  "restored_attempt_kinds": {
+    "CREATE": 3,
+    "POLL": 2,
+    "RECONCILE": 3
+  },
+  "snapshot_report_sha256": "e15320b7d2026b5172b56a7f9d1789e8312ad37ce19bf3c36b571aee5b5f27b9",
+  "external_bridge_requests": 0,
+  "provider_acceptance": "UNVERIFIED",
+  "wallet_execution": false,
+  "settlement_accounting": "UNAVAILABLE",
+  "prior_actual_acceptance_scripts_passed": [
+    "integration",
+    "migration",
+    "operations",
+    "pilot_access",
+    "task_capacity",
+    "spending",
+    "commerce",
+    "durable_commerce",
+    "bridge_sandbox",
+    "bridge_reconciliation"
+  ],
+  "published_ci": "RECORDED_SEPARATELY_IN_DEVELOPMENT_PR"
+}

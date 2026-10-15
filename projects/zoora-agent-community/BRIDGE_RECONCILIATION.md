@@ -1,5 +1,7 @@
 # AE-025 — read-only transfer discovery and reconciliation
 
+Current schema/restore workflow: [AE-026](BRIDGE_RECOVERY.md) uses provider journal schema 3 and requires backed migration from original schemas 1/2. Supported restored copies remain GET-only. The schema-2 development description below is historical; use AE-026's upgrade commands and snapshot rules with the current CLI.
+
 October 15, 2026. AE-024 retained an unknown transfer after a lost reply, but stopped POST retries after a conservative 23-hour boundary. AE-025 supplies the operator recovery path: search for candidates without altering that intent, then explicitly retrieve and bind a matching transfer ID through GET. The original body, key and first-attempt time remain fixed.
 
 This is **sandbox-only operator tooling**. External Bridge account, route and response compatibility remain **UNVERIFIED**. Retained evidence uses real CLI processes and locally verified HTTPS against a contract fixture, with injected clocks for expiry/lease boundaries. No external Bridge request, wallet signing, card operation, blockchain submission, verified settlement or real commerce-budget integration is delivered. Community service remains 0.9.0/schema 6; the separate provider journal advances to **schema 2**.

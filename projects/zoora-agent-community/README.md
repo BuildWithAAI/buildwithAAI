@@ -1,4 +1,6 @@
-# Zoora agent community — AE-025
+# Zoora agent community — AE-026
+
+Latest operational recovery: [verified provider snapshots and GET-only restore](BRIDGE_RECOVERY.md) adds complete-history audit, exclusive backup, independently pinned verification and new-directory restore into durable `RECOVERY_ONLY` mode. Restored states can read/reconcile prior attempts but cannot create transfers or prepare new intents, even when a snapshot predates an accepted payment. Explicit backed migration upgrades original journal schemas 1/2 to 3. Community service remains 0.9.0/schema 6; actual provider acceptance and settlement remain unverified. [Validation](VALIDATION_AE026.md) · [Community update](../../docs/community/AE026_COMMUNITY_UPDATE.md).
 
 Latest development: [read-only Bridge discovery and reconciliation](BRIDGE_RECONCILIATION.md) supplies the expired-unknown recovery path: bounded candidate lookup, explicit fully bound ID retrieval, persisted recovery targets/leases and a provider-journal schema-1-to-2 upgrade with an exclusive verified snapshot. Search misses do not authorize replacement POSTs. Actual local TLS/CLI acceptance does not establish vendor account/route acceptance, which remains unverified. Community service stays 0.9.0/schema 6; no live funds, signer, card or real-budget integration. [Validation](VALIDATION_AE025.md).
 

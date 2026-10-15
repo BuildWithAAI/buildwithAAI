@@ -252,12 +252,19 @@ class BridgeSandboxClient:
 def main():
     from .bridge_journal import BridgeJournal
     parser = argparse.ArgumentParser(description="Bridge sandbox transfer rehearsal; no production or wallet signing")
-    parser.add_argument("--state", type=Path, required=True, help="separate private sandbox journal directory")
+    parser.add_argument("--state", type=Path, help="separate private sandbox journal directory")
     sub = parser.add_subparsers(dest="command", required=True)
     prepare = sub.add_parser("prepare")
     prepare.add_argument("--intent-file", type=Path, required=True)
     migrate = sub.add_parser("migrate")
     migrate.add_argument("--backup", type=Path, required=True)
+    sub.add_parser("audit")
+    backup = sub.add_parser("backup")
+    backup.add_argument("--output", type=Path, required=True)
+    for name in ("verify-backup", "restore"):
+        cmd = sub.add_parser(name)
+        cmd.add_argument("--backup", type=Path, required=True)
+        cmd.add_argument("--sha256", required=True, help="expected digest saved through a trusted channel")
     for name in ("show", "advance", "discover", "reconcile"):
         cmd = sub.add_parser(name)
         cmd.add_argument("--request-id", required=True)
@@ -266,9 +273,20 @@ def main():
         if name == "reconcile":
             cmd.add_argument("--transfer-id", required=True)
     args = parser.parse_args()
+    if args.command != "verify-backup" and args.state is None:
+        parser.error("--state is required for this command")
     try:
-        journal = BridgeJournal(args.state)
-        if args.command == "prepare":
+        journal = BridgeJournal(args.state) if args.state is not None else None
+        if args.command == "verify-backup":
+            from .bridge_recovery import verify_backup
+            value = verify_backup(args.backup, args.sha256)
+        elif args.command == "restore":
+            value = journal.restore(args.backup, args.sha256)
+        elif args.command == "audit":
+            value = journal.audit()
+        elif args.command == "backup":
+            value = journal.backup(args.output)
+        elif args.command == "prepare":
             from .spending import read_json
             value = journal.prepare(read_json(args.intent_file, 4096))
         elif args.command == "show":

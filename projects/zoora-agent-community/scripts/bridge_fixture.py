@@ -40,6 +40,7 @@ def version_one_journal(path):
             raise ValueError("Not a legacy history")
         connection.execute("ALTER TABLE attempts DROP COLUMN candidate_id")
         connection.execute("DROP TABLE bridge_migrations")
+        connection.execute("DROP TABLE bridge_control")
         connection.execute("PRAGMA user_version=1")
 
 
@@ -149,7 +150,7 @@ class ProviderFixture:
 
     def cli(self, state, args, *, at=1_800_000_000_000, crash=False):
         return subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", str(Path(__file__).resolve()),
-            "_cli", str(self.port), str(at), "poll-crash" if crash == "poll" else "crash" if crash else "normal", "--state", str(state), *map(str, args)],
+            "_cli", str(self.port), str(at), "restore-crash" if crash == "restore" else "poll-crash" if crash == "poll" else "crash" if crash else "normal", "--state", str(state), *map(str, args)],
             cwd=ROOT, capture_output=True, text=True, timeout=15)
 
 
@@ -161,6 +162,8 @@ def cli_fixture():
     args = sys.argv[5:]
     original_create = BridgeSandboxClient.create
     original_poll = BridgeSandboxClient.poll
+    from zoora_community import bridge_recovery
+    original_sync = bridge_recovery.sync_directory
 
     def create_then_crash(client, body, key):
         result = original_create(client, body, key)
@@ -174,9 +177,16 @@ def cli_fixture():
             os._exit(80)
         return result
 
+    def sync_then_crash(path):
+        original_sync(path)
+        if crash == "restore-crash" and path == Path(args[args.index("--state") + 1]).absolute():
+            os._exit(81)
+
     with fixture.transport(), patch("zoora_community.bridge_journal.time.time_ns", lambda: at * 1_000_000), \
             patch.object(BridgeSandboxClient, "create", create_then_crash), \
-            patch.object(BridgeSandboxClient, "poll", poll_then_crash), patch.object(sys, "argv", ["bridge-sandbox", *args]):
+            patch.object(BridgeSandboxClient, "poll", poll_then_crash), \
+            patch.object(bridge_recovery, "sync_directory", sync_then_crash), \
+            patch.object(sys, "argv", ["bridge-sandbox", *args]):
         return main()
 
 

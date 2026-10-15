@@ -19,7 +19,11 @@ LEASE_MS = 60_000
 MAX_INTENTS = 64
 MAX_ATTEMPTS = 32
 ERROR = re.compile(r"BRIDGE_[A-Z0-9_]{1,80}\Z")
-JOURNAL_VERSION = 2
+JOURNAL_VERSION = 3
+CONTROL_DDL = """CREATE TABLE bridge_control (
+ id INTEGER PRIMARY KEY CHECK(id=1), mode TEXT NOT NULL,
+ restored_from_sha256 TEXT, restored_at_ms INTEGER);
+ INSERT INTO bridge_control VALUES (1,'ACTIVE',NULL,NULL);"""
 DDL = """CREATE TABLE intents (
  id TEXT PRIMARY KEY, intent_json TEXT NOT NULL, body_json TEXT NOT NULL,
  body_sha256 TEXT NOT NULL, idempotency_key TEXT NOT NULL UNIQUE,
@@ -31,7 +35,7 @@ DDL = """CREATE TABLE intents (
  candidate_id TEXT,
  UNIQUE(intent_id,sequence));
  CREATE TABLE bridge_migrations (version INTEGER PRIMARY KEY, at_ms INTEGER NOT NULL, backup_sha256 TEXT NOT NULL);
- PRAGMA user_version=2;"""
+ """ + CONTROL_DDL + "PRAGMA user_version=3;"
 
 
 class BridgeJournal:
@@ -82,10 +86,12 @@ class BridgeJournal:
                         for statement in DDL.split(";"):
                             if statement.strip():
                                 connection.execute(statement)
-                    elif version == 1 and not allow_legacy:
+                    elif version in (1, 2) and not allow_legacy:
                         raise Problem(503, "BRIDGE_JOURNAL_MIGRATION_REQUIRED")
-                    elif version not in ({1, JOURNAL_VERSION} if allow_legacy else {JOURNAL_VERSION}):
+                    elif version not in ({1, 2, JOURNAL_VERSION} if allow_legacy else {JOURNAL_VERSION}):
                         raise Problem(503, "BRIDGE_JOURNAL_SCHEMA_REJECTED")
+                    if version == 0 or version == JOURNAL_VERSION:
+                        self._control(connection)
                     yield connection
                     connection.execute("COMMIT")
                 except BaseException:
@@ -93,6 +99,23 @@ class BridgeJournal:
                     raise
         except sqlite3.Error:
             raise Problem(503, "BRIDGE_JOURNAL_UNAVAILABLE") from None
+
+    @staticmethod
+    def _control(connection):
+        rows = connection.execute("SELECT * FROM bridge_control").fetchall()
+        if len(rows) != 1:
+            raise Problem(503, "BRIDGE_JOURNAL_CONSISTENCY_FAILURE")
+        value = dict(rows[0])
+        valid = value["id"] == 1 and value["mode"] in {"ACTIVE", "RECOVERY_ONLY"}
+        if value["mode"] == "ACTIVE":
+            valid = valid and value["restored_from_sha256"] is None and value["restored_at_ms"] is None
+        else:
+            valid = (valid and type(value["restored_from_sha256"]) is str
+                     and DIGEST.fullmatch(value["restored_from_sha256"]) is not None
+                     and type(value["restored_at_ms"]) is int and 0 <= value["restored_at_ms"] < 2**63)
+        if not valid:
+            raise Problem(503, "BRIDGE_JOURNAL_CONSISTENCY_FAILURE")
+        return value
 
     def _load(self, connection, request_id, *, legacy=False):
         row = connection.execute("SELECT * FROM intents WHERE id=?", (identifier(request_id),)).fetchone()
@@ -120,6 +143,12 @@ class BridgeJournal:
                 if (attempt["sequence"] != sequence or (not recovery and kind != ("POLL" if known else "CREATE"))
                         or type(attempt["started_ms"]) is not int or attempt["started_ms"] < last_time):
                     raise ValueError("attempt ordering")
+                if sequence > 1:
+                    previous = attempts[sequence - 2]
+                    if previous["finished_ms"] is None and attempt["started_ms"] < previous["started_ms"] + LEASE_MS:
+                        raise ValueError("overlapping claims")
+                    if kind == "CREATE" and attempt["started_ms"] >= attempts[0]["started_ms"] + RETRY_MS:
+                        raise ValueError("expired create")
                 candidate = None if legacy else attempt["candidate_id"]
                 if not legacy:
                     if recovery:
@@ -171,6 +200,13 @@ class BridgeJournal:
                 "production_execution": False, "wallet_execution": False,
                 "commerce_budget_integration": False, "settlement_accounting": "UNAVAILABLE"}
 
+    def _report(self, connection, request_id):
+        control = self._control(connection)
+        return {**self._view(*self._load(connection, request_id)),
+                "journal_mode": control["mode"], "may_create_transfers": control["mode"] == "ACTIVE",
+                "restored_from_sha256": control["restored_from_sha256"],
+                "restored_at_ms": control["restored_at_ms"]}
+
     def prepare(self, value):
         intent = intent_value(value)
         at = self._clock()
@@ -181,17 +217,19 @@ class BridgeJournal:
                 if json.loads(row["intent_json"]) != intent:
                     raise Problem(409, "BRIDGE_INTENT_CONFLICT")
             else:
+                if self._control(connection)["mode"] != "ACTIVE":
+                    raise Problem(409, "BRIDGE_RESTORED_JOURNAL_READ_ONLY")
                 if connection.execute("SELECT COUNT(*) FROM intents").fetchone()[0] >= MAX_INTENTS:
                     raise Problem(409, "BRIDGE_INTENT_LIMIT")
                 key = str(uuid.uuid4())
                 body = transfer_body(intent, key)
                 connection.execute("INSERT INTO intents VALUES (?,?,?,?,?,?,NULL)",
                     (intent["request_id"], canonical(intent), canonical(body), sha(body), key, at))
-            return self._view(*self._load(connection, intent["request_id"]))
+            return self._report(connection, intent["request_id"])
 
     def show(self, request_id):
         with self._connection() as connection:
-            return self._view(*self._load(connection, request_id))
+            return self._report(connection, request_id)
 
     def advance(self, request_id, client):
         return self._execute(request_id, client)
@@ -204,7 +242,7 @@ class BridgeJournal:
             row, body, attempts, known, last_time = self._load(connection, request_id)
             if not attempts:
                 raise Problem(409, "BRIDGE_RECOVERY_REQUIRES_PRIOR_ATTEMPT")
-            if self._clock() < last_time:
+            if self._clock() < max(last_time, self._control(connection)["restored_at_ms"] or 0):
                 raise Problem(409, "BRIDGE_CLOCK_REGRESSION")
             if row["credential_sha256"] != client.credential_fingerprint:
                 raise Problem(409, "BRIDGE_CREDENTIAL_CHANGED_RECONCILE_REQUIRED")
@@ -217,7 +255,7 @@ class BridgeJournal:
         at = self._clock()
         with self._connection() as connection:
             row, body, attempts, known, last_time = self._load(connection, request_id)
-            if at < last_time:
+            if at < max(last_time, self._control(connection)["restored_at_ms"] or 0):
                 raise Problem(409, "BRIDGE_CLOCK_REGRESSION")
             if row["credential_sha256"] not in (None, client.credential_fingerprint):
                 raise Problem(409, "BRIDGE_CREDENTIAL_CHANGED_RECONCILE_REQUIRED")
@@ -232,6 +270,8 @@ class BridgeJournal:
             if len(attempts) >= MAX_ATTEMPTS:
                 raise Problem(409, "BRIDGE_ATTEMPT_LIMIT")
             transfer_id = candidate or (known["id"] if known else None)
+            if transfer_id is None and self._control(connection)["mode"] != "ACTIVE":
+                raise Problem(409, "BRIDGE_RESTORED_JOURNAL_READ_ONLY")
             attempt_id, kind = uuid.uuid4().hex, "RECONCILE" if candidate else "POLL" if known else "CREATE"
             connection.execute("UPDATE intents SET credential_sha256=? WHERE id=?", (client.credential_fingerprint, request_id))
             connection.execute("INSERT INTO attempts VALUES (?,?,?,?,?,NULL,NULL,NULL,?)",
@@ -259,45 +299,46 @@ class BridgeJournal:
                 raise Problem(409, "BRIDGE_STALE_ATTEMPT")
             connection.execute("UPDATE attempts SET finished_ms=?,observation_json=?,error_code=? WHERE id=?",
                                (finished, canonical(result) if result else None, error, attempt_id))
-            return self._view(*self._load(connection, request_id))
+            return self._report(connection, request_id)
 
     def _upgrade(self, connection, backup_hash):
-        connection.execute("ALTER TABLE attempts ADD COLUMN candidate_id TEXT")
-        for row in connection.execute("SELECT id FROM intents"):
-            known = None
-            for attempt in connection.execute("SELECT * FROM attempts WHERE intent_id=? ORDER BY sequence", (row["id"],)).fetchall():
-                if attempt["kind"] == "POLL":
-                    connection.execute("UPDATE attempts SET candidate_id=? WHERE id=?", (known, attempt["id"]))
-                if attempt["observation_json"] is not None:
-                    known = json.loads(attempt["observation_json"])["id"]
-        connection.execute("CREATE TABLE bridge_migrations (version INTEGER PRIMARY KEY, at_ms INTEGER NOT NULL, backup_sha256 TEXT NOT NULL)")
-        connection.execute("INSERT INTO bridge_migrations VALUES (2,?,?)", (self._clock(), backup_hash))
-        connection.execute("PRAGMA user_version=2")
+        if connection.execute("PRAGMA user_version").fetchone()[0] == 1:
+            connection.execute("ALTER TABLE attempts ADD COLUMN candidate_id TEXT")
+            for row in connection.execute("SELECT id FROM intents"):
+                known = None
+                for attempt in connection.execute("SELECT * FROM attempts WHERE intent_id=? ORDER BY sequence", (row["id"],)).fetchall():
+                    if attempt["kind"] == "POLL":
+                        connection.execute("UPDATE attempts SET candidate_id=? WHERE id=?", (known, attempt["id"]))
+                    if attempt["observation_json"] is not None:
+                        known = json.loads(attempt["observation_json"])["id"]
+            connection.execute("CREATE TABLE bridge_migrations (version INTEGER PRIMARY KEY, at_ms INTEGER NOT NULL, backup_sha256 TEXT NOT NULL)")
+            connection.execute("INSERT INTO bridge_migrations VALUES (2,?,?)", (self._clock(), backup_hash))
+        for statement in CONTROL_DDL.split(";"):
+            if statement.strip():
+                connection.execute(statement)
+        connection.execute("INSERT INTO bridge_migrations VALUES (3,?,?)", (self._clock(), backup_hash))
+        connection.execute("PRAGMA user_version=3")
 
     def _legacy_snapshot(self, connection):
-        if (connection.execute("PRAGMA quick_check").fetchone()[0] != "ok"
-                or connection.execute("PRAGMA foreign_key_check").fetchall()):
-            raise Problem(503, "BRIDGE_JOURNAL_CONSISTENCY_FAILURE")
-        intents = connection.execute("SELECT * FROM intents ORDER BY id").fetchall()
-        attempts = connection.execute("SELECT * FROM attempts ORDER BY id").fetchall()
-        if len(intents) > MAX_INTENTS or len(attempts) > MAX_INTENTS * MAX_ATTEMPTS:
-            raise Problem(503, "BRIDGE_JOURNAL_CONSISTENCY_FAILURE")
-        for row in intents:
-            self._load(connection, row["id"], legacy=True)
-        return sha({"intents": [dict(r) for r in intents], "attempts": [dict(r) for r in attempts]})
+        from .bridge_recovery import inspect_journal
+        return inspect_journal(self, connection, allow_legacy=True)["logical_state_sha256"]
 
     def migrate(self, backup):
-        # Keep the old database unchanged unless the exclusive verified v1 snapshot exists.
+        # Keep the old database unchanged unless an exclusive verified old snapshot exists.
         from .recovery import copy_snapshot, sync_file, sync_directory
         backup = Path(backup).absolute()
         if not self.path.exists():
             raise Problem(404, "BRIDGE_JOURNAL_NOT_FOUND")
         with self._connection(allow_legacy=True) as connection:
-            if connection.execute("PRAGMA user_version").fetchone()[0] != 1:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            if version not in (1, 2):
                 raise Problem(409, "BRIDGE_JOURNAL_ALREADY_CURRENT")
             rows = connection.execute("SELECT id FROM intents").fetchall()
             original_state = self._legacy_snapshot(connection)
-            # An independent read connection can back up committed v1 state while this
+            from .bridge_recovery import inspect_journal
+            if self._clock() < inspect_journal(self, connection, allow_legacy=True)["last_recorded_ms"]:
+                raise Problem(409, "BRIDGE_CLOCK_REGRESSION")
+            # An independent read connection can back up committed old state while this
             # connection holds the write reservation; backing up the writer would deadlock.
             with closing(sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True, autocommit=True)) as source:
                 copy_snapshot(source, backup)
@@ -305,7 +346,7 @@ class BridgeJournal:
             sync_directory(backup.parent)
             with closing(sqlite3.connect(backup.as_uri() + "?mode=ro", uri=True, autocommit=True)) as snapshot:
                 snapshot.row_factory = sqlite3.Row
-                if snapshot.execute("PRAGMA user_version").fetchone()[0] != 1:
+                if snapshot.execute("PRAGMA user_version").fetchone()[0] != version:
                     raise Problem(503, "BRIDGE_JOURNAL_CONSISTENCY_FAILURE")
                 if self._legacy_snapshot(snapshot) != original_state:
                     raise Problem(503, "BRIDGE_JOURNAL_CONSISTENCY_FAILURE")
@@ -313,7 +354,22 @@ class BridgeJournal:
             self._upgrade(connection, backup_hash)
             for row in rows:
                 self._load(connection, row["id"])
-        return {"migrated": True, "from_schema": 1, "journal_schema_version": JOURNAL_VERSION,
+        return {"migrated": True, "from_schema": version, "journal_schema_version": JOURNAL_VERSION,
                 "backup_sha256": backup_hash, "intents_preserved": len(rows),
-                "preserved_v1_state_sha256": original_state,
+                "preserved_state_sha256": original_state,
                 "external_bridge_requests": 0, "wallet_execution": False}
+
+    def audit(self):
+        from .bridge_recovery import inspect_journal
+        if not self.path.exists():
+            raise Problem(404, "BRIDGE_JOURNAL_NOT_FOUND")
+        with self._connection() as connection:
+            return inspect_journal(self, connection)
+
+    def backup(self, destination):
+        from .bridge_recovery import create_backup
+        return create_backup(self, destination)
+
+    def restore(self, backup, expected_sha256):
+        from .bridge_recovery import restore_backup
+        return restore_backup(self, backup, expected_sha256)
