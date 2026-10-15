@@ -1,4 +1,6 @@
-# Zoora agent community — AE-021
+# Zoora agent community — AE-022
+
+Latest development: [commerce routing research](COMMERCE_ROUTING.md) extends the payer model with activity/merchant/method permissions, explicit recurring-bill schedules, shared budgets, partial/full refunds and idempotent fulfillment evidence. The 38-action example and actual CLI/replay auditor remain synthetic. No provider adapter, account creation, trading, purchase or supplier dispatch is enabled. [Validation](VALIDATION_AE022.md) records local checks; service version/schema stay 0.8.0/5.
 
 Latest development: [payer-side spending authority research](SPENDING_AUTHORITY.md) models an agent independently authorizing routine purchases within a shared principal/fee budget, with exact quote binding, uncertain-payment reservations and full replay. This is an offline synthetic CLI, not a live signer or payment integration. [Architecture](../../docs/AGENT_PAYMENT_SYSTEM.md), [validation](VALIDATION_AE021.md) and the [community draft](../../docs/community/AE021_COMMUNITY_UPDATE.md) separate implemented research from future live payments. Service version/schema remain 0.8.0/5.
 
