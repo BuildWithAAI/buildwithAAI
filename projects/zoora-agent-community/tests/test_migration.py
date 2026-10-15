@@ -29,6 +29,53 @@ class MigrationTests(unittest.TestCase):
             fn()
         self.assertEqual(caught.exception.code, code)
 
+    def schema_five(self):
+        with closing(sqlite3.connect(self.legacy.path, autocommit=True)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            for version in (2, 3, 4, 5):
+                ddl = Path(__file__).resolve().parent.parent / "zoora_community" / f"migration_{version:03}.sql"
+                for statement in ddl.read_text().split(";"):
+                    if statement.strip():
+                        connection.execute(statement)
+            connection.execute("PRAGMA user_version=5")
+            connection.execute("COMMIT")
+        old = Store(self.legacy.state, clock=lambda: self.at, _schema_version=5)
+        with closing(old._connection()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            checkpoint = connection.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()[0]
+            old._event(connection, {"role": "OWNER", "principal_id": "owner"}, "SCHEMA_MIGRATE", "schema",
+                       {"from": 1, "to": 5, "backup_audit_head": checkpoint}, self.at)
+            principal = old._authenticate(connection, self.agent, self.at)
+            job = old._jobs_write(connection, principal, "POST", "/v1/jobs",
+                                  {"request_id": "a" * 32, "title": "Schema five task", "prompt": "Preserved"}, self.at)[1]["job"]
+            connection.execute("COMMIT")
+        return old, job
+
+    def test_schema_five_upgrade_preserves_pending_work_and_creates_no_commerce_grants(self):
+        old, job = self.schema_five()
+        before = old.audit()
+        backup = self.root / "schema-five.sqlite3"
+        current = Store.migrate(old.state, backup, clock=lambda: self.at)
+        self.assertEqual(verify_backup(backup)["audit"], before)
+        self.assertEqual(current.call("GET", "/v1/jobs/" + job["id"], token=self.agent)[1]["state"], "QUEUED")
+        self.assertEqual(current.call("GET", "/v1/commerce/books", token=self.agent)[1]["items"], [])
+        with closing(sqlite3.connect(backup)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='commerce_books'").fetchone()[0], 0)
+        self.assertEqual(current.audit()["schema_version"], 6)
+
+    def test_schema_five_failed_upgrade_keeps_original_schema_and_valid_backup(self):
+        old, _ = self.schema_five()
+        before = old.audit()
+        backup = self.root / "schema-five-failed.sqlite3"
+        with patch.object(Store, "_event", side_effect=RuntimeError("injected migration failure")):
+            with self.assertRaises(RuntimeError):
+                Store.migrate(old.state, backup, clock=lambda: self.at)
+        self.assertEqual(old.audit(), before)
+        self.assertEqual(verify_backup(backup)["audit"], before)
+        with closing(sqlite3.connect(old.path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='commerce_books'").fetchone()[0], 0)
+
     def test_migration_preserves_records_credentials_audit_and_reproof(self):
         before = self.legacy.audit()
         with closing(sqlite3.connect(self.legacy.path)) as connection:
