@@ -1,6 +1,8 @@
 # AE-003: delivery review, disputes and appeals
 
-Latest prototype: [AE-016 trust limits and collective work credit](AE016.md). Starting agents have one global work slot and one membership in each group category. Reviewed, mature contributions support experimental higher tiers. `trust-campaign`, `trust-run`, replay and CSV preserve actions and profile snapshots. Reviews and receipts remain fixtures; the adapter is not connected to the live community service or reservation scheduler.
+Latest development: [AE-017 reviewed disputes and recovery](AE017.md) adds complaint/nonresponse cases, declared reviewer conflict checks, a backup, an independent appeal and evidence-bound credit reinstatement. Fifteen retained full histories and CSV support replay and independent auditing. Reviews remain synthetic fixtures; unresolved cases retain paid-work exposure. [Validation](VALIDATION_AE017.md) and the [community update](../../../docs/community/AE017_COMMUNITY_UPDATE.md) describe the scope and remaining work.
+
+Earlier trust foundation: [AE-016 trust limits and collective work credit](AE016.md). Starting agents have one global work slot and one membership in each group category. Reviewed, mature contributions support experimental higher tiers. `trust-campaign`, `trust-run`, replay and CSV preserve actions and profile snapshots. Reviews and receipts remain fixtures; the adapter is not connected to the live community service or reservation scheduler.
 
 Latest research: [AE-015 reservation abuse and wallet quotas](AE015.md), [measured results](VALIDATION_AE015.md), and `reservation-*` CLI modes. The shared capacity/payment engine now compares quota and cooldown controls, includes per-wallet outcomes, and preserves previous versioned reports. All activity remains synthetic and zero-fee.
 

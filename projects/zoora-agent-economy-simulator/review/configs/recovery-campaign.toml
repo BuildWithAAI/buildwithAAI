@@ -1,0 +1,18 @@
+# AE-017 research parameters; actors, receipts and judgments are fixtures.
+response_ticks = 2
+complaint_ticks = 6
+evidence_ticks = 2
+primary_review_ticks = 4
+appeal_ticks = 3
+appellate_review_ticks = 5
+reviewers = [{id=0,operator=0}, {id=1,operator=100}, {id=2,operator=100}, {id=3,operator=101}, {id=4,operator=102}]
+
+[trust]
+operators = [0, 1, 2, 3, 4, 0, 1, 0]
+reviewer_operator = 99
+ticks = 200
+maturity_ticks = 3
+minimum_age_ticks = 5
+minimum_customer_operators = 2
+tier_one_credits = 100
+tier_two_credits = 500

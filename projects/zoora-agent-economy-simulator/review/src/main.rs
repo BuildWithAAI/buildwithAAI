@@ -23,6 +23,8 @@ use zoora_review_market::{
     experiments::{ExperimentConfig, ExperimentSuite},
     payment_export,
     payments::{PaymentCampaign, PaymentConfig, PaymentPolicy, PaymentRun, PaymentScenario},
+    recovery::{RecoveryConfig, RecoveryInput, RecoveryReport},
+    recovery_scenarios::RecoveryCampaign,
     reservation_export,
     reservations::{
         ReservationCampaign, ReservationConfig, ReservationPolicy, ReservationRun,
@@ -69,6 +71,33 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 fn execute() -> Result<(), String> {
     let args: Vec<_> = env::args().skip(1).collect();
     let result = match args.as_slice() {
+        [mode,config,output] if mode=="recovery-campaign"=>{
+            let config=RecoveryConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
+            let report=RecoveryCampaign::generate(config).map_err(|e|e.to_string())?;
+            report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"recovery campaign encoding failed")?)?;
+            format!("SYNTHETIC recovery demonstrations: {} cases replayed; {}",report.cases.len(),report.fingerprint)
+        },
+        [mode,input,output] if mode=="recovery-run"=>{
+            let input:RecoveryInput=serde_json::from_str(&read(Path::new(input),4*1024*1024)?).map_err(|_|"invalid recovery input")?;
+            let report=RecoveryReport::generate(input).map_err(|e|e.to_string())?;
+            report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"recovery run encoding failed")?)?;
+            format!("SYNTHETIC recovery input replayed; {}",report.fingerprint)
+        },
+        [mode,input] if mode=="replay-recovery"=>{
+            let report:RecoveryReport=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid recovery run")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC recovery actions, limits and work credits regenerated".into()
+        },
+        [mode,input] if mode=="replay-recovery-campaign"=>{
+            let report:RecoveryCampaign=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid recovery campaign")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC recovery scenario matrix regenerated".into()
+        },
+        [mode,input,output] if mode=="recovery-csv"=>{
+            let report:RecoveryCampaign=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid recovery campaign")?;
+            write(Path::new(output),report.csv().map_err(|e|e.to_string())?.as_bytes())?;
+            "SYNTHETIC recovery CSV created after full replay".into()
+        },
         [mode,config,output] if mode=="trust-campaign"=>{
             let config=TrustConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
             let report=TrustCampaign::generate(config).map_err(|e|e.to_string())?;
@@ -327,7 +356,7 @@ fn execute() -> Result<(), String> {
             write(Path::new(output), &serde_json::to_vec_pretty(&results).map_err(|_| "benchmark encoding failed")?)?;
             "SYNTHETIC review scaling verified".into()
         },
-        _ => return Err("usage: zoora-review-market trust-campaign CONFIG.toml NEW_CAMPAIGN.json | trust-run INPUT.json NEW_RUN.json | replay-trust RUN.json | replay-trust-campaign CAMPAIGN.json | trust-csv CAMPAIGN.json NEW_DATA.csv | run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json | experiments CONFIG.toml NEW_SUITE.json | replay-experiments SUITE.json | replay-allocated REPORT.json | benchmark-allocated NEW_RESULTS.json | direct-demo NEW_DIRECT.json | replay-direct DIRECT.json | community-run CONFIG.toml SCENARIO NEW_REPORT.json | community-batch CONFIG.toml NEW_BATCH.json | replay-community REPORT.json | replay-community-batch BATCH.json | community-csv REPORT.json NEW_DATA.csv | viewer REPORT.json NEW_VIEWER.html | economy-campaign CONFIG.toml NEW_CAMPAIGN.json | economy-run CONFIG.toml SEED SCENARIO POLICY NEW_RUN.json | replay-economy RUN.json | replay-economy-campaign CAMPAIGN.json | economy-csv CAMPAIGN.json NEW_DATA.csv | economy-viewer CAMPAIGN.json NEW_VIEWER.html | payment-campaign CONFIG.toml NEW_CAMPAIGN.json | payment-run CONFIG.toml SEED SCENARIO POLICY NEW_RUN.json | replay-payment RUN.json | replay-payment-campaign CAMPAIGN.json | payment-csv CAMPAIGN.json NEW_DATA.csv | payment-viewer CAMPAIGN.json NEW_VIEWER.html".into()),
+        _ => return Err("usage: zoora-review-market recovery-campaign CONFIG.toml NEW_CAMPAIGN.json | recovery-run INPUT.json NEW_RUN.json | replay-recovery RUN.json | replay-recovery-campaign CAMPAIGN.json | recovery-csv CAMPAIGN.json NEW_DATA.csv | trust-campaign CONFIG.toml NEW_CAMPAIGN.json | trust-run INPUT.json NEW_RUN.json | replay-trust RUN.json | replay-trust-campaign CAMPAIGN.json | trust-csv CAMPAIGN.json NEW_DATA.csv | run CONFIG.toml NEW_REPORT.json | replay REPORT.json | benchmark NEW_RESULTS.json | experiments CONFIG.toml NEW_SUITE.json | replay-experiments SUITE.json | replay-allocated REPORT.json | benchmark-allocated NEW_RESULTS.json | direct-demo NEW_DIRECT.json | replay-direct DIRECT.json | community-run CONFIG.toml SCENARIO NEW_REPORT.json | community-batch CONFIG.toml NEW_BATCH.json | replay-community REPORT.json | replay-community-batch BATCH.json | community-csv REPORT.json NEW_DATA.csv | viewer REPORT.json NEW_VIEWER.html | economy-campaign CONFIG.toml NEW_CAMPAIGN.json | economy-run CONFIG.toml SEED SCENARIO POLICY NEW_RUN.json | replay-economy RUN.json | replay-economy-campaign CAMPAIGN.json | economy-csv CAMPAIGN.json NEW_DATA.csv | economy-viewer CAMPAIGN.json NEW_VIEWER.html | payment-campaign CONFIG.toml NEW_CAMPAIGN.json | payment-run CONFIG.toml SEED SCENARIO POLICY NEW_RUN.json | replay-payment RUN.json | replay-payment-campaign CAMPAIGN.json | payment-csv CAMPAIGN.json NEW_DATA.csv | payment-viewer CAMPAIGN.json NEW_VIEWER.html".into()),
     };
     println!("{result}");
     Ok(())
