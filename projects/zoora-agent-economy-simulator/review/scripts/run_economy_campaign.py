@@ -20,6 +20,8 @@ SCENARIOS = {"BALANCED", "SHARED_OPERATOR_SPAM", "SYBIL_SPAM", "PROVIDER_OUTAGE"
 POLICIES = ("BASELINE", "OPERATOR_CAP")
 PAYMENT_SCENARIOS = {"NORMAL_DELAY", "UNPAID_SYBIL_FLOOD", "PAID_SYBIL_FLOOD", "OBSERVATION_LAG", "LATE_PAYMENT", "DUPLICATE_RECEIPTS", "OUT_OF_TERMS", "UNBACKED_CLAIMS"}
 PAYMENT_POLICIES = ("RESERVE_ON_QUOTE", "STRICT_OBSERVATION", "EVIDENCE_GRACE")
+AUTHORIZATION_SCENARIOS = {"NORMAL_DELAY", "UNPAID_BURST", "RENEWING_UNPAID", "PAID_FLOOD", "OBSERVATION_LAG", "EVIDENCE_AFTER_EXPIRY", "DUPLICATE_AUTHORIZATION", "PROVIDER_OUTAGE"}
+AUTHORIZATION_POLICIES = ("UNRESERVED_PAYMENT", "FUNDING_WINDOW_HOLD", "EVIDENCE_WINDOW_HOLD")
 LIMIT = 128 * 1024 * 1024
 
 def sha(path: Path) -> str:
@@ -70,7 +72,7 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--binary", type=Path, default=ROOT / "target" / "release" /
                         ("zoora-review-market.exe" if os.name == "nt" else "zoora-review-market"))
-    parser.add_argument("--model", choices=["economy", "payment"], default="economy")
+    parser.add_argument("--model", choices=["economy", "payment", "authorization"], default="economy")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--max-new-runs", type=int, help="Checkpoint early; remains INCOMPLETE")
     parser.add_argument("--timeout", type=int, default=180)
@@ -78,6 +80,8 @@ def main() -> int:
     mode = args.model
     allowed_scenarios = PAYMENT_SCENARIOS if mode == "payment" else SCENARIOS
     policies = PAYMENT_POLICIES if mode == "payment" else POLICIES
+    if mode == "authorization":
+        allowed_scenarios, policies = AUTHORIZATION_SCENARIOS, AUTHORIZATION_POLICIES
     if not 1 <= args.timeout <= 3600 or (args.max_new_runs is not None and args.max_new_runs < 1):
         raise ValueError("Invalid timeout/run limit")
     config_path, binary = args.config.resolve(strict=True), args.binary.resolve(strict=True)
@@ -100,6 +104,8 @@ def main() -> int:
                 "expected_runs": len(seeds) * len(scenarios) * len(policies)}
     if mode == "payment":
         identity["model"] = "AE013_PAYMENT_WINDOWS_V1"
+    elif mode == "authorization":
+        identity["model"] = "AE014_CAPACITY_AUTHORIZATION_V1"
     if folder.exists():
         if not args.resume:
             raise ValueError("Output directory exists; use --resume or choose a new directory")
@@ -117,6 +123,16 @@ def main() -> int:
     runs_dir.mkdir(exist_ok=True)
     progress = dict(identity, state="INCOMPLETE", completed_runs=0, runs=[], exports=[])
     checkpoint(folder, progress)
+    # Execute only against the checkpoint's config copy. Verify both inputs before
+    # and after each process so an executable replacement cannot complete a mixed run.
+    pinned_config = folder / "config.toml"
+    def checked_execute(*commands):
+        def check_inputs():
+            if sha(binary) != binary_sha or sha(pinned_config) != config_sha:
+                raise ValueError("Campaign executable or checkpoint config changed while running")
+        check_inputs()
+        execute(binary, *commands, timeout=args.timeout)
+        check_inputs()
     new_runs = 0
     for seed in seeds:
         for scenario in scenarios:
@@ -126,7 +142,7 @@ def main() -> int:
                 if target.exists() or target.is_symlink():
                     if not args.resume:
                         raise ValueError("Unexpected pre-existing run")
-                    execute(binary, "replay-" + mode, target, timeout=args.timeout)
+                    checked_execute("replay-" + mode, target)
                 else:
                     if args.max_new_runs is not None and new_runs >= args.max_new_runs:
                         print(json.dumps({"state": "INCOMPLETE", "completed_runs": progress["completed_runs"], "expected_runs": identity["expected_runs"]}))
@@ -135,8 +151,7 @@ def main() -> int:
                     # partial file with a valid checkpoint name. Publish without overwriting.
                     with tempfile.TemporaryDirectory(prefix="stage-", dir=folder) as stage:
                         temporary = Path(stage) / name
-                        execute(binary, mode + "-run", config_path, seed, scenario, policy,
-                                temporary, timeout=args.timeout)
+                        checked_execute(mode + "-run", pinned_config, seed, scenario, policy, temporary)
                         publish(temporary, target, False)
                     new_runs += 1
                 data = json_file(target)
@@ -153,17 +168,19 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="exports-", dir=folder) as stage:
         stage = Path(stage)
         campaign = stage / "campaign.json"
-        execute(binary, mode + "-campaign", config_path, campaign, timeout=args.timeout)
+        checked_execute(mode + "-campaign", pinned_config, campaign)
         summary = json_file(campaign)
         if [r["run_fingerprint"] for r in summary["runs"]] != [r["run_fingerprint"] for r in progress["runs"]]:
             raise ValueError("Campaign regeneration differs from checkpointed runs")
         for command, name in [(mode + "-csv", "campaign.csv"), (mode + "-viewer", "campaign.html")]:
-            execute(binary, command, campaign, stage / name, timeout=args.timeout)
+            checked_execute(command, campaign, stage / name)
         for name in ["campaign.json", "campaign.csv", "campaign.html"]:
             publish(stage / name, folder / name, args.resume)
             progress["exports"].append({"path": name, "sha256": sha(folder / name),
                                         "bytes": (folder / name).stat().st_size})
         progress["campaign_fingerprint"] = summary["fingerprint"]
+    if sha(binary) != binary_sha or sha(pinned_config) != config_sha:
+        raise ValueError("Campaign inputs changed before completion")
     progress["state"] = "COMPLETE"
     checkpoint(folder, progress)
     print(json.dumps({"state": "COMPLETE", "completed_runs": progress["completed_runs"], "campaign_fingerprint": progress["campaign_fingerprint"]}))

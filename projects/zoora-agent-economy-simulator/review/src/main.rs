@@ -7,6 +7,11 @@ use std::{
 };
 use zoora_review_market::{
     allocation::AllocationReport,
+    authorization::{
+        AuthorizationCampaign, AuthorizationConfig, AuthorizationPolicy, AuthorizationRun,
+        AuthorizationScenario,
+    },
+    authorization_export,
     community::CommunityReport,
     community_export,
     community_scenarios::{
@@ -57,6 +62,34 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 fn execute() -> Result<(), String> {
     let args: Vec<_> = env::args().skip(1).collect();
     let result = match args.as_slice() {
+        [mode,config,output] if mode=="authorization-campaign"=>{
+            let config=AuthorizationConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
+            let report=AuthorizationCampaign::generate(config).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"authorization campaign encoding failed")?)?;
+            format!("SYNTHETIC authorization campaign: {} matched runs verified; {}",report.runs.len(),report.fingerprint)
+        },
+        [mode,config,seed,scenario,policy,output] if mode=="authorization-run"=>{
+            let config=AuthorizationConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
+            let seed=seed.parse::<u64>().map_err(|_|"seed must be unsigned")?;
+            let scenario=AuthorizationScenario::parse(scenario).ok_or("unknown authorization scenario")?;
+            let policy=AuthorizationPolicy::parse(policy).ok_or("unknown authorization policy")?;
+            let report=AuthorizationRun::generate(config,seed,scenario,policy).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"authorization run encoding failed")?)?;
+            format!("SYNTHETIC capacity authorization run verified: {}",report.fingerprint)
+        },
+        [mode,input] if mode=="replay-authorization"=>{
+            let report:AuthorizationRun=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid authorization report")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC authorization run regenerated and verified".into()
+        },
+        [mode,input] if mode=="replay-authorization-campaign"=>{
+            let report:AuthorizationCampaign=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid authorization campaign")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC authorization campaign regenerated and verified".into()
+        },
+        [mode,input,output] if mode=="authorization-csv"||mode=="authorization-viewer"=>{
+            let report:AuthorizationCampaign=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid authorization campaign")?;
+            let content=if mode=="authorization-csv"{authorization_export::csv(&report)}else{authorization_export::html(&report)}.map_err(|e|e.to_string())?;
+            write(Path::new(output),content.as_bytes())?;"SYNTHETIC authorization export created after full replay".into()
+        },
         [mode,config,output] if mode=="payment-campaign"=>{
             let config=PaymentConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
             let report=PaymentCampaign::generate(config).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;

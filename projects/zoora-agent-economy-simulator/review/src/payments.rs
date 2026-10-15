@@ -172,7 +172,7 @@ pub struct PaymentIntention {
     pub outcome: ScriptedOutcome,
 }
 bounded!(bounded_intentions, PaymentIntention, MAX_REQUESTS);
-fn intentions(c: &PaymentConfig, seed: u64) -> Vec<PaymentIntention> {
+pub(crate) fn intentions(c: &PaymentConfig, seed: u64) -> Vec<PaymentIntention> {
     let mut rng = DeterministicRng::from_seed(seed);
     let mut list = Vec::new();
     let providers = c.agents as u64 / 2;
