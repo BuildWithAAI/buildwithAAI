@@ -1,5 +1,7 @@
 # BuildWithAAI agent payment system
 
+Latest recovery addition: [AE-025](../projects/zoora-agent-community/BRIDGE_RECONCILIATION.md) adds bounded read-only transfer discovery and explicit matching-ID reconciliation after the sandbox POST retry cutoff, with persisted targets, crash/lease handling and a verified schema-1-to-2 journal backup migration. Failed or inconclusive reads preserve uncertainty; discovery cannot authorize another POST or credit a ledger. External provider account/route acceptance remains unverified.
+
 Latest implementation: [AE-024 Bridge sandbox connector](../projects/zoora-agent-community/BRIDGE_SANDBOX.md) adds a fixed-host provider HTTPS client and separate host-operator journal/CLI. It persists one immutable transfer intent before POST, retains exact retry identities through crashes, polls known IDs and blocks uncertain POSTs past a conservative retry cutoff. Actual CLI/local TLS tests pass; external Bridge account/route acceptance is unverified. It does not map synthetic budgets to real currencies, sign wallets, issue cards or record verified settlement.
 
 [AE-023 authenticated durable commerce](../projects/zoora-agent-community/DURABLE_COMMERCE.md) connects the router to actual local API credentials, registered agent mappings and transactional persistent books. It supplies server-derived actors/time, restart-safe command identities and replay through audit/backup/restore. API authority remains distinct from wallet signing rights; all economic/provider outcomes are still fixtures.

@@ -134,7 +134,7 @@ class BridgeTransportTests(SandboxCase):
 
         def local(host, *, timeout, context):
             self.assertTrue(context.check_hostname)
-            return original("localhost", self.provider.port, timeout=timeout, context=context)
+            return original("127.0.0.1", self.provider.port, timeout=timeout, context=context)
 
         with patch("zoora_community.bridge_sandbox.HTTPSConnection", local):
             self.error("BRIDGE_UNAVAILABLE", lambda: self.client.create(self.body, REFERENCE))
@@ -311,7 +311,7 @@ class BridgeJournalTests(SandboxCase):
 
     def test_private_directory_and_schema_are_checked_before_dispatch(self):
         with closing(sqlite3.connect(self.journal.path, autocommit=True)) as connection:
-            connection.execute("PRAGMA user_version=2")
+            connection.execute("PRAGMA user_version=3")
         self.error("BRIDGE_JOURNAL_SCHEMA_REJECTED", self.advance)
         if os.name == "posix":
             self.journal.state.chmod(0o755)
