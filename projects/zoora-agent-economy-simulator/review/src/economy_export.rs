@@ -100,7 +100,7 @@ pub fn csv(campaign: &EconomyCampaign) -> Result<String, SimulationError> {
     }
     Ok(rows.join("\n") + "\n")
 }
-fn exact_numbers(value: &mut Value) {
+pub(crate) fn exact_numbers(value: &mut Value) {
     match value {
         Value::Number(n) => *value = Value::String(n.to_string()),
         Value::Array(values) => values.iter_mut().for_each(exact_numbers),
