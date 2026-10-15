@@ -1,5 +1,7 @@
 # AE-003: delivery review, disputes and appeals
 
+Latest research: [AE-015 reservation abuse and wallet quotas](AE015.md), [measured results](VALIDATION_AE015.md), and `reservation-*` CLI modes. The shared capacity/payment engine now compares quota and cooldown controls, includes per-wallet outcomes, and preserves previous versioned reports. All activity remains synthetic and zero-fee.
+
 Latest research: [AE-014 capacity before payment](AE014.md), its [measured results](VALIDATION_AE014.md), and the `authorization-*` CLI modes. Single-use fixture permissions and three hold policies expose both client payment protection and reservation starvation. Earlier versioned reports and fee experiments retain their semantics.
 
 An offline policy adapter over AE-002's simulated escrow engine. This module owns review decisions and appeal rules; the existing marketplace still owns balances, fees, reservations, automatic refunds and supply conservation. AE-001 and AE-002 report identities and golden vectors remain unchanged. AE-002 gains only a read-only task lookup and a batching API that defers global audits to batch boundaries. The adapter audits at every public advance and on completion.

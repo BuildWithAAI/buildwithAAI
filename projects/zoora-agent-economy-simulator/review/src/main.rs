@@ -23,6 +23,11 @@ use zoora_review_market::{
     experiments::{ExperimentConfig, ExperimentSuite},
     payment_export,
     payments::{PaymentCampaign, PaymentConfig, PaymentPolicy, PaymentRun, PaymentScenario},
+    reservation_export,
+    reservations::{
+        ReservationCampaign, ReservationConfig, ReservationPolicy, ReservationRun,
+        ReservationScenario,
+    },
     viewer, ReviewConfig, ReviewEngine, ReviewReport,
 };
 fn read(path: &Path, limit: u64) -> Result<String, String> {
@@ -62,6 +67,34 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
 fn execute() -> Result<(), String> {
     let args: Vec<_> = env::args().skip(1).collect();
     let result = match args.as_slice() {
+        [mode,config,output] if mode=="reservation-campaign"=>{
+            let config=ReservationConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
+            let report=ReservationCampaign::generate(config).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"reservation campaign encoding failed")?)?;
+            format!("SYNTHETIC reservation campaign: {} matched runs verified; {}",report.runs.len(),report.fingerprint)
+        },
+        [mode,config,seed,scenario,policy,output] if mode=="reservation-run"=>{
+            let config=ReservationConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
+            let seed=seed.parse::<u64>().map_err(|_|"seed must be unsigned")?;
+            let scenario=ReservationScenario::parse(scenario).ok_or("unknown reservation scenario")?;
+            let policy=ReservationPolicy::parse(policy).ok_or("unknown reservation policy")?;
+            let report=ReservationRun::generate(config,seed,scenario,policy).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;
+            write(Path::new(output),&serde_json::to_vec_pretty(&report).map_err(|_|"reservation run encoding failed")?)?;
+            format!("SYNTHETIC capacity reservation run verified: {}",report.fingerprint)
+        },
+        [mode,input] if mode=="replay-reservation"=>{
+            let report:ReservationRun=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid reservation report")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC reservation run regenerated and verified".into()
+        },
+        [mode,input] if mode=="replay-reservation-campaign"=>{
+            let report:ReservationCampaign=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid reservation campaign")?;
+            report.verify().map_err(|e|e.to_string())?;"SYNTHETIC reservation campaign regenerated and verified".into()
+        },
+        [mode,input,output] if mode=="reservation-csv"||mode=="reservation-viewer"=>{
+            let report:ReservationCampaign=serde_json::from_str(&read(Path::new(input),128*1024*1024)?).map_err(|_|"invalid reservation campaign")?;
+            let content=if mode=="reservation-csv"{reservation_export::csv(&report)}else{reservation_export::html(&report)}.map_err(|e|e.to_string())?;
+            write(Path::new(output),content.as_bytes())?;"SYNTHETIC reservation export created after full replay".into()
+        },
         [mode,config,output] if mode=="authorization-campaign"=>{
             let config=AuthorizationConfig::from_toml(&read(Path::new(config),4*1024*1024)?).map_err(|e|e.to_string())?;
             let report=AuthorizationCampaign::generate(config).map_err(|e|e.to_string())?;report.verify().map_err(|e|e.to_string())?;

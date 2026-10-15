@@ -1,0 +1,327 @@
+{
+  "evidence_scope": "LOCAL_WORKTREE_BEFORE_PUBLICATION",
+  "source_base_commit": "cdc55fef488d79fc709da57f7c520bbb52604ad7",
+  "source_tree_dirty": true,
+  "classification": "SYNTHETIC",
+  "unit": "SIMULATED_UNITS",
+  "rust_tests_per_profile": 172,
+  "normal_and_optimized": true,
+  "fmt_and_clippy_warnings_denied": true,
+  "cli_evidence": {
+    "reservation-evidence.json": {
+      "source_head_sha": "cdc55fef488d79fc709da57f7c520bbb52604ad7",
+      "source_tree_dirty": true,
+      "classification": "SYNTHETIC",
+      "unit": "SIMULATED_UNITS",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "campaign_runs": 240,
+      "sensitivity_runs": 30,
+      "sensitivity_fingerprint": "3b5d47e2577f578a89608ace556823a5ff2af040ceae7cbab0d8eb2b349b81f8",
+      "campaign_fingerprint": "7c9cdb51dcad0ff2e5166bddc07f55f96047c97d035bc500c57d86a941d791cf",
+      "independently_audited_full_runs": 24,
+      "tests": [
+        "paused reservation campaign remains INCOMPLETE",
+        "resumed three-policy matrix completes 24 runs",
+        "resume preserves cached bytes",
+        "24 full journals independently reconcile capability lifecycle, FIFO, capacity, wallets and exposure",
+        "Python -O cannot silently bypass audit",
+        "existing output refuses implicit overwrite",
+        "changed evidence window refuses resume",
+        "changed executable refuses resume before execution",
+        "corrupt cached evidence prevents completion",
+        "checkpoint config mutation during execution prevents completion",
+        "240 unique configurations match pinned fingerprint",
+        "all scenarios and policies use matched seed intentions",
+        "CSV retains all configurations and fingerprints",
+        "offline viewer denies external connections and escapes its data boundary",
+        "EVIDENCE_HOLD debug/release journals are byte-identical",
+        "EVIDENCE_HOLD full journal matches campaign metrics and rounds",
+        "EVIDENCE_HOLD rehashed false rule decision rejected",
+        "PENDING_QUOTA debug/release journals are byte-identical",
+        "PENDING_QUOTA full journal matches campaign metrics and rounds",
+        "PENDING_QUOTA rehashed false rule decision rejected",
+        "QUOTA_COOLDOWN debug/release journals are byte-identical",
+        "QUOTA_COOLDOWN full journal matches campaign metrics and rounds",
+        "QUOTA_COOLDOWN rehashed false rule decision rejected",
+        "incomplete rehashed matrix cannot replay or export",
+        "rehashed false exposure rejected",
+        "invalid timing bound creates no output",
+        "existing campaign cannot be overwritten",
+        "all controls preserve in-window paid work startability",
+        "rotating wallets weaken a per-wallet quota",
+        "cooldown recovers work after rotating unpaid reservations",
+        "outside-window exposure remains visible",
+        "paid attackers still occupy slots",
+        "wallet outcomes retain the complete ordinary denominator",
+        "provider outage retains unacknowledged work without fabricated refunds",
+        "30 long-cooldown sensitivity configurations match pinned fingerprint",
+        "long-cooldown sensitivity exports are replay-verified",
+        "long cooldown can obstruct honest slow-payer completions",
+        "cooldown sensitivity retains matched intentions"
+      ],
+      "elapsed_seconds": 91.946,
+      "timing_scope": "SINGLE_ACCEPTANCE_SAMPLE_NOT_LIVE_THROUGHPUT",
+      "network_or_signer": false
+    },
+    "authorization-evidence.json": {
+      "source_head_sha": "cdc55fef488d79fc709da57f7c520bbb52604ad7",
+      "source_tree_dirty": true,
+      "classification": "SYNTHETIC",
+      "unit": "SIMULATED_UNITS",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "campaign_runs": 240,
+      "campaign_fingerprint": "7f5788cfba1fe2d6a7953bdd3094a7798c0e28e1b4e921a4f14a1cd7e06e0465",
+      "independently_audited_full_runs": 24,
+      "tests": [
+        "paused authorization campaign remains INCOMPLETE",
+        "resumed three-policy matrix completes 24 runs",
+        "resume preserves cached bytes",
+        "24 full journals independently reconcile capability lifecycle, FIFO, capacity, wallets and exposure",
+        "Python -O cannot silently bypass audit",
+        "existing output refuses implicit overwrite",
+        "changed evidence window refuses resume",
+        "changed executable refuses resume before execution",
+        "corrupt cached evidence prevents completion",
+        "checkpoint config mutation during execution prevents completion",
+        "240 unique configurations match pinned fingerprint",
+        "all scenarios and policies use matched seed intentions",
+        "CSV retains all configurations and fingerprints",
+        "offline viewer denies external connections and escapes its data boundary",
+        "UNRESERVED_PAYMENT debug/release journals are byte-identical",
+        "UNRESERVED_PAYMENT full journal matches campaign metrics and rounds",
+        "UNRESERVED_PAYMENT rehashed false permit rejected",
+        "FUNDING_WINDOW_HOLD debug/release journals are byte-identical",
+        "FUNDING_WINDOW_HOLD full journal matches campaign metrics and rounds",
+        "FUNDING_WINDOW_HOLD rehashed false permit rejected",
+        "EVIDENCE_WINDOW_HOLD debug/release journals are byte-identical",
+        "EVIDENCE_WINDOW_HOLD full journal matches campaign metrics and rounds",
+        "EVIDENCE_WINDOW_HOLD rehashed false permit rejected",
+        "incomplete rehashed matrix cannot replay or export",
+        "rehashed false exposure rejected",
+        "invalid timing bound creates no output",
+        "existing campaign cannot be overwritten",
+        "evidence hold prevents paid ordinary requests without a start inside the modeled window",
+        "payments outside a capacity hold retain paid-without-start exposure",
+        "beyond-window evidence remains a paid but unstarted fact",
+        "renewing unpaid reservations harm ordinary throughput",
+        "paid attackers still occupy reserved slots",
+        "duplicate authorization refuses another payment",
+        "provider outage preserves payment exposure without fabricated refunds"
+      ],
+      "elapsed_seconds": 94.306,
+      "timing_scope": "SINGLE_ACCEPTANCE_SAMPLE_NOT_LIVE_THROUGHPUT",
+      "network_or_signer": false
+    },
+    "payment-evidence.json": {
+      "source_head_sha": "cdc55fef488d79fc709da57f7c520bbb52604ad7",
+      "source_tree_dirty": true,
+      "classification": "SYNTHETIC",
+      "unit": "SIMULATED_UNITS",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "campaign_runs": 240,
+      "campaign_fingerprint": "a233a0aba0aa77f0a7e9a4533f4271248963e329e99adff89338c64297b29fa3",
+      "independently_audited_full_runs": 24,
+      "tests": [
+        "paused payment campaign remains INCOMPLETE",
+        "resumed three-policy matrix completes all 24 runs",
+        "resuming preserves cached run bytes",
+        "24 full journals independently reconcile balances, receipts, work causality and FIFO capacity",
+        "optimized Python cannot silently bypass independent audit assertions",
+        "existing output cannot be silently overwritten",
+        "resume refuses a changed grace parameter",
+        "resume refuses a changed executable before running it",
+        "corrupt cached journal prevents completion",
+        "published 240-run matrix matches pinned campaign fingerprint",
+        "all scenarios and policies share an intention fingerprint for each seed",
+        "CSV preserves all 240 runs and their campaign provenance",
+        "viewer is self-contained with denied connections and safe JSON boundary",
+        "RESERVE_ON_QUOTE debug/release full journals are byte-identical",
+        "RESERVE_ON_QUOTE full transcript matches large-campaign metrics and rounds",
+        "RESERVE_ON_QUOTE rehashed false transfer rejected",
+        "STRICT_OBSERVATION debug/release full journals are byte-identical",
+        "STRICT_OBSERVATION full transcript matches large-campaign metrics and rounds",
+        "STRICT_OBSERVATION rehashed false transfer rejected",
+        "EVIDENCE_GRACE debug/release full journals are byte-identical",
+        "EVIDENCE_GRACE full transcript matches large-campaign metrics and rounds",
+        "EVIDENCE_GRACE rehashed false transfer rejected",
+        "incomplete rehashed matrix cannot replay or export",
+        "rehashed false unapplied exposure rejected",
+        "dimension bound refusal creates no output",
+        "existing campaign output is refused",
+        "unpaid identities never start funded attack work",
+        "bounded grace improves acknowledged work under observation lag",
+        "paid spam remains a measured admission failure",
+        "grace does not authorize actually late payments"
+      ],
+      "elapsed_seconds": 29.23,
+      "timing_scope": "SINGLE_ACCEPTANCE_SAMPLE_NOT_LIVE_THROUGHPUT",
+      "network_or_signer": false
+    },
+    "economy-evidence.json": {
+      "source_head_sha": "cdc55fef488d79fc709da57f7c520bbb52604ad7",
+      "source_tree_dirty": true,
+      "classification": "SYNTHETIC",
+      "unit": "SIMULATED_UNITS",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "unique_reference_and_sensitivity_runs": 320,
+      "tests": [
+        "early checkpoint cannot claim completion",
+        "resume completes all sixteen expected runs",
+        "resume preserves cached run bytes",
+        "independent ledger replay matches all sixteen full transcripts",
+        "existing output refuses implicit overwrite",
+        "resume rejects changed fee configuration",
+        "resume rejects corrupt cached evidence",
+        "reference independent campaign hash",
+        "reference complete 160-run matrix",
+        "reference all policies and shocks share intentions per seed",
+        "reference all 160 stock/fee reconciliations",
+        "reference CSV has all runs and source fingerprints",
+        "reference viewer has no connection permission",
+        "reference rehashed false fees cannot replay or export",
+        "fee-sensitivity independent campaign hash",
+        "fee-sensitivity complete 160-run matrix",
+        "fee-sensitivity all policies and shocks share intentions per seed",
+        "fee-sensitivity all 160 stock/fee reconciliations",
+        "fee-sensitivity CSV has all runs and source fingerprints",
+        "fee-sensitivity viewer has no connection permission",
+        "fee-sensitivity rehashed false fees cannot replay or export",
+        "fee sensitivity preserves every intended workload",
+        "BASELINE debug/release journals are byte-identical",
+        "BASELINE rehashed false ledger transfer rejected",
+        "BASELINE independently checked transcript matches large campaign metrics",
+        "OPERATOR_CAP debug/release journals are byte-identical",
+        "OPERATOR_CAP rehashed false ledger transfer rejected",
+        "OPERATOR_CAP independently checked transcript matches large campaign metrics",
+        "out-of-bound config creates no output",
+        "CLI refuses existing campaign output"
+      ],
+      "campaigns": [
+        {
+          "tag": "reference",
+          "runs": 160,
+          "fingerprint": "e2eb76c2865bb459a62a4ebb45d87cd4c53290efdba9449113496820e8d9227d",
+          "file_sha256": "3d223600cc89704b2814583d925a79941cdf7fc7817d2ab632af2a3f7df06992"
+        },
+        {
+          "tag": "fee-sensitivity",
+          "runs": 160,
+          "fingerprint": "e3490e8c9981d7f6aa15032bad3eab7b98c5870457358cf75141a49151e8890d",
+          "file_sha256": "70eef74610c78e800ead9e4c520e5d7263ffd2c2412e995a4addd3070cd335c0"
+        }
+      ],
+      "elapsed_seconds": 47.649,
+      "timing_scope": "SINGLE_LOCAL_OR_CI_ACCEPTANCE_SAMPLE_NOT_A_THROUGHPUT_CLAIM",
+      "live_wallets_or_transactions": false
+    }
+  },
+  "full_journal_independent_audit": {
+    "classification": "SYNTHETIC",
+    "unit": "SIMULATED_UNITS",
+    "full_journals_independently_audited": 270,
+    "totals": {
+      "permits": 141150,
+      "authorizations": 919568,
+      "transfers": 129085,
+      "observations": 129085,
+      "rule_decisions": 699393
+    },
+    "elapsed_seconds": 46.88,
+    "method": "Independent rule eligibility/blocking evidence plus shared capability, wallet, receipt, FIFO, capacity and exposure checks; native replay also required",
+    "external_authentication": false,
+    "campaigns": [
+      {
+        "tag": "default",
+        "runs": 240,
+        "fingerprint": "7c9cdb51dcad0ff2e5166bddc07f55f96047c97d035bc500c57d86a941d791cf",
+        "totals": {
+          "permits": 126162,
+          "authorizations": 842974,
+          "transfers": 115883,
+          "observations": 115883,
+          "rule_decisions": 636289
+        }
+      },
+      {
+        "tag": "long-cooldown",
+        "runs": 30,
+        "fingerprint": "3b5d47e2577f578a89608ace556823a5ff2af040ceae7cbab0d8eb2b349b81f8",
+        "totals": {
+          "permits": 14988,
+          "authorizations": 76594,
+          "transfers": 13202,
+          "observations": 13202,
+          "rule_decisions": 63104
+        },
+        "elapsed_seconds": 4.29
+      }
+    ]
+  },
+  "implementation_files": [
+    {
+      "path": ".github/workflows/zoora-review-market.yml",
+      "sha256": "09bff0d1c38dcb356c7dec54833c2d57eefd9799a7ab4074ab0ab0ba1a9c3b76"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/configs/reservation-campaign.toml",
+      "sha256": "2137648534004000de8d0ca4a49a9c277f6c7aba7bf63e463fcf258f01a44acd"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/configs/reservation-long-cooldown.toml",
+      "sha256": "e65271753da866ee0e34e36fcab1b81c57533b1ace41a51c9dba2342bbb8a79a"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/reservation-viewer/app.js",
+      "sha256": "4facd6ab2347369467e21a60a584a4c8356d62fde1176bd3307dc2b4e1bf9404"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/reservation-viewer/index.html",
+      "sha256": "320544f2f26f8ac63500a513de5d5e35ae51ec438ff57bd526212f58388d427c"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py",
+      "sha256": "a3bf09eca11cae7ad69bd3b2c73d276b2a6762dada0f9c902f1ea27a1c1866a9"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py",
+      "sha256": "b7f5b2721db97b178d91bec48c620723a8fa94a89a56e35c2aa19e78d0263e87"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/reservation_evidence.py",
+      "sha256": "46533bdfa9b4dd74483d2a8002067facb3739b1f6fbbbbeb7d97c9231ff83b23"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/run_economy_campaign.py",
+      "sha256": "751135d953a3bb53ae39abe4f922d1092ecec638963e997c108e78ae5cb6fb85"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/viewer_browser.mjs",
+      "sha256": "a233b02951cb4dff6b8338cb2b7def6cea8e0f4c434ee4d9cda4bca87ba75793"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/authorization.rs",
+      "sha256": "b38ae45cce3638451f0e4012155c255e6ecb735e577e6d7a46bd82ddc368c1a9"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/lib.rs",
+      "sha256": "2bda8a32fb8d1b0a7c2b49594d66c6a63c937437aa5cc0973504381b4ba5b66b"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/main.rs",
+      "sha256": "b9eb70de7985ee78c79c38553468968f5a4a5c4e811048afc4a0b82d07d1568e"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/reservation_export.rs",
+      "sha256": "b2b2f94ff68cc67705d786271adcf88f7269edd44fa3dd0bf710ad2bcc5bbeb2"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/reservations.rs",
+      "sha256": "5f5bf76721b3ce65ec798f08d2132662288eb90ab1a5a617acecc5c0f2cbe354"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/tests/reservations.rs",
+      "sha256": "9a64bc64ab8b23a88e064ce18efcb2e3f7761387c68fb52d23248b76623b0eca"
+    }
+  ],
+  "published_ci_and_browser_evidence": "Pinned separately in the AE-015 draft PR after exact-source verification; these local records do not claim those outcomes."
+}
