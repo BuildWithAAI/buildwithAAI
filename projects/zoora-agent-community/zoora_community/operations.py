@@ -24,6 +24,7 @@ def package_snapshot(root=ROOT):
                     root / "zoora_community/schema.sql", root / "zoora_community/migration_002.sql",
                     root / "zoora_community/migration_003.sql",
                     root / "zoora_community/migration_004.sql",
+                    root / "zoora_community/migration_005.sql",
                     root / "requirements.lock", *(root / "web" / name for name, _ in ASSETS.values())])
     digest = hashlib.sha256(b"ZOORA_AE008_LOCAL_PACKAGE_V1\0")
     blobs = {}

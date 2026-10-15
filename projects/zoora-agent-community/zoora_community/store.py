@@ -21,15 +21,16 @@ from .observations import ObservationMethods
 from .jobs import JobMethods
 from .pilot_access import PilotAccessMethods
 from .research_identity import ResearchIdentityMethods
+from .task_capacity import TaskCapacityMethods
 
 APPLICATION_ID = 0x5A414136
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 MAX_DATABASE_BYTES = 64 * 1024 * 1024
 LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "members": 10000, "artifacts": 10000, "posts": 10000, "offers": 2000,
           "credentials": 20000, "audit": 50000, "wallet_challenges": 20000,
           "wallet_proofs": 10000, "transactions": 5000, "jobs": 2000,
-          "invitations": 1000, "access_holds": 2200}
+          "invitations": 1000, "access_holds": 2200, "operator_task_capacity": 200}
 AUTH_DOMAIN = b"ZOORA_AE006_CREDENTIAL_V1\0"
 AUDIT_DOMAIN = b"ZOORA_AE006_AUDIT_V1\0"
 ZERO_HASH = "0" * 64
@@ -76,7 +77,7 @@ def provenance(created_ms, updated_ms=None):
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods):
+class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods):
     def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
@@ -159,6 +160,7 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
             schema += Path(__file__).with_name("migration_002.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_003.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_004.sql").read_text(encoding="utf-8")
+            schema += Path(__file__).with_name("migration_005.sql").read_text(encoding="utf-8")
             connection.executescript("BEGIN IMMEDIATE;\n" + schema)
             connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -398,6 +400,9 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
 
     def _read(self, connection, route, token, at, limit, after):
         parts = route.strip("/").split("/")
+        if route == "/v1/task-capacity" or (len(parts) == 4 and parts[:2] == ["v1", "operators"] and parts[3] == "task-capacity"):
+            principal = self._authenticate(connection, token, at)
+            return self._task_capacity_read(connection, principal, parts[2] if len(parts) == 4 else None, at)
         if route in {"/v1/invitations", "/v1/operators", "/v1/managed-agents"}:
             return self._pilot_read(connection, self._authenticate(connection, token, at), route, at, limit, after)
         if parts[:2] == ["v1", "jobs"]:
@@ -485,6 +490,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
 
     def _write(self, connection, principal, method, route, body, at):
         parts = route.strip("/").split("/")
+        if len(parts) == 4 and parts[:2] == ["v1", "operators"] and parts[3] == "task-capacity":
+            return self._task_capacity_write(connection, principal, method, parts[2], body, at)
         if method == "POST" and route == "/v1/research/ownership-snapshots":
             return self._research_snapshot(connection, principal, body, at)
         if parts[:2] == ["v1", "invitations"]:
@@ -718,6 +725,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
                     raise Problem(503, "AUDIT_CHAIN_FAILURE")
                 previous, at = digest, row["at_ms"]
             for table in LIMITS:
+                if self.schema_version < 5 and table == "operator_task_capacity":
+                    continue
                 if self.schema_version < 4 and table in ("invitations", "access_holds"):
                     continue
                 if self.schema_version < 3 and table == "jobs":
@@ -753,6 +762,11 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
                     self._audit_pilot_access(connection)
                 except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
                     raise Problem(503, "PILOT_ACCESS_CONSISTENCY_FAILURE") from None
+            if self.schema_version >= 5:
+                try:
+                    self._audit_task_capacity(connection)
+                except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+                    raise Problem(503, "TASK_CAPACITY_CONSISTENCY_FAILURE") from None
             connection.execute("COMMIT")
             return {"schema_version": self.schema_version, "audit_events": seq, "audit_head": previous,
                     "database_integrity": "OK", "foreign_keys": "OK", "relationships": "OK",

@@ -21,7 +21,7 @@ def run():
         before = legacy.audit()
         backup = folder / "before.sqlite3"
         result = command("migrate", "--state", legacy.state, "--backup", backup)
-        assert json.loads(result.stdout)["schema_version"] == 4
+        assert json.loads(result.stdout)["schema_version"] == 5
         with closing(sqlite3.connect(backup)) as connection:
             assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
             assert connection.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()[0] == before["audit_head"]

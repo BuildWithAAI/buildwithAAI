@@ -126,6 +126,7 @@ class JobMethods:
                 return 200, {"job": self._job_view(connection, previous, at), "replayed": True}
             if value["project_id"] is not None:
                 self._membership(connection, value["project_id"], principal["principal_id"])
+            admission = self._task_admission(connection, principal["principal_id"], at) if self.schema_version >= 5 else None
             pending = connection.execute("SELECT agent_id FROM jobs WHERE state IN ('QUEUED','RUNNING')").fetchall()
             if len(pending) >= GLOBAL_PENDING or sum(row[0] == principal["principal_id"] for row in pending) >= PER_AGENT_PENDING:
                 raise Problem(409, "JOB_QUEUE_LIMIT")
@@ -138,7 +139,8 @@ class JobMethods:
                                 at, at, at + QUEUE_TTL_MS))
             self._event(connection, principal, "JOB_SUBMIT", record_id,
                         {"credential_id": principal["id"], "project_id": value["project_id"],
-                         "max_steps": value["max_steps"], "timeout_seconds": value["timeout_seconds"]}, at)
+                         "max_steps": value["max_steps"], "timeout_seconds": value["timeout_seconds"],
+                         **({"operator_task_capacity": admission} if admission is not None else {})}, at)
             return 201, {"job": self._job_view(connection, self._row(connection, "jobs", record_id), at), "replayed": False}
         if route == "/v1/jobs/claim":
             self._role(principal, "AGENT")
