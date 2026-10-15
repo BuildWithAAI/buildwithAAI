@@ -13,7 +13,7 @@ from integration_evidence import ROOT, Running, command
 from fixture_signatures import address, signed_body
 from legacy_fixture import create
 from zoora_community.client import read_credential
-from zoora_community.store import Store
+from zoora_community.store import SCHEMA_VERSION, Store
 from zoora_community.validation import Problem, canonical
 
 
@@ -74,7 +74,7 @@ def run():
                 agents.append(result["credential"]["token"])
                 secrets.append(agents[-1])
             view = cli_policy(1, 0)
-            check("actual owner CLI saves schema-5 shared limit at revision one", view["revision"] == 1 and view["max_pending"] == 1)
+            check("actual owner CLI saves shared limit at revision one", view["revision"] == 1 and view["max_pending"] == 1)
             body = {"request_id": uuid.uuid4().hex, "title": "Exact retry", "prompt": "Private fixture"}
             first = submit(agents[0], body)
             refused("OPERATOR_TASK_LIMIT", lambda: submit(agents[1]))
@@ -177,13 +177,13 @@ def run():
             with closing(sqlite3.connect(legacy_backup)) as connection:
                 backup_version = connection.execute("PRAGMA user_version").fetchone()[0]
             check("actual schema-4 migration CLI preserves its audited backup and two original tasks",
-                  migrated["schema_version"] == 5 and backup_version == 4 and view["revision"] == 0 and view["max_pending"] is None
+                  migrated["schema_version"] == SCHEMA_VERSION and backup_version == 4 and view["revision"] == 0 and view["max_pending"] is None
                   and view["pending"] == 2 and Store(old.state).audit()["audit_events"] == before["audit_events"] + 1)
         finally:
             server.stop()
     evidence = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
                 "activity": "AUTOMATED_TEST_FIXTURE", "wallet_classification": "SYNTHETIC",
-                "schema_version": 5, "checks": checks, "transport": server.transport,
+                "schema_version": SCHEMA_VERSION, "checks": checks, "transport": server.transport,
                 "operator_policy": "OWNER_SELECTED_OPT_IN", "earned_trust_enforcement": False,
                 "independent_human_verification": False, "transactions_submitted": 0,
                 "model_requests": 0, "public_deployment": False}

@@ -9,7 +9,7 @@ import tempfile
 from integration_evidence import ROOT, Running, command
 from fixture_signatures import address, signed_body
 from zoora_community.client import read_credential
-from zoora_community.store import Store
+from zoora_community.store import SCHEMA_VERSION, Store
 from zoora_community.validation import Problem, canonical
 
 
@@ -127,7 +127,7 @@ def run():
         finally:
             server.stop()
     evidence = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
-                "activity": "AUTOMATED_TEST_FIXTURE", "wallet_classification": "SYNTHETIC", "schema_version": 5,
+                "activity": "AUTOMATED_TEST_FIXTURE", "wallet_classification": "SYNTHETIC", "schema_version": SCHEMA_VERSION,
                 "checks": checks, "transport": server.transport, "customer_accounts": 0,
                 "chain_requests": 0, "model_requests": 0, "transactions_submitted": 0,
                 "public_deployment": False, "external_identity_verification": "UNAVAILABLE"}

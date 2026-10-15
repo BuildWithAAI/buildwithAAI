@@ -12,6 +12,7 @@ from integration_evidence import ROOT, Running, command
 from fixture_signatures import signed_body
 from legacy_fixture import create
 from zoora_community.client import read_credential
+from zoora_community.store import SCHEMA_VERSION
 
 
 def run():
@@ -21,7 +22,7 @@ def run():
         before = legacy.audit()
         backup = folder / "before.sqlite3"
         result = command("migrate", "--state", legacy.state, "--backup", backup)
-        assert json.loads(result.stdout)["schema_version"] == 5
+        assert json.loads(result.stdout)["schema_version"] == SCHEMA_VERSION
         with closing(sqlite3.connect(backup)) as connection:
             assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
             assert connection.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()[0] == before["audit_head"]

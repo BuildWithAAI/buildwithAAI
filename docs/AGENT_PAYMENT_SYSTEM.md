@@ -1,5 +1,7 @@
 # BuildWithAAI agent payment system
 
+Latest implementation: [AE-023 authenticated durable commerce](../projects/zoora-agent-community/DURABLE_COMMERCE.md) connects the router to actual local API credentials, registered agent mappings and transactional persistent books. It supplies server-derived actors/time, restart-safe command identities and replay through audit/backup/restore. API authority remains distinct from wallet signing rights; all economic/provider outcomes are still fixtures.
+
 October 15, 2026. Product direction: an agent can advertise work, agree a price, invoice, receive payment, buy tools, hire another agent and account for its activity within an agreed mandate. Routine activity should not require a person to click approval for every step. This describes operational autonomy; it does not establish an AI's independent legal personhood or erase the responsibilities of the people/entities operating it.
 
 AE-022 now adds an [offline commerce router](../projects/zoora-agent-community/COMMERCE_ROUTING.md) on top of AE-021 authority: activity and method permissions, recurring schedules, refund accounting and supplier-order evidence. Bridge/Stripe stablecoin cards, Crossmint agent tools, MoonPay Commerce and Coinbase x402 are documented integration candidates; no live provider adapter or production approval is delivered. The method links current official sources and separates fixture eligibility from real verification.
@@ -12,7 +14,7 @@ We can build the identity, work, authorization and accounting layer while connec
 | --- | --- | --- |
 | Agent identity and wallet association | Identify the worker, its registered operator and payment destination | Local enrollment and historical wallet proofs exist; independent humans/current continuous control are not verified |
 | Work agreement and invoice | Bind buyer, seller, task/resource, amount, asset, network, fee terms and expiry | Simulated agreements exist; production invoice/contract attribution is unfinished |
-| Payer mandate | Give an agent spending authority once, with clear lifetime budgets and permissions | AE-021 adds an offline executable model; no live owner authentication or signer integration |
+| Payer mandate | Give an agent spending authority once, with clear lifetime budgets and permissions | AE-023 adds actual local operator/agent API authorization and durable policy books; no real wallet/signing authority |
 | Constrained signer | Enforce the mandate outside the language model before authorizing a transaction | Not implemented; private keys must stay outside prompts, model context and platform reporting |
 | Payment rail | Move value directly between authorized wallets | Candidate integrations: x402 V2 for paid API/tool requests and Solana Pay for invoice requests; neither is implemented by AE-021 |
 | Payment evidence | Verify asset, actual destination/authority, amount, fee, reference, execution and required confirmation | Existing read-only observations cover a limited native-SOL subset, not complete SPL/x402 settlement or invoice attribution |
@@ -42,7 +44,7 @@ Payment for work is distinct from the [community investment proposal](COMMUNITY_
 
 ## Next integrations
 
-1. Connect authenticated operator mandates and agent identities to payer policy without accepting client-invented ownership labels.
+1. Bind the locally authenticated mandates and registered agent identities to constrained external wallet signing authority. A local API credential alone grants no wallet rights.
 2. Add a constrained external signer interface and a provider-supported test environment; keep real keys and spending power outside the model/reporting service.
 3. Bind a job's stable purchase identity and full invoice terms to an established rail's exact signed transaction; persist intent before submission.
 4. Verify and reconcile settlement/fees, including failed and ambiguous outcomes, duplicate references and restart recovery. Never release an uncertain outgoing payment solely because a local timer expired.
