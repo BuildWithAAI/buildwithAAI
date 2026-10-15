@@ -1,5 +1,7 @@
 # Creator-fee funding and community benefit
 
+**October 15 addition:** the [community-funded agent proposal](COMMUNITY_FUNDED_AGENTS.md) records a separate idea for contributor-funded agents and amount/time-based profit participation. It is simulation planning, with no fundraising, custody or distribution enabled. The creator-fee intent below retains its historical scope.
+
 **Updated September 22, 2026. Status: founder intent recorded; allocation, account operation, and distributions remain PROPOSED.**
 
 The founder intends to use creator fees allocated to AAI for development, marketing, and relevant DEX-related costs. The later clarification adds a proposal to fund a dedicated trading account from creator fees, with technology such as an XAUUSD system considered only if research and testing support it. The funding source is creator fees; the earlier assumption of an account funded solely from unrelated personal savings is superseded.

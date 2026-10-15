@@ -10,7 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from legacy_fixture import create  # noqa: E402
 from fixture_signatures import signed_body  # noqa: E402
-from zoora_community.store import Store  # noqa: E402
+from zoora_community.store import SCHEMA_VERSION, Store  # noqa: E402
 from zoora_community.recovery import restore_backup, verify_backup  # noqa: E402
 from zoora_community.validation import Problem  # noqa: E402
 
@@ -54,6 +54,41 @@ class MigrationTests(unittest.TestCase):
         challenge = current.call("POST", route + "/wallet-challenges", {}, self.agent)[1]
         current.call("POST", route + "/wallet-proof", signed_body(challenge, "legacy-fixture"), self.agent)
         self.assertEqual(current.call("GET", route)[1]["wallet_status"], "SIGNATURE_VERIFIED")
+        current.audit()
+
+    def test_schema_four_upgrade_preserves_two_pending_tasks_before_owner_sets_limit(self):
+        with closing(sqlite3.connect(self.legacy.path, autocommit=True)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            for version in (2, 3, 4):
+                ddl = Path(__file__).resolve().parent.parent / "zoora_community" / f"migration_{version:03}.sql"
+                for statement in ddl.read_text().split(";"):
+                    if statement.strip():
+                        connection.execute(statement)
+            connection.execute("PRAGMA user_version=4")
+            connection.execute("COMMIT")
+        old = Store(self.legacy.state, clock=lambda: self.at, _schema_version=4)
+        with closing(old._connection()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            principal = old._authenticate(connection, self.agent, self.at)
+            jobs = [old._jobs_write(connection, principal, "POST", "/v1/jobs",
+                                   {"request_id": letter * 32, "title": "Schema four task", "prompt": "Preserved"}, self.at)[1]["job"]
+                    for letter in ("a", "b")]
+            connection.execute("COMMIT")
+        before = old.audit()
+        backup = self.root / "schema-four.sqlite3"
+        current = Store.migrate(old.state, backup, clock=lambda: self.at)
+        self.assertEqual(verify_backup(backup)["audit"], before)
+        view = current.call("GET", "/v1/task-capacity", token=self.agent)[1]
+        self.assertIsNone(view["max_pending"])
+        self.assertEqual(view["pending"], 2)
+        owner = json.loads(self.files["owner"].read_text())["token"]
+        route = "/v1/operators/" + view["operator_id"] + "/task-capacity"
+        limited = current.call("PATCH", route, {"expected_revision": 0, "max_pending": 1, "reason": "Reviewed"}, owner)[1]
+        self.assertTrue(limited["capacity"]["over_limit"])
+        self.refused("OPERATOR_TASK_LIMIT", lambda: current.call("POST", "/v1/jobs",
+                     {"request_id": "c" * 32, "title": "New", "prompt": "Blocked"}, self.agent))
+        for job in jobs:
+            self.assertEqual(current.call("GET", "/v1/jobs/" + job["id"], token=self.agent)[1]["state"], "QUEUED")
         current.audit()
 
     def test_migration_failure_rolls_back_ddl_and_keeps_valid_backup(self):
@@ -102,7 +137,7 @@ class MigrationTests(unittest.TestCase):
         before = old.audit()
         backup = self.root / "schema-two.sqlite3"
         current = Store.migrate(old.state, backup, clock=lambda: self.at)
-        self.assertEqual(current.schema_version, 4)
+        self.assertEqual(current.schema_version, SCHEMA_VERSION)
         self.assertEqual(current.audit()["audit_events"], before["audit_events"] + 1)
         self.assertEqual(verify_backup(backup)["audit"], before)
         restored = self.root / "restored-two"
@@ -110,7 +145,7 @@ class MigrationTests(unittest.TestCase):
         self.assertTrue(result["next_action"].startswith("MIGRATE_THEN_"))
         self.refused("UNSUPPORTED_SCHEMA", lambda: Store(restored))
         migrated = Store.migrate(restored, self.root / "second-snapshot.sqlite3", clock=lambda: self.at)
-        self.assertEqual(migrated.audit()["schema_version"], 4)
+        self.assertEqual(migrated.audit()["schema_version"], SCHEMA_VERSION)
         self.assertEqual(migrated.call("GET", "/v1/me", token=self.agent)[1]["principal_id"], self.ids["agent_id"])
 
     def test_schema_three_upgrade_preserves_queued_job_and_original_credential(self):

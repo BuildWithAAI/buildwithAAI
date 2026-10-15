@@ -29,3 +29,8 @@ Keep each decision in the repository/issue record and reconcile labels/board fie
 ## October 13 project queue
 
 The historical 40-task snapshot above is retained. The new approved [Virtual Business Spaces project](../../projects/VIRTUAL_BUSINESS_SPACES.md) has VL-001–007 specification/simulation tasks and mandatory contract controls. These are queued and unassigned; they are not included in the historical lane counts and do not activate a native GitHub Projects board or unattended agent. Current software readiness is recorded separately in the ecosystem status page.
+
+
+## October 15 community-funded agent idea
+
+[CFA-001–004](../COMMUNITY_FUNDED_AGENTS.md#development-queue) are proposed, unassigned simulation/design tasks for contributor accounting, treasury authority, legal structure and reporting. They are outside the historical lane totals. The idea creates no funding address, live investment program or autonomous agent.
