@@ -134,6 +134,14 @@ with tempfile.TemporaryDirectory() as folder:
         source,output=temp/(label+"-input.json"),temp/(label+"-output.json")
         source.write_text(json.dumps(value),encoding="utf-8");cli("recovery-run",source,output,ok=False)
         check(label+" rejected without output creation",not output.exists())
+    for label in ["valid-demo-timing","valid-demo-panel"]:
+        # This mode takes TOML, so preserve the documented reference and vary one setting.
+        cfg=(ROOT/"configs/recovery-campaign.toml").read_text(encoding="utf-8")
+        cfg=cfg.replace("maturity_ticks = 3","maturity_ticks = 6") if label=="valid-demo-timing" else cfg.replace("{id=4,operator=102}","{id=4,operator=100}")
+        source,output=temp/(label+".toml"),temp/(label+".json")
+        source.write_text(cfg,encoding="utf-8")
+        result=cli("recovery-campaign",source,output,ok=False)
+        check(label+" fails cleanly without a panic or report",result.returncode==1 and "panicked" not in result.stderr and not output.exists())
 head=os.environ.get("SOURCE_HEAD_SHA") or subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip()
 summary=dict(source_head_sha=head,source_tree_dirty=bool(subprocess.check_output(["git","status","--porcelain"],cwd=ROOT)),classification="SYNTHETIC",model=data["model"],platform=platform.platform(),fingerprint=data["fingerprint"],independently_audited=counts,checks=CHECKS,report_sha256=hashlib.sha256(campaign.read_bytes()).hexdigest(),csv_sha256=hashlib.sha256(export.read_bytes()).hexdigest(),elapsed_seconds=round(time.perf_counter()-start,3),timing_scope="SINGLE_ACCEPTANCE_SAMPLE_NOT_LIVE_THROUGHPUT",network_or_signer=False)
 (OUT/"recovery-evidence.json").write_text(json.dumps(summary,indent=2)+"\n",encoding="utf-8")

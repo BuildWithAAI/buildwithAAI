@@ -1,6 +1,6 @@
 # AE-017: validation and policy findings
 
-October 15, 2026. Worktree based on AE-016 commit `248a36a31983a9f443084b0e10c8296cfd425e65`. This document describes development checks; the parent commit does not contain AE-017. The development pull request records the exact published head, tree and CI results. No merge or deployment is part of this milestone.
+October 15, 2026. Worktree based on AE-016 commit `248a36a31983a9f443084b0e10c8296cfd425e65`. This document describes retained local development checkpoints; the AE-016 base does not contain AE-017. The local summary identifies its own actual parent and dirty worktree. The development pull request records the exact published head, tree and CI results. No merge or deployment is part of this milestone.
 
 The candidate adds reviewed complaint/nonresponse cases and appeals to the same trust runtime. It retains **15 complete demonstrations: 294 actions, 16 work agreements, 15 review cases, 71 case events and 2,472 checked agent-state snapshots**. Eighteen actions are deliberately refused. These are controlled fixtures, not trials with independent users or evidence of autonomous competence.
 
@@ -8,10 +8,11 @@ The candidate adds reviewed complaint/nonresponse cases and appeals to the same 
 
 | Check | Result |
 | --- | --- |
-| Normal Rust suite | 226 tests pass, including 27 new recovery tests |
+| Retained local normal Rust checkpoint | 226 tests pass, including the original 27 recovery tests |
 | Formatting and strict Clippy | Pass, all targets, warnings denied |
-| Optimized Rust suite | 226 tests pass, including all 27 new recovery tests |
-| Actual new CLI acceptance | 51 checks pass; normal/optimized reports and retained JSON/CSV match exactly |
+| Retained local optimized checkpoint | 226 tests pass, including the original 27 recovery tests |
+| Retained local CLI checkpoint | 51 checks pass; normal/optimized reports and retained JSON/CSV match exactly |
+| Final input guards | Two further Rust regressions and two CLI checks cover valid timing/panel settings that cannot admit a fixed demo; exact final-source results are recorded in the development PR |
 | Independent applied-history audit | All 15 histories; case transitions, evidence bindings, profiles and payment totals |
 | Previous AE-016 campaign | Exact fingerprint preserved; prior independent audit passes |
 
@@ -47,7 +48,7 @@ The compressed archive retains every input, accepted/rejected action, case event
 | Deadline boundaries | Premature verdict and appeal at exact close refused |
 | Forged bindings and bypasses | Old binding after added evidence, duplicate case, outsider evidence, duplicate decision, late withdrawal and raw legacy dispute route refused |
 
-The 27 Rust tests additionally cover insufficient panel diversity, withdrawal before a decision, repeated appeals, partial returns after a historically final acceptance, wrong reviewer IDs, rehashed profile/credit/event/payment forgeries, malformed timing, time travel and excessive inputs. Independent Python arithmetic is not native replay: it checks applied-history evidence, while native replay also regenerates refused attempts and the fixed demonstration matrix. Hashes and consistency cannot authenticate outside facts.
+The original 27 Rust tests additionally cover insufficient panel diversity, withdrawal before a decision, repeated appeals, partial returns after a historically final acceptance, wrong reviewer IDs, rehashed profile/credit/event/payment forgeries, malformed timing, time travel and excessive inputs. Two further tests require the fixed demo to return an error, rather than panic, when a generally valid timing configuration or panel cannot admit its scripted case. The final suite contains 228 Rust tests, including 29 recovery tests; the final CLI script contains 53 checks. Final source-specific Linux/Windows results are recorded in the development PR. Independent Python arithmetic is not native replay: it checks applied-history evidence, while native replay also regenerates refused attempts and the fixed demonstration matrix. Hashes and consistency cannot authenticate outside facts.
 
 ## Remaining limits
 

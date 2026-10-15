@@ -187,15 +187,23 @@ impl Builder {
             reason_digest: digest("case", p.id, 0),
         })
     }
+    fn reviewer(&self, id: u64, appeal: bool) -> Result<u64> {
+        let c = self.engine.case(id).ok_or(SimulationError::Configuration(
+            "demo case was not admitted; use compatible timing and reviewer settings",
+        ))?;
+        let reviewer = if appeal {
+            c.appellate_reviewer
+        } else {
+            c.primary_assignments.last().copied()
+        };
+        reviewer.ok_or(SimulationError::Configuration(
+            "demo reviewer was not assigned; use compatible timing and reviewer settings",
+        ))
+    }
     fn verdict(&mut self, id: u64, verdict: WorkVerdict, appeal: bool) -> Result<()> {
         // Advance timers before querying the assigned backup or appellate fixture.
         self.cmd(RecoveryCommand::Advance {})?;
-        let c = self.engine.case(id).expect("demo case");
-        let reviewer = if appeal {
-            c.appellate_reviewer.expect("appeal fixture")
-        } else {
-            *c.primary_assignments.last().expect("primary fixture")
-        };
+        let reviewer = self.reviewer(id, appeal)?;
         let binding = self.engine.binding(id)?;
         let reason_digest = digest("judgment", id, u64::from(appeal));
         self.cmd(if appeal {
@@ -308,13 +316,7 @@ impl RecoveryCampaign {
                     b.open_case(&p, CaseKind::CustomerNonresponse)?;
                     if name != "REVIEWERS_ALL_TIMEOUT" {
                         if name == "REVIEWER_TIMEOUT_ESCALATION" {
-                            let old = *b
-                                .engine
-                                .case(0)
-                                .unwrap()
-                                .primary_assignments
-                                .last()
-                                .unwrap();
+                            let old = b.reviewer(0, false)?;
                             b.tick += config.evidence_ticks + config.primary_review_ticks;
                             b.cmd(RecoveryCommand::PrimaryVerdict {
                                 reviewer: old,
@@ -388,13 +390,7 @@ impl RecoveryCampaign {
                                 evidence_digest: digest("evidence", 0, 0),
                             })?;
                             b.tick += config.evidence_ticks;
-                            let reviewer = *b
-                                .engine
-                                .case(0)
-                                .unwrap()
-                                .primary_assignments
-                                .last()
-                                .unwrap();
+                            let reviewer = b.reviewer(0, false)?;
                             b.cmd(RecoveryCommand::PrimaryVerdict {
                                 reviewer,
                                 case_id: 0,

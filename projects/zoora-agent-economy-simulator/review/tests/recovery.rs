@@ -369,3 +369,18 @@ fn valid_binding_does_not_authorize_an_unassigned_reviewer() {
     assert_eq!(rejected(&r, RecoveryRejection::WrongReviewer), 1);
     assert_eq!(r.cases[0].status, CaseStatus::Expired);
 }
+
+#[test]
+fn valid_timing_that_cannot_admit_the_fixed_demo_returns_an_error() {
+    let mut c = config();
+    c.trust.maturity_ticks = c.complaint_ticks;
+    c.validate().unwrap();
+    assert!(RecoveryCampaign::generate(c).is_err());
+}
+#[test]
+fn valid_panel_that_cannot_admit_the_fixed_demo_returns_an_error() {
+    let mut c = config();
+    c.reviewers[4].operator = 100;
+    c.validate().unwrap();
+    assert!(RecoveryCampaign::generate(c).is_err());
+}
