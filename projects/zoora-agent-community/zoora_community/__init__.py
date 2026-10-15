@@ -1,3 +1,3 @@
-"""AE-011 controlled pilot invitations and scoped suspension controls."""
+"""AE-019 authenticated enrollment evidence for offline ownership research."""
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"

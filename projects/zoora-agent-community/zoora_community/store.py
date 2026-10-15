@@ -20,6 +20,7 @@ from .wallet_proof import WalletProofMethods, profile
 from .observations import ObservationMethods
 from .jobs import JobMethods
 from .pilot_access import PilotAccessMethods
+from .research_identity import ResearchIdentityMethods
 
 APPLICATION_ID = 0x5A414136
 SCHEMA_VERSION = 4
@@ -75,7 +76,7 @@ def provenance(created_ms, updated_ms=None):
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMethods):
+class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods):
     def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
@@ -484,6 +485,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
 
     def _write(self, connection, principal, method, route, body, at):
         parts = route.strip("/").split("/")
+        if method == "POST" and route == "/v1/research/ownership-snapshots":
+            return self._research_snapshot(connection, principal, body, at)
         if parts[:2] == ["v1", "invitations"]:
             return self._invitation_write(connection, principal, method, route, body, at)
         if (method == "POST" and len(parts) == 4 and parts[0] == "v1"

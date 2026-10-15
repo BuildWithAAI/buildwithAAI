@@ -1,0 +1,58 @@
+name: Zoora Identity Research Bridge
+on:
+  pull_request:
+    paths:
+      - "projects/zoora-agent-community/**"
+      - "projects/zoora-agent-economy-simulator/review/**"
+      - ".github/workflows/zoora-research-identity.yml"
+  push:
+    branches: [main]
+    paths:
+      - "projects/zoora-agent-community/**"
+      - "projects/zoora-agent-economy-simulator/review/**"
+      - ".github/workflows/zoora-research-identity.yml"
+permissions:
+  contents: read
+jobs:
+  bridge:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        with:
+          toolchain: 1.99.0
+      - name: Optimized native-engine regressions and preceding golden reports
+        working-directory: projects/zoora-agent-economy-simulator/review
+        run: cargo test --locked --release --all-targets
+      - name: Build actual native research executable
+        working-directory: projects/zoora-agent-economy-simulator/review
+        run: cargo build --locked --release
+      - name: Actual authenticated enrollment, snapshot, native engine and replay
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          zoora_engine_suffix=""
+          if [ "${{ runner.os }}" = "Windows" ]; then zoora_engine_suffix=".exe"; fi
+          python -bb -X dev -W error scripts/research_evidence.py --engine "../zoora-agent-economy-simulator/review/target/release/zoora-review-market${zoora_engine_suffix}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: identity-bridge-${{ matrix.os }}
+          path: projects/zoora-agent-community/evidence-output/
+          retention-days: 14
