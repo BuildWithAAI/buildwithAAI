@@ -853,6 +853,9 @@ impl RecoveryEngine {
     pub fn profiles(&self) -> Result<Vec<TrustProfile>> {
         self.trust.controlled_profiles(&self.book)
     }
+    pub(crate) fn work_exposures(&self) -> Vec<WorkExposure> {
+        self.trust.controlled_exposures(&self.book)
+    }
     pub fn record(&mut self, action: RecoveryAction) -> Result<RecoveryOutcome> {
         if self.actions.len() >= MAX_ACTIONS
             || action.tick < self.clock
@@ -920,11 +923,15 @@ impl RecoveryEngine {
         });
         Ok(outcome)
     }
-    pub fn finish(mut self) -> Result<RecoveryReport> {
+    pub fn finish(self) -> Result<RecoveryReport> {
+        self.finish_with_work().map(|(report, _)| report)
+    }
+    pub(crate) fn finish_with_work(mut self) -> Result<(RecoveryReport, Vec<WorkExposure>)> {
         self.clock = self.config.trust.ticks - 1;
         self.trust.advance_control_clock(self.clock)?;
         self.book.visible_actions = self.actions.len();
         self.book.advance(self.clock, &self.trust)?;
+        let work = self.work_exposures();
         let trust = self.trust.into_transcript(&self.book)?;
         let mut r = RecoveryReport {
             schema_version: 1,
@@ -941,7 +948,7 @@ impl RecoveryEngine {
             fingerprint: String::new(),
         };
         r.fingerprint = r.hash()?;
-        Ok(r)
+        Ok((r, work))
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
