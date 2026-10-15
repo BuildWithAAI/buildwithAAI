@@ -281,6 +281,51 @@ pub struct TrustRecord {
     pub profiles_after: Vec<TrustProfile>,
 }
 
+/// Policy context belongs to the enclosing report; AE-016 always uses the no-op.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(
+    tag = "status",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    deny_unknown_fields
+)]
+pub enum TrustDisposition {
+    Ordinary,
+    Pending,
+    Accepted { accepted_tick: u64 },
+    Rejected,
+    Unresolved,
+}
+pub(crate) trait TrustControl {
+    fn disposition(
+        &self,
+        tick: u64,
+        contract: &WorkContract,
+        agreement: &Agreement,
+    ) -> TrustDisposition;
+}
+struct NoTrustControl;
+impl TrustControl for NoTrustControl {
+    fn disposition(&self, _: u64, _: &WorkContract, _: &Agreement) -> TrustDisposition {
+        TrustDisposition::Ordinary
+    }
+}
+/// Reportless runtime data. Only an enclosing versioned report owns replay.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrustTranscript {
+    pub input: TrustInput,
+    #[serde(deserialize_with = "records")]
+    pub journal: Vec<TrustRecord>,
+    #[serde(deserialize_with = "groups")]
+    pub groups: Vec<Group>,
+    #[serde(deserialize_with = "projects")]
+    pub projects: Vec<Project>,
+    #[serde(deserialize_with = "contracts")]
+    pub contracts: Vec<WorkContract>,
+    #[serde(deserialize_with = "profiles")]
+    pub profiles: Vec<TrustProfile>,
+    pub direct: DirectReport,
+}
 pub struct TrustEngine {
     config: TrustConfig,
     clock: u64,
@@ -323,16 +368,48 @@ impl TrustEngine {
             .agreement(id)
             .expect("contract has direct terms")
     }
-    fn eligible_credit(&self, id: u64) -> bool {
+    pub(crate) fn evidence(&self, id: u64) -> Option<(&WorkContract, &Agreement)> {
+        Some((self.contracts.get(&id)?, self.direct.agreement(id)?))
+    }
+    pub(crate) fn delivery_tick(&self, id: u64) -> Option<u64> {
+        self.direct.journal().iter().find_map(|r| if matches!(r.command, DirectCommand::Deliver { agreement_id, .. } if agreement_id == id)
+            && matches!(r.outcome, DirectOutcome::Recorded {}) { Some(r.simulation_tick) } else { None })
+    }
+    pub(crate) fn advance_control_clock(&mut self, tick: u64) -> Result<()> {
+        if tick < self.clock || tick >= self.config.ticks {
+            return Err(SimulationError::Integrity("invalid controlled trust clock"));
+        }
+        self.clock = tick;
+        Ok(())
+    }
+    fn acceptance_tick(&self, id: u64, control: &dyn TrustControl) -> Option<u64> {
+        let c = &self.contracts[&id];
+        match control.disposition(self.clock, c, self.agreement(id)) {
+            TrustDisposition::Ordinary => c.accepted_tick,
+            TrustDisposition::Accepted { accepted_tick } => Some(accepted_tick),
+            _ => None,
+        }
+    }
+    fn credit_proof(&self, id: u64, control: &dyn TrustControl) -> bool {
         let a = self.agreement(id);
-        a.delivery_acknowledged
+        self.acceptance_tick(id, control).is_some()
             && a.payments_received == u128::from(a.terms.amount)
             && a.voluntary_refunds_received == 0
             && a.dispute_digest.is_none()
             && a.refund_request_digest.is_none()
             && !a.delivery_overdue
+            && a.delivery_digest.is_some()
     }
-    fn active(&self, id: u64) -> bool {
+    fn eligible_credit(&self, id: u64, control: &dyn TrustControl) -> bool {
+        self.credit_proof(id, control)
+            && match control.disposition(self.clock, &self.contracts[&id], self.agreement(id)) {
+                TrustDisposition::Accepted { accepted_tick } => {
+                    self.clock >= accepted_tick.saturating_add(self.config.maturity_ticks)
+                }
+                _ => true,
+            }
+    }
+    fn active(&self, id: u64, control: &dyn TrustControl) -> bool {
         let a = self.agreement(id);
         if a.payments_received > 0 && a.net_transferred() == 0 {
             return false;
@@ -340,12 +417,25 @@ impl TrustEngine {
         if a.payments_received == 0 && self.clock >= a.terms.delivery_deadline {
             return false;
         }
-        !(a.delivery_acknowledged
-            && a.voluntary_refunds_received == 0
-            && a.dispute_digest.is_none()
-            && a.refund_request_digest.is_none())
+        match control.disposition(self.clock, &self.contracts[&id], a) {
+            TrustDisposition::Ordinary => {
+                !(a.delivery_acknowledged
+                    && a.voluntary_refunds_received == 0
+                    && a.dispute_digest.is_none()
+                    && a.refund_request_digest.is_none())
+            }
+            TrustDisposition::Accepted { .. } => !self.credit_proof(id, control),
+            _ => true,
+        }
     }
     pub fn profile(&self, agent: u64) -> Result<TrustProfile> {
+        self.controlled_profile(agent, &NoTrustControl)
+    }
+    pub(crate) fn controlled_profile(
+        &self,
+        agent: u64,
+        control: &dyn TrustControl,
+    ) -> Result<TrustProfile> {
         if !self.exists(agent) {
             return Err(SimulationError::Configuration("unknown trust agent"));
         }
@@ -358,11 +448,17 @@ impl TrustEngine {
             if !c.plan.shares.iter().any(|s| s.agent == agent) {
                 continue;
             }
-            active += usize::from(self.active(*id));
+            active += usize::from(self.active(*id, control));
             let a = self.agreement(*id);
             dispute |= (a.dispute_digest.is_some() || a.refund_request_digest.is_some())
                 && a.net_transferred() > 0;
-            if self.eligible_credit(*id) && self.approved.contains(&c.plan.client) {
+            dispute |= a.net_transferred() > 0
+                && match control.disposition(self.clock, c, a) {
+                    TrustDisposition::Ordinary => false,
+                    TrustDisposition::Accepted { .. } => !self.credit_proof(*id, control),
+                    _ => true,
+                };
+            if self.eligible_credit(*id, control) && self.approved.contains(&c.plan.client) {
                 for s in &c.credit_shares {
                     if s.agent == agent && s.earned_microunits > 0 {
                         earned += s.earned_microunits;
@@ -425,9 +521,12 @@ impl TrustEngine {
             limits,
         })
     }
-    fn all_profiles(&self) -> Result<Vec<TrustProfile>> {
+    pub(crate) fn controlled_profiles(
+        &self,
+        control: &dyn TrustControl,
+    ) -> Result<Vec<TrustProfile>> {
         (0..self.config.operators.len() as u64)
-            .map(|a| self.profile(a))
+            .map(|a| self.controlled_profile(a, control))
             .collect()
     }
     fn agent(actor: TrustActor) -> std::result::Result<u64, TrustRejection> {
@@ -441,9 +540,10 @@ impl TrustEngine {
         &self,
         agent: u64,
         kind: GroupKind,
+        control: &dyn TrustControl,
     ) -> std::result::Result<(), TrustRejection> {
         let p = self
-            .profile(agent)
+            .controlled_profile(agent, control)
             .map_err(|_| TrustRejection::WrongActor)?;
         if p.dispute_hold {
             return Err(TrustRejection::DisputeHold);
@@ -461,6 +561,13 @@ impl TrustEngine {
         }
     }
     pub fn record(&mut self, action: TrustAction) -> Result<TrustOutcome> {
+        self.record_controlled(action, &NoTrustControl)
+    }
+    pub(crate) fn record_controlled(
+        &mut self,
+        action: TrustAction,
+        control: &dyn TrustControl,
+    ) -> Result<TrustOutcome> {
         if self.actions.len() >= MAX_ACTIONS
             || action.tick < self.clock
             || action.tick >= self.config.ticks - 1
@@ -480,7 +587,7 @@ impl TrustEngine {
                 reason: TrustRejection::WrongActor,
             }
         } else {
-            match self.apply(&action) {
+            match self.apply(&action, control) {
                 Ok(()) => TrustOutcome::Applied {},
                 Err(reason) => TrustOutcome::Rejected { reason },
             }
@@ -490,11 +597,15 @@ impl TrustEngine {
             sequence: self.journal.len(),
             action,
             outcome,
-            profiles_after: self.all_profiles()?,
+            profiles_after: self.controlled_profiles(control)?,
         });
         Ok(outcome)
     }
-    fn apply(&mut self, action: &TrustAction) -> std::result::Result<(), TrustRejection> {
+    fn apply(
+        &mut self,
+        action: &TrustAction,
+        control: &dyn TrustControl,
+    ) -> std::result::Result<(), TrustRejection> {
         use TrustRejection::*;
         let review = action.actor == TrustActor::ReviewFixture {};
         match &action.command {
@@ -555,7 +666,7 @@ impl TrustEngine {
                 if self.groups.len() >= 128 {
                     return Err(Capacity);
                 }
-                self.membership_room(agent, *kind)?;
+                self.membership_room(agent, *kind, control)?;
                 self.groups.insert(
                     *id,
                     Group {
@@ -571,7 +682,7 @@ impl TrustEngine {
                 if g.members.contains(&agent) {
                     return Err(DuplicateRecord);
                 }
-                self.membership_room(agent, g.kind)?;
+                self.membership_room(agent, g.kind, control)?;
                 let g = self.groups.get_mut(id).expect("group checked");
                 g.members.push(agent);
                 g.members.sort_unstable();
@@ -585,7 +696,7 @@ impl TrustEngine {
                 if self.contracts.iter().any(|(i, c)| {
                     c.plan.group == Some(*id)
                         && c.plan.shares.iter().any(|s| s.agent == agent)
-                        && self.active(*i)
+                        && self.active(*i, control)
                 }) {
                     return Err(ActiveGroupWork);
                 }
@@ -605,7 +716,7 @@ impl TrustEngine {
                 }
             }
             TrustCommand::OpenContract { plan } => {
-                self.open(action.actor, plan)?;
+                self.open(action.actor, plan, control)?;
             }
             TrustCommand::Contribute {
                 contract_id,
@@ -657,11 +768,12 @@ impl TrustEngine {
                 if c.reviewed_tick.is_some() {
                     return Err(DuplicateRecord);
                 }
-                if !self.eligible_credit(*contract_id) {
+                if !self.credit_proof(*contract_id, control) {
                     return Err(WrongState);
                 }
                 if self.clock
-                    < c.accepted_tick
+                    < self
+                        .acceptance_tick(*contract_id, control)
                         .ok_or(WrongState)?
                         .saturating_add(self.config.maturity_ticks)
                 {
@@ -715,6 +827,7 @@ impl TrustEngine {
         &mut self,
         actor: TrustActor,
         p: &ContractPlan,
+        control: &dyn TrustControl,
     ) -> std::result::Result<(), TrustRejection> {
         use TrustRejection::*;
         if Self::agent(actor)? != p.lead {
@@ -756,7 +869,9 @@ impl TrustEngine {
             return Err(InvalidTerms);
         }
         for s in &p.shares {
-            let profile = self.profile(s.agent).map_err(|_| InvalidTerms)?;
+            let profile = self
+                .controlled_profile(s.agent, control)
+                .map_err(|_| InvalidTerms)?;
             if profile.dispute_hold {
                 return Err(DisputeHold);
             }
@@ -887,15 +1002,11 @@ impl TrustEngine {
         }
         Ok(())
     }
-    pub fn finish(mut self) -> Result<TrustReport> {
+    pub(crate) fn into_transcript(mut self, control: &dyn TrustControl) -> Result<TrustTranscript> {
         self.clock = self.config.ticks - 1;
         self.direct.finish()?;
-        let final_profiles = self.all_profiles()?;
-        let mut r = TrustReport {
-            schema_version: 1,
-            model: "zoora-trust-run/0.1.0".into(),
-            classification: "SYNTHETIC".into(),
-            credit_unit: "WORK_CREDIT_1_10000".into(),
+        let profiles = self.controlled_profiles(control)?;
+        Ok(TrustTranscript {
             input: TrustInput {
                 config: self.config,
                 actions: self.actions,
@@ -904,8 +1015,24 @@ impl TrustEngine {
             groups: self.groups.into_values().collect(),
             projects: self.projects.into_values().collect(),
             contracts: self.contracts.into_values().collect(),
-            profiles: final_profiles,
+            profiles,
             direct: DirectReport::from_engine(&self.direct)?,
+        })
+    }
+    pub fn finish(self) -> Result<TrustReport> {
+        let t = self.into_transcript(&NoTrustControl)?;
+        let mut r = TrustReport {
+            schema_version: 1,
+            model: "zoora-trust-run/0.1.0".into(),
+            classification: "SYNTHETIC".into(),
+            credit_unit: "WORK_CREDIT_1_10000".into(),
+            input: t.input,
+            journal: t.journal,
+            groups: t.groups,
+            projects: t.projects,
+            contracts: t.contracts,
+            profiles: t.profiles,
+            direct: t.direct,
             fingerprint: String::new(),
         };
         r.fingerprint = r.hash()?;

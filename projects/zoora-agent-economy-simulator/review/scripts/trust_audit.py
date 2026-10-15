@@ -41,7 +41,7 @@ def valid_digest(value):
     return isinstance(value, str) and len(value) == 64 and all(x in "0123456789abcdef" for x in value)
 
 
-def inspect_run(d):
+def inspect_run(d, policy=None):
     assert d["schema_version"] == 1 and d["model"] == "zoora-trust-run/0.1.0"
     assert d["classification"] == "SYNTHETIC" and d["credit_unit"] == "WORK_CREDIT_1_10000"
     assert d["fingerprint"] == run_hash(d)
@@ -51,8 +51,20 @@ def inspect_run(d):
     groups, projects, contracts, facts = {}, {}, {}, {}
     seen_receipts = set()
 
+    def acceptance(i):
+        if policy is not None:
+            status, accepted = policy.disposition(i, contracts[i], facts[i], current_tick)
+            return accepted if status == "ACCEPTED" else (contracts[i]["accepted_tick"] if status == "ORDINARY" else None)
+        return contracts[i]["accepted_tick"]
+
     def eligible(i):
         f = facts[i]
+        if policy is not None:
+            at = acceptance(i)
+            status, _ = policy.disposition(i, contracts[i], f, current_tick)
+            return (at is not None and f["paid"] == f["amount"] and not f["returned"]
+                    and not f["late_delivery"] and f["delivery"]
+                    and (status != "ACCEPTED" or current_tick >= at + cfg["maturity_ticks"]))
         return (f["accepted"] and f["paid"] == f["amount"] and not f["returned"]
                 and not f["dispute"] and not f["refund_request"] and not f["late_delivery"])
 
@@ -62,6 +74,10 @@ def inspect_run(d):
             return False
         if not f["paid"] and tick >= contracts[i]["plan"]["deadline"]:
             return False
+        if policy is not None:
+            status, _ = policy.disposition(i, contracts[i], f, tick)
+            if status != "ORDINARY":
+                return not (status == "ACCEPTED" and acceptance(i) is not None and not f["returned"] and f["delivery"] and not f["late_delivery"] and f["paid"] == f["amount"])
         return not (f["accepted"] and not f["returned"] and not f["dispute"] and not f["refund_request"])
 
     def profile(agent, tick):
@@ -73,6 +89,9 @@ def inspect_run(d):
             f = facts[i]
             active_count += active(i, tick)
             hold |= (f["dispute"] or f["refund_request"]) and f["paid"] > f["returned"]
+            if policy is not None and f["paid"] > f["returned"]:
+                status, _ = policy.disposition(i, c, f, tick)
+                hold |= status in ["PENDING", "REJECTED", "UNRESOLVED"]
             if eligible(i) and c["plan"]["client"] in approved:
                 for s in c["credit_shares"]:
                     if s["agent"] == agent and s["earned_microunits"] > 0:
@@ -95,12 +114,16 @@ def inspect_run(d):
 
     assert len(d["journal"]) == len(d["input"]["actions"])
     last_tick = 0
+    current_tick = 0
     for seq, row in enumerate(d["journal"]):
         a = row["action"]
         assert row["sequence"] == seq and a == d["input"]["actions"][seq]
         tick, actor, command = a["tick"], a["actor"], a["command"]
         assert last_tick <= tick < cfg["ticks"] - 1
         last_tick = tick
+        current_tick = tick
+        if policy is not None:
+            policy.visible = seq
         kind = command["type"]
         if row["outcome"]["status"] == "APPLIED":
             agent = actor.get("agent")
@@ -165,7 +188,7 @@ def inspect_run(d):
                 scope["issued_units"] += p["work_units"]
                 contracts[i] = dict(plan=p, contributions=[], accepted_tick=None, reviewed_tick=None, review_digest=None, credit_shares=[])
                 facts[i] = dict(amount=p["payment_units"], paid=0, returned=0, accepted=False,
-                                delivery=False, late_delivery=False, dispute=False, refund_request=False)
+                                delivery=False, delivery_tick=None, delivery_digest=None, late_delivery=False, dispute=False, refund_request=False)
             elif kind == "CONTRIBUTE":
                 i = command["contract_id"]
                 c, f = contracts[i], facts[i]
@@ -198,6 +221,7 @@ def inspect_run(d):
                     if k == "DELIVER":
                         assert len(c["contributions"]) == len(p["shares"]) and not f["delivery"]
                         f["delivery"] = True
+                        f["delivery_tick"], f["delivery_digest"] = tick, x["artifact_digest"]
                         f["late_delivery"] = tick >= p["deadline"]
                     elif k == "ACKNOWLEDGE":
                         assert f["delivery"] and not f["accepted"] and not f["dispute"] and not f["refund_request"]
@@ -211,7 +235,7 @@ def inspect_run(d):
                 i = command["contract_id"]
                 c = contracts[i]
                 assert c["reviewed_tick"] is None and eligible(i)
-                assert tick >= c["accepted_tick"] + cfg["maturity_ticks"]
+                assert tick >= acceptance(i) + cfg["maturity_ticks"]
                 assert c["plan"]["client"] in approved and valid_digest(command["review_digest"])
                 refs = [s["artifact_digest"] for s in c["contributions"]]
                 assert len(set(refs)) == len(refs) and not used.intersection(refs)
@@ -223,7 +247,12 @@ def inspect_run(d):
                         earned_microunits=0 if ops[s["agent"]] == ops[c["plan"]["client"]] else units))
                 assert sum(s["allocated_microunits"] for s in c["credit_shares"]) == c["plan"]["work_units"] * SCALE
                 c["reviewed_tick"], c["review_digest"] = tick, command["review_digest"]
+        if policy is not None:
+            policy.visible = seq + 1
         assert row["profiles_after"] == [profile(i, tick) for i in range(len(ops))], (seq, kind)
+    current_tick = cfg["ticks"] - 1
+    if policy is not None:
+        policy.visible = len(d["journal"])
     assert d["profiles"] == [profile(i, cfg["ticks"] - 1) for i in range(len(ops))]
     assert d["groups"] == [groups[i] for i in sorted(groups)]
     assert d["projects"] == [projects[i] for i in sorted(projects)]

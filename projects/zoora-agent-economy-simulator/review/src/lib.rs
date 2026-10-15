@@ -14,6 +14,8 @@ pub mod engine;
 pub mod experiments;
 pub mod payment_export;
 pub mod payments;
+pub mod recovery;
+pub mod recovery_scenarios;
 pub mod report;
 pub mod reservation_export;
 pub mod reservations;

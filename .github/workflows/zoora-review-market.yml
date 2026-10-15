@@ -68,6 +68,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python scripts/trust_evidence.py
+      - name: Reviewed disputes, independent appeals and evidence-bound recovery
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/recovery_evidence.py
       - name: Real Chrome viewer integration and screenshots
         if: matrix.os == 'ubuntu-latest'
         env:
