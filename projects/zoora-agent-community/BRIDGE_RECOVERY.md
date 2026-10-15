@@ -63,4 +63,6 @@ The actual separate-process/local-HTTPS rehearsal passes 26 checks: stale pre-su
 
 Evidence is `evidence-output/bridge-recovery.json`. CI archives retain reports and backup hashes, not snapshot database files. Final source, full unit suites and downloaded CI verification are recorded in [validation](VALIDATION_AE026.md) and the development PR.
 
+The report includes original fixture terms, snapshot/restored key/body/time bindings, known IDs, recovery targets, hashed POST bodies and the first-restore wire boundary. Archive verification can independently compare those supplied records and check that every wire entry after that boundary is GET. This does not authenticate an external provider or independently reconstruct the unarchived SQLite snapshots.
+
 The mode is enforced by this version's supported APIs on an honest durable host. An administrator can rewrite records or run modified software; a hash and mode flag cannot prevent that. Restoring does not fence the original active journal, establish current balances, recover facts after the snapshot, authenticate a new provider account, deduplicate across independent journals or prove that one transfer is the only effect. The provider journal remains separate from community backup/restore. Public operations and a credentialed provider sandbox remain subsequent work.

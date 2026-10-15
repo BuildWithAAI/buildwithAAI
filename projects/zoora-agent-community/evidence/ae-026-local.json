@@ -1,7 +1,7 @@
 {
   "classification": "LOCAL_WORKTREE_CHECKPOINT",
-  "source_parent_sha": "e2ce77ce4180baadacadd5d31b1dca92bfa2850e",
-  "canonical_parent_sha": "e1c32062d870b662c26e5098c22e308d2795ebc7",
+  "source_parent_sha": "5c75f166c43eb2259f49a5eeb6e3a02fc203f13c",
+  "canonical_parent_sha": "8f06f82dda8ed50e9113996e6b53b34036921806",
   "source_worktree_dirty": true,
   "python": "3.12.14",
   "sqlite": "3.53.1",
@@ -19,7 +19,7 @@
     "POLL": 2,
     "RECONCILE": 3
   },
-  "snapshot_report_sha256": "e15320b7d2026b5172b56a7f9d1789e8312ad37ce19bf3c36b571aee5b5f27b9",
+  "snapshot_report_sha256": "219521f4a8487f149ea6841e81e1fecc50964a349ab2a6649810715ececb9499",
   "external_bridge_requests": 0,
   "provider_acceptance": "UNVERIFIED",
   "wallet_execution": false,
@@ -36,5 +36,9 @@
     "bridge_sandbox",
     "bridge_reconciliation"
   ],
-  "published_ci": "RECORDED_SEPARATELY_IN_DEVELOPMENT_PR"
+  "published_ci": "RECORDED_SEPARATELY_IN_DEVELOPMENT_PR",
+  "milestone_base_sha": "e1c32062d870b662c26e5098c22e308d2795ebc7",
+  "retained_fixture_bindings": 3,
+  "first_restore_after_request_count": 4,
+  "independent_fixture_binding_audit": "PASS"
 }

@@ -28,6 +28,8 @@ All five supported Python/OS matrix targets now run the new rehearsal after prev
 
 CI archives contain reports and snapshot hashes, not SQLite snapshot files. Independent archive checking can confirm report scope, source, counts, immutable request relationships and GET-only recovery paths. It cannot independently reconstruct the rehearsal's backup database from those archives. Snapshot creation/hash/SQLite checks execute inside the actual rehearsal.
 
+The new report retains each fixture's original body, snapshot/restored body hashes, request keys, first-attempt times, known ID and recovery targets, plus hashed POST bodies and the first-restore wire boundary. These allow an archive checker to recompute bindings and verify that all subsequent wire records are GET. They are retained fixture evidence from CI, not an external attestation of the SQLite database or provider.
+
 ## Operational scope and limits
 
 The supported restore writes durable `RECOVERY_ONLY` metadata before publication; it has no activation command. Prepared stale snapshots refuse POST and new intents. Attempted snapshots can discover/reconcile through matching GET; known IDs remain GET-only. Original credential, time, lease, capacity and binding restrictions remain. Exact local repeat-prepare reads are allowed without creating a new intent.

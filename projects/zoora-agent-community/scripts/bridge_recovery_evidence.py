@@ -79,6 +79,7 @@ def run():
                   verified["audit"] == source_audit and cli(["audit"]) == source_audit
                   and not verified["snapshot_is_current_external_truth"])
             stale_state = folder / "stale-recovered"
+            restore_boundary = len(provider.requests)
             restored_stale = cli(["restore", "--backup", stale_file, "--sha256", stale["backup_sha256"]], target=stale_state)
             stale_view = op("show", target=stale_state)
             before = len(provider.requests)
@@ -190,30 +191,53 @@ def run():
                   second["audit"]["journal_mode"] == again["audit"]["journal_mode"] == "RECOVERY_ONLY"
                   and not again["may_create_transfers"])
             with closing(sqlite3.connect(recovered / "bridge-sandbox.sqlite3")) as connection:
+                connection.row_factory = sqlite3.Row
                 kinds = dict(connection.execute("SELECT kind,COUNT(*) FROM attempts GROUP BY kind"))
-                rows = connection.execute("SELECT body_json,body_sha256,idempotency_key FROM intents").fetchall()
-                control = connection.execute("SELECT mode,restored_from_sha256 FROM bridge_control").fetchone()
+                rows = [dict(r) for r in connection.execute("SELECT id,body_json,body_sha256,idempotency_key FROM intents ORDER BY id")]
+                first_times = dict(connection.execute("SELECT intent_id,MIN(started_ms) FROM attempts GROUP BY intent_id"))
+                attempts = [dict(r) for r in connection.execute("SELECT intent_id,kind,candidate_id,observation_json FROM attempts ORDER BY intent_id,sequence")]
+                control = tuple(connection.execute("SELECT mode,restored_from_sha256 FROM bridge_control").fetchone())
                 recovery_rows = connection.execute("SELECT candidate_id,observation_json FROM attempts WHERE kind='RECONCILE' AND observation_json IS NOT NULL").fetchall()
+            with closing(sqlite3.connect(full_file)) as connection:
+                connection.row_factory = sqlite3.Row
+                saved_rows = [dict(r) for r in connection.execute("SELECT id,body_json,body_sha256,idempotency_key FROM intents ORDER BY id")]
+                saved_first_times = dict(connection.execute("SELECT intent_id,MIN(started_ms) FROM attempts GROUP BY intent_id"))
+            bindings = []
+            for row in rows:
+                observed = [json.loads(a["observation_json"])["id"] for a in attempts if a["intent_id"] == row["id"] and a["observation_json"]]
+                bindings.append({"request_id": row["id"], "original_body": json.loads(row["body_json"]),
+                    "snapshot_body_sha256": next(r["body_sha256"] for r in saved_rows if r["id"] == row["id"]),
+                    "restored_body_sha256": row["body_sha256"],
+                    "snapshot_idempotency_key": next(r["idempotency_key"] for r in saved_rows if r["id"] == row["id"]),
+                    "restored_idempotency_key": row["idempotency_key"],
+                    "snapshot_first_attempt_ms": saved_first_times[row["id"]],
+                    "restored_first_attempt_ms": first_times[row["id"]], "known_transfer_id": observed[-1],
+                    "recovery_targets": [a["candidate_id"] for a in attempts if a["intent_id"] == row["id"] and a["kind"] == "RECONCILE"]})
             final_audit = cli(["audit"], target=recovered, stamp=later)
             check("independent SQLite inspection binds complete restored bodies identities targets and history counts",
                   kinds == {"CREATE": 3, "POLL": 2, "RECONCILE": 3} and final_audit["journal_attempts"] == 8
                   and final_audit["known_transfers"] == 3 and control == ("RECOVERY_ONLY", saved["backup_sha256"])
-                  and all(sha(json.loads(body)) == digest and json.loads(body)["client_reference_id"] == key_id for body, digest, key_id in rows)
+                  and rows == saved_rows and first_times == saved_first_times
+                  and all(sha(json.loads(r["body_json"])) == r["body_sha256"] and json.loads(r["body_json"])["client_reference_id"] == r["idempotency_key"] for r in rows)
                   and all(candidate == json.loads(observation)["id"] for candidate, observation in recovery_rows))
             check("all restores discovery and recovery add no payment-create effect",
-                  len(provider.effects) == 3 and sum(r["method"] == "POST" for r in provider.requests) == 3)
+                  len(provider.effects) == 3 and sum(r["method"] == "POST" for r in provider.requests) == 3
+                  and restore_boundary == 4 and all(r["method"] == "GET" for r in provider.requests[restore_boundary:]))
             check("bearer keys remain absent from CLI output snapshots and restored database",
                   all(KEY not in value for value in outputs)
                   and all(KEY.encode() not in p.read_bytes() for p in (full_file, stale_file, legacy_file, second_file, recovered / "bridge-sandbox.sqlite3")))
             check("snapshot verification and provider observations never claim settlement or external attestation",
                   verified["audit"]["external_attestation"] == "UNAVAILABLE"
                   and resumed["settlement_accounting"] == "UNAVAILABLE" and not resumed["wallet_execution"])
-            wire = [{"method": r["method"], "path": r["path"], "idempotency_header_present": "Idempotency-Key" in r["headers"]} for r in provider.requests]
+            wire = [{"method": r["method"], "path": r["path"], "idempotency_header_present": "Idempotency-Key" in r["headers"],
+                     "idempotency_key": r["headers"].get("Idempotency-Key"),
+                     "body_sha256": sha(json.loads(r["body"])) if r["body"] is not None else None} for r in provider.requests]
     evidence = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
                 "classification": "LOCAL_HTTPS_RECOVERY_ONLY_SNAPSHOT_FIXTURE", "transport": "ACTUAL_VERIFIED_LOCAL_TLS",
                 "clock": "INJECTED_FOR_LEASE_BOUNDARIES", "checks": checks, "journal_schema_version": JOURNAL_VERSION,
                 "backup_sha256": saved["backup_sha256"], "source_snapshot_audit": source_audit,
                 "restored_audit": final_audit, "attempt_kinds": kinds, "migration": migrated,
+                "fixture_request_bindings": bindings, "first_restore_after_request_count": restore_boundary,
                 "restore_process_death_exit": 81, "recovery_process_death_exit": 80,
                 "http_requests": len(wire), "post_requests": sum(r["method"] == "POST" for r in wire),
                 "unique_fixture_transfers": len(provider.effects), "wire": wire,
