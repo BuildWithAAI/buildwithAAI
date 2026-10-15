@@ -1,5 +1,5 @@
 {
-  "source_head_sha": "248a36a31983a9f443084b0e10c8296cfd425e65",
+  "source_head_sha": "a54baf5b18a9439965850b0d10d7e6f955da7ebb",
   "source_tree_dirty": true,
   "classification": "SYNTHETIC",
   "model": "zoora-recovery-campaign/0.1.0",
@@ -47,6 +47,8 @@
     "group work restoration keeps 60/40 shares exact",
     "review never creates a financial return",
     "all wallet capability flags remain false",
+    "legitimate tick-zero return is independently auditable",
+    "native replay and independent audit reject duplicate tick-zero return",
     "native replay and independent audit reject rehashed conflicted-final-reviewer",
     "native replay and independent audit reject rehashed future-evidence-prefix",
     "native replay and independent audit reject rehashed false-work-binding",
@@ -65,14 +67,15 @@
   ],
   "report_sha256": "13541d4540a642d3202cfa4b74187ec2c92494d0b776afe80e372a11fc6fe73e",
   "csv_sha256": "d5f255c1b858e32f78125ffeee5454d005f73f1e258af1e62291b13b987f9e3c",
-  "elapsed_seconds": 2.336,
+  "elapsed_seconds": 2.264,
   "timing_scope": "SINGLE_ACCEPTANCE_SAMPLE_NOT_LIVE_THROUGHPUT",
   "network_or_signer": false,
   "evidence_scope": "PRE_PUBLICATION_WORKTREE_CHECKS_NOT_THE_PARENT_COMMIT",
-  "parent_commit": "248a36a31983a9f443084b0e10c8296cfd425e65",
+  "parent_commit": "a54baf5b18a9439965850b0d10d7e6f955da7ebb",
   "rust_version": "1.99.0",
   "normal_tests_passed": 226,
   "recovery_tests_passed": 27,
+  "optimized_tests_passed": 226,
   "optimized_build": "PASS",
   "strict_clippy": "PASS",
   "local_build_settings": {
@@ -80,5 +83,5 @@
     "cargo_jobs": 1,
     "release_codegen_units": 1
   },
-  "optimized_tests_passed": 226
+  "prior_acceptance_scripts_passed": 8
 }

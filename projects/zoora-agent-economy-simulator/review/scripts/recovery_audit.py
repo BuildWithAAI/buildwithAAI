@@ -204,7 +204,7 @@ def inspect_run(d):
             assert old["status"] in ["EVIDENCE","PRIMARY_REVIEW"] and not old["primary"] and cmd["agent"]==old["opener"] and cmd["case_id"]==c["id"]
             expected.update(status="WITHDRAWN",final_tick=tick)
         elif kind=="RETURN_OBSERVED":
-            assert not old["returned_tick"] and f["paid"]>0 and f["paid"]==f["returned"]
+            assert old["returned_tick"] is None and f["paid"]>0 and f["paid"]==f["returned"]
             assert n and tick==action["tick"] and cmd["type"]=="TRUST" and cmd["command"]["type"]=="DIRECT" and cmd["command"]["command"]["type"]=="VOLUNTARY_REFUND_RECEIPT"
             expected["returned_tick"]=tick
             if old["status"] not in TERMINAL:expected.update(status="RETURNED",final_tick=tick)

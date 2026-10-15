@@ -72,6 +72,33 @@ with tempfile.TemporaryDirectory() as folder:
     check("group work restoration keeps 60/40 shares exact",p("COLLECTIVE_CONTESTED")["earned_credit_microunits"]==606_000 and p("COLLECTIVE_CONTESTED",3)["earned_credit_microunits"]==404_000)
     check("review never creates a financial return",all(int(r["trust"]["direct"]["metrics"]["voluntary_refunds_recorded"])==(100 if n=="RETURN_RESOLVES_PENDING" else 1 if n=="STALE_ACCEPTANCE" else 0) for n,r in runs.items()))
     check("all wallet capability flags remain false",all(not any(r["trust"]["direct"]["wallet_boundary"].values()) for r in runs.values()))
+    # Tick zero is valid: an observed return at zero must not mean "absent".
+    zero=copy.deepcopy(runs["RETURN_RESOLVES_PENDING"]["input"])
+    for action in zero["actions"]:
+        action["tick"]=0
+        command=action["command"]
+        if command["type"]=="TRUST" and command["command"]["type"]=="DIRECT":
+            receipt=command["command"]["command"].get("receipt")
+            if receipt is not None:
+                receipt.update(availability_tick=0,simulation_tick=0)
+    source,output=temp/"zero-input.json",temp/"zero-run.json"
+    source.write_text(json.dumps(zero),encoding="utf-8")
+    cli("recovery-run",source,output);cli("replay-recovery",output)
+    zero=json.loads(output.read_bytes());inspect_run(zero)
+    check("legitimate tick-zero return is independently auditable",zero["cases"][0]["returned_tick"]==0)
+    duplicate=copy.deepcopy(zero)
+    index=next(i for i,e in enumerate(duplicate["events"]) if e["kind"]=="RETURN_OBSERVED")
+    duplicate["events"].insert(index+1,copy.deepcopy(duplicate["events"][index]))
+    for i,event in enumerate(duplicate["events"]):event["sequence"]=i
+    for row in duplicate["journal"]:
+        if row["event_count_after"]>index:row["event_count_after"]+=1
+    duplicate["fingerprint"]=run_hash(duplicate)
+    path=temp/"duplicate-zero-return.json";path.write_text(json.dumps(duplicate),encoding="utf-8")
+    cli("replay-recovery",path,ok=False)
+    try:inspect_run(duplicate)
+    except AssertionError:pass
+    else:raise AssertionError("duplicate tick-zero return passed independent audit")
+    check("native replay and independent audit reject duplicate tick-zero return")
     base=runs["APPEAL_OVERTURNS_REJECTION"]
     mutations={}
     f=copy.deepcopy(base);f["cases"][0]["appellate_reviewer"]=2;mutations["conflicted-final-reviewer"]=f

@@ -11,11 +11,11 @@ The candidate adds reviewed complaint/nonresponse cases and appeals to the same 
 | Normal Rust suite | 226 tests pass, including 27 new recovery tests |
 | Formatting and strict Clippy | Pass, all targets, warnings denied |
 | Optimized Rust suite | 226 tests pass, including all 27 new recovery tests |
-| Actual new CLI acceptance | 49 checks pass; normal/optimized reports and retained JSON/CSV match exactly |
+| Actual new CLI acceptance | 51 checks pass; normal/optimized reports and retained JSON/CSV match exactly |
 | Independent applied-history audit | All 15 histories; case transitions, evidence bindings, profiles and payment totals |
 | Previous AE-016 campaign | Exact fingerprint preserved; prior independent audit passes |
 
-Initial local compiler setup and builds encountered missing/corrupt metadata and empty object artifacts. Reinstalling the pinned standard library and cleaning the package restored normal builds. The final optimized build and 226-test rerun pass with incremental compilation disabled, one Cargo job and one codegen unit. The final CLI checks reproduce the exact normal/optimized report bytes. Initial environment failures are not counted as passing checks.
+Initial local compiler setup and builds encountered missing/corrupt metadata and empty object artifacts. Reinstalling the pinned standard library and cleaning the package restored normal builds. The final optimized build and 226-test rerun pass with incremental compilation disabled, one Cargo job and one codegen unit. The final CLI checks reproduce the exact normal/optimized report bytes. Initial environment failures are not counted as passing checks. All eight prior CLI acceptance scripts also pass. A final auditor review found and fixed a tick-zero truthiness error; native replay and the independent auditor now both reject a duplicated return event at tick zero, while accepting a legitimate return at zero.
 
 Reference campaign fingerprint: `85a846c501f22791e8d299684b7877ba3f6ced09959361f1a429a3b0058d61da`.
 
