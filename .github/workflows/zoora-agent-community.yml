@@ -68,6 +68,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -bb -X dev -W error scripts/spending_evidence.py
+      - name: Actual commerce routing, recurring bills, refunds and fulfillment research
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/commerce_evidence.py
       - name: Runtime package vulnerability audit
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
         run: |
