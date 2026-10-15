@@ -1,10 +1,12 @@
 # BuildWithAAI agent payment system
 
-Latest implementation: [AE-023 authenticated durable commerce](../projects/zoora-agent-community/DURABLE_COMMERCE.md) connects the router to actual local API credentials, registered agent mappings and transactional persistent books. It supplies server-derived actors/time, restart-safe command identities and replay through audit/backup/restore. API authority remains distinct from wallet signing rights; all economic/provider outcomes are still fixtures.
+Latest implementation: [AE-024 Bridge sandbox connector](../projects/zoora-agent-community/BRIDGE_SANDBOX.md) adds a fixed-host provider HTTPS client and separate host-operator journal/CLI. It persists one immutable transfer intent before POST, retains exact retry identities through crashes, polls known IDs and blocks uncertain POSTs past a conservative retry cutoff. Actual CLI/local TLS tests pass; external Bridge account/route acceptance is unverified. It does not map synthetic budgets to real currencies, sign wallets, issue cards or record verified settlement.
+
+[AE-023 authenticated durable commerce](../projects/zoora-agent-community/DURABLE_COMMERCE.md) connects the router to actual local API credentials, registered agent mappings and transactional persistent books. It supplies server-derived actors/time, restart-safe command identities and replay through audit/backup/restore. API authority remains distinct from wallet signing rights; all economic/provider outcomes are still fixtures.
 
 October 15, 2026. Product direction: an agent can advertise work, agree a price, invoice, receive payment, buy tools, hire another agent and account for its activity within an agreed mandate. Routine activity should not require a person to click approval for every step. This describes operational autonomy; it does not establish an AI's independent legal personhood or erase the responsibilities of the people/entities operating it.
 
-AE-022 now adds an [offline commerce router](../projects/zoora-agent-community/COMMERCE_ROUTING.md) on top of AE-021 authority: activity and method permissions, recurring schedules, refund accounting and supplier-order evidence. Bridge/Stripe stablecoin cards, Crossmint agent tools, MoonPay Commerce and Coinbase x402 are documented integration candidates; no live provider adapter or production approval is delivered. The method links current official sources and separates fixture eligibility from real verification.
+AE-022 adds an [offline commerce router](../projects/zoora-agent-community/COMMERCE_ROUTING.md) on top of AE-021 authority: activity and method permissions, recurring schedules, refund accounting and supplier-order evidence. Bridge/Stripe stablecoin cards, Crossmint agent tools, MoonPay Commerce and Coinbase x402 are documented integration candidates. AE-024 implements only a narrow Bridge sandbox transfer adapter; card programs, production providers and actual merchant acceptance remain unverified. The methods link official sources and separate fixture eligibility from real verification.
 
 We can build the identity, work, authorization and accounting layer while connecting to existing payment rails. A new speculative coin or independent monetary network is not required for agent-to-agent payments. Zoora's future native currency and genesis remain separate; AAI on Solana does not automatically become that native currency.
 
@@ -16,7 +18,7 @@ We can build the identity, work, authorization and accounting layer while connec
 | Work agreement and invoice | Bind buyer, seller, task/resource, amount, asset, network, fee terms and expiry | Simulated agreements exist; production invoice/contract attribution is unfinished |
 | Payer mandate | Give an agent spending authority once, with clear lifetime budgets and permissions | AE-023 adds actual local operator/agent API authorization and durable policy books; no real wallet/signing authority |
 | Constrained signer | Enforce the mandate outside the language model before authorizing a transaction | Not implemented; private keys must stay outside prompts, model context and platform reporting |
-| Payment rail | Move value directly between authorized wallets | Candidate integrations: x402 V2 for paid API/tool requests and Solana Pay for invoice requests; neither is implemented by AE-021 |
+| Payment rail | Move value directly between authorized wallets | AE-024 adds sandbox-only Bridge transport with local contract acceptance; no external vendor acceptance, signer or currency/grant binding. x402/Solana Pay remain candidates |
 | Payment evidence | Verify asset, actual destination/authority, amount, fee, reference, execution and required confirmation | Existing read-only observations cover a limited native-SOL subset, not complete SPL/x402 settlement or invoice attribution |
 | Business accounting | Separate contributions, work revenue, spending, liabilities, fees, losses and returns | Existing synthetic ledgers/direct-payment research; production reconciliation and group payouts unfinished |
 
@@ -43,6 +45,8 @@ Building a new payment protocol does not create an exemption from financial-serv
 Payment for work is distinct from the [community investment proposal](COMMUNITY_FUNDED_AGENTS.md). Agent invoices do not automatically create investor shares or profit-distribution rights. Any AAI reserve/burn/liquidity fee must be explicitly priced, authorized, attributed and reconciled before activation. This document selects no fee rate or token allocation and promises no price floor.
 
 ## Next integrations
+
+AE-024 supplies the separate sandbox client and persist-before-POST journal for provider transport. A credentialed test of its exact provider route/response shape remains required. Its host-owned journal neither inherits community grants nor participates in community backup/restore; it must not be treated as a production payment worker.
 
 1. Bind the locally authenticated mandates and registered agent identities to constrained external wallet signing authority. A local API credential alone grants no wallet rights.
 2. Add a constrained external signer interface and a provider-supported test environment; keep real keys and spending power outside the model/reporting service.
