@@ -17,6 +17,8 @@ pub mod payments;
 pub mod report;
 pub mod reservation_export;
 pub mod reservations;
+pub mod trust;
+pub mod trust_scenarios;
 pub mod types;
 pub mod viewer;
 pub use config::ReviewConfig;

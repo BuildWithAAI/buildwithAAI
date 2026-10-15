@@ -1,0 +1,341 @@
+{
+  "classification": "SYNTHETIC",
+  "evidence_scope": "LOCAL_WORKTREE_BEFORE_PUBLICATION",
+  "source_base_commit": "6e4c78cec795adab5ddcf4a4ee1061967bea1cd2",
+  "source_tree_dirty": true,
+  "cases": 15,
+  "actions": 552,
+  "contracts": 61,
+  "profile_snapshots_checked": 4536,
+  "campaign_fingerprint": "f5bdab1d42c6663fe1bb8b989e99cac8385022a35a9d90e8cde3e9f4e3c08c68",
+  "normal_profile_tests": 199,
+  "new_trust_tests": 27,
+  "reviewed_work_credit_denominator": 10000,
+  "full_journals": "../examples/trust-campaign.json.gz",
+  "full_journal_sha256": "d537db6fc771e07cc82c12e8dfa970146f20943b72d7e302e350a098fab4621c",
+  "compressed_journal_sha256": "b38a52f989f9915c700cc30c0da01743634eeac3ac09f6cb3d8af8f9432bea29",
+  "findings": [
+    {
+      "case": "STARTER_LIMITS",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 0,
+        "confirmed_contracts": 0,
+        "customer_operators": 0,
+        "active_contracts": 1,
+        "development_memberships": 1,
+        "community_funded_memberships": 1,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 3
+    },
+    {
+      "case": "SMALL_TASKS",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 1,
+        "earned_credit_microunits": 1000000,
+        "confirmed_contracts": 10,
+        "customer_operators": 2,
+        "active_contracts": 0,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 2,
+          "development": 2,
+          "community_funded": 2
+        }
+      },
+      "refused_actions": 0
+    },
+    {
+      "case": "ONE_LARGE_TASK",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 1000000,
+        "confirmed_contracts": 1,
+        "customer_operators": 1,
+        "active_contracts": 0,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 0
+    },
+    {
+      "case": "BALANCED_HISTORY",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 1,
+        "earned_credit_microunits": 1000000,
+        "confirmed_contracts": 2,
+        "customer_operators": 2,
+        "active_contracts": 2,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 2,
+          "development": 2,
+          "community_funded": 2
+        }
+      },
+      "refused_actions": 1
+    },
+    {
+      "case": "ESTABLISHED_HISTORY",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 2,
+        "earned_credit_microunits": 5000000,
+        "confirmed_contracts": 5,
+        "customer_operators": 2,
+        "active_contracts": 4,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 4,
+          "development": 3,
+          "community_funded": 3
+        }
+      },
+      "refused_actions": 1
+    },
+    {
+      "case": "ROOT_TASK_SPLITTING",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 1,
+        "earned_credit_microunits": 1000000,
+        "confirmed_contracts": 10,
+        "customer_operators": 2,
+        "active_contracts": 0,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 2,
+          "development": 2,
+          "community_funded": 2
+        }
+      },
+      "refused_actions": 1
+    },
+    {
+      "case": "HIGH_PAYMENT_VOLUME",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 20000,
+        "confirmed_contracts": 2,
+        "customer_operators": 2,
+        "active_contracts": 0,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 0
+    },
+    {
+      "case": "RELATED_CUSTOMER",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 2000000,
+        "confirmed_contracts": 2,
+        "customer_operators": 1,
+        "active_contracts": 0,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 0
+    },
+    {
+      "case": "COLLECTIVE_ATTRIBUTION",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 1,
+        "earned_credit_microunits": 1212000,
+        "confirmed_contracts": 2,
+        "customer_operators": 2,
+        "active_contracts": 0,
+        "development_memberships": 1,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 2,
+          "development": 2,
+          "community_funded": 2
+        }
+      },
+      "refused_actions": 4
+    },
+    {
+      "case": "PREMATURE_CREDIT",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 1000000,
+        "confirmed_contracts": 1,
+        "customer_operators": 1,
+        "active_contracts": 0,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 2
+    },
+    {
+      "case": "DISPUTE_AFTER_CREDIT",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 500000,
+        "confirmed_contracts": 1,
+        "customer_operators": 1,
+        "active_contracts": 1,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": true,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 1
+    },
+    {
+      "case": "REFUND_AFTER_CREDIT",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 500000,
+        "confirmed_contracts": 1,
+        "customer_operators": 1,
+        "active_contracts": 0,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 0
+    },
+    {
+      "case": "VERIFICATION_REVOKED",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": false,
+        "tier": 0,
+        "earned_credit_microunits": 5000000,
+        "confirmed_contracts": 5,
+        "customer_operators": 2,
+        "active_contracts": 4,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 1
+    },
+    {
+      "case": "WALLET_ROTATION",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 0,
+        "confirmed_contracts": 0,
+        "customer_operators": 0,
+        "active_contracts": 1,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 0
+    },
+    {
+      "case": "REUSED_ARTIFACT",
+      "worker_0": {
+        "agent": 0,
+        "review_fixture_approved": true,
+        "tier": 0,
+        "earned_credit_microunits": 500000,
+        "confirmed_contracts": 1,
+        "customer_operators": 1,
+        "active_contracts": 0,
+        "development_memberships": 0,
+        "community_funded_memberships": 0,
+        "dispute_hold": false,
+        "limits": {
+          "work": 1,
+          "development": 1,
+          "community_funded": 1
+        }
+      },
+      "refused_actions": 1
+    }
+  ],
+  "not_live": true,
+  "cli_acceptance_checks": 45,
+  "normal_optimized_cli_byte_identical": true,
+  "strict_clippy_all_targets": "PASS",
+  "optimized_profile_tests": 199,
+  "optimized_build": "PASS_AFTER_PACKAGE_CLEAN_SINGLE_JOB",
+  "initial_local_optimized_attempt": "RUST_E0786_INVALID_CRATE_METADATA"
+}

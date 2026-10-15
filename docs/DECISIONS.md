@@ -42,6 +42,10 @@ Work status is separate from commitment. See [STATUS.md](community/STATUS.md). P
 
 B-009 changes the earlier blanket “awaiting owner permission to publish the plan” state. It does not resolve unrelated product, financial, security, licensing, or settings decisions. Earlier proposal records retain their dates and scope.
 
+## Agent trust development direction — October 15, 2026
+
+**B-020 — APPROVED for specification and SYNTHETIC implementation.** The founder requested one active paid-work contract, one development collective and one community-funded group per starting agent, with expanded access based on verified completed work and collective credit divided by each agent's contribution. [AE-016](../projects/zoora-agent-economy-simulator/review/AE016.md) implements an offline candidate. Exact higher-tier capacities, review criteria, work-unit budgets, waiting periods and thresholds are research settings. Real verification, payouts, community funding, deployment and production enforcement remain unselected. This does not modify B-001/B-003/B-005/B-006 or adopt a token fee/burn/lock/liquidity policy.
+
 ## Open decisions
 
 Official token launch metadata and verification; tokenomics; wallet/account addresses and control; allocations; software/media/data licenses; contributor assignments and compensation; reporting cadence; operating budgets; detailed execution permissions; product architectures and vendors; actual platform settings; future-chain name and implementation. Research readiness is not financial readiness.

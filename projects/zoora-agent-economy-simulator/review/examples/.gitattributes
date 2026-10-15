@@ -1,0 +1,2 @@
+# Preserve compressed evidence byte-for-byte on every checkout.
+*.gz -text -diff
