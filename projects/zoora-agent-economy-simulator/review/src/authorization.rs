@@ -652,11 +652,52 @@ fn metrics(
         .count() as u64;
     AuthorizationMetrics { counts, amounts }
 }
+pub(crate) trait GrantControl {
+    fn allow(
+        &mut self,
+        tick: u64,
+        binding: &PaymentBinding,
+        permits: &[CapacityPermit],
+    ) -> Result<bool>;
+}
+struct Unrestricted;
+impl GrantControl for Unrestricted {
+    fn allow(
+        &mut self,
+        _tick: u64,
+        _binding: &PaymentBinding,
+        _permits: &[CapacityPermit],
+    ) -> Result<bool> {
+        Ok(true)
+    }
+}
+#[derive(Default, Clone, Copy)]
+pub(crate) struct FixtureOptions {
+    pub concentrate_attack_wallet: bool,
+    pub slow_first_send: bool,
+}
 fn execute(
     c: &AuthorizationConfig,
     seed: u64,
     scenario: AuthorizationScenario,
     policy: AuthorizationPolicy,
+) -> Result<(State, Vec<AuthorizationRound>, Vec<PaymentIntention>)> {
+    execute_controlled(
+        c,
+        seed,
+        scenario,
+        policy,
+        &mut Unrestricted,
+        FixtureOptions::default(),
+    )
+}
+fn execute_controlled(
+    c: &AuthorizationConfig,
+    seed: u64,
+    scenario: AuthorizationScenario,
+    policy: AuthorizationPolicy,
+    control: &mut impl GrantControl,
+    options: FixtureOptions,
 ) -> Result<(State, Vec<AuthorizationRound>, Vec<PaymentIntention>)> {
     let plan = intentions(&c.plan_config(), seed);
     let mut s = State {
@@ -694,7 +735,11 @@ fn execute(
             }
             let binding = PaymentBinding {
                 agreement_id: i.agreement_id,
-                client: i.client,
+                client: if options.concentrate_attack_wallet && i.attack_fixture {
+                    c.agents as u64 - 1
+                } else {
+                    i.client
+                },
                 provider: i.provider,
                 amount: c.price,
                 delivery_deadline: base + 29,
@@ -706,7 +751,7 @@ fn execute(
                     DirectCommand::Agree {
                         terms: Terms {
                             agreement_id: i.agreement_id,
-                            client: i.client,
+                            client: binding.client,
                             provider: i.provider,
                             title: format!("Synthetic authorized work {}", i.agreement_id),
                             asset: "SYNTHETIC_UNIT".into(),
@@ -844,8 +889,12 @@ fn execute(
                     || (stress
                         && scenario == AuthorizationScenario::RenewingUnpaid
                         && j.intention.attack_fixture
+                        && current.is_some_and(|p| p.expired))
+                    || (options.slow_first_send
+                        && stress
+                        && !j.intention.attack_fixture
                         && current.is_some_and(|p| p.expired));
-                if attempt {
+                if attempt && control.allow(tick, &j.binding, &s.book.permits)? {
                     if let Some(token) = s.book.grant(j.binding.clone())? {
                         s.jobs[pos].token = Some(token);
                     }
@@ -863,8 +912,18 @@ fn execute(
                     .find(|p| p.token == token)
                     .expect("issued token")
                     .clone();
+                let slow_first = options.slow_first_send
+                    && stress
+                    && !j.intention.attack_fixture
+                    && s.book
+                        .permits
+                        .iter()
+                        .filter(|p| p.binding.agreement_id == j.binding.agreement_id)
+                        .count()
+                        == 1;
+                let send_tick = permit.issued_tick + if slow_first { c.send_window } else { 1 };
                 if j.sent
-                    || tick != permit.issued_tick + 1
+                    || tick != send_tick
                     || (j.intention.attack_fixture && scenario != AuthorizationScenario::PaidFlood)
                 {
                     continue;
@@ -873,7 +932,11 @@ fn execute(
                     s.jobs[pos].budget_refused = true;
                     continue;
                 }
-                if s.book.consume(token, &j.binding)? != AuthorizationAction::SendAllowed {
+                let decision = s.book.consume(token, &j.binding)?;
+                if slow_first && decision == AuthorizationAction::SendExpired {
+                    continue;
+                }
+                if decision != AuthorizationAction::SendAllowed {
                     return Err(SimulationError::Integrity(
                         "fixture client guard refused timely send",
                     ));
@@ -1009,6 +1072,85 @@ bounded!(bounded_transfers, TransferFact, 4000);
 bounded!(bounded_observations, AuthorizationObservation, 4000);
 bounded!(bounded_balances, Balance, 64);
 bounded!(bounded_rounds, AuthorizationRound, 24);
+/// Shared evidence without a report identity; the enclosing version owns replay.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WorkTranscript {
+    #[serde(deserialize_with = "bounded_intentions")]
+    pub intentions: Vec<PaymentIntention>,
+    #[serde(deserialize_with = "bounded_jobs")]
+    pub jobs: Vec<AuthorizedJob>,
+    #[serde(deserialize_with = "bounded_permits")]
+    pub permits: Vec<CapacityPermit>,
+    #[serde(deserialize_with = "bounded_events")]
+    pub authorizations: Vec<AuthorizationEvent>,
+    #[serde(deserialize_with = "bounded_transfers")]
+    pub transfers: Vec<TransferFact>,
+    #[serde(deserialize_with = "bounded_observations")]
+    pub observations: Vec<AuthorizationObservation>,
+    #[serde(deserialize_with = "bounded_balances")]
+    pub final_balances: Vec<Balance>,
+    #[serde(deserialize_with = "bounded_rounds")]
+    pub rounds: Vec<AuthorizationRound>,
+    pub metrics: AuthorizationMetrics,
+    pub direct: DirectReport,
+}
+pub(crate) fn controlled_transcript(
+    c: &AuthorizationConfig,
+    seed: u64,
+    scenario: AuthorizationScenario,
+    control: &mut impl GrantControl,
+    options: FixtureOptions,
+) -> Result<WorkTranscript> {
+    c.validate()?;
+    if !c.seeds.contains(&seed) || !c.scenarios.contains(&scenario) {
+        return Err(SimulationError::Configuration(
+            "controlled transcript outside configured workload",
+        ));
+    }
+    let (s, rounds, intentions) = execute_controlled(
+        c,
+        seed,
+        scenario,
+        AuthorizationPolicy::EvidenceWindowHold,
+        control,
+        options,
+    )?;
+    let peak = rounds
+        .iter()
+        .map(|r| r.metrics.counts.peak_provider_slots)
+        .max()
+        .unwrap_or(0);
+    let metrics = metrics(&s, c, None, peak);
+    let direct = DirectReport::from_engine(&s.direct)?;
+    if metrics.amounts.payments_sent != direct.metrics.payments_recorded
+        || metrics.amounts.voluntary_returns_sent != direct.metrics.voluntary_refunds_recorded
+    {
+        return Err(SimulationError::Integrity(
+            "controlled transcript adapter totals differ",
+        ));
+    }
+    Ok(WorkTranscript {
+        intentions,
+        jobs: s.jobs,
+        permits: s.book.permits,
+        authorizations: s.book.events,
+        transfers: s.transfers,
+        observations: s.observations,
+        final_balances: s
+            .balances
+            .into_iter()
+            .enumerate()
+            .map(|(id, units)| Balance {
+                agent_id: id as u64,
+                units,
+            })
+            .collect(),
+        rounds,
+        metrics,
+        direct,
+    })
+}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AuthorizationRun {

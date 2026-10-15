@@ -1,0 +1,16 @@
+cooldown_ticks = 16
+scenarios = ["SLOW_PAYER"]
+[authorization]
+seeds = [7, 11, 19, 31, 42, 59, 73, 89, 101, 127]
+scenarios = ["NORMAL_DELAY", "UNPAID_BURST", "RENEWING_UNPAID", "PAID_FLOOD", "OBSERVATION_LAG", "EVIDENCE_AFTER_EXPIRY", "DUPLICATE_AUTHORIZATION", "PROVIDER_OUTAGE"]
+agents = 24
+rounds = 12
+tasks_per_round = 36
+provider_capacity = 4
+max_quotes = 2000
+max_authorizations = 2000
+send_window = 2
+evidence_grace = 6
+service_ticks = 2
+starting_balance = 200000
+price = 1000

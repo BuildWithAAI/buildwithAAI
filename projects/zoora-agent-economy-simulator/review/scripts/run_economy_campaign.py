@@ -21,6 +21,8 @@ POLICIES = ("BASELINE", "OPERATOR_CAP")
 PAYMENT_SCENARIOS = {"NORMAL_DELAY", "UNPAID_SYBIL_FLOOD", "PAID_SYBIL_FLOOD", "OBSERVATION_LAG", "LATE_PAYMENT", "DUPLICATE_RECEIPTS", "OUT_OF_TERMS", "UNBACKED_CLAIMS"}
 PAYMENT_POLICIES = ("RESERVE_ON_QUOTE", "STRICT_OBSERVATION", "EVIDENCE_GRACE")
 AUTHORIZATION_SCENARIOS = {"NORMAL_DELAY", "UNPAID_BURST", "RENEWING_UNPAID", "PAID_FLOOD", "OBSERVATION_LAG", "EVIDENCE_AFTER_EXPIRY", "DUPLICATE_AUTHORIZATION", "PROVIDER_OUTAGE"}
+RESERVATION_SCENARIOS = {"NORMAL_DELAY", "CONCENTRATED_UNPAID", "ROTATING_UNPAID", "SLOW_PAYER", "OBSERVATION_LAG", "PAID_FLOOD", "EVIDENCE_AFTER_EXPIRY", "PROVIDER_OUTAGE"}
+RESERVATION_POLICIES = ("EVIDENCE_HOLD", "PENDING_QUOTA", "QUOTA_COOLDOWN")
 AUTHORIZATION_POLICIES = ("UNRESERVED_PAYMENT", "FUNDING_WINDOW_HOLD", "EVIDENCE_WINDOW_HOLD")
 LIMIT = 128 * 1024 * 1024
 
@@ -72,7 +74,7 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--binary", type=Path, default=ROOT / "target" / "release" /
                         ("zoora-review-market.exe" if os.name == "nt" else "zoora-review-market"))
-    parser.add_argument("--model", choices=["economy", "payment", "authorization"], default="economy")
+    parser.add_argument("--model", choices=["economy", "payment", "authorization", "reservation"], default="economy")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--max-new-runs", type=int, help="Checkpoint early; remains INCOMPLETE")
     parser.add_argument("--timeout", type=int, default=180)
@@ -82,6 +84,8 @@ def main() -> int:
     policies = PAYMENT_POLICIES if mode == "payment" else POLICIES
     if mode == "authorization":
         allowed_scenarios, policies = AUTHORIZATION_SCENARIOS, AUTHORIZATION_POLICIES
+    if mode == "reservation":
+        allowed_scenarios, policies = RESERVATION_SCENARIOS, RESERVATION_POLICIES
     if not 1 <= args.timeout <= 3600 or (args.max_new_runs is not None and args.max_new_runs < 1):
         raise ValueError("Invalid timeout/run limit")
     config_path, binary = args.config.resolve(strict=True), args.binary.resolve(strict=True)
@@ -90,6 +94,8 @@ def main() -> int:
     config_bytes = config_path.read_bytes()
     config = tomllib.loads(config_bytes.decode("utf-8"))
     seeds, scenarios = config.get("seeds"), config.get("scenarios")
+    if mode == "reservation":
+        seeds = config.get("authorization", {}).get("seeds")
     if not isinstance(seeds, list) or not 1 <= len(seeds) <= 16 or any(type(s) is not int or not 0 <= s <= 2**64-1 for s in seeds) or seeds != sorted(set(seeds)):
         raise ValueError("Expected sorted distinct bounded seeds")
     if not isinstance(scenarios, list) or not 1 <= len(scenarios) <= 8 or any(s not in allowed_scenarios for s in scenarios) or len(set(scenarios)) != len(scenarios):
@@ -106,6 +112,8 @@ def main() -> int:
         identity["model"] = "AE013_PAYMENT_WINDOWS_V1"
     elif mode == "authorization":
         identity["model"] = "AE014_CAPACITY_AUTHORIZATION_V1"
+    if mode == "reservation":
+        identity["model"] = "AE015_RESERVATION_CONTROLS_V1"
     if folder.exists():
         if not args.resume:
             raise ValueError("Output directory exists; use --resume or choose a new directory")

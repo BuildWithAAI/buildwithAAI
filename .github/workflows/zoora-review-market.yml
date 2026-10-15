@@ -60,6 +60,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python scripts/authorization_evidence.py
+      - name: Reservation abuse, wallet quotas and cooldown sensitivity
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/reservation_evidence.py
       - name: Real Chrome viewer integration and screenshots
         if: matrix.os == 'ubuntu-latest'
         env:

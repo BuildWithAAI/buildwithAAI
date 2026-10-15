@@ -19,6 +19,8 @@ def inspect_campaign(d):
 def inspect_run(d):
  assert d['classification']=='SYNTHETIC' and d['unit']=='SIMULATED_UNITS' and d['fingerprint']==run_hash(d)
  assert d['intentions_fingerprint']==digest('ZOORA_AE014_AUTHORIZATION_INTENTIONS_V1',d['intentions'])
+ return inspect_transcript(d)
+def inspect_transcript(d,attempts_by_agreement=None):
  cfg=d['config'];jobs={j['binding']['agreement_id']:j for j in d['jobs']};assert len(jobs)==len(d['jobs'])
  permits={p['token']:p for p in d['permits']};assert len(permits)==len(d['permits'])<=cfg['max_authorizations']
  agreements={a['terms']['agreement_id']:a for a in d['direct']['agreements']};assert set(agreements)=={i for i,j in jobs.items() if j['quoted']}
@@ -61,6 +63,7 @@ def inspect_run(d):
     assert s['consumed'] is None and not s['expired'] and not s['released'] and p['issued_tick']<tick<p['send_before'];s['consumed']=tick;send_events[token]=tick
     f=facts[b['agreement_id']];assert f['receipt']['simulation_tick']==tick and f['receipt']['amount']==b['amount'] and jobs[b['agreement_id']]['token']==token
    elif action=='ALREADY_CONSUMED': assert s['consumed'] is not None
+   elif action=='SEND_EXPIRED': assert s['consumed'] is None and not (p['issued_tick']<tick<p['send_before'])
    elif action=='HOLD_EXPIRED':
     assert s['held'] and s['started'] is None and tick==(p['send_before'] if d['policy']=='FUNDING_WINDOW_HOLD' else p['observe_before']);s['held']=False;occupied[provider].remove(token)
    elif action=='AUTHORIZATION_EXPIRED': assert not s['expired'] and s['started'] is None and tick==p['observe_before'];s['expired']=True
@@ -87,11 +90,14 @@ def inspect_run(d):
   if j['quoted']: assert j['acknowledged']==agreements[key]['delivery_acknowledged']
   assert j['sent']==(payment[key]>0)
   if j['token'] is not None and (not j['intention']['attack_fixture'] or d['scenario']=='PAID_FLOOD'):
-   tick=permits[j['token']]['issued_tick']+1;client=j['binding']['client'];balance=cfg['starting_balance']
-   for f in d['transfers']:
-    r=f['receipt'];earlier=r['simulation_tick']<tick or r['simulation_tick']==tick and (f['kind']=='VOLUNTARY_RETURN' or r['agreement_id']<key)
-    if earlier: balance+=r['amount']*((r['recipient']==client)-(r['sender']==client))
-   assert j['budget_refused']==(balance<cfg['price'])
+   ticks=attempts_by_agreement[key] if attempts_by_agreement is not None else [permits[j['token']]['issued_tick']+1];refused=False;client=j['binding']['client']
+   for tick in ticks:
+    balance=cfg['starting_balance']
+    for f in d['transfers']:
+     r=f['receipt'];earlier=r['simulation_tick']<tick or r['simulation_tick']==tick and (f['kind']=='VOLUNTARY_RETURN' or r['agreement_id']<key)
+     if earlier: balance+=r['amount']*((r['recipient']==client)-(r['sender']==client))
+    refused|=balance<cfg['price']
+   assert j['budget_refused']==refused
   else: assert j['budget_refused'] is False
   if j['started_tick'] is not None: assert permits[j['token']]['started_tick']==j['started_tick']
  def totals(round_number=None):
