@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 import copy
+import hashlib
 import http.client
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -166,6 +167,72 @@ class ProviderFixture:
             "_cli", str(self.port), str(at), "restore-crash" if crash == "restore" else "poll-crash" if crash == "poll" else "crash" if crash else "normal", *state_args, *map(str, args)],
             cwd=ROOT, capture_output=True, text=True, timeout=15)
 
+    def pipeline_cli(self, state, args, *, at, crash="normal"):
+        return subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", str(Path(__file__).resolve()),
+            "_pipeline_cli", str(self.port), str(at), crash, "--state", str(state), *map(str, args)],
+            cwd=ROOT, capture_output=True, text=True, timeout=90)
+
+
+def pipeline_cli_fixture():
+    from zoora_community.client import Client
+    from zoora_community.payment_pipeline import PaymentPipeline
+    from zoora_community.payment_worker import main as pipeline_main
+    fixture = ProviderFixture()
+    fixture.port = int(sys.argv[2])
+    at, crash, args = int(sys.argv[3]), sys.argv[4], sys.argv[5:]
+    original_request, original_create = Client.request, BridgeSandboxClient.create
+    original_fence, original_finish = PaymentPipeline._fence, PaymentPipeline._finish
+    dropped = None
+    reply_lock = threading.Lock()
+    reply_file = Path(args[args.index("--state") + 1]) / "fixture-source-reply.json"
+
+    def submit_then_crash(client, method, path, body=None, token=None):
+        nonlocal dropped
+        result = original_request(client, method, path, body, token)
+        if crash == "submit" and method == "POST" and body and body.get("command", {}).get("kind") == "SUBMIT":
+            os._exit(82)
+        if crash == "source-reply-drop" and method == "POST" and body and body.get("command", {}).get("kind") == "SUBMIT":
+            lose_reply = False
+            with reply_lock:
+                digest = hashlib.sha256(canonical(body).encode()).hexdigest()
+                if dropped is None:
+                    dropped = {"fault": "INJECTED_CLIENT_RESPONSE_LOSS_AFTER_ACTUAL_HTTP_COMMIT",
+                        "request_id": body["request_id"], "pipeline_terms_sha256": body["sandbox_dispatch"]["pipeline_terms_sha256"],
+                        "original_body_sha256": digest, "first_replayed": result[1]["replayed"],
+                        "first_outcome": result[1]["outcome"], "replay_observed": False}
+                    lose_reply = True
+                elif dropped["request_id"] == body["request_id"]:
+                    dropped.update(replay_observed=result[1]["replayed"], replay_outcome=result[1]["outcome"],
+                                   replay_body_sha256=digest)
+                reply_file.write_text(canonical(dropped), encoding="utf-8")
+            if lose_reply:
+                raise ConnectionResetError("PUBLIC INJECTED SOURCE REPLY LOSS")
+        return result
+
+    def create_then_crash(client, body, key):
+        result = original_create(client, body, key)
+        if crash == "create":
+            os._exit(83)
+        return result
+
+    def fence_then_crash(pipeline, key, claim):
+        original_fence(pipeline, key, claim)
+        if crash == "fence":
+            os._exit(84)
+
+    def finish_then_crash(pipeline, key, claim, value):
+        if crash == "finish":
+            os._exit(85)
+        return original_finish(pipeline, key, claim, value)
+
+    with fixture.transport(), patch("zoora_community.payment_pipeline.time.time_ns", lambda: at * 1_000_000), \
+            patch.object(Client, "request", submit_then_crash), \
+            patch.object(BridgeSandboxClient, "create", create_then_crash), \
+            patch.object(PaymentPipeline, "_fence", fence_then_crash), \
+            patch.object(PaymentPipeline, "_finish", finish_then_crash), \
+            patch.object(sys, "argv", ["payment-worker", *args]):
+        return pipeline_main()
+
 
 def cli_fixture():
     # Only this test harness redirects transport; the shipped CLI has no endpoint/test-clock switch.
@@ -204,4 +271,4 @@ def cli_fixture():
 
 
 if __name__ == "__main__":
-    sys.exit(cli_fixture())
+    sys.exit(pipeline_cli_fixture() if sys.argv[1] == "_pipeline_cli" else cli_fixture())

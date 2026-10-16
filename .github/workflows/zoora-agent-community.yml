@@ -22,7 +22,7 @@ jobs:
           - os: ubuntu-latest
             python: "3.12.15"
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: projects/zoora-agent-community
@@ -92,6 +92,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -bb -X dev -W error scripts/bridge_preflight_evidence.py
+      - name: Connected commerce, shared sandbox mandate, concurrent workers and four process interruption boundaries
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/payment_pipeline_evidence.py
       - name: Runtime package vulnerability audit
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
         run: |

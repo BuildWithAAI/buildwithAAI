@@ -1,0 +1,19 @@
+{
+  "mandate_id": "REPLACE_WITH_32_LOWERCASE_HEX_ID",
+  "environment": "BRIDGE_SANDBOX",
+  "real_funds_authorized": false,
+  "instance_id": "REPLACE_WITH_CURRENT_COMMUNITY_INSTANCE_ID",
+  "operator_id": "REPLACE_WITH_OWNING_OPERATOR_ID",
+  "agents": ["REPLACE_WITH_REGISTERED_AGENT_ID"],
+  "customer_id": "REPLACE_WITH_SANDBOX_CUSTOMER_UUID",
+  "source_address": "REPLACE_WITH_DECLARED_SOLANA_SOURCE_ADDRESS",
+  "merchants": [{
+    "merchant": "supplier",
+    "destination_address": "REPLACE_WITH_APPROVED_SANDBOX_DESTINATION",
+    "activities": ["white_label_supply"]
+  }],
+  "payment_limit_usdc": "2.000000",
+  "admission_budget_usdc": "14.000000",
+  "valid_from_ms": 0,
+  "expires_ms": 0
+}
