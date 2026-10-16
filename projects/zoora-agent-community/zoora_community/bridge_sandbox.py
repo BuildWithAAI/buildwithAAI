@@ -121,8 +121,13 @@ def read_key(path):
 
 
 class BridgeSandboxClient:
-    def __init__(self, api_key):
+    def __init__(self, api_key, *, deadline=None, guard=None):
         self._key = matching(api_key, KEY, "BRIDGE_SANDBOX_KEY_REQUIRED")
+        if deadline is not None and (type(deadline) not in (int, float) or not 0 < deadline < 1e15):
+            raise Problem(400, "BRIDGE_HOST_DEADLINE_REJECTED")
+        if guard is not None and not callable(guard):
+            raise Problem(400, "BRIDGE_HOST_GUARD_REJECTED")
+        self._deadline, self._guard = deadline, guard
 
     @property
     def credential_fingerprint(self):
@@ -147,7 +152,14 @@ class BridgeSandboxClient:
             body_value(body)
             if idempotency_key != body["client_reference_id"]:
                 raise Problem(400, "BRIDGE_REFERENCE_KEY_MISMATCH")
-        deadline = time.monotonic() + REQUEST_SECONDS if deadline is None else deadline
+        if self._guard is not None:
+            self._guard()
+        limits = [time.monotonic() + REQUEST_SECONDS]
+        if deadline is not None:
+            limits.append(deadline)
+        if self._deadline is not None:
+            limits.append(self._deadline)
+        deadline = min(limits)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise Problem(504, "BRIDGE_TIMEOUT")

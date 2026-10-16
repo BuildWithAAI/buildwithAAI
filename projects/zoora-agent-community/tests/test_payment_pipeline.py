@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 import copy
 import json
+from pathlib import Path
 import sqlite3
 import threading
 import unittest
@@ -70,6 +71,26 @@ class PipelineCase(SandboxCase):
 
 
 class PaymentPipelineTests(PipelineCase):
+    def test_concurrent_provider_creation_is_rechecked_before_missing_history_denial(self):
+        first = self.stage(self.purchase(1))["order_id"]
+        second = self.stage(self.purchase(2))["order_id"]
+        original = Path.exists
+        interleaved = []
+
+        def journal_created_between_checks(path):
+            if path == self.pipeline.bridge.path and not interleaved:
+                interleaved.append("started")
+                interleaved.append(self.run_one(first))
+                return False  # The first worker saw absence before the other's committed create.
+            return original(path)
+
+        with patch.object(Path, "exists", journal_created_between_checks):
+            outcome = self.run_one(second)
+        self.assertEqual(outcome["phase"], "PROVIDER_OBSERVED", outcome)
+        self.assertEqual(interleaved[1]["phase"], "PROVIDER_OBSERVED")
+        self.assertEqual(len(self.provider.effects), 2)
+        self.assertEqual(self.pipeline.audit()["dispatch_fences"], 2)
+
     def test_connected_purchase_binds_actual_agent_commerce_and_provider_without_converting_units(self):
         envelope = self.purchase(amount="1.250001")
         queued = self.stage(envelope)
@@ -291,7 +312,7 @@ class PaymentPipelineTests(PipelineCase):
         self.stage(self.purchase(4, token=self.second), self.second)
         result = self.pipeline.run_batch(lambda: LocalAPI(self.f), self.agent, self.client, limit=8, workers=3)
         self.assertEqual(result["orders_selected"], 3)
-        self.assertTrue(all(o["phase"] == "PROVIDER_OBSERVED" for o in result["outcomes"]))
+        self.assertTrue(all(o["phase"] == "PROVIDER_OBSERVED" for o in result["outcomes"]), result["outcomes"])
         self.assertEqual(len(self.provider.effects), 3)
         self.assertEqual(sum(o["phase"] == "QUEUED" for o in self.pipeline.show()["orders"]), 1)
 

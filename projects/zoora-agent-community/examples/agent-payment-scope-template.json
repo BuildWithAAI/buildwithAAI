@@ -1,0 +1,7 @@
+{
+  "instance_id": "REPLACE_WITH_SOURCE_INSTANCE_ID",
+  "agent_id": "REPLACE_WITH_OWNING_AGENT_ID",
+  "order_ids": ["REPLACE_WITH_ALREADY_STAGED_ORDER_ID"],
+  "max_advances": 1,
+  "expires_at_ms": 0
+}

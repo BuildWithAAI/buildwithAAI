@@ -1,4 +1,4 @@
-"""Explicit one-task local inference. Model output cannot authorize API writes or code execution."""
+"""Explicit local inference; optional host-scoped sandbox tools cannot create new grants."""
 
 import hashlib
 import http.client
@@ -10,6 +10,7 @@ import threading
 import time
 
 from .client import Client, read_credential
+from .agent_payments import PAYMENT_NAMES, PAYMENT_SYSTEM, PAYMENT_TOOLS, configuration
 from .store import exclusive_file, now_ms
 from .validation import Problem, canonical, fields, identifier, parse_json, text
 
@@ -37,12 +38,15 @@ def digest(value):
 
 class LocalModel:
     """Fixed numeric loopback; no proxy, redirects, pulls, cloud names or API keys."""
-    def __init__(self, model, port=11434):
+    def __init__(self, model, port=11434, *, payment_tools=False):
         if type(model) is not str or not MODEL.fullmatch(model) or "cloud" in model.lower():
             raise Problem(400, "LOCAL_MODEL_REQUIRED")
         if type(port) is not int or not 1 <= port <= 65535:
             raise Problem(400, "INVALID_PORT")
         self.model, self.port = model, port
+        if type(payment_tools) is not bool:
+            raise Problem(400, "INVALID_PAYMENT_TOOL_MODE")
+        self.tools = TOOLS + (PAYMENT_TOOLS if payment_tools else [])
         self.last_response = None
 
     def _request(self, path, body, deadline):
@@ -111,7 +115,7 @@ class LocalModel:
                    "keep_alive": 0,
                    "options": {"temperature": 0, "num_predict": 2048, "num_ctx": 8192}}
         if not finish_only:
-            payload["tools"] = TOOLS
+            payload["tools"] = self.tools
         result, sha = self._request("/api/chat", payload, deadline)
         message = result.get("message")
         content = message.get("content") if type(message) is dict else None
@@ -137,7 +141,7 @@ class LocalModel:
             fields(function, ("name", "arguments"), ("index",))
             if type(function["name"]) is not str or type(function["arguments"]) is not dict:
                 raise Problem(502, "MODEL_OUTPUT_REJECTED")
-            if function["name"] not in {item["function"]["name"] for item in TOOLS}:
+            if function["name"] not in {item["function"]["name"] for item in self.tools}:
                 raise Problem(403, "TOOL_NOT_ALLOWED")
             if finish_only:
                 raise Problem(409, "RUN_STEP_LIMIT")
@@ -184,11 +188,12 @@ def run_tool(action, client):
 
 def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=11434,
               max_steps=4, timeout=60, project_id=None, _task=None, _guard=None, _context=None,
-              _output=None):
+              _output=None, payment_state=None, sandbox_key_file=None, payment_scope_file=None):
     if (type(max_steps) is not int or not 1 <= max_steps <= 6
             or type(timeout) is not int or not 1 <= timeout <= 120):
         raise Problem(400, "INVALID_RUN_LIMITS")
-    provider = LocalModel(model, model_port)
+    payments = configuration(payment_state, sandbox_key_file, payment_scope_file)
+    provider = LocalModel(model, model_port, payment_tools=payments is not None)
     token = read_credential(credential_file)
     if _task is None:
         task_path = Path(task_file)
@@ -220,16 +225,22 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
     if _context is not None:
         fields(_context, ("job_id", "attempt_id"))
         report["job"] = {key: identifier(value) for key, value in _context.items()}
+    if payments is not None:
+        report["quality_flags"] = ["MODEL_OUTPUT_NOT_EXECUTED", "HOST_SELECTED_SANDBOX_ORDERS_ONLY",
+            "NO_REAL_ASSET_AUTHORITY", "NOT_PROOF_OF_INDEPENDENT_AGENT"]
     # Reserve private output before inference; preserve failed/partial evidence for diagnosis.
     output = _output if _output is not None else exclusive_file(out)
     failure = None
     try:
         deadline = time.monotonic() + timeout
         client.deadline = deadline
+        if payments is not None:
+            payments.bind(client, token, principal, deadline, _guard)
         if _guard is not None:
             _guard(deadline)
         report["provider"] = provider.inspect(deadline)
-        messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}]
+        system = SYSTEM + (PAYMENT_SYSTEM if payments is not None else "")
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
         for step_index in range(max_steps):
             if time.monotonic() >= deadline:
                 raise Problem(504, "RUN_DEADLINE")
@@ -254,7 +265,7 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
                 report["output_classification"] = "LEARNED"
                 report["state"] = "AVAILABLE"
                 break
-            step["tool_result"] = run_tool(action, client)
+            step["tool_result"] = payments.run_tool(action) if payments is not None and action["action"] in PAYMENT_NAMES else run_tool(action, client)
             if len(canonical(step["tool_result"]).encode("utf-8")) > 8192:
                 raise Problem(413, "TOOL_RESULT_TOO_LARGE")
             messages.extend([{"role": "assistant", "content": "", "tool_calls": [
@@ -275,6 +286,8 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
         if provider.last_response is not None:
             report["last_model_response"] = provider.last_response
     finally:
+        if payments is not None:
+            report["sandbox_payments"] = payments.evidence()
         report["available_at_ms"] = now_ms()
         raw = (canonical(report) + "\n").encode("utf-8")
         try:

@@ -399,7 +399,10 @@ class PaymentPipeline:
             else:
                 if not self.bridge.path.exists():
                     with self._connection() as connection:
-                        if any(c["dispatch_ms"] is not None for c in self._load(connection)[3]):
+                        # Another worker may have created the journal and fenced a
+                        # different order after our first existence observation.
+                        if (any(c["dispatch_ms"] is not None for c in self._load(connection)[3])
+                                and not self.bridge.path.exists()):
                             raise Problem(409, "PIPELINE_PROVIDER_HISTORY_MISSING")
                 view = self.bridge.prepare(terms["intent"])
             if view["attempts"] or recovery_only:

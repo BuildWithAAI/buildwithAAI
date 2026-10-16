@@ -13,6 +13,8 @@ import tempfile
 from integration_evidence import ROOT, Running, command
 from fixture_signatures import address, signed_body
 from model_diagnostics import capture
+from agent_payment_fixture import private_json, scope_file, setup_payments
+from bridge_fixture import KEY, ProviderFixture
 from zoora_community.client import read_credential
 from zoora_community.store import Store, exclusive_file
 from zoora_community.validation import canonical
@@ -125,6 +127,45 @@ def run():
             assert idle["processed"] == 0
             checks.append("durable queued task used a real local model and actual measured facts; private report bound the exact job and attempt")
             checks.append("job completion and attributed report artifact committed together; replay did not invoke a second model run")
+            payment_folder = folder / "agent-payments"
+            payment_folder.mkdir(mode=0o700)
+            payment_setup = setup_payments(running.client, payment_folder, operator, [credential], [0])
+            payment_order = payment_setup["orders"][0]["order_id"]
+            payment_scope = scope_file(payment_folder, payment_setup, credential, [payment_order])
+            payment_task = private_json(payment_folder / "task.json", {"prompt":
+                "Call sandbox_payment_status once. Use its single returned order_id exactly to call sandbox_payment_advance once. "
+                "Then write one sentence stating that the sandbox instruction was observed and settlement is unverified. "
+                "Do not invent an order ID or change an amount."})
+            payment_out = payment_folder / "report.json"
+            payment_provider = ProviderFixture()
+            with payment_provider.serve():
+                payment_run = payment_provider.agent_cli(["run-agent", "--credential-file", credential_file,
+                    "--task-file", payment_task, "--out", payment_out, "--model", model,
+                    "--port", running.port, "--timeout", 120, "--max-steps", 5,
+                    "--payment-state", payment_setup["pipeline"].state, "--sandbox-key-file", payment_setup["key_file"],
+                    "--payment-scope-file", payment_scope])
+            payment_report = json.loads(payment_out.read_bytes()) if payment_out.exists() else None
+            payment_candidate = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
+                "classification": "REAL_LOCAL_MODEL_WITH_LOCAL_PROVIDER_FIXTURE", "model": model,
+                "report": payment_report, "cli_exit": payment_run.returncode,
+                "provider_wire": [{"method": r["method"], "path": r["path"]} for r in payment_provider.requests],
+                "provider_fixture_transfers": len(payment_provider.effects), "external_bridge_requests": 0,
+                "wallet_execution": False, "real_funds_authorized": False, "settlement_accounting": "UNAVAILABLE"}
+            Path("evidence-output/live-agent-payments.json").write_text(json.dumps(payment_candidate, indent=2) + "\n", encoding="utf-8")
+            if payment_run.returncode != 0:
+                raise AssertionError("Strict actual-model sandbox payment tool check failed: " + payment_run.stderr)
+            payment_result = json.loads(payment_run.stdout)
+            assert payment_report["state"] == "AVAILABLE"
+            assert payment_report["steps"][0]["action"]["action"] == "sandbox_payment_status"
+            assert payment_report["sandbox_payments"]["advances_attempted"] == 1
+            assert payment_report["sandbox_payments"]["outcomes"][0]["order_id"] == payment_order
+            assert payment_report["sandbox_payments"]["outcomes"][0]["phase"] == "PROVIDER_OBSERVED"
+            assert [r["method"] for r in payment_provider.requests] == ["GET", "POST"]
+            assert len(payment_provider.effects) == 1
+            assert payment_result["report_sha256"] == hashlib.sha256(payment_out.read_bytes()).hexdigest()
+            assert credential["token"] not in canonical(payment_candidate) + payment_run.stdout + payment_run.stderr
+            assert KEY not in canonical(payment_candidate) + payment_run.stdout + payment_run.stderr
+            checks.append("actual local model selected a host-scoped order and advanced one immutable sandbox instruction through local TLS only")
         finally:
             running.stop()
         restarted = Running(state, folder)
@@ -161,6 +202,8 @@ def run():
         evidence.update(queued_model_verified=True, queued_report=queued_report,
                         queued_report_sha256=queued_result["report_sha256"], queued_job=terminal,
                         queued_artifact=queued_artifact)
+        evidence.update(agent_payment_model_verified=True, agent_payment_provider_fixture_only=True,
+                        agent_payment_report_sha256=payment_result["report_sha256"], real_payment_verified=False)
         Path("evidence-output").mkdir(exist_ok=True)
         Path("evidence-output/live-model.json").write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
         print(canonical({"real_model_verified": True, "model": model, "checks": checks}))
