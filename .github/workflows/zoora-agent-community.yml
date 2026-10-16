@@ -96,6 +96,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -bb -X dev -W error scripts/payment_pipeline_evidence.py
+      - name: Coordinated payment packages, five checkpoints, GET-only restore and interrupted publication
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/payment_recovery_evidence.py
       - name: Runtime package vulnerability audit
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
         run: |

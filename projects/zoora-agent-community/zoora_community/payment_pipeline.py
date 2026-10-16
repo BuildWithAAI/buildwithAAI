@@ -24,9 +24,10 @@ from .validation import DIGEST, Problem, canonical, fields, identifier, matching
 
 LEASE_MS = 120_000
 MAX_CLAIMS = 32
+PIPELINE_VERSION = 2
 CODE = re.compile(r"[A-Z][A-Z0-9_]{0,95}\Z")
 PHASES = {"PROVIDER_OBSERVED", "PROVIDER_UNKNOWN", "RECONCILIATION_REQUIRED", "PREFLIGHT_BLOCKED", "BLOCKED"}
-DDL = """CREATE TABLE control (id INTEGER PRIMARY KEY CHECK(id=1), mandate_json TEXT NOT NULL,
+LEGACY_DDL = """CREATE TABLE control (id INTEGER PRIMARY KEY CHECK(id=1), mandate_json TEXT NOT NULL,
  mandate_sha256 TEXT NOT NULL, initialized_ms INTEGER NOT NULL, revoked_ms INTEGER);
  CREATE TABLE orders (id TEXT PRIMARY KEY, terms_json TEXT NOT NULL, terms_sha256 TEXT NOT NULL,
  created_ms INTEGER NOT NULL);
@@ -34,16 +35,22 @@ DDL = """CREATE TABLE control (id INTEGER PRIMARY KEY CHECK(id=1), mandate_json 
  sequence INTEGER NOT NULL, started_ms INTEGER NOT NULL, dispatch_ms INTEGER,
  finished_ms INTEGER, result_json TEXT, UNIQUE(order_id,sequence));
  PRAGMA user_version=1;"""
+RECOVERY_DDL = """CREATE TABLE pipeline_recovery (
+ id INTEGER PRIMARY KEY CHECK(id=1), mode TEXT NOT NULL,
+ restored_from_sha256 TEXT, restored_at_ms INTEGER,
+ migrated_from_sha256 TEXT, migrated_at_ms INTEGER);
+ INSERT INTO pipeline_recovery VALUES (1,'ACTIVE',NULL,NULL,NULL,NULL);"""
+DDL = LEGACY_DDL + RECOVERY_DDL + "PRAGMA user_version=2;"
 
 
 def schema(connection):
     return [list(r) for r in connection.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name")]
 
 
-@lru_cache(maxsize=1)
-def expected_schema():
+@lru_cache(maxsize=2)
+def expected_schema(version=PIPELINE_VERSION):
     with closing(sqlite3.connect(":memory:", autocommit=True)) as connection:
-        connection.executescript(DDL)
+        connection.executescript(LEGACY_DDL if version == 1 else DDL)
         return schema(connection)
 
 
@@ -134,16 +141,39 @@ class PaymentPipeline:
             self.state.rmdir()
             raise
 
-    def _load(self, connection):
+    def _load(self, connection, *, allow_legacy=False):
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        if version == 1 and not allow_legacy:
+            raise Problem(503, "PIPELINE_MIGRATION_REQUIRED")
         try:
-            if (connection.execute("PRAGMA user_version").fetchone()[0] != 1
-                    or schema(connection) != expected_schema()
+            if (version not in ({1, PIPELINE_VERSION} if allow_legacy else {PIPELINE_VERSION})
+                    or schema(connection) != expected_schema(version)
                     or connection.execute("PRAGMA foreign_key_check").fetchall()):
                 raise ValueError("invalid schema")
             controls = connection.execute("SELECT * FROM control").fetchall()
             if len(controls) != 1 or controls[0]["id"] != 1:
                 raise ValueError("invalid control")
             control = dict(controls[0])
+            control["pipeline_schema_version"] = version
+            recovery = {"id": 1, "mode": "LEGACY_REQUIRES_MIGRATION", "restored_from_sha256": None,
+                "restored_at_ms": None, "migrated_from_sha256": None, "migrated_at_ms": None}
+            if version == PIPELINE_VERSION:
+                rows = connection.execute("SELECT * FROM pipeline_recovery").fetchall()
+                if len(rows) != 1:
+                    raise ValueError("recovery control count")
+                recovery = dict(rows[0])
+                if recovery["id"] != 1 or recovery["mode"] not in {"ACTIVE", "RECOVERY_ONLY"}:
+                    raise ValueError("recovery mode")
+                for purpose in ("restored", "migrated"):
+                    pin, at = recovery[purpose + "_from_sha256"], recovery[purpose + "_at_ms"]
+                    if (pin is None) != (at is None):
+                        raise ValueError("incomplete recovery provenance")
+                    if pin is not None:
+                        matching(pin, DIGEST, "PIPELINE_INVALID_RECOVERY_PIN")
+                        stamp(at)
+                if (recovery["mode"] == "RECOVERY_ONLY") != (recovery["restored_from_sha256"] is not None):
+                    raise ValueError("recovery provenance")
+            control["recovery"] = recovery
             mandate = mandate_value(json.loads(control["mandate_json"]))
             latest = stamp(control["initialized_ms"])
             if control["mandate_sha256"] != sha(mandate):
@@ -192,12 +222,18 @@ class PaymentPipeline:
                     previous = claim
             if total > units(mandate["admission_budget_usdc"]):
                 raise ValueError("admission budget")
+            for purpose in ("restored", "migrated"):
+                at = recovery[purpose + "_at_ms"]
+                if at is not None:
+                    if at < control["initialized_ms"]:
+                        raise ValueError("recovery time")
+                    latest = max(latest, at)
             return control, mandate, orders, claims, latest, total
         except (Problem, ValueError, TypeError, KeyError, UnicodeError, RecursionError):
             raise Problem(503, "PIPELINE_CONSISTENCY_FAILURE") from None
 
     @contextmanager
-    def _connection(self):
+    def _connection(self, *, allow_legacy=False):
         info = self.state.lstat()
         if (not stat.S_ISDIR(info.st_mode) or os.name == "posix" and
                 (stat.S_IMODE(info.st_mode) & 0o077 or info.st_uid != os.getuid())):
@@ -214,9 +250,9 @@ class PaymentPipeline:
                 connection.execute("PRAGMA synchronous=FULL")
                 connection.execute("BEGIN IMMEDIATE")
                 try:
-                    self._load(connection)
+                    self._load(connection, allow_legacy=allow_legacy)
                     yield connection
-                    self._load(connection)
+                    self._load(connection, allow_legacy=allow_legacy)
                     connection.execute("COMMIT")
                 except BaseException:
                     connection.execute("ROLLBACK")
@@ -231,19 +267,28 @@ class PaymentPipeline:
         return at
 
     @staticmethod
+    def _active(loaded):
+        if loaded[0]["recovery"]["mode"] != "ACTIVE":
+            raise Problem(409, "PIPELINE_RESTORED_READ_ONLY")
+
+    @staticmethod
     def _grant(loaded, at):
+        PaymentPipeline._active(loaded)
         if loaded[0]["revoked_ms"] is not None:
             raise Problem(409, "PIPELINE_MANDATE_REVOKED")
         if not loaded[1]["valid_from_ms"] <= at < loaded[1]["expires_ms"]:
             raise Problem(409, "PIPELINE_MANDATE_EXPIRED")
 
-    def _config(self):
+    def _config(self, *, active=False):
         with self._connection() as connection:
-            return self._load(connection)[1]
+            loaded = self._load(connection)
+            if active:
+                self._active(loaded)
+            return loaded[1]
 
     def stage(self, value, client, token):
         envelope = envelope_value(value)
-        mandate = self._config()
+        mandate = self._config(active=True)
         agent_id = self._identity(client, token, mandate, "AGENT")
         key = order_id(mandate, envelope)
         with self._connection() as connection:
@@ -273,9 +318,11 @@ class PaymentPipeline:
             connection.execute("INSERT INTO orders VALUES (?,?,?,?)", (key, canonical(terms), sha(terms), at))
             return {"order_id": key, "replayed": False, "terms_sha256": sha(terms)}
 
-    def _claim(self, key):
+    def _claim(self, key, *, recovery_only=False):
         with self._connection() as connection:
             loaded = self._load(connection)
+            if not recovery_only:
+                self._active(loaded)
             at = self._time(loaded)
             order = next((r for r in loaded[2] if r["id"] == identifier(key)), None)
             if order is None:
@@ -328,7 +375,7 @@ class PaymentPipeline:
         key = identifier(key)
         # Ownership is checked before a claim; private-host recovery is GET-only.
         if not recovery_only:
-            mandate = self._config()
+            mandate = self._config(active=True)
             agent = self._identity(client, token, mandate, "AGENT")
             with self._connection() as connection:
                 row = connection.execute("SELECT terms_json FROM orders WHERE id=?", (key,)).fetchone()
@@ -336,7 +383,7 @@ class PaymentPipeline:
                     raise Problem(404, "PIPELINE_ORDER_NOT_FOUND")
                 if json.loads(row["terms_json"])["agent_id"] != agent:
                     raise Problem(403, "PIPELINE_PURCHASE_AGENT_MISMATCH")
-        claim, terms, mandate = self._claim(key)
+        claim, terms, mandate = self._claim(key, recovery_only=recovery_only)
         try:
             if recovery_only:
                 if not self.bridge.path.exists():
@@ -350,6 +397,10 @@ class PaymentPipeline:
                 if view["body"] != transfer_body(terms["intent"], view["idempotency_key"]):
                     raise Problem(409, "PIPELINE_PROVIDER_BINDING_MISMATCH")
             else:
+                if not self.bridge.path.exists():
+                    with self._connection() as connection:
+                        if any(c["dispatch_ms"] is not None for c in self._load(connection)[3]):
+                            raise Problem(409, "PIPELINE_PROVIDER_HISTORY_MISSING")
                 view = self.bridge.prepare(terms["intent"])
             if view["attempts"] or recovery_only:
                 value = self._read_existing(self.bridge, key, provider, view, transfer_id)
@@ -394,7 +445,7 @@ class PaymentPipeline:
     def run_batch(self, client_factory, token, provider, *, limit=8, workers=4):
         if type(limit) is not int or not 1 <= limit <= 8 or type(workers) is not int or not 1 <= workers <= 4:
             raise Problem(400, "PIPELINE_BATCH_LIMIT")
-        agent = self._identity(client_factory(), token, self._config(), "AGENT")
+        agent = self._identity(client_factory(), token, self._config(active=True), "AGENT")
         with self._connection() as connection:
             loaded = self._load(connection)
             last = dict(connection.execute("SELECT order_id,MAX(rowid) FROM claims GROUP BY order_id"))
@@ -414,7 +465,7 @@ class PaymentPipeline:
                 "settlement_accounting": "UNAVAILABLE"}
 
     def revoke(self, client, token):
-        self._identity(client, token, self._config(), "OPERATOR")
+        self._identity(client, token, self._config(active=True), "OPERATOR")
         with self._connection() as connection:
             loaded = self._load(connection)
             if loaded[0]["revoked_ms"] is None:
@@ -432,7 +483,9 @@ class PaymentPipeline:
                     "terms_sha256": row["terms_sha256"], "claims": len(attempts),
                     "phase": "QUEUED" if not latest else "CLAIMED_UNKNOWN" if latest["finished_ms"] is None else json.loads(latest["result_json"])["phase"],
                     "last_result": json.loads(latest["result_json"]) if latest and latest["result_json"] else None})
-            return {"pipeline_schema_version": 1, "mandate_sha256": control["mandate_sha256"],
+            return {"pipeline_schema_version": PIPELINE_VERSION, "recovery": control["recovery"],
+                "may_submit_purchases": control["recovery"]["mode"] == "ACTIVE",
+                "mandate_sha256": control["mandate_sha256"],
                 "mandate_id": mandate["mandate_id"], "instance_id": mandate["instance_id"],
                 "operator_id": mandate["operator_id"], "revoked_ms": control["revoked_ms"],
                 "orders": entries, "admitted_principal_usdc": display(total),

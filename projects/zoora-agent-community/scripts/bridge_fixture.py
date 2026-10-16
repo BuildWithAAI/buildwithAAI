@@ -174,6 +174,7 @@ class ProviderFixture:
 
 
 def pipeline_cli_fixture():
+    from zoora_community import payment_recovery
     from zoora_community.client import Client
     from zoora_community.payment_pipeline import PaymentPipeline
     from zoora_community.payment_worker import main as pipeline_main
@@ -182,6 +183,8 @@ def pipeline_cli_fixture():
     at, crash, args = int(sys.argv[3]), sys.argv[4], sys.argv[5:]
     original_request, original_create = Client.request, BridgeSandboxClient.create
     original_fence, original_finish = PaymentPipeline._fence, PaymentPipeline._finish
+    original_sync = payment_recovery.sync_directory
+    original_link = payment_recovery.os.link
     dropped = None
     reply_lock = threading.Lock()
     reply_file = Path(args[args.index("--state") + 1]) / "fixture-source-reply.json"
@@ -225,11 +228,23 @@ def pipeline_cli_fixture():
             os._exit(85)
         return original_finish(pipeline, key, claim, value)
 
+    def sync_then_crash(path):
+        original_sync(path)
+        if crash == "restore-published":
+            os._exit(87)
+
+    def link_then_crash(source, destination, **options):
+        original_link(source, destination, **options)
+        if crash == "restore-partial" and Path(destination).name == "bridge-sandbox.sqlite3":
+            os._exit(86)
+
     with fixture.transport(), patch("zoora_community.payment_pipeline.time.time_ns", lambda: at * 1_000_000), \
             patch.object(Client, "request", submit_then_crash), \
             patch.object(BridgeSandboxClient, "create", create_then_crash), \
             patch.object(PaymentPipeline, "_fence", fence_then_crash), \
             patch.object(PaymentPipeline, "_finish", finish_then_crash), \
+            patch.object(payment_recovery, "sync_directory", sync_then_crash), \
+            patch.object(payment_recovery.os, "link", link_then_crash), \
             patch.object(sys, "argv", ["payment-worker", *args]):
         return pipeline_main()
 

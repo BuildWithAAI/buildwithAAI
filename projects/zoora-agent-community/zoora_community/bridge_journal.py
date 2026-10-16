@@ -280,6 +280,11 @@ class BridgeJournal:
                 raise Problem(409, "BRIDGE_RESTORED_JOURNAL_READ_ONLY")
             if first_create_only and before_create is not None:
                 before_create()
+                # The local dispatch fence commits before this durable provider claim.
+                fenced_at = self._clock()
+                if fenced_at < at:
+                    raise Problem(409, "BRIDGE_CLOCK_REGRESSION")
+                at = fenced_at
             attempt_id, kind = uuid.uuid4().hex, "RECONCILE" if candidate else "POLL" if known else "CREATE"
             connection.execute("UPDATE intents SET credential_sha256=? WHERE id=?", (client.credential_fingerprint, request_id))
             connection.execute("INSERT INTO attempts VALUES (?,?,?,?,?,NULL,NULL,NULL,?)",

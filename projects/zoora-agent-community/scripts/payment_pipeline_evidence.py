@@ -20,7 +20,7 @@ from zoora_community.store import Store
 from zoora_community.validation import Problem, canonical
 
 
-def run():
+def run(after_rehearsal=None, recovery_checkpoint=None):
     checks, outputs, tokens, crash_records = [], [], [], []
 
     def check(name, condition):
@@ -83,6 +83,11 @@ def run():
             mandate_file.chmod(0o600)
 
             with provider.serve():
+                def checkpoint(label, order=None):
+                    if recovery_checkpoint is not None:
+                        recovery_checkpoint(label, {"folder": folder, "pipeline": pipeline, "provider": provider,
+                            "at": at, "order_id": order})
+
                 def cli(args, expected=0, crash="normal"):
                     completed = provider.pipeline_cli(pipeline_state, args, at=at, crash=crash)
                     outputs.append(completed.stdout + completed.stderr)
@@ -128,6 +133,7 @@ def run():
                     queued = list(pool.map(stage, inputs))
                 check("four independent CLI processes stage two agents' purchases against one exact admission cap",
                       pipeline.show()["admitted_principal_usdc"] == "5.000000" and pipeline.audit()["orders"] == 4)
+                checkpoint("before_dispatch")
                 check("exact staging replay keeps the purchase identity and budget unchanged",
                       stage(inputs[0])["replayed"] and pipeline.show()["admitted_principal_usdc"] == "5.000000")
                 changed = {**inputs[0][0], "amount_usdc": "1.5"}
@@ -183,6 +189,7 @@ def run():
                     before = len(provider.requests)
                     check("live lease at " + kind + " blocks a competing CLI before provider HTTP",
                           op("run-one", key_id=key_id, expected=1)["error"] == "PIPELINE_ORDER_BUSY" and len(provider.requests) == before)
+                    checkpoint(kind, key_id)
                     at += LEASE_MS + 1
                     if kind == "create":
                         recovered = op("run-one", key_id=key_id, expected=2)
@@ -275,6 +282,10 @@ def run():
                 check("bearer credentials and provider keys remain absent from all CLI outputs and the queue database",
                       all(all(secret not in output for secret in [KEY, *tokens]) for output in outputs)
                       and all(secret.encode() not in pipeline.path.read_bytes() for secret in [KEY, *tokens]))
+                if after_rehearsal is not None:
+                    after_rehearsal({"folder": folder, "pipeline": pipeline, "provider": provider, "at": at,
+                        "key": key, "running": running, "agent_file": agent_files[0], "operator_file": operator_file,
+                        "tokens": tokens, "source_state": book["state"], "bindings": links})
         finally:
             running.stop()
     evidence = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
@@ -296,6 +307,7 @@ def run():
     output.mkdir(exist_ok=True)
     (output / "payment-pipeline.json").write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     print(canonical(evidence))
+    return evidence
 
 
 if __name__ == "__main__":
