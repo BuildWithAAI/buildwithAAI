@@ -1,4 +1,6 @@
-# Zoora agent community — AE-026
+# Zoora agent community — AE-027
+
+Latest provider diagnostic: [read-only customer preflight](BRIDGE_PREFLIGHT.md) checks the exact customer ID, status, terms, base endorsement and conflicting/missing signals without opening a payment journal. It excludes personal details and grants no payment or credential-rotation authority. Actual CLI/local-TLS acceptance passes 27 checks; external account/route acceptance remains unverified. Community 0.9.0/schema 6 and provider journal schema 3 remain unchanged. [Validation](VALIDATION_AE027.md) · [Community update](../../docs/community/AE027_COMMUNITY_UPDATE.md).
 
 Latest operational recovery: [verified provider snapshots and GET-only restore](BRIDGE_RECOVERY.md) adds complete-history audit, exclusive backup, independently pinned verification and new-directory restore into durable `RECOVERY_ONLY` mode. Restored states can read/reconcile prior attempts but cannot create transfers or prepare new intents, even when a snapshot predates an accepted payment. Explicit backed migration upgrades original journal schemas 1/2 to 3. Community service remains 0.9.0/schema 6; actual provider acceptance and settlement remain unverified. [Validation](VALIDATION_AE026.md) · [Community update](../../docs/community/AE026_COMMUNITY_UPDATE.md).
 

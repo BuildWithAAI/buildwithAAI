@@ -1,5 +1,7 @@
 # AE-024 — durable Bridge sandbox connector
 
+Read-only onboarding diagnostic: [AE-027 customer preflight](BRIDGE_PREFLIGHT.md) retrieves one exact sandbox customer without opening a payment journal. It reports redacted onboarding signals; no result authorizes a transfer, credential rotation, route or settlement.
+
 Current operational recovery is [AE-026](BRIDGE_RECOVERY.md): provider journal schema 3, explicit backed migration from original schemas 1/2, verified snapshots and new-directory GET-only restore. AE-024/025 evidence below retains its historical scope; the current restore workflow never reactivates create authority.
 
 October 15, 2026. This adds executable provider transport and an operator-run CLI. The only destination is `https://api.sandbox.bridge.xyz/v0`; operations cover a narrow Solana/USDC transfer object and, as extended by [AE-025](BRIDGE_RECONCILIATION.md), bounded read-only discovery and explicit ID reconciliation. The implementation accepts only `sk-test…` keys. There is no production endpoint switch, arbitrary URL, redirect following, card-details endpoint or wallet signer.

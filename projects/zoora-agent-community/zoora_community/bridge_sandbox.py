@@ -131,8 +131,9 @@ class BridgeSandboxClient:
     def _request(self, method, path, body=None, idempotency_key=None, *, deadline=None):
         # No URL/base-host argument, environment override, proxy, redirect or generic path API.
         listing = path == f"/v0/transfers?limit={DISCOVERY_PAGE_SIZE}" or path.startswith(f"/v0/transfers?limit={DISCOVERY_PAGE_SIZE}&starting_after=")
+        customer = path.startswith("/v0/customers/")
         if not ((method == "POST" and path == "/v0/transfers" and body is not None and idempotency_key)
-                or (method == "GET" and (path.startswith("/v0/transfers/") or listing)
+                or (method == "GET" and (path.startswith("/v0/transfers/") or listing or customer)
                     and body is None and idempotency_key is None)):
             raise Problem(400, "BRIDGE_OPERATION_REJECTED")
         if method == "GET":
@@ -140,7 +141,7 @@ class BridgeSandboxClient:
                 if "starting_after=" in path:
                     provider_id(path.split("starting_after=", 1)[1])
             else:
-                provider_id(path.removeprefix("/v0/transfers/"))
+                provider_id(path.removeprefix("/v0/customers/" if customer else "/v0/transfers/"))
         else:
             provider_id(idempotency_key)
             body_value(body)
@@ -213,6 +214,15 @@ class BridgeSandboxClient:
         value, response_hash = self._request("GET", "/v0/transfers/" + provider_id(transfer_id))
         return {**observation(value, body, transfer_id), "response_sha256": response_hash}
 
+    def preflight(self, customer_id):
+        from .bridge_preflight import customer_observation
+        customer_id = provider_id(customer_id)
+        path = "/v0/customers/" + customer_id
+        value, digest = self._request("GET", path)
+        return {**customer_observation(value, customer_id), "response_sha256": digest,
+                "credential_sha256": self.credential_fingerprint,
+                "endpoint_host": HOST, "method": "GET", "path": path}
+
     def discover(self, body):
         """Bounded candidate search only. A miss is never proof that a POST had no effect."""
         body_value(body)
@@ -254,6 +264,9 @@ def main():
     parser = argparse.ArgumentParser(description="Bridge sandbox transfer rehearsal; no production or wallet signing")
     parser.add_argument("--state", type=Path, help="separate private sandbox journal directory")
     sub = parser.add_subparsers(dest="command", required=True)
+    preflight = sub.add_parser("preflight", help="read one customer without opening a payment journal")
+    preflight.add_argument("--customer-id", required=True)
+    preflight.add_argument("--key-file", type=Path, required=True)
     prepare = sub.add_parser("prepare")
     prepare.add_argument("--intent-file", type=Path, required=True)
     migrate = sub.add_parser("migrate")
@@ -273,11 +286,15 @@ def main():
         if name == "reconcile":
             cmd.add_argument("--transfer-id", required=True)
     args = parser.parse_args()
-    if args.command != "verify-backup" and args.state is None:
+    if args.command == "preflight" and args.state is not None:
+        parser.error("preflight does not accept --state")
+    if args.command not in {"verify-backup", "preflight"} and args.state is None:
         parser.error("--state is required for this command")
     try:
         journal = BridgeJournal(args.state) if args.state is not None else None
-        if args.command == "verify-backup":
+        if args.command == "preflight":
+            value = BridgeSandboxClient(read_key(args.key_file)).preflight(args.customer_id)
+        elif args.command == "verify-backup":
             from .bridge_recovery import verify_backup
             value = verify_backup(args.backup, args.sha256)
         elif args.command == "restore":
@@ -302,6 +319,8 @@ def main():
             else:
                 value = journal.advance(args.request_id, client)
         print(canonical(value))
+        if args.command == "preflight":
+            return 0 if value["assessment"] == "CUSTOMER_SIGNALS_OBSERVED" else 2
         return 2 if args.command in {"advance", "reconcile"} and value["state"] == "UNKNOWN" else 0
     except (Problem, OSError) as error:
         print(canonical({"error": error.code if isinstance(error, Problem) else "BRIDGE_LOCAL_IO_FAILED"}), file=sys.stderr)
