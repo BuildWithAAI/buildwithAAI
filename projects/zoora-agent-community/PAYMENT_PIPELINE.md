@@ -2,7 +2,7 @@
 
 October 16, 2026 (UTC). This batch connects authenticated commerce, explicit sandbox limits, customer observations, a provider journal, concurrent dispatch and a combined operational report. An agent purchase keeps one identity across these components. The existing synthetic book and separately denominated sandbox instruction cap remain distinct.
 
-Service is **0.10.0/schema 6**, provider journal **schema 3**, new queue **schema 1**. Existing schema-6 community state needs no structural migration. The new optional authenticated `sandbox_dispatch` request context is retained in commerce history; use this service version to read those new records. Downgrading to 0.9.0 after writing them is unsupported.
+Current service is **0.11.0/schema 6**, provider journal **schema 3**, queue **schema 2**. [AE-029 recovery](PAYMENT_RECOVERY.md) adds coordinated packages, durable recovery-only restore and explicit backed migration from the original AE-028 queue schema 1. Existing schema-6 community state needs no structural migration. The optional authenticated `sandbox_dispatch` request context is retained in commerce history; use a compatible service version to read those records. Downgrading to 0.9.0 after writing them is unsupported.
 
 **External Bridge requests in retained evidence: zero. Provider interoperability: UNVERIFIED. No signer, live funds, merchant/card purchase, x402 execution or verified settlement is enabled.** The pipeline rehearses a separately approved sandbox transfer associated with a synthetic purchase; it does not implement that purchase's candidate merchant rail or convert its units to money.
 
@@ -67,7 +67,7 @@ Without a known ID, recovery returns bounded candidates and requires an explicit
 
 Revocation prevents new admissions and dispatches that have not passed the local dispatch fence. A previously fenced attempt may complete afterward; revocation cannot retract an already initiated external operation. Earlier attempted orders remain eligible for GET-only recovery, including after source/pipeline expiry or revocation. There is no queue reactivation command. Read-only recovery needs the private host/provider credential, not a currently active agent credential.
 
-The community DB, queue DB and provider journal are separate durable stores. Their commits are deliberately not described as one distributed transaction. Leases, stable identities, exact source-command replay, dispatch fencing and provider create-once enforce conservative recovery across those commits. The private queue directory includes its nested `provider/` state. Community backup/restore does not include it. This milestone adds no supported queue backup/restore; copying an old queue into active service is not an authorized recovery workflow. Provider-only snapshot rules remain [AE-026](BRIDGE_RECOVERY.md).
+The community DB, queue DB and provider journal are separate durable stores. Their commits are deliberately not described as one distributed transaction. Leases, stable identities, exact source-command replay, dispatch fencing and provider create-once enforce conservative recovery across those commits. The private queue directory includes its nested `provider/` state. Community backup/restore does not include it. Use [AE-029 coordinated packages](PAYMENT_RECOVERY.md) to restore queue/provider state into GET-only recovery; copying an old queue into active service is not an authorized workflow. Provider-only snapshot rules remain [AE-026](BRIDGE_RECOVERY.md).
 
 ## Reproducible integrated evidence
 

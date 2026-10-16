@@ -7,6 +7,7 @@ import sys
 from .bridge_sandbox import BridgeSandboxClient, provider_id, read_key
 from .client import Client, read_credential
 from .payment_pipeline import PaymentPipeline
+from . import payment_recovery
 from .spending import read_json
 from .store import private_regular
 from .validation import Problem, canonical
@@ -16,8 +17,14 @@ def main():
     parser = argparse.ArgumentParser(description="Connected sandbox purchase queue; no live funds or wallet signing")
     parser.add_argument("--state", type=Path, required=True)
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("show", "audit"):
+    for name in ("show", "audit", "joint-audit"):
         sub.add_parser(name)
+    backup = sub.add_parser("backup")
+    backup.add_argument("--output", type=Path, required=True)
+    for name in ("verify-backup", "restore", "migrate"):
+        cmd = sub.add_parser(name)
+        cmd.add_argument("--backup", type=Path, required=True)
+        cmd.add_argument("--sha256", required=True)
     for name in ("init", "stage", "run-one", "run-batch", "revoke"):
         cmd = sub.add_parser(name)
         cmd.add_argument("--port", type=int, default=8765)
@@ -42,6 +49,15 @@ def main():
     try:
         if args.command in {"show", "audit"}:
             value = getattr(pipeline, args.command)()
+        elif args.command == "joint-audit":
+            value = payment_recovery.audit(pipeline)
+        elif args.command == "backup":
+            value = payment_recovery.create_backup(pipeline, args.output)
+        elif args.command == "verify-backup":
+            value = payment_recovery.verify_backup(args.backup, args.sha256)
+        elif args.command in {"restore", "migrate"}:
+            value = getattr(payment_recovery, "restore_backup" if args.command == "restore" else "migrate")(
+                pipeline, args.backup, args.sha256)
         elif args.command == "recover":
             target = provider_id(args.transfer_id) if args.transfer_id else None
             value = pipeline.run_one(args.order_id, None, None, BridgeSandboxClient(read_key(args.key_file)),
