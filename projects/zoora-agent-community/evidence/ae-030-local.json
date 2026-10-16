@@ -59,10 +59,24 @@
   "genuine_missing_history_refusal_retained": true,
   "concurrent_startup_repetitions_after_fix": 30,
   "initial_failed_suite_log_sha256": "cc656f9e643c932ca14b94e2eb8cc9e1accaa329228ee8fcd0c168bf65b5da98",
-  "report_sha256": "f0947c65ade542fe0839b00166bb471ac5657bcb9bb3d03e4538d92447e1f85e",
-  "fixture_package_sha256": "cf4d896b79fa1897c97bd650730b9ab419a695166c52f4594671e4cb3887119f",
+  "report_sha256": "4e1893337ab876433151f45189dca92e3f291826c6c58d877d8d693620289b0b",
+  "fixture_package_sha256": "96f4821d0b678558388fa5f2f976b646250478312dc262cd9ae456244eac777c",
   "external_bridge_requests": 0,
   "real_funds_authorized": false,
   "wallet_execution": false,
-  "settlement_accounting": "UNAVAILABLE"
+  "settlement_accounting": "UNAVAILABLE",
+  "first_actual_model_gate": {
+    "source_sha": "af6ed48d82cb5513cd494c80334444528887e8e3",
+    "job_id": 116909431459,
+    "state": "REJECTED_BEFORE_PROVIDER_HTTP",
+    "error": "INVALID_FIELDS",
+    "action": "sandbox_payment_status",
+    "arguments": {
+      "order_id": "123456"
+    },
+    "advances_attempted": 0,
+    "provider_wire_requests": 0,
+    "validation_relaxed": false,
+    "correction": "Explicit empty status arguments and exact returned ID copying; rejection retained in regression."
+  }
 }

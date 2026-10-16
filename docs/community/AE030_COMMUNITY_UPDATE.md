@@ -12,6 +12,8 @@ Fixture accounting: **8.75 sandbox USDC admitted**, **5 sandbox USDC represented
 
 A startup race could also falsely report missing provider history after another worker had created the journal. That boundary now has a fresh check and a regression that failed before the correction; genuine history loss still blocks execution. Verification also found that the workspace had reopened on the older checkout. We restored it from the published AE-029 source, matched its exact tree and rechecked the saved evidence before developing further.
 
+The first actual-model check also caught a made-up ID supplied to the status tool. Validation blocked it before any provider traffic. We clarified the tool instructions and retained that exact rejection in the tests; a corrected source must pass the same strict model gate.
+
 Service version is **0.12.0**; database schemas stay unchanged. This remains a draft development milestone. External Bridge calls and real funds moved remain **zero**. Phantom signing, funded execution, production account/route acceptance, card/merchant checkout and verified settlement still require implementation and testing.
 
 [Agent payment method](../../projects/zoora-agent-community/AGENT_PAYMENTS.md) · [Validation and corrections](../../projects/zoora-agent-community/VALIDATION_AE030.md)

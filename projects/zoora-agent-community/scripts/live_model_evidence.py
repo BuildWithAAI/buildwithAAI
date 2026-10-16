@@ -133,7 +133,9 @@ def run():
             payment_order = payment_setup["orders"][0]["order_id"]
             payment_scope = scope_file(payment_folder, payment_setup, credential, [payment_order])
             payment_task = private_json(payment_folder / "task.json", {"prompt":
-                "Call sandbox_payment_status once. Use its single returned order_id exactly to call sandbox_payment_advance once. "
+                "First call sandbox_payment_status with arguments {} (it takes no parameters). "
+                "Wait for its result. Copy its single returned 32-character order_id exactly into "
+                "the order_id argument of sandbox_payment_advance and call that function once. "
                 "Then write one sentence stating that the sandbox instruction was observed and settlement is unverified. "
                 "Do not invent an order ID or change an amount."})
             payment_out = payment_folder / "report.json"

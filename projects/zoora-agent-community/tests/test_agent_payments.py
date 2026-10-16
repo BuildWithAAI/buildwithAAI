@@ -57,6 +57,8 @@ class AgentPaymentSessionTests(PipelineCase):
         self.assertEqual([r["order_id"] for r in value["orders"]], [self.key])
         self.assertEqual(value["remaining_advances"], 1)
         self.assertEqual(session.advances, 0)
+        self.error("INVALID_FIELDS", lambda: session.run_tool({"action": "sandbox_payment_status",
+            "arguments": {"order_id": "123456"}}))
         for secret in (KEY, self.agent, self.operator, self.mandate["customer_id"], self.mandate["source_address"]):
             self.assertNotIn(secret, canonical(value))
         self.assertEqual(self.provider.requests, [])
