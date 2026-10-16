@@ -39,6 +39,8 @@ The stage request has exactly `book_id`, `purchase_id`, `commerce_binding_sha256
 
 The worker posts one deterministic source SUBMIT request containing the queue-terms hash and instance pin. A retry of its own successful SUBMIT replays that command. A manual/unrelated earlier SUBMIT returns a different outcome and cannot be adopted as its dispatch. No automatic RESOLVE, refund, paid fulfillment or accounting credit is issued.
 
+The shared `client.commerce_action` helper freezes the exact command and request ID before delivery. It makes at most three attempts, with short backoff, only for `STORAGE_UNAVAILABLE` or interrupted network delivery to this idempotent source endpoint. Authorization, conflict and rate-limit refusals are not retried. A final network failure remains `COMMERCE_DELIVERY_UNCERTAIN`; reservations are not released. This retry policy never applies to provider transfer POSTs. Both the existing commerce race workflow and the new worker use the same helper. The integrated harness discards one response after an actual source HTTP commit and verifies that the same-body retry returns an authenticated replay.
+
 Successful CLI results use exit 0; blocked/incomplete/uncertain workflow results use exit 2 with JSON; invalid commands/credentials/storage use exit 1 with redacted JSON errors. Argument usage errors use argparse's exit 2 and stderr text. Inspect the JSON phase as well as the exit code. `show`/`audit` are host-private commands; they expose IDs, terms and declared addresses, never bearer credentials.
 
 ## Interruption and recovery
@@ -73,7 +75,7 @@ The community DB, queue DB and provider journal are separate durable stores. The
 python -bb -X dev -W error scripts/payment_pipeline_evidence.py
 ```
 
-**36 checks**, actual authenticated loopback service, actual separate CLI processes and verified local HTTPS. Three worker customer reads arrive before any is released, proving concurrency at that boundary without making throughput claims. Four separate processes actually exit at source SUBMIT, provider acceptance, dispatch fence and queue-result boundaries (82/83/84/85). Pipeline clocks are injected for lease boundaries; the community server uses real time. Shipped tools expose no test-host, test-clock or crash switches.
+**37 checks**, actual authenticated loopback service, actual separate CLI processes and verified local HTTPS. Three worker customer reads arrive before any is released, proving concurrency at that boundary without making throughput claims. Four separate processes actually exit at source SUBMIT, provider acceptance, dispatch fence and queue-result boundaries (82/83/84/85). Pipeline clocks are injected for lease boundaries; the community server uses real time. Shipped tools expose no test-host, test-clock or crash switches.
 
 Measured fixture data:
 

@@ -13,7 +13,7 @@ from integration_evidence import ROOT, Running, command
 from fixture_signatures import address, signed_body
 from legacy_fixture import create
 from commerce_evidence import inspect
-from zoora_community.client import read_credential
+from zoora_community.client import commerce_action, read_credential
 from zoora_community.commerce import run as model_run
 from zoora_community.store import Store
 from zoora_community.validation import Problem, canonical
@@ -93,7 +93,7 @@ def run():
                   and all(token not in cli.stdout + cli.stderr for token in tokens))
 
             def post(cmd, token, request_id=None):
-                return server.client.request("POST", route + "/actions", {"request_id": request_id or uuid.uuid4().hex, "command": cmd}, token)[1]
+                return commerce_action(server.client, book["id"], {"request_id": request_id or uuid.uuid4().hex, "command": cmd}, token)[1]
 
             def view(token=operator):
                 return server.client.request("GET", route, token=token)[1]

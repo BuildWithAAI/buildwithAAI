@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 import copy
+import hashlib
 import http.client
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -181,11 +182,31 @@ def pipeline_cli_fixture():
     at, crash, args = int(sys.argv[3]), sys.argv[4], sys.argv[5:]
     original_request, original_create = Client.request, BridgeSandboxClient.create
     original_fence, original_finish = PaymentPipeline._fence, PaymentPipeline._finish
+    dropped = None
+    reply_lock = threading.Lock()
+    reply_file = Path(args[args.index("--state") + 1]) / "fixture-source-reply.json"
 
     def submit_then_crash(client, method, path, body=None, token=None):
+        nonlocal dropped
         result = original_request(client, method, path, body, token)
         if crash == "submit" and method == "POST" and body and body.get("command", {}).get("kind") == "SUBMIT":
             os._exit(82)
+        if crash == "source-reply-drop" and method == "POST" and body and body.get("command", {}).get("kind") == "SUBMIT":
+            lose_reply = False
+            with reply_lock:
+                digest = hashlib.sha256(canonical(body).encode()).hexdigest()
+                if dropped is None:
+                    dropped = {"fault": "INJECTED_CLIENT_RESPONSE_LOSS_AFTER_ACTUAL_HTTP_COMMIT",
+                        "request_id": body["request_id"], "pipeline_terms_sha256": body["sandbox_dispatch"]["pipeline_terms_sha256"],
+                        "original_body_sha256": digest, "first_replayed": result[1]["replayed"],
+                        "first_outcome": result[1]["outcome"], "replay_observed": False}
+                    lose_reply = True
+                elif dropped["request_id"] == body["request_id"]:
+                    dropped.update(replay_observed=result[1]["replayed"], replay_outcome=result[1]["outcome"],
+                                   replay_body_sha256=digest)
+                reply_file.write_text(canonical(dropped), encoding="utf-8")
+            if lose_reply:
+                raise ConnectionResetError("PUBLIC INJECTED SOURCE REPLY LOSS")
         return result
 
     def create_then_crash(client, body, key):

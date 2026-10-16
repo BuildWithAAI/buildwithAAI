@@ -1,15 +1,15 @@
 {
   "classification": "LOCAL_WORKTREE_CHECKPOINT",
   "date_utc": "2026-10-16",
-  "source_parent_sha": "72e03f21976056a932add780fdb2da32b769160b",
-  "canonical_parent_sha": "76962407c9cbb63f7a9e7bc045ce2cd271825ee5",
+  "source_parent_sha": "2d733ec070db44a0f6b1d13b1093c9e75c103717",
+  "canonical_parent_sha": "0bb24a9b6d91f4e038eb9ef2866197ee34798408",
   "source_worktree_dirty": true,
   "python": "3.12.14",
   "sqlite": "3.53.1",
-  "normal_tests": 477,
-  "optimized_tests": 477,
-  "new_regressions": 41,
-  "acceptance_checks": 36,
+  "normal_tests": 483,
+  "optimized_tests": 483,
+  "new_regressions": 47,
+  "acceptance_checks": 37,
   "simultaneous_customer_reads": 3,
   "actual_process_deaths": [
     82,
@@ -41,7 +41,7 @@
     "refunded_principal": 0,
     "refunds_restore_spending_budget": false
   },
-  "report_sha256": "a5fd7db23f9f67bdc4e6c0a5c2948415ab70a3320cb8ed08ae2bb0c644dad97c",
+  "report_sha256": "37e48d9c2fc7a8ad6666489b0ac82b22d89cb95a7f8bd98263cac6f612038e69",
   "service_version": "0.10.0",
   "community_schema": 6,
   "provider_schema": 3,
@@ -65,5 +65,24 @@
     "bridge_recovery",
     "bridge_preflight"
   ],
-  "published_ci": "RECORDED_SEPARATELY_IN_DEVELOPMENT_PR"
+  "published_ci": "RECORDED_SEPARATELY_IN_DEVELOPMENT_PR",
+  "milestone_base_sha": "76962407c9cbb63f7a9e7bc045ce2cd271825ee5",
+  "source_reply_loss": {
+    "fault": "INJECTED_CLIENT_RESPONSE_LOSS_AFTER_ACTUAL_HTTP_COMMIT",
+    "first_outcome": "SIMULATED_SUBMISSION",
+    "first_replayed": false,
+    "original_body_sha256": "a705968126807d5d5c9308d7782ad169879f20d6b2512807a6df9bbd937175e7",
+    "pipeline_terms_sha256": "75bd3fa04312e5326f15c9b40b8e5c67ee24348bc2104f9aa34a949420fb01d1",
+    "replay_body_sha256": "a705968126807d5d5c9308d7782ad169879f20d6b2512807a6df9bbd937175e7",
+    "replay_observed": true,
+    "replay_outcome": "SIMULATED_SUBMISSION",
+    "request_id": "8e98cef113c214ab5e37c090b93d059f"
+  },
+  "initial_ci_failure": {
+    "head": "0bb24a9b6d91f4e038eb9ef2866197ee34798408",
+    "job_id": 116750908351,
+    "scenario": "eight concurrent source commerce commands",
+    "code": "STORAGE_UNAVAILABLE",
+    "correction": "bounded exact-idempotent source delivery; no provider POST retry"
+  }
 }

@@ -141,7 +141,7 @@ def run():
                 provider.mode = "block_reads"
                 start = len(provider.requests)
                 with ThreadPoolExecutor(max_workers=1) as pool:
-                    future = pool.submit(op, "run-batch", limit=3, workers=3)
+                    future = pool.submit(op, "run-batch", limit=3, workers=3, crash="source-reply-drop")
                     deadline = time.monotonic() + 8
                     while len(provider.requests) - start < 3 and time.monotonic() < deadline:
                         time.sleep(0.01)
@@ -155,6 +155,11 @@ def run():
                 check("one batch advances three different authenticated purchases to three bound provider observations",
                       parallel["orders_selected"] == 3 and all(r["phase"] == "PROVIDER_OBSERVED" for r in parallel["outcomes"])
                       and len(provider.effects) == 3)
+                source_reply_loss = json.loads((pipeline_state / "fixture-source-reply.json").read_text(encoding="utf-8"))
+                check("discarded committed source HTTP reply is retried with the same body and returns one authenticated replay",
+                      source_reply_loss["first_replayed"] is False and source_reply_loss["replay_observed"] is True
+                      and source_reply_loss["first_outcome"] == source_reply_loss["replay_outcome"] == "SIMULATED_SUBMISSION"
+                      and source_reply_loss["original_body_sha256"] == source_reply_loss["replay_body_sha256"])
                 check("the first agent's batch leaves the second agent's purchase queued",
                       next(r for r in pipeline.show()["orders"] if r["order_id"] == queued[3]["order_id"])["phase"] == "QUEUED")
                 provider.customer["status"] = "paused"
@@ -281,6 +286,7 @@ def run():
         "source_commerce_state": book["state"], "source_commerce_policy": book["policy"],
         "source_commerce_bindings": book["bindings"], "source_commerce_state_sha256": book["state_sha256"],
         "source_book_id": book["id"],
+        "source_reply_loss": source_reply_loss,
         "wire": wire, "http_requests": len(wire), "post_requests": 8, "get_requests": 16,
         "unique_fixture_transfers": 8, "synthetic_accounting": accounting,
         "admitted_principal_usdc": "13.000000", "fixture_submitted_principal_usdc": "9.000000",

@@ -7,7 +7,34 @@ import time
 from pathlib import Path
 
 from .store import private_regular
-from .validation import TOKEN, Problem, canonical, fields, matching, object_value, parse_json
+from .validation import TOKEN, Problem, canonical, fields, identifier, matching, object_value, parse_json
+
+
+def commerce_action(client, book_id, body, token, *, attempts=3):
+    """Retry only this idempotent endpoint with an immutable command identity/body."""
+    identifier(book_id)
+    fields(body, ("request_id", "command"), ("sandbox_dispatch",))
+    identifier(body["request_id"])
+    object_value(body["command"])
+    if type(attempts) is not int or not 1 <= attempts <= 3:
+        raise Problem(400, "INVALID_COMMERCE_DELIVERY_BOUND")
+    try:
+        payload = canonical(body).encode("utf-8")
+        parse_json(payload)
+    except (ValueError, UnicodeError, RecursionError):
+        raise Problem(400, "INVALID_COMMERCE_COMMAND") from None
+    for attempt in range(attempts):
+        try:
+            return client.request("POST", "/v1/commerce/books/" + book_id + "/actions", parse_json(payload), token)
+        except Problem as error:
+            if error.code != "STORAGE_UNAVAILABLE":
+                raise
+            failure = error
+        except (OSError, http.client.HTTPException):
+            failure = Problem(502, "COMMERCE_DELIVERY_UNCERTAIN")
+        if attempt + 1 == attempts:
+            raise failure from None
+        time.sleep(0.025 * 2**attempt)
 
 
 def read_credential(filename):

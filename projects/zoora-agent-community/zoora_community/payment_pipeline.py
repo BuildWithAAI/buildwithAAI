@@ -14,6 +14,7 @@ import uuid
 
 from .bridge_journal import BridgeJournal
 from .bridge_sandbox import HOST, STATE, provider_id, sha, transfer_body
+from .client import commerce_action
 from .payment_contract import (
     MAX_ORDERS, checked_purchase, display, envelope_value, mandate_value, order_id,
     stamp, terms_value, units,
@@ -380,7 +381,7 @@ class PaymentPipeline:
                         "sandbox_dispatch": {"instance_id": mandate["instance_id"], "pipeline_terms_sha256": sha(terms)},
                         "command": {"kind": "SUBMIT", "purchase_id": terms["envelope"]["purchase_id"],
                                     "binding_sha256": terms["envelope"]["commerce_binding_sha256"]}}
-                    submitted = client.request("POST", route + "/actions", command, token)[1]
+                    submitted = commerce_action(client, terms["envelope"]["book_id"], command, token)[1]
                     if submitted.get("outcome") != "SIMULATED_SUBMISSION":
                         raise Problem(409, "PIPELINE_COMMERCE_SUBMISSION_REFUSED")
                     view = self.bridge.create_once(key, provider, before_create=lambda: self._fence(key, claim))
