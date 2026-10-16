@@ -33,6 +33,15 @@ def intent(index=1):
             "destination_address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "amount_usdc": "12.500001"}
 
 
+def customer():
+    return {"id": intent()["customer_id"], "status": "active", "has_accepted_terms_of_service": True,
+            "endorsements": [{"name": "base", "status": "approved",
+                "requirements": {"complete": ["PRIVATE REQUIREMENT"], "pending": [], "missing": None, "issues": []}}],
+            "first_name": "PRIVATE CUSTOMER NAME", "email": "PRIVATE CUSTOMER EMAIL",
+            "rejection_reasons": [{"developer_reason": "PRIVATE REJECTION REASON"}],
+            "capabilities": {"payin_crypto": "active", "payout_crypto": "active"}}
+
+
 def version_one_journal(path):
     """Test-only reconstruction of v1's exact columns; histories must be CREATE/POLL only."""
     with closing(sqlite3.connect(path, autocommit=True)) as connection:
@@ -56,6 +65,7 @@ class ProviderFixture:
         self.declared_length = None
         self.listing = None
         self.repeat_page = False
+        self.customer = customer()
         self.entered, self.release = threading.Event(), threading.Event()
 
     @contextmanager
@@ -89,7 +99,9 @@ class ProviderFixture:
             def do_GET(self):
                 with fixture.lock:
                     fixture.requests.append({"method": "GET", "path": self.path, "headers": dict(self.headers), "body": None})
-                    if self.path.startswith("/v0/transfers?"):
+                    if self.path == "/v0/customers/" + intent()["customer_id"]:
+                        value = copy.deepcopy(fixture.customer)
+                    elif self.path.startswith("/v0/transfers?"):
                         query = parse_qs(urlsplit(self.path).query)
                         data = copy.deepcopy(fixture.listing if fixture.listing is not None else list(reversed(list(fixture.effects.values()))))
                         cursor = query.get("starting_after", [None])[0]
@@ -149,8 +161,9 @@ class ProviderFixture:
             yield
 
     def cli(self, state, args, *, at=1_800_000_000_000, crash=False):
+        state_args = ["--state", str(state)] if state is not None else []
         return subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", str(Path(__file__).resolve()),
-            "_cli", str(self.port), str(at), "restore-crash" if crash == "restore" else "poll-crash" if crash == "poll" else "crash" if crash else "normal", "--state", str(state), *map(str, args)],
+            "_cli", str(self.port), str(at), "restore-crash" if crash == "restore" else "poll-crash" if crash == "poll" else "crash" if crash else "normal", *state_args, *map(str, args)],
             cwd=ROOT, capture_output=True, text=True, timeout=15)
 
 

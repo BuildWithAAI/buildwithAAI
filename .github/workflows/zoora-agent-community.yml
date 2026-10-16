@@ -88,6 +88,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -bb -X dev -W error scripts/bridge_recovery_evidence.py
+      - name: Read-only customer preflight, approval contradictions, redaction and unchanged journals
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/bridge_preflight_evidence.py
       - name: Runtime package vulnerability audit
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
         run: |
