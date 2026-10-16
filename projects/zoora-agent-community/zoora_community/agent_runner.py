@@ -62,6 +62,9 @@ class LocalModel:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise Problem(504, "RUN_DEADLINE")
+            # Non-streamed CPU inference may take longer than the connect budget.
+            # The socket and abort timer both retain the absolute run deadline.
+            connection.sock.settimeout(remaining)
             timer = threading.Timer(remaining, self._abort, args=(connection.sock,))
             timer.daemon = True
             timer.start()

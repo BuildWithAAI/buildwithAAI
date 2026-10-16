@@ -7,9 +7,9 @@
   "source_worktree_dirty": true,
   "python": "3.12.14",
   "sqlite": "3.53.1",
-  "normal_tests": 543,
-  "optimized_tests": 543,
-  "new_regressions": 32,
+  "normal_tests": 544,
+  "optimized_tests": 544,
+  "new_regressions": 33,
   "agent_payment_checks": 29,
   "runner_cases": 15,
   "retained_report_digests": 14,
@@ -59,8 +59,8 @@
   "genuine_missing_history_refusal_retained": true,
   "concurrent_startup_repetitions_after_fix": 30,
   "initial_failed_suite_log_sha256": "cc656f9e643c932ca14b94e2eb8cc9e1accaa329228ee8fcd0c168bf65b5da98",
-  "report_sha256": "4e1893337ab876433151f45189dca92e3f291826c6c58d877d8d693620289b0b",
-  "fixture_package_sha256": "96f4821d0b678558388fa5f2f976b646250478312dc262cd9ae456244eac777c",
+  "report_sha256": "8c0e8a714edb5d69802b6b10bad438191c11fe9c592faf10cbfe08e9938e47d6",
+  "fixture_package_sha256": "5c60aaf2785e6a71c9cd22fdbefea549ebea8505c5b0ccf92d893cf0655d7a9e",
   "external_bridge_requests": 0,
   "real_funds_authorized": false,
   "wallet_execution": false,
@@ -78,5 +78,23 @@
     "provider_wire_requests": 0,
     "validation_relaxed": false,
     "correction": "Explicit empty status arguments and exact returned ID copying; rejection retained in regression."
+  },
+  "nonstream_model_budget_regression_failed_before_fix": true,
+  "model_connect_budget_seconds": 20,
+  "model_read_budget": "REMAINING_ABSOLUTE_RUN_DEADLINE",
+  "second_actual_model_gate": {
+    "source_sha": "2f0add6311326f5590e099081651e53c78294163",
+    "job_id": 116911466376,
+    "state": "FINAL_INFERENCE_FAILED_AFTER_ONE_LOCAL_FIXTURE_INSTRUCTION",
+    "error": "LOCAL_MODEL_UNAVAILABLE",
+    "successful_tools": [
+      "sandbox_payment_status",
+      "sandbox_payment_advance"
+    ],
+    "advances_attempted": 1,
+    "provider_wire_requests": 2,
+    "fixture_transfers": 1,
+    "absolute_deadline_preserved": true,
+    "automatic_retry_added": false
   }
 }
