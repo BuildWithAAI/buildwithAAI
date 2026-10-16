@@ -234,6 +234,10 @@ class BridgeJournal:
     def advance(self, request_id, client):
         return self._execute(request_id, client)
 
+    def create_once(self, request_id, client, *, before_create=None):
+        """Atomic first-create gate for orchestration; never retry an attempted POST."""
+        return self._execute(request_id, client, first_create_only=True, before_create=before_create)
+
     def reconcile(self, request_id, client, transfer_id):
         return self._execute(request_id, client, candidate=provider_id(transfer_id))
 
@@ -250,11 +254,13 @@ class BridgeJournal:
         return {"request_id": row["id"], "known_transfer_id": known["id"] if known else None,
                 **client.discover(body)}
 
-    def _execute(self, request_id, client, *, candidate=None):
+    def _execute(self, request_id, client, *, candidate=None, first_create_only=False, before_create=None):
         # Claim and commit before any HTTP. Never hold a SQLite transaction across the network.
         at = self._clock()
         with self._connection() as connection:
             row, body, attempts, known, last_time = self._load(connection, request_id)
+            if first_create_only and attempts:
+                raise Problem(409, "BRIDGE_CREATE_ALREADY_ATTEMPTED")
             if at < max(last_time, self._control(connection)["restored_at_ms"] or 0):
                 raise Problem(409, "BRIDGE_CLOCK_REGRESSION")
             if row["credential_sha256"] not in (None, client.credential_fingerprint):
@@ -272,6 +278,8 @@ class BridgeJournal:
             transfer_id = candidate or (known["id"] if known else None)
             if transfer_id is None and self._control(connection)["mode"] != "ACTIVE":
                 raise Problem(409, "BRIDGE_RESTORED_JOURNAL_READ_ONLY")
+            if first_create_only and before_create is not None:
+                before_create()
             attempt_id, kind = uuid.uuid4().hex, "RECONCILE" if candidate else "POLL" if known else "CREATE"
             connection.execute("UPDATE intents SET credential_sha256=? WHERE id=?", (client.credential_fingerprint, request_id))
             connection.execute("INSERT INTO attempts VALUES (?,?,?,?,?,NULL,NULL,NULL,?)",

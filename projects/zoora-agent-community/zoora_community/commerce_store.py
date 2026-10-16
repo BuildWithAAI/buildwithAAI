@@ -5,7 +5,7 @@ import json
 import uuid
 
 from .commerce import CommerceBook, action_value, fingerprint, label, policy as commerce_policy
-from .validation import Problem, canonical, fields, identifier
+from .validation import DIGEST, Problem, canonical, fields, identifier, matching
 
 CREATE = "COMMERCE_BOOK_CREATE"
 ACTION = "COMMERCE_ACTION"
@@ -70,11 +70,18 @@ class CommerceMethods:
 
     def _commerce_command(self, principal, row, bindings, body, at, book):
         self._commerce_access(principal, row, bindings)
-        fields(body, ("request_id", "command"))
+        fields(body, ("request_id", "command"), ("sandbox_dispatch",))
         identifier(body["request_id"])
         command = body["command"]
         if type(command) is not dict or type(command.get("kind")) is not str:
             raise Problem(400, "INVALID_COMMERCE_COMMAND")
+        if "sandbox_dispatch" in body:
+            context = body["sandbox_dispatch"]
+            fields(context, ("instance_id", "pipeline_terms_sha256"))
+            identifier(context["instance_id"])
+            matching(context["pipeline_terms_sha256"], DIGEST, "INVALID_DIGEST")
+            if command["kind"] != "SUBMIT":
+                raise Problem(400, "COMMERCE_SANDBOX_CONTEXT_REQUIRES_SUBMIT")
         if "actor" in command or "at_tick" in command:
             raise Problem(400, "SERVER_COMMERCE_IDENTITY_REQUIRED")
         actor = self._commerce_actor(principal, row, bindings, command, book)
@@ -181,6 +188,10 @@ class CommerceMethods:
         self._commerce_access(principal, row, self._commerce_bindings(row))
         book, bindings = self._commerce_checked(connection, row)
         action = self._commerce_command(principal, row, bindings, body, at, book)
+        if "sandbox_dispatch" in body:
+            instance = connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()[0]
+            if body["sandbox_dispatch"]["instance_id"] != instance:
+                raise Problem(409, "COMMERCE_SANDBOX_INSTANCE_MISMATCH")
         request_hash = digest({"role": principal["role"], "principal_id": principal["principal_id"], "body": body})
         old = connection.execute("SELECT * FROM commerce_actions WHERE book_id=? AND request_id=?", (row["id"], body["request_id"])).fetchone()
         if old:

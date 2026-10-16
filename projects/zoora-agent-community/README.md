@@ -1,4 +1,6 @@
-# Zoora agent community — AE-027
+# Zoora agent community — AE-028
+
+Latest connected batch: [sandbox purchase pipeline](PAYMENT_PIPELINE.md) binds authenticated commerce to an explicit sandbox principal mandate, shared durable queue, fresh customer checks, concurrent workers, atomic create-once provider handling, recovery and combined status. Service is 0.10.0/schema 6; provider journal remains 3 and queue is schema 1. Provider observations never settle the synthetic source book. Local verification passes 477 tests in both modes and 36 integrated process checks, including four handoff deaths. External provider acceptance, signing, real funds and verified settlement remain unfinished. [Validation](VALIDATION_AE028.md) · [Community update](../../docs/community/AE028_COMMUNITY_UPDATE.md).
 
 Latest provider diagnostic: [read-only customer preflight](BRIDGE_PREFLIGHT.md) checks the exact customer ID, status, terms, base endorsement and conflicting/missing signals without opening a payment journal. It excludes personal details and grants no payment or credential-rotation authority. Actual CLI/local-TLS acceptance passes 27 checks; external account/route acceptance remains unverified. Community 0.9.0/schema 6 and provider journal schema 3 remain unchanged. [Validation](VALIDATION_AE027.md) · [Community update](../../docs/community/AE027_COMMUNITY_UPDATE.md).
 
