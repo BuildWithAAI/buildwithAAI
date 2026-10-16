@@ -12,6 +12,7 @@ import stat
 import time
 
 from .agent_runner import MAX_REPORT, LocalModel, run_agent
+from .agent_payments import configuration
 from .client import Client, read_credential
 from .jobs import bounded
 from .store import exclusive_file, private_regular
@@ -58,12 +59,14 @@ def complete(client, token, job, payload):
 
 
 def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
-              max_steps=4, timeout=60, max_jobs=1, wait_seconds=0):
+              max_steps=4, timeout=60, max_jobs=1, wait_seconds=0,
+              payment_state=None, sandbox_key_file=None, payment_scope_file=None):
     bounded(max_steps, 1, 6, "INVALID_RUN_LIMIT")
     bounded(timeout, 1, 120, "INVALID_RUN_LIMIT")
     bounded(max_jobs, 1, 16, "INVALID_WORKER_LIMIT")
     bounded(wait_seconds, 0, 300, "INVALID_WORKER_LIMIT")
     LocalModel(model, model_port)  # Validate local model naming/port before claiming.
+    configuration(payment_state, sandbox_key_file, payment_scope_file)  # Validate host files before claiming a task.
     client = Client(port)
     token = read_credential(credential_file)
     principal = client.request("GET", "/v1/me", token=token)[1]
@@ -104,7 +107,8 @@ def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
             run_agent(credential_file, None, report, model=model, port=port, model_port=model_port,
                       max_steps=job["run_max_steps"], timeout=job["run_timeout_seconds"],
                       _task={"prompt": job["prompt"]}, _guard=guard,
-                      _context={"job_id": job["id"], "attempt_id": job["attempt_id"]}, _output=output)
+                      _context={"job_id": job["id"], "attempt_id": job["attempt_id"]}, _output=output,
+                      payment_state=payment_state, sandbox_key_file=sandbox_key_file, payment_scope_file=payment_scope_file)
         except Problem as problem:
             error = problem.code
         except (OSError, ValueError, http.client.HTTPException):

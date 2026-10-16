@@ -172,6 +172,30 @@ class ProviderFixture:
             "_pipeline_cli", str(self.port), str(at), crash, "--state", str(state), *map(str, args)],
             cwd=ROOT, capture_output=True, text=True, timeout=90)
 
+    def agent_cli(self, args, *, crash=False):
+        return subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", str(Path(__file__).resolve()),
+            "_agent_cli", str(self.port), "crash" if crash else "normal", *map(str, args)],
+            cwd=ROOT, capture_output=True, text=True, timeout=145)
+
+
+def agent_cli_fixture():
+    from zoora_community.agent_payments import SandboxPaymentSession
+    from zoora_community.__main__ import main as agent_main
+    fixture = ProviderFixture()
+    fixture.port = int(sys.argv[2])
+    crash, args = sys.argv[3], sys.argv[4:]
+    original = SandboxPaymentSession.run_tool
+
+    def after_tool(session, action):
+        result = original(session, action)
+        if crash == "crash" and action["action"] == "sandbox_payment_advance":
+            os._exit(88)
+        return result
+
+    with fixture.transport(), patch.object(SandboxPaymentSession, "run_tool", after_tool), \
+            patch.object(sys, "argv", ["zoora-community", *args]):
+        return agent_main()
+
 
 def pipeline_cli_fixture():
     from zoora_community import payment_recovery
@@ -286,4 +310,5 @@ def cli_fixture():
 
 
 if __name__ == "__main__":
-    sys.exit(pipeline_cli_fixture() if sys.argv[1] == "_pipeline_cli" else cli_fixture())
+    sys.exit(agent_cli_fixture() if sys.argv[1] == "_agent_cli" else
+             pipeline_cli_fixture() if sys.argv[1] == "_pipeline_cli" else cli_fixture())

@@ -1,6 +1,7 @@
 """Real local HTTP and SQLite with an explicitly synthetic model protocol fixture."""
 
 import hashlib
+import http.client
 import json
 from pathlib import Path
 import subprocess
@@ -113,6 +114,25 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(denied.exception.code, "RUN_STEP_LIMIT")
         self.assertEqual(len(json.loads(self.out.read_bytes())["steps"]), 1)
         self.assertNotIn("tools", fixture.requests[-1][1])
+
+    def test_nonstream_cpu_response_can_use_remaining_run_budget_after_connect(self):
+        fixture = self.model()
+        original = http.client.HTTPConnection.getresponse
+        read_budgets = []
+
+        def cpu_response(channel):
+            budget = channel.sock.gettimeout()
+            read_budgets.append(budget)
+            # Simulate a non-streamed response requiring 21 seconds without a long sleep.
+            if budget < 21:
+                raise TimeoutError("CPU response exceeds the old twenty-second read ceiling")
+            return original(channel)
+
+        with patch.object(http.client.HTTPConnection, "getresponse", cpu_response):
+            result = LocalModel("synthetic-fixture", fixture.port).inspect(time.monotonic() + 60)
+        self.assertEqual(result["state"], "AVAILABLE")
+        self.assertEqual(len(read_budgets), 1)
+        self.assertTrue(21 < read_budgets[0] <= 60)
 
     def test_slow_response_body_cannot_extend_model_deadline(self):
         fixture = self.model(slow=True)

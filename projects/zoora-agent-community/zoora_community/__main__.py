@@ -72,6 +72,10 @@ def main():
     worker.add_argument("--timeout", type=int, default=60)
     worker.add_argument("--max-jobs", type=int, default=1)
     worker.add_argument("--wait-seconds", type=int, default=0)
+    for target in (agent_run, worker):
+        target.add_argument("--payment-state", type=Path, help="Explicit private sandbox purchase queue")
+        target.add_argument("--sandbox-key-file", type=Path, help="Private sk-test credential; never exposed to the model")
+        target.add_argument("--payment-scope-file", type=Path, help="Private host-selected order allowlist and run limits")
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
@@ -117,11 +121,15 @@ def main():
         elif args.command == "run-agent":
             print(canonical(run_agent(args.credential_file, args.task_file, args.out,
                                      model=args.model, port=args.port, model_port=args.model_port,
-                                     max_steps=args.max_steps, timeout=args.timeout, project_id=args.project)))
+                                     max_steps=args.max_steps, timeout=args.timeout, project_id=args.project,
+                                     payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
+                                     payment_scope_file=args.payment_scope_file)))
         elif args.command == "work-jobs":
             print(canonical(work_jobs(args.credential_file, args.out_dir, model=args.model,
                                      port=args.port, model_port=args.model_port, max_steps=args.max_steps,
-                                     timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds)))
+                                     timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds,
+                                     payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
+                                     payment_scope_file=args.payment_scope_file)))
         else:
             client = Client(args.port)
             token = read_credential(args.credential_file) if args.credential_file else None
