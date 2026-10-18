@@ -1,5 +1,5 @@
-FROM caddy:2.11.7 AS proxy
-FROM python:3.12.15-slim-trixie
+FROM caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af AS proxy
+FROM python:3.12.15-slim-trixie@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
 COPY --from=proxy /usr/bin/caddy /usr/bin/caddy
 WORKDIR /app
 COPY requirements.lock ./requirements.lock

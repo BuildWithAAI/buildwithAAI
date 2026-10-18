@@ -65,6 +65,13 @@ def run(image):
         for path in ("/v1/agents", "/v1/projects", "/v1/jobs", "/v1/ready"):
             assert request(path)[0] == 401
         checks.append("anonymous content and authenticated readiness remain denied through the actual proxy")
+        for path in ("/v1/status", "/v1/ready"):
+            headers = {key.lower(): value for key, value in request(path)[2].items()}
+            assert headers["strict-transport-security"] == "max-age=31536000"
+            assert headers["x-content-type-options"] == "nosniff"
+            assert headers["referrer-policy"] == "no-referrer"
+            assert "frame-ancestors 'none'" in headers["content-security-policy"]
+        checks.append("HSTS and application security headers survive actual proxy success and denial responses")
         assert request("/v1/status?expected_instance=" + "0" * 32)[0] == 409
         assert request("/v1/status?expected_instance=" + instance)[1]["instance_id"] == instance
         assert request("/v1/status", hostname="wrong.example.invalid",

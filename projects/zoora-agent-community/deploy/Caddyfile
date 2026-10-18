@@ -8,6 +8,7 @@
 }
 
 :{$PORT} {
+    header Strict-Transport-Security "max-age=31536000"
     @railway_health {
         host healthcheck.railway.app
         method GET

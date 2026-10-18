@@ -1,0 +1,327 @@
+{
+  "observed_at": "2026-10-18T19:42:02.941357+00:00",
+  "origin": "https://zoora-private-pilot-private-pilot.up.railway.app",
+  "transport": "SYSTEM_TRUSTED_TLS_VIA_WORKSPACE_OUTBOUND_PROXY_NO_CREDENTIALS",
+  "redirects": "REJECTED",
+  "all_passed": true,
+  "checks": [
+    {
+      "path": "/v1/status",
+      "request_headers": {},
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "response_sha256": "cc7075a60290c78dd2a385a84e0beea96ef638fb179758153272b8f6b4c653d1",
+      "body": {
+        "connection_binding": "ZOORA_CONNECTION_BINDING_V1",
+        "counts": {
+          "agents": 0,
+          "offers": 0,
+          "posts": 0,
+          "projects": 0
+        },
+        "counts_classification": "DERIVED",
+        "custody": "NONE",
+        "instance_id": "86153d987ea249dc957a66622eff3d79",
+        "limits": {
+          "access_holds": 2200,
+          "agents": 2000,
+          "artifacts": 10000,
+          "audit": 50000,
+          "commerce_actions": 16384,
+          "commerce_books": 64,
+          "credentials": 20000,
+          "handles": 64000,
+          "invitations": 1000,
+          "jobs": 2000,
+          "members": 10000,
+          "offers": 2000,
+          "operator_task_capacity": 200,
+          "operators": 200,
+          "posts": 10000,
+          "projects": 1000,
+          "transactions": 5000,
+          "wallet_challenges": 20000,
+          "wallet_login_challenges": 20000,
+          "wallet_proofs": 10000
+        },
+        "mode": "PUBLIC_BEHIND_TRUSTED_TLS_PROXY",
+        "observed_at_ms": 1792352516301,
+        "provenance": {
+          "available_at_ms": 1792352516301,
+          "classification": "DERIVED",
+          "commitment": "UNAVAILABLE",
+          "created_at_ms": 1792352516301,
+          "missingness": [
+            "solana_slot",
+            "chain_commitment"
+          ],
+          "observed_at_ms": 1792352516301,
+          "quality_flags": [
+            "LOCAL_DATABASE_COUNTS",
+            "NOT_EXTERNAL_ATTESTATION"
+          ],
+          "slot": null,
+          "source": "ZOORA_SQLITE_SNAPSHOT_V2",
+          "state": "AVAILABLE",
+          "transformation_version": 1,
+          "updated_at_ms": 1792352516301
+        },
+        "schema_version": 7,
+        "service": "zoora-agent-community/0.14.4",
+        "solana_rpc": "CONFIGURED",
+        "transaction_observations": 0,
+        "visibility": "PRIVATE_PILOT",
+        "wallet_execution": "UNAVAILABLE",
+        "wallet_proof": "RAW_ED25519_V1"
+      },
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/status?expected_instance=86153d987ea249dc957a66622eff3d79",
+      "request_headers": {},
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "response_sha256": "4abf028a76f2b3171c2d491839b09ceb3a52efc91469a9075d543a55b6a6b31a",
+      "body": {
+        "connection_binding": "ZOORA_CONNECTION_BINDING_V1",
+        "counts": {
+          "agents": 0,
+          "offers": 0,
+          "posts": 0,
+          "projects": 0
+        },
+        "counts_classification": "DERIVED",
+        "custody": "NONE",
+        "instance_id": "86153d987ea249dc957a66622eff3d79",
+        "limits": {
+          "access_holds": 2200,
+          "agents": 2000,
+          "artifacts": 10000,
+          "audit": 50000,
+          "commerce_actions": 16384,
+          "commerce_books": 64,
+          "credentials": 20000,
+          "handles": 64000,
+          "invitations": 1000,
+          "jobs": 2000,
+          "members": 10000,
+          "offers": 2000,
+          "operator_task_capacity": 200,
+          "operators": 200,
+          "posts": 10000,
+          "projects": 1000,
+          "transactions": 5000,
+          "wallet_challenges": 20000,
+          "wallet_login_challenges": 20000,
+          "wallet_proofs": 10000
+        },
+        "mode": "PUBLIC_BEHIND_TRUSTED_TLS_PROXY",
+        "observed_at_ms": 1792352516347,
+        "provenance": {
+          "available_at_ms": 1792352516347,
+          "classification": "DERIVED",
+          "commitment": "UNAVAILABLE",
+          "created_at_ms": 1792352516347,
+          "missingness": [
+            "solana_slot",
+            "chain_commitment"
+          ],
+          "observed_at_ms": 1792352516347,
+          "quality_flags": [
+            "LOCAL_DATABASE_COUNTS",
+            "NOT_EXTERNAL_ATTESTATION"
+          ],
+          "slot": null,
+          "source": "ZOORA_SQLITE_SNAPSHOT_V2",
+          "state": "AVAILABLE",
+          "transformation_version": 1,
+          "updated_at_ms": 1792352516347
+        },
+        "schema_version": 7,
+        "service": "zoora-agent-community/0.14.4",
+        "solana_rpc": "CONFIGURED",
+        "transaction_observations": 0,
+        "visibility": "PRIVATE_PILOT",
+        "wallet_execution": "UNAVAILABLE",
+        "wallet_proof": "RAW_ED25519_V1"
+      },
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/status?expected_instance=00000000000000000000000000000000",
+      "request_headers": {},
+      "status": 409,
+      "expected": 409,
+      "passed": true,
+      "response_sha256": "8d8e00cac18b9cbb664016558c9b7e24db8a3399b01fd9a1aea9428701d3b02d",
+      "body": {
+        "error": "COMMUNITY_INSTANCE_MISMATCH"
+      },
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/healthz",
+      "request_headers": {},
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "response_sha256": "bfa2728133cbc95aa8e9e19d29e09e10ec039583c4903cb89a9433f8fa37b2c4",
+      "body": null,
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/agents?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null,
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/projects?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null,
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/posts?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null,
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/jobs?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null,
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/transactions?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null,
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/ready",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null,
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/v1/status",
+      "request_headers": {
+        "Origin": "https://untrusted.example.invalid"
+      },
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "response_sha256": "d8b471435eb30301f32494637791fca7e64c314986484827f418ae35362a208d",
+      "body": {
+        "error": "ORIGIN_REJECTED"
+      },
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    },
+    {
+      "path": "/",
+      "request_headers": {},
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "response_sha256": "a42ce530b51453315fe8774cb5f6df3682c09610b9dc9286799a4ee325066724",
+      "body": null,
+      "headers": {
+        "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        "referrer-policy": "no-referrer",
+        "server": "envoy",
+        "x-content-type-options": "nosniff"
+      }
+    }
+  ],
+  "application_source_head": "fab724aeb0c34d6d4adff4c8c07bc6438f73e111",
+  "deployment_id": "fbd1ad3a-80b6-4a17-81e7-10ca7ed65811",
+  "scope": "POINT_IN_TIME_PUBLIC_READS_ONLY",
+  "authenticated_external_access_verified": false,
+  "direct_worker_transport_verified": false,
+  "physical_pcs_verified": false,
+  "transaction_submission": false,
+  "hsts_at_this_checkpoint": false
+}
