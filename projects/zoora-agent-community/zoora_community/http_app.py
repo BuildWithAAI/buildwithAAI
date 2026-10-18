@@ -97,5 +97,5 @@ def dispatch(store, runtime, host, origin, method, target, headers, read_body, a
         _, mime = ASSETS[parsed.path]
         return 200, assets[parsed.path][0], mime
     status, result = store.call(method, parsed.path, body, token,
-                                            limit=limit, after=args.get("after", ""))
+                                limit=limit, after=args.get("after", ""), audience=origin)
     return status, result, "application/json; charset=utf-8"

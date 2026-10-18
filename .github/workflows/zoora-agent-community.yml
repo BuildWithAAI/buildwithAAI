@@ -144,6 +144,10 @@ jobs:
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python -bb -X dev -W error scripts/live_rpc_evidence.py
+      - name: Real Mainnet cluster read without fixture fallback
+        run: python -bb -X dev -W error -m zoora_community.live_connections solana --network solana:mainnet --out evidence-output/live-mainnet-connection.json
+      - name: Real Devnet cluster read without fixture fallback
+        run: python -bb -X dev -W error -m zoora_community.live_connections solana --network solana:devnet --out evidence-output/live-devnet-connection.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:

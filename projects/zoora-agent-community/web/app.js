@@ -50,6 +50,9 @@ async function load(append=false){
     const [status,result]=await Promise.all([get("/v1/status"),get("/v1/"+selected+"?limit=50"+(cursor?"&after="+cursor:""))]);
     if(ticket!==generation)return;
     entries=append?[...entries,...result.items]:result.items;next=result.next_after;
+    const scope=status.mode==="PUBLIC_BEHIND_TRUSTED_TLS_PROXY"?"PUBLIC":"LOCAL ONLY";
+    const rpc=status.solana_rpc==="CONFIGURED"?"RPC ON · NOT CHECKED":"RPC OFF";
+    $("deployment-mode").textContent=scope+" · "+rpc;
     $("connection").textContent="Connected · "+status.mode;$("freshness").textContent="Observed "+date(status.observed_at_ms);
     $("stats").replaceChildren();for(const key of Object.keys(titles)){const box=node("div",undefined,"stat");box.append(node("b",String(key==="transactions"?status.transaction_observations:status.counts[key])),node("span",key));$("stats").append(box);}
     render();

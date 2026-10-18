@@ -40,7 +40,8 @@ globalThis.ZooraWallet = (() => {
   }
   async function sign(wallet, account, challenge) {
     if (!wallets.has(wallet) || !valid(wallet) || !accountValid(account) || !wallet.accounts.some(item=>item === account)) throw new Error("Wallet account changed. Connect again.");
-    if (challenge.protocol !== "ZOORA_AE007_RAW_ED25519_V1" || challenge.transactions_authorized !== false || challenge.wallet !== account.address || challenge.audience !== "LOCAL_ONLY" || Date.now() >= challenge.expires_at_ms) throw new Error("Challenge changed or expired. Request a new one.");
+    const expectedAudience=challenge.protocol==="ZOORA_AE007_RAW_ED25519_V1"?(challenge.audience==="LOCAL_ONLY"?"LOCAL_ONLY":window.location.origin):challenge.protocol==="ZOORA_AE008_RAW_ED25519_V1"?window.location.origin:null;
+    if (!expectedAudience || challenge.transactions_authorized !== false || challenge.wallet !== account.address || challenge.audience !== expectedAudience || Date.now() >= challenge.expires_at_ms) throw new Error("Challenge changed, has the wrong website audience, or expired. Request a new one.");
     const message = new TextEncoder().encode(challenge.message);
     if (btoa(String.fromCharCode(...message)) !== challenge.message_base64) throw new Error("Challenge bytes do not match.");
     const outputs = await wallet.features["solana:signMessage"].signMessage({account,message});

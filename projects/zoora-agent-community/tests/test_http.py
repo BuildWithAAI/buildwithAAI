@@ -66,6 +66,20 @@ class HttpTests(unittest.TestCase):
             self.client.request("POST", "/v1/agents", body, self.operator)
         self.assertEqual(rejected.exception.code, "CHALLENGE_CONSUMED")
 
+    def test_actual_http_wallet_login_is_bound_to_the_served_origin(self):
+        headers = {"Origin": self.server.origin, "Content-Type": "application/json"}
+        status, _, payload = self.request("POST", "/v1/wallet/login/challenges",
+                                           json.dumps({"wallet": address("agent_one")}), headers)
+        self.assertEqual(status, 201)
+        challenge = json.loads(payload)
+        self.assertEqual(challenge["audience"], self.server.origin)
+        login = signed_body(challenge, "agent_one")
+        status, _, payload = self.request("POST", "/v1/wallet/login", json.dumps(login), headers)
+        self.assertEqual(status, 200)
+        result = json.loads(payload)
+        self.assertEqual(result["credential"]["principal_id"], self.agent_id)
+        self.assertEqual(self.client.request("GET", "/v1/me", token=result["credential"]["token"])[0], 200)
+
     def test_actual_http_observation_evidence_and_invalid_routes(self):
         from test_solana_rpc import FixtureRPC, SIGNATURE
         self.f.store.rpc = FixtureRPC()

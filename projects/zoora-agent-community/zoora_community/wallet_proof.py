@@ -57,12 +57,13 @@ def profile(body):
             "capabilities": capabilities(body["capabilities"]), "bio": text(body.get("bio", ""), 512, 0)}
 
 
-def challenge_message(instance, principal, payload, purpose, agent_id, nonce, at):
+def challenge_message(instance, principal, payload, purpose, agent_id, nonce, at,
+                      audience="LOCAL_ONLY / 127.0.0.1"):
     # Distinct printable prefix and exact UTF-8 bytes cannot be a Solana transaction.
     digest = hashlib.sha256(canonical(payload).encode("utf-8")).hexdigest()
     return ("Zoora community wallet ownership proof\n"
             "Signing proves control at this time. No payment or transaction is authorized.\n"
-            "Audience: LOCAL_ONLY / 127.0.0.1\n"
+            f"Audience: {audience}\n"
             f"Protocol: {PROOF_VERSION}\nInstance: {instance}\n"
             f"Purpose: {purpose}\nActor: {principal['role']}:{principal['principal_id']}\n"
             f"Credential: {principal['id']}\nAgent: {agent_id or 'NEW'}\n"
@@ -72,7 +73,7 @@ def challenge_message(instance, principal, payload, purpose, agent_id, nonce, at
 
 
 class WalletProofMethods:
-    def _new_challenge(self, connection, principal, payload, at, agent_id=None):
+    def _new_challenge(self, connection, principal, payload, at, agent_id=None, audience=None):
         from .store import new_id
         if not crypto_core_ed25519_is_valid_point(decode_base58(payload["wallet"], 32, "INVALID_WALLET_ADDRESS")):
             raise Problem(403, "WALLET_KEY_REJECTED")
@@ -96,15 +97,21 @@ class WalletProofMethods:
         record_id = new_id()
         nonce = secrets.token_hex(32)
         purpose = "REGISTER_AGENT" if agent_id is None else "VERIFY_EXISTING_AGENT"
-        message = challenge_message(instance, principal, payload, purpose, agent_id, nonce, at)
-        connection.execute("INSERT INTO wallet_challenges VALUES (?,?,?,?,?,?,?,?,?,?,?,0)",
+        message_audience = "LOCAL_ONLY / 127.0.0.1" if audience is None else audience
+        if (type(message_audience) is not str or len(message_audience) > 255
+                or "\n" in message_audience or "\r" in message_audience):
+            raise Problem(400, "INVALID_AUTH_AUDIENCE")
+        response_audience = "LOCAL_ONLY" if audience is None else audience
+        message = challenge_message(instance, principal, payload, purpose, agent_id, nonce, at, message_audience)
+        connection.execute("INSERT INTO wallet_challenges (id,actor_role,actor_id,credential_id,operator_id,agent_id,profile,nonce,message,created_ms,expires_ms,consumed,audience) VALUES (?,?,?,?,?,?,?,?,?,?,?,0,?)",
                            (record_id, principal["role"], principal["principal_id"], principal["id"],
-                            operator_id, agent_id, canonical(payload), nonce, message, at, at + CHALLENGE_TTL_MS))
+                            operator_id, agent_id, canonical(payload), nonce, message, at, at + CHALLENGE_TTL_MS,
+                            message_audience))
         self._event(connection, principal, "WALLET_CHALLENGE", record_id, {"purpose": purpose}, at)
         return 201, {"challenge_id": record_id, "protocol": PROOF_VERSION, "message": message,
                      "message_base64": base64.b64encode(message.encode("utf-8")).decode("ascii"),
                      "expires_at_ms": at + CHALLENGE_TTL_MS, "wallet": payload["wallet"],
-                     "audience": "LOCAL_ONLY", "transactions_authorized": False,
+                     "audience": response_audience, "transactions_authorized": False,
                      "provenance": {"classification": "OBSERVED", "source": PROOF_VERSION,
                         "observed_at_ms": at, "available_at_ms": at, "slot": None, "commitment": None,
                         "transformation_version": 1, "state": "AVAILABLE",
@@ -178,7 +185,9 @@ class WalletProofMethods:
                 raise Problem(503, "WALLET_PROOF_CONSISTENCY_FAILURE")
             principal = {"role": row["actor_role"], "principal_id": row["actor_id"], "id": row["credential_id"]}
             purpose = "REGISTER_AGENT" if row["agent_id"] is None else "VERIFY_EXISTING_AGENT"
-            expected = challenge_message(instance, principal, payload, purpose, row["agent_id"], row["nonce"], row["created_ms"])
+            audience = row["audience"] if "audience" in row.keys() else "LOCAL_ONLY / 127.0.0.1"
+            expected = challenge_message(instance, principal, payload, purpose, row["agent_id"], row["nonce"],
+                                         row["created_ms"], audience)
             if expected != row["message"]:
                 raise Problem(503, "WALLET_PROOF_CONSISTENCY_FAILURE")
             if row["actor_role"] == "OPERATOR" and row["actor_id"] != row["operator_id"]:

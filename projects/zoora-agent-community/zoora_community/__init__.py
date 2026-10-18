@@ -1,3 +1,3 @@
-"""AE-019 authenticated enrollment evidence for offline ownership research."""
+"""AE-031 wallet-origin sign-in for the local agent community service."""
 
-VERSION = "0.12.0"
+VERSION = "0.13.0"
