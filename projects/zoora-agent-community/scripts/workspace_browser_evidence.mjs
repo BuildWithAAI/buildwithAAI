@@ -116,11 +116,13 @@ try{
   await until('typeof globalThis.releaseActivity==="function"');await evaluate('document.getElementById("sign-out").click();globalThis.releaseActivity()');
   check('sign out clears the agent view and discards a delayed private response',await evaluate('document.getElementById("agent-live-panel").hidden && document.getElementById("agent-live-name").textContent==="" && document.getElementById("agent-live-events").textContent===""'));
   await evaluate('globalThis.fetch=activityOriginalFetch');await openCredential(agentFile);await until('document.getElementById("agent-live-name").textContent==="workspace_agent"');
+  const beforeRetryIds=(await(await fetch(origin+'/v1/jobs',{headers:jobHeaders})).json()).items.map(job=>job.id);
   await evaluate(`globalThis.originalTaskFetch=globalThis.fetch;globalThis.loseTaskResponse=true;globalThis.fetch=async(input,options)=>{const response=await originalTaskFetch(input,options);if(input==='/v1/jobs'&&options?.method==='POST'&&loseTaskResponse){loseTaskResponse=false;throw new Error('SYNTHETIC lost response after commit');}return response;};`);
   const retryTask={title:'Retry task',prompt:'Private retry prompt',project_id:'',max_steps:'2',timeout_seconds:'30'};
   await fill('task-form',retryTask);await until('document.getElementById("workspace-error").textContent.includes("lost response") && !document.getElementById("refresh-jobs").disabled');
   await fill('task-form',retryTask);await until('document.getElementById("job-list").textContent.includes("Retry task") && !document.getElementById("refresh-jobs").disabled');
-  check('browser retries a lost submission response without duplicate tasks',(await(await fetch(origin+'/v1/jobs',{headers:jobHeaders})).json()).items.length===2);
+  const afterRetryJobs=(await(await fetch(origin+'/v1/jobs',{headers:jobHeaders})).json()).items;
+  check('browser retries a lost submission response without duplicate tasks',afterRetryJobs.length===beforeRetryIds.length+1 && afterRetryJobs.filter(job=>job.title==='Retry task').length===1 && beforeRetryIds.every(id=>afterRetryJobs.some(job=>job.id===id)));
   await evaluate('globalThis.fetch=globalThis.originalTaskFetch;');
   check('agent sees shared pending allowance without owner edit controls',await evaluate('document.getElementById("capacity-status").textContent.includes("1 pending tasks") && document.getElementById("capacity-form").hidden'));
   await evaluate('document.getElementById("sign-out").click()');await openCredential(path.join(folder,'owner.credential.json'));await until('document.getElementById("session-status").textContent.startsWith("OWNER")');
@@ -148,7 +150,7 @@ try{
   await evaluate('document.getElementById("refresh-capacity").click()');await until('document.getElementById("workspace-result").textContent==="Shared task allowance refreshed." && !document.getElementById("refresh-capacity").disabled');
   check('agent can inspect owner allowance but cannot edit it',await evaluate('document.getElementById("capacity-status").textContent.includes("0 allowed") && document.getElementById("capacity-form").hidden'));
   await fill('task-form',{title:'Blocked by shared allowance',prompt:'Must not enqueue',project_id:'',max_steps:'2',timeout_seconds:'30'});await until('document.getElementById("workspace-error").textContent.includes("OPERATOR_TASK_LIMIT") && !document.getElementById("refresh-capacity").disabled');
-  check('actual agent form is refused by the shared allowance without adding a task',(await(await fetch(origin+'/v1/jobs',{headers:jobHeaders})).json()).items.length===2);
+  check('actual agent form is refused by the shared allowance without adding a task',(await(await fetch(origin+'/v1/jobs',{headers:jobHeaders})).json()).items.length===afterRetryJobs.length);
   await evaluate('document.getElementById("sign-out").click()');await openCredential(path.join(folder,'owner.credential.json'));await until('document.getElementById("session-status").textContent.startsWith("OWNER")');
   await evaluate(`document.getElementById('capacity-operator').value='${operator.principal_id}';document.getElementById('refresh-capacity').click()`);await until('document.getElementById("workspace-result").textContent==="Shared task allowance refreshed." && !document.getElementById("refresh-capacity").disabled');
   await evaluate('document.getElementById("capacity-default").checked=true;document.getElementById("capacity-default").dispatchEvent(new Event("change"))');
@@ -173,6 +175,9 @@ try{
   await evaluate('document.getElementById("sign-out").click()');check('sign out clears role, private task content and all work controls',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("agent-workspace").hidden && document.getElementById("save-issued").hidden && document.getElementById("job-panel").hidden && document.getElementById("job-list").textContent===""'));
   await send('Page.reload');await until('document.getElementById("connection")?.textContent.includes("Connected")===true');
   check('page reload does not restore bearer session',await evaluate('document.getElementById("session-status").textContent==="Signed out"'));
+  await evaluate('globalThis.privateViewFetch=fetch;globalThis.fetch=async(input,options)=>typeof input==="string"&&input.startsWith("/v1/agents?")?new Response(JSON.stringify({error:"UNAUTHORIZED"}),{status:401,headers:{"Content-Type":"application/json"}}):privateViewFetch(input,options);document.getElementById("refresh").click()');await until('document.getElementById("connection").textContent.includes("sign in required")');
+  check('private pilot authentication requirement clears records without claiming an outage',await evaluate('document.getElementById("records").textContent==="" && document.getElementById("stats").textContent==="" && document.getElementById("deployment-mode").textContent==="PRIVATE PILOT"'));
+  await evaluate('globalThis.fetch=privateViewFetch;document.getElementById("refresh").click()');await until('document.getElementById("connection").textContent.includes("Connected")');
   await openCredential(agentFile);await until('!document.getElementById("agent-workspace").hidden');
   await fetch(origin+'/v1/agents/'+agent.principal_id+'/credentials',{method:'POST',headers:{Authorization:'Bearer '+operator.token,'Content-Type':'application/json'},body:'{}'});
   await fill('post-form',{project_id:'',body:'Revoked credential must not author'});await until('document.getElementById("workspace-error").textContent.includes("UNAUTHORIZED")');

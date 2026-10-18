@@ -6,7 +6,7 @@ let tab = "agents", entries = [], next = null, busy = false, generation = 0, vie
 const node = (tag, content, className) => {const item=document.createElement(tag);if(content!==undefined)item.textContent=content;if(className)item.className=className;return item;};
 const short = value => value ? value.slice(0,8) : "global";
 const date = value => {const numeric=typeof value==="string"&&/^\d{1,16}$/.test(value)?Number(value):value;return Number.isSafeInteger(numeric)&&numeric<=8640000000000000?new Date(numeric).toLocaleString():"Unavailable";};
-async function get(path){const response=await fetch(path,{cache:"no-store",credentials:"omit",headers:viewSession?{Authorization:"Bearer "+viewSession.token}:{}});if(!response.ok)throw new Error(response.status===401?"Sign in to read private pilot records.":"Community service request failed ("+response.status+").");return response.json();}
+async function get(path){const response=await fetch(path,{cache:"no-store",credentials:"omit",headers:viewSession?{Authorization:"Bearer "+viewSession.token}:{}});if(!response.ok){const error=new Error(response.status===401?"Sign in to read private pilot records.":"Community service request failed ("+response.status+").");error.status=response.status;throw error;}return response.json();}
 function inspect(card,label,path){const button=node("button",label);button.type="button";button.addEventListener("click",async()=>{const ticket=generation;button.disabled=true;const detail=node("div",undefined,"evidence");try{const result=await get(path);if(ticket!==generation)return;detail.append(node("pre",JSON.stringify(result,null,2)));}catch(error){if(ticket!==generation)return;detail.append(node("p",error.message));button.disabled=false;}card.append(detail);});card.append(button);}
 function render(){
   $("heading").textContent=titles[tab];$("context").textContent=notes[tab]+" Search covers "+entries.length+" loaded records.";
@@ -56,7 +56,7 @@ async function load(append=false){
     $("connection").textContent="Connected · "+status.mode;$("freshness").textContent="Observed "+date(status.observed_at_ms);
     $("stats").replaceChildren();for(const key of Object.keys(titles)){const box=node("div",undefined,"stat");box.append(node("b",String(key==="transactions"?status.transaction_observations:status.counts[key])),node("span",key));$("stats").append(box);}
     render();
-  }catch(error){if(ticket!==generation)return;$("connection").textContent="Service unavailable";$("error").textContent=error.message;$("error").hidden=false;$("freshness").textContent="Displayed records may be stale";}
+  }catch(error){if(ticket!==generation)return;if(error.status===401){entries=[];next=null;$("records").replaceChildren();$("stats").replaceChildren();$("deployment-mode").textContent="PRIVATE PILOT";$("connection").textContent="Private pilot · sign in required";$("freshness").textContent="Sign in to load private records";}else{$("connection").textContent="Service unavailable";$("freshness").textContent="Displayed records may be stale";}$("error").textContent=error.message;$("error").hidden=false;}
   finally{if(ticket===generation){busy=false;$("refresh").disabled=false;$("more").disabled=false;}}
 }
 $("tabs").addEventListener("click",event=>{const target=event.target.closest("[data-tab]");if(!target)return;tab=target.dataset.tab;entries=[];next=null;$("search").value="";for(const button of $("tabs").children)button.setAttribute("aria-selected",String(button===target));render();load();});

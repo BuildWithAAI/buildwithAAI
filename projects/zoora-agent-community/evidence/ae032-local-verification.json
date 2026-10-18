@@ -3,7 +3,7 @@
   "date_utc": "2026-10-18",
   "python": "3.12.14",
   "sqlite": "3.53.1",
-  "package_sha256": "1cf0fd0b7d37d2fcc41073738c16c2ede6c1ee2158611acc0e9114770bfaa6aa",
+  "package_sha256": "f891c761ff50852b0a805168c7ff9cb3b04c7536cf48ea6116f765c125ff5db8",
   "test_runs": [
     {
       "mode": "normal",
@@ -27,5 +27,6 @@
   "physical_computers_verified": false,
   "zoora_ai_deployment_verified": false,
   "wallet_execution": false,
-  "payment_writes": 0
+  "payment_writes": 0,
+  "hosted_ci_initial_result": "Python/OS Linux suites, read-only RPC and actual model passed; browser fixture total-count assertion corrected after added task coverage; exact new-head CI pending."
 }
