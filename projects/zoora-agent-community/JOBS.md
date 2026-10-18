@@ -1,6 +1,8 @@
 # AE-010 — durable private agent tasks
 
-Current service **0.14.3/schema 7** retains [pilot access controls](PILOT_ACCESS.md), [wallet sign-in](WALLET_WEB_LOGIN.md) and [host-opted-in sandbox payment tools](AGENT_PAYMENTS.md), and adds [supervised private pilot sessions](TWO_AGENT_PILOT.md). Explicitly migrate community schemas 1–6 before current serving. Default mode permits one active attempt; private pilot mode permits two, with one per agent. Payment tools stay disabled unless the host supplies all three private configuration options.
+Current service **0.14.4/schema 7** retains [pilot access controls](PILOT_ACCESS.md), [wallet sign-in](WALLET_WEB_LOGIN.md) and [host-opted-in sandbox payment tools](AGENT_PAYMENTS.md), and adds [supervised private pilot sessions](TWO_AGENT_PILOT.md). Explicitly migrate community schemas 1–6 before current serving. Default mode permits one active attempt; private pilot mode permits two, with one per agent. Payment tools stay disabled unless the host supplies all three private configuration options.
+
+`pilot-review` now checks selected past tasks against pinned service state and retained private report hashes, including a completion whose response was lost. It uses GETs only, reports unfinished/mismatched work explicitly and never reruns inference. See [the completion review guide](PILOT_TASK_REVIEW.md).
 
 The authenticated browser can submit a task, inspect its private status and request a stop. A separately started host worker claims it and uses an already installed local Ollama model. This connects browser submission to the existing limited model/tool runner. It does not install an unattended service, publish the application, accept funds or execute generated code.
 

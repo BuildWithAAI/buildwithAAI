@@ -20,6 +20,62 @@ from zoora_community.store import Store, exclusive_file
 from zoora_community.validation import canonical
 
 
+def supervised_pilot_evidence(state, folder, credential_file, credential, project, model, prompt):
+    """Actual CPU inference through the session CLI; isolated local test TLS only."""
+    sys.path.insert(0, str(ROOT / "tests"))
+    from test_private_pilot import TLSCommunity
+    from zoora_community.client import Client
+
+    tls = TLSCommunity(Store(state))
+    try:
+        instance = tls.backend.store.call("GET", "/v1/status")[1]["instance_id"]
+        client = Client(origin=tls.origin, expected_instance=instance, expected_agent=credential["principal_id"])
+        client._tls_context = tls.client_context  # Verified public test CA; no production bypass option.
+        job = client.request("POST", "/v1/jobs", {"request_id": "2" * 32,
+            "title": "Actual supervised CPU model task", "prompt": prompt,
+            "max_steps": 4, "timeout_seconds": 120, "project_id": project["id"]}, credential["token"])[1]["job"]
+        session_dir = folder / "supervised-session"
+        env = {**os.environ, "SSL_CERT_FILE": str(ROOT / "tests/fixtures/bridge-localhost-cert.pem")}
+        common = ["--community-origin", tls.origin, "--expected-instance", instance,
+            "--expected-agent", credential["principal_id"], "--credential-file", str(credential_file),
+            "--collaboration-project", project["id"]]
+        session = subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", "-m", "zoora_community",
+            "pilot-session", *common, "--session-dir", str(session_dir), "--model", model,
+            "--timeout", "120", "--max-steps", "4"], cwd=ROOT, env=env, capture_output=True, text=True, timeout=150)
+        assert session.returncode == 0, session.stderr
+        session_result = json.loads(session.stdout)
+        assert session_result["jobs_processed"] == 1
+        paths = list((session_dir / "reports").glob("*.json"))
+        assert len(paths) == 1
+        report_raw = paths[0].read_bytes()
+        report = json.loads(report_raw)
+        assert report["state"] == "AVAILABLE"
+        assert report["steps"][0]["action"] == {"action": "text_metrics", "arguments": {"text": "Zoora builds"}}
+        assert report["steps"][0]["tool_result"]["utf8_bytes"] == 12 and report["steps"][0]["tool_result"]["words"] == 2
+        check_measured_answer(report["output"])
+        review_path = folder / "supervised-review.json"
+        database = Path(state, "community.sqlite3").read_bytes()
+        tls.exchanges.clear()
+        review = subprocess.run([sys.executable, "-bb", "-X", "dev", "-W", "error", "-m", "zoora_community",
+            "pilot-review", *common, "--reports-dir", str(session_dir / "reports"),
+            "--job-id", job["id"], "--out", str(review_path)], cwd=ROOT, env=env, capture_output=True, text=True, timeout=45)
+        assert review.returncode == 0, review.stderr
+        review_result, saved = json.loads(review.stdout), json.loads(review_path.read_bytes())
+        assert review_result["state"] == "SELECTED_TASKS_CONFIRMED" and review_result["jobs_confirmed"] == 1
+        assert saved["jobs"][0]["report_sha256"] == hashlib.sha256(report_raw).hexdigest()
+        assert review_result["report_sha256"] == hashlib.sha256(review_path.read_bytes()).hexdigest()
+        assert paths[0].read_bytes() == report_raw and Path(state, "community.sqlite3").read_bytes() == database
+        assert tls.exchanges and all(method == "GET" for method, _, _ in tls.exchanges)
+        assert credential["token"] not in canonical(saved) + session.stdout + session.stderr + review.stdout + review.stderr
+        return {"real_model_verified": True, "transport": "LOCAL_TEST_CA_TLS_TO_WAITRESS",
+                "physical_pcs_verified": False, "hosting_verified": False,
+                "session_result": session_result, "review_result": review_result,
+                "review": saved, "report_sha256": hashlib.sha256(report_raw).hexdigest(),
+                "review_community_mutations": 0, "review_model_inference": False}
+    finally:
+        tls.stop()
+
+
 def check_measured_answer(answer):
     answer = answer.lower()
     byte_count = r"\b12\s+(?:utf-?8\s+)?bytes\b|\b(?:utf-?8\s+)?bytes?(?:\s+count)?\s*(?:[:=]|is|are|of)?\s*12\b"
@@ -127,6 +183,9 @@ def run():
             assert idle["processed"] == 0
             checks.append("durable queued task used a real local model and actual measured facts; private report bound the exact job and attempt")
             checks.append("job completion and attributed report artifact committed together; replay did not invoke a second model run")
+            supervised = supervised_pilot_evidence(state, folder, credential_file, credential, queued_project, model, test_prompt)
+            checks.append("actual local CPU model completed the pinned HTTPS pilot-session CLI and measured answer checks")
+            checks.append("pilot-review CLI independently matched the actual-model task and private bytes using GETs only with unchanged database/report")
             payment_folder = folder / "agent-payments"
             payment_folder.mkdir(mode=0o700)
             payment_setup = setup_payments(running.client, payment_folder, operator, [credential], [0])
@@ -206,6 +265,7 @@ def run():
                         queued_artifact=queued_artifact)
         evidence.update(agent_payment_model_verified=True, agent_payment_provider_fixture_only=True,
                         agent_payment_report_sha256=payment_result["report_sha256"], real_payment_verified=False)
+        evidence.update(supervised_pilot=supervised)
         Path("evidence-output").mkdir(exist_ok=True)
         Path("evidence-output/live-model.json").write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
         print(canonical({"real_model_verified": True, "model": model, "checks": checks}))

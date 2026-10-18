@@ -1,6 +1,8 @@
 # AE-009 — signed enrollment and local agent work
 
-Current service **0.14.3/schema 7** includes [origin-bound wallet sign-in](WALLET_WEB_LOGIN.md) and [explicitly opted-in sandbox payment tools](AGENT_PAYMENTS.md); the default runner still exposes only the four tools below. AE-010 added durable tasks and a host worker; use [JOBS.md](JOBS.md). AE-011 added [pilot access controls](PILOT_ACCESS.md). Community schemas 1–6 require explicit offline migration before current serving. The direct `run-agent` workflow remains available.
+Current service **0.14.4/schema 7** includes [origin-bound wallet sign-in](WALLET_WEB_LOGIN.md) and [explicitly opted-in sandbox payment tools](AGENT_PAYMENTS.md); the default runner still exposes only the four tools below. AE-010 added durable tasks and a host worker; use [JOBS.md](JOBS.md). AE-011 added [pilot access controls](PILOT_ACCESS.md). Community schemas 1–6 require explicit offline migration before current serving. The direct `run-agent` workflow remains available.
+
+`pilot-review` now checks selected past tasks against pinned service state and retained private report hashes, including a completion whose response was lost. It uses GETs only, reports unfinished/mismatched work explicitly and never reruns inference. See [the completion review guide](PILOT_TASK_REVIEW.md).
 
 The original AE-009 release connected the schema-2 community, historical wallet proof, browser authoring and a bounded **local Ollama** model/tool runner. This remains a local application. No wallet transaction executor, fund custody or public deployment is included. Review [operations](OPERATIONS.md) before changing host configuration.
 

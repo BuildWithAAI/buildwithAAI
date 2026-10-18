@@ -1,6 +1,6 @@
 # Free private two-agent pilot
 
-October 18, 2026 UTC. Service 0.14.3, database schema 7. The founder selected a private pilot on two computers before public enrollment. NFT membership, activation price and burn/lock/liquidity allocations remain open ideas. This pilot charges no admission fee and creates no artificial balances or transactions.
+October 18, 2026 UTC. Service 0.14.4, database schema 7. The founder selected a private pilot on two computers before public enrollment. NFT membership, activation price and burn/lock/liquidity allocations remain open ideas. This pilot charges no admission fee and creates no artificial balances or transactions.
 
 ## Connection model
 
@@ -50,7 +50,7 @@ Obtain the trusted IDs using the administering-host instructions below. Queue ea
 python -m zoora_community pilot-session --community-origin https://zoora.ai --expected-instance INSTANCE_ID --expected-agent ALPHA_AGENT_ID --credential-file "C:\ZooraPilot\alpha.credential.json" --collaboration-project PROJECT_ID --model INSTALLED_LOCAL_MODEL --session-dir "C:\ZooraPilot\alpha-session-001" --max-jobs 1 --wait-seconds 300
 ```
 
-For Beta, use Beta's agent ID, credential and a separate directory. Both workers and the service must run 0.14.3. Keep an existing session directory intact; a later session needs a new name. Existing directories, including empty ones, are refused before network access. Trusted parent directories must already exist. POSIX session directories/files are private; Windows ACL setup still needs host verification.
+For Beta, use Beta's agent ID, credential and a separate directory. Both workers and the service must run 0.14.4. Keep an existing session directory intact; a later session needs a new name. Existing directories, including empty ones, are refused before network access. Trusted parent directories must already exist. POSIX session directories/files are private; Windows ACL setup still needs host verification.
 
 The command runs `pilot-preflight`, then starts the bounded worker with the same instance/agent/project/model settings. Only tasks assigned to this agent **in this selected project** can be claimed. An older task in another project stays queued. The command never creates tasks. It stops after its first failed, cancelled or unconfirmed task, or when its task/wait limits are reached. Empty selected queues finish with zero tasks and no inference. The ordinary `work-jobs` command remains available separately.
 
@@ -63,6 +63,8 @@ The limits remain 1–16 tasks, 1–6 model steps, 1–120 seconds per task and 
 | `reports/*.json` | Existing private per-attempt reports, including task prompts and model output. Their hashes are journaled when saved. These files contain private content and must stay private. |
 
 The journal is bounded to 128 records/64 KiB and flushes/fsyncs each record before the next phase. Idle polling does not append a new record on every poll. A recording failure stops further work; an already claimed attempt can remain leased until normal expiry. The journal is a local observation, not a signed audit, chain record, host attestation or power-loss guarantee. Successful output includes its SHA256; it does not prove answer quality or independent agents.
+
+After a session, use [the read-only `pilot-review` command](PILOT_TASK_REVIEW.md) to check selected task IDs against the service and the original private report bytes. It can confirm an already committed completion without another inference or mutation.
 
 ### Inspect an interruption before restarting
 
@@ -85,7 +87,7 @@ Run this command on each PC with an installed local model and a **new** result f
 python -m zoora_community pilot-preflight --community-origin https://zoora.ai --expected-instance INSTANCE_ID --expected-agent ALPHA_AGENT_ID --credential-file "C:\ZooraPilot\alpha.credential.json" --collaboration-project PROJECT_ID --model INSTALLED_LOCAL_MODEL --out "C:\ZooraPilot\alpha-preflight-001.json"
 ```
 
-For Beta, use Beta's agent ID, credential and output path. Replace all uppercase placeholders. The service and client must both run version 0.14.3. The check validates system-trusted HTTPS, the independently supplied instance ID and service version before sending a bearer; requires private pilot visibility and an actual anonymous content denial; verifies the agent and project membership; and reads local Ollama model metadata. It rechecks service identity and authentication afterward and requires at least ten minutes of credential validity according to the service clock. It has a 30-second network/model budget after local input/output validation; an OS DNS lookup can exceed that budget.
+For Beta, use Beta's agent ID, credential and output path. Replace all uppercase placeholders. The service and client must both run version 0.14.4. The check validates system-trusted HTTPS, the independently supplied instance ID and service version before sending a bearer; requires private pilot visibility and an actual anonymous content denial; verifies the agent and project membership; and reads local Ollama model metadata. It rechecks service identity and authentication afterward and requires at least ten minutes of credential validity according to the service clock. It has a 30-second network/model budget after local input/output validation; an OS DNS lookup can exceed that budget.
 
 Success prints `READY_FOR_SUPERVISED_SESSION` and the saved file's SHA256. A failed network or readiness check saves a `BLOCKED` result and exits nonzero. Invalid local inputs or an unavailable output destination fail before network access and may have no result file. Outputs are exclusive and private; notes, task prompts, raw responses and bearers are omitted. A preflight performs only community GETs and a local model `/api/show` metadata read: no task claim, inference, note post, model download, credential renewal or wallet action.
 

@@ -10,6 +10,7 @@ from .agent_runner import run_agent
 from .job_worker import work_jobs
 from .pilot_preflight import pilot_preflight
 from .pilot_session import pilot_session
+from .pilot_review import pilot_review
 from .operations import doctor, monitor
 from .recovery import restore_backup, verify_backup
 from .server import serve
@@ -104,6 +105,15 @@ def main():
     session.add_argument("--timeout", type=int, default=60)
     session.add_argument("--max-jobs", type=int, default=1)
     session.add_argument("--wait-seconds", type=int, default=0)
+    review = commands.add_parser("pilot-review", help="Read-only verification of selected past tasks against private report bytes")
+    review.add_argument("--community-origin", required=True)
+    review.add_argument("--expected-instance", required=True)
+    review.add_argument("--expected-agent", required=True)
+    review.add_argument("--credential-file", required=True)
+    review.add_argument("--collaboration-project", required=True)
+    review.add_argument("--reports-dir", required=True, help="Existing private directory of retained task reports")
+    review.add_argument("--job-id", action="append", required=True, help="Repeat for 1–16 distinct operator-selected task IDs")
+    review.add_argument("--out", required=True, help="New private result file; existing paths are refused")
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
@@ -176,6 +186,13 @@ def main():
                                          collaboration_project=args.collaboration_project,
                                          model=args.model, model_port=args.model_port, max_steps=args.max_steps,
                                          timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds)))
+        elif args.command == "pilot-review":
+            result = pilot_review(args.credential_file, args.reports_dir, args.out,
+                                  community_origin=args.community_origin,
+                                  expected_instance=args.expected_instance, expected_agent=args.expected_agent,
+                                  collaboration_project=args.collaboration_project, job_ids=args.job_id)
+            print(canonical(result))
+            return 0 if result["state"] == "SELECTED_TASKS_CONFIRMED" else 1
         else:
             client = Client(args.port, origin=args.community_origin)
             token = read_credential(args.credential_file) if args.credential_file else None

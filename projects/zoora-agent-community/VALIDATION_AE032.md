@@ -1,5 +1,17 @@
 # AE-032 — private two-agent connection audit
 
+## Selected-task completion review — 0.14.4/schema 7
+
+`pilot-review` closes the manual reconciliation gap after a supervised session. It uses only pinned GETs for 1–16 explicit same-agent/project task IDs and checks current server success against private report SHA256/size plus task/attempt/worker/prompt/limits/steps/connection bindings. Nonterminal, failed, stopped, expired, unavailable and mismatched results stay explicit. It never calls Ollama or mutates a task, lease, credential, report or session journal. Output is exclusive/private with fixed redacted metadata and a final credential/identity check. This is a selected-task observation, not a review of all history, an artifact-ledger audit, answer-quality proof or host attestation.
+
+The 22 new tests cover actual CLI/TLS/Waitress/SQLite reads, unchanged database/input bytes and zero new model requests; completion-response loss; mixed selections; running/effectively expired/cancelled/failed tasks; changed/missing/unpinned reports; scope/auth/instance/TLS/redirect failures; input/output refusal; remote error/path redaction; changed final credentials; fsync failure; and POSIX mode/symlink checks. There are no new platform skips. Windows ACLs remain unverified.
+
+The strict actual-CPU-model script now adds the real `pilot-session` and `pilot-review` CLI pair over explicitly local test-CA TLS into Waitress, with measured answer assertions, independent report/review hashes, GET-only review requests and unchanged report/database bytes. Local protocol rehearsal is synthetic; hosted actual-model evidence is required for this source. The original six actual-model cases and all prior assertions remain active. No application or CI deadline is increased and no dependency/schema migration is added.
+
+Local CPython 3.12.14 / SQLite 3.53.1 verification passes **679 tests normally and 679 under optimization**, plus Ruff 0.17.0, all three browser syntax checks, Git diff checks and the existing seven-check CLI/HTTP/restart/backup acceptance. A separately labeled synthetic protocol rehearsal also passes the new actual-model script helper's session/review transport and hash checks; no real local Ollama installation is available in this workspace. The runtime package SHA256 is `88f2badb4a5632d26638e7001aaf46f860aba391483dd28ccf6ab9b2e5c6afb0`.
+
+[Changed-source local record](evidence/ae032-task-review-local-verification.json) · [Review command](PILOT_TASK_REVIEW.md) · [Completion/live audit](LIVE_CONNECTION_AUDIT_20261018.md). Exact-current-head hosted results are recorded in [draft PR #47](https://github.com/BuildWithAAI/buildwithAAI/pull/47). All older records below retain their original source boundaries.
+
 ## Current source — AE-032.3 supervised sessions
 
 Service 0.14.3/schema 7 adds `pilot-session` for the real-machine handoff: validate local inputs and a new private destination, run the existing read-only preflight, check credential time for the planned batch, then run the worker with identical trusted instance/agent IDs and the selected project. Optional project-filtered claims check membership and select only that agent's queued work in the same transaction. Empty selected queues never fall back to another project. Omitting the filter retains existing claim behavior. No schema migration or runtime dependency change is required.
