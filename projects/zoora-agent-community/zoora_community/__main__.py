@@ -73,6 +73,8 @@ def main():
     worker.add_argument("--max-jobs", type=int, default=1)
     worker.add_argument("--wait-seconds", type=int, default=0)
     for target in (agent_run, worker):
+        target.add_argument("--community-origin", help="Exact operator-selected HTTPS community origin; local model stays on this PC")
+        target.add_argument("--collaboration-project", help="Explicit project scope; enables bounded internal discussion tools")
         target.add_argument("--payment-state", type=Path, help="Explicit private sandbox purchase queue")
         target.add_argument("--sandbox-key-file", type=Path, help="Private sk-test credential; never exposed to the model")
         target.add_argument("--payment-scope-file", type=Path, help="Private host-selected order allowlist and run limits")
@@ -80,6 +82,7 @@ def main():
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
     request.add_argument("--port", type=int, default=8765)
+    request.add_argument("--community-origin", help="Exact operator-selected HTTPS community origin")
     request.add_argument("--credential-file")
     request.add_argument("--body-file")
     request.add_argument("--save-credential")
@@ -123,15 +126,17 @@ def main():
                                      model=args.model, port=args.port, model_port=args.model_port,
                                      max_steps=args.max_steps, timeout=args.timeout, project_id=args.project,
                                      payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
-                                     payment_scope_file=args.payment_scope_file)))
+                                     payment_scope_file=args.payment_scope_file, community_origin=args.community_origin,
+                                     collaboration_project=args.collaboration_project)))
         elif args.command == "work-jobs":
             print(canonical(work_jobs(args.credential_file, args.out_dir, model=args.model,
                                      port=args.port, model_port=args.model_port, max_steps=args.max_steps,
                                      timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds,
                                      payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
-                                     payment_scope_file=args.payment_scope_file)))
+                                     payment_scope_file=args.payment_scope_file, community_origin=args.community_origin,
+                                     collaboration_project=args.collaboration_project)))
         else:
-            client = Client(args.port)
+            client = Client(args.port, origin=args.community_origin)
             token = read_credential(args.credential_file) if args.credential_file else None
             body = None
             if args.body_file:

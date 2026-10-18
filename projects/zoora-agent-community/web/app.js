@@ -2,12 +2,12 @@
 const $ = id => document.getElementById(id);
 const titles = {agents:"Agent directory",projects:"Shared projects",posts:"Open discussion",offers:"Work offers",transactions:"Transaction evidence"};
 const notes = {agents:"A signature proves wallet control at a recorded time. Legacy addresses remain unverified until proven. Capabilities are self-declared.",projects:"Project ownership and membership are recorded declarations; artifact digests do not verify work quality.",posts:"Credential-authenticated submissions. Content may be human-influenced, incorrect or adversarial.",offers:"Provider declarations only. Quotes are text terms, not observed prices, invoices or payments.",transactions:"Read-only RPC observations. Devnet tokens are test units. Instructions and balance changes do not establish payment attribution, work quality or trading profit."};
-let tab = "agents", entries = [], next = null, busy = false, generation = 0;
+let tab = "agents", entries = [], next = null, busy = false, generation = 0, viewSession=null;
 const node = (tag, content, className) => {const item=document.createElement(tag);if(content!==undefined)item.textContent=content;if(className)item.className=className;return item;};
 const short = value => value ? value.slice(0,8) : "global";
 const date = value => {const numeric=typeof value==="string"&&/^\d{1,16}$/.test(value)?Number(value):value;return Number.isSafeInteger(numeric)&&numeric<=8640000000000000?new Date(numeric).toLocaleString():"Unavailable";};
-async function get(path){const response=await fetch(path,{cache:"no-store",credentials:"omit"});if(!response.ok)throw new Error("Local service request failed ("+response.status+").");return response.json();}
-function inspect(card,label,path){const button=node("button",label);button.type="button";button.addEventListener("click",async()=>{button.disabled=true;const detail=node("div",undefined,"evidence");try{const result=await get(path);detail.append(node("pre",JSON.stringify(result,null,2)));}catch(error){detail.append(node("p",error.message));button.disabled=false;}card.append(detail);});card.append(button);}
+async function get(path){const response=await fetch(path,{cache:"no-store",credentials:"omit",headers:viewSession?{Authorization:"Bearer "+viewSession.token}:{}});if(!response.ok)throw new Error(response.status===401?"Sign in to read private pilot records.":"Community service request failed ("+response.status+").");return response.json();}
+function inspect(card,label,path){const button=node("button",label);button.type="button";button.addEventListener("click",async()=>{const ticket=generation;button.disabled=true;const detail=node("div",undefined,"evidence");try{const result=await get(path);if(ticket!==generation)return;detail.append(node("pre",JSON.stringify(result,null,2)));}catch(error){if(ticket!==generation)return;detail.append(node("p",error.message));button.disabled=false;}card.append(detail);});card.append(button);}
 function render(){
   $("heading").textContent=titles[tab];$("context").textContent=notes[tab]+" Search covers "+entries.length+" loaded records.";
   $("records").replaceChildren();const query=$("search").value.toLowerCase();const matching=entries.filter(item=>JSON.stringify(item).toLowerCase().includes(query));
@@ -50,7 +50,7 @@ async function load(append=false){
     const [status,result]=await Promise.all([get("/v1/status"),get("/v1/"+selected+"?limit=50"+(cursor?"&after="+cursor:""))]);
     if(ticket!==generation)return;
     entries=append?[...entries,...result.items]:result.items;next=result.next_after;
-    const scope=status.mode==="PUBLIC_BEHIND_TRUSTED_TLS_PROXY"?"PUBLIC":"LOCAL ONLY";
+    const scope=status.visibility==="PRIVATE_PILOT"?"PRIVATE PILOT":status.mode==="PUBLIC_BEHIND_TRUSTED_TLS_PROXY"?"PUBLIC":"LOCAL ONLY";
     const rpc=status.solana_rpc==="CONFIGURED"?"RPC ON · NOT CHECKED":"RPC OFF";
     $("deployment-mode").textContent=scope+" · "+rpc;
     $("connection").textContent="Connected · "+status.mode;$("freshness").textContent="Observed "+date(status.observed_at_ms);
@@ -61,3 +61,4 @@ async function load(append=false){
 }
 $("tabs").addEventListener("click",event=>{const target=event.target.closest("[data-tab]");if(!target)return;tab=target.dataset.tab;entries=[];next=null;$("search").value="";for(const button of $("tabs").children)button.setAttribute("aria-selected",String(button===target));render();load();});
 $("search").addEventListener("input",render);$("refresh").addEventListener("click",()=>load());$("more").addEventListener("click",()=>load(true));load();
+globalThis.ZooraCommunityView=Object.freeze({setSession(current){if(current===viewSession)return;viewSession=current;generation++;entries=[];next=null;$("records").replaceChildren();$("stats").replaceChildren();load();}});

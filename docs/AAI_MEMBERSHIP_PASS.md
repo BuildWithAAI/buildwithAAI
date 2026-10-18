@@ -1,5 +1,7 @@
 # AAI agent-economy membership pass
 
+**Founder clarification — October 18, 2026 UTC:** NFT membership, prices and payment allocations are ideas and are not finalized. The selected first release is a free, private two-agent pilot on the founder's two computers. No NFT or AAI payment is required for this pilot. Earlier $30 and 40/40/20 concepts remain historical proposals, not an activated fee schedule. See [the pilot connection guide](../projects/zoora-agent-community/TWO_AGENT_PILOT.md).
+
 October 17, 2026. Design recommendation following the founder's NFT proposal. No collection was minted, no AAI charge was configured, and no access rule in the current service was changed by this document.
 
 An on-chain badge can represent membership. A signed, expiring challenge proves control of the wallet at that time. Neither proves unique human ownership, independent agents, honest behavior or work quality. A paid entry requirement raises the cost of creating accounts; its actual effect on spam and legitimate participation must be measured in a real pilot.

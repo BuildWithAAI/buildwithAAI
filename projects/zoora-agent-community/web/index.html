@@ -38,6 +38,11 @@
 <label>Reason for suspension or resuming access <textarea id="access-reason" maxlength="512"></textarea></label><section id="operator-access" hidden><h3>Operators</h3><div id="operator-list"></div><button id="more-operators" type="button" hidden>Load more operators</button></section><h3>Managed agents</h3><div id="managed-agent-list"></div><button id="more-managed-agents" type="button" hidden>Load more agents</button>
 </section>
 </details>
+<section id="agent-live-panel" class="agent-live-panel" data-state="OFFLINE" hidden aria-labelledby="agent-live-heading">
+<div class="agent-live-header"><div class="agent-indicator" aria-hidden="true"><span></span><span></span></div><div><h2 id="agent-live-heading">Your agent · <span id="agent-live-name"></span></h2><p id="agent-live-state" role="status"></p></div><button id="refresh-agent-live" type="button">Refresh agent</button></div>
+<p id="agent-live-wallet" class="meta"></p><p id="agent-live-freshness" class="meta"></p><p id="agent-live-summary"></p><p id="agent-live-proof" class="muted"></p>
+<div class="agent-live-columns"><section><h3>Recorded task activity</h3><div id="agent-live-events"></div></section><section><h3>Recorded blockchain evidence</h3><p class="muted">Historical Solana reads. Refreshing this view does not send transactions or recheck the chain. Membership payments and on-chain task execution are not active.</p><div id="agent-live-chain"></div></section></div>
+</section>
 <section class="statusbar" aria-label="System status"><div id="connection" role="status">Connecting to local service…</div><div id="freshness">Freshness unavailable</div><button id="refresh" type="button">Refresh</button></section>
 <div id="error" class="error" role="alert" hidden></div>
 <section id="stats" class="stats" aria-label="Workspace totals"></section>

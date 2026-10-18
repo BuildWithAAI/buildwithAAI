@@ -19,6 +19,9 @@ GLOBAL_PENDING = 32
 CLAIM = re.compile(r"jr1_[A-Za-z0-9_-]{43}\Z")
 ERROR = re.compile(r"[A-Z][A-Z0-9_]{0,63}\Z")
 ACTIVE = {"QUEUED", "RUNNING"}
+SIGNAL_FRESH_MS = 30_000
+SIGNAL_INTERVAL_MS = 10_000
+MAX_SIGNALS = 24
 SYSTEM = {"role": "SYSTEM", "principal_id": "job_scheduler"}
 
 
@@ -34,6 +37,23 @@ def digest(value, domain):
 
 def claim_digest(token):
     return hashlib.sha256(b"ZOORA_AE010_CLAIM_V1\0" + token.encode("ascii")).hexdigest()
+
+
+def worker_credential(connection, job):
+    """Bind the attempt to its actual claimant; old attempts used the submitter."""
+    if job["attempt_id"] is None:
+        return None
+    event = connection.execute("SELECT details FROM audit WHERE resource_id=? AND action='JOB_CLAIM' ORDER BY seq DESC LIMIT 1",
+                               (job["id"],)).fetchone()
+    if event is None:
+        raise Problem(503, "JOB_CONSISTENCY_FAILURE")
+    return json.loads(event["details"]).get("worker_credential_id", job["credential_id"])
+
+
+def latest_signal(connection, job_id):
+    row = connection.execute("SELECT at_ms,details FROM audit WHERE resource_id=? AND action='JOB_HEARTBEAT' ORDER BY seq DESC LIMIT 1",
+                             (job_id,)).fetchone()
+    return None if row is None else {"received_at_ms": row["at_ms"], **json.loads(row["details"])}
 
 
 def request_value(body):
@@ -54,10 +74,11 @@ class JobMethods:
     def _job_effective(connection, job, at):
         if job["state"] not in ACTIVE:
             return job["state"], job["error_code"]
-        credential = connection.execute("SELECT * FROM credentials WHERE id=?", (job["credential_id"],)).fetchone()
+        credentials = [connection.execute("SELECT * FROM credentials WHERE id=?", (credential_id,)).fetchone()
+                       for credential_id in {job["credential_id"], worker_credential(connection, job)} if credential_id is not None]
         enabled = connection.execute("SELECT a.active,o.active FROM agents a JOIN operators o ON o.id=a.operator_id WHERE a.id=?",
                                      (job["agent_id"],)).fetchone()
-        if (credential is None or credential["revoked"] or at >= credential["expires_ms"]
+        if (any(credential is None or credential["revoked"] or at >= credential["expires_ms"] for credential in credentials)
                 or enabled is None or not all(enabled)):
             return ("CANCELLED" if job["state"] == "QUEUED" else "INTERRUPTED"), "JOB_CREDENTIAL_INVALID"
         if job["state"] == "QUEUED" and at >= job["expires_ms"]:
@@ -73,6 +94,7 @@ class JobMethods:
                 "run_timeout_seconds", "report_sha256", "report_bytes", "steps", "artifact_id")
         result = {key: job[key] for key in keys}
         result.update(state=state, recorded_state=job["state"], error_code=error,
+                      worker_credential_id=worker_credential(connection, job),
                       stop_requested=bool(job["stop_requested"]),
                       report_classification="CLIENT_DECLARED", automatic_retry=False,
                       wallet_execution="UNAVAILABLE")
@@ -148,10 +170,12 @@ class JobMethods:
             steps = bounded(body["max_steps"], 1, 6, "INVALID_RUN_LIMIT")
             timeout = bounded(body["timeout_seconds"], 1, 120, "INVALID_RUN_LIMIT")
             # BEGIN IMMEDIATE in Store.call serializes claims across processes.
-            if connection.execute("SELECT 1 FROM jobs WHERE state='RUNNING'").fetchone() is not None:
+            running_limit = 2 if self.private_pilot else 1
+            running = connection.execute("SELECT agent_id FROM jobs WHERE state='RUNNING'").fetchall()
+            if len(running) >= running_limit or any(item["agent_id"] == principal["principal_id"] for item in running):
                 return 200, {"job": None, "reason": "WORKER_BUSY"}
-            row = connection.execute("SELECT * FROM jobs WHERE state='QUEUED' AND agent_id=? AND credential_id=? ORDER BY created_ms,rowid LIMIT 1",
-                                     (principal["principal_id"], principal["id"])).fetchone()
+            row = connection.execute("SELECT * FROM jobs WHERE state='QUEUED' AND agent_id=? ORDER BY created_ms,rowid LIMIT 1",
+                                     (principal["principal_id"],)).fetchone()
             if row is None:
                 return 200, {"job": None, "reason": "QUEUE_EMPTY"}
             record_id, attempt = row["id"], uuid.uuid4().hex
@@ -161,10 +185,11 @@ class JobMethods:
                                "run_max_steps=?,run_timeout_seconds=?,updated_ms=? WHERE id=?",
                                (attempt, claim_digest(secret), at + timeout * 1000 + LEASE_GRACE_MS, steps, timeout, at, record_id))
             self._event(connection, principal, "JOB_CLAIM", record_id,
-                        {"attempt_id": attempt, "max_steps": steps, "timeout_seconds": timeout}, at)
+                        {"attempt_id": attempt, "max_steps": steps, "timeout_seconds": timeout,
+                         "worker_credential_id": principal["id"]}, at)
             return 200, {"job": self._job_view(connection, self._row(connection, "jobs", record_id), at, task=True),
                          "claim_token": secret}
-        if len(parts) != 4 or parts[3] not in {"stop", "complete"}:
+        if len(parts) != 4 or parts[3] not in {"stop", "complete", "heartbeat"}:
             raise Problem(404, "NOT_FOUND")
         job = self._row(connection, "jobs", identifier(parts[2]))
         self._job_allowed(connection, principal, job)
@@ -176,16 +201,43 @@ class JobMethods:
                                    (state, at, "JOB_STOPPED" if state == "CANCELLED" else None, job["id"]))
                 self._event(connection, principal, "JOB_STOP", job["id"], {"state": state}, at)
             return 200, self._job_view(connection, self._row(connection, "jobs", job["id"]), at)
+        if parts[3] == "heartbeat":
+            return self._job_heartbeat(connection, principal, job, body, at)
         return self._job_complete(connection, principal, job, body, at)
+
+    def _job_heartbeat(self, connection, principal, job, body, at):
+        self._role(principal, "AGENT")
+        fields(body, ("attempt_id", "claim_token", "sequence"))
+        self._check_job_claim(connection, principal, job, body)
+        sequence = bounded(body["sequence"], 1, MAX_SIGNALS, "INVALID_JOB_SIGNAL")
+        if job["state"] != "RUNNING":
+            raise Problem(409, "JOB_NOT_RUNNING")
+        if job["stop_requested"]:
+            raise Problem(409, "JOB_STOPPED")
+        previous = latest_signal(connection, job["id"])
+        if previous is not None and sequence == previous["sequence"]:
+            return 200, {"signal": previous, "replayed": True}
+        if sequence != (previous["sequence"] + 1 if previous else 1):
+            raise Problem(409, "JOB_SIGNAL_SEQUENCE")
+        if previous is not None and at - previous["received_at_ms"] < SIGNAL_INTERVAL_MS // 2:
+            raise Problem(409, "JOB_SIGNAL_TOO_SOON")
+        self._event(connection, principal, "JOB_HEARTBEAT", job["id"],
+                    {"attempt_id": job["attempt_id"], "sequence": sequence}, at)
+        return 200, {"signal": latest_signal(connection, job["id"]), "replayed": False}
+
+    @staticmethod
+    def _check_job_claim(connection, principal, job, body):
+        attempt = identifier(body["attempt_id"])
+        secret = matching(body["claim_token"], CLAIM, "INVALID_JOB_CLAIM")
+        if (principal["id"] != worker_credential(connection, job) or attempt != job["attempt_id"]
+                or not secrets.compare_digest(claim_digest(secret), job["claim_digest"] or "")):
+            raise Problem(409, "JOB_CLAIM_MISMATCH")
 
     def _job_complete(self, connection, principal, job, body, at):
         self._role(principal, "AGENT")
         fields(body, ("attempt_id", "claim_token", "state", "report_sha256", "report_bytes", "steps", "error_code"))
         attempt = identifier(body["attempt_id"])
-        secret = matching(body["claim_token"], CLAIM, "INVALID_JOB_CLAIM")
-        if (principal["id"] != job["credential_id"] or attempt != job["attempt_id"]
-                or not secrets.compare_digest(claim_digest(secret), job["claim_digest"] or "")):
-            raise Problem(409, "JOB_CLAIM_MISMATCH")
+        self._check_job_claim(connection, principal, job, body)
         if type(body["state"]) is not str or body["state"] not in {"SUCCEEDED", "FAILED"}:
             raise Problem(400, "INVALID_JOB_COMPLETION")
         steps = bounded(body["steps"], 0, job["run_max_steps"], "INVALID_JOB_COMPLETION")
@@ -229,6 +281,8 @@ class JobMethods:
         return 200, {"job": self._job_view(connection, self._row(connection, "jobs", job["id"]), at), "replayed": False}
 
     def _audit_jobs(self, connection):
+        if connection.execute("SELECT 1 FROM audit a LEFT JOIN jobs j ON j.id=a.resource_id WHERE a.action='JOB_HEARTBEAT' AND j.id IS NULL").fetchone():
+            raise ValueError("orphan worker signal")
         for row in connection.execute("SELECT * FROM jobs"):
             identifier(row["id"])
             identifier(row["agent_id"])
@@ -269,6 +323,10 @@ class JobMethods:
                 if event["action"] == "JOB_SUBMIT" and (event["at_ms"], details["credential_id"], details["project_id"], details["max_steps"], details["timeout_seconds"]) != (row["created_ms"], row["credential_id"], row["project_id"], row["max_steps"], row["timeout_seconds"]):
                     raise ValueError("job submission mismatch")
                 if event["action"] == "JOB_CLAIM":
+                    execution_credential = self._row(connection, "credentials", identifier(details.get("worker_credential_id", row["credential_id"])))
+                    if (execution_credential["role"] != "AGENT" or execution_credential["principal_id"] != row["agent_id"]
+                            or execution_credential["created_ms"] > event["at_ms"]):
+                        raise ValueError("worker credential relationship")
                     if (details["attempt_id"], details["max_steps"], details["timeout_seconds"]) != (row["attempt_id"], row["run_max_steps"], row["run_timeout_seconds"]):
                         raise ValueError("job attempt mismatch")
                     if row["lease_expires_ms"] != event["at_ms"] + row["run_timeout_seconds"] * 1000 + LEASE_GRACE_MS:
@@ -277,3 +335,19 @@ class JobMethods:
                     keys = ("state", "attempt_id", "report_sha256", "report_bytes", "steps", "artifact_id", "error_code")
                     if tuple(details[key] for key in keys) != tuple(row[key] for key in keys) or event["at_ms"] != row["updated_ms"]:
                         raise ValueError("job completion mismatch")
+            signals = connection.execute("SELECT * FROM audit WHERE resource_id=? AND action='JOB_HEARTBEAT' ORDER BY seq", (row["id"],)).fetchall()
+            claim_event = next((event for event in events if event["action"] == "JOB_CLAIM"), None)
+            terminal = connection.execute("SELECT MIN(seq) FROM audit WHERE resource_id=? AND action IN ('JOB_STOP','JOB_RETIRE','JOB_COMPLETE')", (row["id"],)).fetchone()[0]
+            previous_at = None
+            for sequence, signal in enumerate(signals, 1):
+                details = json.loads(signal["details"])
+                fields(details, ("attempt_id", "sequence"))
+                bounded(details["sequence"], 1, MAX_SIGNALS, "INVALID_JOB_SIGNAL")
+                if (claim_event is None or signal["seq"] <= claim_event["seq"]
+                        or terminal is not None and signal["seq"] >= terminal
+                        or details != {"attempt_id": row["attempt_id"], "sequence": sequence}
+                        or signal["actor_role"] != "AGENT" or signal["actor_id"] != row["agent_id"]
+                        or not claim_event["at_ms"] <= signal["at_ms"] < row["lease_expires_ms"]
+                        or previous_at is not None and signal["at_ms"] - previous_at < SIGNAL_INTERVAL_MS // 2):
+                    raise ValueError("worker signal relationship")
+                previous_at = signal["at_ms"]

@@ -24,6 +24,7 @@ from .research_identity import ResearchIdentityMethods
 from .task_capacity import TaskCapacityMethods
 from .commerce_store import CommerceMethods
 from .wallet_login import WalletLoginMethods
+from .agent_activity import AgentActivityMethods
 
 APPLICATION_ID = 0x5A414136
 SCHEMA_VERSION = 7
@@ -81,13 +82,14 @@ def provenance(created_ms, updated_ms=None):
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods, CommerceMethods):
+class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods, CommerceMethods, AgentActivityMethods):
     def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
         self.clock = clock
         self.rpc = rpc
         self.public_origin = None
+        self.private_pilot = False
         self.schema_version = _schema_version
         self._check_directory()
         with closing(self._connection()) as connection:
@@ -412,6 +414,22 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
 
     def _read(self, connection, route, token, at, limit, after):
         parts = route.strip("/").split("/")
+        if self.private_pilot and route not in {"/v1/status", "/v1/me"}:
+            self._authenticate(connection, token, at)
+        if len(parts) == 4 and parts[:2] == ["v1", "projects"] and parts[3] == "discussion":
+            if after:
+                raise Problem(400, "INVALID_PAGINATION")
+            principal = self._authenticate(connection, token, at)
+            self._role(principal, "AGENT")
+            project_id = identifier(parts[2])
+            self._membership(connection, project_id, principal["principal_id"])
+            rows = connection.execute("SELECT * FROM posts WHERE project_id=? ORDER BY created_ms DESC,rowid DESC LIMIT ?",
+                                      (project_id, limit + 1)).fetchall()
+            items = [self._public(row) for row in rows[:limit]]
+            return 200, {"items": items, "older_notes_omitted": len(rows) > limit, "pagination": "LATEST_NOTES",
+                         "scope": "AUTHENTICATED_PROJECT_MEMBERS"}
+        if len(parts) == 4 and parts[:2] == ["v1", "agents"] and parts[3] == "activity":
+            return self._agent_activity(connection, self._authenticate(connection, token, at), parts[2], at, limit, after)
         if parts[:3] == ["v1", "commerce", "books"]:
             return self._commerce_read(connection, self._authenticate(connection, token, at), parts, at, limit, after)
         if route == "/v1/task-capacity" or (len(parts) == 4 and parts[:2] == ["v1", "operators"] and parts[3] == "task-capacity"):
@@ -426,6 +444,7 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
         if route == "/v1/status":
             return 200, {"schema_version": SCHEMA_VERSION, "service": "zoora-agent-community/" + VERSION,
                          "mode": "PUBLIC_BEHIND_TRUSTED_TLS_PROXY" if self.public_origin else "LOCAL_ONLY", "observed_at_ms": at,
+                         "visibility": "PRIVATE_PILOT" if self.private_pilot else "PUBLIC_RECORDS",
                          "instance_id": connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()[0],
                          "counts": {name: connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
                                     for name in ("agents", "projects", "posts", "offers")},

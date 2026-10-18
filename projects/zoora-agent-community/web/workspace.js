@@ -5,11 +5,13 @@
   let taskPending=null, jobAfter=null;
   let capacityRecord=null;
   let invitationIssued=null, invitePending=null, claimPending=null;
+  let activitySession=null, activityTimer=null, activityFreshTimer=null, activityController=null, activityEpoch=0;
   const accessAfter={invitations:null,operators:null,agents:null};
   function workAction(){for(const form of el("agent-workspace").querySelectorAll("form"))form.hidden=form.id!==el("agent-action").value;}
   function clearProof(){proofGeneration++;challenge=null;pendingAction=null;el("challenge-preview").hidden=true;el("challenge-message").textContent="";el("challenge-expiry").textContent="";el("sign-proof").textContent="Sign message";}
   function clearWallet(){if(offWallet)offWallet();offWallet=null;wallet=null;accounts=[];clearProof();el("wallet-account").replaceChildren();el("wallet-account").disabled=true;el("challenge-button").disabled=true;el("wallet-login").disabled=true;}
   function view(){
+    globalThis.ZooraCommunityView?.setSession(session);
     const role=session?.role;
     el("session-status").textContent=session?role+" · "+session.principal_id+" · expires "+new Date(session.expires_at_ms).toLocaleString():"Signed out";
     el("sign-out").hidden=!session;el("save-issued").hidden=!issued;el("credential-note").hidden=!issued;
@@ -20,7 +22,84 @@
     el("invitation-claim-form").hidden=Boolean(session);
     el("pilot-panel").hidden=!["OWNER","OPERATOR"].includes(role);
     el("invitation-owner").hidden=role!=="OWNER";el("operator-access").hidden=role!=="OWNER";
+    syncActivity();
   }
+  function stopActivity(){
+    activityEpoch++;clearTimeout(activityTimer);clearTimeout(activityFreshTimer);activityController?.abort();activityController=null;activitySession=null;
+    el("agent-live-panel").hidden=true;el("agent-live-panel").dataset.state="OFFLINE";
+    for(const id of ["agent-live-state","agent-live-name","agent-live-wallet","agent-live-freshness","agent-live-summary","agent-live-proof","agent-live-events","agent-live-chain"])el(id).replaceChildren();
+    el("refresh-agent-live").disabled=false;
+  }
+  function activityUnavailable(state,message){
+    clearTimeout(activityFreshTimer);el("agent-live-panel").dataset.state=state;
+    el("agent-live-state").textContent=message;
+    el("agent-live-summary").textContent="Worker status unavailable. The records below are from the last successful refresh.";
+  }
+  function activityLine(parent,message){const line=document.createElement("p");line.textContent=message;parent.append(line);return line;}
+  function activityTime(value){return value===null?"unavailable":new Date(Number(value)).toLocaleString();}
+  function renderActivity(data,requestElapsed){
+    const labels={IDLE:"No active task",WAITING_FOR_WORKER:"Waiting for a worker",WORKER_SEEN:"Worker checked in",RUNNING_UNCONFIRMED:"Task claimed · worker signal unconfirmed",STOP_REQUESTED:"Stop requested",SUSPENDED:"Access suspended"};
+    const runtime=data.runtime;
+    el("agent-live-panel").dataset.state=runtime.state;el("agent-live-state").textContent=labels[runtime.state]||"Status unavailable";
+    el("agent-live-name").textContent=data.agent.handle;el("agent-live-wallet").textContent=data.agent.wallet;
+    el("agent-live-freshness").textContent="Updated "+activityTime(data.observed_at_ms);
+    el("agent-live-summary").textContent=runtime.counts.QUEUED+" queued · "+runtime.counts.RUNNING+" running · "+runtime.counts.SUCCEEDED+" completed · "+runtime.counts.FAILED+" failed";
+    el("agent-live-proof").textContent=(data.wallet_proof.status==="SIGNATURE_VERIFIED"?"Wallet signature verified at "+activityTime(data.wallet_proof.verified_at_ms):"Wallet control proof unavailable")+". Tasks run on the host; work records are stored by the service. A worker check-in does not prove model progress.";
+    const events=el("agent-live-events");events.replaceChildren();
+    if(!data.events.length)activityLine(events,"No task activity recorded yet.");
+    const actions={JOB_SUBMIT:"Task queued",JOB_CLAIM:"Worker claimed task",JOB_HEARTBEAT:"Worker check-in",JOB_STOP:"Stop requested",JOB_RETIRE:"Task retired",JOB_COMPLETE:"Result recorded"};
+    for(const event of data.events){const line=activityLine(events,activityTime(event.at_ms)+" · "+(actions[event.action]||event.action)+(event.state?" · "+event.state:"")+" · "+event.job_id);if(event.report_sha256){const digest=document.createElement("code");digest.textContent="Report SHA256: "+event.report_sha256;line.append(document.createElement("br"),digest);}}
+    const chain=el("agent-live-chain");chain.replaceChildren();
+    if(!data.blockchain.observations.length)activityLine(chain,"No Solana transaction evidence recorded for this agent.");
+    for(const observation of data.blockchain.observations){
+      const item=document.createElement("article");item.className="agent-chain-record";
+      const network=observation.network==="solana:devnet"?"DEVNET · test network":"MAINNET";
+      activityLine(item,network+" · "+observation.state+" · transaction "+observation.execution+" · slot "+(observation.slot??"unavailable"));
+      activityLine(item,"Recorded "+activityTime(observation.recorded_at_ms)+" · wallet involvement "+(observation.related_to_agent===true?"confirmed":observation.related_to_agent===false?"absent":"unverified"));
+      const signature=document.createElement("code");signature.textContent=observation.signature;item.append(signature);
+      if(observation.state==="AVAILABLE"&&["solana:devnet","solana:mainnet"].includes(observation.network)){
+        const link=document.createElement("a");link.textContent="View on Solana Explorer";link.href="https://explorer.solana.com/tx/"+encodeURIComponent(observation.signature)+(observation.network==="solana:devnet"?"?cluster=devnet":"");link.target="_blank";link.rel="noopener noreferrer";item.append(document.createElement("br"),link);
+      }
+      chain.append(item);
+    }
+    clearTimeout(activityFreshTimer);
+    if(runtime.state==="WORKER_SEEN")activityFreshTimer=setTimeout(()=>{
+      if(activitySession) {el("agent-live-panel").dataset.state="RUNNING_UNCONFIRMED";el("agent-live-state").textContent="Task claimed · worker signal stale";}
+    },Math.max(0,runtime.signal_fresh_for_ms-runtime.signal_age_ms-requestElapsed));
+  }
+  async function refreshActivity(){
+    const current=activitySession,epoch=activityEpoch;
+    if(!current||activityController||document.hidden)return;
+    clearTimeout(activityTimer);const started=performance.now(),controller=new AbortController();activityController=controller;el("refresh-agent-live").disabled=true;
+    const timeout=setTimeout(()=>controller.abort(),8000);
+    try{
+      if(Date.now()>=current.expires_at_ms)throw new Error("UNAUTHORIZED");
+      const response=await fetch("/v1/agents/"+current.principal_id+"/activity",{cache:"no-store",credentials:"omit",headers:{Authorization:"Bearer "+current.token},signal:controller.signal});
+      if(response.status===401)throw new Error("UNAUTHORIZED");
+      const data=await responseData(response);
+      if(epoch!==activityEpoch||current!==activitySession||controller.signal.aborted)return;
+      if(data.scope!=="PRIVATE_AGENT_ACTIVITY"||data.agent.id!==current.principal_id||!Number.isSafeInteger(data.observed_at_ms))throw new Error("Invalid activity response");
+      renderActivity(data,performance.now()-started);
+    }catch(exc){
+      if(epoch!==activityEpoch||current!==activitySession)return;
+      if(exc instanceof Error&&exc.message==="UNAUTHORIZED"){reset();error("UNAUTHORIZED · Sign in again to reconnect your agent.");return;}
+      activityUnavailable("FEED_DOWN","Feed down · worker status unavailable");
+    }finally{
+      clearTimeout(timeout);
+      if(epoch===activityEpoch&&current===activitySession){activityController=null;el("refresh-agent-live").disabled=false;if(!document.hidden)activityTimer=setTimeout(refreshActivity,10000);}
+    }
+  }
+  function syncActivity(){
+    if(session?.role!=="AGENT"){if(activitySession)stopActivity();return;}
+    if(activitySession===session)return;
+    stopActivity();activitySession=session;el("agent-live-panel").hidden=false;el("agent-live-state").textContent="Connecting to your agent…";refreshActivity();
+  }
+  el("refresh-agent-live").addEventListener("click",refreshActivity);
+  document.addEventListener("visibilitychange",()=>{
+    if(!activitySession)return;
+    if(document.hidden){activityEpoch++;clearTimeout(activityTimer);activityController?.abort();activityController=null;el("refresh-agent-live").disabled=false;activityUnavailable("PAUSED","Live view paused while page is hidden");}
+    else refreshActivity();
+  });
   function error(message){el("workspace-error").textContent=message;el("workspace-error").hidden=false;}
   function clearCapacity(){capacityRecord=null;el("capacity-operator").value="";el("capacity-status").textContent="";el("capacity-reason").textContent="";el("capacity-form").reset();el("capacity-form").hidden=true;el("capacity-form").elements.max_pending.disabled=false;}
   function clearJobs(){taskPending=null;jobAfter=null;el("job-list").replaceChildren();el("more-jobs").hidden=true;clearCapacity();}

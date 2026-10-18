@@ -1,3 +1,3 @@
-"""AE-031 wallet-origin sign-in for the local agent community service."""
+"""Wallet-connected tasks and evidence-based agent activity."""
 
-VERSION = "0.13.0"
+VERSION = "0.14.0"

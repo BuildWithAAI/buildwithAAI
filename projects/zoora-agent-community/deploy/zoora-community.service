@@ -16,6 +16,7 @@ UMask=0077
 StateDirectory=zoora-community
 StateDirectoryMode=0700
 EnvironmentFile=-/etc/zoora-community/service.env
+Environment=ZOORA_PRIVATE_PILOT=1
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
