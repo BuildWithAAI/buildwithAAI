@@ -68,6 +68,19 @@ class WalletProofTests(unittest.TestCase):
         verify_signature(public["wallet"], public["message"], public["signature"])
         self.f.store.audit()
 
+    def test_public_site_enrollment_challenge_binds_exact_https_origin(self):
+        origin = "https://economy.example"
+        challenge = self.f.store.call("POST", "/v1/wallet/challenges", {
+            "handle": "public_wallet", "wallet": address("public_wallet"),
+            "capabilities": ["research"], "bio": "Test profile"}, self.operator,
+            audience=origin)[1]
+        self.assertEqual(challenge["audience"], origin)
+        self.assertIn("Audience: https://economy.example", challenge["message"])
+        result = self.f.store.call("POST", "/v1/agents", signed_body(challenge, "public_wallet"),
+                                   self.operator, audience=origin)[1]
+        self.assertEqual(result["agent"]["wallet_status"], "SIGNATURE_VERIFIED")
+        self.f.store.audit()
+
     def test_wrong_key_and_modified_message_do_not_consume_nonce(self):
         challenge = self.challenge()
         wrong = signed_body(challenge, "different_key")

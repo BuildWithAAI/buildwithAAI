@@ -8,6 +8,9 @@ import sqlite3
 from .client import Client, read_credential
 from .agent_runner import run_agent
 from .job_worker import work_jobs
+from .pilot_preflight import pilot_preflight
+from .pilot_session import pilot_session
+from .pilot_review import pilot_review
 from .operations import doctor, monitor
 from .recovery import restore_backup, verify_backup
 from .server import serve
@@ -73,13 +76,49 @@ def main():
     worker.add_argument("--max-jobs", type=int, default=1)
     worker.add_argument("--wait-seconds", type=int, default=0)
     for target in (agent_run, worker):
+        target.add_argument("--community-origin", help="Exact operator-selected HTTPS community origin; local model stays on this PC")
+        target.add_argument("--expected-instance", help="Trusted instance ID; required with --community-origin")
+        target.add_argument("--expected-agent", help="This host's enrolled agent ID; required with --community-origin")
+        target.add_argument("--collaboration-project", help="Explicit project scope; enables bounded internal discussion tools")
         target.add_argument("--payment-state", type=Path, help="Explicit private sandbox purchase queue")
         target.add_argument("--sandbox-key-file", type=Path, help="Private sk-test credential; never exposed to the model")
         target.add_argument("--payment-scope-file", type=Path, help="Private host-selected order allowlist and run limits")
+    preflight = commands.add_parser("pilot-preflight", help="Read-only checks before a supervised private pilot session")
+    preflight.add_argument("--community-origin", required=True)
+    preflight.add_argument("--expected-instance", required=True, help="Instance ID obtained from the administering host")
+    preflight.add_argument("--expected-agent", required=True, help="This computer's enrolled agent ID")
+    preflight.add_argument("--credential-file", required=True)
+    preflight.add_argument("--collaboration-project", required=True)
+    preflight.add_argument("--model", required=True)
+    preflight.add_argument("--model-port", type=int, default=11434)
+    preflight.add_argument("--out", required=True, help="New private redacted result; existing files are refused")
+    session = commands.add_parser("pilot-session", help="Preflight then one bounded worker session with a private progress journal")
+    session.add_argument("--community-origin", required=True)
+    session.add_argument("--expected-instance", required=True)
+    session.add_argument("--expected-agent", required=True)
+    session.add_argument("--credential-file", required=True)
+    session.add_argument("--collaboration-project", required=True)
+    session.add_argument("--model", required=True)
+    session.add_argument("--model-port", type=int, default=11434)
+    session.add_argument("--session-dir", required=True, help="New private directory; existing paths are refused")
+    session.add_argument("--max-steps", type=int, default=4)
+    session.add_argument("--timeout", type=int, default=60)
+    session.add_argument("--max-jobs", type=int, default=1)
+    session.add_argument("--wait-seconds", type=int, default=0)
+    review = commands.add_parser("pilot-review", help="Read-only verification of selected past tasks against private report bytes")
+    review.add_argument("--community-origin", required=True)
+    review.add_argument("--expected-instance", required=True)
+    review.add_argument("--expected-agent", required=True)
+    review.add_argument("--credential-file", required=True)
+    review.add_argument("--collaboration-project", required=True)
+    review.add_argument("--reports-dir", required=True, help="Existing private directory of retained task reports")
+    review.add_argument("--job-id", action="append", required=True, help="Repeat for 1–16 distinct operator-selected task IDs")
+    review.add_argument("--out", required=True, help="New private result file; existing paths are refused")
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
     request.add_argument("--port", type=int, default=8765)
+    request.add_argument("--community-origin", help="Exact operator-selected HTTPS community origin")
     request.add_argument("--credential-file")
     request.add_argument("--body-file")
     request.add_argument("--save-credential")
@@ -123,15 +162,39 @@ def main():
                                      model=args.model, port=args.port, model_port=args.model_port,
                                      max_steps=args.max_steps, timeout=args.timeout, project_id=args.project,
                                      payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
-                                     payment_scope_file=args.payment_scope_file)))
+                                     payment_scope_file=args.payment_scope_file, community_origin=args.community_origin,
+                                     collaboration_project=args.collaboration_project,
+                                     expected_instance=args.expected_instance, expected_agent=args.expected_agent)))
         elif args.command == "work-jobs":
             print(canonical(work_jobs(args.credential_file, args.out_dir, model=args.model,
                                      port=args.port, model_port=args.model_port, max_steps=args.max_steps,
                                      timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds,
                                      payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
-                                     payment_scope_file=args.payment_scope_file)))
+                                     payment_scope_file=args.payment_scope_file, community_origin=args.community_origin,
+                                     collaboration_project=args.collaboration_project,
+                                     expected_instance=args.expected_instance, expected_agent=args.expected_agent)))
+        elif args.command == "pilot-preflight":
+            print(canonical(pilot_preflight(args.credential_file, args.out,
+                                           community_origin=args.community_origin,
+                                           expected_instance=args.expected_instance, expected_agent=args.expected_agent,
+                                           collaboration_project=args.collaboration_project,
+                                           model=args.model, model_port=args.model_port)))
+        elif args.command == "pilot-session":
+            print(canonical(pilot_session(args.credential_file, args.session_dir,
+                                         community_origin=args.community_origin,
+                                         expected_instance=args.expected_instance, expected_agent=args.expected_agent,
+                                         collaboration_project=args.collaboration_project,
+                                         model=args.model, model_port=args.model_port, max_steps=args.max_steps,
+                                         timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds)))
+        elif args.command == "pilot-review":
+            result = pilot_review(args.credential_file, args.reports_dir, args.out,
+                                  community_origin=args.community_origin,
+                                  expected_instance=args.expected_instance, expected_agent=args.expected_agent,
+                                  collaboration_project=args.collaboration_project, job_ids=args.job_id)
+            print(canonical(result))
+            return 0 if result["state"] == "SELECTED_TASKS_CONFIRMED" else 1
         else:
-            client = Client(args.port)
+            client = Client(args.port, origin=args.community_origin)
             token = read_credential(args.credential_file) if args.credential_file else None
             body = None
             if args.body_file:

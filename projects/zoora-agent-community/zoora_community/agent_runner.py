@@ -9,7 +9,8 @@ import socket
 import threading
 import time
 
-from .client import Client, read_credential
+from .client import agent_client, read_credential
+from .collaboration import COLLABORATION_NAMES, COLLABORATION_TOOLS, CollaborationScope
 from .agent_payments import PAYMENT_NAMES, PAYMENT_SYSTEM, PAYMENT_TOOLS, configuration
 from .store import exclusive_file, now_ms
 from .validation import Problem, canonical, fields, identifier, parse_json, text
@@ -22,8 +23,8 @@ TOOLS = [{"type": "function", "function": {"name": name, "description": descript
                          "additionalProperties": False}}} for name, description, properties in (
     ("text_metrics", "Measure exact UTF-8 byte, character, word and line counts and SHA256 of provided text.", {"text": {"type": "string"}}),
     ("review_json", "Validate one JSON object and compute its canonical hash.", {"text": {"type": "string"}}),
-    ("community_project", "Read one public project from the local workspace.", {"project_id": {"type": "string"}}),
-    ("community_status", "Read actual local workspace status and counts.", {}))]
+    ("community_project", "Read one project visible to this agent from the configured community service.", {"project_id": {"type": "string"}}),
+    ("community_status", "Read recorded community status and counts.", {}))]
 SYSTEM = """You are a Zoora local development assistant. Complete the user's task using the available functions.
 For measurements or observations, call one function at a time. After its result, answer using those facts.
 Return the deliverable as normal text. Never invent results or repeat the instructions.
@@ -38,15 +39,15 @@ def digest(value):
 
 class LocalModel:
     """Fixed numeric loopback; no proxy, redirects, pulls, cloud names or API keys."""
-    def __init__(self, model, port=11434, *, payment_tools=False):
+    def __init__(self, model, port=11434, *, payment_tools=False, collaboration_tools=False):
         if type(model) is not str or not MODEL.fullmatch(model) or "cloud" in model.lower():
             raise Problem(400, "LOCAL_MODEL_REQUIRED")
         if type(port) is not int or not 1 <= port <= 65535:
             raise Problem(400, "INVALID_PORT")
         self.model, self.port = model, port
-        if type(payment_tools) is not bool:
+        if type(payment_tools) is not bool or type(collaboration_tools) is not bool:
             raise Problem(400, "INVALID_PAYMENT_TOOL_MODE")
-        self.tools = TOOLS + (PAYMENT_TOOLS if payment_tools else [])
+        self.tools = TOOLS + (PAYMENT_TOOLS if payment_tools else []) + (COLLABORATION_TOOLS if collaboration_tools else [])
         self.last_response = None
 
     def _request(self, path, body, deadline):
@@ -164,7 +165,7 @@ class LocalModel:
                         "quality_flags": ["MODEL_OUTPUT_UNVERIFIED", "RAW_REPLY_NOT_RETAINED"]}
 
 
-def run_tool(action, client):
+def run_tool(action, client, token=None, collaboration=None):
     name, arguments = action["action"], action["arguments"]
     if name == "text_metrics":
         fields(arguments, ("text",))
@@ -177,10 +178,12 @@ def run_tool(action, client):
         value = parse_json(text(arguments["text"], 8192).encode("utf-8"), 8192)
         return {"valid_object": True, "canonical_sha256": digest(value),
                 "keys": sorted(value), "classification": "DERIVED"}
+    if name in COLLABORATION_NAMES and collaboration is not None:
+        return collaboration.run(action, client, token)
     if name == "community_project":
         fields(arguments, ("project_id",))
         project_id = identifier(arguments["project_id"])
-        return {"project": client.request("GET", "/v1/projects/" + project_id)[1],
+        return {"project": client.request("GET", "/v1/projects/" + project_id, token=token)[1],
                 "source": "ZOORA_COMMUNITY_API_V1", "classification": "OBSERVED",
                 "quality_flags": ["CONTENT_IS_DECLARED_AND_UNTRUSTED"]}
     if name == "community_status":
@@ -191,12 +194,15 @@ def run_tool(action, client):
 
 def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=11434,
               max_steps=4, timeout=60, project_id=None, _task=None, _guard=None, _context=None,
-              _output=None, payment_state=None, sandbox_key_file=None, payment_scope_file=None):
+              _output=None, payment_state=None, sandbox_key_file=None, payment_scope_file=None,
+              community_origin=None, collaboration_project=None, expected_instance=None, expected_agent=None):
     if (type(max_steps) is not int or not 1 <= max_steps <= 6
             or type(timeout) is not int or not 1 <= timeout <= 120):
         raise Problem(400, "INVALID_RUN_LIMITS")
+    client = agent_client(port, origin=community_origin, expected_instance=expected_instance, expected_agent=expected_agent)
     payments = configuration(payment_state, sandbox_key_file, payment_scope_file)
-    provider = LocalModel(model, model_port, payment_tools=payments is not None)
+    collaboration = CollaborationScope(collaboration_project) if collaboration_project is not None else None
+    provider = LocalModel(model, model_port, payment_tools=payments is not None, collaboration_tools=collaboration is not None)
     token = read_credential(credential_file)
     if _task is None:
         task_path = Path(task_file)
@@ -210,7 +216,6 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
         task = _task
     fields(task, ("prompt",))
     prompt = text(task["prompt"], 4096)
-    client = Client(port)
     principal = client.request("GET", "/v1/me", token=token)[1]
     if principal["role"] != "AGENT":
         raise Problem(403, "AGENT_REQUIRED")
@@ -222,6 +227,7 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
               "source": "ZOORA_AE009_LOCAL_RUNNER_V1", "classification": "LEARNED",
               "started_at_ms": now_ms(), "available_at_ms": None, "state": "UNVERIFIED",
               "max_steps": max_steps, "timeout_seconds": timeout, "steps": [], "output": None,
+              "connection_binding": client.binding(),
               "slot": None, "commitment": None, "transformation_version": 1,
               "missingness": ["independent_model_attestation", "output_correctness", "solana_slot", "chain_commitment"],
               "quality_flags": ["MODEL_OUTPUT_NOT_EXECUTED", "NO_SPENDING_AUTHORITY", "NOT_PROOF_OF_INDEPENDENT_AGENT"]}
@@ -241,6 +247,8 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
             payments.bind(client, token, principal, deadline, _guard)
         if _guard is not None:
             _guard(deadline)
+        if collaboration is not None:
+            collaboration.read(client, token)  # Fail before inference if membership is absent.
         report["provider"] = provider.inspect(deadline)
         system = SYSTEM + (PAYMENT_SYSTEM if payments is not None else "")
         messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
@@ -257,6 +265,8 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
             if finish_only:
                 messages.append({"role": "user", "content": "Write the requested deliverable now, using the original task and observed tool results above. No more tool calls are available."})
             action, evidence = provider.next_action(messages, deadline, finish_only=finish_only)
+            if expected_instance is not None and client.request("GET", "/v1/me", token=token)[1] != principal:
+                raise Problem(403, "RUN_AUTH_CHANGED")
             if _guard is not None:
                 _guard(deadline)
             fields(action, ("action", "arguments"))
@@ -268,7 +278,7 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
                 report["output_classification"] = "LEARNED"
                 report["state"] = "AVAILABLE"
                 break
-            step["tool_result"] = payments.run_tool(action) if payments is not None and action["action"] in PAYMENT_NAMES else run_tool(action, client)
+            step["tool_result"] = payments.run_tool(action) if payments is not None and action["action"] in PAYMENT_NAMES else run_tool(action, client, token, collaboration)
             if len(canonical(step["tool_result"]).encode("utf-8")) > 8192:
                 raise Problem(413, "TOOL_RESULT_TOO_LARGE")
             messages.extend([{"role": "assistant", "content": "", "tool_calls": [
@@ -306,6 +316,7 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
     result = {"state": report["state"], "steps": len(report["steps"]),
               "report_sha256": hashlib.sha256(raw).hexdigest(), "classification": "LEARNED",
               "report_saved": True, "artifact_declared": False}
+    result["connection_binding"] = client.binding()
     if project_id is not None:
         client.deadline = None  # Separate explicitly requested publication; ordinary API timeout applies.
         # Explicit CLI option chooses this exact mutation. The model cannot select a publication target.

@@ -1,0 +1,34 @@
+{
+    admin off
+    auto_https off
+    persist_config off
+    log {
+        output discard
+    }
+}
+
+:{$PORT} {
+    header Strict-Transport-Security "max-age=31536000"
+    @railway_health {
+        host healthcheck.railway.app
+        method GET
+        path /healthz
+    }
+    handle @railway_health {
+        reverse_proxy 127.0.0.1:8765 {
+            header_up Host {$ZOORA_PROXY_HOST}
+            header_up -Forwarded
+            header_up -X-Forwarded-For
+            header_up -X-Forwarded-Host
+            header_up -X-Forwarded-Proto
+        }
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8765 {
+            header_up -Forwarded
+            header_up -X-Forwarded-For
+            header_up -X-Forwarded-Host
+            header_up -X-Forwarded-Proto
+        }
+    }
+}

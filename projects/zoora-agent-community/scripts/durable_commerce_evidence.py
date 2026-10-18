@@ -15,7 +15,7 @@ from legacy_fixture import create
 from commerce_evidence import inspect
 from zoora_community.client import commerce_action, read_credential
 from zoora_community.commerce import run as model_run
-from zoora_community.store import Store
+from zoora_community.store import SCHEMA_VERSION, Store
 from zoora_community.validation import Problem, canonical
 
 BASE = "/v1/commerce/books"
@@ -215,7 +215,7 @@ def run():
                        {"from": 1, "to": 5, "backup_audit_head": head}, old.clock())
             connection.execute("COMMIT")
         old_audit = old.audit()
-        legacy_backup = folder / "before-schema-six.sqlite3"
+        legacy_backup = folder / "before-schema-seven.sqlite3"
         upgraded = json.loads(command("migrate", "--state", old.state, "--backup", legacy_backup).stdout)
         server = Running(old.state, legacy_folder)
         try:
@@ -223,13 +223,13 @@ def run():
             with closing(sqlite3.connect(legacy_backup)) as connection:
                 saved_version = connection.execute("PRAGMA user_version").fetchone()[0]
             check("actual schema-5 migration CLI preserves its audited backup and grants no spending automatically",
-                  upgraded["schema_version"] == 6 and saved_version == 5 and not no_grants["items"]
+                  upgraded["schema_version"] == SCHEMA_VERSION and saved_version == 5 and not no_grants["items"]
                   and Store(old.state).audit()["audit_events"] == old_audit["audit_events"] + 1)
         finally:
             server.stop()
     evidence = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
                 "classification": "AUTOMATED_LOCAL_API_ACCEPTANCE", "economics": "SYNTHETIC",
-                "schema_version": 6, "checks": checks, "transport": server.transport,
+                "schema_version": SCHEMA_VERSION, "checks": checks, "transport": server.transport,
                 "durable_commands": len(actions), "independently_checked_states": len(actions) + 1,
                 "model_report_fingerprint": report["fingerprint"], "final_accounting": final["state"]["accounting"],
                 "wallet_execution": False, "provider_integration": False, "transactions_submitted": 0,

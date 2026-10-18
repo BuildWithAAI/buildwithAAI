@@ -2,7 +2,7 @@
 
 from urllib.parse import parse_qsl, urlsplit
 
-from .validation import MAX_BODY, Problem, canonical, parse_json
+from .validation import MAX_BODY, Problem, canonical, identifier, parse_json
 
 ASSETS = {"/": ("index.html", "text/html; charset=utf-8"),
           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -56,19 +56,25 @@ def dispatch(store, runtime, host, origin, method, target, headers, read_body, a
     if parsed.scheme or parsed.netloc or parsed.fragment or "%" in parsed.path:
         raise Problem(400, "INVALID_ROUTE")
     try:
-        arguments = parse_qsl(parsed.query, strict_parsing=True, max_num_fields=2)
+        arguments = parse_qsl(parsed.query, strict_parsing=True, keep_blank_values=True, max_num_fields=4)
     except ValueError:
         raise Problem(400, "INVALID_PAGINATION") from None
-    if len(dict(arguments)) != len(arguments) or any(key not in ("limit", "after") for key, _ in arguments):
+    if len(dict(arguments)) != len(arguments) or any(key not in ("limit", "after", "expected_instance", "expected_agent") for key, _ in arguments):
         raise Problem(400, "INVALID_PAGINATION")
     args = dict(arguments)
+    expected_instance = identifier(args.pop("expected_instance")) if "expected_instance" in args else None
+    expected_agent = identifier(args.pop("expected_agent")) if "expected_agent" in args else None
+    if expected_agent is not None and expected_instance is None:
+        raise Problem(400, "WORKER_CONNECTION_PINS_REQUIRED")
+    if expected_instance is not None and parsed.path in (*ASSETS, "/healthz", "/v1/ready"):
+        raise Problem(400, "COMMUNITY_BINDING_UNSUPPORTED")
     try:
         limit = int(args.get("limit", "50"))
     except ValueError:
         raise Problem(400, "INVALID_PAGINATION") from None
     body = {}
     if method in {"POST", "PATCH"}:
-        if parsed.query:
+        if args:
             raise Problem(400, "INVALID_ROUTE")
         if not lengths:
             raise Problem(411, "LENGTH_REQUIRED")
@@ -97,5 +103,6 @@ def dispatch(store, runtime, host, origin, method, target, headers, read_body, a
         _, mime = ASSETS[parsed.path]
         return 200, assets[parsed.path][0], mime
     status, result = store.call(method, parsed.path, body, token,
-                                            limit=limit, after=args.get("after", ""))
+                                limit=limit, after=args.get("after", ""), audience=origin,
+                                expected_instance=expected_instance, expected_agent=expected_agent)
     return status, result, "application/json; charset=utf-8"

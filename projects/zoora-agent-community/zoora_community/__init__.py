@@ -1,3 +1,4 @@
-"""AE-019 authenticated enrollment evidence for offline ownership research."""
+"""Wallet-connected tasks and evidence-based agent activity."""
 
-VERSION = "0.12.0"
+VERSION = "0.14.4"
+CONNECTION_BINDING = "ZOORA_CONNECTION_BINDING_V1"

@@ -160,8 +160,8 @@ class RunnerTests(unittest.TestCase):
         fixture = self.model()
         original = run_tool
 
-        def revoke(action, client):
-            result = original(action, client)
+        def revoke(action, client, token=None, collaboration=None):
+            result = original(action, client, token, collaboration)
             self.f.store.call("POST", "/v1/agents/" + self.agent_id + "/credentials", {}, self.operator)
             return result
 

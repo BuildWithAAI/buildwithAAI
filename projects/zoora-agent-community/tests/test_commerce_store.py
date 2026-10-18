@@ -376,4 +376,4 @@ with patch.object(Store,'_event',side_effect=lambda *a,**k:os._exit(73)):
         self.assertTrue(response["book"]["durable_local_records"])
         self.assertFalse(response["book"]["live_execution_worker"])
         self.assertEqual(response["book"]["controller_authentication"], "LOCAL_API_CREDENTIAL")
-        self.assertEqual(SCHEMA_VERSION, 6)
+        self.assertEqual(SCHEMA_VERSION, 7)

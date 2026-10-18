@@ -1,10 +1,14 @@
 # AE-010 — durable private agent tasks
 
-Current service **0.12.0/schema 6** retains [pilot access controls](PILOT_ACCESS.md) and adds [host-opted-in sandbox payment tools](AGENT_PAYMENTS.md). Explicitly migrate community schemas 1–5 before current serving. The one-attempt task workflow below remains available; payment tools stay disabled unless the host supplies all three private configuration options.
+Current service **0.14.4/schema 7** retains [pilot access controls](PILOT_ACCESS.md), [wallet sign-in](WALLET_WEB_LOGIN.md) and [host-opted-in sandbox payment tools](AGENT_PAYMENTS.md), and adds [supervised private pilot sessions](TWO_AGENT_PILOT.md). Explicitly migrate community schemas 1–6 before current serving. Default mode permits one active attempt; private pilot mode permits two, with one per agent. Payment tools stay disabled unless the host supplies all three private configuration options.
+
+`pilot-review` now checks selected past tasks against pinned service state and retained private report hashes, including a completion whose response was lost. It uses GETs only, reports unfinished/mismatched work explicitly and never reruns inference. See [the completion review guide](PILOT_TASK_REVIEW.md).
 
 The authenticated browser can submit a task, inspect its private status and request a stop. A separately started host worker claims it and uses an already installed local Ollama model. This connects browser submission to the existing limited model/tool runner. It does not install an unattended service, publish the application, accept funds or execute generated code.
 
 ## Start a bounded worker session
+
+For the private two-PC pilot, [the `pilot-session` command](TWO_AGENT_PILOT.md) combines readiness checks with a project-filtered worker and a private progress journal. It stops on the first failed/unconfirmed task and refuses existing session directories. The low-level workflow below remains available.
 
 Install the hashed runtime dependencies, initialize the community service and enroll an agent as described in [README.md](README.md) and [AGENT_RUNTIME.md](AGENT_RUNTIME.md). Existing schema-1 or schema-2 state requires the explicit offline migration below. Start the service, then use the agent's private credential on that same host:
 
@@ -22,9 +26,11 @@ Open the browser workspace with the corresponding agent credential. Choose **Que
 
 The worker takes one agent credential and handles at most 1–16 tasks per invocation. The default is one task and no idle waiting. The optional wait window is 0–300 seconds from worker startup; model execution has its separate per-task budget. Each task allows 1–6 model steps and 1–120 seconds; the host's limits can lower the submitted budget. Four pending tasks per agent and 32 per database are allowed; the retained ledger caps at 2,000 tasks. These are local resource bounds, not service throughput promises. A larger budget does not guarantee a good answer.
 
-Model selection stays with the host. The browser and model cannot choose an arbitrary endpoint, file path, shell command or spending action. The inherited tools are `text_metrics`, `review_json`, public `community_project` and public `community_status` reads. Cloud model aliases and arbitrary provider URLs are rejected. The worker uses the same numeric loopback service and Ollama addresses as the existing runner; it does not pull/install a model or call a paid API.
+Model selection stays with the host. The browser and model cannot choose an arbitrary endpoint, file path, shell command or spending action. The inherited tools are `text_metrics`, `review_json`, public `community_project` and public `community_status` reads. Cloud model aliases and arbitrary provider URLs are rejected. The default community connection and Ollama use numeric loopback. Remote community workers require an explicit HTTPS origin and trusted instance/agent IDs; Ollama remains local. The worker does not pull/install a model or call a paid API.
 
 ## Task lifecycle and recovery
+
+`POST /v1/jobs/claim` additionally accepts an optional `project_id` alongside `max_steps` and `timeout_seconds`. It must be a valid ID with current agent membership; selection is limited to that agent's queued tasks in that project, within the same serialized transaction. An empty selected queue does not fall back to another project. Omitting the selector retains the original oldest-own-task selection. Running attempts in other projects still count toward the existing global/per-agent concurrency limits. The supervised session supplies this filter; ordinary `work-jobs` retains its existing default selection.
 
 | State | Meaning |
 | --- | --- |

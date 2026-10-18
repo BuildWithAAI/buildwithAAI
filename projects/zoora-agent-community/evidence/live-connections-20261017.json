@@ -1,0 +1,71 @@
+{
+  "protocol": "ZOORA_CONNECTION_AUDIT_V1",
+  "date": "2026-10-17",
+  "source_base_sha": "3dbfdaf56265e169b8fab6c40e0c3a385d220c65",
+  "branch": "feature/live-connections-audit",
+  "source_condition": "UNCOMMITTED_PATCH_OVER_RECOVERED_AE030",
+  "new_source_sha256": {
+    "zoora_community/live_connections.py": "19512c1efaa9537656e0a4920a1eaeef683f3c5ab39daaefdd6d7ee0aeb8032b",
+    "tests/test_live_connections.py": "ab944fa03ff98f6f9d355bc0fa311f1809c02aa17402e715132a70a9e59ca3eb"
+  },
+  "checks": {
+    "normal_tests": 562,
+    "optimized_tests": 562,
+    "new_connection_tests": 18,
+    "ruff": "PASS"
+  },
+  "test_classification": "LOCAL_SOFTWARE_VERIFICATION_NOT_LIVE_ACTIVITY",
+  "log_sha256": {
+    "live-connections-tests.log": "cf83f1397a18ab306565f381cd696d0cdbcd3ecc1610cf75d956bce92250c93d",
+    "live-connections-tests-corrected.log": "6308840dd7ec1f81a8a298a6f5b36e2b6c206652a905510f6e5ffd80ae4352b5",
+    "live-connections-tests-final.log": "080b836df8871395108f2f4ef72c92c77aafee6683b53b5a8b23c34c33d3900b",
+    "live-all-tests.log": "31bf04cb8bbb877a05beb212d21efa37a12399c5c812faa8395f4add9f373f86",
+    "live-all-tests-optimized.log": "99d0c8fd068af25c0f9165374afd576c3f31b4df5a5cf36f03693c4ed6674741",
+    "live-rpc-attempt-20261017.log": "b7fd905dff7452148f8e77851d1160b4e081d6a00d91d6b4e52944f64bb14f1f"
+  },
+  "actual_rpc_attempts": [
+    {
+      "connector": "solana",
+      "elapsed_ms": 3,
+      "error": "CONNECTION_DNS_FAILED",
+      "finished_at_ms": 1792272128499,
+      "fixture_fallback": false,
+      "implementation_sha256": "cd2da8ff0bf4c3d3c185122635fa0ad0da07707e66d646e7b4abce371f3ac87d",
+      "live_launch_ready": false,
+      "observation": null,
+      "package_version": "0.12.0",
+      "payment_writes": 0,
+      "protocol": "ZOORA_LIVE_CONNECTION_V1",
+      "started_at_ms": 1792272128496,
+      "state": "BLOCKED",
+      "target_environment": "solana:mainnet",
+      "wallet_execution": false
+    },
+    {
+      "connector": "solana",
+      "elapsed_ms": 2,
+      "error": "CONNECTION_DNS_FAILED",
+      "finished_at_ms": 1792272128559,
+      "fixture_fallback": false,
+      "implementation_sha256": "cd2da8ff0bf4c3d3c185122635fa0ad0da07707e66d646e7b4abce371f3ac87d",
+      "live_launch_ready": false,
+      "observation": null,
+      "package_version": "0.12.0",
+      "payment_writes": 0,
+      "protocol": "ZOORA_LIVE_CONNECTION_V1",
+      "started_at_ms": 1792272128556,
+      "state": "BLOCKED",
+      "target_environment": "solana:devnet",
+      "wallet_execution": false
+    }
+  ],
+  "bridge_production": {
+    "state": "NOT_RUN",
+    "reason": "NO_CUSTOMER_AND_PRIVATE_KEY_SETUP_SUPPLIED"
+  },
+  "nft_membership": "DESIGN_ONLY",
+  "unpublished_AE031_AE032": "SOURCE_NOT_RECOVERED",
+  "published": false,
+  "real_funds_moved": false,
+  "full_scale_live_ready": false
+}

@@ -3,6 +3,7 @@
 from email.message import Message
 from http import HTTPStatus
 from importlib.metadata import version
+import os
 import signal
 import threading
 
@@ -15,6 +16,7 @@ from .operations import Runtime
 from .solana_rpc import SolanaRPC
 from .store import Store
 from .validation import MAX_BODY, Problem, canonical
+from .wallet_login import public_origin
 
 
 class StrictParser(HTTPRequestParser):
@@ -67,6 +69,14 @@ class Application:
 
 class WSGIServer:
     def __init__(self, store, port=8765):
+        configured_origin = os.environ.get("ZOORA_PUBLIC_ORIGIN")
+        pilot_mode = os.environ.get("ZOORA_PRIVATE_PILOT", "1" if configured_origin else "0")
+        if pilot_mode not in {"0", "1"}:
+            raise Problem(400, "INVALID_PRIVATE_PILOT_MODE")
+        resolved_origin = public_origin(configured_origin) if configured_origin else None
+        self.store = store
+        store.private_pilot = pilot_mode == "1"
+        store.public_origin = resolved_origin
         if version("waitress") != "3.0.2":
             raise Problem(503, "UNSUPPORTED_WAITRESS_VERSION")
         self.application = Application(store)
@@ -87,8 +97,15 @@ class WSGIServer:
         self.server.channel_class = StrictChannel
         self.server_port = int(self.server.effective_port)
         self.server_address = ("127.0.0.1", self.server_port)
-        self.host = self.application.host = "127.0.0.1:" + str(self.server_port)
-        self.origin = self.application.origin = "http://" + self.host
+        if resolved_origin:
+            self.origin = resolved_origin
+            self.host = self.origin.removeprefix("https://")
+            self.store.public_origin = self.origin
+        else:
+            self.host = "127.0.0.1:" + str(self.server_port)
+            self.origin = "http://" + self.host
+        self.host = self.application.host = self.host
+        self.origin = self.application.origin = self.origin
 
     def serve_forever(self):
         self.running = True
@@ -121,7 +138,7 @@ def serve_wsgi(state, port=8765, enable_solana=False):
 
     signal.signal(signal.SIGTERM, terminate)
     try:
-        print(canonical({"mode": "LOCAL_ONLY", "url": server.origin,
+        print(canonical({"mode": "PUBLIC_BEHIND_TRUSTED_TLS_PROXY" if store.public_origin else "LOCAL_ONLY", "url": server.origin,
                          "transport": "WAITRESS_3_0_2",
                          "package_digest": server.application.runtime.package_digest}), flush=True)
         server.serve_forever()

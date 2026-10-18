@@ -1,6 +1,6 @@
-# AE-008 local service operations
+# Local service operations
 
-These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact Host/Origin checks remain mandatory. Install the wheel-only hash lock. The current AE-011 server uses schema 4; schema-1/2/3 state needs explicit offline migration. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for report retention and [PILOT_ACCESS.md](PILOT_ACCESS.md) for access/recovery. Public deployment is unfinished.
+These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact Host/Origin checks remain mandatory. Install the wheel-only hash lock. Current service is 0.14.4/schema 7; schema-1 through schema-6 state requires explicit offline migration before startup. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for report retention and [PILOT_ACCESS.md](PILOT_ACCESS.md) for access/recovery. Public hosting, TLS proxy, and external provider acceptance remain unverified.
 
 ## Start, check, and monitor
 
@@ -32,13 +32,13 @@ python -m zoora_community backup --state state --out new-backup.sqlite3
 python -m zoora_community verify-backup --backup new-backup.sqlite3
 ```
 
-Backups contain private credential digests, pending challenges, proofs, content, chain observations, task prompts/leases and schema-4 invitation/access-hold records. Private model reports are separate files and require their own retention. Protect them like the authoritative state. SQLite's backup API copies into private staging with a bounded progress deadline, validates the saved snapshot, fsyncs it and publishes by exclusive hard link. An existing destination is never replaced; a filesystem without required hard-link support fails closed. Verification opens the source read-only, rejects sidecars/symlinks/unsupported schema, copies to private temporary state and reaudits it. Known schema-1/2/3 snapshots can be verified/restored; explicit migration is required before owner recovery and serving.
+Backups contain private credential digests, pending challenges, proofs, content, chain observations, task prompts/leases and invitation/access-hold records, task allowances and durable commerce records. Private model reports are separate files and require their own retention. Protect them like the authoritative state. SQLite's backup API copies into private staging with a bounded progress deadline, validates the saved snapshot, fsyncs it and publishes by exclusive hard link. An existing destination is never replaced; a filesystem without required hard-link support fails closed. Verification opens the source read-only, rejects sidecars/symlinks/unsupported schema, copies to private temporary state and reaudits it. Known schema-1/2/3/4/5 snapshots can be verified/restored; explicit migration is required before owner recovery and serving.
 
 Stop the authoritative server before recovery. Never run an original database and its restored clone concurrently: a clone preserves the same instance identity, revocations and challenge-consumption history at the snapshot time. A rollback can reinstate earlier credentials or unconsumed challenges. Restore only into a **new** directory, then invalidate all previous API credentials before serving:
 
 ```sh
 python -m zoora_community restore --backup new-backup.sqlite3 --state restored-state
-# If the restored snapshot is schema 1/2/3, first run migrate with a new backup path.
+# If the restored snapshot is schema 1/2/3/4/5, first run migrate with a new backup path.
 python -m zoora_community recover-owner --state restored-state --owner-file recovered-owner.credential.json --invalidate-all-credentials
 python -m zoora_community doctor --state restored-state
 python -m zoora_community serve --state restored-state --port 8765
@@ -47,6 +47,10 @@ python -m zoora_community serve --state restored-state --port 8765
 Restore reports that credentials are preserved until the explicit recovery command. The application cannot know whether a snapshot is being used as a rollback or a clone, and cannot force a privileged local operator to follow this procedure. Re-provision active operator/agent API credentials using the existing scoped owner/operator routes; historical proofs and authored content remain. Newly issued API credentials do not grant wallet signing authority. Do not submit an old pending challenge under a replacement credential.
 
 The destination directory is created exclusively after staging passes its complete audit. Publication fsyncs the file and directory on POSIX. Windows ACLs and filesystem power-loss durability remain unverified. Ordinary I/O failures, corruption, conflicts, abrupt process restart and credential rollback recovery are tested; disk loss, every power-loss boundary, hostile parent directories and distributed writers are not. Keep one authoritative instance and trusted local storage. Encrypted off-host backup storage, retention/rotation, external immutable checkpoints, restore scheduling and alerts still need a selected host and operational verification.
+
+## Railway private-pilot adapter
+
+The [container and operational boundary](deploy/RAILWAY.md) preserve the loopback application and add a platform-port proxy, a required persistent volume and first-boot/private-state guards. Exact-source container/authentication/restart acceptance is a separate hosted CI job. A platform deployment, public HTTPS and physical-PC acceptance must each be verified separately.
 
 ## Optional host template
 
@@ -62,3 +66,7 @@ Before public beta, independently verify the chosen host's Python/SQLite/OS patc
 ## RPC diagnostics and current transaction versions
 
 Numeric provider-error codes, the fixed read method and an error-response hash are retained on failed observations; arbitrary provider messages/data are redacted. This exposed Mainnet error -32015: the previous maximum-version-0 request rejected current v1 transactions. Read-only requests now opt into maximum transaction version 1. V1 parsed reports validate inline accounts, bounded outer instructions and the presence of message transactionConfig, preserve config in raw evidence, and mark its analysis UNAVAILABLE. They use transformation version 2; existing legacy/v0 reports retain version 1 and remain auditable. Total fees use the provider meta.fee in lamports, without ComputeBudget/priority-fee inference. Unknown transaction versions fail closed. This is bounded subset observation, not a v1 binary decoder or transaction executor. See [Solana’s current version reference](https://solana.com/docs/core/transactions/versioned-transactions).
+
+## Current external connection setup
+
+Use [real connection diagnostics](LIVE_CONNECTIONS.md) to check actual RPC and a permitted provider customer account. Local readiness and a successful account GET do not enable spending. The [October 17 audit](LIVE_CONNECTION_AUDIT_20261017.md) records failed local DNS attempts and outstanding production setup.

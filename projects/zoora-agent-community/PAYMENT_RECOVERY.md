@@ -2,7 +2,7 @@
 
 The purchase queue and its nested provider journal can now be checked together, backed up into one pinned package and restored into durable **RECOVERY_ONLY** mode. A restored copy can recover previously attempted transfers through GET requests. It cannot authorize purchases, prepare new provider instructions or create transfers. There is no reactivation command.
 
-Introduced in service **0.11.0**; current service **0.12.0** keeps community schema **6**, provider journal **3** and payment queue **2**. [Agent tools](AGENT_PAYMENTS.md) cannot activate restored state. Existing queue schema 1 requires an explicit verified migration. Community and provider schemas do not change. No runtime dependency is added.
+Introduced in service **0.11.0**; current service **0.13.0** uses community schema **7**, provider journal **3**, and payment queue **2**. [Agent tools](AGENT_PAYMENTS.md) cannot activate restored state. Existing queue schema 1 requires an explicit verified migration; community schema 6 also requires explicit offline migration for wallet sign-in. Community and provider schemas remain separate. No runtime dependency is added.
 
 ## State locations and boundaries
 

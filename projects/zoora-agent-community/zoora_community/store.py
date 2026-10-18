@@ -11,7 +11,7 @@ import time
 import uuid
 from contextlib import closing
 
-from . import VERSION
+from . import CONNECTION_BINDING, VERSION
 from .validation import (
     DIGEST, MAX_BODY, TOKEN, Problem, boolean, canonical, capabilities, fields,
     handle, identifier, matching, object_value, text,
@@ -23,16 +23,19 @@ from .pilot_access import PilotAccessMethods
 from .research_identity import ResearchIdentityMethods
 from .task_capacity import TaskCapacityMethods
 from .commerce_store import CommerceMethods
+from .wallet_login import WalletLoginMethods
+from .agent_activity import AgentActivityMethods
 
 APPLICATION_ID = 0x5A414136
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 MAX_DATABASE_BYTES = 64 * 1024 * 1024
 LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "members": 10000, "artifacts": 10000, "posts": 10000, "offers": 2000,
           "credentials": 20000, "audit": 50000, "wallet_challenges": 20000,
           "wallet_proofs": 10000, "transactions": 5000, "jobs": 2000,
           "invitations": 1000, "access_holds": 2200, "operator_task_capacity": 200,
-          "commerce_books": 64, "commerce_actions": 16384}
+          "commerce_books": 64, "commerce_actions": 16384,
+          "wallet_login_challenges": 20000}
 AUTH_DOMAIN = b"ZOORA_AE006_CREDENTIAL_V1\0"
 AUDIT_DOMAIN = b"ZOORA_AE006_AUDIT_V1\0"
 ZERO_HASH = "0" * 64
@@ -79,12 +82,14 @@ def provenance(created_ms, updated_ms=None):
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods, CommerceMethods):
+class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods, CommerceMethods, AgentActivityMethods):
     def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
         self.clock = clock
         self.rpc = rpc
+        self.public_origin = None
+        self.private_pilot = False
         self.schema_version = _schema_version
         self._check_directory()
         with closing(self._connection()) as connection:
@@ -164,6 +169,7 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
             schema += Path(__file__).with_name("migration_004.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_005.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_006.sql").read_text(encoding="utf-8")
+            schema += Path(__file__).with_name("migration_007.sql").read_text(encoding="utf-8")
             connection.executescript("BEGIN IMMEDIATE;\n" + schema)
             connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -344,7 +350,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
             flags.append("WALLET_CONTROL_PROVEN_AT_RECORDED_TIME")
         return result
 
-    def call(self, method, route, body=None, token=None, limit=50, after=""):
+    def call(self, method, route, body=None, token=None, limit=50, after="", audience=None,
+             expected_instance=None, expected_agent=None):
         if self.schema_version != SCHEMA_VERSION:
             raise Problem(503, "MIGRATION_REQUIRED")
         if method not in {"GET", "POST", "PATCH"}:
@@ -362,26 +369,45 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
             raise Problem(400, "INVALID_PAGINATION")
         if after:
             identifier(after)
+        if expected_instance is not None:
+            identifier(expected_instance)
+        if expected_agent is not None:
+            identifier(expected_agent)
+            if expected_instance is None:
+                raise Problem(400, "WORKER_CONNECTION_PINS_REQUIRED")
         connection = self._connection()
         try:
             self._check_schema(connection)
             connection.execute("BEGIN" if method == "GET" else "BEGIN IMMEDIATE")
+            if expected_instance is not None:
+                instance = connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()
+                if instance is None or instance[0] != expected_instance:
+                    raise Problem(409, "COMMUNITY_INSTANCE_MISMATCH")
             at = self.clock()
             last = connection.execute("SELECT at_ms FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
             if last and at < last[0]:
                 raise Problem(503, "CLOCK_REGRESSION")
+            if expected_agent is not None:
+                bound = self._authenticate(connection, token, at)
+                if bound["role"] != "AGENT" or bound["principal_id"] != expected_agent:
+                    raise Problem(403, "COMMUNITY_AGENT_MISMATCH")
             if method == "GET":
                 if body:
                     raise Problem(400, "INVALID_FIELDS")
                 response = self._read(connection, route, token, at, limit, after)
-            elif method == "POST" and route == "/v1/invitations/claim":
+            elif method == "POST" and route in {"/v1/invitations/claim", "/v1/wallet/login/challenges", "/v1/wallet/login"}:
                 if token is not None:
-                    raise Problem(400, "INVITATION_ONLY_AUTH")
-                response = self._claim_invitation(connection, body, at)
+                    raise Problem(400, "INVITATION_ONLY_AUTH" if route == "/v1/invitations/claim" else "PUBLIC_ROUTE_AUTH")
+                if route == "/v1/invitations/claim":
+                    response = self._claim_invitation(connection, body, at)
+                elif route == "/v1/wallet/login/challenges":
+                    response = self._wallet_login_challenge(connection, body, at, audience)
+                else:
+                    response = self._wallet_login(connection, body, at)
             else:
                 principal = self._authenticate(connection, token, at)
                 self._rate(connection, principal, at)
-                response = self._write(connection, principal, method, route, body, at)
+                response = self._write(connection, principal, method, route, body, at, audience)
             connection.execute("COMMIT")
         except sqlite3.IntegrityError:
             if connection.in_transaction:
@@ -403,6 +429,22 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
 
     def _read(self, connection, route, token, at, limit, after):
         parts = route.strip("/").split("/")
+        if self.private_pilot and route not in {"/v1/status", "/v1/me"}:
+            self._authenticate(connection, token, at)
+        if len(parts) == 4 and parts[:2] == ["v1", "projects"] and parts[3] == "discussion":
+            if after:
+                raise Problem(400, "INVALID_PAGINATION")
+            principal = self._authenticate(connection, token, at)
+            self._role(principal, "AGENT")
+            project_id = identifier(parts[2])
+            self._membership(connection, project_id, principal["principal_id"])
+            rows = connection.execute("SELECT * FROM posts WHERE project_id=? ORDER BY created_ms DESC,rowid DESC LIMIT ?",
+                                      (project_id, limit + 1)).fetchall()
+            items = [self._public(row) for row in rows[:limit]]
+            return 200, {"items": items, "older_notes_omitted": len(rows) > limit, "pagination": "LATEST_NOTES",
+                         "scope": "AUTHENTICATED_PROJECT_MEMBERS"}
+        if len(parts) == 4 and parts[:2] == ["v1", "agents"] and parts[3] == "activity":
+            return self._agent_activity(connection, self._authenticate(connection, token, at), parts[2], at, limit, after)
         if parts[:3] == ["v1", "commerce", "books"]:
             return self._commerce_read(connection, self._authenticate(connection, token, at), parts, at, limit, after)
         if route == "/v1/task-capacity" or (len(parts) == 4 and parts[:2] == ["v1", "operators"] and parts[3] == "task-capacity"):
@@ -416,7 +458,9 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
             return self._observations_read(connection, route, limit, after)
         if route == "/v1/status":
             return 200, {"schema_version": SCHEMA_VERSION, "service": "zoora-agent-community/" + VERSION,
-                         "mode": "LOCAL_ONLY", "observed_at_ms": at,
+                         "connection_binding": CONNECTION_BINDING,
+                         "mode": "PUBLIC_BEHIND_TRUSTED_TLS_PROXY" if self.public_origin else "LOCAL_ONLY", "observed_at_ms": at,
+                         "visibility": "PRIVATE_PILOT" if self.private_pilot else "PUBLIC_RECORDS",
                          "instance_id": connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()[0],
                          "counts": {name: connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
                                     for name in ("agents", "projects", "posts", "offers")},
@@ -493,7 +537,7 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
         if connection.execute("SELECT 1 FROM members WHERE project_id=? AND agent_id=?", (project_id, agent_id)).fetchone() is None:
             raise Problem(403, "PROJECT_MEMBERSHIP_REQUIRED")
 
-    def _write(self, connection, principal, method, route, body, at):
+    def _write(self, connection, principal, method, route, body, at, audience=None):
         parts = route.strip("/").split("/")
         if parts[:3] == ["v1", "commerce", "books"]:
             return self._commerce_write(connection, principal, method, parts, body, at)
@@ -527,7 +571,7 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
                         {"old_credential_id": principal["id"], "credential_id": issued["credential_id"]}, at)
             return 201, {"credential": issued}
         if method == "POST" and route == "/v1/wallet/challenges":
-            return self._new_challenge(connection, principal, profile(body), at)
+            return self._new_challenge(connection, principal, profile(body), at, audience=audience)
         if method == "POST" and route == "/v1/agents":
             self._role(principal, "OPERATOR")
             challenge, payload = self._consume_challenge(connection, principal, body, at)
@@ -580,7 +624,7 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
                 fields(body)
                 payload = {"handle": agent["handle"], "wallet": agent["wallet"],
                            "capabilities": json.loads(agent["capabilities"]), "bio": agent["bio"]}
-                return self._new_challenge(connection, principal, payload, at, record_id)
+                return self._new_challenge(connection, principal, payload, at, record_id, audience)
             if len(parts) == 4 and parts[3] == "wallet-proof" and method == "POST":
                 self._active_agent(connection, record_id)
                 challenge, _payload = self._consume_challenge(connection, principal, body, at, record_id)
@@ -732,6 +776,8 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
                     raise Problem(503, "AUDIT_CHAIN_FAILURE")
                 previous, at = digest, row["at_ms"]
             for table in LIMITS:
+                if self.schema_version < 7 and table == "wallet_login_challenges":
+                    continue
                 if self.schema_version < 6 and table in {"commerce_books", "commerce_actions"}:
                     continue
                 if self.schema_version < 5 and table == "operator_task_capacity":
@@ -781,6 +827,11 @@ class Store(WalletProofMethods, ObservationMethods, JobMethods, PilotAccessMetho
                     self._audit_commerce(connection)
                 except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
                     raise Problem(503, "COMMERCE_CONSISTENCY_FAILURE") from None
+            if self.schema_version >= 7:
+                try:
+                    self._audit_wallet_logins(connection)
+                except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+                    raise Problem(503, "WALLET_LOGIN_CONSISTENCY_FAILURE") from None
             connection.execute("COMMIT")
             return {"schema_version": self.schema_version, "audit_events": seq, "audit_head": previous,
                     "database_integrity": "OK", "foreign_keys": "OK", "relationships": "OK",
