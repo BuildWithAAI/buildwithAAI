@@ -166,16 +166,21 @@ class JobMethods:
             return 201, {"job": self._job_view(connection, self._row(connection, "jobs", record_id), at), "replayed": False}
         if route == "/v1/jobs/claim":
             self._role(principal, "AGENT")
-            fields(body, ("max_steps", "timeout_seconds"))
+            fields(body, ("max_steps", "timeout_seconds"), ("project_id",))
             steps = bounded(body["max_steps"], 1, 6, "INVALID_RUN_LIMIT")
             timeout = bounded(body["timeout_seconds"], 1, 120, "INVALID_RUN_LIMIT")
+            project = identifier(body["project_id"]) if "project_id" in body else None
+            if project is not None:
+                self._membership(connection, project, principal["principal_id"])
             # BEGIN IMMEDIATE in Store.call serializes claims across processes.
             running_limit = 2 if self.private_pilot else 1
             running = connection.execute("SELECT agent_id FROM jobs WHERE state='RUNNING'").fetchall()
             if len(running) >= running_limit or any(item["agent_id"] == principal["principal_id"] for item in running):
                 return 200, {"job": None, "reason": "WORKER_BUSY"}
-            row = connection.execute("SELECT * FROM jobs WHERE state='QUEUED' AND agent_id=? ORDER BY created_ms,rowid LIMIT 1",
-                                     (principal["principal_id"],)).fetchone()
+            clause = " AND project_id=?" if project is not None else ""
+            values = [principal["principal_id"], project] if project is not None else [principal["principal_id"]]
+            row = connection.execute("SELECT * FROM jobs WHERE state='QUEUED' AND agent_id=?" + clause + " ORDER BY created_ms,rowid LIMIT 1",
+                                     values).fetchone()
             if row is None:
                 return 200, {"job": None, "reason": "QUEUE_EMPTY"}
             record_id, attempt = row["id"], uuid.uuid4().hex

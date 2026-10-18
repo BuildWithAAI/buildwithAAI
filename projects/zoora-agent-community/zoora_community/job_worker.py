@@ -62,11 +62,16 @@ def complete(client, token, job, payload):
 def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
               max_steps=4, timeout=60, max_jobs=1, wait_seconds=0,
               payment_state=None, sandbox_key_file=None, payment_scope_file=None,
-              community_origin=None, collaboration_project=None, expected_instance=None, expected_agent=None):
+              community_origin=None, collaboration_project=None, expected_instance=None, expected_agent=None,
+              _progress=None, _claim_project=None):
     bounded(max_steps, 1, 6, "INVALID_RUN_LIMIT")
     bounded(timeout, 1, 120, "INVALID_RUN_LIMIT")
     bounded(max_jobs, 1, 16, "INVALID_WORKER_LIMIT")
     bounded(wait_seconds, 0, 300, "INVALID_WORKER_LIMIT")
+    if _progress is not None and not callable(_progress):
+        raise Problem(400, "INVALID_WORKER_PROGRESS")
+    if _claim_project is not None:
+        identifier(_claim_project)
     LocalModel(model, model_port)  # Validate local model naming/port before claiming.
     configuration(payment_state, sandbox_key_file, payment_scope_file)  # Validate host files before claiming a task.
     if collaboration_project is not None:
@@ -79,8 +84,22 @@ def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
     folder = report_directory(out_dir)
     expires = time.monotonic() + wait_seconds
     outcomes = []
+    claim_started = False
+
+    def progress(phase, **data):
+        # Host-owned observer only; never pass prompts, bearer or claim secrets.
+        # A recording failure propagates before further inference/mutations.
+        if _progress is not None:
+            _progress(phase, data)
+
     while len(outcomes) < max_jobs:
-        response = client.request("POST", "/v1/jobs/claim", {"max_steps": max_steps, "timeout_seconds": timeout}, token)[1]
+        if not claim_started:
+            progress("CLAIM_STARTED")
+            claim_started = True
+        claim_body = {"max_steps": max_steps, "timeout_seconds": timeout}
+        if _claim_project is not None:
+            claim_body["project_id"] = _claim_project
+        response = client.request("POST", "/v1/jobs/claim", claim_body, token)[1]
         job = response["job"]
         if job is None:
             remaining = expires - time.monotonic()
@@ -90,6 +109,8 @@ def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
             continue
         identifier(job["id"])
         identifier(job["attempt_id"])
+        progress("CLAIMED", job_id=job["id"], attempt_id=job["attempt_id"],
+                 worker_credential_id=job["worker_credential_id"], project_id=job["project_id"])
         report = folder / (job["id"] + "-" + job["attempt_id"] + ".json")
         signal_sequence = 0
         last_signal = None
@@ -148,6 +169,9 @@ def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
                 error = "JOB_REPORT_UNAVAILABLE"
         payload = {"attempt_id": job["attempt_id"], "claim_token": response["claim_token"],
                    "state": "SUCCEEDED" if error is None else "FAILED", "error_code": error, **metadata}
+        if metadata["report_sha256"] is not None:
+            progress("REPORT_SAVED", job_id=job["id"], attempt_id=job["attempt_id"], **metadata)
+        progress("COMPLETION_STARTED", job_id=job["id"], attempt_id=job["attempt_id"])
         try:
             settled = complete(client, token, job, payload)
             outcomes.append({"job_id": job["id"], "attempt_id": job["attempt_id"], "state": settled["state"],
@@ -159,7 +183,10 @@ def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
             outcomes.append({"job_id": job["id"], "attempt_id": job["attempt_id"], "state": "UNCONFIRMED",
                              "error_code": "JOB_COMPLETION_UNCONFIRMED", "report_sha256": metadata["report_sha256"],
                              "artifact_id": None, "completion_recorded": False})
+        progress("JOB_RESULT", **{key: value for key, value in outcomes[-1].items() if key != "error_code"})
+        if not outcomes[-1]["completion_recorded"]:
             break
+        claim_started = False
     return {"mode": "REMOTE_HTTPS_COMMUNITY" if community_origin else "LOCAL_ONLY", "jobs": outcomes, "processed": len(outcomes),
             "connection_binding": client.binding(),
             "automatic_retry": False, "wallet_execution": "UNAVAILABLE"}

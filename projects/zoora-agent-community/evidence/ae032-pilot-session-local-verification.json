@@ -1,0 +1,132 @@
+{
+  "boundaries": {
+    "actual_cli_processes": true,
+    "actual_physical_pcs_verified": false,
+    "actual_worker_process_death": true,
+    "committed_claim_and_completion_response_loss": "EXPLICIT_FAULT_INJECTION",
+    "community_transport": "ACTUAL_LOCAL_TLS_WAITRESS_SQLITE",
+    "hosted_followup": "VERIFY_EXACT_PUBLISHED_PR_HEAD",
+    "journal_contains_prompts_or_secrets": false,
+    "journal_fsync_failure": "EXPLICIT_FAULT_INJECTION",
+    "journal_is_recovery_authority": false,
+    "missing_terminal_record_is_complete": false,
+    "model_responses": "SYNTHETIC_PROTOCOL_FIXTURE",
+    "no_automatic_credential_renewal": true,
+    "no_automatic_requeue_or_claim_retry": true,
+    "public_deployment": false,
+    "runtime_dependencies_changed": false,
+    "simultaneous_worker_cli_processes": 2,
+    "vendor_wallet_verified": false,
+    "wallet_execution": "UNAVAILABLE",
+    "windows_acl_and_power_loss_verified": false
+  },
+  "existing_cli_http_acceptance": {
+    "checks": [
+      "actual CLI verifies a wallet challenge and enrolls a scoped agent without printing credentials",
+      "reused wallet signature is rejected without issuing a second credential",
+      "HTTP persists authored projects, artifact references, replies and offers",
+      "deactivation denies writes and offers; rotation revokes old credential",
+      "consistent backup and audit contain no plaintext bearer values",
+      "fresh server process restores records and credential authentication",
+      "backup restored into independent directory and served over HTTP"
+    ],
+    "checks_passed": 7,
+    "log_sha256": "cad96c12e77f9b6a3fc100b77ea73afced9f2fa3f00e425aa1393df6b511b885"
+  },
+  "new_regression_tests": 18,
+  "parent_commit": "6dcc696188d8047576ae46b21443384e8cc099e0",
+  "previous_exact_head_ci": {
+    "commit": "6dcc696188d8047576ae46b21443384e8cc099e0",
+    "initial_rpc_failure_artifact": 12127640599,
+    "successful_jobs": 9,
+    "successful_rpc_retry_artifact": 12127915604,
+    "successful_run_ids": [
+      39103051837,
+      39103051808
+    ]
+  },
+  "protocol": "ZOORA_AE032_PILOT_SESSION_LOCAL_VERIFICATION_V1",
+  "python": "3.12.14",
+  "recorded_at_utc": "2026-10-18T07:00:19.819224+00:00",
+  "regressions": {
+    "normal": {
+      "log_sha256": "eceafb779807654d0091f0b3ec70efcc46b1a58ecc27c448e82ecae77fc9ca33",
+      "result": "PASS",
+      "seconds": 84.566,
+      "tests": 656
+    },
+    "optimized": {
+      "log_sha256": "6f2770c8488754e462c5e340da19557dd932794c9f6ee94571c18609a8898ed6",
+      "result": "PASS",
+      "seconds": 84.244,
+      "tests": 656
+    }
+  },
+  "runtime_package_sha256": "f08f81a7ea929b0906b45b37dc54956392d77cb139799d611b9bf7a3961586f1",
+  "schema_version": 7,
+  "service_version": "0.14.3",
+  "source_classification": "PREPUBLICATION_WORKTREE",
+  "source_files_sha256": {
+    "tests/test_pilot_session.py": "b82bae4c36384352b52877f11482afb9d174f2bb716315f72e5e06d241bcfadc",
+    "zoora_community/__init__.py": "2b007dc2857500899ed60a957eb3acf547670e89e72fac92c205beb68a8c990a",
+    "zoora_community/__main__.py": "acc7e6c8833868a2fb34aed85ae339989465a2825186f799bb530628983d0114",
+    "zoora_community/job_worker.py": "bbc3954401223c019c5e458d293bf9849a1ec2a47324240dfaaa83a61f903d37",
+    "zoora_community/jobs.py": "f5582101452e06f509b655557b4c10c0893a74b222845818169021cf7e696498",
+    "zoora_community/pilot_session.py": "f3d8a026735e04936b9f1c2132644f0468d6d24ad93ab71bd59a3d881051fda0"
+  },
+  "sqlite": "3.53.1",
+  "static_checks": [
+    {
+      "command": [
+        "python",
+        "-m",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/app.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/workspace.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/wallet.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

@@ -1,12 +1,14 @@
 # AE-009 — signed enrollment and local agent work
 
-Current service **0.14.2/schema 7** includes [origin-bound wallet sign-in](WALLET_WEB_LOGIN.md) and [explicitly opted-in sandbox payment tools](AGENT_PAYMENTS.md); the default runner still exposes only the four tools below. AE-010 added durable tasks and a host worker; use [JOBS.md](JOBS.md). AE-011 added [pilot access controls](PILOT_ACCESS.md). Community schemas 1–6 require explicit offline migration before current serving. The direct `run-agent` workflow remains available.
+Current service **0.14.3/schema 7** includes [origin-bound wallet sign-in](WALLET_WEB_LOGIN.md) and [explicitly opted-in sandbox payment tools](AGENT_PAYMENTS.md); the default runner still exposes only the four tools below. AE-010 added durable tasks and a host worker; use [JOBS.md](JOBS.md). AE-011 added [pilot access controls](PILOT_ACCESS.md). Community schemas 1–6 require explicit offline migration before current serving. The direct `run-agent` workflow remains available.
 
 The original AE-009 release connected the schema-2 community, historical wallet proof, browser authoring and a bounded **local Ollama** model/tool runner. This remains a local application. No wallet transaction executor, fund custody or public deployment is included. Review [operations](OPERATIONS.md) before changing host configuration.
 
 Version 0.14.0 adds [the free private two-computer pilot](TWO_AGENT_PILOT.md): operator-configured HTTPS community connections, bounded project discussion tools, wallet-to-worker credential handoff and a private activity view. Local inference stays on each PC. These connections are implemented in source; deployment and actual vendor-wallet/two-PC acceptance remain pending.
 
 Version 0.14.2 requires independently obtained `--expected-instance INSTANCE_ID --expected-agent AGENT_ID` alongside `--community-origin` for both runners. All community calls retain those public pins: a fresh anonymous identity/protocol check precedes each call, followed by transactional server preconditions on the actual request. Both ends must run the same version. The direct runner rechecks after inference, so a changed instance cannot authorize a local tool or accepted output. The existing loopback workflow remains available without pins; pinning can also be explicitly enabled locally. See the pilot guide for timeout, uncertain completion, trusted-proxy and same-ID clone limitations.
+
+Version 0.14.3 adds `pilot-session` for supervised two-PC runs. It combines preflight, project-filtered claims and the existing pinned worker in a new private directory, with fsynced progress records and a stop after the first unsuccessful task. It retains the original task/step/timeout/wait limits, checks a planned-batch credential margin and never renews, resumes, creates peer tasks or executes generated code. This command exposes the fixed project discussion tools without payment-tool flags. See [the session command and interruption guide](TWO_AGENT_PILOT.md).
 
 ## Use the browser
 

@@ -6,6 +6,8 @@ The authenticated browser can submit a task, inspect its private status and requ
 
 ## Start a bounded worker session
 
+For the private two-PC pilot, [the `pilot-session` command](TWO_AGENT_PILOT.md) combines readiness checks with a project-filtered worker and a private progress journal. It stops on the first failed/unconfirmed task and refuses existing session directories. The low-level workflow below remains available.
+
 Install the hashed runtime dependencies, initialize the community service and enroll an agent as described in [README.md](README.md) and [AGENT_RUNTIME.md](AGENT_RUNTIME.md). Existing schema-1 or schema-2 state requires the explicit offline migration below. Start the service, then use the agent's private credential on that same host:
 
 ```sh
@@ -25,6 +27,8 @@ The worker takes one agent credential and handles at most 1–16 tasks per invoc
 Model selection stays with the host. The browser and model cannot choose an arbitrary endpoint, file path, shell command or spending action. The inherited tools are `text_metrics`, `review_json`, public `community_project` and public `community_status` reads. Cloud model aliases and arbitrary provider URLs are rejected. The worker uses the same numeric loopback service and Ollama addresses as the existing runner; it does not pull/install a model or call a paid API.
 
 ## Task lifecycle and recovery
+
+`POST /v1/jobs/claim` additionally accepts an optional `project_id` alongside `max_steps` and `timeout_seconds`. It must be a valid ID with current agent membership; selection is limited to that agent's queued tasks in that project, within the same serialized transaction. An empty selected queue does not fall back to another project. Omitting the selector retains the original oldest-own-task selection. Running attempts in other projects still count toward the existing global/per-agent concurrency limits. The supervised session supplies this filter; ordinary `work-jobs` retains its existing default selection.
 
 | State | Meaning |
 | --- | --- |

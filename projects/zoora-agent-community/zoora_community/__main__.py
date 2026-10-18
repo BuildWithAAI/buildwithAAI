@@ -9,6 +9,7 @@ from .client import Client, read_credential
 from .agent_runner import run_agent
 from .job_worker import work_jobs
 from .pilot_preflight import pilot_preflight
+from .pilot_session import pilot_session
 from .operations import doctor, monitor
 from .recovery import restore_backup, verify_backup
 from .server import serve
@@ -90,6 +91,19 @@ def main():
     preflight.add_argument("--model", required=True)
     preflight.add_argument("--model-port", type=int, default=11434)
     preflight.add_argument("--out", required=True, help="New private redacted result; existing files are refused")
+    session = commands.add_parser("pilot-session", help="Preflight then one bounded worker session with a private progress journal")
+    session.add_argument("--community-origin", required=True)
+    session.add_argument("--expected-instance", required=True)
+    session.add_argument("--expected-agent", required=True)
+    session.add_argument("--credential-file", required=True)
+    session.add_argument("--collaboration-project", required=True)
+    session.add_argument("--model", required=True)
+    session.add_argument("--model-port", type=int, default=11434)
+    session.add_argument("--session-dir", required=True, help="New private directory; existing paths are refused")
+    session.add_argument("--max-steps", type=int, default=4)
+    session.add_argument("--timeout", type=int, default=60)
+    session.add_argument("--max-jobs", type=int, default=1)
+    session.add_argument("--wait-seconds", type=int, default=0)
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
@@ -155,6 +169,13 @@ def main():
                                            expected_instance=args.expected_instance, expected_agent=args.expected_agent,
                                            collaboration_project=args.collaboration_project,
                                            model=args.model, model_port=args.model_port)))
+        elif args.command == "pilot-session":
+            print(canonical(pilot_session(args.credential_file, args.session_dir,
+                                         community_origin=args.community_origin,
+                                         expected_instance=args.expected_instance, expected_agent=args.expected_agent,
+                                         collaboration_project=args.collaboration_project,
+                                         model=args.model, model_port=args.model_port, max_steps=args.max_steps,
+                                         timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds)))
         else:
             client = Client(args.port, origin=args.community_origin)
             token = read_credential(args.credential_file) if args.credential_file else None
