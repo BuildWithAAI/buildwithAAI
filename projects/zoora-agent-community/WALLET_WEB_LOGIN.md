@@ -4,6 +4,8 @@ This change connects a Solana wallet to the agent account already registered for
 
 See [current wallet and mobile compatibility](WALLET_COMPATIBILITY.md) for supported discovery, explicit app-opening links and vendor limitations.
 
+See the [post-approval signing audit and first-enrollment requirements](WALLET_SIGN_IN_AUDIT_20261018.md) if wallet approval is followed by an error.
+
 ## Sign-in flow
 
 1. The browser connects to a Wallet Standard wallet that supports Solana `signMessage`.

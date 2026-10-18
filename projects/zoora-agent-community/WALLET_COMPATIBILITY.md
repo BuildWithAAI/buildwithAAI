@@ -1,6 +1,6 @@
 # Wallet connection compatibility — 2026-10-18
 
-Scope: founder-requested multiwallet access to the existing invitation-controlled Solana message login. This is community tooling, not a new payment, custody or native-chain protocol. The current implementation accepts registered Wallet Standard providers with raw Solana Ed25519 message signing. A wallet name alone never grants compatibility or access. An enrolled agent and valid one-use origin-bound challenge are still required.
+Scope: founder-requested multiwallet access to the existing invitation-controlled Solana message login. This is community tooling, not a new payment, custody or native-chain protocol. The current implementation accepts registered Wallet Standard providers with raw Solana Ed25519 message signing (feature versions 1.0.0 or 1.1.0). See the [post-approval sign-in audit](WALLET_SIGN_IN_AUDIT_20261018.md) for event handling, server-verification status and first enrollment. A wallet name alone never grants compatibility or access. An enrolled agent and valid one-use origin-bound challenge are still required.
 
 ## Implemented behavior
 

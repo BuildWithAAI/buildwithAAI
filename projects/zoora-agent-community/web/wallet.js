@@ -4,7 +4,7 @@ globalThis.ZooraWallet = (() => {
   const wallets = new Set(), listeners = new Set();
   const valid = wallet => wallet?.version === "1.0.0" && typeof wallet.name === "string" && wallet.name.length <= 80 &&
     wallet.features?.["standard:connect"]?.version === "1.0.0" && typeof wallet.features["standard:connect"].connect === "function" &&
-    wallet.features?.["solana:signMessage"]?.version === "1.0.0" && typeof wallet.features["solana:signMessage"].signMessage === "function";
+    ["1.0.0","1.1.0"].includes(wallet.features?.["solana:signMessage"]?.version) && typeof wallet.features["solana:signMessage"].signMessage === "function";
   const notify = () => { for (const listener of listeners) listener(); };
   function register(...candidates) {
     const registered = [];
@@ -44,6 +44,7 @@ globalThis.ZooraWallet = (() => {
       account.chains.some(chain=>["solana:mainnet","solana:devnet","solana:testnet"].includes(chain)) &&
       Array.isArray(account.features) && account.features.includes("solana:signMessage");
   }
+  const accountAvailable = (wallet,account) => wallets.has(wallet) && valid(wallet) && accountValid(account) && Array.isArray(wallet.accounts) && wallet.accounts.includes(account);
   async function connect(wallet) {
     if (!wallets.has(wallet) || !valid(wallet)) throw new Error("Supported wallet unavailable.");
     const result = await wallet.features["standard:connect"].connect();
@@ -55,7 +56,7 @@ globalThis.ZooraWallet = (() => {
     return usable;
   }
   async function sign(wallet, account, challenge) {
-    if (!wallets.has(wallet) || !valid(wallet) || !accountValid(account) || !wallet.accounts.some(item=>item === account)) throw new Error("Wallet account changed. Connect again.");
+    if (!accountAvailable(wallet,account)) throw new Error("Wallet account changed. Connect again.");
     const expectedAudience=challenge.protocol==="ZOORA_AE007_RAW_ED25519_V1"?(challenge.audience==="LOCAL_ONLY"?"LOCAL_ONLY":window.location.origin):challenge.protocol==="ZOORA_AE008_RAW_ED25519_V1"?window.location.origin:null;
     if (!expectedAudience || challenge.transactions_authorized !== false || challenge.wallet !== account.address || challenge.audience !== expectedAudience || Date.now() >= challenge.expires_at_ms) throw new Error("Challenge changed, has the wrong website audience, or expired. Request a new one.");
     const message = new TextEncoder().encode(challenge.message);
@@ -63,8 +64,8 @@ globalThis.ZooraWallet = (() => {
     const outputs = await wallet.features["solana:signMessage"].signMessage({account,message});
     const result = outputs?.[0];
     if (outputs?.length !== 1 || !bytesEqual(result?.signedMessage,message) || !(result.signature instanceof Uint8Array) || result.signature.length !== 64 || (result.signatureType !== undefined && result.signatureType !== "ed25519")) throw new Error("Wallet changed the raw message or returned an unsupported signature.");
-    if (!wallet.accounts.some(item=>item === account) || Date.now() >= challenge.expires_at_ms) throw new Error("Wallet account changed or challenge expired while signing.");
+    if (!accountAvailable(wallet,account) || Date.now() >= challenge.expires_at_ms) throw new Error("Wallet account changed or challenge expired while signing.");
     return {challenge_id:challenge.challenge_id,signature:btoa(String.fromCharCode(...result.signature))};
   }
-  return Object.freeze({get:()=>[...wallets],on:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},rescan,mobileLinks,connect,sign});
+  return Object.freeze({get:()=>[...wallets],on:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},rescan,mobileLinks,accountAvailable,connect,sign});
 })();

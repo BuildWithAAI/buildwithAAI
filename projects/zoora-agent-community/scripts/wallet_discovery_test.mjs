@@ -87,3 +87,33 @@ test('a provider can withdraw using its latest duplicate-registration callback a
   h.wallet.rescan();h.wallet.rescan();assert.equal(h.wallet.get().length,1);
   remove();assert.equal(h.wallet.get().length,0);assert.deepEqual(p.calls,{connect:0,sign:0,transaction:0});
 });
+
+test('both documented signing feature versions work and unrecognized versions fail closed',async()=>{
+  for(const version of ['1.0.0','1.1.0']){
+    const h=harness(),p=fixture(version);p.provider.features['solana:signMessage'].version=version;h.api.register(p.provider);
+    assert.equal((await h.wallet.connect(p.provider))[0],p.account);
+    const message='Known signing version. No transaction.';
+    const output=await h.wallet.sign(p.provider,p.account,{protocol:'ZOORA_AE008_RAW_ED25519_V1',audience:h.window.location.origin,
+      transactions_authorized:false,wallet:p.account.address,expires_at_ms:Date.now()+60000,message,message_base64:btoa(message),challenge_id:'c'.repeat(32)});
+    assert.ok(verify(null,Buffer.from(message),p.publicKey,Buffer.from(output.signature,'base64')));
+  }
+  for(const version of ['1.2.0','2.0.0',undefined]){
+    const h=harness(),p=fixture('unsupported-version');p.provider.features['solana:signMessage'].version=version;h.api.register(p.provider);
+    assert.equal(h.wallet.get().length,0);
+  }
+});
+test('provider withdrawal during signing rejects even an otherwise valid returned signature',async()=>{
+  const h=harness(),p=fixture('sign-withdrawal');let release;
+  const original=p.provider.features['solana:signMessage'].signMessage;
+  p.provider.features['solana:signMessage'].signMessage=async input=>{await new Promise(resolve=>{release=resolve;});return original(input);};
+  const remove=h.api.register(p.provider),message='No payment. Withdrawal test.';
+  const pending=h.wallet.sign(p.provider,p.account,{protocol:'ZOORA_AE008_RAW_ED25519_V1',audience:h.window.location.origin,
+    transactions_authorized:false,wallet:p.account.address,expires_at_ms:Date.now()+60000,message,message_base64:btoa(message),challenge_id:'b'.repeat(32)});
+  remove();release();await assert.rejects(pending,/account changed/);
+});
+test('account availability ignores unrelated features but rejects account removal and signing permission loss',()=>{
+  const h=harness(),p=fixture('availability');h.api.register(p.provider);assert.equal(h.wallet.accountAvailable(p.provider,p.account),true);
+  p.provider.features['unrelated:feature']={version:'1.0.0'};assert.equal(h.wallet.accountAvailable(p.provider,p.account),true);
+  p.account.features=[];assert.equal(h.wallet.accountAvailable(p.provider,p.account),false);
+  p.account.features=['solana:signMessage'];p.provider.accounts=[];assert.equal(h.wallet.accountAvailable(p.provider,p.account),false);
+});

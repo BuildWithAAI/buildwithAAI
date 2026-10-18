@@ -35,7 +35,7 @@ try{
   const publicBytes=createPublicKey(createPrivateKey({key:der,format:'der',type:'pkcs8'})).export({format:'der',type:'spki'}).subarray(-32);
   let number=BigInt('0x'+publicBytes.toString('hex')),address='';while(number){address='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Number(number%58n)]+address;number/=58n;}for(const byte of publicBytes){if(byte)break;address='1'+address;}
   const source=`(()=>{const raw=new Uint8Array(${JSON.stringify([...publicBytes])});const account={address:${JSON.stringify(address)},publicKey:raw,chains:['solana:devnet'],features:['solana:signMessage']};let changed;
-    globalThis.walletScenario='normal';globalThis.syntheticWallet={version:'1.0.0',name:'SYNTHETIC test wallet (never fund)',chains:['solana:devnet'],accounts:[account],features:{'standard:connect':{version:'1.0.0',connect:async()=>({accounts:[account]})},'standard:events':{version:'1.0.0',on:(event,callback)=>{changed=callback;return()=>{changed=null;};}},'solana:signMessage':{version:'1.0.0',signMessage:async({message})=>{if(walletScenario==='reject')throw new Error('Fixture user declined');if(walletScenario==='defer')await new Promise(resolve=>globalThis.releaseWallet=resolve);const key=await crypto.subtle.importKey('pkcs8',new Uint8Array(${JSON.stringify([...der])}),{name:'Ed25519'},false,['sign']);const signature=new Uint8Array(await crypto.subtle.sign('Ed25519',key,message));return[{signedMessage:walletScenario==='mutate'?new Uint8Array([1,...message]):message,signature,signatureType:'ed25519'}];}}}};
+    globalThis.walletScenario='normal';globalThis.syntheticWallet={version:'1.0.0',name:'SYNTHETIC test wallet (never fund)',chains:['solana:devnet'],accounts:[account],features:{'standard:connect':{version:'1.0.0',connect:async()=>({accounts:[account]})},'standard:events':{version:'1.0.0',on:(event,callback)=>{changed=callback;return()=>{changed=null;};}},'solana:signMessage':{version:'1.1.0',signMessage:async({message})=>{if(walletScenario==='reject')throw new Error('Fixture user declined');if(walletScenario==='notify'&&changed){changed({features:syntheticWallet.features});changed({accounts:syntheticWallet.accounts});}if(walletScenario==='defer')await new Promise(resolve=>globalThis.releaseWallet=resolve);const key=await crypto.subtle.importKey('pkcs8',new Uint8Array(${JSON.stringify([...der])}),{name:'Ed25519'},false,['sign']);const signature=new Uint8Array(await crypto.subtle.sign('Ed25519',key,message));return[{signedMessage:walletScenario==='mutate'?new Uint8Array([1,...message]):message,signature:walletScenario==='bad-signature'?new Uint8Array(64):signature,signatureType:'ed25519'}];}}}};
     globalThis.changeWallet=()=>{syntheticWallet.accounts=[];if(changed)changed({accounts:[]});};
     let removeFixture=null,present=true;
     globalThis.removeFixtureWallet=()=>{present=false;removeFixture?.();removeFixture=null;};
@@ -61,6 +61,22 @@ try{
   await evaluate('window.dispatchEvent(new CustomEvent("wallet-standard:register-wallet",{detail:api=>{globalThis.removeOtherFixture=api.register({...syntheticWallet,name:"SYNTHETIC second provider (never fund)"});}}));document.getElementById("wallet-select").value="1";document.getElementById("wallet-select").dispatchEvent(new Event("change"));removeFixtureWallet()');
   check('removing an earlier provider preserves the selected wallet identity rather than its old index',await evaluate('document.getElementById("wallet-select").value==="0" && document.getElementById("wallet-select").selectedOptions[0].textContent.includes("second provider")'));
   await evaluate('removeOtherFixture();restoreFixtureWallet()');
+  async function prepareLogin(){
+    await evaluate('globalThis.walletScenario="normal";document.getElementById("connect-wallet").click()');
+    await until('!document.getElementById("wallet-login").disabled');
+    await evaluate('document.getElementById("wallet-login").click()');
+    await until('!document.getElementById("challenge-preview").hidden && !document.getElementById("sign-proof").disabled');
+  }
+  await prepareLogin();await evaluate('document.getElementById("sign-proof").click()');
+  await until('document.getElementById("wallet-login-status").textContent.includes("Enrollment required")');
+  check('a valid unregistered-wallet signature is distinguished from agent enrollment without opening access',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("challenge-preview").hidden && document.getElementById("workspace-error").hidden') && (await(await fetch(origin+'/v1/status')).json()).counts.agents===0);
+  const unknownLogin=requests.find(r=>r.method==='POST'&&r.url===origin+'/v1/wallet/login');
+  const consumedUnknown=await fetch(origin+'/v1/wallet/login',{method:'POST',headers:{'Content-Type':'application/json'},body:unknownLogin.postData});
+  check('the verified but unenrolled proof is consumed once and cannot be replayed',consumedUnknown.status===409&&(await consumedUnknown.json()).error==='CHALLENGE_CONSUMED');
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  check('post-signature enrollment guidance has no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
+  await writeFile(path.join(output,'wallet-sign-in-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  await send('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
   async function openCredential(filename){const root=(await send('DOM.getDocument')).root.nodeId;const input=(await send('DOM.querySelector',{nodeId:root,selector:'#credential-file'})).nodeId;await send('DOM.setFileInputFiles',{nodeId:input,files:[filename]});}
   await openCredential(path.join(folder,'owner.credential.json'));await until('!document.getElementById("operator-form").hidden');
   check('owner credential file authenticated by real API',await evaluate('document.getElementById("session-status").textContent.startsWith("OWNER")'));
@@ -94,6 +110,28 @@ try{
   const agentFile=path.join(folder,'zoora-agent.credential.json');
   for(let n=0;n<100;n++){try{JSON.parse(await readFile(agentFile,'utf8'));break;}catch{await new Promise(r=>setTimeout(r,50));}}
   const agent=JSON.parse(await readFile(agentFile,'utf8'));
+  await evaluate('document.getElementById("sign-out").click()');
+  await prepareLogin();
+  await evaluate('globalThis.loginOriginalFetch=fetch;globalThis.deferLogin=true;globalThis.fetch=async(input,options)=>{const response=await loginOriginalFetch(input,options);if(input==="/v1/wallet/login"&&deferLogin){deferLogin=false;await new Promise(resolve=>globalThis.releaseLoginResponse=resolve);}return response;};document.getElementById("sign-proof").click()');
+  await until('typeof globalThis.releaseLoginResponse==="function"');
+  await evaluate('document.getElementById("cancel-proof").click();globalThis.releaseLoginResponse()');await until('!document.getElementById("connect-wallet").disabled');
+  check('cancel after a committed login response cannot restore a local session',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("challenge-preview").hidden && document.getElementById("workspace-error").hidden'));
+  await evaluate('globalThis.fetch=globalThis.loginOriginalFetch');
+  await prepareLogin();
+  await evaluate('globalThis.loginOriginalFetch=fetch;globalThis.deferLoginMe=true;globalThis.fetch=async(input,options)=>{const response=await loginOriginalFetch(input,options);if(input==="/v1/me"&&deferLoginMe){deferLoginMe=false;await new Promise(resolve=>globalThis.releaseLoginMe=resolve);}return response;};document.getElementById("sign-proof").click()');
+  await until('typeof globalThis.releaseLoginMe==="function"');
+  await evaluate('document.getElementById("cancel-proof").click();globalThis.releaseLoginMe()');await until('!document.getElementById("connect-wallet").disabled');
+  check('cancel while verifying the issued credential cannot restore a local session',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("challenge-preview").hidden'));
+  await evaluate('globalThis.fetch=globalThis.loginOriginalFetch');
+  await prepareLogin();
+  const beforeRejectedLogin=requests.filter(r=>r.method==='POST'&&r.url===origin+'/v1/wallet/login').length;
+  await evaluate('globalThis.walletScenario="reject";document.getElementById("sign-proof").click()');await until('document.getElementById("wallet-login-status").textContent.includes("Signing did not complete")');
+  check('declining a wallet login sends no signature to the service',requests.filter(r=>r.method==='POST'&&r.url===origin+'/v1/wallet/login').length===beforeRejectedLogin && await evaluate('document.getElementById("session-status").textContent==="Signed out"'));
+  await evaluate('globalThis.walletScenario="bad-signature";document.getElementById("sign-proof").click()');await until('document.getElementById("wallet-login-status").textContent.includes("signature was rejected")');
+  check('server rejection after wallet approval never claims verified control or opens a session',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("workspace-error").textContent.includes("WALLET_SIGNATURE_REJECTED")'));
+  await evaluate('globalThis.walletScenario="notify";document.getElementById("sign-proof").click()');await until('!document.getElementById("agent-workspace").hidden');
+  check('feature-only and unchanged-account notifications preserve a real server-verified wallet login',await evaluate(`document.getElementById("session-status").textContent.includes(${JSON.stringify(agent.principal_id)}) && document.getElementById("workspace-result").textContent.includes("Wallet control verified") && document.getElementById("save-issued").hidden`));
+
   const proof=await(await fetch(origin+'/v1/agents/'+agent.principal_id+'/wallet-proof')).json();
   check('server retained verifiable historical proof',proof.status==='SIGNATURE_VERIFIED'&&proof.wallet===address);
   await fill('project-form',{title:'AE009 browser project',summary:'Actual writes from a synthetic wallet fixture'});await until('document.getElementById("workspace-result").textContent.startsWith("Recorded")');
@@ -266,6 +304,11 @@ try{
   check('owner operator suspension revokes the invitation-issued credential',(await fetch(origin+'/v1/me',{headers:{Authorization:'Bearer '+invitedCredential.token}})).status===401);
   await evaluate('document.getElementById("sign-out").click()');
   check('sign out clears invitation secret and private access records',await evaluate('document.getElementById("invitation-link").value===""&&document.getElementById("operator-list").textContent===""&&document.getElementById("managed-agent-list").textContent===""&&document.getElementById("pilot-panel").hidden'));
+  const suspendedForLogin=await fetch(origin+'/v1/agents/'+agent.principal_id+'/suspend',{method:'POST',headers:{Authorization:'Bearer '+owner.token,'Content-Type':'application/json'},body:JSON.stringify({reason:'Explicit login denial fixture'})});
+  check('owner can suspend the fixture before the final login denial',suspendedForLogin.ok);
+  await prepareLogin();await evaluate('document.getElementById("sign-proof").click()');
+  await until('document.getElementById("wallet-login-status").textContent.includes("access is suspended")');
+  check('a verified suspended-agent signature cannot bypass invitation or access controls',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("challenge-preview").hidden && document.getElementById("workspace-error").textContent.includes("AGENT_ACCESS_SUSPENDED")'));
   const audit=JSON.parse(execFileSync(python,['-bb','-X','dev','-W','error','-m','zoora_community','audit','--state',path.join(folder,'state')],{encoding:'utf8'}));
   check('authored state and wallet proof pass full offline audit',audit.database_integrity==='OK');
   check('no uncaught browser exceptions',exceptions.length===0);
