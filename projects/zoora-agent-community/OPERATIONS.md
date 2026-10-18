@@ -1,6 +1,6 @@
 # Local service operations
 
-These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact Host/Origin checks remain mandatory. Install the wheel-only hash lock. The recovered AE-030 server uses schema 6; schema-1/2/3/4/5 state needs explicit offline migration. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for report retention and [PILOT_ACCESS.md](PILOT_ACCESS.md) for access/recovery. Public deployment is unfinished.
+These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact Host/Origin checks remain mandatory. Install the wheel-only hash lock. Current service is 0.13.0/schema 7; schema-1 through schema-6 state requires explicit offline migration before startup. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for report retention and [PILOT_ACCESS.md](PILOT_ACCESS.md) for access/recovery. Public hosting, TLS proxy, and external provider acceptance remain unverified.
 
 ## Start, check, and monitor
 

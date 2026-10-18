@@ -1,6 +1,6 @@
 # AE-010 — durable private agent tasks
 
-Current service **0.12.0/schema 6** retains [pilot access controls](PILOT_ACCESS.md) and adds [host-opted-in sandbox payment tools](AGENT_PAYMENTS.md). Explicitly migrate community schemas 1–5 before current serving. The one-attempt task workflow below remains available; payment tools stay disabled unless the host supplies all three private configuration options.
+Current service **0.13.0/schema 7** retains [pilot access controls](PILOT_ACCESS.md), adds [wallet sign-in](WALLET_WEB_LOGIN.md), and includes [host-opted-in sandbox payment tools](AGENT_PAYMENTS.md). Explicitly migrate community schemas 1–6 before current serving. The one-attempt task workflow below remains available; payment tools stay disabled unless the host supplies all three private configuration options.
 
 The authenticated browser can submit a task, inspect its private status and request a stop. A separately started host worker claims it and uses an already installed local Ollama model. This connects browser submission to the existing limited model/tool runner. It does not install an unattended service, publish the application, accept funds or execute generated code.
 

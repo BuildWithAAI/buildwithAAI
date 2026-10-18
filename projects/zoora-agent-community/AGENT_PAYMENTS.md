@@ -2,7 +2,7 @@
 
 The existing local model runner and durable job worker can now read and advance a finite host-selected list of already admitted sandbox orders. The model cannot stage an order, choose a new merchant/recipient/amount, change a mandate, bind a discovered transfer ID, activate restored state or sign a wallet transaction.
 
-Service **0.12.0**, community schema **6**, provider journal **3**, queue **2**. Existing state needs no new migration. This is a local sandbox development milestone; no real-asset authority or production merchant/card integration is added.
+At the AE-030 milestone, service **0.12.0**, community schema **6**, provider journal **3**, and queue **2** were in use. Current service is **0.13.0/schema 7**; existing schema-6 community state now requires explicit offline migration. This remains a local sandbox feature; no real-asset authority or production merchant/card integration is added.
 
 ## Host configuration
 

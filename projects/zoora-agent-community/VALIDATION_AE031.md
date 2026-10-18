@@ -14,11 +14,12 @@ The sign-in message authorizes account access only. It cannot authorize a token 
 
 | Check | Result |
 |---|---:|
-| Full Python suite, CPython 3.12.14, SQLite 3.53.1 | 584 passed |
-| Full Python suite under optimized mode | 584 passed |
+| Full Python suite, CPython 3.12.14, SQLite 3.53.1 | 585 passed |
+| Full Python suite under optimized mode | 585 passed |
 | Wallet login cases | 6 passed |
 | Wallet proof cases, including HTTPS-origin enrollment | 14 passed |
 | Migration cases, including schema 6 → 7 with preserved credential and backup | 10 passed |
+| Research export of origin-bound operator wallet proof | 1 regression passed |
 | Integration evidence workflow | 7 checks passed |
 | Local operations/recovery evidence workflow | 7 checks passed; 3 monitor samples |
 | Python compile, JavaScript syntax, `git diff --check` | passed |

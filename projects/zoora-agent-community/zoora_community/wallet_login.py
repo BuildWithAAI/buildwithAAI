@@ -16,7 +16,7 @@ CHALLENGE_RATE_PER_WALLET = 5
 CHALLENGE_RATE_GLOBAL = 120
 
 
-def _audience(value):
+def validate_audience(value):
     if value is None or value == "LOCAL_ONLY":
         return "LOCAL_ONLY"
     if type(value) is not str or len(value) > 255 or "\n" in value or "\r" in value:
@@ -32,7 +32,7 @@ def _audience(value):
 
 
 def public_origin(value):
-    origin = _audience(value)
+    origin = validate_audience(value)
     if not origin.startswith("https://"):
         raise Problem(400, "HTTPS_PUBLIC_ORIGIN_REQUIRED")
     return origin
@@ -55,7 +55,7 @@ class WalletLoginMethods:
         raw_key = decode_base58(address, 32, "INVALID_WALLET_ADDRESS")
         if not crypto_core_ed25519_is_valid_point(raw_key):
             raise Problem(403, "WALLET_KEY_REJECTED")
-        audience = _audience(audience)
+        audience = validate_audience(audience)
         connection.execute("DELETE FROM wallet_login_challenges WHERE created_ms<?", (at - CHALLENGE_RETENTION_MS,))
         count = connection.execute("SELECT COUNT(*) FROM wallet_login_challenges WHERE wallet=? AND created_ms>=?",
                                    (address, at - 60_000)).fetchone()[0]
@@ -131,7 +131,7 @@ class WalletLoginMethods:
             if (not crypto_core_ed25519_is_valid_point(raw_key) or len(row["nonce"]) != 64
                     or any(char not in "0123456789abcdef" for char in row["nonce"])
                     or row["expires_ms"] != row["created_ms"] + CHALLENGE_TTL_MS
-                    or _audience(row["audience"]) != row["audience"]
+                    or validate_audience(row["audience"]) != row["audience"]
                     or login_message(instance, address, row["nonce"], row["created_ms"],
                                      row["expires_ms"], row["audience"]) != row["message"]):
                 raise Problem(503, "WALLET_LOGIN_CONSISTENCY_FAILURE")

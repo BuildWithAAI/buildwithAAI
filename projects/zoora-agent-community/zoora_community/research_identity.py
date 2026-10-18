@@ -13,6 +13,7 @@ from .wallet_proof import (
     signature_bytes,
     verify_signature,
 )
+from .wallet_login import validate_audience
 
 MODEL = "zoora-research-ownership-snapshot/0.1.0"
 CLASSIFICATION = "DERIVED_LOCAL_ENROLLMENT_SNAPSHOT"
@@ -30,6 +31,23 @@ def integer(value, low=0, high=2**63 - 1):
     if type(value) is not int or not low <= value <= high:
         raise Problem(400, "INVALID_RESEARCH_INTEGER")
     return value
+
+
+def _challenge_audience(message):
+    prefix = (
+        "Zoora community wallet ownership proof\n"
+        "Signing proves control at this time. No payment or transaction is authorized.\n"
+        "Audience: "
+    )
+    if type(message) is not str or not message.startswith(prefix):
+        raise Problem(400, "INVALID_RESEARCH_SNAPSHOT")
+    audience = message[len(prefix):].split("\n", 1)[0]
+    if audience == "LOCAL_ONLY / 127.0.0.1":
+        return audience
+    try:
+        return validate_audience(audience)
+    except Problem:
+        raise Problem(400, "INVALID_RESEARCH_SNAPSHOT") from None
 
 
 def selection(body):
@@ -133,8 +151,9 @@ def verify_snapshot(value, expected=None):
             raise Problem(400, "INVALID_RESEARCH_PROOF_TIME")
         principal = dict(role="OPERATOR", principal_id=op, id=credential)
         purpose = "REGISTER_AGENT" if p["agent_binding"] is None else "VERIFY_EXISTING_AGENT"
+        audience = _challenge_audience(p["message"])
         message = challenge_message(
-            instance, principal, payload, purpose, p["agent_binding"], nonce, issued
+            instance, principal, payload, purpose, p["agent_binding"], nonce, issued, audience
         )
         if message != p["message"]:
             raise Problem(409, "RESEARCH_AFFILIATION_BINDING_MISMATCH")

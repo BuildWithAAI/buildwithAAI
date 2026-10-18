@@ -61,6 +61,24 @@ class ResearchIdentityTests(unittest.TestCase):
         self.assertLess(len(canonical(s)), 512 * 1024)
         self.f.store.audit()
 
+    def test_origin_bound_operator_proof_remains_exportable_for_research(self):
+        origin = "https://economy.example"
+        route = "/v1/agents/" + self.ids[0]
+        challenge = self.f.store.call(
+            "POST", route + "/wallet-challenges", {}, self.ops[0][1], audience=origin
+        )[1]
+        self.f.store.call(
+            "POST",
+            route + "/wallet-proof",
+            signed_body(challenge, "research_agent_0"),
+            self.ops[0][1],
+            audience=origin,
+        )
+        snapshot = self.snapshot()
+        proof = snapshot["agents"][0]["affiliation_proof"]
+        self.assertIn("Audience: " + origin, proof["message"])
+        verify_snapshot(snapshot, snapshot["fingerprint"])
+
     def test_only_active_owner_can_export(self):
         for token, code in [
             (None, "UNAUTHORIZED"),
