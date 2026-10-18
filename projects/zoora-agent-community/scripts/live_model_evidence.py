@@ -227,6 +227,12 @@ def run():
             assert credential["token"] not in canonical(payment_candidate) + payment_run.stdout + payment_run.stderr
             assert KEY not in canonical(payment_candidate) + payment_run.stdout + payment_run.stderr
             checks.append("actual local model selected a host-scoped order and advanced one immutable sandbox instruction through local TLS only")
+            # The supervised pilot also publishes into queued_project. Artifact
+            # pagination sorts by random ID, not age; the original queued report
+            # is not necessarily the first item once both reports exist.
+            queued_artifacts = running.client.request("GET", "/v1/projects/" + queued_project["id"] + "/artifacts")[1]["items"]
+            assert len(queued_artifacts) == 2 and queued_artifact in queued_artifacts
+            assert len({item["id"] for item in queued_artifacts}) == 2
         finally:
             running.stop()
         restarted = Running(state, folder)
@@ -234,9 +240,9 @@ def run():
             again = restarted.client.request("GET", "/v1/projects/" + project["id"] + "/artifacts")[1]["items"][0]
             assert again == artifact
             assert restarted.client.request("GET", "/v1/jobs/" + submitted["id"], token=credential["token"])[1] == terminal
-            assert restarted.client.request("GET", "/v1/projects/" + queued_project["id"] + "/artifacts")[1]["items"][0] == queued_artifact
+            assert restarted.client.request("GET", "/v1/projects/" + queued_project["id"] + "/artifacts")[1]["items"] == queued_artifacts
             assert Store(state).audit()["database_integrity"] == "OK"
-            checks.append("fresh service process retained the model report reference and passed full evidence audit")
+            checks.append("fresh service process retained both queued-project report records and the original model report reference and passed full evidence audit")
         finally:
             restarted.stop()
         # Read the provider's actual installed model manifest digest, not the mutable tag alone.
