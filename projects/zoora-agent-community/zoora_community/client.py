@@ -88,6 +88,7 @@ class Client:
         if self.expected_agent is not None and self.expected_instance is None:
             raise Problem(400, "WORKER_CONNECTION_PINS_REQUIRED")
         self.deadline = None
+        self._tls_context = None
 
     def binding(self):
         return {"enforced": self.expected_instance is not None,
@@ -144,8 +145,13 @@ class Client:
         remaining = 12 if deadline is None else min(12, deadline - time.monotonic())
         if remaining <= 0:
             raise Problem(504, "RUN_DEADLINE")
+        # Loading OS trust roots can be expensive on Windows. Reuse one verified
+        # context for this bounded client, retaining fresh HTTPS connections and
+        # hostname/certificate checks. A new client reloads the current roots.
+        if self.origin is not None and self._tls_context is None:
+            self._tls_context = ssl.create_default_context()
         connection = (http.client.HTTPSConnection(self.host, self.port, timeout=remaining,
-                      context=ssl.create_default_context()) if self.origin is not None else
+                      context=self._tls_context) if self.origin is not None else
                       http.client.HTTPConnection("127.0.0.1", self.port, timeout=remaining))
         response = None
         timer = None

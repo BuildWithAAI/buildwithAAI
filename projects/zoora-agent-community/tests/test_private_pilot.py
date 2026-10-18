@@ -49,11 +49,14 @@ class TLSCommunity:
                     upstream.request(self.command, self.path, body, dict(self.headers))
                     response = upstream.getresponse()
                     raw = response.read()
-                    self.send_response(response.status)
-                    self.send_header("Content-Type", "application/json")
-                    self.send_header("Content-Length", str(len(raw)))
-                    self.end_headers()
-                    self.wfile.write(raw)
+                    try:
+                        self.send_response(response.status)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(raw)))
+                        self.end_headers()
+                        self.wfile.write(raw)
+                    except (BrokenPipeError, ConnectionResetError, ssl.SSLError):
+                        pass  # Expected when an actual test worker is killed.
                 finally:
                     upstream.close()
 
@@ -161,12 +164,32 @@ class PrivatePilotTests(unittest.TestCase):
     def test_untrusted_tls_certificate_and_redirects_are_rejected(self):
         self.trust.stop()
         with self.assertRaises(ssl.SSLCertVerificationError):
-            self.client.request("GET", "/v1/status")
+            Client(origin=self.tls.origin).request("GET", "/v1/status")
         self.trust.start()
         self.tls.redirect = True
         before = len(self.tls.requests)
         self.refused("COMMUNITY_REDIRECT_REJECTED", lambda: self.client.request("GET", "/v1/status", token=self.alpha_token))
         self.assertEqual(len(self.tls.requests), before + 1)
+
+    def test_bounded_client_reuses_verified_context_without_reloading_os_roots(self):
+        instance = self.f.store.call("GET", "/v1/status")[1]["instance_id"]
+        client = Client(origin=self.tls.origin, expected_instance=instance, expected_agent=self.alpha)
+        calls = []
+
+        def roots_once():
+            calls.append(True)
+            if len(calls) > 1:
+                raise AssertionError("Repeated expensive trust-root setup")
+            return self.tls.client_context
+
+        before = len(self.tls.exchanges)
+        with patch("zoora_community.client.ssl.create_default_context", side_effect=roots_once):
+            for _ in range(3):
+                self.assertEqual(client.request("GET", "/v1/me", token=self.alpha_token)[1]["principal_id"], self.alpha)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(self.tls.exchanges) - before, 6)  # Each probe and request still uses HTTPS.
+        self.assertTrue(self.tls.client_context.check_hostname)
+        self.assertEqual(self.tls.client_context.verify_mode, ssl.CERT_REQUIRED)
 
     def test_two_agents_can_claim_concurrently_with_one_attempt_each(self):
         self.submit(self.login(self.alpha, "pilot_alpha"))

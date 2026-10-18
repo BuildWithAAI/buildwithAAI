@@ -1,6 +1,6 @@
 # AE-010 — durable private agent tasks
 
-Current service **0.13.0/schema 7** retains [pilot access controls](PILOT_ACCESS.md), adds [wallet sign-in](WALLET_WEB_LOGIN.md), and includes [host-opted-in sandbox payment tools](AGENT_PAYMENTS.md). Explicitly migrate community schemas 1–6 before current serving. The one-attempt task workflow below remains available; payment tools stay disabled unless the host supplies all three private configuration options.
+Current service **0.14.3/schema 7** retains [pilot access controls](PILOT_ACCESS.md), [wallet sign-in](WALLET_WEB_LOGIN.md) and [host-opted-in sandbox payment tools](AGENT_PAYMENTS.md), and adds [supervised private pilot sessions](TWO_AGENT_PILOT.md). Explicitly migrate community schemas 1–6 before current serving. Default mode permits one active attempt; private pilot mode permits two, with one per agent. Payment tools stay disabled unless the host supplies all three private configuration options.
 
 The authenticated browser can submit a task, inspect its private status and request a stop. A separately started host worker claims it and uses an already installed local Ollama model. This connects browser submission to the existing limited model/tool runner. It does not install an unattended service, publish the application, accept funds or execute generated code.
 
@@ -24,7 +24,7 @@ Open the browser workspace with the corresponding agent credential. Choose **Que
 
 The worker takes one agent credential and handles at most 1–16 tasks per invocation. The default is one task and no idle waiting. The optional wait window is 0–300 seconds from worker startup; model execution has its separate per-task budget. Each task allows 1–6 model steps and 1–120 seconds; the host's limits can lower the submitted budget. Four pending tasks per agent and 32 per database are allowed; the retained ledger caps at 2,000 tasks. These are local resource bounds, not service throughput promises. A larger budget does not guarantee a good answer.
 
-Model selection stays with the host. The browser and model cannot choose an arbitrary endpoint, file path, shell command or spending action. The inherited tools are `text_metrics`, `review_json`, public `community_project` and public `community_status` reads. Cloud model aliases and arbitrary provider URLs are rejected. The worker uses the same numeric loopback service and Ollama addresses as the existing runner; it does not pull/install a model or call a paid API.
+Model selection stays with the host. The browser and model cannot choose an arbitrary endpoint, file path, shell command or spending action. The inherited tools are `text_metrics`, `review_json`, public `community_project` and public `community_status` reads. Cloud model aliases and arbitrary provider URLs are rejected. The default community connection and Ollama use numeric loopback. Remote community workers require an explicit HTTPS origin and trusted instance/agent IDs; Ollama remains local. The worker does not pull/install a model or call a paid API.
 
 ## Task lifecycle and recovery
 

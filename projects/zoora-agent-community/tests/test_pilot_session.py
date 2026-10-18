@@ -76,6 +76,23 @@ class PilotSessionTests(unittest.TestCase):
     def environment(self):
         return {**os.environ, "SSL_CERT_FILE": str(Path(__file__).parent / "fixtures/bridge-localhost-cert.pem")}
 
+    def failure_evidence(self, folder):
+        """Retain fixed failure context in CI, never private prompts or outputs."""
+        result = {"phases": [], "reports": []}
+        try:
+            rows = [json.loads(line) for line in (folder / "session.jsonl").read_bytes().splitlines()]
+            result["phases"] = [{key: row[key] for key in ("phase", "state", "stage", "error_code") if key in row} for row in rows]
+        except (OSError, ValueError):
+            result["journal_unreadable"] = True
+        for path in (folder / "reports").glob("*.json"):
+            try:
+                report = json.loads(path.read_bytes())
+                result["reports"].append({"state": report["state"], "error": report.get("error"),
+                                          "steps": len(report["steps"]), "last_model_response": report.get("last_model_response")})
+            except (OSError, ValueError, KeyError, TypeError):
+                result["report_unreadable"] = True
+        return canonical(result)
+
     def test_actual_cli_success_keeps_ordered_redacted_journal_and_bound_report(self):
         job = self.submit()
         completed = subprocess.run(self.command(), env=self.environment(), capture_output=True, text=True, timeout=30)
@@ -140,9 +157,9 @@ class PilotSessionTests(unittest.TestCase):
             jobs = self.f.store.call("GET", "/v1/jobs", token=self.operator)[1]["items"]
             self.assertEqual({job["agent_id"] for job in jobs if job["state"] == "RUNNING"}, {self.agent, self.peer})
             gate.set()
-            for child in children:
+            for child, folder in zip(children, folders, strict=True):
                 stdout, stderr = child.communicate(timeout=40)
-                self.assertEqual(child.returncode, 0, stderr)
+                self.assertEqual(child.returncode, 0, stderr + "\n" + self.failure_evidence(folder))
                 self.assertEqual(json.loads(stdout)["jobs_processed"], 1)
             for folder in folders:
                 rows = [json.loads(line) for line in (folder / "session.jsonl").read_bytes().splitlines()]
