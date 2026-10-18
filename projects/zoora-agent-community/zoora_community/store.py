@@ -11,7 +11,7 @@ import time
 import uuid
 from contextlib import closing
 
-from . import VERSION
+from . import CONNECTION_BINDING, VERSION
 from .validation import (
     DIGEST, MAX_BODY, TOKEN, Problem, boolean, canonical, capabilities, fields,
     handle, identifier, matching, object_value, text,
@@ -350,7 +350,8 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
             flags.append("WALLET_CONTROL_PROVEN_AT_RECORDED_TIME")
         return result
 
-    def call(self, method, route, body=None, token=None, limit=50, after="", audience=None):
+    def call(self, method, route, body=None, token=None, limit=50, after="", audience=None,
+             expected_instance=None, expected_agent=None):
         if self.schema_version != SCHEMA_VERSION:
             raise Problem(503, "MIGRATION_REQUIRED")
         if method not in {"GET", "POST", "PATCH"}:
@@ -368,14 +369,28 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
             raise Problem(400, "INVALID_PAGINATION")
         if after:
             identifier(after)
+        if expected_instance is not None:
+            identifier(expected_instance)
+        if expected_agent is not None:
+            identifier(expected_agent)
+            if expected_instance is None:
+                raise Problem(400, "WORKER_CONNECTION_PINS_REQUIRED")
         connection = self._connection()
         try:
             self._check_schema(connection)
             connection.execute("BEGIN" if method == "GET" else "BEGIN IMMEDIATE")
+            if expected_instance is not None:
+                instance = connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()
+                if instance is None or instance[0] != expected_instance:
+                    raise Problem(409, "COMMUNITY_INSTANCE_MISMATCH")
             at = self.clock()
             last = connection.execute("SELECT at_ms FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
             if last and at < last[0]:
                 raise Problem(503, "CLOCK_REGRESSION")
+            if expected_agent is not None:
+                bound = self._authenticate(connection, token, at)
+                if bound["role"] != "AGENT" or bound["principal_id"] != expected_agent:
+                    raise Problem(403, "COMMUNITY_AGENT_MISMATCH")
             if method == "GET":
                 if body:
                     raise Problem(400, "INVALID_FIELDS")
@@ -443,6 +458,7 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
             return self._observations_read(connection, route, limit, after)
         if route == "/v1/status":
             return 200, {"schema_version": SCHEMA_VERSION, "service": "zoora-agent-community/" + VERSION,
+                         "connection_binding": CONNECTION_BINDING,
                          "mode": "PUBLIC_BEHIND_TRUSTED_TLS_PROXY" if self.public_origin else "LOCAL_ONLY", "observed_at_ms": at,
                          "visibility": "PRIVATE_PILOT" if self.private_pilot else "PUBLIC_RECORDS",
                          "instance_id": connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()[0],

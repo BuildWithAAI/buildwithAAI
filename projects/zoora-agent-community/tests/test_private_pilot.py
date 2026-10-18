@@ -27,6 +27,7 @@ class TLSCommunity:
     def __init__(self, store):
         fixture = self
         self.requests = []
+        self.exchanges = []
         self.redirect = False
 
         class Proxy(BaseHTTPRequestHandler):
@@ -35,6 +36,7 @@ class TLSCommunity:
 
             def do_GET(self):
                 fixture.requests.append(self.path)
+                fixture.exchanges.append((self.command, self.path, self.headers.get("Authorization") is not None))
                 if fixture.redirect:
                     self.send_response(302)
                     self.send_header("Location", "https://example.invalid/never-follow")
@@ -131,8 +133,11 @@ class PrivatePilotTests(unittest.TestCase):
             self.addCleanup(model.stop)
             result = work_jobs(self.credential_file(token, label), self.f.root / (label + "-reports"),
                 model="synthetic-fixture", model_port=model.port, community_origin=self.tls.origin,
+                expected_instance=self.client.request("GET", "/v1/status")[1]["instance_id"], expected_agent=agent_id,
                 collaboration_project=self.project, max_steps=4)
             self.assertEqual(result["mode"], "REMOTE_HTTPS_COMMUNITY")
+            self.assertTrue(result["connection_binding"]["enforced"])
+            self.assertEqual(result["connection_binding"]["expected_agent_id"], agent_id)
             self.assertEqual(result["jobs"][0]["state"], "SUCCEEDED")
             status = self.client.request("GET", "/v1/agents/" + agent_id + "/activity", token=login["token"])[1]
             self.assertEqual(status["runtime"]["counts"]["SUCCEEDED"], 1)

@@ -9,7 +9,7 @@ import socket
 import threading
 import time
 
-from .client import Client, read_credential
+from .client import agent_client, read_credential
 from .collaboration import COLLABORATION_NAMES, COLLABORATION_TOOLS, CollaborationScope
 from .agent_payments import PAYMENT_NAMES, PAYMENT_SYSTEM, PAYMENT_TOOLS, configuration
 from .store import exclusive_file, now_ms
@@ -195,10 +195,11 @@ def run_tool(action, client, token=None, collaboration=None):
 def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=11434,
               max_steps=4, timeout=60, project_id=None, _task=None, _guard=None, _context=None,
               _output=None, payment_state=None, sandbox_key_file=None, payment_scope_file=None,
-              community_origin=None, collaboration_project=None):
+              community_origin=None, collaboration_project=None, expected_instance=None, expected_agent=None):
     if (type(max_steps) is not int or not 1 <= max_steps <= 6
             or type(timeout) is not int or not 1 <= timeout <= 120):
         raise Problem(400, "INVALID_RUN_LIMITS")
+    client = agent_client(port, origin=community_origin, expected_instance=expected_instance, expected_agent=expected_agent)
     payments = configuration(payment_state, sandbox_key_file, payment_scope_file)
     collaboration = CollaborationScope(collaboration_project) if collaboration_project is not None else None
     provider = LocalModel(model, model_port, payment_tools=payments is not None, collaboration_tools=collaboration is not None)
@@ -215,7 +216,6 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
         task = _task
     fields(task, ("prompt",))
     prompt = text(task["prompt"], 4096)
-    client = Client(port, origin=community_origin)
     principal = client.request("GET", "/v1/me", token=token)[1]
     if principal["role"] != "AGENT":
         raise Problem(403, "AGENT_REQUIRED")
@@ -227,6 +227,7 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
               "source": "ZOORA_AE009_LOCAL_RUNNER_V1", "classification": "LEARNED",
               "started_at_ms": now_ms(), "available_at_ms": None, "state": "UNVERIFIED",
               "max_steps": max_steps, "timeout_seconds": timeout, "steps": [], "output": None,
+              "connection_binding": client.binding(),
               "slot": None, "commitment": None, "transformation_version": 1,
               "missingness": ["independent_model_attestation", "output_correctness", "solana_slot", "chain_commitment"],
               "quality_flags": ["MODEL_OUTPUT_NOT_EXECUTED", "NO_SPENDING_AUTHORITY", "NOT_PROOF_OF_INDEPENDENT_AGENT"]}
@@ -264,6 +265,8 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
             if finish_only:
                 messages.append({"role": "user", "content": "Write the requested deliverable now, using the original task and observed tool results above. No more tool calls are available."})
             action, evidence = provider.next_action(messages, deadline, finish_only=finish_only)
+            if expected_instance is not None and client.request("GET", "/v1/me", token=token)[1] != principal:
+                raise Problem(403, "RUN_AUTH_CHANGED")
             if _guard is not None:
                 _guard(deadline)
             fields(action, ("action", "arguments"))
@@ -313,6 +316,7 @@ def run_agent(credential_file, task_file, out, *, model, port=8765, model_port=1
     result = {"state": report["state"], "steps": len(report["steps"]),
               "report_sha256": hashlib.sha256(raw).hexdigest(), "classification": "LEARNED",
               "report_saved": True, "artifact_declared": False}
+    result["connection_binding"] = client.binding()
     if project_id is not None:
         client.deadline = None  # Separate explicitly requested publication; ordinary API timeout applies.
         # Explicit CLI option chooses this exact mutation. The model cannot select a publication target.

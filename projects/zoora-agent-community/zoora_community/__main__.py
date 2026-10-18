@@ -75,6 +75,8 @@ def main():
     worker.add_argument("--wait-seconds", type=int, default=0)
     for target in (agent_run, worker):
         target.add_argument("--community-origin", help="Exact operator-selected HTTPS community origin; local model stays on this PC")
+        target.add_argument("--expected-instance", help="Trusted instance ID; required with --community-origin")
+        target.add_argument("--expected-agent", help="This host's enrolled agent ID; required with --community-origin")
         target.add_argument("--collaboration-project", help="Explicit project scope; enables bounded internal discussion tools")
         target.add_argument("--payment-state", type=Path, help="Explicit private sandbox purchase queue")
         target.add_argument("--sandbox-key-file", type=Path, help="Private sk-test credential; never exposed to the model")
@@ -137,14 +139,16 @@ def main():
                                      max_steps=args.max_steps, timeout=args.timeout, project_id=args.project,
                                      payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
                                      payment_scope_file=args.payment_scope_file, community_origin=args.community_origin,
-                                     collaboration_project=args.collaboration_project)))
+                                     collaboration_project=args.collaboration_project,
+                                     expected_instance=args.expected_instance, expected_agent=args.expected_agent)))
         elif args.command == "work-jobs":
             print(canonical(work_jobs(args.credential_file, args.out_dir, model=args.model,
                                      port=args.port, model_port=args.model_port, max_steps=args.max_steps,
                                      timeout=args.timeout, max_jobs=args.max_jobs, wait_seconds=args.wait_seconds,
                                      payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
                                      payment_scope_file=args.payment_scope_file, community_origin=args.community_origin,
-                                     collaboration_project=args.collaboration_project)))
+                                     collaboration_project=args.collaboration_project,
+                                     expected_instance=args.expected_instance, expected_agent=args.expected_agent)))
         elif args.command == "pilot-preflight":
             print(canonical(pilot_preflight(args.credential_file, args.out,
                                            community_origin=args.community_origin,

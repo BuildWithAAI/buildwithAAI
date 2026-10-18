@@ -13,7 +13,7 @@ import time
 
 from .agent_runner import MAX_REPORT, LocalModel, run_agent
 from .agent_payments import configuration
-from .client import Client, read_credential
+from .client import agent_client, read_credential
 from .collaboration import CollaborationScope
 from .jobs import SIGNAL_INTERVAL_MS, bounded
 from .store import exclusive_file, private_regular
@@ -62,7 +62,7 @@ def complete(client, token, job, payload):
 def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
               max_steps=4, timeout=60, max_jobs=1, wait_seconds=0,
               payment_state=None, sandbox_key_file=None, payment_scope_file=None,
-              community_origin=None, collaboration_project=None):
+              community_origin=None, collaboration_project=None, expected_instance=None, expected_agent=None):
     bounded(max_steps, 1, 6, "INVALID_RUN_LIMIT")
     bounded(timeout, 1, 120, "INVALID_RUN_LIMIT")
     bounded(max_jobs, 1, 16, "INVALID_WORKER_LIMIT")
@@ -71,7 +71,7 @@ def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
     configuration(payment_state, sandbox_key_file, payment_scope_file)  # Validate host files before claiming a task.
     if collaboration_project is not None:
         CollaborationScope(collaboration_project)
-    client = Client(port, origin=community_origin)
+    client = agent_client(port, origin=community_origin, expected_instance=expected_instance, expected_agent=expected_agent)
     token = read_credential(credential_file)
     principal = client.request("GET", "/v1/me", token=token)[1]
     if principal["role"] != "AGENT":
@@ -130,7 +130,8 @@ def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
                       _task={"prompt": job["prompt"]}, _guard=guard,
                       _context={"job_id": job["id"], "attempt_id": job["attempt_id"]}, _output=output,
                       payment_state=payment_state, sandbox_key_file=sandbox_key_file, payment_scope_file=payment_scope_file,
-                      community_origin=community_origin, collaboration_project=collaboration_project)
+                      community_origin=community_origin, collaboration_project=collaboration_project,
+                      expected_instance=expected_instance, expected_agent=expected_agent)
         except Problem as problem:
             error = problem.code
         except (OSError, ValueError, http.client.HTTPException):
@@ -160,4 +161,5 @@ def work_jobs(credential_file, out_dir, *, model, port=8765, model_port=11434,
                              "artifact_id": None, "completion_recorded": False})
             break
     return {"mode": "REMOTE_HTTPS_COMMUNITY" if community_origin else "LOCAL_ONLY", "jobs": outcomes, "processed": len(outcomes),
+            "connection_binding": client.binding(),
             "automatic_retry": False, "wallet_execution": "UNAVAILABLE"}
