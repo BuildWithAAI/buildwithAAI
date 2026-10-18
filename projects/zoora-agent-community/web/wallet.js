@@ -7,10 +7,11 @@ globalThis.ZooraWallet = (() => {
     wallet.features?.["solana:signMessage"]?.version === "1.0.0" && typeof wallet.features["solana:signMessage"].signMessage === "function";
   const notify = () => { for (const listener of listeners) listener(); };
   function register(...candidates) {
-    const added = [];
-    for (const wallet of candidates.slice(0,16)) if (wallets.size < 16 && valid(wallet) && !wallets.has(wallet)) { wallets.add(wallet); added.push(wallet); }
+    const registered = [];
+    for (const wallet of candidates.slice(0,16)) if (valid(wallet) && (wallets.has(wallet) || wallets.size < 16)) { wallets.add(wallet); registered.push(wallet); }
     notify();
-    return () => { for (const wallet of added) wallets.delete(wallet); notify(); };
+    // A provider may replace its unregister callback after an app-ready rescan.
+    return () => { for (const wallet of registered) wallets.delete(wallet); notify(); };
   }
   const api = Object.freeze({register});
   function rescan() {

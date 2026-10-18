@@ -80,3 +80,10 @@ test('registry bounds and duplicate rescans preserve distinct wallet identities'
   h.api.register(providers[0].provider);assert.equal(h.wallet.get().length,16);
   assert.equal(h.wallet.get()[0],providers[0].provider);assert.equal(h.wallet.get()[15],providers[15].provider);
 });
+
+test('a provider can withdraw using its latest duplicate-registration callback after rescan',()=>{
+  const h=harness(),p=fixture('rescan-withdrawal');let remove;
+  h.window.addEventListener('wallet-standard:app-ready',event=>{remove=event.detail.register(p.provider);});
+  h.wallet.rescan();h.wallet.rescan();assert.equal(h.wallet.get().length,1);
+  remove();assert.equal(h.wallet.get().length,0);assert.deepEqual(p.calls,{connect:0,sign:0,transaction:0});
+});

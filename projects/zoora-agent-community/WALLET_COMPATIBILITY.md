@@ -23,7 +23,7 @@ Do not import a seed phrase/private key into this website or send one to support
 
 ## Verification design
 
-`node --test scripts/wallet_discovery_test.mjs` uses five distinctly keyed, explicitly synthetic protocol fixtures, independent Ed25519 verification and a transaction-call trap. It checks discovery/rescan bounds, no automatic connection/signing, incompatible EVM rejection, removal during approval and mobile-link privacy. Fixture names are deliberately generic, not wallet-brand claims.
+`node --test scripts/wallet_discovery_test.mjs` uses five distinctly keyed, explicitly synthetic protocol fixtures, independent Ed25519 verification and a transaction-call trap. It checks discovery/rescan bounds, no automatic connection/signing, incompatible EVM rejection, removal during approval, withdrawal through a replaced rescan registration callback and mobile-link privacy. Fixture names are deliberately generic, not wallet-brand claims.
 
 The existing actual Chrome/HTTP/SQLite acceptance now also checks the missing-provider controls, no discovery POST, late registration, provider-identity preservation and expanded setup layout at 390px. It writes `wallet-setup-mobile.png` for visual review. Its injected wallet remains synthetic; loopback HTTP intentionally withholds app-opening links. Pure URL construction tests do not establish actual mobile handoff.
 
