@@ -59,7 +59,9 @@ class TLSCommunity:
 
         self.proxy = ThreadingHTTPServer(("127.0.0.1", 0), Proxy)
         self.proxy.daemon_threads = True
-        self.origin = "https://localhost:" + str(self.proxy.server_port)
+        # Match the IPv4 listener and the certificate's IP SAN without an
+        # unnecessary localhost address-family lookup/fallback on Windows.
+        self.origin = "https://127.0.0.1:" + str(self.proxy.server_port)
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(FIXTURES / "bridge-localhost-cert.pem", FIXTURES / "bridge-localhost-public-test-key.pem")
         self.proxy.socket = context.wrap_socket(self.proxy.socket, server_side=True)

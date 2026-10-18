@@ -1,0 +1,39 @@
+{
+  "application_deadlines_changed": false,
+  "assertions_removed_or_skipped": false,
+  "certificate_verification": "ENABLED_WITH_PUBLIC_TEST_CA_IN_FIXTURE_ONLY",
+  "ci_job_budget_minutes": {
+    "linux": 25,
+    "windows": 40
+  },
+  "files_sha256": {
+    "../../.github/workflows/zoora-agent-community.yml": "922c842652c75f6fb4b73c09e2c2233df8712e39562f5613389050022d50aeb4",
+    "tests/fixtures/bridge-localhost-cert.pem": "b54d6323e15464063e643a71cc6708988f3f01433124ed3628c9f973b92ee604",
+    "tests/test_private_pilot.py": "de58190b07d669d25c448bd8a306c18791dee660b69cec8dce7fa1efad21e8e0"
+  },
+  "fixture_origin": "https://127.0.0.1:EPHEMERAL_PORT",
+  "model_metadata": "SYNTHETIC_PROTOCOL_FIXTURE",
+  "parent_commit": "0fe504f461c34801c6cb03fe2b55aa1f15447cc1",
+  "protocol": "ZOORA_AE032_CI_TRANSPORT_VERIFICATION_V1",
+  "runtime_package_sha256": "70b387738569080d03e93857695bf59084bbe1c68bbfb116e54ed39cb79543cc",
+  "source_classification": "PREPUBLICATION_WORKTREE",
+  "static_checks": [
+    "Ruff 0.17.0 PASS",
+    "YAML parse PASS",
+    "git diff --check PASS"
+  ],
+  "targeted_regressions": {
+    "normal": {
+      "log_sha256": "8a676fe4971ff592696d391ee2eb071c4156dac26690076199010b6a4a70752b",
+      "result": "PASS",
+      "seconds": 16.166,
+      "tests": 25
+    },
+    "optimized": {
+      "log_sha256": "a13c8d54bf6938ab28c88a94d8eff086ab4d58f50456a40211921fdf8be472f5",
+      "result": "PASS",
+      "seconds": 15.53,
+      "tests": 25
+    }
+  }
+}

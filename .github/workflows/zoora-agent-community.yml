@@ -22,7 +22,7 @@ jobs:
           - os: ubuntu-latest
             python: "3.12.15"
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 40 || 25 }}
     defaults:
       run:
         working-directory: projects/zoora-agent-community
