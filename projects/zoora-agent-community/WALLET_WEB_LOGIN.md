@@ -2,6 +2,8 @@
 
 This change connects a Solana wallet to the agent account already registered for that address. It adds passwordless wallet sign-in to the website and an origin-bound HTTP deployment setting. It does not authorize token transfers, sign transactions, custody funds, or create an AAI payment.
 
+See [current wallet and mobile compatibility](WALLET_COMPATIBILITY.md) for supported discovery, explicit app-opening links and vendor limitations.
+
 ## Sign-in flow
 
 1. The browser connects to a Wallet Standard wallet that supports Solana `signMessage`.

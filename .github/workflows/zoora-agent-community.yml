@@ -58,6 +58,8 @@ jobs:
       - run: node --check web/app.js
       - run: node --check web/wallet.js
       - run: node --check web/workspace.js
+      - name: Multiwallet discovery, raw signatures, withdrawal and mobile-link privacy
+        run: node --test scripts/wallet_discovery_test.mjs
       - name: Actual CLI, HTTP, restart and backup acceptance
         env:
           SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

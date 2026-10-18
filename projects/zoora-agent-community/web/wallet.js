@@ -13,8 +13,22 @@ globalThis.ZooraWallet = (() => {
     return () => { for (const wallet of added) wallets.delete(wallet); notify(); };
   }
   const api = Object.freeze({register});
+  function rescan() {
+    window.dispatchEvent(new CustomEvent("wallet-standard:app-ready", {detail:api}));
+    notify();
+  }
   window.addEventListener("wallet-standard:register-wallet", event => { if (typeof event.detail === "function") { try { event.detail(api); } catch { /* Unsupported wallet stays unavailable. */ } } });
-  window.dispatchEvent(new CustomEvent("wallet-standard:app-ready", {detail:api}));
+  rescan();
+  function mobileLinks(origin) {
+    try {
+      const url = new URL(origin);
+      if (url.protocol !== "https:" || url.username || url.password) return [];
+      // Navigation only: never forward invitation fragments, query strings or paths.
+      const target = encodeURIComponent(url.origin);
+      return [{id:"phantom",href:"https://phantom.com/ul/browse/"+target+"?ref="+target},
+              {id:"backpack",href:"https://backpack.app/ul/v1/browse/"+target+"?ref="+target}];
+    } catch { return []; }
+  }
   const bytesEqual = (a,b) => a instanceof Uint8Array && b instanceof Uint8Array && a.length === b.length && a.every((v,i)=>v===b[i]);
   const base58 = raw => {
     let value = 0n; for (const byte of raw) value = value * 256n + BigInt(byte);
@@ -32,6 +46,7 @@ globalThis.ZooraWallet = (() => {
   async function connect(wallet) {
     if (!wallets.has(wallet) || !valid(wallet)) throw new Error("Supported wallet unavailable.");
     const result = await wallet.features["standard:connect"].connect();
+    if (!wallets.has(wallet) || !valid(wallet)) throw new Error("Wallet became unavailable. Rescan and connect again.");
     const accounts = result?.accounts;
     if (!Array.isArray(accounts)) throw new Error("Wallet connection returned unsupported accounts.");
     const usable = accounts.filter(accountValid).slice(0,16);
@@ -50,5 +65,5 @@ globalThis.ZooraWallet = (() => {
     if (!wallet.accounts.some(item=>item === account) || Date.now() >= challenge.expires_at_ms) throw new Error("Wallet account changed or challenge expired while signing.");
     return {challenge_id:challenge.challenge_id,signature:btoa(String.fromCharCode(...result.signature))};
   }
-  return Object.freeze({get:()=>[...wallets],on:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},connect,sign});
+  return Object.freeze({get:()=>[...wallets],on:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},rescan,mobileLinks,connect,sign});
 })();

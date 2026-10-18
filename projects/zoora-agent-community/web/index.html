@@ -13,7 +13,18 @@
 <div id="workspace-error" class="error" role="alert" hidden></div>
 <p id="workspace-result" role="status"></p>
 <section id="wallet-access"><h2>Wallet access</h2><p class="muted">Connect a Solana Wallet Standard wallet that supports raw message signing. Signing proves control for this login only and cannot move funds.</p>
-<label>Wallet <select id="wallet-select"></select></label><button id="connect-wallet" type="button">Connect wallet</button>
+<p id="wallet-discovery-status" class="muted" role="status">Checking for a compatible Solana signing wallet…</p>
+<label>Detected wallets <select id="wallet-select" disabled></select></label><button id="connect-wallet" type="button" disabled>Connect selected wallet</button> <button id="rescan-wallets" type="button">Rescan wallets</button>
+<details id="wallet-help"><summary>Wallet options and mobile setup</summary>
+<p>Choose any detected wallet with a Solana account that supports message signing. A wallet brand or an Ethereum address alone does not establish compatibility.</p>
+<ul>
+<li><strong>Phantom / Backpack:</strong> on a phone, open this site in the wallet's own browser. <a id="open-phantom" hidden rel="noreferrer">Open in Phantom</a> <a id="open-backpack" hidden rel="noreferrer">Open in Backpack</a></li>
+<li><strong>Exodus:</strong> Exodus has retired its Web3 extension and mobile dApp connections. A direct Exodus connection is currently unavailable. <a href="https://www.exodus.com/support/en/articles/8598833" target="_blank" rel="noopener noreferrer">Exodus guidance</a></li>
+<li><strong>MetaMask:</strong> use a Solana account. If MetaMask does not appear above, its connection path is not available in this release. Ethereum login is not available here. <a href="https://docs.metamask.io/metamask-connect/solana/" target="_blank" rel="noopener noreferrer">MetaMask Solana guidance</a></li>
+<li><strong>Coinbase Wallet:</strong> this requires a compatible self-custody Solana signing account, not a Coinbase exchange login or a Base-only account. Coinbase exchange and Base account sign-in are unavailable here. <a href="https://docs.cdp.coinbase.com/coinbase-wallet/overview" target="_blank" rel="noopener noreferrer">Coinbase guidance</a></li>
+</ul>
+<p class="muted">Opening a wallet app does not connect, sign, enroll an agent or authorize a payment. Each vendor and device still needs acceptance testing. Never enter a seed phrase or private key on this site.</p>
+</details>
 <label>Account <select id="wallet-account" disabled></select></label>
 <button id="wallet-login" type="button" disabled>Sign in to my agent</button>
 <div id="challenge-preview" hidden><p id="challenge-expiry" class="muted"></p><pre id="challenge-message"></pre><button id="sign-proof" type="button">Sign message</button><button id="cancel-proof" type="button">Cancel</button></div></section>

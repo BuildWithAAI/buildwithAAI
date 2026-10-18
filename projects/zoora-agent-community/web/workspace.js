@@ -7,6 +7,7 @@
   let invitationIssued=null, invitePending=null, claimPending=null;
   let activitySession=null, activityTimer=null, activityFreshTimer=null, activityController=null, activityEpoch=0;
   const accessAfter={invitations:null,operators:null,agents:null};
+  let visibleWallets=[];
   function workAction(){for(const form of el("agent-workspace").querySelectorAll("form"))form.hidden=form.id!==el("agent-action").value;}
   function clearProof(){proofGeneration++;challenge=null;pendingAction=null;el("challenge-preview").hidden=true;el("challenge-message").textContent="";el("challenge-expiry").textContent="";el("sign-proof").textContent="Sign message";}
   function clearWallet(){if(offWallet)offWallet();offWallet=null;wallet=null;accounts=[];clearProof();el("wallet-account").replaceChildren();el("wallet-account").disabled=true;el("challenge-button").disabled=true;el("wallet-login").disabled=true;}
@@ -127,7 +128,7 @@
     el("workspace-error").hidden=true;el("workspace-result").textContent="Working…";
     const controls=[...el("account-panel").querySelectorAll("button,#credential-file")].filter(x=>x.id!=="sign-out"&& !x.disabled);controls.forEach(x=>x.disabled=true);
     try{await callback(ticket);}catch(exc){if(ticket===generation){error(exc instanceof Error?exc.message:"Operation failed.");el("workspace-result").textContent="";}}
-    finally{controls.forEach(x=>x.disabled=false);busy=false;view();if(!accounts.length){el("challenge-button").disabled=true;el("wallet-login").disabled=true;}el("wallet-account").disabled=!accounts.length;}
+    finally{controls.forEach(x=>x.disabled=false);busy=false;view();syncWalletAvailability();if(!accounts.length){el("challenge-button").disabled=true;el("wallet-login").disabled=true;}el("wallet-account").disabled=!accounts.length;}
   }
   function saveJson(value,name){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+"\n"],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   el("sign-out").addEventListener("click",reset);
@@ -141,13 +142,22 @@
     const result=await request("POST","/v1/operators",{handle:event.target.elements.handle.value});
     if(ticket!==generation)return;const credential=await useCredential(result.credential);if(ticket!==generation)return;session=credential;issued=session;clearWallet();clearJobs();clearPilot();el("workspace-result").textContent="Operator created. Save its new credential now.";view();
   });});
-  function walletsChanged(){
-    if(wallet&&!ZooraWallet.get().includes(wallet))clearWallet();
-    const selected=el("wallet-select").value;el("wallet-select").replaceChildren();
-    const list=ZooraWallet.get();for(const [index,item]of list.entries()){const option=document.createElement("option");option.value=String(index);option.textContent=item.name;el("wallet-select").append(option);}
-    if(!list.length){const option=document.createElement("option");option.textContent="No compatible wallet detected";option.value="";el("wallet-select").append(option);}
-    else if([...el("wallet-select").options].some(o=>o.value===selected))el("wallet-select").value=selected;
+  function syncWalletAvailability(){
+    const count=visibleWallets.length;
+    el("connect-wallet").disabled=busy||!count;el("wallet-select").disabled=busy||!count;
+    el("wallet-discovery-status").textContent=count?count+" compatible wallet"+(count===1?"":"s")+" detected. Select one, then connect. Vendor/device compatibility is not independently verified.":"No compatible signing wallet detected in this browser. On a phone, use your wallet's browser. See Wallet options and mobile setup below, then rescan.";
   }
+  function walletsChanged(){
+    const selected=visibleWallets[Number(el("wallet-select").value)];
+    if(wallet&&!ZooraWallet.get().includes(wallet))clearWallet();
+    el("wallet-select").replaceChildren();
+    const list=ZooraWallet.get();visibleWallets=list;for(const [index,item]of list.entries()){const option=document.createElement("option");option.value=String(index);option.textContent=item.name;el("wallet-select").append(option);}
+    if(!list.length){const option=document.createElement("option");option.textContent="No compatible wallet detected";option.value="";el("wallet-select").append(option);}
+    else if(list.includes(selected))el("wallet-select").value=String(list.indexOf(selected));
+    syncWalletAvailability();
+  }
+  for(const link of ZooraWallet.mobileLinks(location.origin)){const anchor=el("open-"+link.id);anchor.href=link.href;anchor.hidden=false;}
+  el("rescan-wallets").addEventListener("click",()=>ZooraWallet.rescan());
   ZooraWallet.on(walletsChanged);walletsChanged();
   el("wallet-select").addEventListener("change",clearWallet);
   el("connect-wallet").addEventListener("click",()=>action(async ticket=>{
