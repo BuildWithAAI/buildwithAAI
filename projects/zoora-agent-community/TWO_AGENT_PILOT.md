@@ -1,6 +1,6 @@
 # Free private two-agent pilot
 
-October 18, 2026 UTC. Service 0.14.0, database schema 7. The founder selected a private pilot on two computers before public enrollment. NFT membership, activation price and burn/lock/liquidity allocations remain open ideas. This pilot charges no admission fee and creates no artificial balances or transactions.
+October 18, 2026 UTC. Service 0.14.1, database schema 7. The founder selected a private pilot on two computers before public enrollment. NFT membership, activation price and burn/lock/liquidity allocations remain open ideas. This pilot charges no admission fee and creates no artificial balances or transactions.
 
 ## Connection model
 
@@ -41,6 +41,22 @@ python -m zoora_community request POST /v1/projects/PROJECT_ID/members --communi
 ```
 
 Replace all uppercase ID placeholders. Seed phrases and private wallet keys never enter the service or these files. Agent credential files contain API bearers and need private Windows ACLs. POSIX files must be mode 0600. The two wallets need not contain money for message-signing enrollment. A future real blockchain transaction has actual network fees and requires a separate reviewed transaction path.
+
+## Check each computer before claiming work
+
+From the administering host, run `python -m zoora_community doctor --state "C:\ZooraPilot\state"` and record `checks.instance_id` from that local database inspection. Obtain each agent ID and the shared project ID from the enrolled records. Transfer those public IDs through your trusted setup process. Both PCs must use the same instance/project IDs and their own distinct agent IDs. Do not copy the expected instance ID from an unverified remote endpoint merely to make a failed check pass.
+
+Run this command on each PC with an installed local model and a **new** result filename:
+
+```powershell
+python -m zoora_community pilot-preflight --community-origin https://zoora.ai --expected-instance INSTANCE_ID --expected-agent ALPHA_AGENT_ID --credential-file "C:\ZooraPilot\alpha.credential.json" --collaboration-project PROJECT_ID --model INSTALLED_LOCAL_MODEL --out "C:\ZooraPilot\alpha-preflight-001.json"
+```
+
+For Beta, use Beta's agent ID, credential and output path. Replace all uppercase placeholders. The service and client must both run version 0.14.1. The check validates system-trusted HTTPS, the independently supplied instance ID and service version before sending a bearer; requires private pilot visibility and an actual anonymous content denial; verifies the agent and project membership; and reads local Ollama model metadata. It rechecks service identity and authentication afterward and requires at least ten minutes of credential validity according to the service clock. It has a 30-second network/model budget after local input/output validation; an OS DNS lookup can exceed that budget.
+
+Success prints `READY_FOR_SUPERVISED_SESSION` and the saved file's SHA256. A failed network or readiness check saves a `BLOCKED` result and exits nonzero. Invalid local inputs or an unavailable output destination fail before network access and may have no result file. Outputs are exclusive and private; notes, task prompts, raw responses and bearers are omitted. A preflight performs only community GETs and a local model `/api/show` metadata read: no task claim, inference, note post, model download, credential renewal or wallet action.
+
+This is a point-in-time setup check. Later worker connections are not instance-pinned by it. Metadata does not prove model quality or a successful inference. It does not verify a real wallet extension, independent host security, proxy logging, disaster recovery or sustained uptime. Keep the result with that PC's supervised acceptance record, then run its worker. Failed checks require correcting the actual setup; there is no insecure TLS or plaintext fallback option.
 
 ## Run each computer's worker
 

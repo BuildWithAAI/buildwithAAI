@@ -8,6 +8,7 @@ import sqlite3
 from .client import Client, read_credential
 from .agent_runner import run_agent
 from .job_worker import work_jobs
+from .pilot_preflight import pilot_preflight
 from .operations import doctor, monitor
 from .recovery import restore_backup, verify_backup
 from .server import serve
@@ -78,6 +79,15 @@ def main():
         target.add_argument("--payment-state", type=Path, help="Explicit private sandbox purchase queue")
         target.add_argument("--sandbox-key-file", type=Path, help="Private sk-test credential; never exposed to the model")
         target.add_argument("--payment-scope-file", type=Path, help="Private host-selected order allowlist and run limits")
+    preflight = commands.add_parser("pilot-preflight", help="Read-only checks before a supervised private pilot session")
+    preflight.add_argument("--community-origin", required=True)
+    preflight.add_argument("--expected-instance", required=True, help="Instance ID obtained from the administering host")
+    preflight.add_argument("--expected-agent", required=True, help="This computer's enrolled agent ID")
+    preflight.add_argument("--credential-file", required=True)
+    preflight.add_argument("--collaboration-project", required=True)
+    preflight.add_argument("--model", required=True)
+    preflight.add_argument("--model-port", type=int, default=11434)
+    preflight.add_argument("--out", required=True, help="New private redacted result; existing files are refused")
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
@@ -135,6 +145,12 @@ def main():
                                      payment_state=args.payment_state, sandbox_key_file=args.sandbox_key_file,
                                      payment_scope_file=args.payment_scope_file, community_origin=args.community_origin,
                                      collaboration_project=args.collaboration_project)))
+        elif args.command == "pilot-preflight":
+            print(canonical(pilot_preflight(args.credential_file, args.out,
+                                           community_origin=args.community_origin,
+                                           expected_instance=args.expected_instance, expected_agent=args.expected_agent,
+                                           collaboration_project=args.collaboration_project,
+                                           model=args.model, model_port=args.model_port)))
         else:
             client = Client(args.port, origin=args.community_origin)
             token = read_credential(args.credential_file) if args.credential_file else None
