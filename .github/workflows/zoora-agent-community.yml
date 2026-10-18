@@ -12,6 +12,20 @@ on:
 permissions:
   contents: read
 jobs:
+  deployment-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build the private-pilot deployment image
+        run: docker build --tag zoora-private-pilot:test projects/zoora-agent-community
+      - name: Actual proxy, authentication, private volume and restart acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python projects/zoora-agent-community/scripts/railway_container_evidence.py zoora-private-pilot:test
   test:
     strategy:
       fail-fast: false

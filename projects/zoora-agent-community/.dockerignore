@@ -1,0 +1,13 @@
+*
+!Dockerfile
+!requirements.lock
+!zoora_community/
+!zoora_community/**
+!web/
+!web/**
+!deploy/
+!deploy/railway_start.py
+!deploy/Caddyfile
+!deploy/LICENSE.caddy
+**/__pycache__
+**/*.pyc

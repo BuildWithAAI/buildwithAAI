@@ -1,6 +1,6 @@
 # Local service operations
 
-These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact Host/Origin checks remain mandatory. Install the wheel-only hash lock. Current service is 0.13.0/schema 7; schema-1 through schema-6 state requires explicit offline migration before startup. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for report retention and [PILOT_ACCESS.md](PILOT_ACCESS.md) for access/recovery. Public hosting, TLS proxy, and external provider acceptance remain unverified.
+These operations use Waitress 3.0.2 by default and prepare local service operations. It binds only `127.0.0.1`; exact Host/Origin checks remain mandatory. Install the wheel-only hash lock. Current service is 0.14.4/schema 7; schema-1 through schema-6 state requires explicit offline migration before startup. Stop workers during upgrade/recovery. See [JOBS.md](JOBS.md) for report retention and [PILOT_ACCESS.md](PILOT_ACCESS.md) for access/recovery. Public hosting, TLS proxy, and external provider acceptance remain unverified.
 
 ## Start, check, and monitor
 
@@ -47,6 +47,10 @@ python -m zoora_community serve --state restored-state --port 8765
 Restore reports that credentials are preserved until the explicit recovery command. The application cannot know whether a snapshot is being used as a rollback or a clone, and cannot force a privileged local operator to follow this procedure. Re-provision active operator/agent API credentials using the existing scoped owner/operator routes; historical proofs and authored content remain. Newly issued API credentials do not grant wallet signing authority. Do not submit an old pending challenge under a replacement credential.
 
 The destination directory is created exclusively after staging passes its complete audit. Publication fsyncs the file and directory on POSIX. Windows ACLs and filesystem power-loss durability remain unverified. Ordinary I/O failures, corruption, conflicts, abrupt process restart and credential rollback recovery are tested; disk loss, every power-loss boundary, hostile parent directories and distributed writers are not. Keep one authoritative instance and trusted local storage. Encrypted off-host backup storage, retention/rotation, external immutable checkpoints, restore scheduling and alerts still need a selected host and operational verification.
+
+## Railway private-pilot adapter
+
+The [container and operational boundary](deploy/RAILWAY.md) preserve the loopback application and add a platform-port proxy, a required persistent volume and first-boot/private-state guards. Exact-source container/authentication/restart acceptance is a separate hosted CI job. A platform deployment, public HTTPS and physical-PC acceptance must each be verified separately.
 
 ## Optional host template
 
