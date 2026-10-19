@@ -1,0 +1,8 @@
+[package]
+name = "zoora-virtual-leasing-schema"
+version = "0.1.0"
+edition = "2021"
+description = "VL-001 synthetic-only bounded virtual leasing data definitions"
+publish = false
+
+[dependencies]

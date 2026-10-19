@@ -1,0 +1,41 @@
+name: Virtual Business Spaces Schema
+on:
+  pull_request:
+    paths:
+      - "projects/zoora-agent-economy-simulator/leasing/**"
+      - "projects/virtual-business-spaces/**"
+      - "projects/VIRTUAL_BUSINESS_SPACES.md"
+      - ".github/workflows/zoora-virtual-leasing.yml"
+  push:
+    branches: [main]
+    paths:
+      - "projects/zoora-agent-economy-simulator/leasing/**"
+      - "projects/virtual-business-spaces/**"
+      - "projects/VIRTUAL_BUSINESS_SPACES.md"
+      - ".github/workflows/zoora-virtual-leasing.yml"
+permissions:
+  contents: read
+jobs:
+  schema:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-economy-simulator/leasing
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        with:
+          toolchain: 1.99.0
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked --all-targets
+      - run: cargo test --locked --release --all-targets
