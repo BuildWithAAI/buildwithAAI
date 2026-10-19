@@ -36,3 +36,7 @@ No autonomous legal advice, customer funds custody, real signer, burn/LP executi
 ## Discussion and implementation tracking
 
 [Public development issue #19](https://github.com/BuildWithAAI/buildwithAAI/issues/19) links this canonical record and the bounded agent queue. The documentation PR references that issue; runtime implementation remains queued. Future agents/contributors should reference VL task IDs, accept a bounded task explicitly and submit a reviewed branch with actual evidence. Issue creation is a work queue, not automatic development or release.
+
+## October 19 implementation checkpoint
+
+Codex accepted VL-001 as bounded work for the founder request while physical-PC acceptance is postponed. The [schema specification](../../projects/virtual-business-spaces/SCHEMA_VL001.md) and isolated data-definition crate do not implement acceptance, activation, accounting, live execution or production terms. VL-002–007 remain open; the original approval boundaries above are unchanged. Executable evidence belongs to the focused draft PR.

@@ -1,6 +1,6 @@
 # Virtual Business Spaces — agent development project
 
-**Founder-originated idea. Approved October 13, 2026 for specification and SYNTHETIC simulation. Runtime implementation has not started. Paid launch, real contract execution, token burns and liquidity deposits are outside this approval.**
+**Founder-originated idea. Approved October 13, 2026 for specification and SYNTHETIC simulation. VL-001 now has an isolated synthetic data-definition crate; the lease engine and accounting are not implemented. Paid launch, real contract execution, token burns and liquidity deposits are outside this approval.**
 
 [Development issue #19](https://github.com/BuildWithAAI/buildwithAAI/issues/19) · [Proposal AAI-P-0012](../proposals/approved/AAI-P-0012-virtual-business-spaces.md) · [Strict contract rules](virtual-business-spaces/CONTRACT_RULES.md) · [Current software status](../docs/CURRENT_STATUS.md)
 
@@ -20,7 +20,7 @@ The production platform fee rate, allocation percentages, payment assets, verifi
 
 This project stays inside BuildWithAAI/buildwithAAI. Its first implementation should extend the existing offline economy research through an isolated leasing adapter; a later community API/UI adapter is a separate milestone. Preserve existing replay identities and golden outputs. Zoora blockchain consensus, validators, native-token genesis/economics and wallet cryptography remain outside this module.
 
-The project's implementation maintainer and coding-agent assignment are currently unassigned. Creating the issue records a work queue; it does not start an unattended development agent. AE-009's current local runner has bounded read/measurement tools and cannot edit repositories or run generated code.
+The long-term implementation maintainer remains unassigned. Codex accepted bounded VL-001 work on October 19, 2026 for this founder request. This does not start an unattended development agent. AE-009's current local runner has bounded read/measurement tools and cannot edit repositories or run generated code.
 
 ## Proposed fee model for experiments
 
@@ -47,7 +47,7 @@ Keep an operating allocation for development and service costs. Accumulated AAI 
 
 ## Agent task queue
 
-All implementation tasks below are queued and unassigned. Legal/protected review gates must be recorded by the relevant authorized reviewer.
+VL-001 data definitions and lifecycle specification are implemented for review; executable verification is recorded in the focused draft PR. See [schema scope and limits](virtual-business-spaces/SCHEMA_VL001.md). VL-002–007 remain queued and unassigned. Legal/protected review gates must be recorded by the relevant authorized reviewer.
 
 | ID | Deliverable | Completion evidence |
 |---|---|---|
