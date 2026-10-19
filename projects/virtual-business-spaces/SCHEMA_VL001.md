@@ -7,7 +7,7 @@
 | Record | Enforced structural bounds | What remains unverified |
 | --- | --- | --- |
 | Identifier | 3–64 ASCII bytes; starts lowercase; lowercase letters/digits/underscore only | Registry uniqueness, real identity, ownership and authority |
-| Digest / version pin | Exactly 32 nonzero bytes; explicit identifier and nonzero u32 revision | Digest/content binding, trusted registry and reviewer approval |
+| Digest / version pin | Exactly 32 bytes; the all-zero value is rejected; explicit identifier and nonzero u32 revision | Digest/content binding, trusted registry and reviewer approval |
 | UTC milliseconds | Integer Unix milliseconds, 0–253402300799999 inclusive | External clock accuracy and signed observation time |
 | Interval | Nonempty `[start,end)`; exact subtraction; overlap iff both starts precede the other end | Multi-lease exclusivity/booking conflicts and reservation admission |
 | Fact time | Observed and available instants separately retained; observed ≤ available | Source credibility and freshness policy |
@@ -15,7 +15,7 @@
 | Quote | Separate provider rent/platform fee; explicit source, observation/availability and half-open validity; separate recipient party IDs | Source/price authenticity, current quote acceptance and payment evidence |
 | Party | Named party and related operator identifiers | Human/legal identity, independent control or business rights |
 | Authority claim | One named party/delegate/space, evidence version pin, validity and 1–5 unique enumerated scopes | Authenticity, current validity, delegation chain and authority to license/sublet |
-| Space | Unique-shaped ID and provider ID; exclusive/shared mode; capacity 1–1024; 1–5 unique enumerated functions; no subletting permission | Actual ownership, availability, hosting capacity and content/license rights |
+| Space | Bounded space and provider IDs; exclusive/shared mode; capacity 1–1024; 1–5 unique enumerated functions; no subletting permission | Actual ownership, availability, hosting capacity and content/license rights |
 | Policy | Explicit version pin, max duration 1 ms–365 days; notice/grace each 0–max duration | Production tariff, approved jurisdiction/template/operating policy |
 | Draft lease | Instance/agreement IDs, provider/licensee/platform records, scoped claims, policy/template pins, declared terms digest, interval, quote, optional parent lease | Canonical complete agreement hash, consent, legal validity and entitlement |
 
