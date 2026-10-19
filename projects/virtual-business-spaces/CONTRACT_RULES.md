@@ -1,6 +1,6 @@
 # Virtual Business Spaces — mandatory contract controls
 
-**Policy draft v0.1, October 13, 2026. Required for the proposed implementation. No contract generator, validator or enforcement engine has been implemented by publishing this policy. Legal templates and production parameters are unreviewed.**
+**Policy draft v0.1, October 13, 2026. Required for the proposed implementation. October 19: [VL-002](VALIDATOR_VL002.md) implements one controlled synthetic template/draft validator; the complete policy, agreement acceptance and enforcement engine remain unfinished. Legal templates and production parameters are unreviewed.**
 
 The founder approved a strict-rule approach. Before an actual customer agreement, counsel must review the templates and drafting workflow, and the owner must accept the exact operational/economic policy. Simulation can use explicitly synthetic template fixtures and simulated approvals.
 

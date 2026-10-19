@@ -1,18 +1,31 @@
-# VL-001: Virtual Business Spaces schema
+# VL-001/002: Virtual Business Spaces definitions and validator
 
-**SYNTHETIC laboratory definitions; no monetary value.** This isolated, dependency-free Rust crate implements the data-definition portion of [approved issue #19](https://github.com/BuildWithAAI/buildwithAAI/issues/19). It does not implement lease acceptance, access activation, payment, accounting, cryptographic verification or a network service. No existing simulator/review/marketplace source or replay identity is changed.
+**SYNTHETIC laboratory; no monetary value.** This isolated Rust crate implements bounded data definitions and validation against one compiled synthetic registry/template under [approved issue #19](https://github.com/BuildWithAAI/buildwithAAI/issues/19). It does not accept leases, grant access, verify real authority, move funds or connect to a network. Existing simulator/review/marketplace source and replay identities are unchanged.
 
-[Schema and lifecycle specification](../../virtual-business-spaces/SCHEMA_VL001.md) · [Project scope](../../VIRTUAL_BUSINESS_SPACES.md) · [Mandatory controls](../../virtual-business-spaces/CONTRACT_RULES.md).
+[VL-001 schema](../../virtual-business-spaces/SCHEMA_VL001.md) · [VL-002 rules and limitations](../../virtual-business-spaces/VALIDATOR_VL002.md) · [Project scope](../../VIRTUAL_BUSINESS_SPACES.md) · [Mandatory controls](../../virtual-business-spaces/CONTRACT_RULES.md).
 
-Run with Rust 1.99.0:
+With Rust 1.99.0 and Python 3:
 
 ```sh
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
 cargo test --locked --release --all-targets
+cargo build --locked --release --bin vl-validate
+python scripts/verify_vl002.py
 ```
 
-Seventeen test cases cover byte/identifier/time/capacity/selection bounds, exact separate amounts and overflow, scoped party/space relationships, correlated operators, inert drafts and separate renewal references. Passing these checks proves only those structural properties. A caller-declared hash, source ID or authority claim is not independently verified evidence. Expired or unknown-authority material may exist in a draft, which always has no granted access.
+The CLI displays its controlled fixture or validates bounded JSON on stdin at an explicit Unix millisecond instant:
 
-The crate is not wired into the live pilot, existing engine or any wallet. The next milestone is VL-002: approved synthetic template registry, canonical term hashing, strict bounded input parsing, policy/authority/time validation and explicit refusal results. Runtime leases, booking conflicts, replay journals and ledger accounting remain VL-003–006. Production prerequisites remain VL-007. No license decision or grant is introduced by this crate.
+```sh
+cargo run --locked --bin vl-validate -- fixture
+cargo run --locked --bin vl-validate -- validate 1000 < fixtures/valid_request.json
+```
+
+The redirect works in POSIX shells/Windows cmd; the cross-platform Python verifier invokes the executable directly. Times are laboratory instants. `VALID_DRAFT` describes synthetic eligibility at that instant, with ungranted access and unobserved payment. It is not consent or reusable authorization. Refusals exit 1 and return a fixed reason without echoing submitted values; invalid arguments/I/O exit 2. The CLI writes no journal.
+
+The 38 Rust tests cover schema/parser bounds, exact units, duplicate/unknown fields, closed clauses, version/content/registry bindings, altered recipients/operators/authority, quote timing, notice/expiry, complete hashes and deferred renewal. Twenty independent Python checks exercise the compiled CLI and rebuild its hashes. CI runs both test modes and the independent check on Linux/Windows, plus a separate leasing dependency audit. The verifier writes reproducible synthetic evidence under ignored `target/validation-evidence/`.
+
+Serde/serde_json and RustCrypto sha2 are pinned with a committed lockfile. VL-001 records retain their constructor/getter API; closed enum serialization was added there. Matching an opaque pin to a synthetic fixture does not verify a real identity, authority or source document.
+
+VL-003 acceptance/booking/persistence/replay, VL-004 accounting and VL-005–007 scenarios/reporting/production review remain open. The crate is not wired into the pilot, other engines, wallets or real PCs. No license decision or grant is introduced.

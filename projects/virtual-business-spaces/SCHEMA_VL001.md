@@ -1,5 +1,7 @@
 # VL-001 — bounded synthetic leasing definitions
 
+**Historical VL-001 scope below.** [VL-002](VALIDATOR_VL002.md) adds controlled synthetic validation, complete term hashing and strict input parsing. The current crate has pinned parsing/hash dependencies. No acceptance or payment engine has been added.
+
 **2026-10-19 · schema 1 · SYNTHETIC_VL001_NO_MONETARY_VALUE.** This milestone implements inert typed records and structural checks in the [isolated Rust crate](../zoora-agent-economy-simulator/leasing/README.md). It does not implement an agreement generator, legal/business-authority verification, acceptance engine, lease registry, persistence/replay, accounting, public service or payment execution. Scope comes from [approved proposal AAI-P-0012](../../proposals/approved/AAI-P-0012-virtual-business-spaces.md) and [issue #19](https://github.com/BuildWithAAI/buildwithAAI/issues/19).
 
 ## Record and bound definitions
