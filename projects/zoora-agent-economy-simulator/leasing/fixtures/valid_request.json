@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "classification": "SYNTHETIC_VL002_NO_MONETARY_VALUE",
+  "units": "synthetic_units",
+  "registry_sha256": "a9b63a6a910d8aca20ac94b307d4bef2eabe063f86014b00a098f0f931ac92a3",
+  "clauses": [
+    "support_downtime",
+    "prohibited_uses",
+    "content_ownership",
+    "export_retention",
+    "termination_remedies",
+    "refund_review",
+    "dispute_process",
+    "no_promises"
+  ],
+  "draft": {
+    "id": "lease_one",
+    "instance": "lab_instance",
+    "space": {
+      "id": "space_one",
+      "provider": "provider_one",
+      "mode": "exclusive",
+      "capacity": 5,
+      "functions": [
+        "service_listing",
+        "project_collaboration"
+      ],
+      "subletting_permitted": false
+    },
+    "provider": {
+      "id": "provider_one",
+      "operator": "operator_one"
+    },
+    "licensee": {
+      "id": "licensee_one",
+      "operator": "operator_two"
+    },
+    "platform": {
+      "id": "platform_one",
+      "operator": "operator_three"
+    },
+    "provider_authority": {
+      "id": "provider_claim",
+      "party": "provider_one",
+      "delegate": "provider_actor",
+      "space": "space_one",
+      "scopes": [
+        "offer_space",
+        "end_lease"
+      ],
+      "validity": {
+        "start_ms": 0,
+        "end_ms": 10000
+      },
+      "evidence": {
+        "id": "provider_evidence",
+        "revision": 1,
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    "licensee_authority": {
+      "id": "licensee_claim",
+      "party": "licensee_one",
+      "delegate": "licensee_actor",
+      "space": "space_one",
+      "scopes": [
+        "accept_lease",
+        "request_renewal"
+      ],
+      "validity": {
+        "start_ms": 0,
+        "end_ms": 10000
+      },
+      "evidence": {
+        "id": "licensee_evidence",
+        "revision": 1,
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    "policy": {
+      "pin": {
+        "id": "lab_policy",
+        "revision": 1,
+        "sha256": "c8793dc9e6a1391031afd3908258eda18e03b2395f54b0664f3f8f1cbf06b3b6"
+      },
+      "max_duration_ms": 10000,
+      "notice_ms": 100,
+      "grace_ms": 50
+    },
+    "template": {
+      "id": "lab_template",
+      "revision": 1,
+      "sha256": "e1424dbf769240ca0f776005a9c184286d5dd04f14572ebd7d205823102da523"
+    },
+    "declared_terms_sha256": "7afe552589fcabf852aab9e51ae8790be9e348d525a652dbe257f742aa775986",
+    "interval": {
+      "start_ms": 2000,
+      "end_ms": 3000
+    },
+    "quote": {
+      "provider_rent": 100,
+      "platform_fee": 10,
+      "source": "lab_quote",
+      "validity": {
+        "start_ms": 900,
+        "end_ms": 1500
+      },
+      "timing": {
+        "observed_ms": 900,
+        "available_ms": 950
+      },
+      "provider_recipient": "provider_one",
+      "platform_recipient": "platform_one"
+    },
+    "renewal_of": null
+  }
+}

@@ -1,7 +1,12 @@
-//! VL-001 inert, synthetic-only data definitions. No acceptance or execution engine.
+//! VL-001/002 synthetic-only definitions and draft validation. No acceptance or execution.
 #![forbid(unsafe_code)]
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+
+mod canonical;
+pub mod validation;
+mod wire;
 
 pub const SCHEMA_VERSION: u32 = 1;
 pub const CLASSIFICATION: &str = "SYNTHETIC_VL001_NO_MONETARY_VALUE";
@@ -264,7 +269,8 @@ impl Party {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum AuthorityScope {
     OfferSpace,
     AcceptLease,
@@ -339,13 +345,15 @@ impl AuthorityClaim {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum UseMode {
     Exclusive,
     Shared,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum BusinessFunction {
     ServiceListing,
     InquiryLink,

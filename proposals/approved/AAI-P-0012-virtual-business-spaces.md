@@ -39,4 +39,4 @@ No autonomous legal advice, customer funds custody, real signer, burn/LP executi
 
 ## October 19 implementation checkpoint
 
-Codex accepted VL-001 as bounded work for the founder request while physical-PC acceptance is postponed. The [schema specification](../../projects/virtual-business-spaces/SCHEMA_VL001.md) and isolated data-definition crate do not implement acceptance, activation, accounting, live execution or production terms. VL-002–007 remain open; the original approval boundaries above are unchanged. Executable evidence belongs to the focused draft PR.
+Codex accepted VL-001/002 as bounded work for the founder request while physical-PC acceptance is postponed. The [schema specification](../../projects/virtual-business-spaces/SCHEMA_VL001.md) and [controlled synthetic validator](../../projects/virtual-business-spaces/VALIDATOR_VL002.md) do not implement acceptance, activation, accounting, live execution or production terms. VL-003–007 remain open; the original approval boundaries above are unchanged. Executable evidence belongs to the focused draft PRs.
