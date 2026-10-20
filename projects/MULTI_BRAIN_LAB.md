@@ -1,5 +1,7 @@
 # Multi-Brain Trading Experiment
 
+**Executable checkpoint:** [FV-SMOKE-001](../experiments/flyvis_cpu_smoke/README.md) now records a real checkpoint-free, untrained FlyVis CPU run on a reduced 2,345-neuron/57,663-edge modeled patch. Synthetic-flash activity is finite, stimulus-dependent and identical across two local repeats. This is technical execution only; published trained-model results, market performance and live service connections remain unverified.
+
 **October 20 UTC / October 19 America/Chicago, 2026 checkpoint:** the founder selected market research as the first live-input use. [Source-pinned graph preparation and causal research interfaces](../research/MULTI_BRAIN_LIVE_PREP.md) are implemented for review, including a real 128-neuron FlyEM subset. Trained biological market modules, a learned fusion model, benchmark promotion, connected live observation and wallet execution remain absent. The research direction below is governed by [BT-000](../research/BIOLOGICAL_COMPUTE_PROTOCOL.md) and [BT-001](../research/DATA_MEASUREMENT_PROTOCOL.md).
 
 **Status: RESEARCH DIRECTION — early founder priority.** Working community nickname: **Frankenbrain**, not a finalized product name or token. This expands the [Solana Trading Lab](SOLANA_TRADING_LAB.md); it retains jellyfish-inspired exploration.

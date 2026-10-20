@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "local_registration_commit": "a868b720958625f3135aa88fa594f88b8a1a4403",
+  "published_registration_commit": "fe527fed6ffbf1887537537ad875944be63e51f8",
+  "identical_git_tree": "9fc256a2a9a70a388cfd0d98109890f7d907b391",
+  "baseline_commit": "07dabc185280774a7392b89e4a2cd685d6a61c23",
+  "registration_sha256": "a1c49e607b97f338aabe735f3dc5143100f1d6b42a0f06c05bb30f40f339c031",
+  "first_local_report_sha256": "6ab3e6d526556f9e5b4f4c69e774e93ca222f2d4d051c3fb6eff770ddc0263e8",
+  "publication_timing": "The local commit preceded the first model measurement. The GitHub commit was created afterward with an identical tree and separate commit metadata. This is not an independently timestamped public preregistration or execution attestation.",
+  "execution_attestation": "NOT_ESTABLISHED"
+}
