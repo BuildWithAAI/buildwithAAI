@@ -11,6 +11,7 @@ import uuid
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 from helpers import Fixture  # noqa: E402
 from model_fixture import ModelFixture  # noqa: E402
