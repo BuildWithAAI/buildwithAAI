@@ -1,0 +1,92 @@
+name: Causal Brain Readout Training
+on:
+  pull_request:
+    paths:
+      - "src/multi_brain_research/training_lab.py"
+      - "tests/test_training_lab.py"
+      - "scripts/train_market_readout.py"
+      - "scripts/run_flyvis_training.py"
+      - "experiments/brain_training/**"
+      - ".github/workflows/brain-training.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/multi_brain_research/training_lab.py"
+      - "experiments/brain_training/**"
+      - ".github/workflows/brain-training.yml"
+permissions:
+  contents: read
+concurrency:
+  group: causal-brain-training-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  learning:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - name: Install pinned development linter
+        run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - name: Check new training sources
+        run: python -m ruff check --select E4,E7,E9,F,B src/multi_brain_research/training_lab.py tests/test_training_lab.py scripts/train_market_readout.py scripts/run_flyvis_training.py experiments/brain_training/worker.py
+      - name: Strict normal and optimized leakage, fitting and artifact checks
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p test_training_lab.py -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p test_training_lab.py -v
+      - name: Actual CLI learning and independent process artifact replay
+        run: |
+          python scripts/train_market_readout.py demo --output experiments/brain_training/generated/raw-control
+          python scripts/train_market_readout.py verify --directory experiments/brain_training/generated/raw-control
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: readout-control-${{ matrix.os }}
+          path: experiments/brain_training/generated/raw-control/
+          retention-days: 14
+  frozen-flyvis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: TuragaLab/flyvis
+          ref: 0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa
+          path: .flyvis-upstream
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install pinned dependency tooling
+        run: python -m pip install --require-hashes --only-binary=:all: -r experiments/flyvis_cpu_smoke/bootstrap-linux.lock
+      - name: Prepare existing separate hash-locked CPU environment
+        run: |
+          uv venv .flyvis-venv --python python --no-python-downloads
+          uv pip sync experiments/flyvis_cpu_smoke/requirements-linux-py312.lock --python .flyvis-venv/bin/python --torch-backend cpu --require-hashes
+          uv pip install --python .flyvis-venv/bin/python --no-deps --no-build-isolation ./.flyvis-upstream
+      - name: Actual frozen biological-model activity to trained readout
+        run: python scripts/run_flyvis_training.py --source .flyvis-upstream --python .flyvis-venv/bin/python --output experiments/brain_training/generated/flyvis
+      - name: Verify retained training with standard library in another process
+        run: python scripts/train_market_readout.py verify --directory experiments/brain_training/generated/flyvis/training
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: frozen-flyvis-readout-evidence
+          path: |
+            experiments/brain_training/generated/flyvis/*.json
+            experiments/brain_training/generated/flyvis/worker.log
+            experiments/brain_training/generated/flyvis/training/*.json
+          retention-days: 14
