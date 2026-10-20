@@ -1,0 +1,475 @@
+{
+  "schema_version": 1,
+  "audit_id": "open-model-scientific-audit-20261020",
+  "audited_at_utc": "2026-10-20",
+  "project_repository": "BuildWithAAI/buildwithAAI",
+  "baseline_commit": "b6b30d387a84d0f27a2c40405bf99ddfa69921dd",
+  "scope": "Targeted source and primary-publication review of five biological neural models. This is research evidence, not an executable asset allowlist.",
+  "method": {
+    "pins": "Default-branch HEAD snapshots checked with git ls-remote; these are not claimed to be the exact commits used in the publications.",
+    "file_verification": "Recomputed Git blob SHA-1 from inspected file bytes. Connector-normalized text was replaced by original GitHub REST blob bytes for the one differing file. SHA-256 digests are retained below.",
+    "source_inspection": "Selected READMEs, licenses, dependency metadata and model/loader entry points; not a complete line-by-line or independent professional security audit.",
+    "static_checks": "Six selected Python files parsed with Python 3.12.14 ast.parse without importing or executing upstream code.",
+    "scientific_review": "Original peer-reviewed papers, their code/data availability statements, repository references and scoped biological validation claims; two later arXiv abstracts reviewed as unreplicated preprint critiques.",
+    "not_performed": [
+      "Model installation or simulation",
+      "Checkpoint or training-data downloads",
+      "Replication of paper figures or statistics",
+      "Market-data model training or benchmark",
+      "Commercial permissions clearance",
+      "Live deployment, wallet access or transactions"
+    ]
+  },
+  "models": [
+    {
+      "id": "flyvis_lappalainen_2024",
+      "species": "Drosophila melanogaster",
+      "repository": "TuragaLab/flyvis",
+      "commit": "0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+      "source_url": "https://github.com/TuragaLab/flyvis/tree/0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+      "paper": {
+        "authors": "Lappalainen et al.",
+        "year": 2024,
+        "venue": "Nature",
+        "doi": "10.1038/s41586-024-07939-3",
+        "url": "https://www.nature.com/articles/s41586-024-07939-3",
+        "abstract_url": "https://pubmed.ncbi.nlm.nih.gov/39261740/",
+        "peer_reviewed": true
+      },
+      "paper_code_link": "Final Nature paper data/code-availability statements explicitly link TuragaLab/flyvis; official repository README links the same final paper. Paper identity and biological scope also cross-checked against PubMed.",
+      "biological_scope": "Connectome-constrained, task-optimized optic-lobe motion-vision network covering 64 cell types; not a whole fly brain.",
+      "author_reported_validation": "Neural-response predictions compared with experiments across 26 studies, including contrast and motion tuning. Unknown dynamics are optimized for visual motion, not measured directly.",
+      "code_license": {
+        "identifier": "MIT",
+        "path": "license"
+      },
+      "asset_rights": {
+        "status": "UNRESOLVED",
+        "detail": "Separate pretrained weights, connectome inputs and stimulus/training-data terms were not cleared by this audit. Code MIT alone is insufficient."
+      },
+      "runtime": {
+        "framework": "PyTorch",
+        "python_requirement": ">=3.9,<3.13",
+        "environment_validated": false,
+        "detail": "Current project Python 3.14 CI is outside the upstream range. Optional pretrained dependencies contain older exact pins; select and lock a separate compatible environment."
+      },
+      "security_findings": [
+        {
+          "path": "flyvis/utils/chkpt_utils.py",
+          "line": 142,
+          "observation": "torch.load(..., weights_only=False) explicitly enables general checkpoint deserialization.",
+          "boundary": "Do not load untrusted weights in a service holding secrets; verify origin and digest, inspect serialization, and use an isolated reproduction worker."
+        }
+      ],
+      "author_declared_artifacts": [
+        {
+          "filename": "results_pretrained_models.zip",
+          "declared_sha256": "71c78d4070556a536b13b23ee3139cd2788aa2a9d07d430a223b4edead281db1",
+          "source_path": "flyvis_cli/download_pretrained_models.py",
+          "downloaded": false,
+          "digest_independently_verified": false
+        },
+        {
+          "filename": "results_umap_and_clustering.zip",
+          "declared_sha256": "6300ec1e678cde4d95300ac88e697b75fda32f6404ebe9a50f71e9f653aa9b19",
+          "source_path": "flyvis_cli/download_pretrained_models.py",
+          "downloaded": false,
+          "digest_independently_verified": false
+        }
+      ],
+      "recommendation": "First candidate for an isolated biological reference reproduction, conditional on asset permissions, pinned artifacts and environment compatibility.",
+      "runtime_reproduced": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    },
+    {
+      "id": "drosophila_shiu_2024",
+      "species": "Drosophila melanogaster",
+      "repository": "philshiu/Drosophila_brain_model",
+      "commit": "91bdd1e7dcf193f3e7ca5a8933497fcef63b7960",
+      "source_url": "https://github.com/philshiu/Drosophila_brain_model/tree/91bdd1e7dcf193f3e7ca5a8933497fcef63b7960",
+      "paper": {
+        "authors": "Shiu et al.",
+        "year": 2024,
+        "venue": "Nature",
+        "doi": "10.1038/s41586-024-07763-9",
+        "url": "https://www.nature.com/articles/s41586-024-07763-9",
+        "full_text_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11446845/",
+        "peer_reviewed": true
+      },
+      "paper_code_link": "Final paper explicitly names this GitHub repository. The pinned README still cites the earlier 2023 preprint.",
+      "biological_scope": "Brain-wide FlyWire-based leaky integrate-and-fire model; evaluated sensorimotor circuits concern feeding and antennal grooming, not all fly behaviors or cognition.",
+      "author_reported_validation": "Taste and feeding-circuit predictions compared with neural and behavioral evidence, including optogenetic tests; grooming circuit supplies a separate biological evaluation.",
+      "code_license": {
+        "identifier": "MIT",
+        "path": "LICENSE"
+      },
+      "asset_rights": {
+        "status": "NONCOMMERCIAL_OR_UNRESOLVED",
+        "detail": "README defaults to paper-used FlyWire 630 and describes a 783 alternative. Public FlyWire 783 guidelines state CC BY-NC 4.0; do not infer terms for 630 or commercial permission from the code license.",
+        "provider_url": "https://flywire.ai/guidelines"
+      },
+      "runtime": {
+        "framework": "Brian2",
+        "environment_validated": false,
+        "detail": "pandas/parquet and optional compiled simulation path; multi-core defaults need an explicit resource bound. No dependency installation or simulation performed."
+      },
+      "recommendation": "Biological circuit research candidate after exact data/version rights and environment review; no commercial promotion from this audit.",
+      "runtime_reproduced": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    },
+    {
+      "id": "tadpole_ferrario_2021",
+      "species": "Xenopus tadpole",
+      "repository": "ModelDBRepository/267146",
+      "commit": "b096112c79cc284c3e9c820bc1fdc16f50f08815",
+      "source_url": "https://github.com/ModelDBRepository/267146/tree/b096112c79cc284c3e9c820bc1fdc16f50f08815",
+      "paper": {
+        "authors": "Ferrario et al.",
+        "year": 2021,
+        "venue": "PLOS Computational Biology",
+        "doi": "10.1371/journal.pcbi.1009654",
+        "url": "https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009654",
+        "peer_reviewed": true
+      },
+      "paper_code_link": "Final paper's data-availability statement links CNS ModelDB 267146; ModelDB record and mirrored repository identify Ferrario et al. The separate virtual-body code is not audited here.",
+      "biological_scope": "Modeled touch-to-swimming hindbrain/spinal circuitry, approximately 2300 neurons in 12 classes; not a measured whole tadpole cognitive brain.",
+      "author_reported_validation": "CNS motor patterns compared with physiological/behavioral observations and supplied to a separate virtual-body model. Some connectivity and sensory-memory populations remain modeled hypotheses.",
+      "code_license": {
+        "identifier": null,
+        "status": "EXPLICIT_LICENSE_NOT_LOCATED",
+        "detail": "No license-named file in the complete 105-blob tree at this pin. Selected README and main entry point do not establish a reuse grant. This is not an exhaustive assertion that no permission exists anywhere."
+      },
+      "asset_rights": {
+        "status": "UNRESOLVED",
+        "detail": "Article CC BY does not establish a separate source-code/data license."
+      },
+      "runtime": {
+        "framework": "MATLAB anatomical stage plus NEURON-Python functional stage",
+        "environment_validated": false,
+        "detail": "Requires compiled NEURON mechanisms. Selected functional main.py fails Python 3.12 parsing at line 98 due to Python 2 print syntax; this is a static incompatibility, not a simulation result.",
+        "python_3_12_parse": "fail"
+      },
+      "recommendation": "Retain as a distinct executable-model candidate, separate from the 2017 tadpole study; resolve code terms and legacy-runtime/porting requirements before integration.",
+      "runtime_reproduced": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    },
+    {
+      "id": "cat_lsv1m_antolik_2024",
+      "species": "Cat",
+      "repository": "CSNG-MFF/mozaik-models",
+      "subdirectory": "LSV1M",
+      "commit": "2df93c13489b3f755b25787c8a3ce02062daf2fa",
+      "source_url": "https://github.com/CSNG-MFF/mozaik-models/tree/2df93c13489b3f755b25787c8a3ce02062daf2fa/LSV1M",
+      "paper": {
+        "authors": "Antolik et al.",
+        "year": 2024,
+        "venue": "PLOS Computational Biology",
+        "doi": "10.1371/journal.pcbi.1012342",
+        "url": "https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1012342",
+        "peer_reviewed": true
+      },
+      "paper_code_link": "Final paper directly links mozaik-models/LSV1M and the separate Mozaik framework.",
+      "biological_scope": "Spiking model of cat V1 layers 4 and 2/3 in a central cortical patch; not a complete cat brain.",
+      "author_reported_validation": "Anatomical and physiological constraints, spontaneous activity, visually driven conductances, orientation and size tuning compared with experimental evidence.",
+      "code_license": {
+        "identifier": "MIT",
+        "path": "LICENSE"
+      },
+      "dependency_license": {
+        "repository": "CSNG-MFF/mozaik",
+        "commit": "33bdb3f77f516e9ec195cb817450fc10f7854bba",
+        "identifier": "CECILL-2.0",
+        "path": "LICENSE",
+        "detail": "This current framework snapshot is not claimed to be paper version 0.4 or the required compatible runtime. Model MIT does not replace the framework's separate terms."
+      },
+      "asset_rights": {
+        "status": "UNRESOLVED",
+        "detail": "Stimulus files, recorded reference outputs and all transitive dependencies are not separately cleared."
+      },
+      "runtime": {
+        "framework": "Mozaik/PyNN/NEST/MPI",
+        "environment_validated": false,
+        "author_reported_setup": "16 processes on EPYC 7302 CPU with 128 GB RAM",
+        "author_reported_runtime": "Approximately 10 hours for listed full protocols and 1.5 hours for spontaneous-activity protocol on the described setup; not our measurements.",
+        "detail": "Current README includes later protocols. Recover exact paper configuration and compatible framework before claiming replication."
+      },
+      "recommendation": "Later scientific reproduction requiring a measured resource budget; unsuitable as the first low-resource live-service integration.",
+      "runtime_reproduced": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    },
+    {
+      "id": "macaque_schmidt_2018",
+      "species": "Macaque",
+      "repository": "INM-6/multi-area-model",
+      "commit": "0a658be40bef3249cbe452f38809edf7d2f524ba",
+      "source_url": "https://github.com/INM-6/multi-area-model/tree/0a658be40bef3249cbe452f38809edf7d2f524ba",
+      "paper": {
+        "authors": "Schmidt et al.",
+        "year": 2018,
+        "venue": "PLOS Computational Biology",
+        "doi": "10.1371/journal.pcbi.1006359",
+        "url": "https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1006359",
+        "peer_reviewed": true
+      },
+      "paper_code_link": "Original paper code availability and repository README identify the multi-area model and companion structural/stabilization papers.",
+      "biological_scope": "Layer-resolved spiking model spanning 32 visual cortical areas, each represented by a local patch; not an entire monkey brain.",
+      "author_reported_validation": "Resting-state spiking statistics and inter-area functional-connectivity patterns compared with biological observations, with dynamics dependent on coupling/stability assumptions.",
+      "code_license": {
+        "identifier": "CC-BY-NC-SA-4.0",
+        "path": "LICENSE.md",
+        "detail": "Source-available with a noncommercial restriction; do not label unrestricted commercial open source."
+      },
+      "asset_rights": {
+        "status": "NONCOMMERCIAL_OR_UNRESOLVED",
+        "detail": "Code noncommercial terms already prevent treating this as an unrestricted commercial dependency; data/output/dependency terms also require separate review."
+      },
+      "runtime": {
+        "framework": "NEST with optional R/aod and MPI workflows",
+        "environment_validated": false,
+        "detail": "Paper simulator version differs from later compatibility claims; full-scale simulation is a substantial HPC task, while documented downscaled examples are separate experiments."
+      },
+      "recommendation": "Research-only candidate pending permissions and a bounded reproduction budget.",
+      "runtime_reproduced": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    }
+  ],
+  "supplementary_preprints": [
+    {
+      "authors": "Nalin Dhiman",
+      "title": "Topological Sensitivity in Connectome-Constrained Neural Networks",
+      "url": "https://arxiv.org/abs/2604.04033v1",
+      "submitted": "2026-04-05",
+      "status": "ARXIV_PREPRINT",
+      "review_scope": "Abstract only; code and results not independently reproduced.",
+      "finding": "Reports that from-scratch initialization and degree-preserving controls remove apparent advantages in its flyvis-based experiments; does not establish a blanket refutation of original biological predictions."
+    },
+    {
+      "authors": "Aashish Dhawan",
+      "title": "FlyHack: Stress-Testing Mechanistic Claims in a Connectome-Constrained Visual Model",
+      "url": "https://arxiv.org/abs/2610.13018v1",
+      "submitted": "2026-10-09",
+      "status": "ARXIV_PREPRINT",
+      "review_scope": "Abstract only; code and results not independently reproduced.",
+      "finding": "Reports dependence of mechanistic conclusions on controls, interventions, representation and ensemble member; motivates stronger controls, not claims of our own replication."
+    }
+  ],
+  "inspected_files": [
+    {
+      "repo": "TuragaLab/flyvis",
+      "path": "readme.md",
+      "commit": "0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+      "blob_sha": "eeff576b81570f3b15c1b395a156315afb78d94a",
+      "bytes": 5026,
+      "sha256": "50d091c9a906f81f87e9291bb0de3b2324bcf6e1c19e1308fd4e3172c1280633",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "TuragaLab/flyvis",
+      "path": "license",
+      "commit": "0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+      "blob_sha": "760e32010d9043cb1cf0162a16dde5dbfa7fab96",
+      "bytes": 1146,
+      "sha256": "1e0e24112aaccf40ab3c8fd78688628c73da5031d1d9aa4f890558a748e84f41",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "TuragaLab/flyvis",
+      "path": "pyproject.toml",
+      "commit": "0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+      "blob_sha": "6afb6d4254f24646fdc8e0cb974aaa72804f247c",
+      "bytes": 4492,
+      "sha256": "4884734153222648d3dfe798070454aaf2224a5c92dd15b07c08d02930fb1f42",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "philshiu/Drosophila_brain_model",
+      "path": "Readme.md",
+      "commit": "91bdd1e7dcf193f3e7ca5a8933497fcef63b7960",
+      "blob_sha": "2f7d66ec7fbcd849fcb4c99e2412b171d37a565f",
+      "bytes": 3617,
+      "sha256": "0654ac53f9af85000b50f6a5d2297aade8602c507a44e811f8aff602629c2625",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "philshiu/Drosophila_brain_model",
+      "path": "LICENSE",
+      "commit": "91bdd1e7dcf193f3e7ca5a8933497fcef63b7960",
+      "blob_sha": "deca2d0f1e82e910d8248b0d27398eb9450976ee",
+      "bytes": 1085,
+      "sha256": "3621f6d6476189190e2960fa43f11b275ba4eca848fdac50a1ba2925de6223e8",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "philshiu/Drosophila_brain_model",
+      "path": "model.py",
+      "commit": "91bdd1e7dcf193f3e7ca5a8933497fcef63b7960",
+      "blob_sha": "5ba7083cf55bf6092967f8d9065e86cd677efed1",
+      "bytes": 11900,
+      "sha256": "fc45837d7122c6ce2a7f3f2f23c515992e4b232aadb919efabb72337fac88e4e",
+      "git_blob_verified": true,
+      "connector_content_normalized": false,
+      "python_3_12_parse": "pass"
+    },
+    {
+      "repo": "ModelDBRepository/267146",
+      "path": "README.md",
+      "commit": "b096112c79cc284c3e9c820bc1fdc16f50f08815",
+      "blob_sha": "3639825405ffc9927e81d04ace4a097730f410be",
+      "bytes": 1592,
+      "sha256": "210c617d795190c7a6b3815562d2f623af9efecdf4402ee24a0a7873b2a4208b",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "CSNG-MFF/mozaik-models",
+      "path": "README.md",
+      "commit": "2df93c13489b3f755b25787c8a3ce02062daf2fa",
+      "blob_sha": "d36bf7826c2681cdae03f9cefd10af91c5a295fe",
+      "bytes": 2089,
+      "sha256": "070a881dd3dcf7980d20cbd72a3445252df934677bd158309b4fb87e5b729069",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "CSNG-MFF/mozaik-models",
+      "path": "LICENSE",
+      "commit": "2df93c13489b3f755b25787c8a3ce02062daf2fa",
+      "blob_sha": "f7dd9d8cb95aabd8582a6b447efce837178e7442",
+      "bytes": 1063,
+      "sha256": "a26d3c2f8bd909a008bc7c7bb2427f16a18f2ae2ce9762228b0b80240c9e9c27",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "INM-6/multi-area-model",
+      "path": "README.md",
+      "commit": "0a658be40bef3249cbe452f38809edf7d2f524ba",
+      "blob_sha": "b715d6e1b55031dde828316b559886e7d270b279",
+      "bytes": 19627,
+      "sha256": "62c90f1fc859c74395e7674271ea795ad2953ca2ae3d32d66e4ddf3651066552",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "INM-6/multi-area-model",
+      "path": "LICENSE.md",
+      "commit": "0a658be40bef3249cbe452f38809edf7d2f524ba",
+      "blob_sha": "58bb1f0142b85170a06f73e9ba5aa05c2a1d5056",
+      "bytes": 16147,
+      "sha256": "03c97a9043f3d8254400eb754f828873eb7510dd3fd02a7ceba5c963e4b21665",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "TuragaLab/flyvis",
+      "path": "flyvis_cli/download_pretrained_models.py",
+      "commit": "0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+      "blob_sha": "8fd62a6a573ec1a488b61c174b02eb0acee9dc4e",
+      "bytes": 4692,
+      "sha256": "ce48e7d6571f0738aafda6ab2e38614899b6fb699814f0c2b2696d29dc490be9",
+      "git_blob_verified": true,
+      "connector_content_normalized": false,
+      "python_3_12_parse": "pass"
+    },
+    {
+      "repo": "TuragaLab/flyvis",
+      "path": "flyvis/utils/chkpt_utils.py",
+      "commit": "0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+      "blob_sha": "1472e1cd411d1b2de84e7ab7500d8a7603bb8512",
+      "bytes": 7844,
+      "sha256": "45678ddb428e843af798e1725fc0c2be07471f219f927d696a4eb0f08b9577e7",
+      "git_blob_verified": true,
+      "connector_content_normalized": false,
+      "python_3_12_parse": "pass"
+    },
+    {
+      "repo": "ModelDBRepository/267146",
+      "path": "functional model/README",
+      "commit": "b096112c79cc284c3e9c820bc1fdc16f50f08815",
+      "blob_sha": "97455e414125657f108a97b81a6bd29a24bce036",
+      "bytes": 1855,
+      "sha256": "d79fa507723ffbd7319f15d598c7205e3b3197a98abbd43d6a06ef11cb572511",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "CSNG-MFF/mozaik-models",
+      "path": "LSV1M/README.md",
+      "commit": "2df93c13489b3f755b25787c8a3ce02062daf2fa",
+      "blob_sha": "4d9458637cad77c5e4be06307b047ae451df79ad",
+      "bytes": 11486,
+      "sha256": "d7f437db97129d051629115ddf18ad0893f1a89fe1a89f870e2d008b88862d31",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "CSNG-MFF/mozaik",
+      "path": "LICENSE",
+      "commit": "33bdb3f77f516e9ec195cb817450fc10f7854bba",
+      "blob_sha": "fcc8df26b07f09b1d12fc9c8e8b161423ae45bdf",
+      "bytes": 21097,
+      "sha256": "2dcf0966f7eaae3af05f3e640215ac537c76d938d50ad02ad9d4260f1ca4bda5",
+      "git_blob_verified": true,
+      "connector_content_normalized": true,
+      "connector_sha256": "0451b634c56ded90b29cd5e40295bcf24bd5224f5ffd7c5f1458535eb90ba85f",
+      "normalization_note": "Connector text differs from raw blob; source SHA-256 is computed from GitHub REST blob bytes."
+    },
+    {
+      "repo": "CSNG-MFF/mozaik",
+      "path": "pyproject.toml",
+      "commit": "33bdb3f77f516e9ec195cb817450fc10f7854bba",
+      "blob_sha": "210fe59a7180d25a89b1a40260080da6cc3fa8b6",
+      "bytes": 2011,
+      "sha256": "c15acade9bcfc4510994467e582c5b22eaf772bd59a44042ab7079815b2de6bf",
+      "git_blob_verified": true,
+      "connector_content_normalized": false
+    },
+    {
+      "repo": "ModelDBRepository/267146",
+      "path": "functional model/main.py",
+      "commit": "b096112c79cc284c3e9c820bc1fdc16f50f08815",
+      "blob_sha": "81470291d36afa3410d037a1cb6e57d187f7a997",
+      "bytes": 11980,
+      "sha256": "d8c559eeb78924d0be1b49991a82db05663a4f5b94c29d0db770ec94cdc714bf",
+      "git_blob_verified": true,
+      "connector_content_normalized": false,
+      "python_3_12_parse": "fail",
+      "syntax_error": {
+        "line": 98,
+        "message": "Missing parentheses in call to 'print'. Did you mean print(...)?"
+      }
+    },
+    {
+      "repo": "CSNG-MFF/mozaik-models",
+      "path": "LSV1M/model.py",
+      "commit": "2df93c13489b3f755b25787c8a3ce02062daf2fa",
+      "blob_sha": "851181f70b54962ef14500989694c9f6884c92c0",
+      "bytes": 6036,
+      "sha256": "55e1317df2fe5526e452693f13718c55369444b3f97481bb250b3189d4a3a9bc",
+      "git_blob_verified": true,
+      "connector_content_normalized": false,
+      "python_3_12_parse": "pass"
+    },
+    {
+      "repo": "INM-6/multi-area-model",
+      "path": "multiarea_model/simulation.py",
+      "commit": "0a658be40bef3249cbe452f38809edf7d2f524ba",
+      "blob_sha": "4f758db75314d65a8be4358d0554974fd056367e",
+      "bytes": 32289,
+      "sha256": "b896c276edbf223403a15f9cb8e9619f389d6c11775dcbb25f32dcd8e1733ffb",
+      "git_blob_verified": true,
+      "connector_content_normalized": false,
+      "python_3_12_parse": "pass"
+    }
+  ]
+}

@@ -12,6 +12,8 @@ This is a deliberately playful community experiment with a reproducible research
 
 ## Source audit first
 
+The [October 20 executable-model/scientific audit](../research/OPEN_MODEL_SCIENTIFIC_AUDIT_20261020.md) adds five paper-linked source candidates: FlyVis, Shiu's fly model, a 2021 tadpole CNS model, cat LSV1M and macaque multi-area visual cortex. It recommends a bounded FlyVis reference reproduction first, conditional on asset terms and a compatible isolated environment. Code availability and author-reported validation have been checked; these models have not been run or validated on markets here.
+
 Use [BRAIN_DATASETS.md](../research/BRAIN_DATASETS.md) as the initial, non-exhaustive inventory. Candidates include fly, worm, tadpole, mouse, jellyfish, and other available studies. Cat, monkey, and crow are founder-suggested audit targets, not verified complete available connectomes.
 
 Distinguish neuron/synapse-level reconstructions, regional connectivity atlases, functional recordings, and model-generated circuits. Record specimen/version, covered anatomy, missing data, license, access, compute requirements, and exact attribution. Publicly readable does not automatically mean permitted commercial use. Token marketing and an animal name are not biological evidence.

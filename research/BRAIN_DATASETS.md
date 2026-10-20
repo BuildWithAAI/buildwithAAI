@@ -1,5 +1,7 @@
 # Initial brain-data source inventory
 
+**Executable-model follow-up, October 20, 2026 UTC:** the [GitHub/scientific model audit](OPEN_MODEL_SCIENTIFIC_AUDIT_20261020.md) now identifies five paper-linked model repositories for fly, tadpole, cat V1 and macaque visual cortex. It records exact source commits, separate code/data rights and compatibility limits. In particular, a different 2021 tadpole CNS model has public source; this does not change the 2017 study's availability statement. Upstream simulation and market usefulness remain unverified.
+
 **October 20 UTC / October 19 America/Chicago, 2026 update:** see the [measured-data foundation and live-preparation audit](MULTI_BRAIN_LIVE_PREP.md) and [source catalog](brain-assets/source_catalog.json). A checksum-pinned CC-BY FlyEM hemibrain v1.2 export and a 128-neuron derived fixture now exist. Cat/macaque regional sources and the tadpole model are explicitly distinguished; their reusable assets remain unresolved. The September inventory below is historical, not a current whole-project implementation claim.
 
 **Initial source check: September 22, 2026. RESEARCH; not exhaustive, not a downloaded dataset collection, and not a license approval.** The table records candidate evidence from original research and project-maintained resources. It does not verify any Pump.fun coin, its code, or its claims.
