@@ -1,0 +1,58 @@
+name: Paper Practice Evaluation
+on:
+  pull_request:
+    paths:
+      - "research/practice-evaluation/**"
+      - "projects/zoora-agent-community/**"
+      - ".github/workflows/practice-evaluation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "research/practice-evaluation/**"
+      - "projects/zoora-agent-community/**"
+      - ".github/workflows/practice-evaluation.yml"
+permissions:
+  contents: read
+concurrency:
+  group: paper-evaluation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  accounting:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: research/practice-evaluation
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - name: Install fully hashed existing runtime dependencies
+        run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r ../../projects/zoora-agent-community/requirements.lock"
+      - name: Install pinned linter
+        run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - run: python -m ruff check .
+      - name: Actual HTTP closed-episode capture, independent accounting and adversarial checks
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVIDENCE_OUTPUT: evidence-output/normal
+        run: python -bb -X dev -W error -m unittest discover -s . -p "test_paper_evaluation.py" -v
+      - name: Repeat required checks with Python assertions disabled
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVIDENCE_OUTPUT: evidence-output/optimized
+        run: python -O -bb -X dev -W error -m unittest discover -s . -p "test_paper_evaluation.py" -v
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: paper-cohort-${{ matrix.os }}
+          path: research/practice-evaluation/evidence-output/
+          retention-days: 14
