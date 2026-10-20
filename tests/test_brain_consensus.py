@@ -2,12 +2,14 @@
 
 from dataclasses import asdict, replace
 import io
+import hashlib
 import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -217,6 +219,27 @@ class ConsensusTests(unittest.TestCase):
 
 
 class StreamTests(unittest.TestCase):
+    def test_retained_local_linux_and_windows_audit_traces_replay(self):
+        root = ROOT / "research/consensus/evidence"
+        report = json.loads((root / "report.json").read_bytes())
+        metadata = json.loads((root / "hosted-verification.json").read_bytes())
+        self.assertEqual(report["classification"], "SYNTHETIC_SOFTWARE_TEST_ONLY")
+        self.assertEqual(len(report["scenarios"]), 9)
+        for item in metadata["hosted_artifacts"]:
+            path = root / item["archive_file"]
+            self.assertEqual(path.stat().st_size, item["archive_bytes"])
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), item["archive_sha256"])
+            with zipfile.ZipFile(path) as archive:
+                self.assertEqual(set(archive.namelist()), {"policy.json", "events.jsonl", "audit.jsonl", "missing-encoder.json", "report.json"})
+                self.assertTrue(all(m.file_size < 200000 for m in archive.infolist()))
+                for name, digest in report["artifact_sha256"].items():
+                    raw = archive.read(name)
+                    self.assertEqual(hashlib.sha256(raw).hexdigest(), digest)
+                    self.assertEqual(raw, (root/name).read_bytes())
+                result = io.BytesIO()
+                replay_stream(parse_policy(archive.read("policy.json")), io.BytesIO(archive.read("events.jsonl")), result)
+                self.assertEqual(result.getvalue(), archive.read("audit.jsonl"))
+
     def test_synthetic_scenarios_are_deterministic_and_have_explicit_outcomes(self):
         config, events, expected = events_for_scenarios()
         wire = b"".join(canonical(x) + b"\n" for x in events)
