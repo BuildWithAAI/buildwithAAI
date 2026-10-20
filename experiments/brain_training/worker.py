@@ -95,7 +95,7 @@ def main():
     central = network.connectome.central_cells_index[:]
     all_labels = network.connectome.nodes.type[:][central].astype(str).tolist()
     require(all_labels == registration["network"]["labels"], "CELL_ORDER")
-    selected = [int(index) for index, label in zip(central, all_labels)
+    selected = [int(index) for index, label in zip(central, all_labels, strict=True)
                 if label not in {f"R{i}" for i in range(1, 9)}]
     labels = [label for label in all_labels if label not in {f"R{i}" for i in range(1, 9)}]
     require(len(selected) == 57, "READOUT_CELL_COUNT")

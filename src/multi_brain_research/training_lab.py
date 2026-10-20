@@ -253,9 +253,9 @@ def sigmoid(value):
 
 def probability(model, row):
     require(type(row) is list and len(row) == len(model["weights"]), "PREDICT_WIDTH")
-    values = [(finite(x) - mean) / scale for x, mean, scale in zip(row, model["means"], model["scales"])]
+    values = [(finite(x) - mean) / scale for x, mean, scale in zip(row, model["means"], model["scales"], strict=True)]
     values = [max(-6.0, min(6.0, x)) for x in values]
-    return sigmoid(model["bias"] + sum(w * x for w, x in zip(model["weights"], values)))
+    return sigmoid(model["bias"] + sum(w * x for w, x in zip(model["weights"], values, strict=True)))
 
 
 def metrics(model, rows, constant=None):
@@ -263,9 +263,9 @@ def metrics(model, rows, constant=None):
     return {"examples": len(rows),
             "log_loss": -sum(row["y"] * math.log(max(1e-12, p))
                              + (1 - row["y"]) * math.log(max(1e-12, 1 - p))
-                             for row, p in zip(rows, probabilities)) / len(rows),
-            "brier": sum((p - row["y"])**2 for row, p in zip(rows, probabilities)) / len(rows),
-            "accuracy": sum((p >= 0.5) == bool(row["y"]) for row, p in zip(rows, probabilities)) / len(rows)}
+                             for row, p in zip(rows, probabilities, strict=True)) / len(rows),
+            "brier": sum((p - row["y"])**2 for row, p in zip(rows, probabilities, strict=True)) / len(rows),
+            "accuracy": sum((p >= 0.5) == bool(row["y"]) for row, p in zip(rows, probabilities, strict=True)) / len(rows)}
 
 
 def fit(data, plan, bundle):
@@ -283,13 +283,13 @@ def fit(data, plan, bundle):
              "live_execution_allowed": False, "calibration": "NOT_ESTABLISHED"}
     initial = metrics(model, rows)
     initial_hash = digest(model)
-    normalized = [[max(-6.0, min(6.0, (x - m) / s)) for x, m, s in zip(row["x"], means, scales)] for row in rows]
+    normalized = [[max(-6.0, min(6.0, (x - m) / s)) for x, m, s in zip(row["x"], means, scales, strict=True)] for row in rows]
     for _ in range(plan["epochs"]):
-        errors = [sigmoid(model["bias"] + sum(w * x for w, x in zip(model["weights"], values))) - row["y"]
-                  for row, values in zip(rows, normalized)]
-        gradients = [sum(error * values[j] for error, values in zip(errors, normalized)) / count
+        errors = [sigmoid(model["bias"] + sum(w * x for w, x in zip(model["weights"], values, strict=True))) - row["y"]
+                  for row, values in zip(rows, normalized, strict=True)]
+        gradients = [sum(error * values[j] for error, values in zip(errors, normalized, strict=True)) / count
                      + plan["l2"] * model["weights"][j] for j in range(width)]
-        model["weights"] = [w - plan["learning_rate"] * g for w, g in zip(model["weights"], gradients)]
+        model["weights"] = [w - plan["learning_rate"] * g for w, g in zip(model["weights"], gradients, strict=True)]
         model["bias"] -= plan["learning_rate"] * sum(errors) / count
     for value in model["weights"] + [model["bias"]]:
         finite(value, -1e4, 1e4)
