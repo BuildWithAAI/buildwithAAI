@@ -1,5 +1,7 @@
 # Multi-Brain Trading Experiment
 
+**Shared observation and unanimity:** the [coordinator](../research/MULTI_BRAIN_COORDINATOR.md) binds a required module roster to the same exact pair, snapshot, task and horizon. It records candidate/no-buy/abstain outcomes from worker receipts; nine synthetic scenarios test the wiring. It does not supply missing biological market adapters, a live feed or execution permission.
+
 **Trained-model reference:** [FV-REF-001](../experiments/flyvis_trained_reference/README.md) adds a registered, fixed pretrained FlyVis flash check with raw-array verification. Its scientific scope and remaining market/live gates are explicit in the experiment record.
 
 **Executable checkpoint:** [FV-SMOKE-001](../experiments/flyvis_cpu_smoke/README.md) now records a real checkpoint-free, untrained FlyVis CPU run on a reduced 2,345-neuron/57,663-edge modeled patch. Synthetic-flash activity is finite, stimulus-dependent and identical across two local repeats. This is technical execution only; published trained-model results, market performance and live service connections remain unverified.
