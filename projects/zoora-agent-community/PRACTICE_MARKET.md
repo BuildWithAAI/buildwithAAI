@@ -117,7 +117,10 @@ connection identity pins, rate/storage bounds and suspension/revocation apply.
 IDs/request IDs are 32 lowercase hex characters. `BUY.amount` is input micro demo
 USD (fee included, gas additional); `BUY.min_output` is whole tokens. `SELL.amount`
 is whole tokens and `SELL.min_output` is net micro demo USD before separately
-charged gas. Observations carry their tick. Stale/future ticks are rejected.
+charged gas. Credential rotation/expiry, agent or creator inactivity and suspension
+reject pending orders at the next owner step with `ACCESS_REVOKED`; the accepted
+order retains its already charged demo gas. Eligibility is derived server-side
+and recorded for deterministic replay. Observations carry their tick. Stale/future ticks are rejected.
 
 Retain exactly the same request ID and body when retrying an uncertain write.
 Duplicate orders return the original acceptance, even after settlement; query the
@@ -127,7 +130,9 @@ commit in one SQLite transaction. Failure rolls back the entire write.
 
 Run `python -m zoora_community audit --state PRIVATE_STATE` to replay the private
 genesis and every transition. It checks stored state, observed frames, order FIFO,
-fill arithmetic, cash, positions and chained hashes. This establishes internal
+fill arithmetic, cash, positions and chained hashes. The general audit also binds
+creation identity and every transition, detecting episode deletion or truncation
+while the corresponding general audit remains intact. This establishes internal
 consistency, not external timestamping, market realism or independent evidence;
 an administrator controlling the whole store could replace an entire history.
 

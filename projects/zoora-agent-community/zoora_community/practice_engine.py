@@ -303,7 +303,7 @@ def background(world, coin):
         coin["stage"] = "HALTED"
 
 
-def fill(world, agent_id, account):
+def fill(world, agent_id, account, revoked=False):
     order = account["pending"]
     if not order:
         return
@@ -311,11 +311,15 @@ def fill(world, agent_id, account):
     amount, side = order["amount"], order["side"]
     output = quote(coin, side, amount)
     reason = (
-        "NO_LIQUIDITY_OR_MARKET_UNAVAILABLE"
-        if output <= 0
-        else "MIN_OUTPUT"
-        if output < order["min_output"]
-        else None
+        "ACCESS_REVOKED"
+        if revoked
+        else (
+            "NO_LIQUIDITY_OR_MARKET_UNAVAILABLE"
+            if output <= 0
+            else "MIN_OUTPUT"
+            if output < order["min_output"]
+            else None
+        )
     )
     if side == "BUY" and reason is None:
         position = account["positions"].get(coin["id"], 0)
@@ -351,6 +355,7 @@ def fill(world, agent_id, account):
     }
     account["receipts"].append(receipt)
     account["pending"] = None
+    account["pending_credential"] = None
 
 
 def apply(world, command):
@@ -371,6 +376,7 @@ def apply(world, command):
             "cash": INITIAL_CASH,
             "positions": {},
             "pending": None,
+            "pending_credential": None,
             "receipts": [],
             "fees": 0,
             "gas": 0,
@@ -423,6 +429,7 @@ def apply(world, command):
         }
         order["state"] = "PENDING"
         account["pending"] = order
+        account["pending_credential"] = command.get("credential_id")
         mark_accounts(world)
         return deepcopy(order)
     if action == "step":
@@ -443,7 +450,7 @@ def apply(world, command):
             key=lambda v: v[0],
         )
         for _sequence, key, account in pending:
-            fill(world, key, account)
+            fill(world, key, account, key in command.get("ineligible_agents", []))
             mark_accounts(world)
         if world["tick"] == MAX_TICKS:
             world["status"] = "CLOSED"

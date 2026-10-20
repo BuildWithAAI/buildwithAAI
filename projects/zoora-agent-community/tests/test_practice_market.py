@@ -388,6 +388,75 @@ class PracticeStoreTests(unittest.TestCase):
         self.refused("PRACTICE_ENROLLMENT_CLOSED", self.enroll)
         self.f.store.audit()
 
+    def assert_revoked_pending(self):
+        self.step(0)
+        account = self.get(self.base + "/accounts/" + self.agent_id, self.f.owner)[1]
+        self.assertEqual(account["recent_receipts"][0]["reason"], "ACCESS_REVOKED")
+        self.assertEqual(account["recent_receipts"][0]["output"], 0)
+        self.assertEqual(account["cash_micro"], e.INITIAL_CASH - e.GAS)
+        self.assertEqual(account["positions"], [])
+        self.f.store.audit()
+
+    def test_suspended_agent_cannot_settle_its_pending_order(self):
+        self.enroll()
+        self.post(self.base + "/orders", self.payload(), self.agent)
+        self.post(
+            "/v1/agents/" + self.agent_id + "/suspend",
+            {"reason": "Pause delegated work"},
+            self.f.owner,
+        )
+        self.assert_revoked_pending()
+
+    def test_suspended_creator_cancels_its_agents_pending_order(self):
+        self.enroll()
+        self.post(self.base + "/orders", self.payload(), self.agent)
+        operator_id = self.get("/v1/me", self.operator)[1]["principal_id"]
+        self.post(
+            "/v1/operators/" + operator_id + "/suspend", {"reason": "Pause creator"}, self.f.owner
+        )
+        self.assert_revoked_pending()
+
+    def test_rotated_credential_does_not_leave_an_old_order_authorized(self):
+        self.enroll()
+        body = self.payload()
+        self.post(self.base + "/orders", body, self.agent)
+        fresh = self.post("/v1/credentials/rotate", {}, self.agent)[1]["credential"]["token"]
+        self.assert_revoked_pending()
+        self.refused("UNAUTHORIZED", lambda: self.post(self.base + "/orders", body, self.agent))
+        self.assertEqual(self.get(self.base + "/accounts/" + self.agent_id, fresh)[0], 200)
+
+    def test_expired_credential_cancels_pending_even_with_active_account(self):
+        self.enroll()
+        self.post(self.base + "/orders", self.payload(), self.agent)
+        self.f.at += 86_400_001
+        self.assert_revoked_pending()
+
+    def test_audit_detects_entire_episode_removal(self):
+        self.enroll()
+        self.step(0)
+        with closing(self.f.store._connection()) as c:
+            c.execute("DELETE FROM practice_actions WHERE episode_id=?", (self.episode,))
+            c.execute("DELETE FROM practice_frames WHERE episode_id=?", (self.episode,))
+            c.execute("DELETE FROM practice_episodes WHERE id=?", (self.episode,))
+        self.refused("PRACTICE_CONSISTENCY_FAILURE", self.f.store.audit)
+
+    def test_audit_detects_truncation_to_a_valid_genesis(self):
+        self.enroll()
+        self.step(0)
+        with closing(self.f.store._connection()) as c:
+            c.execute("DELETE FROM practice_actions WHERE episode_id=?", (self.episode,))
+            c.execute("DELETE FROM practice_frames WHERE episode_id=? AND tick>0", (self.episode,))
+            c.execute(
+                "UPDATE practice_episodes SET state_json=initial_json,head=commitment WHERE id=?",
+                (self.episode,),
+            )
+        self.refused("PRACTICE_CONSISTENCY_FAILURE", self.f.store.audit)
+
+    def test_audit_binds_creation_retry_identity(self):
+        with closing(self.f.store._connection()) as c:
+            c.execute("UPDATE practice_episodes SET request_id=? WHERE id=?", (rid(), self.episode))
+        self.refused("PRACTICE_CONSISTENCY_FAILURE", self.f.store.audit)
+
     def test_atomic_rollback_on_audit_failure_then_retry(self):
         self.enroll()
         body = self.payload()

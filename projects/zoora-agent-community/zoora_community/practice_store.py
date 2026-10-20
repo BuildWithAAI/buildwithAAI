@@ -106,7 +106,12 @@ class PracticeMethods:
                 (uuid.uuid4().hex, key, canonical(engine.public_market(world))),
             )
             self._event(
-                connection, principal, "PRACTICE_CREATE", key, {"commitment": commitment}, at
+                connection,
+                principal,
+                "PRACTICE_CREATE",
+                key,
+                {"commitment": commitment, "request_id": request_id},
+                at,
             )
             return 201, {"id": key, "commitment": commitment, "replayed": False}
         parts = route.strip("/").split("/")
@@ -150,6 +155,8 @@ class PracticeMethods:
         if old:
             stored = json.loads(old["command"])
             stored.pop("sequence", None)
+            stored.pop("credential_id", None)
+            stored.pop("ineligible_agents", None)
             if canonical(stored) != canonical(command):
                 raise Problem(409, "PRACTICE_IDEMPOTENCY_CONFLICT")
             return 200, json.loads(old["result"])
@@ -162,7 +169,31 @@ class PracticeMethods:
         )
         if command["action"] == "order":
             command["sequence"] = ordinal
+            command["credential_id"] = principal["id"]
         world = json.loads(episode["state_json"])
+        if command["action"] == "step":
+            command["ineligible_agents"] = []
+            for agent_id, account in sorted(world["accounts"].items()):
+                if not account["pending"]:
+                    continue
+                credential = connection.execute(
+                    "SELECT * FROM credentials WHERE id=?", (account["pending_credential"],)
+                ).fetchone()
+                valid = (
+                    credential is not None
+                    and credential["role"] == "AGENT"
+                    and credential["principal_id"] == agent_id
+                    and not credential["revoked"]
+                    and at < credential["expires_ms"]
+                )
+                try:
+                    self._active_agent(connection, agent_id)
+                except Problem as error:
+                    if error.code not in {"ACCESS_SUSPENDED", "AGENT_INACTIVE"}:
+                        raise
+                    valid = False
+                if not valid:
+                    command["ineligible_agents"].append(agent_id)
         result = engine.apply(world, command)
         if len(canonical(world).encode()) > 800_000:
             raise Problem(409, "PRACTICE_STATE_LIMIT")
@@ -203,7 +234,30 @@ class PracticeMethods:
 
     def _audit_practice(self, connection):
         """Recompute every transition, fill, frame, cash balance and hash from genesis."""
+        events = {}
+        for event in connection.execute(
+            "SELECT * FROM audit WHERE action GLOB 'PRACTICE_*' ORDER BY seq"
+        ):
+            events.setdefault(event["resource_id"], []).append(event)
+        episode_ids = {row[0] for row in connection.execute("SELECT id FROM practice_episodes")}
+        if set(events) != episode_ids:
+            raise ValueError("practice episode/audit mismatch")
         for episode in connection.execute("SELECT * FROM practice_episodes"):
+            identifier(episode["id"])
+            identifier(episode["request_id"])
+            observed_events = events[episode["id"]]
+            creation = observed_events[0]
+            if (
+                creation["action"] != "PRACTICE_CREATE"
+                or creation["actor_role"] != "OWNER"
+                or creation["actor_id"] != "owner"
+                or creation["at_ms"] != episode["created_ms"]
+                or creation["details"]
+                != canonical(
+                    {"commitment": episode["commitment"], "request_id": episode["request_id"]}
+                )
+            ):
+                raise ValueError("practice creation/audit mismatch")
             world = json.loads(episode["initial_json"])
             head = engine.digest(world)
             if head != episode["commitment"] or canonical(
@@ -225,6 +279,19 @@ class PracticeMethods:
             ):
                 ordinal += 1
                 command = json.loads(row["command"])
+                if len(observed_events) <= ordinal:
+                    raise ValueError("practice transition missing from audit")
+                event = observed_events[ordinal]
+                role = {"enroll": "OPERATOR", "order": "AGENT", "step": "OWNER"}.get(
+                    command["action"]
+                )
+                if (
+                    event["action"] != "PRACTICE_" + command["action"].upper()
+                    or event["actor_role"] != role
+                    or event["actor_id"] != row["actor_id"]
+                    or event["details"] != canonical({"ledger_head": row["hash"]})
+                ):
+                    raise ValueError("practice transition/audit mismatch")
                 if (
                     command["request_id"] != row["request_id"]
                     or row["ordinal"] != ordinal
@@ -236,6 +303,14 @@ class PracticeMethods:
                     agent = self._row(connection, "agents", command["agent_id"])
                     if agent["operator_id"] != row["actor_id"]:
                         raise ValueError("practice creator mismatch")
+                if command["action"] == "order":
+                    credential = self._row(connection, "credentials", command["credential_id"])
+                    if (
+                        credential["role"] != "AGENT"
+                        or credential["principal_id"] != row["actor_id"]
+                        or not credential["created_ms"] <= event["at_ms"] < credential["expires_ms"]
+                    ):
+                        raise ValueError("practice order credential mismatch")
                 if command["action"] == "step" and row["actor_id"] != "owner":
                     raise ValueError("practice clock actor mismatch")
                 result = engine.apply(world, command)
@@ -251,5 +326,10 @@ class PracticeMethods:
                     result
                 ):
                     raise ValueError("practice observed frame mismatch")
-            if frames or canonical(world) != episode["state_json"] or head != episode["head"]:
+            if (
+                len(observed_events) != ordinal + 1
+                or frames
+                or canonical(world) != episode["state_json"]
+                or head != episode["head"]
+            ):
                 raise ValueError("practice state mismatch")
