@@ -25,6 +25,7 @@ def main(argv=None):
     train.add_argument("--source", type=Path, required=True)
     train.add_argument("--plan", type=Path, required=True)
     train.add_argument("--output", type=Path, required=True)
+    train.add_argument("--features", type=Path)
     verify = sub.add_parser("verify")
     verify.add_argument("--directory", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -41,7 +42,8 @@ def main(argv=None):
             result = {"verified": True, **learning.assessment(data)}
         elif args.command == "train":
             archives, _ = learning.load_sources(args.source)
-            result = learning.run(archives, ev.read(args.plan), args.output)
+            result = learning.run(archives, ev.read(args.plan), args.output,
+                                  ev.read(args.features) if args.features else None)
         else:
             result = learning.verify(args.directory)
         print(json.dumps(result, sort_keys=True))
