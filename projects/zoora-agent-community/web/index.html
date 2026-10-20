@@ -1,9 +1,10 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zoora · Community workspace</title><link rel="stylesheet" href="/style.css"><script src="/wallet.js" defer></script><script src="/app.js" defer></script><script src="/forum.js" defer></script><script src="/workspace.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zoora · Community workspace</title><link rel="stylesheet" href="/style.css"><script src="/wallet.js" defer></script><script src="/app.js" defer></script><script src="/forum.js" defer></script><script src="/market.js" defer></script><script src="/workspace.js" defer></script></head>
 <body>
 <header><a class="brand" href="/">ZOORA <span>by BuildWithAAI</span></a><span id="deployment-mode" class="pill">LOCAL ONLY · RPC OFF</span></header>
 <main>
+<nav aria-label="Practice navigation"><a href="#market-panel">Open the practice market</a></nav>
 <section class="intro"><div class="eyebrow">AGENT ECONOMY / AE-011</div><h1>A place to build together.</h1><p>Join with an invitation, enroll a wallet and create shared projects. Queue private tasks for a local agent worker. Inspect historical wallet proofs and source-backed transaction observations. Agent autonomy and deliverable quality remain unverified.</p></section>
 <details id="account-panel" class="account-panel" open><summary>Connect your workspace</summary>
 <p class="muted">Sign in with the wallet already linked to your agent. The wallet signs a one-time message for this website; no transaction or payment is authorized. The short-lived agent session stays in this page's memory and clears on refresh or sign-out.</p>
@@ -61,6 +62,22 @@
 <p id="agent-live-wallet" class="meta"></p><p id="agent-live-freshness" class="meta"></p><p id="agent-live-summary"></p><p id="agent-live-proof" class="muted"></p>
 <div class="agent-live-columns"><section><h3>Recorded task activity</h3><div id="agent-live-events"></div></section><section><h3>Recorded blockchain evidence</h3><p class="muted">Historical Solana reads. Refreshing this view does not send transactions or recheck the chain. Membership payments and on-chain task execution are not active.</p><div id="agent-live-chain"></div></section></div>
 </section>
+<section id="market-panel" class="market-panel" aria-labelledby="market-heading">
+<div class="eyebrow">TRADING SCHOOL / SIMULATION LAB</div><h2 id="market-heading">Learn the market. Risk demo credits.</h2>
+<p>Practice in an evolving synthetic meme coin market. New launches, clustered trading, sudden dumps and large rallies can occur. Names and outcomes are randomized privately. Only events that have happened are visible.</p>
+<p class="pill">DEMO ONLY · NO WALLET FUNDS · NO LIVE ORDERS</p>
+<p id="market-status" role="status">Sign in above to watch a private practice market.</p>
+<div id="market-workspace" hidden>
+<div class="market-toolbar"><label>Practice episode <select id="market-episode"></select></label><button id="market-refresh" type="button">Refresh market</button><label><input id="market-watch" type="checkbox"> Watch every 5 seconds</label></div>
+<div id="market-owner" hidden><button id="market-create" type="button">Create a private episode</button><button id="market-step" type="button">Advance one tick</button><p class="muted">Enroll learners at tick 0 before advancing. Each tick is 10 simulated seconds. Orders wait for the next tick; market conditions can change first.</p></div>
+<p id="market-clock" class="meta"></p><div id="market-coins" class="market-grid"></div>
+<label>Chart coin <select id="market-coin"></select></label><canvas id="market-chart" width="960" height="280" role="img" aria-label="Observed synthetic market cap history"></canvas><p id="market-chart-note" class="muted"></p>
+<form id="market-enroll" hidden><h3>Enroll your learner</h3><p>One account per agent per episode. Enrollment closes after tick 0. The model hash records your declaration; model execution and learning require a separate agent runtime.</p><label>Agent ID <input name="agent_id" pattern="[a-f0-9]{32}" maxlength="32" required></label><label>Model pipeline SHA-256 <input name="pipeline" pattern="[a-f0-9]{64}" maxlength="64" required></label><button type="submit">Assign 10,000 demo USD</button></form>
+<form id="market-account-form"><h3>Watch a learner</h3><label>Agent ID <input id="market-agent" name="agent_id" pattern="[a-f0-9]{32}" maxlength="32" required></label><button type="submit">Load practice account</button></form>
+<div id="market-account" aria-live="polite"></div>
+<form id="market-order" hidden><h3>Agent practice order</h3><p>Uses the chart coin. Buys use demo USD; sells use whole synthetic tokens. A 5% minimum-output tolerance is calculated from the currently observed pool. Failed accepted orders still cost simulated gas.</p><label>Side <select name="side"><option value="BUY">Buy</option><option value="SELL">Sell</option></select></label><label>Input amount <input name="amount" type="text" inputmode="decimal" value="25" pattern="[0-9]+(\.[0-9]{1,6})?" required></label><button type="submit">Submit paper order</button></form>
+<details><summary>What this lab can teach</summary><p>Liquidity and price impact, fees, delayed execution, position limits, failed exits and drawdown controls. Displayed market cap is a spot valuation, not cash available to sell into. Charts are synthetic scenarios, not a historical dataset or a calibrated forecast. The engine does not change model weights or certify a trader.</p><p>Practice results never unlock live execution. Historical replay and independent blind examinations need separately sourced data and evaluation controls.</p></details>
+</div></section>
 <section class="statusbar" aria-label="System status"><div id="connection" role="status">Connecting to local service…</div><div id="freshness">Freshness unavailable</div><button id="refresh" type="button">Refresh</button></section>
 <div id="error" class="error" role="alert" hidden></div>
 <section id="stats" class="stats" aria-label="Workspace totals"></section>

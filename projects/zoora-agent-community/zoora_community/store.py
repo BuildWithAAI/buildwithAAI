@@ -27,9 +27,10 @@ from .wallet_login import WalletLoginMethods
 from .agent_activity import AgentActivityMethods
 from .creator_wallet import CreatorWalletMethods
 from .forum import ForumMethods, FORUM_TABLES
+from .practice_store import PracticeMethods, PRACTICE_TABLES
 
 APPLICATION_ID = 0x5A414136
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 MAX_DATABASE_BYTES = 64 * 1024 * 1024
 LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "members": 10000, "artifacts": 10000, "posts": 10000, "offers": 2000,
@@ -39,7 +40,8 @@ LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "commerce_books": 64, "commerce_actions": 16384,
           "wallet_login_challenges": 20000, "creator_wallets": 200,
           "creator_wallet_challenges": 20000, "forum_posts": 10000,
-          "forum_credentials": 5000, "forum_reports": 10000}
+          "forum_credentials": 5000, "forum_reports": 10000,
+          "practice_episodes": 8, "practice_actions": 6000, "practice_frames": 1000}
 AUTH_DOMAIN = b"ZOORA_AE006_CREDENTIAL_V1\0"
 AUDIT_DOMAIN = b"ZOORA_AE006_AUDIT_V1\0"
 ZERO_HASH = "0" * 64
@@ -86,7 +88,7 @@ def provenance(created_ms, updated_ms=None):
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store(CreatorWalletMethods, ForumMethods, WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods, CommerceMethods, AgentActivityMethods):
+class Store(PracticeMethods, CreatorWalletMethods, ForumMethods, WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods, CommerceMethods, AgentActivityMethods):
     def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
@@ -175,6 +177,7 @@ class Store(CreatorWalletMethods, ForumMethods, WalletProofMethods, WalletLoginM
             schema += Path(__file__).with_name("migration_006.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_007.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_008.sql").read_text(encoding="utf-8")
+            schema += Path(__file__).with_name("migration_009.sql").read_text(encoding="utf-8")
             connection.executescript("BEGIN IMMEDIATE;\n" + schema)
             connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -441,6 +444,8 @@ class Store(CreatorWalletMethods, ForumMethods, WalletProofMethods, WalletLoginM
         return response
 
     def _read(self, connection, route, token, at, limit, after):
+        if route.startswith("/v1/practice/"):
+            return self._practice_read(connection, route, token, at, limit, after)
         if route.startswith("/v1/forum/"):
             return self._forum_read(connection, route, token, at, limit, after)
         if route == "/v1/creator/wallet":
@@ -558,6 +563,8 @@ class Store(CreatorWalletMethods, ForumMethods, WalletProofMethods, WalletLoginM
             raise Problem(403, "PROJECT_MEMBERSHIP_REQUIRED")
 
     def _write(self, connection, principal, method, route, body, at, audience=None):
+        if route.startswith("/v1/practice/"):
+            return self._practice_write(connection, principal, method, route, body, at)
         if route.startswith("/v1/forum/"):
             return self._forum_write(connection, principal, method, route, body, at)
         if method == "POST" and route == "/v1/creator/wallet/link-challenges":
@@ -808,6 +815,8 @@ class Store(CreatorWalletMethods, ForumMethods, WalletProofMethods, WalletLoginM
                     raise Problem(503, "AUDIT_CHAIN_FAILURE")
                 previous, at = digest, row["at_ms"]
             for table in LIMITS:
+                if self.schema_version < 9 and table in PRACTICE_TABLES:
+                    continue
                 if self.schema_version < 8 and table in FORUM_TABLES:
                     continue
                 if self.schema_version < 7 and table == "wallet_login_challenges":
@@ -872,6 +881,11 @@ class Store(CreatorWalletMethods, ForumMethods, WalletProofMethods, WalletLoginM
                     self._audit_forum(connection)
                 except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
                     raise Problem(503, "FORUM_IDENTITY_CONSISTENCY_FAILURE") from None
+            if self.schema_version >= 9:
+                try:
+                    self._audit_practice(connection)
+                except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+                    raise Problem(503, "PRACTICE_CONSISTENCY_FAILURE") from None
             connection.execute("COMMIT")
             return {"schema_version": self.schema_version, "audit_events": seq, "audit_head": previous,
                     "database_integrity": "OK", "foreign_keys": "OK", "relationships": "OK",

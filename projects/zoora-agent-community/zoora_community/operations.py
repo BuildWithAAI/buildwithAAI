@@ -12,7 +12,7 @@ import uuid
 from . import VERSION
 from .client import Client, read_credential
 from .http_app import ASSETS
-from .store import Store, exclusive_file
+from .store import SCHEMA_VERSION, Store, exclusive_file
 from .validation import Problem, canonical
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -20,14 +20,10 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def package_snapshot(root=ROOT):
     """Pin module/schema/lock/static bytes at startup; not a signed release hash."""
-    paths = sorted([*root.joinpath("zoora_community").glob("*.py"),
-                    root / "zoora_community/schema.sql", root / "zoora_community/migration_002.sql",
-                    root / "zoora_community/migration_003.sql",
-                    root / "zoora_community/migration_004.sql",
-                    root / "zoora_community/migration_005.sql",
-                    root / "zoora_community/migration_006.sql",
-                    root / "zoora_community/migration_007.sql",
-                    root / "requirements.lock", *(root / "web" / name for name, _ in ASSETS.values())])
+    paths = sorted({*root.joinpath("zoora_community").glob("*.py"),
+                    root / "zoora_community/schema.sql",
+                    *(root / "zoora_community" / f"migration_{v:03}.sql" for v in range(2, SCHEMA_VERSION + 1)),
+                    root / "requirements.lock", *(root / "web" / name for name, _ in ASSETS.values())})
     digest = hashlib.sha256(b"ZOORA_AE008_LOCAL_PACKAGE_V1\0")
     blobs = {}
     total = 0

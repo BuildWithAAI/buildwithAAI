@@ -14,6 +14,7 @@
   function view(){
     globalThis.ZooraCommunityView?.setSession(session);
     globalThis.ZooraForumView?.setSession(session);
+    globalThis.ZooraMarketView?.setSession(session);
     const role=session?.role;
     el("session-status").textContent=session?role+" · "+session.principal_id+" · expires "+new Date(session.expires_at_ms).toLocaleString():"Signed out";
     el("sign-out").hidden=!session;el("save-issued").hidden=!issued;el("credential-note").hidden=!issued;

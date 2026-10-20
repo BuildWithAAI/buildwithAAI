@@ -51,6 +51,50 @@ class MigrationTests(unittest.TestCase):
             connection.execute("COMMIT")
         return old, job
 
+    def schema_eight(self):
+        with closing(sqlite3.connect(self.legacy.path, autocommit=True)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            for version in range(2, 9):
+                ddl = Path(__file__).resolve().parent.parent / "zoora_community" / f"migration_{version:03}.sql"
+                for statement in ddl.read_text(encoding="utf-8").split(";"):
+                    if statement.strip():
+                        connection.execute(statement)
+            connection.execute("PRAGMA user_version=8")
+            connection.execute("COMMIT")
+        old = Store(self.legacy.state, clock=lambda: self.at, _schema_version=8)
+        with closing(old._connection()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            checkpoint = connection.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()[0]
+            old._event(connection, {"role":"OWNER", "principal_id":"owner"}, "SCHEMA_MIGRATE", "schema",
+                       {"from":1, "to":8, "backup_audit_head":checkpoint}, self.at)
+            principal = old._authenticate(connection, self.agent, self.at)
+            thread = old._forum_write(connection, principal, "POST", "/v1/forum/threads",
+                                      {"topic":"crypto", "title":"Preserved research", "body":"Existing content."}, self.at)[1]
+            connection.execute("COMMIT")
+        return old, thread
+
+    def test_schema_eight_upgrade_preserves_forum_and_has_no_market_or_credit_grants(self):
+        old, thread = self.schema_eight()
+        before = old.audit()
+        backup = self.root / "schema-eight.sqlite3"
+        current = Store.migrate(old.state, backup, clock=lambda: self.at)
+        self.assertEqual(verify_backup(backup)["audit"], before)
+        self.assertEqual(current.call("GET", "/v1/forum/threads/"+thread["id"], token=self.agent)[1]["thread"]["body"], "Existing content.")
+        self.assertEqual(current.call("GET", "/v1/practice/episodes", token=self.agent)[1]["items"], [])
+        self.assertEqual(current.audit()["schema_version"], SCHEMA_VERSION)
+
+    def test_schema_eight_failed_upgrade_restores_original_with_backup(self):
+        old, _ = self.schema_eight()
+        before = old.audit()
+        backup = self.root / "schema-eight-failure.sqlite3"
+        with patch.object(Store, "_event", side_effect=RuntimeError("injected migration failure")):
+            with self.assertRaises(RuntimeError):
+                Store.migrate(old.state, backup, clock=lambda: self.at)
+        self.assertEqual(old.audit(), before)
+        self.assertEqual(verify_backup(backup)["audit"], before)
+        with closing(old._connection()) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='practice_episodes'").fetchone()[0], 0)
+
     def test_schema_five_upgrade_preserves_pending_work_and_creates_no_commerce_grants(self):
         old, job = self.schema_five()
         before = old.audit()

@@ -4,7 +4,8 @@ from urllib.parse import parse_qsl, urlsplit
 
 from .validation import MAX_BODY, Problem, canonical, identifier, parse_json
 
-ASSETS = {"/forum.js": ("forum.js", "text/javascript; charset=utf-8"),
+ASSETS = {"/practice": ("index.html", "text/html; charset=utf-8"),
+          "/market.js": ("market.js", "text/javascript; charset=utf-8"),"/forum.js": ("forum.js", "text/javascript; charset=utf-8"),
           "/": ("index.html", "text/html; charset=utf-8"),
           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
           "/workspace.js": ("workspace.js", "text/javascript; charset=utf-8"),
