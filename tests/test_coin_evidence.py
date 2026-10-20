@@ -21,7 +21,7 @@ def address(number):
 
 
 def event(side="BUY", quote=1_000_000_000, base=2_000_000):
-    values = [1000, base, 99, 100, 200, 300, 400, quote, 20, 2, 5, 1, quote + 2, quote + 3]
+    values = [1000, base, 99, 100, 200, 300, 400, quote, 20, 2, 5, 1, min(quote + 2, 2**64 - 1), min(quote + 3, 2**64 - 1)]
     raw = (ev.BUY if side == "BUY" else ev.SELL) + b"".join(
         value.to_bytes(8, "little", signed=i == 0) for i, value in enumerate(values))
     return raw + b"".join(bytes((n,)) * 32 for n in (1, 2, 3, 4)) + b"opaque-current-fields"
