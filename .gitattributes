@@ -2,3 +2,5 @@
 /experiments/flyvis_cpu_smoke/** text eol=lf
 /experiments/flyvis_trained_reference/** text eol=lf
 /experiments/flyvis_trained_reference/**/*.npy binary
+/research/consensus/** text eol=lf
+/research/consensus/**/*.zip binary

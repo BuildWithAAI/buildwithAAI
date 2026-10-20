@@ -1,0 +1,18 @@
+{
+  "classification": "SYNTHETIC_SOFTWARE_TEST_ONLY",
+  "execution_allowed": false,
+  "file_sha256": {
+    "scripts/replay_brain_consensus.py": "d775853bf7699f3893a69a3c192369fc441104d0fe84434c4072c2cf6e981783",
+    "scripts/run_consensus_demo.py": "2e146afef5a0f6f195ad9edd91444a690a9205af38520f9ebf73f4230f881cb3",
+    "src/multi_brain_research/consensus.py": "b9377ae5a32ecabcbf1bffa049ec0effd1633d6269da2d6c02aa0281e6ac31aa",
+    "src/multi_brain_research/consensus_fixture.py": "6dc60aad13bca84be5fa560c97d6734767cc101392b533df742e9398070b163b",
+    "src/multi_brain_research/consensus_stream.py": "2724aa972760f667de69c52fdd130501969eebb2ea90bf7202d9f812bbd1fa18",
+    "src/multi_brain_research/contracts.py": "aa6169877ae52c771d97a53f4fd61c69f11ae590dfa6981a7feb9aeb09e898f2",
+    "src/multi_brain_research/graph.py": "af0574e452dfb67502d81bb88fafaaf2f6f6c9d3c099c151517a4a307f6eb910"
+  },
+  "identical_source_tree": "7c64655a24c6cb1aed25a947944ab6aa9e83504f",
+  "local_execution_commit": "f30f4ef15091213aebb74da187fcec2cb24ca55c",
+  "market_validation": "NOT_ESTABLISHED",
+  "note": "GitHub MCP-created commit and local commit have identical Git trees; later evidence/test/documentation changes do not change these execution code blobs. Fixture IDs and scores are synthetic, not real model provenance.",
+  "remote_execution_commit": "9a86da552bd112be575cfcba63c72b41445334a0"
+}

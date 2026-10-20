@@ -1,0 +1,44 @@
+{
+  "animal_market_models_executed": 0,
+  "audit_sha256": "e96b004be383789a5901e107cbb57c85be316f99c9a8fa2d4e9a08dd87ec72ec",
+  "classification": "SYNTHETIC_SOFTWARE_TEST_ONLY",
+  "execution_attestation": "NOT_ESTABLISHED",
+  "hosted_artifacts": [
+    {
+      "action": "NO_EXECUTION",
+      "archive_bytes": 12867,
+      "archive_file": "hosted-ubuntu.zip",
+      "archive_sha256": "a571a5295f398d4d79c29e2ea2b03ddea4bd567ad71db03edf9b6bc2e14a2e4b",
+      "artifact_id": 12254717188,
+      "audit_bytes_match_local": true,
+      "downloaded_replay_bytes_equal": true,
+      "execution_allowed": false,
+      "job_id": 118552839398,
+      "platform": "ubuntu",
+      "run_id": 39400241477,
+      "scenarios": 9,
+      "source_commit": "9a86da552bd112be575cfcba63c72b41445334a0",
+      "tests_normal": 103,
+      "tests_optimized": 103
+    },
+    {
+      "action": "NO_EXECUTION",
+      "archive_bytes": 12870,
+      "archive_file": "hosted-windows.zip",
+      "archive_sha256": "04b13a2c4951fe4d54a8bdac7c4496ee797d9917fa307a7d016286561ee5b01c",
+      "artifact_id": 12254662338,
+      "audit_bytes_match_local": true,
+      "downloaded_replay_bytes_equal": true,
+      "execution_allowed": false,
+      "job_id": 118552839994,
+      "platform": "windows",
+      "run_id": 39400241477,
+      "scenarios": 9,
+      "source_commit": "9a86da552bd112be575cfcba63c72b41445334a0",
+      "tests_normal": 103,
+      "tests_optimized": 103
+    }
+  ],
+  "live_market_connections": 0,
+  "note": "Downloaded archives matched GitHub artifact digests; all four evidence components matched local bytes and were replayed with the same implementation."
+}
