@@ -15,6 +15,39 @@ concurrency:
   group: zoora-community-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  practice-worker:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12.15"
+      - run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - name: Causal worker, interruption, exact retries and evidence regressions
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p "test_practice_worker.py" -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p "test_practice_worker.py"
+      - name: Actual model-protocol fixture to HTTP paper order, restart and offline review
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/practice_worker_evidence.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: practice-worker-${{ matrix.os }}
+          path: projects/zoora-agent-community/evidence-output/practice-worker/
+          retention-days: 14
   practice-market:
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -259,6 +292,7 @@ jobs:
           done
           timeout 240 "$OLLAMA_BIN" pull "$ZOORA_TEST_MODEL"
           python -bb -X dev -W error scripts/live_model_evidence.py
+          python -bb -X dev -W error scripts/practice_worker_evidence.py --real-model "$ZOORA_TEST_MODEL"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
