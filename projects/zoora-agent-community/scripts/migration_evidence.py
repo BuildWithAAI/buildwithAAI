@@ -44,7 +44,7 @@ def run():
         after = json.loads(command("audit", "--state", legacy.state).stdout)
         assert after["audit_events"] == before["audit_events"] + 3
     evidence = {"source_head_sha": os.environ.get("SOURCE_HEAD_SHA", "LOCAL_UNCOMMITTED"),
-                "activity": "AUTOMATED_TEST_FIXTURE", "from_schema": 1, "to_schema": 4,
+                "activity": "AUTOMATED_TEST_FIXTURE", "from_schema": 1, "to_schema": SCHEMA_VERSION,
                 "checks": ["actual migration CLI retains schema-1 backup and audit prefix",
                            "restarted HTTP service preserves content and old credentials",
                            "legacy declaration stays unverified until actual signed challenge",
