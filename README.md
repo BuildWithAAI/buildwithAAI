@@ -30,6 +30,8 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 
 ## What exists today
 
+The [trading-school research framework](research/TRADING_SCHOOL.md) adds source-backed lessons, public-practice assessment and a replay-only paper lab for future brain adapters. No brain has been trained or graduated by these software fixtures, and no trading permission is granted.
+
 This repository contains public planning and contribution material. A separate **private AAI Scan prototype** implements Scan → Watch → Compare, saved observations, a short timeline, and change alerts. The earlier development record reports 29 passing offline tests and one successful live public market-data request. Those checks were not rerun for this documentation update.
 
 **AAI Scan is not a validated live public service.** Hosting remains paused. Live Telegram delivery, production provider coverage, persistence/restore, and sustained operation remain to be demonstrated. It does not execute trades, verify Pump.fun origin, identify creator trades, or predict runners.
