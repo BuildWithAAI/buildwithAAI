@@ -24,5 +24,6 @@ def source_gate(source_id: str, stage: str) -> tuple[str, ...]:
         reasons.extend(("NO_REGISTERED_MODEL_OR_MARKET_ENCODER", "NO_BENCHMARK_PROMOTION",
                         "NO_CONNECTED_SHADOW_SERVICE"))
     if stage == "WALLET_EXECUTION":
+        reasons.append("NO_INDEPENDENT_TRADING_EDUCATION_OR_MARKET_SKILL_VALIDATION")
         reasons.append("EXECUTION_NOT_AUTHORIZED_OR_IMPLEMENTED")
     return tuple(reasons)

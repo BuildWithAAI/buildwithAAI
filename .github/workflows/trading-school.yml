@@ -1,0 +1,56 @@
+name: Trading School Research
+on:
+  pull_request:
+    paths:
+      - "src/multi_brain_research/education.py"
+      - "src/multi_brain_research/paper_school.py"
+      - "src/multi_brain_research/school_fixture.py"
+      - "src/multi_brain_research/readiness.py"
+      - "tests/test_trading_school.py"
+      - "scripts/trading_school.py"
+      - "research/trading-school/**"
+      - "research/TRADING_SCHOOL.md"
+      - ".github/workflows/trading-school.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/multi_brain_research/**"
+      - "tests/test_trading_school.py"
+      - "scripts/trading_school.py"
+      - "research/trading-school/**"
+      - ".github/workflows/trading-school.yml"
+permissions:
+  contents: read
+jobs:
+  school:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.14"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Strict education, causal paper accounting and admission tests
+        run: python -bb -X dev -W error -m unittest discover -s tests -p test_trading_school.py -v
+      - name: Optimized execution cannot remove admission checks
+        run: python -O -bb -X dev -W error -m unittest discover -s tests -p test_trading_school.py -v
+      - name: Actual CLI replay, independent fixture accounting and educated coordinator
+        run: python scripts/trading_school.py demo --output research/trading-school/generated/ci
+      - name: Recompute the retained hosted paper record
+        run: python scripts/trading_school.py --curriculum research/trading-school/evidence/curriculum.json verify-paper --input research/trading-school/evidence/paper-input.json --record research/trading-school/evidence/paper-record.json --output research/trading-school/generated/retained-verified.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: trading-school-${{ matrix.os }}-${{ matrix.python }}
+          path: research/trading-school/generated/ci/
+          if-no-files-found: error
+          retention-days: 14

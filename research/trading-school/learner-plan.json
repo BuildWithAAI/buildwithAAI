@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "classification": "PLANNED_NOT_TRAINED",
+  "model_training": "NOT_PERFORMED",
+  "students": [
+    {
+      "learner_group": "fly",
+      "source_id": "flyem_hemibrain_v1_2",
+      "pipeline_sha256": null,
+      "calibration_sha256": null,
+      "status": "WAITING_FOR_LICENSED_MARKET_ENCODER_READOUT_AND_TRAINING_ADAPTER",
+      "required_tracks": [
+        "crypto_general",
+        "solana",
+        "ethereum",
+        "bnb_smart_chain",
+        "sui",
+        "rh_unresolved",
+        "xauusd"
+      ]
+    },
+    {
+      "learner_group": "tadpole",
+      "source_id": "xenopus_fasciculation_2017",
+      "pipeline_sha256": null,
+      "calibration_sha256": null,
+      "status": "WAITING_FOR_LICENSED_MARKET_ENCODER_READOUT_AND_TRAINING_ADAPTER",
+      "required_tracks": [
+        "crypto_general",
+        "solana",
+        "ethereum",
+        "bnb_smart_chain",
+        "sui",
+        "rh_unresolved",
+        "xauusd"
+      ]
+    },
+    {
+      "learner_group": "cat",
+      "source_id": "cat_cortex_scannell_reus",
+      "pipeline_sha256": null,
+      "calibration_sha256": null,
+      "status": "WAITING_FOR_LICENSED_MARKET_ENCODER_READOUT_AND_TRAINING_ADAPTER",
+      "required_tracks": [
+        "crypto_general",
+        "solana",
+        "ethereum",
+        "bnb_smart_chain",
+        "sui",
+        "rh_unresolved",
+        "xauusd"
+      ]
+    },
+    {
+      "learner_group": "macaque",
+      "source_id": "macaque_tvb_shen_2019",
+      "pipeline_sha256": null,
+      "calibration_sha256": null,
+      "status": "WAITING_FOR_LICENSED_MARKET_ENCODER_READOUT_AND_TRAINING_ADAPTER",
+      "required_tracks": [
+        "crypto_general",
+        "solana",
+        "ethereum",
+        "bnb_smart_chain",
+        "sui",
+        "rh_unresolved",
+        "xauusd"
+      ]
+    }
+  ],
+  "live_execution_allowed": false
+}
