@@ -219,3 +219,21 @@ records, a frozen curriculum, paper input/output and an educated synthetic
 research round. CLI and in-process bytes must match, and independently hand
 calculated fixture costs/PnL must agree. CI repeats this on Linux/Windows and
 Python 3.11/3.14; no chain account or funds are involved.
+
+## Retained hosted evidence
+
+The [verification record](trading-school/evidence/hosted-verification.json)
+identifies source commit `81bb944`, its implementation-file hashes and the four
+Linux/Windows, Python 3.11/3.14 artifact digests from run `39442079916`. All four
+ZIP archives were downloaded and their SHA256 values checked against GitHub.
+Each of their 13 components matched the local replay byte for byte. The frozen
+curriculum, paper input, paper record, educated synthetic round and summary are
+retained beside that record. These are reproducible software tests; no brain
+training or independent financial-performance attestation is implied.
+
+CI also recomputes the retained paper result from its original inputs. To run
+that check locally with a new output file:
+
+```sh
+python scripts/trading_school.py --curriculum research/trading-school/evidence/curriculum.json verify-paper --input research/trading-school/evidence/paper-input.json --record research/trading-school/evidence/paper-record.json --output retained-paper-check.json
+```
