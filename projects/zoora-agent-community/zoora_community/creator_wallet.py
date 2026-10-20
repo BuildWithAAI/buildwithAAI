@@ -104,7 +104,8 @@ class CreatorWalletMethods:
     def _audit_creator_wallets(self, connection):
         instance = connection.execute("SELECT value FROM metadata WHERE key='instance_id'").fetchone()[0]
         for row in connection.execute("SELECT * FROM creator_wallet_challenges"):
-            if (creator_message(instance, row["purpose"], wallet(row["wallet"]), row["operator_id"],
+            if (not crypto_core_ed25519_is_valid_point(decode_base58(row["wallet"], 32, "INVALID_WALLET_ADDRESS"))
+                    or creator_message(instance, row["purpose"], wallet(row["wallet"]), row["operator_id"],
                                 row["credential_id"], row["nonce"], validate_audience(row["audience"]),
                                 row["created_ms"], row["expires_ms"]) != row["message"]
                     or row["expires_ms"] != row["created_ms"] + CHALLENGE_TTL_MS

@@ -165,6 +165,71 @@ class CreatorForumTests(unittest.TestCase):
             connection.execute("UPDATE creator_wallet_challenges SET signature=? WHERE id=?", ("A" * 88, challenge["challenge_id"]))
         self.refused("FORUM_IDENTITY_CONSISTENCY_FAILURE", self.f.store.audit)
 
+    def test_audit_detects_policy_compliant_content_tampering(self):
+        root = self.thread()
+        with closing(self.f.store._connection()) as connection:
+            connection.execute("UPDATE forum_posts SET body=? WHERE id=?", ("Altered statement.", root["id"]))
+        self.refused("FORUM_IDENTITY_CONSISTENCY_FAILURE", self.f.store.audit)
+
+    def test_thread_pagination_preserves_all_replies_and_enforces_depth(self):
+        root = self.thread()
+        parent = root
+        for depth in range(1, 9):
+            self.f.at += 60_001
+            parent = self.f.store.call("POST", "/v1/forum/replies", {"parent_id": parent["id"], "body": "A bounded reply."}, self.agent)[1]
+            self.assertEqual(parent["depth"], depth)
+        self.refused("FORUM_DEPTH_LIMIT", lambda: self.f.store.call("POST", "/v1/forum/replies", {"parent_id": parent["id"], "body": "Too deep."}, self.agent))
+        after, seen = "", []
+        while True:
+            data = self.f.store.call("GET", f"/v1/forum/threads/{root['id']}", token=self.agent, limit=3, after=after)[1]
+            seen.extend(item["id"] for item in data["items"])
+            after = data["next_after"]
+            if not after:
+                break
+        self.assertEqual(len(seen), 8)
+        self.assertEqual(len(set(seen)), 8)
+        self.f.store.audit()
+
+    def test_creator_login_consumes_suspended_wallet_proof_without_issuing_credential(self):
+        self.link()
+        self.f.store.call("POST", f"/v1/operators/{self.operator_id}/suspend", {"reason": "Review"}, self.f.owner)
+        challenge = self.f.store.call("POST", "/v1/creator/wallet/login/challenges", {"wallet": address("creator")})[1]
+        proof = signed_body(challenge, "creator")
+        status, result = self.f.store.call("POST", "/v1/creator/wallet/login", proof)
+        self.assertEqual((status, result["error"]), (403, "CREATOR_ACCESS_SUSPENDED"))
+        self.refused("CHALLENGE_CONSUMED", lambda: self.f.store.call("POST", "/v1/creator/wallet/login", proof))
+        self.f.store.audit()
+
+    def test_duplicate_creator_proof_race_issues_one_session(self):
+        self.link()
+        challenge = self.f.store.call("POST", "/v1/creator/wallet/login/challenges", {"wallet": address("creator")})[1]
+        proof = signed_body(challenge, "creator")
+        def attempt(_):
+            try:
+                return self.f.store.call("POST", "/v1/creator/wallet/login", proof)[0]
+            except Problem as exc:
+                return exc.code
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(attempt, range(8)))
+        self.assertEqual(results.count(200), 1)
+        self.assertEqual(results.count("CHALLENGE_CONSUMED"), 7)
+        self.f.store.audit()
+
+    def test_operator_deactivation_and_recovery_revoke_posting_tokens(self):
+        credential = self.posting()
+        self.f.store.call("PATCH", f"/v1/operators/{self.operator_id}", {"active": False}, self.f.owner)
+        self.f.store.call("PATCH", f"/v1/operators/{self.operator_id}", {"active": True}, self.f.owner)
+        self.refused("UNAUTHORIZED", lambda: self.thread(credential["token"]))
+        credential = self.posting()
+        self.f.store.recover_owner(self.f.root / "recovered.json", invalidate_all=True)
+        self.refused("UNAUTHORIZED", lambda: self.thread(credential["token"]))
+
+    def test_private_token_text_and_structured_report_payloads_are_rejected(self):
+        credential = self.posting()
+        self.refused("FORUM_CREDENTIALS_FORBIDDEN", lambda: self.thread(body=credential["token"]))
+        root = self.thread()
+        self.refused("INVALID_REPORT_REASON", lambda: self.f.store.call("POST", "/v1/forum/reports", {"post_id": root["id"], "reason": []}, self.agent))
+
     def test_content_policy_and_safe_plain_text(self):
         for value in ("https://bad.example", "bad.example", "person@example.com", "www.example.com",
                       "h t t p s : / /bad.example", "bad dot com", "%68%74%74%70%73%3A%2F%2Fbad",
