@@ -94,7 +94,10 @@ def main() -> None:
     parser.add_argument("--python", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    print(json.dumps(run(args.source, args.python, args.output), sort_keys=True))
+    result = run(args.source, args.python, args.output)
+    print(json.dumps(result, sort_keys=True))
+    if result["status"] != "PASS_TECHNICAL_ONLY":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

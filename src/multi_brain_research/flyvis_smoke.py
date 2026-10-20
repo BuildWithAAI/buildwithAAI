@@ -7,6 +7,7 @@ import ast
 import hashlib
 import json
 import math
+import re
 import struct
 import sys
 from pathlib import Path
@@ -165,13 +166,22 @@ def verify_run(directory: Path, registration: Path) -> dict:
     }
     for key, value in expected.items():
         _require(type(report.get(key)) is type(value) and report[key] == value, f"invalid {key}")
+    for key in ("integration_commit",):
+        _require(isinstance(report.get(key), str) and re.fullmatch(r"[0-9a-f]{40}", report[key]) is not None, f"invalid {key}")
+    for key in ("worker_sha256", "verifier_sha256", "model_state_sha256"):
+        _require(isinstance(report.get(key), str) and re.fullmatch(r"[0-9a-f]{64}", report[key]) is not None, f"invalid {key}")
+    _require(type(report.get("torch_threads")) is int and report["torch_threads"] == 1, "thread budget mismatch")
+    elapsed = report.get("wall_time_seconds")
+    _require(type(elapsed) in (int, float) and math.isfinite(elapsed) and 0 < elapsed <= 180, "runtime exceeds registration")
+    _require(type(report.get("edges")) is int and 0 < report["edges"] <= 1_000_000, "edge budget mismatch")
     hashes = report.get("artifact_sha256")
     _require(isinstance(hashes, dict), "artifact hashes missing")
     for name in FILES[:-1]:
         _require(hashes.get(name) == sha256(data[name]), f"artifact digest mismatch: {name}")
     metrics = evaluate_arrays(data["run-1.npy"], data["run-2.npy"], nodes["node_types"])
+    _require(type(report.get("nodes")) is int and report["nodes"] == metrics["shape"][2], "node count mismatch")
     _require(report.get("status") == metrics["status"], "reported status differs from numerical evidence")
-    _require(report.get("metrics") == metrics, "reported metrics differ from numerical evidence")
+    _require(json.dumps(report.get("metrics"), sort_keys=True) == json.dumps(metrics, sort_keys=True), "reported metrics differ from numerical evidence")
     return {
         **metrics,
         "experiment_id": EXPERIMENT_ID,

@@ -1,5 +1,7 @@
 # Multi-brain market research — first measured-data foundation
 
+**Later implementation checkpoint:** [FV-SMOKE-001](../experiments/flyvis_cpu_smoke/README.md) executes a pinned upstream FlyVis model with untrained defaults and synthetic flashes, preserving raw-output digests and independent numerical verification. This is separate from the FlyEM graph importer below. Its technical result does not establish biological replication, a trained market model or a connected live service, and does not change readiness gates.
+
 **October 20 UTC / October 19 America/Chicago, 2026.** The founder requested fly, tadpole, cat, monkey and later suitable sources in a shared system, and selected **market research** as the first live-input use. This checkpoint implements source-pinned graph preparation and a common causal research interface. It does not implement a biological market model, train a readout, demonstrate prediction quality, connect a live market service or authorize transactions.
 
 Governing contracts: [BT-000](BIOLOGICAL_COMPUTE_PROTOCOL.md), [BT-001](DATA_MEASUREMENT_PROTOCOL.md) and [BT-002](SOLANA_GROUND_TRUTH_REPLAY.md). The work is isolated from paid products, the live agent pilot and native-chain protocol. It builds on the existing [BT-003 replay draft #9](https://github.com/BuildWithAAI/buildwithAAI/pull/9); that harness's limitations remain in force. The existing 27 replay tests and source remain unchanged.

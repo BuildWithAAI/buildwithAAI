@@ -4,6 +4,7 @@ import array
 import json
 import math
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -66,6 +67,14 @@ def write_run(directory, values=None):
         "market_validation_established": False,
         "live_execution_allowed": False,
         "conditions": ["gray", "on_flash", "off_flash"],
+        "integration_commit": "a" * 40,
+        "worker_sha256": "a" * 64,
+        "verifier_sha256": "b" * 64,
+        "model_state_sha256": "c" * 64,
+        "torch_threads": 1,
+        "wall_time_seconds": 1.0,
+        "nodes": 10,
+        "edges": 10,
         "metrics": metrics,
         "status": metrics["status"],
         "artifact_sha256": {name: sha256((directory / name).read_bytes()) for name in ("run-1.npy", "run-2.npy", "nodes.json")},
@@ -164,6 +173,25 @@ class FlyvisArtifactTests(unittest.TestCase):
             changed.write_bytes(REGISTRATION.read_bytes() + b"\n")
             with self.assertRaises(SmokeVerificationError):
                 load_registration(changed)
+
+    def test_failed_numerical_evidence_makes_cli_fail(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            write_run(directory, [0.0] * 1200)
+            command = Path(__file__).resolve().parents[1] / "scripts/verify_flyvis_smoke.py"
+            result = subprocess.run([sys.executable, str(command), str(directory)], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(json.loads(result.stdout)["status"], "REJECT_TECHNICAL_HYPOTHESIS")
+
+    def test_resource_claims_and_metric_types_are_checked(self):
+        for key, value in [("wall_time_seconds", 181), ("torch_threads", True), ("nodes", 11), ("edges", 1000001), ("integration_commit", "missing")]:
+            with tempfile.TemporaryDirectory() as name, self.subTest(key=key):
+                directory = Path(name)
+                report = write_run(directory)
+                report[key] = value
+                (directory / "report.json").write_text(json.dumps(report))
+                with self.assertRaises(SmokeVerificationError):
+                    verify_run(directory, REGISTRATION)
 
 
 if __name__ == "__main__":
