@@ -10,13 +10,14 @@
   let visibleWallets=[];
   function workAction(){for(const form of el("agent-workspace").querySelectorAll("form"))form.hidden=form.id!==el("agent-action").value;}
   function clearProof(){proofGeneration++;challenge=null;pendingAction=null;el("challenge-preview").hidden=true;el("challenge-message").textContent="";el("challenge-expiry").textContent="";el("sign-proof").textContent="Sign message";}
-  function clearWallet(){el("wallet-login-status").textContent="Not signed in. Connect a wallet to continue.";if(offWallet)offWallet();offWallet=null;wallet=null;accounts=[];clearProof();el("wallet-account").replaceChildren();el("wallet-account").disabled=true;el("challenge-button").disabled=true;el("wallet-login").disabled=true;}
+  function clearWallet(){el("wallet-login-status").textContent="Not signed in. Connect a wallet to continue.";if(offWallet)offWallet();offWallet=null;wallet=null;accounts=[];clearProof();el("wallet-account").replaceChildren();el("wallet-account").disabled=true;el("challenge-button").disabled=true;el("wallet-login").disabled=true;el("creator-login").disabled=true;el("creator-link").disabled=true;}
   function view(){
     globalThis.ZooraCommunityView?.setSession(session);
+    globalThis.ZooraForumView?.setSession(session);
     const role=session?.role;
     el("session-status").textContent=session?role+" · "+session.principal_id+" · expires "+new Date(session.expires_at_ms).toLocaleString():"Signed out";
     el("sign-out").hidden=!session;el("save-issued").hidden=!issued;el("credential-note").hidden=!issued;
-    el("operator-form").hidden=role!=="OWNER";el("enrollment").hidden=role!=="OPERATOR";el("wallet-access").hidden=role==="OWNER"||role==="AGENT";el("wallet-login").hidden=Boolean(session);el("agent-workspace").hidden=role!=="AGENT";
+    el("operator-form").hidden=role!=="OWNER";el("enrollment").hidden=role!=="OPERATOR";el("wallet-access").hidden=role==="OWNER"||role==="AGENT";el("wallet-login").hidden=Boolean(session);el("creator-login").hidden=Boolean(session);el("creator-link").hidden=role!=="OPERATOR";el("open-enrolled-agent").hidden=role!=="OPERATOR"||issued?.role!=="AGENT";el("agent-workspace").hidden=role!=="AGENT";
     el("job-panel").hidden=!session;
     el("capacity-panel").hidden=!session;el("capacity-selector").hidden=role!=="OWNER";
     el("capacity-form").hidden=role!=="OWNER"||!capacityRecord;
@@ -128,7 +129,7 @@
     el("workspace-error").hidden=true;el("workspace-result").textContent="Working…";
     const controls=[...el("account-panel").querySelectorAll("button,#credential-file")].filter(x=>x.id!=="sign-out"&&x.id!=="cancel-proof"&& !x.disabled);controls.forEach(x=>x.disabled=true);
     try{await callback(ticket);}catch(exc){if(ticket===generation){error(exc instanceof Error?exc.message:"Operation failed.");el("workspace-result").textContent="";}}
-    finally{controls.forEach(x=>x.disabled=false);busy=false;view();syncWalletAvailability();if(!accounts.length){el("challenge-button").disabled=true;el("wallet-login").disabled=true;}el("wallet-account").disabled=!accounts.length;}
+    finally{controls.forEach(x=>x.disabled=false);busy=false;view();syncWalletAvailability();if(!accounts.length){el("challenge-button").disabled=true;el("wallet-login").disabled=true;el("creator-login").disabled=true;el("creator-link").disabled=true;}el("wallet-account").disabled=!accounts.length;}
   }
   function saveJson(value,name){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+"\n"],{type:"application/json"}));const link=document.createElement("a");link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   el("sign-out").addEventListener("click",reset);
@@ -165,13 +166,19 @@
     const connected=await ZooraWallet.connect(selected);if(ticket!==generation||proofTicket!==proofGeneration)return;
     wallet=selected;accounts=connected;for(const[index,account]of accounts.entries()){const option=document.createElement("option");option.value=String(index);option.textContent=account.address;el("wallet-account").append(option);}
     if(typeof wallet.features?.["standard:events"]?.on==="function"){const off=wallet.features["standard:events"].on("change",properties=>{const selected=accounts[Number(el("wallet-account").value)];if(ZooraWallet.accountAvailable(wallet,selected)&&(!properties||!("accounts" in properties)||(Array.isArray(properties.accounts)&&properties.accounts.includes(selected))))return;if(session?.role==="AGENT")reset();else clearWallet();error("Wallet account changed or signing became unavailable. Connect again.");});if(typeof off==="function")offWallet=off;}
-    el("wallet-account").disabled=false;el("challenge-button").disabled=false;el("wallet-login").disabled=false;el("wallet-login-status").textContent="Wallet connected. No signature has been verified yet.";el("workspace-result").textContent="Wallet connected. Sign in to an existing agent or prepare enrollment.";
+    el("wallet-account").disabled=false;el("challenge-button").disabled=false;el("wallet-login").disabled=false;el("creator-login").disabled=false;el("creator-link").disabled=false;el("wallet-login-status").textContent="Wallet connected. No signature has been verified yet.";el("workspace-result").textContent="Wallet connected. Sign in to an existing agent or prepare enrollment.";
   }));
   el("wallet-login").addEventListener("click",()=>action(async ticket=>{
     clearProof();const proofTicket=proofGeneration,account=accounts[Number(el("wallet-account").value)];if(!account)throw new Error("Connect a signing wallet first.");
     const prepared=await publicRequest("POST","/v1/wallet/login/challenges",{wallet:account.address});
     if(ticket!==generation||proofTicket!==proofGeneration)return;challenge=prepared;pendingAction="LOGIN";el("challenge-message").textContent=prepared.message;el("challenge-expiry").textContent="Expires "+new Date(prepared.expires_at_ms).toLocaleString()+" · wallet access only · no payment";el("sign-proof").textContent="Sign in to my agent";el("challenge-preview").hidden=false;el("wallet-login-status").textContent="Ready to sign. Review the message, then approve it in your wallet.";el("workspace-result").textContent="Review the website-bound message, then sign it in your wallet.";
   }));
+  for(const [id,operation,path] of [["creator-login","CREATOR_LOGIN","/v1/creator/wallet/login/challenges"],["creator-link","CREATOR_LINK","/v1/creator/wallet/link-challenges"]])el(id).addEventListener("click",()=>action(async ticket=>{
+    clearProof();const proofTicket=proofGeneration,account=accounts[Number(el("wallet-account").value)];if(!account)throw new Error("Connect your creator wallet first.");
+    const prepared=operation==="CREATOR_LOGIN"?await publicRequest("POST",path,{wallet:account.address}):await request("POST",path,{wallet:account.address});
+    if(ticket!==generation||proofTicket!==proofGeneration)return;challenge=prepared;pendingAction=operation;el("challenge-message").textContent=prepared.message;el("challenge-expiry").textContent="Expires "+new Date(prepared.expires_at_ms).toLocaleString()+" · creator access only";el("sign-proof").textContent=operation==="CREATOR_LOGIN"?"Sign in as creator":"Prove and link creator wallet";el("challenge-preview").hidden=false;
+  }));
+  el("open-enrolled-agent").addEventListener("click",()=>action(async ticket=>{const credential=await useCredential(issued);if(ticket!==generation)return;session=credential;clearWallet();clearJobs();clearPilot();view();await jobs(ticket);}));
   el("wallet-account").addEventListener("change",clearProof);
   el("enroll-form").addEventListener("input",clearProof);
   el("enroll-form").addEventListener("submit",event=>{event.preventDefault();action(async ticket=>{
@@ -183,14 +190,14 @@
   el("sign-proof").addEventListener("click",()=>action(async ticket=>{
     const current=session, prepared=challenge, operation=pendingAction, account=accounts[Number(el("wallet-account").value)],proofTicket=proofGeneration;
     const active=()=>ticket===generation&&prepared===challenge&&proofTicket===proofGeneration;
-    if(!prepared||!["LOGIN","ENROLL"].includes(operation))throw new Error("Prepare a new wallet message first.");
+    if(!prepared||!["LOGIN","ENROLL","CREATOR_LOGIN","CREATOR_LINK"].includes(operation))throw new Error("Prepare a new wallet message first.");
     el("wallet-login-status").textContent="Waiting for wallet approval…";
     let proof;
     try{proof=await ZooraWallet.sign(wallet,account,prepared);}catch(exc){if(!active())return;el("wallet-login-status").textContent="Signing did not complete. No sign-in was confirmed.";throw exc;}
     if(!active())return;
     el("wallet-login-status").textContent="Signature received. Waiting for the service to verify it…";
     let result;
-    try{result=operation==="LOGIN"?await publicRequest("POST","/v1/wallet/login",proof):await request("POST","/v1/agents",proof,current);}
+    try{if(operation==="LOGIN")result=await publicRequest("POST","/v1/wallet/login",proof);else if(operation==="CREATOR_LOGIN")result=await publicRequest("POST","/v1/creator/wallet/login",proof);else result=await request("POST",operation==="CREATOR_LINK"?"/v1/creator/wallet/link":"/v1/agents",proof,current);}
     catch(exc){
       if(!active())return;
       if(operation==="LOGIN"&&exc.status===404&&exc.code==="AGENT_NOT_FOUND"){
@@ -203,14 +210,15 @@
       throw exc;
     }
     if(!active())return;
+    if(operation==="CREATOR_LINK"){clearProof();el("wallet-login-status").textContent="Creator wallet linked. Your creator session is preserved.";el("workspace-result").textContent="Now switch to your agent wallet, reconnect and enroll it below.";return;}
     el("wallet-login-status").textContent="Signature accepted. Verifying the issued session…";
     let credential;
     try{credential=await useCredential(result.credential);}catch(exc){if(!active())return;clearProof();el("wallet-login-status").textContent="The issued session could not be verified. No local sign-in was opened.";throw exc;}
     if(!active())return;
-    if(operation==="LOGIN"){
-      session=credential;issued=null;clearProof();clearJobs();clearPilot();el("wallet-login-status").textContent="Signed in. Wallet signature verified by this service.";el("workspace-result").textContent="Wallet control verified for this login. Your agent workspace is open.";view();await jobs(ticket);
+    if(operation==="LOGIN"||operation==="CREATOR_LOGIN"){
+      session=credential;issued=null;clearProof();clearJobs();clearPilot();el("wallet-login-status").textContent="Signed in. Wallet signature verified by this service.";el("workspace-result").textContent=operation==="CREATOR_LOGIN"?"Creator wallet verified. Connect your agent wallet to enroll an agent.":"Wallet control verified for this login. Your agent workspace is open.";view();await jobs(ticket);
     }else{
-      session=credential;issued=credential;clearWallet();clearJobs();clearPilot();el("workspace-result").textContent="Agent enrolled with a verified historical wallet proof. Save its credential now.";view();
+      session=current;issued=credential;clearWallet();el("workspace-result").textContent="Agent enrolled. Your creator session is preserved. Save the agent credential; you can explicitly open its workspace below.";view();
     }
   }));
   const values=form=>Object.fromEntries([...new FormData(form)].filter(([,v])=>typeof v==="string"));

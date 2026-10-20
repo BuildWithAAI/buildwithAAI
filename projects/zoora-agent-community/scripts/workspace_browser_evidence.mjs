@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {createHash,createPrivateKey,createPublicKey} from 'node:crypto';
+const captureScreenshots=process.env.ZOORA_SKIP_SCREENSHOTS!=='1';
 const output=path.resolve('evidence-output');await mkdir(output,{recursive:true});
 const folder=await mkdtemp(path.join(tmpdir(),'zoora-workspace-browser-'));
 const python=process.env.PYTHON_BIN||'python',chrome=process.env.CHROME_BIN||'google-chrome';
@@ -34,6 +35,10 @@ try{
   const der=Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),seed]);
   const publicBytes=createPublicKey(createPrivateKey({key:der,format:'der',type:'pkcs8'})).export({format:'der',type:'spki'}).subarray(-32);
   let number=BigInt('0x'+publicBytes.toString('hex')),address='';while(number){address='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Number(number%58n)]+address;number/=58n;}for(const byte of publicBytes){if(byte)break;address='1'+address;}
+  const creatorSeed=createHash('sha256').update('PUBLIC-CREATOR-BROWSER-TEST-KEY-NEVER-FUND').digest();
+  const creatorDer=Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),creatorSeed]);
+  const creatorPublic=createPublicKey(createPrivateKey({key:creatorDer,format:'der',type:'pkcs8'})).export({format:'der',type:'spki'}).subarray(-32);
+  let creatorNumber=BigInt('0x'+creatorPublic.toString('hex')),creatorAddress='';while(creatorNumber){creatorAddress='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Number(creatorNumber%58n)]+creatorAddress;creatorNumber/=58n;}for(const byte of creatorPublic){if(byte)break;creatorAddress='1'+creatorAddress;}
   const source=`(()=>{const raw=new Uint8Array(${JSON.stringify([...publicBytes])});const account={address:${JSON.stringify(address)},publicKey:raw,chains:['solana:devnet'],features:['solana:signMessage']};let changed;
     globalThis.walletScenario='normal';globalThis.syntheticWallet={version:'1.0.0',name:'SYNTHETIC test wallet (never fund)',chains:['solana:devnet'],accounts:[account],features:{'standard:connect':{version:'1.0.0',connect:async()=>({accounts:[account]})},'standard:events':{version:'1.0.0',on:(event,callback)=>{changed=callback;return()=>{changed=null;};}},'solana:signMessage':{version:'1.1.0',signMessage:async({message})=>{if(walletScenario==='reject')throw new Error('Fixture user declined');if(walletScenario==='notify'&&changed){changed({features:syntheticWallet.features});changed({accounts:syntheticWallet.accounts});}if(walletScenario==='defer')await new Promise(resolve=>globalThis.releaseWallet=resolve);const key=await crypto.subtle.importKey('pkcs8',new Uint8Array(${JSON.stringify([...der])}),{name:'Ed25519'},false,['sign']);const signature=new Uint8Array(await crypto.subtle.sign('Ed25519',key,message));return[{signedMessage:walletScenario==='mutate'?new Uint8Array([1,...message]):message,signature:walletScenario==='bad-signature'?new Uint8Array(64):signature,signatureType:'ed25519'}];}}}};
     globalThis.changeWallet=()=>{syntheticWallet.accounts=[];if(changed)changed({accounts:[]});};
@@ -53,7 +58,7 @@ try{
   await evaluate('document.getElementById("wallet-help").open=true');
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   check('expanded wallet setup has no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
-  await writeFile(path.join(output,'wallet-setup-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  if(captureScreenshots)await writeFile(path.join(output,'wallet-setup-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await evaluate('document.getElementById("wallet-help").open=false');
   await send('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
   await evaluate('restoreFixtureWallet()');
@@ -75,7 +80,7 @@ try{
   check('the verified but unenrolled proof is consumed once and cannot be replayed',consumedUnknown.status===409&&(await consumedUnknown.json()).error==='CHALLENGE_CONSUMED');
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   check('post-signature enrollment guidance has no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
-  await writeFile(path.join(output,'wallet-sign-in-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  if(captureScreenshots)await writeFile(path.join(output,'wallet-sign-in-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await send('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
   async function openCredential(filename){const root=(await send('DOM.getDocument')).root.nodeId;const input=(await send('DOM.querySelector',{nodeId:root,selector:'#credential-file'})).nodeId;await send('DOM.setFileInputFiles',{nodeId:input,files:[filename]});}
   await openCredential(path.join(folder,'owner.credential.json'));await until('!document.getElementById("operator-form").hidden');
@@ -86,6 +91,17 @@ try{
   const operatorFile=path.join(folder,'zoora-operator.credential.json');
   for(let n=0;n<100;n++){try{JSON.parse(await readFile(operatorFile,'utf8'));break;}catch{await new Promise(r=>setTimeout(r,50));}}
   const operator=JSON.parse(await readFile(operatorFile,'utf8'));check('issued operator credential downloadable and valid',operator.role==='OPERATOR');
+  await evaluate(`(()=>{const account={address:${JSON.stringify(creatorAddress)},publicKey:new Uint8Array(${JSON.stringify([...creatorPublic])}),chains:['solana:devnet'],features:['solana:signMessage']};globalThis.creatorFixture={version:'1.0.0',name:'SYNTHETIC creator wallet (never fund)',accounts:[account],features:{'standard:connect':{version:'1.0.0',connect:async()=>({accounts:[account]})},'solana:signMessage':{version:'1.0.0',signMessage:async({message})=>{const key=await crypto.subtle.importKey('pkcs8',new Uint8Array(${JSON.stringify([...creatorDer])}),{name:'Ed25519'},false,['sign']);return[{signedMessage:message,signature:new Uint8Array(await crypto.subtle.sign('Ed25519',key,message)),signatureType:'ed25519'}];}}}};window.dispatchEvent(new CustomEvent('wallet-standard:register-wallet',{detail:api=>api.register(creatorFixture)}));document.getElementById('wallet-select').value='1';document.getElementById('wallet-select').dispatchEvent(new Event('change'));})()`);
+  await evaluate('document.getElementById("connect-wallet").click()');await until('!document.getElementById("creator-link").disabled');
+  await evaluate('document.getElementById("creator-link").click()');await until('!document.getElementById("challenge-preview").hidden');
+  check('creator proof names its distinct purpose and account',await evaluate('document.getElementById("challenge-message").textContent.includes("LINK_CREATOR_WALLET")'));
+  await evaluate('document.getElementById("sign-proof").click()');await until('document.getElementById("workspace-result").textContent.includes("switch to your agent wallet")');
+  check('creator link preserves the invited operator session',await evaluate('document.getElementById("session-status").textContent.startsWith("OPERATOR")'));
+  await evaluate('document.getElementById("sign-out").click();document.getElementById("connect-wallet").click()');await until('!document.getElementById("creator-login").disabled');
+  await evaluate('document.getElementById("creator-login").click()');await until('!document.getElementById("challenge-preview").hidden');
+  await evaluate('document.getElementById("sign-proof").click()');await until('document.getElementById("session-status").textContent.startsWith("OPERATOR")');
+  check('creator wallet signs into its existing invited account',await evaluate(`document.getElementById("session-status").textContent.includes(${JSON.stringify(operator.principal_id)})`));
+  await evaluate('document.getElementById("wallet-select").value="0";document.getElementById("wallet-select").dispatchEvent(new Event("change"))');
   await evaluate('document.getElementById("connect-wallet").click()');await until('!document.getElementById("challenge-button").disabled');
   check('Wallet Standard discovery and correct public account',await evaluate(`document.getElementById("wallet-account").textContent.includes(${JSON.stringify(address)})`));
   const profile={handle:'workspace_agent',capabilities:'research, development',bio:'<img src=x onerror="globalThis.injected=1">'};
@@ -104,8 +120,21 @@ try{
   await evaluate('globalThis.changeWallet()');check('wallet account changes clear challenge and disable signing',await evaluate('document.getElementById("challenge-preview").hidden && document.getElementById("challenge-button").disabled'));
   await evaluate('(async()=>{syntheticWallet.accounts=(await syntheticWallet.features["standard:connect"].connect()).accounts;globalThis.walletScenario="normal";document.getElementById("connect-wallet").click();})()');await until('!document.getElementById("challenge-button").disabled');
   await fill('enroll-form',profile);await until('!document.getElementById("challenge-preview").hidden');
-  await evaluate('document.getElementById("sign-proof").click()');await until('!document.getElementById("agent-workspace").hidden');
-  check('real Ed25519 signature enrolled atomically',await evaluate('document.getElementById("session-status").textContent.startsWith("AGENT")'));
+  await evaluate('document.getElementById("sign-proof").click()');await until('!document.getElementById("open-enrolled-agent").hidden');
+  check('agent enrollment preserves creator session',await evaluate('document.getElementById("session-status").textContent.startsWith("OPERATOR")'));
+  await evaluate('document.getElementById("open-enrolled-agent").click()');await until('!document.getElementById("agent-workspace").hidden');
+  check('explicit switch opens the enrolled agent',await evaluate('document.getElementById("session-status").textContent.startsWith("AGENT")'));
+  await until('document.getElementById("forum-topic").options.length===7 && document.getElementById("forum-status").textContent.includes("updated")');
+  await fill('forum-thread-form',{title:'Independent research',body:'Evidence should be reviewed before action.'});await until('document.getElementById("forum-thread").textContent.includes("Evidence should be reviewed")');
+  check('agent forum renders its handle and wallet as text',await evaluate(`document.getElementById("forum-thread").textContent.includes('@workspace_agent') && document.getElementById("forum-thread").textContent.includes(${JSON.stringify(address)})`));
+  await fill('forum-reply-form',{body:'A second observation for review.'});await until('document.getElementById("forum-thread").textContent.includes("A second observation")');
+  await fill('forum-thread-form',{title:'Rejected link',body:'https://malicious.example'});await until('document.getElementById("forum-status").textContent.includes("FORUM_LINKS_FORBIDDEN")');
+  check('forum blocks links and offers no UGC download or HTML element',await evaluate('document.querySelectorAll("#forum-panel a,#forum-panel iframe,#forum-panel img,#forum-panel input[type=file]").length===0'));
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  check('forum identity fits a mobile viewport',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
+  if(captureScreenshots)await writeFile(path.join(output,'forum-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  await send('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
+
   await evaluate('document.getElementById("save-issued").click()');
   const agentFile=path.join(folder,'zoora-agent.credential.json');
   for(let n=0;n<100;n++){try{JSON.parse(await readFile(agentFile,'utf8'));break;}catch{await new Promise(r=>setTimeout(r,50));}}
@@ -196,10 +225,10 @@ try{
   await evaluate('document.getElementById("refresh-capacity").click()');await until('document.getElementById("workspace-result").textContent==="Shared task allowance refreshed." && !document.getElementById("refresh-capacity").disabled');
   await fill('capacity-form',{max_pending:'0',reason:'Pause new local task submissions'});await until('document.getElementById("workspace-result").textContent.includes("allowance saved") && !document.getElementById("refresh-capacity").disabled');
   check('zero allowance preserves existing task and displays overage',await evaluate('document.getElementById("capacity-status").textContent.includes("1 pending tasks") && document.getElementById("capacity-status").textContent.includes("exceeds")'));
-  await writeFile(path.join(output,'task-capacity-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  if(captureScreenshots)await writeFile(path.join(output,'task-capacity-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   check('shared allowance form has no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
-  await writeFile(path.join(output,'task-capacity-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  if(captureScreenshots)await writeFile(path.join(output,'task-capacity-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await send('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
   await evaluate('document.getElementById("sign-out").click()');
   check('sign out clears private quota values and revision-bound editing state',await evaluate('document.getElementById("capacity-status").textContent==="" && document.getElementById("capacity-reason").textContent==="" && document.getElementById("capacity-operator").value==="" && document.getElementById("capacity-panel").hidden && document.getElementById("capacity-form").hidden'));
@@ -225,10 +254,10 @@ try{
   await evaluate('document.querySelector("[data-tab=posts]").click()');await until('document.getElementById("records").textContent.includes("actual discussion")');
   check('submitted hostile content remains text',await evaluate('globalThis.injected===undefined && document.querySelector("img")==null && document.querySelectorAll("#records script").length===0'));
   check('credentials absent from page storage and visible content',await evaluate(`localStorage.length===0 && sessionStorage.length===0 && !document.body.textContent.includes(${JSON.stringify(agent.token)}) && !document.body.textContent.includes(${JSON.stringify(operator.token)}) && !document.body.textContent.includes(${JSON.stringify(owner.token)})`));
-  await writeFile(path.join(output,'workspace-authoring-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  if(captureScreenshots)await writeFile(path.join(output,'workspace-authoring-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   check('authoring forms have no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
-  await writeFile(path.join(output,'workspace-authoring-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  if(captureScreenshots)await writeFile(path.join(output,'workspace-authoring-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await evaluate('document.getElementById("sign-out").click()');check('sign out clears role, private task content and all work controls',await evaluate('document.getElementById("session-status").textContent==="Signed out" && document.getElementById("agent-workspace").hidden && document.getElementById("save-issued").hidden && document.getElementById("job-panel").hidden && document.getElementById("job-list").textContent===""'));
   await send('Page.reload');await until('document.getElementById("connection")?.textContent.includes("Connected")===true');
   check('page reload does not restore bearer session',await evaluate('document.getElementById("session-status").textContent==="Signed out"'));
@@ -288,9 +317,9 @@ try{
   check('moderation reason stays text and private',await evaluate('globalThis.injected===undefined&&document.querySelector("img")==null') && !JSON.stringify(await(await fetch(origin+'/v1/agents')).json()).includes('Pilot review'));
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   check('pilot access controls have no mobile page overflow',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
-  await writeFile(path.join(output,'pilot-access-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  if(captureScreenshots)await writeFile(path.join(output,'pilot-access-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await send('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
-  await writeFile(path.join(output,'pilot-access-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  if(captureScreenshots)await writeFile(path.join(output,'pilot-access-desktop.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
   await evaluate('document.getElementById("sign-out").click()');await openCredential(operatorFile);await until('document.getElementById("session-status").textContent.startsWith("OPERATOR")');
   await evaluate('document.getElementById("refresh-access").click()');await until('document.getElementById("workspace-result").textContent==="Pilot access refreshed." && !document.getElementById("refresh-access").disabled');
   check('operator UI cannot undo an owner suspension',await evaluate(`![...document.querySelector('#managed-agent-list [data-access-id="${agent.principal_id}"]').querySelectorAll('button')].some(b=>b.textContent==='Resume access')`));
@@ -314,6 +343,6 @@ try{
   check('no uncaught browser exceptions',exceptions.length===0);
   check('no external page requests',requests.filter(r=>/^https?:/.test(r.url)&&!r.url.startsWith(origin+'/')).length===0);
   check('no uploaded artifact bytes',requests.filter(r=>r.url.endsWith('/artifacts')).every(r=>r.postData&&!r.postData.includes('Actual artifact bytes')));
-  const evidence={source_head_sha:process.env.SOURCE_HEAD_SHA||'LOCAL_UNCOMMITTED',activity:'AUTOMATED_TEST_FIXTURE',wallet_classification:'SYNTHETIC',wallet_vendor_extension_verified:false,real_ed25519_server_verification:true,checks,uncaught_exceptions:exceptions.length,external_page_requests:0,chrome:execFileSync(chrome,['--version'],{encoding:'utf8'}).trim(),audit};
+  const evidence={source_head_sha:process.env.SOURCE_HEAD_SHA||'LOCAL_UNCOMMITTED',activity:'AUTOMATED_TEST_FIXTURE',screenshots_captured:captureScreenshots,wallet_classification:'SYNTHETIC',wallet_vendor_extension_verified:false,real_ed25519_server_verification:true,checks,uncaught_exceptions:exceptions.length,external_page_requests:0,chrome:execFileSync(chrome,['--version'],{encoding:'utf8'}).trim(),audit};
   await writeFile(path.join(output,'workspace-browser.json'),JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify(evidence,null,2));
 }finally{if(socket)socket.close();await stop(child);await stop(service);await rm(folder,{recursive:true,force:true,maxRetries:10,retryDelay:100});}

@@ -195,6 +195,10 @@ class PilotAccessMethods:
                                (int(suspended), principal["role"], principal["principal_id"], reason, at, hold_id))
         connection.execute(f"UPDATE {table} SET active=?,updated_ms=? WHERE id=?", (int(not suspended), at, subject_id))
         if suspended:
+            if kind == "AGENT":
+                connection.execute("UPDATE forum_credentials SET revoked=1 WHERE agent_id=?", (subject_id,))
+            else:
+                connection.execute("UPDATE forum_credentials SET revoked=1 WHERE agent_id IN (SELECT id FROM agents WHERE operator_id=?)", (subject_id,))
             connection.execute("UPDATE credentials SET revoked=1 WHERE role=? AND principal_id=?", (kind, subject_id))
             if kind == "OPERATOR":
                 connection.execute("UPDATE credentials SET revoked=1 WHERE role='AGENT' AND principal_id IN (SELECT id FROM agents WHERE operator_id=?)", (subject_id,))
