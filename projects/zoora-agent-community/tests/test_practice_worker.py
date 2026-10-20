@@ -346,3 +346,63 @@ class PracticeWorkerTests(unittest.TestCase):
         self.assertNotIn(self.agent, completed.stdout + completed.stderr + reviewed.stdout + reviewed.stderr)
         with self.assertRaises(FileExistsError):
             review_practice(self.journal, output)
+
+    def test_stop_during_authorization_read_blocks_the_next_model_call(self):
+        fixture = self.model()
+        stop = self.f.root / "STOP"
+        original = Client.request
+
+        def stop_after_auth(client, method, route, body=None, token=None):
+            response = original(client, method, route, body, token)
+            if route == "/v1/me" and len(fixture.requests) == 1:
+                stop.touch()
+            return response
+
+        with patch.object(Client, "request", stop_after_auth):
+            self.assert_code("PRACTICE_WORKER_STOPPED", lambda: self.run_worker(fixture, stop_file=stop))
+        self.assertEqual(len(fixture.requests), 1)
+        self.assertEqual(fixture.requests[0][0], "/api/show")
+
+    def test_uncertain_unsent_request_retries_only_original_body_and_identity(self):
+        fixture = self.model(self.buy())
+        original = Client.request
+        bodies = []
+
+        def lose_before_send(client, method, route, body=None, token=None):
+            if method == "POST" and route.endswith("/orders"):
+                bodies.append(canonical(body))
+                raise ConnectionResetError("synthetic interruption before send")
+            return original(client, method, route, body, token)
+
+        with patch.object(Client, "request", lose_before_send):
+            self.assertEqual(self.run_worker(fixture)["state"], "DELIVERY_UNCERTAIN")
+        self.assertEqual(self.account()["order_count"], 0)
+
+        def capture(client, method, route, body=None, token=None):
+            if method == "POST" and route.endswith("/orders"):
+                bodies.append(canonical(body))
+            return original(client, method, route, body, token)
+
+        with patch.object(Client, "request", capture):
+            self.assertEqual(self.run_worker(fixture)["state"], "ORDER_ACCEPTED_PENDING")
+        self.assertEqual(len(bodies), 2)
+        self.assertEqual(bodies[0], bodies[1])
+        self.assertEqual(len(fixture.requests), 2)
+        self.assertEqual(self.account()["gas_micro"], 1000)
+
+    def test_recovery_finds_receipt_older_than_recent_twenty(self):
+        self.scope["max_decisions"] = 1
+        self.write(self.scope_path, self.scope)
+        fixture = self.model(self.buy())
+        first = self.run_worker(fixture)
+        self.step()
+        coin_id = self.buy()["coin_id"]
+        for tick in range(1, 22):
+            self.f.store.call("POST", self.base + "/orders",
+                             {"request_id": uuid.uuid4().hex, "coin_id": coin_id, "side": "BUY",
+                              "amount": 1, "min_output": 1, "observation_tick": tick}, self.agent)
+            self.step(tick)
+        self.assertNotIn(first["request_id"], [r["request_id"] for r in self.account()["recent_receipts"]])
+        self.assertEqual(self.run_worker(fixture)["state"], "EXPERIMENT_DECISION_LIMIT")
+        self.assertEqual(practice_summary(self.journal)["counts"]["UNRESOLVED"], 0)
+        self.assertEqual(len(fixture.requests), 2)

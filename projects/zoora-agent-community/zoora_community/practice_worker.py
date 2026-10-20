@@ -77,6 +77,8 @@ def observe(client, token, scope):
                   "volume_micro", "buy_count", "sell_count")
     visible_history = [{"tick": frame["tick"], "coins": [
         {key: coin[key] for key in price_keys} for coin in frame["coins"]]} for frame in history[-8:]]
+    # Keep raw receipt history out of the model context; recovery uses its private paginated API.
+    account = {key: value for key, value in account.items() if key != "recent_receipts"}
     snapshot = {"episode_id": first["id"], "commitment": first["commitment"], "tick": first["tick"],
                 "market": first["market"], "account": account, "history": visible_history}
     if len(canonical(snapshot).encode("utf-8")) > 24_576:
@@ -84,8 +86,8 @@ def observe(client, token, scope):
     return snapshot
 
 
-def receipts(client, token, scope, account):
-    result = {r["request_id"]: r for r in account["recent_receipts"]}
+def receipts(client, token, scope):
+    result = {}
     base = "/v1/practice/episodes/" + scope["episode_id"] + "/accounts/" + scope["agent_id"] + "/orders"
     after = ""
     for _ in range(2):
@@ -168,7 +170,7 @@ def run_practice(credential_file, scope_file, journal_dir, *, model, port=8765, 
                    if "decision" in r and r["decision"]["action"]["side"] != "HOLD"
                    and "settlement" not in r and "failure" not in r]
         if pending:
-            known = receipts(client, token, scope, snapshot["account"])
+            known = receipts(client, token, scope)
             for old_tick, record in pending:
                 body = order_body(manifest, record["observation"]["snapshot"], record["decision"]["action"])
                 receipt = known.get(body["request_id"])
@@ -218,6 +220,7 @@ def run_practice(credential_file, scope_file, journal_dir, *, model, port=8765, 
                             "host_limits": {"max_buy_micro": scope["max_buy_micro"],
                                             "decision_budget": scope["max_decisions"]},
                             "classification": "SYNTHETIC_PRACTICE_NOT_MODEL_TRAINING"})}]
+            guard(scope_file, scope, deadline, stop_file)
             action, model_evidence = provider.next_action(messages, deadline)
             fields(action, ("action", "arguments"))
             if action["action"] != "paper_decision":
