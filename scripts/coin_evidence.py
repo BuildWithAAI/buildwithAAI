@@ -1,4 +1,4 @@
-"""Capture or reconstruct an Agent.fun research tape; no keys, wallets or orders."""
+"""Capture or reconstruct an AAI.fun research tape; no keys, wallets or orders."""
 import argparse
 import json
 from pathlib import Path

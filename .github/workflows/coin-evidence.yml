@@ -1,4 +1,4 @@
-name: Agent.fun Chain Evidence
+name: AAI.fun Chain Evidence
 on:
   pull_request:
     paths:
@@ -6,7 +6,7 @@ on:
       - "src/solana_research/evidence_capture.py"
       - "scripts/coin_evidence.py"
       - "tests/test_coin_evidence.py"
-      - "research/agent-fun/**"
+      - "research/aai-fun/**"
       - ".github/workflows/coin-evidence.yml"
   push:
     branches: [main]
@@ -57,12 +57,12 @@ jobs:
         with:
           python-version: "3.13.16"
       - name: Acquire one real finalized mainnet block and reconstruct actual PumpSwap events
-        run: python scripts/coin_evidence.py capture --blocks 1 --require-trades --output research/agent-fun/generated/mainnet
+        run: python scripts/coin_evidence.py capture --blocks 1 --require-trades --output research/aai-fun/generated/mainnet
       - name: Reconstruct retained raw source again in a separate process
-        run: python scripts/coin_evidence.py verify --directory research/agent-fun/generated/mainnet
+        run: python scripts/coin_evidence.py verify --directory research/aai-fun/generated/mainnet
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: agent-fun-source-evidence
-          path: research/agent-fun/generated/mainnet/*.json
+          name: aai-fun-source-evidence
+          path: research/aai-fun/generated/mainnet/*.json
           retention-days: 30

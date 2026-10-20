@@ -1,6 +1,6 @@
-# Agent.fun — recorded-chain research and training environment
+# AAI.fun — recorded-chain research and training environment
 
-Agent.fun is the working product name proposed by the founder. Domain ownership, availability and naming clearance are not established. No domain, website, launchpad or public trading service is created by this change.
+AAI.fun is the working product name proposed by the founder. Domain ownership, availability and naming clearance are not established. No domain, website, launchpad or public trading service is created by this change.
 
 The objective is a familiar meme-market research environment for agents and biological-model readouts, using observed Solana history and simulated funds. A future Pump.fun-compatible interface and mechanics must be tested against specific source/program versions. "1:1" is a fidelity target with measurable limits, not the current implementation status.
 
@@ -62,10 +62,10 @@ Ordinary transaction history alone is insufficient to assert every historical ac
 | Graduation/migration | Coin identity across curve and pool; transition state and event ordering | Not implemented here |
 | Simulated execution | Buys/sells, exact fees, slippage, liquidity, rejection and agent impact | Separate engine work |
 | Agent interface | Stable research API for observation, decision, risk veto and paper execution | Integration work |
-| Brain learning | Point-in-time features, explicit target, grouped chronological holdouts and frozen evaluation | Existing readout path; this trade tape is not automatically converted into quotes |
+| Brain learning | Causal features, explicit target, grouped chronological holdouts and frozen evaluation | Trade-specific numerical readout implemented; biological activity adapter and market validation remain open |
 | Research observer | Verified replay, original-vs-simulated comparison, balances and decision explanations | Offline anonymous observation trace only |
 
-Full 1:1 status is withheld until each claimed behavior matches a versioned historical reference and remaining differences are disclosed. The brand/interface will identify Agent.fun as an independent research simulator using simulated funds.
+Full 1:1 status is withheld until each claimed behavior matches a versioned historical reference and remaining differences are disclosed. The brand/interface will identify AAI.fun as an independent research simulator using simulated funds.
 
 ## Training-data plan
 
@@ -75,17 +75,17 @@ Randomize whole episodes within their chronological partition. Preserve every ep
 
 Bundle or rug labels need separately sourced point-in-time evidence and an explicit definition. Observed selling or a common funder is not automatically proof of fraud or shared ownership. No verified rug/bundle label is manufactured here.
 
-The existing quote trainer requires bid/ask/depth. Executed trades do not provide those measurements. This implementation therefore refuses the shortcut of setting bid=ask=last_trade or inventing depth to make a tape pass the quote schema. A later trade-specific feature/target contract or actual historical state/quote source must connect this tape to fitting. Learning on real observations can improve realism; transfer to live-money performance remains an empirical question.
+The existing quote trainer requires bid/ask/depth. Executed trades do not provide those measurements. The new [trade-learning path](TRADE_LEARNING.md) groups observed swaps at the transaction boundary and fits a separate trade-specific target through the shared numerical readout. It does not invent bid/ask/depth. Its synthetic control and actual-source preparation checks are separate; historical cohort adequacy and live-money transfer remain empirical questions.
 
 ## Commands
 
 From the repository root, Python >=3.11, standard library only:
 
 ~~~sh
-python scripts/coin_evidence.py capture --blocks 1 --require-trades --output /private/agent-fun-source
-python scripts/coin_evidence.py verify --directory /private/agent-fun-source
+python scripts/coin_evidence.py capture --blocks 1 --require-trades --output /private/aai-fun-source
+python scripts/coin_evidence.py verify --directory /private/aai-fun-source
 
-python scripts/coin_evidence.py build --archive /private/archive.json --output /private/agent-fun-replay
+python scripts/coin_evidence.py build --archive /private/archive.json --output /private/aai-fun-replay
 ~~~
 
 The collector defaults to https://api.mainnet.solana.com; the explicitly allowed legacy public endpoint can be selected with --endpoint. A specific historical start slot can be supplied with --start-slot and up to four slots with --blocks. Availability, pruning, rate limits and response budgets can prevent acquisition. No provider purchase or upgrade occurs automatically.
