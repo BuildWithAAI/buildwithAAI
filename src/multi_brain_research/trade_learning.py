@@ -247,7 +247,8 @@ def fit(data, plan, bundle=None):
     initial, state, before, scored, baseline = lab.fit_parameters(partitions, plan)
     metadata = {"protocol": "AAI_TRADE_LOGISTIC_READOUT_V1", "task": TASK,
                 "dataset_sha256": lab.digest(data), "plan_sha256": lab.digest(plan),
-                "pipeline_sha256": lab.digest(pipeline), "units": UNITS,
+                "pipeline_sha256": lab.digest(pipeline),
+                "units": UNITS if bundle is None else {**UNITS, "features": pipeline["activity_units"]},
                 "live_execution_allowed": False, "calibration": "NOT_ESTABLISHED"}
     if bundle is not None:
         metadata["feature_export_sha256"] = lab.digest(bundle)

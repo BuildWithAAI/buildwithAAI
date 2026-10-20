@@ -10,7 +10,7 @@ Recorded archive -> source verification -> transaction observations -> five caus
 
 The visual encoder repeats the five features across 721 input hexals at one numerical step per observation. Its 0.005-second step is engineering time compression. It is not an assertion about physical neural/market time or a biological understanding of money. Episodes reset to the upstream initial state without gray warm-up.
 
-No raw feature columns are appended to the neural readout. R1-R8 photoreceptor inputs are excluded. Different connected components of this one model are not independent committee voters. Multi-brain fusion and biological-core fine-tuning remain open.
+Neural values are retained in explicitly uncalibrated model activity units, not physical firing-rate measurements. No raw feature columns are appended to the neural readout. R1-R8 photoreceptor inputs are excluded. Different connected components of this one model are not independent committee voters. Multi-brain fusion and biological-core fine-tuning remain open.
 
 The shared frozen_runtime.py now serves both the earlier quote experiment and this trade experiment. It retains pinned source/assets, weights_only loading, strict finite tensor shapes, CPU determinism, model size checks, parameter freezing and exact cell order. The old quote encoder metadata remains the same.
 

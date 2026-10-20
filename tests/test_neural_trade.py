@@ -130,6 +130,7 @@ class NeuralTradeTests(unittest.TestCase):
     def test_neural_readout_fit_is_pinned_and_declares_execution_attestation_unestablished(self):
         model, report = trade.fit(self.data, self.plan, self.export)
         self.assertEqual(len(model["weights"]), 57)
+        self.assertEqual(model["units"]["features"], "MODEL_ACTIVITY_UNITS_UNCALIBRATED")
         self.assertEqual(model["feature_export_sha256"], lab.digest(self.export))
         self.assertTrue(report["biological_core_used"])
         self.assertFalse(report["biological_core_weights_updated"])

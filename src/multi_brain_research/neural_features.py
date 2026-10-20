@@ -31,6 +31,7 @@ def expected_pipeline(input_schema):
             "checkpoint_sha256": registration["model_member_sha256"],
             "connectome_sha256": CONNECTOME_SHA256, "core_state_sha256": CORE_STATE_SHA256,
             "encoder": encoder(input_schema), "readout_cell_types": labels,
+            "activity_units": "MODEL_ACTIVITY_UNITS_UNCALIBRATED",
             "execution_attestation": "NOT_ESTABLISHED"}
 
 

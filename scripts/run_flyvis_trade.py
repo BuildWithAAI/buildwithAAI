@@ -70,8 +70,16 @@ def run(source, python, output, real_source=None):
                         == second["real_source_inference"]["feature_export_sha256"]
                         and second["real_source_inference"]["native_reexecution_performed"] is True,
                         "REAL_NATIVE_REEXECUTION_BINDING")
+        raw_verified = trade.verify(output / "raw-control")
+        comparison = ev.read(output / "comparison.json")
+        neural_report = ev.read(output / "neural-training/report.json")
+        raw_report = ev.read(output / "raw-control/report.json")
+        lab.require(lab.canonical(comparison["neural_metrics"]) == lab.canonical(neural_report["metrics"])
+                    and lab.canonical(comparison["raw_metrics"]) == lab.canonical(raw_report["metrics"]),
+                    "CONTROL_COMPARISON_BINDING")
         summary = {"protocol": "AAI_NATIVE_TRADE_INTEGRATION_SUMMARY_V1",
-                   "synthetic_readout_fit": verified, "native_feature_reexecution_exact": True,
+                   "synthetic_readout_fit": verified, "raw_control_refit": raw_verified,
+                   "synthetic_control_comparison": comparison, "native_feature_reexecution_exact": True,
                    "core_state_sha256": neural.CORE_STATE_SHA256,
                    "future_suffix_prefix_check": first["details"]["future_suffix_prefix_check"],
                    "input_sensitivity_max_difference": first["details"]["input_sensitivity_max_difference"],
