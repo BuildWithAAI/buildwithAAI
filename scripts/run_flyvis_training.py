@@ -47,10 +47,19 @@ def run(source, python, output):
         verified = verify(output / "training")
         require(verified["model_sha256"] == evidence["training"]["model_sha256"], "READOUT_MODEL_PIN")
     except Exception:
+        log = output / "worker.log"
+        if log.is_file():
+            print("TRAINING_WORKER_DIAGNOSTIC " + log.read_bytes()[-6000:].decode("utf-8", errors="replace"),
+                  file=sys.stderr, flush=True)
         (output / "incomplete.json").write_text(json.dumps({
             "status": "INCOMPLETE", "market_validation_established": False, "live_execution_allowed": False}) + "\n")
         raise
     print(json.dumps({"verified": verified, "classification": "SYNTHETIC_FIXTURE",
+                      "core_before_sha256": evidence["core_before_sha256"],
+                      "core_after_sha256": evidence["core_after_sha256"],
+                      "episode_reset_reproduced": evidence["episode_reset_reproduced"],
+                      "future_suffix_prefix_check": evidence["future_suffix_prefix_check"],
+                      "wall_seconds": evidence["wall_seconds"], "peak_rss_mib": evidence["peak_rss_mib"],
                       "biological_core_weights_updated": False, "live_execution_allowed": False}, sort_keys=True))
 
 

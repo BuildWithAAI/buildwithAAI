@@ -63,11 +63,11 @@ def main():
     torch.load = refuse
     torch.jit.load = refuse
     torch.hub.load = refuse
-    require(type(checkpoint) is dict and set(checkpoint) == {"network", "decoder"}, "CHECKPOINT_LAYOUT")
+    require(isinstance(checkpoint, dict) and set(checkpoint) == {"network", "decoder"}, "CHECKPOINT_LAYOUT")
     weights = checkpoint["network"]
     shapes = {"nodes_bias": (65,), "nodes_time_const": (65,), "edges_sign": (604,),
               "edges_syn_count": (2355,), "edges_syn_strength": (604,)}
-    require(type(weights) is dict and set(weights) == set(shapes), "WEIGHT_KEYS")
+    require(isinstance(weights, dict) and set(weights) == set(shapes), "WEIGHT_KEYS")
     for key, shape in shapes.items():
         tensor = weights[key]
         require(type(tensor) is torch.Tensor and tensor.dtype == torch.float32
