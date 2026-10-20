@@ -1,0 +1,68 @@
+name: Agent.fun Chain Evidence
+on:
+  pull_request:
+    paths:
+      - "src/solana_research/coin_evidence.py"
+      - "src/solana_research/evidence_capture.py"
+      - "scripts/coin_evidence.py"
+      - "tests/test_coin_evidence.py"
+      - "research/agent-fun/**"
+      - ".github/workflows/coin-evidence.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/solana_research/coin_evidence.py"
+      - "src/solana_research/evidence_capture.py"
+      - "scripts/coin_evidence.py"
+      - "tests/test_coin_evidence.py"
+      - ".github/workflows/coin-evidence.yml"
+permissions:
+  contents: read
+concurrency:
+  group: coin-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  regressions:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - name: Install pinned development linter
+        run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - name: Check capture, reconstruction and regression sources
+        run: python -m ruff check --select E4,E7,E9,F,B src/solana_research/coin_evidence.py src/solana_research/evidence_capture.py scripts/coin_evidence.py tests/test_coin_evidence.py
+      - name: Strict normal and optimized source-evidence tests
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p test_coin_evidence.py -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p test_coin_evidence.py -v
+  public-chain-sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - name: Acquire one real finalized mainnet block and reconstruct actual PumpSwap events
+        run: python scripts/coin_evidence.py capture --blocks 1 --require-trades --output research/agent-fun/generated/mainnet
+      - name: Reconstruct retained raw source again in a separate process
+        run: python scripts/coin_evidence.py verify --directory research/agent-fun/generated/mainnet
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: agent-fun-source-evidence
+          path: research/agent-fun/generated/mainnet/*.json
+          retention-days: 30
