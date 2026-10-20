@@ -1,0 +1,56 @@
+name: FlyVis Registered Pretrained Reference
+on:
+  pull_request:
+    paths:
+      - "experiments/flyvis_trained_reference/**"
+      - "src/multi_brain_research/flyvis_reference.py"
+      - "src/multi_brain_research/flyvis_smoke.py"
+      - "scripts/run_flyvis_reference.py"
+      - "scripts/run_flyvis_smoke.py"
+      - "scripts/verify_flyvis_reference.py"
+      - "tests/test_flyvis_reference.py"
+      - ".github/workflows/flyvis-reference.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  trained-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: TuragaLab/flyvis
+          ref: 0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa
+          path: .flyvis-upstream
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install pinned dependency tooling
+        run: python -m pip install --require-hashes --only-binary=:all: -r experiments/flyvis_cpu_smoke/bootstrap-linux.lock
+      - name: Create separate hash-locked CPU environment
+        run: |
+          uv venv .flyvis-venv --python python --no-python-downloads
+          uv pip sync experiments/flyvis_cpu_smoke/requirements-linux-py312.lock --python .flyvis-venv/bin/python --torch-backend cpu --require-hashes
+          uv pip install --python .flyvis-venv/bin/python --no-deps --no-build-isolation ./.flyvis-upstream
+      - name: Acquire pinned public weights and run fixed-model reference
+        run: python scripts/run_flyvis_reference.py --source .flyvis-upstream --python .flyvis-venv/bin/python --output experiments/flyvis_trained_reference/generated/ci
+      - name: Independently verify raw arrays with standard library
+        if: always()
+        run: python scripts/verify_flyvis_reference.py experiments/flyvis_trained_reference/generated/ci
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: fv-ref-001-cpu-evidence
+          path: |
+            experiments/flyvis_trained_reference/generated/ci/*.json
+            experiments/flyvis_trained_reference/generated/ci/*.npy
+            experiments/flyvis_trained_reference/generated/ci/worker.log
+            experiments/flyvis_trained_reference/LICENSE-model-assets.txt
+          if-no-files-found: warn
+          retention-days: 14

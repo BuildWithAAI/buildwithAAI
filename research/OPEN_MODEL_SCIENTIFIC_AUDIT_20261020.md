@@ -1,5 +1,7 @@
 # Biological neural models: GitHub and scientific evidence audit
 
+**Subsequent checkpoint:** [FV-REF-001](../experiments/flyvis_trained_reference/README.md) acquired the checksum-matched author model archive and adjacent MIT notice and registers a fixed-model flash check. The paper explains CT1's two compartment populations, resolving 65 model labels versus 64 biological types. Historical source-only findings below describe the earlier audit; subsequent runtime evidence is recorded separately.
+
 **Audited October 20, 2026 UTC. Status: source/publication review completed; upstream runtime replication and market validation not performed.** This extends the [measured-data foundation](MULTI_BRAIN_LIVE_PREP.md) with executable-model candidates for the founder's fly, tadpole, cat and monkey research direction. It does not change runtime readiness, import permission, deployment policy or transaction authority.
 
 Five model repositories were matched to original peer-reviewed publications. Twenty selected files from those repositories and one separate framework were inspected at exact commits; their Git blob identities were recomputed and SHA-256 digests retained in the [machine-readable evidence record](model-audits/open_models_20261020.json). This is a targeted source audit, not a complete code/security review or an independent reproduction of the papers.
