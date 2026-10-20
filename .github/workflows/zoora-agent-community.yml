@@ -11,7 +11,45 @@ on:
       - ".github/workflows/zoora-agent-community.yml"
 permissions:
   contents: read
+concurrency:
+  group: zoora-community-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  practice-market:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12.15"
+      - name: Install fully hashed runtime dependency closure
+        run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - name: Blind boundary, accounting, revocation and migration-transition regressions
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p "test_practice*.py" -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p "test_practice*.py"
+      - name: Actual Chrome private practice market, paper order and replay audit
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/practice_browser_evidence.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: practice-market-browser
+          path: |
+            projects/zoora-agent-community/evidence-output/practice-browser.json
+            projects/zoora-agent-community/evidence-output/practice-browser-failure.json
+            projects/zoora-agent-community/evidence-output/practice-mobile.png
+            projects/zoora-agent-community/evidence-output/practice-chart-mobile.png
+            projects/zoora-agent-community/evidence-output/practice-portfolio-mobile.png
+          retention-days: 14
   deployment-package:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -57,6 +95,7 @@ jobs:
       - run: node --check web/wallet.js
       - run: node --check web/workspace.js
       - run: node --check web/forum.js
+      - run: node --check web/market.js
       - name: Multiwallet discovery, raw signatures, withdrawal and mobile-link privacy
         run: node --test scripts/wallet_discovery_test.mjs
       - name: Actual Chrome observer UI acceptance
