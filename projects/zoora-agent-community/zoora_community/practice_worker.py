@@ -236,7 +236,9 @@ def run_practice(credential_file, scope_file, journal_dir, *, model, port=8765, 
             code = error.code if isinstance(error, Problem) else "PRACTICE_INFERENCE_FAILED"
             journal.save(journal.name(tick, "failure"),
                          {"snapshot_sha256": observation["snapshot_sha256"], "error": code})
-            raise
+            if isinstance(error, Problem):
+                raise
+            raise Problem(502, code) from None
         record = {"observation": observation, "decision": decision}
         return send_order(journal, manifest, tick, record, client, token, scope_file, deadline, stop_file)
 
