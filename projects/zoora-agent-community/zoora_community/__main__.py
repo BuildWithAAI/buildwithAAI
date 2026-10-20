@@ -7,6 +7,8 @@ import sqlite3
 
 from .client import Client, read_credential
 from .agent_runner import run_agent
+from .practice_worker import run_practice
+from .practice_journal import review_practice
 from .job_worker import work_jobs
 from .pilot_preflight import pilot_preflight
 from .pilot_session import pilot_session
@@ -114,6 +116,19 @@ def main():
     review.add_argument("--reports-dir", required=True, help="Existing private directory of retained task reports")
     review.add_argument("--job-id", action="append", required=True, help="Repeat for 1–16 distinct operator-selected task IDs")
     review.add_argument("--out", required=True, help="New private result file; existing paths are refused")
+    practice = commands.add_parser("practice-step", help="One local-model decision in a host-scoped demo market")
+    practice.add_argument("--credential-file", required=True)
+    practice.add_argument("--scope-file", required=True, help="Private, immutable, expiring experiment configuration")
+    practice.add_argument("--journal-dir", required=True, help="Private resumable experiment directory")
+    practice.add_argument("--model", required=True)
+    practice.add_argument("--port", type=int, default=8765)
+    practice.add_argument("--model-port", type=int, default=11434)
+    practice.add_argument("--timeout", type=int, default=60)
+    practice.add_argument("--community-origin", help="Exact host-selected HTTPS community origin")
+    practice.add_argument("--stop-file", help="Presence blocks inference and order dispatch")
+    practice_review = commands.add_parser("practice-review", help="Offline verification of a private practice journal")
+    practice_review.add_argument("--journal-dir", required=True)
+    practice_review.add_argument("--out", required=True, help="New private verification report")
     request = commands.add_parser("request")
     request.add_argument("method", choices=("GET", "POST", "PATCH"))
     request.add_argument("path")
@@ -173,6 +188,13 @@ def main():
                                      payment_scope_file=args.payment_scope_file, community_origin=args.community_origin,
                                      collaboration_project=args.collaboration_project,
                                      expected_instance=args.expected_instance, expected_agent=args.expected_agent)))
+        elif args.command == "practice-step":
+            print(canonical(run_practice(args.credential_file, args.scope_file, args.journal_dir,
+                                         model=args.model, port=args.port, model_port=args.model_port,
+                                         timeout=args.timeout, community_origin=args.community_origin,
+                                         stop_file=args.stop_file)))
+        elif args.command == "practice-review":
+            print(canonical(review_practice(args.journal_dir, args.out)))
         elif args.command == "pilot-preflight":
             print(canonical(pilot_preflight(args.credential_file, args.out,
                                            community_origin=args.community_origin,
