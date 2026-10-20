@@ -1,0 +1,21 @@
+{
+  "evaluation_local_commit": "8db71ff8b153c4e921af590ec9fc997f9f888a54",
+  "evaluation_remote_commit": "bc14a8886956a19e4204fa5d2ec48b80b29d3c5f",
+  "execution_attestation": "NOT_ESTABLISHED",
+  "file_sha256": {
+    "experiments/flyvis_cpu_smoke/requirements-linux-py312.lock": "fd1666afc1db5a1b63de2127e020cd8961d9346b12a4a2ffb98db3affe4c0bd5",
+    "experiments/flyvis_trained_reference/registration.json": "874a1487de5288b2a99769c0b3eb841040147e885519cc50715f3f7f42e1309f",
+    "experiments/flyvis_trained_reference/worker.py": "cd4ed99ad1c571e32e29f33563dac738a09eb6f83e282c87e8a049003d97f18c",
+    "scripts/run_flyvis_reference.py": "2877990e4fb588902a2e3da78af237b80f70c9177c3393af321be19ce0f1eb96",
+    "scripts/run_flyvis_smoke.py": "711a77b5c7e2affff32b0be697c371e234d8fdcf579f72fcc60bedcbed68d684",
+    "src/multi_brain_research/flyvis_reference.py": "ce4969f3629ceee99ed16ff75f82f80f6987fe5f75c3d16c45e047d71698e971",
+    "src/multi_brain_research/flyvis_smoke.py": "ed6f7e4ddbead0bcc83ee2d5393131d30bc4b79c3c91e6ceeb548a942cac2641"
+  },
+  "identical_evaluation_tree_sha": "c94ae1bf33b0ab968590abf69cd16c4873299dde",
+  "local_and_hosted_response_sha256": "54742bcb19142ada745935f08958978457ae118d35412ad0dc995a026017b010",
+  "local_vs_hosted_max_absolute_difference": 0.0,
+  "note": "MCP-created commits have different commit identities from local commits, but the Git tree objects are identical. Later evidence/documentation/test commits do not change these execution code blobs.",
+  "registration_local_commit": "a2b9c2f150ac9099df2c617c11b9469fd494b8eb",
+  "registration_remote_commit": "7279b9cbfa11856789f548a3f451ba4428942610",
+  "registration_tree_sha": "be7039dcf6b1596999f3ca2a661a78df12efcf8a"
+}

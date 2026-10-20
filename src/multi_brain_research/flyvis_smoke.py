@@ -59,7 +59,9 @@ def load_registration(path: Path) -> dict:
     return _json(data)
 
 
-def read_activity(data: bytes) -> tuple[tuple[int, int, int], array.array]:
+def read_activity(
+    data: bytes, *, shape_prefix=(3, 40), max_width=5000, max_elements=600_000
+) -> tuple[tuple[int, int, int], array.array]:
     """Read a small, C-order float32 NPY v1/v2 array without NumPy or pickle."""
     _require(len(data) <= MAX_OUTPUT_BYTES, "activity artifact too large")
     _require(data[:6] == b"\x93NUMPY", "invalid NPY signature")
@@ -86,9 +88,9 @@ def read_activity(data: bytes) -> tuple[tuple[int, int, int], array.array]:
     shape = header["shape"]
     _require(isinstance(shape, tuple) and len(shape) == 3, "invalid activity dimensions")
     _require(all(type(n) is int and n > 0 for n in shape), "invalid activity shape")
-    _require(shape[:2] == (3, 40) and shape[2] <= 5000, "activity shape exceeds registration")
+    _require(shape[:2] == shape_prefix and shape[2] <= max_width, "activity shape exceeds registration")
     elements = math.prod(shape)
-    _require(elements <= 600_000, "too many activity elements")
+    _require(elements <= max_elements, "too many activity elements")
     _require(len(data) - end == elements * 4, "activity payload length mismatch")
     values = array.array("f")
     _require(values.itemsize == 4, "platform float size unsupported")

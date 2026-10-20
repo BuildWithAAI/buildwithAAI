@@ -1,5 +1,7 @@
 # Multi-brain market research — first measured-data foundation
 
+**Trained-model reference checkpoint:** [FV-REF-001](../experiments/flyvis_trained_reference/README.md) registers one fixed pretrained model and a full-architecture synthetic-flash polarity check. Its MIT asset notice and weights-only loader address earlier open gates. Results and retained attempts are recorded with that experiment; existing live gates remain in force.
+
 **Later implementation checkpoint:** [FV-SMOKE-001](../experiments/flyvis_cpu_smoke/README.md) executes a pinned upstream FlyVis model with untrained defaults and synthetic flashes, preserving raw-output digests and independent numerical verification. This is separate from the FlyEM graph importer below. Its technical result does not establish biological replication, a trained market model or a connected live service, and does not change readiness gates.
 
 **October 20 UTC / October 19 America/Chicago, 2026.** The founder requested fly, tadpole, cat, monkey and later suitable sources in a shared system, and selected **market research** as the first live-input use. This checkpoint implements source-pinned graph preparation and a common causal research interface. It does not implement a biological market model, train a readout, demonstrate prediction quality, connect a live market service or authorize transactions.

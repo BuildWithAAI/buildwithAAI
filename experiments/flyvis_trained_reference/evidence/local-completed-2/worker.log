@@ -1,0 +1,17 @@
+[2026-10-20 08:56:55] font_manager:1848 generated new fontManager
+[2026-10-20 08:57:11] network:222 Initialized network with NumberOfParams(free=734, fixed=2959) parameters.
+Flashes:   0%|          | 0/4 [00:00<?, ?it/s]Flashes: 100%|██████████| 4/4 [00:00<00:00, 48.50it/s]
+{"phase": "simulation", "repeat": 1, "nodes": 45669, "edges": 1513231}
+[2026-10-20 08:57:12] network:757 Computing 4 stimulus responses.
+Batch:   0%|          | 0/1 [00:00<?, ?it/s]Batch: 100%|██████████| 1/1 [00:08<00:00,  8.35s/it]                                                    /workspace/scratch/0b7605d029c9/flyvis-upstream/flyvis/analysis/flash_responses.py:77: FutureWarning: dropping variables using `drop` is deprecated; use drop_vars.
+  on_peak = on_peak.drop('sample')
+/workspace/scratch/0b7605d029c9/flyvis-upstream/flyvis/analysis/flash_responses.py:78: FutureWarning: dropping variables using `drop` is deprecated; use drop_vars.
+  off_peak = off_peak.drop('sample')
+[2026-10-20 08:57:25] network:222 Initialized network with NumberOfParams(free=734, fixed=2959) parameters.
+{"phase": "simulation", "repeat": 2, "nodes": 45669, "edges": 1513231}
+[2026-10-20 08:57:26] network:757 Computing 4 stimulus responses.
+Batch:   0%|          | 0/1 [00:00<?, ?it/s]Batch: 100%|██████████| 1/1 [00:08<00:00,  8.53s/it]                                                    /workspace/scratch/0b7605d029c9/flyvis-upstream/flyvis/analysis/flash_responses.py:77: FutureWarning: dropping variables using `drop` is deprecated; use drop_vars.
+  on_peak = on_peak.drop('sample')
+/workspace/scratch/0b7605d029c9/flyvis-upstream/flyvis/analysis/flash_responses.py:78: FutureWarning: dropping variables using `drop` is deprecated; use drop_vars.
+  off_peak = off_peak.drop('sample')
+{"phase": "complete", "status": "PASS_SCOPED_REFERENCE_CHECK", "correct": 22}
