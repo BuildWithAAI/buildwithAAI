@@ -28,6 +28,7 @@ The train command accepts a bounded JSON dataset containing:
 - protocol: AAI_EPISODE_DATASET_V1;
 - classification: SYNTHETIC_FIXTURE or RECORDED_UNVERIFIED;
 - source: uri, content_sha256 and rights=DECLARED_PERMITTED;
+- units: quote_unit, base_scale, price_unit=QUOTE_UNITS_PER_WHOLE_BASE and depth_unit=BASE_ATOMS;
 - episodes: episode_id, asset_group_sha256 and quotes;
 - each quote: event_ms, available_ms, bid, ask, bid_size and ask_size.
 

@@ -19,6 +19,15 @@ class TrainingLabTests(unittest.TestCase):
     def repin(self):
         self.plan["dataset_sha256"] = lab.digest(self.data)
 
+    def test_exact_units_are_required_and_retained_in_model_and_public_trace(self):
+        bundle = lab.raw_bundle(self.data)
+        model, _ = lab.fit(self.data, self.plan, bundle)
+        self.assertEqual(model["units"], self.data["units"])
+        self.assertEqual(lab.public_trace(self.data, self.plan, bundle, model)["units"], self.data["units"])
+        self.data["units"]["price_unit"] = "UNDECLARED_CLOSE_PRICE"
+        with self.assertRaisesRegex(lab.TrainingError, "INVALID_DATASET_UNITS"):
+            lab.validate_dataset(self.data)
+
     def test_training_changes_parameters_and_reduces_fixture_train_loss(self):
         model, report = lab.fit(self.data, self.plan, lab.raw_bundle(self.data))
         self.assertTrue(report["training_performed"])

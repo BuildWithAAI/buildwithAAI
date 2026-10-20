@@ -90,13 +90,19 @@ def write_json(path, value):
 
 
 def validate_dataset(data):
-    exact(data, ("protocol", "classification", "source", "episodes"))
+    exact(data, ("protocol", "classification", "source", "units", "episodes"))
     require(data["protocol"] == "AAI_EPISODE_DATASET_V1", "DATASET_PROTOCOL")
     require(data["classification"] in ("SYNTHETIC_FIXTURE", "RECORDED_UNVERIFIED"), "DATASET_CLASSIFICATION")
     exact(data["source"], ("uri", "content_sha256", "rights"))
     require(type(data["source"]["uri"]) is str and 1 <= len(data["source"]["uri"]) <= 512, "SOURCE_REQUIRED")
     pin(data["source"]["content_sha256"])
     require(data["source"]["rights"] == "DECLARED_PERMITTED", "SOURCE_RIGHTS_UNRESOLVED")
+    exact(data["units"], ("quote_unit", "base_scale", "price_unit", "depth_unit"))
+    name(data["units"]["quote_unit"])
+    require(type(data["units"]["base_scale"]) is int
+            and data["units"]["base_scale"] in tuple(10**n for n in range(19))
+            and data["units"]["price_unit"] == "QUOTE_UNITS_PER_WHOLE_BASE"
+            and data["units"]["depth_unit"] == "BASE_ATOMS", "INVALID_DATASET_UNITS")
     require(type(data["episodes"]) is list and 3 <= len(data["episodes"]) <= 64, "EPISODE_BOUND")
     seen, trajectories, total = set(), set(), 0
     for episode in data["episodes"]:
@@ -272,6 +278,7 @@ def fit(data, plan, bundle):
     model = {"protocol": "AAI_LOGISTIC_READOUT_V1", "task": TASK,
              "dataset_sha256": digest(data), "plan_sha256": digest(plan),
              "feature_pipeline_sha256": digest(bundle["pipeline"]), "feature_export_sha256": digest(bundle),
+             "units": dict(data["units"]),
              "means": means, "scales": scales, "weights": [0.0] * width, "bias": 0.0,
              "live_execution_allowed": False, "calibration": "NOT_ESTABLISHED"}
     initial = metrics(model, rows)
@@ -331,6 +338,7 @@ def public_trace(data, plan, bundle, model):
         previous = digest(item)
         linked.append({**item, "sha256": previous})
     return {"protocol": "AAI_CAUSAL_PUBLIC_TRACE_V1", "classification": data["classification"],
+            "units": dict(data["units"]),
             "model_sha256": digest(model), "events": linked, "head_sha256": previous,
             "blinding": "ALIASES_ONLY_NOT_AN_INDEPENDENT_HOLDOUT", "live_execution_allowed": False}
 
@@ -384,7 +392,10 @@ def demo_data():
                          "quotes": quotes})
     data = {"protocol": "AAI_EPISODE_DATASET_V1", "classification": "SYNTHETIC_FIXTURE",
             "source": {"uri": "synthetic:trend-and-late-dump-software-fixture",
-                       "content_sha256": digest(episodes), "rights": "DECLARED_PERMITTED"}, "episodes": episodes}
+                       "content_sha256": digest(episodes), "rights": "DECLARED_PERMITTED"},
+            "units": {"quote_unit": "micro_demo_usd", "base_scale": 1_000_000,
+                      "price_unit": "QUOTE_UNITS_PER_WHOLE_BASE", "depth_unit": "BASE_ATOMS"},
+            "episodes": episodes}
     plan = {"protocol": "AAI_READOUT_PLAN_V1", "dataset_sha256": digest(data), "horizon_ms": 1000,
             "shuffle_seed": 718, "alias_salt": digest("PUBLIC_SYNTHETIC_DEMO_ALIAS_SALT"),
             "splits": {"train": [e["episode_id"] for e in episodes[:8]],

@@ -71,7 +71,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install pinned dependency tooling
-        run: python -m pip install --require-hashes --only-binary=:all: -r experiments/flyvis_cpu_smoke/bootstrap-linux.lock
+        run: "python -m pip install --require-hashes --only-binary=:all: -r experiments/flyvis_cpu_smoke/bootstrap-linux.lock"
       - name: Prepare existing separate hash-locked CPU environment
         run: |
           uv venv .flyvis-venv --python python --no-python-downloads
