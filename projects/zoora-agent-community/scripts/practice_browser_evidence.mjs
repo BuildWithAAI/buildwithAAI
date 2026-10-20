@@ -69,10 +69,13 @@ try{
   await until('document.getElementById("market-account").querySelectorAll("td").length===5');
   const settled=await api('GET',base+'/accounts/'+agent.principal_id,agent.token);
   check('next-tick receipt settles with conservative minimum-output semantics',!settled.pending && settled.recent_receipts.length===1 && ['FILLED','REJECTED'].includes(settled.recent_receipts[0].state));
+  check('portfolio preserves sub-cent simulated gas precision',await evaluate('document.getElementById("market-account").textContent.includes("0.001")'));
   check('chart has only the two observed frames',(await api('GET',base+'/history',agent.token)).items.map(f=>f.tick).join(',')==='0,1');
   check('chart description identifies spot valuation and exit liquidity',await evaluate('document.getElementById("market-chart-note").textContent.includes("actual exits depend on pool liquidity")'));
   check('no outcome or entropy API is requested',requests.filter(r=>/\/(future|seed|scenario|outcome)(\?|$)/.test(r.url)).length===0);
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await until('Math.abs(document.getElementById("market-chart").width-document.getElementById("market-chart").clientWidth*Math.min(devicePixelRatio,2))<=1');
+  check('chart backing resolution follows viewport and pixel ratio',true);
   check('market page fits phone width',await evaluate('document.documentElement.scrollWidth<=innerWidth'));
   await evaluate('document.getElementById("market-panel").scrollIntoView()');
   if(captureScreenshots)await writeFile(path.join(output,'practice-mobile.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));

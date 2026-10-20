@@ -2,7 +2,8 @@
 (() => {
   const el = id => document.getElementById(id);
   const node = (tag, value) => { const n = document.createElement(tag); n.textContent = value; return n; };
-  const money = v => new Intl.NumberFormat(undefined, {style:"currency",currency:"USD",maximumFractionDigits:2}).format(v / 1e6) + " demo";
+  const currency = [2,6].map(digits=>new Intl.NumberFormat(undefined,{style:"currency",currency:"USD",minimumFractionDigits:2,maximumFractionDigits:digits}));
+  const money = (v,digits=6) => currency[digits===6?1:0].format(v / 1e6) + " demo";
   let session = null, epoch = 0, busy = false, market = null, history = [], timer = null;
   const retries = new Map();
   const episode = () => el("market-episode").value;
@@ -34,14 +35,17 @@
   }
   function chart() {
     const coin = el("market-coin").value, canvas = el("market-chart"), ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const width = Math.max(1,canvas.clientWidth), height = 230, ratio = Math.min(globalThis.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio); ctx.setTransform(ratio,0,0,ratio,0,0);
+    ctx.clearRect(0,0,width,height);
     const points = history.flatMap(frame => { const c = frame.coins.find(v => v.id === coin); return c ? [{tick:frame.tick, value:c.market_cap_micro}] : []; });
     if (!points.length) { el("market-chart-note").textContent = "No observed prices yet."; return; }
     const low = Math.min(...points.map(p=>p.value)), high = Math.max(...points.map(p=>p.value));
-    ctx.strokeStyle = "#72d9ba"; ctx.lineWidth = 3; ctx.beginPath();
-    for (let i=0;i<points.length;i++) { const x=30+i/Math.max(1,points.length-1)*900, y=245-(points[i].value-low)/Math.max(1,high-low)*210; if (i) ctx.lineTo(x,y); else ctx.moveTo(x,y); }
-    ctx.stroke(); ctx.fillStyle="#b4c7cf"; ctx.font="16px sans-serif"; ctx.fillText(money(high),30,22);
-    el("market-chart-note").textContent = "Observed ticks " + points[0].tick + "–" + points.at(-1).tick + ". Latest market cap: " + money(points.at(-1).value) + ". Spot valuation; actual exits depend on pool liquidity.";
+    ctx.strokeStyle = "#72d9ba"; ctx.lineWidth = 2; ctx.beginPath();
+    for (let i=0;i<points.length;i++) { const x=16+i/Math.max(1,points.length-1)*(width-32), y=height-24-(points[i].value-low)/Math.max(1,high-low)*(height-56); if (i) ctx.lineTo(x,y); else ctx.moveTo(x,y); }
+    ctx.stroke();ctx.beginPath();ctx.arc(points.length>1?width-16:16,height-24-(points.at(-1).value-low)/Math.max(1,high-low)*(height-56),3,0,Math.PI*2);ctx.fillStyle="#72d9ba";ctx.fill(); ctx.fillStyle="#b4c7cf"; ctx.font="12px sans-serif"; ctx.textAlign="left"; ctx.fillText(money(high,2),16,18);
+    ctx.fillText("Tick "+points[0].tick,16,height-6); ctx.textAlign="right";ctx.fillText("Tick "+points.at(-1).tick,width-16,height-6);
+    el("market-chart-note").textContent = "Observed ticks " + points[0].tick + "–" + points.at(-1).tick + ". Latest market cap: " + money(points.at(-1).value,2) + ". Spot valuation; actual exits depend on pool liquidity.";
   }
   async function account() {
     const key = el("market-agent").value;
@@ -66,7 +70,7 @@
     market=data.market;history=frames.items.filter(frame=>frame.tick<=market.tick);
     el("market-clock").textContent="Tick "+market.tick+" · "+market.virtual_elapsed_seconds+" simulated seconds · "+market.status+" · Private genesis commitment "+data.commitment;
     el("market-step").disabled=market.status!=="OPEN";const selected=el("market-coin").value;el("market-coin").replaceChildren();el("market-coins").replaceChildren();
-    for(const c of market.coins){const option=node("option",c.name+" / "+c.symbol);option.value=c.id;el("market-coin").append(option);const card=node("article","");card.append(node("h3",c.symbol),node("p",c.stage+" · "+c.venue),node("p",money(c.market_cap_micro)),node("p","Quote liquidity: "+money(c.quote_liquidity_micro)),node("p","Volume: "+money(c.volume_micro)),node("p","Top 10 concentration: "+(c.top10_bps/100).toFixed(2)+"% · Synthetic signal"));card.children[2].className="market-number";el("market-coins").append(card);}
+    for(const c of market.coins){const option=node("option",c.name+" / "+c.symbol);option.value=c.id;el("market-coin").append(option);const card=node("article","");card.append(node("h3",c.symbol),node("p",c.stage+" · "+c.venue),node("p",money(c.market_cap_micro,2)),node("p","Quote liquidity: "+money(c.quote_liquidity_micro)),node("p","Volume: "+money(c.volume_micro)),node("p","Top 10 concentration: "+(c.top10_bps/100).toFixed(2)+"% · Synthetic signal"));card.children[2].className="market-number";el("market-coins").append(card);}
     if(market.coins.some(c=>c.id===selected))el("market-coin").value=selected;
     chart();if(el("market-agent").value)await account();
   }
@@ -81,6 +85,7 @@
   el("market-step").addEventListener("click",()=>run(async()=>{if(!market)throw new Error("Create or select an episode first.");await write("step",path("/step"),{expected_tick:market.tick});await refresh();}));
   el("market-episode").addEventListener("change",()=>run(async()=>{if(retries.size)throw new Error("Reconcile the saved action before changing episodes.");await refresh();}));
   el("market-coin").addEventListener("change",chart);
+  globalThis.addEventListener("resize",chart);
   el("market-account-form").addEventListener("submit",e=>{e.preventDefault();run(account);});
   el("market-enroll").addEventListener("submit",e=>{e.preventDefault();run(async()=>{const form=e.target;await write("enroll",path("/accounts"),{agent_id:form.elements.agent_id.value,model_pipeline_sha256:form.elements.pipeline.value});el("market-agent").value=form.elements.agent_id.value;await account();});});
   el("market-order").addEventListener("submit",e=>{e.preventDefault();run(async()=>{
@@ -103,7 +108,7 @@
     el("market-watch").checked=false;el("market-workspace").hidden=!session;el("market-owner").hidden=session?.role!=="OWNER";el("market-enroll").hidden=session?.role!=="OPERATOR";el("market-order").hidden=session?.role!=="AGENT";
     for(const id of ["market-coins","market-account","market-episode","market-coin"])el(id).replaceChildren();
     el("market-agent").value=session?.role==="AGENT"?session.principal_id:"";el("market-agent").readOnly=session?.role==="AGENT";
-    el("market-clock").textContent="";el("market-chart-note").textContent="";el("market-chart").getContext("2d").clearRect(0,0,960,280);
+    el("market-clock").textContent="";el("market-chart-note").textContent="";el("market-chart").getContext("2d").clearRect(0,0,el("market-chart").width,el("market-chart").height);
     el("market-status").textContent=session?"Loading practice episodes…":"Sign in above to watch a private practice market.";
     if(session)run(()=>list());
   }});
