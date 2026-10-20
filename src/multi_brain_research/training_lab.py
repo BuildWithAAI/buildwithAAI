@@ -268,21 +268,35 @@ def metrics(model, rows, constant=None):
             "accuracy": sum((p >= 0.5) == bool(row["y"]) for row, p in zip(rows, probabilities, strict=True)) / len(rows)}
 
 
-def fit(data, plan, bundle):
-    partitions = examples(data, plan, bundle)
+def fit_parameters(partitions, plan):
+    """Fit only train rows; callers own observation, target and partition semantics."""
+    exact(partitions, PARTS)
+    integer(plan["epochs"], 1, 2000)
+    finite(plan["learning_rate"], 0.00001, 1)
+    finite(plan["l2"], 0, 1)
+    width, total = None, 0
+    for part in PARTS:
+        members = partitions[part]
+        require(type(members) is list and 4 <= len(members) <= 8192, "INSUFFICIENT_OR_EXCESS_SPLIT_ROWS")
+        total += len(members)
+        require(total <= 8192, "FITTING_ROW_BOUND")
+        for row in members:
+            require(type(row) is dict and type(row.get("x")) is list
+                    and type(row.get("y")) is int and row["y"] in (0, 1), "INVALID_FITTING_ROW")
+            values = row["x"]
+            width = len(values) if width is None else width
+            require(1 <= width <= 128 and len(values) == width, "FITTING_WIDTH")
+            for value in values:
+                finite(value)
     rows = partitions["train"]
-    width, count = len(rows[0]["x"]), len(rows)
+    require({row["y"] for row in rows} == {0, 1}, "TRAIN_LABEL_CLASS_MISSING")
+    count = len(rows)
     means = [sum(row["x"][j] for row in rows) / count for j in range(width)]
     scales = [max(1e-6, math.sqrt(sum((row["x"][j] - means[j])**2 for row in rows) / count))
               for j in range(width)]
-    model = {"protocol": "AAI_LOGISTIC_READOUT_V1", "task": TASK,
-             "dataset_sha256": digest(data), "plan_sha256": digest(plan),
-             "feature_pipeline_sha256": digest(bundle["pipeline"]), "feature_export_sha256": digest(bundle),
-             "units": dict(data["units"]),
-             "means": means, "scales": scales, "weights": [0.0] * width, "bias": 0.0,
-             "live_execution_allowed": False, "calibration": "NOT_ESTABLISHED"}
+    initial_state = {"means": means, "scales": scales, "weights": [0.0] * width, "bias": 0.0}
+    model = {**initial_state, "weights": list(initial_state["weights"])}
     initial = metrics(model, rows)
-    initial_hash = digest(model)
     normalized = [[max(-6.0, min(6.0, (x - m) / s)) for x, m, s in zip(row["x"], means, scales, strict=True)] for row in rows]
     for _ in range(plan["epochs"]):
         errors = [sigmoid(model["bias"] + sum(w * x for w, x in zip(model["weights"], values, strict=True))) - row["y"]
@@ -294,12 +308,25 @@ def fit(data, plan, bundle):
     for value in model["weights"] + [model["bias"]]:
         finite(value, -1e4, 1e4)
     prior = sum(row["y"] for row in rows) / count
+    return (initial_state, model, initial,
+            {part: metrics(model, partitions[part]) for part in PARTS},
+            {part: metrics(model, partitions[part], prior) for part in PARTS})
+
+
+def fit(data, plan, bundle):
+    partitions = examples(data, plan, bundle)
+    initial_state, state, initial, scored, baseline = fit_parameters(partitions, plan)
+    metadata = {"protocol": "AAI_LOGISTIC_READOUT_V1", "task": TASK,
+                "dataset_sha256": digest(data), "plan_sha256": digest(plan),
+                "feature_pipeline_sha256": digest(bundle["pipeline"]), "feature_export_sha256": digest(bundle),
+                "units": dict(data["units"]),
+                "live_execution_allowed": False, "calibration": "NOT_ESTABLISHED"}
+    initial_hash = digest({**metadata, **initial_state})
+    model = {**metadata, **state}
     report = {"protocol": "AAI_READOUT_TRAINING_REPORT_V1", "classification": data["classification"],
               "task": TASK, "pipeline": bundle["pipeline"], "initial_model_sha256": initial_hash,
               "model_sha256": digest(model), "readout_parameters_changed": initial_hash != digest(model),
-              "initial_train_metrics": initial,
-              "metrics": {part: metrics(model, partitions[part]) for part in PARTS},
-              "train_prior_baseline": {part: metrics(model, partitions[part], prior) for part in PARTS},
+              "initial_train_metrics": initial, "metrics": scored, "train_prior_baseline": baseline,
               "training_performed": True, "trained_components": ["LOGISTIC_READOUT"],
               "biological_core_weights_updated": False, "market_validation_established": False,
               "execution_attestation": "NOT_ESTABLISHED", "calibration": "NOT_ESTABLISHED",

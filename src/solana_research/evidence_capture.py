@@ -18,7 +18,7 @@ from .rpc import NoRedirect
 def fetch(request, endpoint, limit):
     message = Request(endpoint, data=canonical(request).encode(),
                       headers={"Content-Type": "application/json", "Accept": "application/json",
-                               "User-Agent": "BuildWithAAI-AgentFun-Research/1"}, method="POST")
+                               "User-Agent": "BuildWithAAI-AAIFun-Research/1"}, method="POST")
     try:
         with build_opener(NoRedirect()).open(message, timeout=15) as response:
             return response.status, response.read(limit + 1), None
