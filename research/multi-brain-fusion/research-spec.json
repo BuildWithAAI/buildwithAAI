@@ -1,0 +1,496 @@
+{
+  "schema_version": 1,
+  "research_id": "MB-FUS-000",
+  "title": "Multi-brain fusion and delayed recurrent coupling",
+  "created_at_utc": "2026-10-20",
+  "review_by_utc": "2026-11-19",
+  "status": "RESEARCH_DESIGN_ONLY",
+  "repository": "BuildWithAAI/buildwithAAI",
+  "baseline": {
+    "pull_request": 56,
+    "branch": "feature/brain-trading-school",
+    "commit": "a5dc52b550712a470ccd1208e79c08b145e65e2b",
+    "tree": "406919d71508894ecf8e54d22a910b96a5cead2d"
+  },
+  "classification": "PROPOSED_SYNTHETIC_ENGINEERING",
+  "scope": {
+    "model_execution_performed": false,
+    "model_training_performed": false,
+    "market_adapter_implemented": false,
+    "fusion_implemented": false,
+    "cross_species_biological_connections_measured": false,
+    "new_model_weights_downloaded": false,
+    "paid_compute_provisioned": false,
+    "hardware_purchase_authorized": false,
+    "token_launch_performed": false,
+    "wallet_access": false,
+    "live_execution_allowed": false,
+    "performance_edge": "NOT_ESTABLISHED"
+  },
+  "launch_candidate": {
+    "chain": "solana",
+    "base_token": "BRAIN",
+    "quote_token": "AAI",
+    "status": "DEFERRED_CANDIDATE_ONLY",
+    "aai_mint": null,
+    "pair_eligibility": "UNVERIFIED",
+    "holder_reward_configuration": "UNVERIFIED",
+    "prerequisite_for_brain_research": false
+  },
+  "integration_modes": [
+    {
+      "id": "independent_committee",
+      "status": "PARTIAL_FOUNDATION_EXISTS",
+      "existing_component": "src/multi_brain_research/consensus.py",
+      "missing": [
+        "Native scientific references for additional models",
+        "Causal model encoders",
+        "Trained task readouts",
+        "Calibration",
+        "Independent held-out evaluation"
+      ],
+      "peer_outputs_before_sealing": false,
+      "interpretation": "Agreement is not calibrated confidence or independence"
+    },
+    {
+      "id": "latent_fusion",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "source_cores_initially_frozen": true,
+      "projector_first_candidate": "LINEAR",
+      "bottleneck_dimensions_to_consider": [
+        16,
+        32
+      ],
+      "dimensions_status": "ENGINEERING_BUDGET_CANDIDATES_NOT_MEASURED_OPTIMA",
+      "mandatory_comparators": [
+        "Strongest single module",
+        "Direct feature readout",
+        "Simple mean or voting",
+        "Equal-budget temporal model",
+        "Random projector",
+        "Concatenation"
+      ]
+    },
+    {
+      "id": "delayed_recurrent_hybrid",
+      "status": "LATER_RESEARCH_ONLY",
+      "feedback_delay_observations": 1,
+      "connector_classification": "SYNTHETIC",
+      "outer_coordinator_voters": 1,
+      "formula": "h_i[t]=F_i(h_i[t-1],E_i(history_through_t),C_i(z[t-1])); z[t]=G(P_i(h_i[t]),masks); y[t]=R(z[t])",
+      "stability_proven": false,
+      "source_runtime_step_sizes": "SOURCE_SPECIFIC_NOT_EQUAL_TO_MARKET_CLOCK",
+      "controls": [
+        "Zero-coupling recovery",
+        "Connector removal",
+        "Module removal",
+        "Missing or delayed module",
+        "State reset and warm-up",
+        "Finite-value and saturation checks",
+        "Latent shuffle"
+      ]
+    }
+  ],
+  "recommended_sequence": [
+    "flyvis_native_reference",
+    "second_model_rights_and_native_reference",
+    "causal_adapters_and_state_export",
+    "registered_single_module_task",
+    "independent_late_fusion",
+    "learned_latent_fusion",
+    "delayed_recurrent_hybrid",
+    "supervised_paper_integration"
+  ],
+  "first_module": {
+    "id": "flyvis_model_000",
+    "species": "Drosophila melanogaster",
+    "model_type": "CONNECTOME_CONSTRAINED_VISUAL_SYSTEM",
+    "runtime_evidence": "PRIOR_PROJECT_REFERENCE_NOT_RERUN_HERE",
+    "reference_pull_request": 53,
+    "reference_commit": "c884fc02449c077108b5ec2a550213dca20cb88d",
+    "reference_file": "experiments/flyvis_trained_reference/README.md",
+    "modeled_neurons": 45669,
+    "modeled_connections": 1513231,
+    "recorded_polarities_matched": 22,
+    "recorded_polarities_tested": 24,
+    "trade_accuracy_interpretation": false,
+    "market_encoder": null,
+    "market_readout": null,
+    "market_calibration": null,
+    "eligible_for_live": false
+  },
+  "second_module_candidate": {
+    "id": "mouse_fnn_microns",
+    "species": "Mus musculus",
+    "model_type": "ANN_FIT_TO_VISUAL_CORTEX_NEURAL_RESPONSES",
+    "whole_brain": false,
+    "copy_of_all_measured_synapses": false,
+    "repository": "cajal/fnn",
+    "source_commit": "8f34c6753bd818c8fcd1daa91499a057252bea7e",
+    "tree_sha": "1e7887fb6e849124b2ccaa4c1aa81346342ad8cd",
+    "inspected_files": [
+      {
+        "path": "LICENSE",
+        "github_blob_sha1": "7f0de76019027b32144a00700fa1d7cef3018d44"
+      },
+      {
+        "path": "README.md",
+        "github_blob_sha1": "4e36da7d9fda25b87d7c2a53706ee24810787fec"
+      },
+      {
+        "path": "demos/1 - download_microns_digital_twin.ipynb",
+        "github_blob_sha1": "6cde62134ebdf4821e2e202d87f327a267165bf5"
+      },
+      {
+        "path": "demos/2 - use_microns_digital_twin.ipynb",
+        "github_blob_sha1": "76a6932121952bdcf1e75ae8af680817c80c98e8"
+      },
+      {
+        "path": "fnn/microns/build.py",
+        "github_blob_sha1": "a0352f38d3c6ba6dc271214a851aba7f898a53c3"
+      },
+      {
+        "path": "fnn/microns/load.py",
+        "github_blob_sha1": "8dbc9e395c29233864b337c38c1c6147cbccb7c6"
+      },
+      {
+        "path": "pyproject.toml",
+        "github_blob_sha1": "aac8f14b838342692cd9fa458bebb92d194c9908"
+      }
+    ],
+    "inspection_method": "SOURCE_TEXT_AT_PIN_AND_GITHUB_REPORTED_BLOB_IDS_NOT_INDEPENDENT_LOCAL_REHASH",
+    "inspected_code_license": "MIT",
+    "checkpoint_license": "UNRESOLVED",
+    "training_data_license": "UNRESOLVED",
+    "cpu_support": "AUTHOR_DOCUMENTED_NOT_MEASURED_HERE",
+    "gpu_requirement": "AUTHOR_RECOMMENDS_GPU_NOT_A_PURCHASE_RECOMMENDATION",
+    "supported_released_core": "CvT-LSTM",
+    "released_scope": "MICrONS mouse digital twin",
+    "author_correction": {
+      "doi": "10.1038/s41586-026-10457-z",
+      "date": "2026-04-08",
+      "preserves_reported_conclusions": true,
+      "architecture_has_four_heads_with_shared_components": true,
+      "heads_are_four_independent_animal_models": false
+    },
+    "loader": {
+      "file": "fnn/microns/load.py",
+      "uses_torch_load": true,
+      "explicit_weights_only": false,
+      "torch_requirement": "torch>=2.0",
+      "loading_default": "DEPENDS_ON_SELECTED_TORCH_VERSION",
+      "required_before_execution": [
+        "Separate verified asset terms",
+        "Asset size/hash inventory",
+        "Pinned compatible environment",
+        "Reviewed tensor-only load or constrained alternative",
+        "Bounded CPU/RAM/time benchmark"
+      ]
+    },
+    "runtime_reproduced": false,
+    "checkpoint_acquired": false,
+    "market_validated": false,
+    "eligible_for_live": false
+  },
+  "carried_forward_models": [
+    {
+      "id": "drosophila_shiu_2024",
+      "species": "Drosophila melanogaster",
+      "repository": "philshiu/Drosophila_brain_model",
+      "source_commit": "91bdd1e7dcf193f3e7ca5a8933497fcef63b7960",
+      "biological_scope": "Brain-wide FlyWire-based leaky integrate-and-fire model; evaluated sensorimotor circuits concern feeding and antennal grooming, not all fly behaviors or cognition.",
+      "evidence_basis": "CARRIED_FORWARD_PINNED_PROJECT_AUDIT",
+      "evidence_file": "research/model-audits/open_models_20261020.json",
+      "code_license": {
+        "identifier": "MIT",
+        "path": "LICENSE"
+      },
+      "asset_rights": {
+        "status": "NONCOMMERCIAL_OR_UNRESOLVED",
+        "detail": "README defaults to paper-used FlyWire 630 and describes a 783 alternative. Public FlyWire 783 guidelines state CC BY-NC 4.0; do not infer terms for 630 or commercial permission from the code license.",
+        "provider_url": "https://flywire.ai/guidelines"
+      },
+      "runtime": {
+        "framework": "Brian2",
+        "environment_validated": false,
+        "detail": "pandas/parquet and optional compiled simulation path; multi-core defaults need an explicit resource bound. No dependency installation or simulation performed."
+      },
+      "runtime_reproduced_in_this_checkpoint": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    },
+    {
+      "id": "tadpole_ferrario_2021",
+      "species": "Xenopus tadpole",
+      "repository": "ModelDBRepository/267146",
+      "source_commit": "b096112c79cc284c3e9c820bc1fdc16f50f08815",
+      "biological_scope": "Modeled touch-to-swimming hindbrain/spinal circuitry, approximately 2300 neurons in 12 classes; not a measured whole tadpole cognitive brain.",
+      "evidence_basis": "CARRIED_FORWARD_PINNED_PROJECT_AUDIT",
+      "evidence_file": "research/model-audits/open_models_20261020.json",
+      "code_license": {
+        "identifier": null,
+        "status": "EXPLICIT_LICENSE_NOT_LOCATED",
+        "detail": "No license-named file in the complete 105-blob tree at this pin. Selected README and main entry point do not establish a reuse grant. This is not an exhaustive assertion that no permission exists anywhere."
+      },
+      "asset_rights": {
+        "status": "UNRESOLVED",
+        "detail": "Article CC BY does not establish a separate source-code/data license."
+      },
+      "runtime": {
+        "framework": "MATLAB anatomical stage plus NEURON-Python functional stage",
+        "environment_validated": false,
+        "detail": "Requires compiled NEURON mechanisms. Selected functional main.py fails Python 3.12 parsing at line 98 due to Python 2 print syntax; this is a static incompatibility, not a simulation result.",
+        "python_3_12_parse": "fail"
+      },
+      "runtime_reproduced_in_this_checkpoint": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    },
+    {
+      "id": "cat_lsv1m_antolik_2024",
+      "species": "Cat",
+      "repository": "CSNG-MFF/mozaik-models",
+      "source_commit": "2df93c13489b3f755b25787c8a3ce02062daf2fa",
+      "biological_scope": "Spiking model of cat V1 layers 4 and 2/3 in a central cortical patch; not a complete cat brain.",
+      "evidence_basis": "CARRIED_FORWARD_PINNED_PROJECT_AUDIT",
+      "evidence_file": "research/model-audits/open_models_20261020.json",
+      "code_license": {
+        "identifier": "MIT",
+        "path": "LICENSE"
+      },
+      "asset_rights": {
+        "status": "UNRESOLVED",
+        "detail": "Stimulus files, recorded reference outputs and all transitive dependencies are not separately cleared."
+      },
+      "runtime": {
+        "framework": "Mozaik/PyNN/NEST/MPI",
+        "environment_validated": false,
+        "author_reported_setup": "16 processes on EPYC 7302 CPU with 128 GB RAM",
+        "author_reported_runtime": "Approximately 10 hours for listed full protocols and 1.5 hours for spontaneous-activity protocol on the described setup; not our measurements.",
+        "detail": "Current README includes later protocols. Recover exact paper configuration and compatible framework before claiming replication."
+      },
+      "runtime_reproduced_in_this_checkpoint": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    },
+    {
+      "id": "macaque_schmidt_2018",
+      "species": "Macaque",
+      "repository": "INM-6/multi-area-model",
+      "source_commit": "0a658be40bef3249cbe452f38809edf7d2f524ba",
+      "biological_scope": "Layer-resolved spiking model spanning 32 visual cortical areas, each represented by a local patch; not an entire monkey brain.",
+      "evidence_basis": "CARRIED_FORWARD_PINNED_PROJECT_AUDIT",
+      "evidence_file": "research/model-audits/open_models_20261020.json",
+      "code_license": {
+        "identifier": "CC-BY-NC-SA-4.0",
+        "path": "LICENSE.md",
+        "detail": "Source-available with a noncommercial restriction; do not label unrestricted commercial open source."
+      },
+      "asset_rights": {
+        "status": "NONCOMMERCIAL_OR_UNRESOLVED",
+        "detail": "Code noncommercial terms already prevent treating this as an unrestricted commercial dependency; data/output/dependency terms also require separate review."
+      },
+      "runtime": {
+        "framework": "NEST with optional R/aod and MPI workflows",
+        "environment_validated": false,
+        "detail": "Paper simulator version differs from later compatibility claims; full-scale simulation is a substantial HPC task, while documented downscaled examples are separate experiments."
+      },
+      "runtime_reproduced_in_this_checkpoint": false,
+      "market_validated": false,
+      "eligible_for_live": false
+    }
+  ],
+  "additional_source_leads": [
+    {
+      "id": "crow_cognition_sources",
+      "state": "NO_SELECTED_VERIFIED_EXECUTABLE_WHOLE_BRAIN_MODEL",
+      "distinction": "Atlas and task recordings; not a runnable complete brain",
+      "sources": [
+        "https://doi.org/10.1002/cne.25392",
+        "https://doi.org/10.5061/dryad.0k6djhb1q"
+      ],
+      "exhaustive_absence_claim": false,
+      "assets_downloaded": false
+    },
+    {
+      "id": "male_fly_cns_2026",
+      "state": "ANATOMY_SOURCE_LEAD_ONLY",
+      "source": "https://research.google/blog/a-connectomics-milestone-mapping-the-complete-male-fruit-fly-brain/",
+      "source_date": "2026-09-03",
+      "asset_release_pinned": false,
+      "asset_rights_cleared": false,
+      "compatible_with_existing_flyvis_checkpoint": "NOT_ESTABLISHED",
+      "assets_downloaded": false
+    }
+  ],
+  "adapter_contract_status": "DESIGN_ONLY_NOT_IMPLEMENTED",
+  "adapter_operations": [
+    "describe",
+    "reset",
+    "observe",
+    "encode",
+    "advance",
+    "export_state",
+    "predict",
+    "checkpoint",
+    "stop"
+  ],
+  "required_identity_components": [
+    "source_release",
+    "code_commit",
+    "environment_lock",
+    "graph_or_model_spec",
+    "checkpoint",
+    "input_schema",
+    "encoder",
+    "state_interface",
+    "projector",
+    "fusion",
+    "task_readout",
+    "calibration",
+    "reset_policy",
+    "task_and_horizon",
+    "sequence_and_causal_snapshot"
+  ],
+  "compatibility": {
+    "existing_snapshot": "src/multi_brain_research/contracts.py:Snapshot",
+    "existing_receipt": "src/multi_brain_research/contracts.py:ModuleOutput",
+    "existing_module_binding": "src/multi_brain_research/consensus.py:ModuleSpec",
+    "composite_source_catalog_extension": "REQUIRES_REVIEW_NOT_SUPPLIED",
+    "community_paper_stack_separate": true,
+    "community_paper_prs": [
+      58,
+      59
+    ]
+  },
+  "experiment_registration": {
+    "state": "BLOCKED_INCOMPLETE_NOT_PREREGISTERED",
+    "dataset_id": null,
+    "dataset_sha256": null,
+    "target": null,
+    "horizon": null,
+    "train_window": null,
+    "validation_window": null,
+    "test_window": null,
+    "primary_metric": null,
+    "effect_margin": null,
+    "required_seeds": null,
+    "parameter_budget": null,
+    "wall_time_budget": null,
+    "fixed_before_training_required": true,
+    "method_requirements": [
+      "Chronological and entity-aware separation for market data",
+      "Training-only preprocessing",
+      "Fusion fitted on out-of-fold or separate component predictions",
+      "Untouched final test",
+      "Calibration and abstention coverage separate from score",
+      "Dependence-aware uncertainty where relevant",
+      "All failed seeds and trials retained",
+      "Topology and equal-budget controls before biological advantage claim",
+      "Independent costs, liquidity, gas and rejected-order accounting before paper-return claims"
+    ]
+  },
+  "milestones": [
+    {
+      "id": "MB-FUS-000",
+      "deliverable": "Research inventory and adapter/fusion specification",
+      "status": "DOCUMENTED"
+    },
+    {
+      "id": "MB-FUS-001",
+      "deliverable": "Second-model rights, environment and native reference",
+      "status": "PENDING"
+    },
+    {
+      "id": "MB-FUS-002",
+      "deliverable": "Causal adapters, state export and bounded execution",
+      "status": "PENDING"
+    },
+    {
+      "id": "MB-FUS-003",
+      "deliverable": "Registered single-module readout and baselines",
+      "status": "PENDING"
+    },
+    {
+      "id": "MB-FUS-004",
+      "deliverable": "Independent predictions versus latent fusion",
+      "status": "PENDING"
+    },
+    {
+      "id": "MB-FUS-005",
+      "deliverable": "Delayed coupled hybrid as one composite",
+      "status": "PENDING"
+    },
+    {
+      "id": "MB-FUS-006",
+      "deliverable": "Supervised paper integration and physical pilot",
+      "status": "PENDING"
+    }
+  ],
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "PRIOR_PROJECT_EVIDENCE",
+      "url": "https://github.com/BuildWithAAI/buildwithAAI/tree/a5dc52b550712a470ccd1208e79c08b145e65e2b/research",
+      "runtime_rechecked": false
+    },
+    {
+      "id": "S2",
+      "kind": "PRIMARY_PAPER_AND_AUTHOR_CODE",
+      "urls": [
+        "https://doi.org/10.1038/s41586-024-07939-3",
+        "https://github.com/TuragaLab/flyvis"
+      ],
+      "scope": "Fly visual model"
+    },
+    {
+      "id": "S3",
+      "kind": "PRIMARY_PAPER_CORRECTION_AND_PINNED_CODE",
+      "urls": [
+        "https://doi.org/10.1038/s41586-025-08829-y",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC13102710/",
+        "https://github.com/cajal/fnn/tree/8f34c6753bd818c8fcd1daa91499a057252bea7e"
+      ],
+      "scope": "Mouse visual-response model; original plus architectural correction"
+    },
+    {
+      "id": "S4",
+      "kind": "PRIMARY_PAPER_AND_AUTHOR_CODE",
+      "urls": [
+        "https://doi.org/10.1038/s41467-024-44900-4",
+        "https://github.com/netneurolab/conn2res"
+      ],
+      "scope": "Reservoir method; not project performance"
+    },
+    {
+      "id": "S5",
+      "kind": "AUTHOR_CODE_AND_RELEASE_METADATA",
+      "urls": [
+        "https://doi.org/10.1038/s41467-026-74466-2",
+        "https://github.com/fmilisav/milisav_hierarchical_modularity",
+        "https://zenodo.org/records/20360160"
+      ],
+      "full_publisher_article_retrieved": false,
+      "simulation_reproduced": false,
+      "scope": "Modular reservoir architecture lead"
+    },
+    {
+      "id": "S6",
+      "kind": "PRIMARY_PAPER",
+      "url": "https://doi.org/10.1002/cne.25392",
+      "scope": "Crow anatomical atlas"
+    },
+    {
+      "id": "S7",
+      "kind": "AUTHOR_DATA_RECORD",
+      "url": "https://doi.org/10.5061/dryad.0k6djhb1q",
+      "scope": "Crow working-memory recordings; files not acquired"
+    },
+    {
+      "id": "S8",
+      "kind": "ORIGINAL_RESEARCH_GROUP_ANNOUNCEMENT",
+      "url": "https://research.google/blog/a-connectomics-milestone-mapping-the-complete-male-fruit-fly-brain/",
+      "scope": "New anatomy lead; no execution or rights clearance"
+    }
+  ]
+}
