@@ -63,7 +63,7 @@
     if(!episode()){market=null;history=[];el("market-coins").replaceChildren();el("market-clock").textContent="No episode yet. The service owner can create one.";return;}
     const current=episode();const [data,frames]=await Promise.all([request("GET",path("")),request("GET",path("/history"))]);
     if(current!==episode())return;
-    market=data.market;history=frames.items;
+    market=data.market;history=frames.items.filter(frame=>frame.tick<=market.tick);
     el("market-clock").textContent="Tick "+market.tick+" · "+market.virtual_elapsed_seconds+" simulated seconds · "+market.status+" · Private genesis commitment "+data.commitment;
     el("market-step").disabled=market.status!=="OPEN";const selected=el("market-coin").value;el("market-coin").replaceChildren();el("market-coins").replaceChildren();
     for(const c of market.coins){const option=node("option",c.name+" / "+c.symbol);option.value=c.id;el("market-coin").append(option);const card=node("article","");card.append(node("h3",c.symbol),node("p",c.stage+" · "+c.venue),node("p",money(c.market_cap_micro)),node("p","Quote liquidity: "+money(c.quote_liquidity_micro)),node("p","Volume: "+money(c.volume_micro)),node("p","Top 10 concentration: "+(c.top10_bps/100).toFixed(2)+"% · Synthetic signal"));card.children[2].className="market-number";el("market-coins").append(card);}

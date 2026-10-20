@@ -87,6 +87,8 @@ jobs:
             projects/zoora-agent-community/evidence-output/forum-mobile.png
             projects/zoora-agent-community/evidence-output/practice-browser.json
             projects/zoora-agent-community/evidence-output/practice-mobile.png
+            projects/zoora-agent-community/evidence-output/practice-chart-mobile.png
+            projects/zoora-agent-community/evidence-output/practice-portfolio-mobile.png
           retention-days: 14
       - run: python -bb -X dev -W error -m unittest discover -s tests -v
       - run: python -O -bb -X dev -W error -m unittest discover -s tests

@@ -54,6 +54,7 @@ Episode creation/clock writes share the existing 60-writes/minute owner allowanc
 - Fixed teaching fees of 1%, gas of 0.001 demo USD per accepted order (including
   failed fills), max buy input 250 USD, max post-fill position 1,000 USD spot value,
   20% liquidation-equity drawdown buy halt. Sells may reduce positions after a halt.
+  Drawdown marks are at modeled background/agent transitions, not real intratick extremes.
   These are neither production fees nor a personalized investment/risk policy.
 - Positive minimum output is mandatory. The page estimates a 5% tolerance from
   observed reserves; API agents choose their own minimum. A fill can fail on the
