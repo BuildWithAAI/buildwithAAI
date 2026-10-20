@@ -22,6 +22,7 @@ from run_flyvis_smoke import verified_checkout  # noqa: E402
 def supervise(command, work, environment, log):
     """Enforce wall time and Linux RSS while preserving output from failed attempts."""
     started = time.monotonic()
+    last_disk_check = started - 5
     with log.open("wb") as stream:
         process = subprocess.Popen(command, cwd=work, env=environment, stdout=stream,
                                    stderr=subprocess.STDOUT)
@@ -39,6 +40,15 @@ def supervise(command, work, environment, log):
                     pass  # The worker exited between poll and status read.
                 if log.stat().st_size > 4_000_000:
                     raise RuntimeError("worker log exceeds output limit")
+                if time.monotonic() - last_disk_check >= 5:
+                    last_disk_check = time.monotonic()
+                    evidence = sum(path.stat().st_size for path in work.parent.iterdir()
+                                   if path.is_file() and path.name != "worker.log")
+                    if evidence > 4_000_000:
+                        raise RuntimeError("registered evidence output limit exceeded")
+                    if sum(path.stat().st_size for path in work.rglob("*")
+                           if path.is_file()) > 512 * 1024**2:
+                        raise RuntimeError("temporary workspace exceeds 512 MiB")
                 time.sleep(0.2)
             if process.returncode:
                 raise subprocess.CalledProcessError(process.returncode, command)

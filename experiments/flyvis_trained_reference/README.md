@@ -22,7 +22,7 @@ Acquisition uses fixed public HTTPS IDs without API keys, cookies or user creden
 
 Load once with `torch.load(weights_only=True, map_location="cpu")`, with no extra globals or unsafe fallback. Check exact tensor keys/dtypes/shapes/finite values and use `strict=True`. Apply upstream `Network.clamp()` before disabling gradients and record raw/inference state digests separately. Further checkpoint/network calls are refused. No checkpoint is committed.
 
-The supervisor clears inherited environment variables, disables dotenv/CUDA and enforces 900-second wall, 850-second CPU, 6 GiB RSS and bounded output. Python guards and a virtual environment are **not an OS sandbox**. This is trusted pinned-source execution, not arbitrary plugin hosting. Artifact consistency is not execution attestation.
+The supervisor clears inherited environment variables, disables dotenv/CUDA and enforces 900-second wall, 850-second CPU, 6 GiB RSS and bounded evidence output. Temporary HDF5 graph caches have a separate 512 MiB workspace bound and 64 MiB per-file guard; they are not retained scientific evidence. Python guards and a virtual environment are **not an OS sandbox**. This is trusted pinned-source execution, not arbitrary plugin hosting. Artifact consistency is not execution attestation.
 
 ## Reproduce on Linux x86_64 / Python 3.12
 

@@ -43,7 +43,10 @@ def main():
     registration = load_registration(Path(__file__).with_name("registration.json"))
     members = verify_assets(archive, license_path, registration)
     resource.setrlimit(resource.RLIMIT_CPU, (850, 850))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (4_000_000, 4_000_000))
+    # The registered 4 MB bound covers retained evidence, not temporary HDF5 graph
+    # cache files (one int64 edge column alone is about 12 MB). The supervisor
+    # enforces the evidence bound and a separate 512 MiB total workspace bound.
+    resource.setrlimit(resource.RLIMIT_FSIZE, (64 * 1024**2, 64 * 1024**2))
     # Accidental-call guards, not an OS sandbox. Only audited pinned code is imported.
     socket.create_connection = refuse
     socket.socket.connect = refuse
