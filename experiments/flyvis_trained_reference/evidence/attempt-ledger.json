@@ -1,0 +1,49 @@
+{
+  "attempts": [
+    {
+      "id": "local-1",
+      "reason": "RLIMIT_FSIZE erroneously applied retained-evidence 4 MB bound to temporary HDF5 graph cache; graph construction failed before response evaluation.",
+      "record": "local-incomplete-1/",
+      "source_local_commit": "cc1b207665e4b96443dd23a927878c344a5afa05",
+      "source_remote_commit": "13de6dbb7f80c2248f01acb4bd775e8040d6bf1e",
+      "status": "INCONCLUSIVE"
+    },
+    {
+      "id": "workflow-parse-1",
+      "reason": "Unquoted colon in one-line dependency-install run command caused YAML parse failure; corrected to block scalar. No worker execution.",
+      "run_id": 39396845757,
+      "status": "INCONCLUSIVE"
+    },
+    {
+      "correct": 22,
+      "id": "local-2",
+      "record": "local-completed-2/",
+      "source_local_commit": "8db71ff8b153c4e921af590ec9fc997f9f888a54",
+      "source_remote_commit": "bc14a8886956a19e4204fa5d2ec48b80b29d3c5f",
+      "status": "PASS_SCOPED_REFERENCE_CHECK",
+      "total": 24
+    },
+    {
+      "artifact_id": 12251804373,
+      "artifact_zip_sha256": "cc209271bce9095c257eb2ba8fe0f88e4774f15cc2dd387978ff5e4c66e1716f",
+      "correct": 22,
+      "id": "hosted-1",
+      "job_id": 118542381351,
+      "record": "hosted-completed-1/",
+      "run_id": 39397091111,
+      "source_remote_commit": "bc14a8886956a19e4204fa5d2ec48b80b29d3c5f",
+      "status": "PASS_SCOPED_REFERENCE_CHECK",
+      "total": 24
+    }
+  ],
+  "experiment_id": "FV-REF-001",
+  "failed_reference_labels": [
+    "C3",
+    "T4d"
+  ],
+  "live_execution_allowed": false,
+  "model_substitution_performed": false,
+  "registration_unchanged": true,
+  "selection_unchanged": true,
+  "threshold_unchanged": true
+}

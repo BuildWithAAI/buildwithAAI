@@ -75,6 +75,16 @@ def write_run(directory, correct=24):
 
 
 class ReferenceTests(unittest.TestCase):
+    def test_committed_local_and_hosted_reference_evidence(self):
+        for name in ("local-completed-2", "hosted-completed-1"):
+            directory = ROOT / "experiments/flyvis_trained_reference/evidence" / name
+            with self.subTest(run=name):
+                result = verify_run(directory, REGISTRATION)
+                self.assertEqual(result["status"], "PASS_SCOPED_REFERENCE_CHECK")
+                self.assertEqual(result["known_non_input_correct"], 22)
+                self.assertEqual([x["label"] for x in result["known_non_input_scores"]
+                                  if not x["correct"]], ["C3", "T4d"])
+
     def test_registration_and_retained_mit_notice(self):
         self.assertEqual(REG["experiment_id"], "FV-REF-001")
         notice = ROOT / "experiments/flyvis_trained_reference/LICENSE-model-assets.txt"

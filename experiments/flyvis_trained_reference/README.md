@@ -14,6 +14,23 @@ PASS requires finite responses, repeat maximum difference ≤`1e-6`, independent
 
 Completed compliant failures are `REJECT_SCOPED_HYPOTHESIS`; incomplete/incompatible runs are `INCONCLUSIVE`. Preserve all attempts. Different models or criteria require a new experiment ID. PASS never permits live execution.
 
+## Recorded result, October 20, 2026
+
+Both completed environments passed the scoped requirement: **22/24**, with **C3 and T4d disagreeing** with the reference. No model substitution or threshold change was made.
+
+| Measurement | Local completed attempt 2 | GitHub completed attempt 1 |
+| --- | ---: | ---: |
+| Wall seconds | 43.15 | 53.69 |
+| CPU seconds | 37.72 | 44.49 |
+| Peak RSS MiB | 2,387.21 | 2,460.22 |
+| Known polarities correct | 22/24 | 22/24 |
+| Same-environment repeat max difference | 0 | 0 |
+| Independent/upstream FRI max difference | 0 | 0 |
+
+Local and hosted raw responses also match byte-for-byte. Four raw NPY files, reports, cell mappings and independent verification results are retained in [evidence/](evidence/). The verifier can run directly on either completed directory. Response SHA-256: `54742bcb19142ada745935f08958978457ae118d35412ad0dc995a026017b010` (the authoritative full digest is in each report). The [attempt ledger](evidence/attempt-ledger.json) preserves the initial graph-cache guard failure as INCONCLUSIVE before response evaluation, plus the initial workflow YAML parse failure. The cache guard was corrected separately from the unchanged 4 MB evidence limit.
+
+The hosted run is [39397091111](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/39397091111), job 118542381351, at commit `bc14a8886956a19e4204fa5d2ec48b80b29d3c5f`. Downloaded artifact 12251804373 has ZIP SHA-256 `cc209271bce9095c257eb2ba8fe0f88e4774f15cc2dd387978ff5e4c66e1716f`. Its raw arrays were independently verified after download, including worker/verifier code hashes. [Source equivalence](evidence/source-equivalence.json) maps the local commit to the identical published source tree. These are reproducible artifact checks, not signed execution attestation, full-paper replication or evidence of market utility.
+
 ## Provenance and loading
 
 The pinned [author downloader](https://github.com/TuragaLab/flyvis/blob/0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa/flyvis_cli/download_pretrained_models.py) identifies the [public asset folder](https://drive.google.com/drive/folders/15_8gPaVVJV6wGAspwkrdN8r-2NxMY4Kj). Its adjacent MIT notice is retained verbatim in [LICENSE-model-assets.txt](LICENSE-model-assets.txt). Separate training/image datasets are not cleared or acquired. All file IDs, byte lengths and SHA-256 values are frozen in the registration; archive 3,417,042 bytes, notice 1,146 bytes, selected checkpoint 49,378 bytes, metadata 2,222 bytes.

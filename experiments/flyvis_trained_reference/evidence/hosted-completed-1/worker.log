@@ -1,0 +1,18 @@
+[2026-10-20 08:57:30] font_manager:1263 Failed to extract font properties from /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf: Non-scalable fonts are not supported
+[2026-10-20 08:57:31] font_manager:1848 generated new fontManager
+[2026-10-20 08:57:51] network:222 Initialized network with NumberOfParams(free=734, fixed=2959) parameters.
+Flashes:   0%|          | 0/4 [00:00<?, ?it/s]Flashes: 100%|██████████| 4/4 [00:00<00:00, 39.96it/s]Flashes: 100%|██████████| 4/4 [00:00<00:00, 39.88it/s]
+{"phase": "simulation", "repeat": 1, "nodes": 45669, "edges": 1513231}
+[2026-10-20 08:57:52] network:757 Computing 4 stimulus responses.
+Batch:   0%|          | 0/1 [00:00<?, ?it/s]Batch: 100%|██████████| 1/1 [00:07<00:00,  7.79s/it]                                                    /home/runner/work/buildwithAAI/buildwithAAI/.flyvis-upstream/flyvis/analysis/flash_responses.py:77: FutureWarning: dropping variables using `drop` is deprecated; use drop_vars.
+  on_peak = on_peak.drop('sample')
+/home/runner/work/buildwithAAI/buildwithAAI/.flyvis-upstream/flyvis/analysis/flash_responses.py:78: FutureWarning: dropping variables using `drop` is deprecated; use drop_vars.
+  off_peak = off_peak.drop('sample')
+[2026-10-20 08:58:05] network:222 Initialized network with NumberOfParams(free=734, fixed=2959) parameters.
+{"phase": "simulation", "repeat": 2, "nodes": 45669, "edges": 1513231}
+[2026-10-20 08:58:06] network:757 Computing 4 stimulus responses.
+Batch:   0%|          | 0/1 [00:00<?, ?it/s]Batch: 100%|██████████| 1/1 [00:07<00:00,  7.54s/it]                                                    /home/runner/work/buildwithAAI/buildwithAAI/.flyvis-upstream/flyvis/analysis/flash_responses.py:77: FutureWarning: dropping variables using `drop` is deprecated; use drop_vars.
+  on_peak = on_peak.drop('sample')
+/home/runner/work/buildwithAAI/buildwithAAI/.flyvis-upstream/flyvis/analysis/flash_responses.py:78: FutureWarning: dropping variables using `drop` is deprecated; use drop_vars.
+  off_peak = off_peak.drop('sample')
+{"phase": "complete", "status": "PASS_SCOPED_REFERENCE_CHECK", "correct": 22}

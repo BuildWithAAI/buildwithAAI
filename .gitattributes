@@ -1,3 +1,4 @@
 # Exact-byte experiment registrations and evidence must survive Windows checkout.
 /experiments/flyvis_cpu_smoke/** text eol=lf
 /experiments/flyvis_trained_reference/** text eol=lf
+/experiments/flyvis_trained_reference/**/*.npy binary
