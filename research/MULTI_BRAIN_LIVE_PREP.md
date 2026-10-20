@@ -4,6 +4,8 @@
 
 Governing contracts: [BT-000](BIOLOGICAL_COMPUTE_PROTOCOL.md), [BT-001](DATA_MEASUREMENT_PROTOCOL.md) and [BT-002](SOLANA_GROUND_TRUTH_REPLAY.md). The work is isolated from paid products, the live agent pilot and native-chain protocol. It builds on the existing [BT-003 replay draft #9](https://github.com/BuildWithAAI/buildwithAAI/pull/9); that harness's limitations remain in force. The existing 27 replay tests and source remain unchanged.
 
+**Subsequent source research:** the [GitHub/scientific model audit](OPEN_MODEL_SCIENTIFIC_AUDIT_20261020.md) adds distinct executable-model candidates beyond the dataset rows below, including a public 2021 tadpole CNS source, cat V1 and macaque visual-cortex models. Their existence does not change this foundation's import/live gates. Exact model code, asset rights, environments and scientific replication are tracked separately.
+
 ## Verified source distinctions
 
 | Source | What we can substantiate | Current use boundary |
