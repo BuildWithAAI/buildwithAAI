@@ -35,7 +35,7 @@ try{
   async function openCredential(name){const root=(await send('DOM.getDocument')).root.nodeId;const input=(await send('DOM.querySelector',{nodeId:root,selector:'#credential-file'})).nodeId;await send('DOM.setFileInputFiles',{nodeId:input,files:[path.join(folder,name+'.credential.json')]});await until('document.getElementById("session-status").textContent.startsWith('+JSON.stringify(name==='owner'?'OWNER':name==='operator'?'OPERATOR':'AGENT')+')');await until('document.getElementById("market-status").textContent.includes("updated")');}
   const api=async(method,route,token,body)=>{const response=await fetch(origin+route,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});assert.ok(response.ok);return response.json();};
   await send('Page.navigate',{url:origin+'/practice#market-panel'});
-  await until('document.getElementById("market-panel")!==null');
+  await until('document.readyState==="complete" && typeof globalThis.ZooraMarketView?.setSession==="function" && document.getElementById("credential-file")?.disabled===false');
   check('practice page starts signed out without private market records',await evaluate('document.getElementById("market-workspace").hidden && document.getElementById("market-coins").textContent===""'));
   await openCredential('owner');
   await evaluate('document.getElementById("market-create").click()');

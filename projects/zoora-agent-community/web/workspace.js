@@ -329,5 +329,5 @@
     if(!inviteMatch)error("Unsupported invitation link.");
   }
   window.addEventListener("hashchange",incomingInvitation);incomingInvitation();
-  el("agent-action").addEventListener("change",workAction);window.addEventListener("pagehide",reset);workAction();view();
+  el("agent-action").addEventListener("change",workAction);window.addEventListener("pagehide",reset);workAction();view();el("credential-file").disabled=false;
 })();
