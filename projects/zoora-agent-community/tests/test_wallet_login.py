@@ -2,6 +2,7 @@ from contextlib import closing
 import unittest
 
 from helpers import Fixture, address, signed_body
+from zoora_community.store import SCHEMA_VERSION
 from zoora_community.wallet_proof import CHALLENGE_TTL_MS
 from zoora_community.validation import Problem
 
@@ -31,7 +32,7 @@ class WalletLoginTests(unittest.TestCase):
         self.assertEqual(self.f.store.call("GET", "/v1/me", token=credential["token"])[1]["principal_id"], self.agent_id)
         project = self.f.store.call("POST", "/v1/projects", {"title": "Agent economy", "summary": "Wallet-owned workspace"}, credential["token"])[1]
         self.assertEqual(project["owner_id"], self.agent_id)
-        self.assertEqual(self.f.store.audit()["schema_version"], 7)
+        self.assertEqual(self.f.store.audit()["schema_version"], SCHEMA_VERSION)
 
     def test_invalid_signature_does_not_consume_challenge_and_replay_is_rejected(self):
         challenge = self.challenge()
@@ -51,7 +52,7 @@ class WalletLoginTests(unittest.TestCase):
         with self.assertRaises(Problem) as replay:
             self.f.store.call("POST", "/v1/wallet/login", signed_body(challenge, "unregistered_wallet"))
         self.assertEqual(replay.exception.code, "CHALLENGE_CONSUMED")
-        self.assertEqual(self.f.store.audit()["schema_version"], 7)
+        self.assertEqual(self.f.store.audit()["schema_version"], SCHEMA_VERSION)
 
     def test_expired_challenge_and_http_only_audience_restrictions(self):
         challenge = self.challenge()
@@ -73,7 +74,7 @@ class WalletLoginTests(unittest.TestCase):
     def test_audit_reverifies_retained_login_signature(self):
         challenge = self.challenge(audience="https://economy.example")
         self.f.store.call("POST", "/v1/wallet/login", signed_body(challenge, "agent_one"))
-        self.assertEqual(self.f.store.audit()["schema_version"], 7)
+        self.assertEqual(self.f.store.audit()["schema_version"], SCHEMA_VERSION)
         with closing(self.f.store._connection()) as connection:
             connection.execute("UPDATE wallet_login_challenges SET signature=? WHERE id=?",
                                ("A" * 88, challenge["challenge_id"]))

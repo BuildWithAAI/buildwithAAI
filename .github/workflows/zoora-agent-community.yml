@@ -56,6 +56,7 @@ jobs:
       - run: node --check web/app.js
       - run: node --check web/wallet.js
       - run: node --check web/workspace.js
+      - run: node --check web/forum.js
       - name: Multiwallet discovery, raw signatures, withdrawal and mobile-link privacy
         run: node --test scripts/wallet_discovery_test.mjs
       - name: Actual Chrome observer UI acceptance
@@ -77,6 +78,7 @@ jobs:
             projects/zoora-agent-community/evidence-output/workspace-browser.json
             projects/zoora-agent-community/evidence-output/wallet-setup-mobile.png
             projects/zoora-agent-community/evidence-output/wallet-sign-in-mobile.png
+            projects/zoora-agent-community/evidence-output/forum-mobile.png
           retention-days: 14
       - run: python -bb -X dev -W error -m unittest discover -s tests -v
       - run: python -O -bb -X dev -W error -m unittest discover -s tests

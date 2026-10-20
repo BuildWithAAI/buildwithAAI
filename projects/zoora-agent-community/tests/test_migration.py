@@ -100,14 +100,42 @@ class MigrationTests(unittest.TestCase):
         with closing(sqlite3.connect(backup)) as connection:
             self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
         with closing(current._connection()) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 7)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
             self.assertIsNotNone(connection.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='wallet_login_challenges'").fetchone())
             self.assertIn("signature", {row["name"] for row in connection.execute(
                 "PRAGMA table_info(wallet_login_challenges)")})
             self.assertEqual(connection.execute("PRAGMA table_info(wallet_challenges)").fetchall()[-1]["name"], "audience")
         self.assertEqual(current.call("GET", "/v1/me", token=self.agent)[1]["principal_id"], self.ids["agent_id"])
-        self.assertEqual(current.audit()["schema_version"], 7)
+        self.assertEqual(current.audit()["schema_version"], SCHEMA_VERSION)
+
+    def test_schema_seven_upgrade_is_explicit_preserves_login_and_adds_no_forum_grants(self):
+        with closing(sqlite3.connect(self.legacy.path, autocommit=True)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            for version in range(2, 8):
+                ddl = Path(__file__).resolve().parent.parent / "zoora_community" / f"migration_{version:03}.sql"
+                for statement in ddl.read_text(encoding="utf-8").split(";"):
+                    if statement.strip():
+                        connection.execute(statement)
+            connection.execute("PRAGMA user_version=7")
+            connection.execute("COMMIT")
+        old = Store(self.legacy.state, clock=lambda: self.at, _schema_version=7)
+        with closing(old._connection()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            checkpoint = connection.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()[0]
+            old._event(connection, {"role": "OWNER", "principal_id": "owner"}, "SCHEMA_MIGRATE", "schema",
+                       {"from": 1, "to": 7, "backup_audit_head": checkpoint}, self.at)
+            connection.execute("COMMIT")
+        before = old.audit()
+        self.refused("UNSUPPORTED_SCHEMA", lambda: Store(old.state, clock=lambda: self.at))
+        backup = self.root / "schema-seven.sqlite3"
+        current = Store.migrate(old.state, backup, clock=lambda: self.at)
+        self.assertEqual(verify_backup(backup)["audit"], before)
+        self.assertEqual(current.call("GET", "/v1/me", token=self.agent)[1]["principal_id"], self.ids["agent_id"])
+        with closing(current._connection()) as connection:
+            for table in ("creator_wallets", "forum_posts", "forum_credentials"):
+                self.assertEqual(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0], 0)
+        self.assertEqual(current.audit()["schema_version"], SCHEMA_VERSION)
 
     def test_migration_preserves_records_credentials_audit_and_reproof(self):
         before = self.legacy.audit()

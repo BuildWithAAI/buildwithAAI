@@ -25,9 +25,11 @@ from .task_capacity import TaskCapacityMethods
 from .commerce_store import CommerceMethods
 from .wallet_login import WalletLoginMethods
 from .agent_activity import AgentActivityMethods
+from .creator_wallet import CreatorWalletMethods
+from .forum import ForumMethods, FORUM_TABLES
 
 APPLICATION_ID = 0x5A414136
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 MAX_DATABASE_BYTES = 64 * 1024 * 1024
 LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "members": 10000, "artifacts": 10000, "posts": 10000, "offers": 2000,
@@ -35,7 +37,9 @@ LIMITS = {"operators": 200, "agents": 2000, "handles": 64000, "projects": 1000,
           "wallet_proofs": 10000, "transactions": 5000, "jobs": 2000,
           "invitations": 1000, "access_holds": 2200, "operator_task_capacity": 200,
           "commerce_books": 64, "commerce_actions": 16384,
-          "wallet_login_challenges": 20000}
+          "wallet_login_challenges": 20000, "creator_wallets": 200,
+          "creator_wallet_challenges": 20000, "forum_posts": 10000,
+          "forum_credentials": 5000, "forum_reports": 10000}
 AUTH_DOMAIN = b"ZOORA_AE006_CREDENTIAL_V1\0"
 AUDIT_DOMAIN = b"ZOORA_AE006_AUDIT_V1\0"
 ZERO_HASH = "0" * 64
@@ -82,7 +86,7 @@ def provenance(created_ms, updated_ms=None):
                               "WALLET_CONTROL_UNVERIFIED", "AGENT_RUNTIME_UNVERIFIED"]}
 
 
-class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods, CommerceMethods, AgentActivityMethods):
+class Store(CreatorWalletMethods, ForumMethods, WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMethods, PilotAccessMethods, ResearchIdentityMethods, TaskCapacityMethods, CommerceMethods, AgentActivityMethods):
     def __init__(self, state, clock=now_ms, rpc=None, _schema_version=SCHEMA_VERSION):
         self.state = Path(state).absolute()
         self.path = self.state / "community.sqlite3"
@@ -170,6 +174,7 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
             schema += Path(__file__).with_name("migration_005.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_006.sql").read_text(encoding="utf-8")
             schema += Path(__file__).with_name("migration_007.sql").read_text(encoding="utf-8")
+            schema += Path(__file__).with_name("migration_008.sql").read_text(encoding="utf-8")
             connection.executescript("BEGIN IMMEDIATE;\n" + schema)
             connection.execute(f"PRAGMA application_id={APPLICATION_ID}")
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
@@ -391,21 +396,29 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
                 bound = self._authenticate(connection, token, at)
                 if bound["role"] != "AGENT" or bound["principal_id"] != expected_agent:
                     raise Problem(403, "COMMUNITY_AGENT_MISMATCH")
+            if type(token) is str and token.startswith("zf1_") and not route.startswith("/v1/forum/"):
+                raise Problem(403, "FORUM_SCOPE_REQUIRED")
             if method == "GET":
                 if body:
                     raise Problem(400, "INVALID_FIELDS")
                 response = self._read(connection, route, token, at, limit, after)
-            elif method == "POST" and route in {"/v1/invitations/claim", "/v1/wallet/login/challenges", "/v1/wallet/login"}:
+            elif method == "POST" and route in {"/v1/invitations/claim", "/v1/wallet/login/challenges", "/v1/wallet/login",
+                                                "/v1/creator/wallet/login/challenges", "/v1/creator/wallet/login"}:
                 if token is not None:
                     raise Problem(400, "INVITATION_ONLY_AUTH" if route == "/v1/invitations/claim" else "PUBLIC_ROUTE_AUTH")
                 if route == "/v1/invitations/claim":
                     response = self._claim_invitation(connection, body, at)
+                elif route == "/v1/creator/wallet/login/challenges":
+                    response = self._creator_challenge(connection, body, at, audience)
+                elif route == "/v1/creator/wallet/login":
+                    response = self._creator_proof(connection, body, at)
                 elif route == "/v1/wallet/login/challenges":
                     response = self._wallet_login_challenge(connection, body, at, audience)
                 else:
                     response = self._wallet_login(connection, body, at)
             else:
-                principal = self._authenticate(connection, token, at)
+                principal = (self._forum_auth(connection, token, at) if route.startswith("/v1/forum/")
+                             else self._authenticate(connection, token, at))
                 self._rate(connection, principal, at)
                 response = self._write(connection, principal, method, route, body, at, audience)
             connection.execute("COMMIT")
@@ -428,6 +441,13 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
         return response
 
     def _read(self, connection, route, token, at, limit, after):
+        if route.startswith("/v1/forum/"):
+            return self._forum_read(connection, route, token, at, limit, after)
+        if route == "/v1/creator/wallet":
+            principal = self._authenticate(connection, token, at)
+            self._role(principal, "OPERATOR")
+            binding = connection.execute("SELECT wallet,created_ms FROM creator_wallets WHERE id=?", (principal["principal_id"],)).fetchone()
+            return 200, {"binding": dict(binding) if binding else None}
         parts = route.strip("/").split("/")
         if self.private_pilot and route not in {"/v1/status", "/v1/me"}:
             self._authenticate(connection, token, at)
@@ -538,6 +558,12 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
             raise Problem(403, "PROJECT_MEMBERSHIP_REQUIRED")
 
     def _write(self, connection, principal, method, route, body, at, audience=None):
+        if route.startswith("/v1/forum/"):
+            return self._forum_write(connection, principal, method, route, body, at)
+        if method == "POST" and route == "/v1/creator/wallet/link-challenges":
+            return self._creator_challenge(connection, body, at, audience, principal)
+        if method == "POST" and route == "/v1/creator/wallet/link":
+            return self._creator_proof(connection, body, at, principal)
         parts = route.strip("/").split("/")
         if parts[:3] == ["v1", "commerce", "books"]:
             return self._commerce_write(connection, principal, method, parts, body, at)
@@ -597,6 +623,8 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
             fields(body, ("active",))
             active = boolean(body["active"])
             connection.execute("UPDATE operators SET active=?,updated_ms=? WHERE id=?", (int(active), at, record_id))
+            if not active:
+                connection.execute("UPDATE forum_credentials SET revoked=1 WHERE agent_id IN (SELECT id FROM agents WHERE operator_id=?)", (record_id,))
             self._event(connection, principal, "OPERATOR_ACTIVITY", record_id, {"active": active}, at)
             return 200, self._public(self._row(connection, "operators", record_id))
         if len(parts) == 4 and parts[:2] == ["v1", "operators"] and parts[3] == "credentials" and method == "POST":
@@ -611,6 +639,7 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
             issued = self._issue(connection, "OPERATOR", record_id, at)
             connection.execute("UPDATE credentials SET revoked=1 WHERE role='OPERATOR' AND principal_id=? AND id<>?",
                                (record_id, issued["credential_id"]))
+            connection.execute("UPDATE forum_credentials SET revoked=1 WHERE agent_id IN (SELECT id FROM agents WHERE operator_id=?)", (record_id,))
             self._event(connection, principal, "OPERATOR_CREDENTIAL_REPLACE", record_id,
                         {"credential_id": issued["credential_id"]}, at)
             return 201, {"credential": issued}
@@ -639,6 +668,7 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
                 issued = self._issue(connection, "AGENT", record_id, at)
                 connection.execute("UPDATE credentials SET revoked=1 WHERE role='AGENT' AND principal_id=? AND id<>?",
                                    (record_id, issued["credential_id"]))
+                connection.execute("UPDATE forum_credentials SET revoked=1 WHERE agent_id=?", (record_id,))
                 self._event(connection, principal, "AGENT_CREDENTIAL_REPLACE", record_id,
                             {"credential_id": issued["credential_id"]}, at)
                 return 201, {"credential": issued}
@@ -667,6 +697,8 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
                     agent["bio"] = text(body["bio"], 512, 0)
                 connection.execute("UPDATE agents SET handle=?,capabilities=?,bio=?,active=?,updated_ms=? WHERE id=?",
                                    (agent["handle"], agent["capabilities"], agent["bio"], agent["active"], at, record_id))
+                if not agent["active"]:
+                    connection.execute("UPDATE forum_credentials SET revoked=1 WHERE agent_id=?", (record_id,))
                 self._event(connection, principal, "AGENT_PROFILE_UPDATE", record_id, {"fields": sorted(body)}, at)
                 return 200, self._agent_public(connection, self._row(connection, "agents", record_id))
         # Work and discussion writes are agent-scoped. Operator/owner tokens cannot impersonate authors.
@@ -776,6 +808,8 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
                     raise Problem(503, "AUDIT_CHAIN_FAILURE")
                 previous, at = digest, row["at_ms"]
             for table in LIMITS:
+                if self.schema_version < 8 and table in FORUM_TABLES:
+                    continue
                 if self.schema_version < 7 and table == "wallet_login_challenges":
                     continue
                 if self.schema_version < 6 and table in {"commerce_books", "commerce_actions"}:
@@ -832,6 +866,12 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
                     self._audit_wallet_logins(connection)
                 except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
                     raise Problem(503, "WALLET_LOGIN_CONSISTENCY_FAILURE") from None
+            if self.schema_version >= 8:
+                try:
+                    self._audit_creator_wallets(connection)
+                    self._audit_forum(connection)
+                except (Problem, ValueError, KeyError, TypeError, UnicodeError, RecursionError):
+                    raise Problem(503, "FORUM_IDENTITY_CONSISTENCY_FAILURE") from None
             connection.execute("COMMIT")
             return {"schema_version": self.schema_version, "audit_events": seq, "audit_head": previous,
                     "database_integrity": "OK", "foreign_keys": "OK", "relationships": "OK",
@@ -854,6 +894,7 @@ class Store(WalletProofMethods, WalletLoginMethods, ObservationMethods, JobMetho
             at = self.clock()
             issued = self._issue(connection, "OWNER", "owner", at)
             if invalidate_all:
+                connection.execute("UPDATE forum_credentials SET revoked=1")
                 connection.execute("UPDATE credentials SET revoked=1 WHERE id<>?", (issued["credential_id"],))
             else:
                 connection.execute("UPDATE credentials SET revoked=1 WHERE role='OWNER' AND id<>?", (issued["credential_id"],))

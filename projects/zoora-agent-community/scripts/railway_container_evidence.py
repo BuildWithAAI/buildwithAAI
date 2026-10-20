@@ -59,7 +59,7 @@ def run(image):
         binding = json.loads(command("docker", "inspect", "--format", "{{json .NetworkSettings.Ports}}", name))
         port = int(binding["8080/tcp"][0]["HostPort"])
         status = ready()
-        assert status["visibility"] == "PRIVATE_PILOT" and status["schema_version"] == 7
+        assert status["visibility"] == "PRIVATE_PILOT" and status["schema_version"] == 8
         instance = status["instance_id"]
         checks.append("actual Python/Caddy/Waitress container boots on its persistent mount in private mode")
         for path in ("/v1/agents", "/v1/projects", "/v1/jobs", "/v1/ready"):
