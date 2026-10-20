@@ -190,6 +190,28 @@ class PracticeEngineTests(unittest.TestCase):
         )
         self.assertEqual(self.coin["rq"], 19_800_000_000)
 
+    def test_learner_buying_exact_last_curve_tokens_immediately_stops_trading(self):
+        self.coin.update(stage="CURVE", rb=90081, lp_reserve=200000000, open_lp=False)
+        e.apply(self.world, self.order())
+        self.step()
+        self.assertEqual(
+            (self.coin["stage"], self.coin["rb"], self.coin["migration_tick"]), ("MIGRATING", 0, 1)
+        )
+        self.assertEqual(e.quote(self.coin, "SELL", 90081), 0)
+        self.assertEqual(self.world["accounts"][self.agent]["receipts"][0]["output"], 90081)
+
+    def test_background_exact_curve_completion_cannot_churn_sell_before_migration(self):
+        self.coin.update(stage="CURVE", rb=12223, lp_reserve=200000000, open_lp=False)
+        self.world["tick"] = 1
+        # At this reserve state, a 1.25 demo USD buy (after1% fee) receives exactly12223 tokens.
+        with patch.object(e, "draw", return_value=0):
+            e.background(self.world, self.coin)
+        self.assertEqual(
+            (self.coin["stage"], self.coin["rb"], self.coin["migration_tick"]), ("MIGRATING", 0, 1)
+        )
+        self.assertEqual(self.coin["buys"], 1)
+        self.assertEqual(self.coin["sells"], 0)
+
     def test_runner_and_liquidity_collapse_stress_paths_are_reachable(self):
         for mode, minimum in (
             ("runner", 1_000_000),

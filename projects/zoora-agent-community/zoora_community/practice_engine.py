@@ -130,7 +130,7 @@ def quote(coin, side, amount):
     return gross - fee(gross) if 0 < gross <= coin["rq"] else 0
 
 
-def swap(coin, side, amount):
+def swap(coin, side, amount, *, tick):
     out = quote(coin, side, amount)
     if out <= 0:
         return 0
@@ -142,6 +142,9 @@ def swap(coin, side, amount):
         coin["rq"] += net
         coin["volume"] += amount
         coin["buys"] += 1
+        if coin["stage"] == "CURVE" and coin["rb"] == 0:
+            coin["stage"] = "MIGRATING"
+            coin["migration_tick"] = tick
     else:
         gross = coin["vq"] * amount // (coin["vb"] + amount)
         coin["vb"] += amount
@@ -266,13 +269,13 @@ def background(world, coin):
         amount = min(
             outside, max(1, outside * (80 if mode == "dump" and age == coin["turn"] else 8) // 100)
         )
-        swap(coin, "SELL", amount)
+        swap(coin, "SELL", amount, tick=world["tick"])
     elif mode == "churn" or noise < 2400:
         # Several same-tick buys followed by sells model clustered/churn-like prints.
         for _ in range(1 + noise % 4):
-            bought = swap(coin, "BUY", max(100_000, coin["vq"] // 80))
+            bought = swap(coin, "BUY", max(100_000, coin["vq"] // 80), tick=world["tick"])
             if bought:
-                swap(coin, "SELL", bought * 9 // 10)
+                swap(coin, "SELL", bought * 9 // 10, tick=world["tick"])
     else:
         scale = 9 if mode == "billion" else 15 if mode == "runner" else 24
         if (
@@ -280,7 +283,7 @@ def background(world, coin):
             > (2_000_000_000 if mode == "billion" else 20_000_000 if mode == "runner" else 80_000)
             * UNIT
         ):
-            swap(coin, "SELL", min(outside, max(1, outside // 100)))
+            swap(coin, "SELL", min(outside, max(1, outside // 100)), tick=world["tick"])
         else:
             amount = max(100_000, coin["vq"] * (80 + noise % 80) // (scale * 100))
             # Legacy-inspired curve completion. This deliberately omits v3 synthetic migration.
@@ -297,7 +300,7 @@ def background(world, coin):
                 coin["stage"] = "MIGRATING"
                 coin["migration_tick"] = world["tick"]
             else:
-                swap(coin, "BUY", amount)
+                swap(coin, "BUY", amount, tick=world["tick"])
     # The teaching model caps numerical growth, not a real protocol market cap.
     if coin["vq"] > 10**15:
         coin["stage"] = "HALTED"
@@ -335,7 +338,7 @@ def fill(world, agent_id, account, revoked=False):
     if reason is None:
         gross = coin["vq"] * amount // (coin["vb"] + amount) if side == "SELL" else amount
         paid_fee = fee(gross)
-        swap(coin, side, amount)
+        swap(coin, side, amount, tick=world["tick"])
         if side == "BUY":
             account["cash"] -= amount
             account["positions"][coin["id"]] = account["positions"].get(coin["id"], 0) + output

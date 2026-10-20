@@ -10,7 +10,7 @@ const folder=await mkdtemp(path.join(tmpdir(),'zoora-workspace-browser-'));
 const python=process.env.PYTHON_BIN||'python',chrome=process.env.CHROME_BIN||'google-chrome';
 let socket,child,service;
 async function stop(process){if(!process||process.exitCode!==null||process.signalCode!==null)return;process.kill('SIGTERM');await new Promise(resolve=>{const timer=setTimeout(()=>{process.kill('SIGKILL');resolve();},2000);process.once('exit',()=>{clearTimeout(timer);resolve();});timer.unref();});}
-async function ready(process,stream,pattern){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Start timed out')),20000);let log='';process[stream].on('data',chunk=>{log+=chunk;const match=log.match(pattern);if(match){clearTimeout(timer);resolve(match[1]);}});process.on('error',reject);process.on('exit',()=>{clearTimeout(timer);reject(new Error('Test process exited before ready: '+log.slice(-1600)));});});}
+async function ready(process,stream,pattern){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Start timed out: '+process.spawnfile+' '+(process.spawnargs?.[1]||''))),45000);let log='';process[stream].on('data',chunk=>{log+=chunk;const match=log.match(pattern);if(match){clearTimeout(timer);resolve(match[1]);}});process.on('error',reject);process.on('exit',()=>{clearTimeout(timer);reject(new Error('Test process exited before ready: '+log.slice(-1600)));});});}
 try{
   service=spawn(python,['scripts/practice_fixture.py',folder],{stdio:['ignore','pipe','pipe']});
   const origin=await ready(service,'stdout',/"url":"(http:\/\/127\.0\.0\.1:\d+)"/);
