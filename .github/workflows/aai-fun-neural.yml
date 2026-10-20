@@ -1,0 +1,97 @@
+name: AAI.fun Native Neural Trade Learning
+on:
+  pull_request:
+    paths:
+      - "src/multi_brain_research/neural_features.py"
+      - "src/multi_brain_research/trade_learning.py"
+      - "scripts/train_trade_readout.py"
+      - "scripts/run_flyvis_trade.py"
+      - "experiments/brain_training/frozen_runtime.py"
+      - "experiments/brain_training/trade_worker.py"
+      - "experiments/brain_training/worker.py"
+      - "tests/test_neural_trade.py"
+      - "research/aai-fun/**"
+      - ".github/workflows/aai-fun-neural.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/multi_brain_research/neural_features.py"
+      - "src/multi_brain_research/trade_learning.py"
+      - "scripts/run_flyvis_trade.py"
+      - "experiments/brain_training/**"
+      - "tests/test_neural_trade.py"
+      - ".github/workflows/aai-fun-neural.yml"
+permissions:
+  contents: read
+concurrency:
+  group: aai-fun-native-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - name: Install pinned development linter
+        run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - name: Check neural contract, integration and regression sources
+        run: python -m ruff check --select E4,E7,E9,F,B src/multi_brain_research/neural_features.py src/multi_brain_research/trade_learning.py scripts/train_trade_readout.py scripts/run_flyvis_trade.py experiments/brain_training/frozen_runtime.py experiments/brain_training/worker.py experiments/brain_training/trade_worker.py tests/test_neural_trade.py
+      - name: Strict normal and optimized contract regressions using explicitly fake activity vectors
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p test_neural_trade.py -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p test_neural_trade.py -v
+  actual-neural-cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: TuragaLab/flyvis
+          ref: 0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa
+          path: .flyvis-upstream
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Capture real source observations for inference only
+        run: |
+          python scripts/coin_evidence.py capture --blocks 1 --require-trades --output research/aai-fun/generated/neural-capture
+          python scripts/train_trade_readout.py prepare --archive research/aai-fun/generated/neural-capture/archive.json --output research/aai-fun/generated/neural-source
+      - name: Install pinned dependency tooling
+        run: "python -m pip install --require-hashes --only-binary=:all: -r experiments/flyvis_cpu_smoke/bootstrap-linux.lock"
+      - name: Prepare existing hash-locked CPU environment
+        run: |
+          uv venv .flyvis-venv --python python --no-python-downloads
+          uv pip sync experiments/flyvis_cpu_smoke/requirements-linux-py312.lock --python .flyvis-venv/bin/python --torch-backend cpu --require-hashes
+          uv pip install --python .flyvis-venv/bin/python --no-deps --no-build-isolation ./.flyvis-upstream
+      - name: Actual neural inference and synthetic fitting, then native reexecution in another process
+        run: python scripts/run_flyvis_trade.py --source .flyvis-upstream --python .flyvis-venv/bin/python --output research/aai-fun/generated/native-trade --real-source research/aai-fun/generated/neural-source
+      - name: Independent standard-library readout replay; no native inference attestation from this verifier
+        run: python scripts/train_trade_readout.py verify --directory research/aai-fun/generated/native-trade/neural-training
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: aai-fun-actual-neural-trade-evidence
+          path: |
+            research/aai-fun/generated/native-trade/*.json
+            research/aai-fun/generated/native-trade/*.log
+            research/aai-fun/generated/native-trade/neural-training/*.json
+            research/aai-fun/generated/native-trade/raw-control/*.json
+            research/aai-fun/generated/native-trade/real-input/*.json
+            research/aai-fun/generated/neural-capture/*.json
+            research/aai-fun/generated/neural-source/*.json
+          retention-days: 30

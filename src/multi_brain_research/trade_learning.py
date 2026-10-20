@@ -8,6 +8,7 @@ import random
 
 from ..solana_research import coin_evidence as ev
 from . import training_lab as lab
+from . import neural_features as neural
 
 TASK = "FUTURE_OBSERVED_TRADE_PRICE_DIRECTION_NOT_EXECUTABLE_RETURN_V1"
 FEATURES = ("return_one", "return_three", "relative_quote_volume", "signed_quote_flow", "elapsed_slots")
@@ -219,8 +220,9 @@ def validate_plan(data, plan):
     return episodes
 
 
-def examples(data, plan):
+def examples(data, plan, bundle=None):
     episodes = validate_plan(data, plan)
+    exported = None if bundle is None else neural.validate_bundle(bundle, data, PIPELINE)
     result = {}
     for part in lab.PARTS:
         keys = list(plan["splits"][part])
@@ -234,44 +236,61 @@ def examples(data, plan):
                 if target >= len(rows) or rows[target]["order"][0] - row["order"][0] > plan["max_horizon_slots"]:
                     continue
                 result[part].append({"episode_id": key, "index": index, "target_index": target,
-                    "x": features(episode, index), "y": int(quoted_price(rows[target]) > quoted_price(row))})
+                    "x": features(episode, index) if exported is None else list(exported[key][index]),
+                    "y": int(quoted_price(rows[target]) > quoted_price(row))})
     return result
 
 
-def fit(data, plan):
-    partitions = examples(data, plan)
+def fit(data, plan, bundle=None):
+    partitions = examples(data, plan, bundle)
+    pipeline = PIPELINE if bundle is None else bundle["pipeline"]
     initial, state, before, scored, baseline = lab.fit_parameters(partitions, plan)
     metadata = {"protocol": "AAI_TRADE_LOGISTIC_READOUT_V1", "task": TASK,
                 "dataset_sha256": lab.digest(data), "plan_sha256": lab.digest(plan),
-                "pipeline_sha256": lab.digest(PIPELINE), "units": UNITS,
+                "pipeline_sha256": lab.digest(pipeline),
+                "units": UNITS if bundle is None else {**UNITS, "features": pipeline["activity_units"]},
                 "live_execution_allowed": False, "calibration": "NOT_ESTABLISHED"}
+    if bundle is not None:
+        metadata["feature_export_sha256"] = lab.digest(bundle)
     model = {**metadata, **state}
     report = {"protocol": "AAI_TRADE_READOUT_REPORT_V1", "classification": data["classification"],
-              "task": TASK, "pipeline": PIPELINE, "initial_model_sha256": lab.digest({**metadata, **initial}),
+              "task": TASK, "pipeline": pipeline, "initial_model_sha256": lab.digest({**metadata, **initial}),
               "model_sha256": lab.digest(model), "readout_parameters_changed": initial != state,
               "initial_train_metrics": before, "metrics": scored, "train_prior_baseline": baseline,
               "training_performed": True, "trained_components": ["LOGISTIC_READOUT"],
-              "biological_core_used": False, "biological_core_weights_updated": False,
+              "biological_core_used": bundle is not None, "biological_core_weights_updated": False,
               "historical_observer_availability_known": False, "execution_quotes_available": False,
               "execution_attestation": "NOT_ESTABLISHED", "calibration": "NOT_ESTABLISHED",
               "profitability": "NOT_EVALUATED", "market_validation_established": False,
               "live_execution_allowed": False}
+    if bundle is not None:
+        report["feature_execution_attestation"] = "NOT_ESTABLISHED"
+        report["neural_reexecution_performed_by_readout_verifier"] = False
     return model, report
 
 
-def observation(episode, index, plan):
+def observation(episode, index, plan, bundle=None):
     row = episode["observations"][index]
     return {"alias": "sim_" + lab.digest([plan["alias_salt"], episode["base_mint"]])[:16],
             "episode_alias": "run_" + lab.digest([plan["alias_salt"], episode["episode_id"]])[:16],
-            "sequence": index, "order": list(row["order"]), "features": features(episode, index)}
+            "sequence": index, "order": list(row["order"]),
+            "features": features(episode, index) if bundle is None
+            else list(bundle["features"][episode["episode_id"]][index])}
 
 
-def public_trace(data, plan, model):
+def public_trace(data, plan, model, bundle=None):
     episodes = validate_plan(data, plan)
+    if bundle is not None:
+        neural.validate_bundle(bundle, data, PIPELINE)
+        lab.require(model.get("feature_export_sha256") == lab.digest(bundle), "NEURAL_MODEL_EXPORT_BINDING")
+    else:
+        lab.require("feature_export_sha256" not in model, "NEURAL_EXPORT_REQUIRED")
+    pipeline = PIPELINE if bundle is None else bundle["pipeline"]
+    lab.require(model["pipeline_sha256"] == lab.digest(pipeline), "TRADE_PIPELINE_BINDING")
     lab.require(model["dataset_sha256"] == lab.digest(data)
                 and model["plan_sha256"] == lab.digest(plan), "TRADE_MODEL_INPUT_BINDING")
     examples_by_key = defaultdict(dict)
-    for row in examples(data, plan)["test"]:
+    for row in examples(data, plan, bundle)["test"]:
         examples_by_key[row["episode_id"]][row["index"]] = row
     keys = list(plan["splits"]["test"])
     random.Random(plan["shuffle_seed"] + 2).shuffle(keys)
@@ -279,7 +298,7 @@ def public_trace(data, plan, model):
     for key in keys:
         episode, due = episodes[key], defaultdict(list)
         for index in range(len(episode["observations"])):
-            visible = observation(episode, index, plan)
+            visible = observation(episode, index, plan, bundle)
             events.append({"type": "OBSERVATION", **visible})
             for original in due.pop(index, []):
                 events.append({"type": "OUTCOME", "alias": visible["alias"],
@@ -351,16 +370,18 @@ def prepare(archives, output):
     return assessment(data)
 
 
-def run(archives, plan, output):
+def run(archives, plan, output, bundle=None):
     data = build_dataset(archives)
-    model, report = fit(data, plan)
-    trace = public_trace(data, plan, model)
+    model, report = fit(data, plan, bundle)
+    trace = public_trace(data, plan, model, bundle)
     save_sources(archives, data, Path(output))
+    if bundle is not None:
+        ev.write(Path(output) / "neural-features.json", bundle)
     for name, value in (("plan.json", plan), ("model.json", model), ("report.json", report),
                         ("public-trace.json", trace)):
         ev.write(Path(output) / name, value)
     return {"model_sha256": lab.digest(model), "classification": data["classification"],
-            "training_performed": True, "biological_core_used": False,
+            "training_performed": True, "biological_core_used": bundle is not None,
             "market_validation_established": False, "live_execution_allowed": False}
 
 
@@ -368,11 +389,23 @@ def verify(directory):
     _, data = load_sources(directory)
     directory = Path(directory)
     plan = ev.read(directory / "plan.json")
-    model, report = fit(data, plan)
-    lab.require(lab.canonical(model) == lab.canonical(ev.read(directory / "model.json"))
+    saved_model = ev.read(directory / "model.json")
+    export_path = directory / "neural-features.json"
+    if "feature_export_sha256" in saved_model:
+        lab.require(export_path.is_file(), "NEURAL_EXPORT_REQUIRED")
+        bundle = ev.read(export_path)
+    else:
+        lab.require(not export_path.exists(), "UNEXPECTED_NEURAL_EXPORT")
+        bundle = None
+    model, report = fit(data, plan, bundle)
+    lab.require(lab.canonical(model) == lab.canonical(saved_model)
                 and lab.canonical(report) == lab.canonical(ev.read(directory / "report.json")),
                 "TRADE_TRAINING_REPLAY_MISMATCH")
-    lab.require(lab.canonical(public_trace(data, plan, model))
+    lab.require(lab.canonical(public_trace(data, plan, model, bundle))
                 == lab.canonical(ev.read(directory / "public-trace.json")), "TRADE_PUBLIC_TRACE_MISMATCH")
-    return {"verified": True, "model_sha256": lab.digest(model), "classification": data["classification"],
-            "training_performed": True, "biological_core_used": False, "live_execution_allowed": False}
+    result = {"verified": True, "model_sha256": lab.digest(model), "classification": data["classification"],
+              "training_performed": True, "biological_core_used": bundle is not None, "live_execution_allowed": False}
+    if bundle is not None:
+        result["neural_reexecution_performed"] = False
+        result["feature_execution_attestation"] = "NOT_ESTABLISHED"
+    return result

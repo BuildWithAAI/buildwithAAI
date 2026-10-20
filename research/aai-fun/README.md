@@ -62,7 +62,7 @@ Ordinary transaction history alone is insufficient to assert every historical ac
 | Graduation/migration | Coin identity across curve and pool; transition state and event ordering | Not implemented here |
 | Simulated execution | Buys/sells, exact fees, slippage, liquidity, rejection and agent impact | Separate engine work |
 | Agent interface | Stable research API for observation, decision, risk veto and paper execution | Integration work |
-| Brain learning | Causal features, explicit target, grouped chronological holdouts and frozen evaluation | Trade-specific numerical readout implemented; biological activity adapter and market validation remain open |
+| Brain learning | Causal features, explicit target, grouped chronological holdouts and frozen evaluation | Trade readout and optional [frozen neural activity adapter](NEURAL_TRADE.md) implemented; historical cohort and market validation remain open |
 | Research observer | Verified replay, original-vs-simulated comparison, balances and decision explanations | Offline anonymous observation trace only |
 
 Full 1:1 status is withheld until each claimed behavior matches a versioned historical reference and remaining differences are disclosed. The brand/interface will identify AAI.fun as an independent research simulator using simulated funds.
