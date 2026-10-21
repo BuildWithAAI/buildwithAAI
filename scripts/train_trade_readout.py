@@ -19,6 +19,7 @@ def main(argv=None):
     prepare = sub.add_parser("prepare")
     prepare.add_argument("--archive", type=Path, action="append", required=True)
     prepare.add_argument("--output", type=Path, required=True)
+    prepare.add_argument("--stitch-contiguous", action="store_true")
     inspect = sub.add_parser("verify-sources")
     inspect.add_argument("--directory", type=Path, required=True)
     train = sub.add_parser("train")
@@ -35,15 +36,19 @@ def main(argv=None):
             archives, _, plan = fixture()
             result = learning.run(archives, plan, args.output)
         elif args.command == "prepare":
-            lab.require(1 <= len(args.archive) <= 8, "SOURCE_ARCHIVE_BOUND")
-            result = learning.prepare([ev.read(path) for path in args.archive], args.output)
+            lab.require(1 <= len(args.archive) <= learning.MAX_SOURCES, "SOURCE_ARCHIVE_BOUND")
+            lab.require(sum(path.stat().st_size for path in args.archive) <= learning.MAX_SOURCE_BYTES,
+                        "SOURCE_BYTE_BOUND")
+            result = learning.prepare([ev.read(path) for path in args.archive], args.output,
+                                      stitch=args.stitch_contiguous)
         elif args.command == "verify-sources":
             _, data = learning.load_sources(args.directory)
             result = {"verified": True, **learning.assessment(data)}
         elif args.command == "train":
-            archives, _ = learning.load_sources(args.source)
+            archives, data = learning.load_sources(args.source)
             result = learning.run(archives, ev.read(args.plan), args.output,
-                                  ev.read(args.features) if args.features else None)
+                                  ev.read(args.features) if args.features else None,
+                                  stitch=data["protocol"] == learning.CONTIGUOUS_DATASET)
         else:
             result = learning.verify(args.directory)
         print(json.dumps(result, sort_keys=True))

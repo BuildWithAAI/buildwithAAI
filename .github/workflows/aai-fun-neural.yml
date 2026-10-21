@@ -4,6 +4,8 @@ on:
     paths:
       - "src/multi_brain_research/neural_features.py"
       - "src/multi_brain_research/trade_learning.py"
+      - "src/solana_research/source_history.py"
+      - "scripts/collect_trade_history.py"
       - "scripts/train_trade_readout.py"
       - "scripts/run_flyvis_trade.py"
       - "experiments/brain_training/frozen_runtime.py"
@@ -17,6 +19,8 @@ on:
     paths:
       - "src/multi_brain_research/neural_features.py"
       - "src/multi_brain_research/trade_learning.py"
+      - "src/solana_research/source_history.py"
+      - "scripts/collect_trade_history.py"
       - "scripts/run_flyvis_trade.py"
       - "experiments/brain_training/**"
       - "tests/test_neural_trade.py"
@@ -69,8 +73,9 @@ jobs:
           python-version: "3.12"
       - name: Capture real source observations for inference only
         run: |
-          python scripts/coin_evidence.py capture --blocks 1 --require-trades --output research/aai-fun/generated/neural-capture
-          python scripts/train_trade_readout.py prepare --archive research/aai-fun/generated/neural-capture/archive.json --output research/aai-fun/generated/neural-source
+          python scripts/collect_trade_history.py capture --slots 3 --output research/aai-fun/generated/neural-capture
+          python scripts/collect_trade_history.py verify --directory research/aai-fun/generated/neural-capture
+          python scripts/collect_trade_history.py prepare --directory research/aai-fun/generated/neural-capture --output research/aai-fun/generated/neural-source
       - name: Install pinned dependency tooling
         run: "python -m pip install --require-hashes --only-binary=:all: -r experiments/flyvis_cpu_smoke/bootstrap-linux.lock"
       - name: Prepare existing hash-locked CPU environment
@@ -92,6 +97,6 @@ jobs:
             research/aai-fun/generated/native-trade/neural-training/*.json
             research/aai-fun/generated/native-trade/raw-control/*.json
             research/aai-fun/generated/native-trade/real-input/*.json
-            research/aai-fun/generated/neural-capture/*.json
+            research/aai-fun/generated/neural-capture/**/*.json
             research/aai-fun/generated/neural-source/*.json
           retention-days: 30

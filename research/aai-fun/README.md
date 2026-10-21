@@ -93,3 +93,7 @@ The collector defaults to https://api.mainnet.solana.com; the explicitly allowed
 Outputs are archive.json, trade-tape.json, replay-plan.json, public-replay.json and summary.json. Only the public replay is intended for a future overlay; raw archives and tapes expose source identifiers and future history. The current CLI does not stream, host a market, fit weights or place simulated/live orders.
 
 Primary references: [Solana getBlock](https://solana.com/docs/rpc/http/getblock), [getTransaction](https://solana.com/docs/rpc/http/gettransaction), [public endpoints](https://solana.com/docs/references/clusters), [full Mainnet genesis hash](https://solana.com/docs/payments/agentic-payments/x402), [pinned PumpSwap IDL](https://github.com/pump-fun/pump-public-docs/blob/639b87fb45c3adeffa6f7c4a1bf0cb85e392bf22/idl/pump_amm.json), [Anchor-compatible CPI tag](https://github.com/solana-foundation/solana-dev-skill/blob/main/skills/solana-dev/references/programs/pinocchio.md).
+
+## Contiguous historical collection
+
+The [historical source session path](SOURCE_HISTORY.md) adds bounded, resumable multi-archive acquisition and an explicit dataset format that keeps market observations continuous across verified archive boundaries. Source preparation reports coverage and candidate labels; it performs no real-data fitting. The original capture and unjoined dataset formats remain available. Cross-archive parent links, original raw reconstruction and existing training partition rules still apply.

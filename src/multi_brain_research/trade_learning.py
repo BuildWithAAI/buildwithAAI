@@ -7,8 +7,14 @@ from pathlib import Path
 import random
 
 from ..solana_research import coin_evidence as ev
+from ..solana_research import source_history as history
 from . import training_lab as lab
 from . import neural_features as neural
+
+MAX_SOURCES = history.MAX_SEGMENTS
+MAX_SOURCE_BYTES = history.MAX_STORED_BYTES
+CONTIGUOUS_DATASET = "AAI_CONTIGUOUS_TRADE_DATASET_V1"
+CONTIGUOUS_PACKAGE = "AAI_CONTIGUOUS_TRADE_SOURCE_PACKAGE_V1"
 
 TASK = "FUTURE_OBSERVED_TRADE_PRICE_DIRECTION_NOT_EXECUTABLE_RETURN_V1"
 FEATURES = ("return_one", "return_three", "relative_quote_volume", "signed_quote_flow", "elapsed_slots")
@@ -19,9 +25,11 @@ PIPELINE = {"kind": "CAUSAL_TRANSACTION_TRADE_CONTROL_V1", "features": list(FEAT
             "observation": "ONE_MARKET_PER_COMPLETE_TRANSACTION", "biological_core": "NOT_USED"}
 
 
-def build_dataset(archives):
-    lab.require(type(archives) is list and 1 <= len(archives) <= 8, "SOURCE_ARCHIVE_BOUND")
-    sources, episodes, signatures, end = [], [], set(), -1
+def build_dataset(archives, *, stitch=False):
+    lab.require(type(stitch) is bool, "STITCH_MODE")
+    lab.require(type(archives) is list and 1 <= len(archives) <= MAX_SOURCES, "SOURCE_ARCHIVE_BOUND")
+    lab.require(sum(len(ev.canonical(a).encode()) for a in archives) <= MAX_SOURCE_BYTES, "SOURCE_BYTE_BOUND")
+    sources, episodes, signatures, end, tapes = [], [], set(), -1, {}
     archives = sorted(archives, key=lambda a: (a["requested_start_slot"], a["requested_end_slot"]))
     classification = archives[0]["classification"]
     lab.require(classification in ("RPC_CAPTURE", "SYNTHETIC_FIXTURE"), "SOURCE_CLASSIFICATION")
@@ -40,10 +48,23 @@ def build_dataset(archives):
                         "transaction_count": len(tape["transactions"]),
                         "failed_transaction_count": tape["failed_transaction_count"],
                         "other_or_unmapped_cpi_events": tape["other_or_unmapped_cpi_events"]})
+        tapes[source_pin] = tape
+    groups = history.contiguous_groups(archives) if stitch else [[a] for a in archives]
+    windows = []
+    for group in groups:
+        pins = [ev.digest(a) for a in group]
+        start, finish = group[0]["requested_start_slot"], group[-1]["requested_end_slot"]
+        source_pin = history.window_pin(pins) if stitch else pins[0]
+        source_field = "source_window_sha256" if stitch else "source_archive_sha256"
+        if stitch:
+            windows.append({"window_sha256": source_pin, "archive_sha256s": pins})
         markets = defaultdict(list)
-        for trade in tape["trades"]:
-            markets[(trade["pool"], trade["base_mint"], trade["quote_mint"])].append(trade)
+        for pin in pins:
+            for trade in tapes[pin]["trades"]:
+                markets[(trade["pool"], trade["base_mint"], trade["quote_mint"])].append(trade)
         for market, trades in sorted(markets.items()):
+            lab.require(len({(t["base_decimals"], t["quote_decimals"]) for t in trades}) == 1,
+                        "MARKET_DECIMALS_CONFLICT")
             pool, base, quote = market
             rows = []
             for trade in trades:
@@ -65,22 +86,28 @@ def build_dataset(archives):
                                  "trade_count": 1, "last_price": ev.fraction(ev.price(trade))})
             episodes.append({"episode_id": "ep_" + lab.digest([start, finish, *market])[:20],
                              "asset_group_sha256": lab.digest([ev.MAINNET_GENESIS, base]),
-                             "source_archive_sha256": source_pin, "pool": pool,
+                             source_field: source_pin, "pool": pool,
                              "base_mint": base, "quote_mint": quote,
                              "base_decimals": trades[0]["base_decimals"],
                              "quote_decimals": trades[0]["quote_decimals"], "observations": rows})
-    data = {"protocol": "AAI_OBSERVED_TRADE_DATASET_V1", "classification": classification,
-            "decoder_policy_sha256": lab.digest(ev.POLICY), "sources": sources, "episodes": episodes}
+    data = {"protocol": CONTIGUOUS_DATASET if stitch else "AAI_OBSERVED_TRADE_DATASET_V1",
+            "classification": classification, "decoder_policy_sha256": lab.digest(ev.POLICY),
+            "sources": sources, "episodes": episodes}
+    if stitch:
+        data["windows"] = windows
     validate_dataset(data)
     return data
 
 
 def validate_dataset(data):
-    lab.exact(data, ("protocol", "classification", "decoder_policy_sha256", "sources", "episodes"))
-    lab.require(data["protocol"] == "AAI_OBSERVED_TRADE_DATASET_V1"
+    lab.require(type(data) is dict, "TRADE_DATASET_PROTOCOL")
+    stitched = data.get("protocol") == CONTIGUOUS_DATASET
+    fields = ("protocol", "classification", "decoder_policy_sha256", "sources", "episodes")
+    lab.exact(data, (*fields, "windows") if stitched else fields)
+    lab.require(data["protocol"] in ("AAI_OBSERVED_TRADE_DATASET_V1", CONTIGUOUS_DATASET)
                 and data["classification"] in ("RPC_CAPTURE", "SYNTHETIC_FIXTURE")
                 and data["decoder_policy_sha256"] == lab.digest(ev.POLICY), "TRADE_DATASET_PROTOCOL")
-    lab.require(type(data["sources"]) is list and 1 <= len(data["sources"]) <= 8, "SOURCE_ARCHIVE_BOUND")
+    lab.require(type(data["sources"]) is list and 1 <= len(data["sources"]) <= MAX_SOURCES, "SOURCE_ARCHIVE_BOUND")
     source_map, previous = {}, -1
     for source in data["sources"]:
         lab.exact(source, ("archive_sha256", "start_slot", "end_slot", "skipped_slots",
@@ -98,18 +125,43 @@ def validate_dataset(data):
         for field in ("trade_count", "transaction_count", "failed_transaction_count", "other_or_unmapped_cpi_events"):
             ev.integer(source[field])
         source_map[pin] = source
+    originals = source_map
+    if stitched:
+        windows = data["windows"]
+        lab.require(type(windows) is list and 1 <= len(windows) <= MAX_SOURCES, "SOURCE_WINDOW_BOUND")
+        joined, assigned, prior_end = {}, [], -2
+        for window in windows:
+            lab.exact(window, ("window_sha256", "archive_sha256s"))
+            pins = window["archive_sha256s"]
+            lab.require(type(pins) is list and 1 <= len(pins) <= MAX_SOURCES
+                        and all(type(p) is str and p in originals for p in pins), "WINDOW_SOURCE_PINS")
+            lab.require(window["window_sha256"] == history.window_pin(pins), "WINDOW_PIN_MISMATCH")
+            members = [originals[p] for p in pins]
+            lab.require(members[0]["start_slot"] > prior_end + 1, "NONMAXIMAL_SOURCE_WINDOWS")
+            lab.require(all(right["start_slot"] == left["end_slot"] + 1
+                            for left, right in zip(members, members[1:])), "WINDOW_COVERAGE_GAP")
+            joined[window["window_sha256"]] = {
+                "start_slot": members[0]["start_slot"], "end_slot": members[-1]["end_slot"],
+                "skipped_slots": [s for m in members for s in m["skipped_slots"]],
+                "trade_count": sum(m["trade_count"] for m in members)}
+            assigned.extend(pins)
+            prior_end = members[-1]["end_slot"]
+        lab.require(assigned == list(originals), "WINDOW_SOURCE_ASSIGNMENT")
+        source_map = joined
+    source_field = "source_window_sha256" if stitched else "source_archive_sha256"
     lab.require(type(data["episodes"]) is list and len(data["episodes"]) <= 512, "TRADE_EPISODE_BOUND")
     result, seen_markets, decimals, count = {}, set(), {}, 0
-    trade_totals = defaultdict(int)
+    trade_totals, original_totals = defaultdict(int), defaultdict(int)
     for episode in data["episodes"]:
-        lab.exact(episode, ("episode_id", "asset_group_sha256", "source_archive_sha256", "pool",
+        lab.exact(episode, ("episode_id", "asset_group_sha256", source_field, "pool",
                             "base_mint", "quote_mint", "base_decimals", "quote_decimals", "observations"))
         key = lab.name(episode["episode_id"])
-        source = source_map.get(episode["source_archive_sha256"])
+        lab.pin(episode[source_field])
+        source = source_map.get(episode[source_field])
         lab.require(source is not None and key not in result, "INVALID_EPISODE_SOURCE_OR_ID")
         market = tuple(ev.key(episode[field]) for field in ("pool", "base_mint", "quote_mint"))
         lab.require(market[1] != market[2], "SAME_BASE_AND_QUOTE")
-        identity = (episode["source_archive_sha256"], *market)
+        identity = (episode[source_field], *market)
         lab.require(identity not in seen_markets, "DUPLICATE_MARKET_EPISODE")
         seen_markets.add(identity)
         lab.require(episode["asset_group_sha256"] == lab.digest([ev.MAINNET_GENESIS, market[1]]),
@@ -139,7 +191,13 @@ def validate_dataset(data):
             ev.integer(row["base_volume_atoms"], 1, 2**128 - 1)
             volume = ev.integer(row["quote_volume_atoms"], 1, 2**128 - 1)
             ev.integer(row["signed_quote_atoms"], -volume, volume)
-            trade_totals[episode["source_archive_sha256"]] += ev.integer(row["trade_count"], 1, 8192)
+            trade_count = ev.integer(row["trade_count"], 1, 8192)
+            trade_totals[episode[source_field]] += trade_count
+            if stitched:
+                origin = next((pin for pin, member in originals.items()
+                               if member["start_slot"] <= slot <= member["end_slot"]), None)
+                lab.require(origin is not None, "OBSERVATION_SOURCE_MISSING")
+                original_totals[origin] += trade_count
             lab.exact(row["last_price"], ("numerator", "denominator"))
             ev.integer(row["last_price"]["numerator"], 1, 2**128 - 1)
             ev.integer(row["last_price"]["denominator"], 1, 2**128 - 1)
@@ -147,6 +205,9 @@ def validate_dataset(data):
         result[key] = episode
     for source_pin, source in source_map.items():
         lab.require(trade_totals[source_pin] == source["trade_count"], "SOURCE_TRADE_COUNT_MISMATCH")
+    if stitched:
+        for pin, source in originals.items():
+            lab.require(original_totals[pin] == source["trade_count"], "ORIGINAL_SOURCE_TRADE_COUNT_MISMATCH")
     return result
 
 
@@ -178,7 +239,7 @@ def assessment(data):
     observations = sum(len(e["observations"]) for e in episodes.values())
     groups = len({e["asset_group_sha256"] for e in episodes.values()})
     pairs = sum(max(0, len(e["observations"]) - 1) for e in episodes.values())
-    return {"protocol": "AAI_TRADE_SOURCE_ASSESSMENT_V1", "classification": data["classification"],
+    result = {"protocol": "AAI_TRADE_SOURCE_ASSESSMENT_V1", "classification": data["classification"],
             "source_count": len(data["sources"]), "asset_group_count": groups,
             "episode_count": len(episodes), "transaction_observations": observations,
             "candidate_next_transaction_pairs": pairs,
@@ -186,6 +247,17 @@ def assessment(data):
             "training_ready": False, "training_performed": False,
             "historical_observer_availability_known": False, "execution_quotes_available": False,
             "market_validation_established": False, "live_execution_allowed": False}
+    if data["protocol"] == CONTIGUOUS_DATASET:
+        sources = data["sources"]
+        def source_at(slot):
+            return next(s["archive_sha256"] for s in sources if s["start_slot"] <= slot <= s["end_slot"])
+        result["source_window_count"] = len(data["windows"])
+        result["joined_archive_boundaries"] = len(sources) - len(data["windows"])
+        result["cross_archive_next_transaction_pairs"] = sum(
+            source_at(left["order"][0]) != source_at(right["order"][0])
+            for episode in episodes.values()
+            for left, right in zip(episode["observations"], episode["observations"][1:]))
+    return result
 
 
 def validate_plan(data, plan):
@@ -332,7 +404,8 @@ def save_sources(archives, data, output):
         filename = f"archive_{index:03}.json"
         ev.write(output / filename, archive)
         items.append({"name": filename, "sha256": ev.digest(archive)})
-    manifest = {"protocol": "AAI_TRADE_SOURCE_PACKAGE_V1", "product": "AAI.fun",
+    manifest = {"protocol": CONTIGUOUS_PACKAGE if data["protocol"] == CONTIGUOUS_DATASET
+                else "AAI_TRADE_SOURCE_PACKAGE_V1", "product": "AAI.fun",
                 "archives": items, "dataset_sha256": lab.digest(data)}
     for name, value in (("dataset.json", data), ("source-manifest.json", manifest),
                         ("assessment.json", assessment(data))):
@@ -343,18 +416,23 @@ def load_sources(directory):
     directory = Path(directory)
     manifest = ev.read(directory / "source-manifest.json")
     lab.exact(manifest, ("protocol", "product", "archives", "dataset_sha256"))
-    lab.require(manifest["protocol"] == "AAI_TRADE_SOURCE_PACKAGE_V1"
+    lab.require(manifest["protocol"] in ("AAI_TRADE_SOURCE_PACKAGE_V1", CONTIGUOUS_PACKAGE)
                 and manifest["product"] == "AAI.fun", "SOURCE_PACKAGE_PROTOCOL")
     items = manifest["archives"]
-    lab.require(type(items) is list and 1 <= len(items) <= 8, "SOURCE_ARCHIVE_BOUND")
+    lab.require(type(items) is list and 1 <= len(items) <= MAX_SOURCES, "SOURCE_ARCHIVE_BOUND")
+    total = 0
     archives = []
     for index, item in enumerate(items):
         lab.exact(item, ("name", "sha256"))
         lab.require(item["name"] == f"archive_{index:03}.json", "ARCHIVE_FILENAME")
-        archive = ev.read(directory / item["name"])
+        path = directory / item["name"]
+        lab.require(path.is_file() and not path.is_symlink(), "SOURCE_ARCHIVE_FILE")
+        total += path.stat().st_size
+        lab.require(total <= MAX_SOURCE_BYTES, "SOURCE_BYTE_BOUND")
+        archive = ev.read(path)
         lab.require(ev.digest(archive) == lab.pin(item["sha256"]), "SOURCE_ARCHIVE_PIN")
         archives.append(archive)
-    data = build_dataset(archives)
+    data = build_dataset(archives, stitch=manifest["protocol"] == CONTIGUOUS_PACKAGE)
     lab.require(lab.digest(data) == manifest["dataset_sha256"]
                 and lab.canonical(data) == lab.canonical(ev.read(directory / "dataset.json")),
                 "SOURCE_DATASET_RECONSTRUCTION_MISMATCH")
@@ -363,15 +441,15 @@ def load_sources(directory):
     return archives, data
 
 
-def prepare(archives, output):
-    data = build_dataset(archives)
+def prepare(archives, output, *, stitch=False):
+    data = build_dataset(archives, stitch=stitch)
     save_sources(archives, data, Path(output))
     load_sources(output)
     return assessment(data)
 
 
-def run(archives, plan, output, bundle=None):
-    data = build_dataset(archives)
+def run(archives, plan, output, bundle=None, *, stitch=False):
+    data = build_dataset(archives, stitch=stitch)
     model, report = fit(data, plan, bundle)
     trace = public_trace(data, plan, model, bundle)
     save_sources(archives, data, Path(output))

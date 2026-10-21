@@ -6,7 +6,7 @@ This milestone connects the recorded-chain evidence contract to a trainable nume
 
 ## Source to observation
 
-The prepare command accepts one to eight retained AAI_SOLANA_RAW_BLOCK_ARCHIVE_V1 files. Each archive is fully checked and reconstructed by the existing source decoder. Sources are sorted by their requested ledger windows. Overlapping windows, repeated transaction signatures, mixed synthetic/recorded classifications and conflicting identities are rejected.
+The prepare command accepts one to 64 retained AAI_SOLANA_RAW_BLOCK_ARCHIVE_V1 files. Each archive is fully checked and reconstructed by the existing source decoder. Sources are sorted by their requested ledger windows. Overlapping windows, repeated transaction signatures, mixed synthetic/recorded classifications and conflicting identities are rejected.
 
 The source package retains every raw archive, a filename/hash manifest, the derived dataset and an assessment. Source verification reconstructs the entire dataset from saved raw responses, rather than trusting the saved derived rows or their labels. Capture files still originate from a single RPC assertion: hashes and reconstruction do not independently authenticate a fabricated archive.
 
@@ -16,7 +16,7 @@ All supported swaps in the same market and transaction are grouped into one obse
 
 This is the last observed trade price, not the pool's executable price after the transaction. The decoder's fixed-prefix, opaque-extension and other/unmapped-event limits remain. Missing/unsupported observations are not reconstructed as zero activity. No private bundles, mempool visibility, historical network arrival times or original execution quotes are established.
 
-Limits: eight archives, up to 512 market episodes and 8,192 transaction observations. Each archive retains its existing four-slot/eight-MiB raw budget. Inputs/outputs remain bounded JSON files with exclusive creation. Original response bytes stay intact inside the archived envelopes.
+Limits: 64 archives under a combined 128-MiB source-input bound, up to 512 market episodes and 8,192 transaction observations. Each archive retains its existing four-slot/eight-MiB raw budget. Inputs/outputs remain bounded JSON files with exclusive creation. Original response bytes stay intact inside the archived envelopes.
 
 ## Features and target
 
@@ -85,3 +85,7 @@ python scripts/train_trade_readout.py train \
 The demo creates explicitly synthetic RPC-schema fixtures and a complete sample plan. The real-source command creates no plan automatically. Prepared/trained packages retain source-manifest.json, archive_000.json and subsequent archives, dataset.json and assessment.json. A training package additionally retains plan.json, model.json, report.json and public-trace.json. Verification reconstructs sources, derives targets/features, re-fits weights, recomputes scores and checks the trace.
 
 No wallet, signer, live funds, order execution, funding, token launch, paid provider, website publication or deployment is introduced.
+
+## Optional contiguous source windows
+
+[Historical source sessions](SOURCE_HISTORY.md) introduce AAI_CONTIGUOUS_TRADE_DATASET_V1 and an explicitly identified source-package mode. Use --stitch-contiguous when preparing existing archives, or prepare a verified session with collect_trade_history.py. Adjacent requested intervals share market history only after cross-archive parent verification. Missing intervals start new windows; supported skipped slots are retained without invented rows. Each episode references a source-window digest containing the ordered original archive digests. Training and neural input copying preserve this mode. Existing grouped chronological split requirements and no-execution behavior apply.
