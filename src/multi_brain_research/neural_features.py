@@ -36,7 +36,9 @@ def expected_pipeline(input_schema):
 
 
 def check_bounds(data):
-    lab.require(data.get("protocol") == "AAI_OBSERVED_TRADE_DATASET_V1", "NEURAL_DATASET_PROTOCOL")
+    lab.require(type(data) is dict and data.get("protocol") in
+                ("AAI_OBSERVED_TRADE_DATASET_V1", "AAI_CONTIGUOUS_TRADE_DATASET_V1"),
+                "NEURAL_DATASET_PROTOCOL")
     episodes = data["episodes"]
     lab.require(type(episodes) is list and 1 <= len(episodes) <= MAX_EPISODES, "NEURAL_EPISODE_BOUND")
     total = 0

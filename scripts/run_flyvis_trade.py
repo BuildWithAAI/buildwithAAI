@@ -36,7 +36,10 @@ def run(source, python, output, real_source=None):
     work.mkdir()
     try:
         if real_archives is not None:
-            trade.prepare(real_archives, output / "real-input")
+            trade.prepare(real_archives, output / "real-input",
+                          stitch=real_data["protocol"] == trade.CONTIGUOUS_DATASET)
+            _, copied_data = trade.load_sources(output / "real-input")
+            lab.require(lab.digest(copied_data) == lab.digest(real_data), "REAL_SOURCE_COPY_MODE_CHANGED")
         archive, license_path = download_assets(output / "assets", registration)
         verify_assets(archive, license_path, registration)
         for phase in ("fit", "reexecute"):
