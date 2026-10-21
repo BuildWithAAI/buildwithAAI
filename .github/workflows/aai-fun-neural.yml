@@ -104,7 +104,8 @@ jobs:
           uv pip sync experiments/flyvis_cpu_smoke/requirements-linux-py312.lock --python .flyvis-venv/bin/python --torch-backend cpu --require-hashes
           uv pip install --python .flyvis-venv/bin/python --no-deps --no-build-isolation ./.flyvis-upstream
       - name: Install the existing hash-locked community runtime for disposable local records
-        run: python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r .ecosystem-community/projects/zoora-agent-community/requirements.lock
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r .ecosystem-community/projects/zoora-agent-community/requirements.lock
       - name: Actual neural inference and synthetic fitting, then native reexecution in another process
         run: python scripts/run_flyvis_trade.py --source .flyvis-upstream --python .flyvis-venv/bin/python --output research/aai-fun/generated/native-trade --real-source research/aai-fun/generated/neural-source
       - name: Independent standard-library readout replay; no native inference attestation from this verifier
