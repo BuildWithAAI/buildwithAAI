@@ -97,3 +97,7 @@ Primary references: [Solana getBlock](https://solana.com/docs/rpc/http/getblock)
 ## Contiguous historical collection
 
 The [historical source session path](SOURCE_HISTORY.md) adds bounded, resumable multi-archive acquisition and an explicit dataset format that keeps market observations continuous across verified archive boundaries. Source preparation reports coverage and candidate labels; it performs no real-data fitting. The original capture and unjoined dataset formats remain available. Cross-archive parent links, original raw reconstruction and existing training partition rules still apply.
+
+## Ecosystem research handoff
+
+The [pinned-component integration](../ecosystem/README.md) connects retained AAI.fun inputs and forecasts to current mint inspection, disposable community research jobs, audited artifact records and a read-only observer/assistant JSON handoff. It explicitly reports blocked horizon conversion, missing calibration and unavailable execution/settlement adapters.

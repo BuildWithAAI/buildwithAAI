@@ -1,0 +1,43 @@
+name: AAI Ecosystem Research Handoffs
+on:
+  pull_request:
+    paths:
+      - "src/ecosystem_research/**"
+      - "scripts/ecosystem_worker.py"
+      - "scripts/run_ecosystem_research.py"
+      - "tests/test_ecosystem_handoff.py"
+      - "research/ecosystem/**"
+      - ".github/workflows/ecosystem-research.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/ecosystem_research/**"
+      - "scripts/ecosystem_worker.py"
+      - "scripts/run_ecosystem_research.py"
+      - "tests/test_ecosystem_handoff.py"
+      - "research/ecosystem/**"
+      - ".github/workflows/ecosystem-research.yml"
+permissions:
+  contents: read
+jobs:
+  contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - run: python -m ruff check --select E4,E7,E9,F,B src/ecosystem_research scripts/ecosystem_worker.py scripts/run_ecosystem_research.py tests/test_ecosystem_handoff.py
+      - name: Strict normal and optimized cross-component handoff checks
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p test_ecosystem_handoff.py -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p test_ecosystem_handoff.py -v
