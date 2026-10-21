@@ -96,12 +96,15 @@ def gate(forecast, model):
                 and forecast["task"]["horizon_unit"] == "LATER_MARKET_TRANSACTIONS",
                 "ECOSYSTEM_FORECAST_BINDING")
     # The existing registry can describe missing calibration without inventing a receipt.
+    is_neural = "feature_export_sha256" in model
+    pipeline = neural.expected_pipeline(trade.PIPELINE) if is_neural else trade.PIPELINE
+    lab.require(model["pipeline_sha256"] == lab.digest(pipeline)
+                and forecast["pipeline_sha256"] == model["pipeline_sha256"], "REGISTRY_PIPELINE_BINDING")
     spec = ModuleSpec("trade_readout", "aai_trade_research",
-                      neural.expected_pipeline(trade.PIPELINE)["connectome_sha256"]
-                      if "feature_export_sha256" in model else None,
-                      neural.expected_pipeline(trade.PIPELINE)["checkpoint_sha256"]
-                      if "feature_export_sha256" in model else None,
-                      model["pipeline_sha256"], lab.digest(model), None)
+                      pipeline["connectome_sha256"] if is_neural else None,
+                      pipeline["checkpoint_sha256"] if is_neural else None,
+                      lab.digest(pipeline["encoder"]) if is_neural else lab.digest(pipeline),
+                      lab.digest(model), None)
     missing = list(spec.missing_components())
     return {"protocol": "AAI_ECOSYSTEM_RESEARCH_GATE_V1", "model_sha256": lab.digest(model),
             "forecast_sha256": lab.digest(forecast), "qualified_model_count": 0,

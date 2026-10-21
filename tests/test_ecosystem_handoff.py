@@ -90,6 +90,28 @@ class HandoffTests(unittest.TestCase):
         self.assertIn("COORDINATOR_HORIZON_ADAPTER_REQUIRED", decision["reasons"])
         self.assertFalse(decision["live_execution_allowed"])
 
+    def test_registry_binds_encoder_recipe_separately_from_the_whole_pipeline(self):
+        from src.multi_brain_research.consensus import ModuleSpec
+        pipeline = neural.expected_pipeline(trade.PIPELINE)
+        forecast = handoff.forecasts(self.data, self.neural_model, self.plan, self.bundle)
+        decision = handoff.gate(forecast, self.neural_model)
+        spec = ModuleSpec("trade_readout", "aai_trade_research", pipeline["connectome_sha256"],
+                          pipeline["checkpoint_sha256"], lab.digest(pipeline["encoder"]),
+                          lab.digest(self.neural_model), None)
+        self.assertEqual(decision["registered_pipeline_sha256"], spec.pipeline_sha256())
+
+    def test_registry_rejects_changed_model_or_forecast_pipeline_bindings(self):
+        original = handoff.forecasts(self.data, self.neural_model, self.plan, self.bundle)
+        for kind in ("model", "forecast"):
+            model, forecast = deepcopy(self.neural_model), deepcopy(original)
+            if kind == "model":
+                model["pipeline_sha256"] = "a" * 64
+                forecast["model_sha256"] = lab.digest(model)
+            else:
+                forecast["pipeline_sha256"] = "a" * 64
+            with self.assertRaises(ValueError):
+                handoff.gate(forecast, model)
+
     def test_forecast_from_another_model_cannot_reuse_the_gate(self):
         forecast = handoff.forecasts(self.data, self.raw_model, self.plan)
         forecast["model_sha256"] = "a" * 64
