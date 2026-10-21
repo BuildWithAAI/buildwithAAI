@@ -3,6 +3,11 @@ on:
   pull_request:
     paths:
       - "src/multi_brain_research/neural_features.py"
+      - "src/ecosystem_research/**"
+      - "scripts/ecosystem_worker.py"
+      - "scripts/run_ecosystem_research.py"
+      - "scripts/capture_research_history.py"
+      - "research/ecosystem/**"
       - "src/multi_brain_research/trade_learning.py"
       - "src/solana_research/source_history.py"
       - "scripts/collect_trade_history.py"
@@ -18,6 +23,11 @@ on:
     branches: [main]
     paths:
       - "src/multi_brain_research/neural_features.py"
+      - "src/ecosystem_research/**"
+      - "scripts/ecosystem_worker.py"
+      - "scripts/run_ecosystem_research.py"
+      - "scripts/capture_research_history.py"
+      - "research/ecosystem/**"
       - "src/multi_brain_research/trade_learning.py"
       - "src/solana_research/source_history.py"
       - "scripts/collect_trade_history.py"
@@ -68,12 +78,24 @@ jobs:
           ref: 0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa
           path: .flyvis-upstream
           persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: BuildWithAAI/buildwithAAI
+          ref: 97108a271face220aef6296fddb2e18abdb210b5
+          path: .ecosystem-scanner
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: BuildWithAAI/buildwithAAI
+          ref: fc42d8b36da77c58430e4a7594a30a0225883b6c
+          path: .ecosystem-community
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
       - name: Capture real source observations for inference only
         run: |
-          python scripts/collect_trade_history.py capture --slots 3 --output research/aai-fun/generated/neural-capture
+          python scripts/capture_research_history.py --slots 3 --output research/aai-fun/generated/neural-capture
           python scripts/collect_trade_history.py verify --directory research/aai-fun/generated/neural-capture
           python scripts/collect_trade_history.py prepare --directory research/aai-fun/generated/neural-capture --output research/aai-fun/generated/neural-source
       - name: Install pinned dependency tooling
@@ -83,10 +105,19 @@ jobs:
           uv venv .flyvis-venv --python python --no-python-downloads
           uv pip sync experiments/flyvis_cpu_smoke/requirements-linux-py312.lock --python .flyvis-venv/bin/python --torch-backend cpu --require-hashes
           uv pip install --python .flyvis-venv/bin/python --no-deps --no-build-isolation ./.flyvis-upstream
+      - name: Install the existing hash-locked community runtime for disposable local records
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r .ecosystem-community/projects/zoora-agent-community/requirements.lock
       - name: Actual neural inference and synthetic fitting, then native reexecution in another process
         run: python scripts/run_flyvis_trade.py --source .flyvis-upstream --python .flyvis-venv/bin/python --output research/aai-fun/generated/native-trade --real-source research/aai-fun/generated/neural-source
       - name: Independent standard-library readout replay; no native inference attestation from this verifier
         run: python scripts/train_trade_readout.py verify --directory research/aai-fun/generated/native-trade/neural-training
+      - name: Connect actual source, scanner mint parsing, model forecasts and community jobs
+        run: python scripts/run_ecosystem_research.py run --native-directory research/aai-fun/generated/native-trade --scanner-source .ecosystem-scanner --community-source .ecosystem-community --output research/ecosystem/generated/connected
+      - name: Replay ecosystem reports and audit SQLite artifacts in another process without network
+        run: python scripts/run_ecosystem_research.py verify --directory research/ecosystem/generated/connected --scanner-source .ecosystem-scanner --community-source .ecosystem-community
+      - name: Prove changed reports, database bindings and public execution flags are rejected
+        run: python scripts/run_ecosystem_research.py negative-checks --directory research/ecosystem/generated/connected --scanner-source .ecosystem-scanner --community-source .ecosystem-community
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -98,5 +129,12 @@ jobs:
             research/aai-fun/generated/native-trade/raw-control/*.json
             research/aai-fun/generated/native-trade/real-input/*.json
             research/aai-fun/generated/neural-capture/**/*.json
+            research/aai-fun/generated/neural-capture-recovery.json
             research/aai-fun/generated/neural-source/*.json
+            research/ecosystem/generated/connected/*.json
+            research/ecosystem/generated/connected/*.log
+            research/ecosystem/generated/connected/training/*.json
+            research/ecosystem/generated/connected/target/*.json
+            research/ecosystem/generated/connected/mint-capture/*.json
+            research/ecosystem/generated/connected/state/community.sqlite3
           retention-days: 30
