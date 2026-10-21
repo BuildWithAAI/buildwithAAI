@@ -160,6 +160,18 @@ class ContiguousDatasetTests(unittest.TestCase):
         with self.assertRaisesRegex(ev.EvidenceError, "HISTORY_BLOCK_LINKAGE_GAP"):
             learning.build_dataset([first, skipped, last], stitch=True)
 
+    def test_leading_skipped_slots_must_not_contradict_the_first_produced_parent(self):
+        sources = deepcopy(self.archives[:2])
+        sources[0]["records"] = sources[0]["records"][:3]
+        edit_result(sources[0], 2, lambda p: p.update(result=[]))
+        with self.assertRaisesRegex(ev.EvidenceError, "HISTORY_BLOCK_LINKAGE_GAP"):
+            learning.build_dataset(sources, stitch=True)
+        edit_result(sources[1], 3, lambda p: p["result"].update(
+            parentSlot=999, previousBlockhash=fixture.address("block_999")))
+        data = learning.build_dataset(sources, stitch=True)
+        self.assertEqual(data["sources"][0]["skipped_slots"], [1000])
+        self.assertEqual(learning.assessment(data)["transaction_observations"], 64)
+
     def test_duplicate_transaction_across_archives_cannot_inflate_training_rows(self):
         duplicate = deepcopy(ev.parse(ev.unbase64(self.archives[0]["records"][3]["response_base64"]))["result"]["transactions"][0])
         edit_result(self.archives[1], 3, lambda p: p["result"]["transactions"].append(duplicate))
@@ -397,6 +409,17 @@ class SessionTests(unittest.TestCase):
             self.assertEqual(result["skipped_slots"], [1001])
             self.assertEqual(result["produced_block_count"], 1)
             self.assertEqual(history.verify(root)[1]["status"], "COMPLETE")
+
+    def test_session_leading_skips_must_agree_with_first_parent(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.empty_slots = {1000}
+            with self.assertRaisesRegex(ev.EvidenceError, "HISTORY_BLOCK_LINKAGE_GAP"):
+                self.collect(Path(folder) / "contradiction")
+            edit_result(self.sources[1], 3, lambda p: p["result"].update(
+                parentSlot=999, previousBlockhash=fixture.address("block_999")))
+            result = self.collect(Path(folder) / "consistent")
+            self.assertEqual(result["skipped_slots"], [1000])
+            self.assertEqual(result["produced_block_count"], 1)
 
     def test_changed_manifest_or_request_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:

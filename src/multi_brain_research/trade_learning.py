@@ -139,7 +139,7 @@ def validate_dataset(data):
             members = [originals[p] for p in pins]
             lab.require(members[0]["start_slot"] > prior_end + 1, "NONMAXIMAL_SOURCE_WINDOWS")
             lab.require(all(right["start_slot"] == left["end_slot"] + 1
-                            for left, right in zip(members, members[1:])), "WINDOW_COVERAGE_GAP")
+                            for left, right in zip(members[:-1], members[1:], strict=True)), "WINDOW_COVERAGE_GAP")
             joined[window["window_sha256"]] = {
                 "start_slot": members[0]["start_slot"], "end_slot": members[-1]["end_slot"],
                 "skipped_slots": [s for m in members for s in m["skipped_slots"]],
@@ -256,7 +256,7 @@ def assessment(data):
         result["cross_archive_next_transaction_pairs"] = sum(
             source_at(left["order"][0]) != source_at(right["order"][0])
             for episode in episodes.values()
-            for left, right in zip(episode["observations"], episode["observations"][1:]))
+            for left, right in zip(episode["observations"][:-1], episode["observations"][1:], strict=True))
     return result
 
 

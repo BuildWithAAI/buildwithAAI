@@ -26,7 +26,7 @@ def window_pin(pins):
 
 def contiguous_groups(archives):
     """Verify parent links before treating adjacent requested intervals as one window."""
-    groups, previous, last_block = [], None, None
+    groups, previous, last_block, window_start = [], None, None, None
     for archive in archives:
         blocks, _ = ev.archive_blocks(archive)
         start = archive["requested_start_slot"]
@@ -36,12 +36,14 @@ def contiguous_groups(archives):
             ev.require(archive["endpoint"] == previous["endpoint"], "HISTORY_ENDPOINT_CHANGED")
         else:
             groups.append([])
-            last_block = None
+            last_block, window_start = None, start
         for block in blocks:
             if last_block is not None:
                 ev.require(block["parent_slot"] == last_block["slot"]
                            and block["previous_blockhash"] == last_block["blockhash"],
                            "HISTORY_BLOCK_LINKAGE_GAP")
+            else:
+                ev.require(block["parent_slot"] < window_start, "HISTORY_BLOCK_LINKAGE_GAP")
             last_block = block
         groups[-1].append(archive)
         previous = archive
@@ -215,6 +217,8 @@ def _derive(root, settings):
                 ev.require(block["parent_slot"] == blocks[-1]["slot"]
                            and block["previous_blockhash"] == blocks[-1]["blockhash"],
                            "HISTORY_BLOCK_LINKAGE_GAP")
+            else:
+                ev.require(block["parent_slot"] < settings["start_slot"], "HISTORY_BLOCK_LINKAGE_GAP")
             blocks.append({k: block[k] for k in
                            ("slot", "parent_slot", "blockhash", "previous_blockhash", "raw_response_sha256")})
         raw_bytes += sum(len(ev.unbase64(r["response_base64"])) for r in archive["records"])
@@ -275,6 +279,8 @@ def _continue(root, transport):
                 ev.require(block["parent_slot"] == prior["slot"]
                            and block["previous_blockhash"] == prior["blockhash"],
                            "HISTORY_BLOCK_LINKAGE_GAP")
+            else:
+                ev.require(block["parent_slot"] < settings["start_slot"], "HISTORY_BLOCK_LINKAGE_GAP")
             prior = block
     _, manifest = _derive(root, settings)
     ev.require(manifest["status"] == "COMPLETE", "SESSION_INCOMPLETE")
