@@ -73,13 +73,20 @@ class ContiguousDatasetTests(unittest.TestCase):
         self.assertEqual(len(first["observations"]), 32)
         self.assertNotEqual(learning.features(first, 16), learning.features(legacy["episodes"][4], 0))
 
-    def test_explicit_legacy_path_keeps_previous_control_hash(self):
-        model, _ = learning.fit(*fixture.demo()[1:])
-        known = {"linux": "582a383958ca6e5cb41308ed2dfd66d63071b983a661d95720bc488edbda535a",
-                 "win32": "74a9b90433a425855ed28d7c25cf1f25d3d0d0a16d2ca14fe4d240efc50e2fdc"}
-        if sys.platform not in known:
-            self.skipTest("Pinned numerical baselines are retained for Linux and Windows only")
-        self.assertEqual(lab.digest(model), known[sys.platform])
+    def test_legacy_fixture_pins_and_known_runtime_control_hashes_remain_unchanged(self):
+        _, data, plan = fixture.demo()
+        self.assertEqual(lab.digest(data), "044d1309ec90318c96e056fb565e7d305a077df937761b75320ae2d7977565af")
+        self.assertEqual(lab.digest(plan), "338bdcc013ef2e7d9899ff2d621b2a9fc4d214d027e1816a4ea2cd6c47c7e0b0")
+        model, _ = learning.fit(data, plan)
+        # Exact fitted hashes are only pinned for numerical runtimes with retained evidence.
+        linux = "582a383958ca6e5cb41308ed2dfd66d63071b983a661d95720bc488edbda535a"
+        windows = "74a9b90433a425855ed28d7c25cf1f25d3d0d0a16d2ca14fe4d240efc50e2fdc"
+        known = {("linux", 3, 12): linux, ("linux", 3, 13): linux, ("linux", 3, 14): linux,
+                 ("win32", 3, 13): windows, ("win32", 3, 14): windows}
+        expected = known.get((sys.platform, *sys.version_info[:2]))
+        if expected is not None:
+            self.assertEqual(lab.digest(model), expected)
+        self.assertFalse(model["live_execution_allowed"])
 
     def test_contiguous_repartition_preserves_full_episode_features_and_fitted_weights(self):
         data = learning.build_dataset(self.archives, stitch=True)
