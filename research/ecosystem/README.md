@@ -45,6 +45,8 @@ Current mint state does not become point-in-time historical risk, a rug/bundle l
 
 Mint intake bounds are 32 base assets, 256 KiB per response, 8 MiB total raw and 12 MiB stored files, with spaced requests and a 600-second request-start budget. Excess data, RPC failures and inconsistent sources stop the integration; received failure bytes remain available. Existing source, neural and job-report limits also apply.
 
+Transient source-intake failures receive at most one automatic resume when a finalized range is already fixed and a retained request shows HTTP 429/5xx or a transport failure. The original attempt and exact range remain intact; a sibling recovery receipt records the failure and outcome. Semantic/source-validation errors and missing anchors are not retried or switched to another sample.
+
 ## Agent workflow and verification
 
 Two disposable agent records share a research project. One audits retained sources; the second computes the uncalibrated forecast report. These are Python research handlers using the actual job API, not autonomous language-model sessions.

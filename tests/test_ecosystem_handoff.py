@@ -286,5 +286,81 @@ class MintCaptureTests(unittest.TestCase):
             self.assertEqual(item["record"]["error"], "MINT_RESPONSE_BOUND")
 
 
+class CaptureRecoveryTests(unittest.TestCase):
+    def setUp(self):
+        from scripts.capture_research_history import run
+        self.run_capture = run
+        self.archive = fixture.archives()[0]
+        self.calls = []
+        self.failure = "transient"
+        self.failed = False
+
+    def transport(self, request, _endpoint, _limit):
+        method, params = request["method"], request["params"]
+        self.calls.append(deepcopy(request))
+        if self.failure == "anchor" and len(self.calls) == 1:
+            return 429, b"fixture anchor limit", "HTTP_429"
+        if self.failure == "transient" and method == "getBlock" and not self.failed:
+            self.failed = True
+            return 429, b"fixture rate limit", "HTTP_429"
+        if method == "getGenesisHash":
+            result = ev.MAINNET_GENESIS
+        elif method == "getSlot":
+            result = 1001
+        elif method == "getBlocks":
+            result = [params[0]]
+        else:
+            offset = params[0] - 1000
+            result = ev.parse(ev.unbase64(self.archive["records"][3 + offset]["response_base64"]))["result"]
+            if self.failure == "semantic" and params[0] == 1001:
+                result["previousBlockhash"] = fixture.address("wrong")
+        return 200, ev.canonical({"jsonrpc": "2.0", "id": 1, "result": result}).encode(), None
+
+    def test_transient_recovery_retains_original_attempt_and_slot_range(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder) / "source"
+            result = self.run_capture(output, slot_count=2, start_slot=1000, transport=self.transport)
+            self.assertEqual((result["start_slot"], result["end_slot"]), (1000, 1001))
+            receipt = ev.read(output.with_name("source-recovery.json"))
+            self.assertEqual(receipt["status"], "RECOVERED")
+            self.assertEqual(receipt["retry_count"], 1)
+            self.assertEqual(receipt["failure"]["http_status"], 429)
+            self.assertTrue((output / "segment_000/attempt_000/archive.json").is_file())
+            self.assertTrue((output / "segment_000/attempt_001/archive.json").is_file())
+            self.assertEqual([r["params"][0] for r in self.calls if r["method"] == "getBlock"],
+                             [1000, 1000, 1001])
+
+    def test_semantic_link_failure_is_not_retried(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.failure = "semantic"
+            output = Path(folder) / "source"
+            with self.assertRaisesRegex(ValueError, "HISTORY_BLOCK_LINKAGE_GAP"):
+                self.run_capture(output, slot_count=2, start_slot=1000, transport=self.transport)
+            receipt = ev.read(output.with_name("source-recovery.json"))
+            self.assertFalse(receipt["retry_requested"])
+            self.assertEqual(receipt["status"], "NOT_RETRIED")
+            self.assertEqual(len([r for r in self.calls if r["method"] == "getBlock"]), 2)
+
+    def test_missing_finalized_anchor_cannot_trigger_a_different_range(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.failure = "anchor"
+            output = Path(folder) / "source"
+            with self.assertRaises(ValueError):
+                self.run_capture(output, slot_count=2, transport=self.transport)
+            receipt = ev.read(output.with_name("source-recovery.json"))
+            self.assertFalse(receipt["fixed_range_present"])
+            self.assertEqual(len(self.calls), 1)
+
+    def test_existing_capture_is_never_overwritten_or_recovered_implicitly(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.failure = None
+            output = Path(folder) / "source"
+            self.run_capture(output, slot_count=2, start_slot=1000, transport=self.transport)
+            self.calls = []
+            with self.assertRaises(FileExistsError):
+                self.run_capture(output, slot_count=2, start_slot=1000, transport=self.transport)
+            self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()

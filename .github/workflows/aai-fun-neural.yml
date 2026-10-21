@@ -6,6 +6,7 @@ on:
       - "src/ecosystem_research/**"
       - "scripts/ecosystem_worker.py"
       - "scripts/run_ecosystem_research.py"
+      - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
       - "src/multi_brain_research/trade_learning.py"
       - "src/solana_research/source_history.py"
@@ -25,6 +26,7 @@ on:
       - "src/ecosystem_research/**"
       - "scripts/ecosystem_worker.py"
       - "scripts/run_ecosystem_research.py"
+      - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
       - "src/multi_brain_research/trade_learning.py"
       - "src/solana_research/source_history.py"
@@ -93,7 +95,7 @@ jobs:
           python-version: "3.12"
       - name: Capture real source observations for inference only
         run: |
-          python scripts/collect_trade_history.py capture --slots 3 --output research/aai-fun/generated/neural-capture
+          python scripts/capture_research_history.py --slots 3 --output research/aai-fun/generated/neural-capture
           python scripts/collect_trade_history.py verify --directory research/aai-fun/generated/neural-capture
           python scripts/collect_trade_history.py prepare --directory research/aai-fun/generated/neural-capture --output research/aai-fun/generated/neural-source
       - name: Install pinned dependency tooling
@@ -127,6 +129,7 @@ jobs:
             research/aai-fun/generated/native-trade/raw-control/*.json
             research/aai-fun/generated/native-trade/real-input/*.json
             research/aai-fun/generated/neural-capture/**/*.json
+            research/aai-fun/generated/neural-capture-recovery.json
             research/aai-fun/generated/neural-source/*.json
             research/ecosystem/generated/connected/*.json
             research/ecosystem/generated/connected/*.log
