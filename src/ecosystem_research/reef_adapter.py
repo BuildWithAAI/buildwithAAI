@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from importlib.metadata import version
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -30,6 +31,8 @@ def verify_reef(path):
 
 
 def load_reef(path):
+    # This pin imports the Unix resource module through reef.sandbox.process.
+    lab.require(os.name == "posix", "REEF_POSIX_RUNTIME_REQUIRED")
     pin = verify_reef(path)
     lab.require(sys.version_info >= (3, 12), "REEF_PYTHON_312_REQUIRED")
     from packaging.requirements import Requirement

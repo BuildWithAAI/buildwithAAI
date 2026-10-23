@@ -3,13 +3,18 @@ from copy import deepcopy
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from src.ecosystem_research import learning as learn
+from src.ecosystem_research import learning as learn, reef_adapter
 from src.multi_brain_research import training_lab as lab
 from src.solana_research import coin_evidence as ev
 
 
 class ReportLearningTests(unittest.TestCase):
+    def test_native_windows_is_rejected_before_importing_unix_only_reef(self):
+        with patch.object(reef_adapter.os, "name", "nt"), self.assertRaisesRegex(ValueError, "POSIX_RUNTIME_REQUIRED"):
+            reef_adapter.load_reef("a-path-that-must-not-be-accessed")
+
     def test_induced_workflows_reject_unseen_missing_fields(self):
         for role, seed in learn.fixtures().items():
             cases = learn.curriculum(role, seed)

@@ -26,7 +26,7 @@ flowchart TD
 | Local advisory release catalog | Hash-linked reference, selected version and rejected replacement; retained active policy | This catalog is not Reef's hosted harness-delivery service |
 | Observer/assistant JSON | Policy identifiers, challenge counts, review status, and a hash of the upstream public snapshot | No hosted client or external message delivery |
 
-The framework checkout must match its pin and have no tracked or untracked changes before and after import. The worker imports the real package from that checkout. It checks installed dependency versions against the hash-locked CPU closure. This requires Python 3.12 or newer in a separate environment; the main standard-library research package still supports Python 3.11.
+The framework checkout must match its pin and have no tracked or untracked changes before and after import. The worker imports the real package from that checkout. It checks installed dependency versions against the hash-locked CPU closure. The Reef worker requires Python 3.12 or newer on a POSIX system; this pin imports the Unix-only `resource` module. Actual framework execution is tested on Linux. The main standard-library research package still supports Python 3.11.
 
 ## What the learner changes
 
@@ -71,7 +71,7 @@ For a framework-only contract test, with explicitly synthetic job records:
 python scripts/run_ecosystem_learning.py self-test --directory /private/reef-fixture --reef-source /private/reef --reef-python .reef-venv/bin/python
 ```
 
-On Windows use `.reef-venv/Scripts/python.exe`. The dedicated workflow uses its already isolated Python environment directly.
+Native Windows worker execution is explicitly rejected before importing Reef. Use a Linux worker for this revision. A future Windows computer can host a Linux environment, but that deployment has not been validated here. Portable policy tests and the explicit unsupported-platform boundary run on both Linux and Windows. The dedicated Linux workflow uses its already isolated Python environment directly.
 
 The completion manifest binds all required JSON files and the Reef database. A failed build retains an INCOMPLETE marker. Each file is bounded to 8 MiB and the package to 32 MiB. The worker has a 180-second limit. A new output directory is required for every build.
 

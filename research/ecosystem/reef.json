@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "used_interfaces": ["AgentRecord", "ScoredRolloutReport", "SQLiteRecordStore", "RegressionCheckMixin", "CandidateEvaluationPlugin"],
   "scope": "LOCAL_RECORD_STORAGE_AND_ADVISORY_SELECTION",
+  "worker_platform": "POSIX_REQUIRED_LINUX_TESTED",
   "model_server_connected": false,
   "model_weights_updated": false,
   "live_execution_allowed": false
