@@ -9,6 +9,9 @@ on:
       - "scripts/ecosystem_learning_worker.py"
       - "scripts/run_ecosystem_learning.py"
       - "tests/test_ecosystem_learning.py"
+      - "scripts/ecosystem_behavior_worker.py"
+      - "scripts/run_ecosystem_behavior.py"
+      - "tests/test_behavior_learning.py"
       - "experiments/ecosystem_learning/**"
       - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
@@ -33,6 +36,9 @@ on:
       - "scripts/ecosystem_learning_worker.py"
       - "scripts/run_ecosystem_learning.py"
       - "tests/test_ecosystem_learning.py"
+      - "scripts/ecosystem_behavior_worker.py"
+      - "scripts/run_ecosystem_behavior.py"
+      - "tests/test_behavior_learning.py"
       - "experiments/ecosystem_learning/**"
       - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
@@ -142,6 +148,12 @@ jobs:
         run: python scripts/run_ecosystem_learning.py verify --directory research/ecosystem/generated/learning --ecosystem-directory research/ecosystem/generated/connected --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
       - name: Reject altered policies, feedback and public flags even after outer hashes are updated
         run: python scripts/run_ecosystem_learning.py negative-checks --directory research/ecosystem/generated/learning --ecosystem-directory research/ecosystem/generated/connected --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
+      - name: Connect verified market outcomes and advisory review learning to specialist behavior jobs
+        run: python -B scripts/run_ecosystem_behavior.py run --directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
+      - name: Independently reconstruct simulator tasks, delayed price feedback, job audit and Reef selections
+        run: python -B scripts/run_ecosystem_behavior.py verify --directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
+      - name: Reject future labels, changed learned policies, feedback, receipts and public execution flags
+        run: python -B scripts/run_ecosystem_behavior.py negative-checks --directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -164,4 +176,8 @@ jobs:
             research/ecosystem/generated/learning/*.json
             research/ecosystem/generated/learning/*.log
             research/ecosystem/generated/learning/state/reef.sqlite3
+            research/ecosystem/generated/behavior/*.json
+            research/ecosystem/generated/behavior/*.log
+            research/ecosystem/generated/behavior/agents/community.sqlite3
+            research/ecosystem/generated/behavior/reef/records.sqlite3
           retention-days: 30
