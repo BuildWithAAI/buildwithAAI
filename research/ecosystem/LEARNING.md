@@ -2,6 +2,8 @@
 
 This adds one executable learning cycle to the ecosystem research handoff. It consumes the two independently reconstructed community job artifacts, retains their verification feedback through actual Reef interfaces, induces finite report-review policies, evaluates them, and retains selected advisory versions.
 
+The next [specialist behavior layer](BEHAVIOR.md) consumes this verified package and links controlled behavior tasks, delayed outcomes, four additional job artifacts and measured advisory capability selection. Its controlled pattern learning and separately retained market feedback have distinct qualification boundaries.
+
 Reef is pinned to `Human-Agent-Society/reef@b8809cdcec899c7603708f6eaeddbb4955070043` under Apache-2.0. The course that motivated this work is [MIT MAS.S62, Fall 2026](https://mit-mi.github.io/how2ai-course/fall2026/). The course material and Reef are separate projects.
 
 ## Executed connection

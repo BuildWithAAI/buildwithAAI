@@ -4,6 +4,8 @@ This connects AAI.fun source/model artifacts to pinned scanner mint parsing and 
 
 The [bounded Reef learning layer](LEARNING.md) consumes these verified job artifacts, stores linked feedback in Reef, evaluates finite report-review workflows, and retains advisory versions. The native workflow runs it after this integration passes. Its observer snapshot binds this package's public snapshot by hash.
 
+The [specialist behavior layer](BEHAVIOR.md) extends that handoff with delayed-outcome pattern memory for paper trading, simulated contract authorization, limited static code review and operational scope checks. Four actual sandbox jobs feed frozen task evaluation and Reef selection. Verified historical price-direction feedback is retained separately; the original authority controls and ABSTAIN gate remain in force.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]
