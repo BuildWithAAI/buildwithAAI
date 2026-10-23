@@ -1,0 +1,10 @@
+# CPU dependencies of Human-Agent-Society/reef at b8809cdcec899c7603708f6eaeddbb4955070043.
+aiohttp>=3.14
+alembic>=1.13,<2
+huggingface_hub
+harbor>=0.20,<0.25
+pyyaml
+reef-client>=0.2.0
+reef-eval>=0.1.1
+sqlalchemy>=2.0,<3
+tomli-w

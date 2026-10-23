@@ -1,0 +1,12 @@
+{
+  "protocol": "AAI_REEF_COMPONENT_V1",
+  "repository": "Human-Agent-Society/reef",
+  "commit": "b8809cdcec899c7603708f6eaeddbb4955070043",
+  "license": "Apache-2.0",
+  "used_interfaces": ["AgentRecord", "ScoredRolloutReport", "SQLiteRecordStore", "RegressionCheckMixin", "CandidateEvaluationPlugin"],
+  "scope": "LOCAL_RECORD_STORAGE_AND_ADVISORY_SELECTION",
+  "worker_platform": "POSIX_REQUIRED_LINUX_TESTED",
+  "model_server_connected": false,
+  "model_weights_updated": false,
+  "live_execution_allowed": false
+}

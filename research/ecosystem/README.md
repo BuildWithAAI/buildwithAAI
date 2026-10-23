@@ -2,6 +2,8 @@
 
 This connects AAI.fun source/model artifacts to pinned scanner mint parsing and the existing community job/artifact/activity APIs. It is an executable research workflow inside BuildWithAAI, with disposable local identity records. It does not merge the draft stacks or deploy their services.
 
+The [bounded Reef learning layer](LEARNING.md) consumes these verified job artifacts, stores linked feedback in Reef, evaluates finite report-review workflows, and retains advisory versions. The native workflow runs it after this integration passes. Its observer snapshot binds this package's public snapshot by hash.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]
