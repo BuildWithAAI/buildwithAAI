@@ -163,7 +163,8 @@ def fault_checks(rules, plan, source_sha256):
         "older_snapshot_rejected_by_retained_anchor": True,
         "uncheckpointed_writer_detected": True,
         "rehashed_false_checkpoint_rejected": True,
-        "stale_epoch_fenced": True}, "crash_exit_codes": [73, 74], "live_execution_allowed": False}
+        "stale_epoch_fenced": True}, "crash_exit_codes": [73, 74], "precommit_dirty_pages_spilled": True,
+        "live_execution_allowed": False}
 
 
 def derived(parent, source, snapshot, faults):

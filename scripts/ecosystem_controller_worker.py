@@ -24,10 +24,24 @@ def main():
             return 0
         if action in ("die-before-commit", "hold-before-commit"):
             normal_check = c.check_size
+            before = controller.path.read_bytes()
+            if action == "die-before-commit":
+                connect = controller._connect
+
+                def spilling_connection(*, readonly):
+                    connection = connect(readonly=readonly)
+                    if not readonly:
+                        connection.execute("PRAGMA cache_size=1")
+                        connection.execute("PRAGMA cache_spill=ON")
+                    return connection
+
+                controller._connect = spilling_connection
 
             def interrupt(connection):
                 normal_check(connection)
                 if action == "die-before-commit":
+                    c.lab.require(Path(str(controller.path) + "-journal").is_file()
+                                  and controller.path.read_bytes() != before, "CONTROLLER_CRASH_DID_NOT_SPILL")
                     os._exit(73)
                 ev.write(Path(sys.argv[3]), {"status": "UNCOMMITTED"})
                 if sys.stdin.readline().strip() != "release":

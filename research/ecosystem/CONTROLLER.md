@@ -48,7 +48,7 @@ The CLI builds a fresh reproducible experiment and seals its manifest last. It d
 
 1. A separate live owner excludes normal and recovery acquisitions.
 2. A reader observes the previous committed checkpoint while another process pauses after writing but before commit.
-3. Process exit 73 before commit leaves no partial batch and requires explicit recovery.
+3. A one-page SQLite cache forces uncommitted pages into the database; the probe checks that database bytes changed and a rollback journal exists, then exits 73 before commit. Recovery restores the earlier checkpoint and requires explicit takeover.
 4. Process exit 74 after commit retains the batch; stale-anchor recovery fails and retry does not reapply it.
 5. Restoring an older complete database is rejected against the retained newer anchor.
 6. Writing through the raw experience API without a controller checkpoint is detected.
