@@ -12,6 +12,9 @@ on:
       - "scripts/ecosystem_behavior_worker.py"
       - "scripts/run_ecosystem_behavior.py"
       - "tests/test_behavior_learning.py"
+      - "scripts/ecosystem_experience_worker.py"
+      - "scripts/run_ecosystem_experience.py"
+      - "tests/test_experience_learning.py"
       - "experiments/ecosystem_learning/**"
       - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
@@ -39,6 +42,9 @@ on:
       - "scripts/ecosystem_behavior_worker.py"
       - "scripts/run_ecosystem_behavior.py"
       - "tests/test_behavior_learning.py"
+      - "scripts/ecosystem_experience_worker.py"
+      - "scripts/run_ecosystem_experience.py"
+      - "tests/test_experience_learning.py"
       - "experiments/ecosystem_learning/**"
       - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
@@ -154,6 +160,12 @@ jobs:
         run: python -B scripts/run_ecosystem_behavior.py verify --directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
       - name: Reject future labels, changed learned policies, feedback, receipts and public execution flags
         run: python -B scripts/run_ecosystem_behavior.py negative-checks --directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
+      - name: Connect verified behavior history to shared experience and guarded advisory versions
+        run: python -B scripts/run_ecosystem_experience.py run --directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
+      - name: Independently replay shared admission, restart checkpoints, retention and contradiction guards
+        run: python -B scripts/run_ecosystem_experience.py verify --directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
+      - name: Reject rehashed journal poisoning, forged provenance and changed selected or guarded state
+        run: python -B scripts/run_ecosystem_experience.py negative-checks --directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -180,4 +192,9 @@ jobs:
             research/ecosystem/generated/behavior/*.log
             research/ecosystem/generated/behavior/agents/community.sqlite3
             research/ecosystem/generated/behavior/reef/records.sqlite3
+            research/ecosystem/generated/experience/*.json
+            research/ecosystem/generated/experience/*.log
+            research/ecosystem/generated/experience/agents/community.sqlite3
+            research/ecosystem/generated/experience/experience/journal.sqlite3
+            research/ecosystem/generated/experience/reef/records.sqlite3
           retention-days: 30
