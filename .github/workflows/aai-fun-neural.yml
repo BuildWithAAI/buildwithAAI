@@ -15,6 +15,10 @@ on:
       - "scripts/ecosystem_experience_worker.py"
       - "scripts/run_ecosystem_experience.py"
       - "tests/test_experience_learning.py"
+      - "src/ecosystem_research/controller.py"
+      - "scripts/ecosystem_controller_worker.py"
+      - "scripts/run_ecosystem_controller.py"
+      - "tests/test_controller_recovery.py"
       - "experiments/ecosystem_learning/**"
       - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
@@ -45,6 +49,10 @@ on:
       - "scripts/ecosystem_experience_worker.py"
       - "scripts/run_ecosystem_experience.py"
       - "tests/test_experience_learning.py"
+      - "src/ecosystem_research/controller.py"
+      - "scripts/ecosystem_controller_worker.py"
+      - "scripts/run_ecosystem_controller.py"
+      - "tests/test_controller_recovery.py"
       - "experiments/ecosystem_learning/**"
       - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
@@ -166,6 +174,12 @@ jobs:
         run: python -B scripts/run_ecosystem_experience.py verify --directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
       - name: Reject rehashed journal poisoning, forged provenance and changed selected or guarded state
         run: python -B scripts/run_ecosystem_experience.py negative-checks --directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python
+      - name: Connect exclusive controller ownership, atomic memory checkpoints and cold-process restarts
+        run: python -B scripts/run_ecosystem_controller.py run --directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
+      - name: Replay controller checkpoints and eight actual ownership and crash fault probes
+        run: python -B scripts/run_ecosystem_controller.py verify --directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
+      - name: Reject rehashed checkpoint, rolled-back memory, changed plan and public guard
+        run: python -B scripts/run_ecosystem_controller.py negative-checks --directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -197,4 +211,7 @@ jobs:
             research/ecosystem/generated/experience/agents/community.sqlite3
             research/ecosystem/generated/experience/experience/journal.sqlite3
             research/ecosystem/generated/experience/reef/records.sqlite3
+            research/ecosystem/generated/controller/*.json
+            research/ecosystem/generated/controller/controller/journal.sqlite3
+            research/ecosystem/generated/controller/controller/journal.sqlite3.lock
           retention-days: 30
