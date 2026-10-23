@@ -8,6 +8,8 @@ The [specialist behavior layer](BEHAVIOR.md) extends that handoff with delayed-o
 
 The [shared experience layer](EXPERIENCE.md) adds a restartable admission journal, four producer jobs and a receiving identity, compound-task evaluation with historical retention, duplicate/poison rejection and suppression of advisory contexts contradicted by verified outcomes. Its fixed registry and local file handoff remain controlled research components.
 
+The [controller recovery layer](CONTROLLER.md) consumes that verified memory with exclusive local ownership, fenced sessions, atomic memory/checkpoint commits and explicit recovery after process death. Five cold-process batches reproduce the upstream experience exactly; eight actual fault probes and rehashed package attacks exercise the declared recovery boundary.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]
