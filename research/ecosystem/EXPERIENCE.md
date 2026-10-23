@@ -25,6 +25,8 @@ flowchart TD
 
 The journal is a bounded local SQLite database in DELETE journal mode. Writes use serialized transactions; reads use normal SQLite locks and a read transaction so another process's commits are observed consistently. Reopening verifies database integrity, the frozen admission-policy binding, sequential hash links and every admission decision. The full journal can be reconstructed from retained source evidence. This is not a Zoora chain ledger or consensus mechanism.
 
+The database size is checked before each batch commits. Exceeding the bound rolls back the whole batch, including earlier accepted and quarantined events in that transaction.
+
 The admission registry is constructed only after independent replay of the earlier behavior package and the new engine-generated cases. Every registered case digest binds its exact fields, source/outcome digests, domain and label. Its receipt binds the originating evidence, audited project, producer, completed job, artifact and exact report-file digest. Only the named receiver may consume this experiment's registry.
 
 Admission requires an exact registry and receipt match, a training partition, and a resolved outcome by the admission clock. Both outcome time **and actual admission time** constrain later historical-memory queries. A label delivered late cannot retroactively enter an earlier prediction. Real-market cases are outside this synthetic task schema and are rejected rather than silently mixed into training.
@@ -34,6 +36,8 @@ The same domain/source cannot be counted twice. One hundred replayed deliveries 
 Producers publish actual community artifacts; the receiving identity reads shared-project artifact metadata and belongs to that project. Private job reads remain denied. Local report bytes are matched to the published digests and independently replayed before admission. This is a local shared-file research handoff with API provenance, not a deployed peer-to-peer content-transfer network. Membership remains OWNER_DECLARED and job reports remain CLIENT_DECLARED internal consistency, not external service or model-execution attestation.
 
 The registry is frozen for this experiment. The journal API supports reopening and additional deliveries from that registry. It does not dynamically trust arbitrary new tasks or offer automatic cross-registry migration. The CLI builds a reproducible four-stage experiment in a fresh directory; it is not an unattended background learning service.
+
+Evidence generation runs in serial phases. Overlapping local command sessions during development produced intermittent inconsistent last-session snapshots; a definitive cause was not established. Fresh serial builds, independent replay, cold-process tests and a two-process shared-journal test reproduce the expected state. This revision qualifies the declared serial research workflow. Arbitrary overlapping controllers and unattended concurrent service operation remain unqualified.
 
 ## Expanded tasks and retained competence
 

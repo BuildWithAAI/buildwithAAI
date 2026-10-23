@@ -11,6 +11,7 @@ from ..multi_brain_research import training_lab as lab
 from ..solana_research import coin_evidence as ev
 
 MAX_EVENTS = 2048
+MAX_DATABASE_BYTES = 8 * 1024**2
 PROTOCOL = "AAI_VERIFIED_EXPERIENCE_JOURNAL_V1"
 RECEIPT_FIELDS = ("origin_evidence_sha256", "project_id", "agent_id", "job_id", "artifact_id", "report_sha256", "domain")
 
@@ -110,7 +111,7 @@ class ExperienceJournal:
 
     def _connect(self, *, readonly):
         lab.require(self.path.is_file() and not self.path.is_symlink()
-                    and self.path.stat().st_size <= 8 * 1024**2, "EXPERIENCE_DATABASE_FILE")
+                    and self.path.stat().st_size <= MAX_DATABASE_BYTES, "EXPERIENCE_DATABASE_FILE")
         # DELETE-mode journals need normal SQLite locks when a different process can write.
         uri = self.path.as_uri() + ("?mode=ro" if readonly else "?mode=rw")
         connection = sqlite3.connect(uri, uri=True, timeout=10)
@@ -154,6 +155,9 @@ class ExperienceJournal:
                 advance(state, event, self.rules)
                 connection.execute("INSERT INTO events VALUES (?, ?)", (event["sequence"], ev.canonical(event)))
                 results.append({"status": status, "reason": reason, "appended": True})
+            pages = connection.execute("PRAGMA page_count").fetchone()[0]
+            page_size = connection.execute("PRAGMA page_size").fetchone()[0]
+            lab.require(pages * page_size <= MAX_DATABASE_BYTES, "EXPERIENCE_DATABASE_BOUND")
             connection.commit()
         return results
 

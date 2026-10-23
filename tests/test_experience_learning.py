@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from src.ecosystem_research import behavior as b, experience as x
 from src.multi_brain_research import training_lab as lab
@@ -190,12 +191,60 @@ class ExperienceJournalTests(unittest.TestCase):
             str(self.path)], check=True, capture_output=True, text=True, timeout=20)
         self.assertEqual(result.stdout.strip(), "4")
 
+    def test_two_processes_serialize_writes_and_read_consistent_snapshots(self):
+        rules_path = Path(self.temporary.name) / "rules.json"
+        requests_path = Path(self.temporary.name) / "requests.json"
+        ev.write(rules_path, self.rules)
+        ev.write(requests_path, [request(c, self.rules) for c in self.cases[:2]])
+        code = """import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from src.ecosystem_research.experience import ExperienceJournal
+from src.solana_research.coin_evidence import read
+journal = ExperienceJournal(Path(sys.argv[2]), read(Path(sys.argv[3])))
+delivery = read(Path(sys.argv[4]))[int(sys.argv[5])]
+for _ in range(10):
+    journal.admit_many([delivery], 100)
+    value = journal.audit()
+    if value['accepted'] not in (1, 2) or value['events'] != value['accepted']:
+        raise ValueError('CONCURRENT_SNAPSHOT_INCONSISTENT')
+"""
+        workers = []
+        try:
+            for index in range(2):
+                workers.append(subprocess.Popen([sys.executable, "-I", "-B", "-c", code,
+                    str(Path(__file__).resolve().parents[1]), str(self.path), str(rules_path), str(requests_path), str(index)],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+            for worker in workers:
+                output, error = worker.communicate(timeout=20)
+                self.assertEqual(worker.returncode, 0, output + error)
+        finally:
+            for worker in workers:
+                if worker.poll() is None:
+                    worker.kill()
+                worker.communicate()
+        self.assertEqual(self.journal.audit()["accepted"], 2)
+        self.assertEqual(self.journal.audit()["events"], 2)
+
     def test_batch_bound_and_boolean_clock_fail_before_mutation(self):
         for requests, clock in (([request(self.cases[0], self.rules)] * (x.MAX_EVENTS + 1), 100),
                                 ([request(self.cases[0], self.rules)], True)):
             with self.assertRaises(ValueError):
                 self.journal.admit_many(requests, clock)
         self.assertEqual(self.journal.audit()["events"], 0)
+
+    def test_database_growth_limit_rolls_back_the_whole_batch(self):
+        before = self.path.read_bytes()
+        batch = [request(c, self.rules) for c in self.cases[:2]]
+        for i in range(20):
+            value = request(self.cases[0], self.rules)
+            value["case"]["id"] = f"unregistered:{i}"
+            batch.append(value)
+        with patch.object(x, "MAX_DATABASE_BYTES", len(before)):
+            with self.assertRaisesRegex(ValueError, "DATABASE_BOUND"):
+                self.journal.admit_many(batch, 100)
+        self.assertEqual(self.journal.audit()["events"], 0)
+        self.assertEqual(self.path.read_bytes(), before)
 
     def test_same_source_cannot_be_counted_again_under_a_different_valid_identity(self):
         first, other = deepcopy(self.cases[0]), deepcopy(self.cases[0])
