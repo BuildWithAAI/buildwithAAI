@@ -2,6 +2,8 @@
 
 This extends the [verified report-review layer](LEARNING.md) with a bounded pattern memory and four specialist task families. Existing simulators and offline checks produce task outcomes; a learner records resolved training outcomes, makes advisory classifications, and qualifies one frozen candidate per domain against untouched source variants. Actual pinned Reef interfaces retain the feedback and evaluate selection. This is an executable research component in the existing repository.
 
+The next [shared experience layer](EXPERIENCE.md) adds persisted admission across restart boundaries, compound-task variants, retention checks, provenance-bound sharing and a conservative contradiction guard. The original task and market-qualification boundaries below still apply.
+
 The economic purpose is to make decisions and service quality measurable: retain failed attempts as well as successes, recognize recurring problems, reject weaker versions, and share evidence through existing jobs and observer handoffs. No economic growth, cost savings, financial returns or service quality improvement in production has been established. Activity counts and self-reported success are insufficient evidence for rewards or reputation.
 
 ```mermaid

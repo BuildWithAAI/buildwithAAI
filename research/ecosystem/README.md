@@ -6,6 +6,8 @@ The [bounded Reef learning layer](LEARNING.md) consumes these verified job artif
 
 The [specialist behavior layer](BEHAVIOR.md) extends that handoff with delayed-outcome pattern memory for paper trading, simulated contract authorization, limited static code review and operational scope checks. Four actual sandbox jobs feed frozen task evaluation and Reef selection. Verified historical price-direction feedback is retained separately; the original authority controls and ABSTAIN gate remain in force.
 
+The [shared experience layer](EXPERIENCE.md) adds a restartable admission journal, four producer jobs and a receiving identity, compound-task evaluation with historical retention, duplicate/poison rejection and suppression of advisory contexts contradicted by verified outcomes. Its fixed registry and local file handoff remain controlled research components.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]
