@@ -12,6 +12,8 @@ The [controller recovery layer](CONTROLLER.md) consumes that verified memory wit
 
 The [authenticated model network](NETWORK.md) adds a real community HTTP artifact endpoint and independent agent processes that transfer the four selected models and their contradiction guards. It supports pinned HTTPS, project-scoped authorization, receiver-side guarded inference and successful-job replay after a service restart. The [connection inventory](CONNECTIONS.md) distinguishes implemented interfaces from the unfinished work needed for a complete live ecosystem.
 
+The [scanner observation feed](SCANNER_FEED.md) now connects the actual running scanner HTTP API, bounded durable collection and a separate community agent job. It retains response bytes and timestamps, rechecks source freshness, preserves missing/partial data and verifies HTTP/TLS handoffs. Scanner observations remain current source declarations: no qualified adapter to the synthetic pattern learners, training update or market execution is claimed.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]
@@ -30,7 +32,7 @@ flowchart TD
 | --- | --- | --- |
 | AAI.fun history | Original raw-source reconstruction, joined dataset and assessment | Existing decoder/coverage limits apply |
 | Frozen FlyVis readout | Verified trained package applied to target feature exports | The bridge verifier does not execute FlyVis; native execution is a separate preceding workflow step |
-| AAI scanner | Existing mint-account parser and provenance receipt on newly retained RPC bytes | Full scanner HTTP, market, holder and wallet-forensics services are not connected by this bridge |
+| AAI scanner | Existing mint parser plus the separate implemented HTTP observation feed for current market, mint, returned-account and address-activity sections | Current scanner declarations are not independently retained upstream receipts, exhaustive forensics, qualified model inputs or historical training labels |
 | Brain registry/gate | Actual ModuleSpec readiness and explicit transaction-horizon task | The older millisecond coordinator cannot consume this task; its adapter is blocked |
 | Agent community | Authenticated enrollment, project membership, submit/claim/complete jobs, published artifact digests, private activity and Store.audit | Local sandbox records, deterministic public test keys, no users or real funds |
 | Observer / assistant | Allowlisted public snapshot and hash-linked activity-event JSON | No hosted client, assistant tool installation or live stream |
