@@ -19,6 +19,10 @@ on:
       - "scripts/ecosystem_controller_worker.py"
       - "scripts/run_ecosystem_controller.py"
       - "tests/test_controller_recovery.py"
+      - "scripts/ecosystem_network_worker.py"
+      - "scripts/run_ecosystem_network.py"
+      - "tests/test_network_models.py"
+      - "tests/fixtures/ecosystem-network-bundle.json"
       - "experiments/ecosystem_learning/**"
       - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
@@ -53,6 +57,10 @@ on:
       - "scripts/ecosystem_controller_worker.py"
       - "scripts/run_ecosystem_controller.py"
       - "tests/test_controller_recovery.py"
+      - "scripts/ecosystem_network_worker.py"
+      - "scripts/run_ecosystem_network.py"
+      - "tests/test_network_models.py"
+      - "tests/fixtures/ecosystem-network-bundle.json"
       - "experiments/ecosystem_learning/**"
       - "scripts/capture_research_history.py"
       - "research/ecosystem/**"
@@ -180,6 +188,12 @@ jobs:
         run: python -B scripts/run_ecosystem_controller.py verify --directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
       - name: Reject rehashed checkpoint, rolled-back memory, changed plan and public guard
         run: python -B scripts/run_ecosystem_controller.py negative-checks --directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
+      - name: Transfer the actual selected models through authenticated HTTP and verified TLS
+        run: python -B scripts/run_ecosystem_network.py run --directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
+      - name: Reconstruct the receiving agent outputs, source ancestry and audited job bindings
+        run: python -B scripts/run_ecosystem_network.py verify --directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
+      - name: Reject changed transferred models, guard results, job bindings, observer authority and access claims
+        run: python -B scripts/run_ecosystem_network.py negative-checks --directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -214,4 +228,6 @@ jobs:
             research/ecosystem/generated/controller/*.json
             research/ecosystem/generated/controller/controller/journal.sqlite3
             research/ecosystem/generated/controller/controller/journal.sqlite3.lock
+            research/ecosystem/generated/network/*.json
+            research/ecosystem/generated/network/agents/community.sqlite3
           retention-days: 30
