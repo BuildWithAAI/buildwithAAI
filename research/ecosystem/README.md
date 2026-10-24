@@ -16,6 +16,8 @@ The [scanner observation feed](SCANNER_FEED.md) now connects the actual running 
 
 The [research service exchange](SERVICES.md) connects those artifacts to actual agent-to-agent work orders: immutable offers, bounded operator work allowances, leased jobs, verified delivery and explicit buyer acceptance. Scanner replay audits and guarded-model exercises share the existing identities, projects, models and audit. Work units are nonmonetary resource accounting; token payments and revenue are not inferred from accepted work.
 
+Unused OPEN orders can be explicitly expired at their server-checked start deadline by the bound buyer, provider or owning operator. This returns reserved work allowance without creating a job, preserves the order/audit history and supports exact retry after restart. Started or delivered work retains its separate completion/failure rules.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]
