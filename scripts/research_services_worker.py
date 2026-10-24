@@ -693,10 +693,58 @@ def run_lab(output, cfg):
             )
             checks["six_process_shared_allowance_race"] = True
             do(beta, command("CANCEL", order_id=winners[0]["result"]["id"]))
+            expiry_order_body = order_body(beta, alpha)
+            expiry_order_body["start_before_ms"] = time.time_ns() // 1000000 + 2000
+            expiring = do(beta, expiry_order_body)["result"]
+            denied(
+                "early_expiry_holds_allowance",
+                lambda: do(alpha, command("EXPIRE", order_id=expiring["id"])),
+                "SERVICE_EXPIRY_NOT_AUTHORIZED",
+            )
+            denied(
+                "foreign_operator_cannot_expire",
+                lambda: admin.request(
+                    "POST", s.ROOT_ROUTE + "/actions",
+                    command("EXPIRE", order_id=expiring["id"]),
+                    outsider["operator"],
+                ),
+                "SERVICE_ACTOR_FORBIDDEN",
+            )
+            # This bounded wait exercises the production clock and HTTP route;
+            # no test clock or client-supplied action time enters the service.
+            while time.time_ns() // 1000000 < expiring["start_before_ms"]:
+                time.sleep(0.05)
+            expiry_action = command("EXPIRE", order_id=expiring["id"])
+            expiry_cfg = {
+                **cli(beta),
+                "expected_principal": beta["operator_id"],
+                "expected_role": "OPERATOR",
+                "credential": beta["operator_credential"],
+                "action": expiry_action,
+            }
+            expired = child("act", expiry_cfg)
+            lab.require(
+                expired["result"]["state"] == "EXPIRED"
+                and expired["result"]["job_id"] is None,
+                "SERVICE_EXPIRED_ORDER_HAS_JOB",
+            )
+            checks["operator_expiry_releases_unused_allowance"] = True
+            lab.require(child("act", expiry_cfg)["replayed"], "SERVICE_EXPIRY_REPLAY")
+            checks["expiry_retry_without_second_release"] = True
+            denied(
+                "expired_order_cannot_start",
+                lambda: do(alpha, command("START", order_id=expiring["id"])),
+                "SERVICE_START_NOT_AUTHORIZED",
+            )
             reserved = do(beta, order_body(beta, alpha))["result"]
             started = do(
                 alpha, automatic("START", reserved["id"], order_id=reserved["id"])
             )["result"]
+            denied(
+                "started_order_cannot_expire",
+                lambda: do(beta, command("EXPIRE", order_id=reserved["id"])),
+                "SERVICE_EXPIRY_NOT_AUTHORIZED",
+            )
             denied(
                 "running_or_queued_reservation_held",
                 lambda: do(beta, command("ABORT_FAILED", order_id=reserved["id"])),
@@ -776,6 +824,11 @@ def run_lab(output, cfg):
             )
             checks["service_restart_without_duplicate_jobs_or_charges"] = True
             checks["verified_tls_after_restart"] = True
+            lab.require(
+                child("act", {**expiry_cfg, **transport})["replayed"],
+                "SERVICE_EXPIRY_RESTART_REPLAY",
+            )
+            checks["expiry_replay_after_tls_restart"] = True
             before = len(proxy.exchanges)
             wrong_catalog = child(
                 "observe", {**cli(alpha), "catalog_sha256": "f" * 64}, allow_error=True
@@ -818,6 +871,7 @@ def run_lab(output, cfg):
                     "beta_id": beta["agent"],
                     "first_order": first["id"],
                     "second_order": second["id"],
+                    "expired_order": expiring["id"],
                     "catalog_sha256": resources.digest,
                     "financial_settlement": False,
                     "live_execution_allowed": False,
@@ -880,6 +934,13 @@ def verify_lab(output, cfg):
         "owner_cannot_accept",
         "acceptance_replay_without_second_charge",
         "six_process_shared_allowance_race",
+        "early_expiry_holds_allowance",
+        "foreign_operator_cannot_expire",
+        "operator_expiry_releases_unused_allowance",
+        "expiry_retry_without_second_release",
+        "expired_order_cannot_start",
+        "started_order_cannot_expire",
+        "expiry_replay_after_tls_restart",
         "running_or_queued_reservation_held",
         "revoked_task_cannot_claim",
         "claim_and_audit_rollback",
@@ -911,10 +972,16 @@ def verify_lab(output, cfg):
         )
     orders = list(state["orders"].values())
     lab.require(
-        len(orders) == 4
+        len(orders) == 5
         and sorted(o["state"] for o in orders)
-        == ["ACCEPTED", "ACCEPTED", "CANCELLED", "FAILED"],
+        == ["ACCEPTED", "ACCEPTED", "CANCELLED", "EXPIRED", "FAILED"],
         "SERVICE_ORDER_STATES",
+    )
+    expired = state["orders"][exercise["expired_order"]]
+    lab.require(
+        expired["state"] == "EXPIRED"
+        and all(expired[k] is None for k in ("job_id", "artifact_id", "report_sha256")),
+        "SERVICE_EXPIRED_ORDER_BINDING",
     )
     lab.require(
         sorted(
@@ -941,10 +1008,11 @@ def verify_lab(output, cfg):
         "protocol": "AAI_RESEARCH_SERVICES_SUMMARY_V1",
         "agents_exchanging_work": 2,
         "supported_services": len(s.KINDS),
-        "orders": 4,
+        "orders": 5,
         "accepted_orders": 2,
         "cancelled_orders": 1,
         "failed_orders": 1,
+        "expired_orders": 1,
         "completed_jobs": 4,
         "job_artifacts": 4,
         "ledger_events": audit["events"],

@@ -235,6 +235,67 @@ class ServiceTests(unittest.TestCase):
                 B, "START", {"job_id": "8" * 32}, at=NOW + 30000, order_id=order["id"]
             )
 
+    def test_expiry_releases_at_exact_deadline_for_each_bound_party(self):
+        initial = deepcopy(self.state)
+        for actor in (A, B, OP):
+            with self.subTest(role=actor["role"], who=actor["principal_id"]):
+                self.state = deepcopy(initial)
+                order = self.order()
+                result = self.advance(
+                    actor, "EXPIRE", at=NOW + 30000, order_id=order["id"]
+                )
+                self.assertEqual(result["state"], "EXPIRED")
+                self.assertIsNone(result["job_id"])
+                self.assertEqual(self.accounting()["available"], 10)
+                self.assertEqual(self.accounting()["reserved"], 0)
+                self.assertEqual(self.accounting()["consumed"], 0)
+
+    def test_early_expiry_does_not_release_reserved_work(self):
+        order = self.order()
+        before = deepcopy(self.state)
+        with self.assertRaisesRegex(ValueError, "EXPIRY_NOT_AUTHORIZED"):
+            self.advance(A, "EXPIRE", at=NOW + 29999, order_id=order["id"])
+        self.assertEqual(self.state, before)
+
+    def test_expiry_forbids_owner_and_unrelated_agents_or_operators(self):
+        order = self.order()
+        stranger = {**A, "principal_id": "e" * 32}
+        for actor in (OWNER, OTHER_OP, stranger):
+            with self.subTest(actor=actor):
+                before = deepcopy(self.state)
+                with self.assertRaisesRegex(ValueError, "ACTOR_FORBIDDEN"):
+                    self.advance(actor, "EXPIRE", at=NOW + 30000, order_id=order["id"])
+                self.assertEqual(self.state, before)
+
+    def test_expiry_never_releases_a_started_or_delivered_job(self):
+        order, _ = self.delivered()
+        delivered = deepcopy(self.state)
+        for status in ("STARTED", "DELIVERED", "ACCEPTED", "REJECTED", "FAILED"):
+            with self.subTest(status=status):
+                self.state = deepcopy(delivered)
+                self.state["orders"][order["id"]]["state"] = status
+                before = deepcopy(self.state)
+                with self.assertRaisesRegex(ValueError, "EXPIRY_NOT_AUTHORIZED"):
+                    self.advance(OP, "EXPIRE", at=NOW + 60001, order_id=order["id"])
+                self.assertEqual(self.state, before)
+
+    def test_revocation_and_closed_offer_do_not_prevent_unused_expiry(self):
+        order = self.order()
+        self.advance(OP, "REVOKE", mandate_id=self.mandate["id"])
+        self.advance(B, "CLOSE", listing_id=self.listing["id"])
+        self.advance(OP, "EXPIRE", at=NOW + 60001, order_id=order["id"])
+        self.assertEqual(self.accounting()["available"], 10)
+
+    def test_expired_order_cannot_restart_or_release_twice(self):
+        order = self.order()
+        self.advance(B, "EXPIRE", at=NOW + 30000, order_id=order["id"])
+        before = deepcopy(self.state)
+        with self.assertRaisesRegex(ValueError, "START_NOT_AUTHORIZED"):
+            self.advance(B, "START", {"job_id": "8" * 32}, at=NOW + 30000, order_id=order["id"])
+        with self.assertRaisesRegex(ValueError, "EXPIRY_NOT_AUTHORIZED"):
+            self.advance(A, "EXPIRE", at=NOW + 30001, order_id=order["id"])
+        self.assertEqual(self.state, before)
+
     def test_closed_listing_is_not_reactivated_by_an_order(self):
         self.advance(B, "CLOSE", listing_id=self.listing["id"])
         with self.assertRaisesRegex(ValueError, "EXPIRED_OR_REVOKED"):

@@ -37,6 +37,7 @@ COMMAND_FIELDS = {
     "ACCEPT": ("order_id", "report_sha256"),
     "REJECT": ("order_id", "report_sha256"),
     "CANCEL": ("order_id",),
+    "EXPIRE": ("order_id",),
     "ABORT_FAILED": ("order_id",),
     "REVOKE": ("mandate_id",),
     "CLOSE": ("listing_id",),
@@ -412,6 +413,21 @@ def apply(state, actor, command, at, facts, catalog):
             exact(facts, ())
             lab.require(value["state"] == "OPEN", "SERVICE_STARTED_RESERVATION_HELD")
             value["state"] = "CANCELLED"
+        elif kind == "EXPIRE":
+            mandate = state["mandates"][value["mandate_id"]]
+            lab.require(
+                (role == "AGENT" and who in (value["buyer_id"], value["provider_id"]))
+                or (role == "OPERATOR" and who == mandate["operator_id"]),
+                "SERVICE_ACTOR_FORBIDDEN",
+            )
+            exact(facts, ())
+            lab.require(
+                value["state"] == "OPEN"
+                and value["job_id"] is None
+                and at >= value["start_before_ms"],
+                "SERVICE_EXPIRY_NOT_AUTHORIZED",
+            )
+            value["state"] = "EXPIRED"
         else:
             mandate = state["mandates"][value["mandate_id"]]
             lab.require(
@@ -774,12 +790,15 @@ def store_type(base, Problem, resources):
                 "ACCEPT",
                 "REJECT",
                 "CANCEL",
+                "EXPIRE",
                 "ABORT_FAILED",
             ):
                 order = state["orders"].get(command.get("order_id"))
                 lab.require(order is not None, "SERVICE_NOT_FOUND")
                 listing = state["listings"][order["listing_id"]]
-                if principal["role"] == "AGENT":
+                # Recovery cannot start work or read reports. Allow the bound
+                # parties to release unused work even after membership removal.
+                if principal["role"] == "AGENT" and kind != "EXPIRE":
                     self._service_member(
                         db, principal["principal_id"], order["project_id"]
                     )
