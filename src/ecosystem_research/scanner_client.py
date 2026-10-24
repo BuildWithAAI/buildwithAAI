@@ -169,10 +169,12 @@ class ScannerClient:
                 "path": path,
                 "body": body,
                 "status": response.status,
-                "content_type": response.getheader("Content-Type", "")
-                .split(";")[0]
-                .strip()
-                .lower(),
+                # Retain a category, never arbitrary server header text. An invalid
+                # header can otherwise copy a reflected credential into evidence.
+                "content_type": "application/json"
+                if response.getheader("Content-Type", "").split(";")[0].strip().lower()
+                == "application/json"
+                else "UNSUPPORTED",
                 "no_store": "no-store"
                 in [
                     v.strip().lower()

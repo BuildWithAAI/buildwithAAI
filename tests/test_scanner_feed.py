@@ -4,6 +4,7 @@ from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import sqlite3
+import os
 import subprocess
 import sys
 import tempfile
@@ -140,6 +141,41 @@ class FeedJournalTests(unittest.TestCase):
         return self.journal.append(
             record() if value is None else value, self.journal.snapshot()["head_sha256"]
         )
+
+    def test_standalone_snapshot_flushes_a_writable_file_and_never_overwrites(self):
+        destination = Path(self.temp.name) / "snapshot.sqlite3"
+        real_sync = os.fsync
+        flushed = []
+
+        def sync(descriptor):
+            # A zero-byte write checks handle access without changing bytes.
+            import stat
+
+            if stat.S_ISREG(os.fstat(descriptor).st_mode):
+                os.write(descriptor, b"")
+                flushed.append(True)
+            real_sync(descriptor)
+
+        with closing(sqlite3.connect(self.path)) as source:
+            with patch.object(f.os, "fsync", side_effect=sync):
+                f.publish_sqlite_snapshot(source, destination)
+            self.assertTrue(flushed)
+            with closing(sqlite3.connect(destination)) as copied:
+                self.assertEqual(
+                    copied.execute("PRAGMA integrity_check").fetchall(), [("ok",)]
+                )
+                self.assertEqual(
+                    copied.execute("PRAGMA journal_mode").fetchone()[0], "delete"
+                )
+                self.assertEqual(
+                    copied.execute("SELECT * FROM metadata").fetchall(),
+                    source.execute("SELECT * FROM metadata").fetchall(),
+                )
+            original = destination.read_bytes()
+            with self.assertRaisesRegex(ValueError, "SNAPSHOT_EXISTS"):
+                f.publish_sqlite_snapshot(source, destination)
+            self.assertEqual(destination.read_bytes(), original)
+        self.assertFalse(any(Path(self.temp.name).glob(".feed-snapshot-*")))
 
     def test_reopen_and_cold_process_preserve_committed_intake(self):
         first = self.append()
@@ -353,6 +389,15 @@ class FeedClientTests(unittest.TestCase):
         self.override["/api/scan"] = (200, {"stolen": self.token}, {})
         value = self.client.capture()
         self.assertEqual(value["io_error"]["code"], "CREDENTIAL_ECHO")
+        self.assertNotIn(self.token, ev.canonical(value))
+
+    def test_metadata_credential_echo_is_not_retained(self):
+        self.override["/api/scan"] = (200, {}, {"Content-Type": self.token})
+        value = self.client.capture()
+        self.assertEqual(value["responses"]["scan"]["content_type"], "UNSUPPORTED")
+        self.assertEqual(
+            f.assess(value, self.client.rules)["error"], "FEED_HTTP_HEADERS"
+        )
         self.assertNotIn(self.token, ev.canonical(value))
 
     def test_cli_collect_resume_status_and_stale_head_before_io(self):

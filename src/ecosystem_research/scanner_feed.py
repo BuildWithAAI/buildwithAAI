@@ -12,6 +12,10 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import re
 import sqlite3
+import os
+from pathlib import Path
+import tempfile
+import time
 
 from .controller import FileLock, safe_path
 from . import network as n
@@ -29,6 +33,53 @@ ROUTES = (
     ("health_after", "GET", "/api/health"),
 )
 CORE = ("mint", "usd_price", "sol_price", "largest_token_accounts", "address_activity")
+
+
+def publish_sqlite_snapshot(connection, destination):
+    """Publish a standalone private backup without replacing an existing path."""
+    target = safe_path(destination)
+    lab.require(not os.path.lexists(target), "FEED_SNAPSHOT_EXISTS")
+    lab.require(
+        not any(
+            os.path.lexists(str(target) + suffix)
+            for suffix in ("-wal", "-shm", "-journal")
+        ),
+        "FEED_SNAPSHOT_SIDECAR",
+    )
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=".feed-snapshot-", suffix=".sqlite3", dir=target.parent
+    )
+    os.close(descriptor)
+    try:
+        with closing(sqlite3.connect(temporary)) as backup:
+            deadline = time.monotonic() + 30
+
+            def progress(*_):
+                lab.require(time.monotonic() <= deadline, "FEED_SNAPSHOT_DEADLINE")
+
+            connection.backup(backup, pages=256, progress=progress)
+            backup.execute("PRAGMA journal_mode=DELETE")
+            lab.require(
+                backup.execute("PRAGMA integrity_check").fetchall() == [("ok",)],
+                "FEED_SNAPSHOT_INTEGRITY",
+            )
+        lab.require(
+            Path(temporary).stat().st_size <= MAX_DATABASE, "FEED_SNAPSHOT_BOUND"
+        )
+        # Windows FlushFileBuffers requires a write-capable handle. Do not use
+        # the older scanner component's read-only fsync path for this package.
+        with open(temporary, "r+b") as handle:
+            os.fsync(handle.fileno())
+        os.link(temporary, target)
+        if os.name == "posix":
+            directory = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+    finally:
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            Path(temporary + suffix).unlink(missing_ok=True)
 
 
 def address(value):

@@ -245,9 +245,12 @@ class RunningScanner:
         self.server.task_dispatcher.shutdown(timeout=8)
         self.server.close()
         self.wasyn.close_all(map=self.channels, ignore_all=True)
-        if snapshot is not None:
-            self.store.backup(snapshot)
-        self.store.close()
+        try:
+            if snapshot is not None:
+                with self.store.lock:
+                    f.publish_sqlite_snapshot(self.store.db, snapshot)
+        finally:
+            self.store.close()
 
 
 class TLSProxy:
@@ -776,7 +779,26 @@ def main():
     except Exception as error:
         code = getattr(error, "code", None)
         if code is None:
-            code = str(error) if isinstance(error, ValueError) else type(error).__name__
+            if isinstance(error, ValueError):
+                code = str(error)
+            else:
+                # Keep failures diagnosable across operating systems without
+                # exposing exception arguments, credentials or private paths.
+                frames, trace = [], error.__traceback__
+                while trace is not None:
+                    frames.append(
+                        Path(trace.tb_frame.f_code.co_filename).name
+                        + ":"
+                        + str(trace.tb_lineno)
+                    )
+                    trace = trace.tb_next
+                code = (
+                    type(error).__name__
+                    + ":"
+                    + str(getattr(error, "errno", None))
+                    + ":"
+                    + "/".join(frames[-3:])
+                )
         print(
             ev.canonical(
                 {
