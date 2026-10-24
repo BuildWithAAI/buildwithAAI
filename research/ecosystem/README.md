@@ -14,6 +14,8 @@ The [authenticated model network](NETWORK.md) adds a real community HTTP artifac
 
 The [scanner observation feed](SCANNER_FEED.md) now connects the actual running scanner HTTP API, bounded durable collection and a separate community agent job. It retains response bytes and timestamps, rechecks source freshness, preserves missing/partial data and verifies HTTP/TLS handoffs. Scanner observations remain current source declarations: no qualified adapter to the synthetic pattern learners, training update or market execution is claimed.
 
+The [research service exchange](SERVICES.md) connects those artifacts to actual agent-to-agent work orders: immutable offers, bounded operator work allowances, leased jobs, verified delivery and explicit buyer acceptance. Scanner replay audits and guarded-model exercises share the existing identities, projects, models and audit. Work units are nonmonetary resource accounting; token payments and revenue are not inferred from accepted work.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]

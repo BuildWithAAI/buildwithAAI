@@ -25,6 +25,9 @@ on:
       - "scripts/scanner_feed_worker.py"
       - "scripts/run_scanner_feed.py"
       - "tests/test_scanner_feed.py"
+      - "scripts/research_services_worker.py"
+      - "scripts/run_research_services.py"
+      - "tests/test_research_services.py"
       - "tests/feed_fixtures.py"
       - "tests/fixtures/ecosystem-network-bundle.json"
       - "experiments/ecosystem_learning/**"
@@ -67,6 +70,9 @@ on:
       - "scripts/scanner_feed_worker.py"
       - "scripts/run_scanner_feed.py"
       - "tests/test_scanner_feed.py"
+      - "scripts/research_services_worker.py"
+      - "scripts/run_research_services.py"
+      - "tests/test_research_services.py"
       - "tests/feed_fixtures.py"
       - "tests/fixtures/ecosystem-network-bundle.json"
       - "experiments/ecosystem_learning/**"
@@ -208,6 +214,12 @@ jobs:
         run: python -B scripts/run_scanner_feed.py verify --directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
       - name: Reject rehashed scanner projections, changed agent facts, job bindings, policy and authority
         run: python -B scripts/run_scanner_feed.py negative-checks --directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
+      - name: Connect scanner replay and selected model checks to bounded agent-to-agent service orders
+        run: python -B scripts/run_research_services.py run --directory research/ecosystem/generated/services --feed-directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
+      - name: Replay work allowances, source-bound reports, actual job and artifact state, acceptance and shared audit
+        run: python -B scripts/run_research_services.py verify --directory research/ecosystem/generated/services --feed-directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
+      - name: Reject deleted or rehashed service events, changed delivered bytes, job binding and financial authority
+        run: python -B scripts/run_research_services.py negative-checks --directory research/ecosystem/generated/services --feed-directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -251,4 +263,6 @@ jobs:
             research/ecosystem/generated/scanner-feed/tls-feed/observations.sqlite3
             research/ecosystem/generated/scanner-feed/agents/community.sqlite3
             research/ecosystem/generated/scanner-feed/scanner.sqlite3
+            research/ecosystem/generated/services/*.json
+            research/ecosystem/generated/services/agents/community.sqlite3
           retention-days: 30
