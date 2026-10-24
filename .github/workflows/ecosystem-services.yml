@@ -1,0 +1,83 @@
+name: AAI Research Service Economy
+on:
+  pull_request:
+    paths:
+      - "src/ecosystem_research/**"
+      - "scripts/research_services_worker.py"
+      - "scripts/run_research_services.py"
+      - "tests/test_research_services.py"
+      - "tests/feed_fixtures.py"
+      - "tests/fixtures/ecosystem-network-bundle.json"
+      - "research/ecosystem/**"
+      - ".github/workflows/ecosystem-services.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/ecosystem_research/**"
+      - "scripts/research_services_worker.py"
+      - "scripts/run_research_services.py"
+      - "tests/test_research_services.py"
+      - "tests/feed_fixtures.py"
+      - "tests/fixtures/ecosystem-network-bundle.json"
+      - "research/ecosystem/**"
+      - ".github/workflows/ecosystem-services.yml"
+permissions:
+  contents: read
+jobs:
+  services:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: BuildWithAAI/buildwithAAI
+          ref: fc42d8b36da77c58430e4a7594a30a0225883b6c
+          path: .ecosystem-community
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: BuildWithAAI/buildwithAAI
+          ref: 97108a271face220aef6296fddb2e18abdb210b5
+          path: .ecosystem-scanner
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install the existing hash-locked service runtime
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r .ecosystem-community/projects/zoora-agent-community/requirements.lock
+      - name: Install pinned development linter
+        run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - name: Lint service contracts, workers and command wiring
+        run: python -m ruff check --select E4,E7,E9,F,B src/ecosystem_research/services.py scripts/research_services_worker.py scripts/run_research_services.py tests/test_research_services.py
+      - name: Strict normal and optimized accounting and evidence-contract regressions
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p test_research_services.py -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p test_research_services.py -v
+      - name: Generate an actual scanner and community transport fixture with explicitly untrusted synthetic sources
+        run: python -B scripts/run_scanner_feed.py transport-self-test --directory research/ecosystem/generated/services-feed-contract --bundle-file tests/fixtures/ecosystem-network-bundle.json --trusted-controller-sha256 b521bad111dab36cc42d20bcc29d041d25b4f7f2cbcb39261bf8b65280991ecd --scanner-source .ecosystem-scanner --community-source .ecosystem-community
+      - name: Actual agent work exchange, six-process allowance race, committed-job crash recovery, verified TLS and mutations
+        run: python -B scripts/run_research_services.py transport-self-test --directory research/ecosystem/generated/services-contract --feed-directory research/ecosystem/generated/services-feed-contract --bundle-file tests/fixtures/ecosystem-network-bundle.json --trusted-controller-sha256 b521bad111dab36cc42d20bcc29d041d25b4f7f2cbcb39261bf8b65280991ecd --scanner-source .ecosystem-scanner --community-source .ecosystem-community
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: research-service-economy-evidence-${{ matrix.os }}
+          path: |
+            research/ecosystem/generated/services-contract/*.json
+            research/ecosystem/generated/services-contract/agents/community.sqlite3
+            research/ecosystem/generated/services-feed-contract/*.json
+            research/ecosystem/generated/services-feed-contract/http-feed/*.json
+            research/ecosystem/generated/services-feed-contract/http-feed/observations.sqlite3
+            research/ecosystem/generated/services-feed-contract/tls-feed/*.json
+            research/ecosystem/generated/services-feed-contract/tls-feed/observations.sqlite3
+            research/ecosystem/generated/services-feed-contract/agents/community.sqlite3
+            research/ecosystem/generated/services-feed-contract/scanner.sqlite3
+          retention-days: 30
