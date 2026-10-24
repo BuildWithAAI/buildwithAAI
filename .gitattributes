@@ -4,3 +4,4 @@
 /experiments/flyvis_trained_reference/**/*.npy binary
 /research/consensus/** text eol=lf
 /research/consensus/**/*.zip binary
+/tests/fixtures/ecosystem-network-bundle.json text eol=lf

@@ -10,6 +10,8 @@ The [shared experience layer](EXPERIENCE.md) adds a restartable admission journa
 
 The [controller recovery layer](CONTROLLER.md) consumes that verified memory with exclusive local ownership, fenced sessions, atomic memory/checkpoint commits and explicit recovery after process death. Five cold-process batches reproduce the upstream experience exactly; eight actual fault probes and rehashed package attacks exercise the declared recovery boundary.
 
+The [authenticated model network](NETWORK.md) adds a real community HTTP artifact endpoint and independent agent processes that transfer the four selected models and their contradiction guards. It supports pinned HTTPS, project-scoped authorization, receiver-side guarded inference and successful-job replay after a service restart. The [connection inventory](CONNECTIONS.md) distinguishes implemented interfaces from the unfinished work needed for a complete live ecosystem.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]
