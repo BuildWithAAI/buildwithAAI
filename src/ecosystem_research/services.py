@@ -11,7 +11,7 @@ from contextlib import closing
 import re
 import sqlite3
 
-from . import network as n, scanner_feed as f
+from . import network as n, scanner_feed as f, service_evidence as evidence
 from ..multi_brain_research import training_lab as lab
 from ..solana_research import coin_evidence as ev
 
@@ -126,6 +126,7 @@ class Resources:
             "live_execution_allowed": False,
         }
         self.digest = lab.digest(self.catalog)
+        self.evidence = evidence.Export(self.journal, self.head, self.policy)
 
     def check(self):
         lab.require(
@@ -467,6 +468,55 @@ def job_request(order, listing, resources):
         "max_steps": 2,
         "timeout_seconds": 120,
     }
+
+
+def readiness(state, order, principal, at, job_state, offer_available, queue_clear):
+    """A server-time observation, not an authorization or reserved job claim."""
+    listing = state["listings"][order["listing_id"]]
+    mandate = state["mandates"][order["mandate_id"]]
+    fulfill, accept = [], []
+    if principal != order["provider_id"]:
+        fulfill.append("PROVIDER_REQUIRED")
+    if principal != order["buyer_id"]:
+        accept.append("BUYER_REQUIRED")
+    if order["state"] not in ("DELIVERED", "ACCEPTED"):
+        accept.append("DELIVERY_REQUIRED")
+    if order["state"] not in ("OPEN", "STARTED", "DELIVERED", "ACCEPTED"):
+        fulfill.append("ORDER_NOT_WORKABLE")
+    if order["state"] == "OPEN" or job_state == "QUEUED":
+        if not listing["active"] or not offer_available:
+            fulfill.append("OFFER_UNAVAILABLE")
+        if mandate["revoked"]:
+            fulfill.append("MANDATE_REVOKED")
+        if at >= min(order["start_before_ms"], mandate["expires_ms"], listing["expires_ms"]):
+            fulfill.append("START_WINDOW_EXPIRED")
+        if not queue_clear:
+            fulfill.append("DEDICATED_QUEUE_REQUIRED")
+    if order["state"] == "STARTED" and job_state not in ("QUEUED", "SUCCEEDED"):
+        fulfill.append("OPERATOR_RECOVERY_REQUIRED")
+    return {"fulfill": fulfill, "accept": accept}
+
+
+def assignments(view, principal, mode, limit):
+    """Bounded existing work only; never grant mandates or retry uncertain jobs."""
+    n.identity(principal)
+    integer(limit, 1, 4)
+    lab.require(mode in ("provide", "accept", "both"), "SERVICE_WORK_MODE")
+    lab.require(type(view.get("orders")) is dict and len(view["orders"]) <= MAX_ORDERS,
+                "SERVICE_WORK_VIEW")
+    selected = []
+    for key, order in sorted(view["orders"].items()):
+        lab.require(n.identity(key) == order["id"], "SERVICE_WORK_ORDER_ID")
+        action = None
+        if mode in ("provide", "both") and order["state"] == "OPEN" and order["provider_id"] == principal:
+            action = "fulfill"
+        elif mode in ("accept", "both") and order["state"] == "DELIVERED" and order["buyer_id"] == principal:
+            action = "accept"
+        if action:
+            selected.append({"order_id": key, "action": action})
+            if len(selected) == limit:
+                break
+    return selected
 
 
 def store_type(base, Problem, resources):
@@ -1055,7 +1105,7 @@ def store_type(base, Problem, resources):
                         "live_execution_allowed": False,
                     }
                 match = re.fullmatch(
-                    ROOT_ROUTE + r"/orders/([0-9a-f]{32})/delivery", route
+                    ROOT_ROUTE + r"/orders/([0-9a-f]{32})/(delivery|readiness|evidence)(?:/([0-9a-f]{64})/(0|[1-9][0-9]?))?", route
                 )
                 if match:
                     self._role(principal, "AGENT")
@@ -1069,11 +1119,44 @@ def store_type(base, Problem, resources):
                     self._service_member(
                         db, principal["principal_id"], order["project_id"]
                     )
+                    kind, digest, index = match.group(2, 3, 4)
+                    lab.require(digest is None or kind == "evidence", "SERVICE_ROUTE_NOT_FOUND")
+                    listing = state["listings"][order["listing_id"]]
+                    if kind == "evidence":
+                        if digest is None:
+                            return 200, resources.evidence.manifest(resources.digest, order["id"])
+                        return 200, resources.evidence.chunk(resources.digest, order["id"], digest, int(index))
+                    if kind == "readiness":
+                        job = None if order["job_id"] is None else self._row(db, "jobs", order["job_id"])
+                        queued = db.execute(
+                            "SELECT * FROM jobs WHERE agent_id=? AND project_id=? AND state IN ('QUEUED','RUNNING')",
+                            (order["provider_id"], order["project_id"]),
+                        ).fetchall()
+                        queue_clear = all(row["id"] == order["job_id"] for row in queued
+                                          if self._job_effective(db, row, at)[0] in ("QUEUED", "RUNNING"))
+                        job_state = None if job is None else self._job_effective(db, job, at)[0]
+                        gates = readiness(state, order, principal["principal_id"], at,
+                                          job_state,
+                                          self._offer_available(db, self._row(db, "offers", listing["community_offer_id"])),
+                                          queue_clear)
+                        # A provider's membership alone does not authorize work
+                        # for a buyer who is no longer an active project member.
+                        try:
+                            self._service_member(db, order["buyer_id"], order["project_id"])
+                        except Problem:
+                            gates["fulfill"].append("BUYER_MEMBERSHIP_REQUIRED")
+                        return 200, {
+                            "protocol": "AAI_SERVICE_READINESS_V1", "catalog_sha256": resources.digest,
+                            "order_id": order["id"], "order_state": order["state"],
+                            "job_state": job_state,
+                            "observed_at_ms": at, "head_sha256": head, "blockers": gates,
+                            "scope": "POINT_IN_TIME_RESEARCH_ACTION", "authorization_granted": False,
+                            "financial_settlement": False, "live_execution_allowed": False,
+                        }
                     lab.require(
                         order["state"] in ("DELIVERED", "ACCEPTED", "REJECTED"),
                         "SERVICE_NOT_DELIVERED",
                     )
-                    listing = state["listings"][order["listing_id"]]
                     self._service_completed_job(
                         db, order, listing, order["report_sha256"]
                     )
