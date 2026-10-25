@@ -18,6 +18,8 @@ The [research service exchange](SERVICES.md) connects those artifacts to actual 
 
 Unused OPEN orders can be explicitly expired at their server-checked start deadline by the bound buyer, provider or owning operator. This returns reserved work allowance without creating a job, preserves the order/audit history and supports exact retry after restart. Started or delivered work retains its separate completion/failure rules.
 
+[Remote research agents](REMOTE_AGENTS.md) can now fetch both models and pinned scanner records through authenticated order-scoped connections. A public preflight command checks actual inputs and server-time action blockers without changing jobs or allowances. A bounded `work-once` command provides or accepts eligible work under existing mandates; STARTED jobs stay on explicit recovery. The connected lab no longer passes the host's source folder to agents. Physical-host commissioning and continuous supervision remain separate.
+
 ~~~mermaid
 flowchart TD
   S["Verified source history"] --> H["Research handoff"]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
+from contextlib import closing, contextmanager
 import os
 from pathlib import Path
 import signal
@@ -17,7 +17,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from src.ecosystem_research import network as n, scanner_feed as f, services as s  # noqa: E402
+from src.ecosystem_research import network as n, scanner_feed as f, services as s, service_evidence as evidence  # noqa: E402
 from src.ecosystem_research.checkout import worker_environment  # noqa: E402
 from src.multi_brain_research import training_lab as lab  # noqa: E402
 from src.solana_research import coin_evidence as ev  # noqa: E402
@@ -105,6 +105,56 @@ def automatic(kind, record_id, **fields):
     }
 
 
+@contextmanager
+def agent_resources(client, token, cfg, order):
+    bundle = n.receive(client, token, order["project_id"],
+                       cfg["controller_manifest_sha256"], cfg["bundle_sha256"])
+    if cfg.get("feed_directory"):
+        resources = resources_for(cfg, bundle)
+        receipt = {"mode": "EXPLICIT_LOCAL_JOURNAL", "feed_head_sha256": resources.head,
+                   "feed_policy_sha256": resources.policy, "independent_source_attestation": False}
+        lab.require(resources.digest == cfg["catalog_sha256"], "SERVICE_LOCAL_CATALOG_PIN")
+        yield resources, receipt
+    else:
+        with evidence.receive(client, token, cfg["catalog_sha256"], order["id"],
+                              cfg["feed_head_sha256"], cfg["feed_policy_sha256"]) as (journal, receipt):
+            resources = s.Resources(bundle, cfg["controller_manifest_sha256"], journal,
+                                    cfg["feed_head_sha256"], cfg["feed_policy_sha256"])
+            lab.require(resources.digest == cfg["catalog_sha256"], "SERVICE_LOCAL_CATALOG_PIN")
+            yield resources, receipt
+
+
+def preflight(client, token, cfg, order, listing, resources, receipt):
+    action_name = cfg["for_action"]
+    lab.require(action_name in ("fulfill", "accept"), "SERVICE_PREFLIGHT_ACTION")
+    report = resources.report(order, listing)
+    _, ready = client.request("GET", s.ROOT_ROUTE + "/orders/" + order["id"] + "/readiness", token=token)
+    lab.exact(ready, ("protocol", "catalog_sha256", "order_id", "order_state", "job_state",
+                      "observed_at_ms", "head_sha256", "blockers", "scope", "authorization_granted",
+                      "financial_settlement", "live_execution_allowed"))
+    lab.require(ready["protocol"] == "AAI_SERVICE_READINESS_V1"
+                and ready["catalog_sha256"] == resources.digest and ready["order_id"] == order["id"]
+                and ready["scope"] == "POINT_IN_TIME_RESEARCH_ACTION"
+                and ready["authorization_granted"] is False and ready["financial_settlement"] is False
+                and ready["live_execution_allowed"] is False, "SERVICE_PREFLIGHT_BINDING")
+    lab.exact(ready["blockers"], ("fulfill", "accept"))
+    allowed = {"PROVIDER_REQUIRED", "BUYER_REQUIRED", "DELIVERY_REQUIRED", "ORDER_NOT_WORKABLE",
+               "OFFER_UNAVAILABLE", "MANDATE_REVOKED", "START_WINDOW_EXPIRED", "DEDICATED_QUEUE_REQUIRED",
+               "OPERATOR_RECOVERY_REQUIRED", "BUYER_MEMBERSHIP_REQUIRED"}
+    for codes in ready["blockers"].values():
+        lab.require(type(codes) is list and len(codes) <= len(allowed)
+                    and all(type(c) is str and c in allowed for c in codes), "SERVICE_PREFLIGHT_REASONS")
+    return {
+        "protocol": "AAI_SERVICE_PREFLIGHT_V1", "status": "BLOCKED" if ready["blockers"][action_name]
+        else "READY_FOR_BOUNDED_RESEARCH_ACTION", "action": action_name,
+        "connection_binding": client.binding(), "transport": "HTTPS_VERIFIED" if client.origin else "LOOPBACK_HTTP",
+        "catalog_sha256": resources.digest, "order_id": order["id"],
+        "model_bundle_sha256": ev.sha(n.raw(resources.bundle)), "evidence": receipt,
+        "expected_report_sha256": ev.sha(n.raw(report)), "server_readiness": ready,
+        "physical_host_commissioned": False, "financial_settlement": False, "live_execution_allowed": False,
+    }
+
+
 def leaf(verb, cfg):
     client, token = connection(cfg)
     if verb == "act":
@@ -117,19 +167,51 @@ def leaf(verb, cfg):
     _, view = client.request("GET", s.ROOT_ROUTE + "/view", token=token)
     if verb == "observe":
         return view
+    if verb == "work-once":
+        lab.require(cfg.get("expected_role", "AGENT") == "AGENT", "SERVICE_AGENT_REQUIRED")
+        outcomes = []
+        selected = s.assignments(view, cfg["expected_principal"], cfg["work_mode"], cfg["max_orders"])
+        for item in selected:
+            try:
+                result = for_order("work", {**cfg, "order_id": item["order_id"], "for_action": item["action"]},
+                                   client, token, view)
+                outcomes.append({**item, **result})
+            except Exception as error:
+                code = getattr(error, "code", None)
+                if code is None:
+                    code = str(error)[:100] if isinstance(error, ValueError) else type(error).__name__
+                outcomes.append({**item, "status": "STOPPED_FOR_REVIEW", "error": code,
+                                 "automatic_retry": False})
+                break
+        status = "NO_ELIGIBLE_ORDERS" if not selected else "COMPLETE"
+        if any(o["status"] == "STOPPED_FOR_REVIEW" for o in outcomes):
+            status = "STOPPED_FOR_REVIEW"
+        elif outcomes and all(o["status"] == "BLOCKED" for o in outcomes):
+            status = "BLOCKED"
+        return {"protocol": "AAI_SERVICE_WORK_CYCLE_V1", "status": status, "outcomes": outcomes,
+                "candidate_limit": cfg["max_orders"], "work_mode": cfg["work_mode"],
+                "unit": s.UNIT, "financial_settlement": False, "live_execution_allowed": False}
+    return for_order(verb, cfg, client, token, view)
+
+
+def for_order(verb, cfg, client, token, view):
     order = view["orders"].get(n.identity(cfg["order_id"]))
     lab.require(order is not None, "SERVICE_ORDER_NOT_VISIBLE")
     listing = view["listings"].get(order["listing_id"])
     lab.require(listing is not None, "SERVICE_LISTING_NOT_VISIBLE")
-    bundle = n.receive(
-        client,
-        token,
-        order["project_id"],
-        cfg["controller_manifest_sha256"],
-        cfg["bundle_sha256"],
-    )
-    resources = resources_for(cfg, bundle)
-    lab.require(resources.digest == cfg["catalog_sha256"], "SERVICE_LOCAL_CATALOG_PIN")
+    with agent_resources(client, token, cfg, order) as (resources, receipt):
+        if verb == "preflight":
+            return preflight(client, token, cfg, order, listing, resources, receipt)
+        if verb == "work":
+            ready = preflight(client, token, cfg, order, listing, resources, receipt)
+            if ready["status"] == "BLOCKED":
+                return {"status": "BLOCKED", "preflight": ready}
+            result = perform(cfg["for_action"], cfg, client, token, order, listing, resources)
+            return {"status": "COMPLETED", "preflight": ready, "result": result, "evidence": receipt}
+        return {**perform(verb, cfg, client, token, order, listing, resources), "evidence": receipt}
+
+
+def perform(verb, cfg, client, token, order, listing, resources):
     if verb == "accept":
         lab.require(
             order["buyer_id"] == cfg["expected_principal"], "SERVICE_BUYER_REQUIRED"
@@ -302,6 +384,7 @@ def serve(cfg):
     if cfg.get("public_origin"):
         os.environ["ZOORA_PUBLIC_ORIGIN"] = cfg["public_origin"]
     server = Server(store, cfg.get("port", 8765))
+    _, status = store.call("GET", "/v1/status")
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     try:
         print(
@@ -309,7 +392,14 @@ def serve(cfg):
                 {
                     "protocol": s.PROTOCOL,
                     "url": server.origin,
+                    "instance_id": status["instance_id"],
                     "catalog_sha256": resources.digest,
+                    "bundle_sha256": ev.sha(n.raw(resources.bundle)),
+                    "controller_manifest_sha256": resources.controller,
+                    "feed_head_sha256": resources.head,
+                    "feed_policy_sha256": resources.policy,
+                    "agent_source_transport": "AUTHENTICATED_RECORD_TRANSFER",
+                    "physical_host_commissioned": False,
                     "unit": s.UNIT,
                     "financial_settlement": False,
                     "live_execution_allowed": False,
@@ -374,7 +464,7 @@ def run_lab(output, cfg):
         transport = {"port": server.server_port}
         thread = threading.Thread(target=server.serve_forever)
         thread.start()
-        checks, peers, secrets = {}, {}, [owner]
+        checks, peers, secrets, connections = {}, {}, [owner], []
         serial = 0
 
         def command(kind, **fields):
@@ -420,7 +510,8 @@ def run_lab(output, cfg):
 
             def cli(peer):
                 return {
-                    **{key: value for key, value in cfg.items() if key != "output"},
+                    **{key: value for key, value in cfg.items()
+                       if key not in ("output", "feed_directory", "bundle_file")},
                     **transport,
                     "expected_instance": instance,
                     "expected_principal": peer["agent"],
@@ -442,6 +533,27 @@ def run_lab(output, cfg):
 
             def do(peer, body):
                 return action(client(peer), peer["token"], body)
+
+            def probe(peer, order, action_name, expected):
+                config = {**cli(peer), "order_id": order["id"], "for_action": action_name}
+                args = [sys.executable, "-I", "-B", str(ROOT / "scripts/run_research_services.py"), "preflight"]
+                for key in ("community_source", "port", "origin", "ca_file", "credential", "expected_instance",
+                            "expected_principal", "catalog_sha256", "bundle_sha256", "controller_manifest_sha256",
+                            "feed_head_sha256", "feed_policy_sha256", "order_id", "for_action"):
+                    if key in config:
+                        flag = "trusted-controller-sha256" if key == "controller_manifest_sha256" else key.replace("_", "-")
+                        args.extend(("--" + flag, str(config[key])))
+                before = (store.audit(), store.service_audit())
+                completed = subprocess.run(args, capture_output=True, timeout=120, env=worker_environment())
+                lab.require(len(completed.stdout) + len(completed.stderr) <= 1024**2, "SERVICE_PREFLIGHT_LOG_BOUND")
+                result = ev.parse(completed.stdout)
+                lab.require(completed.returncode == (3 if expected == "BLOCKED" else 0)
+                            and result.get("status") == expected
+                            and result["evidence"]["mode"] == "AUTHENTICATED_RECORD_TRANSFER",
+                            "SERVICE_PUBLIC_PREFLIGHT")
+                lab.require(n.same(before, (store.audit(), store.service_audit())), "SERVICE_PREFLIGHT_MUTATED_STATE")
+                connections.append(result)
+                return result
 
             for peer in (alpha, beta):
                 c = client(peer)
@@ -534,6 +646,32 @@ def run_lab(output, cfg):
 
             first = do(alpha, order_body(alpha, beta))["result"]
             second = do(beta, order_body(beta, alpha))["result"]
+            probe(beta, first, "fulfill", "READY_FOR_BOUNDED_RESEARCH_ACTION")
+            probe(alpha, first, "accept", "BLOCKED")
+            checks["public_preflight_cli_exit_codes"] = True
+            checks["preflight_does_not_create_jobs_or_audit_events"] = True
+            source_route = s.ROOT_ROUTE + "/orders/" + first["id"] + "/evidence"
+            for label, denied_token in (("anonymous", None), ("foreign_agent", outsider["token"]),
+                                        ("owner", owner), ("operator", alpha["operator"])):
+                denied("evidence_denies_" + label,
+                       lambda auth=denied_token: admin.request("GET", source_route, token=auth))
+            _, manifest = client(beta).request("GET", source_route, token=beta["token"])
+            for label, suffix in (("wrong_export", "/" + "f" * 64 + "/0"),
+                                  ("out_of_range", "/" + manifest["payload_sha256"] + "/99")):
+                denied("evidence_denies_" + label,
+                       lambda tail=suffix: client(beta).request("GET", source_route + tail, token=beta["token"]))
+            before = (store.audit(), store.service_audit())
+            failed = child("fulfill", {**cli(beta), "order_id": first["id"], "feed_head_sha256": "f" * 64}, allow_error=True)
+            lab.require(failed.get("error") == "EVIDENCE_MANIFEST_BINDING"
+                        and n.same(before, (store.audit(), store.service_audit())), "SERVICE_SOURCE_FAILURE_STARTED_WORK")
+            checks["wrong_remote_source_pin_before_job_creation"] = True
+            stopped = child("work-once", {**cli(beta), "work_mode": "provide", "max_orders": 2,
+                                           "feed_head_sha256": "f" * 64})
+            lab.require(stopped["status"] == "STOPPED_FOR_REVIEW"
+                        and len(stopped["outcomes"]) == 1
+                        and stopped["outcomes"][0]["automatic_retry"] is False
+                        and n.same(before, (store.audit(), store.service_audit())), "SERVICE_WORK_CYCLE_UNSAFE_RETRY")
+            checks["bounded_worker_stops_on_source_failure_without_job"] = True
             protected = ev.sha(n.raw(resources.report(first, beta["listing"])))
             denied(
                 "bare_service_declaration",
@@ -608,6 +746,9 @@ def run_lab(output, cfg):
             lab.require(crash.get("exit_code") == 88, "SERVICE_CRASH_POINT")
             checks["actual_process_exit_after_job_commit"] = True
             checks["wrong_completion_bytes_rejected"] = True
+            uncertain = child("work-once", {**cli(beta), "work_mode": "provide", "max_orders": 2})
+            lab.require(uncertain["status"] == "NO_ELIGIBLE_ORDERS", "SERVICE_WORK_CYCLE_UNCERTAIN_RETRY")
+            checks["bounded_worker_leaves_started_recovery_explicit"] = True
             recovered = child(
                 "fulfill",
                 {
@@ -616,15 +757,17 @@ def run_lab(output, cfg):
                     "output": str(output / "alpha-delivery.json"),
                 },
             )
-            lab.require(recovered["job_reused"], "SERVICE_LOST_COMPLETION_CREATED_JOB")
-            child(
-                "fulfill",
-                {
-                    **cli(alpha),
-                    "order_id": second["id"],
-                    "output": str(output / "beta-delivery.json"),
-                },
-            )
+            lab.require(recovered["job_reused"] and recovered["evidence"]["mode"] == "AUTHENTICATED_RECORD_TRANSFER",
+                        "SERVICE_LOST_COMPLETION_CREATED_JOB")
+            checks["provider_uses_remote_evidence_without_shared_path"] = True
+            provisioned = child("work-once", {**cli(alpha), "work_mode": "provide", "max_orders": 2})
+            lab.require(provisioned["status"] == "COMPLETE" and len(provisioned["outcomes"]) == 1
+                        and provisioned["outcomes"][0]["order_id"] == second["id"]
+                        and provisioned["outcomes"][0]["status"] == "COMPLETED", "SERVICE_PROVIDER_WORK_CYCLE")
+            # Retain the report through the same authenticated delivery endpoint.
+            _, published = client(alpha).request("GET", s.ROOT_ROUTE + "/orders/" + second["id"] + "/delivery", token=alpha["token"])
+            ev.write(output / "beta-delivery.json", published["report"])
+            checks["bounded_worker_provides_eligible_order"] = True
             denied(
                 "foreign_delivery",
                 lambda: client(outsider).request(
@@ -668,8 +811,17 @@ def run_lab(output, cfg):
                 ),
                 "SERVICE_ACTOR_FORBIDDEN",
             )
-            child("accept", {**cli(alpha), "order_id": first["id"]})
+            accepted_cycle = child("work-once", {**cli(alpha), "work_mode": "accept", "max_orders": 2})
+            lab.require(accepted_cycle["status"] == "COMPLETE" and len(accepted_cycle["outcomes"]) == 1,
+                        "SERVICE_BUYER_WORK_CYCLE")
+            accepted = accepted_cycle["outcomes"][0]
+            lab.require(accepted["evidence"]["mode"] == "AUTHENTICATED_RECORD_TRANSFER", "SERVICE_BUYER_REMOTE_SOURCE")
+            checks["bounded_worker_accepts_verified_delivery"] = True
+            checks["buyer_reconstructs_remote_evidence_before_acceptance"] = True
             child("accept", {**cli(beta), "order_id": second["id"]})
+            idle = child("work-once", {**cli(alpha), "work_mode": "both", "max_orders": 2})
+            lab.require(idle["status"] == "NO_ELIGIBLE_ORDERS" and not idle["outcomes"], "SERVICE_WORK_CYCLE_DUPLICATE")
+            checks["bounded_worker_does_not_repeat_completed_orders"] = True
             replay = child("accept", {**cli(alpha), "order_id": first["id"]})
             lab.require(replay["replayed"], "SERVICE_ACCEPT_REPLAY")
             checks["acceptance_replay_without_second_charge"] = True
@@ -802,6 +954,8 @@ def run_lab(output, cfg):
                 "origin": proxy.origin,
                 "ca_file": str(FIXTURES / "bridge-localhost-cert.pem"),
             }
+            probe(alpha, first, "accept", "READY_FOR_BOUNDED_RESEARCH_ACTION")
+            checks["preflight_with_remote_evidence_over_verified_tls"] = True
             for provider, order, filename in (
                 (beta, first, "alpha-delivery.json"),
                 (alpha, second, "beta-delivery.json"),
@@ -861,6 +1015,12 @@ def run_lab(output, cfg):
             proxy.redirect = False
             checks["redirect_rejected"] = True
             ev.write(output / "catalog.json", resources.catalog)
+            ev.write(output / "connections.json", {
+                "protocol": "AAI_SERVICE_CONNECTIONS_V1", "preflights": connections,
+                "work_cycles": [provisioned, accepted_cycle, idle],
+                "shared_source_directory_required": False, "physical_host_commissioned": False,
+                "financial_settlement": False, "live_execution_allowed": False,
+            })
             ev.write(
                 output / "exercise.json",
                 {
@@ -919,6 +1079,18 @@ def verify_lab(output, cfg):
         "SERVICE_EXERCISE_AUTHORITY",
     )
     required = {
+        "bounded_worker_provides_eligible_order", "bounded_worker_accepts_verified_delivery",
+        "bounded_worker_does_not_repeat_completed_orders",
+        "bounded_worker_stops_on_source_failure_without_job", "bounded_worker_leaves_started_recovery_explicit",
+        "public_preflight_cli_exit_codes",
+        "preflight_does_not_create_jobs_or_audit_events",
+        "evidence_denies_anonymous", "evidence_denies_foreign_agent",
+        "evidence_denies_owner", "evidence_denies_operator",
+        "evidence_denies_wrong_export", "evidence_denies_out_of_range",
+        "wrong_remote_source_pin_before_job_creation",
+        "provider_uses_remote_evidence_without_shared_path",
+        "buyer_reconstructs_remote_evidence_before_acceptance",
+        "preflight_with_remote_evidence_over_verified_tls",
         "bare_service_declaration",
         "anonymous_catalog",
         "foreign_operator_allowance",
@@ -957,6 +1129,83 @@ def verify_lab(output, cfg):
         "SERVICE_EXERCISE_CHECKS",
     )
     state = audit["state"]
+    states_by_head, recorded_results = {resources.digest: (s.empty(), 0)}, {}
+    replayed = s.empty()
+    with closing(sqlite3.connect(output / "agents/community.sqlite3")) as db:
+        for (body,) in db.execute("SELECT body FROM service_events ORDER BY sequence"):
+            event = ev.parse(body.encode())
+            replayed, _ = s.apply(replayed, event["actor"], event["command"], event["at_ms"], event["facts"], resources.catalog)
+            states_by_head[event["sha256"]] = (replayed, event["at_ms"])
+            recorded_results[(event["command"]["kind"], event["result"]["id"])] = event["result"]
+    connections = ev.read(output / "connections.json")
+    lab.exact(connections, ("protocol", "preflights", "work_cycles", "shared_source_directory_required", "physical_host_commissioned",
+                           "financial_settlement", "live_execution_allowed"))
+    lab.require(connections["protocol"] == "AAI_SERVICE_CONNECTIONS_V1"
+                and all(connections[k] is False for k in ("shared_source_directory_required", "physical_host_commissioned",
+                                                          "financial_settlement", "live_execution_allowed"))
+                and len(connections["preflights"]) == 3, "SERVICE_CONNECTION_SCOPE")
+    for result, action_name, status, transport in zip(
+        connections["preflights"], ("fulfill", "accept", "accept"),
+        ("READY_FOR_BOUNDED_RESEARCH_ACTION", "BLOCKED", "READY_FOR_BOUNDED_RESEARCH_ACTION"),
+        ("LOOPBACK_HTTP", "LOOPBACK_HTTP", "HTTPS_VERIFIED"), strict=True,
+    ):
+        order = state["orders"][result["order_id"]]
+        source = result["evidence"]
+        ready = result["server_readiness"]
+        principal = order["provider_id"] if action_name == "fulfill" else order["buyer_id"]
+        lab.require(ready["head_sha256"] in states_by_head, "SERVICE_PREFLIGHT_HISTORY")
+        prior_state, at = states_by_head[ready["head_sha256"]]
+        prior_order = prior_state["orders"][order["id"]]
+        lab.require(ready["protocol"] == "AAI_SERVICE_READINESS_V1"
+                    and ready["catalog_sha256"] == resources.digest and ready["order_id"] == order["id"]
+                    and ready["order_state"] == prior_order["state"]
+                    and ready["job_state"] == (None if prior_order["state"] == "OPEN" else "SUCCEEDED")
+                    and s.integer(ready["observed_at_ms"]) >= at
+                    and n.same(ready["blockers"], s.readiness(prior_state, prior_order, principal, ready["observed_at_ms"],
+                                                           ready["job_state"], True, True))
+                    and ready["scope"] == "POINT_IN_TIME_RESEARCH_ACTION"
+                    and all(ready[k] is False for k in ("authorization_granted", "financial_settlement", "live_execution_allowed"))
+                    and n.same(result["connection_binding"], {"enforced": True, "expected_instance_id": exercise["instance_id"],
+                                                              "expected_agent_id": principal}), "SERVICE_PREFLIGHT_REPLAY")
+        lab.require(result["protocol"] == "AAI_SERVICE_PREFLIGHT_V1"
+                    and result["status"] == status and result["action"] == action_name and result["transport"] == transport
+                    and result["catalog_sha256"] == resources.digest
+                    and result["model_bundle_sha256"] == ev.sha(n.raw(resources.bundle))
+                    and result["expected_report_sha256"] == ev.sha(n.raw(resources.report(order, state["listings"][order["listing_id"]])))
+                    and source["mode"] == "AUTHENTICATED_RECORD_TRANSFER"
+                    and source["payload_sha256"] == resources.evidence.sha
+                    and source["bytes"] == len(resources.evidence.payload)
+                    and source["records"] == resources.evidence.count
+                    and source["chunks"] == len(resources.evidence.chunks)
+                    and source["independent_source_attestation"] is False
+                    and source["feed_head_sha256"] == resources.head
+                    and source["feed_policy_sha256"] == resources.policy
+                    and all(result[k] is False for k in ("physical_host_commissioned", "financial_settlement", "live_execution_allowed")),
+                    "SERVICE_CONNECTION_REPLAY")
+    cycles = connections["work_cycles"]
+    lab.require(type(cycles) is list and len(cycles) == 3, "SERVICE_WORK_CYCLES")
+    for cycle, mode, action_name, order_id, transition in zip(
+        cycles, ("provide", "accept", "both"), ("fulfill", "accept", None),
+        (exercise["second_order"], exercise["first_order"], None), ("DELIVER", "ACCEPT", None), strict=True,
+    ):
+        lab.require(cycle["protocol"] == "AAI_SERVICE_WORK_CYCLE_V1" and cycle["candidate_limit"] == 2
+                    and cycle["work_mode"] == mode and cycle["unit"] == s.UNIT
+                    and cycle["financial_settlement"] is False and cycle["live_execution_allowed"] is False,
+                    "SERVICE_WORK_CYCLE_SCOPE")
+        if action_name is None:
+            lab.require(cycle["status"] == "NO_ELIGIBLE_ORDERS" and cycle["outcomes"] == [], "SERVICE_WORK_CYCLE_IDLE")
+            continue
+        lab.require(cycle["status"] == "COMPLETE" and len(cycle["outcomes"]) == 1, "SERVICE_WORK_CYCLE_RESULT")
+        outcome = cycle["outcomes"][0]
+        lab.require(outcome["order_id"] == order_id and outcome["action"] == action_name
+                    and outcome["status"] == "COMPLETED"
+                    and n.same(outcome["result"]["result"], recorded_results[(transition, order_id)])
+                    and outcome["evidence"]["mode"] == "AUTHENTICATED_RECORD_TRANSFER"
+                    and outcome["evidence"]["payload_sha256"] == resources.evidence.sha
+                    and outcome["preflight"]["status"] == "READY_FOR_BOUNDED_RESEARCH_ACTION"
+                    and outcome["preflight"]["server_readiness"]["authorization_granted"] is False
+                    and outcome["preflight"]["financial_settlement"] is False
+                    and outcome["preflight"]["live_execution_allowed"] is False, "SERVICE_WORK_CYCLE_REPLAY")
     for name, key in (
         ("alpha-delivery.json", "first_order"),
         ("beta-delivery.json", "second_order"),
@@ -1022,6 +1271,10 @@ def verify_lab(output, cfg):
         "race_processes": 6,
         "race_admitted": 1,
         "observed_checks": len(required),
+        "remote_evidence_replayed": True,
+        "public_preflight_checks": 3,
+        "shared_source_directory_required": False,
+        "physical_host_commissioned": False,
         "verified_tls": True,
         "unit": s.UNIT,
         "source_scope": "PINNED_RESEARCH_REPLAY",
@@ -1038,7 +1291,7 @@ def main():
             packet.is_file() and packet.stat().st_size <= 16384, "SERVICE_PACKET_BOUND"
         )
         cfg = ev.read(packet)
-        if verb in ("act", "observe", "accept", "fulfill"):
+        if verb in ("act", "observe", "accept", "fulfill", "preflight", "work-once"):
             result = leaf(verb, cfg)
         elif verb == "serve":
             result = serve(cfg)

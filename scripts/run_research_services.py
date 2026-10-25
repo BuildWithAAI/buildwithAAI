@@ -27,6 +27,7 @@ FILES = (
     "bundle.json",
     "catalog.json",
     "exercise.json",
+    "connections.json",
     "alpha-delivery.json",
     "beta-delivery.json",
     "community-audit.json",
@@ -37,6 +38,7 @@ FILES = (
 )
 CODE = (
     "src/ecosystem_research/services.py",
+    "src/ecosystem_research/service_evidence.py",
     "scripts/research_services_worker.py",
     "scripts/run_research_services.py",
 )
@@ -239,6 +241,9 @@ def negative_checks(args, directory, source, bundle):
         "delivery_content",
         "job_binding",
         "financial_authority",
+        "connection_identity",
+        "preflight_authority",
+        "worker_outcome",
     ):
         with tempfile.TemporaryDirectory() as temporary:
             copied = Path(temporary) / "package"
@@ -286,6 +291,15 @@ def negative_checks(args, directory, source, bundle):
                                 (ev.canonical(event), sequence),
                             )
                             head = event["sha256"]
+            elif fault in ("connection_identity", "preflight_authority", "worker_outcome"):
+                value = ev.read(copied / "connections.json")
+                if fault == "connection_identity":
+                    value["preflights"][0]["connection_binding"]["expected_instance_id"] = "f" * 32
+                elif fault == "preflight_authority":
+                    value["preflights"][0]["server_readiness"]["authorization_granted"] = True
+                else:
+                    value["work_cycles"][0]["outcomes"][0]["result"]["result"]["state"] = "ACCEPTED"
+                (copied / "connections.json").write_bytes(n.raw(value))
             else:
                 name = (
                     "alpha-delivery.json"
@@ -354,8 +368,8 @@ def resources_arguments(p, *, local_bundle):
     p.add_argument(
         "--feed-directory",
         type=Path,
-        required=True,
-        help="For operational commands: a single pinned journal directory",
+        required=local_bundle,
+        help="Single pinned journal directory; agents default to authenticated remote transfer when omitted",
     )
     p.add_argument("--feed-head-sha256", required=True)
     p.add_argument("--feed-policy-sha256", required=True)
@@ -393,7 +407,7 @@ def parser():
                 action="store_true",
                 help="Parent behavior corpus only; source classifications are preserved",
             )
-    for name in ("serve", "act", "observe", "fulfill", "accept"):
+    for name in ("serve", "act", "observe", "fulfill", "accept", "preflight", "work-once"):
         p = commands.add_parser(name)
         p.add_argument("--community-source", type=Path, required=True)
         p.add_argument("--community-python", type=Path, default=Path(sys.executable))
@@ -417,18 +431,24 @@ def parser():
             p.add_argument("--catalog-sha256", required=True)
             if name == "act":
                 p.add_argument("--action-file", type=Path, required=True)
-            if name in ("accept", "fulfill"):
+            if name in ("accept", "fulfill", "preflight", "work-once"):
                 resources_arguments(p, local_bundle=False)
+            if name in ("accept", "fulfill", "preflight"):
                 p.add_argument("--order-id", required=True)
             if name == "fulfill":
                 p.add_argument("--output", type=Path)
+            if name == "preflight":
+                p.add_argument("--for-action", choices=("fulfill", "accept"), required=True)
+            if name == "work-once":
+                p.add_argument("--work-mode", choices=("provide", "accept", "both"), default="both")
+                p.add_argument("--max-orders", type=int, choices=range(1, 5), default=1)
     return result
 
 
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
-        if args.command in ("serve", "act", "observe", "fulfill", "accept"):
+        if args.command in ("serve", "act", "observe", "fulfill", "accept", "preflight", "work-once"):
             cfg = {
                 key: str(value.absolute()) if isinstance(value, Path) else value
                 for key, value in vars(args).items()
@@ -475,6 +495,10 @@ def main(argv=None):
                 "SERVICE_PARENT_MUTATED",
             )
         print(ev.canonical({"verified": True, **result}))
+        if args.command in ("preflight", "work-once") and result["status"] == "BLOCKED":
+            return 3
+        if args.command == "work-once" and result["status"] == "STOPPED_FOR_REVIEW":
+            return 4
         return 0
     except KeyboardInterrupt:
         return 130
