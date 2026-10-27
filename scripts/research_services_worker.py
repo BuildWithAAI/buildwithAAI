@@ -24,6 +24,8 @@ from src.solana_research import coin_evidence as ev  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "scripts"))
 import ecosystem_network_worker as nw  # noqa: E402
+import blueprint_exchange_worker as bw  # noqa: E402
+import blueprint_exchange_lab as bl  # noqa: E402
 
 
 def resources_for(cfg, bundle=None):
@@ -157,6 +159,8 @@ def preflight(client, token, cfg, order, listing, resources, receipt):
 
 def leaf(verb, cfg):
     client, token = connection(cfg)
+    if verb.startswith("blueprint-"):
+        return bw.leaf(verb, cfg, client, token, sys.modules[__name__])
     if verb == "act":
         command = (
             ev.read(n.safe_path(cfg["action_file"]))
@@ -522,6 +526,8 @@ def run_lab(output, cfg):
                 }
 
             def client(peer):
+                if transport.get("origin"):
+                    return connection(cli(peer))[0]
                 return nw.client_for(
                     Client,
                     {
@@ -644,7 +650,9 @@ def run_lab(output, cfg):
                     start_before_ms=expiry - 1000,
                 )
 
-            first = do(alpha, order_body(alpha, beta))["result"]
+            exchange = bl.Exchange(resources, store, client, cli, alpha, beta, outsider, admin, owner,
+                                   command, denied, checks, child)
+            first = exchange.trial(expiry - 1000)
             second = do(beta, order_body(beta, alpha))["result"]
             probe(beta, first, "fulfill", "READY_FOR_BOUNDED_RESEARCH_ACTION")
             probe(alpha, first, "accept", "BLOCKED")
@@ -1014,6 +1022,7 @@ def run_lab(output, cfg):
             )
             proxy.redirect = False
             checks["redirect_rejected"] = True
+            exchange.finish(first, output)
             ev.write(output / "catalog.json", resources.catalog)
             ev.write(output / "connections.json", {
                 "protocol": "AAI_SERVICE_CONNECTIONS_V1", "preflights": connections,
@@ -1052,6 +1061,7 @@ def run_lab(output, cfg):
                 thread.join(10)
         ev.write(output / "community-audit.json", store.audit())
         ev.write(output / "service-audit.json", store.service_audit())
+        ev.write(output / "blueprint-audit.json", store.blueprint_audit())
     return verify_lab(output, cfg)
 
 
@@ -1123,6 +1133,7 @@ def verify_lab(output, cfg):
         "untrusted_tls_before_http",
         "redirect_rejected",
     }
+    required |= bl.CHECKS
     lab.require(
         set(exercise["checks"]) == required
         and all(v is True for v in exercise["checks"].values()),
@@ -1255,6 +1266,7 @@ def verify_lab(output, cfg):
     )
     return {
         "protocol": "AAI_RESEARCH_SERVICES_SUMMARY_V1",
+        **bl.verify(store, resources, output),
         "agents_exchanging_work": 2,
         "supported_services": len(s.KINDS),
         "orders": 5,
@@ -1291,7 +1303,7 @@ def main():
             packet.is_file() and packet.stat().st_size <= 16384, "SERVICE_PACKET_BOUND"
         )
         cfg = ev.read(packet)
-        if verb in ("act", "observe", "accept", "fulfill", "preflight", "work-once"):
+        if verb in ("act", "observe", "accept", "fulfill", "preflight", "work-once") or verb.startswith("blueprint-"):
             result = leaf(verb, cfg)
         elif verb == "serve":
             result = serve(cfg)

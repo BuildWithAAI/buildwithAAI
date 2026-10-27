@@ -1191,4 +1191,6 @@ def store_type(base, Problem, resources):
                     "live_execution_allowed": False,
                 }
 
-    return ServiceStore
+    from .blueprint_store import store_type as blueprint_store_type
+
+    return blueprint_store_type(ServiceStore, Problem, resources)
