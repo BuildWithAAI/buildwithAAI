@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import run_scanner_feed as previous  # noqa: E402
 
 FILES = (
+    "blueprint-trials.json",
     "blueprint-audit.json",
     "blueprint-delivery.json",
     "blueprint-receipt.json",
@@ -255,14 +256,29 @@ def negative_checks(args, directory, source, bundle):
         "blueprint_rehashed_price",
         "blueprint_payload",
         "blueprint_receipt_authority",
+        "blueprint_trial_status",
+        "blueprint_trial_link",
+        "blueprint_protocol_downgrade",
     ):
         with tempfile.TemporaryDirectory() as temporary:
             copied = Path(temporary) / "package"
             shutil.copytree(directory, copied)
             verify(args, copied, source, bundle)
-            if fault in ("blueprint_deleted_event", "blueprint_rehashed_price"):
+            if fault in ("blueprint_trial_status", "blueprint_trial_link"):
+                name = "blueprint-trials.json" if fault == "blueprint_trial_status" else "blueprint-delivery.json"
+                value = ev.read(copied / name)
+                if fault == "blueprint_trial_status":
+                    value["statuses"][0]["authorization_granted"] = True
+                else:
+                    value["license"]["trial_orders"] = value["license"]["trial_orders"][-1:]
+                (copied / name).write_bytes(n.raw(value))
+            elif fault in ("blueprint_deleted_event", "blueprint_rehashed_price", "blueprint_protocol_downgrade"):
                 with closing(sqlite3.connect(copied / "agents/community.sqlite3")) as db, db:
-                    if fault == "blueprint_deleted_event":
+                    if fault == "blueprint_protocol_downgrade":
+                        value = ev.parse(db.execute("SELECT value FROM blueprint_configuration").fetchone()[0].encode())
+                        value["protocol"] = "AAI_BLUEPRINT_EXCHANGE_V1"
+                        db.execute("UPDATE blueprint_configuration SET value=?", (ev.canonical(value),))
+                    elif fault == "blueprint_deleted_event":
                         db.execute("DELETE FROM blueprint_events WHERE sequence=(SELECT MAX(sequence) FROM blueprint_events)")
                     else:
                         catalog = ev.read(copied / "catalog.json")
@@ -444,7 +460,7 @@ def parser():
                 help="Parent behavior corpus only; source classifications are preserved",
             )
     for name in ("serve", "act", "observe", "fulfill", "accept", "preflight", "work-once",
-                 "blueprint-act", "blueprint-observe", "blueprint-terms", "blueprint-fetch", "blueprint-trial", "blueprint-accept"):
+                 "blueprint-act", "blueprint-observe", "blueprint-terms", "blueprint-fetch", "blueprint-trial", "blueprint-accept", "blueprint-status"):
         p = commands.add_parser(name)
         p.add_argument("--community-source", type=Path, required=True)
         p.add_argument("--community-python", type=Path, default=Path(sys.executable))
@@ -481,6 +497,8 @@ def parser():
                 p.add_argument("--max-orders", type=int, choices=range(1, 5), default=1)
             if name == "blueprint-terms":
                 p.add_argument("--listing-id", required=True)
+            if name == "blueprint-status":
+                p.add_argument("--license-id", required=True)
             if name in ("blueprint-fetch", "blueprint-trial", "blueprint-accept"):
                 p.add_argument("--license-id", required=True)
                 p.add_argument("--package-sha256", required=True)
@@ -488,6 +506,7 @@ def parser():
             if name == "blueprint-fetch":
                 p.add_argument("--output", type=Path)
             if name == "blueprint-trial":
+                p.add_argument("--attempt", type=int, choices=range(1, 4), default=1)
                 p.add_argument("--mandate-id", required=True)
                 p.add_argument("--start-before-ms", type=int, required=True)
             if name == "blueprint-accept":

@@ -203,6 +203,10 @@ def balance(state, mandate):
     }
 
 
+def record_identity(catalog_sha256, role, principal, request_id, kind):
+    return lab.digest([catalog_sha256, role, principal, request_id, kind])[:32]
+
+
 def apply(state, actor, command, at, facts, catalog):
     """Replay one authorized domain transition; database facts are checked separately."""
     state = deepcopy(state)
@@ -218,7 +222,7 @@ def apply(state, actor, command, at, facts, catalog):
     command = command_value(command)
     kind = command["kind"]
     request_id = n.identity(command["request_id"])
-    record_id = lab.digest([lab.digest(catalog), role, who, request_id, kind])[:32]
+    record_id = record_identity(lab.digest(catalog), role, who, request_id, kind)
 
     def agent(expected=None):
         lab.require(

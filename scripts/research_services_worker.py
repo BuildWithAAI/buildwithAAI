@@ -17,7 +17,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from src.ecosystem_research import network as n, scanner_feed as f, services as s, service_evidence as evidence  # noqa: E402
+from src.ecosystem_research import blueprints as b, network as n, scanner_feed as f, services as s, service_evidence as evidence  # noqa: E402
 from src.ecosystem_research.checkout import worker_environment  # noqa: E402
 from src.multi_brain_research import training_lab as lab  # noqa: E402
 from src.solana_research import coin_evidence as ev  # noqa: E402
@@ -47,7 +47,7 @@ def resources_for(cfg, bundle=None):
     )
 
 
-def connection(cfg):
+def connection(cfg, *, blueprint=False):
     Client, read_credential, _, _, _ = nw.components(cfg["community_source"])
     role = cfg.get("expected_role", "AGENT")
     lab.require(role in ("AGENT", "OPERATOR", "OWNER"), "SERVICE_CLIENT_ROLE")
@@ -86,6 +86,12 @@ def connection(cfg):
         ),
         "SERVICE_REMOTE_CATALOG_PIN",
     )
+    if blueprint:
+        lab.require(n.same(status.get("blueprints"), {
+            "protocol": b.PROTOCOL, "catalog_sha256": lab.pin(cfg["catalog_sha256"]),
+            "paid_acquisition": False, "arbitrary_code_execution": False,
+            "live_execution_allowed": False,
+        }), "BLUEPRINT_REMOTE_PROTOCOL_PIN")
     _, me = client.request("GET", "/v1/me", token=token)
     lab.require(
         me["role"] == role and me["principal_id"] == principal,
@@ -158,7 +164,7 @@ def preflight(client, token, cfg, order, listing, resources, receipt):
 
 
 def leaf(verb, cfg):
-    client, token = connection(cfg)
+    client, token = connection(cfg, blueprint=verb.startswith("blueprint-"))
     if verb.startswith("blueprint-"):
         return bw.leaf(verb, cfg, client, token, sys.modules[__name__])
     if verb == "act":
@@ -449,7 +455,7 @@ def child(verb, cfg, allow_error=False):
         return {"exit_code": 88}
     value = ev.parse(completed.stdout)
     if completed.returncode and not allow_error:
-        raise ValueError("SERVICE_CHILD_REJECTED:" + str(value.get("error"))[:200])
+        raise ValueError("SERVICE_CHILD_REJECTED:" + verb + ":" + str(value.get("error"))[:200])
     return value
 
 
@@ -653,7 +659,7 @@ def run_lab(output, cfg):
             exchange = bl.Exchange(resources, store, client, cli, alpha, beta, outsider, admin, owner,
                                    command, denied, checks, child)
             first = exchange.trial(expiry - 1000)
-            second = do(beta, order_body(beta, alpha))["result"]
+            second = exchange.reverse_trial(expiry - 1000)
             probe(beta, first, "fulfill", "READY_FOR_BOUNDED_RESEARCH_ACTION")
             probe(alpha, first, "accept", "BLOCKED")
             checks["public_preflight_cli_exit_codes"] = True
@@ -826,7 +832,7 @@ def run_lab(output, cfg):
             lab.require(accepted["evidence"]["mode"] == "AUTHENTICATED_RECORD_TRANSFER", "SERVICE_BUYER_REMOTE_SOURCE")
             checks["bounded_worker_accepts_verified_delivery"] = True
             checks["buyer_reconstructs_remote_evidence_before_acceptance"] = True
-            child("accept", {**cli(beta), "order_id": second["id"]})
+            exchange.accept_reverse(second)
             idle = child("work-once", {**cli(alpha), "work_mode": "both", "max_orders": 2})
             lab.require(idle["status"] == "NO_ELIGIBLE_ORDERS" and not idle["outcomes"], "SERVICE_WORK_CYCLE_DUPLICATE")
             checks["bounded_worker_does_not_repeat_completed_orders"] = True
@@ -1002,6 +1008,25 @@ def run_lab(output, cfg):
                 "SERVICE_TLS_CATALOG_BEARER_LEAK",
             )
             checks["tls_catalog_probe_before_bearer"] = True
+            before = len(proxy.exchanges)
+            original_read = store._read
+
+            def old_blueprint_status(db, route, token, at, limit, after):
+                status, value = original_read(db, route, token, at, limit, after)
+                if route == "/v1/status":
+                    value["blueprints"]["protocol"] = "AAI_BLUEPRINT_EXCHANGE_V1"
+                return status, value
+
+            store._read = old_blueprint_status
+            try:
+                old_protocol = child("blueprint-observe", cli(alpha), allow_error=True)
+            finally:
+                store._read = original_read
+            lab.require(old_protocol.get("error") == "BLUEPRINT_REMOTE_PROTOCOL_PIN"
+                        and len(proxy.exchanges) > before
+                        and all(not item[2] for item in proxy.exchanges[before:]),
+                        "BLUEPRINT_PROTOCOL_BEARER_LEAK")
+            checks["blueprint_tls_protocol_probe_before_bearer"] = True
             before = len(proxy.exchanges)
             untrusted = child(
                 "observe",
@@ -1232,9 +1257,9 @@ def verify_lab(output, cfg):
         )
     orders = list(state["orders"].values())
     lab.require(
-        len(orders) == 5
+        len(orders) == 7
         and sorted(o["state"] for o in orders)
-        == ["ACCEPTED", "ACCEPTED", "CANCELLED", "EXPIRED", "FAILED"],
+        == ["ACCEPTED", "ACCEPTED", "CANCELLED", "CANCELLED", "CANCELLED", "EXPIRED", "FAILED"],
         "SERVICE_ORDER_STATES",
     )
     expired = state["orders"][exercise["expired_order"]]
@@ -1269,9 +1294,9 @@ def verify_lab(output, cfg):
         **bl.verify(store, resources, output),
         "agents_exchanging_work": 2,
         "supported_services": len(s.KINDS),
-        "orders": 5,
+        "orders": 7,
         "accepted_orders": 2,
-        "cancelled_orders": 1,
+        "cancelled_orders": 3,
         "failed_orders": 1,
         "expired_orders": 1,
         "completed_jobs": 4,
@@ -1322,6 +1347,11 @@ def main():
         if code is None:
             if isinstance(error, ValueError):
                 code = str(error)
+                if verb == "lab-build":
+                    trace = error.__traceback__
+                    while trace.tb_next is not None:
+                        trace = trace.tb_next
+                    code += ":" + Path(trace.tb_frame.f_code.co_filename).name + ":" + str(trace.tb_lineno)
             else:
                 frames, trace = [], error.__traceback__
                 while trace is not None:

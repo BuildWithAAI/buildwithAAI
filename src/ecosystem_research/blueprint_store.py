@@ -43,6 +43,7 @@ def store_type(base, Problem, resources):
                 lab.require(len(rows) == 1, "BLUEPRINT_CONFIGURATION")
                 value = ev.parse(rows[0][0].encode())
                 lab.exact(value, ("protocol", "catalog_sha256", "financial_settlement", "install_audit_sequence"))
+                lab.require(value["protocol"] == b.PROTOCOL, "BLUEPRINT_PROTOCOL_MIGRATION_REQUIRED")
                 details = {"protocol": b.PROTOCOL, "catalog_sha256": resources.digest, "financial_settlement": False}
                 lab.require(n.same({k: v for k, v in value.items() if k != "install_audit_sequence"}, details),
                             "BLUEPRINT_CONFIGURATION_CHANGED")
@@ -85,7 +86,7 @@ def store_type(base, Problem, resources):
                 expected_head = prior[-1]["sha256"] if prior else resources.digest
                 lab.require(event["service_head_sha256"] == expected_head, "BLUEPRINT_SERVICE_HISTORY_BINDING")
                 historical, _ = snapshots[expected_head]
-                lab.require(n.same(event["facts"], b.facts_for(event["command"], historical)),
+                lab.require(n.same(event["facts"], b.facts_for(event["command"], historical, state)),
                             "BLUEPRINT_SERVICE_FACTS_CHANGED")
                 key = (actor["principal_id"], event["command"]["request_id"])
                 lab.require(key not in requests, "BLUEPRINT_DUPLICATE_REQUEST")
@@ -115,7 +116,27 @@ def store_type(base, Problem, resources):
                 self._service_member(db, who, old["result"]["project_id"])
                 return 200, {"result": old["result"], "replayed": True, "head_sha256": head}
             lab.require(len(requests) < b.MAX_EVENTS, "BLUEPRINT_EVENT_BOUND")
-            facts = b.facts_for(command, services)
+            if command["kind"] in ("TRIAL", "ACCEPT"):
+                license_ = state["licenses"].get(command["license_id"])
+                lab.require(license_ is not None and license_["buyer_id"] == who, "BLUEPRINT_BUYER_REQUIRED")
+                self._service_member(db, who, license_["project_id"])
+                if command["kind"] == "TRIAL":
+                    request = b.trial_request(state, who, command, services)
+                    _, ordered = self._service_action(db, principal, request, at)
+                    lab.require(not ordered["replayed"], "BLUEPRINT_UNBOUND_TRIAL_ORDER")
+                else:
+                    listing = state["listings"][license_["listing_id"]]
+                    current = b.facts_for(command, services, state)
+                    order = current["order"]
+                    b.acceptance_gate(license_, listing, command, order, current["service_listing"])
+                    if order["state"] == "DELIVERED":
+                        self._service_action(db, principal, {
+                            "kind": "ACCEPT", "request_id": lab.digest([b.PROTOCOL, "ACCEPT_SERVICE", license_["id"], order["id"]])[:32],
+                            "order_id": order["id"], "report_sha256": order["report_sha256"],
+                        }, at)
+                # Both ledgers commit or roll back under the caller's BEGIN IMMEDIATE.
+                services, service_head, _ = self._service_load(db)
+            facts = b.facts_for(command, services, state)
             actor = {"role": principal["role"], "principal_id": who, "credential_id": principal["id"]}
             updated, result = b.apply(state, actor, command, at, facts, resources.catalog)
             self._service_member(db, who, result["project_id"])
@@ -159,7 +180,7 @@ def store_type(base, Problem, resources):
                 who = principal["principal_id"]
                 self._active_agent(db, who)
                 lab.require(not after, "BLUEPRINT_CURSOR_NOT_SUPPORTED")
-                state, head, _, _, _ = self._blueprint_load(db)
+                state, head, _, services, _ = self._blueprint_load(db)
                 if route == b.ROOT_ROUTE + "/view":
                     visible = {k: v for k, v in state["listings"].items() if db.execute(
                         "SELECT 1 FROM members WHERE project_id=? AND agent_id=?", (v["project_id"], who)).fetchone()}
@@ -175,12 +196,20 @@ def store_type(base, Problem, resources):
                     lab.require(listing is not None, "BLUEPRINT_NOT_FOUND")
                     self._service_member(db, who, listing["project_id"])
                     return 200, {"listing": b.descriptor(listing), "license_text": listing["package"]["license_text"]}
-                match = re.fullmatch(b.ROOT_ROUTE + r"/licenses/([0-9a-f]{32})/delivery", route)
+                match = re.fullmatch(b.ROOT_ROUTE + r"/licenses/([0-9a-f]{32})/(delivery|trials)", route)
                 if match:
                     license_ = state["licenses"].get(match.group(1))
                     lab.require(license_ is not None and who in (license_["buyer_id"], license_["provider_id"]),
                                 "BLUEPRINT_LICENSE_ACCESS")
                     self._service_member(db, who, license_["project_id"])
+                    if match.group(2) == "trials":
+                        jobs = {}
+                        for order_id in license_["trial_orders"]:
+                            order = services["orders"][order_id]
+                            if order["job_id"] is not None:
+                                job = self._row(db, "jobs", order["job_id"])
+                                jobs[order_id] = self._job_effective(db, job, at)[0]
+                        return 200, b.trial_status(license_, services, jobs, at)
                     listing = state["listings"][license_["listing_id"]]
                     return 200, {"protocol": b.PROTOCOL, "license": deepcopy(license_),
                                  "listing": b.descriptor(listing), "package": deepcopy(listing["package"]),
