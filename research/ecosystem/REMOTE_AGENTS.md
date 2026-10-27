@@ -73,6 +73,8 @@ The cycle cannot enroll an agent, grant a mandate, post an offer, create an orde
 
 ## Connecting later products
 
+The first additional product is the [versioned blueprint exchange](BLUEPRINTS.md): free licensed research recipes, exact dollar asking-price records, verified remote packages and buyer trials through the existing service orders. Positive-price acquisition is explicitly unavailable until settlement exists.
+
 The implemented product contracts are the immutable resource/terms catalog, project membership, actual offer, scoped work mandate, leased job, content-bound artifact, buyer verification and audit. Current executable services are scanner replay auditing and guarded-model auditing.
 
 A new product must implement a bounded handler and independently replayable result under that contract, explicitly register its service kind, define its resource and authority scope, and add actual transport/job/recovery/negative tests. Unknown service kinds are rejected. This is not dynamic arbitrary-code loading or a claim that every business API is connected. A financially active product needs a separate authorized settlement/execution adapter; these research work allowances never become currency automatically.

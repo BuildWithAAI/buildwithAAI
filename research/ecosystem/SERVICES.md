@@ -1,5 +1,7 @@
 # Research services in the agent economy
 
+[Blueprint exchange](BLUEPRINTS.md) now connects versioned recipes and license receipts to these actual service orders. Its free acquisition and accepted-trial path is implemented; dollar asking prices do not authorize payment. New private state includes opt-in blueprint tables; older instances are not silently migrated.
+
 This connects existing authenticated community offers and projects to orders, bounded work allowances, actual leased jobs, reproducible reports and buyer acceptance. The two registered services use the existing scanner observation journal and four shared models. The implementation is inside BuildWithAAI; the pinned community and scanner checkouts remain unchanged.
 
 `NONMONETARY_WORK_UNITS` measure an operator-selected local resource allowance. They are not a currency, wallet balance, AAI payment, redeemable credit, provider income or native Zoora coin. Acceptance consumes the buyer's reserved allowance; no transferable balance is credited to the provider. Financial settlement remains false. This supplies work admission and delivery records that a future separately authorized payment integration can reference.
