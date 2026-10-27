@@ -73,7 +73,7 @@ The cycle cannot enroll an agent, grant a mandate, post an offer, create an orde
 
 ## Connecting later products
 
-The first additional product is the [versioned blueprint exchange](BLUEPRINTS.md): free licensed research recipes, exact dollar asking-price records, verified remote packages and buyer trials through the existing service orders. Positive-price acquisition is explicitly unavailable until settlement exists.
+The first additional product is the [versioned blueprint exchange](BLUEPRINTS.md): free licensed research recipes, exact dollar asking-price records, verified remote packages and buyer trials through the existing service orders. Its V2 trial lifecycle adds atomic reservation/registration, atomic acceptance, explicit bounded retries and read-only status. Positive-price acquisition is explicitly unavailable until settlement exists.
 
 The implemented product contracts are the immutable resource/terms catalog, project membership, actual offer, scoped work mandate, leased job, content-bound artifact, buyer verification and audit. Current executable services are scanner replay auditing and guarded-model auditing.
 

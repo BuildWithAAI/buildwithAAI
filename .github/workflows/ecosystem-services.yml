@@ -70,7 +70,7 @@ jobs:
           python -O -bb -X dev -W error -m unittest discover -s tests -p "test_*service*.py" -v
       - name: Generate an actual scanner and community transport fixture with explicitly untrusted synthetic sources
         run: python -B scripts/run_scanner_feed.py transport-self-test --directory research/ecosystem/generated/services-feed-contract --bundle-file tests/fixtures/ecosystem-network-bundle.json --trusted-controller-sha256 b521bad111dab36cc42d20bcc29d041d25b4f7f2cbcb39261bf8b65280991ecd --scanner-source .ecosystem-scanner --community-source .ecosystem-community
-      - name: Blueprint publication, licensed delivery, budgeted trials, service recovery, TLS and mutations
+      - name: Atomic blueprint trials and acceptance, rollback faults, bounded retries, lifecycle status and TLS
         run: python -B scripts/run_research_services.py transport-self-test --directory research/ecosystem/generated/services-contract --feed-directory research/ecosystem/generated/services-feed-contract --bundle-file tests/fixtures/ecosystem-network-bundle.json --trusted-controller-sha256 b521bad111dab36cc42d20bcc29d041d25b4f7f2cbcb39261bf8b65280991ecd --scanner-source .ecosystem-scanner --community-source .ecosystem-community
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()

@@ -3,7 +3,7 @@
 from copy import deepcopy
 import unittest
 
-from src.ecosystem_research import blueprints as b, network as n
+from src.ecosystem_research import blueprints as b, network as n, services as s
 from src.multi_brain_research import training_lab as lab
 from src.solana_research import coin_evidence as ev
 import test_research_services as st
@@ -40,7 +40,7 @@ class BlueprintTests(unittest.TestCase):
     def act(self, actor, kind, **fields):
         command = self.command(kind, **fields)
         self.state, result = b.apply(self.state, actor, command, st.NOW,
-                                     b.facts_for(command, self.engine.state), self.resources.catalog)
+                                     b.facts_for(command, self.engine.state, self.state), self.resources.catalog)
         return result
 
     def publish(self, price=0, package=None):
@@ -51,9 +51,22 @@ class BlueprintTests(unittest.TestCase):
         listing = self.publish() if listing is None else listing
         return self.act(st.A, "ACQUIRE", listing_id=listing["id"], terms_sha256=listing["terms_sha256"])
 
-    def trial(self):
-        order, sha = self.engine.delivered()
-        self.engine.advance(st.A, "ACCEPT", order_id=order["id"], report_sha256=sha)
+    def trial(self, license_=None, target="ACCEPTED"):
+        license_ = license_ or next(iter(self.state["licenses"].values()))
+        current = self.state["licenses"][license_["id"]]
+        command = self.command("TRIAL", license_id=license_["id"], package_sha256=license_["package_sha256"],
+                               attempt=len(current["trial_orders"]) + 1, mandate_id=self.engine.mandate["id"], start_before_ms=st.NOW + 30000)
+        request = b.trial_request(self.state, st.A["principal_id"], command, self.engine.state)
+        self.engine.state, order = s.apply(self.engine.state, st.A, request, st.NOW, {}, self.resources.catalog)
+        self.state, _ = b.apply(self.state, st.A, command, st.NOW,
+                                b.facts_for(command, self.engine.state, self.state), self.resources.catalog)
+        if target == "OPEN":
+            return order
+        self.engine.advance(st.B, "START", {"job_id": lab.digest(order["id"])[:32]}, order_id=order["id"])
+        sha = ev.sha(n.raw(self.resources.report(order, self.engine.listing)))
+        self.engine.advance(st.B, "DELIVER", {"artifact_id": lab.digest([order["id"], "artifact"])[:32]}, order_id=order["id"], report_sha256=sha)
+        if target == "ACCEPTED":
+            self.engine.advance(st.A, "ACCEPT", order_id=order["id"], report_sha256=sha)
         return self.engine.state["orders"][order["id"]]
 
     def accept(self, license_, trial):
@@ -152,7 +165,7 @@ class BlueprintTests(unittest.TestCase):
 
     def test_open_and_delivered_orders_do_not_establish_accepted_trial(self):
         license_ = self.acquire()
-        order = self.engine.order()
+        order = self.trial(target="OPEN")
         with self.assertRaisesRegex(ValueError, "TRIAL_BINDING"):
             self.accept(license_, order)
         self.engine.state["orders"][order["id"]]["state"] = "DELIVERED"
@@ -174,7 +187,7 @@ class BlueprintTests(unittest.TestCase):
         first, trial = self.acquire(), self.trial()
         self.accept(first, trial)
         second = self.acquire(self.publish(package={**self.package, "version": 2}))
-        with self.assertRaisesRegex(ValueError, "TRIAL_ALREADY_USED"):
+        with self.assertRaisesRegex(ValueError, "TRIAL_NOT_REGISTERED"):
             self.accept(second, trial)
 
     def test_rejection_retains_license_and_cannot_later_accept(self):
@@ -247,6 +260,157 @@ class BlueprintTests(unittest.TestCase):
                         {"kind": "CLOSE", "request_id": "a" * 32, "listing_id": "b" * 32, "buyer_id": "c" * 32}):
             with self.assertRaises(ValueError):
                 b.command_value(command)
+
+    def next_request(self, license_, **changes):
+        current = self.state["licenses"][license_["id"]]
+        return self.command("TRIAL", **{
+            "license_id": license_["id"], "package_sha256": license_["package_sha256"],
+            "attempt": len(current["trial_orders"]) + 1, "mandate_id": self.engine.mandate["id"],
+            "start_before_ms": st.NOW + 30000, **changes})
+
+    def test_three_cancelled_trials_exhaust_lifetime_attempt_limit(self):
+        license_ = self.acquire()
+        for _ in range(3):
+            order = self.trial(license_, "OPEN")
+            self.engine.advance(st.A, "CANCEL", order_id=order["id"])
+        with self.assertRaisesRegex(ValueError, "BLUEPRINT_INTEGER"):
+            self.trial(license_, "OPEN")
+        current = self.state["licenses"][license_["id"]]
+        self.assertEqual(len(set(current["trial_orders"])), 3)
+        self.assertEqual(self.engine.accounting()["available"], 10)
+        self.assertEqual(b.trial_status(current, self.engine.state, {}, st.NOW)["phase"], "ATTEMPT_LIMIT_REACHED")
+
+    def test_open_started_delivered_and_accepted_trials_block_another_attempt(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        for state in ("OPEN", "STARTED", "DELIVERED", "ACCEPTED"):
+            self.engine.state["orders"][order["id"]]["state"] = state
+            with self.subTest(state=state), self.assertRaisesRegex(ValueError, "PRIOR_TRIAL_UNRESOLVED"):
+                b.trial_request(self.state, st.A["principal_id"], self.next_request(license_), self.engine.state)
+
+    def test_only_released_terminal_orders_allow_an_explicit_retry(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        for state in b.RETRYABLE:
+            self.engine.state["orders"][order["id"]]["state"] = state
+            request = b.trial_request(self.state, st.A["principal_id"], self.next_request(license_), self.engine.state)
+            self.assertEqual(request["mandate_id"], self.engine.mandate["id"])
+
+    def test_attempt_numbers_cannot_skip_or_rewind(self):
+        license_ = self.acquire()
+        for attempt in (0, True, 2, 3, 4):
+            with self.subTest(attempt=attempt), self.assertRaises(ValueError):
+                b.trial_request(self.state, st.A["principal_id"], self.next_request(license_, attempt=attempt), self.engine.state)
+
+    def test_trial_request_rejects_foreign_buyer_and_changed_package(self):
+        license_ = self.acquire()
+        with self.assertRaisesRegex(ValueError, "BUYER_REQUIRED"):
+            b.trial_request(self.state, st.B["principal_id"], self.next_request(license_), self.engine.state)
+        with self.assertRaisesRegex(ValueError, "PACKAGE_CHANGED"):
+            b.trial_request(self.state, st.A["principal_id"], self.next_request(license_, package_sha256="f" * 64), self.engine.state)
+
+    def test_decided_license_cannot_create_more_work(self):
+        license_ = self.acquire()
+        for state in ("REJECTED", "ACCEPTED"):
+            self.state["licenses"][license_["id"]]["state"] = state
+            with self.subTest(state=state), self.assertRaisesRegex(ValueError, "ALREADY_DECIDED"):
+                b.trial_request(self.state, st.A["principal_id"], self.next_request(license_), self.engine.state)
+
+    def test_stable_trial_command_binds_deadline_mandate_and_attempt(self):
+        license_ = self.acquire()
+        first = b.trial_request(self.state, st.A["principal_id"], self.next_request(license_), self.engine.state)
+        other = b.trial_request(self.state, st.A["principal_id"], self.next_request(license_), self.engine.state)
+        self.assertEqual(first, other)
+        changed = b.trial_request(self.state, st.A["principal_id"], self.next_request(license_, start_before_ms=st.NOW + 20000), self.engine.state)
+        self.assertEqual(first["request_id"], changed["request_id"])
+        self.assertNotEqual(first, changed)  # Existing service idempotency rejects the changed body.
+
+    def test_unregistered_accepted_service_order_cannot_accept_a_blueprint(self):
+        license_ = self.acquire()
+        order, sha = self.engine.delivered()
+        self.engine.advance(st.A, "ACCEPT", order_id=order["id"], report_sha256=sha)
+        with self.assertRaisesRegex(ValueError, "TRIAL_NOT_REGISTERED"):
+            self.accept(license_, order)
+
+    def test_delivery_rejects_duplicate_oversized_and_unbound_trial_history(self):
+        original = self.delivery()
+        license_ = original["license"]
+        for trials in (["a" * 32] * 2, [format(i, "032x") for i in range(4)], ["invalid"]):
+            value = deepcopy(original)
+            value["license"]["trial_orders"] = trials
+            with self.assertRaises(ValueError):
+                b.verify_delivery(value, license_["id"], st.A["principal_id"], license_["package_sha256"], license_["terms_sha256"], self.resources.catalog)
+
+    def test_readiness_distinguishes_request_wait_and_expiry_without_mutation(self):
+        license_ = self.acquire()
+        self.assertEqual(b.trial_status(license_, self.engine.state, {}, st.NOW)["phase"], "READY_TO_REQUEST")
+        order = self.trial(license_, "OPEN")
+        current = self.state["licenses"][license_["id"]]
+        before = deepcopy(self.engine.state)
+        waiting = b.trial_status(current, self.engine.state, {}, st.NOW)
+        expired = b.trial_status(current, self.engine.state, {}, order["start_before_ms"])
+        self.assertEqual(waiting["phase"], "WAITING_FOR_PROVIDER")
+        self.assertEqual(expired["phase"], "EXPIRE_UNUSED_ORDER")
+        self.assertEqual(waiting["reserved_work_units"], 6)
+        self.assertFalse(waiting["authorization_granted"])
+        self.assertFalse(waiting["automatic_retry"])
+        self.assertEqual(self.engine.state, before)
+
+    def test_started_job_status_does_not_release_uncertain_work(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        self.engine.state["orders"][order["id"]]["state"] = "STARTED"
+        current = self.state["licenses"][license_["id"]]
+        for job, phase in (("RUNNING", "WAITING_FOR_JOB"), ("QUEUED", "WAITING_FOR_JOB"),
+                           ("SUCCEEDED", "PROVIDER_DELIVERY_RECOVERY"), ("FAILED", "RELEASE_FAILED_ORDER"),
+                           ("EXPIRED", "RELEASE_FAILED_ORDER")):
+            status = b.trial_status(current, self.engine.state, {order["id"]: job}, st.NOW)
+            self.assertEqual(status["phase"], phase)
+            self.assertEqual(status["reserved_work_units"], 6)
+
+    def test_rejected_blueprint_still_exposes_outstanding_trial_allowance(self):
+        license_ = self.acquire()
+        self.trial(license_, "OPEN")
+        rejected = self.act(st.A, "REJECT", license_id=license_["id"])
+        status = b.trial_status(rejected, self.engine.state, {}, st.NOW)
+        self.assertEqual(status["phase"], "REJECTED")
+        self.assertEqual(status["reserved_work_units"], 6)
+
+    def test_accepted_status_reports_actual_consumed_work_only(self):
+        license_ = self.acquire()
+        accepted = self.accept(license_, self.trial())
+        status = b.trial_status(accepted, self.engine.state, {}, st.NOW)
+        self.assertEqual(status["phase"], "ACCEPTED")
+        self.assertEqual(status["consumed_work_units"], 6)
+        self.assertEqual(status["reserved_work_units"], 0)
+
+    def test_retry_keeps_the_same_existing_allowance_authority(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        self.engine.advance(st.A, "CANCEL", order_id=order["id"])
+        self.engine.advance(st.OP, "REVOKE", mandate_id=self.engine.mandate["id"])
+        with self.assertRaisesRegex(ValueError, "SERVICE_AUTHORIZATION_EXPIRED_OR_REVOKED"):
+            self.trial(license_, "OPEN")
+        self.assertEqual(len(self.state["licenses"][license_["id"]]["trial_orders"]), 1)
+
+    def test_forged_order_identity_cannot_register_a_trial(self):
+        license_ = self.acquire()
+        command = self.next_request(license_)
+        request = b.trial_request(self.state, st.A["principal_id"], command, self.engine.state)
+        self.engine.state, _ = s.apply(self.engine.state, st.A, request, st.NOW, {}, self.resources.catalog)
+        facts = b.facts_for(command, self.engine.state, self.state)
+        facts["order"]["id"] = "f" * 32
+        with self.assertRaisesRegex(ValueError, "TRIAL_BINDING"):
+            b.apply(self.state, st.A, command, st.NOW, facts, self.resources.catalog)
+
+    def test_accepted_delivery_requires_last_registered_trial(self):
+        value = self.delivery()
+        license_ = value["license"]
+        accepted = self.accept(license_, self.trial())
+        value["license"] = {**accepted, "trial_order_id": "f" * 32}
+        with self.assertRaisesRegex(ValueError, "TRIAL_HISTORY"):
+            b.verify_delivery(value, license_["id"], st.A["principal_id"], license_["package_sha256"],
+                              license_["terms_sha256"], self.resources.catalog)
 
 
 if __name__ == "__main__":

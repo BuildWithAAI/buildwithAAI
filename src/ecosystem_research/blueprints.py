@@ -9,21 +9,24 @@ from __future__ import annotations
 from copy import deepcopy
 import re
 
-from . import network as n
+from . import network as n, services as s
 from ..multi_brain_research import training_lab as lab
 from ..solana_research import coin_evidence as ev
 
-PROTOCOL = "AAI_BLUEPRINT_EXCHANGE_V1"
+PROTOCOL = "AAI_BLUEPRINT_EXCHANGE_V2"
 PACKAGE = "AAI_RESEARCH_BLUEPRINT_V1"
 ROOT_ROUTE = "/v1/blueprints"
 MAX_PACKAGE_BYTES = 10000
 MAX_EVENTS, MAX_LISTINGS, MAX_LICENSES = 256, 32, 64
+MAX_TRIALS = 3
+RETRYABLE = ("CANCELLED", "EXPIRED", "FAILED", "REJECTED")
 FIELDS = {
     "PUBLISH": ("service_listing_id", "package", "price_usd_cents"),
     "CLOSE": ("listing_id",),
     "ACQUIRE": ("listing_id", "terms_sha256"),
     "ACCEPT": ("license_id", "package_sha256", "trial_order_id"),
     "REJECT": ("license_id",),
+    "TRIAL": ("license_id", "package_sha256", "attempt", "mandate_id", "start_before_ms"),
 }
 
 
@@ -96,7 +99,46 @@ def empty():
     return {"listings": {}, "licenses": {}}
 
 
-def facts_for(command, service_state):
+def trial_command(license_, listing, command):
+    return {"kind": "ORDER", "request_id": lab.digest([PROTOCOL, "TRIAL", license_["id"], command["attempt"]])[:32],
+            "mandate_id": n.identity(command["mandate_id"]), "listing_id": listing["id"],
+            "terms_sha256": listing["terms_sha256"], "start_before_ms": integer(command["start_before_ms"], 0, 2**53 - 1)}
+
+
+def trial_gate(license_, command, previous):
+    lab.require(license_["state"] == "ACQUIRED", "BLUEPRINT_ALREADY_DECIDED")
+    lab.require(command["package_sha256"] == license_["package_sha256"], "BLUEPRINT_PACKAGE_CHANGED")
+    integer(command["attempt"], 1, MAX_TRIALS)
+    lab.require(command["attempt"] == len(license_["trial_orders"]) + 1, "BLUEPRINT_TRIAL_SEQUENCE")
+    if license_["trial_orders"]:
+        lab.require(previous is not None and previous["id"] == license_["trial_orders"][-1]
+                    and previous["state"] in RETRYABLE, "BLUEPRINT_PRIOR_TRIAL_UNRESOLVED")
+    else:
+        lab.require(previous is None, "BLUEPRINT_TRIAL_SEQUENCE")
+
+
+def trial_request(state, who, command, services):
+    license_ = state["licenses"].get(command["license_id"])
+    lab.require(license_ is not None and license_["buyer_id"] == who, "BLUEPRINT_BUYER_REQUIRED")
+    previous = services["orders"].get(license_["trial_orders"][-1]) if license_["trial_orders"] else None
+    trial_gate(license_, command, previous)
+    listing = state["listings"][license_["listing_id"]]
+    return trial_command(license_, services["listings"][listing["service_listing_id"]], command)
+
+
+def acceptance_gate(license_, listing, command, order, source):
+    lab.require(license_["state"] == "ACQUIRED", "BLUEPRINT_ALREADY_DECIDED")
+    lab.require(command["package_sha256"] == license_["package_sha256"], "BLUEPRINT_PACKAGE_CHANGED")
+    lab.require(license_["trial_orders"] and command["trial_order_id"] == license_["trial_orders"][-1],
+                "BLUEPRINT_TRIAL_NOT_REGISTERED")
+    lab.require(order["id"] == command["trial_order_id"] and order["state"] in ("DELIVERED", "ACCEPTED")
+                and all(order[k] == license_[k] for k in ("buyer_id", "provider_id", "project_id"))
+                and order["listing_id"] == source["id"] == listing["service_listing_id"]
+                and source["service"] == listing["recipe"]["service"]
+                and source["resource_sha256"] == listing["recipe"]["resource_sha256"], "BLUEPRINT_TRIAL_BINDING")
+
+
+def facts_for(command, service_state, blueprint_state=None):
     if command["kind"] == "PUBLISH":
         listing = service_state["listings"].get(command["service_listing_id"])
         lab.require(listing is not None, "BLUEPRINT_SERVICE_LISTING_REQUIRED")
@@ -106,6 +148,15 @@ def facts_for(command, service_state):
         lab.require(order is not None, "BLUEPRINT_TRIAL_REQUIRED")
         return {"order": deepcopy(order),
                 "service_listing": deepcopy(service_state["listings"][order["listing_id"]])}
+    if command["kind"] == "TRIAL":
+        license_ = blueprint_state["licenses"][command["license_id"]]
+        listing = blueprint_state["listings"][license_["listing_id"]]
+        source = service_state["listings"][listing["service_listing_id"]]
+        request = trial_command(license_, source, command)
+        order_id = s.record_identity(listing["recipe"]["catalog_sha256"], "AGENT", license_["buyer_id"], request["request_id"], "ORDER")
+        lab.require(order_id in service_state["orders"], "BLUEPRINT_TRIAL_REQUIRED")
+        return {"order": deepcopy(service_state["orders"][order_id]), "service_listing": deepcopy(source),
+                "previous_order": deepcopy(service_state["orders"][license_["trial_orders"][-1]]) if license_["trial_orders"] else None}
     return {}
 
 
@@ -161,7 +212,7 @@ def apply(state, actor, command, at, facts, catalog):
                   "provider_id": listing["provider_id"], "project_id": listing["project_id"],
                   "package_sha256": listing["terms"]["package_sha256"],
                   "terms_sha256": listing["terms_sha256"], "state": "ACQUIRED",
-                  "acquired_ms": at, "decided_ms": None, "trial_order_id": None,
+                  "acquired_ms": at, "decided_ms": None, "trial_order_id": None, "trial_orders": [],
                   "trial_report_sha256": None, "financial_settlement": False,
                   "live_execution_allowed": False}
         state["licenses"][record_id] = result
@@ -170,17 +221,28 @@ def apply(state, actor, command, at, facts, catalog):
     lab.require(license_ is not None, "BLUEPRINT_NOT_FOUND")
     lab.require(who == license_["buyer_id"], "BLUEPRINT_BUYER_REQUIRED")
     lab.require(license_["state"] == "ACQUIRED", "BLUEPRINT_ALREADY_DECIDED")
+    if kind == "TRIAL":
+        lab.exact(facts, ("order", "previous_order", "service_listing"))
+        trial_gate(license_, command, facts["previous_order"])
+        order, source = facts["order"], facts["service_listing"]
+        listing = state["listings"][license_["listing_id"]]
+        request = trial_command(license_, source, command)
+        expected_id = s.record_identity(lab.digest(catalog), "AGENT", who, request["request_id"], "ORDER")
+        lab.require(order["state"] == "OPEN" and order["id"] == expected_id
+                    and all(order[k] == license_[k] for k in ("buyer_id", "provider_id", "project_id"))
+                    and order["listing_id"] == source["id"] == listing["service_listing_id"]
+                    and order["mandate_id"] == command["mandate_id"] and order["start_before_ms"] == command["start_before_ms"]
+                    and source["resource_sha256"] == listing["recipe"]["resource_sha256"]
+                    and source["service"] == listing["recipe"]["service"]
+                    and not any(order["id"] in v["trial_orders"] for v in state["licenses"].values()), "BLUEPRINT_TRIAL_BINDING")
+        license_["trial_orders"].append(order["id"])
+        return state, deepcopy(license_)
     if kind == "ACCEPT":
         lab.exact(facts, ("order", "service_listing"))
         order, source = facts["order"], facts["service_listing"]
         listing = state["listings"][license_["listing_id"]]
-        lab.require(command["package_sha256"] == license_["package_sha256"], "BLUEPRINT_PACKAGE_CHANGED")
-        lab.require(order["id"] == command["trial_order_id"] and order["state"] == "ACCEPTED"
-                    and all(order[k] == license_[k] for k in ("buyer_id", "provider_id", "project_id"))
-                    and order["listing_id"] == source["id"] == listing["service_listing_id"]
-                    and source["service"] == listing["recipe"]["service"]
-                    and source["resource_sha256"] == listing["recipe"]["resource_sha256"],
-                    "BLUEPRINT_TRIAL_BINDING")
+        acceptance_gate(license_, listing, command, order, source)
+        lab.require(order["state"] == "ACCEPTED", "BLUEPRINT_TRIAL_BINDING")
         lab.require(not any(v["trial_order_id"] == order["id"] for v in state["licenses"].values()),
                     "BLUEPRINT_TRIAL_ALREADY_USED")
         license_["trial_order_id"] = order["id"]
@@ -202,7 +264,7 @@ def verify_delivery(value, license_id, buyer, expected_package, expected_terms, 
                 "BLUEPRINT_DELIVERY_SCOPE")
     license_, listing = value["license"], value["listing"]
     lab.exact(license_, ("id", "listing_id", "buyer_id", "provider_id", "project_id", "package_sha256",
-                         "terms_sha256", "state", "acquired_ms", "decided_ms", "trial_order_id",
+                         "terms_sha256", "state", "acquired_ms", "decided_ms", "trial_order_id", "trial_orders",
                          "trial_report_sha256", "financial_settlement", "live_execution_allowed"))
     lab.exact(listing, ("id", "provider_id", "project_id", "service_listing_id", "slug", "version", "title",
                        "summary", "recipe", "terms", "terms_sha256", "active", "published_ms", "performance_claim"))
@@ -211,6 +273,11 @@ def verify_delivery(value, license_id, buyer, expected_package, expected_terms, 
     lab.require(type(listing["active"]) is bool and listing["performance_claim"] == "NONE", "BLUEPRINT_DELIVERY_SCOPE")
     integer(listing["published_ms"], 0, 2**53 - 1)
     integer(license_["acquired_ms"], 0, 2**53 - 1)
+    trials = license_["trial_orders"]
+    lab.require(type(trials) is list and len(trials) <= MAX_TRIALS, "BLUEPRINT_TRIAL_HISTORY")
+    for order_id in trials:
+        n.identity(order_id)
+    lab.require(len(trials) == len(set(trials)), "BLUEPRINT_TRIAL_HISTORY")
     if license_["state"] == "ACQUIRED":
         lab.require(all(license_[k] is None for k in ("decided_ms", "trial_order_id", "trial_report_sha256")),
                     "BLUEPRINT_DELIVERY_STATE")
@@ -218,6 +285,7 @@ def verify_delivery(value, license_id, buyer, expected_package, expected_terms, 
         integer(license_["decided_ms"], license_["acquired_ms"], 2**53 - 1)
         if license_["state"] == "ACCEPTED":
             n.identity(license_["trial_order_id"])
+            lab.require(trials and trials[-1] == license_["trial_order_id"], "BLUEPRINT_TRIAL_HISTORY")
             lab.pin(license_["trial_report_sha256"])
         else:
             lab.require(license_["trial_order_id"] is None and license_["trial_report_sha256"] is None,
@@ -240,4 +308,31 @@ def verify_delivery(value, license_id, buyer, expected_package, expected_terms, 
             "bytes": len(n.raw(package)), "recipe": package["recipe"],
             "verification_scope": "PACKAGE_INTEGRITY_AND_REGISTERED_RECIPE",
             "instructions_executed": False, "profit_verified": False,
+            "financial_settlement": False, "live_execution_allowed": False}
+
+
+def trial_status(license_, services, job_states, at):
+    """Read-only lifecycle guidance; no lease sweep, retry, charge or authorization."""
+    orders = [deepcopy(services["orders"][key]) for key in license_["trial_orders"]]
+    for order in orders:
+        order["effective_job_state"] = job_states.get(order["id"])
+    latest = orders[-1] if orders else None
+    if license_["state"] != "ACQUIRED":
+        phase = license_["state"]
+    elif latest is None or latest["state"] in RETRYABLE:
+        phase = "READY_TO_REQUEST" if len(orders) < MAX_TRIALS else "ATTEMPT_LIMIT_REACHED"
+    elif latest["state"] == "OPEN":
+        phase = "EXPIRE_UNUSED_ORDER" if at >= latest["start_before_ms"] else "WAITING_FOR_PROVIDER"
+    elif latest["state"] == "STARTED":
+        job = latest["effective_job_state"]
+        phase = "PROVIDER_DELIVERY_RECOVERY" if job == "SUCCEEDED" else (
+            "RELEASE_FAILED_ORDER" if job in s.FAILED_JOBS else "WAITING_FOR_JOB")
+    else:
+        phase = "READY_TO_VERIFY_AND_ACCEPT"
+    return {"protocol": "AAI_BLUEPRINT_TRIAL_STATUS_V1", "license_id": license_["id"],
+            "license_state": license_["state"], "phase": phase, "orders": orders,
+            "attempts_used": len(orders), "attempt_limit": MAX_TRIALS,
+            "reserved_work_units": sum(o["work_units"] for o in orders if o["state"] in ("OPEN", "STARTED", "DELIVERED")),
+            "consumed_work_units": sum(o["work_units"] for o in orders if o["state"] == "ACCEPTED"),
+            "unit": s.UNIT, "observed_at_ms": at, "authorization_granted": False, "automatic_retry": False,
             "financial_settlement": False, "live_execution_allowed": False}
