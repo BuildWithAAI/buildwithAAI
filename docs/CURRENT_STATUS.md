@@ -24,7 +24,7 @@ The consolidation PR runs the combined CI workflows; their exact-head results an
 
 Ecosystem research still uses the exact scanner/community checkouts in [components.json](../research/ecosystem/components.json). Importing the newly co-located community tree as if it were that old pinned checkout would fail its identity contract. Keep those reproducible checkouts separate until a specifically reviewed pin upgrade.
 
-The shared root tests need the scanner runtime dependency: install `requirements-scanner.txt` before `python -m unittest discover -s tests -v`. Community tests use that project's fully hashed runtime lock; SFP runtime uses the standard library; Rust modules use their own locked Cargo manifests. The project workflows retain these boundaries.
+The combined 763 root tests need the scanner runtime dependency: install `requirements-scanner.txt` before `python -m unittest discover -s tests -v`, on Linux and Python 3.11/3.12. The cross-platform brain workflow uses `python scripts/run_research_tests.py` to preserve all 609 research tests, including scanner-feed contracts, without asserting scanner-runtime support on Windows or Python 3.14. Community tests use that project's fully hashed runtime lock; SFP runtime uses the standard library; Rust modules use their own locked Cargo manifests. The project workflows retain these boundaries.
 
 ## Unfinished and unresolved
 
