@@ -1,0 +1,470 @@
+{
+  "record": "AAI_SOURCE_CONSOLIDATION_2026_10_27",
+  "baseline_main": "7e4ae535ce3ba16cdf8544e9cb57533e4370e5de",
+  "scope": "SOURCE_CONSOLIDATION_NOT_PRODUCTION_COMMISSIONING",
+  "original_open_draft_count": 71,
+  "input_source_path_union": 907,
+  "missing_input_paths_before_documentation_refresh": [],
+  "tips": [
+    {
+      "component": "research",
+      "pr": 79,
+      "branch": "feature/ecosystem-blueprint-evidence",
+      "sha": "f3ae05c67517a48f99b639e78a7d220839af4983"
+    },
+    {
+      "component": "community",
+      "pr": 59,
+      "branch": "feature/practice-cohort-evaluation",
+      "sha": "fc42d8b36da77c58430e4a7594a30a0225883b6c"
+    },
+    {
+      "component": "scanner",
+      "pr": 10,
+      "branch": "feat/aai-scanner-mvp",
+      "sha": "97108a271face220aef6296fddb2e18abdb210b5"
+    },
+    {
+      "component": "leasing",
+      "pr": 49,
+      "branch": "feature/vl002-template-validation",
+      "sha": "19ef9c539a32ee190a0f09c9e6c416ca3b00279f"
+    },
+    {
+      "component": "sfp",
+      "pr": 27,
+      "branch": "feature/bt-008-public-source-intake",
+      "sha": "6d9e006e3934843dfd7e662f52e0ad7db009f135"
+    }
+  ],
+  "pull_requests": [
+    {
+      "number": 4,
+      "head_sha": "8a58702718b86bc75da0b271b6943e50ee0af2a7",
+      "head_branch": "feature/ae-001-simulation-foundation",
+      "original_base": "main"
+    },
+    {
+      "number": 9,
+      "head_sha": "1ffffe30122f855b69e639ddd58ff6344949e905",
+      "head_branch": "feat/bt-003-solana-replay-harness",
+      "original_base": "main"
+    },
+    {
+      "number": 10,
+      "head_sha": "97108a271face220aef6296fddb2e18abdb210b5",
+      "head_branch": "feat/aai-scanner-mvp",
+      "original_base": "main"
+    },
+    {
+      "number": 11,
+      "head_sha": "772cac0b3945390f27289ada834ebee5c6e1676b",
+      "head_branch": "feature/ae-002-task-market",
+      "original_base": "feature/ae-001-simulation-foundation"
+    },
+    {
+      "number": 12,
+      "head_sha": "70a3b42986c80e77dc8fde203866c2a5f9f7143b",
+      "head_branch": "feature/ae-003-review-policy",
+      "original_base": "feature/ae-002-task-market"
+    },
+    {
+      "number": 13,
+      "head_sha": "a38452719ced469472e94a5aa6295001079cfe2f",
+      "head_branch": "feature/ae-004-noncustodial-allocation",
+      "original_base": "feature/ae-003-review-policy"
+    },
+    {
+      "number": 14,
+      "head_sha": "9287f85a7fd59a5769bd330b549ef914963014d4",
+      "head_branch": "feature/ae-005-community-simulations",
+      "original_base": "feature/ae-004-noncustodial-allocation"
+    },
+    {
+      "number": 15,
+      "head_sha": "ce6f2d354232b326ea53b03880535bef550fa9ee",
+      "head_branch": "feature/ae-006-persistent-community",
+      "original_base": "feature/ae-005-community-simulations"
+    },
+    {
+      "number": 16,
+      "head_sha": "f2fb4804a417fc5eb873714e98d0e694bf9c1d82",
+      "head_branch": "feature/ae-007-wallet-evidence",
+      "original_base": "feature/ae-006-persistent-community"
+    },
+    {
+      "number": 17,
+      "head_sha": "850ec47c7fa704eb8efe61aaff8dbe549d36a0ba",
+      "head_branch": "feature/ae-008-community-operations",
+      "original_base": "feature/ae-007-wallet-evidence"
+    },
+    {
+      "number": 18,
+      "head_sha": "6b073b1ea9aaab35d07aba8499fcb246784b6aa2",
+      "head_branch": "feature/ae-009-agent-workspace",
+      "original_base": "feature/ae-008-community-operations"
+    },
+    {
+      "number": 20,
+      "head_sha": "6fc6495e9fceff29c5f3a188058ca7edb5d35ef4",
+      "head_branch": "docs/virtual-leasing-2026-10-13",
+      "original_base": "feature/ae-009-agent-workspace"
+    },
+    {
+      "number": 21,
+      "head_sha": "c13dbf6cc70998056c8aa347a984d14b786fbbfc",
+      "head_branch": "feature/ae-010-durable-agent-jobs",
+      "original_base": "docs/virtual-leasing-2026-10-13"
+    },
+    {
+      "number": 22,
+      "head_sha": "28a54dd53458c503cda141471565ec6c2513992a",
+      "head_branch": "feature/ae-011-pilot-access",
+      "original_base": "feature/ae-010-durable-agent-jobs"
+    },
+    {
+      "number": 23,
+      "head_sha": "9e02f88e75bb5c8623c7177c08d0fe8f2c0379a6",
+      "head_branch": "docs/sfp-research-2026-10-14",
+      "original_base": "main"
+    },
+    {
+      "number": 24,
+      "head_sha": "a8e23d8d8758e5db19eac1aa623a1b589b61c875",
+      "head_branch": "feature/bt-005-sfp-paper-lab",
+      "original_base": "docs/sfp-research-2026-10-14"
+    },
+    {
+      "number": 25,
+      "head_sha": "b41b935387dfeaf4c8799fbd365373cd2279acee",
+      "head_branch": "feature/bt-006-chronological-study",
+      "original_base": "feature/bt-005-sfp-paper-lab"
+    },
+    {
+      "number": 26,
+      "head_sha": "a68bdd3df58dc5e348b7d6016a9d4a42e6611abb",
+      "head_branch": "feature/bt-007-research-notebook",
+      "original_base": "feature/bt-006-chronological-study"
+    },
+    {
+      "number": 27,
+      "head_sha": "6d9e006e3934843dfd7e662f52e0ad7db009f135",
+      "head_branch": "feature/bt-008-public-source-intake",
+      "original_base": "feature/bt-007-research-notebook"
+    },
+    {
+      "number": 28,
+      "head_sha": "100fa8df87e53e496da0696f59581718ceeb2614",
+      "head_branch": "feature/ae-012-economy-campaign",
+      "original_base": "feature/ae-011-pilot-access"
+    },
+    {
+      "number": 29,
+      "head_sha": "00aaf271c2bbb03c6f24b121da7a844d7229ee8d",
+      "head_branch": "feature/ae-013-payment-windows",
+      "original_base": "feature/ae-012-economy-campaign"
+    },
+    {
+      "number": 30,
+      "head_sha": "cdc55fef488d79fc709da57f7c520bbb52604ad7",
+      "head_branch": "feature/ae-014-capacity-authorization",
+      "original_base": "feature/ae-013-payment-windows"
+    },
+    {
+      "number": 31,
+      "head_sha": "6e4c78cec795adab5ddcf4a4ee1061967bea1cd2",
+      "head_branch": "feature/ae-015-reservation-controls",
+      "original_base": "feature/ae-014-capacity-authorization"
+    },
+    {
+      "number": 32,
+      "head_sha": "248a36a31983a9f443084b0e10c8296cfd425e65",
+      "head_branch": "feature/ae-016-agent-trust",
+      "original_base": "feature/ae-015-reservation-controls"
+    },
+    {
+      "number": 33,
+      "head_sha": "daa0b82d31c7206c5add11f6902f80abd1e433a1",
+      "head_branch": "feature/ae-017-reviewed-recovery",
+      "original_base": "feature/ae-016-agent-trust"
+    },
+    {
+      "number": 34,
+      "head_sha": "5416da5f4cc367bf3fa04e2a76ab5118ad38c585",
+      "head_branch": "feature/ae-018-owner-risk",
+      "original_base": "feature/ae-017-reviewed-recovery"
+    },
+    {
+      "number": 35,
+      "head_sha": "eb1f0d3cd68b709b4569f52844eeefc1ce5e683b",
+      "head_branch": "feature/ae-019-identity-bridge",
+      "original_base": "feature/ae-018-owner-risk"
+    },
+    {
+      "number": 36,
+      "head_sha": "7e2ef806b04925d954373c0898318ceb66a02f22",
+      "head_branch": "feature/ae-020-operator-capacity",
+      "original_base": "feature/ae-019-identity-bridge"
+    },
+    {
+      "number": 37,
+      "head_sha": "eb96f442cfc486305d8797d035be93cb5d57a607",
+      "head_branch": "feature/ae-021-payment-authority",
+      "original_base": "feature/ae-020-operator-capacity"
+    },
+    {
+      "number": 38,
+      "head_sha": "dd91839d40b90834d588f9c1ebdb630cc5fffc47",
+      "head_branch": "feature/ae-022-commerce-routing",
+      "original_base": "feature/ae-021-payment-authority"
+    },
+    {
+      "number": 39,
+      "head_sha": "91e7caa1bca3bb74eacd3e4af6e7f1b68a9e6933",
+      "head_branch": "feature/ae-023-durable-commerce",
+      "original_base": "feature/ae-022-commerce-routing"
+    },
+    {
+      "number": 40,
+      "head_sha": "305e224af6fe151cd9d0ba6f69d2c5f69cbbe6a6",
+      "head_branch": "feature/ae-024-bridge-sandbox",
+      "original_base": "feature/ae-023-durable-commerce"
+    },
+    {
+      "number": 41,
+      "head_sha": "e1c32062d870b662c26e5098c22e308d2795ebc7",
+      "head_branch": "feature/ae-025-bridge-reconciliation",
+      "original_base": "feature/ae-024-bridge-sandbox"
+    },
+    {
+      "number": 42,
+      "head_sha": "99ddb48825aa53cc0fe12bced3859e73304ed10d",
+      "head_branch": "feature/ae-026-bridge-snapshots",
+      "original_base": "feature/ae-025-bridge-reconciliation"
+    },
+    {
+      "number": 43,
+      "head_sha": "76962407c9cbb63f7a9e7bc045ce2cd271825ee5",
+      "head_branch": "feature/ae-027-bridge-preflight",
+      "original_base": "feature/ae-026-bridge-snapshots"
+    },
+    {
+      "number": 44,
+      "head_sha": "bdc111a13d534019644a917ae54fbd6d67c4eadc",
+      "head_branch": "feature/ae-028-connected-payment-pipeline",
+      "original_base": "feature/ae-027-bridge-preflight"
+    },
+    {
+      "number": 45,
+      "head_sha": "46fce6c266fc6a562b8a13106ef6ed5c00596e2e",
+      "head_branch": "feature/ae-029-payment-recovery",
+      "original_base": "feature/ae-028-connected-payment-pipeline"
+    },
+    {
+      "number": 46,
+      "head_sha": "3dbfdaf56265e169b8fab6c40e0c3a385d220c65",
+      "head_branch": "feature/ae-030-agent-payment-tools",
+      "original_base": "feature/ae-029-payment-recovery"
+    },
+    {
+      "number": 47,
+      "head_sha": "f4e7eceee46070aac09ab22f29a2f8ba05985a8d",
+      "head_branch": "feature/live-connections-audit",
+      "original_base": "feature/ae-030-agent-payment-tools"
+    },
+    {
+      "number": 48,
+      "head_sha": "a2b71020411dcca338a90205ca4f5128085fb21e",
+      "head_branch": "feature/vl001-leasing-schema",
+      "original_base": "feature/live-connections-audit"
+    },
+    {
+      "number": 49,
+      "head_sha": "19ef9c539a32ee190a0f09c9e6c416ca3b00279f",
+      "head_branch": "feature/vl002-template-validation",
+      "original_base": "feature/vl001-leasing-schema"
+    },
+    {
+      "number": 50,
+      "head_sha": "b6b30d387a84d0f27a2c40405bf99ddfa69921dd",
+      "head_branch": "feature/multi-brain-market-foundation",
+      "original_base": "feat/bt-003-solana-replay-harness"
+    },
+    {
+      "number": 51,
+      "head_sha": "07dabc185280774a7392b89e4a2cd685d6a61c23",
+      "head_branch": "research/scientific-model-audit-20261020",
+      "original_base": "feature/multi-brain-market-foundation"
+    },
+    {
+      "number": 52,
+      "head_sha": "a1e683beb2372aa3a9f2eaaee4e80c154b86ef50",
+      "head_branch": "feature/flyvis-reference-worker",
+      "original_base": "research/scientific-model-audit-20261020"
+    },
+    {
+      "number": 53,
+      "head_sha": "c884fc02449c077108b5ec2a550213dca20cb88d",
+      "head_branch": "feature/flyvis-trained-reference",
+      "original_base": "feature/flyvis-reference-worker"
+    },
+    {
+      "number": 54,
+      "head_sha": "f92fad92a474ed6f3a4c27cbc0eecedeba39e73c",
+      "head_branch": "feature/multi-brain-coordinator",
+      "original_base": "feature/flyvis-trained-reference"
+    },
+    {
+      "number": 55,
+      "head_sha": "64ea431aae620ca0d74bad5a2bcbeb28c41c6c76",
+      "head_branch": "feature/agent-forum-wallet-identity",
+      "original_base": "feature/live-connections-audit"
+    },
+    {
+      "number": 56,
+      "head_sha": "a5dc52b550712a470ccd1208e79c08b145e65e2b",
+      "head_branch": "feature/brain-trading-school",
+      "original_base": "feature/multi-brain-coordinator"
+    },
+    {
+      "number": 57,
+      "head_sha": "f0681796c106f79bebcefca71d47ac62e23df823",
+      "head_branch": "feature/blind-meme-market",
+      "original_base": "feature/agent-forum-wallet-identity"
+    },
+    {
+      "number": 58,
+      "head_sha": "8ef632548ab0f692d717cbcd0810ccda326d92da",
+      "head_branch": "feature/causal-practice-worker",
+      "original_base": "feature/blind-meme-market"
+    },
+    {
+      "number": 59,
+      "head_sha": "fc42d8b36da77c58430e4a7594a30a0225883b6c",
+      "head_branch": "feature/practice-cohort-evaluation",
+      "original_base": "feature/causal-practice-worker"
+    },
+    {
+      "number": 60,
+      "head_sha": "93640a46841b29f58f9341f2733f187b0503e8d0",
+      "head_branch": "research/multi-brain-fusion-20261020",
+      "original_base": "feature/brain-trading-school"
+    },
+    {
+      "number": 61,
+      "head_sha": "f150da6f1db660e1e18ba25a03ec2305b47dde46",
+      "head_branch": "feature/causal-brain-readout-training",
+      "original_base": "research/multi-brain-fusion-20261020"
+    },
+    {
+      "number": 62,
+      "head_sha": "061122ccb58cf8e5467ca280e2357d5c2c5eaffe",
+      "head_branch": "feature/agent-fun-chain-evidence",
+      "original_base": "feature/causal-brain-readout-training"
+    },
+    {
+      "number": 63,
+      "head_sha": "ca97f2612fcfbdd797cdd75a9ebcf1ef3b1d8f91",
+      "head_branch": "feature/aai-fun-trade-learning",
+      "original_base": "feature/agent-fun-chain-evidence"
+    },
+    {
+      "number": 64,
+      "head_sha": "257fd422df82467b12f5b819b5828616d384517b",
+      "head_branch": "feature/aai-fun-neural-trades",
+      "original_base": "feature/aai-fun-trade-learning"
+    },
+    {
+      "number": 65,
+      "head_sha": "ecd47af3467223c84c8cfdd4c5af529a61bdec58",
+      "head_branch": "feature/aai-fun-history-sessions",
+      "original_base": "feature/aai-fun-neural-trades"
+    },
+    {
+      "number": 66,
+      "head_sha": "da33d1902ca4a40d19561ef471f89fc38228879f",
+      "head_branch": "feature/ecosystem-research-handoff",
+      "original_base": "feature/aai-fun-history-sessions"
+    },
+    {
+      "number": 67,
+      "head_sha": "e92043835202297282c2b70cc905483cd87cc7be",
+      "head_branch": "feature/ecosystem-learning",
+      "original_base": "feature/ecosystem-research-handoff"
+    },
+    {
+      "number": 68,
+      "head_sha": "0d25afb4274bc19c8c9a969a2d249f752a69be82",
+      "head_branch": "feature/ecosystem-behavior-learning",
+      "original_base": "feature/ecosystem-learning"
+    },
+    {
+      "number": 69,
+      "head_sha": "db01688a2c9194c409546e0e74629e55d64e42df",
+      "head_branch": "feature/ecosystem-experience",
+      "original_base": "feature/ecosystem-behavior-learning"
+    },
+    {
+      "number": 70,
+      "head_sha": "a1a2aac2c192433f36309e6ad7532a1b55f61500",
+      "head_branch": "feature/ecosystem-controller",
+      "original_base": "feature/ecosystem-experience"
+    },
+    {
+      "number": 71,
+      "head_sha": "409bc8f848542aa65a9a77d5294daa6473e296c5",
+      "head_branch": "feature/ecosystem-network",
+      "original_base": "feature/ecosystem-controller"
+    },
+    {
+      "number": 72,
+      "head_sha": "a3b558a6878133bb8545071b5b2e2aed8fb00a14",
+      "head_branch": "feature/ecosystem-scanner-feed",
+      "original_base": "feature/ecosystem-network"
+    },
+    {
+      "number": 73,
+      "head_sha": "f541781d349f4e6d907685683c24f45eb6fefc6c",
+      "head_branch": "feature/ecosystem-services",
+      "original_base": "feature/ecosystem-scanner-feed"
+    },
+    {
+      "number": 74,
+      "head_sha": "9c769deaec16a71086523c24ae1a39b2fde34375",
+      "head_branch": "feature/ecosystem-order-expiry",
+      "original_base": "feature/ecosystem-services"
+    },
+    {
+      "number": 75,
+      "head_sha": "18544def79f69f6ced7bc81e5d012000e34528d3",
+      "head_branch": "feature/ecosystem-remote-evidence",
+      "original_base": "feature/ecosystem-order-expiry"
+    },
+    {
+      "number": 76,
+      "head_sha": "abcc84b79dd544d011e0d7464ce3998293a2d502",
+      "head_branch": "feature/ecosystem-blueprint-exchange",
+      "original_base": "feature/ecosystem-remote-evidence"
+    },
+    {
+      "number": 77,
+      "head_sha": "e9f4e640e99732b4d0b1c9c78b0f99e8cb1ee340",
+      "head_branch": "feature/ecosystem-blueprint-lifecycle",
+      "original_base": "feature/ecosystem-blueprint-exchange"
+    },
+    {
+      "number": 78,
+      "head_sha": "0bdccd03eeffabbf4f75e342e9a1f61ecca352e1",
+      "head_branch": "feature/ecosystem-blueprint-withdrawal",
+      "original_base": "feature/ecosystem-blueprint-lifecycle"
+    },
+    {
+      "number": 79,
+      "head_sha": "f3ae05c67517a48f99b639e78a7d220839af4983",
+      "head_branch": "feature/ecosystem-blueprint-evidence",
+      "original_base": "feature/ecosystem-blueprint-withdrawal"
+    }
+  ],
+  "runtime_component_pins_changed": false,
+  "financial_authority": "ABSTAIN_NO_EXECUTION"
+}

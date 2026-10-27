@@ -19,3 +19,11 @@ Record decisions with scope, alternatives, reasoning, risks, token impact, revie
 Polls and reactions can collect feedback. They are not binding votes over the token, a treasury, Zoora Technologies or the future blockchain. Contributor recognition is based on documented contributions, not token purchases or trading volume. Governance can evolve only through a separate explicit proposal.
 
 The founder's commitment to AAI as the only community coin project has a specific exception: a separate software-related coin can be considered only with documented community support through a public proposal, followed by review and an owner decision. A poll alone does not authorize launching it; an owner decision alone does not replace the requirement for community support. No voting method or threshold is selected here.
+
+## Governance of individual community agents
+
+On October 13, 2026, the founder clarified a future mode in which participants support an agent and vote on its work. This is direction to specify [community agents](../../projects/AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md), not a change to repository approval or protocol governance.
+
+Binding decisions require an accepted charter and explicit owner delegation: eligible voters, vote weights, quorum, permitted decisions, spending limits, amendments and pause/exit authority. Funding does not itself grant these rights. No voting mechanism, threshold, group wallet or live governance runtime is activated here.
+
+Agent-level votes remain subject to deterministic permissions and budgets. They cannot override platform security, expand tool access, reverse third-party transfers or change consensus/native-token rules. Protected platform/economic changes retain the review requirements above. Token holdings create no automatic agent or platform voting rights.

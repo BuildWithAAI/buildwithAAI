@@ -1,0 +1,296 @@
+{
+  "milestone": "AE-002",
+  "status": "VERIFIED_OFFLINE_CANDIDATE",
+  "verified_source_head": "fb5de051f59231bab51b070decaef74a05a19c26",
+  "foundation_head": "8a58702718b86bc75da0b271b6943e50ee0af2a7",
+  "pr": "https://github.com/BuildWithAAI/buildwithAAI/pull/11",
+  "task_market_ci": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38037604053",
+  "foundation_regression_ci": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38037604149",
+  "tests_per_profile": {
+    "market_linux": 31,
+    "market_windows": 31,
+    "foundation_linux": 44,
+    "foundation_windows": 43
+  },
+  "profiles": [
+    "debug",
+    "release"
+  ],
+  "cross_platform_reports_byte_identical": true,
+  "golden_fingerprints_checked": true,
+  "independent_python_fingerprint_checked": true,
+  "dependency_audit": {
+    "database": {
+      "advisory-count": 1296,
+      "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+      "last-updated": "2026-10-09T10:12:02+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 38
+    },
+    "settings": {
+      "target_arch": [],
+      "target_os": [],
+      "severity": null,
+      "ignore": [],
+      "informational_warnings": [
+        "unmaintained",
+        "unsound",
+        "notice"
+      ]
+    },
+    "vulnerabilities": {
+      "found": false,
+      "count": 0,
+      "list": []
+    },
+    "warnings": {}
+  },
+  "reports": {
+    "default": {
+      "sha256": "d5c0ce4267b722a3df64445015a010c7dddb78ae4729c8a2a928f5ddf85356f0",
+      "fingerprint": "1d8284e43872298c5a1dbf3778a72c31bd27e56802fd8e3d1f95935d6d1e4d16",
+      "metrics": {
+        "processed_events": 461,
+        "requested_commands": 361,
+        "rejected_commands": 0,
+        "timer_events": 100,
+        "timer_noops": 100,
+        "transitions": {
+          "POSTED": 100,
+          "ACCEPTED": 91,
+          "SUBMITTED": 70,
+          "COMPLETED": 70,
+          "FAILED": 21,
+          "CANCELLED": 9
+        },
+        "rejections": {},
+        "escrow_funded": "10000",
+        "worker_payments": "6860",
+        "fees_collected": "140",
+        "client_refunds": "3000"
+      },
+      "tasks": 100
+    },
+    "no-budget": {
+      "sha256": "a0230eff260fb068e18cbd8c3413022e5301e5b9063c5cf34a5fcec2966fb2a8",
+      "fingerprint": "5f2bb3492d0df6536e84d39c72e3feb02e2c9dd52f1be8fe34d044299590cc9e",
+      "metrics": {
+        "processed_events": 361,
+        "requested_commands": 361,
+        "rejected_commands": 361,
+        "timer_events": 0,
+        "timer_noops": 0,
+        "transitions": {},
+        "rejections": {
+          "INSUFFICIENT_FUNDS": 100,
+          "UNKNOWN_TASK": 261
+        },
+        "escrow_funded": "0",
+        "worker_payments": "0",
+        "fees_collected": "0",
+        "client_refunds": "0"
+      },
+      "tasks": 0
+    }
+  },
+  "platforms": {
+    "ubuntu": {
+      "environment": {
+        "source_head_sha": "fb5de051f59231bab51b070decaef74a05a19c26",
+        "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+        "independent_json_fingerprint_verified": true,
+        "debug_release_byte_identical": true
+      },
+      "scaling": [
+        {
+          "agents": 100,
+          "classification": "SYNTHETIC",
+          "events": 23137,
+          "fingerprint": "b9ca5bacd552a8b1354813db81676d679be46c7f916280dde14dddf34d0822e0",
+          "metrics": {
+            "client_refunds": "136700",
+            "escrow_funded": "500000",
+            "fees_collected": "7266",
+            "processed_events": 23137,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 18137,
+            "timer_events": 5000,
+            "timer_noops": 5000,
+            "transitions": {
+              "ACCEPTED": 4504,
+              "CANCELLED": 496,
+              "COMPLETED": 3633,
+              "FAILED": 871,
+              "POSTED": 5000,
+              "SUBMITTED": 3633
+            },
+            "worker_payments": "356034"
+          },
+          "run_microseconds": "15539",
+          "tasks": 5000,
+          "verify_microseconds": "66955"
+        },
+        {
+          "agents": 1000,
+          "classification": "SYNTHETIC",
+          "events": 23137,
+          "fingerprint": "0783bb1b40e1846d71461c38e0bdff1cc0941c66bb510a605e74a1e076df2244",
+          "metrics": {
+            "client_refunds": "136700",
+            "escrow_funded": "500000",
+            "fees_collected": "7266",
+            "processed_events": 23137,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 18137,
+            "timer_events": 5000,
+            "timer_noops": 5000,
+            "transitions": {
+              "ACCEPTED": 4504,
+              "CANCELLED": 496,
+              "COMPLETED": 3633,
+              "FAILED": 871,
+              "POSTED": 5000,
+              "SUBMITTED": 3633
+            },
+            "worker_payments": "356034"
+          },
+          "run_microseconds": "12501",
+          "tasks": 5000,
+          "verify_microseconds": "64346"
+        },
+        {
+          "agents": 10000,
+          "classification": "SYNTHETIC",
+          "events": 23137,
+          "fingerprint": "d724e18e6a56af69a7afd4c61537abf13461edde94e66d5a2637566b965c35ff",
+          "metrics": {
+            "client_refunds": "136700",
+            "escrow_funded": "500000",
+            "fees_collected": "7266",
+            "processed_events": 23137,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 18137,
+            "timer_events": 5000,
+            "timer_noops": 5000,
+            "transitions": {
+              "ACCEPTED": 4504,
+              "CANCELLED": 496,
+              "COMPLETED": 3633,
+              "FAILED": 871,
+              "POSTED": 5000,
+              "SUBMITTED": 3633
+            },
+            "worker_payments": "356034"
+          },
+          "run_microseconds": "10754",
+          "tasks": 5000,
+          "verify_microseconds": "68495"
+        }
+      ]
+    },
+    "windows": {
+      "environment": {
+        "source_head_sha": "fb5de051f59231bab51b070decaef74a05a19c26",
+        "platform": "Windows-2025Server-10.0.26100-SP0",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+        "independent_json_fingerprint_verified": true,
+        "debug_release_byte_identical": true
+      },
+      "scaling": [
+        {
+          "agents": 100,
+          "classification": "SYNTHETIC",
+          "events": 23137,
+          "fingerprint": "b9ca5bacd552a8b1354813db81676d679be46c7f916280dde14dddf34d0822e0",
+          "metrics": {
+            "client_refunds": "136700",
+            "escrow_funded": "500000",
+            "fees_collected": "7266",
+            "processed_events": 23137,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 18137,
+            "timer_events": 5000,
+            "timer_noops": 5000,
+            "transitions": {
+              "ACCEPTED": 4504,
+              "CANCELLED": 496,
+              "COMPLETED": 3633,
+              "FAILED": 871,
+              "POSTED": 5000,
+              "SUBMITTED": 3633
+            },
+            "worker_payments": "356034"
+          },
+          "run_microseconds": "17947",
+          "tasks": 5000,
+          "verify_microseconds": "68847"
+        },
+        {
+          "agents": 1000,
+          "classification": "SYNTHETIC",
+          "events": 23137,
+          "fingerprint": "0783bb1b40e1846d71461c38e0bdff1cc0941c66bb510a605e74a1e076df2244",
+          "metrics": {
+            "client_refunds": "136700",
+            "escrow_funded": "500000",
+            "fees_collected": "7266",
+            "processed_events": 23137,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 18137,
+            "timer_events": 5000,
+            "timer_noops": 5000,
+            "transitions": {
+              "ACCEPTED": 4504,
+              "CANCELLED": 496,
+              "COMPLETED": 3633,
+              "FAILED": 871,
+              "POSTED": 5000,
+              "SUBMITTED": 3633
+            },
+            "worker_payments": "356034"
+          },
+          "run_microseconds": "15296",
+          "tasks": 5000,
+          "verify_microseconds": "66772"
+        },
+        {
+          "agents": 10000,
+          "classification": "SYNTHETIC",
+          "events": 23137,
+          "fingerprint": "d724e18e6a56af69a7afd4c61537abf13461edde94e66d5a2637566b965c35ff",
+          "metrics": {
+            "client_refunds": "136700",
+            "escrow_funded": "500000",
+            "fees_collected": "7266",
+            "processed_events": 23137,
+            "rejected_commands": 0,
+            "rejections": {},
+            "requested_commands": 18137,
+            "timer_events": 5000,
+            "timer_noops": 5000,
+            "transitions": {
+              "ACCEPTED": 4504,
+              "CANCELLED": 496,
+              "COMPLETED": 3633,
+              "FAILED": 871,
+              "POSTED": 5000,
+              "SUBMITTED": 3633
+            },
+            "worker_payments": "356034"
+          },
+          "run_microseconds": "15168",
+          "tasks": 5000,
+          "verify_microseconds": "71001"
+        }
+      ]
+    }
+  },
+  "scope": "Synthetic task-state and escrow simulation only; no work-quality verification, reputation score, dispute system, external cost accounting, real agents, blockchain or deployment. Timings are single CI samples, not an SLA. This evidence refers to the named source commit, not the later documentation commit."
+}

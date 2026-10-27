@@ -1,0 +1,13 @@
+# SYNTHETIC timing/admission experiment. Zero fees; no network or wallet signer.
+seeds = [7, 11, 19, 31, 42, 59, 73, 89, 101, 127]
+scenarios = ["NORMAL_DELAY", "UNPAID_SYBIL_FLOOD", "PAID_SYBIL_FLOOD", "OBSERVATION_LAG", "LATE_PAYMENT", "DUPLICATE_RECEIPTS", "OUT_OF_TERMS", "UNBACKED_CLAIMS"]
+agents = 24
+rounds = 12
+tasks_per_round = 36
+provider_capacity = 4
+max_quotes = 2000
+payment_window = 4
+evidence_grace = 6
+service_ticks = 2
+starting_balance = 200000
+price = 1000

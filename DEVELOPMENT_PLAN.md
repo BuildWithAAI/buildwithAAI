@@ -4,7 +4,11 @@
 
 **Future blockchain name: UNDECIDED — Zoora Blockchain or AAI Blockchain.** No tokenomics, mint, license, launch, or migration decision is made by this update.
 
-## What changed
+## Trading research follow-up — October 14, 2026
+
+The founder requested a deep dive into swing failure patterns. [BT-004](research/SWING_FAILURE_PATTERNS.md) adds source evidence, causal event rules, three proposed variants and a costed evaluation plan in the existing Solana Trading Lab. [AAI-T-041](tasks/BACKLOG.md#aai-t-041) raises the planning backlog to 41 records; the previous 40 records and existing priorities are preserved. The subsequent [BT-005 offline tester](projects/sfp-paper-lab/README.md) implements the detector, paper ledger, CSV import and reproducible community reports. AAI-T-041 is TESTING for this software component; historical strategy performance and unseen evaluation remain unfinished. The founder's [future AAI purchase/burn objective](research/TRADING_BUY_BURN_OBJECTIVE.md) is recorded with allocation/execution still unresolved.
+
+## September 22 changes
 
 - Project purpose, Anything AI identity, current logo concept, and founder's AAI-only current community-launch focus.
 - Eight-part roadmap covering the scanner/foundation, assistant, trading research, tools/funding, future chain/civilization, agent economy/forum, music, and multi-brain experiment.
@@ -27,7 +31,7 @@
 | 9 | Pull-request process | [PR process](docs/community/PULL_REQUESTS.md) and ownership routing |
 | 10 | Status system | [Work status](docs/community/STATUS.md), [label definitions](.github/labels.json) |
 | 11 | Initial project board | [Repository planning board](docs/community/PROJECT_BOARD.md) |
-| 12 | Task backlog | [40 task briefs](tasks/BACKLOG.md), [structured data](tasks/backlog.json) |
+| 12 | Task backlog | [41 task briefs](tasks/BACKLOG.md), [structured data](tasks/backlog.json) |
 | 13 | Community participation | [Contributing](CONTRIBUTING.md), [Telegram setup](docs/community/TELEGRAM.md) |
 | 14 | Official-link security | [OFFICIAL-LINKS](OFFICIAL-LINKS.md) |
 | 15 | Token and wallet records | [Token facts](docs/token/TOKEN-INFO.md), [wallet template](docs/token/WALLETS.md) |
@@ -54,6 +58,18 @@ Keep the private scanner separate. Add app/package folders only when an implemen
 
 ## Next operational decisions
 
-Publishing these documents does not enable private reporting, required reviews, labels, Discussions, a native Projects board, or 40 live issues. Review and verify those settings separately. Assign tasks only with a contributor's agreement. Keep token facts unknown until verified. Paid hosting and real-money execution remain unapproved.
+Publishing these documents does not enable private reporting, required reviews, labels, Discussions, a native Projects board, or 41 live issues. Review and verify those settings separately. Assign tasks only with a contributor's agreement. Keep token facts unknown until verified. Paid hosting and real-money execution remain unapproved.
 
 Start with [AAI-T-023](tasks/BACKLOG.md#aai-t-023) for the early biological-source audit and the foundation/scanner tasks for current project readiness. [Validation scope](docs/VALIDATION.md).
+
+## BT-006: runnable chronological study
+
+The [study module](projects/sfp-paper-lab/STUDY.md) adds frozen plans, expanding train/test windows, a holding/latency embargo, training-only A/B/C selection with cash fallback, independent-account controls, cost/delay trials and a portable HTML/data export. [Current development status](docs/DEVELOPMENT_STATUS_2026-10-14.md) separates the recorded scanner and local-agent checks from this trading batch. Market performance, external unseen verification and funded execution remain unresolved.
+
+## BT-007: persistent research input and evaluation history
+
+The [notebook workflow](projects/sfp-paper-lab/NOTEBOOK.md) adds transactional retention of a frozen baseline, original CSV bytes, append receipts and every recorded evaluation. It rejects revised/backfilled history, uses checked head hashes for concurrent writes, blocks stale exports and exports a phone-readable audit history with all failed screens retained. Optional matching-engine replay reruns the entire recorded study history. This is software acceptance on synthetic data; source/quote truth, independently untouched evaluation and funded strategy acceptance remain unresolved.
+
+## BT-008: read-only public source intake
+
+[The source adapter](projects/sfp-paper-lab/SOURCE.md) validates Kraken SOL/USD identity and hourly responses, archives original inputs and produces a quality/provenance bundle. Source-preserving notebook events retain those responses through appends and replay. A separate explicit recent-window retrospective profile can exercise public observations; it never shortens an existing plan or establishes independent source truth, unseen performance, realistic quotes/costs or funded readiness.

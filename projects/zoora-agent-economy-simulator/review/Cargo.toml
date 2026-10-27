@@ -1,0 +1,14 @@
+[package]
+name = "zoora-review-market"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "AE-003 offline delivery review, dispute and appeal policy simulation"
+
+[dependencies]
+zoora-task-market = { path = "../marketplace" }
+zoora-agent-economy-simulator = { path = ".." }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "=0.10.9"
+toml = "0.8"

@@ -1,0 +1,27 @@
+{
+	admin off
+	persist_config off
+	servers {
+		max_header_size 16KB
+		timeouts {
+			read_header 5s
+			read_body 10s
+			write 90s
+			idle 60s
+		}
+	}
+}
+
+# AAI_SITE must match AAI_PUBLIC_URL. Use a real approved HTTPS origin for deployment.
+# Rehearsal uses http://127.0.0.1:<port>; it never requests public certificates.
+{$AAI_SITE} {
+	request_body {
+		max_size 4096
+	}
+	reverse_proxy {$AAI_UPSTREAM:127.0.0.1:8787} {
+		transport http {
+			dial_timeout 3s
+			response_header_timeout 75s
+		}
+	}
+}

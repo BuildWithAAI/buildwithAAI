@@ -1,0 +1,82 @@
+# AAI scanner: reproducible local setup and launch preparation
+
+This release is a read-only scanner. It does not sign, execute transactions, custody funds, or activate token payments. Production entry points never import test fixtures.
+
+## Run locally
+
+From the repository root, use Python 3.11 or 3.12:
+
+```sh
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements-scanner.txt
+python -m unittest discover -s tests -v
+python -m src.aai_scanner doctor
+python -m src.aai_scanner serve
+```
+
+Open http://127.0.0.1:8787 and submit a public token mint. The default RPC is Solana mainnet; the genesis hash is checked before accepting RPC evidence. Markets use DEX Screener's documented base-token pool endpoint. Public providers may throttle requests or return gaps. An operator can configure an HTTPS mainnet RPC using `AAI_RPC_URL`; provider credentials and URL paths are omitted from source receipts.
+
+Configure up to two explicit backup HTTPS mainnet RPC URLs in comma-separated `AAI_RPC_FALLBACK_URLS`. There are no automatic third-party defaults. Each provider verifies the mainnet genesis before serving reads and rechecks it after five minutes. Recovery is attempted only for connection/deadline failures and HTTP 429/502/503/504; wrong-network, malformed data, authentication/403 and RPC application errors fail closed. Every failed attempt is retained with provider ID and hostname. A single recovery call has a scheduling budget of at most 30 seconds (twice the configured provider timeout); socket reads remain individually bounded and can overrun the scheduling budget while in progress. Identity-lock waits are bounded by that budget. No request loop sleeps or retries a throttled provider immediately.
+
+HTTP `Retry-After` supports delay-seconds and dates. Cooldowns are shared across methods in one process; absent headers use 30 seconds for HTTP 429 and 3 seconds for connection/gateway failures. Numeric delays are bounded at 2^31-1 seconds. Another already-started request may finish during a cooldown. `/api/status` exposes safe provider counters, cooldowns and identity verification time. These are process-local observations, not an uptime guarantee. Backup providers can also deny expensive methods; recovery is not a substitute for a reliable operator-provisioned RPC. Solana documents that its shared public endpoints are not intended for production: https://solana.com/docs/rpc.
+
+`.env.scanner.example` lists configuration names. It contains no secrets and is **not automatically loaded**. Export environment variables before starting the process. On Windows activate `.venv\Scripts\Activate.ps1` and set variables with `$env:NAME='value'`.
+
+```sh
+python -m src.aai_scanner smoke --output data/live-smoke.json
+python -m src.aai_scanner smoke --require-holders --require-activity --output data/live-launch-gates.json
+python -m src.aai_scanner provider-check --require-all --output data/provider-capabilities.json
+python -m src.aai_scanner verify-http --output data/http-release-check.json
+python -m src.aai_scanner backup data/backup-2026-10-08.sqlite3
+python -m src.aai_scanner verify-backup data/backup-2026-10-08.sqlite3
+python -m src.aai_scanner restore data/backup-2026-10-08.sqlite3 data/restored-new.sqlite3
+```
+
+The smoke command exits nonzero when mint or price evidence is missing. It records separate optional-source results. `--require-holders` and `--require-activity` make those sources mandatory for the command to pass. A successful basic smoke is not a successful strict smoke or every launch gate. `coverage` lists the five selected core sections and does not imply that every metric or advanced feature is available. The web report and Telegram summary explicitly identify partial coverage. Historical verification receipts in `docs/verification/` are dated evidence, never current prices.
+
+`provider-check` tests only configured providers independently: mainnet genesis, validated mint, finalized activity, exact balance and largest token accounts. It does no database writes, market requests, fallback recovery or provider discovery. Expensive holder reads run last, with no immediate retries after cooldowns. Supply `--mint`/`--wallet` for public addresses. Default exit 0 means at least one provider qualifies; `--require-all` requires every configured provider. Per-provider failures and the policy remain explicit. Qualification is a point-in-time capability observation, not production capacity or verified failover. The scanner still refuses recovery around primary auth/403 or validation failures.
+
+SQLite stores watches, up to 100 observations per mint and 5,000 total observations, and Telegram polling offsets. Backups use SQLite's online backup API with a 30-second progress budget, schema/integrity verification and exclusive atomic publication. Existing files, symlinks and SQLite sidecars are never replaced. The destination filesystem must support hard links; otherwise the command fails without overwriting anything. `verify-backup` opens a standalone snapshot read-only and does not initialize or migrate it. `restore` always writes a NEW database file and never opens the configured live database, even if environment configuration is invalid. Stop the service, preserve the original DB/WAL/SHM, restore to a new file, update `AAI_DATABASE`, run `doctor`, and restart. Backups contain address history and must remain private. Watchlists are operator/workspace-wide, not per-user. This is a single-process private beta; multi-tenant accounts and distributed limits are not implemented.
+
+## API and evidence
+
+`POST /api/scan` accepts `{"mint":"...","refresh":false}`; `POST /api/wallet` accepts `{"address":"..."}`. Use `GET /api/history?mint=...`, `GET /api/watchlist`, `POST /api/watchlist`, `DELETE /api/watchlist`, and `GET /api/status`. Scans persist local observations; watch writes modify the local watchlist. Remote API calls require `Authorization: Bearer <application access token>`. `GET /api/health` checks process availability only, not provider health, and includes scanner package identity captured at startup.
+
+Run `verify-http` in a separate process while the server is running. It targets the configured `AAI_PUBLIC_URL`, checks matching package bytes, authentication/readiness, requested mint/wallet, complete selected core coverage and fresh declared source receipts. It refuses synthetic or unavailable data and returns a safe FAILED result for partial coverage. It sends no Telegram messages and never opens the verifier's local database; the target scan can persist an observation. Use the same approved RPC settings to validate expected source hosts. See the [HTTP verification runbook](SCANNER_HTTP_VERIFICATION.md) for scope, bounds, an offline actual-Waitress rehearsal and the explicit disposable live-check utility. This does not certify public launch.
+
+`GET /api/ready` uses the same access/Host/origin/rate controls. HTTP 200 means local configuration, supported runtime, interface assets and a SQLite read/write probe pass; HTTP 503 means at least one fails. It never contacts providers. Its independent `data.status` is UNVERIFIED before a scan, UNAVAILABLE for fresh partial core-section coverage, AVAILABLE for complete core-section coverage, and STALE after 120 seconds from retrieval. Future or invalid timestamps remain UNVERIFIED. This describes the LAST report, not all tokens or current upstream tick health. `public_launch` remains UNVERIFIED. Status UI shows these separate states. `doctor` additionally checks full SQLite integrity; `doctor --deployment` also checks the supplied loopback/HTTPS/access/persistent-path host configuration. Neither certifies public readiness.
+
+Supply and unit calculations preserve exact strings; the interface rounds display values and exposes exact values in tooltips/receipts. Price in SOL and USD wallet value use independently collected snapshots with non-atomic quality flags. Market cap and FDV remain distinct. Transactions mentioning a mint are not a complete trade or transfer ledger. Largest token accounts are not unique wallets. Token-2022 extension IDs are identified, but extension semantics remain unverified. Creation time, relationship inference, historical profit/loss, and unsupported metadata remain unavailable. No safety or fraud verdict is inferred.
+
+Evidence distinguishes retrieval time from unknown upstream tick time, requested finalized commitment from independently proven finality, slots, source host, classification, transformation version, quality flags, and missingness. Cached observations keep original timestamps. Refresh is manual; stale retrievals are marked in the interface.
+
+## Telegram: authorized test required
+
+Provide `AAI_TELEGRAM_ENABLED=1`, `AAI_TELEGRAM_BOT_TOKEN`, and `AAI_TELEGRAM_ALLOWED_CHAT_IDS` through secure process configuration. Only allowlisted positive private chat IDs receive replies. Use optional `AAI_TELEGRAM_EXPECTED_USERNAME=AAIScanBot` to require the intended bot identity. Never enter seed phrases or signing keys.
+
+```sh
+python -m src.aai_scanner telegram-check
+python -m src.aai_scanner telegram
+```
+
+`telegram-check` validates bot identity and webhook response structure and rejects an existing webhook rather than deleting it. It sends no messages and explicitly does NOT certify command delivery. Polling supports `/start`, `/help`, `/scan <mint>`, `/wallet <address>`, and `/status`; there are no execution commands. Test all commands in the authorized private chat and verify links use `AAI_PUBLIC_URL`. A valid delivery receipt for the intended private chat is required before persisting an offset; failures preserve it. Delivery is at-least-once, so interrupted replies can repeat. HTTP/JSON Retry-After delays are respected across methods; fatal auth, polling conflicts and invalid responses stop rather than retry forever. Run one poller per bot. The [integration runbook](SCANNER_INTEGRATIONS.md) provides secure setup and the actual command-verification procedure. No bot credentials/chat access have been supplied or live verified in this session.
+
+## Public deployment preparation
+
+No public deployment has been performed. Choose the hosting target and provide deployment authorization before publishing. Use a supported host, an unprivileged service account, a dedicated persistent database directory, and a TLS reverse proxy. Keep Waitress bound to loopback; configure the HTTPS external origin in `AAI_PUBLIC_URL`, `AAI_PUBLIC_MODE=1`, and a strong application token. Generate a token privately with `python -c 'import secrets; print(secrets.token_urlsafe(32))'`. Do not commit it or put it in URLs. The browser holds it in memory only.
+
+The [operations runbook](SCANNER_OPERATIONS.md) and `deploy/scanner/` include a systemd unit, Caddy template, secure environment example, monitoring contract and upgrade/recovery procedure. Repeat the production CLI/proxy rehearsal with `python -m tests.operations_rehearsal --caddy /path/to/caddy`. It uses only loopback listeners and disposable private SQLite state; it does not send provider requests, Telegram messages or certificate requests. Linux/systemd tooling is required for that rehearsal. Local application commands remain usable on Windows.
+
+Keep the original external Host header through the reverse proxy. This application intentionally rejects unexpected Host and cross-origin API requests and does not trust forwarded client headers. All clients behind a proxy may share an application rate bucket; configure stronger per-client limits at the edge. Do not expose the database or backup files as static content. Do not put this single shared token beta behind a public paid subscription without adding tenant separation and access lifecycle controls.
+
+Before inviting users, confirm HTTPS, authenticated access, rate limits, restart and backup recovery, provider coverage, responsive browser tests, live Telegram commands, and CI on the final release commit. Monitor process health and provider failures separately, including collection duration, 429/502 responses and storage growth. No alert delivery, uptime guarantee or security certification is claimed.
+
+## Source documentation
+
+- Solana RPC: https://solana.com/docs/rpc/http/getaccountinfo, https://solana.com/docs/rpc/http/gettokenlargestaccounts, https://solana.com/docs/rpc/http/getsignaturesforaddress, https://solana.com/docs/rpc/http/getbalance
+- Solana chain identity: https://namespaces.chainagnostic.org/solana/caip2
+- SPL Token-2022 layouts: https://www.solana-program.com/docs/token-2022
+- DEX Screener API: https://docs.dexscreener.com/api/reference
+- Telegram Bot API: https://core.telegram.org/bots/api
+- Waitress: https://docs.pylonsproject.org/projects/waitress/en/latest/

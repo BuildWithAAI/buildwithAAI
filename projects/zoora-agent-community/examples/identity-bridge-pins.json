@@ -1,0 +1,12 @@
+{
+  "model": "zoora-identity-bridge-reference-pins/0.1.0",
+  "classification": "SYNTHETIC_FIXTURES_WITH_ACTUAL_LOCAL_ENROLLMENT",
+  "archive_sha256": "6f8a5077efb9291073a00723596c5c237cb77dbf4f6fae237864f7c898795191",
+  "decompressed_sha256": "41b7dbf1fe390fc8da19b42a17ab3ba3ef8351eed4e352a4dffa6eff886cd392",
+  "snapshot_fingerprint": "3037f5bf5d92698a6667e24ef6dae0fee89dca09365c82adff8f5dda4609d688",
+  "bundle_fingerprints": {
+    "AGENT_ONLY": "739e499fc1ab4d8a2c453867e502cebf3106e3bda8e9b7e8b0e2ca66afa501e6",
+    "OWNER_COUNT": "5936fc79924990b2c5c812444c8498127572deccd22e8513dd29256840bf1c03",
+    "OWNER_RISK": "6e5a0c3a001ed49ec68b0a25d56d425217d94556f4e35cb4f70998d32514a9a1"
+  }
+}

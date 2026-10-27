@@ -1,0 +1,1538 @@
+{
+  "source_head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+  "base_head_sha": "9287f85a7fd59a5769bd330b549ef914963014d4",
+  "branch": "feature/ae-006-persistent-community",
+  "pr": "https://github.com/BuildWithAAI/buildwithAAI/pull/15",
+  "ci": [
+    {
+      "id": 38122235084,
+      "name": "Zoora Authenticated Community",
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38122235084",
+      "jobs": [
+        {
+          "id": 114419171446,
+          "name": "test (windows-latest, 3.13.16)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter (no application dependencies)",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171561,
+          "name": "test (windows-latest, 3.14.8)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter (no application dependencies)",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171600,
+          "name": "test (ubuntu-latest, 3.14.8)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter (no application dependencies)",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171638,
+          "name": "test (ubuntu-latest, 3.12.15)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter (no application dependencies)",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171761,
+          "name": "test (ubuntu-latest, 3.13.16)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install pinned development linter (no application dependencies)",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -m ruff check .",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -bb -X dev -W error -m unittest discover -s tests -v",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run python -O -bb -X dev -W error -m unittest discover -s tests",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run node --check web/app.js",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual CLI, HTTP, restart and backup acceptance",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Actual Chrome observer UI acceptance",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38122235054,
+      "name": "Zoora Task Market",
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38122235054",
+      "jobs": [
+        {
+          "id": 114419171195,
+          "name": "dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo metadata --locked --format-version 1 > dependency-metadata.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo audit --json > audit.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171345,
+          "name": "test (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, independent fingerprint and concurrent scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171423,
+          "name": "test (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, independent fingerprint and concurrent scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38122235069,
+      "name": "Zoora Agent Economy Simulator",
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38122235069",
+      "jobs": [
+        {
+          "id": 114419171225,
+          "name": "test (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, determinism and measured scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Collect validation evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171365,
+          "name": "test (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, determinism and measured scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Collect validation evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171403,
+          "name": "dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo audit --json > audit.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Preserve dependency audit",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38122235048,
+      "name": "Zoora Review Market",
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/BuildWithAAI/buildwithAAI/actions/runs/38122235048",
+      "jobs": [
+        {
+          "id": 114419171215,
+          "name": "test (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, independent fingerprint and concurrent scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Allocation, noncustodial transcript and verified viewer integration",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Community simulations, replay and CSV evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Real Chrome viewer integration and screenshots",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171337,
+          "name": "test (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt --all -- --check",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy --locked --all-targets -- -D warnings",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo test --locked --release --all-targets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo build --locked --release",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "CLI, replay, independent fingerprint and concurrent scaling",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Allocation, noncustodial transcript and verified viewer integration",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Community simulations, replay and CSV evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Real Chrome viewer integration and screenshots",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 114419171429,
+          "name": "dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo metadata --locked --format-version 1 > dependency-metadata.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo install cargo-audit --version 0.22.2 --locked",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo audit --json > audit.json",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 11695883789,
+      "name": "community-service-windows-latest-3.13.16",
+      "digest": "sha256:a51725ac1d1436a6b9e6060ead04c5c1ed7de519fbd71b84128a9e3e25d1f1b9",
+      "size_in_bytes": 714,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695792209,
+      "name": "community-service-ubuntu-latest-3.14.8",
+      "digest": "sha256:49d9fe3453761b598041e29a37171c4b0c998511ac4a31fc608e480b3ed81eb5",
+      "size_in_bytes": 719,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695414255,
+      "name": "community-service-ubuntu-latest-3.12.15",
+      "digest": "sha256:c1f0c918028bfb192f6a5c2676e584857e27f1f9b00e6dd027f704c177881b3d",
+      "size_in_bytes": 184344,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695302834,
+      "name": "community-service-ubuntu-latest-3.13.16",
+      "digest": "sha256:70b05d517e1c6ee62d6bb0fd74240fd60165a8967574e53106e9404233c1869c",
+      "size_in_bytes": 720,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695289530,
+      "name": "community-service-windows-latest-3.14.8",
+      "digest": "sha256:a70e8f09d6aacdc006f7cdc3945d25a50fb4b5d54930402f53b5b63e6d286d3d",
+      "size_in_bytes": 713,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695203077,
+      "name": "market-validation-windows-latest",
+      "digest": "sha256:c33e604f359f76275ff5d33c931f7708f235ce5998f7dc592bae00a4c20f68fe",
+      "size_in_bytes": 20761,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11694979939,
+      "name": "market-validation-ubuntu-latest",
+      "digest": "sha256:c0927035bf2fe6371c4fce407766ec97452f94e486ca6b1cd840b6efa6cc5b1c",
+      "size_in_bytes": 20764,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11694964993,
+      "name": "market-dependency-audit",
+      "digest": "sha256:47c6c73dcbfea088a74de99e0305f456715e08feb7272c381e463ff173b35ec4",
+      "size_in_bytes": 384,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695847439,
+      "name": "simulator-dependency-audit",
+      "digest": "sha256:80acb09e641daca6eec11cfb2fd4cae6bdb899d8cb35ad024348f386992ef44d",
+      "size_in_bytes": 384,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695502662,
+      "name": "simulator-validation-ubuntu-latest",
+      "digest": "sha256:0d025a8c39505324afab736d435b29aa537d3d82adc50e69c260612d8300a6c1",
+      "size_in_bytes": 78677,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695367856,
+      "name": "simulator-validation-windows-latest",
+      "digest": "sha256:1d76eda8ac1eba81d893afc75915ea9d533e22311f1a0158957ce0132b4671ab",
+      "size_in_bytes": 78702,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11696080267,
+      "name": "review-dependency-audit",
+      "digest": "sha256:bda50ed5b42f6b04b8e865246ba384eef6958b992960ec8d2efb0b68c9f3b69d",
+      "size_in_bytes": 384,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695707681,
+      "name": "review-validation-windows-latest",
+      "digest": "sha256:d69f5586a34f0ac6c3b3481b2a342407b2e952d1ea91fbf52ff446f6ab915749",
+      "size_in_bytes": 543787,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    },
+    {
+      "id": 11695044801,
+      "name": "review-validation-ubuntu-latest",
+      "digest": "sha256:d4250582dc4ff24f1dad01123e19ddedde941b9e0cbf751efa80675ecb9db97e",
+      "size_in_bytes": 1871298,
+      "head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc"
+    }
+  ],
+  "service_test_jobs": [
+    {
+      "job_id": 114419171446,
+      "tests": 48,
+      "profiles": [
+        "normal",
+        "optimized"
+      ],
+      "passed_per_profile": 47,
+      "skipped_per_profile": 1,
+      "skip_reason": "Unix permission/symlink test; Windows ACL verification remains unavailable"
+    },
+    {
+      "job_id": 114419171561,
+      "tests": 48,
+      "profiles": [
+        "normal",
+        "optimized"
+      ],
+      "passed_per_profile": 47,
+      "skipped_per_profile": 1,
+      "skip_reason": "Unix permission/symlink test; Windows ACL verification remains unavailable"
+    },
+    {
+      "job_id": 114419171600,
+      "tests": 48,
+      "profiles": [
+        "normal",
+        "optimized"
+      ],
+      "passed_per_profile": 48,
+      "skipped_per_profile": 0,
+      "skip_reason": null
+    },
+    {
+      "job_id": 114419171638,
+      "tests": 48,
+      "profiles": [
+        "normal",
+        "optimized"
+      ],
+      "passed_per_profile": 48,
+      "skipped_per_profile": 0,
+      "skip_reason": null
+    },
+    {
+      "job_id": 114419171761,
+      "tests": 48,
+      "profiles": [
+        "normal",
+        "optimized"
+      ],
+      "passed_per_profile": 48,
+      "skipped_per_profile": 0,
+      "skip_reason": null
+    }
+  ],
+  "status": {
+    "implementation": "IMPLEMENTED",
+    "local_acceptance": "VERIFIED",
+    "external_wallet_proof": "NOT_STARTED",
+    "on_chain_receipts": "NOT_STARTED",
+    "public_deployment": "NOT_STARTED",
+    "public_launch": "BLOCKED"
+  },
+  "activity": "AUTOMATED_TEST_FIXTURE; OBSERVED API actions, LABEL content; no customer/LLM/chain activity",
+  "service_integrations": [
+    {
+      "source_head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "python": "3.12.15",
+      "sqlite": "3.45.1",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "activity": "AUTOMATED_TEST_FIXTURE",
+      "checks": [
+        "actual CLI enrolls operator and scoped agent without printing credentials",
+        "HTTP persists authored projects, artifact references, replies and offers",
+        "deactivation denies writes and offers; rotation revokes old credential",
+        "consistent backup and audit contain no plaintext bearer values",
+        "fresh server process restores records and credential authentication",
+        "backup restored into independent directory and served over HTTP"
+      ],
+      "persisted_counts": {
+        "agents": 1,
+        "offers": 1,
+        "posts": 2,
+        "projects": 1
+      },
+      "audit_events": 11,
+      "sqlite_defensive": true,
+      "extension_loading": false,
+      "runtime_patch_audit": "UNVERIFIED",
+      "customer_wallets": 0,
+      "chain_requests": 0,
+      "transactions_submitted": 0
+    },
+    {
+      "source_head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "python": "3.13.16",
+      "sqlite": "3.45.1",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "activity": "AUTOMATED_TEST_FIXTURE",
+      "checks": [
+        "actual CLI enrolls operator and scoped agent without printing credentials",
+        "HTTP persists authored projects, artifact references, replies and offers",
+        "deactivation denies writes and offers; rotation revokes old credential",
+        "consistent backup and audit contain no plaintext bearer values",
+        "fresh server process restores records and credential authentication",
+        "backup restored into independent directory and served over HTTP"
+      ],
+      "persisted_counts": {
+        "agents": 1,
+        "offers": 1,
+        "posts": 2,
+        "projects": 1
+      },
+      "audit_events": 11,
+      "sqlite_defensive": true,
+      "extension_loading": false,
+      "runtime_patch_audit": "UNVERIFIED",
+      "customer_wallets": 0,
+      "chain_requests": 0,
+      "transactions_submitted": 0
+    },
+    {
+      "source_head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "python": "3.14.8",
+      "sqlite": "3.45.1",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "activity": "AUTOMATED_TEST_FIXTURE",
+      "checks": [
+        "actual CLI enrolls operator and scoped agent without printing credentials",
+        "HTTP persists authored projects, artifact references, replies and offers",
+        "deactivation denies writes and offers; rotation revokes old credential",
+        "consistent backup and audit contain no plaintext bearer values",
+        "fresh server process restores records and credential authentication",
+        "backup restored into independent directory and served over HTTP"
+      ],
+      "persisted_counts": {
+        "agents": 1,
+        "offers": 1,
+        "posts": 2,
+        "projects": 1
+      },
+      "audit_events": 11,
+      "sqlite_defensive": true,
+      "extension_loading": false,
+      "runtime_patch_audit": "UNVERIFIED",
+      "customer_wallets": 0,
+      "chain_requests": 0,
+      "transactions_submitted": 0
+    },
+    {
+      "source_head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "python": "3.13.16",
+      "sqlite": "3.50.4",
+      "platform": "Windows-2025Server-10.0.26100-SP0",
+      "activity": "AUTOMATED_TEST_FIXTURE",
+      "checks": [
+        "actual CLI enrolls operator and scoped agent without printing credentials",
+        "HTTP persists authored projects, artifact references, replies and offers",
+        "deactivation denies writes and offers; rotation revokes old credential",
+        "consistent backup and audit contain no plaintext bearer values",
+        "fresh server process restores records and credential authentication",
+        "backup restored into independent directory and served over HTTP"
+      ],
+      "persisted_counts": {
+        "agents": 1,
+        "offers": 1,
+        "posts": 2,
+        "projects": 1
+      },
+      "audit_events": 11,
+      "sqlite_defensive": true,
+      "extension_loading": false,
+      "runtime_patch_audit": "UNVERIFIED",
+      "customer_wallets": 0,
+      "chain_requests": 0,
+      "transactions_submitted": 0
+    },
+    {
+      "source_head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+      "python": "3.14.8",
+      "sqlite": "3.50.4",
+      "platform": "Windows-2025Server-10.0.26100-SP0",
+      "activity": "AUTOMATED_TEST_FIXTURE",
+      "checks": [
+        "actual CLI enrolls operator and scoped agent without printing credentials",
+        "HTTP persists authored projects, artifact references, replies and offers",
+        "deactivation denies writes and offers; rotation revokes old credential",
+        "consistent backup and audit contain no plaintext bearer values",
+        "fresh server process restores records and credential authentication",
+        "backup restored into independent directory and served over HTTP"
+      ],
+      "persisted_counts": {
+        "agents": 1,
+        "offers": 1,
+        "posts": 2,
+        "projects": 1
+      },
+      "audit_events": 11,
+      "sqlite_defensive": true,
+      "extension_loading": false,
+      "runtime_patch_audit": "UNVERIFIED",
+      "customer_wallets": 0,
+      "chain_requests": 0,
+      "transactions_submitted": 0
+    }
+  ],
+  "browser": {
+    "source_head_sha": "85dabe6f81dc2471e337b865b4d98d894b4a7ecc",
+    "activity": "AUTOMATED_TEST_FIXTURE",
+    "chrome": "Google Chrome 154.0.8037.97",
+    "node": "v22.23.3",
+    "checks": [
+      "served API records render",
+      "local status and real counts",
+      "cursor pagination without duplicates",
+      "search and empty state",
+      "inactive profile",
+      "wallet control marked unverified",
+      "hostile biography stays text",
+      "project navigation",
+      "hostile discussion stays text",
+      "inactive provider offer unavailable",
+      "mobile no page overflow",
+      "loading failure marks records stale",
+      "refresh recovers",
+      "same-origin CSP and frame protection"
+    ],
+    "uncaught_exceptions": 0,
+    "external_page_requests": 0
+  },
+  "rust_dependency_audits": [
+    {
+      "module": "market-dependency-audit",
+      "artifact_id": 11694964993,
+      "digest": "sha256:47c6c73dcbfea088a74de99e0305f456715e08feb7272c381e463ff173b35ec4",
+      "database": {
+        "advisory-count": 1296,
+        "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+        "last-updated": "2026-10-09T10:12:02+02:00"
+      },
+      "lockfile": {
+        "dependency-count": 38
+      },
+      "vulnerabilities": {
+        "found": false,
+        "count": 0,
+        "list": []
+      },
+      "warnings": {},
+      "settings": {
+        "target_arch": [],
+        "target_os": [],
+        "severity": null,
+        "ignore": [],
+        "informational_warnings": [
+          "unmaintained",
+          "unsound",
+          "notice"
+        ]
+      }
+    },
+    {
+      "module": "simulator-dependency-audit",
+      "artifact_id": 11695847439,
+      "digest": "sha256:80acb09e641daca6eec11cfb2fd4cae6bdb899d8cb35ad024348f386992ef44d",
+      "database": {
+        "advisory-count": 1296,
+        "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+        "last-updated": "2026-10-09T10:12:02+02:00"
+      },
+      "lockfile": {
+        "dependency-count": 37
+      },
+      "vulnerabilities": {
+        "found": false,
+        "count": 0,
+        "list": []
+      },
+      "warnings": {},
+      "settings": {
+        "target_arch": [],
+        "target_os": [],
+        "severity": null,
+        "ignore": [],
+        "informational_warnings": [
+          "unmaintained",
+          "unsound",
+          "notice"
+        ]
+      }
+    },
+    {
+      "module": "review-dependency-audit",
+      "artifact_id": 11696080267,
+      "digest": "sha256:bda50ed5b42f6b04b8e865246ba384eef6958b992960ec8d2efb0b68c9f3b69d",
+      "database": {
+        "advisory-count": 1296,
+        "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+        "last-updated": "2026-10-09T10:12:02+02:00"
+      },
+      "lockfile": {
+        "dependency-count": 39
+      },
+      "vulnerabilities": {
+        "found": false,
+        "count": 0,
+        "list": []
+      },
+      "warnings": {},
+      "settings": {
+        "target_arch": [],
+        "target_os": [],
+        "severity": null,
+        "ignore": [],
+        "informational_warnings": [
+          "unmaintained",
+          "unsound",
+          "notice"
+        ]
+      }
+    }
+  ],
+  "rust_regressions": {
+    "review_per_platform_per_profile": 108,
+    "market_per_platform_per_profile": 31,
+    "foundation_linux_per_profile": 44,
+    "foundation_windows_per_profile": 43,
+    "profiles": [
+      "debug",
+      "release"
+    ],
+    "failed": 0,
+    "ignored": 0,
+    "source_and_lockfile_changes_from_ae005": false
+  },
+  "artifact_verification": {
+    "five_service_archives": "GitHub SHA-256 digest and exact embedded head checked",
+    "three_rust_audit_archives": "GitHub SHA-256 digest and zero findings/warnings/ignored advisories checked",
+    "browser_screenshots": "desktop and mobile visually inspected; 14 automated acceptance checks",
+    "external_security_attestation": "UNAVAILABLE",
+    "python_sqlite_os_patch_audit": "UNVERIFIED"
+  },
+  "development_findings": [
+    {
+      "commit": "7dd939d91e972b2315cb5fd1d7316d647d2d5fea",
+      "ci_run": 38121723283,
+      "outcome": "FAILED",
+      "findings": [
+        "six B023 test callback bindings",
+        "Windows CPython 3.12.15 build unavailable"
+      ],
+      "fix": "explicitly bound test callbacks; supported pinned Windows Python 3.13.16/3.14.8; retained Linux 3.12.15"
+    },
+    {
+      "outcome": "FIXED_AND_TESTED",
+      "findings": [
+        "initialization must preserve unowned colliding files",
+        "corrupt database configuration closes connections and redacts errors",
+        "status response cannot mutate admission quotas",
+        "edited records need latest observation and availability timestamps",
+        "SQLite defensive mode/disabled extensions/reduced limits must be explicit"
+      ]
+    }
+  ],
+  "remaining_limits": [
+    "Loopback development HTTP transport; no public TLS/hosting deployment",
+    "Unverified wallet declarations can squat addresses; ownership proof required before public registration",
+    "Operator-controlled credential provisioning/recovery, not independent AI identity",
+    "No LLM runtime, signed receipts, wallet secrets or financial execution",
+    "No retention/migration or comprehensive redacted security telemetry",
+    "Local audit is internally consistent, not full state replay or external immutable attestation",
+    "Windows ACLs and runtime patch state remain unverified",
+    "Trusted parent directories; portable checks do not defeat attacker-controlled filesystem races",
+    "No TPS, profitability, production uptime or complete-security claim"
+  ],
+  "changed_files": [
+    ".github/workflows/zoora-agent-community.yml",
+    "README.md",
+    "docs/CURRENT_STATUS.md",
+    "projects/AGENT_ECONOMY.md",
+    "projects/zoora-agent-community/.gitignore",
+    "projects/zoora-agent-community/README.md",
+    "projects/zoora-agent-community/SECURITY.md",
+    "projects/zoora-agent-community/VALIDATION.md",
+    "projects/zoora-agent-community/pyproject.toml",
+    "projects/zoora-agent-community/scripts/browser_evidence.mjs",
+    "projects/zoora-agent-community/scripts/browser_fixture.py",
+    "projects/zoora-agent-community/scripts/integration_evidence.py",
+    "projects/zoora-agent-community/tests/helpers.py",
+    "projects/zoora-agent-community/tests/test_cli.py",
+    "projects/zoora-agent-community/tests/test_http.py",
+    "projects/zoora-agent-community/tests/test_store.py",
+    "projects/zoora-agent-community/web/app.js",
+    "projects/zoora-agent-community/web/index.html",
+    "projects/zoora-agent-community/web/style.css",
+    "projects/zoora-agent-community/zoora_community/__init__.py",
+    "projects/zoora-agent-community/zoora_community/__main__.py",
+    "projects/zoora-agent-community/zoora_community/client.py",
+    "projects/zoora-agent-community/zoora_community/schema.sql",
+    "projects/zoora-agent-community/zoora_community/server.py",
+    "projects/zoora-agent-community/zoora_community/store.py",
+    "projects/zoora-agent-community/zoora_community/validation.py",
+    "projects/zoora-agent-economy-simulator/README.md",
+    "projects/zoora-agent-community/evidence/ae-006-2026-10-11.json"
+  ],
+  "final_candidate_note": "This record pins source 85dabe6. The report/evidence-only follow-up is retested separately; exact final SHA and run links are recorded in draft PR #15."
+}

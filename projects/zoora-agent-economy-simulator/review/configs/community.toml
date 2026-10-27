@@ -1,0 +1,5 @@
+seed = 42
+agents = 20
+tasks = 100
+max_pending_per_provider = 16
+posts_per_agent_per_tick = 3

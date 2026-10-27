@@ -1,0 +1,616 @@
+{
+  "protocol": "ZOORA_AE009_VALIDATION_V1",
+  "recorded_on": "2026-10-13",
+  "repository": "BuildWithAAI/buildwithAAI",
+  "branch": "feature/ae-009-agent-workspace",
+  "pull_request": 18,
+  "verified_source_commit": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+  "base_commit": "850ec47c7fa704eb8efe61aaff8dbe549d36a0ba",
+  "mode": "LOCAL_ONLY",
+  "public_deployment": false,
+  "customer_wallet_execution": false,
+  "ci": {
+    "source": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+    "run_id": 38424900168,
+    "jobs": [
+      {
+        "id": 115391593693,
+        "name": "live-model",
+        "head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+        "conclusion": "success",
+        "test_results": [],
+        "error_markers": 0
+      },
+      {
+        "id": 115391593888,
+        "name": "test (ubuntu-latest, 3.13.16)",
+        "head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+        "conclusion": "success",
+        "test_results": [
+          "2026-10-13T15:46:45.5844734Z Ran 136 tests in 14.673s",
+          "2026-10-13T15:46:45.5844973Z OK",
+          "2026-10-13T15:47:03.4337146Z Ran 136 tests in 14.791s",
+          "2026-10-13T15:47:03.4337386Z OK"
+        ],
+        "error_markers": 0
+      },
+      {
+        "id": 115391594005,
+        "name": "test (ubuntu-latest, 3.12.15)",
+        "head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+        "conclusion": "success",
+        "test_results": [
+          "2026-10-13T15:46:47.7462147Z Ran 136 tests in 14.553s",
+          "2026-10-13T15:46:47.7462462Z OK",
+          "2026-10-13T15:47:05.9566961Z Ran 136 tests in 14.556s",
+          "2026-10-13T15:47:05.9567287Z OK"
+        ],
+        "error_markers": 0
+      },
+      {
+        "id": 115391594087,
+        "name": "test (windows-latest, 3.14.8)",
+        "head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+        "conclusion": "success",
+        "test_results": [
+          "2026-10-13T15:48:09.2760614Z Ran 136 tests in 40.648s\r",
+          "2026-10-13T15:48:09.2760839Z OK (skipped=1)\r",
+          "2026-10-13T15:48:47.8399481Z Ran 136 tests in 36.936s\r",
+          "2026-10-13T15:48:47.8399817Z OK (skipped=1)\r"
+        ],
+        "error_markers": 0
+      },
+      {
+        "id": 115391594200,
+        "name": "test (windows-latest, 3.13.16)",
+        "head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+        "conclusion": "success",
+        "test_results": [
+          "2026-10-13T15:48:10.8330809Z Ran 136 tests in 41.244s\r",
+          "2026-10-13T15:48:10.8331030Z OK (skipped=1)\r",
+          "2026-10-13T15:48:53.5892880Z Ran 136 tests in 40.895s\r",
+          "2026-10-13T15:48:53.5893287Z OK (skipped=1)\r"
+        ],
+        "error_markers": 0
+      },
+      {
+        "id": 115391594234,
+        "name": "live-rpc",
+        "head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+        "conclusion": "success",
+        "test_results": [],
+        "error_markers": 0
+      },
+      {
+        "id": 115391594349,
+        "name": "test (ubuntu-latest, 3.14.8)",
+        "head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+        "conclusion": "success",
+        "test_results": [
+          "2026-10-13T15:46:43.9195207Z Ran 136 tests in 14.806s",
+          "2026-10-13T15:46:43.9195543Z OK",
+          "2026-10-13T15:47:04.6591100Z Ran 136 tests in 14.974s",
+          "2026-10-13T15:47:04.6591481Z OK"
+        ],
+        "error_markers": 0
+      }
+    ]
+  },
+  "local_tests": {
+    "python": "3.12.14",
+    "normal": 136,
+    "optimized": 136,
+    "result": "PASS"
+  },
+  "ci_tests": {
+    "linux": {
+      "run": 136,
+      "passed": 136,
+      "skipped": 0
+    },
+    "windows": {
+      "run": 136,
+      "passed": 135,
+      "skipped": 1,
+      "reason": "Unix permission/symlink assertion is explicitly Unix-only"
+    },
+    "profiles": [
+      "normal",
+      "optimized"
+    ]
+  },
+  "real_model": {
+    "source_head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+    "activity": "AUTOMATED_REAL_LOCAL_MODEL_TEST",
+    "customer_activity": false,
+    "wallet_classification": "SYNTHETIC",
+    "real_model_verified": true,
+    "model": "qwen3:1.7b",
+    "installed_manifest": {
+      "name": "qwen3:1.7b",
+      "model": "qwen3:1.7b",
+      "modified_at": "2026-10-13T15:46:43.940143972Z",
+      "size": 1359293444,
+      "digest": "8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen3",
+        "families": [
+          "qwen3"
+        ],
+        "parameter_size": "2.0B",
+        "quantization_level": "Q4_K_M",
+        "context_length": 40960,
+        "embedding_length": 2048,
+        "runner": "ggml"
+      },
+      "capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ]
+    },
+    "ollama_version": "ollama version is 0.40.3",
+    "checks": [
+      "actual local model generated an allowed tool action and a final written output using the measured byte/word facts",
+      "actual tool measurement and report digest independently matched API artifact attribution",
+      "fresh service process retained the model report reference and passed full evidence audit"
+    ],
+    "report": {
+      "activity": "LOCAL_MODEL_RUN",
+      "agent_id": "22abcce301704952bbca1ff749cf1f8c",
+      "available_at_ms": 1791906423640,
+      "classification": "LEARNED",
+      "commitment": null,
+      "credential_id": "56bc2ccd25b646b2b2ce30aa3ee92793",
+      "max_steps": 4,
+      "missingness": [
+        "independent_model_attestation",
+        "output_correctness",
+        "solana_slot",
+        "chain_commitment"
+      ],
+      "model": "qwen3:1.7b",
+      "output": "The text \"Zoora builds\" contains 12 UTF-8 bytes and 2 words.",
+      "output_classification": "LEARNED",
+      "protocol": "ZOORA_AE009_RUN_V1",
+      "provider": {
+        "available_at_ms": 1791906404465,
+        "classification": "OBSERVED",
+        "commitment": null,
+        "local_metadata_present": true,
+        "missingness": [
+          "independent_host_attestation",
+          "solana_slot",
+          "chain_commitment"
+        ],
+        "observed_at_ms": 1791906404465,
+        "quality_flags": [
+          "LOCAL_SERVICE_ASSERTION_NOT_HOST_ATTESTATION"
+        ],
+        "response_sha256": "cc5951cd4a8de7672138344cf7e1f51bef24a4e4782f9a8a0eb87e983551d90f",
+        "slot": null,
+        "source": "OLLAMA_LOOPBACK_API_SHOW",
+        "state": "AVAILABLE",
+        "transformation_version": 1
+      },
+      "quality_flags": [
+        "MODEL_OUTPUT_NOT_EXECUTED",
+        "NO_SPENDING_AUTHORITY",
+        "NOT_PROOF_OF_INDEPENDENT_AGENT"
+      ],
+      "slot": null,
+      "source": "ZOORA_AE009_LOCAL_RUNNER_V1",
+      "started_at_ms": 1791906404392,
+      "state": "AVAILABLE",
+      "steps": [
+        {
+          "action": {
+            "action": "text_metrics",
+            "arguments": {
+              "text": "Zoora builds"
+            }
+          },
+          "available_at_ms": 1791906413234,
+          "model_evidence": {
+            "available_at_ms": 1791906413234,
+            "classification": "LEARNED",
+            "commitment": null,
+            "missingness": [
+              "output_correctness",
+              "raw_response",
+              "solana_slot",
+              "chain_commitment"
+            ],
+            "observed_at_ms": 1791906413234,
+            "quality_flags": [
+              "MODEL_OUTPUT_UNVERIFIED",
+              "RAW_REPLY_NOT_RETAINED"
+            ],
+            "response_sha256": "090218bbe0802647202f80d551c16264b211b692d4872781e78a735ea1aef57f",
+            "slot": null,
+            "source": "OLLAMA_LOOPBACK_API_CHAT",
+            "state": "AVAILABLE",
+            "transformation_version": 2,
+            "usage": {
+              "eval_count": 23,
+              "prompt_eval_count": 395
+            }
+          },
+          "tool_result": {
+            "characters": 12,
+            "classification": "DERIVED",
+            "lines": 1,
+            "sha256": "65d26d88048e4bea299bf0ccbdc0a5b45f36f94a6ef357b4dd253edb3840109d",
+            "utf8_bytes": 12,
+            "words": 2
+          }
+        },
+        {
+          "action": {
+            "action": "finish",
+            "arguments": {
+              "output": "The text \"Zoora builds\" contains 12 UTF-8 bytes and 2 words."
+            }
+          },
+          "available_at_ms": 1791906423638,
+          "model_evidence": {
+            "available_at_ms": 1791906423638,
+            "classification": "LEARNED",
+            "commitment": null,
+            "missingness": [
+              "output_correctness",
+              "raw_response",
+              "solana_slot",
+              "chain_commitment"
+            ],
+            "observed_at_ms": 1791906423638,
+            "quality_flags": [
+              "MODEL_OUTPUT_UNVERIFIED",
+              "RAW_REPLY_NOT_RETAINED"
+            ],
+            "response_sha256": "c6af97b7b07b1d36bab3218f89161b68c8ee294254f617fb91cc66634c88e63c",
+            "slot": null,
+            "source": "OLLAMA_LOOPBACK_API_CHAT",
+            "state": "AVAILABLE",
+            "transformation_version": 2,
+            "usage": {
+              "eval_count": 22,
+              "prompt_eval_count": 516
+            }
+          }
+        }
+      ],
+      "task": {
+        "prompt": "Use text_metrics to measure this exact text: Zoora builds\nAfter the tool result, write one sentence reporting the measured UTF-8 bytes and words."
+      },
+      "task_classification": "LABEL",
+      "timeout_seconds": 120,
+      "transformation_version": 1
+    },
+    "report_sha256": "f264b0187e20e5bd2ae67c5adf53ad571fb23bf75b4f5e4c79cbb8a425eee696",
+    "artifact": {
+      "author_id": "22abcce301704952bbca1ff749cf1f8c",
+      "content_classification": "LABEL",
+      "created_ms": 1791906423642,
+      "digest": "f264b0187e20e5bd2ae67c5adf53ad571fb23bf75b4f5e4c79cbb8a425eee696",
+      "id": "e7120762fbc340b984d8ee66c639572c",
+      "project_id": "344d3f2cdd3545c5a6f83553eb53ac1f",
+      "provenance": {
+        "available_at_ms": 1791906423642,
+        "classification": "OBSERVED",
+        "commitment": "UNAVAILABLE",
+        "created_at_ms": 1791906423642,
+        "missingness": [
+          "solana_slot",
+          "chain_commitment"
+        ],
+        "observed_at_ms": 1791906423642,
+        "quality_flags": [
+          "SERVER_RECORDED_ACTION",
+          "CONTENT_SELF_DECLARED",
+          "WALLET_CONTROL_UNVERIFIED",
+          "AGENT_RUNTIME_UNVERIFIED"
+        ],
+        "slot": null,
+        "source": "ZOORA_COMMUNITY_API_V1",
+        "state": "AVAILABLE",
+        "transformation_version": 1,
+        "updated_at_ms": 1791906423642
+      },
+      "title": "Local model run (unverified output)"
+    },
+    "wallet_execution": "UNAVAILABLE",
+    "output_correctness": "UNVERIFIED"
+  },
+  "browser": {
+    "observer_checks": 22,
+    "workspace_checks": 28,
+    "uncaught_exceptions": 0,
+    "external_page_requests": 0,
+    "wallet_classification": "SYNTHETIC",
+    "wallet_vendor_extension_verified": false,
+    "chrome": "Google Chrome 154.0.8037.97",
+    "desktop_mobile_screenshots_visually_reviewed": true,
+    "iphone_safari_verified": false
+  },
+  "read_only_rpc": {
+    "checks": [
+      "solana:devnet: real RPC response persists through authenticated HTTP and restart without wallet execution",
+      "solana:mainnet: real RPC response persists through authenticated HTTP and restart without wallet execution",
+      "solana:mainnet v1 regression: real RPC response persists through authenticated HTTP and restart without wallet execution"
+    ],
+    "transactions_submitted": 0,
+    "customer_wallets_used": 0
+  },
+  "runtime_audit": {
+    "packages": [
+      {
+        "name": "pynacl",
+        "version": "1.6.2",
+        "vulnerabilities": 0
+      },
+      {
+        "name": "cffi",
+        "version": "2.1.1",
+        "vulnerabilities": 0
+      },
+      {
+        "name": "pycparser",
+        "version": "3.0",
+        "vulnerabilities": 0
+      },
+      {
+        "name": "waitress",
+        "version": "3.0.2",
+        "vulnerabilities": 0
+      }
+    ],
+    "known_findings": 0,
+    "ollama_covered_by_python_package_audit": false
+  },
+  "archive_verification": [
+    {
+      "id": 11828547467,
+      "name": "community-service-ubuntu-latest-3.14.8",
+      "run_id": 38424900168,
+      "source_head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+      "sha256": "ef16929145415cbb0d14ba727a0420ab73da62ba22940dfc8d7e298cefce670a",
+      "size": 2077,
+      "files": [
+        {
+          "name": "integration.json",
+          "size": 1137,
+          "sha256": "c8d57a8764d343fb726c2bc6f8773e96ecf997e74b4964740416dd81feb40674"
+        },
+        {
+          "name": "migration.json",
+          "size": 534,
+          "sha256": "170259322039fc16f7f1503e7d5be52d880b096dfa62c4edcc386ee8453f389f"
+        },
+        {
+          "name": "operations.json",
+          "size": 1170,
+          "sha256": "6d5408e5bb433d4cb34e5c4c12cd8c7e79b6c81ffabc66642bc413c1c5eb63fb"
+        }
+      ]
+    },
+    {
+      "id": 11828492432,
+      "name": "community-live-rpc",
+      "run_id": 38424900168,
+      "source_head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+      "sha256": "20e1f97a21905c834832c026954b0a094f75d9808c50f8fbcead040fb08067e9",
+      "size": 18041,
+      "files": [
+        {
+          "name": "live-devnet-rpc.json",
+          "size": 12215,
+          "sha256": "8717460598a83a6aec94a65fa4ea985c7de6b45e576c523bfc72e3ec3be20a84"
+        },
+        {
+          "name": "live-mainnet-v1-rpc.json",
+          "size": 29130,
+          "sha256": "25d7592aa7a2be6e8b2c50280efbf29e34f2635a964ef261f3f3441f50e3cca5"
+        },
+        {
+          "name": "live-mainnet-rpc.json",
+          "size": 19009,
+          "sha256": "ecead41f20df15564aabffeb27c61d913507e38bf6dfd878409379ddb4758ca6"
+        },
+        {
+          "name": "live-rpc.json",
+          "size": 8026,
+          "sha256": "13d50ce68e8cf6211460c3ecde9944569cc0b97847e0564a071acc11ab0e0fba"
+        }
+      ]
+    },
+    {
+      "id": 11828462539,
+      "name": "community-service-ubuntu-latest-3.13.16",
+      "run_id": 38424900168,
+      "source_head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+      "sha256": "dd8fa7dac53dbc80db9312e7c3a2b9a90e32d3e7301af83b80ebe08f04339460",
+      "size": 2077,
+      "files": [
+        {
+          "name": "integration.json",
+          "size": 1138,
+          "sha256": "794c50a189ca7be9db585899fa55002357be33883f9a9af8141827c6f138eab0"
+        },
+        {
+          "name": "migration.json",
+          "size": 534,
+          "sha256": "170259322039fc16f7f1503e7d5be52d880b096dfa62c4edcc386ee8453f389f"
+        },
+        {
+          "name": "operations.json",
+          "size": 1171,
+          "sha256": "f61b88843b763e9586862de919697dfc00dffd1eca787715576fcbc66f88cf61"
+        }
+      ]
+    },
+    {
+      "id": 11828182706,
+      "name": "community-live-model",
+      "run_id": 38424900168,
+      "source_head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+      "sha256": "6f70c3b8ed3b0a3448786a156fc98e038961df86532aaaa240a9595488b1fbf9",
+      "size": 3784,
+      "files": [
+        {
+          "name": "live-model-candidate.json",
+          "size": 3298,
+          "sha256": "fe5bc86bf854759c25ac871cac620f1a2a463bff3dc57a0bd62f8982eef3d1d5"
+        },
+        {
+          "name": "live-model.json",
+          "size": 6547,
+          "sha256": "685d6075326ad773ef4f5c47a406ed85d934770bb8b34ee6b7a2ffcbc3136528"
+        }
+      ]
+    },
+    {
+      "id": 11827493712,
+      "name": "community-service-ubuntu-latest-3.12.15",
+      "run_id": 38424900168,
+      "source_head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+      "sha256": "0c8af21dfedab06b95373a7df7f83c28edd11909a433e84f4882de65fe296499",
+      "size": 572726,
+      "files": [
+        {
+          "name": "browser.json",
+          "size": 1106,
+          "sha256": "6f10b708b18645660bf7e620216083b82ed2039390f84355f4afd7b0525928cf"
+        },
+        {
+          "name": "migration.json",
+          "size": 534,
+          "sha256": "170259322039fc16f7f1503e7d5be52d880b096dfa62c4edcc386ee8453f389f"
+        },
+        {
+          "name": "integration.json",
+          "size": 1138,
+          "sha256": "d985e22b1d79d354ff814ec11f1fb62f53e38b3c8b43cbe0e933b2fad9c6b0ba"
+        },
+        {
+          "name": "operations.json",
+          "size": 1171,
+          "sha256": "e3279ac5e185af03550c3765212e1edc69170d98c65db67c670bff5d195f7165"
+        },
+        {
+          "name": "runtime-audit.json",
+          "size": 245,
+          "sha256": "f514bf16aadbcc5927f83c00376b1d746f80995bc3ed3f2f5ddb4fdbd81b8286"
+        },
+        {
+          "name": "workspace-authoring-desktop.png",
+          "size": 195102,
+          "sha256": "bedd1e443b6c26eab38e3c0bbb02584fdd59e7b865dfeca2d0c23011f13c403c"
+        },
+        {
+          "name": "workspace-authoring-mobile.png",
+          "size": 189027,
+          "sha256": "e0f72d1037df7918d2b5e0e03179a8d7f280c060b2385c7744bfbb8abde04eed"
+        },
+        {
+          "name": "workspace-browser.json",
+          "size": 2244,
+          "sha256": "a53d6bc20336e0d5aea69261f4544512792f935050ff0225400b629af1fe3270"
+        },
+        {
+          "name": "workspace-desktop.png",
+          "size": 113390,
+          "sha256": "7955a0bcc89bb3cbb3caff3fff26057b8077dad5f38d381b91a0c84052f0a7a4"
+        },
+        {
+          "name": "workspace-mobile.png",
+          "size": 105636,
+          "sha256": "7502ff2175807e8bb656a70eb4a3b84a40d61fff68fba64e02fbe63b4974239a"
+        }
+      ]
+    },
+    {
+      "id": 11828770160,
+      "name": "community-service-windows-latest-3.13.16",
+      "run_id": 38424900168,
+      "source_head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+      "sha256": "e7320686dc9fe9e2a0c3595785266d24b4ee48a572058c1d84daac8f7f202c36",
+      "size": 2063,
+      "files": [
+        {
+          "name": "integration.json",
+          "size": 1157,
+          "sha256": "7f276540bce9efdd55786df4afa9a26e762fc44e0047b7df05a3e26328065453"
+        },
+        {
+          "name": "migration.json",
+          "size": 550,
+          "sha256": "069f1031c72b342cdaec0a25b626eea4583f3741bef2f8b2ff76d9cad4cc0d37"
+        },
+        {
+          "name": "operations.json",
+          "size": 1160,
+          "sha256": "0ba2b0ff0acf865bb9256e68e812f47c7a1217eba2eddbb8650bbf7397bb4b96"
+        }
+      ]
+    },
+    {
+      "id": 11828412810,
+      "name": "community-service-windows-latest-3.14.8",
+      "run_id": 38424900168,
+      "source_head_sha": "2d67ca3fe1fd49e3cec84925e39524357a0d0436",
+      "sha256": "2fc1f5838f63539659333c619beb6da0416bfd3e164c38666f7c50f4312ed091",
+      "size": 2060,
+      "files": [
+        {
+          "name": "integration.json",
+          "size": 1156,
+          "sha256": "5d744033cd122182706173908469883571464d0a7a7279367f3495e0a8ad19cb"
+        },
+        {
+          "name": "operations.json",
+          "size": 1159,
+          "sha256": "26901c72d7497f9f5fe1caabeaea9ed7147b575693f430c247e7f5735e35938b"
+        },
+        {
+          "name": "migration.json",
+          "size": 550,
+          "sha256": "069f1031c72b342cdaec0a25b626eea4583f3741bef2f8b2ff76d9cad4cc0d37"
+        }
+      ]
+    }
+  ],
+  "simulation_readiness": {
+    "offline_runs": "AVAILABLE",
+    "activity": "SYNTHETIC",
+    "rust_source_locks_workflows_unchanged_from_AE008": true,
+    "rust_tests_rerun_in_this_continuation": false,
+    "iphone_remote_start": "UNAVAILABLE_NOT_DEPLOYED"
+  },
+  "remaining": [
+    "reviewed remote transport/origin/host setup for iPhone access",
+    "actual vendor wallet and iPhone Safari interoperability",
+    "public enrollment and moderation",
+    "host patch/ACL verification and operational backup/alert setup",
+    "scanner holder-provider coverage and authorized live Telegram testing"
+  ],
+  "prior_failures": [
+    {
+      "head": "1efa8ba76dc57deee0fd833441eeda0dca2c3bc0",
+      "run_id": 38137787118,
+      "error": "INVALID_TEXT"
+    },
+    {
+      "head": "b79fbfe63d50b556dbfb76720bd3287dfa42b685",
+      "run_id": 38422970322,
+      "error": "MODEL_EMPTY_OUTPUT"
+    },
+    {
+      "head": "d921013b28e4a8ee1e4256995d4ca105aa1fd54c",
+      "run_id": 38423662735,
+      "error": "MODEL_EMPTY_OUTPUT"
+    }
+  ]
+}

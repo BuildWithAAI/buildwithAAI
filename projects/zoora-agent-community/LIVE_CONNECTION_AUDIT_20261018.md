@@ -1,0 +1,24 @@
+# Private pilot completion and live-connection audit — October 18, 2026
+
+This audit covers the current free private two-agent pilot in existing `BuildWithAAI/buildwithAAI`, draft PR #47. It does not mark every older project or backlog idea complete. Main, draft PR #46 and public release remain separate.
+
+| Past commitment | Evidence and current status | Remaining completion gate |
+| --- | --- | --- |
+| Wallet sign-in and same-agent host handoff | Implemented, tested and verified at `3acca2b8396e976fb6a2b8b99e3bdb046671bcab`; browser/real Ed25519 acceptance passed. | Actual vendor extensions and both physical PCs remain unverified. |
+| Pinned HTTPS workers, private peer discussion, two concurrent agent attempts | Implemented; actual TLS/HTTP/SQLite and two CLI workers passed on all five Python targets at `3acca2b`. Concurrency models were synthetic protocol fixtures. | Configured private HTTPS host/proxy and actual two-PC/model acceptance. |
+| Preflight and supervised session journal | Implemented at 0.14.3; 657 local tests in both modes and all nine hosted jobs passed at `3acca2b`. | Host filesystem/ACL, credentials, model installation and operating acceptance. |
+| Determine whether selected prior tasks actually completed | 0.14.4 adds read-only `pilot-review`: server state plus original report bytes, exact task/attempt/worker/pin bindings, fixed per-task reasons. A lost completion response can resolve without new inference. | Current-source CI and actual retained PC reports against the configured service. No user's private task queue has been inspected. |
+| Real local model integration | Prior strict CPU-model gate passed six checks at `3acca2b`. Current source adds the actual `pilot-session`/`pilot-review` CLI pair to that gate. | Verify the changed-source gate and each PC's installed model. |
+| Public chain connections | Previous strict Mainnet/Devnet transaction/cluster reads passed at `3acca2b`, without synthetic fallback or transactions submitted. | Fresh changed-source observations and ongoing provider monitoring; old observations are historical. |
+| Public/mobile hosting and `zoora.ai` | No deployed service origin, hosting target or PC access details were supplied. Repository homepage is unset; PR remains draft/unmerged/undeployed. Anonymous target status probe at 08:42 UTC failed DNS in this workspace. | Supply/configure the actual HTTPS service; verify DNS/TLS/proxy/firewall and private access from both PCs. Workspace DNS failure does not establish remote service health. |
+| Credential renewal and long retention | Credentials still expire after 24 hours; 2,000 retained jobs and 50,000 audit events remain existing bounds. | Secure renewal, archival/retention policy, alerts, restore and sustained operating acceptance. Unattended year-long service is unfinished. |
+| Live payments, NFT membership and native-chain economics | Deferred/separately gated. No real signing, funds, membership issuance, native economic change or income is established. | Separate approved scope and real execution/settlement evidence. |
+| Older open GitHub issues #19 / #5 | Virtual Business Spaces still has VL-001–007 open; Development Agent is explicitly planned/deferred. | Their own bounded scopes and acceptance conditions. They are not silently closed by pilot work. |
+
+## Source and verification
+
+The prior checkpoint is [commit 3acca2b](https://github.com/BuildWithAAI/buildwithAAI/commit/3acca2b8396e976fb6a2b8b99e3bdb046671bcab). Its community workflow [39107495034](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/39107495034) and native workflow [39107495031](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/39107495031) completed successfully; all nine exact-checkout logs were verified. Linux passed 657 tests normally/optimized; Windows discovered 657 in both modes with three existing POSIX/symlink skips. Both native platforms passed 255 optimized checks. Both Chrome flows, real CPU model and read-only public RPC gates passed. The earlier Windows concurrent-worker failure remains retained with its precise cause unconfirmed; current green results do not erase it.
+
+The changed 0.14.4 source must establish its own hosted results at [draft PR #47](https://github.com/BuildWithAAI/buildwithAAI/pull/47). [Local verification](evidence/ae032-task-review-local-verification.json) records exact changed-file and log hashes and the anonymous target probe. [Task review instructions](PILOT_TASK_REVIEW.md) explain states and exclusions. Tests do not certify deployment or all historical task completion.
+
+The next operating inputs are the actual private service HTTPS origin, independently obtained instance/agent/project IDs, and commands run on both PCs with credentials kept on those PCs. No secrets or wallet keys belong in this audit or chat. A generated report or a declaration of `SUCCEEDED` does not independently establish model quality, correct work or useful delivery.

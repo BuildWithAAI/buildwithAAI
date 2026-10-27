@@ -21,6 +21,9 @@ The first six records preserve founder-supplied ideas from September 20, 2026. F
 | AAI-P-0009 | [Agent economy and market-discussion forum](ideas/AAI-P-0009-agent-economy.md) | PROPOSED | RESEARCH |
 | AAI-P-0010 | [Open music collaboration and AI artists](ideas/AAI-P-0010-music.md) | IDEA | IDEA |
 | AAI-P-0011 | [Multi-Brain Trading Experiment](ideas/AAI-P-0011-multi-brain.md) | RESEARCH | RESEARCH |
+| AAI-P-0012 | [Virtual Business Spaces and strict agent contract policy](approved/AAI-P-0012-virtual-business-spaces.md) | APPROVED — specification/simulation | APPROVED project direction |
+
+The October 13 founder decision for AAI-P-0012 approves publication and specification/SYNTHETIC simulation only. Its production fee parameters, legal templates and live wallet/LP behavior remain pending. [Seven agent tasks](../projects/VIRTUAL_BUSINESS_SPACES.md#agent-task-queue) are queued and unassigned.
 
 ## Review and lifecycle
 

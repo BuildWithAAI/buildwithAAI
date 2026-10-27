@@ -1,0 +1,226 @@
+{
+  "artifact_sha256": {
+    "nodes.json": "16b461297253766e9b2cd7a40f7b68a889f43af47ed518d0960026c3ee4149e0",
+    "run-1.npy": "7a74de0dc2da071f7fc2e3eaa47f09d77ba3974f24a4b9e99cb0a4f8ad497425",
+    "run-2.npy": "7a74de0dc2da071f7fc2e3eaa47f09d77ba3974f24a4b9e99cb0a4f8ad497425"
+  },
+  "biological_replication_established": false,
+  "checkpoint_loading_allowed": false,
+  "conditions": [
+    "gray",
+    "on_flash",
+    "off_flash"
+  ],
+  "connectome_sha256": "bfbb0766251ff09e22723d0ebbf7b14793e70b3ae8ad0eea64eac9d28223351a",
+  "dependency_lock_sha256": "fd1666afc1db5a1b63de2127e020cd8961d9346b12a4a2ffb98db3affe4c0bd5",
+  "device": "cpu",
+  "edges": 57663,
+  "experiment_id": "FV-SMOKE-001",
+  "integration_commit": "a868b720958625f3135aa88fa594f88b8a1a4403",
+  "isolation": "Sanitized environment, private working directory, Python loading/network guards and process limits; not an OS security sandbox",
+  "live_execution_allowed": false,
+  "market_validation_established": false,
+  "metrics": {
+    "finite_activity_fraction": 1.0,
+    "non_input_flash_max_absolute_difference_from_gray": [
+      0.03334683179855347,
+      0.03334683179855347
+    ],
+    "non_input_neurons": 2049,
+    "repeat_max_absolute_difference": 0.0,
+    "shape": [
+      3,
+      40,
+      2345
+    ],
+    "status": "PASS_TECHNICAL_ONLY"
+  },
+  "model_config": {
+    "connectome": {
+      "extent": 3,
+      "file": "/workspace/scratch/0b7605d029c9/flyvis-upstream/flyvis/connectome/fib25-fib19_v2.2.json",
+      "n_syn_fill": 0,
+      "type": "ConnectomeFromAvgFilters"
+    },
+    "dynamics": {
+      "activation": {
+        "type": "relu"
+      },
+      "type": "PPNeuronIGRSynapses"
+    },
+    "edge_config": {
+      "sign": {
+        "groupby": [
+          "source_type",
+          "target_type"
+        ],
+        "initial_dist": "Value",
+        "requires_grad": false,
+        "type": "SynapseSign"
+      },
+      "syn_count": {
+        "groupby": [
+          "source_type",
+          "target_type",
+          "dv",
+          "du"
+        ],
+        "initial_dist": "Lognormal",
+        "mode": "mean",
+        "requires_grad": false,
+        "std": 1.0,
+        "type": "SynapseCount"
+      },
+      "syn_strength": {
+        "clamp": "non_negative",
+        "groupby": [
+          "source_type",
+          "target_type"
+        ],
+        "initial_dist": "Value",
+        "requires_grad": true,
+        "scale": 0.01,
+        "type": "SynapseCountScaling"
+      }
+    },
+    "node_config": {
+      "bias": {
+        "groupby": [
+          "type"
+        ],
+        "initial_dist": "Normal",
+        "mean": 0.5,
+        "mode": "sample",
+        "penalize": {
+          "activity": true
+        },
+        "requires_grad": true,
+        "seed": 0,
+        "std": 0.05,
+        "type": "RestingPotential"
+      },
+      "time_const": {
+        "groupby": [
+          "type"
+        ],
+        "initial_dist": "Value",
+        "requires_grad": true,
+        "type": "TimeConstant",
+        "value": 0.05
+      }
+    },
+    "stimulus_config": {
+      "init_buffer": false,
+      "type": "Stimulus"
+    }
+  },
+  "model_state_sha256": "4ac24bd7b7759902d8cf854a4a704ed1caf5f2fd88966794faec2d1cd2be9e62",
+  "nodes": 2345,
+  "package_versions": {
+    "Jinja2": "3.1.6",
+    "MarkupSafe": "3.0.4",
+    "PyYAML": "6.0.3",
+    "Pygments": "2.21.0",
+    "antlr4-python3-runtime": "4.9.3",
+    "asttokens": "3.0.2",
+    "cachetools": "7.2.4",
+    "certifi": "2026.10.19",
+    "cffi": "2.1.1",
+    "charset-normalizer": "3.5.2",
+    "cloudpickle": "3.1.2",
+    "colorama": "0.4.6",
+    "contourpy": "1.4.0",
+    "cryptography": "50.0.2",
+    "cycler": "0.12.1",
+    "datamate": "1.0.0",
+    "executing": "2.3.0",
+    "ffmpeg-python": "0.2.0",
+    "filelock": "4.2.4",
+    "flyvis": "0.1.dev1+g0a69fa2fc",
+    "fonttools": "4.67.0",
+    "fsspec": "2026.9.0",
+    "future": "1.0.0",
+    "google-api-core": "2.42.0",
+    "google-api-python-client": "2.201.0",
+    "google-auth": "2.62.0",
+    "google-auth-httplib2": "0.4.4",
+    "googleapis-common-protos": "1.75.5",
+    "h5py": "3.16.0",
+    "httplib2": "0.32.0",
+    "hydra-core": "1.3.7",
+    "idna": "3.20",
+    "iniconfig": "2.3.1",
+    "ipython": "9.17.1",
+    "ipython_pygments_lexers": "1.1.1",
+    "jedi": "0.20.1",
+    "joblib": "1.6.0",
+    "kiwisolver": "1.5.1",
+    "llvmlite": "0.50.0",
+    "matplotlib": "3.11.2",
+    "matplotlib-inline": "0.2.2",
+    "mpmath": "1.3.0",
+    "narwhals": "2.27.1",
+    "networkx": "3.7",
+    "numba": "0.68.0",
+    "numpy": "2.5.4",
+    "omegaconf": "1.4.1",
+    "opentelemetry-api": "1.45.1",
+    "packaging": "26.3",
+    "pandas": "3.0.6",
+    "parso": "0.8.7",
+    "pexpect": "4.9.0",
+    "pillow": "13.0.0",
+    "pluggy": "1.7.0",
+    "prompt_toolkit": "3.0.53",
+    "proto-plus": "1.29.0",
+    "protobuf": "7.36.2",
+    "psutil": "7.2.2",
+    "ptyprocess": "0.7.0",
+    "pure_eval": "0.2.4",
+    "pyasn1": "0.6.4",
+    "pyasn1_modules": "0.4.2",
+    "pycparser": "3.11",
+    "pynndescent": "0.6.0",
+    "pyparsing": "3.3.3",
+    "pytest": "9.1.1",
+    "python-dateutil": "2.9.0.post0",
+    "python-dotenv": "1.2.4",
+    "pytz": "2026.5",
+    "requests": "2.34.2",
+    "ruamel.yaml": "0.19.1",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.18.1",
+    "setuptools": "84.2.0",
+    "setuptools-scm": "10.3.4",
+    "six": "1.17.0",
+    "stack-data": "0.6.3",
+    "sympy": "1.14.0",
+    "threadpoolctl": "3.7.0",
+    "toolz": "1.2.0",
+    "torch": "2.14.1+cpu",
+    "torchvision": "0.29.1+cpu",
+    "tqdm": "4.70.1",
+    "traitlets": "5.16.1",
+    "typing_extensions": "4.16.0",
+    "umap-learn": "0.5.12",
+    "uritemplate": "4.2.0",
+    "urllib3": "2.8.0",
+    "vcs-versioning": "2.6.0",
+    "wcwidth": "0.9.2",
+    "wheel": "0.48.0",
+    "xarray": "2026.9.0"
+  },
+  "parameters_including_fixed": 3453,
+  "peak_rss_mib": 577.54296875,
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "python_version": "3.12.14",
+  "registration_sha256": "a1c49e607b97f338aabe735f3dc5143100f1d6b42a0f06c05bb30f40f339c031",
+  "schema_version": 1,
+  "status": "PASS_TECHNICAL_ONLY",
+  "torch_threads": 1,
+  "upstream_commit": "0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+  "verifier_sha256": "b8182b779551aaebe2b57c93f84b82a9bd65fcd73d70b934e001a8205538769c",
+  "wall_time_seconds": 30.213550439999835,
+  "weights": "UNTRAINED_UPSTREAM_INITIALIZATION",
+  "worker_sha256": "0b07c269fc090107789dcfe4fc934118a008f64dfe6551d254572b888e6ca6ad"
+}

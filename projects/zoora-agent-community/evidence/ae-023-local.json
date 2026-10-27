@@ -1,0 +1,35 @@
+{
+  "source_scope": "PREPUBLICATION_MODIFIED_WORKTREE",
+  "base_commit": "dd91839d40b90834d588f9c1ebdb630cc5fffc47",
+  "base_tree": "4f47066bacd86742ff60c85a575d3cb5c1ca2edb",
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "normal_tests": 317,
+  "optimized_tests": 317,
+  "new_regressions": 29,
+  "new_durable_cli_checks": 16,
+  "durable_commands": 20,
+  "independently_audited_states": 21,
+  "local_report_fingerprint": "5f3d24e0a29b16b7518f1d92248c37d40259800c7f5c50447052fc7833df08c2",
+  "final_synthetic_accounting": {
+    "fee_spent": 3,
+    "gross_settled_principal": 90,
+    "net_settled_principal": 80,
+    "refunded_principal": 10,
+    "refunds_restore_spending_budget": false
+  },
+  "schema_version": 6,
+  "version": "0.9.0",
+  "prior_acceptance_scripts": [
+    "integration",
+    "migration",
+    "operations",
+    "pilot_access",
+    "task_capacity",
+    "spending",
+    "commerce"
+  ],
+  "provider_integration": false,
+  "wallet_execution": false,
+  "public_deployment": false
+}

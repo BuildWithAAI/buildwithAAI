@@ -1,6 +1,6 @@
 # Solana Trading Lab
 
-**Status:** research idea; no trading model or execution system is delivered by this brief.
+**Status:** research with a reviewable [BT-005 offline SFP paper tester](sfp-paper-lab/README.md). Synthetic engine tests exist; market performance and any execution system remain unverified/unimplemented.
 
 ## The idea
 
@@ -39,3 +39,21 @@ See [task AAI-T-023](../tasks/BACKLOG.md#aai-t-023) and the [earlier starter tas
 The founder wants the [multi-brain source audit and proposed module experiment](MULTI_BRAIN_LAB.md) brought forward early. It expands this lab and preserves jellyfish-inspired exploration. See the [initial, non-exhaustive source inventory](../research/BRAIN_DATASETS.md). Cat, monkey, crow, and jellyfish candidates remain verification targets where no suitable resource has been established.
 
 The first step is source/permission/scope research, then a separately accepted small offline/paper prototype. Compare each module, the combination, simple/no-trade approaches, and comparable randomized networks. No model, biological advantage, or creator-fee account access is delivered here.
+
+## Swing failure pattern research — October 14, 2026
+
+The founder requested SFPs as an addition to the swing-strategy research. [BT-004: research dossier and evaluation protocol](../research/SWING_FAILURE_PATTERNS.md) separates observable sweep/reclaim geometry from inferred stop activity, defines causal pivots and three proposed entry variants, and specifies costs, baselines, unseen testing and rejection criteria. [AAI-T-041](../tasks/BACKLOG.md#aai-t-041) tracks the remaining evidence and study work.
+
+SFP source research and a protocol are available. The subsequent [BT-005 tester](sfp-paper-lab/README.md) implements causal pivots, A/B/C long paper variants, cash/trend baselines, costs/latency, loss and open-position accounting, offline CSV import and verifiable report exports. Its synthetic acceptance fixture demonstrates software behavior; it establishes no historical performance study or profitable strategy. Bearish events do not create spot-short permission. Offline replay and paper simulation boundaries remain in force; Forex/XAUUSD replication has its own data, broker and evaluation requirements.
+
+## BT-006: chronological testing and community data
+
+Version 0.2.0 adds the [frozen-plan study workflow](sfp-paper-lab/STUDY.md). It runs A/B/C plus cash, trend, full-capital buy-and-hold and training-density time controls, retains doubled-cost/delayed trials and exports a portable HTML ledger. The generated example has three folds and 72 trials. Inputs and fills are synthetic; numeric screens do not authorize a strategy. Independent fold accounts are not a treasury and their results cannot be summed into buy/burn funding. Exact exposure matching, historical executable quotes, untouched forward evaluation and selection-risk analysis remain pending.
+
+## BT-007: persistent notebook and original data receipts
+
+[The local research notebook](sfp-paper-lab/NOTEBOOK.md) retains a frozen baseline, original incremental CSVs and all recorded study reports. History revisions/backfills, duplicate captures and stale exports are rejected; explicit checkpoint verification and full matching-engine replay are available. A ten-file portable report carries the raw history and latest study. This establishes local software consistency, not source truth, independent unseen evaluation or an accepted funded strategy.
+
+## BT-008: public observations and source-preserving intake
+
+[Source capture](sfp-paper-lab/SOURCE.md) adds two fixed public SOL/USD requests, strict spot market identity, exact raw bodies, closed-only hourly mapping and data-quality/provenance exports. The notebook can retain these inputs through opening and appending. Offline acceptance remains synthetic; a separate declared one-fold recent-window pilot uses provider-reported public observations. No AAI market identity, executable quote, independently unseen evaluation or economic operation is established.

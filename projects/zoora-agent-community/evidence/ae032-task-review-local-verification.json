@@ -1,0 +1,96 @@
+{
+  "all_historical_tasks_completed": false,
+  "application_or_ci_deadlines_increased": false,
+  "changed_files_sha256": {
+    "docs/CURRENT_STATUS.md": "e6bbbea3fff3d6c71fe0c50e0bef8ab9fb7887b490d2f14fdfb5d7b5762b16e7",
+    "projects/zoora-agent-community/AGENT_RUNTIME.md": "12e97e71dc3e7bc6e214ba68ded08d1a25c97bbb126baa2b1cf8ffa05d391939",
+    "projects/zoora-agent-community/JOBS.md": "4079c77b69efc76e3c0f545b17ebe3b38a43ba053eb78395ff939cd24cb0dee6",
+    "projects/zoora-agent-community/LIVE_CONNECTION_AUDIT_20261018.md": "3c26f3620fdcf5e097ed0669c3fa8e34070b79864011ccdd0620cf30a26bef1c",
+    "projects/zoora-agent-community/PILOT_TASK_REVIEW.md": "52f541998d04552675f3d47565d6a10b5c0ffd75ea2e10658505493eed74dd26",
+    "projects/zoora-agent-community/README.md": "bb41d2e58b43b462037405059c1039394935ff3b7d6c2c543427ae9bd0004b2b",
+    "projects/zoora-agent-community/SECURITY.md": "c25433ca0e0f94212f79abb2cf6a7a6dd1f32fe8a30c8748f15f79ce43a0ec4d",
+    "projects/zoora-agent-community/TWO_AGENT_PILOT.md": "8980c4671c57984c43774b08fd79201683742e2619721104f725e87395fa0b4c",
+    "projects/zoora-agent-community/VALIDATION_AE032.md": "1d2887d82b9b368c961284b39e7ef961edfadec5a3e7feb61670d0b8f760d3a6",
+    "projects/zoora-agent-community/scripts/live_model_evidence.py": "b131bcbb219621e210599b584671506868ba8fb69d450a8ec32262229268dd3e",
+    "projects/zoora-agent-community/tests/test_pilot_review.py": "2334d9eadfab6a5468142cdd524f12e7aecf811a5fecfe66ed428065f7dcd160",
+    "projects/zoora-agent-community/zoora_community/__init__.py": "907d3d392d03883a85cc88601226bdf4849bcc7b1eca1cad976d426c2d2987bb",
+    "projects/zoora-agent-community/zoora_community/__main__.py": "1797459090e7d49a880ef8ac5f0d7702f076bc48f43034ea8ea7746b034280e1",
+    "projects/zoora-agent-community/zoora_community/pilot_review.py": "4c5ff076ea6ef9c06750822cae067ff03f9539a112c54096ec33d50618cbf929"
+  },
+  "current_source_hosted_ci": "MUST_VERIFY_AT_EXACT_PUBLISHED_HEAD",
+  "deployed": false,
+  "hosted_actual_cpu_model_gate_changed": true,
+  "hosting_verified": false,
+  "logs": {
+    "acceptance": {
+      "bytes": 1105,
+      "result": "PASS",
+      "sha256": "cad96c12e77f9b6a3fc100b77ea73afced9f2fa3f00e425aa1393df6b511b885",
+      "tests": null
+    },
+    "normal": {
+      "bytes": 115466,
+      "result": "PASS",
+      "sha256": "10bd8e5bb5fae82fb4ab16abd123086fa57c41059fc284052840eb591ec21d5d",
+      "tests": 679
+    },
+    "optimized": {
+      "bytes": 781,
+      "result": "PASS",
+      "sha256": "41e397cda3b5a8b98a75bd7755cf151bdac09ff1b6021bac62de027afff578a5",
+      "tests": 679
+    },
+    "protocol_rehearsal": {
+      "bytes": 250,
+      "result": "PASS",
+      "sha256": "6baec83ceea0df30068ffe7099bcb1682804d21826bb82f2a6817ee94e2df72a",
+      "tests": null
+    },
+    "targeted": {
+      "bytes": 3532,
+      "result": "PASS",
+      "sha256": "5fd4d3dcae163cc1994c810c136d3e0c5d44433477ccbb41a4edacc7ece8e641",
+      "tests": 22
+    }
+  },
+  "new_review_cases": 22,
+  "normal_seconds": 99.874,
+  "optimized_seconds": 101.122,
+  "parent_source_head": "3acca2b8396e976fb6a2b8b99e3bdb046671bcab",
+  "physical_pcs_verified": false,
+  "previous_checkpoint": {
+    "all_nine_jobs_passed": true,
+    "community_run": 39107495034,
+    "earlier_windows_failure_precise_cause_confirmed": false,
+    "head": "3acca2b8396e976fb6a2b8b99e3bdb046671bcab",
+    "native_run": 39107495031
+  },
+  "protocol": "ZOORA_AE032_TASK_REVIEW_LOCAL_VERIFICATION_V1",
+  "python": "3.12.14",
+  "real_local_model_available": false,
+  "real_user_task_queue_inspected": false,
+  "recorded_at": "2026-10-18T08:47:22.887396+00:00",
+  "runtime_dependencies_changed": false,
+  "runtime_package_sha256": "88f2badb4a5632d26638e7001aaf46f860aba391483dd28ccf6ab9b2e5c6afb0",
+  "schema": 7,
+  "schema_migration_added": false,
+  "sqlite": "3.53.1",
+  "synthetic_protocol_rehearsal": true,
+  "target_public_probe": {
+    "checked_at": "2026-10-18T08:42:35.995608+00:00",
+    "credentials_sent": false,
+    "does_not_establish_remote_service_health": true,
+    "method": "GET",
+    "origin": "https://zoora.ai",
+    "origin_classification": "INTENDED_TARGET_NOT_SUPPLIED_AS_DEPLOYED_SERVICE",
+    "path": "/v1/status",
+    "service_identity_verified": false,
+    "state": "UNVERIFIED",
+    "workspace_error": "DNS_RESOLUTION_FAILED"
+  },
+  "tests_removed_or_newly_skipped": false,
+  "transactions_submitted": 0,
+  "vendor_wallets_verified": false,
+  "version": "0.14.4",
+  "wallet_execution": "UNAVAILABLE"
+}

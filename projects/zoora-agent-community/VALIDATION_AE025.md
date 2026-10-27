@@ -1,0 +1,15 @@
+# AE-025 validation — provider discovery and recovery
+
+October 15, 2026. Based on source `305e224af6fe151cd9d0ba6f69d2c5f69cbbe6a6`, tree `a04efdbba7f8f145f3ec1709d3ebd9039f6a8539`. These results describe modified local source; published head, CI and downloaded archive verification are recorded separately in the development PR.
+
+CPython 3.12.14 / SQLite 3.53.1: **376 tests pass normally and 376 optimized**, including **26 new regressions**. Ruff/diff checks pass. Existing invalid-schema coverage now uses schema 3 because provider-journal schema 2 is implemented. Community service/schema remain 0.9.0/6; no runtime dependency or native Zoora change is added.
+
+Tests cover second-page matches, cursor/path restrictions, repeated IDs, malformed counts, multiple candidates, conflicting terms, one shared deadline, page cap, inconclusive misses, expired-intent recovery, immutable known IDs, original credentials, leases, actual CLI death after recovery GET, candidate tampering and unattempted-import refusal. Migration tests cover preserved known/pending histories, exclusive snapshot, existing-backup refusal, corrupt/orphan refusal, required migration before network, already-current refusal and transactional rollback after ALTER.
+
+The separate-process CLI/local HTTPS rehearsal passes **21 checks**. It retains four intents and ten attempts (**four CREATE, two POLL, four RECONCILE**), four unique fixture objects and **19 HTTPS requests: four POST, 15 GET**. It verifies schema-1 migration/backup, second-page discovery, wrong-ID refusal, recovery after expiry, recovery-process death/lease retry, empty/ambiguous/truncated scans, redaction and independent SQLite inspection. Recovery/discovery adds no POST. Clocks are injected for expiry/lease boundaries; the reconstructed legacy fixture uses the exact version-1 columns and valid CREATE/POLL histories.
+
+Fixture connections now target its IPv4 listener directly, whose IP is in the test certificate, while retaining TLS certificate/hostname verification. This removes localhost address-family fallback. Production transport still uses the fixed vendor sandbox hostname and normal trusted TLS context.
+
+Five Python/OS CI targets retain full normal/optimized suites and previous service/CLI/browser gates and add this rehearsal. Actual local model, read-only RPC and native identity bridge jobs remain enabled. Remote success is not inferred locally. Wire IDs/hashes differ per run; archive verification must check source, scope, counts and recovery paths rather than identical bytes across platforms.
+
+**External Bridge requests: zero. Vendor account/route/response acceptance: UNVERIFIED.** Local contract tests do not prove provider interoperability, confirmed payment, wallet authority, financial correctness or production readiness. No real spending, signer, card issuance, currency conversion, commerce allowance mapping or native-chain behavior is enabled. Journal migration is not community backup/restore or lost-state reconstruction. Discovery never proves absence/global uniqueness; matching ID recovery is not duplicate-charge resolution. [Method](BRIDGE_RECONCILIATION.md).

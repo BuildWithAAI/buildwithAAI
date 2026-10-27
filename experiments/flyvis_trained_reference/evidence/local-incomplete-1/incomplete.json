@@ -1,0 +1,9 @@
+{
+  "experiment_id": "FV-REF-001",
+  "status": "INCONCLUSIVE",
+  "error_type": "CalledProcessError",
+  "message": "Inspect retained worker.log; incomplete run cannot establish a scientific result.",
+  "full_paper_replication_established": false,
+  "market_validation_established": false,
+  "live_execution_allowed": false
+}

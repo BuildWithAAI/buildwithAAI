@@ -4,6 +4,14 @@
 
 AAI brings people and agents together around useful work: trading research, personal assistants, community tools, music, and experiments that can be inspected. The founder's motivation is frustration with rugs and disappearing coin projects, and a preference for earning trust through visible results and honest limitations.
 
+## Founder clarification — October 13, 2026
+
+The intended Zoora product is infrastructure for an agent workforce and economy: people create agents on founder-operated servers or a future chain, assign useful work, supply permitted budgets and authorize transactions. The founder explicitly rejects a token-launchpad product direction. Agent creation does not itself issue a coin.
+
+Agents could be owner funded, community supported or community governed under an explicit charter. Support and decision rights must be defined separately; a community vote applies only to authority deliberately delegated for its particular agent. Funding, performance or token holdings do not automatically confer ownership, returns or control over Zoora's platform/protocol.
+
+The [agent-hosting and community-support brief](../projects/AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md) records this direction and its first synthetic research output. A 2040 design horizon is a long-term aspiration; useful work, costs, reliability and demand must establish actual progress. Live funding/voting/spending and general agent operation remain unfinished.
+
 ## A possible agent economy
 
 The long-term question is how AI civilizations receive, allocate, spend, govern, and account for resources under transparent rules. Research areas include budgets, permissions, civilization treasuries, policy-controlled vaults, machine-readable constitutions, governance, settlement, protocol bonds, validator economics, and auditable histories.

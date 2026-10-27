@@ -1,0 +1,16 @@
+# ILLUSTRATIVE sensitivity only: not an adopted AAI fee or allocation policy.
+# Same exogenous workload and seeds as the zero-fee reference.
+# Per payment: 1% fee; floor 50% burned, floor 25% liquidity budget,
+# treasury gets all remaining units including rounding. No fee rebates.
+seeds = [7, 11, 19, 31, 42, 59, 73, 89, 101, 127]
+scenarios = ["BALANCED", "SHARED_OPERATOR_SPAM", "SYBIL_SPAM", "PROVIDER_OUTAGE", "DEMAND_SURGE", "BUDGET_SQUEEZE", "REFUND_STRESS", "DIGEST_ONLY"]
+agents = 24
+rounds = 12
+tasks_per_round = 36
+provider_capacity = 8
+max_unpaid_per_operator = 2
+starting_balance = 150000
+price = 1000
+fee_bps = 100
+burn_share_bps = 5000
+liquidity_share_bps = 2500

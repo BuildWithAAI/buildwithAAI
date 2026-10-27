@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "experiment_id": "FV-SMOKE-001",
+  "registered_at_utc": "2026-10-20",
+  "stage": "EXECUTION_SMOKE_ONLY",
+  "hypothesis": "A pinned, untrained reduced-patch FlyVis network produces finite stimulus-dependent activity and repeats within the same locked CPU environment.",
+  "task": "Technical model execution on synthetic uniform gray, ON-flash and OFF-flash stimuli; not a biological reference reproduction or market forecast.",
+  "upstream": {
+    "repository": "TuragaLab/flyvis",
+    "commit": "0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa",
+    "paper_doi": "10.1038/s41586-024-07939-3",
+    "code_license": "MIT",
+    "connectome_path": "flyvis/connectome/fib25-fib19_v2.2.json",
+    "connectome_sha256": "bfbb0766251ff09e22723d0ebbf7b14793e70b3ae8ad0eea64eac9d28223351a",
+    "asset_scope": "Bundled model specification in the pinned repository; no external trained weights, stimulus datasets or reference archives.",
+    "commercial_asset_clearance": "NOT_ESTABLISHED"
+  },
+  "architecture": {
+    "implementation": "Upstream Network defaults except explicit reduced connectome settings",
+    "extent": 3,
+    "n_syn_fill": 0,
+    "dynamics": "PPNeuronIGRSynapses with relu",
+    "weights": "UNTRAINED_UPSTREAM_INITIALIZATION",
+    "parameter_budget": "Recorded from constructed network; no optimization or training",
+    "boundary_effects": "Reduced spatial patch omits connections outside the patch; not the publication-scale network"
+  },
+  "inputs": {
+    "classification": "SYNTHETIC",
+    "conditions": ["gray", "on_flash", "off_flash"],
+    "frames": 40,
+    "dt_seconds": 0.01,
+    "gray_value": 0.5,
+    "on_value": 1.0,
+    "off_value": 0.0,
+    "flash_start_frame": 10,
+    "flash_end_frame_exclusive": 30,
+    "pre_stimulus_seconds": 0.2,
+    "preprocessing": "Uniform intensity across all photoreceptor positions; no external observations or missing data",
+    "feature_set": "FV-SMOKE-001-SYNTHETIC-FLASH-V1"
+  },
+  "seeds": [0],
+  "repeats_per_seed": 2,
+  "controls": ["Constant gray condition on the same network", "Repeat with identical seed and input in the same environment"],
+  "metrics": {
+    "finite_activity_fraction": "Must equal 1.0",
+    "repeat_max_absolute_difference": "Must be <= 0.000001",
+    "non_input_flash_max_absolute_difference_from_gray": "Must exceed 0.0000001 for at least one flash condition"
+  },
+  "criteria": {
+    "PASS_TECHNICAL_ONLY": "All registered metrics pass, shape and provenance checks pass, no checkpoint is loaded, and all resource limits are respected.",
+    "INCONCLUSIVE": "Dependency, source, platform, resource or runtime error prevents a valid measurement; preserve errors without changing this registration.",
+    "REJECT_TECHNICAL_HYPOTHESIS": "A completed valid run fails at least one registered numerical metric.",
+    "promotion": "Never establishes biological validity, market usefulness, calibrated confidence or permission for live execution. Any changed criterion requires a new experiment ID."
+  },
+  "resource_limits": {
+    "device": "cpu",
+    "torch_threads": 1,
+    "wall_time_seconds": 180,
+    "max_output_bytes": 4000000,
+    "max_nodes": 5000,
+    "max_edges": 1000000,
+    "max_activity_elements": 600000
+  },
+  "market_dataset": null,
+  "target_label_and_horizon": null,
+  "train_validation_test_windows": null,
+  "cost_slippage_latency_model": "NOT_APPLICABLE_NO_FINANCIAL_OUTCOMES",
+  "topology_advantage_controls": "NOT_APPLICABLE_NO_TOPOLOGY_OR_PERFORMANCE_ADVANTAGE_CLAIM",
+  "known_limitations": [
+    "Untrained defaults, reduced geometry and synthetic stimuli cannot reproduce the paper's trained-network results.",
+    "A response difference can show execution and stimulus propagation only; it does not establish visual interpretation or cognition.",
+    "One seed and two repeats test local determinism only, not scientific robustness or cross-platform equivalence.",
+    "Code hashes and self-reported receipts do not independently prove truthful execution.",
+    "A virtual environment and Python-level loading guards are not an operating-system security sandbox."
+  ],
+  "training_performed": false,
+  "checkpoint_loading_allowed": false,
+  "biological_replication_established": false,
+  "market_validation_established": false,
+  "live_execution_allowed": false
+}

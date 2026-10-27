@@ -1,0 +1,11 @@
+agent_count = 100
+starting_balance = 0
+ticks = 5
+seed = 42
+max_tasks = 1000
+max_active_tasks_per_worker = 10
+fee_bps = 250
+scenario_tasks = 100
+reward_per_task = 100
+failure_bps = 2000
+cancellation_bps = 1000

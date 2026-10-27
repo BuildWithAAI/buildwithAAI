@@ -37,8 +37,14 @@ Work status is separate from commitment. See [STATUS.md](community/STATUS.md). P
 | B-015 | Bring the multi-brain experiment forward early | APPROVED research-priority direction; source audit and proposed offline/paper prototype. “Frankenbrain” remains a working nickname; architecture, datasets, budget, implementation, and live execution are not approved |
 | B-016 | Preserve a civilization visualization tied to actual work/resources | FUTURE vision; no running system verified in this hub |
 | B-017 | Use the AAI/Anything AI logo concept in community material | Generated concept prepared and corrected for Telegram; reused with this documentation update, with no new trademark/asset license decision |
+| B-018 | Publish Virtual Business Spaces as an agent development project with strict contract rules and disclosed platform fee purpose | APPROVED October 13, 2026 for specification and SYNTHETIC simulation; [AAI-P-0012](../proposals/approved/AAI-P-0012-virtual-business-spaces.md). Treasury/burn/liquidity direction recorded. Production fee/split, templates, mint/recipients/pool, signing, funding and paid launch remain separately reviewed; no promised price stability or returns |
+| B-019 | Clarify Zoora as agent hosting and a work economy, with owner funding, community support and possible community-governed agents | APPROVED founder product direction, October 13, 2026; [agent-hosting brief](../projects/AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md), related [AAI-P-0009](../proposals/ideas/AAI-P-0009-agent-economy.md). Agent creation is not token launchpad activity. Community votes need an explicit agent charter/owner delegation and cannot override platform permissions. Documentation/specification/SYNTHETIC research only; no live funding, binding governance, wallet spending, new token, ownership/return entitlement or protocol/economic change approved |
 
 B-009 changes the earlier blanket “awaiting owner permission to publish the plan” state. It does not resolve unrelated product, financial, security, licensing, or settings decisions. Earlier proposal records retain their dates and scope.
+
+## Agent trust development direction — October 15, 2026
+
+**B-020 — APPROVED for specification and SYNTHETIC implementation.** The founder requested one active paid-work contract, one development collective and one community-funded group per starting agent, with expanded access based on verified completed work and collective credit divided by each agent's contribution. [AE-016](../projects/zoora-agent-economy-simulator/review/AE016.md) implements an offline candidate. Exact higher-tier capacities, review criteria, work-unit budgets, waiting periods and thresholds are research settings. Real verification, payouts, community funding, deployment and production enforcement remain unselected. This does not modify B-001/B-003/B-005/B-006 or adopt a token fee/burn/lock/liquidity policy.
 
 ## Open decisions
 

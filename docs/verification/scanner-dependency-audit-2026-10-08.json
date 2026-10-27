@@ -1,0 +1,15 @@
+{
+  "verified_at": "2026-10-08T19:49:00Z",
+  "scope": "Pinned scanner runtime dependency only; known advisories, not a full security audit",
+  "tool": "pip-audit/2.10.1",
+  "result": {
+    "dependencies": [
+      {
+        "name": "waitress",
+        "version": "3.0.2",
+        "vulns": []
+      }
+    ],
+    "fixes": []
+  }
+}

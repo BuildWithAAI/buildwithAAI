@@ -1,12 +1,14 @@
 # AAI-P-0011: Multi-Brain Trading Experiment
 
+**October 20 UTC / October 19 America/Chicago, 2026 bounded work:** the founder requested development across fly, tadpole, cat, monkey and later sources and selected market research first. Codex accepted the source/graph preparation and shared causal-interface task documented in [the foundation audit](../../research/MULTI_BRAIN_LIVE_PREP.md). This is active research engineering; it does not record approval of a market model, commercial use of restricted data, a live service, execution, spending or a protected economic change.
+
 | Field | Value |
 | --- | --- |
 | Author / source | Founder discussion, organized with AI assistance |
 | Date | September 22, 2026 |
 | Work status | RESEARCH |
 | Commitment category | RESEARCH |
-| Maintainer | Unassigned — no implementation owner accepted |
+| Maintainer | Long-term unassigned; Codex accepted the bounded source/graph/interface foundation described above |
 | Estimated complexity | Unknown until scoped; review data, rights, operating cost, and evaluation first |
 | Related brief | [Detailed brief](../../projects/MULTI_BRAIN_LAB.md) |
 | First task | [AAI-T-023](../../tasks/BACKLOG.md#aai-t-023) |

@@ -1,0 +1,6 @@
+[project]
+name = "buildwithaai-research"
+version = "0.1.0"
+description = "Read-only research tooling for BuildWithAAI"
+requires-python = ">=3.11"
+dependencies = []

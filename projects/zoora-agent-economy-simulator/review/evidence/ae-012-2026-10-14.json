@@ -1,0 +1,772 @@
+{
+  "source_commit": "73ae81f638c16f388639ef58a3937f1b2065f345",
+  "classification": "SYNTHETIC",
+  "unit": "SIMULATED_UNITS",
+  "pr_url": "https://github.com/BuildWithAAI/buildwithAAI/pull/28",
+  "workflow_runs": [
+    {
+      "id": 38649185156,
+      "name": "Zoora Agent Economy Simulator",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 79,
+      "jobs_url": "https://api.github.com/repos/BuildWithAAI/buildwithAAI/actions/runs/38649185156/jobs",
+      "logs_url": "https://api.github.com/repos/BuildWithAAI/buildwithAAI/actions/runs/38649185156/logs",
+      "workflow_id": 374369052
+    },
+    {
+      "id": 38649185257,
+      "name": "Zoora Task Market",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 34,
+      "jobs_url": "https://api.github.com/repos/BuildWithAAI/buildwithAAI/actions/runs/38649185257/jobs",
+      "logs_url": "https://api.github.com/repos/BuildWithAAI/buildwithAAI/actions/runs/38649185257/logs",
+      "workflow_id": 380369971
+    },
+    {
+      "id": 38649185271,
+      "name": "Zoora Review Market",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 31,
+      "jobs_url": "https://api.github.com/repos/BuildWithAAI/buildwithAAI/actions/runs/38649185271/jobs",
+      "logs_url": "https://api.github.com/repos/BuildWithAAI/buildwithAAI/actions/runs/38649185271/logs",
+      "workflow_id": 380651701
+    }
+  ],
+  "jobs": [
+    {
+      "job_id": 116143478818,
+      "run_id": 38649185271,
+      "name": "dependencies",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [],
+      "tests_passed_across_profiles": 0,
+      "error_lines": 0
+    },
+    {
+      "job_id": 116143479002,
+      "run_id": 38649185271,
+      "name": "test (windows-latest)",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 26,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 39,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 26,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 39,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "tests_passed_across_profiles": 244,
+      "error_lines": 0
+    },
+    {
+      "job_id": 116143479135,
+      "run_id": 38649185271,
+      "name": "test (ubuntu-latest)",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 26,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 39,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 26,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 39,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "tests_passed_across_profiles": 244,
+      "error_lines": 0
+    },
+    {
+      "job_id": 116143477896,
+      "run_id": 38649185156,
+      "name": "dependencies",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [],
+      "tests_passed_across_profiles": 0,
+      "error_lines": 0
+    },
+    {
+      "job_id": 116143478092,
+      "run_id": 38649185156,
+      "name": "test (windows-latest)",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "tests_passed_across_profiles": 86,
+      "error_lines": 0
+    },
+    {
+      "job_id": 116143478093,
+      "run_id": 38649185156,
+      "name": "test (ubuntu-latest)",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "tests_passed_across_profiles": 88,
+      "error_lines": 0
+    },
+    {
+      "job_id": 116143478678,
+      "run_id": 38649185257,
+      "name": "dependencies",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [],
+      "tests_passed_across_profiles": 0,
+      "error_lines": 0
+    },
+    {
+      "job_id": 116143478929,
+      "run_id": 38649185257,
+      "name": "test (windows-latest)",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 31,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 31,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "tests_passed_across_profiles": 62,
+      "error_lines": 0
+    },
+    {
+      "job_id": 116143479021,
+      "run_id": 38649185257,
+      "name": "test (ubuntu-latest)",
+      "checked_out_head": "73ae81f638c16f388639ef58a3937f1b2065f345",
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 31,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 31,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "tests_passed_across_profiles": 62,
+      "error_lines": 0
+    }
+  ],
+  "verified_archives": [
+    {
+      "name": "review-dependency-audit",
+      "id": 11934291476,
+      "bytes": 387,
+      "sha256": "a5831d5a645abfd5879b87a2c0f017368130ce5dc7fef47d7fa15398d681cc5d",
+      "files": 1,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    },
+    {
+      "name": "review-validation-ubuntu-latest",
+      "id": 11933249790,
+      "bytes": 2735163,
+      "sha256": "a25d7f70dfc1cd57d312da1d43da12be4e97ad60292cc4831b3d6462891493ad",
+      "files": 39,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    },
+    {
+      "name": "simulator-dependency-audit",
+      "id": 11934580715,
+      "bytes": 387,
+      "sha256": "e9144e2155f0ecfae2ad084e3fbce731d0b83916a1dc18bd7c69c2e989ef7845",
+      "files": 1,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    },
+    {
+      "name": "simulator-validation-windows-latest",
+      "id": 11933891675,
+      "bytes": 78699,
+      "sha256": "6023f98b167a8cd2513aea0574a93815d596b101115dbf9aae1058bbf1d66f72",
+      "files": 7,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    },
+    {
+      "name": "simulator-validation-ubuntu-latest",
+      "id": 11933348284,
+      "bytes": 78675,
+      "sha256": "29d35ad94411df1a19028af4697f3b67ca10d6dadba94befadc8cf445999ba7c",
+      "files": 7,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    },
+    {
+      "name": "market-validation-windows-latest",
+      "id": 11934231163,
+      "bytes": 20764,
+      "sha256": "2fa312c17518e3a8b73a43d60d23ee7cbd034601dadaf9f65dc7146a8703ac06",
+      "files": 4,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    },
+    {
+      "name": "market-validation-ubuntu-latest",
+      "id": 11933966473,
+      "bytes": 20768,
+      "sha256": "c2ab6b8cc497ee3c3da95f4aad1323150f854a9298dbfb0a89aac001c6baab73",
+      "files": 4,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    },
+    {
+      "name": "market-dependency-audit",
+      "id": 11933523052,
+      "bytes": 387,
+      "sha256": "0dfb4b85cc8878437b7a6b81ef57ca0ad1a88c283aab23b4cf64bc2e7424b576",
+      "files": 1,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    },
+    {
+      "name": "review-validation-windows-latest",
+      "id": 11934620841,
+      "bytes": 762873,
+      "sha256": "46bef71c457cd7def7a54777c8bfdc5db9d196777c5a94cd9bbe0f3f6345af56",
+      "files": 30,
+      "head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345"
+    }
+  ],
+  "local_full_journal_verification": {
+    "source_commit": "73ae81f638c16f388639ef58a3937f1b2065f345",
+    "classification": "SYNTHETIC",
+    "unit": "SIMULATED_UNITS",
+    "full_journals_verified": 320,
+    "campaigns": [
+      {
+        "tag": "reference",
+        "full_journals_independently_reconstructed": 160,
+        "campaign_fingerprint": "e2eb76c2865bb459a62a4ebb45d87cd4c53290efdba9449113496820e8d9227d",
+        "binary_sha256": "b9316f6cebbe76ffcc38ea43773cf457f667d5441375aa6c8a43debdbdba17de",
+        "config_sha256": "bd69febcb5f3453d7aefee7bfde01efd27b7f30700ac5d75796c55af5a9db0a5"
+      },
+      {
+        "tag": "fee-sensitivity",
+        "full_journals_independently_reconstructed": 160,
+        "campaign_fingerprint": "e3490e8c9981d7f6aa15032bad3eab7b98c5870457358cf75141a49151e8890d",
+        "binary_sha256": "b9316f6cebbe76ffcc38ea43773cf457f667d5441375aa6c8a43debdbdba17de",
+        "config_sha256": "2d1fe52fab5f2880c065f102d8ffb9dc2b9e36580413e5520fd21ebdad281ea2"
+      }
+    ],
+    "elapsed_seconds": 10.218,
+    "checks": [
+      "run and campaign hashes independently reconstructed",
+      "all ledger entries matched to direct receipts",
+      "every balance reconstructed and nonnegative",
+      "payment and return totals match nested direct reports",
+      "fee split and stock conservation after each transfer",
+      "round totals and summary rows match full runs",
+      "unacknowledged and undelivered net exposure reconciles",
+      "all wallet authority flags remain false"
+    ]
+  },
+  "linux_campaign_acceptance": {
+    "source_head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345",
+    "source_tree_dirty": false,
+    "classification": "SYNTHETIC",
+    "unit": "SIMULATED_UNITS",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "unique_reference_and_sensitivity_runs": 320,
+    "tests": [
+      "early checkpoint cannot claim completion",
+      "resume completes all sixteen expected runs",
+      "resume preserves cached run bytes",
+      "independent ledger replay matches all sixteen full transcripts",
+      "existing output refuses implicit overwrite",
+      "resume rejects changed fee configuration",
+      "resume rejects corrupt cached evidence",
+      "reference independent campaign hash",
+      "reference complete 160-run matrix",
+      "reference all policies and shocks share intentions per seed",
+      "reference all 160 stock/fee reconciliations",
+      "reference CSV has all runs and source fingerprints",
+      "reference viewer has no connection permission",
+      "reference rehashed false fees cannot replay or export",
+      "fee-sensitivity independent campaign hash",
+      "fee-sensitivity complete 160-run matrix",
+      "fee-sensitivity all policies and shocks share intentions per seed",
+      "fee-sensitivity all 160 stock/fee reconciliations",
+      "fee-sensitivity CSV has all runs and source fingerprints",
+      "fee-sensitivity viewer has no connection permission",
+      "fee-sensitivity rehashed false fees cannot replay or export",
+      "fee sensitivity preserves every intended workload",
+      "BASELINE debug/release journals are byte-identical",
+      "BASELINE rehashed false ledger transfer rejected",
+      "BASELINE independently checked transcript matches large campaign metrics",
+      "OPERATOR_CAP debug/release journals are byte-identical",
+      "OPERATOR_CAP rehashed false ledger transfer rejected",
+      "OPERATOR_CAP independently checked transcript matches large campaign metrics",
+      "out-of-bound config creates no output",
+      "CLI refuses existing campaign output"
+    ],
+    "campaigns": [
+      {
+        "tag": "reference",
+        "runs": 160,
+        "fingerprint": "e2eb76c2865bb459a62a4ebb45d87cd4c53290efdba9449113496820e8d9227d",
+        "file_sha256": "3d223600cc89704b2814583d925a79941cdf7fc7817d2ab632af2a3f7df06992"
+      },
+      {
+        "tag": "fee-sensitivity",
+        "runs": 160,
+        "fingerprint": "e3490e8c9981d7f6aa15032bad3eab7b98c5870457358cf75141a49151e8890d",
+        "file_sha256": "70eef74610c78e800ead9e4c520e5d7263ffd2c2412e995a4addd3070cd335c0"
+      }
+    ],
+    "elapsed_seconds": 56.218,
+    "timing_scope": "SINGLE_LOCAL_OR_CI_ACCEPTANCE_SAMPLE_NOT_A_THROUGHPUT_CLAIM",
+    "live_wallets_or_transactions": false
+  },
+  "windows_campaign_acceptance": {
+    "source_head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345",
+    "source_tree_dirty": false,
+    "classification": "SYNTHETIC",
+    "unit": "SIMULATED_UNITS",
+    "platform": "Windows-2025Server-10.0.26100-SP0",
+    "unique_reference_and_sensitivity_runs": 320,
+    "tests": [
+      "early checkpoint cannot claim completion",
+      "resume completes all sixteen expected runs",
+      "resume preserves cached run bytes",
+      "independent ledger replay matches all sixteen full transcripts",
+      "existing output refuses implicit overwrite",
+      "resume rejects changed fee configuration",
+      "resume rejects corrupt cached evidence",
+      "reference independent campaign hash",
+      "reference complete 160-run matrix",
+      "reference all policies and shocks share intentions per seed",
+      "reference all 160 stock/fee reconciliations",
+      "reference CSV has all runs and source fingerprints",
+      "reference viewer has no connection permission",
+      "reference rehashed false fees cannot replay or export",
+      "fee-sensitivity independent campaign hash",
+      "fee-sensitivity complete 160-run matrix",
+      "fee-sensitivity all policies and shocks share intentions per seed",
+      "fee-sensitivity all 160 stock/fee reconciliations",
+      "fee-sensitivity CSV has all runs and source fingerprints",
+      "fee-sensitivity viewer has no connection permission",
+      "fee-sensitivity rehashed false fees cannot replay or export",
+      "fee sensitivity preserves every intended workload",
+      "BASELINE debug/release journals are byte-identical",
+      "BASELINE rehashed false ledger transfer rejected",
+      "BASELINE independently checked transcript matches large campaign metrics",
+      "OPERATOR_CAP debug/release journals are byte-identical",
+      "OPERATOR_CAP rehashed false ledger transfer rejected",
+      "OPERATOR_CAP independently checked transcript matches large campaign metrics",
+      "out-of-bound config creates no output",
+      "CLI refuses existing campaign output"
+    ],
+    "campaigns": [
+      {
+        "tag": "reference",
+        "runs": 160,
+        "fingerprint": "e2eb76c2865bb459a62a4ebb45d87cd4c53290efdba9449113496820e8d9227d",
+        "file_sha256": "3d223600cc89704b2814583d925a79941cdf7fc7817d2ab632af2a3f7df06992"
+      },
+      {
+        "tag": "fee-sensitivity",
+        "runs": 160,
+        "fingerprint": "e3490e8c9981d7f6aa15032bad3eab7b98c5870457358cf75141a49151e8890d",
+        "file_sha256": "70eef74610c78e800ead9e4c520e5d7263ffd2c2412e995a4addd3070cd335c0"
+      }
+    ],
+    "elapsed_seconds": 68.273,
+    "timing_scope": "SINGLE_LOCAL_OR_CI_ACCEPTANCE_SAMPLE_NOT_A_THROUGHPUT_CLAIM",
+    "live_wallets_or_transactions": false
+  },
+  "economy_browser": {
+    "source_head_sha": "73ae81f638c16f388639ef58a3937f1b2065f345",
+    "chrome": "Google Chrome 154.0.8037.97",
+    "tests": [
+      "160 runs and 16 comparisons render",
+      "scenario filter",
+      "paired acknowledgment delta",
+      "individual run selection",
+      "round table and stock cards",
+      "timeline bars render",
+      "mobile no page overflow",
+      "hostile scenario remains text",
+      "CSP blocks connections",
+      "exact maximum seed",
+      "invalid conservation fails closed"
+    ],
+    "actual_iPhone_or_Safari_tested": false
+  },
+  "visual_review": [
+    "economy-desktop.png reviewed",
+    "economy-mobile.png reviewed"
+  ],
+  "cross_platform_campaign_json_csv_html_byte_identical": true,
+  "wallets_or_real_transactions": false
+}

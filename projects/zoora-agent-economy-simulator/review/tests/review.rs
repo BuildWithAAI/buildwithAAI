@@ -1,0 +1,756 @@
+use zoora_review_market::{
+    CaseStatus, Command, Operation, Outcome, Rejection, ReviewConfig, ReviewEngine, ReviewReport,
+    Scenario, Verdict,
+};
+use zoora_task_market::{MarketConfig, TaskStatus};
+fn config() -> ReviewConfig {
+    ReviewConfig {
+        market: MarketConfig {
+            agent_count: 5,
+            scenario_tasks: 0,
+            ticks: 10,
+            max_tasks: 10,
+            max_active_tasks_per_worker: 10,
+            ..MarketConfig::default()
+        },
+        operators: (0..5).collect(),
+        ..ReviewConfig::default()
+    }
+}
+fn post(id: u64, client: u64, reviewer: u64) -> Command {
+    Command::Post {
+        task_id: id,
+        client,
+        reviewer,
+        title: "synthetic review".into(),
+        criteria_digest: "c".repeat(64),
+        reward: 100,
+        deadline_tick: 9,
+    }
+}
+fn decision(id: u64, reviewer: u64, verdict: Verdict, appeal: bool) -> Command {
+    if appeal {
+        Command::AppealDecision {
+            task_id: id,
+            reviewer,
+            verdict,
+            artifact_digest: "a".repeat(64),
+            criteria_digest: "c".repeat(64),
+            reason_digest: "b".repeat(64),
+        }
+    } else {
+        Command::Review {
+            task_id: id,
+            reviewer,
+            verdict,
+            artifact_digest: "a".repeat(64),
+            criteria_digest: "c".repeat(64),
+            reason_digest: "e".repeat(64),
+        }
+    }
+}
+fn submitted(e: &mut ReviewEngine) {
+    e.schedule(0, post(0, 0, 2)).unwrap();
+    e.schedule(
+        1,
+        Command::Accept {
+            task_id: 0,
+            worker: 1,
+        },
+    )
+    .unwrap();
+    e.schedule(
+        2,
+        Command::Submit {
+            task_id: 0,
+            worker: 1,
+            artifact_digest: "a".repeat(64),
+        },
+    )
+    .unwrap();
+}
+fn done(e: &mut ReviewEngine) -> ReviewReport {
+    e.run().unwrap();
+    let r = ReviewReport::from_engine(e).unwrap();
+    r.verify().unwrap();
+    r
+}
+fn rejected(r: &ReviewReport, reason: Rejection) {
+    assert!(r
+        .journal
+        .iter()
+        .any(|record| record.outcome == Outcome::Rejected { reason }));
+}
+#[test]
+fn uncontested_approval_waits_for_window() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.advance_to(3).unwrap();
+    assert_eq!(e.case(0).unwrap().status, CaseStatus::Provisional);
+    assert_eq!(e.task(0).unwrap().status, TaskStatus::Submitted);
+    e.advance_to(4).unwrap();
+    assert_eq!(e.case(0).unwrap().status, CaseStatus::Provisional);
+    let r = done(&mut e);
+    assert_eq!(r.market.metrics.worker_payments, 98);
+    assert_eq!(r.market.metrics.fees_collected, 2);
+    assert_eq!(r.cases[0].status, CaseStatus::Completed);
+}
+#[test]
+fn uncontested_refund_has_no_fee() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Refund, false))
+        .unwrap();
+    let r = done(&mut e);
+    assert_eq!(r.market.metrics.client_refunds, 100);
+    assert_eq!(r.market.final_state.treasury, 0);
+    assert_eq!(r.cases[0].status, CaseStatus::Refunded);
+}
+#[test]
+fn client_dispute_precedes_review() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(
+        3,
+        Command::Dispute {
+            task_id: 0,
+            client: 0,
+            reason_digest: "d".repeat(64),
+        },
+    )
+    .unwrap();
+    e.schedule(3, decision(0, 2, Verdict::Refund, false))
+        .unwrap();
+    let r = done(&mut e);
+    assert_eq!(r.metrics.disputes, 1);
+    assert!(r.cases[0].dispute.is_some());
+    assert_eq!(r.market.metrics.client_refunds, 100);
+}
+#[test]
+fn appeal_overturns_approval_to_refund() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.schedule(
+        4,
+        Command::Appeal {
+            task_id: 0,
+            actor: 0,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    e.schedule(6, decision(0, 3, Verdict::Refund, true))
+        .unwrap();
+    let r = done(&mut e);
+    assert_eq!(r.metrics.overturned_verdicts, 1);
+    assert_eq!(r.market.metrics.worker_payments, 0);
+    assert_eq!(r.market.metrics.client_refunds, 100);
+}
+#[test]
+fn worker_appeal_can_overturn_refund() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Refund, false))
+        .unwrap();
+    e.schedule(
+        4,
+        Command::Appeal {
+            task_id: 0,
+            actor: 1,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    e.schedule(6, decision(0, 3, Verdict::Approve, true))
+        .unwrap();
+    let r = done(&mut e);
+    assert_eq!(r.metrics.overturned_verdicts, 1);
+    assert_eq!(r.market.metrics.worker_payments, 98);
+    assert_eq!(r.cases[0].status, CaseStatus::Completed);
+}
+#[test]
+fn appeal_can_uphold_verdict() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Refund, false))
+        .unwrap();
+    e.schedule(
+        4,
+        Command::Appeal {
+            task_id: 0,
+            actor: 1,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    e.schedule(6, decision(0, 3, Verdict::Refund, true))
+        .unwrap();
+    let r = done(&mut e);
+    assert_eq!(r.metrics.overturned_verdicts, 0);
+    assert_eq!(r.metrics.appeal_verdicts, 1);
+}
+#[test]
+fn missing_review_expires_with_refund() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    let r = done(&mut e);
+    assert_eq!(r.cases[0].status, CaseStatus::Expired);
+    assert_eq!(r.metrics.deadline_refunds, 1);
+    assert_eq!(r.market.metrics.client_refunds, 100);
+}
+#[test]
+fn missing_appeal_verdict_expires() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.schedule(
+        4,
+        Command::Appeal {
+            task_id: 0,
+            actor: 1,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    let r = done(&mut e);
+    assert_eq!(r.cases[0].status, CaseStatus::Expired);
+    assert_eq!(r.market.metrics.worker_payments, 0);
+    assert_eq!(r.market.metrics.client_refunds, 100);
+}
+#[test]
+fn appeal_at_close_is_too_late() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.schedule(
+        5,
+        Command::Appeal {
+            task_id: 0,
+            actor: 1,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    let r = done(&mut e);
+    rejected(&r, Rejection::WrongState);
+    assert_eq!(r.metrics.appeals, 0);
+    assert_eq!(r.market.metrics.worker_payments, 98);
+}
+#[test]
+fn verdict_at_task_deadline_cannot_pay() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(9, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    let r = done(&mut e);
+    rejected(&r, Rejection::WrongState);
+    assert_eq!(r.market.metrics.worker_payments, 0);
+}
+#[test]
+fn review_window_must_fit_before_deadline() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(7, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    rejected(&done(&mut e), Rejection::WindowOutsideDeadline);
+}
+#[test]
+fn client_and_reviewer_operator_conflict_blocks_funding() {
+    let mut c = config();
+    c.operators[2] = c.operators[0];
+    let mut e = ReviewEngine::new(c).unwrap();
+    e.schedule(0, post(0, 0, 2)).unwrap();
+    let r = done(&mut e);
+    rejected(&r, Rejection::OperatorConflict);
+    assert_eq!(r.market.metrics.escrow_funded, 0);
+}
+#[test]
+fn worker_operator_conflicts_block_acceptance() {
+    for conflicted in [0, 2] {
+        let mut c = config();
+        c.operators[1] = c.operators[conflicted];
+        let mut e = ReviewEngine::new(c).unwrap();
+        submitted(&mut e);
+        let r = done(&mut e);
+        rejected(&r, Rejection::OperatorConflict);
+        assert_eq!(r.market.metrics.worker_payments, 0);
+        assert_eq!(r.market.metrics.client_refunds, 100);
+    }
+}
+#[test]
+fn no_independent_appeal_reviewer_is_refused() {
+    let mut c = config();
+    c.market.agent_count = 3;
+    c.operators = vec![0, 1, 2];
+    let mut e = ReviewEngine::new(c).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.schedule(
+        4,
+        Command::Appeal {
+            task_id: 0,
+            actor: 1,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    let r = done(&mut e);
+    rejected(&r, Rejection::NoIndependentReviewer);
+    assert_eq!(r.metrics.appeals, 0);
+    assert_eq!(r.market.metrics.worker_payments, 98);
+}
+#[test]
+fn appeal_skips_an_operator_alias() {
+    let mut c = config();
+    c.operators = vec![0, 1, 2, 2, 3];
+    let mut e = ReviewEngine::new(c).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.schedule(
+        4,
+        Command::Appeal {
+            task_id: 0,
+            actor: 1,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    e.schedule(6, decision(0, 3, Verdict::Refund, true))
+        .unwrap();
+    e.schedule(6, decision(0, 4, Verdict::Refund, true))
+        .unwrap();
+    let r = done(&mut e);
+    rejected(&r, Rejection::UnauthorizedActor);
+    assert_eq!(r.cases[0].appeal.as_ref().unwrap().reviewer, 4);
+}
+#[test]
+fn parties_cannot_review_their_work() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    for actor in [0, 1, 4] {
+        e.schedule(3, decision(0, actor, Verdict::Approve, false))
+            .unwrap();
+    }
+    let r = done(&mut e);
+    assert_eq!(r.metrics.rejected_commands, 3);
+    assert_eq!(r.market.metrics.client_refunds, 100);
+}
+#[test]
+fn evidence_must_match_artifact_and_criteria() {
+    for field in [0, 1] {
+        let mut e = ReviewEngine::new(config()).unwrap();
+        submitted(&mut e);
+        let mut command = decision(0, 2, Verdict::Approve, false);
+        if let Command::Review {
+            artifact_digest,
+            criteria_digest,
+            ..
+        } = &mut command
+        {
+            if field == 0 {
+                *artifact_digest = "f".repeat(64);
+            } else {
+                *criteria_digest = "f".repeat(64);
+            }
+        }
+        e.schedule(3, command).unwrap();
+        rejected(&done(&mut e), Rejection::EvidenceMismatch);
+    }
+}
+#[test]
+fn malformed_reason_is_rejected() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    let mut command = decision(0, 2, Verdict::Approve, false);
+    if let Command::Review { reason_digest, .. } = &mut command {
+        *reason_digest = "bad".into();
+    }
+    e.schedule(3, command).unwrap();
+    rejected(&done(&mut e), Rejection::InvalidEvidence);
+}
+#[test]
+fn duplicate_verdict_does_not_create_extra_settlement() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.schedule(3, decision(0, 2, Verdict::Refund, false))
+        .unwrap();
+    let r = done(&mut e);
+    rejected(&r, Rejection::WrongState);
+    assert_eq!(r.metrics.primary_verdicts, 1);
+    assert_eq!(r.metrics.successful_settlements, 1);
+    assert_eq!(r.market.metrics.worker_payments, 98);
+}
+#[test]
+fn duplicate_appeals_and_final_verdict_cannot_double_pay() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Refund, false))
+        .unwrap();
+    for _ in 0..2 {
+        e.schedule(
+            4,
+            Command::Appeal {
+                task_id: 0,
+                actor: 1,
+                reason_digest: "f".repeat(64),
+            },
+        )
+        .unwrap();
+        e.schedule(6, decision(0, 3, Verdict::Approve, true))
+            .unwrap();
+    }
+    let r = done(&mut e);
+    assert_eq!(r.metrics.appeals, 1);
+    assert_eq!(r.metrics.appeal_verdicts, 1);
+    assert_eq!(r.market.metrics.worker_payments, 98);
+}
+#[test]
+fn outsider_cannot_dispute_or_appeal() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(
+        3,
+        Command::Dispute {
+            task_id: 0,
+            client: 4,
+            reason_digest: "d".repeat(64),
+        },
+    )
+    .unwrap();
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.schedule(
+        4,
+        Command::Appeal {
+            task_id: 0,
+            actor: 4,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    let r = done(&mut e);
+    assert_eq!(r.metrics.rejected_commands, 2);
+    assert_eq!(r.metrics.appeals, 0);
+}
+#[test]
+fn submitted_worker_cannot_bypass_review_by_failure() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(
+        2,
+        Command::Fail {
+            task_id: 0,
+            worker: 1,
+        },
+    )
+    .unwrap();
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.schedule(
+        4,
+        Command::Cancel {
+            task_id: 0,
+            client: 0,
+        },
+    )
+    .unwrap();
+    let r = done(&mut e);
+    rejected(&r, Rejection::WrongState);
+    assert_eq!(r.market.metrics.worker_payments, 98);
+}
+#[test]
+fn pre_delivery_failure_and_open_cancel_refund() {
+    for fail in [false, true] {
+        let mut e = ReviewEngine::new(config()).unwrap();
+        e.schedule(0, post(0, 0, 2)).unwrap();
+        if fail {
+            e.schedule(
+                1,
+                Command::Accept {
+                    task_id: 0,
+                    worker: 1,
+                },
+            )
+            .unwrap();
+            e.schedule(
+                2,
+                Command::Fail {
+                    task_id: 0,
+                    worker: 1,
+                },
+            )
+            .unwrap();
+        } else {
+            e.schedule(
+                1,
+                Command::Cancel {
+                    task_id: 0,
+                    client: 0,
+                },
+            )
+            .unwrap();
+        }
+        let r = done(&mut e);
+        assert_eq!(r.market.metrics.client_refunds, 100);
+        assert_eq!(r.market.metrics.worker_payments, 0);
+    }
+}
+#[test]
+fn settlement_overflow_keeps_escrow_for_deadline_refund() {
+    let mut c = config();
+    c.market.starting_balance = i64::MAX;
+    let mut e = ReviewEngine::new(c).unwrap();
+    submitted(&mut e);
+    e.schedule(0, post(1, 1, 2)).unwrap();
+    e.schedule(3, decision(0, 2, Verdict::Approve, false))
+        .unwrap();
+    e.advance_to(5).unwrap();
+    assert_eq!(e.case(0).unwrap().status, CaseStatus::SettlementBlocked);
+    let r = done(&mut e);
+    assert_eq!(r.metrics.blocked_settlements, 1);
+    assert_eq!(r.market.metrics.client_refunds, 200);
+    assert_eq!(r.market.final_state.accounts[1].balance, i64::MAX);
+    assert_eq!(r.market.final_state.treasury, 0);
+}
+#[test]
+fn incremental_schedule_history_replays() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    e.schedule(3, decision(0, 2, Verdict::Refund, false))
+        .unwrap();
+    e.advance_to(3).unwrap();
+    e.schedule(
+        4,
+        Command::Appeal {
+            task_id: 0,
+            actor: 1,
+            reason_digest: "f".repeat(64),
+        },
+    )
+    .unwrap();
+    e.advance_to(4).unwrap();
+    e.schedule(6, decision(0, 3, Verdict::Approve, true))
+        .unwrap();
+    let r = done(&mut e);
+    assert!(r
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::Advance { tick: 4 })));
+    assert_eq!(r.market.metrics.worker_payments, 98);
+}
+#[test]
+fn history_event_identity_is_verified() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    let mut r = done(&mut e);
+    if let Operation::Schedule { event_id, .. } = &mut r.operations[0] {
+        *event_id = 999;
+    }
+    assert!(ReviewEngine::from_operations(r.config, r.scenario, &r.operations).is_err());
+}
+#[test]
+fn uncompleted_history_is_rejected() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    let mut r = done(&mut e);
+    r.operations.pop();
+    assert!(ReviewEngine::from_operations(r.config, r.scenario, &r.operations).is_err());
+}
+fn rehash(r: &mut ReviewReport) {
+    use sha2::{Digest, Sha256};
+    let mut hash = Sha256::new();
+    hash.update(b"ZOORA_AE003_JSON_FINGERPRINT_V1\0");
+    hash.update(
+        serde_json::to_vec(&(
+            r.schema_version,
+            &r.model,
+            &r.classification,
+            &r.policy,
+            &r.rng,
+            r.scenario,
+            &r.config,
+            &r.market,
+            &r.cases,
+            &r.metrics,
+            &r.operations,
+            &r.journal,
+        ))
+        .unwrap(),
+    );
+    r.fingerprint = format!("{:x}", hash.finalize());
+}
+#[test]
+fn tampered_journal_rejected_even_with_recomputed_hash() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    let mut r = done(&mut e);
+    r.journal[0].outcome = Outcome::TimerNoop {};
+    rehash(&mut r);
+    assert!(r.verify().is_err());
+}
+#[test]
+fn tampered_case_rejected_even_with_recomputed_hash() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    submitted(&mut e);
+    let mut r = done(&mut e);
+    r.cases[0].status = CaseStatus::Completed;
+    rehash(&mut r);
+    assert!(r.verify().is_err());
+}
+#[test]
+fn external_policy_timers_are_forbidden() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    assert!(e.schedule(0, Command::Deadline { task_id: 0 }).is_err());
+    assert!(e.schedule(0, Command::CloseReview { task_id: 0 }).is_err());
+    assert_eq!(e.schedule(0, post(0, 0, 2)).unwrap(), 0);
+}
+#[test]
+fn timer_budget_is_reserved_before_funding() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    for _ in 0..25000 {
+        e.schedule(0, post(0, 0, 2)).unwrap();
+    }
+    assert!(e
+        .schedule(
+            0,
+            Command::Accept {
+                task_id: 0,
+                worker: 1
+            }
+        )
+        .is_err());
+    e.run().unwrap();
+    assert_eq!(e.journal().len(), 25001);
+    e.audit().unwrap();
+}
+#[test]
+fn operation_cap_keeps_one_slot_to_close() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    for _ in 0..99999 {
+        e.advance_to(0).unwrap();
+    }
+    assert!(e.advance_to(0).is_err());
+    e.run().unwrap();
+    assert_eq!(e.operations().len(), 100000);
+}
+#[test]
+fn closed_or_unfinished_engines_cannot_report_false_completion() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    assert!(ReviewReport::from_engine(&e).is_err());
+    e.run().unwrap();
+    assert!(e.run().is_err());
+    assert!(e.schedule(0, post(0, 0, 2)).is_err());
+    assert!(e.advance_to(0).is_err());
+}
+#[test]
+fn past_tick_and_large_inputs_rejected_without_ids() {
+    let mut e = ReviewEngine::new(config()).unwrap();
+    e.advance_to(2).unwrap();
+    assert!(e.schedule(1, post(0, 0, 2)).is_err());
+    assert!(e.schedule(10, post(0, 0, 2)).is_err());
+    let mut command = post(0, 0, 2);
+    if let Command::Post { title, .. } = &mut command {
+        *title = "x".repeat(129);
+    }
+    assert!(e.schedule(2, command).is_err());
+    assert_eq!(e.schedule(2, post(0, 0, 2)).unwrap(), 0);
+}
+#[test]
+fn strict_config_and_report_json() {
+    let mut c = config();
+    c.operators.pop();
+    assert!(c.validate().is_err());
+    let mut c = config();
+    c.refund_bps = 10001;
+    assert!(c.validate().is_err());
+    let mut c = config();
+    c.appeal_ticks = 0;
+    assert!(c.validate().is_err());
+    let c = ReviewConfig {
+        operators: vec![0; 100],
+        ..ReviewConfig::default()
+    };
+    assert!(c.validate().is_err());
+    assert!(ReviewConfig::from_toml("secret = 'ignored'").is_err());
+    let mut e = ReviewEngine::new(config()).unwrap();
+    let r = done(&mut e);
+    let mut value = serde_json::to_value(r).unwrap();
+    value["extra"] = true.into();
+    assert!(serde_json::from_value::<ReviewReport>(value).is_err());
+    assert!(serde_json::from_str::<Outcome>("{\"status\":\"TIMER_NOOP\",\"extra\":1}").is_err());
+}
+#[test]
+fn seeded_review_reports_are_reproducible() {
+    let mut a = ReviewEngine::new(ReviewConfig::default()).unwrap();
+    a.run_scenario().unwrap();
+    let mut b = ReviewEngine::new(ReviewConfig::default()).unwrap();
+    b.run_scenario().unwrap();
+    let r = ReviewReport::from_engine(&a).unwrap();
+    assert_eq!(r, ReviewReport::from_engine(&b).unwrap());
+    r.verify().unwrap();
+    assert_eq!(r.scenario, Scenario::ReviewMarketV1);
+    assert!(r.metrics.primary_verdicts > 0);
+    assert!(r.metrics.appeals > 0);
+    assert!(r.metrics.deadline_refunds > 0);
+}
+#[test]
+fn zero_budget_yields_no_review_cases_or_fees() {
+    let mut c = ReviewConfig::default();
+    c.market.starting_balance = 0;
+    let mut e = ReviewEngine::new(c).unwrap();
+    e.run_scenario().unwrap();
+    let r = ReviewReport::from_engine(&e).unwrap();
+    r.verify().unwrap();
+    assert!(r.cases.is_empty());
+    assert_eq!(r.market.metrics.fees_collected, 0);
+    assert_eq!(r.metrics.primary_verdicts, 0);
+}
+#[test]
+fn report_json_round_trip() {
+    let mut e = ReviewEngine::new(ReviewConfig::default()).unwrap();
+    e.run_scenario().unwrap();
+    let r = ReviewReport::from_engine(&e).unwrap();
+    let saved: ReviewReport = serde_json::from_slice(&serde_json::to_vec(&r).unwrap()).unwrap();
+    assert_eq!(r, saved);
+    saved.verify().unwrap();
+}
+#[test]
+fn batched_market_adapter_preserves_legacy_results() {
+    use zoora_task_market::{Command as C, MarketEngine, MarketReport};
+    let c = MarketConfig {
+        scenario_tasks: 0,
+        ..MarketConfig::default()
+    };
+    let mut a = MarketEngine::new(c.clone()).unwrap();
+    let mut b = MarketEngine::new(c).unwrap();
+    let p = C::PostTask {
+        task_id: 7,
+        client: 0,
+        title: "legacy".into(),
+        acceptance_digest: "c".repeat(64),
+        reward: 100,
+        deadline_tick: 4,
+    };
+    a.schedule(0, p.clone()).unwrap();
+    b.schedule(0, p).unwrap();
+    a.advance_to(0).unwrap();
+    b.process_until(0).unwrap();
+    b.audit().unwrap();
+    assert_eq!(a.task(7), b.task(7));
+    a.run().unwrap();
+    b.run().unwrap();
+    assert_eq!(
+        MarketReport::from_engine(&a).unwrap(),
+        MarketReport::from_engine(&b).unwrap()
+    );
+}

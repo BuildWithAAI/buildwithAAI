@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+state/
+evidence-output/
+*.sqlite3
+*.sqlite3-journal
+*.credential.json
+*.key
+*-read.json
+
+.venv/

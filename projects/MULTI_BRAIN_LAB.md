@@ -1,5 +1,13 @@
 # Multi-Brain Trading Experiment
 
+**Shared observation and unanimity:** the [coordinator](../research/MULTI_BRAIN_COORDINATOR.md) binds a required module roster to the same exact pair, snapshot, task and horizon. It records candidate/no-buy/abstain outcomes from worker receipts; nine synthetic scenarios test the wiring. It does not supply missing biological market adapters, a live feed or execution permission.
+
+**Trained-model reference:** [FV-REF-001](../experiments/flyvis_trained_reference/README.md) adds a registered, fixed pretrained FlyVis flash check with raw-array verification. Its scientific scope and remaining market/live gates are explicit in the experiment record.
+
+**Executable checkpoint:** [FV-SMOKE-001](../experiments/flyvis_cpu_smoke/README.md) now records a real checkpoint-free, untrained FlyVis CPU run on a reduced 2,345-neuron/57,663-edge modeled patch. Synthetic-flash activity is finite, stimulus-dependent and identical across two local repeats. This is technical execution only; published trained-model results, market performance and live service connections remain unverified.
+
+**October 20 UTC / October 19 America/Chicago, 2026 checkpoint:** the founder selected market research as the first live-input use. [Source-pinned graph preparation and causal research interfaces](../research/MULTI_BRAIN_LIVE_PREP.md) are implemented for review, including a real 128-neuron FlyEM subset. Trained biological market modules, a learned fusion model, benchmark promotion, connected live observation and wallet execution remain absent. The research direction below is governed by [BT-000](../research/BIOLOGICAL_COMPUTE_PROTOCOL.md) and [BT-001](../research/DATA_MEASUREMENT_PROTOCOL.md).
+
 **Status: RESEARCH DIRECTION — early founder priority.** Working community nickname: **Frankenbrain**, not a finalized product name or token. This expands the [Solana Trading Lab](SOLANA_TRADING_LAB.md); it retains jellyfish-inspired exploration.
 
 ## Research question
@@ -9,6 +17,8 @@ Can computational modules informed by different biological wiring datasets, conn
 This is a deliberately playful community experiment with a reproducible research goal. No trading advantage, complete animal simulation, consciousness, or real-money readiness is claimed.
 
 ## Source audit first
+
+The [October 20 executable-model/scientific audit](../research/OPEN_MODEL_SCIENTIFIC_AUDIT_20261020.md) adds five paper-linked source candidates: FlyVis, Shiu's fly model, a 2021 tadpole CNS model, cat LSV1M and macaque multi-area visual cortex. It recommends a bounded FlyVis reference reproduction first, conditional on asset terms and a compatible isolated environment. Code availability and author-reported validation have been checked; these models have not been run or validated on markets here.
 
 Use [BRAIN_DATASETS.md](../research/BRAIN_DATASETS.md) as the initial, non-exhaustive inventory. Candidates include fly, worm, tadpole, mouse, jellyfish, and other available studies. Cat, monkey, and crow are founder-suggested audit targets, not verified complete available connectomes.
 

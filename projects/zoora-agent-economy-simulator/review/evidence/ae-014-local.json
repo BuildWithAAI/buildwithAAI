@@ -1,0 +1,235 @@
+{
+  "evidence_scope": "LOCAL_WORKTREE_BEFORE_PUBLICATION",
+  "source_base_commit": "00aaf271c2bbb03c6f24b121da7a844d7229ee8d",
+  "source_tree_dirty": true,
+  "classification": "SYNTHETIC",
+  "unit": "SIMULATED_UNITS",
+  "rust_tests_per_profile": 155,
+  "normal_and_optimized": true,
+  "fmt_and_clippy_warnings_denied": true,
+  "new_cli_checks": {
+    "source_head_sha": "00aaf271c2bbb03c6f24b121da7a844d7229ee8d",
+    "source_tree_dirty": true,
+    "classification": "SYNTHETIC",
+    "unit": "SIMULATED_UNITS",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "campaign_runs": 240,
+    "campaign_fingerprint": "7f5788cfba1fe2d6a7953bdd3094a7798c0e28e1b4e921a4f14a1cd7e06e0465",
+    "independently_audited_full_runs": 24,
+    "tests": [
+      "paused authorization campaign remains INCOMPLETE",
+      "resumed three-policy matrix completes 24 runs",
+      "resume preserves cached bytes",
+      "24 full journals independently reconcile capability lifecycle, FIFO, capacity, wallets and exposure",
+      "Python -O cannot silently bypass audit",
+      "existing output refuses implicit overwrite",
+      "changed evidence window refuses resume",
+      "changed executable refuses resume before execution",
+      "corrupt cached evidence prevents completion",
+      "checkpoint config mutation during execution prevents completion",
+      "240 unique configurations match pinned fingerprint",
+      "all scenarios and policies use matched seed intentions",
+      "CSV retains all configurations and fingerprints",
+      "offline viewer denies external connections and escapes its data boundary",
+      "UNRESERVED_PAYMENT debug/release journals are byte-identical",
+      "UNRESERVED_PAYMENT full journal matches campaign metrics and rounds",
+      "UNRESERVED_PAYMENT rehashed false permit rejected",
+      "FUNDING_WINDOW_HOLD debug/release journals are byte-identical",
+      "FUNDING_WINDOW_HOLD full journal matches campaign metrics and rounds",
+      "FUNDING_WINDOW_HOLD rehashed false permit rejected",
+      "EVIDENCE_WINDOW_HOLD debug/release journals are byte-identical",
+      "EVIDENCE_WINDOW_HOLD full journal matches campaign metrics and rounds",
+      "EVIDENCE_WINDOW_HOLD rehashed false permit rejected",
+      "incomplete rehashed matrix cannot replay or export",
+      "rehashed false exposure rejected",
+      "invalid timing bound creates no output",
+      "existing campaign cannot be overwritten",
+      "evidence hold prevents paid ordinary requests without a start inside the modeled window",
+      "payments outside a capacity hold retain paid-without-start exposure",
+      "beyond-window evidence remains a paid but unstarted fact",
+      "renewing unpaid reservations harm ordinary throughput",
+      "paid attackers still occupy reserved slots",
+      "duplicate authorization refuses another payment",
+      "provider outage preserves payment exposure without fabricated refunds"
+    ],
+    "elapsed_seconds": 91.998,
+    "timing_scope": "SINGLE_ACCEPTANCE_SAMPLE_NOT_LIVE_THROUGHPUT",
+    "network_or_signer": false
+  },
+  "previous_payment_checks": {
+    "source_head_sha": "00aaf271c2bbb03c6f24b121da7a844d7229ee8d",
+    "source_tree_dirty": true,
+    "classification": "SYNTHETIC",
+    "unit": "SIMULATED_UNITS",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "campaign_runs": 240,
+    "campaign_fingerprint": "a233a0aba0aa77f0a7e9a4533f4271248963e329e99adff89338c64297b29fa3",
+    "independently_audited_full_runs": 24,
+    "tests": [
+      "paused payment campaign remains INCOMPLETE",
+      "resumed three-policy matrix completes all 24 runs",
+      "resuming preserves cached run bytes",
+      "24 full journals independently reconcile balances, receipts, work causality and FIFO capacity",
+      "optimized Python cannot silently bypass independent audit assertions",
+      "existing output cannot be silently overwritten",
+      "resume refuses a changed grace parameter",
+      "resume refuses a changed executable before running it",
+      "corrupt cached journal prevents completion",
+      "published 240-run matrix matches pinned campaign fingerprint",
+      "all scenarios and policies share an intention fingerprint for each seed",
+      "CSV preserves all 240 runs and their campaign provenance",
+      "viewer is self-contained with denied connections and safe JSON boundary",
+      "RESERVE_ON_QUOTE debug/release full journals are byte-identical",
+      "RESERVE_ON_QUOTE full transcript matches large-campaign metrics and rounds",
+      "RESERVE_ON_QUOTE rehashed false transfer rejected",
+      "STRICT_OBSERVATION debug/release full journals are byte-identical",
+      "STRICT_OBSERVATION full transcript matches large-campaign metrics and rounds",
+      "STRICT_OBSERVATION rehashed false transfer rejected",
+      "EVIDENCE_GRACE debug/release full journals are byte-identical",
+      "EVIDENCE_GRACE full transcript matches large-campaign metrics and rounds",
+      "EVIDENCE_GRACE rehashed false transfer rejected",
+      "incomplete rehashed matrix cannot replay or export",
+      "rehashed false unapplied exposure rejected",
+      "dimension bound refusal creates no output",
+      "existing campaign output is refused",
+      "unpaid identities never start funded attack work",
+      "bounded grace improves acknowledged work under observation lag",
+      "paid spam remains a measured admission failure",
+      "grace does not authorize actually late payments"
+    ],
+    "elapsed_seconds": 33.429,
+    "timing_scope": "SINGLE_ACCEPTANCE_SAMPLE_NOT_LIVE_THROUGHPUT",
+    "network_or_signer": false
+  },
+  "previous_economy_checks": {
+    "source_head_sha": "00aaf271c2bbb03c6f24b121da7a844d7229ee8d",
+    "source_tree_dirty": true,
+    "classification": "SYNTHETIC",
+    "unit": "SIMULATED_UNITS",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "unique_reference_and_sensitivity_runs": 320,
+    "tests": [
+      "early checkpoint cannot claim completion",
+      "resume completes all sixteen expected runs",
+      "resume preserves cached run bytes",
+      "independent ledger replay matches all sixteen full transcripts",
+      "existing output refuses implicit overwrite",
+      "resume rejects changed fee configuration",
+      "resume rejects corrupt cached evidence",
+      "reference independent campaign hash",
+      "reference complete 160-run matrix",
+      "reference all policies and shocks share intentions per seed",
+      "reference all 160 stock/fee reconciliations",
+      "reference CSV has all runs and source fingerprints",
+      "reference viewer has no connection permission",
+      "reference rehashed false fees cannot replay or export",
+      "fee-sensitivity independent campaign hash",
+      "fee-sensitivity complete 160-run matrix",
+      "fee-sensitivity all policies and shocks share intentions per seed",
+      "fee-sensitivity all 160 stock/fee reconciliations",
+      "fee-sensitivity CSV has all runs and source fingerprints",
+      "fee-sensitivity viewer has no connection permission",
+      "fee-sensitivity rehashed false fees cannot replay or export",
+      "fee sensitivity preserves every intended workload",
+      "BASELINE debug/release journals are byte-identical",
+      "BASELINE rehashed false ledger transfer rejected",
+      "BASELINE independently checked transcript matches large campaign metrics",
+      "OPERATOR_CAP debug/release journals are byte-identical",
+      "OPERATOR_CAP rehashed false ledger transfer rejected",
+      "OPERATOR_CAP independently checked transcript matches large campaign metrics",
+      "out-of-bound config creates no output",
+      "CLI refuses existing campaign output"
+    ],
+    "campaigns": [
+      {
+        "tag": "reference",
+        "runs": 160,
+        "fingerprint": "e2eb76c2865bb459a62a4ebb45d87cd4c53290efdba9449113496820e8d9227d",
+        "file_sha256": "3d223600cc89704b2814583d925a79941cdf7fc7817d2ab632af2a3f7df06992"
+      },
+      {
+        "tag": "fee-sensitivity",
+        "runs": 160,
+        "fingerprint": "e3490e8c9981d7f6aa15032bad3eab7b98c5870457358cf75141a49151e8890d",
+        "file_sha256": "70eef74610c78e800ead9e4c520e5d7263ffd2c2412e995a4addd3070cd335c0"
+      }
+    ],
+    "elapsed_seconds": 50.486,
+    "timing_scope": "SINGLE_LOCAL_OR_CI_ACCEPTANCE_SAMPLE_NOT_A_THROUGHPUT_CLAIM",
+    "live_wallets_or_transactions": false
+  },
+  "full_journal_independent_audit": {
+    "classification": "SYNTHETIC",
+    "unit": "SIMULATED_UNITS",
+    "full_journals_independently_audited": 240,
+    "totals": {
+      "permits": 128765,
+      "authorizations": 678455,
+      "transfers": 123593,
+      "observations": 123593
+    },
+    "elapsed_seconds": 20.69,
+    "method": "Independent capability lifecycle, wallet, receipt, FIFO, capacity and exposure reconstruction; native replay also required",
+    "external_authentication": false,
+    "campaign_fingerprint": "7f5788cfba1fe2d6a7953bdd3094a7798c0e28e1b4e921a4f14a1cd7e06e0465"
+  },
+  "implementation_files": [
+    {
+      "path": ".github/workflows/zoora-review-market.yml",
+      "sha256": "ba1c1d8f9138c5ca97f0f568ae7e6eafad8517303904e84cce5bb8cccf2096c6"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/authorization-viewer/app.js",
+      "sha256": "fd0891081ab734f95015ad8a910b7e5dc951f201a017e5a7de47ba6e6a85e8a9"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/authorization-viewer/index.html",
+      "sha256": "e311edb65f8d0c483d85efa0b241d24198ad19941e4391d58f25173198d46cc0"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/configs/authorization-campaign.toml",
+      "sha256": "cbd693e922c897275dc18723dc9ef479510ed8ccf897ae0258d1b39a8bfe1fe6"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py",
+      "sha256": "d4dc29d8eb97677b51fd68daa6f3db51359d3394c7265c9093cdb827bedce820"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/authorization_evidence.py",
+      "sha256": "61fda9e60e70ef77126fd64b3bfacb19053652eb9a33b6e6fba283603f9292c4"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/run_economy_campaign.py",
+      "sha256": "ae0b85fd21d3b7da754dd384b4195e8f761aa492065891ab92362c1057b875f2"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/scripts/viewer_browser.mjs",
+      "sha256": "fb095b2ab9e9371d49ce3c65d476e504a5bc9ca7bf77e7c2def770997bba7c82"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/authorization.rs",
+      "sha256": "de31645c60045cada3b080e0704b1fdebe0fa7af79c11d5262a8583dad8bb2a9"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/authorization_export.rs",
+      "sha256": "b1f7768ea17741599570ce9d653de61d96cb8b9be7dbe14d3b3db11fa9dabd0c"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/lib.rs",
+      "sha256": "bc90e0aba107f6f6490ef4c9ae92f554d38b5ef299d24afd4a0c245ce9e3879a"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/main.rs",
+      "sha256": "9464881a39e48ab1158ec140cc2d80d48909b69b0f24e70e6324646fa8d13af1"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/src/payments.rs",
+      "sha256": "5cb5015f2941b23a2a33609950e87b5e657eb0fa991ad073766f6e4567e99464"
+    },
+    {
+      "path": "projects/zoora-agent-economy-simulator/review/tests/authorization.rs",
+      "sha256": "8291ace039b0921405035931cc03ae142fbb3cbab2bc112b46cc7f180b582f46"
+    }
+  ],
+  "published_ci_and_browser_evidence": "Recorded separately in the AE-014 draft PR after exact-source CI and artifact inspection; local evidence does not claim those results."
+}

@@ -1,8 +1,8 @@
 # Community planning board
 
-**Repository document, not a live GitHub Projects board.** Covers all 40 task records once. Tasks remain unassigned and are not bulk-created as issues. Snapshot: September 22, 2026.
+**Repository document, not a live GitHub Projects board.** Covers all 41 task records once. Tasks remain unassigned and are not bulk-created as issues. SFP/backlog snapshot: October 14, 2026; the other 40 task statuses are preserved. TESTING for AAI-T-041 refers only to its reviewable offline engine; market-edge validation remains pending.
 
-**Early research priority:** AAI-T-023 (source inventory), then the separately scoped AAI-T-036–038 sequence. Scanner validation planning and foundation work remain active priorities; paid hosting remains paused.
+**Early research priority:** AAI-T-023 (source inventory), then the separately scoped AAI-T-036–038 sequence. Scanner validation planning and foundation work remain active priorities; paid hosting remains paused. [AAI-T-041](../../tasks/BACKLOG.md#aai-t-041) adds the founder-requested [SFP research](../../research/SWING_FAILURE_PATTERNS.md) at P1 without changing those existing priorities.
 
 | Lane | Count | Task IDs |
 | --- | --- | --- |
@@ -12,7 +12,7 @@
 | PROPOSED | 16 | [AAI-T-001](../../tasks/BACKLOG.md#aai-t-001), [AAI-T-003](../../tasks/BACKLOG.md#aai-t-003), [AAI-T-004](../../tasks/BACKLOG.md#aai-t-004), [AAI-T-005](../../tasks/BACKLOG.md#aai-t-005), [AAI-T-007](../../tasks/BACKLOG.md#aai-t-007), [AAI-T-008](../../tasks/BACKLOG.md#aai-t-008), [AAI-T-009](../../tasks/BACKLOG.md#aai-t-009), [AAI-T-010](../../tasks/BACKLOG.md#aai-t-010), [AAI-T-026](../../tasks/BACKLOG.md#aai-t-026), [AAI-T-028](../../tasks/BACKLOG.md#aai-t-028), [AAI-T-029](../../tasks/BACKLOG.md#aai-t-029), [AAI-T-031](../../tasks/BACKLOG.md#aai-t-031), [AAI-T-032](../../tasks/BACKLOG.md#aai-t-032), [AAI-T-036](../../tasks/BACKLOG.md#aai-t-036), [AAI-T-037](../../tasks/BACKLOG.md#aai-t-037), [AAI-T-040](../../tasks/BACKLOG.md#aai-t-040) |
 | APPROVED | 0 | None |
 | IN DEVELOPMENT | 0 | None |
-| TESTING | 1 | [AAI-T-013](../../tasks/BACKLOG.md#aai-t-013) |
+| TESTING | 2 | [AAI-T-013](../../tasks/BACKLOG.md#aai-t-013), [AAI-T-041](../../tasks/BACKLOG.md#aai-t-041) |
 | RELEASED | 0 | None |
 | REJECTED | 0 | None |
 | DEFERRED | 2 | [AAI-T-021](../../tasks/BACKLOG.md#aai-t-021), [AAI-T-025](../../tasks/BACKLOG.md#aai-t-025) |
@@ -24,3 +24,13 @@ Optional future title: **Build With AAI — Community Development**. Fields: pla
 Views could include foundation, early multi-brain research, research/ideas, work stages, and accepted releases. No automated rule should equate issue closure with release. Configure selected labels/fields and verify actual visibility before claiming a live board. [GitHub documentation](https://docs.github.com/en/issues/planning-and-tracking-with-projects/creating-projects/creating-a-project).
 
 Keep each decision in the repository/issue record and reconcile labels/board fields after changes. Popularity does not approve a task. [Backlog](../../tasks/BACKLOG.md) · [Status](STATUS.md) · [Governance](GOVERNANCE.md).
+
+
+## October 13 project queue
+
+The historical 40-task snapshot above is retained. The new approved [Virtual Business Spaces project](../../projects/VIRTUAL_BUSINESS_SPACES.md) has VL-001–007 specification/simulation tasks and mandatory contract controls. These are queued and unassigned; they are not included in the historical lane counts and do not activate a native GitHub Projects board or unattended agent. Current software readiness is recorded separately in the ecosystem status page.
+
+
+## October 15 community-funded agent idea
+
+[CFA-001–004](../COMMUNITY_FUNDED_AGENTS.md#development-queue) are proposed, unassigned simulation/design tasks for contributor accounting, treasury authority, legal structure and reporting. They are outside the historical lane totals. The idea creates no funding address, live investment program or autonomous agent.

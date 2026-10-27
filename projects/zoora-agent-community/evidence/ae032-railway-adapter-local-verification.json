@@ -1,0 +1,33 @@
+{
+  "container_build_authentication_and_restart": "PENDING_EXACT_SOURCE_CI",
+  "core_service_version": "0.14.4",
+  "credentials_published": false,
+  "deployed": false,
+  "diff_check": "PASS",
+  "local_docker_available": false,
+  "parent_source": "e7367d81ebe9cd9d4526e6234e083e7338dda851",
+  "persistent_volume_mb": 500,
+  "physical_pcs_verified": false,
+  "public_domain": "AUTO_REVIEW_REJECTED_BEFORE_AUTH_DEPLOYMENT_VERIFICATION",
+  "railway_private_project_and_service_created": true,
+  "replicas": 1,
+  "ruff": "0.17.0 PASS",
+  "runtime_package_sha256_unchanged": "88f2badb4a5632d26638e7001aaf46f860aba391483dd28ccf6ab9b2e5c6afb0",
+  "schema": 7,
+  "scope": "RAILWAY_DEPLOYMENT_ADAPTER",
+  "source_files_sha256": {
+    ".github/workflows/zoora-agent-community.yml": "aaa8a926519f2ac815832601cb65b088a0ac2b689e109dc98f1e93fdddb7411a",
+    "projects/zoora-agent-community/.dockerignore": "5ad445b4db842f82b614059071c9cc906cd2f73d0e4d94102d720dcb31c909e3",
+    "projects/zoora-agent-community/Dockerfile": "f33274301600843adcfb5b004e353cb5eab5c42d3c2455fc96fb7da001d8d714",
+    "projects/zoora-agent-community/OPERATIONS.md": "cb0b95e3194b42445a10be2bff6aa2033dc7def5cd9f506fda1550e5ce1dd227",
+    "projects/zoora-agent-community/deploy/Caddyfile": "b64ed44ffc718358548e5573cdf9f5e7ae30bc9261ac702e93f0baf6aa3d7028",
+    "projects/zoora-agent-community/deploy/LICENSE.caddy": "8c6db340475136df3c1201d458fa5755698eace76e510471ecc9d857d6083dac",
+    "projects/zoora-agent-community/deploy/RAILWAY.md": "240378cda7b84a08cddade691dae008a920b72d27cfd264773d1156b26c38827",
+    "projects/zoora-agent-community/deploy/railway_start.py": "ecfc99e1e32b4e2b9fbb666cecc133609cbd8452d12bf6e42152b0512395e509",
+    "projects/zoora-agent-community/scripts/railway_container_evidence.py": "c5dc578cce15f8d47df44bc0bfed77845d0bc20af2536a3726f32e63845bbf7e"
+  },
+  "targeted_log_sha256": "73ddbe622f5c83ee6a2947991835f464a5fffd645d37053cdbacca8cc14a65c5",
+  "targeted_seconds": 42.371,
+  "targeted_tests": 80,
+  "unmounted_startup": "REFUSED_EXIT_1_FIXED_ERROR_ONLY"
+}

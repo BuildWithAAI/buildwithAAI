@@ -1,0 +1,579 @@
+{
+  "schema_version": 1,
+  "model": "zoora-direct-workflow/0.1.0",
+  "classification": "SYNTHETIC",
+  "payment_mode": "DIRECT_USER_WALLET",
+  "config": {
+    "agents": 2,
+    "ticks": 10,
+    "max_agreements": 5
+  },
+  "wallet_boundary": {
+    "holds_customer_funds": false,
+    "has_signing_keys": false,
+    "can_freeze_wallets": false,
+    "can_reverse_payments": false,
+    "can_force_refunds": false,
+    "chain_receipts_verified": false,
+    "network_enabled": false
+  },
+  "agreements": [
+    {
+      "terms": {
+        "agreement_id": 0,
+        "client": 0,
+        "provider": 1,
+        "title": "Accepted delivery",
+        "asset": "SYNTHETIC_UNIT",
+        "amount": 100,
+        "delivery_deadline": 8,
+        "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "payments_received": "100",
+      "voluntary_refunds_received": "0",
+      "delivery_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "dispute_digest": null,
+      "refund_request_digest": null,
+      "refund_requested_amount": null,
+      "refund_request_remaining": null,
+      "recipient_declined_refund": false,
+      "delivery_acknowledged": true,
+      "delivery_overdue": false,
+      "status": "ACCEPTED"
+    },
+    {
+      "terms": {
+        "agreement_id": 1,
+        "client": 0,
+        "provider": 1,
+        "title": "Refund declined",
+        "asset": "SYNTHETIC_UNIT",
+        "amount": 100,
+        "delivery_deadline": 8,
+        "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "payments_received": "100",
+      "voluntary_refunds_received": "0",
+      "delivery_digest": null,
+      "dispute_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "refund_request_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "refund_requested_amount": 100,
+      "refund_request_remaining": 100,
+      "recipient_declined_refund": true,
+      "delivery_acknowledged": false,
+      "delivery_overdue": true,
+      "status": "REFUND_REQUESTED"
+    },
+    {
+      "terms": {
+        "agreement_id": 2,
+        "client": 0,
+        "provider": 1,
+        "title": "Voluntary full refund",
+        "asset": "SYNTHETIC_UNIT",
+        "amount": 100,
+        "delivery_deadline": 8,
+        "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "payments_received": "100",
+      "voluntary_refunds_received": "100",
+      "delivery_digest": null,
+      "dispute_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "refund_request_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "refund_requested_amount": 100,
+      "refund_request_remaining": 0,
+      "recipient_declined_refund": false,
+      "delivery_acknowledged": false,
+      "delivery_overdue": true,
+      "status": "REFUNDED"
+    },
+    {
+      "terms": {
+        "agreement_id": 3,
+        "client": 0,
+        "provider": 1,
+        "title": "No delivery / no refund",
+        "asset": "SYNTHETIC_UNIT",
+        "amount": 100,
+        "delivery_deadline": 8,
+        "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "payments_received": "100",
+      "voluntary_refunds_received": "0",
+      "delivery_digest": null,
+      "dispute_digest": null,
+      "refund_request_digest": null,
+      "refund_requested_amount": null,
+      "refund_request_remaining": null,
+      "recipient_declined_refund": false,
+      "delivery_acknowledged": false,
+      "delivery_overdue": true,
+      "status": "PAID"
+    },
+    {
+      "terms": {
+        "agreement_id": 4,
+        "client": 0,
+        "provider": 1,
+        "title": "Partial voluntary refund",
+        "asset": "SYNTHETIC_UNIT",
+        "amount": 100,
+        "delivery_deadline": 8,
+        "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "payments_received": "100",
+      "voluntary_refunds_received": "50",
+      "delivery_digest": null,
+      "dispute_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "refund_request_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "refund_requested_amount": 100,
+      "refund_request_remaining": 50,
+      "recipient_declined_refund": false,
+      "delivery_acknowledged": false,
+      "delivery_overdue": true,
+      "status": "PARTIALLY_REFUNDED"
+    }
+  ],
+  "metrics": {
+    "payments_recorded": "500",
+    "voluntary_refunds_recorded": "150",
+    "net_transferred": "350",
+    "refund_requests": 3,
+    "declined_refunds": 1,
+    "unresolved_refund_requests": 2,
+    "overdue_deliveries": 4,
+    "unresolved_disputes": 2,
+    "rejected_commands": 0
+  },
+  "journal": [
+    {
+      "event_id": 0,
+      "simulation_tick": 0,
+      "command": {
+        "type": "AGREE",
+        "terms": {
+          "agreement_id": 0,
+          "client": 0,
+          "provider": 1,
+          "title": "Accepted delivery",
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "delivery_deadline": 8,
+          "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 1,
+      "simulation_tick": 0,
+      "command": {
+        "type": "AGREE",
+        "terms": {
+          "agreement_id": 1,
+          "client": 0,
+          "provider": 1,
+          "title": "Refund declined",
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "delivery_deadline": 8,
+          "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 2,
+      "simulation_tick": 0,
+      "command": {
+        "type": "AGREE",
+        "terms": {
+          "agreement_id": 2,
+          "client": 0,
+          "provider": 1,
+          "title": "Voluntary full refund",
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "delivery_deadline": 8,
+          "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 3,
+      "simulation_tick": 0,
+      "command": {
+        "type": "AGREE",
+        "terms": {
+          "agreement_id": 3,
+          "client": 0,
+          "provider": 1,
+          "title": "No delivery / no refund",
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "delivery_deadline": 8,
+          "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 4,
+      "simulation_tick": 0,
+      "command": {
+        "type": "AGREE",
+        "terms": {
+          "agreement_id": 4,
+          "client": 0,
+          "provider": 1,
+          "title": "Partial voluntary refund",
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "delivery_deadline": 8,
+          "criteria_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 5,
+      "simulation_tick": 1,
+      "command": {
+        "type": "PAYMENT_RECEIPT",
+        "receipt": {
+          "agreement_id": 0,
+          "transaction_ref": "13eb7c6b029f3b769effa8905c688ebc22576090873babe8beb499e8d9118ea3",
+          "sender": 0,
+          "recipient": 1,
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "simulation_tick": 1,
+          "availability_tick": 1,
+          "source": "OFFLINE_FIXTURE_V1",
+          "classification": "SYNTHETIC",
+          "slot": null,
+          "commitment": "SIMULATED_FINAL",
+          "transformation_version": 1
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 6,
+      "simulation_tick": 1,
+      "command": {
+        "type": "PAYMENT_RECEIPT",
+        "receipt": {
+          "agreement_id": 1,
+          "transaction_ref": "800b0267d9ff0002a4ccbcdb278143976988c6e02b245e8c54b8574028889aaf",
+          "sender": 0,
+          "recipient": 1,
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "simulation_tick": 1,
+          "availability_tick": 1,
+          "source": "OFFLINE_FIXTURE_V1",
+          "classification": "SYNTHETIC",
+          "slot": null,
+          "commitment": "SIMULATED_FINAL",
+          "transformation_version": 1
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 7,
+      "simulation_tick": 1,
+      "command": {
+        "type": "PAYMENT_RECEIPT",
+        "receipt": {
+          "agreement_id": 2,
+          "transaction_ref": "91de1c4573c8983be495dcf93187140eb15f15763b82733f4d07cd3f3ad334b2",
+          "sender": 0,
+          "recipient": 1,
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "simulation_tick": 1,
+          "availability_tick": 1,
+          "source": "OFFLINE_FIXTURE_V1",
+          "classification": "SYNTHETIC",
+          "slot": null,
+          "commitment": "SIMULATED_FINAL",
+          "transformation_version": 1
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 8,
+      "simulation_tick": 1,
+      "command": {
+        "type": "PAYMENT_RECEIPT",
+        "receipt": {
+          "agreement_id": 3,
+          "transaction_ref": "aceecd22ccb4a73f7063badb86ce1fe354cffafce1bc1a40ec358e6155e41c7e",
+          "sender": 0,
+          "recipient": 1,
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "simulation_tick": 1,
+          "availability_tick": 1,
+          "source": "OFFLINE_FIXTURE_V1",
+          "classification": "SYNTHETIC",
+          "slot": null,
+          "commitment": "SIMULATED_FINAL",
+          "transformation_version": 1
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 9,
+      "simulation_tick": 1,
+      "command": {
+        "type": "PAYMENT_RECEIPT",
+        "receipt": {
+          "agreement_id": 4,
+          "transaction_ref": "94febd7c53d019136cacc797740a2efbebac4315190eebbfbc2f616ca704bb33",
+          "sender": 0,
+          "recipient": 1,
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 100,
+          "simulation_tick": 1,
+          "availability_tick": 1,
+          "source": "OFFLINE_FIXTURE_V1",
+          "classification": "SYNTHETIC",
+          "slot": null,
+          "commitment": "SIMULATED_FINAL",
+          "transformation_version": 1
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 10,
+      "simulation_tick": 3,
+      "command": {
+        "type": "DELIVER",
+        "agreement_id": 0,
+        "provider": 1,
+        "artifact_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 11,
+      "simulation_tick": 4,
+      "command": {
+        "type": "ACKNOWLEDGE",
+        "agreement_id": 0,
+        "client": 0
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 12,
+      "simulation_tick": 4,
+      "command": {
+        "type": "DISPUTE",
+        "agreement_id": 1,
+        "client": 0,
+        "reason_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 13,
+      "simulation_tick": 4,
+      "command": {
+        "type": "DISPUTE",
+        "agreement_id": 2,
+        "client": 0,
+        "reason_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 14,
+      "simulation_tick": 4,
+      "command": {
+        "type": "DISPUTE",
+        "agreement_id": 4,
+        "client": 0,
+        "reason_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 15,
+      "simulation_tick": 5,
+      "command": {
+        "type": "REQUEST_REFUND",
+        "agreement_id": 1,
+        "client": 0,
+        "amount": 100,
+        "reason_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 16,
+      "simulation_tick": 5,
+      "command": {
+        "type": "REQUEST_REFUND",
+        "agreement_id": 2,
+        "client": 0,
+        "amount": 100,
+        "reason_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 17,
+      "simulation_tick": 5,
+      "command": {
+        "type": "REQUEST_REFUND",
+        "agreement_id": 4,
+        "client": 0,
+        "amount": 100,
+        "reason_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 18,
+      "simulation_tick": 6,
+      "command": {
+        "type": "DECLINE_REFUND",
+        "agreement_id": 1,
+        "provider": 1
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 19,
+      "simulation_tick": 6,
+      "command": {
+        "type": "VOLUNTARY_REFUND_RECEIPT",
+        "receipt": {
+          "agreement_id": 2,
+          "transaction_ref": "e85b6f8ed4fc44ca2c8fce5626504ad59097723f935efe0bbc90d6bfb2646ba7",
+          "sender": 1,
+          "recipient": 0,
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 40,
+          "simulation_tick": 6,
+          "availability_tick": 6,
+          "source": "OFFLINE_FIXTURE_V1",
+          "classification": "SYNTHETIC",
+          "slot": null,
+          "commitment": "SIMULATED_FINAL",
+          "transformation_version": 1
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 20,
+      "simulation_tick": 6,
+      "command": {
+        "type": "VOLUNTARY_REFUND_RECEIPT",
+        "receipt": {
+          "agreement_id": 4,
+          "transaction_ref": "bc3481fed025d75ad49b4fd548849b44abf035ff4d2d99134b95fe4881897cc1",
+          "sender": 1,
+          "recipient": 0,
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 50,
+          "simulation_tick": 6,
+          "availability_tick": 6,
+          "source": "OFFLINE_FIXTURE_V1",
+          "classification": "SYNTHETIC",
+          "slot": null,
+          "commitment": "SIMULATED_FINAL",
+          "transformation_version": 1
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 21,
+      "simulation_tick": 7,
+      "command": {
+        "type": "VOLUNTARY_REFUND_RECEIPT",
+        "receipt": {
+          "agreement_id": 2,
+          "transaction_ref": "ff60b94c8dc9f804e6e36646c1cc8745a0976ffba23d63d33918dee7eb540f6f",
+          "sender": 1,
+          "recipient": 0,
+          "asset": "SYNTHETIC_UNIT",
+          "amount": 60,
+          "simulation_tick": 7,
+          "availability_tick": 7,
+          "source": "OFFLINE_FIXTURE_V1",
+          "classification": "SYNTHETIC",
+          "slot": null,
+          "commitment": "SIMULATED_FINAL",
+          "transformation_version": 1
+        }
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    },
+    {
+      "event_id": 22,
+      "simulation_tick": 9,
+      "command": {
+        "type": "FINISH"
+      },
+      "outcome": {
+        "status": "RECORDED"
+      }
+    }
+  ],
+  "fingerprint": "d80b7f813b2e6afae0995131248a4817f8026e8a024e21ca06859b919c59bc94"
+}

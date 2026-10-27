@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "source_head_sha": "81bb9445728afa5dd7b4f4919cabab9745e0d26d",
+  "source_tree_sha": "5b2b118a6ca98cbaf2a087d9872e9f2d0e16b9f4",
+  "workflow_run": 39442079916,
+  "classification": "SYNTHETIC_SOFTWARE_TEST_ONLY",
+  "downloaded_archives_sha256_verified": true,
+  "local_and_four_hosted_runs_byte_identical": true,
+  "artifacts": [
+    {
+      "id": 12275256864,
+      "name": "trading-school-windows-latest-3.14",
+      "digest": "sha256:1a8130b992cb8d43d1b642bc1c2ac953b14435f5af90d94c28d4f68cc5b56bdd"
+    },
+    {
+      "id": 12274876849,
+      "name": "trading-school-windows-latest-3.11",
+      "digest": "sha256:8257eeef643e49268d2ecb9facb399d799748573fcbfaf96f1351d378c2d6618"
+    },
+    {
+      "id": 12274791899,
+      "name": "trading-school-ubuntu-latest-3.14",
+      "digest": "sha256:ecd256e6c17e39aee5ac0e08202db6d7073fd09d0cae81d22cb0d45904a194f4"
+    },
+    {
+      "id": 12274781802,
+      "name": "trading-school-ubuntu-latest-3.11",
+      "digest": "sha256:9163173262fb948a9babe185b8ef5ed5e4e87720d25239a266b165ec9e947467"
+    }
+  ],
+  "components_sha256": {
+    "bnb_smart_chain-practice.json": "8ba3870ca2754763b49b95890366b06d1b20f952e6a097eaf4cba4e7a5d01d07",
+    "crypto_general-practice.json": "234b415ebbaaca386b3a132f958f834bd99fb879023ebfe5a13843da6feb27e6",
+    "curriculum.json": "a22b00f35081e1930d0be6c8ddecc5e3f5d3a7a86e3db6f89beaee5cb2be799f",
+    "educated-research-round.json": "84ec50c957bcfec5103cd0fbc13b58a31e9ffc1e672dac2d7f1542c9405a91e2",
+    "ethereum-practice.json": "2797b699694f7e9b009f1122b7d242ad3860e81b82cb8c12377ea4c6facb6258",
+    "paper-cli.json": "c78c7c8f0ab9b8c81f02dcedb5053e34102e3899b3f57efd7fabd0eef1fea62d",
+    "paper-in-process.json": "c78c7c8f0ab9b8c81f02dcedb5053e34102e3899b3f57efd7fabd0eef1fea62d",
+    "paper-input.json": "101b2426e6b2469dc6127601984e74322edba6e8c7e6c051f681d6dffce6c786",
+    "report.json": "ef7c854e16f9fb394079c1f44151937a6bd4371c6f35c150d73d5042c701f7f0",
+    "rh_unresolved-practice.json": "083b3b3e7f1c3d6a47a5cfa015b94459b084cf5a999193b895d8fe60d8293944",
+    "solana-practice.json": "0ad98370665941a7e7074f54ed2ba2214adf387cd60509ad3a5c4ab2b384c8ee",
+    "sui-practice.json": "a62938bcf8a6e0e39965430faeaef0f47826aaf463aa28d68f3cb8999aa14143",
+    "xauusd-practice.json": "ddaee6136e121707767e0198a89de5960e3dc929752952791f21f14b3e500307"
+  },
+  "implementation_files_sha256": {
+    "src/multi_brain_research/education.py": "5a875cb7d60194f51ba7d70d993c87865c70da760d17783277a06a4b8d5d5c6a",
+    "src/multi_brain_research/paper_school.py": "06056ebe09a46105e03dd1b170d26dea4102ce5191d37b88f66016c04d94e99b",
+    "src/multi_brain_research/school_fixture.py": "4593f426d46ecf8b5af31ed257aa94a0bd18d1218d031e452d5d053b4a4f70e0",
+    "scripts/trading_school.py": "6123bbfa07c3131b967b5414d5dd1a288f99f10055a7732a3500bc9292d94878",
+    "src/multi_brain_research/readiness.py": "a835b85d7a9e27a66b4926685970f803348dcfb6de7cbaac9662750add34b847"
+  },
+  "model_training": "NOT_PERFORMED",
+  "live_execution_allowed": false
+}
