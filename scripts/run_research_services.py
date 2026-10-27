@@ -14,7 +14,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from src.ecosystem_research import network as n, services as s, blueprints as b  # noqa: E402
+from src.ecosystem_research import network as n, services as s, blueprints as b, blueprint_evidence as be  # noqa: E402
 from src.ecosystem_research.checkout import verify_checkout, worker_environment  # noqa: E402
 from src.multi_brain_research import training_lab as lab  # noqa: E402
 from src.solana_research import coin_evidence as ev  # noqa: E402
@@ -23,6 +23,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import run_scanner_feed as previous  # noqa: E402
 
 FILES = (
+    "blueprint-experience.json",
+    "blueprint-model-replay.json",
+    "blueprint-scanner-replay.json",
     "blueprint-withdrawals.json",
     "blueprint-trials.json",
     "blueprint-audit.json",
@@ -42,6 +45,7 @@ FILES = (
     "agents/community.sqlite3",
 )
 CODE = (
+    "src/ecosystem_research/blueprint_evidence.py",
     "scripts/blueprint_exchange_lab.py",
     "src/ecosystem_research/blueprints.py",
     "src/ecosystem_research/blueprint_store.py",
@@ -263,12 +267,40 @@ def negative_checks(args, directory, source, bundle):
         "blueprint_withdrawal_receipt",
         "blueprint_withdrawal_prior_state",
         "blueprint_withdrawal_service_binding",
+        "blueprint_evidence_success_claim",
+        "blueprint_evidence_padded_history",
+        "blueprint_replay_source_data",
+        "blueprint_replay_report",
+        "blueprint_transcript_event_reference",
     ):
         with tempfile.TemporaryDirectory() as temporary:
             copied = Path(temporary) / "package"
             shutil.copytree(directory, copied)
             verify(args, copied, source, bundle)
-            if fault == "blueprint_withdrawal_receipt":
+            if fault in ("blueprint_evidence_success_claim", "blueprint_evidence_padded_history",
+                         "blueprint_replay_source_data", "blueprint_replay_report", "blueprint_transcript_event_reference"):
+                filename = "blueprint-model-replay.json"
+                value = ev.read(copied / filename)
+                if fault == "blueprint_evidence_success_claim":
+                    value["evidence"]["qualification"]["success_verified"] = True
+                elif fault == "blueprint_evidence_padded_history":
+                    value["evidence"]["track_record"]["states"]["ACCEPTED"] += 1
+                    value["evidence"]["track_record"]["states"]["FAILED"] -= 1
+                elif fault == "blueprint_replay_source_data":
+                    value["input_data"]["records"][0]["captured_ms"] += 1
+                elif fault == "blueprint_transcript_event_reference":
+                    value["transcript"]["entries"][0]["event_sha256"] = "f" * 64
+                    value["transcript"]["sha256"] = lab.digest({k: v for k, v in value["transcript"].items() if k != "sha256"})
+                else:
+                    value["report"]["research_signal"] = "BUY"
+                value["evidence"]["sha256"] = lab.digest({k: v for k, v in value["evidence"].items() if k != "sha256"})
+                (copied / filename).write_bytes(n.raw(value))
+                experience = ev.read(copied / "blueprint-experience.json")
+                experience["replays"][0]["receipt"]["snapshot_sha256"] = ev.sha(n.raw(value))
+                if fault == "blueprint_transcript_event_reference":
+                    experience["replays"][0]["receipt"]["transcript_sha256"] = value["transcript"]["sha256"]
+                (copied / "blueprint-experience.json").write_bytes(n.raw(experience))
+            elif fault == "blueprint_withdrawal_receipt":
                 value = ev.read(copied / "blueprint-withdrawals.json")
                 value["withdrawals"][0]["receipt"]["financial_settlement"] = True
                 (copied / "blueprint-withdrawals.json").write_bytes(n.raw(value))
@@ -460,6 +492,10 @@ def resources_arguments(p, *, local_bundle):
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     commands = result.add_subparsers(dest="command", required=True)
+    offline = commands.add_parser("blueprint-replay", help="Reproduce an externally pinned evidence snapshot offline")
+    offline.add_argument("--input", type=Path, required=True)
+    offline.add_argument("--sha256", required=True)
+    offline.add_argument("--trusted-controller-sha256", required=True)
     for name in ("run", "verify", "negative-checks", "transport-self-test"):
         p = commands.add_parser(name)
         p.add_argument("--directory", type=Path, required=True)
@@ -485,7 +521,8 @@ def parser():
                 help="Parent behavior corpus only; source classifications are preserved",
             )
     for name in ("serve", "act", "observe", "fulfill", "accept", "preflight", "work-once",
-                 "blueprint-act", "blueprint-observe", "blueprint-terms", "blueprint-fetch", "blueprint-trial", "blueprint-accept", "blueprint-status", "blueprint-withdraw"):
+                 "blueprint-act", "blueprint-observe", "blueprint-candidates", "blueprint-evidence", "blueprint-transcript", "blueprint-reproduce",
+                 "blueprint-terms", "blueprint-fetch", "blueprint-trial", "blueprint-accept", "blueprint-status", "blueprint-withdraw"):
         p = commands.add_parser(name)
         p.add_argument("--community-source", type=Path, required=True)
         p.add_argument("--community-python", type=Path, default=Path(sys.executable))
@@ -509,7 +546,7 @@ def parser():
             p.add_argument("--catalog-sha256", required=True)
             if name in ("act", "blueprint-act"):
                 p.add_argument("--action-file", type=Path, required=True)
-            if name in ("accept", "fulfill", "preflight", "work-once", "blueprint-accept"):
+            if name in ("accept", "fulfill", "preflight", "work-once", "blueprint-accept", "blueprint-reproduce"):
                 resources_arguments(p, local_bundle=False)
             if name in ("accept", "fulfill", "preflight"):
                 p.add_argument("--order-id", required=True)
@@ -524,17 +561,19 @@ def parser():
                 p.add_argument("--listing-id", required=True)
             if name == "blueprint-status":
                 p.add_argument("--license-id", required=True)
-            if name in ("blueprint-fetch", "blueprint-trial", "blueprint-accept", "blueprint-withdraw"):
+            if name in ("blueprint-fetch", "blueprint-trial", "blueprint-accept", "blueprint-withdraw", "blueprint-evidence", "blueprint-transcript", "blueprint-reproduce"):
                 p.add_argument("--license-id", required=True)
                 p.add_argument("--package-sha256", required=True)
                 p.add_argument("--terms-sha256", required=True)
-            if name == "blueprint-fetch":
+            if name in ("blueprint-fetch", "blueprint-evidence", "blueprint-transcript"):
                 p.add_argument("--output", type=Path)
+            if name == "blueprint-reproduce":
+                p.add_argument("--output", type=Path, required=True)
             if name == "blueprint-trial":
                 p.add_argument("--attempt", type=int, choices=range(1, 4), default=1)
                 p.add_argument("--mandate-id", required=True)
                 p.add_argument("--start-before-ms", type=int, required=True)
-            if name in ("blueprint-accept", "blueprint-withdraw"):
+            if name in ("blueprint-accept", "blueprint-withdraw", "blueprint-reproduce"):
                 p.add_argument("--trial-order-id", required=True)
             if name == "blueprint-withdraw":
                 p.add_argument("--resolution", required=True, choices=tuple(b.RESOLUTIONS))
@@ -545,7 +584,9 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
-        if args.command in ("serve", "act", "observe", "fulfill", "accept", "preflight", "work-once") or args.command.startswith("blueprint-"):
+        if args.command == "blueprint-replay":
+            result = be.replay_file(args.input, args.sha256, args.trusted_controller_sha256)
+        elif args.command in ("serve", "act", "observe", "fulfill", "accept", "preflight", "work-once") or args.command.startswith("blueprint-"):
             cfg = {
                 key: str(value.absolute()) if isinstance(value, Path) else value
                 for key, value in vars(args).items()

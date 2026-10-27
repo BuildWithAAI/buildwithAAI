@@ -7,13 +7,30 @@ import subprocess
 import sys
 import tempfile
 
-from src.ecosystem_research import blueprints as b, network as n
+from src.ecosystem_research import blueprints as b, blueprint_evidence as be, network as n
 from src.ecosystem_research.checkout import worker_environment
 from src.multi_brain_research import training_lab as lab
 from src.solana_research import coin_evidence as ev
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKS = {
+    "blueprint_success_marketplace_excludes_all_unqualified_candidates",
+    "blueprint_candidate_discovery_discloses_qualification",
+    "blueprint_evidence_denies_nonparties_and_nonagents",
+    "blueprint_evidence_capability_pinned_before_bearer",
+    "blueprint_evidence_includes_failed_and_repeated_work",
+    "blueprint_evidence_listing_does_not_disclose_buyer_trials",
+    "blueprint_evidence_export_is_read_only",
+    "blueprint_two_portable_replays_preserve_source_scope",
+    "blueprint_offline_replays_match_live_reproduction",
+    "blueprint_reproduction_wrong_pin_creates_no_output",
+    "blueprint_reproduction_requires_registered_trial",
+    "blueprint_reproduction_refuses_output_conflict",
+    "blueprint_transcripts_bind_agents_timestamps_and_trial_events",
+    "blueprint_evidence_denies_anonymous", "blueprint_evidence_denies_owner",
+    "blueprint_evidence_denies_operator", "blueprint_evidence_denies_outsider",
+    "blueprint_transcript_denies_anonymous", "blueprint_transcript_denies_owner",
+    "blueprint_transcript_denies_operator", "blueprint_transcript_denies_outsider",
     "blueprint_withdraw_unused_commit_failure_rolls_back",
     "blueprint_withdraw_failed_commit_failure_rolls_back",
     "blueprint_withdraw_delivered_commit_failure_rolls_back",
@@ -57,7 +74,11 @@ CHECKS = {
 def public(verb, config):
     args = [sys.executable, "-I", "-B", str(ROOT / "scripts/run_research_services.py"), verb]
     shared = ("community_source", "port", "origin", "ca_file", "credential", "expected_instance", "expected_principal", "catalog_sha256")
-    extras = {"blueprint-act": ("action_file",), "blueprint-observe": (), "blueprint-terms": ("listing_id",),
+    extras = {"blueprint-act": ("action_file",), "blueprint-observe": (), "blueprint-candidates": (), "blueprint-terms": ("listing_id",),
+              "blueprint-evidence": ("license_id", "package_sha256", "terms_sha256", "output"),
+              "blueprint-transcript": ("license_id", "package_sha256", "terms_sha256", "output"),
+              "blueprint-reproduce": ("license_id", "package_sha256", "terms_sha256", "trial_order_id", "output", "bundle_sha256",
+                                      "controller_manifest_sha256", "feed_head_sha256", "feed_policy_sha256"),
               "blueprint-fetch": ("license_id", "package_sha256", "terms_sha256", "output"),
               "blueprint-trial": ("license_id", "package_sha256", "terms_sha256", "mandate_id", "start_before_ms", "attempt"),
               "blueprint-status": ("license_id",),
@@ -104,7 +125,7 @@ class Exchange:
                                           package={**self.package, "version": 2}, price_usd_cents=500000))["result"]
         self.other = self.do(seller, command("PUBLISH", service_listing_id=seller["listing"]["id"],
                                            package={**self.package, "version": 3}, price_usd_cents=0))["result"]
-        view = public("blueprint-observe", cli(buyer))
+        view = public("blueprint-candidates", cli(buyer))
         terms = public("blueprint-terms", {**cli(buyer), "listing_id": self.free["id"]})
         lab.require(len(view["listings"]) == 3 and all("package" not in v for v in view["listings"].values())
                     and terms["license_text"] == self.package["license_text"]
@@ -150,6 +171,11 @@ class Exchange:
         route = b.ROOT_ROUTE + "/licenses/" + self.license["id"] + "/delivery"
         for role, token in (("anonymous", None), ("owner", owner), ("operator", buyer["operator"]), ("outsider", outsider["token"])):
             denied("blueprint_delivery_denies_" + role, lambda auth=token: admin.request("GET", route, token=auth))
+            denied("blueprint_evidence_denies_" + role, lambda auth=token: admin.request(
+                "GET", b.ROOT_ROUTE + "/licenses/" + self.license["id"] + "/evidence", token=auth))
+            denied("blueprint_transcript_denies_" + role, lambda auth=token: admin.request(
+                "GET", b.ROOT_ROUTE + "/licenses/" + self.license["id"] + "/transcript", token=auth))
+        checks["blueprint_evidence_denies_nonparties_and_nonagents"] = True
         checks["blueprint_bound_delivery_only"] = True
         self.receipt = public("blueprint-fetch", self.config())
         lab.require(self.receipt["instructions_executed"] is False and self.receipt["profit_verified"] is False,
@@ -404,6 +430,76 @@ class Exchange:
             self.status(self.buyer, self.other_license, "REJECTED"),
             *(self.status(self.buyer, license_, "REJECTED") for license_, _ in self.withdrawn),
         ]})
+        self.experience(output)
+
+    def experience(self, output):
+        before = self.snapshot()
+        view = public("blueprint-observe", self.cli(self.buyer))
+        candidates = public("blueprint-candidates", self.cli(self.buyer))
+        lab.require(view["listings"] == {} and view["candidate_count"] == 7
+                    and view["discovery_scope"] == "VERIFIED_AGENT_SUCCESS_ONLY", "BLUEPRINT_FALSE_SUCCESS")
+        self.checks["blueprint_success_marketplace_excludes_all_unqualified_candidates"] = True
+        lab.require(len(candidates["listings"]) == 7
+                    and candidates["discovery_scope"] == "UNQUALIFIED_RESEARCH_CANDIDATES"
+                    and all(not v["qualification"]["marketplace_eligible"] and not v["qualification"]["success_verified"]
+                            for v in candidates["listings"].values()), "BLUEPRINT_CANDIDATE_SCOPE")
+        self.checks["blueprint_candidate_discovery_discloses_qualification"] = True
+        replays = []
+        for peer, license_, filename in ((self.buyer, self.license, "blueprint-model-replay.json"),
+                                         (self.seller, self.reverse_license, "blueprint-scanner-replay.json")):
+            current = self.store.blueprint_audit()["state"]["licenses"][license_["id"]]
+            cfg = {**self.cli(peer), "license_id": license_["id"], "package_sha256": license_["package_sha256"],
+                   "terms_sha256": license_["terms_sha256"], "trial_order_id": current["trial_order_id"],
+                   "output": str(output / filename)}
+            result = public("blueprint-evidence", {k: v for k, v in cfg.items() if k != "output"})
+            record = result["evidence"]
+            lab.require(n.same(record, self.store.blueprint_evidence(license_["id"])), "BLUEPRINT_EVIDENCE_SERVER_REPLAY")
+            history = public("blueprint-transcript", {k: v for k, v in cfg.items() if k != "output"})["transcript"]
+            lab.require(n.same(history, self.store.blueprint_evidence(license_["id"], transcript=True))
+                        and history["onchain_recorded"] is False and len(history["entries"]) >= 8, "BLUEPRINT_TRANSCRIPT_SERVER_REPLAY")
+            result = public("blueprint-reproduce", cfg)
+            receipt = result["replay_receipt"]
+            lab.require(receipt["report_reproduced"] is True and receipt["success_verified"] is False
+                        and receipt["profit_verified"] is False
+                        and result["evidence_transfer"]["mode"] == "AUTHENTICATED_RECORD_TRANSFER", "BLUEPRINT_REPRODUCTION_SCOPE")
+            completed = subprocess.run([sys.executable, "-I", "-B", str(ROOT / "scripts/run_research_services.py"),
+                "blueprint-replay", "--input", str(output / filename), "--sha256", receipt["snapshot_sha256"],
+                "--trusted-controller-sha256", self.resources.controller], capture_output=True, timeout=180, env=worker_environment())
+            lab.require(completed.returncode == 0 and n.same(ev.parse(completed.stdout), {"verified": True, **receipt}),
+                        "BLUEPRINT_OFFLINE_REPLAY")
+            replays.append({"file": filename, "receipt": receipt})
+        self.checks["blueprint_two_portable_replays_preserve_source_scope"] = True
+        self.checks["blueprint_offline_replays_match_live_reproduction"] = True
+        self.checks["blueprint_transcripts_bind_agents_timestamps_and_trial_events"] = True
+        main = self.store.blueprint_evidence(self.license["id"])
+        track = main["track_record"]
+        lab.require(track["states"]["FAILED"] > 0 and track["states"]["REJECTED"] > 0
+                    and track["states"]["CANCELLED"] > 0 and track["orders"] > len(main["trials"])
+                    and track["distinct_completed_input_sets"] == track["distinct_completed_result_sets"] == 1,
+                    "BLUEPRINT_HISTORY_CHERRY_PICKED")
+        self.checks["blueprint_evidence_includes_failed_and_repeated_work"] = True
+        _, public_record = self.client(self.buyer).request("GET", b.ROOT_ROUTE + "/listings/" + self.free["id"] + "/evidence",
+                                                          token=self.buyer["token"])
+        lab.require(public_record["license_id"] is None and public_record["trials"] == []
+                    and n.same(public_record["track_record"], track), "BLUEPRINT_EVIDENCE_PRIVATE_TRIALS")
+        self.checks["blueprint_evidence_listing_does_not_disclose_buyer_trials"] = True
+        target = output / "must-not-exist-evidence.json"
+        cfg = {**self.config(), "trial_order_id": main["trials"][-1]["id"], "output": str(target)}
+        bad_pin = self.child("blueprint-reproduce", {**cfg, "package_sha256": "f" * 64}, allow_error=True)
+        lab.require(bad_pin.get("error") == "BLUEPRINT_DELIVERY_HASH" and not target.exists(), "BLUEPRINT_REPLAY_BAD_PIN_OUTPUT")
+        self.checks["blueprint_reproduction_wrong_pin_creates_no_output"] = True
+        wrong_trial = self.child("blueprint-reproduce", {**cfg, "trial_order_id": "f" * 32}, allow_error=True)
+        lab.require(wrong_trial.get("error") == "BLUEPRINT_TRIAL_NOT_REGISTERED" and not target.exists(), "BLUEPRINT_REPLAY_FOREIGN_TRIAL")
+        self.checks["blueprint_reproduction_requires_registered_trial"] = True
+        saved = (output / "blueprint-scanner-replay.json").read_bytes()
+        conflict = self.child("blueprint-reproduce", {**cfg, "output": str(output / "blueprint-scanner-replay.json")}, allow_error=True)
+        lab.require(conflict.get("error") == "BLUEPRINT_EVIDENCE_OUTPUT_CONFLICT"
+                    and (output / "blueprint-scanner-replay.json").read_bytes() == saved, "BLUEPRINT_REPLAY_OVERWRITE")
+        self.checks["blueprint_reproduction_refuses_output_conflict"] = True
+        lab.require(n.same(before, self.snapshot()), "BLUEPRINT_EVIDENCE_MUTATED_STATE")
+        self.checks["blueprint_evidence_export_is_read_only"] = True
+        ev.write(output / "blueprint-experience.json", {"protocol": be.PROTOCOL,
+            "eligible_success_blueprints": 0, "candidate_blueprints": 7, "replays": replays})
 
 
 def verify(store, resources, output):
@@ -474,7 +570,33 @@ def verify(store, resources, output):
                 and sorted(v["state"] for v in audit["state"]["licenses"].values()) == ["ACCEPTED"] * 2 + ["REJECTED"] * 4
                 and sorted(len(v["trial_orders"]) for v in audit["state"]["licenses"].values()) == [0, 1, 1, 1, 1, 3]
                 and listing["active"] is False and audit["events"] == 28, "BLUEPRINT_LIFECYCLE_COUNTS")
+    experience = ev.read(output / "blueprint-experience.json")
+    lab.exact(experience, ("protocol", "eligible_success_blueprints", "candidate_blueprints", "replays"))
+    lab.require(experience["protocol"] == be.PROTOCOL and type(experience["eligible_success_blueprints"]) is int
+                and experience["eligible_success_blueprints"] == 0 and type(experience["candidate_blueprints"]) is int
+                and experience["candidate_blueprints"] == 7 and type(experience["replays"]) is list
+                and len(experience["replays"]) == 2, "BLUEPRINT_EXPERIENCE_SCOPE")
+    for entry, filename in zip(experience["replays"], ("blueprint-model-replay.json", "blueprint-scanner-replay.json"), strict=True):
+        lab.exact(entry, ("file", "receipt"))
+        lab.require(entry["file"] == filename, "BLUEPRINT_EXPERIENCE_FILE")
+        result = be.replay_file(output / filename, entry["receipt"]["snapshot_sha256"], resources.controller)
+        lab.require(n.same(result, entry["receipt"]), "BLUEPRINT_REPRODUCTION_RECEIPT")
+        capsule = ev.read(output / filename)
+        key = capsule["delivery"]["license"]["id"]
+        license_ = audit["state"]["licenses"].get(key)
+        lab.require(license_ is not None and n.same(license_, capsule["delivery"]["license"])
+                    and n.same(store.blueprint_evidence(key), capsule["evidence"])
+                    and n.same(store.blueprint_evidence(key, transcript=True), capsule["transcript"])
+                    and n.same(service_state["orders"][result["order_id"]], capsule["order"])
+                    and n.same(service_state["listings"][capsule["order"]["listing_id"]], capsule["service_listing"])
+                    and n.same(resources.bundle, capsule["bundle"])
+                    and resources.evidence.payload == n.raw(capsule["input_data"]), "BLUEPRINT_EXPERIENCE_LEDGER_BINDING")
+        source = audit["state"]["listings"][license_["listing_id"]]
+        lab.require(n.same(source["package"], capsule["delivery"]["package"])
+                    and n.same(b.descriptor(source), capsule["delivery"]["listing"]), "BLUEPRINT_EXPERIENCE_PACKAGE_BINDING")
     return {"blueprint_listings": 7, "blueprint_licenses": 6, "accepted_blueprint_licenses": 2,
             "withdrawn_blueprint_licenses": 3, "blueprint_trial_orders": 7, "blueprint_atomic_transitions": True,
             "blueprint_ledger_events": audit["events"], "blueprint_paid_settlement": False,
-            "blueprint_trial_scope": "REGISTERED_RECIPE_RESULT_CONSISTENCY"}
+            "blueprint_trial_scope": "REGISTERED_RECIPE_RESULT_CONSISTENCY",
+            "qualified_success_blueprints": 0, "unqualified_research_candidates": 7,
+            "portable_trial_replays": 2, "blueprint_agent_success_verified": False}

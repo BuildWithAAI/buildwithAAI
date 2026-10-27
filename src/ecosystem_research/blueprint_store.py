@@ -5,7 +5,7 @@ from copy import deepcopy
 import re
 import sqlite3
 
-from . import blueprints as b, services as s, network as n
+from . import blueprints as b, blueprint_evidence as be, services as s, network as n
 from ..multi_brain_research import training_lab as lab
 from ..solana_research import coin_evidence as ev
 
@@ -122,7 +122,8 @@ def store_type(base, Problem, resources):
                 old = requests[key]
                 lab.require(n.same(command, old["command"]), "BLUEPRINT_REQUEST_CONFLICT")
                 self._service_member(db, who, old["result"]["project_id"])
-                return 200, {"result": old["result"], "replayed": True, "head_sha256": head}
+                return 200, {"result": old["result"], "replayed": True, "head_sha256": head,
+                             **({"publication_scope": "UNQUALIFIED_RESEARCH_CANDIDATE"} if command["kind"] == "PUBLISH" else {})}
             lab.require(len(requests) < b.MAX_EVENTS, "BLUEPRINT_EVENT_BOUND")
             prior_services = None
             if command["kind"] in ("TRIAL", "ACCEPT", "WITHDRAW"):
@@ -170,7 +171,20 @@ def store_type(base, Problem, resources):
                         {"protocol": b.PROTOCOL, "sequence": sequence, "event_sha256": event["sha256"],
                          "state_sha256": event["state_sha256"], "credential_id": principal["id"]}, at)
             db.execute("INSERT INTO blueprint_events VALUES (?,?)", (sequence, ev.canonical(event)))
-            return 201, {"result": result, "replayed": False, "head_sha256": event["sha256"]}
+            return 201, {"result": result, "replayed": False, "head_sha256": event["sha256"],
+                         **({"publication_scope": "UNQUALIFIED_RESEARCH_CANDIDATE"} if command["kind"] == "PUBLISH" else {})}
+
+        def _blueprint_evidence(self, db, listing, license_, services, head, service_head):
+            agents = {listing["provider_id"]}
+            agents.update(o["buyer_id"] for o in services["orders"].values()
+                          if o["provider_id"] == listing["provider_id"] and o["project_id"] == listing["project_id"])
+            operators = {key: self._row(db, "agents", key)["operator_id"] for key in agents}
+            return be.dossier(listing, license_, services, resources.catalog, head, service_head, operators)
+
+        def _blueprint_transcript(self, db, license_, head, service_head):
+            blueprint_events = [ev.parse(row[0].encode()) for row in db.execute("SELECT body FROM blueprint_events ORDER BY sequence")]
+            service_events = [ev.parse(row[0].encode()) for row in db.execute("SELECT body FROM service_events ORDER BY sequence")]
+            return be.transcript(license_, head, service_head, blueprint_events, service_events)
 
         def _write(self, db, principal, method, route, body, at, audience=None):
             if method == "POST" and route == b.ROOT_ROUTE + "/actions":
@@ -186,7 +200,8 @@ def store_type(base, Problem, resources):
                 return status, {**value, "blueprints": {"protocol": b.PROTOCOL,
                     "catalog_sha256": resources.digest, "paid_acquisition": False,
                     "arbitrary_code_execution": False, "live_execution_allowed": False},
-                    "blueprint_withdrawal": b.withdrawal_declaration(resources.digest)}
+                    "blueprint_withdrawal": b.withdrawal_declaration(resources.digest),
+                    "blueprint_evidence": be.declaration(resources.digest)}
             if not route.startswith(b.ROOT_ROUTE):
                 return super()._read(db, route, token, at, limit, after)
             try:
@@ -195,28 +210,41 @@ def store_type(base, Problem, resources):
                 who = principal["principal_id"]
                 self._active_agent(db, who)
                 lab.require(not after, "BLUEPRINT_CURSOR_NOT_SUPPORTED")
-                state, head, _, services, _ = self._blueprint_load(db)
-                if route == b.ROOT_ROUTE + "/view":
+                state, head, _, services, service_head = self._blueprint_load(db)
+                if route in (b.ROOT_ROUTE + "/view", b.ROOT_ROUTE + "/candidates"):
                     visible = {k: v for k, v in state["listings"].items() if db.execute(
                         "SELECT 1 FROM members WHERE project_id=? AND agent_id=?", (v["project_id"], who)).fetchone()}
+                    qualifications = {key: be.qualification(value["package"], resources.catalog) for key, value in visible.items()}
+                    candidates = route.endswith("/candidates")
                     return 200, {"protocol": b.PROTOCOL, "head_sha256": head,
                                  "catalog_sha256": resources.digest,
-                                 "listings": {k: b.descriptor(v) for k, v in visible.items()},
+                                 "discovery_scope": "UNQUALIFIED_RESEARCH_CANDIDATES" if candidates else "VERIFIED_AGENT_SUCCESS_ONLY",
+                                 "qualification_policy": be.POLICY, "candidate_count": len(visible),
+                                 "listings": {k: {**b.descriptor(v), "qualification": qualifications[k]}
+                                              for k, v in visible.items() if candidates or qualifications[k]["marketplace_eligible"]},
                                  "licenses": {k: v for k, v in state["licenses"].items()
                                               if v["listing_id"] in visible and who in (v["buyer_id"], v["provider_id"])},
                                  "financial_settlement": False, "live_execution_allowed": False}
-                match = re.fullmatch(b.ROOT_ROUTE + r"/listings/([0-9a-f]{32})/terms", route)
+                match = re.fullmatch(b.ROOT_ROUTE + r"/listings/([0-9a-f]{32})/(terms|evidence)", route)
                 if match:
                     listing = state["listings"].get(match.group(1))
                     lab.require(listing is not None, "BLUEPRINT_NOT_FOUND")
                     self._service_member(db, who, listing["project_id"])
-                    return 200, {"listing": b.descriptor(listing), "license_text": listing["package"]["license_text"]}
-                match = re.fullmatch(b.ROOT_ROUTE + r"/licenses/([0-9a-f]{32})/(delivery|trials)", route)
+                    if match.group(2) == "evidence":
+                        return 200, self._blueprint_evidence(db, listing, None, services, head, service_head)
+                    return 200, {"listing": b.descriptor(listing), "license_text": listing["package"]["license_text"],
+                                 "qualification": be.qualification(listing["package"], resources.catalog)}
+                match = re.fullmatch(b.ROOT_ROUTE + r"/licenses/([0-9a-f]{32})/(delivery|trials|evidence|transcript)", route)
                 if match:
                     license_ = state["licenses"].get(match.group(1))
                     lab.require(license_ is not None and who in (license_["buyer_id"], license_["provider_id"]),
                                 "BLUEPRINT_LICENSE_ACCESS")
                     self._service_member(db, who, license_["project_id"])
+                    if match.group(2) == "transcript":
+                        return 200, self._blueprint_transcript(db, license_, head, service_head)
+                    if match.group(2) == "evidence":
+                        listing = state["listings"][license_["listing_id"]]
+                        return 200, self._blueprint_evidence(db, listing, license_, services, head, service_head)
                     if match.group(2) == "trials":
                         jobs = {}
                         for order_id in license_["trial_orders"]:
@@ -241,5 +269,17 @@ def store_type(base, Problem, resources):
                 return {"protocol": b.PROTOCOL, "catalog_sha256": resources.digest, "head_sha256": head,
                         "service_head_sha256": service_head, "events": len(requests), "state": state,
                         "financial_settlement": False, "live_execution_allowed": False}
+
+        def blueprint_evidence(self, license_id, *, transcript=False):
+            """Local retained-evidence verifier; public access uses party checks."""
+            with closing(self._connection()) as db:
+                db.execute("BEGIN")
+                state, head, _, services, service_head = self._blueprint_load(db)
+                license_ = state["licenses"].get(n.identity(license_id))
+                lab.require(license_ is not None, "BLUEPRINT_NOT_FOUND")
+                if transcript:
+                    return self._blueprint_transcript(db, license_, head, service_head)
+                listing = state["listings"][license_["listing_id"]]
+                return self._blueprint_evidence(db, listing, license_, services, head, service_head)
 
     return BlueprintStore
