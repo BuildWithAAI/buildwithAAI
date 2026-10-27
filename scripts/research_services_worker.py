@@ -18,7 +18,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from src.ecosystem_research import blueprints as b, network as n, scanner_feed as f, services as s, service_evidence as evidence  # noqa: E402
+from src.ecosystem_research import blueprints as b, blueprint_evidence as be, network as n, scanner_feed as f, services as s, service_evidence as evidence  # noqa: E402
 from src.ecosystem_research.checkout import worker_environment  # noqa: E402
 from src.multi_brain_research import training_lab as lab  # noqa: E402
 from src.solana_research import coin_evidence as ev  # noqa: E402
@@ -93,6 +93,8 @@ def connection(cfg, *, blueprint=False, withdrawal=False):
             "paid_acquisition": False, "arbitrary_code_execution": False,
             "live_execution_allowed": False,
         }), "BLUEPRINT_REMOTE_PROTOCOL_PIN")
+        lab.require(n.same(status.get("blueprint_evidence"), be.declaration(cfg["catalog_sha256"])),
+                    "BLUEPRINT_EVIDENCE_PROTOCOL_PIN")
     if withdrawal:
         lab.require(n.same(status.get("blueprint_withdrawal"), b.withdrawal_declaration(cfg["catalog_sha256"])),
                     "BLUEPRINT_WITHDRAWAL_PROTOCOL_PIN")
@@ -1097,6 +1099,23 @@ def run_lab(output, cfg):
                         and len(proxy.exchanges) > before and all(not item[2] for item in proxy.exchanges[before:]),
                         "BLUEPRINT_WITHDRAWAL_BEARER_LEAK")
             checks["blueprint_withdrawal_capability_pinned_before_bearer"] = True
+            before = len(proxy.exchanges)
+
+            def missing_evidence_status(db, route, token, at, limit, after):
+                status, value = original_read(db, route, token, at, limit, after)
+                if route == "/v1/status":
+                    value.pop("blueprint_evidence")
+                return status, value
+
+            store._read = missing_evidence_status
+            try:
+                unsupported_evidence = child("blueprint-observe", cli(alpha), allow_error=True)
+            finally:
+                store._read = original_read
+            lab.require(unsupported_evidence.get("error") == "BLUEPRINT_EVIDENCE_PROTOCOL_PIN"
+                        and len(proxy.exchanges) > before and all(not item[2] for item in proxy.exchanges[before:]),
+                        "BLUEPRINT_EVIDENCE_BEARER_LEAK")
+            checks["blueprint_evidence_capability_pinned_before_bearer"] = True
             before = len(proxy.exchanges)
             untrusted = child(
                 "observe",

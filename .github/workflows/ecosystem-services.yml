@@ -7,6 +7,7 @@ on:
       - "scripts/run_research_services.py"
       - "scripts/blueprint_exchange_*.py"
       - "tests/test_service_blueprints.py"
+      - "tests/test_service_blueprint_evidence.py"
       - "tests/test_service_diagnostics.py"
       - "tests/test_research_services.py"
       - "tests/test_service_evidence.py"
@@ -22,6 +23,7 @@ on:
       - "scripts/run_research_services.py"
       - "scripts/blueprint_exchange_*.py"
       - "tests/test_service_blueprints.py"
+      - "tests/test_service_blueprint_evidence.py"
       - "tests/test_service_diagnostics.py"
       - "tests/test_research_services.py"
       - "tests/test_service_evidence.py"
@@ -65,14 +67,14 @@ jobs:
       - name: Install pinned development linter
         run: python -m pip install --disable-pip-version-check ruff==0.17.0
       - name: Lint service contracts, workers and command wiring
-        run: python -m ruff check --select E4,E7,E9,F,B src/ecosystem_research/services.py src/ecosystem_research/service_evidence.py src/ecosystem_research/blueprints.py src/ecosystem_research/blueprint_store.py scripts/blueprint_exchange_worker.py scripts/blueprint_exchange_lab.py scripts/research_services_worker.py scripts/run_research_services.py tests/test_research_services.py tests/test_service_evidence.py tests/test_service_blueprints.py tests/test_service_diagnostics.py
+        run: python -m ruff check --select E4,E7,E9,F,B src/ecosystem_research/services.py src/ecosystem_research/service_evidence.py src/ecosystem_research/blueprints.py src/ecosystem_research/blueprint_store.py src/ecosystem_research/blueprint_evidence.py scripts/blueprint_exchange_worker.py scripts/blueprint_exchange_lab.py scripts/research_services_worker.py scripts/run_research_services.py tests/test_research_services.py tests/test_service_evidence.py tests/test_service_blueprints.py tests/test_service_diagnostics.py tests/test_service_blueprint_evidence.py
       - name: Strict normal and optimized accounting and evidence-contract regressions
         run: |
           python -bb -X dev -W error -m unittest discover -s tests -p "test_*service*.py" -v
           python -O -bb -X dev -W error -m unittest discover -s tests -p "test_*service*.py" -v
       - name: Generate an actual scanner and community transport fixture with explicitly untrusted synthetic sources
         run: python -B scripts/run_scanner_feed.py transport-self-test --directory research/ecosystem/generated/services-feed-contract --bundle-file tests/fixtures/ecosystem-network-bundle.json --trusted-controller-sha256 b521bad111dab36cc42d20bcc29d041d25b4f7f2cbcb39261bf8b65280991ecd --scanner-source .ecosystem-scanner --community-source .ecosystem-community
-      - name: Atomic blueprint withdrawal, three release paths, rollback faults, concurrent retries and TLS
+      - name: Blueprint qualification, portable data replay, agent transcripts and atomic lifecycle over TLS
         run: python -B scripts/run_research_services.py transport-self-test --directory research/ecosystem/generated/services-contract --feed-directory research/ecosystem/generated/services-feed-contract --bundle-file tests/fixtures/ecosystem-network-bundle.json --trusted-controller-sha256 b521bad111dab36cc42d20bcc29d041d25b4f7f2cbcb39261bf8b65280991ecd --scanner-source .ecosystem-scanner --community-source .ecosystem-community
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()

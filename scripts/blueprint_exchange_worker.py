@@ -1,6 +1,6 @@
 """Client operations for the blueprint extension; all executable work uses services."""
 
-from src.ecosystem_research import blueprints as b, network as n, services as s
+from src.ecosystem_research import blueprints as b, blueprint_evidence as be, network as n, services as s
 from src.multi_brain_research import training_lab as lab
 from src.solana_research import coin_evidence as ev
 
@@ -36,11 +36,48 @@ def leaf(verb, cfg, client, token, service_worker):
         return action(client, token, command_from_config(cfg))
     if verb == "blueprint-observe":
         return client.request("GET", b.ROOT_ROUTE + "/view", token=token)[1]
+    if verb == "blueprint-candidates":
+        return client.request("GET", b.ROOT_ROUTE + "/candidates", token=token)[1]
     if verb == "blueprint-terms":
         return client.request("GET", b.ROOT_ROUTE + "/listings/" + n.identity(cfg["listing_id"]) + "/terms", token=token)[1]
     if verb == "blueprint-status":
         return client.request("GET", b.ROOT_ROUTE + "/licenses/" + n.identity(cfg["license_id"]) + "/trials", token=token)[1]
     delivery, receipt = fetch(client, token, cfg)
+    if verb in ("blueprint-evidence", "blueprint-transcript", "blueprint-reproduce"):
+        _, catalog = client.request("GET", s.ROOT_ROUTE + "/catalog", token=token)
+        lab.require(lab.digest(catalog) == cfg["catalog_sha256"], "BLUEPRINT_CATALOG_PIN")
+        route = b.ROOT_ROUTE + "/licenses/" + cfg["license_id"] + "/evidence"
+        _, record = client.request("GET", route, token=token)
+        record = be.validate_dossier(record, delivery, catalog)
+        if verb == "blueprint-evidence":
+            if cfg.get("output"):
+                be.save(cfg["output"], record)
+            return {"evidence": record, "blueprint_receipt": receipt}
+        _, history = client.request("GET", b.ROOT_ROUTE + "/licenses/" + cfg["license_id"] + "/transcript", token=token)
+        history = be.validate_transcript(history, delivery, record)
+        if verb == "blueprint-transcript":
+            if cfg.get("output"):
+                be.save(cfg["output"], history)
+            return {"transcript": history, "blueprint_receipt": receipt}
+        order_id = n.identity(cfg["trial_order_id"])
+        lab.require(order_id in delivery["license"]["trial_orders"], "BLUEPRINT_TRIAL_NOT_REGISTERED")
+        _, view = client.request("GET", s.ROOT_ROUTE + "/view", token=token)
+        order = view["orders"].get(order_id)
+        lab.require(order is not None and view["head_sha256"] == record["service_head_sha256"], "BLUEPRINT_EVIDENCE_SNAPSHOT_MOVED")
+        source = view["listings"][order["listing_id"]]
+        _, delivered = client.request("GET", s.ROOT_ROUTE + "/orders/" + order_id + "/delivery", token=token)
+        with service_worker.agent_resources(client, token, cfg, order) as (resources, transfer):
+            report = resources.report(order, source)
+            lab.require(n.same(delivered["report"], report) and n.same(delivered["order"], order)
+                        and delivered["head_sha256"] == record["service_head_sha256"]
+                        and delivered["content_sha256"] == ev.sha(n.raw(report)), "BLUEPRINT_EVIDENCE_REPORT")
+            package = be.replay_package(delivery, record, history, order, source, resources)
+            sha = ev.sha(n.raw(package))
+            reproduced = be.replay(package, sha, cfg["controller_manifest_sha256"])
+        _, after = client.request("GET", route, token=token)
+        lab.require(n.same(after, record), "BLUEPRINT_EVIDENCE_SNAPSHOT_MOVED")
+        be.save(cfg["output"], package)
+        return {"replay_receipt": reproduced, "evidence_transfer": transfer}
     if verb == "blueprint-fetch":
         if cfg.get("output"):
             target = n.safe_path(cfg["output"])

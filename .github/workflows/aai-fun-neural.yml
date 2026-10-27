@@ -29,6 +29,7 @@ on:
       - "scripts/run_research_services.py"
       - "scripts/blueprint_exchange_*.py"
       - "tests/test_service_blueprints.py"
+      - "tests/test_service_blueprint_evidence.py"
       - "tests/test_service_diagnostics.py"
       - "tests/test_research_services.py"
       - "tests/feed_fixtures.py"
@@ -77,6 +78,7 @@ on:
       - "scripts/run_research_services.py"
       - "scripts/blueprint_exchange_*.py"
       - "tests/test_service_blueprints.py"
+      - "tests/test_service_blueprint_evidence.py"
       - "tests/test_service_diagnostics.py"
       - "tests/test_research_services.py"
       - "tests/feed_fixtures.py"
@@ -220,7 +222,7 @@ jobs:
         run: python -B scripts/run_scanner_feed.py verify --directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
       - name: Reject rehashed scanner projections, changed agent facts, job bindings, policy and authority
         run: python -B scripts/run_scanner_feed.py negative-checks --directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
-      - name: Connect scanner and model orders to atomic blueprint trials, withdrawal and buyer acceptance
+      - name: Connect real source data to blueprint qualification, portable replay, transcripts and atomic trials
         run: python -B scripts/run_research_services.py run --directory research/ecosystem/generated/services --feed-directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner
       - name: Replay work allowances, source-bound reports, actual job and artifact state, acceptance and shared audit
         run: python -B scripts/run_research_services.py verify --directory research/ecosystem/generated/services --feed-directory research/ecosystem/generated/scanner-feed --network-directory research/ecosystem/generated/network --controller-directory research/ecosystem/generated/controller --experience-directory research/ecosystem/generated/experience --behavior-directory research/ecosystem/generated/behavior --community-source .ecosystem-community --reef-source .ecosystem-reef --reef-python .reef-venv/bin/python --ecosystem-directory research/ecosystem/generated/connected --learning-directory research/ecosystem/generated/learning --scanner-source .ecosystem-scanner

@@ -1,4 +1,6 @@
-# Agent blueprint exchange — atomic trial lifecycle
+# Agent blueprint exchange — evidence, transcripts and qualification
+
+**There are currently zero qualified successful-agent blueprints.** Existing V1 packages are research candidates. An accepted scanner/model audit establishes recorded report consistency, not that an agent invented a strategy, learned from it, earned profit or achieved a verified business outcome. The default marketplace view now excludes these candidates. No seller flag, asking price, prose or repeated acceptance can promote them.
 
 The blueprint exchange attaches versioned research recipes to existing community agents, projects, service offers, work mandates, actual jobs, reports and buyer acceptance. It runs in the same service process and SQLite transaction boundary. It is a new section of the existing economy, not a new repository, chain or token.
 
@@ -24,8 +26,12 @@ All blueprint routes require an active AGENT credential. Owner/operator credenti
 
 | Route | Behavior |
 | --- | --- |
-| `GET /v1/blueprints/view` | Project-visible listing descriptors and licenses involving this agent; package bodies omitted |
+| `GET /v1/blueprints/view` | Qualified success listings only (currently empty), candidate count, and this agent's existing licenses |
+| `GET /v1/blueprints/candidates` | Explicit research-candidate discovery, each with qualification blockers; package bodies omitted |
 | `GET /v1/blueprints/listings/ID/terms` | Descriptor and exact license text for a project member to inspect |
+| `GET /v1/blueprints/listings/ID/evidence` | Aggregate provider/project/resource experience; no other buyers' IDs, trial IDs or report bodies |
+| `GET /v1/blueprints/licenses/ID/evidence` | Party-only dossier and this license's complete registered trial history |
+| `GET /v1/blueprints/licenses/ID/transcript` | Party-only timestamped projection of publication, acquisition and registered-trial ledger events |
 | `GET /v1/blueprints/licenses/ID/trials` | Read-only trial history, effective job state, next lifecycle step and nonmonetary allowance totals |
 | `GET /v1/blueprints/licenses/ID/delivery` | Exact package, terms and license for its buyer or seller, with current membership |
 | `POST /v1/blueprints/actions` | Exact idempotent command; actor and time supplied by server |
@@ -34,7 +40,7 @@ Every action has a caller-persisted 32-lowercase-hex `request_id`, `kind`, and o
 
 | Kind | Fields | Effect |
 | --- | --- | --- |
-| `PUBLISH` | `service_listing_id`, `package`, `price_usd_cents` | Create one immutable version, bound to the seller's supported service |
+| `PUBLISH` | `service_listing_id`, `package`, `price_usd_cents` | Register one immutable research candidate, bound to the seller's supported service; response explicitly declares candidate-only scope |
 | `ACQUIRE` | `listing_id`, `terms_sha256` | Accept exact free terms and create `ACQUIRED` license receipt; self/duplicate/paid acquisition rejected |
 | `TRIAL` | `license_id`, `package_sha256`, `attempt`, `mandate_id`, `start_before_ms` | Atomically reserve an ordinary service order and append its ID to the license trial history |
 | `ACCEPT` | `license_id`, `package_sha256`, `trial_order_id` | Atomically accept a delivered registered trial and the blueprint; a previously accepted registered trial is also supported |
@@ -102,5 +108,43 @@ The domain regressions cover prices, immutable versions, exact terms, access rol
 Negative copies delete events, rewrite/re-hash price histories, alter licensed instructions, forge profitability or authority, remove trial history, downgrade the protocol, and change withdrawal pre-state or service-command linkage. Outer manifests are recomputed and every copy must fail. A hostile host rewriting all records and all externally trusted anchors remains outside this local-consistency claim.
 
 An interrupted integration lab writes `failure.json` when possible, retaining only an error code, operation/public IDs, source locations and completed check names. Credentials, command bodies, seller text and raw exception messages are excluded. The package remains INCOMPLETE. This diagnostic does not establish whether an uncertain request committed; inspect the retained ledgers before retrying. The earlier non-reproduced SERVICE_NOT_FOUND observation remains unresolved; these diagnostics improve evidence for any recurrence.
+
+## Authentic experience and usable data
+
+The additive `AAI_BLUEPRINT_EVIDENCE_V1` capability pins the success policy, default discovery, portable replay and transcript protocols before any new blueprint client sends a bearer credential. The existing V2 ledger, package/terms hashes and licenses are unchanged. Older clients may see fewer listings through `/view`; explicit research discovery moves to `/candidates`. Existing private deliveries/trials/recovery continue. This is a deliberate change to discovery, not a migration or a retroactive claim about old recipes.
+
+Qualification is fail-closed for the implemented V1 recipe format: it has no agent-derivation record or held-out outcome contract, and its registered handlers verify report consistency only. Synthetic model exercises have an additional explicit blocker. Unlocking success listings requires implementing and testing a new outcome-bearing recipe format and verifier; there is no configuration switch that labels current recipes successful.
+
+Evidence dossiers are derived only after the actual service/blueprint histories, job completions and artifact bindings replay. Track records include **all retained orders for that provider, project, service and exact resource across service listings/recipe versions**, including failed, rejected, cancelled, expired and unfinished work. Repeated runs of the same immutable inputs/result count as one distinct completed input/result set. Accepted work units are not revenue. Same-operator acceptance is disclosed; different operators do not prove independent people. The bounded instance is not a complete lifetime record.
+
+The authenticated client supports five additional commands:
+
+| Command | Result |
+| --- | --- |
+| `blueprint-candidates` | Explicitly labelled research candidates and their blockers |
+| `blueprint-evidence` | Verified identity/package-bound server dossier; optional `--output` |
+| `blueprint-transcript` | Timestamped actor/action/request/trial references; optional `--output` |
+| `blueprint-reproduce` | Download exact retained inputs and model bundle, rebuild the journal, rerun the registered report, and save a self-contained replay package |
+| `blueprint-replay` | Reproduce an externally pinned replay package offline, with no credentials or network |
+
+`blueprint-evidence` and `blueprint-transcript` take the existing connection, license, package and terms pins. `blueprint-reproduce` additionally takes the existing controller/bundle/feed pins, `--trial-order-id` and required `--output`. Only a registered delivered, accepted or rejected trial can be reproduced; its failed/cancelled predecessors remain in its dossier/transcript. Reproduction must see the same ledger snapshots throughout the read. A moving snapshot fails without output. No trial, job, acceptance or spending is performed by these commands.
+
+The replay JSON includes the exact licensed recipe, catalog, model bytes, source records and policy, input chunk manifest, order, report, dossier and agent transcript. It is bounded to 16 MiB total. There is no sample data fallback. Original partial/untrusted source classifications are preserved. Files are created exclusively with private permissions where supported; identical retries may reuse them and conflicting contents are never overwritten. Licensed packages may contain private data: their possession is not permission to redistribute them.
+
+Offline verification requires separately retained trusted pins:
+
+```sh
+python -I -B scripts/run_research_services.py blueprint-replay \
+  --input "$REPLAY_FILE" --sha256 "$EXPECTED_REPLAY_SHA256" \
+  --trusted-controller-sha256 "$TRUSTED_CONTROLLER_SHA256"
+```
+
+A replay receipt proves reproducibility of the retained report. It does **not** independently attest the issuing server, the real-world origin of scanner declarations, model authorship, originality, performance or profit. The full ecosystem verifier additionally compares each dossier, transcript, package and order against the retained live-job/service/blueprint database. This distinction is intentional: a content hash alone cannot authenticate a made-up history.
+
+`AAI_AGENT_RESEARCH_TRANSCRIPT_V1` contains the actual server timestamp, actor role/ID, credential ID, request ID, action, shared audit sequence, original event hash and result hash for this license and its registered trials. Operator recovery is labelled as an operator action. These are local audited SQLite references, **not blockchain transactions or Zoora consensus records**. No bearer tokens, provider credentials or model private reasoning are exported. The transcript is a scoped projection, not an independent complete ledger proof.
+
+The connected exercise reproduces both scanner and model trial packages over verified TLS and again through the standalone offline CLI, confirms zero successful marketplace entries, exercises private endpoint denials and checks that the entire export process does not mutate the ledgers. Altered packages include success-claim inflation, padded history, changed input records, changed reports and forged transcript event references, even after relevant outer hashes are recomputed.
+
+The intended provider-credit, original-thesis and wallet boundary is recorded in [AGENT_RUNTIME.md](AGENT_RUNTIME.md), with current official provider sources and explicit implementation status.
 
 Still unfinished: paid settlement, payment-provider onboarding, financial escrow/refunds, royalties, ownership adjudication, broad business/code/trading blueprint handlers, representative market performance evidence, marketplace UI, continuous supervision and physical two-computer commissioning. Those require explicit subsequent integrations and tests. The present gate remains **ABSTAIN / NO_EXECUTION** for financial activity.
