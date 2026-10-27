@@ -22,16 +22,18 @@ def fetch(client, token, cfg):
     return delivery, receipt
 
 
+def command_from_config(cfg):
+    if cfg.get("action_file"):
+        path = n.safe_path(cfg["action_file"])
+        lab.require(path.is_file() and path.stat().st_size <= 12000, "BLUEPRINT_COMMAND_BOUND")
+        return b.command_value(ev.read(path))
+    return b.command_value(cfg["action"])
+
+
 def leaf(verb, cfg, client, token, service_worker):
     lab.require(cfg.get("expected_role", "AGENT") == "AGENT", "BLUEPRINT_AGENT_REQUIRED")
     if verb == "blueprint-act":
-        if cfg.get("action_file"):
-            path = n.safe_path(cfg["action_file"])
-            lab.require(path.is_file() and path.stat().st_size <= 12000, "BLUEPRINT_COMMAND_BOUND")
-            command = ev.read(path)
-        else:
-            command = cfg["action"]
-        return action(client, token, command)
+        return action(client, token, command_from_config(cfg))
     if verb == "blueprint-observe":
         return client.request("GET", b.ROOT_ROUTE + "/view", token=token)[1]
     if verb == "blueprint-terms":
@@ -49,6 +51,13 @@ def leaf(verb, cfg, client, token, service_worker):
                 ev.write(target, delivery)
         return receipt
     license_, listing = delivery["license"], delivery["listing"]
+    if verb == "blueprint-withdraw":
+        command = automatic("WITHDRAW", [license_["id"], n.identity(cfg["trial_order_id"])],
+            license_id=license_["id"], package_sha256=receipt["package_sha256"],
+            trial_order_id=cfg["trial_order_id"], resolution=cfg["resolution"], delivery_sha256=cfg.get("delivery_sha256"))
+        result = action(client, token, command)
+        return {**result, "blueprint_receipt": receipt, "atomic_withdrawal": True,
+                "financial_settlement": False, "live_execution_allowed": False}
     lab.require(license_["state"] in ("ACQUIRED", "ACCEPTED"), "BLUEPRINT_ALREADY_DECIDED")
     _, view = client.request("GET", s.ROOT_ROUTE + "/view", token=token)
     source = view["listings"].get(listing["service_listing_id"])

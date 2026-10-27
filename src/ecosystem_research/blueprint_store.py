@@ -86,7 +86,15 @@ def store_type(base, Problem, resources):
                 expected_head = prior[-1]["sha256"] if prior else resources.digest
                 lab.require(event["service_head_sha256"] == expected_head, "BLUEPRINT_SERVICE_HISTORY_BINDING")
                 historical, _ = snapshots[expected_head]
-                lab.require(n.same(event["facts"], b.facts_for(event["command"], historical, state)),
+                prior_services = None
+                if event["command"]["kind"] == "WITHDRAW":
+                    lab.require(prior and prior[-1]["audit_sequence"] + 1 == audit["seq"]
+                                and prior[-1]["at_ms"] == event["at_ms"]
+                                and n.same(prior[-1]["actor"], actor), "BLUEPRINT_WITHDRAWAL_TRANSACTION")
+                    prior_services, _ = snapshots[prior[-1]["previous_sha256"]]
+                    expected = b.withdrawal_request(state, actor["principal_id"], event["command"], prior_services)
+                    lab.require(n.same(expected, prior[-1]["command"]), "BLUEPRINT_WITHDRAWAL_SERVICE_BINDING")
+                lab.require(n.same(event["facts"], b.facts_for(event["command"], historical, state, prior_services)),
                             "BLUEPRINT_SERVICE_FACTS_CHANGED")
                 key = (actor["principal_id"], event["command"]["request_id"])
                 lab.require(key not in requests, "BLUEPRINT_DUPLICATE_REQUEST")
@@ -116,7 +124,8 @@ def store_type(base, Problem, resources):
                 self._service_member(db, who, old["result"]["project_id"])
                 return 200, {"result": old["result"], "replayed": True, "head_sha256": head}
             lab.require(len(requests) < b.MAX_EVENTS, "BLUEPRINT_EVENT_BOUND")
-            if command["kind"] in ("TRIAL", "ACCEPT"):
+            prior_services = None
+            if command["kind"] in ("TRIAL", "ACCEPT", "WITHDRAW"):
                 license_ = state["licenses"].get(command["license_id"])
                 lab.require(license_ is not None and license_["buyer_id"] == who, "BLUEPRINT_BUYER_REQUIRED")
                 self._service_member(db, who, license_["project_id"])
@@ -124,6 +133,11 @@ def store_type(base, Problem, resources):
                     request = b.trial_request(state, who, command, services)
                     _, ordered = self._service_action(db, principal, request, at)
                     lab.require(not ordered["replayed"], "BLUEPRINT_UNBOUND_TRIAL_ORDER")
+                elif command["kind"] == "WITHDRAW":
+                    prior_services = services
+                    request = b.withdrawal_request(state, who, command, services)
+                    _, released = self._service_action(db, principal, request, at)
+                    lab.require(not released["replayed"], "BLUEPRINT_WITHDRAWAL_ALREADY_RELEASED")
                 else:
                     listing = state["listings"][license_["listing_id"]]
                     current = b.facts_for(command, services, state)
@@ -136,7 +150,7 @@ def store_type(base, Problem, resources):
                         }, at)
                 # Both ledgers commit or roll back under the caller's BEGIN IMMEDIATE.
                 services, service_head, _ = self._service_load(db)
-            facts = b.facts_for(command, services, state)
+            facts = b.facts_for(command, services, state, prior_services)
             actor = {"role": principal["role"], "principal_id": who, "credential_id": principal["id"]}
             updated, result = b.apply(state, actor, command, at, facts, resources.catalog)
             self._service_member(db, who, result["project_id"])
@@ -171,7 +185,8 @@ def store_type(base, Problem, resources):
                 status, value = super()._read(db, route, token, at, limit, after)
                 return status, {**value, "blueprints": {"protocol": b.PROTOCOL,
                     "catalog_sha256": resources.digest, "paid_acquisition": False,
-                    "arbitrary_code_execution": False, "live_execution_allowed": False}}
+                    "arbitrary_code_execution": False, "live_execution_allowed": False},
+                    "blueprint_withdrawal": b.withdrawal_declaration(resources.digest)}
             if not route.startswith(b.ROOT_ROUTE):
                 return super()._read(db, route, token, at, limit, after)
             try:

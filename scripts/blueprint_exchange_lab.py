@@ -14,6 +14,21 @@ from src.solana_research import coin_evidence as ev
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKS = {
+    "blueprint_withdraw_unused_commit_failure_rolls_back",
+    "blueprint_withdraw_failed_commit_failure_rolls_back",
+    "blueprint_withdraw_delivered_commit_failure_rolls_back",
+    "blueprint_four_process_withdrawal_releases_once",
+    "blueprint_withdrawal_preserves_original_rejection_time",
+    "blueprint_withdrawal_unknown_job_keeps_license_and_allowance",
+    "blueprint_withdrawal_releases_three_eligible_order_states",
+    "blueprint_withdrawal_requires_exact_delivery_hash",
+    "blueprint_withdrawal_foreign_buyer_denied",
+    "blueprint_withdrawal_changed_retry_conflicts",
+    "blueprint_withdrawal_new_request_cannot_repeat_release",
+    "blueprint_withdrawal_rejects_old_attempt",
+    "blueprint_withdrawal_does_not_refund_accepted_work",
+    "blueprint_withdrawal_tls_retry_preserves_both_ledgers",
+    "blueprint_withdrawal_capability_pinned_before_bearer",
     "blueprint_tls_protocol_probe_before_bearer",
     "blueprint_trial_commit_failure_rolls_back_both_ledgers",
     "blueprint_accept_commit_failure_rolls_back_both_ledgers",
@@ -46,6 +61,7 @@ def public(verb, config):
               "blueprint-fetch": ("license_id", "package_sha256", "terms_sha256", "output"),
               "blueprint-trial": ("license_id", "package_sha256", "terms_sha256", "mandate_id", "start_before_ms", "attempt"),
               "blueprint-status": ("license_id",),
+              "blueprint-withdraw": ("license_id", "package_sha256", "terms_sha256", "trial_order_id", "resolution", "delivery_sha256"),
               "blueprint-accept": ("license_id", "package_sha256", "terms_sha256", "trial_order_id", "bundle_sha256",
                                    "controller_manifest_sha256", "feed_head_sha256", "feed_policy_sha256")}
     with tempfile.TemporaryDirectory() as temporary:
@@ -55,7 +71,7 @@ def public(verb, config):
             ev.write(path, config["action"])
             config["action_file"] = str(path)
         for key in (*shared, *extras[verb]):
-            if key in config:
+            if key in config and config[key] is not None:
                 flag = "trusted-controller-sha256" if key == "controller_manifest_sha256" else key.replace("_", "-")
                 args.extend(("--" + flag, str(config[key])))
         completed = subprocess.run(args, capture_output=True, timeout=180, env=worker_environment())
@@ -70,6 +86,7 @@ class Exchange:
         self.resources, self.store, self.client, self.cli = resources, store, client, cli
         self.buyer, self.seller, self.command = buyer, seller, command
         self.denied, self.checks, self.child = denied, checks, child
+        self.withdrawn = []
         self.package = {
             "protocol": b.PACKAGE, "slug": "guarded-model-review", "version": 1,
             "title": "Guarded research model review", "summary": "Repeat the catalog's bounded synthetic-model guard exercise.",
@@ -210,6 +227,7 @@ class Exchange:
         self.checks["blueprint_status_exposes_reserved_and_consumed_work"] = True
 
     def trial(self, deadline):
+        self.withdrawal_trials(deadline)
         cfg = {**self.config(), "mandate_id": self.buyer["mandate"]["id"], "start_before_ms": deadline, "attempt": 1}
         self.status(self.buyer, self.license, "READY_TO_REQUEST")
         before = self.snapshot()
@@ -248,6 +266,10 @@ class Exchange:
         lab.require(old["replayed"] and old["order"]["state"] == "CANCELLED"
                     and n.same(before, self.snapshot()), "BLUEPRINT_RETRY_HISTORY")
         self.checks["blueprint_old_attempt_retry_preserves_history"] = True
+        stale = self.child("blueprint-withdraw", {**self.config(), "trial_order_id": old["order"]["id"],
+                                                 "resolution": "CANCEL_UNUSED"}, allow_error=True)
+        lab.require(stale.get("error") == "BLUEPRINT_TRIAL_NOT_REGISTERED", "BLUEPRINT_WITHDRAW_STALE_TRIAL")
+        self.checks["blueprint_withdrawal_rejects_old_attempt"] = True
         bounded = self.child("blueprint-trial", {**cfg, "attempt": 4}, allow_error=True)
         lab.require(bounded.get("error") == "BLUEPRINT_INTEGER", "BLUEPRINT_ATTEMPT_LIMIT")
         self.checks["blueprint_attempt_bound_enforced"] = True
@@ -256,12 +278,91 @@ class Exchange:
             "BLUEPRINT_TRIAL_BINDING")
         return order
 
+    def withdrawal_trials(self, deadline):
+        for version, resolution, target, fault_check in (
+            (4, "CANCEL_UNUSED", "CANCELLED", "blueprint_withdraw_unused_commit_failure_rolls_back"),
+            (5, "RELEASE_FAILED", "FAILED", "blueprint_withdraw_failed_commit_failure_rolls_back"),
+            (6, "REJECT_DELIVERY", "REJECTED", "blueprint_withdraw_delivered_commit_failure_rolls_back"),
+        ):
+            listing = self.do(self.seller, self.command("PUBLISH", service_listing_id=self.seller["listing"]["id"],
+                                package={**self.package, "version": version}, price_usd_cents=0))["result"]
+            license_ = self.do(self.buyer, self.command("ACQUIRE", listing_id=listing["id"], terms_sha256=listing["terms_sha256"]))["result"]
+            cfg = {**self.cli(self.buyer), "license_id": license_["id"], "package_sha256": license_["package_sha256"],
+                   "terms_sha256": license_["terms_sha256"]}
+            order = public("blueprint-trial", {**cfg, "attempt": 1, "mandate_id": self.buyer["mandate"]["id"],
+                                               "start_before_ms": deadline})["order"]
+            cfg.update(trial_order_id=order["id"], resolution=resolution, delivery_sha256=None)
+            decided = None
+            if resolution == "RELEASE_FAILED":
+                _, started = self.client(self.seller).request("POST", "/v1/services/actions",
+                    self.command("START", order_id=order["id"]), self.seller["token"])
+                before = self.snapshot()
+                uncertain = self.child("blueprint-withdraw", cfg, allow_error=True)
+                lab.require(uncertain.get("error") == "SERVICE_UNCERTAIN_RESERVATION_HELD" and n.same(before, self.snapshot()),
+                            "BLUEPRINT_WITHDRAW_UNCERTAIN_JOB")
+                self.checks["blueprint_withdrawal_unknown_job_keeps_license_and_allowance"] = True
+                decided = self.do(self.buyer, self.command("REJECT", license_id=license_["id"]))["result"]["decided_ms"]
+                status = self.status(self.buyer, license_, "REJECTED")
+                lab.require(status["reserved_work_units"] == order["work_units"], "BLUEPRINT_REJECT_RELEASED_WORK")
+                self.client(self.seller).request("POST", "/v1/jobs/" + started["result"]["job_id"] + "/stop", {}, self.seller["token"])
+            elif resolution == "REJECT_DELIVERY":
+                self.child("fulfill", {**self.cli(self.seller), "order_id": order["id"]})
+                _, delivery = self.client(self.buyer).request("GET", "/v1/services/orders/" + order["id"] + "/delivery",
+                                                            token=self.buyer["token"])
+                cfg["delivery_sha256"] = delivery["content_sha256"]
+                before = self.snapshot()
+                wrong = self.child("blueprint-withdraw", {**cfg, "delivery_sha256": "f" * 64}, allow_error=True)
+                lab.require(wrong.get("error") == "BLUEPRINT_WITHDRAWAL_REPORT" and n.same(before, self.snapshot()),
+                            "BLUEPRINT_WITHDRAW_WRONG_REPORT")
+                self.checks["blueprint_withdrawal_requires_exact_delivery_hash"] = True
+            else:
+                self.denied("blueprint_withdrawal_foreign_buyer_denied", lambda license_=license_, order=order, resolution=resolution: self.do(self.seller, self.command(
+                    "WITHDRAW", license_id=license_["id"], package_sha256=license_["package_sha256"], trial_order_id=order["id"],
+                    resolution=resolution, delivery_sha256=None)), "BLUEPRINT_BUYER_REQUIRED")
+            before = self.snapshot()
+            with self.fail_blueprint_commit():
+                failed = self.child("blueprint-withdraw", cfg, allow_error=True)
+            lab.require(failed.get("error") == "BLUEPRINT_INJECTED_COMMIT_FAILURE" and n.same(before, self.snapshot()),
+                        "BLUEPRINT_WITHDRAW_ROLLBACK:" + resolution)
+            self.checks[fault_check] = True
+            if resolution == "CANCEL_UNUSED":
+                with ThreadPoolExecutor(max_workers=4) as pool:
+                    results = list(pool.map(lambda _, cfg=cfg: public("blueprint-withdraw", cfg), range(4)))
+                lab.require(sum(not value["replayed"] for value in results) == 1
+                            and len({ev.canonical(value["result"]) for value in results}) == 1, "BLUEPRINT_WITHDRAWAL_RACE")
+                result = results[0]
+                self.checks["blueprint_four_process_withdrawal_releases_once"] = True
+                changed = self.child("blueprint-withdraw", {**cfg, "resolution": "RELEASE_FAILED"}, allow_error=True)
+                lab.require(changed.get("error") == "BLUEPRINT_REQUEST_CONFLICT", "BLUEPRINT_WITHDRAWAL_RETRY_CONFLICT")
+                self.checks["blueprint_withdrawal_changed_retry_conflicts"] = True
+                self.denied("blueprint_withdrawal_new_request_cannot_repeat_release", lambda license_=license_, order=order, resolution=resolution: self.do(self.buyer, self.command(
+                    "WITHDRAW", license_id=license_["id"], package_sha256=license_["package_sha256"], trial_order_id=order["id"],
+                    resolution=resolution, delivery_sha256=None)), "BLUEPRINT_WITHDRAWAL_STATE")
+            else:
+                result = public("blueprint-withdraw", cfg)
+            lab.require(result["result"]["state"] == "REJECTED" and result["atomic_withdrawal"] is True,
+                        "BLUEPRINT_WITHDRAWAL_DECISION")
+            if decided is not None:
+                lab.require(result["result"]["decided_ms"] == decided, "BLUEPRINT_WITHDRAWAL_CHANGED_DECISION_TIME")
+                self.checks["blueprint_withdrawal_preserves_original_rejection_time"] = True
+            status = self.status(self.buyer, license_, "REJECTED")
+            lab.require(status["orders"][-1]["state"] == target and status["reserved_work_units"] == 0
+                        and status["consumed_work_units"] == 0, "BLUEPRINT_WITHDRAWAL_ACCOUNTING")
+            self.withdrawn.append((license_, cfg))
+        self.checks["blueprint_withdrawal_releases_three_eligible_order_states"] = True
+
     def finish(self, order, output):
         cfg = {**self.config(), "trial_order_id": order["id"]}
         accepted = public("blueprint-accept", cfg)
         lab.require(accepted["result"]["state"] == "ACCEPTED" and accepted["atomic_acceptance"] is True
                     and accepted["trial"]["evidence"]["mode"] == "AUTHENTICATED_RECORD_TRANSFER", "BLUEPRINT_ACCEPTED_TRIAL")
         self.checks["blueprint_accept_replays_remote_trial_over_tls"] = True
+        before = self.snapshot()
+        refund = self.child("blueprint-withdraw", {**self.config(), "trial_order_id": order["id"],
+            "resolution": "REJECT_DELIVERY", "delivery_sha256": accepted["trial"]["report_sha256"]}, allow_error=True)
+        lab.require(refund.get("error") == "BLUEPRINT_ALREADY_DECIDED" and n.same(before, self.snapshot()),
+                    "BLUEPRINT_WITHDRAWAL_REFUNDED_ACCEPTED_WORK")
+        self.checks["blueprint_withdrawal_does_not_refund_accepted_work"] = True
         self.denied("blueprint_accepted_trial_cannot_certify_another_version", lambda: self.do(self.buyer, self.command(
             "ACCEPT", license_id=self.other_license["id"], package_sha256=self.other_license["package_sha256"], trial_order_id=order["id"])),
             "BLUEPRINT_TRIAL_NOT_REGISTERED")
@@ -289,10 +390,19 @@ class Exchange:
         ev.write(output / "blueprint-receipt.json", b.verify_delivery(
             ev.read(output / "blueprint-delivery.json"), self.license["id"], self.buyer["agent"],
             self.license["package_sha256"], self.license["terms_sha256"], self.resources.catalog))
+        before = self.snapshot()
+        withdrawals = []
+        for license_, saved in self.withdrawn:
+            result = public("blueprint-withdraw", {**saved, **self.cli(self.buyer)})
+            lab.require(result["replayed"] and n.same(before, self.snapshot()), "BLUEPRINT_WITHDRAWAL_RESTART_REPLAY")
+            withdrawals.append({"license_id": license_["id"], "resolution": saved["resolution"], "receipt": result})
+        self.checks["blueprint_withdrawal_tls_retry_preserves_both_ledgers"] = True
+        ev.write(output / "blueprint-withdrawals.json", {"protocol": b.WITHDRAWAL, "withdrawals": withdrawals})
         ev.write(output / "blueprint-trials.json", {"protocol": b.PROTOCOL, "statuses": [
             self.status(self.buyer, self.license, "ACCEPTED"),
             self.status(self.seller, self.reverse_license, "ACCEPTED"),
             self.status(self.buyer, self.other_license, "REJECTED"),
+            *(self.status(self.buyer, license_, "REJECTED") for license_, _ in self.withdrawn),
         ]})
 
 
@@ -328,12 +438,43 @@ def verify(store, resources, output):
                 if order["job_id"] is not None:
                     jobs[order_id] = store._job_effective(db, store._row(db, "jobs", order["job_id"]), at)[0]
             lab.require(n.same(value, b.trial_status(current, service_state, jobs, at)), "BLUEPRINT_TRIAL_STATUS_REPLAY")
-    lab.require(len(audit["state"]["listings"]) == 4
-                and sorted(v["terms"]["price_usd_cents"] for v in audit["state"]["listings"].values()) == [0, 0, 0, 500000]
-                and sorted(v["state"] for v in audit["state"]["licenses"].values()) == ["ACCEPTED", "ACCEPTED", "REJECTED"]
-                and sorted(len(v["trial_orders"]) for v in audit["state"]["licenses"].values()) == [0, 1, 3]
-                and listing["active"] is False and audit["events"] == 15, "BLUEPRINT_LIFECYCLE_COUNTS")
-    return {"blueprint_listings": 4, "blueprint_licenses": 3, "accepted_blueprint_licenses": 2,
-            "blueprint_trial_orders": 4, "blueprint_atomic_transitions": True,
+    withdrawals = ev.read(output / "blueprint-withdrawals.json")
+    lab.exact(withdrawals, ("protocol", "withdrawals"))
+    lab.require(withdrawals["protocol"] == b.WITHDRAWAL and type(withdrawals["withdrawals"]) is list
+                and len(withdrawals["withdrawals"]) == 3, "BLUEPRINT_SAVED_WITHDRAWALS")
+    with closing(store._connection()) as db:
+        events = [ev.parse(row[0].encode()) for row in db.execute("SELECT body FROM blueprint_events ORDER BY sequence")]
+    events = [event for event in events if event["command"]["kind"] == "WITHDRAW"]
+    lab.require(len(events) == 3, "BLUEPRINT_SAVED_WITHDRAWALS")
+    by_license = {event["command"]["license_id"]: event for event in events}
+    seen, resolutions = set(), set()
+    for entry in withdrawals["withdrawals"]:
+        lab.exact(entry, ("license_id", "resolution", "receipt"))
+        key, receipt = entry["license_id"], entry["receipt"]
+        lab.require(key in by_license and key not in seen, "BLUEPRINT_WITHDRAWAL_RECEIPT_BINDING")
+        seen.add(key)
+        event = by_license[key]
+        resolutions.add(entry["resolution"])
+        lab.exact(receipt, ("verified", "result", "replayed", "head_sha256", "blueprint_receipt", "atomic_withdrawal",
+                            "financial_settlement", "live_execution_allowed"))
+        current = audit["state"]["licenses"][key]
+        source = audit["state"]["listings"][current["listing_id"]]
+        delivery = {"protocol": b.PROTOCOL, "license": current, "listing": b.descriptor(source), "package": source["package"],
+                    "financial_settlement": False, "live_execution_allowed": False,
+                    "verification_scope": "PACKAGE_INTEGRITY_AND_REGISTERED_RECIPE"}
+        expected = b.verify_delivery(delivery, key, current["buyer_id"], current["package_sha256"], current["terms_sha256"], resources.catalog)
+        lab.require(receipt["verified"] is True and receipt["replayed"] is True and receipt["atomic_withdrawal"] is True
+                    and receipt["financial_settlement"] is False and receipt["live_execution_allowed"] is False
+                    and entry["resolution"] == event["command"]["resolution"] and receipt["head_sha256"] == audit["head_sha256"]
+                    and n.same(receipt["result"], event["result"]) and n.same(receipt["result"], current)
+                    and n.same(receipt["blueprint_receipt"], expected), "BLUEPRINT_WITHDRAWAL_RECEIPT_BINDING")
+    lab.require(resolutions == set(b.RESOLUTIONS), "BLUEPRINT_SAVED_WITHDRAWALS")
+    lab.require(len(audit["state"]["listings"]) == 7
+                and sorted(v["terms"]["price_usd_cents"] for v in audit["state"]["listings"].values()) == [0] * 6 + [500000]
+                and sorted(v["state"] for v in audit["state"]["licenses"].values()) == ["ACCEPTED"] * 2 + ["REJECTED"] * 4
+                and sorted(len(v["trial_orders"]) for v in audit["state"]["licenses"].values()) == [0, 1, 1, 1, 1, 3]
+                and listing["active"] is False and audit["events"] == 28, "BLUEPRINT_LIFECYCLE_COUNTS")
+    return {"blueprint_listings": 7, "blueprint_licenses": 6, "accepted_blueprint_licenses": 2,
+            "withdrawn_blueprint_licenses": 3, "blueprint_trial_orders": 7, "blueprint_atomic_transitions": True,
             "blueprint_ledger_events": audit["events"], "blueprint_paid_settlement": False,
             "blueprint_trial_scope": "REGISTERED_RECIPE_RESULT_CONSISTENCY"}

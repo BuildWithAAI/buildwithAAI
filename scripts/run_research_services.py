@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import run_scanner_feed as previous  # noqa: E402
 
 FILES = (
+    "blueprint-withdrawals.json",
     "blueprint-trials.json",
     "blueprint-audit.json",
     "blueprint-delivery.json",
@@ -259,12 +260,36 @@ def negative_checks(args, directory, source, bundle):
         "blueprint_trial_status",
         "blueprint_trial_link",
         "blueprint_protocol_downgrade",
+        "blueprint_withdrawal_receipt",
+        "blueprint_withdrawal_prior_state",
+        "blueprint_withdrawal_service_binding",
     ):
         with tempfile.TemporaryDirectory() as temporary:
             copied = Path(temporary) / "package"
             shutil.copytree(directory, copied)
             verify(args, copied, source, bundle)
-            if fault in ("blueprint_trial_status", "blueprint_trial_link"):
+            if fault == "blueprint_withdrawal_receipt":
+                value = ev.read(copied / "blueprint-withdrawals.json")
+                value["withdrawals"][0]["receipt"]["financial_settlement"] = True
+                (copied / "blueprint-withdrawals.json").write_bytes(n.raw(value))
+            elif fault in ("blueprint_withdrawal_prior_state", "blueprint_withdrawal_service_binding"):
+                with closing(sqlite3.connect(copied / "agents/community.sqlite3")) as db, db:
+                    head, changed = None, False
+                    for sequence, raw in db.execute("SELECT sequence,body FROM blueprint_events ORDER BY sequence").fetchall():
+                        event = ev.parse(raw.encode())
+                        if not changed and event["command"]["kind"] == "WITHDRAW":
+                            if fault == "blueprint_withdrawal_prior_state":
+                                event["facts"]["prior_order"]["work_units"] += 1
+                            else:
+                                event["command"]["resolution"] = "RELEASE_FAILED"
+                            changed = True
+                        if head is not None:
+                            event["previous_sha256"] = head
+                        event["sha256"] = lab.digest({k: v for k, v in event.items() if k != "sha256"})
+                        db.execute("UPDATE blueprint_events SET body=? WHERE sequence=?", (ev.canonical(event), sequence))
+                        head = event["sha256"]
+                    lab.require(changed, "BLUEPRINT_WITHDRAWAL_MUTATION_MISSING")
+            elif fault in ("blueprint_trial_status", "blueprint_trial_link"):
                 name = "blueprint-trials.json" if fault == "blueprint_trial_status" else "blueprint-delivery.json"
                 value = ev.read(copied / name)
                 if fault == "blueprint_trial_status":
@@ -460,7 +485,7 @@ def parser():
                 help="Parent behavior corpus only; source classifications are preserved",
             )
     for name in ("serve", "act", "observe", "fulfill", "accept", "preflight", "work-once",
-                 "blueprint-act", "blueprint-observe", "blueprint-terms", "blueprint-fetch", "blueprint-trial", "blueprint-accept", "blueprint-status"):
+                 "blueprint-act", "blueprint-observe", "blueprint-terms", "blueprint-fetch", "blueprint-trial", "blueprint-accept", "blueprint-status", "blueprint-withdraw"):
         p = commands.add_parser(name)
         p.add_argument("--community-source", type=Path, required=True)
         p.add_argument("--community-python", type=Path, default=Path(sys.executable))
@@ -499,7 +524,7 @@ def parser():
                 p.add_argument("--listing-id", required=True)
             if name == "blueprint-status":
                 p.add_argument("--license-id", required=True)
-            if name in ("blueprint-fetch", "blueprint-trial", "blueprint-accept"):
+            if name in ("blueprint-fetch", "blueprint-trial", "blueprint-accept", "blueprint-withdraw"):
                 p.add_argument("--license-id", required=True)
                 p.add_argument("--package-sha256", required=True)
                 p.add_argument("--terms-sha256", required=True)
@@ -509,8 +534,11 @@ def parser():
                 p.add_argument("--attempt", type=int, choices=range(1, 4), default=1)
                 p.add_argument("--mandate-id", required=True)
                 p.add_argument("--start-before-ms", type=int, required=True)
-            if name == "blueprint-accept":
+            if name in ("blueprint-accept", "blueprint-withdraw"):
                 p.add_argument("--trial-order-id", required=True)
+            if name == "blueprint-withdraw":
+                p.add_argument("--resolution", required=True, choices=tuple(b.RESOLUTIONS))
+                p.add_argument("--delivery-sha256")
     return result
 
 
