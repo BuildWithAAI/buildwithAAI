@@ -2,7 +2,7 @@
 
 The founder requested that all developed work be merged correctly into the default branch. This integration combines the five development tips that collectively contain all 71 open draft PR heads observed at baseline. It preserves their histories rather than squashing the development into unrelated files.
 
-Baseline main: `7e4ae535ce3ba16cdf8544e9cb57533e4370e5de`. The [source-head manifest](SOURCE_HEADS_2026-10-27.json) records every original PR head/base and all five tips. The final integration commit retains the baseline main and all five source tips as parents; the enclosing PR merges that ancestry into main. Source consolidation does not assert that every roadmap item has been implemented.
+Baseline main: `7e4ae535ce3ba16cdf8544e9cb57533e4370e5de`. The [source-head manifest](SOURCE_HEADS_2026-10-27.json) records every original PR head/base and all five tips. The consolidation merge commit retains the baseline main and all five source tips as parents; follow-up validation fixes retain that ancestry, and the enclosing PR merges it into main. Source consolidation does not assert that every roadmap item has been implemented.
 
 | Development line | Tip PR | Source head |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ Baseline main: `7e4ae535ce3ba16cdf8544e9cb57533e4370e5de`. The [source-head mani
 - The backlog keeps both the distinct AAI-T-041 SFP task and the separately described VL queue. Its JSON retains 41 task records.
 - The README is refreshed as a consolidated source catalogue. The current status is rewritten around the actual source packages and remaining limits. Earlier checkpoint text is retained in `docs/STATUS_BEFORE_CONSOLIDATION_2026-10-27.md`, in the same directory so its relative links keep their original meaning.
 - Research/community/scanner runtime code, package versions, database schemas, protocol IDs, model/controller pins and financial gates are unchanged by conflict resolution. Ecosystem runs continue to use their declared immutable component checkouts.
-- Shared root CI installs the existing pinned scanner runtime before running the now-combined root suite. Root and scanner workflows check out the exact PR head using the already-used pinned checkout/setup actions, with persisted credentials disabled.
+- Shared root and brain-foundation CI install the existing pinned scanner runtime before running the now-combined root suite. Root and scanner workflows check out the exact PR head using the already-used pinned checkout/setup actions, with persisted credentials disabled. The consolidated scanner lint check also exposed two unused consensus-test imports; only those imports were removed, with no test or assertion deleted.
 
 ## Validation and interpretation
 

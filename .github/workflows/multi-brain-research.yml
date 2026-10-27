@@ -5,6 +5,7 @@ on:
       - "src/multi_brain_research/**"
       - "tests/test_multi_brain.py"
       - "tests/test_brain_consensus.py"
+      - "requirements-scanner.txt"
       - "scripts/replay_brain_consensus.py"
       - "scripts/run_consensus_demo.py"
       - "research/consensus/**"
@@ -19,6 +20,7 @@ on:
       - "src/multi_brain_research/**"
       - "tests/test_multi_brain.py"
       - "tests/test_brain_consensus.py"
+      - "requirements-scanner.txt"
       - "scripts/replay_brain_consensus.py"
       - "scripts/run_consensus_demo.py"
       - "research/consensus/**"
@@ -45,6 +47,8 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.14"
+      - name: Install the pinned scanner runtime for consolidated root discovery
+        run: python -m pip install --disable-pip-version-check -r requirements-scanner.txt
       - run: python -m unittest discover -s tests -v
       - run: python -O -m unittest discover -s tests -v
       - name: Replay nine synthetic consensus scenarios and compare audit bytes

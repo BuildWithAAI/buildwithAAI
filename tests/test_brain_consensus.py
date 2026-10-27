@@ -13,7 +13,7 @@ import zipfile
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from multi_brain_research.consensus import ObservationRound, PairIdentity, Receipt
+from multi_brain_research.consensus import ObservationRound
 from multi_brain_research.consensus_fixture import (address, events_for_scenarios, pair, pin,
                                                   policy, receipt, snapshot, unavailable_policy)
 from multi_brain_research.consensus_stream import decode, parse_policy, replay_stream
