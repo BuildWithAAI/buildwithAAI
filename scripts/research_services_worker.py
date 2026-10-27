@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
 import os
 from pathlib import Path
+import re
 import signal
 import sqlite3
 import ssl
@@ -47,7 +48,7 @@ def resources_for(cfg, bundle=None):
     )
 
 
-def connection(cfg, *, blueprint=False):
+def connection(cfg, *, blueprint=False, withdrawal=False):
     Client, read_credential, _, _, _ = nw.components(cfg["community_source"])
     role = cfg.get("expected_role", "AGENT")
     lab.require(role in ("AGENT", "OPERATOR", "OWNER"), "SERVICE_CLIENT_ROLE")
@@ -92,6 +93,9 @@ def connection(cfg, *, blueprint=False):
             "paid_acquisition": False, "arbitrary_code_execution": False,
             "live_execution_allowed": False,
         }), "BLUEPRINT_REMOTE_PROTOCOL_PIN")
+    if withdrawal:
+        lab.require(n.same(status.get("blueprint_withdrawal"), b.withdrawal_declaration(cfg["catalog_sha256"])),
+                    "BLUEPRINT_WITHDRAWAL_PROTOCOL_PIN")
     _, me = client.request("GET", "/v1/me", token=token)
     lab.require(
         me["role"] == role and me["principal_id"] == principal,
@@ -164,7 +168,12 @@ def preflight(client, token, cfg, order, listing, resources, receipt):
 
 
 def leaf(verb, cfg):
-    client, token = connection(cfg, blueprint=verb.startswith("blueprint-"))
+    withdrawal = verb == "blueprint-withdraw"
+    if verb == "blueprint-act":
+        command = bw.command_from_config(cfg)
+        cfg = {**cfg, "action_file": None, "action": command}
+        withdrawal = command["kind"] == "WITHDRAW"
+    client, token = connection(cfg, blueprint=verb.startswith("blueprint-"), withdrawal=withdrawal)
     if verb.startswith("blueprint-"):
         return bw.leaf(verb, cfg, client, token, sys.modules[__name__])
     if verb == "act":
@@ -429,6 +438,40 @@ def serve(cfg):
     }
 
 
+def failure_context(verb, cfg):
+    """Allowlist operation labels and public IDs; never serialize a command or credential."""
+    result = {"operation": verb} if type(verb) is str and re.fullmatch(r"[a-z][a-z-]{0,31}", verb) else {}
+    command = cfg.get("action", {})
+    if type(command) is not dict:
+        command = {}
+    kind = command.get("kind")
+    if type(kind) is str and kind in set(s.COMMAND_FIELDS) | set(b.FIELDS):
+        result["kind"] = kind
+    for key in ("request_id", "order_id", "license_id", "trial_order_id"):
+        value = command.get(key, cfg.get(key))
+        if type(value) is str and re.fullmatch(r"[0-9a-f]{32}", value):
+            result[key] = value
+    return result
+
+
+def failure_document(error, checks):
+    code = getattr(error, "code", None) or getattr(error, "source_error_code", None)
+    if code is None and isinstance(error, ValueError):
+        code = str(error)
+    if not (type(code) is str and re.fullmatch(r"[A-Z][A-Z0-9_]{0,99}", code)):
+        code = None
+    frames, trace = [], error.__traceback__
+    while trace is not None:
+        frames.append({"file": Path(trace.tb_frame.f_code.co_filename).name, "line": trace.tb_lineno})
+        trace = trace.tb_next
+    context = getattr(error, "service_context", {})
+    context = failure_context(context.get("operation"), {"action": context}) if type(context) is dict else {}
+    return {"protocol": "AAI_SERVICE_LAB_FAILURE_V1", "status": "INCOMPLETE", "error_type": type(error).__name__,
+            "error_code": code, "context": context, "trace": frames[-8:],
+            "completed_checks": sorted(k for k, v in checks.items() if v is True),
+            "financial_settlement": False, "live_execution_allowed": False}
+
+
 def child(verb, cfg, allow_error=False):
     with tempfile.TemporaryDirectory() as folder:
         packet = Path(folder) / "packet.json"
@@ -455,7 +498,10 @@ def child(verb, cfg, allow_error=False):
         return {"exit_code": 88}
     value = ev.parse(completed.stdout)
     if completed.returncode and not allow_error:
-        raise ValueError("SERVICE_CHILD_REJECTED:" + verb + ":" + str(value.get("error"))[:200])
+        error = ValueError("SERVICE_CHILD_REJECTED:" + verb + ":" + str(value.get("error"))[:200])
+        error.service_context = failure_context(verb, cfg)
+        error.source_error_code = value.get("error")
+        raise error
     return value
 
 
@@ -544,7 +590,11 @@ def run_lab(output, cfg):
                 )
 
             def do(peer, body):
-                return action(client(peer), peer["token"], body)
+                try:
+                    return action(client(peer), peer["token"], body)
+                except Exception as error:
+                    error.service_context = failure_context("act", {"action": body})
+                    raise
 
             def probe(peer, order, action_name, expected):
                 config = {**cli(peer), "order_id": order["id"], "for_action": action_name}
@@ -1028,6 +1078,26 @@ def run_lab(output, cfg):
                         "BLUEPRINT_PROTOCOL_BEARER_LEAK")
             checks["blueprint_tls_protocol_probe_before_bearer"] = True
             before = len(proxy.exchanges)
+
+            def missing_withdrawal_status(db, route, token, at, limit, after):
+                status, value = original_read(db, route, token, at, limit, after)
+                if route == "/v1/status":
+                    value.pop("blueprint_withdrawal")
+                return status, value
+
+            store._read = missing_withdrawal_status
+            try:
+                withdrawal_cfg = {**exchange.withdrawn[0][1], **cli(alpha)}
+                unsupported = child("blueprint-withdraw", withdrawal_cfg, allow_error=True)
+                raw = {key: withdrawal_cfg[key] for key in b.FIELDS["WITHDRAW"]}
+                unsupported_action = child("blueprint-act", {**cli(alpha), "action": command("WITHDRAW", **raw)}, allow_error=True)
+            finally:
+                store._read = original_read
+            lab.require(unsupported.get("error") == unsupported_action.get("error") == "BLUEPRINT_WITHDRAWAL_PROTOCOL_PIN"
+                        and len(proxy.exchanges) > before and all(not item[2] for item in proxy.exchanges[before:]),
+                        "BLUEPRINT_WITHDRAWAL_BEARER_LEAK")
+            checks["blueprint_withdrawal_capability_pinned_before_bearer"] = True
+            before = len(proxy.exchanges)
             untrusted = child(
                 "observe",
                 {k: v for k, v in cli(alpha).items() if k != "ca_file"},
@@ -1078,6 +1148,12 @@ def run_lab(output, cfg):
                         not any(token.encode() in payload for token in secrets),
                         "SERVICE_CREDENTIAL_LEAK",
                     )
+        except Exception as error:
+            try:
+                ev.write(output / "failure.json", failure_document(error, checks))
+            except (OSError, ValueError):
+                pass
+            raise
         finally:
             if proxy is not None:
                 proxy.stop()
@@ -1257,9 +1333,9 @@ def verify_lab(output, cfg):
         )
     orders = list(state["orders"].values())
     lab.require(
-        len(orders) == 7
+        len(orders) == 10
         and sorted(o["state"] for o in orders)
-        == ["ACCEPTED", "ACCEPTED", "CANCELLED", "CANCELLED", "CANCELLED", "EXPIRED", "FAILED"],
+        == ["ACCEPTED"] * 2 + ["CANCELLED"] * 4 + ["EXPIRED", "FAILED", "FAILED", "REJECTED"],
         "SERVICE_ORDER_STATES",
     )
     expired = state["orders"][exercise["expired_order"]]
@@ -1286,7 +1362,7 @@ def verify_lab(output, cfg):
         )
         artifacts = db.execute("SELECT COUNT(*) FROM artifacts").fetchone()[0]
     lab.require(
-        counts == {"CANCELLED": 1, "SUCCEEDED": 4} and artifacts == 4,
+        counts == {"CANCELLED": 2, "SUCCEEDED": 5} and artifacts == 5,
         "SERVICE_JOB_COUNTS",
     )
     return {
@@ -1294,13 +1370,14 @@ def verify_lab(output, cfg):
         **bl.verify(store, resources, output),
         "agents_exchanging_work": 2,
         "supported_services": len(s.KINDS),
-        "orders": 7,
+        "orders": 10,
         "accepted_orders": 2,
-        "cancelled_orders": 3,
-        "failed_orders": 1,
+        "cancelled_orders": 4,
+        "failed_orders": 2,
+        "rejected_orders": 1,
         "expired_orders": 1,
-        "completed_jobs": 4,
-        "job_artifacts": 4,
+        "completed_jobs": 5,
+        "job_artifacts": 5,
         "ledger_events": audit["events"],
         "reserved_work_units": 0,
         "consumed_work_units": 7,

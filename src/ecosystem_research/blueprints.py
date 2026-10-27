@@ -14,12 +14,18 @@ from ..multi_brain_research import training_lab as lab
 from ..solana_research import coin_evidence as ev
 
 PROTOCOL = "AAI_BLUEPRINT_EXCHANGE_V2"
+WITHDRAWAL = "AAI_BLUEPRINT_WITHDRAWAL_V1"
 PACKAGE = "AAI_RESEARCH_BLUEPRINT_V1"
 ROOT_ROUTE = "/v1/blueprints"
 MAX_PACKAGE_BYTES = 10000
 MAX_EVENTS, MAX_LISTINGS, MAX_LICENSES = 256, 32, 64
 MAX_TRIALS = 3
 RETRYABLE = ("CANCELLED", "EXPIRED", "FAILED", "REJECTED")
+RESOLUTIONS = {
+    "CANCEL_UNUSED": ("OPEN", "CANCEL", "CANCELLED"),
+    "RELEASE_FAILED": ("STARTED", "ABORT_FAILED", "FAILED"),
+    "REJECT_DELIVERY": ("DELIVERED", "REJECT", "REJECTED"),
+}
 FIELDS = {
     "PUBLISH": ("service_listing_id", "package", "price_usd_cents"),
     "CLOSE": ("listing_id",),
@@ -27,6 +33,7 @@ FIELDS = {
     "ACCEPT": ("license_id", "package_sha256", "trial_order_id"),
     "REJECT": ("license_id",),
     "TRIAL": ("license_id", "package_sha256", "attempt", "mandate_id", "start_before_ms"),
+    "WITHDRAW": ("license_id", "package_sha256", "trial_order_id", "resolution", "delivery_sha256"),
 }
 
 
@@ -73,7 +80,16 @@ def command_value(command):
         if key.endswith("_id"):
             n.identity(command[key])
         elif key.endswith("_sha256"):
+            if command["kind"] == "WITHDRAW" and key == "delivery_sha256" and command[key] is None:
+                continue
             lab.pin(command[key])
+    if command["kind"] == "WITHDRAW":
+        lab.require(type(command["resolution"]) is str and command["resolution"] in RESOLUTIONS,
+                    "BLUEPRINT_WITHDRAWAL_RESOLUTION")
+        if command["resolution"] == "REJECT_DELIVERY":
+            lab.pin(command["delivery_sha256"])
+        else:
+            lab.require(command["delivery_sha256"] is None, "BLUEPRINT_WITHDRAWAL_REPORT")
     lab.require(len(n.raw(command)) <= 12000, "BLUEPRINT_COMMAND_BOUND")
     return deepcopy(command)
 
@@ -138,7 +154,44 @@ def acceptance_gate(license_, listing, command, order, source):
                 and source["resource_sha256"] == listing["recipe"]["resource_sha256"], "BLUEPRINT_TRIAL_BINDING")
 
 
-def facts_for(command, service_state, blueprint_state=None):
+def withdrawal_declaration(catalog_sha256):
+    return {"protocol": WITHDRAWAL, "catalog_sha256": lab.pin(catalog_sha256),
+            "financial_settlement": False, "live_execution_allowed": False}
+
+
+def withdrawal_gate(license_, listing, command, order, source):
+    lab.require(license_["state"] in ("ACQUIRED", "REJECTED"), "BLUEPRINT_ALREADY_DECIDED")
+    lab.require(command["package_sha256"] == license_["package_sha256"], "BLUEPRINT_PACKAGE_CHANGED")
+    lab.require(license_["trial_orders"] and command["trial_order_id"] == license_["trial_orders"][-1],
+                "BLUEPRINT_TRIAL_NOT_REGISTERED")
+    lab.require(order["id"] == command["trial_order_id"]
+                and all(order[k] == license_[k] for k in ("buyer_id", "provider_id", "project_id"))
+                and order["listing_id"] == source["id"] == listing["service_listing_id"]
+                and source["provider_id"] == license_["provider_id"]
+                and source["project_id"] == license_["project_id"]
+                and source["service"] == listing["recipe"]["service"]
+                and source["resource_sha256"] == listing["recipe"]["resource_sha256"], "BLUEPRINT_TRIAL_BINDING")
+    lab.require(order["state"] == RESOLUTIONS[command["resolution"]][0], "BLUEPRINT_WITHDRAWAL_STATE")
+    if command["resolution"] == "REJECT_DELIVERY":
+        lab.require(command["delivery_sha256"] == order["report_sha256"], "BLUEPRINT_WITHDRAWAL_REPORT")
+
+
+def withdrawal_request(state, who, command, services):
+    command = command_value(command)
+    license_ = state["licenses"].get(command["license_id"])
+    lab.require(license_ is not None and license_["buyer_id"] == who, "BLUEPRINT_BUYER_REQUIRED")
+    order = services["orders"].get(command["trial_order_id"])
+    lab.require(order is not None, "BLUEPRINT_TRIAL_REQUIRED")
+    listing = state["listings"][license_["listing_id"]]
+    source = services["listings"][listing["service_listing_id"]]
+    withdrawal_gate(license_, listing, command, order, source)
+    return {"kind": RESOLUTIONS[command["resolution"]][1],
+            "request_id": lab.digest([WITHDRAWAL, license_["id"], order["id"], command["resolution"]])[:32],
+            "order_id": order["id"],
+            **({"report_sha256": command["delivery_sha256"]} if command["resolution"] == "REJECT_DELIVERY" else {})}
+
+
+def facts_for(command, service_state, blueprint_state=None, prior_services=None):
     if command["kind"] == "PUBLISH":
         listing = service_state["listings"].get(command["service_listing_id"])
         lab.require(listing is not None, "BLUEPRINT_SERVICE_LISTING_REQUIRED")
@@ -157,6 +210,11 @@ def facts_for(command, service_state, blueprint_state=None):
         lab.require(order_id in service_state["orders"], "BLUEPRINT_TRIAL_REQUIRED")
         return {"order": deepcopy(service_state["orders"][order_id]), "service_listing": deepcopy(source),
                 "previous_order": deepcopy(service_state["orders"][license_["trial_orders"][-1]]) if license_["trial_orders"] else None}
+    if command["kind"] == "WITHDRAW":
+        lab.require(prior_services is not None, "BLUEPRINT_WITHDRAWAL_HISTORY")
+        order = service_state["orders"][command["trial_order_id"]]
+        return {"order": deepcopy(order), "prior_order": deepcopy(prior_services["orders"][order["id"]]),
+                "service_listing": deepcopy(service_state["listings"][order["listing_id"]])}
     return {}
 
 
@@ -220,6 +278,19 @@ def apply(state, actor, command, at, facts, catalog):
     license_ = state["licenses"].get(command["license_id"])
     lab.require(license_ is not None, "BLUEPRINT_NOT_FOUND")
     lab.require(who == license_["buyer_id"], "BLUEPRINT_BUYER_REQUIRED")
+    if kind == "WITHDRAW":
+        lab.exact(facts, ("order", "prior_order", "service_listing"))
+        order, prior = facts["order"], facts["prior_order"]
+        withdrawal_gate(license_, state["listings"][license_["listing_id"]], command, prior, facts["service_listing"])
+        expected = {**prior, "state": RESOLUTIONS[command["resolution"]][2]}
+        if command["resolution"] == "RELEASE_FAILED":
+            lab.require(order.get("terminal_job_state") in s.FAILED_JOBS and order["artifact_id"] is None,
+                        "BLUEPRINT_WITHDRAWAL_RESULT")
+            expected["terminal_job_state"] = order["terminal_job_state"]
+        lab.require(n.same(order, expected), "BLUEPRINT_WITHDRAWAL_RESULT")
+        if license_["state"] == "ACQUIRED":
+            license_.update(state="REJECTED", decided_ms=at)
+        return state, deepcopy(license_)
     lab.require(license_["state"] == "ACQUIRED", "BLUEPRINT_ALREADY_DECIDED")
     if kind == "TRIAL":
         lab.exact(facts, ("order", "previous_order", "service_listing"))

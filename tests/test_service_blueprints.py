@@ -412,6 +412,172 @@ class BlueprintTests(unittest.TestCase):
             b.verify_delivery(value, license_["id"], st.A["principal_id"], license_["package_sha256"],
                               license_["terms_sha256"], self.resources.catalog)
 
+    def withdrawal(self, license_, order, resolution="CANCEL_UNUSED", **changes):
+        return self.command("WITHDRAW", **{
+            "license_id": license_["id"], "package_sha256": license_["package_sha256"],
+            "trial_order_id": order["id"], "resolution": resolution,
+            "delivery_sha256": order["report_sha256"] if resolution == "REJECT_DELIVERY" else None, **changes})
+
+    def withdraw(self, command, terminal=None):
+        prior = deepcopy(self.engine.state)
+        request = b.withdrawal_request(self.state, st.A["principal_id"], command, prior)
+        self.engine.state, _ = s.apply(prior, st.A, request, st.NOW,
+            {"terminal_job_state": terminal} if terminal else {}, self.resources.catalog)
+        facts = b.facts_for(command, self.engine.state, self.state, prior)
+        self.state, result = b.apply(self.state, st.A, command, st.NOW + 1, facts, self.resources.catalog)
+        return result, facts
+
+    def test_withdraw_unused_trial_releases_work_and_rejects_license(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        result, facts = self.withdraw(self.withdrawal(license_, order))
+        self.assertEqual(result["state"], "REJECTED")
+        self.assertEqual(result["trial_orders"], [order["id"]])
+        self.assertEqual(facts["order"]["state"], "CANCELLED")
+        self.assertIsNone(facts["order"]["job_id"])
+        self.assertEqual(self.engine.accounting()["reserved"], 0)
+        self.assertEqual(self.engine.accounting()["consumed"], 0)
+
+    def test_withdraw_delivered_trial_preserves_report_and_artifact(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "DELIVERED")
+        _, facts = self.withdraw(self.withdrawal(license_, order, "REJECT_DELIVERY"))
+        self.assertEqual(facts["order"]["state"], "REJECTED")
+        for key in ("artifact_id", "job_id", "report_sha256"):
+            self.assertEqual(order[key], facts["order"][key])
+        self.assertEqual(self.engine.accounting()["consumed"], 0)
+
+    def test_withdraw_verified_failed_trial_preserves_prior_rejection_time(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        self.engine.advance(st.B, "START", {"job_id": "d" * 32}, order_id=order["id"])
+        rejected = self.act(st.A, "REJECT", license_id=license_["id"])
+        self.assertEqual(self.engine.accounting()["reserved"], order["work_units"])
+        result, facts = self.withdraw(self.withdrawal(license_, order, "RELEASE_FAILED"), "CANCELLED")
+        self.assertEqual(result["decided_ms"], rejected["decided_ms"])
+        self.assertEqual(facts["order"]["terminal_job_state"], "CANCELLED")
+        self.assertEqual(self.engine.accounting()["reserved"], 0)
+
+    def test_withdraw_cannot_release_uncertain_or_successful_job(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        self.engine.advance(st.B, "START", {"job_id": "d" * 32}, order_id=order["id"])
+        command = self.withdrawal(license_, order, "RELEASE_FAILED")
+        before = deepcopy((self.state, self.engine.state))
+        request = b.withdrawal_request(self.state, st.A["principal_id"], command, self.engine.state)
+        for terminal in ("QUEUED", "RUNNING", "SUCCEEDED", "UNKNOWN", None):
+            with self.subTest(terminal=terminal), self.assertRaises(ValueError):
+                s.apply(self.engine.state, st.A, request, st.NOW, {"terminal_job_state": terminal}, self.resources.catalog)
+        self.assertEqual(before, (self.state, self.engine.state))
+
+    def test_withdraw_rejects_stale_trial_after_retry(self):
+        license_ = self.acquire()
+        old = self.trial(license_, "OPEN")
+        self.engine.advance(st.A, "CANCEL", order_id=old["id"])
+        self.trial(license_, "OPEN")
+        with self.assertRaisesRegex(ValueError, "TRIAL_NOT_REGISTERED"):
+            b.withdrawal_request(self.state, st.A["principal_id"], self.withdrawal(license_, old), self.engine.state)
+
+    def test_withdraw_requires_exact_buyer_and_package(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        command = self.withdrawal(license_, order)
+        with self.assertRaisesRegex(ValueError, "BUYER_REQUIRED"):
+            b.withdrawal_request(self.state, st.B["principal_id"], command, self.engine.state)
+        with self.assertRaisesRegex(ValueError, "PACKAGE_CHANGED"):
+            b.withdrawal_request(self.state, st.A["principal_id"], {**command, "package_sha256": "f" * 64}, self.engine.state)
+
+    def test_withdraw_unknown_resolution_and_inappropriate_report_pin_fail(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        command = self.withdrawal(license_, order)
+        for value in (None, True, "REFUND", "STOP_JOB", [], {}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                b.command_value({**command, "resolution": value})
+        with self.assertRaisesRegex(ValueError, "WITHDRAWAL_REPORT"):
+            b.command_value({**command, "delivery_sha256": "f" * 64})
+
+    def test_withdraw_delivery_requires_pinned_report(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "DELIVERED")
+        command = self.withdrawal(license_, order, "REJECT_DELIVERY")
+        for pin in (None, "bad", "f" * 64):
+            with self.subTest(pin=pin), self.assertRaises(ValueError):
+                b.withdrawal_request(self.state, st.A["principal_id"], {**command, "delivery_sha256": pin}, self.engine.state)
+
+    def test_withdraw_cannot_refund_accepted_work(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "ACCEPTED")
+        command = self.withdrawal(license_, order, "REJECT_DELIVERY")
+        with self.assertRaisesRegex(ValueError, "WITHDRAWAL_STATE"):
+            b.withdrawal_request(self.state, st.A["principal_id"], command, self.engine.state)
+        self.accept(license_, order)
+        with self.assertRaisesRegex(ValueError, "ALREADY_DECIDED"):
+            b.withdrawal_request(self.state, st.A["principal_id"], command, self.engine.state)
+        self.assertEqual(self.engine.accounting()["consumed"], order["work_units"])
+
+    def test_withdraw_is_not_an_unbounded_new_request_noop(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        self.withdraw(self.withdrawal(license_, order))
+        with self.assertRaisesRegex(ValueError, "WITHDRAWAL_STATE"):
+            b.withdrawal_request(self.state, st.A["principal_id"], self.withdrawal(license_, order), self.engine.state)
+
+    def test_withdraw_result_cannot_change_cost_identity_or_job(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        command = self.withdrawal(license_, order)
+        original = deepcopy(self.state)
+        _, facts = self.withdraw(command)
+        for field, value in (("work_units", 0), ("id", "f" * 32), ("provider_id", "f" * 32), ("job_id", "f" * 32)):
+            changed = deepcopy(facts)
+            changed["order"][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "WITHDRAWAL_RESULT"):
+                b.apply(original, st.A, command, st.NOW, changed, self.resources.catalog)
+
+    def test_withdraw_forged_service_binding_is_rejected(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        command = self.withdrawal(license_, order)
+        original = deepcopy(self.state)
+        _, facts = self.withdraw(command)
+        changed = deepcopy(facts)
+        changed["service_listing"]["id"] = "f" * 32
+        changed["prior_order"]["listing_id"] = changed["order"]["listing_id"] = "f" * 32
+        with self.assertRaisesRegex(ValueError, "TRIAL_BINDING"):
+            b.apply(original, st.A, command, st.NOW, changed, self.resources.catalog)
+
+    def test_withdraw_missing_prior_history_and_unregistered_order_fail(self):
+        license_ = self.acquire()
+        order = self.engine.order()
+        command = self.withdrawal(license_, order)
+        with self.assertRaisesRegex(ValueError, "TRIAL_NOT_REGISTERED"):
+            b.withdrawal_request(self.state, st.A["principal_id"], command, self.engine.state)
+        with self.assertRaisesRegex(ValueError, "WITHDRAWAL_HISTORY"):
+            b.facts_for(command, self.engine.state, self.state)
+
+    def test_withdrawal_request_identity_is_bound_to_trial_and_resolution(self):
+        license_ = self.acquire()
+        order = self.trial(license_, "OPEN")
+        command = self.withdrawal(license_, order)
+        request = b.withdrawal_request(self.state, st.A["principal_id"], command, self.engine.state)
+        same = b.withdrawal_request(self.state, st.A["principal_id"], {**command, "request_id": "f" * 32}, self.engine.state)
+        self.assertEqual(request, same)
+        self.assertEqual(request["kind"], "CANCEL")
+        self.assertNotIn("report_sha256", request)
+
+    def test_withdrawal_retains_delivery_and_blocks_new_trial(self):
+        value = self.delivery()
+        license_ = value["license"]
+        order = self.trial(license_, "OPEN")
+        result, _ = self.withdraw(self.withdrawal(license_, order))
+        value["license"] = result
+        receipt = b.verify_delivery(value, license_["id"], st.A["principal_id"], license_["package_sha256"],
+                                    license_["terms_sha256"], self.resources.catalog)
+        self.assertFalse(receipt["profit_verified"])
+        with self.assertRaisesRegex(ValueError, "ALREADY_DECIDED"):
+            b.trial_request(self.state, st.A["principal_id"], self.next_request(license_), self.engine.state)
+
 
 if __name__ == "__main__":
     unittest.main()
