@@ -1,5 +1,7 @@
 # Current source and integration status
 
+**Merged into `main` through [PR #80](https://github.com/BuildWithAAI/buildwithAAI/pull/80) on October 27, 2026 (America/Chicago).** All 25 integration workflows and 70 jobs passed at `782f85611cd2f3da6806ac9d7eede4d3a3ec1943`. Main readback confirmed the identical tested tree at merge `8a9e136c03afdc71bb9b0abe756803042f2d056c`. The [final thread-to-main audit](integration/THREAD_AUDIT_2026-10-27.md) records source preservation, CI results and remaining findings.
+
 **October 27, 2026 — consolidated development source.** The research, community, scanner, virtual-leasing and SFP development lines are now represented in one repository tree. The [consolidation record](integration/CONSOLIDATION_2026-10-27.md) identifies all five input tips and the 71 original draft PR heads. Its [machine-readable manifest](integration/SOURCE_HEADS_2026-10-27.json) preserves their exact identities.
 
 Source consolidation is separate from deploying or qualifying a live ecosystem. Existing execution gates, nonmonetary accounting, protocol versions, model/data classifications and immutable component pins are preserved.
