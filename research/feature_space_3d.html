@@ -2,30 +2,55 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AAI fixture feature space</title>
-  <style>body{margin:0;background:#111;color:#eee;font-family:sans-serif}#note{position:absolute;padding:12px}</style>
+  <title>AAI feature space</title>
+  <style>
+    body{margin:0;background:#111;color:#eee;font-family:sans-serif}
+    #note{position:absolute;padding:12px;max-width:280px}
+    #pack{position:absolute;right:12px;top:12px;background:#222;padding:12px;display:none}
+  </style>
 </head>
 <body>
-<div id="note">Fixture only. Red = adverse. Blue = not. Not a live market.</div>
+<div id="note">Yellow ring = account, not a trade. Grey = abstained. Red = adverse. Blue = not. Dead points render but cannot be hired.</div>
+<div id="pack"></div>
 <script type="module">
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-const points = [[-0.2,-0.2,-0.2,1],[-0.05,0.1,0,0],[0.15,0.2,0.1,0],[-0.4,-0.3,-0.25,1],[0,0,0,0],[-0.16,-0.05,-0.1,1],[0.3,0.1,0.2,0],[-0.22,-0.18,-0.12,1]];
+const points = [
+  {id:'two_row', x:-0.2, y:-0.2, z:-0.2, label:1, kind:'FIXTURE', brain:'answered', answers:2, fate:'live'},
+  {id:'quiet', x:0, y:0, z:0, label:0, kind:'FIXTURE', brain:'abstained', answers:1, fate:'live'},
+  {id:'dead_1', x:-0.4, y:-0.3, z:-0.25, label:1, kind:'FIXTURE', brain:'answered', answers:2, fate:'dead'},
+  {id:'account', x:0, y:0, z:0.15, label:null, kind:'ACCOUNT_DECODE_NOT_A_TRADE', brain:'abstained', answers:0, fate:'live'}
+];
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 100);
-camera.position.set(1.4, 1.1, 1.6);
+camera.position.set(1.6, 1.2, 1.8);
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 scene.add(new THREE.AxesHelper(1));
-for (const [x,y,z,label] of points) {
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.035, 16, 16),
-    new THREE.MeshBasicMaterial({color: label ? 0xc0392b : 0x2980b9})
-  );
-  mesh.position.set(x*2, z*2, y*2);
+const meshes = [];
+for (const point of points) {
+  const color = point.kind === 'ACCOUNT_DECODE_NOT_A_TRADE' ? 0xf1c40f : point.brain === 'abstained' ? 0x95a5a6 : point.label ? 0xc0392b : 0x2980b9;
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), new THREE.MeshBasicMaterial({color}));
+  mesh.position.set(point.x*2, point.z*2, point.y*2);
+  mesh.userData = point;
   scene.add(mesh);
+  meshes.push(mesh);
 }
-function frame(){ requestAnimationFrame(frame); scene.rotation.y += 0.004; renderer.render(scene, camera); }
+const ray = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+addEventListener('click', (event) => {
+  mouse.x = (event.clientX/innerWidth)*2-1;
+  mouse.y = -(event.clientY/innerHeight)*2+1;
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(meshes)[0];
+  const panel = document.getElementById('pack');
+  if (!hit) { panel.style.display='none'; return; }
+  const point = hit.object.userData;
+  const hire = point.fate !== 'dead' && point.answers >= 2 && point.kind !== 'ACCOUNT_DECODE_NOT_A_TRADE';
+  panel.style.display='block';
+  panel.textContent = `${point.id}\nkind ${point.kind}\nfate ${point.fate}\nhire ${hire ? 'allowed' : 'refused'}\nwallet NONE`;
+});
+function frame(){ requestAnimationFrame(frame); scene.rotation.y += 0.003; renderer.render(scene, camera); }
 frame();
 </script>
 </body>
