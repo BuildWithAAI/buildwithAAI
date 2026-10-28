@@ -1,0 +1,54 @@
+[
+  {
+    "id": "two_row",
+    "x": -0.2,
+    "y": -0.2,
+    "z": -0.2,
+    "label": 1,
+    "kind": "FIXTURE",
+    "brain": "answered",
+    "answers": 2,
+    "fate": "live",
+    "selectable": true,
+    "wallet": "NONE"
+  },
+  {
+    "id": "quiet",
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "label": 0,
+    "kind": "FIXTURE",
+    "brain": "abstained",
+    "answers": 1,
+    "fate": "live",
+    "selectable": false,
+    "wallet": "NONE"
+  },
+  {
+    "id": "dead_1",
+    "x": -0.4,
+    "y": -0.3,
+    "z": -0.25,
+    "label": 1,
+    "kind": "FIXTURE",
+    "brain": "answered",
+    "answers": 2,
+    "fate": "dead",
+    "selectable": false,
+    "wallet": "NONE"
+  },
+  {
+    "id": "account",
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.15,
+    "label": null,
+    "kind": "ACCOUNT_DECODE_NOT_A_TRADE",
+    "brain": "abstained",
+    "answers": 0,
+    "fate": "live",
+    "selectable": false,
+    "wallet": "NONE"
+  }
+]
