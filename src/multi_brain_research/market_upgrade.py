@@ -1,91 +1,55 @@
-"""Economic upgrade for the launched AAI pool.
+"""Correct AAI market state.
 
-Observed on 2026-10-28 from the public PumpSwap pool. This is a design
-model, not a trade and not a promise of price.
+Mint 27RP3fkHt6T2QpCzsrJjk9oMZXAP5cya77VaR3UMpump.
+Observed 2026-10-28 from public RugCheck and Dexscreener.
+This is not the older Alliance Ai pool.
 """
 from __future__ import annotations
 
 import json
-import math
 
-# Public observations. Not a live feed.
-TOKEN = "4YfDqzLR2NRLcx4V4VEuhjN2Z1BS3T1aokwNQygDpump"
-POOL = "FtFoDZNCJpPFFuDTiGvrKfqXkTnkxFQYGMzhttn4Bm2d"
+TOKEN = "27RP3fkHt6T2QpCzsrJjk9oMZXAP5cya77VaR3UMpump"
+CURVE = "Eq93BkkDVBLkjgHxZU6qVk7hrnzTnAyVfCNrXCVix1PL"
+CREATOR = "7UwprY6AVua7Q2fx8evE6bZxSARgpixWvWFaReJLYo6F"
+WRONG_PRIOR = "4YfDqzLR2NRLcx4V4VEuhjN2Z1BS3T1aokwNQygDpump"
+
 OBSERVED = {
-    "market_cap_usd": 2865.75,
-    "fdv_usd": 2865.75,
-    "liquidity_usd": 4593.72,
-    "sol_in_pool": 22.76,
-    "volume_24h_usd": 0.0,
-    "holders": 271,
-    "age_months": 7,
-    "lp_locked": True,
-    "mint_authority": "DISABLED",
-    "freeze_authority": "DISABLED",
-    "bundled_buys_pct": 27.23,
-    "security_score": 50,
+    "name": "Anything AI",
+    "symbol": "AAI",
+    "venue": "PUMP_FUN_BONDING_CURVE",
+    "graduated": False,
+    "dex_pair": None,
+    "supply": 1_000_000_000,
+    "curve_holds_pct": 100.0,
+    "creator_balance": 0,
+    "real_sol_in_curve": 0.000000071,
+    "reported_base_usd": 2946.06,
+    "reported_quote_usd": 0.000007,
+    "mint_authority": None,
+    "freeze_authority": None,
+    "metadata_mutable": False,
 }
 
 
-def slippage(sol_in_pool: float, trade_sol: float) -> float:
-    """Constant-product impact for a buy that adds trade_sol."""
-    if sol_in_pool <= 0 or trade_sol <= 0:
-        raise ValueError("BAD_DEPTH")
-    return trade_sol / (sol_in_pool + trade_sol)
-
-
-def depth_plan(current_sol: float, targets: tuple[float, ...]) -> list[dict]:
-    rows = []
-    for target in targets:
-        if target < current_sol:
-            continue
-        rows.append({
-            "sol_in_pool": target,
-            "one_sol_slippage": round(slippage(target, 1.0), 4),
-            "five_sol_slippage": round(slippage(target, 5.0), 4),
-            "added_sol": round(target - current_sol, 2),
-        })
-    return rows
-
-
-def revenue_burn(fee_sol: float, burn_share: float = 0.5) -> dict:
-    """Burn only from collected agent-economy fees. No cosmetic mint burn."""
-    if fee_sol < 0 or not 0 < burn_share <= 1:
-        raise ValueError("BAD_FEE")
-    return {
-        "fee_sol": fee_sol,
-        "buyback_sol": round(fee_sol * burn_share, 6),
-        "treasury_sol": round(fee_sol * (1 - burn_share), 6),
-        "source": "AGENT_FEES_ONLY",
-        "cosmetic_supply_burn": False,
-        "action": "NO_EXECUTION",
-    }
-
-
-def inventory_score(held_days: int, size_ppm: int) -> int:
-    """Time-weighted inventory. Access, not a chart signal."""
-    if held_days < 0 or not 0 <= size_ppm <= 1_000_000:
-        raise ValueError("BAD_HOLD")
-    time_weight = min(held_days, 90) / 90
-    return int(100 * time_weight * math.sqrt(size_ppm / 1_000_000))
-
-
-def upgrade() -> dict:
-    plan = depth_plan(OBSERVED["sol_in_pool"], (22.76, 50, 100, 250))
+def diagnosis() -> dict:
     return {
         "token": TOKEN,
-        "pool": POOL,
+        "curve": CURVE,
+        "creator": CREATOR,
+        "not_this_token": WRONG_PRIOR,
         "observed": OBSERVED,
-        "diagnosis": "THIN_BOOK_NO_INVENTORY",
-        "chart_cause": "A one-SOL trade moves a 23-SOL pool about four percent. Zero volume leaves the old chops on the chart.",
+        "diagnosis": "LAUNCHED_ON_CURVE_NO_REAL_BOOK",
+        "chart_cause": "The curve still holds the supply. Real SOL in the curve is dust. There is no DEX pair, so there is no book to be clean.",
         "refused": ["WASH_VOLUME", "COORDINATED_PUMP", "CHART_PAINT", "HIDDEN_SUPPLY"],
-        "depth": plan,
-        "burn": revenue_burn(0.0),
-        "inventory_example": inventory_score(30, 10_000),
-        "lp_locked": True,
+        "next": [
+            "Do not treat the older Alliance Ai pool as this token.",
+            "Do not add DEX liquidity until the curve graduates.",
+            "A burn with no buyers is cosmetic.",
+            "First real flow is an honest buy on the curve, disclosed, not washed.",
+        ],
         "action": "NO_EXECUTION",
     }
 
 
 if __name__ == "__main__":
-    print(json.dumps(upgrade(), indent=2))
+    print(json.dumps(diagnosis(), indent=2))
