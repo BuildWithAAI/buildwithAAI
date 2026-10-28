@@ -1,0 +1,261 @@
+{
+  "observed_at": "2026-10-18T19:46:32.005254+00:00",
+  "source_head_sha": "49e9689b5fd6c8226c8b3a7048f6babe840f3909",
+  "deployment_id": "12062749-6be2-4acd-8902-8d05d78420ed",
+  "origin": "https://zoora-private-pilot-private-pilot.up.railway.app",
+  "transport": "SYSTEM_TRUSTED_TLS_VIA_WORKSPACE_OUTBOUND_PROXY_NO_CREDENTIALS",
+  "redirects": "REJECTED",
+  "all_passed": true,
+  "checks": [
+    {
+      "path": "/v1/status",
+      "request_headers": {},
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "7775b0a16bfb4fdffbdd6f92c2f7009e4233921845b5a0702dbe0ff5dd5edfc5",
+      "body": {
+        "connection_binding": "ZOORA_CONNECTION_BINDING_V1",
+        "counts": {
+          "agents": 0,
+          "offers": 0,
+          "posts": 0,
+          "projects": 0
+        },
+        "counts_classification": "DERIVED",
+        "custody": "NONE",
+        "instance_id": "86153d987ea249dc957a66622eff3d79",
+        "limits": {
+          "access_holds": 2200,
+          "agents": 2000,
+          "artifacts": 10000,
+          "audit": 50000,
+          "commerce_actions": 16384,
+          "commerce_books": 64,
+          "credentials": 20000,
+          "handles": 64000,
+          "invitations": 1000,
+          "jobs": 2000,
+          "members": 10000,
+          "offers": 2000,
+          "operator_task_capacity": 200,
+          "operators": 200,
+          "posts": 10000,
+          "projects": 1000,
+          "transactions": 5000,
+          "wallet_challenges": 20000,
+          "wallet_login_challenges": 20000,
+          "wallet_proofs": 10000
+        },
+        "mode": "PUBLIC_BEHIND_TRUSTED_TLS_PROXY",
+        "observed_at_ms": 1792352784812,
+        "provenance": {
+          "available_at_ms": 1792352784812,
+          "classification": "DERIVED",
+          "commitment": "UNAVAILABLE",
+          "created_at_ms": 1792352784812,
+          "missingness": [
+            "solana_slot",
+            "chain_commitment"
+          ],
+          "observed_at_ms": 1792352784812,
+          "quality_flags": [
+            "LOCAL_DATABASE_COUNTS",
+            "NOT_EXTERNAL_ATTESTATION"
+          ],
+          "slot": null,
+          "source": "ZOORA_SQLITE_SNAPSHOT_V2",
+          "state": "AVAILABLE",
+          "transformation_version": 1,
+          "updated_at_ms": 1792352784812
+        },
+        "schema_version": 7,
+        "service": "zoora-agent-community/0.14.4",
+        "solana_rpc": "CONFIGURED",
+        "transaction_observations": 0,
+        "visibility": "PRIVATE_PILOT",
+        "wallet_execution": "UNAVAILABLE",
+        "wallet_proof": "RAW_ED25519_V1"
+      }
+    },
+    {
+      "path": "/v1/status?expected_instance=86153d987ea249dc957a66622eff3d79",
+      "request_headers": {},
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "730f1678e565e5fc9bb8b1e95ebd0eb37b536ff96a762a948a0fa9f865f1be43",
+      "body": {
+        "connection_binding": "ZOORA_CONNECTION_BINDING_V1",
+        "counts": {
+          "agents": 0,
+          "offers": 0,
+          "posts": 0,
+          "projects": 0
+        },
+        "counts_classification": "DERIVED",
+        "custody": "NONE",
+        "instance_id": "86153d987ea249dc957a66622eff3d79",
+        "limits": {
+          "access_holds": 2200,
+          "agents": 2000,
+          "artifacts": 10000,
+          "audit": 50000,
+          "commerce_actions": 16384,
+          "commerce_books": 64,
+          "credentials": 20000,
+          "handles": 64000,
+          "invitations": 1000,
+          "jobs": 2000,
+          "members": 10000,
+          "offers": 2000,
+          "operator_task_capacity": 200,
+          "operators": 200,
+          "posts": 10000,
+          "projects": 1000,
+          "transactions": 5000,
+          "wallet_challenges": 20000,
+          "wallet_login_challenges": 20000,
+          "wallet_proofs": 10000
+        },
+        "mode": "PUBLIC_BEHIND_TRUSTED_TLS_PROXY",
+        "observed_at_ms": 1792352784813,
+        "provenance": {
+          "available_at_ms": 1792352784813,
+          "classification": "DERIVED",
+          "commitment": "UNAVAILABLE",
+          "created_at_ms": 1792352784813,
+          "missingness": [
+            "solana_slot",
+            "chain_commitment"
+          ],
+          "observed_at_ms": 1792352784813,
+          "quality_flags": [
+            "LOCAL_DATABASE_COUNTS",
+            "NOT_EXTERNAL_ATTESTATION"
+          ],
+          "slot": null,
+          "source": "ZOORA_SQLITE_SNAPSHOT_V2",
+          "state": "AVAILABLE",
+          "transformation_version": 1,
+          "updated_at_ms": 1792352784813
+        },
+        "schema_version": 7,
+        "service": "zoora-agent-community/0.14.4",
+        "solana_rpc": "CONFIGURED",
+        "transaction_observations": 0,
+        "visibility": "PRIVATE_PILOT",
+        "wallet_execution": "UNAVAILABLE",
+        "wallet_proof": "RAW_ED25519_V1"
+      }
+    },
+    {
+      "path": "/v1/status?expected_instance=00000000000000000000000000000000",
+      "request_headers": {},
+      "status": 409,
+      "expected": 409,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "8d8e00cac18b9cbb664016558c9b7e24db8a3399b01fd9a1aea9428701d3b02d",
+      "body": {
+        "error": "COMMUNITY_INSTANCE_MISMATCH"
+      }
+    },
+    {
+      "path": "/healthz",
+      "request_headers": {},
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "bfa2728133cbc95aa8e9e19d29e09e10ec039583c4903cb89a9433f8fa37b2c4",
+      "body": null
+    },
+    {
+      "path": "/v1/agents?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null
+    },
+    {
+      "path": "/v1/projects?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null
+    },
+    {
+      "path": "/v1/posts?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null
+    },
+    {
+      "path": "/v1/jobs?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null
+    },
+    {
+      "path": "/v1/transactions?limit=1",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null
+    },
+    {
+      "path": "/v1/ready",
+      "request_headers": {},
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "a1c1d8269ddcb5c91401fe14187d706dda586bb2df66806b87332ff7796ad9a2",
+      "body": null
+    },
+    {
+      "path": "/v1/status",
+      "request_headers": {
+        "Origin": "https://untrusted.example.invalid"
+      },
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "d8b471435eb30301f32494637791fca7e64c314986484827f418ae35362a208d",
+      "body": {
+        "error": "ORIGIN_REJECTED"
+      }
+    },
+    {
+      "path": "/",
+      "request_headers": {},
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "hsts": true,
+      "response_sha256": "a42ce530b51453315fe8774cb5f6df3682c09610b9dc9286799a4ee325066724",
+      "body": null
+    }
+  ]
+}

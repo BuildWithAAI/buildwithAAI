@@ -1,0 +1,80 @@
+name: AAI.fun Historical Source Sessions
+on:
+  pull_request:
+    paths:
+      - "src/solana_research/source_history.py"
+      - "src/solana_research/coin_evidence.py"
+      - "src/solana_research/evidence_capture.py"
+      - "src/multi_brain_research/trade_learning.py"
+      - "scripts/collect_trade_history.py"
+      - "scripts/train_trade_readout.py"
+      - "tests/test_source_history.py"
+      - "research/aai-fun/**"
+      - ".github/workflows/aai-fun-history.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/solana_research/source_history.py"
+      - "src/multi_brain_research/trade_learning.py"
+      - "scripts/collect_trade_history.py"
+      - "scripts/train_trade_readout.py"
+      - "tests/test_source_history.py"
+      - ".github/workflows/aai-fun-history.yml"
+permissions:
+  contents: read
+concurrency:
+  group: aai-fun-history-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  regressions:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - name: Install pinned development linter
+        run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - name: Check collection, source continuity and training integration
+        run: python -m ruff check --select E4,E7,E9,F,B src/solana_research/source_history.py src/multi_brain_research/trade_learning.py scripts/collect_trade_history.py scripts/train_trade_readout.py scripts/run_flyvis_trade.py tests/test_source_history.py
+      - name: Recovery, continuity, causality and raw-source reconstruction tests
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p test_source_history.py -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p test_source_history.py -v
+  real-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - name: Capture six adjacent finalized slots with bounded public RPC reads
+        run: python scripts/collect_trade_history.py capture --slots 6 --output research/aai-fun/generated/history
+      - name: Reconstruct complete source session in another process
+        run: python scripts/collect_trade_history.py verify --directory research/aai-fun/generated/history
+      - name: Completed resume must verify without new acquisition
+        run: python scripts/collect_trade_history.py resume --directory research/aai-fun/generated/history
+      - name: Join verified observations and independently reconstruct the training source
+        run: |
+          python scripts/collect_trade_history.py prepare --directory research/aai-fun/generated/history --output research/aai-fun/generated/history-source
+          python scripts/train_trade_readout.py verify-sources --directory research/aai-fun/generated/history-source
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: aai-fun-real-historical-source
+          path: |
+            research/aai-fun/generated/history/**/*.json
+            research/aai-fun/generated/history-source/*.json
+          retention-days: 30

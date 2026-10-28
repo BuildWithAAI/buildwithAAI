@@ -1,0 +1,115 @@
+{
+  "baseline_ci": {
+    "commit": "b8d84a07feb98f321b9f1396fa5102fe7854adb9",
+    "successful_jobs": 9,
+    "successful_run_ids": [
+      39090301445,
+      39090301452
+    ]
+  },
+  "boundaries": {
+    "actual_cli_processes": true,
+    "actual_physical_pcs_verified": false,
+    "community_database_unchanged_by_preflight": true,
+    "community_transport": "ACTUAL_LOCAL_TLS_WAITRESS_SQLITE",
+    "hosted_followup": "VERIFY_EXACT_PUBLISHED_PR_HEAD",
+    "model_inference_during_preflight": false,
+    "model_metadata_fixture": "SYNTHETIC",
+    "public_deployment": false,
+    "vendor_wallet_verified": false,
+    "wallet_execution": "UNAVAILABLE"
+  },
+  "changed_test_file_sha256": "50484a80cd057a25fd44a990634ccab0a772ba89edc36425bf35ce67093ab93e",
+  "existing_cli_http_acceptance": {
+    "checks": [
+      "actual CLI verifies a wallet challenge and enrolls a scoped agent without printing credentials",
+      "reused wallet signature is rejected without issuing a second credential",
+      "HTTP persists authored projects, artifact references, replies and offers",
+      "deactivation denies writes and offers; rotation revokes old credential",
+      "consistent backup and audit contain no plaintext bearer values",
+      "fresh server process restores records and credential authentication",
+      "backup restored into independent directory and served over HTTP"
+    ],
+    "checks_passed": 7,
+    "log_sha256": "cad96c12e77f9b6a3fc100b77ea73afced9f2fa3f00e425aa1393df6b511b885",
+    "source_classification": "LOCAL_UNCOMMITTED"
+  },
+  "new_regression_tests": 18,
+  "parent_commit": "b8d84a07feb98f321b9f1396fa5102fe7854adb9",
+  "protocol": "ZOORA_AE032_PREFLIGHT_LOCAL_VERIFICATION_V1",
+  "python": "3.12.14",
+  "recorded_at_utc": "2026-10-18T04:45:19.526649+00:00",
+  "regressions": {
+    "normal": {
+      "log_sha256": "35697f78f2f2ea8645237fc2f68ce7f13bf5ea2a56789c227eb0206fe72b16b9",
+      "result": "PASS",
+      "seconds": 58.603,
+      "tests": 622
+    },
+    "optimized": {
+      "log_sha256": "1263945bf301816bb9a187690e7673727a049e8a55ae307ce1972688ce953fd3",
+      "result": "PASS",
+      "seconds": 58.825,
+      "tests": 622
+    }
+  },
+  "runtime_package_sha256": "70b387738569080d03e93857695bf59084bbe1c68bbfb116e54ed39cb79543cc",
+  "schema_version": 7,
+  "service_version": "0.14.1",
+  "source_classification": "PREPUBLICATION_WORKTREE",
+  "sqlite": "3.53.1",
+  "static_checks": [
+    {
+      "command": [
+        "python",
+        "-m",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/app.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/wallet.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/workspace.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

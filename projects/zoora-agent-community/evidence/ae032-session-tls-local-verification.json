@@ -1,0 +1,133 @@
+{
+  "boundaries": {
+    "actual_physical_pcs_verified": false,
+    "actual_two_worker_processes": true,
+    "actual_worker_process_death": true,
+    "community_transport": "ACTUAL_LOCAL_TLS_WAITRESS_SQLITE",
+    "hosted_followup": "VERIFY_EXACT_PUBLISHED_PR_HEAD",
+    "model_responses": "SYNTHETIC_PROTOCOL_FIXTURE",
+    "public_deployment": false,
+    "vendor_wallet_verified": false,
+    "wallet_execution": "UNAVAILABLE"
+  },
+  "change": {
+    "application_or_ci_timeouts_increased": false,
+    "assertions_removed": false,
+    "fresh_client_reloads_trust_roots": true,
+    "fresh_https_probe_and_requests_verified": 6,
+    "fresh_system_trust_certificate_refusal_preserved": true,
+    "hostname_and_certificate_verification": true,
+    "new_skips": false,
+    "original_concurrent_failure_precise_cause_confirmed": false,
+    "redacted_child_failure_diagnostics_added": true,
+    "root_store_initializations_within_one_client": 1,
+    "verified_tls_context": "LAZY_ONCE_PER_CLIENT"
+  },
+  "existing_cli_http_acceptance": {
+    "checks_passed": 7,
+    "log_sha256": "cad96c12e77f9b6a3fc100b77ea73afced9f2fa3f00e425aa1393df6b511b885"
+  },
+  "initial_checkpoint_ci": {
+    "child_error": "PILOT_SESSION_ATTENTION_REQUIRED",
+    "commit": "ba429a094784930fd09220e08ff9598125dc043b",
+    "failed_case": "test_two_cli_hosts_can_hold_separate_attempts_and_post_attributed_notes",
+    "failed_job": 117612334161,
+    "normal": {
+      "discovered": 656,
+      "result": "PASS",
+      "skipped": 3
+    },
+    "optimized": {
+      "discovered": 656,
+      "failures": 1,
+      "result": "FAIL",
+      "skipped": 3
+    },
+    "original_failure_retained": true,
+    "precise_task_failure_reason": "UNAVAILABLE",
+    "successful_jobs": 8,
+    "workflow_run": 39106161302
+  },
+  "parent_commit": "ba429a094784930fd09220e08ff9598125dc043b",
+  "protocol": "ZOORA_AE032_SESSION_TLS_LOCAL_VERIFICATION_V1",
+  "python": "3.12.14",
+  "recorded_at_utc": "2026-10-18T07:22:47.587725+00:00",
+  "regressions": {
+    "normal": {
+      "log_sha256": "6c5fe4f6353d72d95eb9663e5bf8129f99fa014ef873b0da73741ee42b3652d6",
+      "result": "PASS",
+      "seconds": 84.993,
+      "tests": 657
+    },
+    "optimized": {
+      "log_sha256": "918e21518c90649a5664b7f4ada3aeb886e6bbfa39a1a198443022e4ad3a2aa6",
+      "result": "PASS",
+      "seconds": 84.728,
+      "tests": 657
+    }
+  },
+  "runtime_package_sha256": "74acdc88f25e113ef77fb1eec0fd583573be0b9b226c36fdf20dab3b88cbf028",
+  "schema_version": 7,
+  "service_version": "0.14.3",
+  "source_classification": "PREPUBLICATION_WORKTREE",
+  "source_files_sha256": {
+    "tests/test_pilot_session.py": "7349e5f8eabc09adbe5e41d69fc3ab4901011242fe537a450b6c7f9614eaed8f",
+    "tests/test_private_pilot.py": "5d4858cc68842823a3ab4a79d94f02755b6d699cd53a542b691e8395f853e8da",
+    "zoora_community/client.py": "07bb98e2f5640789d07476b0dd70e545b4929a8ab7787e4ec3a1aec9fe83c440"
+  },
+  "sqlite": "3.53.1",
+  "static_checks": [
+    {
+      "command": [
+        "python",
+        "-m",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/app.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/wallet.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "web/workspace.js"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

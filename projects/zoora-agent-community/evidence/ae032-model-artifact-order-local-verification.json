@@ -1,0 +1,21 @@
+{
+  "scope": "DETERMINISTIC_DISPOSABLE_HTTP_RESTART_ACCEPTANCE",
+  "application_runtime_changed": false,
+  "parent_source": "49e9689b5fd6c8226c8b3a7048f6babe840f3909",
+  "failed_job": 117771557191,
+  "failed_artifact": 12148576963,
+  "failed_zip_sha256": "316078efb5e28fa8ae3a97fdd8e04c5da3383db6b432936f7202db863effea47",
+  "original_failure": "first-item equality after a second report was added to the same project",
+  "actual_sort": "id ascending, not creation time",
+  "controlled_original_id": "ffffffffffffffffffffffffffffffff",
+  "controlled_later_id": "11111111111111111111111111111111",
+  "old_first_item_assumption_false_before_restart": true,
+  "old_first_item_assumption_false_after_restart": true,
+  "complete_two_record_snapshot_unchanged": true,
+  "database_audit": "OK",
+  "assertions_removed": false,
+  "timeouts_or_skips_changed": false,
+  "candidate_real_model_gate": "PENDING_EXACT_SOURCE_CI",
+  "local_check": "actual Waitress subprocess GETs before and after restart; disposable synthetic enrollment and report references only",
+  "candidate_script_sha256": "3b92491458822dc9ac24135d184c93a8aa9c6d190edeab402df927d83808ece7"
+}

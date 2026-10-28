@@ -1,0 +1,77 @@
+name: Zoora Agent Economy Simulator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "projects/zoora-agent-economy-simulator/**"
+      - ".github/workflows/zoora-agent-economy-simulator.yml"
+  pull_request:
+    paths:
+      - "projects/zoora-agent-economy-simulator/**"
+      - ".github/workflows/zoora-agent-economy-simulator.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-economy-simulator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        with:
+          toolchain: 1.99.0
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked --all-targets
+      - run: cargo test --locked --release --all-targets
+      - run: cargo build --locked --release
+      - name: CLI, replay, determinism and measured scaling
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/ci_evidence.py
+      - name: Collect validation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: simulator-validation-${{ matrix.os }}
+          path: |
+            projects/zoora-agent-economy-simulator/Cargo.lock
+            projects/zoora-agent-economy-simulator/target/validation-evidence/
+          retention-days: 14
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-economy-simulator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        with:
+          toolchain: 1.99.0
+      - run: cargo install cargo-audit --version 0.22.2 --locked
+      - run: cargo audit --json > audit.json
+      - name: Preserve dependency audit
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: simulator-dependency-audit
+          path: projects/zoora-agent-economy-simulator/audit.json
+          retention-days: 14

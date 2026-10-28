@@ -1,0 +1,70 @@
+{
+  "action": "NO_EXECUTION",
+  "artifact_sha256": {
+    "audit.jsonl": "e96b004be383789a5901e107cbb57c85be316f99c9a8fa2d4e9a08dd87ec72ec",
+    "events.jsonl": "4383b5679a2acaf1eef8fecc08bfe2857dabc993f0fb90878a8a7ec6d5295582",
+    "missing-encoder.json": "9dbe907c87db0ae37dc064ac5e0b179669a8523851a0ef404e0d4a340d905196",
+    "policy.json": "7489c04d91e600daf55d6e1b6f8c57139b1af879afc63d53c949f02e22a64554"
+  },
+  "classification": "SYNTHETIC_SOFTWARE_TEST_ONLY",
+  "code_commit": "f30f4ef15091213aebb74da187fcec2cb24ca55c",
+  "execution_allowed": false,
+  "independent_replay_bytes_equal": true,
+  "market_validation": "NOT_ESTABLISHED",
+  "replay": {
+    "action": "NO_EXECUTION",
+    "classification": "SYNTHETIC_FIXTURE",
+    "events": 55,
+    "execution_allowed": false,
+    "input_bytes": 28559,
+    "output_bytes": 74348,
+    "rounds": 8
+  },
+  "scenarios": [
+    {
+      "research_signal": "UNANIMOUS_BUY_CANDIDATE",
+      "round_id": "66fb2e0c6f1decca9b4770378815dfe3af217e5166b96d0f4cbc16e8a2804e7f",
+      "scenario": "unanimous"
+    },
+    {
+      "research_signal": "NO_BUY",
+      "round_id": "f22702573658033a85a655a3395973a99b8eb42aa0cc4aaa72193240fd2dd866",
+      "scenario": "disagreement"
+    },
+    {
+      "research_signal": "ABSTAIN",
+      "round_id": "ee92e4e7781f9ad58a9b05f775d3d410dfe5c2b8758d8c07059e2fde1432e3f7",
+      "scenario": "uncertainty"
+    },
+    {
+      "research_signal": "ABSTAIN",
+      "round_id": "7278c1312ad6ee208a2593b6de05d6316defad136c481ba9dce50df0fd4c0260",
+      "scenario": "abstention"
+    },
+    {
+      "research_signal": "ABSTAIN",
+      "round_id": "6c640c720588c7a7a34ac4dd5b88deb0eec4928556fcaa1600e6ebb4068f5384",
+      "scenario": "missing_module"
+    },
+    {
+      "research_signal": "ABSTAIN",
+      "round_id": "2ce7b2d901eb7c76d6470f8a19a371536a0c3db4b3d120461272287e14cfd3dc",
+      "scenario": "late_module"
+    },
+    {
+      "research_signal": "ABSTAIN",
+      "round_id": "94de8bb99c391911bf3ff17520af756e951de6a2c000c995273ce429a191bd9d",
+      "scenario": "missing_data"
+    },
+    {
+      "research_signal": "ABSTAIN",
+      "round_id": "b5eb918ac896ec4bb3f0628e59f4d94a9469ac7ac7ad9745df36be001a542aa1",
+      "scenario": "stale_data"
+    },
+    {
+      "research_signal": "ABSTAIN",
+      "round_id": "c3af6718f6baee483e9bdc19bc78c3dd85da2328be1edf40797d56270ed3c48c",
+      "scenario": "missing_encoder"
+    }
+  ]
+}

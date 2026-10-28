@@ -1,0 +1,28 @@
+{
+  "status": "PASSED",
+  "verification_type": "LOCAL_OPERATIONAL_REHEARSAL",
+  "available_at": "2026-10-08T21:56:58.385085+00:00",
+  "checks": [
+    "offline_doctor_with_integrity",
+    "systemd_unit_validation_with_expanded_install_paths",
+    "caddy_template_validation_and_loopback_proxy",
+    "authenticated_readiness_and_static_interface",
+    "persistent_watch_write",
+    "crash_restart_recovers_acknowledged_write",
+    "online_backup_readonly_verification_and_safe_rejection",
+    "new_file_restore_and_restarted_http_persistence"
+  ],
+  "proxy": "VERIFIED_LOOPBACK_HTTP",
+  "systemd_unit": "VALIDATED_WITH_EXPANDED_INSTALL_PATHS",
+  "systemd_supervision": "NOT_TESTED",
+  "tls": "NOT_TESTED",
+  "live_provider_calls": 0,
+  "telegram_messages": 0,
+  "public_deployment": "NOT_STARTED",
+  "candidate_version": "0.1.2",
+  "source_parent_commit": "1ef90343500b301b4aa273cf46323a075d67508b",
+  "caddy_version": "2.11.7",
+  "caddy_archive_sha256": "727b91701a392de6ebc5027509f548bf39979e5216340d0faed8fa5e69c84f8b",
+  "offline_tests": 104,
+  "data_transform_version": "aai-scanner/0.1.1"
+}

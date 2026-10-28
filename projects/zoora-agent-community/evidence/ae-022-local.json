@@ -1,0 +1,26 @@
+{
+  "classification": "SYNTHETIC",
+  "source_scope": "PREPUBLICATION_MODIFIED_WORKTREE",
+  "base_commit": "eb96f442cfc486305d8797d035be93cb5d57a607",
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "normal_tests": 288,
+  "optimized_tests": 288,
+  "new_commerce_regressions": 27,
+  "commerce_cli_checks": 19,
+  "payer_cli_checks": 15,
+  "commerce_state_views": 39,
+  "reference_bytes": 163031,
+  "reference_sha256": "a178f1945d1845864be90711b291c9ed609be97524b7afefe0cab03b89c6583e",
+  "report_fingerprint": "63987b20f2c135626eadb321097d5dc35cb4ce4ae7994c6163453f46e2145bfa",
+  "prior_acceptance_scripts": [
+    "integration",
+    "migration",
+    "operations",
+    "pilot_access",
+    "task_capacity"
+  ],
+  "provider_integration": false,
+  "wallet_execution": false,
+  "public_deployment": false
+}

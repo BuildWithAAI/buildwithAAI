@@ -1,0 +1,27 @@
+{
+  "protocol": "AAI_ECOSYSTEM_COMPONENT_LOCK_V1",
+  "repository": "BuildWithAAI/buildwithAAI",
+  "components": {
+    "scanner": {
+      "commit": "97108a271face220aef6296fddb2e18abdb210b5",
+      "package": "src/aai_scanner",
+      "used_interfaces": [
+        "mint.parse_mint",
+        "evidence.receipt"
+      ],
+      "pr": 10
+    },
+    "community": {
+      "commit": "fc42d8b36da77c58430e4a7594a30a0225883b6c",
+      "package": "projects/zoora-agent-community",
+      "used_interfaces": [
+        "Store.call",
+        "Store.audit",
+        "jobs",
+        "agent_activity"
+      ],
+      "pr": 59
+    }
+  },
+  "mode": "RESEARCH_SANDBOX_NO_SETTLEMENT"
+}

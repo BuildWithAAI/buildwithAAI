@@ -1,0 +1,22 @@
+{
+  "biological_replication_established": false,
+  "execution_attestation": "NOT_ESTABLISHED",
+  "experiment_id": "FV-SMOKE-001",
+  "finite_activity_fraction": 1.0,
+  "live_execution_allowed": false,
+  "market_validation_established": false,
+  "non_input_flash_max_absolute_difference_from_gray": [
+    0.03334683179855347,
+    0.03334683179855347
+  ],
+  "non_input_neurons": 2049,
+  "output_bytes": 2272710,
+  "repeat_max_absolute_difference": 0.0,
+  "report_sha256": "6ab3e6d526556f9e5b4f4c69e774e93ca222f2d4d051c3fb6eff770ddc0263e8",
+  "shape": [
+    3,
+    40,
+    2345
+  ],
+  "status": "PASS_TECHNICAL_ONLY"
+}

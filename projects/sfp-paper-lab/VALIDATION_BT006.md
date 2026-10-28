@@ -1,0 +1,21 @@
+# BT-006 validation record — October 14, 2026
+
+Stage: offline software/research acceptance. Version: 0.2.0. The current exact-head CI and downloadable artifact hashes are recorded in the development PR; this document does not claim that a future head has already passed.
+
+Local Python 3.12.14 passed 83 tests in both normal and optimized modes with -bb, development mode and warnings as errors. Ruff passes. The original 59 checks remain, with 24 additional study/CLI checks covering frozen plan identity, invalid settings and optimized validation, altered training history, changed future prices, appended/incomplete history, uncompressed gaps, late receipts, phase/embargo timing, seeded causality, trial matrices, flat-only positive selection/cash fallback, unrealized buy-and-hold, undefined profit factors, passing-but-blocked research screens, exclusive exports and tamper/rehashed claim detection.
+
+The actual study acceptance script passed seven checks: frozen plan fixture/no overwrite, complete export verification, two byte-identical runs, the 72-trial matrix and failed screens, earlier-history pending windows without altered first selection, altered HTML rejection and zero financial activity. The original six-check paper/CSV acceptance remains in CI alongside it. Scripts retain complete report bundles rather than summaries without CSVs.
+
+[The example](examples/chronological-report/study.html) has 1,216 engineered synthetic hourly bars, three chronological folds, nine training and 63 evaluation/control/stress trials. All base numeric screens fail. This is acceptance coverage, not a historical strategy test, earnings, statistical certification or 72 independent market observations. Its source head is UNDECLARED and its local package/data/plan hashes are recorded. New CI runs declare their actual checkout separately.
+
+The portable report is static, escaped and constrained by a no-external-content CSP. It has no application JavaScript, service, credentials or transaction controls. Node syntax checks pass. The CI UI harness checks desktop/390-pixel Chromium viewports, synthetic banner, cards, all three fold ledgers, 24 expanded trial rows, body overflow and zero external requests/page errors. Actual browser results and screenshots must be checked in CI before claiming those checks passed. This is not actual iPhone/Safari acceptance.
+
+Verification validates all six bound exports, plan/run/code identity, scheduled fold windows, expected configs/seeds/full matrix, training choice, trade totals, NAV/returns and recomputed summaries. It is internal consistency, not independent rerun or upstream/clock attestation. Reports preserve historical source snapshots and retain explicit independently-unseen/exact-exposure/selection-risk limitations.
+
+No provider/account/wallet integration, paid resources, public deployment, merge, message, actual trade, purchase or burn was performed. Independent fold accounts cannot allocate buy/burn funds. The scanner/community CI snapshots in [development status](../../docs/DEVELOPMENT_STATUS_2026-10-14.md) were read, but those other module suites were not rerun for this batch.
+
+## Final audit follow-up
+
+The initial source commit 596b65820ddd56689c780c3fbd0434294c3ac79f passed both Linux jobs, including desktop/phone-sized Chromium checks, and Windows unit tests; its Windows study acceptance failed on comparing LF output with a CRLF checkout fixture. The follow-up compares canonical decoded plans while preserving stored checksums and exact within-job export bytes. It also rejects non-object manifests safely and unsupported source-head attestations. The regenerated local example preserves that first commit's exact folds, trial records and numerical summaries while recording the updated presentation/validation package hash; new CI run identities are separate. Final-head all-platform proof belongs in the PR description.
+
+Visual review moved the screen status before return/count columns so it remains visible without horizontal scrolling at phone width, explains A/B/C and replaces machine reason codes with readable labels. The UI harness now checks status visibility as well as eight conditions per viewport. Numerical study records are unchanged by the presentation update.

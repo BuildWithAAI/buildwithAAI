@@ -1,0 +1,9 @@
+# AE-016 research settings, not adopted production policy. IDs and reviews are fixtures.
+operators = [0, 1, 2, 3, 4, 0, 1, 0]
+reviewer_operator = 99
+ticks = 200
+maturity_ticks = 3
+minimum_age_ticks = 5
+minimum_customer_operators = 2
+tier_one_credits = 100
+tier_two_credits = 500

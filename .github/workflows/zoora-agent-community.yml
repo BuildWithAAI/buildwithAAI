@@ -1,0 +1,301 @@
+name: Zoora Authenticated Community
+on:
+  pull_request:
+    paths:
+      - "projects/zoora-agent-community/**"
+      - ".github/workflows/zoora-agent-community.yml"
+  push:
+    branches: [main]
+    paths:
+      - "projects/zoora-agent-community/**"
+      - ".github/workflows/zoora-agent-community.yml"
+permissions:
+  contents: read
+concurrency:
+  group: zoora-community-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  practice-worker:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13.16"
+      - run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - name: Causal worker, interruption, exact retries and evidence regressions
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p "test_practice_worker.py" -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p "test_practice_worker.py"
+      - name: Actual model-protocol fixture to HTTP paper order, restart and offline review
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/practice_worker_evidence.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: practice-worker-${{ matrix.os }}
+          path: projects/zoora-agent-community/evidence-output/practice-worker/
+          retention-days: 14
+  practice-market:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12.15"
+      - name: Install fully hashed runtime dependency closure
+        run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - name: Blind boundary, accounting, revocation and migration-transition regressions
+        run: |
+          python -bb -X dev -W error -m unittest discover -s tests -p "test_practice*.py" -v
+          python -O -bb -X dev -W error -m unittest discover -s tests -p "test_practice*.py"
+      - name: Actual Chrome private practice market, paper order and replay audit
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/practice_browser_evidence.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: practice-market-browser
+          path: |
+            projects/zoora-agent-community/evidence-output/practice-browser.json
+            projects/zoora-agent-community/evidence-output/practice-browser-failure.json
+            projects/zoora-agent-community/evidence-output/practice-mobile.png
+            projects/zoora-agent-community/evidence-output/practice-chart-mobile.png
+            projects/zoora-agent-community/evidence-output/practice-portfolio-mobile.png
+          retention-days: 14
+  deployment-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build the private-pilot deployment image
+        run: docker build --tag zoora-private-pilot:test projects/zoora-agent-community
+      - name: Actual proxy, authentication, private volume and restart acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python projects/zoora-agent-community/scripts/railway_container_evidence.py zoora-private-pilot:test
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.13.16", "3.14.8"]
+        include:
+          - os: ubuntu-latest
+            python: "3.12.15"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 40 || 25 }}
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install fully hashed runtime dependency closure
+        run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - name: Install pinned development linter
+        run: python -m pip install --disable-pip-version-check ruff==0.17.0
+      - run: python -m ruff check .
+      - run: node --check web/app.js
+      - run: node --check web/wallet.js
+      - run: node --check web/workspace.js
+      - run: node --check web/forum.js
+      - run: node --check web/market.js
+      - name: Multiwallet discovery, raw signatures, withdrawal and mobile-link privacy
+        run: node --test scripts/wallet_discovery_test.mjs
+      - name: Actual Chrome observer UI acceptance
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/browser_evidence.mjs
+      - name: Actual Chrome enrollment and authenticated authoring acceptance
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/workspace_browser_evidence.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
+        with:
+          name: community-browser-signing
+          path: |
+            projects/zoora-agent-community/evidence-output/browser.json
+            projects/zoora-agent-community/evidence-output/workspace-browser.json
+            projects/zoora-agent-community/evidence-output/wallet-setup-mobile.png
+            projects/zoora-agent-community/evidence-output/wallet-sign-in-mobile.png
+            projects/zoora-agent-community/evidence-output/forum-mobile.png
+          retention-days: 14
+      - run: python -bb -X dev -W error -m unittest discover -s tests -v
+      - run: python -O -bb -X dev -W error -m unittest discover -s tests
+      - name: Actual CLI, HTTP, restart and backup acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/integration_evidence.py
+      - name: Actual schema-1 migration CLI and restart acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/migration_evidence.py
+      - name: Actual Waitress monitoring, crash, backup verification and safe restore
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/operations_evidence.py
+      - name: Actual invitation, claim reconciliation, suspension and restore acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/pilot_access_evidence.py
+      - name: Actual shared operator capacity, concurrent HTTP, restore and schema-4 migration
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/task_capacity_evidence.py
+      - name: Actual payer-authority CLI, optimized replay and independent accounting
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/spending_evidence.py
+      - name: Actual commerce routing, recurring bills, refunds and fulfillment research
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/commerce_evidence.py
+      - name: Actual authenticated durable commerce, crash recovery, HTTP race and schema-5 migration
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/durable_commerce_evidence.py
+      - name: Bridge sandbox contract over local verified HTTPS, process crash and retry reconciliation
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/bridge_sandbox_evidence.py
+      - name: Read-only Bridge discovery, expired-intent recovery and explicit journal migration
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/bridge_reconciliation_evidence.py
+      - name: Verified payment snapshots, recovery-only restore, stale state and actual process death
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/bridge_recovery_evidence.py
+      - name: Read-only customer preflight, approval contradictions, redaction and unchanged journals
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/bridge_preflight_evidence.py
+      - name: Connected commerce, shared sandbox mandate, concurrent workers and four process interruption boundaries
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/payment_pipeline_evidence.py
+      - name: Coordinated payment packages, five checkpoints, GET-only restore and interrupted publication
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/payment_recovery_evidence.py
+      - name: Opt-in model payment tools, durable jobs, task stop, uncertainty and actual runner interruption
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/agent_payments_evidence.py
+      - name: Runtime package vulnerability audit
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12.15'
+        run: |
+          python -m pip install --disable-pip-version-check pip-audit==2.10.1
+          python -m pip_audit --disable-pip --require-hashes -r requirements.lock --format json --output evidence-output/runtime-audit.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: community-service-${{ matrix.os }}-${{ matrix.python }}
+          path: projects/zoora-agent-community/evidence-output/
+          retention-days: 14
+  live-rpc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12.15"
+      - run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - name: Strict real Devnet and Mainnet read-only HTTP acceptance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python -bb -X dev -W error scripts/live_rpc_evidence.py
+      - name: Real Mainnet cluster read without fixture fallback
+        run: python -bb -X dev -W error -m zoora_community.live_connections solana --network solana:mainnet --out evidence-output/live-mainnet-connection.json
+      - name: Real Devnet cluster read without fixture fallback
+        run: python -bb -X dev -W error -m zoora_community.live_connections solana --network solana:devnet --out evidence-output/live-devnet-connection.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: community-live-rpc
+          path: projects/zoora-agent-community/evidence-output/
+          retention-days: 14
+  live-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: projects/zoora-agent-community
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12.15"
+      - run: "python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements.lock"
+      - name: Verify pinned official Ollama archive and run CPU-only inference
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          OLLAMA_NO_CLOUD: "1"
+          OLLAMA_HOST: "127.0.0.1:11434"
+          OLLAMA_MODELS: ${{ runner.temp }}/zoora-ollama-models
+          CUDA_VISIBLE_DEVICES: "-1"
+          ZOORA_TEST_MODEL: "qwen3:1.7b"
+        run: |
+          curl --fail --location --max-time 180 --proto '=https' --tlsv1.2 -o "$RUNNER_TEMP/ollama.tar.zst" https://github.com/ollama/ollama/releases/download/v0.40.3/ollama-linux-amd64.tar.zst
+          echo 'ce6f8b671a699bf1ebafb28d60dbbabf4f37b30b499145fa308a8ba72de021d6  '"$RUNNER_TEMP/ollama.tar.zst" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/zoora-ollama"
+          tar --zstd -xf "$RUNNER_TEMP/ollama.tar.zst" -C "$RUNNER_TEMP/zoora-ollama"
+          export OLLAMA_BIN="$RUNNER_TEMP/zoora-ollama/bin/ollama"
+          "$OLLAMA_BIN" serve > "$RUNNER_TEMP/zoora-ollama.log" 2>&1 &
+          zoora_model_pid=$!
+          trap 'kill "$zoora_model_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail --max-time 1 http://127.0.0.1:11434/api/version; then break; fi
+            sleep 1
+          done
+          timeout 240 "$OLLAMA_BIN" pull "$ZOORA_TEST_MODEL"
+          python -bb -X dev -W error scripts/live_model_evidence.py
+          python -bb -X dev -W error scripts/practice_worker_evidence.py --real-model "$ZOORA_TEST_MODEL"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: community-live-model
+          path: projects/zoora-agent-community/evidence-output/
+          retention-days: 14

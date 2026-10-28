@@ -1,0 +1,31 @@
+# Direct dependencies from TuragaLab/flyvis at
+# 0a69fa2fc8e1bfe1d837d722c252ab5f5d6fcbfa/pyproject.toml.
+# Separate CPU-only integration environment; not the paper's training environment.
+ipython
+numba
+datamate
+scipy
+matplotlib
+networkx
+scikit-learn
+umap-learn
+ffmpeg-python
+pytest
+torch
+torchvision
+python-dotenv
+hydra-core>=1.3,<2
+toolz
+tqdm
+requests
+google-api-python-client
+xarray
+pandas
+joblib
+colorama
+pytz
+cachetools
+# Build the pinned source without fetching unpinned build requirements.
+setuptools
+setuptools-scm
+wheel

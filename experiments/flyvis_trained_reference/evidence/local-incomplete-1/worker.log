@@ -1,0 +1,76 @@
+[2026-10-20 08:55:10] font_manager:1848 generated new fontManager
+Traceback (most recent call last):
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/io.py", line 162, in _write_h5
+    f = h5.File(path, libver="latest", mode="w")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/h5py/_hl/files.py", line 555, in __init__
+    fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/h5py/_hl/files.py", line 238, in make_fid
+    fid = h5f.create(name, h5f.ACC_TRUNC, fapl=fapl, fcpl=fcpl)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5f.pyx", line 126, in h5py.h5f.create
+FileNotFoundError: [Errno 2] Unable to synchronously create file (unable to open file: name = '/workspace/scratch/0b7605d029c9/buildwithAAI/experiments/flyvis_trained_reference/generated/local-attempt-1/work/flyvis-data/connectome/ConnectomeFromAvgFilters_0000/edges/source_index.h5', errno = 2, error message = 'No such file or directory', flags = 13, o_flags = 242)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/workspace/scratch/0b7605d029c9/buildwithAAI/experiments/flyvis_trained_reference/worker.py", line 199, in <module>
+    main()
+  File "/workspace/scratch/0b7605d029c9/buildwithAAI/experiments/flyvis_trained_reference/worker.py", line 103, in main
+    network = flyvis.Network(**config).eval()
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-upstream/flyvis/network/network.py", line 134, in __init__
+    self.connectome = init_connectome(**connectome)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-upstream/flyvis/connectome/connectome.py", line 1435, in init_connectome
+    connectome = connectome_class(**kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 124, in __call__
+    return cls.__new__(cls, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/context.py", line 129, in function
+    _return = new(*args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 255, in __new__
+    cls = _directory_from_config(cls, config)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 1414, in _directory_from_config
+    return _new_directory()
+           ^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 1384, in _new_directory
+    _build(directory)
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 1516, in _build
+    raise e
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 1511, in _build
+    directory.__init__(*build_args, **build_kwargs)
+  File "/workspace/scratch/0b7605d029c9/flyvis-upstream/flyvis/connectome/connectome.py", line 243, in __init__
+    self.edges = dict(  # type: ignore
+    ^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 805, in __setattr__
+    self.__setitem__(key.replace("__", "."), value)
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 563, in __setitem__
+    MutableMapping.update(Directory(path), val)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen _collections_abc>", line 982, in update
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/directory.py", line 578, in __setitem__
+    _write_h5(path.with_suffix(".h5"), val)
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/datamate/io.py", line 178, in _write_h5
+    f["data"] = val
+    ~^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/h5py/_hl/group.py", line 580, in __setitem__
+    ds = self.create_dataset(None, data=obj)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/h5py/_hl/group.py", line 240, in create_dataset
+    dsid = dataset.make_new_dset(group, shape, dtype, data, name, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/0b7605d029c9/flyvis-venv/lib/python3.12/site-packages/h5py/_hl/dataset.py", line 192, in make_new_dset
+    dset_id.write(h5s.ALL, h5s.ALL, data)
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5d.pyx", line 305, in h5py.h5d.DatasetID.write
+  File "h5py/_proxy.pyx", line 122, in h5py._proxy.dset_rw
+OSError: [Errno 27] Can't synchronously write data (file write failed: time = Tue Oct 20 08:55:23 2026
+, filename = '/workspace/scratch/0b7605d029c9/buildwithAAI/experiments/flyvis_trained_reference/generated/local-attempt-1/work/flyvis-data/connectome/ConnectomeFromAvgFilters_0000/edges/source_index.h5', file descriptor = 3, errno = 27, error message = 'File too large', buf = 0x7fdb2673d110, total write size = 8107896, bytes this sub-write = 8107896, offset = 4000000)
