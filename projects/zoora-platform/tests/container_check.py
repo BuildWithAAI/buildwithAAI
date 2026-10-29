@@ -6,6 +6,8 @@ import urllib.error
 import urllib.request
 
 root = Path("/data")
+supervisor = Path("/proc/1/status").read_text()
+assert "Uid:\t10001\t10001\t10001\t10001" in supervisor, "proxy supervisor must run without root privileges"
 deadline = time.monotonic() + 25
 while True:
     try:

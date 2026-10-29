@@ -1,6 +1,8 @@
 """Supervise the existing trusted HTTP proxy and unified application."""
 import os
+from pathlib import Path
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -16,6 +18,19 @@ if not 1024 <= port <= 65535 or port == 8765:
     raise ValueError("invalid external port")
 os.environ["ZOORA_PROXY_HOST"] = urlsplit(origin).netloc
 os.environ["PORT"] = str(port)
+root = Path("/data")
+info = root.lstat()
+if (not stat.S_ISDIR(info.st_mode) or not os.path.ismount(root)
+        or os.environ.get("RAILWAY_VOLUME_MOUNT_PATH") != str(root)):
+    raise ValueError("persistent volume required")
+if os.geteuid() == 0:
+    os.chown(root, 10001, 10001)
+    os.chmod(root, 0o700)
+    os.setgroups([])
+    os.setgid(10001)
+    os.setuid(10001)
+if os.geteuid() != 10001:
+    raise ValueError("unexpected runtime identity")
 children = []
 stopping = False
 
