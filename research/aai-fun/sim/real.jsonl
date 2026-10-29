@@ -1,1 +1,3 @@
-{"label":"REAL_ANONYMIZED","coin":"c_7388575e9732","slot":462718804,"block_time":1793242253,"tx_count":391,"success":true,"synthetic":false,"action":"NO_EXECUTION"}
+{"label": "REAL_ANONYMIZED", "coin": "c_7388575e9732", "slot": 462718804, "block_time": 1793242253, "fee_lamports": null, "success": true, "synthetic": false, "action": "NO_EXECUTION", "tx_count": 391}
+{"label": "REAL_ANONYMIZED", "coin": "c_7388575e9732", "slot": 462718805, "block_time": 1793242253, "fee_lamports": null, "success": true, "synthetic": false, "action": "NO_EXECUTION", "tx_count": 324}
+{"label": "REAL_ANONYMIZED", "coin": "c_7388575e9732", "slot": 462718806, "block_time": 1793242253, "fee_lamports": null, "success": true, "synthetic": false, "action": "NO_EXECUTION", "tx_count": 325}
