@@ -28,7 +28,7 @@ def response(status, result, content_type="application/json; charset=utf-8"):
     return payload, headers
 
 
-def dispatch(store, runtime, host, origin, method, target, headers, read_body, assets):
+def dispatch(store, runtime, host, origin, method, target, headers, read_body, assets, extension=None):
     if len(target) > 512 or not target.startswith("/") or target.startswith("//"):
         raise Problem(400, "INVALID_ROUTE")
     if sum(len(k) + len(v) for k, v in headers.items()) > 8192:
@@ -99,6 +99,11 @@ def dispatch(store, runtime, host, origin, method, target, headers, read_body, a
         if parsed.path == "/healthz":
             return 200, {"status": "AVAILABLE", "scope": "PROCESS_LIVENESS"}, "application/json; charset=utf-8"
         return 200, runtime.ready(token), "application/json; charset=utf-8"
+    if extension is not None:
+        extended = extension(method, parsed.path, body, token, args,
+                             expected_instance=expected_instance, expected_agent=expected_agent)
+        if extended is not None:
+            return extended
     if method == "GET" and parsed.path in ASSETS:
         if parsed.query:
             raise Problem(400, "INVALID_ROUTE")

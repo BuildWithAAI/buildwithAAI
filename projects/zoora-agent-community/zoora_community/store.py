@@ -278,6 +278,11 @@ class Store(PracticeMethods, CreatorWalletMethods, ForumMethods, WalletProofMeth
         row = connection.execute("SELECT * FROM credentials WHERE digest=?", (digest,)).fetchone()
         if row is None or not secrets.compare_digest(digest, row["digest"]) or row["revoked"] or at >= row["expires_ms"]:
             raise Problem(401, "UNAUTHORIZED")
+        return self._credential_principal(connection, row, at)
+
+    def _credential_principal(self, connection, row, at):
+        if row is None or row["revoked"] or at >= row["expires_ms"]:
+            raise Problem(401, "UNAUTHORIZED")
         principal = dict(row)
         if principal["role"] == "OPERATOR":
             operator = self._row(connection, "operators", principal["principal_id"])
@@ -291,6 +296,17 @@ class Store(PracticeMethods, CreatorWalletMethods, ForumMethods, WalletProofMeth
                     or self._access_held(connection, "OPERATOR", operator["id"])):
                 raise Problem(401, "UNAUTHORIZED")
         return principal
+
+    def recorded_work_authority(self, credential_id):
+        """Recheck a server-recorded job grant without persisting bearer secrets.
+
+        Internal worker interface only. It is not an HTTP authentication route.
+        """
+        identifier(credential_id)
+        with closing(self._connection()) as connection:
+            row = connection.execute("SELECT * FROM credentials WHERE id=?", (credential_id,)).fetchone()
+            principal = self._credential_principal(connection, row, self.clock())
+            return {"role": principal["role"], "principal_id": principal["principal_id"]}
 
     @staticmethod
     def _row(connection, table, record_id):

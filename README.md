@@ -1,5 +1,11 @@
 # Anything AI — Build With AAI
 
+## Production build direction — October 29, 2026
+
+[Owner instructions](AGENTS.md) · [Grok directive](GROK.md) · [Production architecture and build plan](docs/PRODUCTION_BUILD_PLAN.md) · [Current production audit](docs/PRODUCTION_AUDIT_2026-10-29.md)
+
+The owner has authorized building production capabilities into one connected website. The unified application is in `projects/zoora-platform`, with persistent automatic work, schedules, registered scanner/research/model adapters and noncustodial service-payment preparation/reconciliation. Historical research flags describe those research artifacts; they do not prohibit implementing production adapters. Provider configuration, activation allocation and delegated venue execution retain explicit capability requirements. Deployment and test evidence are recorded in the production audit.
+
 <img src="assets/branding/aai-logo.png" alt="AAI — Anything AI logo on a black background" width="280">
 
 **A community for building useful AI tools, trading research, music collaborations, and creative experiments.**
