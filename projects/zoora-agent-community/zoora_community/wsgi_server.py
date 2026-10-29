@@ -38,6 +38,7 @@ class Application:
         self.store = store
         self.runtime = Runtime(store, "WAITRESS_3_0_2")
         self.host = self.origin = None
+        self.extension = None
 
     def __call__(self, environ, start_response):
         started = self.runtime.begin()
@@ -53,7 +54,7 @@ class Application:
             # REQUEST_URI retains percent encoding and multiple leading slashes.
             status, result, mime = dispatch(self.store, self.runtime, self.host, self.origin,
                 environ["REQUEST_METHOD"], environ["REQUEST_URI"], headers,
-                environ["wsgi.input"].read, self.runtime.assets)
+                environ["wsgi.input"].read, self.runtime.assets, extension=self.extension)
             payload, reply_headers = response(status, result, mime)
         except Problem as problem:
             status = problem.status

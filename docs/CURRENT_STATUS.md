@@ -1,5 +1,11 @@
 # Current source and integration status
 
+## Production integration — October 29, 2026
+
+[Owner instructions](../AGENTS.md) · [Grok directive](../GROK.md) · [Production build plan](PRODUCTION_BUILD_PLAN.md) · [Production audit](PRODUCTION_AUDIT_2026-10-29.md)
+
+The owner has authorized building production capabilities into one connected website. The unified application is in `projects/zoora-platform`, with persistent automatic work, schedules, registered scanner/research/model adapters and noncustodial service-payment preparation/reconciliation. Historical research flags describe those research artifacts; they do not prohibit implementing production adapters. Provider configuration, activation allocation and delegated venue execution retain explicit capability requirements. Deployment and test evidence are recorded in the production audit.
+
 **Merged into `main` through [PR #80](https://github.com/BuildWithAAI/buildwithAAI/pull/80) on October 27, 2026 (America/Chicago).** All 25 integration workflows and 70 jobs passed at `782f85611cd2f3da6806ac9d7eede4d3a3ec1943`. Main readback confirmed the identical tested tree at merge `8a9e136c03afdc71bb9b0abe756803042f2d056c`. The [final thread-to-main audit](integration/THREAD_AUDIT_2026-10-27.md) records source preservation, CI results and remaining findings.
 
 **October 27, 2026 — consolidated development source.** The research, community, scanner, virtual-leasing and SFP development lines are now represented in one repository tree. The [consolidation record](integration/CONSOLIDATION_2026-10-27.md) identifies all five input tips and the 71 original draft PR heads. Its [machine-readable manifest](integration/SOURCE_HEADS_2026-10-27.json) preserves their exact identities.

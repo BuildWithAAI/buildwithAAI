@@ -1,0 +1,12 @@
+.git
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/*.sqlite3
+**/*.sqlite3-*
+**/*.credential.json
+**/owner.credential.json
+.env
+.env.*
+data
