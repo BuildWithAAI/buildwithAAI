@@ -427,6 +427,31 @@ class PaymentTests(Environment):
         self.payments.poll()
         self.assertEqual(self.payments.get(self.invoice["id"], address(1))["state"], "SUBMITTED")
 
+    def test_pending_transaction_does_not_starve_another_finalized_invoice(self):
+        other = self.payments.create("invoice_002", address(1), "1000")
+        second_signature = encode58(bytes([10]) * 64)
+        self.payments.submit(self.invoice["id"], self.signature, address(1))
+        self.payments.submit(other["id"], second_signature, address(1))
+        original = self.rpc.call
+        observed = []
+
+        def response(method, params):
+            if method == "getTransaction":
+                observed.append(params[0])
+                return transaction_for(other, second_signature) if params[0] == second_signature else None
+            return original(method, params)
+
+        # Force a deterministic order independent of random invoice IDs.
+        with self.ledger.db(True) as db:
+            db.execute("UPDATE payments SET updated_ms=updated_ms-1 WHERE id=?", (self.invoice["id"],))
+        with patch.object(self.rpc, "call", side_effect=response):
+            self.payments.poll()
+            self.payments.last_poll = 0
+            self.payments.poll()
+        self.assertEqual(observed, [self.signature, second_signature])
+        self.assertEqual(self.payments.get(self.invoice["id"], address(1))["state"], "SUBMITTED")
+        self.assertEqual(self.payments.get(other["id"], address(1))["state"], "CONFIRMED")
+
     def test_signature_cannot_be_reused_for_another_invoice(self):
         self.payments.submit(self.invoice["id"], self.signature, address(1))
         other = self.payments.create("invoice_002", address(1), "1000")

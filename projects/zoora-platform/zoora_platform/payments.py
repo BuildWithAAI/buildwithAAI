@@ -200,8 +200,14 @@ class Payments:
         if time.monotonic() - self.last_poll < 10:
             return
         self.last_poll = time.monotonic()
-        with self.ledger.db() as db:
-            row = db.execute("SELECT * FROM payments WHERE state='SUBMITTED' ORDER BY updated_ms LIMIT 1").fetchone()
+        with self.ledger.db(True) as db:
+            row = db.execute("SELECT * FROM payments WHERE state='SUBMITTED' ORDER BY updated_ms,id LIMIT 1").fetchone()
+            if row is not None:
+                # Rotate before a bounded RPC read, including pending and unavailable outcomes.
+                # One missing transaction must not starve every other payer's reconciliation.
+                last = db.execute("SELECT max(updated_ms) FROM payments WHERE state='SUBMITTED'").fetchone()[0]
+                db.execute("UPDATE payments SET updated_ms=? WHERE id=? AND state='SUBMITTED'",
+                           (max(self.ledger.clock(), last + 1), row["id"]))
         if row is None:
             return
         quote = json.loads(row["quote"])

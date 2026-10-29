@@ -35,7 +35,9 @@ The production build plan covers the remaining provider onboarding, pinned nativ
 
 ## Verification record
 
-Local verification: 36 new platform tests pass in normal and optimized Python; all 763 root tests and all 762 community tests pass. These suite counts overlap and must not be added as a count of distinct behaviors. Python compilation, JavaScript syntax and workflow YAML parsing also pass. Browser and container acceptance are required in the implementation PR before deployment; their final results and served revision will be appended after completion.
+Local verification: 37 new platform tests pass in normal and optimized Python; all 763 root tests and all 762 community tests pass. These suite counts overlap and must not be added as a count of distinct behaviors. Python compilation, JavaScript syntax and workflow YAML parsing also pass. The actual desktop/mobile browser and persistent container/restart acceptance passed at `63cd8e0c36216554faeee1082b57c8706613ee60` in [run 40959433106](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/40959433106). Final-head CI and the served deployment revision will be recorded after completion.
+
+Final integration review also repaired a reconciliation starvation defect: a pending RPC transaction now rotates to the back of the poll queue, so another payer's finalized invoice can confirm. A regression exercises both outcomes. The public proxy and backend inherit UID 10001, and restart acceptance verifies the supervisor has dropped root privileges.
 
 Tests use explicitly synthetic chain/model transports unless a separate live-provider acceptance is recorded. No real financial transaction or funded trade is asserted by unit tests, interface rendering, or a successful container build.
 
