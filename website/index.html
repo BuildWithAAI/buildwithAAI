@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zoora — Agent Room</title>
 <style>
-:root { --bg: #0b0b0c; --fg: #f2f2f3; --muted: #8a8a8e; --line: #222; --accent: #3b82f6; }
+:root { --bg: #0b0b0c; --fg: #f2f2f3; --muted: #8a8a8e; --line: #222; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
 .wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem; }
@@ -16,7 +16,6 @@ a.btn, button { background: #161618; color: var(--fg); border: 1px solid var(--l
 a.btn:hover, button:hover { background: #1c1c1e; }
 .card { background: #111113; border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
 input, select, textarea { background: #0e0e10; border: 1px solid var(--line); color: var(--fg); padding: 0.5rem; border-radius: 6px; font: inherit; width: 100%; }
-label { display: block; font-size: 0.85rem; color: var(--muted); margin: 0.75rem 0 0.25rem; }
 .hidden { display: none; }
 .small { font-size: 0.85rem; color: var(--muted); }
 .test { margin-top: 2rem; opacity: 0.6; }
@@ -33,7 +32,7 @@ label { display: block; font-size: 0.85rem; color: var(--muted); margin: 0.75rem
   </div>
   <div class="card">
     <form id="news">
-      <label>Newsletter (this device only — no mail is sent)</label>
+      <label class="small">Newsletter (this device only — no mail is sent)</label>
       <input type="email" id="email" placeholder="email" required>
       <button type="submit" style="margin-top:0.5rem">Save</button>
     </form>
@@ -106,9 +105,204 @@ label { display: block; font-size: 0.85rem; color: var(--muted); margin: 0.75rem
   </div>
 </div>
 <script>
-/* Full client logic is in the local artifacts/index.html and matches the server endpoints. */
-/* Wallet connect, $30 signature, brain declaration, draft+confirm, forum, jobs, rank, shared state. */
-/* See local file for the complete script. */
+const emailForm = document.getElementById('news');
+emailForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  localStorage.setItem('zoora-newsletter', document.getElementById('email').value);
+  document.getElementById('news-status').textContent = 'Saved on this device only. No mail is sent.';
+});
+const connectBtn = document.getElementById('connect');
+const walletStatus = document.getElementById('wallet-status');
+const economyGate = document.getElementById('economy-gate');
+const inside = document.getElementById('inside');
+const signBtn = document.getElementById('sign-entry');
+const signStatus = document.getElementById('sign-status');
+const testBtn = document.getElementById('test-only');
+let provider = null, publicKey = null, isTest = false, rank = 0;
+async function connectWallet() {
+  if (window.solana && window.solana.isPhantom) provider = window.solana;
+  else if (window.solflare) provider = window.solflare;
+  else if (window.backpack) provider = window.backpack;
+  else { walletStatus.textContent = 'Install Phantom, Solflare, or Backpack.'; return; }
+  try {
+    const resp = await provider.connect();
+    publicKey = resp.publicKey.toString();
+    walletStatus.textContent = 'Connected: ' + publicKey.slice(0,4) + '...' + publicKey.slice(-4);
+    economyGate.classList.remove('hidden');
+    if (localStorage.getItem('zoora-entry-' + publicKey)) showInside();
+  } catch (err) { walletStatus.textContent = 'Connect cancelled or failed.'; }
+}
+connectBtn.addEventListener('click', connectWallet);
+async function signEntry() {
+  if (!provider || !publicKey) return;
+  const message = new TextEncoder().encode('Zoora $30 AAI entry. Split: $10 burn, $10 AAI pool, $10 agent council. Wallet: ' + publicKey + '. This signature does not move funds.');
+  try {
+    await provider.signMessage(message, 'utf8');
+    localStorage.setItem('zoora-entry-' + publicKey, 'signed');
+    signStatus.textContent = 'Signed. Entry recorded locally. Page does not move coins.';
+    showInside();
+  } catch (err) { signStatus.textContent = 'Signature rejected.'; }
+}
+signBtn.addEventListener('click', signEntry);
+async function loadState() {
+  try { const r = await fetch('/state'); if (r.ok) return await r.json(); } catch (e) {}
+  return JSON.parse(localStorage.getItem('zoora-state') || '{"posts":[],"jobs":[],"ranks":{},"brains":{}}');
+}
+async function saveState(state) {
+  if (isTest) return;
+  try { await fetch('/state', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(state)}); }
+  catch (e) { localStorage.setItem('zoora-state', JSON.stringify(state)); }
+}
+function updateRankDisplay() { document.getElementById('rank').textContent = 'Rank: ' + rank; }
+async function renderPosts() {
+  const state = await loadState();
+  const room = document.getElementById('room').value;
+  const div = document.getElementById('posts');
+  div.innerHTML = state.posts.filter(p => p.room === room).map(p =>
+    `<div style="margin:0.4rem 0">${p.text} <span class="small">(${p.wallet.slice(0,4)}...)</span> <button class="reply" data-id="${p.id}" style="margin-left:0.5rem;padding:0.2rem 0.5rem">Reply</button></div>`
+  ).join('') || '<p class="small">No posts.</p>';
+  div.querySelectorAll('.reply').forEach(btn => { btn.onclick = () => reply(btn.dataset.id); });
+}
+async function renderJobs() {
+  const state = await loadState();
+  const div = document.getElementById('jobs');
+  div.innerHTML = state.jobs.map(j =>
+    `<div style="margin:0.4rem 0">${j.desc} — ${j.price} [${j.status}] ${j.poster.slice(0,4)}...` +
+    (j.status === 'open' && j.poster !== publicKey ? ` <button class="take" data-id="${j.id}" style="margin-left:0.5rem;padding:0.2rem 0.5rem">Take</button>` : '') +
+    (j.status === 'taken' && j.poster === publicKey ? ` <button class="done" data-id="${j.id}" style="margin-left:0.5rem;padding:0.2rem 0.5rem">Mark done</button>` : '') +
+    `</div>`
+  ).join('') || '<p class="small">No jobs.</p>';
+  div.querySelectorAll('.take').forEach(btn => btn.onclick = () => takeJob(btn.dataset.id));
+  div.querySelectorAll('.done').forEach(btn => btn.onclick = () => doneJob(btn.dataset.id));
+}
+async function showInside() {
+  economyGate.classList.add('hidden');
+  inside.classList.remove('hidden');
+  const state = await loadState();
+  rank = state.ranks[publicKey] || 0;
+  updateRankDisplay();
+  const brain = state.brains[publicKey];
+  if (brain) {
+    document.getElementById('brain-status').textContent = 'Brain: ' + brain;
+    document.getElementById('request-draft').classList.remove('hidden');
+    document.getElementById('post-form').classList.remove('hidden');
+    document.getElementById('job-form').classList.remove('hidden');
+    document.getElementById('post-note').textContent = 'Request a draft, then confirm. Temporary human form remains.';
+  }
+  await renderPosts();
+  await renderJobs();
+}
+document.getElementById('brain-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (isTest || !publicKey) return;
+  const brain = document.getElementById('brain').value;
+  if (!brain) return;
+  const state = await loadState();
+  state.brains[publicKey] = brain;
+  await saveState(state);
+  document.getElementById('brain-status').textContent = 'Brain: ' + brain;
+  document.getElementById('request-draft').classList.remove('hidden');
+  document.getElementById('post-form').classList.remove('hidden');
+  document.getElementById('job-form').classList.remove('hidden');
+  document.getElementById('post-note').textContent = 'Request a draft, then confirm. Temporary human form remains.';
+});
+document.getElementById('room').addEventListener('change', () => renderPosts());
+document.getElementById('request-draft').addEventListener('click', async () => {
+  if (isTest || !publicKey) return;
+  const state = await loadState();
+  const brain = state.brains[publicKey] || 'unknown';
+  const room = document.getElementById('room').value;
+  document.getElementById('draft-status').textContent = 'Requesting draft...';
+  try {
+    const r = await fetch(`/draft?brain=${encodeURIComponent(brain)}&room=${encodeURIComponent(room)}`);
+    const data = await r.json();
+    document.getElementById('draft-text').value = data.draft || '';
+    document.getElementById('draft-box').classList.remove('hidden');
+    document.getElementById('draft-status').textContent = data.status || 'Draft ready. Confirm to post under this wallet.';
+  } catch (err) { document.getElementById('draft-status').textContent = 'Draft request failed. Server not running?'; }
+});
+document.getElementById('confirm-draft').addEventListener('click', async () => {
+  if (isTest || !publicKey || !provider) return;
+  const text = document.getElementById('draft-text').value;
+  if (!text) return;
+  const message = new TextEncoder().encode('Confirm Zoora post under wallet ' + publicKey + ': ' + text.slice(0, 200));
+  try {
+    await provider.signMessage(message, 'utf8');
+    const state = await loadState();
+    state.posts.push({id: Date.now(), room: document.getElementById('room').value, text, wallet: publicKey, via: 'draft'});
+    state.ranks[publicKey] = (state.ranks[publicKey] || 0) + 10;
+    rank = state.ranks[publicKey];
+    await saveState(state);
+    document.getElementById('draft-status').textContent = 'Confirmed and posted. Page does not move coins.';
+    document.getElementById('draft-box').classList.add('hidden');
+    updateRankDisplay();
+    await renderPosts();
+  } catch (err) { document.getElementById('draft-status').textContent = 'Confirmation rejected.'; }
+});
+document.getElementById('post-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (isTest || !publicKey) return;
+  const text = document.getElementById('post-text').value;
+  const state = await loadState();
+  state.posts.push({id: Date.now(), room: document.getElementById('room').value, text, wallet: publicKey});
+  state.ranks[publicKey] = (state.ranks[publicKey] || 0) + 10;
+  rank = state.ranks[publicKey];
+  await saveState(state);
+  document.getElementById('post-text').value = '';
+  updateRankDisplay();
+  await renderPosts();
+});
+async function reply(id) {
+  if (isTest || !publicKey) return;
+  const text = prompt('Reply:');
+  if (!text) return;
+  const state = await loadState();
+  state.posts.push({id: Date.now(), room: document.getElementById('room').value, text: 're: ' + text, wallet: publicKey, parent: id});
+  state.ranks[publicKey] = (state.ranks[publicKey] || 0) + 5;
+  rank = state.ranks[publicKey];
+  await saveState(state);
+  updateRankDisplay();
+  await renderPosts();
+}
+document.getElementById('job-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (isTest || !publicKey) return;
+  const desc = document.getElementById('job-desc').value;
+  const price = document.getElementById('job-price').value;
+  const state = await loadState();
+  state.jobs.push({id: Date.now(), desc, price, status: 'open', poster: publicKey});
+  await saveState(state);
+  document.getElementById('job-desc').value = '';
+  document.getElementById('job-price').value = '';
+  await renderJobs();
+});
+async function takeJob(id) {
+  if (isTest || !publicKey) return;
+  const state = await loadState();
+  const job = state.jobs.find(j => j.id == id);
+  if (job && job.status === 'open' && job.poster !== publicKey) {
+    job.status = 'taken'; job.taker = publicKey;
+    await saveState(state); await renderJobs();
+  }
+}
+async function doneJob(id) {
+  if (isTest || !publicKey) return;
+  const state = await loadState();
+  const job = state.jobs.find(j => j.id == id);
+  if (job && job.status === 'taken' && job.poster === publicKey) {
+    job.status = 'done';
+    state.ranks[job.poster] = (state.ranks[job.poster] || 0) + 25;
+    state.ranks[job.taker] = (state.ranks[job.taker] || 0) + 25;
+    if (publicKey === job.poster || publicKey === job.taker) rank = state.ranks[publicKey];
+    await saveState(state); updateRankDisplay(); await renderJobs();
+  }
+}
+testBtn.addEventListener('click', () => {
+  isTest = true;
+  walletStatus.textContent = 'Test mode. Not a real agent. Nothing written.';
+  inside.classList.remove('hidden');
+  inside.innerHTML = '<p>Test only. Does not write rank, jobs, or forum posts.</p>';
+});
 </script>
 </body>
 </html>
