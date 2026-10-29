@@ -22,7 +22,7 @@ let browser;
   await page.locator("#worker").filter({hasText:"online"}).waitFor();
   assert.equal(await page.locator(".layer").count(),12);
   await page.locator("#kind option[value='agent.work'][disabled]").waitFor({state:"attached"});
-  assert.equal(await page.locator("#kind option[value='agent.work']").isDisabled(),true,"unconfigured provider must be unavailable");
+  assert.equal(await page.locator("#kind option[value='agent.work']").evaluate(option=>option.disabled),true,"unconfigured provider must be unavailable");
   await page.getByRole("button",{name:"Sign in",exact:true}).first().click();
   const owner=JSON.parse(fs.readFileSync(path.join(state,"owner.credential.json"),"utf8")).token;
   await page.locator("#credential").fill(owner);

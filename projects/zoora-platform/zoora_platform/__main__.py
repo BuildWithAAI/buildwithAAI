@@ -13,6 +13,7 @@ import sqlite3
 import time
 
 from zoora_community.store import SCHEMA_VERSION, Store
+from zoora_community.solana_rpc import SolanaRPC
 from zoora_community.wsgi_server import WSGIServer
 
 from .application import Platform
@@ -23,14 +24,14 @@ from .registry import Registry
 
 def prepare_community(state, owner):
     if not state.exists():
-        return Store.initialize(state, owner)
+        Store.initialize(state, owner)
     database = state / "community.sqlite3"
     with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, autocommit=True)) as db:
         version = db.execute("PRAGMA user_version").fetchone()[0]
     if version != SCHEMA_VERSION:
         backup = state.parent / ("community-schema-" + str(version) + "-" + str(time.time_ns()) + ".sqlite3")
         Store.migrate(state, backup)
-    store = Store(state)
+    store = Store(state, rpc=SolanaRPC())
     store.audit()
     return store
 

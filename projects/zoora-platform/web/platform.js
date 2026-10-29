@@ -5,16 +5,23 @@
   let refreshing = false;
   const tell = (message, error=false) => {$("notice").textContent=message;$("notice").className=error?"error":"";};
   async function api(path, options={}) {
+    const sessionToken = token;
     const headers = {Accept:"application/json"};
     if(token) headers.Authorization="Bearer "+token;
     const config={method:options.method||"GET",headers,cache:"no-store",credentials:"omit",signal:AbortSignal.timeout(20000)};
     if(options.body!==undefined){headers["Content-Type"]="application/json";config.body=JSON.stringify(options.body);}
     const response=await fetch(path,config);
     const data=await response.json();
+    if(headers.Authorization && token!==sessionToken) throw new Error("Session changed. Try again.");
     if(!response.ok) throw new Error(data.error||"Request failed");
     return data;
   }
   function node(tag,text,cls){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el;}
+  function saveAgentCredential(credential, handle){
+    const url=URL.createObjectURL(new Blob([JSON.stringify(credential,null,2)+"\n"],{type:"application/json"}));
+    const link=document.createElement("a");link.href=url;link.download="zoora-agent-"+handle+".credential.json";
+    document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
   async function authenticate(value){token=value;try{principal=await api("/v1/me");$("identity").textContent=principal.role.toLowerCase()+" · "+principal.principal_id.slice(0,8);$("connect").textContent="Sign out";$("auth").close();$("credential").value="";$("invitation").value="";$("submit-job").disabled=false;$("invoice-form").hidden=principal.role!=="OWNER";await refresh();}catch(error){token=null;principal=null;throw error;}}
   async function walletConnect(){
     const wallets=globalThis.ZooraWallet.get();
@@ -30,7 +37,7 @@
   $("auth-form").addEventListener("submit",async event=>{event.preventDefault();try{await authenticate($("credential").value.trim());}catch(error){$("auth-error").textContent=error.message;}});
   $("wallet-login").onclick=async()=>{try{await walletConnect();const previous=token;token=null;let proof;try{proof=await walletProof("/v1/creator/wallet/login/challenges",{wallet:selectedAccount.address});const result=await api("/v1/creator/wallet/login",{method:"POST",body:proof});await authenticate(result.credential.token);}catch(error){token=previous;throw error;}}catch(error){$("auth-error").textContent=error.message;}};
   $("claim-invite").onclick=async()=>{try{const nonce=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");const previous=token;token=null;let result;try{result=await api("/v1/invitations/claim",{method:"POST",body:{invitation_token:$("invitation").value.trim(),handle:$("operator-handle").value.trim(),claim_nonce:"icn1_"+nonce}});}catch(error){token=previous;throw error;}await authenticate(result.credential.token);tell("Invitation accepted. Register your agent with its wallet.");}catch(error){$("auth-error").textContent=error.message;}};
-  $("agent-form").addEventListener("submit",async event=>{event.preventDefault();try{if(!token||principal?.role!=="OPERATOR")throw new Error("Sign in with an operator invitation or linked creator wallet first.");await walletConnect();const linked=await api("/v1/creator/wallet");if(!linked.binding){const linkProof=await walletProof("/v1/creator/wallet/link-challenges",{wallet:selectedAccount.address});await api("/v1/creator/wallet/link",{method:"POST",body:linkProof});}const profile={handle:$("agent-handle").value.trim(),wallet:selectedAccount.address,capabilities:["research","scanner"],bio:""};const proof=await walletProof("/v1/wallet/challenges",profile);const result=await api("/v1/agents",{method:"POST",body:proof});tell("Agent @"+result.agent.handle+" registered. Its model connection is configured separately.");await refresh();}catch(error){tell(error.message,true);}});
+  $("agent-form").addEventListener("submit",async event=>{event.preventDefault();try{if(!token||principal?.role!=="OPERATOR")throw new Error("Sign in with an operator invitation or linked creator wallet first.");await walletConnect();const linked=await api("/v1/creator/wallet");if(!linked.binding){const linkProof=await walletProof("/v1/creator/wallet/link-challenges",{wallet:selectedAccount.address});await api("/v1/creator/wallet/link",{method:"POST",body:linkProof});}const profile={handle:$("agent-handle").value.trim(),wallet:selectedAccount.address,capabilities:["research","scanner"],bio:""};const proof=await walletProof("/v1/wallet/challenges",profile);const result=await api("/v1/agents",{method:"POST",body:proof});saveAgentCredential(result.credential,result.agent.handle);tell("Agent @"+result.agent.handle+" registered. Save the downloaded private credential for its worker. Its model connection is configured separately.");await refresh();}catch(error){tell(error.message,true);}});
   function kindChange(){const kind=$("kind").value;$("mint-label").hidden=kind!=="scanner.token";$("prompt-label").hidden=!(kind==="agent.generate"||kind==="agent.work");$("kind-note").textContent=kind.startsWith("research.")?"Research results preserve their evidence and qualification limits.":kind==="scanner.token"?"Uses the connected scanner to read Solana and market sources. Partial provider coverage remains explicit.":(kind==="agent.generate"||kind==="agent.work")?"Uses the configured API provider. Server work limits apply; this does not execute trades or shell commands.":"Reads the actual persistent community service.";}
   $("kind").addEventListener("change",kindChange);
   $("schedule-enabled").onchange=()=>{$("schedule-options").hidden=!$("schedule-enabled").checked;};

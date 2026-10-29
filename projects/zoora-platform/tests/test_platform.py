@@ -25,6 +25,7 @@ from zoora_platform.ledger import Ledger
 from zoora_platform.payments import Payments, PaymentRPC, encode58, transfer_message, TOKEN_PROGRAM, MEMO_PROGRAM
 from zoora_platform.providers import ModelProvider
 from zoora_platform.registry import Registry
+from zoora_platform.__main__ import prepare_community
 
 
 class Environment(unittest.TestCase):
@@ -45,6 +46,16 @@ class Environment(unittest.TestCase):
 class LedgerTests(Environment):
     def submit(self, request="request_001", principal="OPERATOR:a", payload=None):
         return self.ledger.submit(principal, request, "community.snapshot", {} if payload is None else payload)
+
+    def test_startup_preserves_identity_credential_and_read_only_rpc(self):
+        state, owner = self.root / "existing-community", self.root / "existing-owner.json"
+        first = prepare_community(state, owner)
+        credential = owner.read_bytes()
+        instance = first.call("GET", "/v1/status")[1]["instance_id"]
+        restarted = prepare_community(state, owner)
+        self.assertEqual(owner.read_bytes(), credential)
+        self.assertEqual(restarted.call("GET", "/v1/status")[1]["instance_id"], instance)
+        self.assertIsNotNone(restarted.rpc)
 
     def test_idempotency_preserves_one_job_across_credential_rotation(self):
         first, replay = self.submit(payload={"_authority": {"credential_id": "a"}})

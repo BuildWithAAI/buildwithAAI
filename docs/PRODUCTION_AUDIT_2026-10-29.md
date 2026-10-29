@@ -35,7 +35,7 @@ The production build plan covers the remaining provider onboarding, pinned nativ
 
 ## Verification record
 
-Local verification: 35 new platform tests pass in normal and optimized Python; all 763 root tests and all 762 community tests pass. These suite counts overlap and must not be added as a count of distinct behaviors. Python compilation, JavaScript syntax and workflow YAML parsing also pass. Browser and container acceptance are required in the implementation PR before deployment; their final results and served revision will be appended after completion.
+Local verification: 36 new platform tests pass in normal and optimized Python; all 763 root tests and all 762 community tests pass. These suite counts overlap and must not be added as a count of distinct behaviors. Python compilation, JavaScript syntax and workflow YAML parsing also pass. Browser and container acceptance are required in the implementation PR before deployment; their final results and served revision will be appended after completion.
 
 Tests use explicitly synthetic chain/model transports unless a separate live-provider acceptance is recorded. No real financial transaction or funded trade is asserted by unit tests, interface rendering, or a successful container build.
 
