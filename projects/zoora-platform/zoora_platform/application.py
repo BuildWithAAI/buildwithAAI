@@ -79,10 +79,17 @@ class Platform:
                 current = self.community.recorded_work_authority(envelope["credential_id"])
                 if current["role"] + ":" + current["principal_id"] != expected:
                     raise Problem(403, "WORK_AUTHORITY_CHANGED")
+                if (job["kind"].startswith("agent.") and current["role"] != "OWNER"
+                        and self.env.get("ZOORA_ALLOW_OPERATOR_COMPUTE") != "1"):
+                    raise Problem(403, "HOST_COMPUTE_GRANT_REVOKED")
 
             result = self.registry.execute(job["kind"], payload, guard=guard)
+            guard()
             result["job_id"] = job["id"]
             result["completed_at_ms"] = self.ledger.clock()
+            result["input_sha256"] = job["fingerprint"]
+            result["source_commit"] = self.source_commit()
+            result["runtime_version"] = VERSION
             self.ledger.complete(job, result=result)
         except Problem as error:
             self.ledger.complete(job, error=error.code)
@@ -90,12 +97,15 @@ class Platform:
             self.ledger.complete(job, error="REGISTERED_WORK_FAILED")
         return True
 
-    def status(self):
+    def source_commit(self):
         code = self.env.get("RAILWAY_GIT_COMMIT_SHA", self.env.get("ZOORA_SOURCE_SHA", ""))
         if len(code) != 40 or any(c not in "0123456789abcdef" for c in code):
             code = None
+        return code
+
+    def status(self):
         return {"service": "zoora-platform/" + VERSION, "observed_at_ms": int(time.time() * 1000),
-                "source_commit": code, "work": self.ledger.status(), "layers": self.registry.layers(),
+                "source_commit": self.source_commit(), "work": self.ledger.status(), "layers": self.registry.layers(),
                 "model": {"configured": self.registry.model.configured,
                           "provider": self.registry.model.provider if self.registry.model.configured else None},
                 "activation": {"price_usd": "30.00", "currency": "AAI", "allocation_bps": {"burn": 4000, "lock": 4000, "liquidity": 2000},

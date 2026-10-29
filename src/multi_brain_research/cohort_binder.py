@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Iterable
 
-from feature_loader import features_from_observations, label_adverse
+from .feature_loader import features_from_observations, label_adverse
 
 MIN_COINS = 6
 MIN_DEAD = 1

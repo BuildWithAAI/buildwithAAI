@@ -1,6 +1,7 @@
 """Production composition regressions. All chain/model transports here are SYNTHETIC."""
 from concurrent.futures import ThreadPoolExecutor
 import io
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
@@ -212,12 +213,16 @@ class PlatformTests(Environment):
         self.assertEqual(before, self.ledger.status()["counts"])
 
     def test_real_community_adapter_completes_durable_job_without_storing_bearer(self):
+        self.platform.env["ZOORA_SOURCE_SHA"] = "b" * 40
         response = self.submit()
         self.assertEqual(response["status"], 201)
         job = response["body"]["job"]
         self.assertTrue(self.platform.work_once())
         completed = self.request("/api/platform/jobs/" + job["id"], token=self.owner)["body"]["job"]
         self.assertEqual(completed["state"], "SUCCEEDED")
+        self.assertEqual(completed["result"]["source_commit"], "b" * 40)
+        logical = json.dumps({"kind": "community.snapshot", "payload": {}}, sort_keys=True, separators=(",", ":"))
+        self.assertEqual(completed["result"]["input_sha256"], hashlib.sha256(logical.encode()).hexdigest())
         self.assertEqual(completed["result"]["output"]["instance_id"], self.community.call("GET", "/v1/status")[1]["instance_id"])
         with self.ledger.db() as db:
             raw = db.execute("SELECT payload FROM jobs").fetchone()[0]
@@ -256,6 +261,18 @@ class PlatformTests(Environment):
         job = self.submit("agent.work", {"prompt": "Do a thing"})["body"]["job"]
         self.platform.work_once()
         self.assertEqual(self.ledger.get(job["id"], "OWNER:owner")["error"], "UNREGISTERED_AGENT_TOOL")
+
+    def test_revoked_compute_grant_blocks_queued_operator_model_work(self):
+        operator = self.community.call("POST", "/v1/operators", {"handle": "researcher"}, self.owner)[1]
+        self.platform.env["ZOORA_ALLOW_OPERATOR_COMPUTE"] = "1"
+        response = self.request("/api/platform/jobs", "POST", {"request_id": "operator_job_001",
+                                "kind": "agent.generate", "payload": {"prompt": "Synthetic work"}}, operator["credential"]["token"])
+        self.assertEqual(response["status"], 201)
+        self.platform.env.pop("ZOORA_ALLOW_OPERATOR_COMPUTE")
+        self.platform.work_once()
+        result = self.ledger.get(response["body"]["job"]["id"], "OWNER:owner", True)
+        self.assertEqual(result["state"], "FAILED")
+        self.assertEqual(result["error"], "HOST_COMPUTE_GRANT_REVOKED")
 
     def test_brain_readiness_reads_catalog_and_keeps_qualification_limits(self):
         job = self.submit("research.brain_readiness")["body"]["job"]
