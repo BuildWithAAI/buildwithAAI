@@ -1,0 +1,1092 @@
+{
+  "baseline": "3358ad17bb168c7f0063219202315a094eac01ac",
+  "source_tree": "cf8f8d28de4aa597df06647ef6cd4952e3734e38",
+  "python": "Python 3.12.14",
+  "modules_compiled": 253,
+  "compile_errors": [],
+  "selfcheck_entrypoints": 197,
+  "modules_without_selfcheck": 56,
+  "counts": {
+    "PASSED": 123,
+    "SKIPPED_MISSING_RESOURCE": 8,
+    "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION": 35,
+    "SKIPPED_NETWORK_DEPENDENT": 27,
+    "FAILED_INTERNAL_IMPORT": 1,
+    "SKIPPED_REQUIRED_ARGUMENT": 1,
+    "FAILED": 2
+  },
+  "qualification": "FIXTURE_SELFCHECK_ONLY_NOT_MARKET_OR_MODEL_QUALIFICATION",
+  "method": {
+    "environment": "clean; no credentials",
+    "limits": "5 CPU seconds; 10 wall seconds; 512 MiB per subprocess",
+    "isolation": "Linux seccomp denies networking, process execution and new filesystem writes before imports",
+    "skip_policy": "No invented graph, temporary-file or network inputs"
+  },
+  "checks": [
+    {
+      "module": "multi_brain_research.aai_train",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.abstain_board",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.abstain_credit",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.abstain_not_zero",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.abstain_rule",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.account_tape",
+      "check": "self_check",
+      "status": "SKIPPED_MISSING_RESOURCE",
+      "reason": "[Errno 2] No such file or directory: '/tmp/curve-account.json'"
+    },
+    {
+      "module": "multi_brain_research.admission_dispute",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.adverse_label",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.agent_hire",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.all_fails",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/workspace/artifacts/all_fails.txt'"
+    },
+    {
+      "module": "multi_brain_research.allowed_curve",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.answer_quorum",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.artifact_gate",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.artifact_inspect",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.big_reserve",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.board_history",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.bps_pack",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.brain_input",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.brain_score",
+      "check": "self_check",
+      "status": "SKIPPED_MISSING_RESOURCE",
+      "reason": "[Errno 2] No such file or directory: '/tmp/hemibrain.json'"
+    },
+    {
+      "module": "multi_brain_research.brain_votes",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.burn_receipt",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.calibrated_answer",
+      "check": "self_check",
+      "status": "SKIPPED_MISSING_RESOURCE",
+      "reason": "[Errno 2] No such file or directory: '/tmp/hemibrain.json'"
+    },
+    {
+      "module": "multi_brain_research.cap_and_hold",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.cap_command",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.capped_clean",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.capped_inventory",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.capped_reserve",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.causal_check",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.chain_atoms",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.chain_inventory",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.chain_pay",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.claim_in_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-claim-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.claim_log",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-claims.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.claim_reserved",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-claim-reserved.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.clean_board",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.clean_credit",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-credit-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.clean_file",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.closed_pass",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-closed-pass.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.cohort_binder",
+      "check": "self_check",
+      "status": "FAILED_INTERNAL_IMPORT",
+      "reason": "No module named 'feature_loader'"
+    },
+    {
+      "module": "multi_brain_research.command_pack",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.control_brains",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.cooldown_cap",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.cooldown_window",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.council_brains",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.credit_window",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.curve_account_decode",
+      "check": "self_check",
+      "status": "SKIPPED_MISSING_RESOURCE",
+      "reason": "[Errno 2] No such file or directory: '/tmp/curve-account.json'"
+    },
+    {
+      "module": "multi_brain_research.curve_decoder",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.curve_price",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.curve_tape",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.cut_reputation",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.dead_hire",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.dead_veto",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.decay_stack",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.disagree_refuse",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.dispute_command",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.dispute_decay",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.dispute_hash",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.dispute_note",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.dispute_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-dispute-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.dispute_pack_command",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-dispute-cmd.json'"
+    },
+    {
+      "module": "multi_brain_research.economy_pass",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.evidence_dispute",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.evidence_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.fail_closed",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.fail_report",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/workspace/artifacts/first_fail.txt'"
+    },
+    {
+      "module": "multi_brain_research.feature_memory",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.fee_cap",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.fee_log",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-fee-log.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.fee_price",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.fee_replay",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-replay.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.fee_router",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.first_brain",
+      "check": "run_self_check",
+      "status": "SKIPPED_REQUIRED_ARGUMENT",
+      "reason": "Requires an explicitly selected graph fixture; none fabricated"
+    },
+    {
+      "module": "multi_brain_research.five_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-5000-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.four_gates",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.fresh_slot",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.full_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-full-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.functional_command",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.functional_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-fn-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.functional_pass",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.gate_report",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/workspace/artifacts/gate_report.txt'"
+    },
+    {
+      "module": "multi_brain_research.gated_live",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.gated_router",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.graduated_pay",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.graduation_check",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.handle_claim",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.handle_collision",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.hash_log",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-hash-log.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.held_pay",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.hire_burn",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.hire_cooldown",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.hire_credit",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.hire_inventory",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.hire_log",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-hire-log.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.hire_pass",
+      "check": "self_check",
+      "status": "SKIPPED_MISSING_RESOURCE",
+      "reason": "[Errno 2] No such file or directory: '/tmp/hemibrain.json'"
+    },
+    {
+      "module": "multi_brain_research.hold_check",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.hold_receipt",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.incomplete_burn",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-incomplete-burn.json'"
+    },
+    {
+      "module": "multi_brain_research.inspect_first",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.inventory_gate",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.label_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-label-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.labeled_tape",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.live_curve",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.live_fee",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.live_pack",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.live_pass",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.live_window",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.marker_reject",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.match_dispute",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.match_pack",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.mint_inventory",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.missing_field",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-missing-field.json'"
+    },
+    {
+      "module": "multi_brain_research.missing_signed",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.new_wallet_fee",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.no_pack",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.old_credit",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.old_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-old-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.old_tape",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.one_fee",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.one_fee_pass",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.opsec_pass",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.opsec_policy",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.ordered_router",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.other_mint",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.pack_burn",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-burn-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.pack_replay",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-pack-replay.json'"
+    },
+    {
+      "module": "multi_brain_research.pass_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-signed-live.json'"
+    },
+    {
+      "module": "multi_brain_research.pass_report",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/workspace/artifacts/pass_report.txt'"
+    },
+    {
+      "module": "multi_brain_research.pay_not_skill",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.pdf_clean",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.practice_settle",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.priced_tape",
+      "check": "self_check",
+      "status": "SKIPPED_MISSING_RESOURCE",
+      "reason": "[Errno 2] No such file or directory: '/tmp/curve-account.json'"
+    },
+    {
+      "module": "multi_brain_research.quorum_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-quorum-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.reason_board",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.receipt_board",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.receipt_chain",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.receipt_council",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.receipt_hire",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.receipt_pack",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.receipt_pass",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.reputation_gate",
+      "check": "self_check",
+      "status": "FAILED",
+      "reason": "GATE_MISMATCH"
+    },
+    {
+      "module": "multi_brain_research.research_offer",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.reserved_command",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.reserved_pack",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.reserved_replay",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-reserved-replay.json'"
+    },
+    {
+      "module": "multi_brain_research.rpc_allow",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.safe_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-safe-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.same_hash",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.sandbox_board",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.sandbox_command",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.sandbox_council",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.score_floor",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.score_lift",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.second_brain",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.second_claim",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-john.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.secret_redact",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.separate_logs",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.shape_features",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.short_account",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.short_hold",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.signed_pack",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.skill_claim",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.skill_closed",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.skill_file",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.skill_guard",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/workspace/artifacts/skill.txt'"
+    },
+    {
+      "module": "multi_brain_research.snapshot_pay",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.specialist_board",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.specialist_market",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.specialist_quorum",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.specialist_registry",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.stale_slot",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.tape_age",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.tape_brain",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.tape_hire",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-yes-tape.jsonl'"
+    },
+    {
+      "module": "multi_brain_research.tape_pass",
+      "check": "self_check",
+      "status": "FAILED",
+      "reason": "cannot import name 'to_tape' from 'multi_brain_research.curve_tape' (/workspace/scratch/6797636cc2aa/buildwithaai-live/src/multi_brain_research/curve_tape.py)"
+    },
+    {
+      "module": "multi_brain_research.ten_step",
+      "check": "self_check",
+      "status": "SKIPPED_MISSING_RESOURCE",
+      "reason": "[Errno 2] No such file or directory: '/tmp/hemibrain.json'"
+    },
+    {
+      "module": "multi_brain_research.third_brain",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.three_disputes",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.three_way_score",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.train_board",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/workspace/artifacts/train_report.txt'"
+    },
+    {
+      "module": "multi_brain_research.train_pack",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.two_disputes",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.two_receipt_consensus",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.two_row_score",
+      "check": "self_check",
+      "status": "SKIPPED_MISSING_RESOURCE",
+      "reason": "[Errno 2] No such file or directory: '/tmp/hemibrain.json'"
+    },
+    {
+      "module": "multi_brain_research.unfilled_job",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.unpaid_kinds",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.vault_chain",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.vault_command",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.vault_credit",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.vault_hold",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.vault_pack",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/tmp/aai-vault-pack.json'"
+    },
+    {
+      "module": "multi_brain_research.veto_router",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.volume_sim",
+      "check": "self_check",
+      "status": "SKIPPED_FILESYSTEM_WRITE_OR_PERMISSION",
+      "reason": "[Errno 1] Operation not permitted: '/workspace/artifacts/aai_fun_train.json'"
+    },
+    {
+      "module": "multi_brain_research.weighted_consensus",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.zero_both",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.zero_credit",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    },
+    {
+      "module": "multi_brain_research.zero_floor",
+      "check": "self_check",
+      "status": "PASSED"
+    },
+    {
+      "module": "multi_brain_research.zero_wallet",
+      "check": "self_check",
+      "status": "SKIPPED_NETWORK_DEPENDENT",
+      "reason": "urllib.Request"
+    }
+  ],
+  "post_repair": {
+    "scope": "Three reported defects only; not a claim the 71 skipped entry points passed",
+    "research_regressions": 7,
+    "platform_regressions": 38,
+    "qualification_changed": false
+  }
+}

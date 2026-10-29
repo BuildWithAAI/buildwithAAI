@@ -5,10 +5,26 @@ Store slot, reserves, and price. The brain can read the tape. No send.
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from pathlib import Path
 
 from .live_curve import read_curve
 from .rpc_allow import ALLOWED
+from .curve_decoder import CLASSIFICATION, REQUIRED, CurveError, decode_curve_event
+from .inventory_gate import CURVE, TOKEN
+
+
+def to_tape(event: dict) -> dict | None:
+    """Validate this pair's supplied fixture without granting chain provenance."""
+    if (type(event) is not dict or event.get("mint") != TOKEN
+            or event.get("curve_account") != CURVE
+            or set(event).difference((*REQUIRED, "classification"))
+            or event.get("classification", CLASSIFICATION) != CLASSIFICATION):
+        return None
+    try:
+        return decode_curve_event(deepcopy(event))
+    except (CurveError, OverflowError):
+        return None
 
 
 def capture(endpoint: str, path: Path) -> dict:

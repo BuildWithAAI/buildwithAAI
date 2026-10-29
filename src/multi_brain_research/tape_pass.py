@@ -1,6 +1,7 @@
-"""Feed a curve tape row into the closed pass.
+"""Feed a supplied curve fixture into the closed demo-credit pass.
 
-The row must be this mint. It is evidence for the hire, not an order.
+The row must be this pair. It cannot establish chain provenance, a holding
+period, paid eligibility or a real settlement. No order is sent.
 """
 from __future__ import annotations
 
@@ -27,26 +28,32 @@ def run_with_tape(event: dict, log_path, credits: int = 10_000_000) -> dict:
         log_path,
     )
     result["tape_slot"] = tape["slot"]
+    result["classification"] = tape["classification"]
+    result["event_sha256"] = tape["event_sha256"]
+    result["settlement_classification"] = "DEMO_CREDITS_ONLY"
+    result["quote_unit"] = "MICRO_DEMO_USD"
+    result["financial_execution"] = False
     return result
 
 
 def self_check() -> dict:
     from pathlib import Path
-    path = Path("/tmp/aai-tape-pass.jsonl")
-    if path.exists():
-        path.unlink()
-    result = run_with_tape({
-        "mint": TOKEN,
-        "curve_account": "Eq93BkkDVBLkjgHxZU6qVk7hrnzTnAyVfCNrXCVix1PL",
-        "virtual_reserves": {"base": 1_000_000, "quote": 1_000},
-        "real_reserves": {"base": 1, "quote": 1},
-        "fee_bps": 100,
-        "slot": 9,
-        "signature": "sig",
-    }, path)
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory(prefix="aai-tape-pass-") as folder:
+        result = run_with_tape({
+            "mint": TOKEN,
+            "curve_account": "Eq93BkkDVBLkjgHxZU6qVk7hrnzTnAyVfCNrXCVix1PL",
+            "virtual_reserves": {"base": 1_000_000, "quote": 1_000},
+            "real_reserves": {"base": 1, "quote": 1},
+            "fee_bps": 100,
+            "slot": 9,
+            "signature": "sig",
+        }, Path(folder) / "demo.jsonl")
     if result.get("tape_slot") != 9 or not result.get("paid"):
         raise RuntimeError("TAPE_PASS_MISMATCH")
-    return {"slot": result["tape_slot"], "paid": result["paid"], "action": "NO_EXECUTION"}
+    return {"slot": result["tape_slot"], "paid": result["paid"], "action": "NO_EXECUTION",
+            "classification": result["classification"], "quote_unit": result["quote_unit"],
+            "financial_execution": False}
 
 
 if __name__ == "__main__":

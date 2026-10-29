@@ -45,8 +45,9 @@ def penalize(score: int, points: int) -> int:
 
 def self_check() -> dict:
     aged = decay(80, 2)
-    blocked = gate(aged, 70)
-    if blocked["funds_held"] or blocked["hire_allowed"]:
+    allowed = gate(aged, aged)
+    blocked = gate(aged, aged + 1)
+    if blocked["funds_held"] or blocked["hire_allowed"] or not allowed["hire_allowed"]:
         raise GateError("GATE_MISMATCH")
     return {"aged": aged, "reason": blocked["reason"], "action": "NO_EXECUTION"}
 
