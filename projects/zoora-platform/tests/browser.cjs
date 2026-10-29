@@ -21,7 +21,8 @@ let browser;
   await page.getByRole("heading",{name:"Economy control room"}).waitFor();
   await page.locator("#worker").filter({hasText:"online"}).waitFor();
   assert.equal(await page.locator(".layer").count(),12);
-  assert.equal(await page.locator("#kind option[value='agent.work']").isDisabled(),true);
+  await page.locator("#kind option[value='agent.work'][disabled]").waitFor({state:"attached"});
+  assert.equal(await page.locator("#kind option[value='agent.work']").isDisabled(),true,"unconfigured provider must be unavailable");
   await page.getByRole("button",{name:"Sign in",exact:true}).first().click();
   const owner=JSON.parse(fs.readFileSync(path.join(state,"owner.credential.json"),"utf8")).token;
   await page.locator("#credential").fill(owner);
@@ -46,7 +47,7 @@ let browser;
   await page.screenshot({path:"platform-ui-results/desktop.png",fullPage:true});
   await page.setViewportSize({width:390,height:844});
   await page.locator("#overview").scrollIntoViewIfNeeded();
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,"mobile page must fit the viewport");
   await page.screenshot({path:"platform-ui-results/mobile.png",fullPage:true});
   await page.getByRole("button",{name:"Sign out",exact:true}).click();
   assert.equal(await page.locator("#schedules").innerText(),"");
@@ -56,4 +57,4 @@ let browser;
  }finally{
   if(browser)await browser.close();child.kill("SIGTERM");
  }
-})().catch(error=>{console.error(error.message);process.exitCode=1;});
+})().catch(error=>{console.error(error.stack);process.exitCode=1;});

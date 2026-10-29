@@ -7,7 +7,13 @@ import urllib.request
 
 root = Path("/data")
 deadline = time.monotonic() + 25
-while not (root / "owner.credential.json").is_file():
+while True:
+    try:
+        if (root / "owner.credential.json").is_file():
+            break
+    except PermissionError:
+        # The application first claims the freshly mounted private volume.
+        pass
     if time.monotonic() > deadline:
         raise RuntimeError("platform did not initialize its private owner record")
     time.sleep(0.1)
