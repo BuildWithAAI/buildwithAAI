@@ -1,20 +1,23 @@
 # AAI.fun simulator path
 
-This is the meme-coin training simulator. It is not a launchpad and it does not send.
+Training is on real chain data. Tickers are hidden. Times and transaction counts stay.
 
 Code
-- `src/solana_research/aai_fun_sim.py`
+- `src/solana_research/aai_fun_sim.py` — synthetic shapes, labeled synthetic
+- `src/solana_research/anon_tape.py` — real block, ticker hidden
 - `scripts/run_aai_fun_sim.py`
+- `scripts/run_anon_tape.py`
 
-Docs stay in this folder. Output, when the script is run, goes in `research/aai-fun/sim/`.
+Output
+- `research/aai-fun/sim/shapes.json` — synthetic
+- `research/aai-fun/sim/real.jsonl` — real, anonymized
 
 Rules
-- Launch, rug, and long-term shapes are synthetic.
-- A row is REAL only if it came from the allowlisted mainnet RPC.
+- A real row keeps slot, block time, and transaction count.
+- The mint and ticker are replaced with a stable alias.
+- Synthetic cannot enter the real file.
 - Synthetic cannot hire.
-- The other AAI mint is refused.
-- The curve vault is refused.
 - Skill stays `NOT_ESTABLISHED`.
 - Action is `NO_EXECUTION`.
 
-The economy gates remain in `src/multi_brain_research/`. This file is the connection, not a second copy of those gates.
+The economy gates remain in `src/multi_brain_research/`.
