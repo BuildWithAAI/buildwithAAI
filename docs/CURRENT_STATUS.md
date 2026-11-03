@@ -38,7 +38,7 @@ The combined 763 root tests need the scanner runtime dependency: install `requir
 
 - The success catalogue has no qualified successful blueprints under the supported V1 research format. Accepted recipe trials and repeated work do not establish profitability, independent customers or revenue.
 - Source observations and neural/advisory training retain their partial, untrusted or synthetic classifications. A successful transport or test is not a qualified market signal.
-- The intermittent `BLUEPRINT_RESTART_DUPLICATE` and earlier `SERVICE_NOT_FOUND` observations remain unresolved; successful reruns do not establish a fix.
+- Reapplying a service create onto an existing record id is rejected. A repeated mandate or order command used to replace the stored record, which cleared revocation, turned an accepted order back into `OPEN`, or reserved a cancelled order again. That is the restart-duplicate effect behind `BLUEPRINT_RESTART_DUPLICATE`. Unknown order, listing, and mandate ids still fail with `SERVICE_NOT_FOUND`; an id that is already in the ledger stays addressable. Identical request-log retries still return the original result and do not apply the create again.
 - Provider login/usage accounting, original autonomous theses, funded wallet execution, paid settlement, token-funded compute, any BRAIN/AAI launch/pairing or holder rewards, and native-chain transcript anchoring remain unfinished or proposed.
 - No new public deployment, two-physical-host commissioning, production capacity or security certification is established by consolidating source. Existing private-pilot deployment claims remain dated historical records, not a fresh operational check.
 

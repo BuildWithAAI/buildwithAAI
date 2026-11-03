@@ -107,7 +107,7 @@ The domain regressions cover prices, immutable versions, exact terms, access rol
 
 Negative copies delete events, rewrite/re-hash price histories, alter licensed instructions, forge profitability or authority, remove trial history, downgrade the protocol, and change withdrawal pre-state or service-command linkage. Outer manifests are recomputed and every copy must fail. A hostile host rewriting all records and all externally trusted anchors remains outside this local-consistency claim.
 
-An interrupted integration lab writes `failure.json` when possible, retaining only an error code, operation/public IDs, source locations and completed check names. Credentials, command bodies, seller text and raw exception messages are excluded. The package remains INCOMPLETE. This diagnostic does not establish whether an uncertain request committed; inspect the retained ledgers before retrying. The earlier non-reproduced SERVICE_NOT_FOUND observation remains unresolved; these diagnostics improve evidence for any recurrence.
+An interrupted integration lab writes `failure.json` when possible, retaining only an error code, operation/public IDs, source locations and completed check names. Credentials, command bodies, seller text and raw exception messages are excluded. The package remains INCOMPLETE. This diagnostic does not establish whether an uncertain request committed; inspect the retained ledgers before retrying. A repeated service create for an id already in the ledger fails with `SERVICE_DUPLICATE_RECORD` and does not replace that mandate or order. A missing id still fails with `SERVICE_NOT_FOUND`. Identical retries resolve through the request log and do not apply the create again.
 
 ## Authentic experience and usable data
 
