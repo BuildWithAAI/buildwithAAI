@@ -20,6 +20,7 @@ from .application import Platform
 from .ledger import Ledger
 from .providers import ModelProvider
 from .registry import Registry
+from .vault import Vault
 
 
 def prepare_community(state, owner):
@@ -61,7 +62,7 @@ def main():
     ledger = Ledger(root / "platform.sqlite3")
     server = WSGIServer(community, args.port)
     registry = Registry(community, ModelProvider(), root)
-    app = Platform(community, ledger, registry, server.application.runtime.assets["/"][0])
+    app = Platform(community, ledger, registry, server.application.runtime.assets["/"][0], vault=Vault(ledger))
     server.application.extension = app.route
     app.start()
 
@@ -70,7 +71,8 @@ def main():
 
     signal.signal(signal.SIGTERM, stop)
     print(json.dumps({"event": "ZOORA_PLATFORM_READY", "community_schema": SCHEMA_VERSION,
-                      "automatic_registered_worker": True, "private_keys_held": False}), flush=True)
+                      "automatic_registered_worker": True, "private_keys_held": False,
+                      "provider_vault": "SEALED"}), flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

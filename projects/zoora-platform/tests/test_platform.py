@@ -159,7 +159,7 @@ class FakeModel:
     def __init__(self, decisions=None):
         self.decisions = list(decisions or [])
         self.reserve = None
-    def generate(self, prompt):
+    def generate(self, prompt, credential=None):
         if self.reserve:
             self.reserve()
         return {"text": json.dumps(self.decisions.pop(0)), "provider": "SYNTHETIC", "usage": {}}
