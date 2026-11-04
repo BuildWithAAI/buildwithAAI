@@ -19,7 +19,9 @@ flowchart LR
   Tape --> Round[Observation coordinator]
   Crow --> Round
   Fly --> Round
-  Round --> Paper[Paper log and backtest]
+  Round --> Thesis[Thesis JSON and markdown]
+  Thesis --> PaperBook[Paper ledger]
+  PaperBook --> LiveStub[Live adapter stub stays off]
 ```
 
 The coordinator's research signal stays `ABSTAIN` while FlyVis has no market readout. The numeric fused score is only the mean of heuristic ballots that actually voted, with confidence reduced by every brain that abstained.
@@ -43,7 +45,10 @@ The coordinator's research signal stays `ABSTAIN` while FlyVis has no market rea
 | Helius or any other keyed RPC | Not used | `HELIUS_API_KEY` is ignored. A key in the URL would leave the allowlist |
 | FlyVis forward pass | Missing in this process | The pinned CPU workflow is separate |
 | Crow connectome | Missing | Do not relabel the memory heuristic as biology |
-| Wallet signer, venue order API | Absent on purpose | Paper mode only |
+| Snapshot store `/cursor/stores/bot/giant-brain-data/` | Reader in `snapshot_feed.py`. DexScreener pair rows are the metric. GeckoTerminal rows use the same fields. Pump.fun live list is often HTTP 403 in the collector | None |
+| Direct DexScreener and GeckoTerminal HTTPS reads | Same hosts and path prefixes as the collector. Any other URL is refused | None |
+| Holder concentration | Not in the snapshot schema | The thesis flag stays `UNAVAILABLE` until a real holder source is passed in |
+| Wallet signer and venue orders | Stub only | Live sending is not implemented |
 
 An account snapshot with one price does not invent a return. Flow and liquidity change stay missing until both sides of the comparison are present.
 
@@ -76,6 +81,16 @@ python scripts/run_giant_brain.py \
   --memory crow.jsonl
 ```
 
+Replay the 5-minute snapshot store. Theses at or above 600000 ppm are written as JSON and markdown. A paper ledger opens a simulated long at the observed price and closes it on a later snapshot when the stop, the take-profit, or the horizon is hit:
+
+```bash
+python scripts/run_giant_brain.py \
+  --snapshot-root /cursor/stores/bot/giant-brain-data \
+  --theses-dir theses \
+  --ledger paper.jsonl \
+  --threshold-ppm 600000
+```
+
 Optional public DEX read, still no order:
 
 ```python
@@ -92,6 +107,56 @@ RPC_URL=https://api.mainnet-beta.solana.com CAPTURE_OUT=captures \
 ```
 
 Run that with `PYTHONPATH=src python -m multi_brain_research.host_capture`.
+
+## Theses
+
+`write_thesis` emits `AAI_GIANT_BRAIN_THESIS_V1` only when the fused score is at least the threshold (default 600000 ppm). The JSON and the markdown summary include:
+
+- token, symbol, pair address, and venue
+- bull and bear points that cite an observed field
+- each brain's paper-long ppm and the reason it voted or abstained
+- risk flags for liquidity, holder concentration, pair age, and volume
+- a proposed entry, stop, and take-profit
+- horizon, confidence, and a provenance receipt
+
+Entry is the observed `price_usd`. The stop distance is the absolute hourly percent move, clamped by rule constants `0.05` and `0.40` that are stored on the thesis as rule constants. Take-profit is two times that distance. Holder concentration is `UNAVAILABLE` with reason `NOT_IN_SNAPSHOT` unless the row actually contains `holder_concentration`.
+
+An LLM may phrase the narrative only when `ZOORA_MODEL_PROVIDER`, `ZOORA_MODEL_NAME`, and `ZOORA_MODEL_API_KEY` are set. The text is kept only if every number in it already appears in the thesis. Otherwise the deterministic markdown is kept and `narrative_source` is `NARRATIVE_REJECTED_UNSOURCED_NUMBER`. No key means no provider call.
+
+## Paper ledger
+
+`paper_trader` opens one simulated long per thesis. The mark is the observed price. Slippage is not a quote: snapshots have no bid/ask, so the fill assumes `max(5, min(300, round(50000 / liquidity_usd)))` basis points and records that formula. Exit on stop uses the thesis stop, exit on take-profit uses the thesis target, and a timeout exits at the later observed mark. One mark that crosses both stop and target closes at the stop.
+
+Metrics from the ledger: win rate, average R, max drawdown, net pnl, and per-brain attribution. A brain with no numeric vote, including FlyVis while it abstains, is attributed zero. Fees are `NOT_OBSERVED`.
+
+## Live trading is not enabled
+
+`execution.LiveAdapter.submit` never sends. Risk limits run first:
+
+| Check | Refusal |
+| --- | --- |
+| `kill_switch` | `KILL_SWITCH` |
+| mint not in `token_allowlist` | `TOKEN_NOT_ALLOWLISTED` |
+| venue not in `venue_allowlist` | `VENUE_NOT_ALLOWLISTED` |
+| notional above `max_position_notional_usd` | `MAX_POSITION` |
+| open count at `max_open_positions` | `MAX_OPEN_POSITIONS` |
+| `daily_loss_usd` at `max_daily_loss_usd` | `MAX_DAILY_LOSS` |
+
+A pass still does not send. Live opt-in requires both:
+
+1. `GIANT_BRAIN_LIVE_TRADING=enabled`
+2. `GIANT_BRAIN_LIVE_CONFIG` pointing at a separate JSON file whose `live_enabled` is true
+
+`config/giant-brain-live.example.json` ships with `live_enabled` false and `kill_switch` true. A config that contains `private_key`, `api_key`, `secret`, `seed`, or `mnemonic` is rejected. With both opt-ins set, `submit` returns `LIVE_ADAPTER_NOT_IMPLEMENTED` and `sent: false`.
+
+Going live later needs all of the following, and none of them are done here:
+
+- a venue adapter that can build and submit an order, reviewed outside this stub
+- a signer that stays outside the repository; no key file is committed
+- the env flag and a private config, with the kill switch off only for that run
+- allowlists for the exact mints and venues
+- the position, daily-loss, and open-count limits filled from the operator's own numbers
+- holder-concentration data if that risk flag should ever be `OBSERVED`
 
 ## Safety that this change locks in
 
@@ -110,5 +175,6 @@ Run that with `PYTHONPATH=src python -m multi_brain_research.host_capture`.
 2. Capture more than the Anything AI curve: `host_capture` already takes a mint and curve. Keep dead coins in the set the capture plan requires, and point the paper backtest at those JSONL files.
 3. Schedule a paper pass over scanner reports. Compare tape-only pnl with tape-plus-crow-recall on a later window that was not used to fill memory.
 4. Publish the paper log's hit rate, abstention rate, and pnl-before-fees. Fees stay unapplied until a capture actually contains `fee_bps` for that fill. Do not treat the heuristic as calibrated.
-5. Leave order entry, wallet keys, and keyed RPC URLs out until a separate signer and reconciliation design exists. A login signature is not permission to trade.
-6. If a crow connectome or other animal model is added, give it its own module id and pins. Do not rename `crow_memory_v1`.
+5. Add a real holder-concentration source before treating that risk flag as anything other than unavailable. The snapshot store does not carry it.
+6. Implement a venue adapter only after the signer, allowlists, and limits above exist. `LiveAdapter` must keep returning `sent: false` until that adapter is a separate change.
+7. If a crow connectome or other animal model is added, give it its own module id and pins. Do not rename `crow_memory_v1`.

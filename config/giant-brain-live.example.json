@@ -1,0 +1,9 @@
+{
+  "live_enabled": false,
+  "kill_switch": true,
+  "max_position_notional_usd": 25,
+  "max_daily_loss_usd": 50,
+  "max_open_positions": 2,
+  "token_allowlist": [],
+  "venue_allowlist": []
+}

@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from multi_brain_research.giant_brain import fuse, paper_backtest, source_status  # noqa: E402
 from multi_brain_research.paper_log import append  # noqa: E402
+from multi_brain_research.watch import replay  # noqa: E402
 
 
 def main() -> int:
@@ -18,10 +19,21 @@ def main() -> int:
     parser.add_argument("--memory", type=Path, help="Crow memory JSONL. Created when a backtest records outcomes")
     parser.add_argument("--paper-log", type=Path)
     parser.add_argument("--now-ms", type=int, default=1_700_000_000_000)
+    parser.add_argument("--snapshot-root", type=Path, help="Giant Brain snapshot directory")
+    parser.add_argument("--theses-dir", type=Path, help="Where thesis JSON and markdown are written")
+    parser.add_argument("--ledger", type=Path, help="Paper position ledger JSONL")
+    parser.add_argument("--threshold-ppm", type=int, default=600_000)
     parser.add_argument("--status", action="store_true", help="Print which sources are configured")
     args = parser.parse_args()
     if args.status:
         print(json.dumps(source_status(), sort_keys=True))
+    if args.snapshot_root:
+        if args.theses_dir is None or args.ledger is None:
+            parser.error("--snapshot-root requires --theses-dir and --ledger")
+        print(json.dumps(replay(
+            args.snapshot_root, args.ledger, args.theses_dir, threshold_ppm=args.threshold_ppm,
+        ), sort_keys=True))
+        return 0
     if args.tape is None and args.observation is None:
         if args.status:
             return 0
