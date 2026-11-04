@@ -29,7 +29,17 @@ def _files(root: Path) -> list[str]:
     return found
 
 
-def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None) -> dict:
+def _point(record: dict, stamp) -> dict:
+    return {
+        "price_usd": record.get("price_usd"),
+        "buys_h1": record.get("buys_h1"),
+        "sells_h1": record.get("sells_h1"),
+        "liquidity_usd": record.get("liquidity_usd"),
+        "ts": stamp,
+    }
+
+
+def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None) -> dict:
     root = resolve_root(root)
     if score is None:
         from .giant_brain import fuse
@@ -38,6 +48,8 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
             return fuse(observation, now_ms=now_ms)
 
     opened = closed = skipped = 0
+    seen: dict[str, dict] = {}
+    history: dict[str, list[dict]] = {}
     for relative in _files(root):
         records = load_snapshot(root, relative)
         pairs = list(canonical_pairs(records).values())
@@ -49,9 +61,17 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
             except SnapshotError:
                 skipped += 1
                 continue
+            price = record.get("price_usd")
+            if type(price) is bool or type(price) not in (int, float) or not price > 0:
+                skipped += 1
+                continue
+            mint = record.get("token_address")
+            prior = seen.get(mint) if type(mint) is str else None
+            trail = list(history.get(mint, [])) if type(mint) is str else []
+            trail.append(_point(record, stamp))
             thesis_id = None
             for position in state(ledger)["open"].values():
-                if position["mint"] == record.get("token_address") and type(record.get("price_usd")) in (int, float):
+                if position["mint"] == mint and type(record.get("price_usd")) in (int, float):
                     try:
                         result = mark(ledger, position["thesis_id"], mark_price_usd=record["price_usd"], now_ms=now_ms)
                     except PaperError:
@@ -60,10 +80,15 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
                     if result.get("type") == "CLOSE":
                         closed += 1
                     thesis_id = position["thesis_id"]
-            if thesis_id is not None:
+            if type(mint) is str:
+                history[mint] = trail
+                seen[mint] = record
+            if thesis_id is not None or (not_before_ms is not None and now_ms < not_before_ms):
                 continue
             try:
-                signal = score(observation_from_pair(record), now_ms)
+                observation = observation_from_pair(record, prior)
+                observation["fly_history"] = trail
+                signal = score(observation, now_ms)
                 thesis = write_thesis(signal, record, now_ms=now_ms, threshold_ppm=threshold_ppm)
             except (SnapshotError, ThesisError, ValueError):
                 skipped += 1

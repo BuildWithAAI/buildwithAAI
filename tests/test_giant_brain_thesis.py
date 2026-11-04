@@ -26,6 +26,7 @@ from src.multi_brain_research.snapshot_feed import (
     load_latest,
     load_snapshot,
     observation_from_pair,
+    parse_time_ms,
 )
 from src.multi_brain_research.thesis import numbers_allowed, validate_thesis, write_files, write_thesis
 from src.multi_brain_research.watch import replay
@@ -241,6 +242,33 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(result["closed"], 1)
             self.assertEqual(result["live_orders"], False)
             self.assertTrue(any((root / "theses").glob("*.md")))
+
+    def test_replay_scores_only_after_the_cut_and_keeps_earlier_prices(self):
+        seen = []
+
+        def score(observation, now_ms):
+            seen.append(observation)
+            return _signal()
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "data"
+            day = root / "snapshots" / "2026-11-04"
+            day.mkdir(parents=True)
+            first = _record(ts="2026-11-04T05:20:01+00:00", fetched_at="2026-11-04T05:20:01+00:00", price_usd=1.0)
+            second = _record(ts="2026-11-04T05:25:01+00:00", fetched_at="2026-11-04T05:25:01+00:00", price_usd=0.5)
+            (day / "0520.jsonl").write_text(json.dumps(first) + "\n")
+            (day / "0525.jsonl").write_text(json.dumps(second) + "\n")
+            (root / "latest.json").write_text(json.dumps({"snapshot_file": "snapshots/2026-11-04/0525.jsonl", "sources": {}}))
+            result = replay(
+                root, root / "paper.jsonl", root / "theses",
+                score=score, not_before_ms=parse_time_ms(second["ts"]),
+            )
+            self.assertEqual(len(seen), 1)
+            self.assertEqual(seen[0]["previous_price"], 1.0)
+            self.assertEqual([point["price_usd"] for point in seen[0]["fly_history"]], [1.0, 0.5])
+            self.assertEqual(result["opened"], 1)
+            self.assertEqual(result["closed"], 0)
+            self.assertFalse(result["live_orders"])
         with patch("src.multi_brain_research.snapshot_feed.build_opener") as opener:
             fetch_json("https://api.dexscreener.com/tokens/v1/solana/Mint", transport=lambda url: [])
             opener.assert_not_called()
