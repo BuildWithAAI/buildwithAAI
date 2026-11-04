@@ -10,21 +10,23 @@ flowchart LR
     Pump[Pump.fun TradeEvent log]
     Dex[DEX Screener public pairs]
   end
-  subgraph brains [Voters]
-    Tape[Tape heuristic]
+  subgraph brains [Council]
+    Fly[FlyVis flash-kernel readout]
     Crow[Crow memory heuristic]
-    Fly[FlyVis identity]
+    Hemi[Hemibrain after admission]
   end
-  sources --> Tape
-  Tape --> Round[Observation coordinator]
+  sources --> Fly
+  sources --> Crow
+  sources --> Hemi
+  Fly --> Round[Observation coordinator]
   Crow --> Round
-  Fly --> Round
+  Hemi --> Round
   Round --> Thesis[Thesis JSON and markdown]
   Thesis --> PaperBook[Paper ledger]
   PaperBook --> LiveStub[Live adapter stub stays off]
 ```
 
-The coordinator's research signal stays `ABSTAIN` while FlyVis has no market readout. The numeric fused score is only the mean of heuristic ballots that actually voted, with confidence reduced by every brain that abstained.
+FlyVis casts a numeric council vote when the frozen flash-kernel readout returns a probability. The coordinator research signal stays `ABSTAIN` when any required module abstains or is unavailable. Crow memory is empty and a two-point hemibrain history is `MISSING_DATA`, so that signal stays `ABSTAIN` even while FlyVis has a number. The fused score is the mean of the numeric council votes. Confidence is reduced by every council member that abstained. Tape features stay an input and a test fixture. They are not a vote.
 
 ## What each brain is
 
