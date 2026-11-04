@@ -1,4 +1,7 @@
-"""The tape brain reads the last captured row.
+"""TEST_FIXTURE. Not a paper-trading council member.
+
+The tape brain reads the last captured row. Market rows are inputs to the
+council. This module does not cast a council vote.
 
 A missing file abstains. A row without a price history, flow, or liquidity
 change abstains. The score is the paper-long heuristic in brain_input.
@@ -10,6 +13,8 @@ import json
 from pathlib import Path
 
 from .brain_input import features, paper_long_support
+
+ROLE = "TEST_FIXTURE"
 
 
 def read(path: Path) -> dict:

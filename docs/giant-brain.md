@@ -28,11 +28,16 @@ The coordinator's research signal stays `ABSTAIN` while FlyVis has no market rea
 
 ## What each brain is
 
-| Brain | What runs | What it is not |
+The paper council is FlyVis first, then the crow memory heuristic, then the hemibrain first brain when `admission()` accepts it. Market rows are the input to those brains. They are not a vote. `tape_brain`, `second_brain`, and `third_brain` are test fixtures and stay out of the ledger split.
+
+| Brain | Council | What runs |
 | --- | --- | --- |
-| Tape | Paper-long support from observed return, buy/sell flow, and liquidity change | A fixed score, and not a claim of an edge |
-| Crow | Nearest past feature vector whose later return was recorded by the paper log | A crow connectome or a biological model. None is in this repo |
-| FlyVis | Pinned connectome and checkpoint digests from the FlyVis reference | A market forecast. The native runtime is not executed here, and there is no calibrated readout, so the voter abstains |
+| FlyVis | Primary member | Pinned connectome and checkpoint. No market readout in this process, so the vote abstains |
+| Crow | Member | Nearest past feature vector whose later return was recorded by the paper log. A heuristic, not a crow connectome |
+| Hemibrain `first_brain` | Member after the gate | `feature_loader` features and a receipt whose graph, model, and task pins are real hashes. A missing graph or a placeholder pin keeps it in shadow: the score is logged and it does not share pnl |
+| Tape, second brain, third brain | Fixtures | Not council members |
+
+Paper attribution splits closed pnl across council members that cast a numeric vote. Shadow scores and fixture scores are stored and receive zero.
 
 ## Data sources
 

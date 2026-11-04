@@ -123,7 +123,12 @@ def mark(path: Path, thesis_id: str, *, mark_price_usd: float, now_ms: int) -> d
     exit_fill = raw * (1 - slip)
     pnl = (exit_fill - position["entry_fill_usd"]) * position["quantity"]
     r_multiple = pnl / position["planned_risk_usd"]
-    voters = [name for name, brain in position["brains"].items() if type(brain.get("paper_long_support_ppm")) is int]
+    voters = [
+        name for name, brain in position["brains"].items()
+        if type(brain) is dict and brain.get("shadow") is not True and brain.get("role") != "TEST_FIXTURE"
+        and brain.get("role") != "SHADOW" and brain.get("council_member") is not False
+        and type(brain.get("paper_long_support_ppm")) is int
+    ]
     share = pnl / len(voters) if voters else 0.0
     attribution = {name: share if name in voters else 0.0 for name in position["brains"]}
     return _append(path, {

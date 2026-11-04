@@ -20,7 +20,9 @@ from pathlib import Path
 from .brain_input import FEATURE_NAMES, features, paper_long_support
 from .consensus import ConsensusPolicy, FeatureSpec, ModuleSpec, PairIdentity, Receipt
 from .contracts import Measurement, Snapshot
+from .council_roster import roster
 from .crow_brain import recall, remember
+from .first_brain import graph_file, score_episode
 from .fly_brain import describe as fly_status
 from .market_sources import from_curve_snapshots, from_pump_events, from_scanner_market
 from .paper_log import append
@@ -106,6 +108,56 @@ def _module_output(spec: ModuleSpec, scored: dict, snapshot_sha: str, produced_m
     return to_module_output(receipt, snapshot_sha, produced_ms)
 
 
+def _episode(row: dict) -> list[dict] | None:
+    supplied = row.get("observations")
+    if type(supplied) is list and supplied:
+        return supplied
+    price = row.get("price_quote_per_base", row.get("price_usd"))
+    if type(price) is bool or type(price) not in (int, float) or price <= 0:
+        return None
+    rows = []
+    previous = row.get("previous_price")
+    if type(previous) in (int, float) and not isinstance(previous, bool) and previous > 0:
+        rows.append({
+            "last_trade_price": previous,
+            "quote_atoms": row.get("previous_liquidity_quote") or row.get("previous_liquidity_usd") or 1.0,
+            "signed_quote_flow": 0.0,
+        })
+    buy, sell = row.get("buy_quote_atoms"), row.get("sell_quote_atoms")
+    flow = (buy - sell) if type(buy) in (int, float) and type(sell) in (int, float) and not isinstance(buy, bool) else 0.0
+    rows.append({
+        "last_trade_price": price,
+        "quote_atoms": row.get("liquidity_quote") or row.get("liquidity_usd") or 1.0,
+        "signed_quote_flow": flow,
+    })
+    return rows
+
+
+def _hemibrain_vote(row: dict) -> dict:
+    path = graph_file()
+    episode = _episode(row)
+    if path is None or episode is None:
+        return {
+            "paper_long_support_ppm": None,
+            "abstain_reason": "MISSING_DATA",
+            "detail": "GRAPH_OR_EPISODE_ABSENT",
+            "action": "NO_EXECUTION",
+            "execution_allowed": False,
+        }
+    try:
+        scored = score_episode(episode, len(episode) - 1, path)
+    except (OSError, ValueError):
+        return {
+            "paper_long_support_ppm": None,
+            "abstain_reason": "MODULE_FAILED",
+            "detail": "HEMIBRAIN_SCORE_FAILED",
+            "action": "NO_EXECUTION",
+            "execution_allowed": False,
+        }
+    scored["detail"] = scored.get("abstain_reason") or "HEMIBRAIN_FEATURE_LOADER"
+    return scored
+
+
 def _shell(row: dict, reason: str, fly: dict) -> dict:
     return {
         "protocol": "AAI_GIANT_BRAIN_V1",
@@ -118,7 +170,9 @@ def _shell(row: dict, reason: str, fly: dict) -> dict:
         "fused_score_ppm": None,
         "confidence_ppm": 0,
         "reason": reason,
-        "brains": {"flyvis": fly, "tape": {"paper_long_support_ppm": None, "detail": reason}, "crow": None},
+        "brains": {"flyvis": fly, "crow": None},
+        "inputs": {"role": "MARKET_INPUT_NOT_A_VOTE", "detail": reason},
+        "fixtures": ["second_brain", "third_brain", "tape_brain"],
         "coordinator": None,
         "provenance": {"fly_graph_sha256": fly.get("graph_sha256"), "fly_checkpoint_sha256": fly.get("checkpoint_sha256")},
     }
@@ -135,11 +189,10 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
         return _shell(row, str(error), fly)
     tape_score = paper_long_support(mapped)
     crow_score = recall(mapped["features"], memory_path)
+    council = roster()
+    hemibrain_vote = _hemibrain_vote(row)
     here = Path(__file__).resolve().parent
     encoder = _pin_file(here / "brain_input.py")
-    tape_spec = _spec(
-        "tape_heuristic_v1", "market_tape", encoder, _pin_file(here / "tape_brain.py"), encoder, _rule("paper_long_support_v1"),
-    )
     crow_spec = _spec(
         "crow_memory_v1", "crow_memory", _pin_file(here / "crow_brain.py"), _pin_file(here / "crow_brain.py"),
         encoder, _rule("crow_memory_recall_v1"),
@@ -180,10 +233,22 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
         base_mint=row.get("mint"),
         quote_mint=row.get("quote_mint") or WRAPPED_SOL,
     )
+    members = [fly_spec, crow_spec]
+    hemibrain_spec = None
+    if "hemibrain" in council["members"] and type(hemibrain_vote.get("graph_sha256")) is str:
+        hemibrain_spec = _spec(
+            "fly_hemibrain_adverse_v1",
+            "flyem_hemibrain_v1_2",
+            hemibrain_vote["graph_sha256"],
+            hemibrain_vote["model_sha256"],
+            encoder,
+            hemibrain_vote["model_sha256"],
+        )
+        members.append(hemibrain_spec)
     policy = ConsensusPolicy(
         policy_id="giant_brain_v1",
         classification="UNVALIDATED_RESEARCH",
-        modules=(tape_spec, crow_spec, fly_spec),
+        modules=tuple(members),
         features=(FeatureSpec("M-001", "signed_return_ppm", "DERIVED"),),
         feature_set_sha256=FEATURE_SET_SHA,
         task_sha256=TASK_SHA,
@@ -201,7 +266,6 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
         measurements=(measurement,),
     )
     digest = snapshot.sha256()
-    tape_output = _module_output(tape_spec, tape_score, digest, now_ms + 1)
     crow_output = _module_output(crow_spec, {
         "prediction_ppm": crow_score["paper_long_support_ppm"],
         "uncertainty_ppm": crow_score["uncertainty_ppm"],
@@ -209,18 +273,31 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
     }, digest, now_ms + 1)
     from .consensus import ObservationRound
     rnd = ObservationRound(policy, pair, snapshot)
-    rnd.submit(Receipt(tape_output, now_ms + 1))
-    rnd.submit(Receipt(crow_output, now_ms + 2))
+    rnd.submit(Receipt(crow_output, now_ms + 1))
+    if hemibrain_spec is not None:
+        rnd.submit(Receipt(_module_output(hemibrain_spec, {
+            "prediction_ppm": hemibrain_vote.get("paper_long_support_ppm"),
+            "uncertainty_ppm": hemibrain_vote.get("uncertainty_ppm"),
+            "abstain_reason": hemibrain_vote.get("abstain_reason"),
+        }, digest, now_ms + 2), now_ms + 2))
     coordinator = rnd.finalize(now_ms + 3)
-    numeric = [
-        value for value in (
-            tape_score["prediction_ppm"],
-            crow_score["paper_long_support_ppm"],
-        ) if type(value) is int
-    ]
+    in_vote = hemibrain_spec is not None
+    numeric = [crow_score["paper_long_support_ppm"]] if type(crow_score.get("paper_long_support_ppm")) is int else []
+    if in_vote and type(hemibrain_vote.get("paper_long_support_ppm")) is int:
+        numeric.append(hemibrain_vote["paper_long_support_ppm"])
+    roster_size = len(council["members"])
     fused = None if not numeric else int(round(sum(numeric) / len(numeric)))
     spread = 0 if len(numeric) < 2 else max(numeric) - min(numeric)
-    confidence = 0 if not numeric else int((len(numeric) / 3) * max(0, 1_000_000 - spread))
+    confidence = 0 if not numeric else int((len(numeric) / roster_size) * max(0, 1_000_000 - spread))
+    brains = {
+        "flyvis": {**fly, "council_member": True, "primary": True, "paper_long_support_ppm": None},
+        "crow": {**crow_score, "council_member": True, "primary": False},
+    }
+    shadow = {}
+    if in_vote:
+        brains["hemibrain"] = {**hemibrain_vote, "council_member": True, "primary": False, "in_vote": True, "role": "COUNCIL"}
+    else:
+        shadow["hemibrain"] = {**hemibrain_vote, "council_member": False, "in_vote": False, "role": "SHADOW"}
     return {
         "protocol": "AAI_GIANT_BRAIN_V1",
         "mode": "PAPER",
@@ -231,24 +308,22 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
         "mint": row.get("mint"),
         "fused_score_ppm": fused,
         "confidence_ppm": confidence,
-        "brains": {
-            "tape": {
-                "paper_long_support_ppm": tape_score["prediction_ppm"],
-                "uncertainty_ppm": tape_score["uncertainty_ppm"],
-                "features": mapped["features"],
-                "missing": mapped["missing"],
-                "detail": "TAPE_HEURISTIC" if tape_score["prediction_ppm"] is not None else "MISSING_DATA",
-                "heuristic": True,
-            },
-            "crow": crow_score,
-            "flyvis": fly,
+        "primary": "flyvis",
+        "council": list(council["members"]),
+        "fixtures": list(council["fixtures"]),
+        "inputs": {
+            "role": "MARKET_INPUT_NOT_A_VOTE",
+            "features": mapped["features"],
+            "missing": mapped["missing"],
+            "tape_heuristic_ppm": tape_score["prediction_ppm"],
+            "tape_role": "TEST_FIXTURE",
         },
+        "brains": brains,
+        "shadow": shadow,
         "coordinator": coordinator,
         "provenance": {
             "observation_sha256": lineage,
             "task_sha256": TASK_SHA,
-            "tape_graph_sha256": tape_spec.graph_sha256,
-            "tape_pipeline_sha256": tape_spec.pipeline_sha256(),
             "crow_graph_sha256": crow_spec.graph_sha256,
             "crow_pipeline_sha256": crow_spec.pipeline_sha256(),
             "fly_graph_sha256": fly["graph_sha256"],
@@ -281,7 +356,7 @@ def paper_backtest(observations: list, log_path: Path, memory_path: Path | None 
                 "fill": "HYPOTHETICAL_NOT_A_VENUE_FILL",
             }
             pnl.append(hypothetical["paper_pnl_per_unit"])
-            tape_features = signal["brains"]["tape"].get("features") or {}
+            tape_features = (signal.get("inputs") or {}).get("features") or {}
             if memory_path is not None and all(type(tape_features.get(name)) in (int, float) for name in (
                 "signed_return", "flow_imbalance", "liquidity_change"
             )):

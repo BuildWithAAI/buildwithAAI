@@ -175,16 +175,22 @@ class GiantBrainTests(unittest.TestCase):
         self.assertFalse(up["execution_allowed"])
         self.assertEqual(up["mode"], "PAPER")
         self.assertFalse(up["live_orders"])
-        self.assertGreater(up["fused_score_ppm"], down["fused_score_ppm"])
+        self.assertEqual(up["primary"], "flyvis")
+        self.assertNotIn("tape", up["brains"])
+        self.assertEqual(up["inputs"]["role"], "MARKET_INPUT_NOT_A_VOTE")
+        self.assertEqual(up["inputs"]["tape_role"], "TEST_FIXTURE")
+        self.assertNotEqual(up["inputs"]["features"]["signed_return"], down["inputs"]["features"]["signed_return"])
         self.assertEqual(up["coordinator"]["research_signal"], "ABSTAIN")
         self.assertEqual(up["coordinator"]["action"], "NO_EXECUTION")
         self.assertIn("READOUT", up["brains"]["flyvis"]["reason"])
+        self.assertTrue(up["brains"]["flyvis"]["primary"])
         self.assertFalse(up["brains"]["flyvis"]["executed"])
         self.assertFalse(up["brains"]["crow"]["biological_model"])
         self.assertEqual(up["brains"]["crow"]["detail"], "CROW_MEMORY_EMPTY")
         self.assertIsNone(up["brains"]["flyvis"]["paper_long_support_ppm"])
+        self.assertIsNone(up["fused_score_ppm"])
         for pin in (
-            up["provenance"]["tape_graph_sha256"],
+            up["provenance"]["crow_graph_sha256"],
             up["provenance"]["fly_graph_sha256"],
             up["provenance"]["coordinator_record_sha256"],
         ):
@@ -192,7 +198,25 @@ class GiantBrainTests(unittest.TestCase):
             self.assertEqual(len(pin), 64)
         modules = {row["module_id"]: row["vote"] for row in up["coordinator"]["modules"]}
         self.assertEqual(modules["flyvis_market_v1"], "UNAVAILABLE")
-        self.assertIn(modules["tape_heuristic_v1"], {"BUY_SUPPORT", "NO_BUY_SUPPORT"})
+        self.assertNotIn("tape_heuristic_v1", modules)
+        self.assertEqual(modules["crow_memory_v1"], "ABSTAIN")
+        if "hemibrain" in up["council"]:
+            self.assertTrue(up["brains"]["hemibrain"]["council_member"])
+            self.assertNotIn("hemibrain", up["shadow"])
+        else:
+            self.assertFalse(up["shadow"]["hemibrain"]["in_vote"])
+
+    def test_hemibrain_is_shadow_until_admission_passes(self):
+        refused = {"ready": False, "reasons": ["GRAPH_FILE_ABSENT"], "role": "SHADOW", "action": "NO_EXECUTION", "execution_allowed": False}
+        with patch("src.multi_brain_research.first_brain.admission", return_value=refused):
+            signal = fuse(_observation(), now_ms=1_700_000_000_000)
+        self.assertNotIn("hemibrain", signal["council"])
+        self.assertFalse(signal["shadow"]["hemibrain"]["in_vote"])
+        self.assertFalse(signal["shadow"]["hemibrain"]["council_member"])
+        modules = {row["module_id"] for row in signal["coordinator"]["modules"]}
+        self.assertNotIn("fly_hemibrain_adverse_v1", modules)
+        self.assertIn("flyvis", signal["council"])
+        self.assertIn("crow", signal["council"])
 
     def test_paper_backtest_records_a_hypothetical_and_crow_can_recall_it(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -204,9 +228,9 @@ class GiantBrainTests(unittest.TestCase):
             result = paper_backtest([first, second], log, memory)
             self.assertEqual(result["rows"], 2)
             self.assertFalse(result["execution_allowed"])
-            self.assertGreater(result["paper_pnl_per_unit_sum"], 0)
+            self.assertEqual(result["paper_pnl_per_unit_sum"], 0)
             lines = [json.loads(line) for line in log.read_text().splitlines()]
-            self.assertEqual(lines[0]["hypothetical"]["position"], "PAPER_LONG")
+            self.assertEqual(lines[0]["hypothetical"]["position"], "PAPER_FLAT")
             self.assertEqual(lines[0]["hypothetical"]["fill"], "HYPOTHETICAL_NOT_A_VENUE_FILL")
             self.assertTrue(all(line["mode"] == "PAPER" and line["live_orders"] is False for line in lines))
             recalled = fuse(first, now_ms=1_700_000_600_000, memory_path=memory)

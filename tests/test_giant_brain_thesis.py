@@ -37,9 +37,10 @@ def _signal(score=700_000, tape=700_000, crow=650_000):
         "confidence_ppm": 333_333,
         "mint": "Mint111",
         "brains": {
-            "tape": {"paper_long_support_ppm": tape, "detail": "TAPE_HEURISTIC"},
-            "crow": {"paper_long_support_ppm": crow, "detail": "CROW_RECALL"},
-            "flyvis": {"paper_long_support_ppm": None, "reason": "MISSING_READOUT", "executed": False},
+            "tape": {"paper_long_support_ppm": tape, "detail": "TAPE_HEURISTIC", "role": "TEST_FIXTURE", "council_member": False},
+            "crow": {"paper_long_support_ppm": crow, "detail": "CROW_RECALL", "council_member": True},
+            "flyvis": {"paper_long_support_ppm": None, "reason": "MISSING_READOUT", "executed": False, "council_member": True, "primary": True},
+            "hemibrain": {"paper_long_support_ppm": 900_000, "detail": "SHADOW", "shadow": True, "role": "SHADOW", "council_member": False},
         },
         "provenance": {"observation_sha256": "ab" * 32},
         "action": "NO_EXECUTION",
@@ -148,7 +149,9 @@ class PaperTests(unittest.TestCase):
             self.assertEqual(closed["reason"], "STOP")
             self.assertLess(closed["pnl_usd"], 0)
             self.assertEqual(closed["attribution_usd"]["flyvis"], 0)
-            self.assertAlmostEqual(closed["attribution_usd"]["tape"], closed["pnl_usd"] / 2)
+            self.assertEqual(closed["attribution_usd"]["tape"], 0)
+            self.assertEqual(closed["attribution_usd"]["hemibrain"], 0)
+            self.assertAlmostEqual(closed["attribution_usd"]["crow"], closed["pnl_usd"])
             report = metrics(ledger)
             self.assertEqual(report["closed"], 1)
             self.assertEqual(report["win_rate"], 0)
@@ -171,7 +174,9 @@ class PaperTests(unittest.TestCase):
             self.assertEqual(report["closed"], 2)
             self.assertEqual(report["win_rate"], 0.5)
             self.assertGreater(report["max_drawdown_usd"], 0)
-            self.assertGreater(report["attribution_usd"]["tape"], report["attribution_usd"]["flyvis"])
+            self.assertGreater(report["attribution_usd"]["crow"], report["attribution_usd"]["flyvis"])
+            self.assertEqual(report["attribution_usd"]["hemibrain"], 0)
+            self.assertEqual(report["attribution_usd"]["tape"], 0)
 
 
 class SnapshotTests(unittest.TestCase):

@@ -198,12 +198,29 @@ def _markdown(thesis: dict) -> str:
 def _brain_view(signal: dict) -> dict:
     brains = signal.get("brains") if type(signal.get("brains")) is dict else {}
     view = {}
-    for name in ("tape", "crow", "flyvis"):
-        brain = brains.get(name) if type(brains.get(name)) is dict else {}
+    for name, brain in brains.items():
+        if type(brain) is not dict:
+            continue
         view[name] = {
             "paper_long_support_ppm": brain.get("paper_long_support_ppm"),
             "detail": brain.get("detail") or brain.get("reason"),
             "executed": brain.get("executed"),
+            "council_member": brain.get("council_member", True),
+            "role": brain.get("role"),
+            "shadow": brain.get("shadow"),
+            "primary": brain.get("primary"),
+            "in_vote": brain.get("in_vote", True),
+        }
+    for name, brain in (signal.get("shadow") or {}).items():
+        if type(brain) is not dict:
+            continue
+        view[name] = {
+            "paper_long_support_ppm": brain.get("paper_long_support_ppm"),
+            "detail": brain.get("detail") or brain.get("reason"),
+            "council_member": False,
+            "role": "SHADOW",
+            "shadow": True,
+            "in_vote": False,
         }
     return view
 
