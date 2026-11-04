@@ -60,6 +60,34 @@ def _under(root: Path, relative: str) -> Path:
     return target
 
 
+def snapshot_files(root: Path) -> list[str]:
+    """Snapshot paths in UTC day order, then clock order.
+
+    A plain `.jsonl` and a `.jsonl.gz` for the same day and stamp are one
+    snapshot. The plain file is kept. Gzipped files are not appended after
+    every plain file, so an earlier day's archive stays before the next day.
+    """
+    folder = root / "snapshots"
+    if not folder.is_dir():
+        return []
+    paths = [
+        path for path in folder.rglob("*")
+        if path.is_file() and (path.name.endswith(".jsonl") or path.name.endswith(".jsonl.gz"))
+    ]
+
+    def sort_key(path: Path) -> tuple:
+        relative = path.relative_to(folder)
+        day = relative.parts[0] if len(relative.parts) > 1 else ""
+        return (day, path.name.split(".")[0], path.name.endswith(".gz"), str(relative))
+
+    chosen: dict[tuple[str, str], Path] = {}
+    for path in sorted(paths, key=sort_key):
+        relative = path.relative_to(folder)
+        day = relative.parts[0] if len(relative.parts) > 1 else ""
+        chosen.setdefault((day, path.name.split(".")[0]), path)
+    return [str(path.relative_to(root)) for path in chosen.values()]
+
+
 def load_latest(root: Path) -> dict:
     data = json.loads((root / "latest.json").read_text(encoding="utf-8"))
     if type(data) is not dict or type(data.get("snapshot_file")) is not str or type(data.get("sources")) is not dict:

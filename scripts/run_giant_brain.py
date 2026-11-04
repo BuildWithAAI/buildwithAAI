@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from multi_brain_research.giant_brain import fuse, paper_backtest, source_status  # noqa: E402
 from multi_brain_research.paper_log import append  # noqa: E402
+from multi_brain_research.walk_forward import walk_forward  # noqa: E402
 from multi_brain_research.watch import replay  # noqa: E402
 
 
@@ -26,10 +27,20 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=25)
     parser.add_argument("--not-before-ms", type=int, help="Open new paper positions only at or after this time")
     parser.add_argument("--candle-dir", type=Path, help="JSONL minute candles keyed by pair address")
+    parser.add_argument("--walk-forward", action="store_true", help="Score the post-gap snapshots with and without crow memory")
+    parser.add_argument("--work-dir", type=Path, help="Ledger and memory directory for --walk-forward")
     parser.add_argument("--status", action="store_true", help="Print which sources are configured")
     args = parser.parse_args()
     if args.status:
         print(json.dumps(source_status(), sort_keys=True))
+    if args.walk_forward:
+        if args.snapshot_root is None or args.work_dir is None:
+            parser.error("--walk-forward requires --snapshot-root and --work-dir")
+        print(json.dumps(walk_forward(
+            args.snapshot_root, args.work_dir, limit=args.limit, threshold_ppm=args.threshold_ppm,
+            candle_dir=args.candle_dir,
+        ), sort_keys=True))
+        return 0
     if args.snapshot_root:
         if args.theses_dir is None or args.ledger is None:
             parser.error("--snapshot-root requires --theses-dir and --ledger")

@@ -209,7 +209,7 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
     except ValueError as error:
         return _shell(row, str(error), fly)
     tape_score = paper_long_support(mapped)
-    crow_score = recall(mapped["features"], memory_path)
+    crow_score = recall(mapped["features"], memory_path, now_ms=now_ms)
     fly_vote = fly_score_history(_fly_history(row))
     council = roster()
     hemibrain_vote = _hemibrain_vote(row)
@@ -417,20 +417,29 @@ def paper_backtest(observations: list, log_path: Path, memory_path: Path | None 
         if type(observation) is not dict or type(observation.get("decision_time_ms")) is not int:
             raise ValueError("INVALID_TIME")
         signal = fuse(observation, now_ms=observation["decision_time_ms"], memory_path=memory_path)
-        nxt = observations[index + 1].get("price_quote_per_base") if index + 1 < len(observations) else None
+        later_obs = observations[index + 1] if index + 1 < len(observations) else None
+        nxt = later_obs.get("price_quote_per_base") if type(later_obs) is dict else None
         hypothetical = _hypothetical(
             observation.get("price_quote_per_base"), nxt, signal.get("fused_score_ppm"), _observed_fee_bps(observation),
         )
+        outcome_end = later_obs.get("decision_time_ms") if type(later_obs) is dict else None
         if hypothetical is not None:
             tape_features = (signal.get("inputs") or {}).get("features") or {}
-            if memory_path is not None and all(type(tape_features.get(name)) in (int, float) for name in (
-                "signed_return", "flow_imbalance", "liquidity_change"
-            )):
+            if (
+                memory_path is not None
+                and type(outcome_end) is int
+                and outcome_end >= observation["decision_time_ms"]
+                and all(type(tape_features.get(name)) in (int, float) for name in (
+                    "signed_return", "flow_imbalance", "liquidity_change"
+                ))
+            ):
                 remember(memory_path, {
                     "mint": signal.get("mint"),
                     "features": tape_features,
                     "later_return": hypothetical["subsequent_return"],
                     "observation_sha256": signal["provenance"]["observation_sha256"],
+                    "outcome_start_ms": observation["decision_time_ms"],
+                    "outcome_end_ms": outcome_end,
                     "action": "NO_EXECUTION",
                 })
         record = {

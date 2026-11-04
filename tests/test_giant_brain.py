@@ -242,8 +242,12 @@ class GiantBrainTests(unittest.TestCase):
             self.assertEqual(result["fees"], "NOT_APPLIED")
             self.assertEqual(result["pnl_before_fees"], result["paper_pnl_per_unit_sum"])
             self.assertTrue(all(line["mode"] == "PAPER" and line["live_orders"] is False for line in lines))
+            too_soon = fuse(first, now_ms=first["decision_time_ms"], memory_path=memory)
+            self.assertEqual(too_soon["brains"]["crow"]["detail"], "CROW_OUTCOME_NOT_YET_OBSERVED")
+            self.assertNotIn("recalled_return", too_soon["brains"]["crow"])
             recalled = fuse(first, now_ms=1_700_000_600_000, memory_path=memory)
             self.assertEqual(recalled["brains"]["crow"]["detail"], "CROW_RECALL")
+            self.assertLessEqual(recalled["brains"]["crow"]["outcome_end_ms"], 1_700_000_600_000)
             self.assertGreater(recalled["brains"]["crow"]["paper_long_support_ppm"], 500_000)
             with self.assertRaises(ValueError):
                 append(log, {"action": "NO_EXECUTION", "private_key": "never"})

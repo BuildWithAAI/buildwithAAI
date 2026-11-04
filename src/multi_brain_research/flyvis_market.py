@@ -245,20 +245,11 @@ def fit_readout(series: dict[str, list[dict]]) -> dict:
 
 
 def series_from_snapshot_root(root: Path) -> dict[str, list[dict]]:
-    from .snapshot_feed import canonical_pairs, load_snapshot, parse_time_ms, resolve_root
+    from .snapshot_feed import canonical_pairs, load_snapshot, parse_time_ms, resolve_root, snapshot_files
 
     root = resolve_root(root)
-    folder = root / "snapshots"
     series: dict[str, list[dict]] = {}
-    paths = [
-        path for path in folder.rglob("*")
-        if path.is_file() and (path.name.endswith(".jsonl") or path.name.endswith(".jsonl.gz"))
-    ] if folder.is_dir() else []
-    chosen: dict[tuple[str, str], Path] = {}
-    for path in sorted(paths, key=lambda item: (item.parent.name, item.name.split(".")[0], item.name.endswith(".gz"))):
-        chosen.setdefault((path.parent.name, path.name.split(".")[0]), path)
-    for path in chosen.values():
-        relative = str(path.relative_to(root))
+    for relative in snapshot_files(root):
         for row in canonical_pairs(load_snapshot(root, relative)).values():
             price = _finite(row.get("price_usd"))
             stamp = row.get("ts") or row.get("fetched_at")
@@ -279,6 +270,8 @@ def series_from_snapshot_root(root: Path) -> dict[str, list[dict]]:
             if type(fee) is int and not isinstance(fee, bool) and 0 <= fee <= 10_000:
                 point["fee_bps"] = fee
             series.setdefault(row["token_address"], []).append(point)
+    for points in series.values():
+        points.sort(key=lambda item: item["ts_ms"])
     return series
 
 

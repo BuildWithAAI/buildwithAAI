@@ -15,18 +15,13 @@ from .snapshot_feed import (
     observation_from_pair,
     parse_time_ms,
     resolve_root,
+    snapshot_files,
 )
 from .thesis import ThesisError, write_files, write_thesis
 
 
 def _files(root: Path) -> list[str]:
-    found = []
-    folder = root / "snapshots"
-    if not folder.is_dir():
-        return found
-    for path in sorted(folder.rglob("*.jsonl")) + sorted(folder.rglob("*.jsonl.gz")):
-        found.append(str(path.relative_to(root)))
-    return found
+    return snapshot_files(root)
 
 
 def _point(record: dict, stamp) -> dict:
