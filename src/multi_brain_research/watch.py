@@ -39,7 +39,17 @@ def _point(record: dict, stamp) -> dict:
     }
 
 
-def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None) -> dict:
+def _candles_for(candle_dir: Path | None, position: dict):
+    if candle_dir is None or type(position.get("pair_address")) is not str:
+        return None
+    from .pool_ohlcv import load_jsonl
+    path = candle_dir / (position["pair_address"] + ".jsonl")
+    if not path.is_file():
+        return None
+    return load_jsonl(path)
+
+
+def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None) -> dict:
     root = resolve_root(root)
     if score is None:
         from .giant_brain import fuse
@@ -73,7 +83,10 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
             for position in state(ledger)["open"].values():
                 if position["mint"] == mint and type(record.get("price_usd")) in (int, float):
                     try:
-                        result = mark(ledger, position["thesis_id"], mark_price_usd=record["price_usd"], now_ms=now_ms)
+                        result = mark(
+                            ledger, position["thesis_id"], mark_price_usd=record["price_usd"], now_ms=now_ms,
+                            candles=_candles_for(candle_dir, position),
+                        )
                     except PaperError:
                         skipped += 1
                         continue

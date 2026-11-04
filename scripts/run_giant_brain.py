@@ -25,6 +25,7 @@ def main() -> int:
     parser.add_argument("--threshold-ppm", type=int, default=600_000)
     parser.add_argument("--limit", type=int, default=25)
     parser.add_argument("--not-before-ms", type=int, help="Open new paper positions only at or after this time")
+    parser.add_argument("--candle-dir", type=Path, help="JSONL minute candles keyed by pair address")
     parser.add_argument("--status", action="store_true", help="Print which sources are configured")
     args = parser.parse_args()
     if args.status:
@@ -34,7 +35,7 @@ def main() -> int:
             parser.error("--snapshot-root requires --theses-dir and --ledger")
         print(json.dumps(replay(
             args.snapshot_root, args.ledger, args.theses_dir, threshold_ppm=args.threshold_ppm,
-            limit=args.limit, not_before_ms=args.not_before_ms,
+            limit=args.limit, not_before_ms=args.not_before_ms, candle_dir=args.candle_dir,
         ), sort_keys=True))
         return 0
     if args.tape is None and args.observation is None:

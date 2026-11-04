@@ -57,7 +57,8 @@ Paper attribution splits closed pnl across council members that cast a numeric v
 | FlyVis forward pass | Missing in this process | The pinned CPU workflow is separate |
 | Crow connectome | Missing | Do not relabel the memory heuristic as biology |
 | Snapshot store `/cursor/stores/bot/giant-brain-data/` | Reader in `snapshot_feed.py`. DexScreener pair rows are the metric. GeckoTerminal rows use the same fields. Pump.fun live list is often HTTP 403 in the collector | None |
-| Direct DexScreener and GeckoTerminal HTTPS reads | Same hosts and path prefixes as the collector. Any other URL is refused | None |
+| Direct DexScreener and GeckoTerminal HTTPS reads | Same hosts and path prefixes as the collector, plus `GET /api/v2/networks/solana/pools/{pool}/ohlcv/minute`. Any other URL is refused | None |
+| Pool minute candles | Public GeckoTerminal OHLCV. Rows are `[unix_seconds, open, high, low, close, volume]`, newest first. Stored as JSONL. Unit tests use the recorded responses under `tests/fixtures/giant-brain-ohlcv/` | None. Five reads on 2026-11-04 returned HTTP 200. No `Retry-After` header was present |
 | Holder concentration | Live read in `holder_concentration.py` through the shared allowlisted client. Not stored in the snapshot files. A replay with no attached read stays `UNAVAILABLE` / `NOT_IN_SNAPSHOT` | None. Same two public hosts. On 2026-11-04 `getTokenLargestAccounts` returned HTTP 429, so no share was stored |
 | Wallet signer and venue orders | Stub only | Live sending is not implemented |
 
@@ -104,7 +105,14 @@ python scripts/run_giant_brain.py \
   --not-before-ms 1793772604000
 ```
 
-`--not-before-ms 1793772604000` is `2026-11-04T06:10:04+00:00`, the first test timestamp of the loaded readout. Earlier prints still build the causal price trail and do not open a position. `--limit 500` keeps every DexScreener pair in the file. The default limit is 25, ranked by `volume_h1`.
+`--not-before-ms 1793772604000` is `2026-11-04T06:10:04+00:00`, the first test timestamp of the loaded readout. Earlier prints still build the causal price trail and do not open a position. `--limit 500` keeps every DexScreener pair in the file. The default limit is 25, ranked by `volume_h1`. `--candle-dir` points at JSONL files named `{pair_address}.jsonl`. A missing file leaves that mark on the snapshot price.
+
+One pool's minute candles, still no order:
+
+```python
+from multi_brain_research.pool_ohlcv import fetch_ohlcv
+page = fetch_ohlcv(pair, before_timestamp=1793777600, limit=20)
+```
 
 Optional public DEX read, still no order:
 
@@ -153,7 +161,9 @@ An LLM may phrase the narrative only when `ZOORA_MODEL_PROVIDER`, `ZOORA_MODEL_N
 
 ## Paper ledger
 
-`paper_trader` opens one simulated long per thesis. The mark is the observed price. Slippage is not a quote: snapshots have no bid/ask, so the fill assumes `max(5, min(300, round(50000 / liquidity_usd)))` basis points and records that formula. Exit on stop uses the thesis stop, exit on take-profit uses the thesis target, and a timeout exits at the later observed mark. One mark that crosses both stop and target closes at the stop.
+`paper_trader` opens one simulated long per thesis. The mark is the observed price. Slippage is not a quote: snapshots have no bid/ask, so the fill assumes `max(5, min(300, round(50000 / liquidity_usd)))` basis points and records that formula. Exit on stop uses the thesis stop, exit on take-profit uses the thesis target, and a timeout exits at the later observed mark. One snapshot mark that crosses both stop and target closes at the stop.
+
+When minute candles are supplied, a candle counts only if it starts at or after the open and ends at or before the decision. The walk is oldest first. A low at or under the stop closes at the stop. A high at or over the target closes at the target. A candle that prints both closes at the stop. `TIMEOUT` is used only when at least one candle sat inside the hold and neither level printed. No candle inside the hold is `PATH_UNOBSERVED`, not a timeout. Fees stay `NOT_OBSERVED`.
 
 Metrics from the ledger: win rate, average R, max drawdown, net pnl, and per-brain attribution. A brain with no numeric vote, including FlyVis while it abstains, is attributed zero. Fees are `NOT_OBSERVED`.
 
@@ -184,6 +194,20 @@ On 2026-11-04 this was run on `/cursor/stores/bot/giant-brain-data/` as it stood
 | `execution_allowed` / `live_orders` | false / false |
 
 The coordinator signal was `ABSTAIN` on every row. Hemibrain was `MISSING_DATA` on all 5218. Crow was `CROW_MEMORY_EMPTY` on 2947 and `CROW_FEATURES_INCOMPLETE` on 2271. This publish does not load `brain-runs/crow_memory.jsonl`. FlyVis was `FLASH_KERNEL_READOUT` on 3980 rows and `STIMULUS_UNAVAILABLE` on the 1238 first prints. None of the numeric scores reached 500000 ppm, so the book stayed flat. This run did not rewrite the thesis ledger.
+
+The thesis replay was run again on the store at 2026-11-04 12:15 UTC: 78 snapshot files, 05:15 through 12:15. Same frozen readout, same gate, same cut. Of 5574 priced rows at or after the cut, 4309 had a numeric FlyVis vote between 349876 and 473420 ppm, and 1265 were the first print of that mint and abstained. No row with a prior price abstained. None of the 4309 votes reached 500000 ppm or the 600000 thesis gate. Theses opened 0. Closed trades 0, so win rate and average R are not defined. Pnl before fees is 0. Fees are `NOT_OBSERVED`. `skipped` was 258. Abstention rate is 1265/5574. `execution_allowed` and `live_orders` stayed false. This book still has no position for a candle to mark.
+
+The box runner's ledger at `brain-runs/paper_ledger.jsonl` is a different book. Crow recall was filled, so five theses cleared the gate and every close was `TIMEOUT` on the next snapshot mark. Re-marking those five with the recorded minute candles, without changing the open fill, left every close a `TIMEOUT` with path `CANDLES_OBSERVED_NO_HIT`. Each hold contained 4 in-window candles, except AMD, which contained 9 because its snapshot close was ten minutes after the open. None of those candles printed the stop or the target, so the exit stayed the snapshot mark and the pnl did not change.
+
+| Symbol | In-window low | In-window high | Stop | Target | Reason |
+| --- | --- | --- | --- | --- | --- |
+| VETO | 0.00032516050568076247 | 0.0003743731996786626 | 0.00028028962 | 0.00046512076 | TIMEOUT |
+| AMD | 0.0010615591642848272 | 0.001190447782084824 | 0.0009906138 | 0.0013847724 | TIMEOUT |
+| CHATBLT | 6.798351061692613e-05 | 0.00010622796102687535 | 3.940799999999999e-05 | 0.000118224 | TIMEOUT |
+| CHILLCATS 11:15 | 5.4032217916739883e-05 | 8.087084197354375e-05 | 4.5407999999999996e-05 | 0.000136224 | TIMEOUT |
+| CHILLCATS 11:35 | 5.109124701210193e-05 | 6.238081351405711e-05 | 2.8913999999999998e-05 | 8.6742e-05 | TIMEOUT |
+
+Target hits 0 of 5. Stop hits 0 of 5. Win rate, counting a positive pnl, is 0.8. Average R is 0.5036687400802997. Pnl before fees is 83.53868127795457. Fees are `NOT_OBSERVED`. Those three figures match the snapshot-only closes, because the path check did not move the exit. The candle bodies are `tests/fixtures/giant-brain-ohlcv/*.json` and the parsed JSONL is `research/giant-brain/ohlcv/`.
 
 ## Live trading is not enabled
 
@@ -231,7 +255,7 @@ Going live later needs all of the following, and none of them are done here:
 1. The flash-kernel readout on the 05:15–06:45 UTC store ties the down majority and never cleared 500000 ppm out of sample. The pinned FlyVis worker still has not run on a real encoded tape. A later run can store that activity export and teach this voter to read it. Do not invent a fly score in this process.
 2. Capture more than the Anything AI curve: `host_capture` already takes a mint and curve. Keep dead coins in the set the capture plan requires, and point the paper backtest at those JSONL files.
 3. Schedule a paper pass over scanner reports. Compare tape-only pnl with tape-plus-crow-recall on a later window that was not used to fill memory.
-4. Done on 2026-11-04. `publish_snapshot_log` on snapshots `0515` through `1045` UTC published abstention rate 5218/5218, an undefined hit rate (0 paper longs), and pnl before fees of 0. No capture contained `fee_bps`, so fees stayed unapplied. `calibrated` is false. See Paper log.
+4. Done on 2026-11-04. `publish_snapshot_log` on snapshots `0515` through `1045` UTC published abstention rate 5218/5218, an undefined hit rate (0 paper longs), and pnl before fees of 0. No capture contained `fee_bps`, so fees stayed unapplied. `calibrated` is false. See Paper log. The five box-runner closes were later re-marked with minute candles and stayed timeouts, because neither level printed. The partial minute at the open and at the decision is still outside that window.
 5. Holder concentration now has a live reader. The snapshot files still do not carry it, and on 2026-11-04 the public `getTokenLargestAccounts` method returned HTTP 429, so this run stored no share. A later run can retry that method when the public quota answers, and can store the read beside the snapshot. Do not attach a later read to an earlier decision.
 6. Implement a venue adapter only after the signer, allowlists, and limits above exist. `LiveAdapter` must keep returning `sent: false` until that adapter is a separate change.
 7. If a crow connectome or other animal model is added, give it its own module id and pins. Do not rename `crow_memory_v1`.

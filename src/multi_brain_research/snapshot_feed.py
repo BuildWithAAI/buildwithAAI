@@ -22,6 +22,7 @@ PREFIXES = (
     "/tokens/v1/solana/",
     "/api/v2/networks/solana/trending_pools",
     "/api/v2/networks/solana/new_pools",
+    "/api/v2/networks/solana/pools/",
 )
 
 

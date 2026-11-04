@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .pool_ohlcv import WIDTH_MS, candles_in_window
 from .thesis import ThesisError, validate_thesis
 
 SLIP_NUMERATOR_USD = 50_000.0
@@ -96,6 +97,7 @@ def open_position(path: Path, thesis: dict, *, mark_price_usd: float, now_ms: in
         "liquidity_usd": liquidity,
         "planned_risk_usd": planned_risk,
         "brains": thesis["brains"],
+        "pair_address": (thesis.get("pair") or {}).get("pair_address") if type(thesis.get("pair")) is dict else None,
         "replayed": False,
         "action": "NO_EXECUTION",
         "execution_allowed": False,
@@ -103,7 +105,31 @@ def open_position(path: Path, thesis: dict, *, mark_price_usd: float, now_ms: in
     })
 
 
-def mark(path: Path, thesis_id: str, *, mark_price_usd: float, now_ms: int) -> dict:
+def _candle_exit(position: dict, candles: list, now_ms: int):
+    """Stop, target, or neither, from candles that sit strictly inside the hold.
+
+    A candle that contains both the stop and the target closes at the stop.
+    Returns None while the horizon is still open and no level has printed.
+    """
+    window = candles_in_window(candles, position["opened_ms"], now_ms, width_ms=WIDTH_MS)
+    stop = position["stop_price_usd"]
+    target = position["take_profit_price_usd"]
+    for candle in window:
+        hit_stop = candle["low"] <= stop
+        hit_target = candle["high"] >= target
+        if hit_stop:
+            path = "STOP_FIRST_SAME_CANDLE" if hit_target else "CANDLE_LOW"
+            return "STOP", stop, path, candle, len(window)
+        if hit_target:
+            return "TAKE_PROFIT", target, "CANDLE_HIGH", candle, len(window)
+    if now_ms >= position["opened_ms"] + position["horizon_ms"]:
+        if window:
+            return "TIMEOUT", None, "CANDLES_OBSERVED_NO_HIT", None, len(window)
+        return "PATH_UNOBSERVED", None, "NO_CANDLE_IN_WINDOW", None, 0
+    return None
+
+
+def mark(path: Path, thesis_id: str, *, mark_price_usd: float, now_ms: int, candles=None) -> dict:
     if type(mark_price_usd) is bool or type(mark_price_usd) not in (int, float) or mark_price_usd <= 0 or type(now_ms) is not int:
         raise PaperError("NO_PRICE")
     position = state(path)["open"].get(thesis_id)
@@ -111,12 +137,23 @@ def mark(path: Path, thesis_id: str, *, mark_price_usd: float, now_ms: int) -> d
         raise PaperError("NO_OPEN_POSITION")
     stop = position["stop_price_usd"]
     target = position["take_profit_price_usd"]
-    if mark_price_usd <= stop:
-        reason, raw = "STOP", stop
+    candle = None
+    candles_in = None
+    if candles is not None:
+        if type(candles) is not list:
+            raise PaperError("BAD_CANDLES")
+        decision = _candle_exit(position, candles, now_ms)
+        if decision is None:
+            return {"type": "MARK", "thesis_id": thesis_id, "status": "OPEN", "action": "NO_EXECUTION", "execution_allowed": False}
+        reason, raw, path_name, candle, candles_in = decision
+        if raw is None:
+            raw = mark_price_usd
+    elif mark_price_usd <= stop:
+        reason, raw, path_name = "STOP", stop, "STOP_FIRST_WHEN_ONE_MARK_CROSSES_BOTH"
     elif mark_price_usd >= target:
-        reason, raw = "TAKE_PROFIT", target
+        reason, raw, path_name = "TAKE_PROFIT", target, "SINGLE_MARK"
     elif now_ms >= position["opened_ms"] + position["horizon_ms"]:
-        reason, raw = "TIMEOUT", mark_price_usd
+        reason, raw, path_name = "TIMEOUT", mark_price_usd, "SINGLE_MARK"
     else:
         return {"type": "MARK", "thesis_id": thesis_id, "status": "OPEN", "action": "NO_EXECUTION", "execution_allowed": False}
     slip = position["slippage_bps"] / 10_000
@@ -135,10 +172,14 @@ def mark(path: Path, thesis_id: str, *, mark_price_usd: float, now_ms: int) -> d
         "type": "CLOSE",
         "thesis_id": thesis_id,
         "mint": position["mint"],
-        "closed_ms": now_ms,
+        "closed_ms": now_ms if candle is None else candle["ts_ms"],
         "reason": reason,
-        "path": "STOP_FIRST_WHEN_ONE_MARK_CROSSES_BOTH" if reason == "STOP" else "SINGLE_MARK",
+        "path": path_name,
         "mark_price_usd": mark_price_usd,
+        "candles_in_window": candles_in,
+        "candle_ts_ms": None if candle is None else candle["ts_ms"],
+        "candle_high": None if candle is None else candle["high"],
+        "candle_low": None if candle is None else candle["low"],
         "exit_raw_usd": raw,
         "exit_fill_usd": exit_fill,
         "pnl_usd": pnl,
