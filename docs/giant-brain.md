@@ -161,6 +161,30 @@ The out-of-sample replay of the 19-file store, at the 600000 ppm gate, opened no
 
 The same replay was run again on the store as it stood at 2026-11-04 08:15 UTC: 37 snapshot files, 05:15 through 08:15. The readout was not refit. The gate stayed 600000 ppm, the limit stayed 500, and `--not-before-ms` stayed 1793772604000 (`2026-11-04T06:10:04+00:00`). Of 2145 priced rows at or after that cut, 1653 had a numeric FlyVis vote between 350049 and 469336 ppm, and 492 were the first print of that mint and abstained. No row with a prior price abstained. The fused score matched the FlyVis number on every one of those 1653 votes, because crow memory was empty and the hemibrain vote was not numeric. None of the 1653 votes reached 500000 ppm, and none reached the 600000 thesis gate. Theses opened 0. Closed trades 0, so win rate and average R are not defined. Pnl before fees is 0. Fees are `NOT_OBSERVED`. Max drawdown is 0. The replay counter `skipped` was 174, which is rows it could not mark, not the abstention count. Abstention rate on the priced rows is 492/2145. `execution_allowed` and `live_orders` stayed false.
 
+## Paper log
+
+`publish_snapshot_log` appends one paper-log row per collected DexScreener pair print, one mint at a time, and `summary` publishes the log. A row counts as an abstention when `coordinator_signal` is `ABSTAIN` or `fused_score_ppm` is not an integer. A hit is a paper long whose next print of that same mint is a higher price. The hit rate is undefined when the log has no paper long. `pnl_before_fees` is the sum of `paper_pnl_per_unit`. That sum does not subtract a fee. A fee is subtracted only for a paper long whose own capture has an integer `fee_bps` from 0 through 10000. Flat rows keep the fee unapplied. `calibrated` is false.
+
+On 2026-11-04 this was run on `/cursor/stores/bot/giant-brain-data/` as it stood with snapshot files `0515.jsonl` through `1045.jsonl`. Pump.fun was not read. The log had 1238 mints and 5218 rows. No pair row contained `fee_bps`.
+
+| | |
+| --- | --- |
+| Rows | 5218 |
+| Abstained | 5218 |
+| Abstention rate | 5218/5218 |
+| Numeric fused scores | 3980, from 349876 to 473420 ppm |
+| Scores at or above 500000 ppm | 0 |
+| Paper longs | 0 |
+| Hits | 0 |
+| Hit rate | not defined |
+| Priced rows | 3980 |
+| Pnl before fees | 0 |
+| Fees | `NOT_APPLIED` |
+| `calibrated` | false |
+| `execution_allowed` / `live_orders` | false / false |
+
+The coordinator signal was `ABSTAIN` on every row. Hemibrain was `MISSING_DATA` on all 5218. Crow was `CROW_MEMORY_EMPTY` on 2947 and `CROW_FEATURES_INCOMPLETE` on 2271. This publish does not load `brain-runs/crow_memory.jsonl`. FlyVis was `FLASH_KERNEL_READOUT` on 3980 rows and `STIMULUS_UNAVAILABLE` on the 1238 first prints. None of the numeric scores reached 500000 ppm, so the book stayed flat. This run did not rewrite the thesis ledger.
+
 ## Live trading is not enabled
 
 `execution.LiveAdapter.submit` never sends. Risk limits run first:
@@ -207,7 +231,7 @@ Going live later needs all of the following, and none of them are done here:
 1. The flash-kernel readout on the 05:15–06:45 UTC store ties the down majority and never cleared 500000 ppm out of sample. The pinned FlyVis worker still has not run on a real encoded tape. A later run can store that activity export and teach this voter to read it. Do not invent a fly score in this process.
 2. Capture more than the Anything AI curve: `host_capture` already takes a mint and curve. Keep dead coins in the set the capture plan requires, and point the paper backtest at those JSONL files.
 3. Schedule a paper pass over scanner reports. Compare tape-only pnl with tape-plus-crow-recall on a later window that was not used to fill memory.
-4. Publish the paper log's hit rate, abstention rate, and pnl-before-fees. Fees stay unapplied until a capture actually contains `fee_bps` for that fill. Do not treat the heuristic as calibrated.
+4. Done on 2026-11-04. `publish_snapshot_log` on snapshots `0515` through `1045` UTC published abstention rate 5218/5218, an undefined hit rate (0 paper longs), and pnl before fees of 0. No capture contained `fee_bps`, so fees stayed unapplied. `calibrated` is false. See Paper log.
 5. Holder concentration now has a live reader. The snapshot files still do not carry it, and on 2026-11-04 the public `getTokenLargestAccounts` method returned HTTP 429, so this run stored no share. A later run can retry that method when the public quota answers, and can store the read beside the snapshot. Do not attach a later read to an earlier decision.
 6. Implement a venue adapter only after the signer, allowlists, and limits above exist. `LiveAdapter` must keep returning `sent: false` until that adapter is a separate change.
 7. If a crow connectome or other animal model is added, give it its own module id and pins. Do not rename `crow_memory_v1`.

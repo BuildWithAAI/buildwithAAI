@@ -13,12 +13,12 @@ from src.multi_brain_research.brain_input import features, paper_long_support
 from src.multi_brain_research.brain_votes import vote
 from src.multi_brain_research.control_brains import frozen_prior
 from src.multi_brain_research.curve_read import read_curve as read_curve_file
-from src.multi_brain_research.giant_brain import fuse, paper_backtest, source_status
+from src.multi_brain_research.giant_brain import _hypothetical, fuse, paper_backtest, publish_snapshot_log, source_status
 from src.multi_brain_research.hold_check import live_read
 from src.multi_brain_research.host_capture import capture_mint
 from src.multi_brain_research.inventory_gate import CURVE, TOKEN
 from src.multi_brain_research.live_curve import CurveReadError, read_curve
-from src.multi_brain_research.paper_log import append
+from src.multi_brain_research.paper_log import append, summary
 from src.multi_brain_research.pump_trade import PROGRAM_DATA, TRADE_DISCRIMINATOR
 from src.multi_brain_research.receipt_bridge import to_module_output
 from src.multi_brain_research.rpc_allow import ALLOWED
@@ -237,12 +237,85 @@ class GiantBrainTests(unittest.TestCase):
             lines = [json.loads(line) for line in log.read_text().splitlines()]
             self.assertIn(lines[0]["hypothetical"]["position"], {"PAPER_LONG", "PAPER_FLAT"})
             self.assertEqual(lines[0]["hypothetical"]["fill"], "HYPOTHETICAL_NOT_A_VENUE_FILL")
+            self.assertEqual(lines[0]["hypothetical"]["fees"], "NOT_APPLIED")
+            self.assertFalse(result["calibrated"])
+            self.assertEqual(result["fees"], "NOT_APPLIED")
+            self.assertEqual(result["pnl_before_fees"], result["paper_pnl_per_unit_sum"])
             self.assertTrue(all(line["mode"] == "PAPER" and line["live_orders"] is False for line in lines))
             recalled = fuse(first, now_ms=1_700_000_600_000, memory_path=memory)
             self.assertEqual(recalled["brains"]["crow"]["detail"], "CROW_RECALL")
             self.assertGreater(recalled["brains"]["crow"]["paper_long_support_ppm"], 500_000)
             with self.assertRaises(ValueError):
                 append(log, {"action": "NO_EXECUTION", "private_key": "never"})
+
+    def test_fee_is_applied_only_on_a_long_whose_capture_has_fee_bps(self):
+        flat = _hypothetical(1.0, 1.2, 100_000, 100)
+        self.assertEqual(flat["position"], "PAPER_FLAT")
+        self.assertEqual(flat["fees"], "NOT_APPLIED")
+        self.assertEqual(flat["paper_pnl_per_unit"], 0.0)
+        self.assertIsNone(flat["fee_bps"])
+        gross = _hypothetical(1.0, 1.2, 800_000, None)
+        self.assertEqual(gross["fees"], "NOT_APPLIED")
+        self.assertAlmostEqual(gross["paper_pnl_per_unit"], 0.2)
+        charged = _hypothetical(1.0, 1.2, 800_000, 100)
+        self.assertEqual(charged["fees"], "APPLIED")
+        self.assertAlmostEqual(charged["paper_pnl_per_unit"], 0.2)
+        self.assertAlmostEqual(charged["paper_pnl_after_fee_per_unit"], 0.19)
+        missed = _hypothetical(1.0, 0.5, 800_000, 50)
+        self.assertEqual(missed["position"], "PAPER_LONG")
+        self.assertLess(missed["subsequent_return"], 0)
+        report = summary([
+            {"action": "NO_EXECUTION", "coordinator_signal": "ABSTAIN", "fused_score_ppm": None, "hypothetical": flat},
+            {"action": "NO_EXECUTION", "coordinator_signal": "BUY", "fused_score_ppm": 800_000, "hypothetical": charged},
+            {"action": "NO_EXECUTION", "coordinator_signal": "BUY", "fused_score_ppm": 800_000, "hypothetical": missed},
+        ])
+        self.assertEqual(report["abstained"], 1)
+        self.assertAlmostEqual(report["abstention_rate"], 1 / 3)
+        self.assertEqual(report["paper_longs"], 2)
+        self.assertEqual(report["hits"], 1)
+        self.assertEqual(report["hit_rate"], 0.5)
+        self.assertAlmostEqual(report["pnl_before_fees"], 0.2 + (0.5 - 1.0))
+        self.assertEqual(report["fees"], "APPLIED_WHERE_PRESENT")
+        self.assertEqual(report["fees_applied_rows"], 2)
+        self.assertAlmostEqual(report["pnl_after_observed_fees"], 0.19 + (0.5 - 1.0) - 0.005)
+        self.assertFalse(report["calibrated"])
+        self.assertFalse(report["execution_allowed"])
+        with self.assertRaises(ValueError):
+            summary([{"action": "SEND", "execution_allowed": True}])
+
+    def test_snapshot_log_keeps_fee_bps_off_rows_that_do_not_have_it(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            day = root / "snapshots" / "2026-11-04"
+            day.mkdir(parents=True)
+            first = {
+                "source": "dexscreener_pairs", "chain": "solana", "token_address": "Mint",
+                "pair_address": "Pair", "symbol": "DEMO", "dex": "pumpswap",
+                "price_usd": 1.0, "liquidity_usd": 50_000, "buys_h1": 3, "sells_h1": 1,
+                "ts": "2026-11-04T05:15:00+00:00", "fee_bps": 100,
+            }
+            second = dict(first, price_usd=1.1, ts="2026-11-04T05:20:00+00:00")
+            del second["fee_bps"]
+            (day / "0515.jsonl").write_text(json.dumps(first) + "\n")
+            (day / "0520.jsonl").write_text(json.dumps(second) + "\n")
+            (root / "latest.json").write_text(json.dumps({"snapshot_file": "snapshots/2026-11-04/0520.jsonl", "sources": {}}))
+            log = root / "paper.jsonl"
+            signal = {
+                "fused_score_ppm": 800_000, "confidence_ppm": 1, "mint": "Mint",
+                "coordinator": {"research_signal": "ABSTAIN"},
+                "brains": {}, "inputs": {"features": {}},
+                "provenance": {"observation_sha256": "c" * 64},
+            }
+            with patch("src.multi_brain_research.giant_brain.fuse", return_value=signal):
+                report = publish_snapshot_log(root, log)
+            lines = [json.loads(line) for line in log.read_text().splitlines()]
+            self.assertEqual(lines[0]["hypothetical"]["fees"], "APPLIED")
+            self.assertEqual(lines[0]["hypothetical"]["fee_bps"], 100)
+            self.assertIsNone(lines[1]["hypothetical"])
+            self.assertEqual(report["fees_applied_rows"], 1)
+            self.assertEqual(report["mints"], 1)
+            self.assertFalse(report["execution_allowed"])
+            self.assertFalse(report["live_orders"])
 
     def test_unlisted_rpc_env_is_refused_and_a_missing_key_does_not_invent_a_source(self):
         with patch.dict("os.environ", {"GIANT_BRAIN_RPC_URL": "https://evil.example", "HELIUS_API_KEY": ""}, clear=False):

@@ -27,7 +27,7 @@ from .fly_brain import describe as fly_status
 from .flyvis_market import score_history as fly_score_history
 from .holder_concentration import council_input
 from .market_sources import from_curve_snapshots, from_pump_events, from_scanner_market
-from .paper_log import append
+from .paper_log import append, summary
 from .receipt_bridge import to_module_output
 from .rpc_allow import ALLOWED
 
@@ -382,28 +382,46 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
     }
 
 
+def _observed_fee_bps(observation: dict):
+    fee = observation.get("fee_bps")
+    if type(fee) is int and not isinstance(fee, bool) and 0 <= fee <= 10_000:
+        return fee
+    return None
+
+
+def _hypothetical(price, nxt, support, fee_bps):
+    """One-step paper result. A fee is subtracted only from a long whose capture has fee_bps."""
+    if type(price) is bool or type(price) not in (int, float) or not price > 0:
+        return None
+    if type(nxt) is bool or type(nxt) not in (int, float) or not nxt > 0:
+        return None
+    change = (nxt - price) / price
+    long = type(support) is int and not isinstance(support, bool) and support >= 500_000
+    gross = change if long else 0.0
+    applied = long and fee_bps is not None
+    return {
+        "position": "PAPER_LONG" if long else "PAPER_FLAT",
+        "subsequent_return": change,
+        "paper_pnl_per_unit": gross,
+        "paper_pnl_after_fee_per_unit": gross - (fee_bps / 10_000) if applied else gross,
+        "fee_bps": fee_bps if applied else None,
+        "fees": "APPLIED" if applied else "NOT_APPLIED",
+        "fill": "HYPOTHETICAL_NOT_A_VENUE_FILL",
+    }
+
+
 def paper_backtest(observations: list, log_path: Path, memory_path: Path | None = None) -> dict:
     """Replay observations in order and append hypothetical paper pnl. No fills are sent."""
-    pnl = []
+    written = []
     for index, observation in enumerate(observations):
         if type(observation) is not dict or type(observation.get("decision_time_ms")) is not int:
             raise ValueError("INVALID_TIME")
         signal = fuse(observation, now_ms=observation["decision_time_ms"], memory_path=memory_path)
-        price = observation.get("price_quote_per_base")
         nxt = observations[index + 1].get("price_quote_per_base") if index + 1 < len(observations) else None
-        hypothetical = None
-        if type(price) in (int, float) and price > 0 and type(nxt) in (int, float) and nxt > 0:
-            change = (nxt - price) / price
-            support = signal["fused_score_ppm"]
-            position = 1 if type(support) is int and support >= 500_000 else 0
-            hypothetical = {
-                "position": "PAPER_LONG" if position else "PAPER_FLAT",
-                "subsequent_return": change,
-                "paper_pnl_per_unit": position * change,
-                "fees": "NOT_APPLIED_NOT_OBSERVED",
-                "fill": "HYPOTHETICAL_NOT_A_VENUE_FILL",
-            }
-            pnl.append(hypothetical["paper_pnl_per_unit"])
+        hypothetical = _hypothetical(
+            observation.get("price_quote_per_base"), nxt, signal.get("fused_score_ppm"), _observed_fee_bps(observation),
+        )
+        if hypothetical is not None:
             tape_features = (signal.get("inputs") or {}).get("features") or {}
             if memory_path is not None and all(type(tape_features.get(name)) in (int, float) for name in (
                 "signed_return", "flow_imbalance", "liquidity_change"
@@ -411,11 +429,11 @@ def paper_backtest(observations: list, log_path: Path, memory_path: Path | None 
                 remember(memory_path, {
                     "mint": signal.get("mint"),
                     "features": tape_features,
-                    "later_return": change,
+                    "later_return": hypothetical["subsequent_return"],
                     "observation_sha256": signal["provenance"]["observation_sha256"],
                     "action": "NO_EXECUTION",
                 })
-        append(log_path, {
+        record = {
             "index": index,
             "mint": signal.get("mint"),
             "fused_score_ppm": signal.get("fused_score_ppm"),
@@ -431,15 +449,64 @@ def paper_backtest(observations: list, log_path: Path, memory_path: Path | None 
             "hypothetical": hypothetical,
             "action": "NO_EXECUTION",
             "execution_allowed": False,
-        })
-    return {
-        "rows": len(observations),
-        "paper_pnl_per_unit_sum": None if not pnl else sum(pnl),
-        "mode": "PAPER",
-        "action": "NO_EXECUTION",
-        "execution_allowed": False,
-        "live_orders": False,
-    }
+        }
+        append(log_path, record)
+        written.append(record)
+    report = summary(written)
+    report["paper_pnl_per_unit_sum"] = report["pnl_before_fees"]
+    return report
+
+
+def publish_snapshot_log(root: Path, log_path: Path) -> dict:
+    """Write one paper log from collected pair series. Crow memory is not filled here."""
+    from .flyvis_market import series_from_snapshot_root
+
+    series = series_from_snapshot_root(root)
+    if log_path.exists():
+        log_path.unlink()
+    for mint, points in series.items():
+        history = []
+        observations = []
+        for index, point in enumerate(points):
+            history.append({
+                "price_usd": point["price_usd"],
+                "buys_h1": point.get("buys_h1"),
+                "sells_h1": point.get("sells_h1"),
+                "liquidity_usd": point.get("liquidity_usd"),
+            })
+            previous = points[index - 1] if index else None
+            observation = {
+                "mint": mint,
+                "pool": point.get("pair_address"),
+                "symbol": point.get("symbol"),
+                "dex": point.get("dex"),
+                "price_quote_per_base": point["price_usd"],
+                "price_usd": point["price_usd"],
+                "previous_price": None if previous is None else previous["price_usd"],
+                "previous_liquidity_usd": None if previous is None else previous.get("liquidity_usd"),
+                "buy_quote_atoms": point.get("buys_h1"),
+                "sell_quote_atoms": point.get("sells_h1"),
+                "liquidity_usd": point.get("liquidity_usd"),
+                "classification": "OBSERVED",
+                "source": "dexscreener_pairs",
+                "decision_time_ms": point["ts_ms"],
+                "fly_history": [dict(item) for item in history[-48:]],
+                "action": "NO_EXECUTION",
+            }
+            fee = point.get("fee_bps")
+            if type(fee) is int and not isinstance(fee, bool):
+                observation["fee_bps"] = fee
+            observations.append(observation)
+        if observations:
+            paper_backtest(observations, log_path)
+    if not log_path.is_file():
+        report = summary([])
+    else:
+        lines = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        report = summary(lines)
+    report["mints"] = len(series)
+    report["paper_pnl_per_unit_sum"] = report["pnl_before_fees"]
+    return report
 
 
 def source_status() -> dict:
