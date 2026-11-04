@@ -410,14 +410,14 @@ def run_lab(output, cfg):
                 "classification": cfg["mode"],
             }
             first = child("collect", intake)
-            tests = (
+            fixtures = (
                 Path(cfg["community_source"])
-                / "projects/zoora-agent-community/tests"
+                / "projects/zoora-agent-community/tests/fixtures"
             )
-            sys.path.insert(0, str(tests))
-            from localhost_tls import ensure_localhost_tls
-            certificate, key = ensure_localhost_tls()
-            proxy = TLSProxy(scanner, certificate, key)
+            certificate = fixtures / "bridge-localhost-cert.pem"
+            proxy = TLSProxy(
+                scanner, certificate, fixtures / "bridge-localhost-public-test-key.pem"
+            )
             tls_intake = {
                 **intake,
                 "scanner_origin": proxy.origin,

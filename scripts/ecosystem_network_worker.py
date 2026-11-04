@@ -207,13 +207,13 @@ def run_lab(output, cfg):
         # Reuse the pinned component's actual TLS/Waitress test proxy. Its public
         # TEST certificate is trusted explicitly only by these loopback probes.
         sys.path.insert(0, str(Path(cfg["community_source"]) / "projects/zoora-agent-community/tests"))
-        from test_private_pilot import TLSCommunity
+        from test_private_pilot import TLSCommunity, FIXTURES
         restarted = NetworkStore(output / "agents")
         proxy = TLSCommunity(restarted)
         try:
             def tls_packet(role):
                 return {**packet(role), "port": 8765, "origin": proxy.origin,
-                        "ca_file": str(proxy.certificate)}
+                        "ca_file": str(FIXTURES / "bridge-localhost-cert.pem")}
 
             tls_producer = {**tls_packet("network_publisher"), "bundle_file": str(output / "bundle.json")}
             publish_replay = child("publish", tls_producer)

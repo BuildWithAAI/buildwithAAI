@@ -1012,13 +1012,13 @@ def run_lab(output, cfg):
                     / "projects/zoora-agent-community/tests"
                 ),
             )
-            from test_private_pilot import TLSCommunity
+            from test_private_pilot import TLSCommunity, FIXTURES
 
             proxy = TLSCommunity(store)
             transport = {
                 "port": 8765,
                 "origin": proxy.origin,
-                "ca_file": str(proxy.certificate),
+                "ca_file": str(FIXTURES / "bridge-localhost-cert.pem"),
             }
             probe(alpha, first, "accept", "READY_FOR_BOUNDED_RESEARCH_ACTION")
             checks["preflight_with_remote_evidence_over_verified_tls"] = True
