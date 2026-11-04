@@ -30,9 +30,11 @@ The coordinator's research signal stays `ABSTAIN` while FlyVis has no market rea
 
 The paper council is FlyVis first, then the crow memory heuristic, then the hemibrain first brain when `admission()` accepts it. Market rows are the input to those brains. They are not a vote. `tape_brain`, `second_brain`, and `third_brain` are test fixtures and stay out of the ledger split.
 
+The FlyVis readout fit on the collector snapshots from 2026-11-04 05:15–05:40 UTC used 123 earlier decisions and 126 later ones. Out of sample it was right on 57.1% of the later decisions. The majority class on that same slice, always guessing the more common down move, was right on 64.3%. The readout does not beat that baseline (`beats_majority_class: false`). Log loss on the test slice was 0.731. That fit is what the council loads. It is not evidence of an edge.
+
 | Brain | Council | What runs |
 | --- | --- | --- |
-| FlyVis | Primary member | Pinned connectome and checkpoint. No market readout in this process, so the vote abstains |
+| FlyVis | Primary member | A causal luminance trace from price, flow, and liquidity is projected onto the published FV-REF-001 flash responses. A logistic readout is fit only on earlier snapshot decisions. This is not a new 45,669-neuron forward pass. The held-out result is reported even when it loses to a majority-class guess |
 | Crow | Member | Nearest past feature vector whose later return was recorded by the paper log. A heuristic, not a crow connectome |
 | Hemibrain `first_brain` | Member after the gate | `feature_loader` features and a receipt whose graph, model, and task pins are real hashes. A missing graph or a placeholder pin keeps it in shadow: the score is logged and it does not share pnl |
 | Tape, second brain, third brain | Fixtures | Not council members |

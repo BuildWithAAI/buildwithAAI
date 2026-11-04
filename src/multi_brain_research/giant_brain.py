@@ -24,6 +24,7 @@ from .council_roster import roster
 from .crow_brain import recall, remember
 from .first_brain import graph_file, score_episode
 from .fly_brain import describe as fly_status
+from .flyvis_market import score_history as fly_score_history
 from .market_sources import from_curve_snapshots, from_pump_events, from_scanner_market
 from .paper_log import append
 from .receipt_bridge import to_module_output
@@ -108,6 +109,25 @@ def _module_output(spec: ModuleSpec, scored: dict, snapshot_sha: str, produced_m
     return to_module_output(receipt, snapshot_sha, produced_ms)
 
 
+def _fly_history(row: dict) -> list[dict]:
+    supplied = row.get("fly_history")
+    if type(supplied) is list:
+        return supplied
+    current = {
+        "price_usd": row.get("price_quote_per_base", row.get("price_usd")),
+        "buys_h1": row.get("buy_quote_atoms"),
+        "sells_h1": row.get("sell_quote_atoms"),
+        "liquidity_usd": row.get("liquidity_usd", row.get("liquidity_quote")),
+    }
+    previous = row.get("previous_price")
+    if type(previous) not in (int, float) or isinstance(previous, bool) or previous <= 0:
+        return [current]
+    return [{
+        "price_usd": previous,
+        "liquidity_usd": row.get("previous_liquidity_usd", row.get("previous_liquidity_quote")),
+    }, current]
+
+
 def _episode(row: dict) -> list[dict] | None:
     supplied = row.get("observations")
     if type(supplied) is list and supplied:
@@ -189,6 +209,7 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
         return _shell(row, str(error), fly)
     tape_score = paper_long_support(mapped)
     crow_score = recall(mapped["features"], memory_path)
+    fly_vote = fly_score_history(_fly_history(row))
     council = roster()
     hemibrain_vote = _hemibrain_vote(row)
     here = Path(__file__).resolve().parent
@@ -197,15 +218,26 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
         "crow_memory_v1", "crow_memory", _pin_file(here / "crow_brain.py"), _pin_file(here / "crow_brain.py"),
         encoder, _rule("crow_memory_recall_v1"),
     )
-    fly_spec = ModuleSpec(
-        module_id="flyvis_market_v1",
-        source_id="flyvis_reference",
-        graph_sha256=fly["graph_sha256"],
-        checkpoint_sha256=fly["checkpoint_sha256"],
-        encoder_sha256=None,
-        readout_sha256=None,
-        calibration_sha256=None,
-    )
+    fly_number = fly_vote.get("paper_long_support_ppm")
+    if type(fly_number) is int and type(fly.get("graph_sha256")) is str and type(fly.get("checkpoint_sha256")) is str and type(fly_vote.get("readout_sha256")) is str:
+        fly_spec = _spec(
+            "flyvis_market_v1",
+            "flyvis_reference",
+            fly["graph_sha256"],
+            fly["checkpoint_sha256"],
+            fly_vote["encoder_sha256"],
+            fly_vote["readout_sha256"],
+        )
+    else:
+        fly_spec = ModuleSpec(
+            module_id="flyvis_market_v1",
+            source_id="flyvis_reference",
+            graph_sha256=fly["graph_sha256"],
+            checkpoint_sha256=fly["checkpoint_sha256"],
+            encoder_sha256=None,
+            readout_sha256=None,
+            calibration_sha256=None,
+        )
     signed = mapped["features"]["signed_return"]
     lineage = _canonical({"row": {key: row.get(key) for key in (
         "mint", "pool", "price_quote_per_base", "previous_price", "buy_quote_atoms",
@@ -273,7 +305,13 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
     }, digest, now_ms + 1)
     from .consensus import ObservationRound
     rnd = ObservationRound(policy, pair, snapshot)
-    rnd.submit(Receipt(crow_output, now_ms + 1))
+    if fly_spec.missing_components() == ():
+        rnd.submit(Receipt(_module_output(fly_spec, {
+            "prediction_ppm": fly_number,
+            "uncertainty_ppm": fly_vote.get("uncertainty_ppm"),
+            "abstain_reason": None,
+        }, digest, now_ms + 1), now_ms + 1))
+    rnd.submit(Receipt(crow_output, now_ms + 1 if fly_spec.missing_components() else now_ms + 2))
     if hemibrain_spec is not None:
         rnd.submit(Receipt(_module_output(hemibrain_spec, {
             "prediction_ppm": hemibrain_vote.get("paper_long_support_ppm"),
@@ -282,7 +320,9 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
         }, digest, now_ms + 2), now_ms + 2))
     coordinator = rnd.finalize(now_ms + 3)
     in_vote = hemibrain_spec is not None
-    numeric = [crow_score["paper_long_support_ppm"]] if type(crow_score.get("paper_long_support_ppm")) is int else []
+    numeric = [fly_number] if type(fly_number) is int else []
+    if type(crow_score.get("paper_long_support_ppm")) is int:
+        numeric.append(crow_score["paper_long_support_ppm"])
     if in_vote and type(hemibrain_vote.get("paper_long_support_ppm")) is int:
         numeric.append(hemibrain_vote["paper_long_support_ppm"])
     roster_size = len(council["members"])
@@ -290,7 +330,13 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
     spread = 0 if len(numeric) < 2 else max(numeric) - min(numeric)
     confidence = 0 if not numeric else int((len(numeric) / roster_size) * max(0, 1_000_000 - spread))
     brains = {
-        "flyvis": {**fly, "council_member": True, "primary": True, "paper_long_support_ppm": None},
+        "flyvis": {
+            **fly,
+            **fly_vote,
+            "council_member": True,
+            "primary": True,
+            "reason": fly_vote.get("detail") or fly.get("reason"),
+        },
         "crow": {**crow_score, "council_member": True, "primary": False},
     }
     shadow = {}

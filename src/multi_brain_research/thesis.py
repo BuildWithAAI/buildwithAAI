@@ -26,7 +26,7 @@ RULE_THIN_LIQUIDITY_USD = 25_000.0
 RULE_YOUNG_PAIR_MS = 86_400_000
 RULE_VOLUME_TO_LIQUIDITY = 8.0
 RULE_MOVE_PERCENT = 80.0
-_NUMBER = re.compile(r"(?<![A-Za-z0-9.])(-?\d+(?:\.\d+)?)(?![A-Za-z0-9])")
+_NUMBER = re.compile(r"(?<![A-Za-z0-9.])(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(?![A-Za-z0-9])")
 
 
 class ThesisError(ValueError):
@@ -210,6 +210,7 @@ def _brain_view(signal: dict) -> dict:
             "shadow": brain.get("shadow"),
             "primary": brain.get("primary"),
             "in_vote": brain.get("in_vote", True),
+            "network_forward_pass": brain.get("network_forward_pass"),
         }
     for name, brain in (signal.get("shadow") or {}).items():
         if type(brain) is not dict:

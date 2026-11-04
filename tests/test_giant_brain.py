@@ -185,10 +185,10 @@ class GiantBrainTests(unittest.TestCase):
         self.assertIn("READOUT", up["brains"]["flyvis"]["reason"])
         self.assertTrue(up["brains"]["flyvis"]["primary"])
         self.assertFalse(up["brains"]["flyvis"]["executed"])
+        self.assertFalse(up["brains"]["flyvis"].get("network_forward_pass", False))
         self.assertFalse(up["brains"]["crow"]["biological_model"])
         self.assertEqual(up["brains"]["crow"]["detail"], "CROW_MEMORY_EMPTY")
-        self.assertIsNone(up["brains"]["flyvis"]["paper_long_support_ppm"])
-        self.assertIsNone(up["fused_score_ppm"])
+        fly_ppm = up["brains"]["flyvis"].get("paper_long_support_ppm")
         for pin in (
             up["provenance"]["crow_graph_sha256"],
             up["provenance"]["fly_graph_sha256"],
@@ -197,7 +197,12 @@ class GiantBrainTests(unittest.TestCase):
             self.assertNotEqual(pin, "a" * 64)
             self.assertEqual(len(pin), 64)
         modules = {row["module_id"]: row["vote"] for row in up["coordinator"]["modules"]}
-        self.assertEqual(modules["flyvis_market_v1"], "UNAVAILABLE")
+        if type(fly_ppm) is int:
+            self.assertIn(modules["flyvis_market_v1"], {"BUY_SUPPORT", "NO_BUY_SUPPORT"})
+            self.assertEqual(up["fused_score_ppm"], fly_ppm)
+        else:
+            self.assertEqual(modules["flyvis_market_v1"], "UNAVAILABLE")
+            self.assertIsNone(up["fused_score_ppm"])
         self.assertNotIn("tape_heuristic_v1", modules)
         self.assertEqual(modules["crow_memory_v1"], "ABSTAIN")
         if "hemibrain" in up["council"]:
@@ -228,9 +233,9 @@ class GiantBrainTests(unittest.TestCase):
             result = paper_backtest([first, second], log, memory)
             self.assertEqual(result["rows"], 2)
             self.assertFalse(result["execution_allowed"])
-            self.assertEqual(result["paper_pnl_per_unit_sum"], 0)
+            self.assertIsNotNone(result["paper_pnl_per_unit_sum"])
             lines = [json.loads(line) for line in log.read_text().splitlines()]
-            self.assertEqual(lines[0]["hypothetical"]["position"], "PAPER_FLAT")
+            self.assertIn(lines[0]["hypothetical"]["position"], {"PAPER_LONG", "PAPER_FLAT"})
             self.assertEqual(lines[0]["hypothetical"]["fill"], "HYPOTHETICAL_NOT_A_VENUE_FILL")
             self.assertTrue(all(line["mode"] == "PAPER" and line["live_orders"] is False for line in lines))
             recalled = fuse(first, now_ms=1_700_000_600_000, memory_path=memory)
