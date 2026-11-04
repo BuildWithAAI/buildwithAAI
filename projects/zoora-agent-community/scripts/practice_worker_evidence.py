@@ -17,7 +17,7 @@ from helpers import Fixture  # noqa: E402
 from model_fixture import ModelFixture  # noqa: E402
 from zoora_community.client import Client  # noqa: E402
 from zoora_community.practice_journal import review_practice  # noqa: E402
-from zoora_community.practice_worker import run_practice  # noqa: E402
+from zoora_community.practice_worker import MODEL_DECISION_REJECTIONS, run_practice  # noqa: E402
 from zoora_community.store import exclusive_file, now_ms  # noqa: E402
 from zoora_community.validation import canonical  # noqa: E402
 from zoora_community.wsgi_server import WSGIServer  # noqa: E402
@@ -82,8 +82,15 @@ def run(real_model=None):
 
         if real_model:
             first = invoke()
-            require(first["state"] in {"HOLD_RECORDED", "ORDER_ACCEPTED_PENDING"},
-                    "installed CPU model returns a validated structured paper decision", checks)
+            require(first["state"] in {"HOLD_RECORDED", "ORDER_ACCEPTED_PENDING", "MODEL_DECISION_REJECTED"},
+                    "installed CPU model returns one validated paper decision or a recorded rejection", checks)
+            if first["state"] == "MODEL_DECISION_REJECTED":
+                saved = json.loads((journal / "tick-000-failure.json").read_bytes())
+                require(first["error"] in MODEL_DECISION_REJECTIONS and saved.get("error") == first["error"]
+                        and set(saved) == {"error", "snapshot_sha256"},
+                        "rejected model decision keeps the validator code and is not rewritten", checks)
+                require(not (journal / "tick-000-decision.json").exists(),
+                        "rejected model decision is not saved as a paper order", checks)
         else:
             original = Client.request
 
@@ -97,7 +104,10 @@ def run(real_model=None):
                 first = invoke()
             require(first["state"] == "DELIVERY_UNCERTAIN", "lost HTTP acknowledgment remains uncertain", checks)
         resumed = invoke()
-        expected = "ALREADY_OBSERVED_NO_NEW_INFERENCE" if first["state"] == "HOLD_RECORDED" else "WAITING_FOR_OWNER_TICK"
+        if first["state"] in {"HOLD_RECORDED", "MODEL_DECISION_REJECTED"}:
+            expected = "ALREADY_OBSERVED_NO_NEW_INFERENCE"
+        else:
+            expected = "WAITING_FOR_OWNER_TICK"
         require(resumed["state"] == expected, "restart reconciles without another model decision", checks)
         fixture.store.call("POST", base + "/step",
                            {"request_id": uuid.uuid4().hex, "expected_tick": 0}, fixture.owner)
