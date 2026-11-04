@@ -126,7 +126,7 @@ def observation_from_pair(current: dict, previous: dict | None = None) -> dict:
             prior_price = previous["price_usd"]
         if type(previous.get("liquidity_usd")) in (int, float) and previous["liquidity_usd"] >= 0:
             prior_liquidity = previous["liquidity_usd"]
-    return {
+    observed = {
         "mint": current.get("token_address"),
         "pool": current.get("pair_address"),
         "symbol": current.get("symbol"),
@@ -146,6 +146,9 @@ def observation_from_pair(current: dict, previous: dict | None = None) -> dict:
         "fetched_at": current.get("fetched_at") or current.get("ts"),
         "action": "NO_EXECUTION",
     }
+    if type(current.get("holder_concentration")) is dict:
+        observed["holder_concentration"] = current["holder_concentration"]
+    return observed
 
 
 def _allowed_url(url: str) -> str:

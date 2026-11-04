@@ -25,6 +25,7 @@ from .crow_brain import recall, remember
 from .first_brain import graph_file, score_episode
 from .fly_brain import describe as fly_status
 from .flyvis_market import score_history as fly_score_history
+from .holder_concentration import council_input
 from .market_sources import from_curve_snapshots, from_pump_events, from_scanner_market
 from .paper_log import append
 from .receipt_bridge import to_module_output
@@ -363,6 +364,7 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
             "missing": mapped["missing"],
             "tape_heuristic_ppm": tape_score["prediction_ppm"],
             "tape_role": "TEST_FIXTURE",
+            "holder_concentration": council_input(observation.get("holder_concentration"), now_ms),
         },
         "brains": brains,
         "shadow": shadow,
@@ -454,6 +456,12 @@ def source_status() -> dict:
             "used": False,
             "state": "IGNORED" if os.environ.get("HELIUS_API_KEY") else "KEY_ABSENT",
             "reason": "A keyed endpoint is not on the public allowlist",
+        },
+        "holder_concentration": {
+            "state": "ALLOWLISTED_RPC_ON_DEMAND",
+            "methods": ["getTokenSupply", "getTokenLargestAccounts", "getMultipleAccounts"],
+            "key_required": False,
+            "in_snapshot": False,
         },
         "dexscreener": {"state": "PUBLIC_NO_KEY", "key_required": False},
         "scanner_feed": {"state": "CALLER_SUPPLIED_REPORT", "key_required": False},

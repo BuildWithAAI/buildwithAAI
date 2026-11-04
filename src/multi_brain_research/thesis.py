@@ -1,9 +1,9 @@
 """Structured paper thesis for one scored token.
 
 Every market number is copied from the observation or from a named rule
-applied to those numbers. Holder concentration is unavailable unless the
-snapshot actually carries it. An optional narrative is kept only when every
-number in it already appears in the thesis.
+applied to those numbers. Holder concentration is unavailable unless a
+holder read taken at or before the decision is attached. An optional
+narrative is kept only when every number in it already appears in the thesis.
 """
 from __future__ import annotations
 
@@ -12,6 +12,8 @@ import json
 import os
 import re
 from pathlib import Path
+
+from .holder_concentration import thesis_parts
 
 REQUIRED = (
     "protocol", "thesis_id", "mint", "symbol", "pair", "score_ppm", "threshold_ppm",
@@ -67,7 +69,7 @@ def _case(side: str, points: list[dict]) -> list[dict]:
     return [{"side": side, "claim": point["claim"], "evidence": point["evidence"]} for point in points]
 
 
-def _flags(observed: dict) -> list[dict]:
+def _flags(observed: dict, holder_flag: dict) -> list[dict]:
     liquidity = _num(observed.get("liquidity_usd"))
     volume = _num(observed.get("volume_h1"))
     change = _num(observed.get("price_change_h1"))
@@ -79,10 +81,7 @@ def _flags(observed: dict) -> list[dict]:
         flags.append({"flag": "LIQUIDITY", "status": "RAISED", "observed": liquidity, "rule_usd": RULE_THIN_LIQUIDITY_USD})
     else:
         flags.append({"flag": "LIQUIDITY", "status": "CLEAR", "observed": liquidity, "rule_usd": RULE_THIN_LIQUIDITY_USD})
-    if observed.get("holder_concentration") is None:
-        flags.append({"flag": "HOLDER_CONCENTRATION", "status": "UNAVAILABLE", "reason": "NOT_IN_SNAPSHOT", "observed": None})
-    else:
-        flags.append({"flag": "HOLDER_CONCENTRATION", "status": "OBSERVED", "observed": observed["holder_concentration"]})
+    flags.append(holder_flag)
     if type(age) is not int:
         flags.append({"flag": "PAIR_AGE", "status": "UNAVAILABLE", "observed": None})
     elif age < 0:
@@ -267,9 +266,20 @@ def write_thesis(signal: dict, record: dict, *, now_ms: int, threshold_ppm: int 
         "buys_h1": _num(record.get("buys_h1", record.get("buy_quote_atoms"))),
         "sells_h1": _num(record.get("sells_h1", record.get("sell_quote_atoms"))),
         "pair_age_ms": age,
-        "holder_concentration": record.get("holder_concentration") if _num(record.get("holder_concentration")) is not None else None,
     }
+    holder_flag, holder_summary = thesis_parts(record.get("holder_concentration"), now_ms)
+    observed["holder_concentration"] = holder_summary
     bull, bear = _points(observed)
+    if holder_flag["status"] in ("CLEAR", "RAISED") and type(holder_summary) is dict:
+        evidence = {
+            "compared_share_ppm": holder_summary["compared_share_ppm"],
+            "rule_top10_share_ppm": holder_flag["rule_top10_share_ppm"],
+        }
+        point = {
+            "claim": "Top-10 holder share is under the concentration rule." if holder_flag["status"] == "CLEAR" else "Top-10 holder share meets the concentration rule.",
+            "evidence": evidence,
+        }
+        (bull if holder_flag["status"] == "CLEAR" else bear).append(point)
     provenance = {
         "observation_sha256": (signal.get("provenance") or {}).get("observation_sha256"),
         "source": record.get("source"),
@@ -277,6 +287,11 @@ def write_thesis(signal: dict, record: dict, *, now_ms: int, threshold_ppm: int 
         "pair_address": record.get("pair_address") or record.get("pool"),
         "dex": record.get("dex"),
     }
+    if type(record.get("holder_concentration")) is dict:
+        provenance["holder_endpoint"] = holder_flag.get("endpoint")
+        provenance["holder_fetched_at_ms"] = holder_flag.get("fetched_at_ms")
+        provenance["holder_supply_slot"] = holder_flag.get("supply_slot")
+        provenance["holder_largest_slot"] = holder_flag.get("largest_slot")
     body = {
         "protocol": "AAI_GIANT_BRAIN_THESIS_V1",
         "mint": record.get("token_address") or record.get("mint") or signal.get("mint"),
@@ -291,7 +306,7 @@ def write_thesis(signal: dict, record: dict, *, now_ms: int, threshold_ppm: int 
         "bull_case": _case("bull", bull),
         "bear_case": _case("bear", bear),
         "brains": _brain_view(signal),
-        "risk_flags": _flags(observed),
+        "risk_flags": _flags(observed, holder_flag),
         "proposal": _proposal(price, observed["price_change_h1"]),
         "horizon_ms": horizon_ms,
         "confidence_ppm": signal.get("confidence_ppm") if type(signal.get("confidence_ppm")) is int else 0,

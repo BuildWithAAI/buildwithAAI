@@ -9,6 +9,7 @@ flowchart LR
     Curve[Allowlisted Solana curve read]
     Pump[Pump.fun TradeEvent log]
     Dex[DEX Screener public pairs]
+    Holder[Allowlisted holder read]
   end
   subgraph brains [Council]
     Fly[FlyVis flash-kernel readout]
@@ -22,11 +23,12 @@ flowchart LR
   Crow --> Round
   Hemi --> Round
   Round --> Thesis[Thesis JSON and markdown]
+  Holder --> Thesis
   Thesis --> PaperBook[Paper ledger]
   PaperBook --> LiveStub[Live adapter stub stays off]
 ```
 
-FlyVis casts a numeric council vote when the frozen flash-kernel readout returns a probability. The coordinator research signal stays `ABSTAIN` when any required module abstains or is unavailable. Crow memory is empty and a two-point hemibrain history is `MISSING_DATA`, so that signal stays `ABSTAIN` even while FlyVis has a number. The fused score is the mean of the numeric council votes. Confidence is reduced by every council member that abstained. Tape features stay an input and a test fixture. They are not a vote.
+FlyVis casts a numeric council vote when the frozen flash-kernel readout returns a probability. The coordinator research signal stays `ABSTAIN` when any required module abstains or is unavailable. Crow memory is empty and a two-point hemibrain history is `MISSING_DATA`, so that signal stays `ABSTAIN` even while FlyVis has a number. The fused score is the mean of the numeric council votes. Confidence is reduced by every council member that abstained. Tape features stay an input and a test fixture. They are not a vote. A holder-concentration read is also an input, and only when its `fetched_at_ms` is at or before the decision. It is not a vote and it does not change the fused score.
 
 ## What each brain is
 
@@ -48,7 +50,7 @@ Paper attribution splits closed pnl across council members that cast a numeric v
 | Source | Status | Key |
 | --- | --- | --- |
 | Caller-supplied scanner market report (`price_usd`, `liquidity_usd`, 24h buys/sells) | Live shape, already parsed by `src/aai_scanner/market.py` and the scanner feed | None for a report you already captured |
-| Allowlisted Solana RPC `getAccountInfo` / `getTransaction` on `api.mainnet-beta.solana.com` and `api.mainnet.solana.com` | Live when you run a capture. Unit tests do not call it | None. `GIANT_BRAIN_RPC_URL` is accepted only when it is one of those two URLs |
+| Allowlisted Solana RPC `getAccountInfo`, `getTransaction`, `getTokenSupply`, `getTokenLargestAccounts`, and `getMultipleAccounts` on `api.mainnet-beta.solana.com` and `api.mainnet.solana.com` | Live when you run a capture. Unit tests do not call it | None. `GIANT_BRAIN_RPC_URL` is accepted only when it is one of those two URLs |
 | Pump.fun `TradeEvent` logs (`6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`) | Decoder is real. A capture still has to be run on a host | None on the public RPC |
 | DEX Screener `api.dexscreener.com` via `live_dex_observation` | Optional live read, no key | None. Failure returns `DEX_UNAVAILABLE` |
 | Helius or any other keyed RPC | Not used | `HELIUS_API_KEY` is ignored. A key in the URL would leave the allowlist |
@@ -56,7 +58,7 @@ Paper attribution splits closed pnl across council members that cast a numeric v
 | Crow connectome | Missing | Do not relabel the memory heuristic as biology |
 | Snapshot store `/cursor/stores/bot/giant-brain-data/` | Reader in `snapshot_feed.py`. DexScreener pair rows are the metric. GeckoTerminal rows use the same fields. Pump.fun live list is often HTTP 403 in the collector | None |
 | Direct DexScreener and GeckoTerminal HTTPS reads | Same hosts and path prefixes as the collector. Any other URL is refused | None |
-| Holder concentration | Not in the snapshot schema | The thesis flag stays `UNAVAILABLE` until a real holder source is passed in |
+| Holder concentration | Live read in `holder_concentration.py` through the shared allowlisted client. Not stored in the snapshot files. A replay with no attached read stays `UNAVAILABLE` / `NOT_IN_SNAPSHOT` | None. Same two public hosts. On 2026-11-04 `getTokenLargestAccounts` returned HTTP 429, so no share was stored |
 | Wallet signer and venue orders | Stub only | Live sending is not implemented |
 
 An account snapshot with one price does not invent a return. Flow and liquidity change stay missing until both sides of the comparison are present.
@@ -121,6 +123,19 @@ RPC_URL=https://api.mainnet-beta.solana.com CAPTURE_OUT=captures \
 
 Run that with `PYTHONPATH=src python -m multi_brain_research.host_capture`.
 
+One holder read, still paper. The result is attached to the observation and to the thesis record. Unit tests pass a recorded payload and do not open a socket.
+
+```python
+from multi_brain_research.holder_concentration import live_read
+read = live_read(mint, "https://api.mainnet-beta.solana.com", pair_address=pair)
+```
+
+`getTokenSupply` and `getTokenLargestAccounts` use commitment `finalized`. `getMultipleAccounts` is called only after both succeed, to read the token account and then the owner account. A pool vault is labeled only when the token account's owner equals the observed pair address. A bonding-curve vault is labeled only when that owner's program is `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`. Anything else is `UNCLASSIFIED`. Amounts are the RPC `amount` strings. `uiAmount` is ignored.
+
+On 2026-11-04 a direct `getTokenSupply` for icapy (`5fgJwPNtsohc1FwjkjvmVWoXTbSzD8Z3zzbcuXdepump`) against `https://api.mainnet-beta.solana.com` returned HTTP 200. The body was `result.context.slot` 465228433 and `result.value.amount` `"967911401689546"` with `decimals` 6. `uiAmount` was also present and was not used as the balance. The following `getTokenLargestAccounts` call returned HTTP 429. `Retry-After` was 10. The body was a JSON-RPC error, code 429, message `Too many requests for a specific RPC call`.
+
+`live_read` was then run on that same mint, the top pair in `snapshots/2026-11-04/0815.jsonl`, three times across the two allowlisted hosts, and twice more after a three-minute pause with no other RPC calls. All five largest-accounts calls were HTTP 429 with the same code, message, and `Retry-After`. Each `live_read` had already received a supply slot (465233877 and 465234082 on the later calls) and stored that slot. It stored no supply amount and no share. Succeeded concentration reads: 0. Top-10 share distribution: not observed. Further mints were not called. The limiter is on the method, and another mint would have been the same call. A successful largest-accounts row was not returned, so this run did not confirm that row's field names against a live payload. The parser accepts the `address`, `amount`, and `decimals` object the scanner already reads. A different shape stays `RPC_SHAPE` and still has no share.
+
 ## Theses
 
 `write_thesis` emits `AAI_GIANT_BRAIN_THESIS_V1` only when the fused score is at least the threshold (default 600000 ppm). The JSON and the markdown summary include:
@@ -132,7 +147,7 @@ Run that with `PYTHONPATH=src python -m multi_brain_research.host_capture`.
 - a proposed entry, stop, and take-profit
 - horizon, confidence, and a provenance receipt
 
-Entry is the observed `price_usd`. The stop distance is the absolute hourly percent move, clamped by rule constants `0.05` and `0.40` that are stored on the thesis as rule constants. Take-profit is two times that distance. Holder concentration is `UNAVAILABLE` with reason `NOT_IN_SNAPSHOT` unless the row actually contains `holder_concentration`.
+Entry is the observed `price_usd`. The stop distance is the absolute hourly percent move, clamped by rule constants `0.05` and `0.40` that are stored on the thesis as rule constants. Take-profit is two times that distance. Holder concentration is `UNAVAILABLE` with reason `NOT_IN_SNAPSHOT` unless the row carries a holder read whose `fetched_at_ms` is at or before `now_ms`. A successful read is `CLEAR` when the compared top-10 share is under the stored rule `rule_top10_share_ppm` of 500000, and `RAISED` at or above it. 500000 ppm is 50% of supply, the same threshold `ACCOUNT_CONCENTRATION` already uses in the scanner. It is a rule constant, not a number fit on this sample. The compared share excludes a token account only when its owner equals the observed pair (`POOL_VAULT`) or that owner's program is the published pump.fun program (`BONDING_CURVE`). Every other account stays `UNCLASSIFIED` and remains inside the share. If the owner read did not run, the flag uses the raw top 10 and `exclusion_applied` is false. Shares are integer parts per million of total supply. The flag stores the RPC endpoint, the supply slot, the largest-accounts slot, and `fetched_at_ms`. A failed or rate-limited read stays `UNAVAILABLE` with that reason and does not carry a share.
 
 An LLM may phrase the narrative only when `ZOORA_MODEL_PROVIDER`, `ZOORA_MODEL_NAME`, and `ZOORA_MODEL_API_KEY` are set. The text is kept only if every number in it already appears in the thesis. Otherwise the deterministic markdown is kept and `narrative_source` is `NARRATIVE_REJECTED_UNSOURCED_NUMBER`. No key means no provider call.
 
@@ -143,6 +158,8 @@ An LLM may phrase the narrative only when `ZOORA_MODEL_PROVIDER`, `ZOORA_MODEL_N
 Metrics from the ledger: win rate, average R, max drawdown, net pnl, and per-brain attribution. A brain with no numeric vote, including FlyVis while it abstains, is attributed zero. Fees are `NOT_OBSERVED`.
 
 The out-of-sample replay of the 19-file store, at the 600000 ppm gate, opened no position. Of 647 priced rows from 06:10 UTC on, 496 had a prior price and a numeric FlyVis vote, and 151 were the first print of that mint and abstained. Another 45 rows in that window had no positive price. The 496 votes sat between 355549 and 469169 ppm, under both the 500000 module line and the 600000 thesis gate. Closed trades 0, net pnl 0, max drawdown 0. The majority class on the labeled test slice is down, and a long-only book that follows that class also stays flat. `execution_allowed` and `live_orders` stayed false.
+
+The same replay was run again on the store as it stood at 2026-11-04 08:15 UTC: 37 snapshot files, 05:15 through 08:15. The readout was not refit. The gate stayed 600000 ppm, the limit stayed 500, and `--not-before-ms` stayed 1793772604000 (`2026-11-04T06:10:04+00:00`). Of 2145 priced rows at or after that cut, 1653 had a numeric FlyVis vote between 350049 and 469336 ppm, and 492 were the first print of that mint and abstained. No row with a prior price abstained. The fused score matched the FlyVis number on every one of those 1653 votes, because crow memory was empty and the hemibrain vote was not numeric. None of the 1653 votes reached 500000 ppm, and none reached the 600000 thesis gate. Theses opened 0. Closed trades 0, so win rate and average R are not defined. Pnl before fees is 0. Fees are `NOT_OBSERVED`. Max drawdown is 0. The replay counter `skipped` was 174, which is rows it could not mark, not the abstention count. Abstention rate on the priced rows is 492/2145. `execution_allowed` and `live_orders` stayed false.
 
 ## Live trading is not enabled
 
@@ -171,14 +188,14 @@ Going live later needs all of the following, and none of them are done here:
 - the env flag and a private config, with the kill switch off only for that run
 - allowlists for the exact mints and venues
 - the position, daily-loss, and open-count limits filled from the operator's own numbers
-- holder-concentration data if that risk flag should ever be `OBSERVED`
+- a holder-concentration read, if that risk flag should be `CLEAR` or `RAISED` instead of `UNAVAILABLE`
 
 ## Safety that this change locks in
 
 - `receipt_bridge` rejects a missing pin and the placeholder hashes `"a"*64` and `"0"*64`.
 - The loopback TLS private key is generated at test time and is not in git. The certificate is written once per user under the temp directory and reused by CLI subprocesses. A key that existed only inside one process made the fixture server and the child trust different certificates, so the child reported `BRIDGE_UNAVAILABLE` (community run 41781407377) and the live-model payment check returned `AGENT_PAYMENT_REQUIRES_REVIEW`.
 - Ecosystem network, scanner-feed, and services workers keep the certificate that ships in the pinned community checkout `fc42d8b36da77c58430e4a7594a30a0225883b6c`. That tree has no `localhost_tls` module, and its `TLSCommunity` has no `certificate` attribute. Pointing the workers at this branch's helper made CI return `AttributeError` and `ModuleNotFoundError` (runs 41781407422, 41781407388, 41781407382, 41781407389).
-- `live_curve`, `curve_read`, `host_capture`, and `hold_check` share one client that refuses any endpoint outside the public-mainnet allowlist before it opens a socket. Redirects are refused.
+- `live_curve`, `curve_read`, `host_capture`, `hold_check`, and `holder_concentration` share one client that refuses any endpoint outside the public-mainnet allowlist before it opens a socket. Redirects are refused.
 - `host_capture` keeps a row when the transaction log contains a pump.fun trade for that mint and the curve account is in the transaction. A log without that event is omitted.
 
 ## Zoora Authenticated Community on `f30eff0`
@@ -191,6 +208,6 @@ Going live later needs all of the following, and none of them are done here:
 2. Capture more than the Anything AI curve: `host_capture` already takes a mint and curve. Keep dead coins in the set the capture plan requires, and point the paper backtest at those JSONL files.
 3. Schedule a paper pass over scanner reports. Compare tape-only pnl with tape-plus-crow-recall on a later window that was not used to fill memory.
 4. Publish the paper log's hit rate, abstention rate, and pnl-before-fees. Fees stay unapplied until a capture actually contains `fee_bps` for that fill. Do not treat the heuristic as calibrated.
-5. Add a real holder-concentration source before treating that risk flag as anything other than unavailable. The snapshot store does not carry it.
+5. Holder concentration now has a live reader. The snapshot files still do not carry it, and on 2026-11-04 the public `getTokenLargestAccounts` method returned HTTP 429, so this run stored no share. A later run can retry that method when the public quota answers, and can store the read beside the snapshot. Do not attach a later read to an earlier decision.
 6. Implement a venue adapter only after the signer, allowlists, and limits above exist. `LiveAdapter` must keep returning `sent: false` until that adapter is a separate change.
 7. If a crow connectome or other animal model is added, give it its own module id and pins. Do not rename `crow_memory_v1`.

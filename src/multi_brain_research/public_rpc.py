@@ -1,9 +1,9 @@
 """One allowlisted read-only Solana POST.
 
-live_curve, curve_read, host_capture and hold_check used to open their own
-HTTPS clients. Two of those clients accepted any https URL. Callers now share
-this helper: the endpoint must be on the public-mainnet allowlist, redirects
-are refused, and the method must be read-only.
+live_curve, curve_read, host_capture, hold_check, and holder_concentration
+used to need their own HTTPS clients. Callers share this helper: the endpoint
+must be on the public-mainnet allowlist, redirects are refused, and the method
+must be read-only.
 """
 from __future__ import annotations
 
@@ -14,9 +14,12 @@ from .rpc_allow import ALLOWED
 
 READ_METHODS = frozenset({
     "getAccountInfo",
+    "getMultipleAccounts",
     "getSignaturesForAddress",
     "getTransaction",
     "getTokenAccountsByOwner",
+    "getTokenLargestAccounts",
+    "getTokenSupply",
     "getBlock",
     "getBlocks",
     "getGenesisHash",
