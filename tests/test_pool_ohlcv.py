@@ -167,7 +167,7 @@ class PathTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             ledger = root / "paper.jsonl"
-            opened = open_position(ledger, thesis, mark_price_usd=1.0, now_ms=opened_ms, notional_usd=100)
+            opened = open_position(ledger, thesis, mark_price_usd=1.0, now_ms=opened_ms, notional_usd=100, exit_policy="single_target")
             self.assertEqual(opened["pair_address"], record["pair_address"])
             closed = mark(
                 ledger, thesis["thesis_id"], mark_price_usd=1.05, now_ms=closed_ms, candles=[candle],
@@ -191,6 +191,7 @@ class PathTests(unittest.TestCase):
                 root, root / "replay.jsonl", root / "theses",
                 score=lambda observation, now_ms: signal,
                 candle_dir=candle_dir,
+                exit_policy="single_target",
             )
             self.assertEqual(result["opened"], 1)
             self.assertEqual(result["closed"], 1)

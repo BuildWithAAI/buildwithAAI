@@ -241,6 +241,10 @@ def _trades(ledger: Path, symbols: dict[str, str]) -> list[dict]:
             "reason": event.get("reason"),
             "path": event.get("path"),
             "pnl_usd": event.get("pnl_usd"),
+            "pnl_after_costs_usd": event.get("pnl_after_costs_usd"),
+            "exit_policy": event.get("exit_policy"),
+            "fill_model": event.get("fill_model"),
+            "price_path": event.get("price_path"),
             "r_multiple": event.get("r_multiple"),
             "candles_in_window": event.get("candles_in_window"),
             "fees": event.get("fees"),
@@ -248,7 +252,7 @@ def _trades(ledger: Path, symbols: dict[str, str]) -> list[dict]:
     return trades
 
 
-def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None) -> dict:
+def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e") -> dict:
     dest.mkdir(parents=True, exist_ok=True)
     ledger = dest / "paper.jsonl"
     theses = dest / "theses"
@@ -266,7 +270,7 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
     counted = replay(
         root, ledger, theses,
         threshold_ppm=threshold_ppm, limit=limit, score=score,
-        not_before_ms=not_before_ms, candle_dir=candle_dir,
+        not_before_ms=not_before_ms, candle_dir=candle_dir, exit_policy=exit_policy,
     )
     summary = metrics(ledger)
     closed = state(ledger)["closed"]
@@ -276,11 +280,19 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         "opened": counted["opened"],
         "closed": summary["closed"],
         "open": summary["open"],
+        "exit_policy": exit_policy,
         "win_rate": summary["win_rate"],
         "avg_r": summary["avg_r"],
         "pnl_before_fees": summary["net_pnl_usd"],
+        "win_rate_after_costs": summary["win_rate_after_costs"],
+        "avg_win": summary["avg_win"],
+        "avg_loss": summary["avg_loss"],
+        "pl_ratio": summary["pl_ratio"],
+        "profit_factor": summary["profit_factor"],
+        "pnl_after_costs": summary["pnl_after_costs"],
         "max_drawdown_usd": summary["max_drawdown_usd"],
-        "fees": "NOT_OBSERVED" if not closed else closed[-1].get("fees", "NOT_OBSERVED"),
+        "fees": "APPLIED" if exit_policy == "ladder_e" else "NOT_OBSERVED",
+        "cost_model": "FEE_1PCT_SLIP_0_5PCT" if exit_policy == "ladder_e" else "ASSUMED_FROM_OBSERVED_LIQUIDITY",
         "skipped": counted["skipped"],
         "trades": _trades(ledger, symbols),
         "execution_allowed": False,
@@ -288,7 +300,7 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
     }
 
 
-def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None) -> dict:
+def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e") -> dict:
     """Fill crow memory before the longest gap and score the later snapshots twice."""
     root = resolve_root(root)
     work.mkdir(parents=True, exist_ok=True)
@@ -305,14 +317,19 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
     if any(end >= before_ms for end in ends):
         raise RuntimeError("HOLDOUT_LEAKED_INTO_MEMORY")
     series = load_series(root, [item["file"] for item in stamped])
-    with_crow = _book(
-        root, work / "with_crow", series, memory=memory, not_before_ms=before_ms,
-        limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir,
-    )
-    without = _book(
-        root, work / "without_crow", series, memory=None, not_before_ms=before_ms,
-        limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir,
-    )
+    policies = {}
+    for policy in ("single_target", "ladder_e"):
+        policies[policy] = {
+            "with_crow": _book(
+                root, work / policy / "with_crow", series, memory=memory, not_before_ms=before_ms,
+                limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir, exit_policy=policy,
+            ),
+            "without_crow": _book(
+                root, work / policy / "without_crow", series, memory=None, not_before_ms=before_ms,
+                limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir, exit_policy=policy,
+            ),
+        }
+    chosen = policies[exit_policy]
     fill_files = [item["file"] for item in stamped if item["ms"] < before_ms]
     holdout_files = [item["file"] for item in stamped if item["ms"] >= before_ms]
     return {
@@ -343,6 +360,8 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
         "memory_outcome_end_max_ms": None if not ends else max(ends),
         "memory_outcome_end_max_ts": None if not ends else _iso(max(ends)),
         "candle_dir": None if candle_dir is None else str(candle_dir),
-        "with_crow": with_crow,
-        "without_crow": without,
+        "exit_policy": exit_policy,
+        "policies": policies,
+        "with_crow": chosen["with_crow"],
+        "without_crow": chosen["without_crow"],
     }

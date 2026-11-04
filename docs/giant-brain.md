@@ -175,9 +175,11 @@ An LLM may phrase the narrative only when `ZOORA_MODEL_PROVIDER`, `ZOORA_MODEL_N
 
 ## Paper ledger
 
-`paper_trader` opens one simulated long per thesis. The mark is the observed price. Slippage is not a quote: snapshots have no bid/ask, so the fill assumes `max(5, min(300, round(50000 / liquidity_usd)))` basis points and records that formula. Exit on stop uses the thesis stop, exit on take-profit uses the thesis target, and a timeout exits at the later observed mark. One snapshot mark that crosses both stop and target closes at the stop.
+`paper_trader` opens one simulated long per thesis. The default `exit_policy` for a new position is `ladder_e`. `single_target` is still available and is what the replays earlier in this note used.
 
-When minute candles are supplied, a candle counts only if it starts at or after the open and ends at or before the decision. The walk is oldest first. A low at or under the stop closes at the stop. A high at or over the target closes at the target. A candle that prints both closes at the stop. `TIMEOUT` is used only when at least one candle sat inside the hold and neither level printed. No candle inside the hold is `PATH_UNOBSERVED`, not a timeout. Fees stay `NOT_OBSERVED`.
+`single_target` marks the observed price. Slippage is not a quote: snapshots have no bid/ask, so the fill assumes `max(5, min(300, round(50000 / liquidity_usd)))` basis points and records `fill_model` `ASSUMED_FROM_OBSERVED_LIQUIDITY`. Exit on stop uses the thesis stop, exit on take-profit uses the thesis target, and a timeout exits at the later observed mark. One snapshot mark that crosses both stop and target closes at the stop. Fees on that pnl stay `NOT_OBSERVED`. The close also stores `pnl_after_costs_usd`, which restates the same raw entry and exit with a 1% fee and 0.5% slippage on the buy and on the sell. That restatement is not the fill the position used.
+
+When minute candles are supplied to `single_target`, a candle counts only if it starts at or after the open and ends at or before the decision. The walk is oldest first. A low at or under the stop closes at the stop. A high at or over the target closes at the target. A candle that prints both closes at the stop. `TIMEOUT` is used only when at least one candle sat inside the hold and neither level printed. No candle inside the hold is `PATH_UNOBSERVED`, not a timeout. Fees stay `NOT_OBSERVED`.
 
 Metrics from the ledger: win rate, average R, max drawdown, net pnl, and per-brain attribution. A brain with no numeric vote, including FlyVis while it abstains, is attributed zero. Fees are `NOT_OBSERVED`.
 
@@ -249,6 +251,57 @@ The close is GATO, thesis `55f3bf13a2baef95f257b426ec14d83df07b4c9e26bb49cd9bce9
 
 The 4-of-5 result does not hold on these hours. Those five closes opened from 07:25 through 11:35 UTC, and that stretch was used to fill memory. The held-out book is one timeout. Its pnl before fees is 0.5757024869207977.
 
+## Ladder exit
+
+`ladder_e` is strategy E from the 2026-11-03 one-minute-candle exit research. A new paper position stores these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `exit_policy` | `ladder_e` or `single_target` |
+| `fill_model` | `FEE_1PCT_SLIP_0_5PCT` on the ladder. `ASSUMED_FROM_OBSERVED_LIQUIDITY` on the single target |
+| `price_path` | `MINUTE_CANDLE` when a new in-window minute candle was applied, otherwise `SNAPSHOT_MARK` |
+| `entry_price_usd` | Observed mark. Rungs and the stop are multiples of this mark |
+| `entry_fill_usd` | Mark times `(1 + slippage_rate) * (1 + fee_rate)` |
+| `fee_rate` | `0.01` |
+| `slippage_rate` | `0.005` |
+| `tp_levels` | List of `{multiple, fraction, filled_at, fill_price}`. The rungs are 2.0 for 0.50 and 4.0 for 0.25. `filled_at` and `fill_price` stay null until that rung prints |
+| `trail_pct` | `0.20` when `instant_graduation` is true, otherwise `0.40` |
+| `stop_multiple` | `0.5`, the -50% stop, used only before the first rung |
+| `running_high` | Highest price seen after the open |
+| `trail_stop_usd` | `running_high * (1 - trail_pct)` after the first rung, otherwise null |
+| `realized_partial_pnl_usd` | Sum of rung pnls after the fee and the slippage. The final leg is separate |
+| `remaining_fraction` | Starts at 1. The last 0.25 is the trail, not a rung |
+| `graduation` | `INSTANT`, `STANDARD`, or `NOT_OBSERVED` |
+| `instant_graduation` | The boolean on the snapshot row, or null when the row does not carry it |
+| `horizon_ms` | `172800000`, 48 hours |
+| `pnl_after_costs_usd` | On a `CLOSE`, the position pnl after the 1% fee and 0.5% slippage |
+| `partial_pnl_usd` | On a `PARTIAL`, that rung's pnl after those costs |
+| `exit_fill_usd` | Raw price times `(1 - slippage_rate) * (1 - fee_rate)` |
+
+A minute candle is used when one starts at or after the open and ends at or before the decision, and its start is at or after `last_mark_ms`. Inside that candle the low is tested before the high. The low can stop the position or hit the trail. The high can fill the next rung and raise `running_high`. A trail created by that high does not use the same candle's low. When no new candle is in the window, the snapshot mark is the low and the high. The -50% stop applies only while the 2x rung is unfilled. After that rung, the trail covers whatever fraction is still held. A `CLOSE` reason is `STOP`, `TRAIL`, or `TIMEOUT`. A rung that does not finish the position is a `PARTIAL`. `execution_allowed` and `live_orders` stay false.
+
+The collector snapshots do not carry `instant_graduation`, so this run's ladder uses `graduation` `NOT_OBSERVED` and `trail_pct` 0.40.
+
+The same walk-forward was run again with both policies. Memory was still filled only before the gap: 4339 rows, latest end `2026-11-04T14:25:01+00:00`. The directory then had 114 files, `0515.jsonl` through `2255.jsonl`, and 12 holdout files from `2200.jsonl` through `2255.jsonl`. The gap was still 27302000 ms. GATO's recorded minute page was supplied. The machine-readable result is `research/giant-brain/walk_forward_policies_2026-11-04.json`.
+
+Win rate after costs counts a closed trade as a win when `pnl_after_costs_usd` is positive. Average win is the mean of those positive values. Average loss is the mean of the negative values, so it is negative when it is defined. The P/L ratio is average win divided by the absolute average loss. The profit factor is the sum of the positive values divided by the absolute sum of the negative values. Each of those is undefined when its inputs are missing. A profit factor of 0 means every closed pnl after costs was a loss.
+
+| | `single_target`, with crow | `single_target`, without crow | `ladder_e`, with crow | `ladder_e`, without crow |
+| --- | --- | --- | --- | --- |
+| Theses | 1 | 0 | 1 | 0 |
+| Closed trades | 1 | 0 | 0 | 0 |
+| Still open | 0 | 0 | 1 | 0 |
+| Win rate after costs | 0.0 | not defined | not defined | not defined |
+| Average win | not defined | not defined | not defined | not defined |
+| Average loss | -2.299179950441493 | not defined | not defined | not defined |
+| P/L ratio | not defined | not defined | not defined | not defined |
+| Profit factor | 0.0 | not defined | not defined | not defined |
+| Pnl after modeled costs | -2.299179950441493 | not defined | not defined | not defined |
+
+The single-target close is the same GATO timeout as the earlier walk-forward, thesis `55f3bf13a2baef95f257b426ec14d83df07b4c9e26bb49cd9bce97f6c4179312`. Its liquidity-slippage pnl, with fees `NOT_OBSERVED`, is still 0.5757024869207977. Restated with the 1% fee and 0.5% slippage on the buy and the sell, `pnl_after_costs_usd` is -2.299179950441493. That is one loss, so the average win and the P/L ratio are not defined, and the profit factor is 0.0.
+
+The ladder opened that same GATO position at `2026-11-04T22:05:01+00:00` and had not closed it by `2026-11-04T22:55:01+00:00`. `remaining_fraction` was 1. `running_high` was 0.01094. The -50% stop is 0.005175 and the 2x rung is 0.0207. Neither printed. The first three marks used minute candles. Later marks had no new candle in the recorded page, so they used the snapshot price. The 48-hour horizon had not arrived, so there is no closed trade and the after-cost totals are not defined.
+
 ## Live trading is not enabled
 
 `execution.LiveAdapter.submit` never sends. Risk limits run first:
@@ -294,7 +347,7 @@ Going live later needs all of the following, and none of them are done here:
 
 1. The flash-kernel readout on the 05:15–06:45 UTC store ties the down majority and never cleared 500000 ppm out of sample. The pinned FlyVis worker still has not run on a real encoded tape. A later run can store that activity export and teach this voter to read it. Do not invent a fly score in this process.
 2. Capture more than the Anything AI curve: `host_capture` already takes a mint and curve. Keep dead coins in the set the capture plan requires, and point the paper backtest at those JSONL files.
-3. Done on 2026-11-04 for the snapshot store. Crow recall now requires `outcome_end_ms` at or before the decision. The walk-forward filled 4339 memory rows from `0515` through `1425` UTC and scored `2200` through `2235` UTC, which were not used to fill memory. With crow memory: 1 thesis, 1 closed trade, win rate 1.0, average R 0.10955760395103686, pnl before fees 0.5757024869207977. Without crow memory: 0 theses, 0 closed trades, so win rate and average R are not defined, and pnl before fees is 0. Fees are `NOT_OBSERVED`. The 4-of-5 morning book does not reappear on that holdout. See Walk-forward. A separate pass over scanner reports was not run.
+3. Done on 2026-11-04 for the snapshot store. Crow recall now requires `outcome_end_ms` at or before the decision. The walk-forward filled 4339 memory rows from `0515` through `1425` UTC and scored `2200` through `2235` UTC, which were not used to fill memory. With crow memory: 1 thesis, 1 closed trade, win rate 1.0, average R 0.10955760395103686, pnl before fees 0.5757024869207977. Without crow memory: 0 theses, 0 closed trades, so win rate and average R are not defined, and pnl before fees is 0. Fees are `NOT_OBSERVED`. The 4-of-5 morning book does not reappear on that holdout. See Walk-forward. The same holdout was scored again under `single_target` and `ladder_e`. See Ladder exit. A separate pass over scanner reports was not run.
 4. Done on 2026-11-04. `publish_snapshot_log` on snapshots `0515` through `1045` UTC published abstention rate 5218/5218, an undefined hit rate (0 paper longs), and pnl before fees of 0. No capture contained `fee_bps`, so fees stayed unapplied. `calibrated` is false. See Paper log. The five box-runner closes were later re-marked with minute candles and stayed timeouts, because neither level printed. The partial minute at the open and at the decision is still outside that window.
 5. Holder concentration now has a live reader. The snapshot files still do not carry it, and on 2026-11-04 the public `getTokenLargestAccounts` method returned HTTP 429, so this run stored no share. A later run can retry that method when the public quota answers, and can store the read beside the snapshot. Do not attach a later read to an earlier decision.
 6. Implement a venue adapter only after the signer, allowlists, and limits above exist. `LiveAdapter` must keep returning `sent: false` until that adapter is a separate change.

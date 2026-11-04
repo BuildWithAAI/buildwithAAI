@@ -141,7 +141,7 @@ class PaperTests(unittest.TestCase):
         self.assertEqual(assumed_slippage_bps(50_000), 5)
         with tempfile.TemporaryDirectory() as folder:
             ledger = Path(folder) / "paper.jsonl"
-            opened = open_position(ledger, thesis, mark_price_usd=1.0, now_ms=1_000, notional_usd=100)
+            opened = open_position(ledger, thesis, mark_price_usd=1.0, now_ms=1_000, notional_usd=100, exit_policy="single_target")
             self.assertGreater(opened["entry_fill_usd"], 1.0)
             self.assertTrue(open_position(ledger, thesis, mark_price_usd=1.0, now_ms=1_000, notional_usd=100)["replayed"])
             still = mark(ledger, thesis["thesis_id"], mark_price_usd=1.05, now_ms=1_100)
@@ -164,11 +164,11 @@ class PaperTests(unittest.TestCase):
         loser = write_thesis(_signal(score=710_000), _record(token_address="Mint222", symbol="OTHER"), now_ms=0)
         with tempfile.TemporaryDirectory() as folder:
             ledger = Path(folder) / "paper.jsonl"
-            open_position(ledger, winner, mark_price_usd=1.0, now_ms=0, notional_usd=100)
+            open_position(ledger, winner, mark_price_usd=1.0, now_ms=0, notional_usd=100, exit_policy="single_target")
             first = mark(ledger, winner["thesis_id"], mark_price_usd=5, now_ms=10)
             self.assertEqual(first["reason"], "TAKE_PROFIT")
             self.assertGreater(first["pnl_usd"], 0)
-            open_position(ledger, loser, mark_price_usd=1.0, now_ms=20, notional_usd=100)
+            open_position(ledger, loser, mark_price_usd=1.0, now_ms=20, notional_usd=100, exit_policy="single_target")
             second = mark(ledger, loser["thesis_id"], mark_price_usd=0.9, now_ms=20 + winner["horizon_ms"])
             self.assertEqual(second["reason"], "TIMEOUT")
             report = metrics(ledger)

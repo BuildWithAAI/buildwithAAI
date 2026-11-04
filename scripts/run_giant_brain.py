@@ -27,6 +27,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=25)
     parser.add_argument("--not-before-ms", type=int, help="Open new paper positions only at or after this time")
     parser.add_argument("--candle-dir", type=Path, help="JSONL minute candles keyed by pair address")
+    parser.add_argument("--exit-policy", choices=("ladder_e", "single_target"), default="ladder_e")
     parser.add_argument("--walk-forward", action="store_true", help="Score the post-gap snapshots with and without crow memory")
     parser.add_argument("--work-dir", type=Path, help="Ledger and memory directory for --walk-forward")
     parser.add_argument("--status", action="store_true", help="Print which sources are configured")
@@ -47,6 +48,7 @@ def main() -> int:
         print(json.dumps(replay(
             args.snapshot_root, args.ledger, args.theses_dir, threshold_ppm=args.threshold_ppm,
             limit=args.limit, not_before_ms=args.not_before_ms, candle_dir=args.candle_dir,
+            exit_policy=args.exit_policy,
         ), sort_keys=True))
         return 0
     if args.tape is None and args.observation is None:

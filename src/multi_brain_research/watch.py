@@ -44,7 +44,7 @@ def _candles_for(candle_dir: Path | None, position: dict):
     return load_jsonl(path)
 
 
-def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None) -> dict:
+def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e") -> dict:
     root = resolve_root(root)
     if score is None:
         from .giant_brain import fuse
@@ -107,8 +107,11 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
             if type(record.get("price_usd")) not in (int, float):
                 continue
             try:
+                flag = record.get("instant_graduation")
                 opened_row = open_position(
                     ledger, thesis, mark_price_usd=record["price_usd"], now_ms=now_ms, notional_usd=100,
+                    exit_policy=exit_policy,
+                    instant_graduation=flag if type(flag) is bool else None,
                 )
             except PaperError:
                 skipped += 1
