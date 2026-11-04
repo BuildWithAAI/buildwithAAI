@@ -116,14 +116,21 @@ class Store(PracticeMethods, CreatorWalletMethods, ForumMethods, WalletProofMeth
         private_regular(self.path, MAX_DATABASE_BYTES)
         connection = None
         try:
-            connection = sqlite3.connect(self.path.as_uri() + "?mode=rw",
-                                         uri=True, timeout=3, autocommit=True)
+            connection = sqlite3.connect(
+                self.path.as_uri() + "?mode=rw",
+                uri=True,
+                timeout=15,
+                autocommit=True,
+            )
             connection.row_factory = sqlite3.Row
             connection.setconfig(sqlite3.SQLITE_DBCONFIG_DEFENSIVE, True)
             connection.setconfig(sqlite3.SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, False)
             connection.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 1_000_000)
             connection.setlimit(sqlite3.SQLITE_LIMIT_SQL_LENGTH, 16_384)
             connection.setlimit(sqlite3.SQLITE_LIMIT_ATTACHED, 0)
+            # DELETE-journal writers queue. A 3s timeout turned that wait into
+            # STORAGE_UNAVAILABLE on Windows (community run 40963120801).
+            connection.execute("PRAGMA busy_timeout=15000")
             if connection.execute("PRAGMA page_size").fetchone()[0] != 4096:
                 raise Problem(503, "UNSUPPORTED_PAGE_SIZE")
             connection.execute("PRAGMA foreign_keys=ON")

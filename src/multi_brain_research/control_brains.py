@@ -15,7 +15,8 @@ SOURCE = "research_joint"
 HORIZON_MS = 300_000
 TASK_SHA = hashlib.sha256(b"adverse_move_after_fee_v1").hexdigest()
 MODEL_SHA = hashlib.sha256(b"frozen_prior_v1").hexdigest()
-GRAPH_SHA = "a" * 64
+# Identity of this control rule. Not a connectome and not a placeholder pin.
+GRAPH_SHA = hashlib.sha256(b"control_brains_graph_v1").hexdigest()
 
 
 def _receipt(module_id: str, prediction: int | None, uncertainty: int | None, reason: str | None) -> dict:

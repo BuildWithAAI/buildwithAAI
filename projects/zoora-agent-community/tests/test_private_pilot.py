@@ -11,6 +11,7 @@ from unittest.mock import patch
 import uuid
 
 from helpers import Fixture, signed_body
+from localhost_tls import ensure_localhost_tls
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from model_fixture import ModelFixture  # noqa: E402
 from zoora_community.agent_runner import run_tool  # noqa: E402
@@ -19,8 +20,6 @@ from zoora_community.collaboration import CollaborationScope  # noqa: E402
 from zoora_community.job_worker import work_jobs  # noqa: E402
 from zoora_community.validation import Problem, canonical  # noqa: E402
 from zoora_community.wsgi_server import WSGIServer  # noqa: E402
-
-FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class TLSCommunity:
@@ -68,9 +67,10 @@ class TLSCommunity:
         # unnecessary localhost address-family lookup/fallback on Windows.
         self.origin = "https://127.0.0.1:" + str(self.proxy.server_port)
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(FIXTURES / "bridge-localhost-cert.pem", FIXTURES / "bridge-localhost-public-test-key.pem")
+        self.certificate, key = ensure_localhost_tls()
+        context.load_cert_chain(self.certificate, key)
         self.proxy.socket = context.wrap_socket(self.proxy.socket, server_side=True)
-        self.client_context = ssl.create_default_context(cafile=str(FIXTURES / "bridge-localhost-cert.pem"))
+        self.client_context = ssl.create_default_context(cafile=str(self.certificate))
         with patch.dict("os.environ", {"ZOORA_PUBLIC_ORIGIN": self.origin}, clear=True):
             self.backend = WSGIServer(store, 0)
         self.backend_thread = threading.Thread(target=self.backend.serve_forever)

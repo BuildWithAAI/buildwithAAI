@@ -1,31 +1,38 @@
 """Map a first-brain receipt onto the existing ModuleOutput contract.
 
 Does not create a second receipt language. Does not execute.
+Missing or placeholder graph, model, or task pins are rejected.
 """
 from __future__ import annotations
 
-import hashlib
-import json
+import re
 
 from .contracts import ModuleOutput
 
-PIN = "a" * 64
+_PIN = re.compile(r"[0-9a-f]{64}")
+_PLACEHOLDERS = frozenset({"a" * 64, "0" * 64})
+_PROVENANCE = ("graph_sha256", "model_sha256", "task_sha256")
 
 
-def _sha(payload: object) -> str:
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(raw).hexdigest()
+def _provenance(receipt: dict, field: str) -> str:
+    value = receipt.get(field)
+    if type(value) is not str or _PIN.fullmatch(value) is None or value in _PLACEHOLDERS:
+        raise ValueError("INVALID_PROVENANCE")
+    return value
 
 
 def to_module_output(receipt: dict, snapshot_sha256: str, produced_time_ms: int) -> ModuleOutput:
-    if receipt.get("action") != "NO_EXECUTION":
+    if type(receipt) is not dict or receipt.get("action") != "NO_EXECUTION":
         raise ValueError("EXECUTION_LEAK")
+    graph, model, task = (_provenance(receipt, field) for field in _PROVENANCE)
+    if "source_id" in receipt and (type(receipt["source_id"]) is not str or not receipt["source_id"]):
+        raise ValueError("INVALID_PROVENANCE")
     return ModuleOutput(
         module_id=receipt["module_id"],
         source_id=receipt.get("source_id", "research_joint"),
-        graph_sha256=receipt.get("graph_sha256", PIN),
-        model_sha256=receipt.get("model_sha256", PIN),
-        task_sha256=receipt.get("task_sha256", _sha({"task": "adverse_move_after_fee_v1"})),
+        graph_sha256=graph,
+        model_sha256=model,
+        task_sha256=task,
         horizon_ms=int(receipt.get("horizon_ms", 300_000)),
         snapshot_sha256=snapshot_sha256,
         produced_time_ms=produced_time_ms,
