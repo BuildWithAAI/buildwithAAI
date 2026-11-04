@@ -78,14 +78,14 @@ def snapshot_files(root: Path) -> list[str]:
     def sort_key(path: Path) -> tuple:
         relative = path.relative_to(folder)
         day = relative.parts[0] if len(relative.parts) > 1 else ""
-        return (day, path.name.split(".")[0], path.name.endswith(".gz"), str(relative))
+        return (day, path.name.split(".")[0], path.name.endswith(".gz"), relative.as_posix())
 
     chosen: dict[tuple[str, str], Path] = {}
     for path in sorted(paths, key=sort_key):
         relative = path.relative_to(folder)
         day = relative.parts[0] if len(relative.parts) > 1 else ""
         chosen.setdefault((day, path.name.split(".")[0]), path)
-    return [str(path.relative_to(root)) for path in chosen.values()]
+    return [path.relative_to(root).as_posix() for path in chosen.values()]
 
 
 def load_latest(root: Path) -> dict:
