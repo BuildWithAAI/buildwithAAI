@@ -36,6 +36,10 @@ def main() -> int:
     parser.add_argument("--holder-retry-ms", type=int, help="Retry a NOT_OBSERVED read after this many milliseconds")
     parser.add_argument("--holder-window", type=int, help="How many newest snapshots to scan for pending mints")
     parser.add_argument("--no-holder-reads", action="store_true", help="Do not join stored holder reads during a replay or walk-forward")
+    parser.add_argument("--capture-pool-trades", action="store_true", help="Read GeckoTerminal pool trades for candidate mints and append JSONL")
+    parser.add_argument("--pool-trade-pending", action="store_true", help="With --capture-pool-trades, skip mints that already have a fresh read")
+    parser.add_argument("--pool-trade-limit", type=int, help="Cap the number of pools read")
+    parser.add_argument("--entry-veto", action="store_true", help="Refuse a paper open when a causal holder read is RAISED or a causal large-sell share is at least half")
     parser.add_argument("--work-dir", type=Path, help="Ledger and memory directory for --walk-forward")
     parser.add_argument("--status", action="store_true", help="Print which sources are configured")
     args = parser.parse_args()
@@ -47,6 +51,17 @@ def main() -> int:
         print(json.dumps(walk_forward(
             args.snapshot_root, args.work_dir, limit=args.limit, threshold_ppm=args.threshold_ppm,
             candle_dir=args.candle_dir, use_holder_reads=not args.no_holder_reads,
+            use_entry_veto=args.entry_veto,
+        ), sort_keys=True))
+        return 0
+    if args.capture_pool_trades:
+        if args.snapshot_root is None:
+            parser.error("--capture-pool-trades requires --snapshot-root")
+        from multi_brain_research.flow_capture import PENDING_LIMIT, capture_pool_trades
+        print(json.dumps(capture_pool_trades(
+            args.snapshot_root,
+            pending_only=True,
+            limit=PENDING_LIMIT if args.pool_trade_limit is None else args.pool_trade_limit,
         ), sort_keys=True))
         return 0
     if args.capture_holders:
@@ -73,6 +88,7 @@ def main() -> int:
             args.snapshot_root, args.ledger, args.theses_dir, threshold_ppm=args.threshold_ppm,
             limit=args.limit, not_before_ms=args.not_before_ms, candle_dir=args.candle_dir,
             exit_policy=args.exit_policy, use_holder_reads=not args.no_holder_reads,
+            use_entry_veto=args.entry_veto,
         ), sort_keys=True))
         return 0
     if args.tape is None and args.observation is None:

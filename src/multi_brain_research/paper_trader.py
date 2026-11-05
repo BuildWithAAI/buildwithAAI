@@ -110,8 +110,8 @@ def entry_skip_reasons(record: dict, *, min_liquidity_usd: float = MIN_LIQUIDITY
     return reasons
 
 
-def skip_entry(path: Path, thesis: dict, record: dict, reasons: list[str], *, min_liquidity_usd: float, min_market_cap_usd: float, max_hour_drop_percent: float) -> dict:
-    return _append(path, _paper({
+def skip_entry(path: Path, thesis: dict, record: dict, reasons: list[str], *, min_liquidity_usd: float, min_market_cap_usd: float, max_hour_drop_percent: float, evidence=None) -> dict:
+    body = {
         "type": "SKIP",
         "skip_reasons": list(reasons),
         "thesis_id": thesis.get("thesis_id"),
@@ -123,7 +123,10 @@ def skip_entry(path: Path, thesis: dict, record: dict, reasons: list[str], *, mi
         "min_liquidity_usd": min_liquidity_usd,
         "min_market_cap_usd": min_market_cap_usd,
         "max_hour_drop_percent": max_hour_drop_percent,
-    }))
+    }
+    if type(evidence) is dict and evidence:
+        body["veto"] = evidence
+    return _append(path, _paper(body))
 
 
 def _trail_for(instant_graduation) -> tuple[float, str]:

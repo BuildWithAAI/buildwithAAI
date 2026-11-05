@@ -252,7 +252,7 @@ def _trades(ledger: Path, symbols: dict[str, str]) -> list[dict]:
     return trades
 
 
-def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True) -> dict:
+def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False) -> dict:
     dest.mkdir(parents=True, exist_ok=True)
     ledger = dest / "paper.jsonl"
     theses = dest / "theses"
@@ -272,6 +272,7 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         threshold_ppm=threshold_ppm, limit=limit, score=score,
         not_before_ms=not_before_ms, candle_dir=candle_dir, exit_policy=exit_policy,
         entry_floor=entry_floor, gap_fill=gap_fill, use_holder_reads=use_holder_reads,
+        use_entry_veto=use_entry_veto,
     )
     summary = metrics(ledger)
     closed = state(ledger)["closed"]
@@ -301,13 +302,17 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         "holder_clear": counted.get("holder_clear", 0),
         "holder_raised": counted.get("holder_raised", 0),
         "holder_not_observed": counted.get("holder_not_observed", 0),
+        "flow_joined": counted.get("flow_joined", 0),
+        "flow_available": counted.get("flow_available", 0),
+        "flow_not_observed": counted.get("flow_not_observed", 0),
+        "entry_veto": use_entry_veto,
         "trades": _trades(ledger, symbols),
         "execution_allowed": False,
         "live_orders": False,
     }
 
 
-def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True) -> dict:
+def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False) -> dict:
     """Fill crow memory before the longest gap and score the later snapshots twice."""
     root = resolve_root(root)
     work.mkdir(parents=True, exist_ok=True)
@@ -331,11 +336,13 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
                 root, work / policy / "with_crow", series, memory=memory, not_before_ms=before_ms,
                 limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir, exit_policy=policy,
                 entry_floor=entry_floor, gap_fill=gap_fill, use_holder_reads=use_holder_reads,
+                use_entry_veto=use_entry_veto,
             ),
             "without_crow": _book(
                 root, work / policy / "without_crow", series, memory=None, not_before_ms=before_ms,
                 limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir, exit_policy=policy,
                 entry_floor=entry_floor, gap_fill=gap_fill, use_holder_reads=use_holder_reads,
+                use_entry_veto=use_entry_veto,
             ),
         }
     chosen = policies[exit_policy]
@@ -372,6 +379,7 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
         "exit_policy": exit_policy,
         "entry_floor": entry_floor,
         "gap_fill": gap_fill,
+        "entry_veto": use_entry_veto,
         "policies": policies,
         "with_crow": chosen["with_crow"],
         "without_crow": chosen["without_crow"],

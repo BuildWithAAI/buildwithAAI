@@ -10,6 +10,7 @@ flowchart LR
     Pump[Pump.fun TradeEvent log]
     Dex[DEX Screener public pairs]
     Holder[Allowlisted holder read]
+    Flow[GeckoTerminal pool trades]
   end
   subgraph brains [Council]
     Fly[FlyVis flash-kernel readout]
@@ -24,11 +25,12 @@ flowchart LR
   Hemi --> Round
   Round --> Thesis[Thesis JSON and markdown]
   Holder --> Thesis
+  Flow --> Thesis
   Thesis --> PaperBook[Paper ledger]
   PaperBook --> LiveStub[Live adapter stub stays off]
 ```
 
-FlyVis casts a numeric council vote when the frozen flash-kernel readout returns a probability. The coordinator research signal stays `ABSTAIN` when any required module abstains or is unavailable. Crow memory is empty and a two-point hemibrain history is `MISSING_DATA`, so that signal stays `ABSTAIN` even while FlyVis has a number. The fused score is the mean of the numeric council votes. Confidence is reduced by every council member that abstained. Tape features stay an input and a test fixture. They are not a vote. A holder-concentration read is also an input. The time gate uses `read_ts_ms` when the stored read has one, and `fetched_at_ms` otherwise. A decision can use a read only when that clock is at or before the decision. The read is not a vote and it does not change the fused score.
+FlyVis casts a numeric council vote when the frozen flash-kernel readout returns a probability. The coordinator research signal stays `ABSTAIN` when any required module abstains or is unavailable. Crow memory is empty and a two-point hemibrain history is `MISSING_DATA`, so that signal stays `ABSTAIN` even while FlyVis has a number. The fused score is the mean of the numeric council votes. Confidence is reduced by every council member that abstained. Tape features stay an input and a test fixture. They are not a vote. A holder-concentration read is also an input. A GeckoTerminal pool-trade read is an input too. The time gate uses `read_ts_ms` when the stored read has one, and `fetched_at_ms` otherwise. A decision can use a read only when that clock is at or before the decision. Neither read is a vote and neither changes the fused score. `--entry-veto` can refuse a new paper open from a causal RAISED holder read or a causal large-sell share at or above 500000 ppm. That switch is off unless it is set. The frozen replay in Pool trades did not change when it was turned on.
 
 ## What each brain is
 
@@ -62,6 +64,7 @@ Paper attribution splits closed pnl across council members that cast a numeric v
 | GeckoTerminal new pools for dex `pump-fun` and `pumpswap` | Live. Pages 1 and 2 of `/api/v2/networks/solana/new_pools` are stored as `pumpfun_bonding_curve` (`graduation` `BONDING_CURVE`) and `pumpfun_graduation` (`graduation` `PUMPSWAP`). `PUMPSWAP` is the GeckoTerminal dex id, not pump.fun's `complete` flag | None |
 | Pool minute candles | Public GeckoTerminal OHLCV. Rows are `[unix_seconds, open, high, low, close, volume]`, newest first. Stored as JSONL. Unit tests use the recorded responses under `tests/fixtures/giant-brain-ohlcv/` | None. Five reads on 2026-11-04 returned HTTP 200. No `Retry-After` header was present |
 | Holder concentration | Live RPC read in `holder_concentration.py`. Capture falls back to `https://api.rugcheck.xyz/v1/tokens/{mint}/report` when `getTokenLargestAccounts` is rate-limited. Stored as `holder-reads/YYYY-MM-DD.jsonl` beside the snapshots, keyed by mint and `read_ts_ms`. The 15-minute `cycle.sh` runs `brain-runs/bin/capture_holders.py`, which reads at most 8 mints from the newest 6 snapshots that have no `AVAILABLE` read younger than 6 hours. A `NOT_OBSERVED` read is retried after 30 minutes | None. On 2026-11-05 both public RPC hosts returned HTTP 429 for `getTokenLargestAccounts`. Rugcheck returned a share for the 96 mints in `snapshots/2026-11-05/0215.jsonl`, and later runs appended more shares for mints that were not in that file |
+| Pool trades | Public `GET /api/v2/networks/solana/pools/{pool}/trades` in `pool_trades.py`. The same 429 wait as the collector: one retry, `Retry-After` when it is between 0 and 8 seconds, otherwise 2 seconds. Stored as `pool-trades/YYYY-MM-DD.jsonl` beside the snapshots, with `read_ts_ms`. `cycle.sh` runs `brain-runs/bin/capture_pool_trades.py` after the holder capture. Candidates are thesis mints and mints in the newest 6 snapshots. An `AVAILABLE` read younger than 15 minutes is kept. A `NOT_OBSERVED` read is retried after 5 minutes. At most 8 pools per run | None. Eight reads on 2026-11-05 from 06:34:13Z through 06:34:25Z returned HTTP 200. No `Retry-After` was needed |
 | Wallet signer and venue orders | Stub only | Live sending is not implemented |
 
 An account snapshot with one price does not invent a return. Flow and liquidity change stay missing until both sides of the comparison are present.
@@ -71,7 +74,7 @@ An account snapshot with one price does not invent a return. Flow and liquidity 
 From the repository root, with no network:
 
 ```bash
-python -m unittest tests.test_giant_brain tests.test_holder_capture tests.test_pump_public tests.test_audit_regressions -v
+python -m unittest tests.test_giant_brain tests.test_holder_capture tests.test_pool_trades tests.test_pump_public tests.test_audit_regressions -v
 python scripts/run_giant_brain.py --status
 ```
 
@@ -171,7 +174,18 @@ PYTHONPATH=src python scripts/run_giant_brain.py \
   --snapshot-root /cursor/stores/bot/giant-brain-data
 ```
 
-On the box, `brain-runs/bin/cycle.sh` runs `brain-runs/bin/capture_holders.py` at the start of the existing 15-minute cron. That script uses the modules under `brain-runs/lib/`, which are a copy of this repository's holder and pump modules, so the cron does not wait for the paper-runner checkout to update.
+On the box, `brain-runs/bin/cycle.sh` runs `brain-runs/bin/capture_holders.py` and then `brain-runs/bin/capture_pool_trades.py` at the start of the existing 15-minute cron. Those scripts use the modules under `brain-runs/lib/`, which are a copy of this repository's holder, pool-trade, and pump modules, so the cron does not wait for the paper-runner checkout to update.
+
+The same cap for pool trades:
+
+```bash
+PYTHONPATH=src python scripts/run_giant_brain.py \
+  --capture-pool-trades \
+  --pool-trade-pending \
+  --snapshot-root /cursor/stores/bot/giant-brain-data
+```
+
+`--entry-veto` on a replay or a walk-forward refuses a new paper open when a causal holder read is `RAISED` or a causal pool-trade read has `large_sell_share_ppm` at or above 500000. Leaving the flag off scores the same snapshots without that refusal. The flag is off by default.
 
 A replay joins the latest `AVAILABLE` read for that mint whose `read_ts_ms` is at or before the decision. A later read is not attached. `--no-holder-reads` scores the same snapshots with that join turned off.
 
@@ -275,6 +289,64 @@ Closed trades, win rate, average R, and pnl are the same in the two scores. The 
 | Either policy without crow, holder joined / clear / raised | 354 / 302 / 52 | 0 / 0 / 0 |
 
 The one entry skip is GDA, thesis `7e63dad4317733e3427fdcea7afb41da16afe3e87147346de541d23c68ad65a9`, for `LIQUIDITY_BELOW_MIN`, `MARKET_CAP_BELOW_MIN`, and `HOUR_DROP_OVER_LIMIT`. The two ladder closes are the same Pinocoin and mspaint stops as the 0240 replay, so that closed pnl is unchanged. The single-target book closed two more positions, Impeach and CI. Win rate 0.14285714285714285 is 1 of 7 closes with positive pnl before fees, the GATO timeout. Every close has negative pnl after the modeled costs, so the average win is not defined and the profit factor is 0.0. Average win and the P/L ratio are not defined for the ladder book either, because both closes are losses.
+
+## Pool trades
+
+GeckoTerminal's public trades route is `GET /api/v2/networks/solana/pools/{pool}/trades`. The client allows that URL only: https, host `api.geckoterminal.com`, no userinfo, no query, no fragment. Any other URL is refused before a socket is opened. A redirect is refused. A 429 waits once. `Retry-After` is used when it is an integer from 0 through 8. Otherwise the wait is 2 seconds. The same URL is requested again. A second 429 is stored as `NOT_OBSERVED` with reason `RATE_LIMITED` and no features.
+
+Each stored line has `read_ts_ms`, `read_ts`, `mint`, `pool`, `source`, `status`, `body_sha256`, `execution_allowed` false, and `live_orders` false. Features are taken from the fields the body contains. `kind` supplies buy and sell counts. `volume_in_usd` supplies the USD sums. `tx_from_address` supplies `unique_trader_count` when that field is present. The large sell is the single sell with the greatest `volume_in_usd`. `large_sell_share_ppm` is that volume divided by the page's buy plus sell volume, in parts per million. A missing field stays null. The veto line is 500000 ppm, the same half-share rule as holder concentration. It was not fit on closed trades.
+
+The capture at `2026-11-05T06:34:12Z` considered 285 candidate mints in the newest 6 snapshots and stored 8. All 8 were HTTP 200, `retries` 0, `trade_count` 300, `anomalous_count` 0, and `volume_missing` 0. `pool-trades/2026-11-05.jsonl` is those 8 lines. The largest large-sell share is 191020 ppm, under 500000.
+
+| Symbol | Read | Buys | Sells | Unique traders | Large-sell share ppm |
+| --- | --- | --- | --- | --- | --- |
+| BTC | `2026-11-05T06:34:13Z` | 99 | 201 | 180 | 50990 |
+| GAVELDROP | `2026-11-05T06:34:14Z` | 201 | 99 | 42 | 58266 |
+| CHILLCATS | `2026-11-05T06:34:16Z` | 150 | 150 | 114 | 55333 |
+| GATO | `2026-11-05T06:34:17Z` | 114 | 186 | 276 | 116237 |
+| AMD | `2026-11-05T06:34:19Z` | 186 | 114 | 195 | 77541 |
+| Impeach | `2026-11-05T06:34:21Z` | 165 | 135 | 172 | 69575 |
+| CARDS | `2026-11-05T06:34:22Z` | 153 | 147 | 122 | 191020 |
+| ZELDA | `2026-11-05T06:34:25Z` | 185 | 115 | 187 | 48393 |
+
+The frozen walk-forward was copied after that capture and after `snapshots/2026-11-05/0640.jsonl`. It has 195 snapshot files, `snapshots/2026-11-04/0515.jsonl.gz` through `snapshots/2026-11-05/0640.jsonl`, last timestamp `2026-11-05T06:40:03+00:00`. The gap is still 27302000 ms. Holdout is 93 files from `2026-11-04T22:00:03+00:00`. Memory is 4339 rows, filled only through `2026-11-04T14:25:01+00:00`. Limit 25, gate 600000 ppm, no candle directory. `holder-reads/2026-11-05.jsonl` in that copy is 178 lines. 176 lines are `AVAILABLE` and 2 are the earlier `NOT_OBSERVED` rows with `RESPONSE_TOO_LARGE`. The same copy was scored with `--entry-veto` and without it. `execution_allowed` and `live_orders` stayed false. The file is `research/giant-brain/walk_forward_flow_2026-11-05.json`.
+
+The two scores match. Closed trades, win rate, average R, and pnl are the same. The veto did not refuse an open. Six of the eight opens are before any stored holder read. Impeach at `2026-11-05T02:40:01+00:00` had a causal holder read and it was `CLEAR` at 225514 ppm. ASOL at `2026-11-05T06:35:02+00:00` had a causal holder read and it was `CLEAR` at 115582 ppm. No open had a causal pool-trade read: the eight reads above are at `06:34:13Z` or later, and ASOL's pool was not one of those eight. `single_target` with crow joined 14 flow reads, all `AVAILABLE`, on prints after those reads. `ladder_e` with crow joined 10, because four of those mints already had an open ladder position. None of the joined prints cleared the 600000 ppm gate, and every stored large-sell share is under 500000 ppm, so the flow half of the veto had nothing to refuse. The veto stays off.
+
+| | With the entry veto | Without the entry veto |
+| --- | --- | --- |
+| `single_target` with crow, theses / opened / closed / still open | 9 / 8 / 8 / 0 | 9 / 8 / 8 / 0 |
+| `single_target` with crow, entry skips | 1 | 1 |
+| `single_target` with crow, win rate | 0.25 | 0.25 |
+| `single_target` with crow, average R | -0.36474943595336606 | -0.36474943595336606 |
+| `single_target` with crow, pnl before fees | -78.13764073283825 | -78.13764073283825 |
+| `single_target` with crow, win rate after costs | 0.125 | 0.125 |
+| `single_target` with crow, average win | 25.630509638332036 | 25.630509638332036 |
+| `single_target` with crow, average loss | -17.77172209421916 | -17.77172209421916 |
+| `single_target` with crow, P/L ratio | 1.442207429445974 | 1.442207429445974 |
+| `single_target` with crow, profit factor | 0.20602963277799627 | 0.20602963277799627 |
+| `single_target` with crow, pnl after modeled costs | -98.77154502120209 | -98.77154502120209 |
+| `single_target` with crow, fees | `NOT_OBSERVED` | `NOT_OBSERVED` |
+| `single_target` with crow, holder joined / clear / raised | 926 / 819 / 107 | 926 / 819 / 107 |
+| `single_target` with crow, flow joined / available | 14 / 14 | 14 / 14 |
+| `ladder_e` with crow, theses / opened / closed / still open | 9 / 8 / 3 / 5 | 9 / 8 / 3 / 5 |
+| `ladder_e` with crow, entry skips | 1 | 1 |
+| `ladder_e` with crow, win rate | 0.0 | 0.0 |
+| `ladder_e` with crow, average R | -1.2854508486062 | -1.2854508486062 |
+| `ladder_e` with crow, pnl before fees | -198.51638973487644 | -198.51638973487644 |
+| `ladder_e` with crow, win rate after costs | 0.0 | 0.0 |
+| `ladder_e` with crow, average win | not defined | not defined |
+| `ladder_e` with crow, average loss | -66.17212991162548 | -66.17212991162548 |
+| `ladder_e` with crow, P/L ratio | not defined | not defined |
+| `ladder_e` with crow, profit factor | 0.0 | 0.0 |
+| `ladder_e` with crow, pnl after modeled costs | -198.51638973487644 | -198.51638973487644 |
+| `ladder_e` with crow, fees | `APPLIED` | `APPLIED` |
+| `ladder_e` with crow, holder joined / clear / raised | 814 / 707 / 107 | 814 / 707 / 107 |
+| `ladder_e` with crow, flow joined / available | 10 / 10 | 10 / 10 |
+| Either policy without crow, theses / closed | 0 / 0 | 0 / 0 |
+| Either policy without crow, pnl before fees | 0 | 0 |
+
+Win rate 0.25 is 2 of 8 single-target closes with positive pnl before fees, GATO and ASOL. Win rate after costs 0.125 is 1 of 8. ASOL, opened `2026-11-05T06:35:02+00:00` and closed on the `2026-11-05T06:40:03+00:00` snapshot, is the one positive close after the modeled costs: pnl before fees 29.327233428090548, pnl after costs 25.630509638332036. GATO's timeout is still positive before fees and negative after costs, -2.299179950441493. The ladder book closed Pinocoin, mspaint, and CI, all stops, so the average win and the P/L ratio are not defined and the profit factor is 0.0. The one entry skip is still GDA for the entry floor. `execution_allowed` and `live_orders` stayed false.
 
 ## Theses
 
@@ -500,3 +572,4 @@ Going live later needs all of the following, and none of them are done here:
 6. Implement a venue adapter only after the signer, allowlists, and limits above exist. `LiveAdapter` must keep returning `sent: false` until that adapter is a separate change.
 7. If a crow connectome or other animal model is added, give it its own module id and pins. Do not rename `crow_memory_v1`.
 8. Done on 2026-11-05. The pump.fun frontend list is disabled. `frontend-api-v3.pump.fun` returns HTTP 403, a Cloudflare interstitial, including with a browser User-Agent and `Origin: https://pump.fun`. The collector stores GeckoTerminal new pools for dex `pump-fun` and `pumpswap` instead. `snapshots/2026-11-05/0430.jsonl` has 24 `pumpfun_bonding_curve` rows and 9 `pumpfun_graduation` rows. Holder reads recur from the existing 15-minute `cycle.sh`. The `2026-11-05T04:32:02Z` run stored 8 new `AVAILABLE` shares and left fresh reads cached. A frozen walk-forward through `snapshots/2026-11-05/0415.jsonl` joined 353 scored `single_target` prints with crow (301 `CLEAR`, 52 `RAISED`) and did not change closed pnl. `single_target` with crow closed 7 trades, pnl after modeled costs -124.40205465953413. `ladder_e` with crow closed 2, pnl after modeled costs -146.2049145498137. Without holder reads those pnl figures are the same and the join counts are 0. See Pump.fun feeds and recurring holder reads.
+9. Done on 2026-11-05. GeckoTerminal pool trades are stored in `pool-trades/YYYY-MM-DD.jsonl` with `read_ts_ms`. The `2026-11-05T06:34:12Z` capture stored 8 HTTP 200 pages. Large-sell share ran from 48393 to 191020 ppm, all under the 500000 ppm veto line. A frozen walk-forward through `snapshots/2026-11-05/0640.jsonl` was scored with and without `--entry-veto`. The books match. `single_target` with crow closed 8 trades, win rate 0.25, win rate after costs 0.125, pnl before fees -78.13764073283825, pnl after modeled costs -98.77154502120209. `ladder_e` with crow closed 3, win rate 0.0, pnl after modeled costs -198.51638973487644. The veto stayed off. See Pool trades.

@@ -18,6 +18,7 @@ from .paper_trader import (
     skip_entry,
     state,
 )
+from .flow_capture import entry_veto_reasons, join_flow_read, load_flow_reads
 from .holder_capture import join_holder_read, load_holder_reads
 from .holder_concentration import thesis_parts
 from .snapshot_feed import (
@@ -56,10 +57,12 @@ def _candles_for(candle_dir: Path | None, position: dict):
     return load_jsonl(path)
 
 
-def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT, use_holder_reads: bool = True) -> dict:
+def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT, use_holder_reads: bool = True, use_entry_veto: bool = False) -> dict:
     root = resolve_root(root)
     holder_index = load_holder_reads(root) if use_holder_reads else {}
+    flow_index = load_flow_reads(root)
     holder_joined = holder_clear = holder_raised = holder_not_observed = 0
+    flow_joined = flow_available = flow_not_observed = 0
     if score is None:
         from .giant_brain import fuse
 
@@ -112,6 +115,14 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
                 observation = observation_from_pair(record, prior)
                 observation["fly_history"] = trail
                 joined = join_holder_read(holder_index.get(mint, []), now_ms) if type(mint) is str else None
+                pool = record.get("pair_address")
+                flow = join_flow_read(flow_index.get(mint, []), now_ms, pool if type(pool) is str else None) if type(mint) is str else None
+                if flow is not None:
+                    flow_joined += 1
+                    if flow.get("status") == "AVAILABLE":
+                        flow_available += 1
+                    elif flow.get("status") == "NOT_OBSERVED":
+                        flow_not_observed += 1
                 scored_record = record
                 if joined is not None:
                     observation["holder_concentration"] = joined
@@ -135,20 +146,26 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
             write_files(theses_dir, thesis)
             if type(record.get("price_usd")) not in (int, float):
                 continue
+            reasons = []
+            evidence = None
             if entry_floor:
-                reasons = entry_skip_reasons(
+                reasons.extend(entry_skip_reasons(
                     record, min_liquidity_usd=min_liquidity_usd, min_market_cap_usd=min_market_cap_usd,
                     max_hour_drop_percent=max_hour_drop_percent,
+                ))
+            if use_entry_veto:
+                veto_reasons, evidence = entry_veto_reasons(joined if type(mint) is str else None, flow if type(mint) is str else None, now_ms)
+                reasons.extend(veto_reasons)
+            if reasons:
+                skip_entry(
+                    ledger, thesis, record, reasons, min_liquidity_usd=min_liquidity_usd,
+                    min_market_cap_usd=min_market_cap_usd, max_hour_drop_percent=max_hour_drop_percent,
+                    evidence=evidence,
                 )
-                if reasons:
-                    skip_entry(
-                        ledger, thesis, record, reasons, min_liquidity_usd=min_liquidity_usd,
-                        min_market_cap_usd=min_market_cap_usd, max_hour_drop_percent=max_hour_drop_percent,
-                    )
-                    entry_skipped += 1
-                    for reason in reasons:
-                        skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
-                    continue
+                entry_skipped += 1
+                for reason in reasons:
+                    skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+                continue
             try:
                 flag = record.get("instant_graduation")
                 opened_row = open_position(
@@ -172,6 +189,10 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
         "holder_clear": holder_clear,
         "holder_raised": holder_raised,
         "holder_not_observed": holder_not_observed,
+        "flow_joined": flow_joined,
+        "flow_available": flow_available,
+        "flow_not_observed": flow_not_observed,
+        "entry_veto": use_entry_veto,
         "mode": "PAPER",
         "action": "NO_EXECUTION",
         "execution_allowed": False,
