@@ -304,6 +304,7 @@ def _readout_block(train: list[dict], oos: list[dict], frozen) -> dict:
         "readout_sha256": fitted["readout_sha256"],
         "weights": fitted["weights"],
         "bias": fitted["bias"],
+        "jupiter_features": fitted.get("jupiter_features") is True,
         "network_forward_pass": False,
         "oos": refit,
         "frozen_artifact_oos": frozen_score,
@@ -316,7 +317,7 @@ def _book_summary(book: dict) -> dict:
     return book
 
 
-def _fit_and_score_book(root, work, series, fold, cfg, *, fitted, memory, cutoff_file, limit, threshold_ppm, use_holder_reads, candle_dir, score_cache):
+def _fit_and_score_book(root, work, series, fold, cfg, *, fitted, memory, cutoff_file, limit, threshold_ppm, use_holder_reads, candle_dir, score_cache, use_jupiter_reads: bool = True, use_jupiter_veto: bool = False):
     dest = work / config_id(cfg).replace("|", "__")
     book = _book(
         root, dest, series, memory=memory, not_before_ms=fold["start_ms"],
@@ -325,6 +326,7 @@ def _fit_and_score_book(root, work, series, fold, cfg, *, fitted, memory, cutoff
         not_after_ms=fold["mark_until_ms"], require_primary_vote=cfg["require_primary_vote"],
         horizon_ms=cfg["horizon_ms"], open_not_after_ms=fold["open_not_after_ms"],
         readout=fitted, score_cache=score_cache, use_holder_reads=use_holder_reads,
+        use_jupiter_reads=use_jupiter_reads, use_jupiter_veto=use_jupiter_veto,
     )
     theses = dest / "theses"
     if theses.exists():
@@ -340,7 +342,7 @@ def _fit_and_score_book(root, work, series, fold, cfg, *, fitted, memory, cutoff
     return book
 
 
-def expanding_walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, cutoff_file: str | None = None, use_holder_reads: bool = True, fold_ms: int = FOLD_MS, min_train_ms: int = MIN_TRAIN_MS, holdout_ms: int = HOLDOUT_MS, horizons_ms: tuple[int, ...] = HORIZONS_MS) -> dict:
+def expanding_walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, cutoff_file: str | None = None, use_holder_reads: bool = True, fold_ms: int = FOLD_MS, min_train_ms: int = MIN_TRAIN_MS, holdout_ms: int = HOLDOUT_MS, horizons_ms: tuple[int, ...] = HORIZONS_MS, use_jupiter_readout: bool = False, use_jupiter_veto: bool = False) -> dict:
     """Refit before every fold and score that fold out of sample."""
     root = resolve_root(root)
     work.mkdir(parents=True, exist_ok=True)
@@ -355,7 +357,11 @@ def expanding_walk_forward(root: Path, work: Path, *, limit: int = 25, threshold
         _log(f"fold {fold['index']} {fold['role']} {fold['start_ts']} files {fold['files']}")
     series = load_series(root, [item["file"] for item in stamped])
     _log("decisions")
-    decisions = decisions_from_series(series)
+    jupiter_reads = None
+    if use_jupiter_readout:
+        from .jupiter_capture import load_jupiter_reads
+        jupiter_reads = load_jupiter_reads(root)
+    decisions = decisions_from_series(series, jupiter_reads)
     for row in decisions:
         row.pop("trace", None)
     _log(f"decisions {len(decisions)}")
@@ -390,6 +396,7 @@ def expanding_walk_forward(root: Path, work: Path, *, limit: int = 25, threshold
             "bias": readout["bias"],
             "readout_sha256": readout["readout_sha256"],
             "network_forward_pass": False,
+            "jupiter_features": readout.get("jupiter_features") is True,
         }
         for cfg in configs:
             _log(f"  {config_id(cfg)}")
@@ -398,6 +405,7 @@ def expanding_walk_forward(root: Path, work: Path, *, limit: int = 25, threshold
                 fitted=voting, memory=memory_path, cutoff_file=frozen_name, limit=limit,
                 threshold_ppm=threshold_ppm, use_holder_reads=use_holder_reads,
                 candle_dir=candle_dir, score_cache=cache,
+                use_jupiter_reads=True, use_jupiter_veto=use_jupiter_veto,
             )
             books[config_id(cfg)] = _book_summary(book)
         fold_reports.append({
@@ -472,6 +480,8 @@ def expanding_walk_forward(root: Path, work: Path, *, limit: int = 25, threshold
         "retain_universe": True,
         "entry_floor": True,
         "entry_veto": False,
+        "jupiter_readout": use_jupiter_readout,
+        "jupiter_veto": use_jupiter_veto,
         "use_holder_reads": use_holder_reads,
         "candle_dir": None if candle_dir is None else str(candle_dir),
         "fold_ms": fold_ms,
@@ -488,6 +498,7 @@ def expanding_walk_forward(root: Path, work: Path, *, limit: int = 25, threshold
             "frozen_artifact_sha256": None if frozen is None else frozen.get("readout_sha256"),
             "holder_reads": "joined at the decision when read_ts_ms is at or before it; not a readout label",
             "pool_trades": "joined at the decision when read_ts_ms is at or before it; the entry veto stays off",
+            "jupiter_tokens": "joined when read_ts_ms is at or before the decision; the readout suffix and the Jupiter veto stay off unless this run turned them on",
         },
         "snapshot_files": len(stamped),
         "first_file": stamped[0]["file"],

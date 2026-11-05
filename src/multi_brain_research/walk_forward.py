@@ -281,7 +281,7 @@ def _trades(ledger: Path, symbols: dict[str, str]) -> list[dict]:
     return trades
 
 
-def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, cutoff_file: str | None = None, not_after_ms: int | None = None, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None, horizon_ms: int = 300_000, open_not_after_ms: int | None = None, readout: dict | None = None, score_cache: dict | None = None) -> dict:
+def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, cutoff_file: str | None = None, not_after_ms: int | None = None, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None, horizon_ms: int = 300_000, open_not_after_ms: int | None = None, readout: dict | None = None, score_cache: dict | None = None, use_jupiter_reads: bool = True, use_jupiter_veto: bool = False) -> dict:
     dest.mkdir(parents=True, exist_ok=True)
     ledger = dest / "paper.jsonl"
     theses = dest / "theses"
@@ -312,6 +312,7 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         not_after_ms=not_after_ms, min_recalled_return=min_recalled_return,
         max_crow_distance=max_crow_distance, require_primary_vote=require_primary_vote,
         audit_path=audit_path, horizon_ms=horizon_ms, open_not_after_ms=open_not_after_ms,
+        use_jupiter_reads=use_jupiter_reads, use_jupiter_veto=use_jupiter_veto,
     )
     summary = metrics(ledger)
     closed = state(ledger)["closed"]
@@ -357,14 +358,18 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         "flow_joined": counted.get("flow_joined", 0),
         "flow_available": counted.get("flow_available", 0),
         "flow_not_observed": counted.get("flow_not_observed", 0),
+        "jupiter_joined": counted.get("jupiter_joined", 0),
+        "jupiter_available": counted.get("jupiter_available", 0),
+        "jupiter_not_observed": counted.get("jupiter_not_observed", 0),
         "entry_veto": use_entry_veto,
+        "jupiter_veto": use_jupiter_veto,
         "trades": _trades(ledger, symbols),
         "execution_allowed": False,
         "live_orders": False,
     }
 
 
-def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = True, cutoff_file: str | None = None, not_before_ms: int | None = None, not_after_ms: int | None = None, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = True, audit_path: Path | None = None) -> dict:
+def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = True, cutoff_file: str | None = None, not_before_ms: int | None = None, not_after_ms: int | None = None, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = True, audit_path: Path | None = None, use_jupiter_reads: bool = True, use_jupiter_veto: bool = False) -> dict:
     """Fill crow memory before the longest gap and score the later snapshots twice.
 
     Memory still stops at the gap when `not_before_ms` moves the open window
@@ -408,6 +413,7 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
                 not_after_ms=not_after_ms, min_recalled_return=min_recalled_return,
                 max_crow_distance=max_crow_distance, require_primary_vote=require_primary_vote,
                 audit_path=None if audit_path is None else audit_path / policy / "with_crow.jsonl",
+                use_jupiter_reads=use_jupiter_reads, use_jupiter_veto=use_jupiter_veto,
             ),
             "without_crow": _book(
                 root, work / policy / "without_crow", series, memory=None, not_before_ms=before_ms,
@@ -416,6 +422,7 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
                 use_entry_veto=use_entry_veto, retain_universe=retain_universe, cutoff_file=cutoff_file,
                 not_after_ms=not_after_ms, min_recalled_return=min_recalled_return,
                 max_crow_distance=max_crow_distance, require_primary_vote=require_primary_vote,
+                use_jupiter_reads=use_jupiter_reads, use_jupiter_veto=use_jupiter_veto,
             ),
         }
     chosen = policies[exit_policy]
@@ -456,6 +463,8 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
         "entry_floor": entry_floor,
         "gap_fill": gap_fill,
         "entry_veto": use_entry_veto,
+        "jupiter_veto": use_jupiter_veto,
+        "jupiter_readout": False,
         "retain_universe": retain_universe,
         "cutoff_file": cutoff_file,
         "not_after_ms": not_after_ms,

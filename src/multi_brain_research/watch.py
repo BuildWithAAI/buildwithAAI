@@ -21,6 +21,7 @@ from .paper_trader import (
     state,
 )
 from .flow_capture import entry_veto_reasons, join_flow_read, load_flow_reads
+from .jupiter_capture import join_jupiter_read, jupiter_veto_reasons, load_jupiter_reads
 from .holder_capture import join_holder_read, load_holder_reads
 from .holder_concentration import thesis_parts
 from .snapshot_feed import (
@@ -97,7 +98,7 @@ def _candles_for(candle_dir: Path | None, position: dict):
     return load_jsonl(path)
 
 
-def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, not_after_ms: int | None = None, cutoff_file: str | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None, horizon_ms: int = 300_000, open_not_after_ms: int | None = None) -> dict:
+def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, not_after_ms: int | None = None, cutoff_file: str | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None, horizon_ms: int = 300_000, open_not_after_ms: int | None = None, use_jupiter_reads: bool = True, use_jupiter_veto: bool = False) -> dict:
     """Score snapshot pairs and mark paper exits.
 
     `retain_universe` keeps every mint that appears, including after it falls
@@ -119,8 +120,10 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
         raise ValueError("INVALID_TIME")
     holder_index = load_holder_reads(root) if use_holder_reads else {}
     flow_index = load_flow_reads(root)
+    jupiter_index = load_jupiter_reads(root) if use_jupiter_reads else {}
     holder_joined = holder_clear = holder_raised = holder_not_observed = 0
     flow_joined = flow_available = flow_not_observed = 0
+    jupiter_joined = jupiter_available = jupiter_not_observed = 0
     if score is None:
         from .giant_brain import fuse
 
@@ -203,6 +206,14 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
                 joined = join_holder_read(holder_index.get(mint, []), now_ms) if type(mint) is str else None
                 pool = record.get("pair_address")
                 flow = join_flow_read(flow_index.get(mint, []), now_ms, pool if type(pool) is str else None) if type(mint) is str else None
+                jupiter = join_jupiter_read(jupiter_index.get(mint, []), now_ms) if type(mint) is str else None
+                if jupiter is not None:
+                    observation["jupiter_tokens"] = jupiter
+                    jupiter_joined += 1
+                    if jupiter.get("status") == "AVAILABLE":
+                        jupiter_available += 1
+                    elif jupiter.get("status") == "NOT_OBSERVED":
+                        jupiter_not_observed += 1
                 if flow is not None:
                     flow_joined += 1
                     if flow.get("status") == "AVAILABLE":
@@ -246,6 +257,12 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
                 if use_entry_veto:
                     veto_reasons, evidence = entry_veto_reasons(joined if type(mint) is str else None, flow if type(mint) is str else None, now_ms)
                     reasons.extend(veto_reasons)
+                if use_jupiter_veto:
+                    jupiter_reasons, jupiter_evidence = jupiter_veto_reasons(jupiter if type(mint) is str else None, now_ms)
+                    reasons.extend(jupiter_reasons)
+                    if jupiter_evidence:
+                        evidence = dict(evidence or {})
+                        evidence.update(jupiter_evidence)
                 reasons.extend(_crow_gate(
                     signal, min_recalled_return=min_recalled_return, max_crow_distance=max_crow_distance,
                 ))
@@ -358,7 +375,11 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
         "flow_joined": flow_joined,
         "flow_available": flow_available,
         "flow_not_observed": flow_not_observed,
+        "jupiter_joined": jupiter_joined,
+        "jupiter_available": jupiter_available,
+        "jupiter_not_observed": jupiter_not_observed,
         "entry_veto": use_entry_veto,
+        "jupiter_veto": use_jupiter_veto,
         "retain_universe": retain_universe,
         "cutoff_file": cutoff_file,
         "not_after_ms": not_after_ms,

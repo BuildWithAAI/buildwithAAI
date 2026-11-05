@@ -43,6 +43,12 @@ def main() -> int:
     parser.add_argument("--pool-trade-pending", action="store_true", help="With --capture-pool-trades, skip mints that already have a fresh read")
     parser.add_argument("--pool-trade-limit", type=int, help="Cap the number of pools read")
     parser.add_argument("--entry-veto", action="store_true", help="Refuse a paper open when a causal holder read is RAISED or a causal large-sell share is at least half")
+    parser.add_argument("--capture-jupiter", action="store_true", help="Read the public Jupiter token search for candidate mints and append JSONL")
+    parser.add_argument("--jupiter-pending", action="store_true", help="With --capture-jupiter, skip mints that already have a fresh read")
+    parser.add_argument("--jupiter-limit", type=int, help="Cap the number of mints read from Jupiter")
+    parser.add_argument("--jupiter-coverage", action="store_true", help="Count causal Jupiter reads on readout decisions. Does not estimate a paper book")
+    parser.add_argument("--jupiter-readout", action="store_true", help="Append causal Jupiter fields to the refit FlyVis readout. Off unless set")
+    parser.add_argument("--jupiter-entry-veto", action="store_true", help="Refuse a paper open when a causal Jupiter read shows an enabled authority or a top-holder share of at least half")
     parser.add_argument("--cutoff-file", help="Last snapshot included, relative to the store. Later files stay out")
     parser.add_argument("--not-after-ms", type=int, help="Drop snapshots whose timestamp is at or after this millisecond")
     parser.add_argument("--top-volume-only", action="store_true", help="Score only the volume-ranked limit and do not close vanished mints")
@@ -62,6 +68,7 @@ def main() -> int:
             args.snapshot_root, args.work_dir, limit=args.limit, threshold_ppm=args.threshold_ppm,
             candle_dir=args.candle_dir, cutoff_file=args.cutoff_file,
             use_holder_reads=not args.no_holder_reads,
+            use_jupiter_readout=args.jupiter_readout, use_jupiter_veto=args.jupiter_entry_veto,
         )
         text = json.dumps(report, sort_keys=True)
         if args.results is not None:
@@ -79,6 +86,28 @@ def main() -> int:
             cutoff_file=args.cutoff_file, not_before_ms=args.not_before_ms, not_after_ms=args.not_after_ms,
             min_recalled_return=args.min_recalled_return, max_crow_distance=args.max_crow_distance,
             require_primary_vote=args.require_primary_vote, audit_path=args.audit_path,
+            use_jupiter_veto=args.jupiter_entry_veto,
+        ), sort_keys=True))
+        return 0
+    if args.jupiter_coverage:
+        if args.snapshot_root is None:
+            parser.error("--jupiter-coverage requires --snapshot-root")
+        from multi_brain_research.jupiter_capture import coverage_report
+        report = coverage_report(args.snapshot_root, cutoff_file=args.cutoff_file)
+        text = json.dumps(report, sort_keys=True)
+        if args.results is not None:
+            args.results.parent.mkdir(parents=True, exist_ok=True)
+            args.results.write_text(text + "\n", encoding="utf-8")
+        print(text)
+        return 0
+    if args.capture_jupiter:
+        if args.snapshot_root is None:
+            parser.error("--capture-jupiter requires --snapshot-root")
+        from multi_brain_research.jupiter_capture import PENDING_LIMIT, capture_jupiter_tokens
+        print(json.dumps(capture_jupiter_tokens(
+            args.snapshot_root,
+            pending_only=True,
+            limit=PENDING_LIMIT if args.jupiter_limit is None else args.jupiter_limit,
         ), sort_keys=True))
         return 0
     if args.capture_pool_trades:
@@ -119,6 +148,7 @@ def main() -> int:
             use_entry_veto=args.entry_veto, retain_universe=not args.top_volume_only,
             min_recalled_return=args.min_recalled_return, max_crow_distance=args.max_crow_distance,
             require_primary_vote=args.require_primary_vote, audit_path=args.audit_path,
+            use_jupiter_veto=args.jupiter_entry_veto,
         ), sort_keys=True))
         return 0
     if args.tape is None and args.observation is None:

@@ -220,7 +220,12 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None, rea
         return _shell(row, str(error), fly)
     tape_score = paper_long_support(mapped)
     crow_score = recall(mapped["features"], memory_path, now_ms=now_ms)
-    fly_vote = fly_score_history(_fly_history(row), readout=readout)
+    fly_vote = fly_score_history(
+        _fly_history(row),
+        readout=readout,
+        jupiter_read=row.get("jupiter_tokens") if type(row.get("jupiter_tokens")) is dict else None,
+        now_ms=now_ms,
+    )
     council = roster()
     hemibrain_vote = _hemibrain_vote(row)
     here = Path(__file__).resolve().parent
@@ -557,6 +562,15 @@ def source_status() -> dict:
             "endpoint": "https://api.geckoterminal.com/api/v2/networks/solana/pools/{pool}/trades",
             "stored": "pool-trades/*.jsonl",
             "time_gate": "read_ts_ms <= decision",
+            "entry_veto_default": False,
+            "key_required": False,
+        },
+        "jupiter_tokens": {
+            "state": "PUBLIC_NO_KEY",
+            "endpoint": "https://lite-api.jup.ag/tokens/v2/search?query={mint}",
+            "stored": "jupiter-tokens/*.jsonl",
+            "time_gate": "read_ts_ms <= decision",
+            "readout_feature_default": False,
             "entry_veto_default": False,
             "key_required": False,
         },

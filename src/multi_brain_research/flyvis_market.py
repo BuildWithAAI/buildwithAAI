@@ -15,6 +15,7 @@ import math
 from pathlib import Path
 
 from .flyvis_smoke import read_activity
+from .jupiter_capture import FEATURE_NAMES, join_jupiter_read, readout_features
 
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "experiments/flyvis_trained_reference/evidence/local-completed-2"
@@ -183,8 +184,15 @@ def _metrics(rows: list[dict], weights: list[float], bias: float) -> dict:
     }
 
 
-def decisions_from_series(series: dict[str, list[dict]]) -> list[dict]:
-    """One decision per token step. Features stop at that step. The label is the next price."""
+def decisions_from_series(series: dict[str, list[dict]], jupiter_reads=None) -> list[dict]:
+    """One decision per token step. Features stop at that step. The label is the next price.
+
+    ``jupiter_reads`` grouped by mint appends the fixed Jupiter suffix. A read
+    whose ``read_ts_ms`` is after the decision contributes zeros. Omitting the
+    map leaves the activity at the flash-kernel width.
+    """
+    if jupiter_reads is not None and type(jupiter_reads) is not dict:
+        raise ReadoutError("JUPITER_READS")
     rows = []
     kernels = frozen_kernels()[1]
     for mint, history in series.items():
@@ -202,13 +210,19 @@ def decisions_from_series(series: dict[str, list[dict]]) -> list[dict]:
             nxt_point = ordered[index + 1]
             end = nxt_point.get("ts_ms")
             decision_ms = ordered[index].get("ts_ms")
+            activity = project(trace, kernels)
+            if jupiter_reads is not None:
+                stamp = decision_ms if type(decision_ms) is int and not isinstance(decision_ms, bool) else -1
+                joined = join_jupiter_read(jupiter_reads.get(mint) or [], stamp)
+                activity = activity + readout_features(joined, stamp)
             rows.append({
                 "mint": mint,
                 "ts": ordered[index]["ts"],
                 "ts_ms": decision_ms if type(decision_ms) is int else None,
                 "outcome_end_ms": end if type(end) is int else None,
                 "label": 1 if nxt > current else 0,
-                "activity": project(trace, kernels),
+                "activity": activity,
+                "jupiter_features": jupiter_reads is not None,
                 "trace": trace,
             })
     return rows
@@ -267,6 +281,13 @@ def fit_on_rows(rows: list[dict]) -> dict:
         raise ReadoutError("OUTCOME_WINDOW")
     if any(row["outcome_end_ms"] < row["ts_ms"] for row in rows):
         raise ReadoutError("OUTCOME_WINDOW")
+    width = len(rows[0]["activity"])
+    kernel_width = len(frozen_kernels()[1])
+    jupiter_features = width == kernel_width + len(FEATURE_NAMES)
+    if width != kernel_width and not jupiter_features:
+        raise ReadoutError("ACTIVITY_WIDTH")
+    if any(len(row.get("activity") or []) != width for row in rows):
+        raise ReadoutError("ACTIVITY_WIDTH")
     weights, bias = fit_weights(rows)
     labels, _kernels = frozen_kernels()
     end_ms = max(row["outcome_end_ms"] for row in rows)
@@ -275,6 +296,7 @@ def fit_on_rows(rows: list[dict]) -> dict:
         "stimulus": STIMULUS,
         "activity_source": ACTIVITY_SOURCE,
         "network_forward_pass": False,
+        "jupiter_features": jupiter_features,
         "cell_labels": labels,
         "weights": [round(weight, 8) for weight in weights],
         "bias": round(bias, 8),
@@ -289,6 +311,7 @@ def fit_on_rows(rows: list[dict]) -> dict:
     identity = {
         "stimulus": report["stimulus"],
         "activity_source": report["activity_source"],
+        "jupiter_features": jupiter_features,
         "cell_labels": report["cell_labels"],
         "weights": report["weights"],
         "bias": report["bias"],
@@ -376,7 +399,7 @@ def load_artifact(path: Path | None = None) -> dict | None:
     return data
 
 
-def score_history(history: list[dict], readout: dict | None = None) -> dict:
+def score_history(history: list[dict], readout: dict | None = None, jupiter_read=None, now_ms: int | None = None) -> dict:
     artifact = load_artifact() if readout is None else readout
     base = {
         "activity_source": ACTIVITY_SOURCE,
@@ -395,6 +418,8 @@ def score_history(history: list[dict], readout: dict | None = None) -> dict:
     try:
         trace = stimulus_from_history(history)
         activity = project(trace)
+        if artifact.get("jupiter_features") is True:
+            activity = activity + readout_features(jupiter_read, now_ms)
     except (ReadoutError, OSError, ValueError):
         base["detail"] = "STIMULUS_UNAVAILABLE"
         return base
