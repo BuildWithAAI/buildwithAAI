@@ -25,7 +25,8 @@ from .holder_concentration import (
     rugcheck_url,
     rugcheck_url_ok,
 )
-from .snapshot_feed import canonical_pairs, load_latest, load_snapshot, resolve_root
+from .pump_public import SOURCE_BONDING, SOURCE_GRADUATION
+from .snapshot_feed import canonical_pairs, load_latest, load_snapshot, resolve_root, snapshot_files
 
 RPC_ORDER = (
     "https://api.mainnet-beta.solana.com",
@@ -35,6 +36,12 @@ _MAX_ATTEMPTS = 3
 _MAX_BACKOFF_S = 120
 _DEFAULT_BACKOFF_S = 10
 _BODY_LIMIT = 4_000_000
+FRESH_MS = 6 * 60 * 60 * 1000
+RETRY_MS = 30 * 60 * 1000
+PENDING_LIMIT = 8
+SNAPSHOT_WINDOW = 6
+_PUMP_SOURCES = frozenset({SOURCE_BONDING, SOURCE_GRADUATION, "pumpfun_currently_live"})
+_DUE_RANK = {"NEW_MINT": 0, "RETRY_NOT_OBSERVED": 1, "STALE_AVAILABLE": 2}
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -118,6 +125,134 @@ def snapshot_mints(root: Path, relative: str | None = None) -> tuple[str, list[d
         })
     rows.sort(key=lambda item: (-(item["volume_h1"] if item["volume_h1"] is not None else -1), item["mint"]))
     return relative, rows
+
+
+def _volume(value):
+    if isinstance(value, bool) or type(value) not in (int, float):
+        return None
+    return value
+
+
+def mints_from_records(records: list[dict]) -> list[dict]:
+    """Canonical DexScreener mints, then pump launch or graduation mints not already listed."""
+    rows = []
+    seen = set()
+    for mint, row in canonical_pairs(records).items():
+        volume = _volume(row.get("volume_h1"))
+        pair = row.get("pair_address")
+        rows.append({
+            "mint": mint,
+            "pair_address": pair if type(pair) is str else None,
+            "symbol": row.get("symbol") if type(row.get("symbol")) is str else None,
+            "volume_h1": volume,
+        })
+        seen.add(mint)
+    for row in records:
+        if type(row) is not dict or row.get("source") not in _PUMP_SOURCES:
+            continue
+        mint = row.get("token_address")
+        if type(mint) is not str or not mint or mint in seen:
+            continue
+        pair = row.get("pair_address")
+        rows.append({
+            "mint": mint,
+            "pair_address": pair if type(pair) is str else None,
+            "symbol": row.get("symbol") if type(row.get("symbol")) is str else None,
+            "volume_h1": _volume(row.get("volume_h1")),
+        })
+        seen.add(mint)
+    rows.sort(key=lambda item: (-(item["volume_h1"] if item["volume_h1"] is not None else -1), item["mint"]))
+    return rows
+
+
+def read_is_due(rows, now_ms: int, *, fresh_ms: int, retry_ms: int):
+    """Why a mint needs a read, or None when the cached read is still fresh."""
+    if type(now_ms) is not int or isinstance(now_ms, bool):
+        return "NEW_MINT"
+    if type(rows) is not list or not rows:
+        return "NEW_MINT"
+    latest = rows[-1]
+    if type(latest) is not dict:
+        return "NEW_MINT"
+    stamp = latest.get("read_ts_ms")
+    if type(stamp) is not int or isinstance(stamp, bool):
+        return "NEW_MINT"
+    if stamp > now_ms:
+        return None
+    age = now_ms - stamp
+    status = latest.get("status")
+    if status == "AVAILABLE":
+        return "STALE_AVAILABLE" if age >= fresh_ms else None
+    if status == "NOT_OBSERVED":
+        return "RETRY_NOT_OBSERVED" if age >= retry_ms else None
+    return "NEW_MINT"
+
+
+def _check_millis(value, name: str, cap: int) -> int:
+    if type(value) is not int or isinstance(value, bool) or value < 0 or value > cap:
+        raise ValueError(name)
+    return value
+
+
+def pending_mints(
+    root: Path,
+    *,
+    now_ms: int,
+    fresh_ms: int = FRESH_MS,
+    retry_ms: int = RETRY_MS,
+    limit: int | None = PENDING_LIMIT,
+    window: int = SNAPSHOT_WINDOW,
+    reads=None,
+) -> tuple[list[dict], dict]:
+    """Mints in the newest snapshots whose cached holder read is missing or stale.
+
+    Never-read mints come first, then a ``NOT_OBSERVED`` row past ``retry_ms``,
+    then an ``AVAILABLE`` row past ``fresh_ms``. ``limit`` caps the list.
+    """
+    fresh_ms = _check_millis(fresh_ms, "INVALID_FRESH_MS", 7 * 24 * 60 * 60 * 1000)
+    retry_ms = _check_millis(retry_ms, "INVALID_RETRY_MS", 7 * 24 * 60 * 60 * 1000)
+    if type(window) is not int or isinstance(window, bool) or not 1 <= window <= 500:
+        raise ValueError("INVALID_WINDOW")
+    if limit is not None and (type(limit) is not int or isinstance(limit, bool) or limit < 1):
+        raise ValueError("INVALID_LIMIT")
+    if type(now_ms) is not int or isinstance(now_ms, bool):
+        raise ValueError("INVALID_TIME")
+    root = resolve_root(root)
+    files = snapshot_files(root)
+    if window < len(files):
+        files = files[-window:]
+    grouped = load_holder_reads(root) if reads is None else reads
+    seen = set()
+    due = []
+    considered = 0
+    cached = 0
+    for relative in reversed(files):
+        for item in mints_from_records(load_snapshot(root, relative)):
+            if item["mint"] in seen:
+                continue
+            seen.add(item["mint"])
+            considered += 1
+            reason = read_is_due(grouped.get(item["mint"], []), now_ms, fresh_ms=fresh_ms, retry_ms=retry_ms)
+            if reason is None:
+                cached += 1
+                continue
+            chosen = dict(item)
+            chosen["due"] = reason
+            chosen["snapshot_file"] = relative
+            due.append(chosen)
+    due.sort(key=lambda item: (_DUE_RANK.get(item["due"], 9), -(item["volume_h1"] if item["volume_h1"] is not None else -1), item["mint"]))
+    selected = due if limit is None else due[:limit]
+    counts = {"NEW_MINT": 0, "RETRY_NOT_OBSERVED": 0, "STALE_AVAILABLE": 0}
+    for item in selected:
+        counts[item["due"]] = counts.get(item["due"], 0) + 1
+    return selected, {
+        "considered": considered,
+        "cached": cached,
+        "due": len(due),
+        "selected": len(selected),
+        "reasons": counts,
+        "window_files": len(files),
+    }
 
 
 def _log_path(root: Path, read_ts_ms: int) -> Path:
@@ -301,18 +436,39 @@ def capture_holders(
     rpc_transport=None,
     http_transport=None,
     probe: bool = True,
+    pending_only: bool = False,
+    fresh_ms: int = FRESH_MS,
+    retry_ms: int = RETRY_MS,
+    window: int = SNAPSHOT_WINDOW,
 ) -> dict:
-    """Read holder concentration for mints in one snapshot and append JSONL beside it."""
+    """Read holder concentration for mints in one snapshot and append JSONL beside it.
+
+    ``pending_only`` reads mints in the newest ``window`` snapshots that have
+    no fresh cached read. An ``AVAILABLE`` read younger than ``fresh_ms`` is
+    kept. A ``NOT_OBSERVED`` read is retried after ``retry_ms``. The default
+    pending cap is 8 mints.
+    """
     if type(interval_s) not in (int, float) or isinstance(interval_s, bool) or interval_s < 0 or interval_s > 30:
         raise ValueError("INVALID_INTERVAL")
     if limit is not None and (type(limit) is not int or isinstance(limit, bool) or limit < 1):
         raise ValueError("INVALID_LIMIT")
+    if type(pending_only) is not bool:
+        raise ValueError("INVALID_PENDING")
     root = resolve_root(root)
-    relative, mints = snapshot_mints(root, snapshot)
-    if limit is not None:
-        mints = mints[:limit]
     clock = _clock(now_ms)
     started = clock()
+    pending_stats = None
+    if pending_only:
+        if limit is None:
+            limit = PENDING_LIMIT
+        mints, pending_stats = pending_mints(
+            root, now_ms=started, fresh_ms=fresh_ms, retry_ms=retry_ms, limit=limit, window=window,
+        )
+        relative = mints[0]["snapshot_file"] if mints else None
+    else:
+        relative, mints = snapshot_mints(root, snapshot)
+        if limit is not None:
+            mints = mints[:limit]
     probes = []
     rpc_endpoint = None
     probed_mint = None
@@ -341,6 +497,7 @@ def capture_holders(
             sleep(interval_s)
         symbol = item["symbol"]
         pair = item["pair_address"]
+        snap = item.get("snapshot_file") if type(item.get("snapshot_file")) is str else relative
         record = probe_hit if reused else None
         if use_rpc and not reused:
             stamp = clock()
@@ -363,7 +520,7 @@ def capture_holders(
         if not use_rpc:
             record = _read_rugcheck(item["mint"], pair_address=pair, transport=http_transport, sleep=sleep, clock=clock)
         probe_note = probes[-1] if rpc_endpoint is None and probes else None
-        stored_row = _stamp_rpc(record, snapshot_file=relative, symbol=symbol, probe=probe_note)
+        stored_row = _stamp_rpc(record, snapshot_file=snap, symbol=symbol, probe=probe_note)
         append_read(root, stored_row)
         stored.append(stored_row["mint"])
         if stored_row.get("status") == "AVAILABLE":
@@ -382,9 +539,18 @@ def capture_holders(
         "probed_mint": probed_mint,
         "started_ms": started,
         "started_at": _iso(started) if type(started) is int else None,
-        "source_used": rpc_endpoint or "https://api.rugcheck.xyz",
+        "source_used": rpc_endpoint or ("https://api.rugcheck.xyz" if mints else None),
+        "pending_only": pending_only,
         "action": "NO_EXECUTION",
         "execution_allowed": False,
         "live_orders": False,
     }
+    if pending_stats is not None:
+        summary["cached"] = pending_stats["cached"]
+        summary["considered"] = pending_stats["considered"]
+        summary["due"] = pending_stats["due"]
+        summary["reasons"] = pending_stats["reasons"]
+        summary["fresh_ms"] = fresh_ms
+        summary["retry_ms"] = retry_ms
+        summary["window"] = window
     return summary

@@ -30,6 +30,11 @@ def main() -> int:
     parser.add_argument("--exit-policy", choices=("ladder_e", "single_target"), default="ladder_e")
     parser.add_argument("--walk-forward", action="store_true", help="Score the post-gap snapshots with and without crow memory")
     parser.add_argument("--capture-holders", action="store_true", help="Read holder concentration for the newest snapshot and append JSONL")
+    parser.add_argument("--holder-pending", action="store_true", help="With --capture-holders, read only mints in recent snapshots that lack a fresh cached read")
+    parser.add_argument("--holder-limit", type=int, help="Cap the number of mints read")
+    parser.add_argument("--holder-fresh-ms", type=int, help="Skip an AVAILABLE read younger than this many milliseconds")
+    parser.add_argument("--holder-retry-ms", type=int, help="Retry a NOT_OBSERVED read after this many milliseconds")
+    parser.add_argument("--holder-window", type=int, help="How many newest snapshots to scan for pending mints")
     parser.add_argument("--no-holder-reads", action="store_true", help="Do not join stored holder reads during a replay or walk-forward")
     parser.add_argument("--work-dir", type=Path, help="Ledger and memory directory for --walk-forward")
     parser.add_argument("--status", action="store_true", help="Print which sources are configured")
@@ -48,7 +53,18 @@ def main() -> int:
         if args.snapshot_root is None:
             parser.error("--capture-holders requires --snapshot-root")
         from multi_brain_research.holder_capture import capture_holders
-        print(json.dumps(capture_holders(args.snapshot_root), sort_keys=True))
+        kwargs = {}
+        if args.holder_pending:
+            kwargs["pending_only"] = True
+        if args.holder_limit is not None:
+            kwargs["limit"] = args.holder_limit
+        if args.holder_fresh_ms is not None:
+            kwargs["fresh_ms"] = args.holder_fresh_ms
+        if args.holder_retry_ms is not None:
+            kwargs["retry_ms"] = args.holder_retry_ms
+        if args.holder_window is not None:
+            kwargs["window"] = args.holder_window
+        print(json.dumps(capture_holders(args.snapshot_root, **kwargs), sort_keys=True))
         return 0
     if args.snapshot_root:
         if args.theses_dir is None or args.ledger is None:

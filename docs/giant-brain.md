@@ -56,10 +56,12 @@ Paper attribution splits closed pnl across council members that cast a numeric v
 | Helius or any other keyed RPC | Not used | `HELIUS_API_KEY` is ignored. A key in the URL would leave the allowlist |
 | FlyVis forward pass | Missing in this process | The pinned CPU workflow is separate |
 | Crow connectome | Missing | Do not relabel the memory heuristic as biology |
-| Snapshot store `/cursor/stores/bot/giant-brain-data/` | Reader in `snapshot_feed.py`. DexScreener pair rows are the metric. GeckoTerminal rows use the same fields. Pump.fun live list is often HTTP 403 in the collector | None |
-| Direct DexScreener and GeckoTerminal HTTPS reads | Same hosts and path prefixes as the collector, plus `GET /api/v2/networks/solana/pools/{pool}/ohlcv/minute`. Any other URL is refused | None |
+| Snapshot store `/cursor/stores/bot/giant-brain-data/` | Reader in `snapshot_feed.py`. DexScreener pair rows are the metric. GeckoTerminal rows use the same fields. `pumpfun_bonding_curve` and `pumpfun_graduation` are GeckoTerminal new-pool rows | None |
+| Direct DexScreener and GeckoTerminal HTTPS reads | Same hosts and path prefixes as the collector, plus `GET /api/v2/networks/solana/pools/{pool}/ohlcv/minute`. Any other URL is refused. A collector GET that returns HTTP 429 waits once for `Retry-After`, capped at 8 seconds, or 2 seconds when the header is absent, then tries the same URL again | None |
+| Pump.fun frontend `frontend-api-v3.pump.fun/coins/currently-live` | Disabled in the collector. On 2026-11-05 a GET with the collector User-Agent, and a second GET with a browser User-Agent plus `Origin: https://pump.fun`, both returned HTTP 403 and a Cloudflare `Just a moment` page. `api.pump.fun` returned `401 API_KEY_REQUIRED`. `GET /v1/coins` returned 404 | The official API requires a key and does not publish this list |
+| GeckoTerminal new pools for dex `pump-fun` and `pumpswap` | Live. Pages 1 and 2 of `/api/v2/networks/solana/new_pools` are stored as `pumpfun_bonding_curve` (`graduation` `BONDING_CURVE`) and `pumpfun_graduation` (`graduation` `PUMPSWAP`). `PUMPSWAP` is the GeckoTerminal dex id, not pump.fun's `complete` flag | None |
 | Pool minute candles | Public GeckoTerminal OHLCV. Rows are `[unix_seconds, open, high, low, close, volume]`, newest first. Stored as JSONL. Unit tests use the recorded responses under `tests/fixtures/giant-brain-ohlcv/` | None. Five reads on 2026-11-04 returned HTTP 200. No `Retry-After` header was present |
-| Holder concentration | Live RPC read in `holder_concentration.py`. Capture falls back to `https://api.rugcheck.xyz/v1/tokens/{mint}/report` when `getTokenLargestAccounts` is rate-limited. Stored as `holder-reads/YYYY-MM-DD.jsonl` beside the snapshots, keyed by mint and `read_ts_ms` | None. On 2026-11-05 both public RPC hosts returned HTTP 429 for `getTokenLargestAccounts`. Rugcheck returned a share for all 96 mints in `snapshots/2026-11-05/0215.jsonl` |
+| Holder concentration | Live RPC read in `holder_concentration.py`. Capture falls back to `https://api.rugcheck.xyz/v1/tokens/{mint}/report` when `getTokenLargestAccounts` is rate-limited. Stored as `holder-reads/YYYY-MM-DD.jsonl` beside the snapshots, keyed by mint and `read_ts_ms`. The 15-minute `cycle.sh` runs `brain-runs/bin/capture_holders.py`, which reads at most 8 mints from the newest 6 snapshots that have no `AVAILABLE` read younger than 6 hours. A `NOT_OBSERVED` read is retried after 30 minutes | None. On 2026-11-05 both public RPC hosts returned HTTP 429 for `getTokenLargestAccounts`. Rugcheck returned a share for the 96 mints in `snapshots/2026-11-05/0215.jsonl`, and later runs appended more shares for mints that were not in that file |
 | Wallet signer and venue orders | Stub only | Live sending is not implemented |
 
 An account snapshot with one price does not invent a return. Flow and liquidity change stay missing until both sides of the comparison are present.
@@ -69,7 +71,7 @@ An account snapshot with one price does not invent a return. Flow and liquidity 
 From the repository root, with no network:
 
 ```bash
-python -m unittest tests.test_giant_brain tests.test_audit_regressions -v
+python -m unittest tests.test_giant_brain tests.test_holder_capture tests.test_pump_public tests.test_audit_regressions -v
 python scripts/run_giant_brain.py --status
 ```
 
@@ -160,6 +162,17 @@ PYTHONPATH=src python scripts/run_giant_brain.py \
   --snapshot-root /cursor/stores/bot/giant-brain-data
 ```
 
+The recurring capture is the same command with `--holder-pending`. It keeps an `AVAILABLE` read for 6 hours, retries `NOT_OBSERVED` after 30 minutes, and stops at 8 mints:
+
+```bash
+PYTHONPATH=src python scripts/run_giant_brain.py \
+  --capture-holders \
+  --holder-pending \
+  --snapshot-root /cursor/stores/bot/giant-brain-data
+```
+
+On the box, `brain-runs/bin/cycle.sh` runs `brain-runs/bin/capture_holders.py` at the start of the existing 15-minute cron. That script uses the modules under `brain-runs/lib/`, which are a copy of this repository's holder and pump modules, so the cron does not wait for the paper-runner checkout to update.
+
 A replay joins the latest `AVAILABLE` read for that mint whose `read_ts_ms` is at or before the decision. A later read is not attached. `--no-holder-reads` scores the same snapshots with that join turned off.
 
 `getTokenSupply` and `getTokenLargestAccounts` use commitment `finalized`. `getMultipleAccounts` is called only after both succeed, to read the token account and then the owner account. A pool vault is labeled only when the token account's owner equals the observed pair address. A bonding-curve vault is labeled only when that owner's program is `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`. Anything else is `UNCLASSIFIED`. Amounts are the RPC `amount` strings. `uiAmount` is ignored.
@@ -208,6 +221,60 @@ The holder read does not change the fused score. Closed trades, win rate, averag
 | Either policy without crow, holder joined / clear / raised | 49 / 40 / 9 | 0 / 0 / 0 |
 
 The ladder-with-crow join count is 45 because four of those mints already had an open ladder position, so the later print was a mark and was not scored again. No joined read was `NOT_OBSERVED`: each of those mints had an earlier `AVAILABLE` read at or before the decision. Recorded Rugcheck and RPC 429 bodies used by the unit tests are `tests/fixtures/giant-brain-holders/`.
+
+## Pump.fun feeds and recurring holder reads
+
+The collector had called `https://frontend-api-v3.pump.fun/coins/currently-live` on every run since `2026-11-03 23:15` in the box log. Each call was logged as `pumpfun skipped: <HTTPError 403: 'Forbidden'>`. The log file still contains 168 of those warnings. They stop at the run that wrote `snapshots/2026-11-05/0422.jsonl`.
+
+A direct GET of that URL on 2026-11-05, first with the collector User-Agent and then with a browser User-Agent plus `Origin: https://pump.fun` and `Referer: https://pump.fun/`, returned HTTP 403 both times. The body was an HTML page titled `Just a moment`, served by Cloudflare. `https://api.pump.fun/v1/users/11111111111111111111111111111111` returned `401` with `error` `API_KEY_REQUIRED`. `GET /v1/coins` on that host returned 404. The frontend list is disabled. `latest.json` records `pumpfun_currently_live` with `ok` false, `disabled` true, and `reason` `CLOUDFLARE_CHALLENGE`. The collector does not request that URL and does not log a warning for it.
+
+The replacement is GeckoTerminal's public new-pools feed. Dex id `pump-fun` is stored as `pumpfun_bonding_curve` with `graduation` `BONDING_CURVE`. Dex id `pumpswap` is stored as `pumpfun_graduation` with `graduation` `PUMPSWAP`. Other dexes in the same page stay on `geckoterminal_new_pools` and are not copied into these two sources. Page 1 is the page the collector already fetched. Page 2 is one extra GET. A 429 waits once, using `Retry-After` when it is between 0 and 8 seconds and 2 seconds otherwise, then the same URL is requested again. The one `geckoterminal_new_pools` 429 at `2026-11-04 19:35` in the box log happened before this retry existed.
+
+The first three runs after the store script was replaced:
+
+| Snapshot | `pumpfun_bonding_curve` rows | `pumpfun_graduation` rows |
+| --- | --- | --- |
+| `snapshots/2026-11-05/0422.jsonl` | 24 | 0 |
+| `snapshots/2026-11-05/0425.jsonl` | 37 | 2 |
+| `snapshots/2026-11-05/0430.jsonl` | 24 | 9 |
+
+In `0425.jsonl`, SAPPER `MQyJEVBp9CxXo5s3GL29ateDWgdyTvxhLks7FSEpump` is a bonding-curve row. `pool_created_at` is `2026-11-05T04:23:26Z`, `price_usd` is 3.4850002782792854e-06, and `liquidity_usd` is 3614.3647. DJT `27YZYsWvmQtwUpRPV9JL2oLPHiFCKzHzZ9MjXvVNpump` is a graduation row. `pool_created_at` is `2026-11-05T04:23:06Z`, `price_usd` is 2.7165284272268156e-08, and `liquidity_usd` is 7.3743. The previous `collect.py` is `collector/collect.py.bak-2026-11-05`.
+
+Holder capture now runs at the start of `brain-runs/bin/cycle.sh`, which the existing 15-minute cron already calls. The first scheduled run in the cycle log is `2026-11-05T04:32:02Z`, exit 0. It considered 235 mints in the newest 6 snapshots, skipped 64 that already had a fresh read, and stored 8 new `AVAILABLE` Rugcheck shares. A run of the same script at `2026-11-05T04:18:25Z` had stored 8 shares before that. `holder-reads/2026-11-05.jsonl` is 114 lines. The 16 lines with `read_ts` at or after `2026-11-05T04:18:53Z` are all `AVAILABLE`, each with an integer `read_ts_ms`, a `https://api.rugcheck.xyz/v1/tokens/{mint}/report` source, `execution_allowed` false, and `live_orders` false. Both public RPC hosts returned HTTP 429 for `getTokenLargestAccounts` on these runs, with `Retry-After` 10 and JSON-RPC code 429, so no share was stored from the RPC. The newest of the 16 is SAPPER at `2026-11-05T04:32:56Z`, compared top-ten share 308945 ppm.
+
+The frozen walk-forward below was copied from the store before those 16 reads existed. It has 169 snapshot files, `snapshots/2026-11-04/0515.jsonl.gz` through `snapshots/2026-11-05/0415.jsonl`, last timestamp `2026-11-05T04:15:02+00:00`. The gap is still 27302000 ms. Holdout is 67 files from `2026-11-04T22:00:03+00:00`. Memory is 4339 rows, filled only through `2026-11-04T14:25:01+00:00`. Limit 25, gate 600000 ppm, no candle directory. The same copy was scored with the holder join and with `--no-holder-reads`. `execution_allowed` and `live_orders` stayed false. The file is `research/giant-brain/walk_forward_2026-11-05.json`.
+
+Closed trades, win rate, average R, and pnl are the same in the two scores. The 16 reads taken at 04:18Z and 04:32Z are after `04:15:02Z`, so this replay does not join them. The higher join counts, compared with the 0240 replay above, are the earlier Rugcheck reads meeting the snapshots that have arrived since `2026-11-05T02:40:01+00:00`.
+
+| | With holder reads | Without holder reads |
+| --- | --- | --- |
+| `single_target` with crow, theses / opened / closed / still open | 8 / 7 / 7 / 0 | 8 / 7 / 7 / 0 |
+| `single_target` with crow, entry skips | 1 | 1 |
+| `single_target` with crow, win rate | 0.14285714285714285 | 0.14285714285714285 |
+| `single_target` with crow, average R | -0.5214398210325488 | -0.5214398210325488 |
+| `single_target` with crow, pnl before fees | -107.4648741609288 | -107.4648741609288 |
+| `single_target` with crow, win rate after costs | 0.0 | 0.0 |
+| `single_target` with crow, average loss | -17.77172209421916 | -17.77172209421916 |
+| `single_target` with crow, profit factor | 0.0 | 0.0 |
+| `single_target` with crow, pnl after modeled costs | -124.40205465953413 | -124.40205465953413 |
+| `single_target` with crow, fees | `NOT_OBSERVED` | `NOT_OBSERVED` |
+| `single_target` with crow, holder joined / clear / raised | 353 / 301 / 52 | 0 / 0 / 0 |
+| `ladder_e` with crow, theses / opened / closed / still open | 8 / 7 / 2 / 5 | 8 / 7 / 2 / 5 |
+| `ladder_e` with crow, entry skips | 1 | 1 |
+| `ladder_e` with crow, win rate | 0.0 | 0.0 |
+| `ladder_e` with crow, average R | -1.4200784509237687 | -1.4200784509237687 |
+| `ladder_e` with crow, pnl before fees | -146.2049145498137 | -146.2049145498137 |
+| `ladder_e` with crow, win rate after costs | 0.0 | 0.0 |
+| `ladder_e` with crow, average loss | -73.10245727490685 | -73.10245727490685 |
+| `ladder_e` with crow, profit factor | 0.0 | 0.0 |
+| `ladder_e` with crow, pnl after modeled costs | -146.2049145498137 | -146.2049145498137 |
+| `ladder_e` with crow, fees | `APPLIED` | `APPLIED` |
+| `ladder_e` with crow, holder joined / clear / raised | 305 / 253 / 52 | 0 / 0 / 0 |
+| Either policy without crow, theses / closed | 0 / 0 | 0 / 0 |
+| Either policy without crow, pnl before fees | 0 | 0 |
+| Either policy without crow, holder joined / clear / raised | 354 / 302 / 52 | 0 / 0 / 0 |
+
+The one entry skip is GDA, thesis `7e63dad4317733e3427fdcea7afb41da16afe3e87147346de541d23c68ad65a9`, for `LIQUIDITY_BELOW_MIN`, `MARKET_CAP_BELOW_MIN`, and `HOUR_DROP_OVER_LIMIT`. The two ladder closes are the same Pinocoin and mspaint stops as the 0240 replay, so that closed pnl is unchanged. The single-target book closed two more positions, Impeach and CI. Win rate 0.14285714285714285 is 1 of 7 closes with positive pnl before fees, the GATO timeout. Every close has negative pnl after the modeled costs, so the average win is not defined and the profit factor is 0.0. Average win and the P/L ratio are not defined for the ladder book either, because both closes are losses.
 
 ## Theses
 
@@ -432,3 +499,4 @@ Going live later needs all of the following, and none of them are done here:
 5. Done on 2026-11-05. Holder reads are stored in `holder-reads/YYYY-MM-DD.jsonl` with `read_ts_ms` and `source`. Both public RPC hosts returned HTTP 429 for `getTokenLargestAccounts` after a 10 second backoff, so the 96 mints in `snapshots/2026-11-05/0215.jsonl` were read from the public Rugcheck report. 96 mints have a share. Two earlier lines are `NOT_OBSERVED` with `RESPONSE_TOO_LARGE` and were followed by a successful read after the body cap was raised to 4000000 bytes. Latest shares: 84 under 500000 ppm, 12 at or above it, median 192314.5 ppm. A frozen walk-forward through `snapshots/2026-11-05/0240.jsonl` joined 49 scored prints (40 `CLEAR`, 9 `RAISED`) and did not change closed pnl, because the read is not a vote. See Holder reads.
 6. Implement a venue adapter only after the signer, allowlists, and limits above exist. `LiveAdapter` must keep returning `sent: false` until that adapter is a separate change.
 7. If a crow connectome or other animal model is added, give it its own module id and pins. Do not rename `crow_memory_v1`.
+8. Done on 2026-11-05. The pump.fun frontend list is disabled. `frontend-api-v3.pump.fun` returns HTTP 403, a Cloudflare interstitial, including with a browser User-Agent and `Origin: https://pump.fun`. The collector stores GeckoTerminal new pools for dex `pump-fun` and `pumpswap` instead. `snapshots/2026-11-05/0430.jsonl` has 24 `pumpfun_bonding_curve` rows and 9 `pumpfun_graduation` rows. Holder reads recur from the existing 15-minute `cycle.sh`. The `2026-11-05T04:32:02Z` run stored 8 new `AVAILABLE` shares and left fresh reads cached. A frozen walk-forward through `snapshots/2026-11-05/0415.jsonl` joined 353 scored `single_target` prints with crow (301 `CLEAR`, 52 `RAISED`) and did not change closed pnl. `single_target` with crow closed 7 trades, pnl after modeled costs -124.40205465953413. `ladder_e` with crow closed 2, pnl after modeled costs -146.2049145498137. Without holder reads those pnl figures are the same and the join counts are 0. See Pump.fun feeds and recurring holder reads.

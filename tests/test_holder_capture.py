@@ -352,5 +352,136 @@ class TimeGateTests(unittest.TestCase):
         self.assertNotIn("holder", with_early["brains"])
 
 
+class PendingCaptureTests(unittest.TestCase):
+    def _store(self, folder: str) -> Path:
+        root = Path(folder)
+        day = root / "snapshots" / "2026-11-05"
+        day.mkdir(parents=True)
+        fresh = {
+            "source": "dexscreener_pairs", "chain": "solana", "token_address": PIRATE,
+            "symbol": "PIRATE", "pair_address": PIRATE_PAIR, "price_usd": 1.0,
+            "liquidity_usd": 20000.0, "volume_h1": 9000.0, "market_cap": 40000.0,
+            "ts": "2026-11-05T03:00:01+00:00", "fetched_at": "2026-11-05T03:00:01+00:00",
+        }
+        new = {
+            "source": "dexscreener_pairs", "chain": "solana", "token_address": ZERO,
+            "symbol": "ZERO", "pair_address": ZERO_PAIR, "price_usd": 1.0,
+            "liquidity_usd": 20000.0, "volume_h1": 100.0, "market_cap": 30000.0,
+            "ts": "2026-11-05T03:00:01+00:00", "fetched_at": "2026-11-05T03:00:01+00:00",
+        }
+        (day / "0300.jsonl").write_text(
+            "\n".join(json.dumps(row) for row in (fresh, new)) + "\n",
+            encoding="utf-8",
+        )
+        (root / "latest.json").write_text(json.dumps({
+            "snapshot_file": "snapshots/2026-11-05/0300.jsonl",
+            "sources": {},
+        }), encoding="utf-8")
+        holder = root / "holder-reads"
+        holder.mkdir()
+        cached = {
+            "mint": PIRATE,
+            "status": "AVAILABLE",
+            "source": rugcheck_url(PIRATE),
+            "read_ts_ms": WHEN,
+            "top10_share_ppm": 1000,
+            "top10_ex_vault_share_ppm": 1000,
+            "execution_allowed": False,
+            "live_orders": False,
+        }
+        (holder / "2026-11-05.jsonl").write_text(json.dumps(cached) + "\n", encoding="utf-8")
+        return root
+
+    def test_pending_reads_a_new_mint_and_skips_a_fresh_cache(self):
+        report = _recorded("zero-pumpfun.rugcheck.json")
+        headers = Message()
+        headers["Retry-After"] = "0"
+        calls = []
+
+        def rpc_transport(method, params):
+            if method == "getTokenSupply":
+                return {"jsonrpc": "2.0", "result": {"context": {"slot": 4}, "value": {"amount": "10", "decimals": 6}}, "id": 1}
+            raise urllib.error.HTTPError(ENDPOINT, 429, "Too Many Requests", headers, io.BytesIO(_recorded("solana-rpc-getTokenLargestAccounts-429.json")))
+
+        def http_transport(url):
+            calls.append(url)
+            self.assertEqual(url, rugcheck_url(ZERO))
+            return 200, {}, report
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._store(folder)
+            summary = capture_holders(
+                root, pending_only=True, interval_s=0, sleep=lambda _delay: None, now_ms=WHEN,
+                rpc_transport=rpc_transport, http_transport=http_transport, limit=8,
+            )
+            self.assertEqual(summary["stored"], 1)
+            self.assertEqual(summary["succeeded"], 1)
+            self.assertEqual(summary["cached"], 1)
+            self.assertEqual(summary["reasons"]["NEW_MINT"], 1)
+            self.assertEqual(summary["execution_allowed"], False)
+            self.assertEqual(summary["live_orders"], False)
+            self.assertEqual(calls, [rugcheck_url(ZERO)])
+            stored = load_holder_reads(root)[ZERO][-1]
+            self.assertEqual(stored["status"], "AVAILABLE")
+            self.assertEqual(stored["source"], rugcheck_url(ZERO))
+            self.assertIsInstance(stored["read_ts_ms"], int)
+            self.assertGreaterEqual(stored["read_ts_ms"], WHEN)
+            self.assertEqual(stored["snapshot_file"], "snapshots/2026-11-05/0300.jsonl")
+            self.assertFalse(stored["execution_allowed"])
+            self.assertFalse(stored["live_orders"])
+            calls.clear()
+            again = capture_holders(
+                root, pending_only=True, interval_s=0, sleep=lambda _delay: None, now_ms=WHEN,
+                rpc_transport=rpc_transport, http_transport=http_transport, limit=8,
+            )
+            self.assertEqual(again["stored"], 0)
+            self.assertEqual(again["mints"], 0)
+            self.assertEqual(calls, [])
+            self.assertGreaterEqual(again["cached"], 2)
+
+    def test_a_recent_not_observed_waits_and_an_old_one_is_retried(self):
+        from src.multi_brain_research.holder_capture import read_is_due
+        missed = [{
+            "mint": ZERO, "status": "NOT_OBSERVED", "reason": "RATE_LIMITED",
+            "source": rugcheck_url(ZERO), "read_ts_ms": WHEN, "top10_share_ppm": None,
+        }]
+        self.assertIsNone(read_is_due(missed, WHEN + 1_000, fresh_ms=6 * 60 * 60 * 1000, retry_ms=30 * 60 * 1000))
+        self.assertEqual(
+            read_is_due(missed, WHEN + 30 * 60 * 1000, fresh_ms=6 * 60 * 60 * 1000, retry_ms=30 * 60 * 1000),
+            "RETRY_NOT_OBSERVED",
+        )
+        available = [{"status": "AVAILABLE", "read_ts_ms": WHEN}]
+        self.assertIsNone(read_is_due(available, WHEN + 60_000, fresh_ms=6 * 60 * 60 * 1000, retry_ms=30 * 60 * 1000))
+        self.assertEqual(
+            read_is_due(available, WHEN + 6 * 60 * 60 * 1000, fresh_ms=6 * 60 * 60 * 1000, retry_ms=30 * 60 * 1000),
+            "STALE_AVAILABLE",
+        )
+        self.assertEqual(read_is_due([], WHEN, fresh_ms=1, retry_ms=1), "NEW_MINT")
+
+    def test_a_pump_bonding_curve_mint_is_pending_when_it_has_no_pair_row(self):
+        from src.multi_brain_research.holder_capture import mints_from_records, pending_mints
+        curve = {
+            "source": "pumpfun_bonding_curve", "chain": "solana",
+            "token_address": "BJeVzBKCJ7cqT6Jo9CaB6DmBRabVR32kpFYjey3opump",
+            "symbol": "cozy", "pair_address": "3Tn1gEEDjJn9ed43aVL7mZELbHBKnRYJmq46iGtyjNoz",
+            "dex": "pump-fun", "graduation": "BONDING_CURVE", "volume_h1": 50.0,
+            "price_usd": 4.617123059573464e-09,
+            "ts": "2026-11-05T03:00:01+00:00", "fetched_at": "2026-11-05T03:00:01+00:00",
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            root = self._store(folder)
+            path = root / "snapshots" / "2026-11-05" / "0300.jsonl"
+            path.write_text(path.read_text(encoding="utf-8") + json.dumps(curve) + "\n", encoding="utf-8")
+            records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            mints = {item["mint"] for item in mints_from_records(records)}
+            self.assertIn("BJeVzBKCJ7cqT6Jo9CaB6DmBRabVR32kpFYjey3opump", mints)
+            selected, stats = pending_mints(root, now_ms=WHEN, limit=1)
+            self.assertEqual(len(selected), 1)
+            self.assertEqual(selected[0]["due"], "NEW_MINT")
+            self.assertEqual(selected[0]["mint"], ZERO)
+            self.assertEqual(stats["cached"], 1)
+            self.assertGreaterEqual(stats["due"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()
