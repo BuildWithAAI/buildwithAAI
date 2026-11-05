@@ -28,7 +28,7 @@ flowchart LR
   PaperBook --> LiveStub[Live adapter stub stays off]
 ```
 
-FlyVis casts a numeric council vote when the frozen flash-kernel readout returns a probability. The coordinator research signal stays `ABSTAIN` when any required module abstains or is unavailable. Crow memory is empty and a two-point hemibrain history is `MISSING_DATA`, so that signal stays `ABSTAIN` even while FlyVis has a number. The fused score is the mean of the numeric council votes. Confidence is reduced by every council member that abstained. Tape features stay an input and a test fixture. They are not a vote. A holder-concentration read is also an input, and only when its `fetched_at_ms` is at or before the decision. It is not a vote and it does not change the fused score.
+FlyVis casts a numeric council vote when the frozen flash-kernel readout returns a probability. The coordinator research signal stays `ABSTAIN` when any required module abstains or is unavailable. Crow memory is empty and a two-point hemibrain history is `MISSING_DATA`, so that signal stays `ABSTAIN` even while FlyVis has a number. The fused score is the mean of the numeric council votes. Confidence is reduced by every council member that abstained. Tape features stay an input and a test fixture. They are not a vote. A holder-concentration read is also an input. The time gate uses `read_ts_ms` when the stored read has one, and `fetched_at_ms` otherwise. A decision can use a read only when that clock is at or before the decision. The read is not a vote and it does not change the fused score.
 
 ## What each brain is
 
@@ -59,7 +59,7 @@ Paper attribution splits closed pnl across council members that cast a numeric v
 | Snapshot store `/cursor/stores/bot/giant-brain-data/` | Reader in `snapshot_feed.py`. DexScreener pair rows are the metric. GeckoTerminal rows use the same fields. Pump.fun live list is often HTTP 403 in the collector | None |
 | Direct DexScreener and GeckoTerminal HTTPS reads | Same hosts and path prefixes as the collector, plus `GET /api/v2/networks/solana/pools/{pool}/ohlcv/minute`. Any other URL is refused | None |
 | Pool minute candles | Public GeckoTerminal OHLCV. Rows are `[unix_seconds, open, high, low, close, volume]`, newest first. Stored as JSONL. Unit tests use the recorded responses under `tests/fixtures/giant-brain-ohlcv/` | None. Five reads on 2026-11-04 returned HTTP 200. No `Retry-After` header was present |
-| Holder concentration | Live read in `holder_concentration.py` through the shared allowlisted client. Not stored in the snapshot files. A replay with no attached read stays `UNAVAILABLE` / `NOT_IN_SNAPSHOT` | None. Same two public hosts. On 2026-11-04 `getTokenLargestAccounts` returned HTTP 429, so no share was stored |
+| Holder concentration | Live RPC read in `holder_concentration.py`. Capture falls back to `https://api.rugcheck.xyz/v1/tokens/{mint}/report` when `getTokenLargestAccounts` is rate-limited. Stored as `holder-reads/YYYY-MM-DD.jsonl` beside the snapshots, keyed by mint and `read_ts_ms` | None. On 2026-11-05 both public RPC hosts returned HTTP 429 for `getTokenLargestAccounts`. Rugcheck returned a share for all 96 mints in `snapshots/2026-11-05/0215.jsonl` |
 | Wallet signer and venue orders | Stub only | Live sending is not implemented |
 
 An account snapshot with one price does not invent a return. Flow and liquidity change stay missing until both sides of the comparison are present.
@@ -152,11 +152,62 @@ from multi_brain_research.holder_concentration import live_read
 read = live_read(mint, "https://api.mainnet-beta.solana.com", pair_address=pair)
 ```
 
+Capture every canonical DexScreener mint in the newest snapshot. The public RPC is probed first, with one wait on `Retry-After` after HTTP 429. If `getTokenLargestAccounts` still has no share, each mint is read from the Rugcheck report at about one request per second. Failures are appended as `NOT_OBSERVED` and carry `read_ts_ms` and `source`. Nothing in this command sends an order.
+
+```bash
+PYTHONPATH=src python scripts/run_giant_brain.py \
+  --capture-holders \
+  --snapshot-root /cursor/stores/bot/giant-brain-data
+```
+
+A replay joins the latest `AVAILABLE` read for that mint whose `read_ts_ms` is at or before the decision. A later read is not attached. `--no-holder-reads` scores the same snapshots with that join turned off.
+
 `getTokenSupply` and `getTokenLargestAccounts` use commitment `finalized`. `getMultipleAccounts` is called only after both succeed, to read the token account and then the owner account. A pool vault is labeled only when the token account's owner equals the observed pair address. A bonding-curve vault is labeled only when that owner's program is `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`. Anything else is `UNCLASSIFIED`. Amounts are the RPC `amount` strings. `uiAmount` is ignored.
 
 On 2026-11-04 a direct `getTokenSupply` for icapy (`5fgJwPNtsohc1FwjkjvmVWoXTbSzD8Z3zzbcuXdepump`) against `https://api.mainnet-beta.solana.com` returned HTTP 200. The body was `result.context.slot` 465228433 and `result.value.amount` `"967911401689546"` with `decimals` 6. `uiAmount` was also present and was not used as the balance. The following `getTokenLargestAccounts` call returned HTTP 429. `Retry-After` was 10. The body was a JSON-RPC error, code 429, message `Too many requests for a specific RPC call`.
 
 `live_read` was then run on that same mint, the top pair in `snapshots/2026-11-04/0815.jsonl`, three times across the two allowlisted hosts, and twice more after a three-minute pause with no other RPC calls. All five largest-accounts calls were HTTP 429 with the same code, message, and `Retry-After`. Each `live_read` had already received a supply slot (465233877 and 465234082 on the later calls) and stored that slot. It stored no supply amount and no share. Succeeded concentration reads: 0. Top-10 share distribution: not observed. Further mints were not called. The limiter is on the method, and another mint would have been the same call. A successful largest-accounts row was not returned, so this run did not confirm that row's field names against a live payload. The parser accepts the `address`, `amount`, and `decimals` object the scanner already reads. A different shape stays `RPC_SHAPE` and still has no share.
+
+## Holder reads
+
+On 2026-11-05 the capture ran against `snapshots/2026-11-05/0215.jsonl`, 96 canonical mints. `getTokenLargestAccounts` was probed on `https://api.mainnet-beta.solana.com` and then `https://api.mainnet.solana.com`. Each probe got a supply response and then HTTP 429, waited 10 seconds because `Retry-After` was 10, and got HTTP 429 again. The JSON-RPC error code was 429 and the message was `Too many requests for a specific RPC call`. Supply slots on the retries were 465534329 and 465534383. Neither probe stored a share. The capture then read `https://api.rugcheck.xyz/v1/tokens/{mint}/report` for each mint.
+
+Shares are integer parts per million of `token.supply`. Rugcheck `pct` and `uiAmount` are not used. A token account is `POOL_VAULT` when the same report lists it as a market liquidity account for this mint, or when its owner is a non-bonding market pubkey or the observed pair. It is `BONDING_CURVE` when `marketType` is `pump_fun` and the account is that market's liquidity account or its owner is that market pubkey. Every other account stays `UNCLASSIFIED` and stays inside the compared share.
+
+The first pass used a 1000000 byte cap. 94 reads were `AVAILABLE`. Two were `NOT_OBSERVED` with reason `RESPONSE_TOO_LARGE`: TRUMP `6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN` and ANSEM `9cRCn9rGT8V2imeM2BaKs13yhMEais3ruM3rPvTGpump`. A direct GET of those two URLs was 1556350 and 1105341 bytes. The cap is now 4000000 bytes. Both mints were read again through the same parser and stored as `AVAILABLE`. Those two `NOT_OBSERVED` lines remain in the log. The log is `holder-reads/2026-11-05.jsonl`: 98 lines, 96 mints with a share, every line carrying `read_ts_ms`, `source`, `execution_allowed` false, and `live_orders` false. The first read is `2026-11-05T02:20:18.502000Z`. The last is `2026-11-05T02:26:31.615000Z`.
+
+Of the latest share for each mint, 84 are under the 500000 ppm rule and 12 are at or above it. The compared top-ten share, after identified vaults are removed, runs from 0 to 999999 ppm. The median is 192314.5 ppm.
+
+The walk-forward below used a frozen copy of the store: 153 snapshot files, `snapshots/2026-11-04/0515.jsonl.gz` through `snapshots/2026-11-05/0240.jsonl`, holdout 51 files from `2026-11-04T22:00:03+00:00`, gap 27302000 ms, 4339 crow rows filled only before that holdout. Limit 25, gate 600000 ppm. The same frozen copy was scored with the holder join and with `--no-holder-reads`. `execution_allowed` and `live_orders` stayed false. The machine-readable counts are `research/giant-brain/holder_capture_2026-11-05.json`.
+
+The holder read does not change the fused score. Closed trades, win rate, average R, and pnl are the same in the two scores. What changes is the number of scored prints that received a causal read. Prints at `2026-11-05T02:35:02+00:00` and `2026-11-05T02:40:01+00:00` are the ones at or after a stored `read_ts_ms`. Earlier decisions, including the whole pre-holdout book, do not see these reads.
+
+| | With holder reads | Without holder reads |
+| --- | --- | --- |
+| `single_target` with crow, theses / opened / closed / still open | 7 / 6 / 5 / 1 | 7 / 6 / 5 / 1 |
+| `single_target` with crow, win rate | 0.2 | 0.2 |
+| `single_target` with crow, average R | -0.44504410436151154 | -0.44504410436151154 |
+| `single_target` with crow, pnl before fees | -81.09108378448943 | -81.09108378448943 |
+| `single_target` with crow, win rate after costs | 0.0 | 0.0 |
+| `single_target` with crow, average loss | -18.613057372083365 | -18.613057372083365 |
+| `single_target` with crow, profit factor | 0.0 | 0.0 |
+| `single_target` with crow, pnl after modeled costs | -93.06528686041682 | -93.06528686041682 |
+| `single_target` with crow, fees | `NOT_OBSERVED` | `NOT_OBSERVED` |
+| `single_target` with crow, holder joined / clear / raised | 49 / 40 / 9 | 0 / 0 / 0 |
+| `ladder_e` with crow, theses / opened / closed / still open | 7 / 6 / 2 / 4 | 7 / 6 / 2 / 4 |
+| `ladder_e` with crow, win rate | 0.0 | 0.0 |
+| `ladder_e` with crow, average R | -1.4200784509237687 | -1.4200784509237687 |
+| `ladder_e` with crow, pnl before fees | -146.2049145498137 | -146.2049145498137 |
+| `ladder_e` with crow, win rate after costs | 0.0 | 0.0 |
+| `ladder_e` with crow, average loss | -73.10245727490685 | -73.10245727490685 |
+| `ladder_e` with crow, profit factor | 0.0 | 0.0 |
+| `ladder_e` with crow, pnl after modeled costs | -146.2049145498137 | -146.2049145498137 |
+| `ladder_e` with crow, fees | `APPLIED` | `APPLIED` |
+| `ladder_e` with crow, holder joined / clear / raised | 45 / 36 / 9 | 0 / 0 / 0 |
+| Either policy without crow, theses / closed | 0 / 0 | 0 / 0 |
+| Either policy without crow, holder joined / clear / raised | 49 / 40 / 9 | 0 / 0 / 0 |
+
+The ladder-with-crow join count is 45 because four of those mints already had an open ladder position, so the later print was a mark and was not scored again. No joined read was `NOT_OBSERVED`: each of those mints had an earlier `AVAILABLE` read at or before the decision. Recorded Rugcheck and RPC 429 bodies used by the unit tests are `tests/fixtures/giant-brain-holders/`.
 
 ## Theses
 
@@ -169,7 +220,7 @@ On 2026-11-04 a direct `getTokenSupply` for icapy (`5fgJwPNtsohc1FwjkjvmVWoXTbSz
 - a proposed entry, stop, and take-profit
 - horizon, confidence, and a provenance receipt
 
-Entry is the observed `price_usd`. The stop distance is the absolute hourly percent move, clamped by rule constants `0.05` and `0.40` that are stored on the thesis as rule constants. Take-profit is two times that distance. Holder concentration is `UNAVAILABLE` with reason `NOT_IN_SNAPSHOT` unless the row carries a holder read whose `fetched_at_ms` is at or before `now_ms`. A successful read is `CLEAR` when the compared top-10 share is under the stored rule `rule_top10_share_ppm` of 500000, and `RAISED` at or above it. 500000 ppm is 50% of supply, the same threshold `ACCOUNT_CONCENTRATION` already uses in the scanner. It is a rule constant, not a number fit on this sample. The compared share excludes a token account only when its owner equals the observed pair (`POOL_VAULT`) or that owner's program is the published pump.fun program (`BONDING_CURVE`). Every other account stays `UNCLASSIFIED` and remains inside the share. If the owner read did not run, the flag uses the raw top 10 and `exclusion_applied` is false. Shares are integer parts per million of total supply. The flag stores the RPC endpoint, the supply slot, the largest-accounts slot, and `fetched_at_ms`. A failed or rate-limited read stays `UNAVAILABLE` with that reason and does not carry a share.
+Entry is the observed `price_usd`. The stop distance is the absolute hourly percent move, clamped by rule constants `0.05` and `0.40` that are stored on the thesis as rule constants. Take-profit is two times that distance. Holder concentration is `UNAVAILABLE` with reason `NOT_IN_SNAPSHOT` unless the row carries a holder read whose `read_ts_ms`, or `fetched_at_ms` when `read_ts_ms` is absent, is at or before `now_ms`. A stored `NOT_OBSERVED` read stays `UNAVAILABLE` and has no share. A successful read is `CLEAR` when the compared top-10 share is under the stored rule `rule_top10_share_ppm` of 500000, and `RAISED` at or above it. 500000 ppm is 50% of supply, the same threshold `ACCOUNT_CONCENTRATION` already uses in the scanner. It is a rule constant, not a number fit on this sample. The compared share excludes a token account only when its owner equals the observed pair (`POOL_VAULT`) or that owner's program is the published pump.fun program (`BONDING_CURVE`). Every other account stays `UNCLASSIFIED` and remains inside the share. If the owner read did not run, the flag uses the raw top 10 and `exclusion_applied` is false. Shares are integer parts per million of total supply. The flag stores the RPC endpoint, the supply slot, the largest-accounts slot, and `fetched_at_ms`. A failed or rate-limited read stays `UNAVAILABLE` with that reason and does not carry a share.
 
 An LLM may phrase the narrative only when `ZOORA_MODEL_PROVIDER`, `ZOORA_MODEL_NAME`, and `ZOORA_MODEL_API_KEY` are set. The text is kept only if every number in it already appears in the thesis. Otherwise the deterministic markdown is kept and `narrative_source` is `NARRATIVE_REJECTED_UNSOURCED_NUMBER`. No key means no provider call.
 
@@ -378,6 +429,6 @@ Going live later needs all of the following, and none of them are done here:
 2. Capture more than the Anything AI curve: `host_capture` already takes a mint and curve. Keep dead coins in the set the capture plan requires, and point the paper backtest at those JSONL files.
 3. Done on 2026-11-04 for the snapshot store. Crow recall now requires `outcome_end_ms` at or before the decision. The walk-forward filled 4339 memory rows from `0515` through `1425` UTC and scored `2200` through `2235` UTC, which were not used to fill memory. With crow memory: 1 thesis, 1 closed trade, win rate 1.0, average R 0.10955760395103686, pnl before fees 0.5757024869207977. Without crow memory: 0 theses, 0 closed trades, so win rate and average R are not defined, and pnl before fees is 0. Fees are `NOT_OBSERVED`. The 4-of-5 morning book does not reappear on that holdout. See Walk-forward. The same holdout was scored again under `single_target` and `ladder_e`. See Ladder exit. A separate pass over scanner reports was not run.
 4. Done on 2026-11-04. `publish_snapshot_log` on snapshots `0515` through `1045` UTC published abstention rate 5218/5218, an undefined hit rate (0 paper longs), and pnl before fees of 0. No capture contained `fee_bps`, so fees stayed unapplied. `calibrated` is false. See Paper log. The five box-runner closes were later re-marked with minute candles and stayed timeouts, because neither level printed. The partial minute at the open and at the decision is still outside that window.
-5. Holder concentration now has a live reader. The snapshot files still do not carry it, and on 2026-11-04 the public `getTokenLargestAccounts` method returned HTTP 429, so this run stored no share. A later run can retry that method when the public quota answers, and can store the read beside the snapshot. Do not attach a later read to an earlier decision.
+5. Done on 2026-11-05. Holder reads are stored in `holder-reads/YYYY-MM-DD.jsonl` with `read_ts_ms` and `source`. Both public RPC hosts returned HTTP 429 for `getTokenLargestAccounts` after a 10 second backoff, so the 96 mints in `snapshots/2026-11-05/0215.jsonl` were read from the public Rugcheck report. 96 mints have a share. Two earlier lines are `NOT_OBSERVED` with `RESPONSE_TOO_LARGE` and were followed by a successful read after the body cap was raised to 4000000 bytes. Latest shares: 84 under 500000 ppm, 12 at or above it, median 192314.5 ppm. A frozen walk-forward through `snapshots/2026-11-05/0240.jsonl` joined 49 scored prints (40 `CLEAR`, 9 `RAISED`) and did not change closed pnl, because the read is not a vote. See Holder reads.
 6. Implement a venue adapter only after the signer, allowlists, and limits above exist. `LiveAdapter` must keep returning `sent: false` until that adapter is a separate change.
 7. If a crow connectome or other animal model is added, give it its own module id and pins. Do not rename `crow_memory_v1`.

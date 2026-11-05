@@ -29,6 +29,8 @@ def main() -> int:
     parser.add_argument("--candle-dir", type=Path, help="JSONL minute candles keyed by pair address")
     parser.add_argument("--exit-policy", choices=("ladder_e", "single_target"), default="ladder_e")
     parser.add_argument("--walk-forward", action="store_true", help="Score the post-gap snapshots with and without crow memory")
+    parser.add_argument("--capture-holders", action="store_true", help="Read holder concentration for the newest snapshot and append JSONL")
+    parser.add_argument("--no-holder-reads", action="store_true", help="Do not join stored holder reads during a replay or walk-forward")
     parser.add_argument("--work-dir", type=Path, help="Ledger and memory directory for --walk-forward")
     parser.add_argument("--status", action="store_true", help="Print which sources are configured")
     args = parser.parse_args()
@@ -39,8 +41,14 @@ def main() -> int:
             parser.error("--walk-forward requires --snapshot-root and --work-dir")
         print(json.dumps(walk_forward(
             args.snapshot_root, args.work_dir, limit=args.limit, threshold_ppm=args.threshold_ppm,
-            candle_dir=args.candle_dir,
+            candle_dir=args.candle_dir, use_holder_reads=not args.no_holder_reads,
         ), sort_keys=True))
+        return 0
+    if args.capture_holders:
+        if args.snapshot_root is None:
+            parser.error("--capture-holders requires --snapshot-root")
+        from multi_brain_research.holder_capture import capture_holders
+        print(json.dumps(capture_holders(args.snapshot_root), sort_keys=True))
         return 0
     if args.snapshot_root:
         if args.theses_dir is None or args.ledger is None:
@@ -48,7 +56,7 @@ def main() -> int:
         print(json.dumps(replay(
             args.snapshot_root, args.ledger, args.theses_dir, threshold_ppm=args.threshold_ppm,
             limit=args.limit, not_before_ms=args.not_before_ms, candle_dir=args.candle_dir,
-            exit_policy=args.exit_policy,
+            exit_policy=args.exit_policy, use_holder_reads=not args.no_holder_reads,
         ), sort_keys=True))
         return 0
     if args.tape is None and args.observation is None:

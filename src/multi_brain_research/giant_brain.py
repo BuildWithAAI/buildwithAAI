@@ -534,8 +534,11 @@ def source_status() -> dict:
             "reason": "A keyed endpoint is not on the public allowlist",
         },
         "holder_concentration": {
-            "state": "ALLOWLISTED_RPC_ON_DEMAND",
+            "state": "PUBLIC_READ",
             "methods": ["getTokenSupply", "getTokenLargestAccounts", "getMultipleAccounts"],
+            "fallback": "https://api.rugcheck.xyz/v1/tokens/{mint}/report",
+            "stored": "holder-reads/*.jsonl",
+            "time_gate": "read_ts_ms <= decision",
             "key_required": False,
             "in_snapshot": False,
         },

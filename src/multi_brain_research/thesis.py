@@ -276,7 +276,7 @@ def write_thesis(signal: dict, record: dict, *, now_ms: int, threshold_ppm: int 
             "rule_top10_share_ppm": holder_flag["rule_top10_share_ppm"],
         }
         point = {
-            "claim": "Top-10 holder share is under the concentration rule." if holder_flag["status"] == "CLEAR" else "Top-10 holder share meets the concentration rule.",
+            "claim": "The compared top-ten holder share is under the concentration rule." if holder_flag["status"] == "CLEAR" else "The compared top-ten holder share meets the concentration rule.",
             "evidence": evidence,
         }
         (bull if holder_flag["status"] == "CLEAR" else bear).append(point)
@@ -290,6 +290,8 @@ def write_thesis(signal: dict, record: dict, *, now_ms: int, threshold_ppm: int 
     if type(record.get("holder_concentration")) is dict:
         provenance["holder_endpoint"] = holder_flag.get("endpoint")
         provenance["holder_fetched_at_ms"] = holder_flag.get("fetched_at_ms")
+        provenance["holder_read_ts_ms"] = holder_flag.get("read_ts_ms")
+        provenance["holder_source"] = holder_flag.get("source")
         provenance["holder_supply_slot"] = holder_flag.get("supply_slot")
         provenance["holder_largest_slot"] = holder_flag.get("largest_slot")
     body = {

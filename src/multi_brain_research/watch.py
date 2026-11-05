@@ -18,6 +18,8 @@ from .paper_trader import (
     skip_entry,
     state,
 )
+from .holder_capture import join_holder_read, load_holder_reads
+from .holder_concentration import thesis_parts
 from .snapshot_feed import (
     SnapshotError,
     canonical_pairs,
@@ -54,8 +56,10 @@ def _candles_for(candle_dir: Path | None, position: dict):
     return load_jsonl(path)
 
 
-def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT) -> dict:
+def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT, use_holder_reads: bool = True) -> dict:
     root = resolve_root(root)
+    holder_index = load_holder_reads(root) if use_holder_reads else {}
+    holder_joined = holder_clear = holder_raised = holder_not_observed = 0
     if score is None:
         from .giant_brain import fuse
 
@@ -107,8 +111,22 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
             try:
                 observation = observation_from_pair(record, prior)
                 observation["fly_history"] = trail
+                joined = join_holder_read(holder_index.get(mint, []), now_ms) if type(mint) is str else None
+                scored_record = record
+                if joined is not None:
+                    observation["holder_concentration"] = joined
+                    scored_record = dict(record)
+                    scored_record["holder_concentration"] = joined
+                    holder_joined += 1
+                    flag, _summary = thesis_parts(joined, now_ms)
+                    if flag["status"] == "CLEAR":
+                        holder_clear += 1
+                    elif flag["status"] == "RAISED":
+                        holder_raised += 1
+                    elif joined.get("status") == "NOT_OBSERVED":
+                        holder_not_observed += 1
                 signal = score(observation, now_ms)
-                thesis = write_thesis(signal, record, now_ms=now_ms, threshold_ppm=threshold_ppm)
+                thesis = write_thesis(signal, scored_record, now_ms=now_ms, threshold_ppm=threshold_ppm)
             except (SnapshotError, ThesisError, ValueError):
                 skipped += 1
                 continue
@@ -150,6 +168,10 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
         "skipped": skipped,
         "entry_skipped": entry_skipped,
         "skip_reasons": skip_reasons,
+        "holder_joined": holder_joined,
+        "holder_clear": holder_clear,
+        "holder_raised": holder_raised,
+        "holder_not_observed": holder_not_observed,
         "mode": "PAPER",
         "action": "NO_EXECUTION",
         "execution_allowed": False,
