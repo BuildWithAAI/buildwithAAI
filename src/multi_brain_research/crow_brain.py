@@ -39,7 +39,7 @@ _LOAD_CACHE: dict[tuple, list[dict]] = {}
 
 
 def _load(path: Path | None) -> list[dict]:
-    if path is None or not path.exists() or not path.read_text().strip():
+    if path is None or not path.exists():
         return []
     stat = path.stat()
     key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size)
@@ -47,12 +47,15 @@ def _load(path: Path | None) -> list[dict]:
     if cached is not None:
         return cached
     rows = []
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        if type(row) is dict:
-            rows.append(row)
+    text = path.read_text()
+    if text.strip():
+        for line in text.splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if type(row) is dict:
+                row["_vector"] = _vector(row.get("features") or {})
+                rows.append(row)
     _LOAD_CACHE.clear()
     _LOAD_CACHE[key] = rows
     return rows
@@ -77,10 +80,12 @@ def recall(features: dict, path: Path | None = None, *, now_ms: int) -> dict:
     vector = _vector(features)
     if vector is None:
         return _abstain("CROW_FEATURES_INCOMPLETE")
-    ranked = []
+    best = None
     pending = False
     for row in _load(path):
-        other = _vector(row.get("features") or {})
+        other = row.get("_vector")
+        if "_vector" not in row:
+            other = _vector(row.get("features") or {})
         later = row.get("later_return")
         end = row.get("outcome_end_ms")
         if other is None or type(later) is bool or type(later) not in (int, float) or not math.isfinite(float(later)):
@@ -91,10 +96,11 @@ def recall(features: dict, path: Path | None = None, *, now_ms: int) -> dict:
             pending = True
             continue
         distance = sum(abs(left - right) for left, right in zip(vector, other))
-        ranked.append((distance, float(later), row.get("observation_sha256"), end))
-    if not ranked:
+        if best is None or (distance, end) < (best[0], best[3]):
+            best = (distance, float(later), row.get("observation_sha256"), end)
+    if best is None:
         return _abstain("CROW_OUTCOME_NOT_YET_OBSERVED" if pending else "CROW_MEMORY_EMPTY")
-    distance, later, digest, end = min(ranked, key=lambda item: (item[0], item[3]))
+    distance, later, digest, end = best
     if distance > _MAX_DISTANCE:
         return _abstain("CROW_NO_SIMILAR_PATTERN")
     clamped = max(-1.0, min(1.0, later))

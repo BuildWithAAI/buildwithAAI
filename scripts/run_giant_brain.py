@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from multi_brain_research.giant_brain import fuse, paper_backtest, source_status  # noqa: E402
 from multi_brain_research.paper_log import append  # noqa: E402
+from multi_brain_research.expanding_window import expanding_walk_forward  # noqa: E402
 from multi_brain_research.walk_forward import walk_forward  # noqa: E402
 from multi_brain_research.watch import replay  # noqa: E402
 
@@ -29,6 +30,8 @@ def main() -> int:
     parser.add_argument("--candle-dir", type=Path, help="JSONL minute candles keyed by pair address")
     parser.add_argument("--exit-policy", choices=("ladder_e", "single_target"), default="ladder_e")
     parser.add_argument("--walk-forward", action="store_true", help="Score the post-gap snapshots with and without crow memory")
+    parser.add_argument("--expanding-window", action="store_true", help="Refit FlyVis and crow before each fold, then score that fold")
+    parser.add_argument("--results", type=Path, help="Also write the expanding-window JSON to this path")
     parser.add_argument("--capture-holders", action="store_true", help="Read holder concentration for the newest snapshot and append JSONL")
     parser.add_argument("--holder-pending", action="store_true", help="With --capture-holders, read only mints in recent snapshots that lack a fresh cached read")
     parser.add_argument("--holder-limit", type=int, help="Cap the number of mints read")
@@ -52,6 +55,20 @@ def main() -> int:
     args = parser.parse_args()
     if args.status:
         print(json.dumps(source_status(), sort_keys=True))
+    if args.expanding_window:
+        if args.snapshot_root is None or args.work_dir is None:
+            parser.error("--expanding-window requires --snapshot-root and --work-dir")
+        report = expanding_walk_forward(
+            args.snapshot_root, args.work_dir, limit=args.limit, threshold_ppm=args.threshold_ppm,
+            candle_dir=args.candle_dir, cutoff_file=args.cutoff_file,
+            use_holder_reads=not args.no_holder_reads,
+        )
+        text = json.dumps(report, sort_keys=True)
+        if args.results is not None:
+            args.results.parent.mkdir(parents=True, exist_ok=True)
+            args.results.write_text(text + "\n", encoding="utf-8")
+        print(text)
+        return 0
     if args.walk_forward:
         if args.snapshot_root is None or args.work_dir is None:
             parser.error("--walk-forward requires --snapshot-root and --work-dir")

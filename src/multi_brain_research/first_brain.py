@@ -48,7 +48,22 @@ def _sha(prefix: bytes, payload: object) -> str:
     return hashlib.sha256(prefix + _canonical(payload)).hexdigest()
 
 
+_GRAPH_CACHE: dict[tuple, dict] = {}
+
+
 def load_graph(path: Path) -> dict:
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _GRAPH_CACHE.get(key)
+    if cached is not None:
+        return cached
+    loaded = _load_graph(path)
+    _GRAPH_CACHE.clear()
+    _GRAPH_CACHE[key] = loaded
+    return loaded
+
+
+def _load_graph(path: Path) -> dict:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if raw.get("source_id") != SOURCE_ID or raw.get("neuronal_dynamics") != "NOT_IMPLEMENTED":
         raise FirstBrainError("UNEXPECTED_GRAPH")

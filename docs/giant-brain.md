@@ -74,7 +74,7 @@ An account snapshot with one price does not invent a return. Flow and liquidity 
 From the repository root, with no network:
 
 ```bash
-python -m unittest tests.test_giant_brain tests.test_holder_capture tests.test_pool_trades tests.test_pump_public tests.test_audit_regressions -v
+python -m unittest tests.test_giant_brain tests.test_holder_capture tests.test_pool_trades tests.test_pump_public tests.test_audit_regressions tests.test_expanding_window -v
 python scripts/run_giant_brain.py --status
 ```
 
@@ -124,6 +124,16 @@ PYTHONPATH=src python scripts/run_giant_brain.py \
   --limit 25 \
   --threshold-ppm 600000 \
   --candle-dir research/giant-brain/ohlcv
+```
+
+Refit the readout and crow memory on an expanding window. Each fold uses only outcomes whose window ended before that fold starts. The last fold is the holdout and is not used to pick the horizon or the primary-vote gate:
+
+```bash
+python scripts/run_giant_brain.py \
+  --expanding-window \
+  --snapshot-root /cursor/stores/bot/giant-brain-data \
+  --work-dir /tmp/giant-brain-expanding \
+  --results research/giant-brain/expanding_window_2026-11-05.json
 ```
 
 One pool's minute candles, still no order:
@@ -602,6 +612,79 @@ Without crow, every one of these four windows opened 0 trades, abstention rate 1
 
 The gate cut the holdout `single_target` loss after costs from -31.31808960684995 to -4.812983878720072. It also cut the after-cost win rate from 0.14285714285714285 to 0.0. The two closes it kept, RICO and timmy, are both losses after the cost restatement. It skipped ASOL, the holdout's after-cost winner (+25.630509638332036), together with a larger set of losses. The net of the skipped `single_target` closes is still a loss, which is why the kept book loses less. `ladder_e` on the holdout realized no closes under the gate. Two positions stayed open inside the 48-hour horizon, so that ladder pnl is not defined, against -155.0967578080098 without the gate. The kept book is still a loss. The gate is on by default because the holdout `single_target` pnl after modeled costs was less negative. `--no-require-primary-vote` is the book without it.
 
+## Expanding window
+
+The run below read the store fresh. The last file on disk at the start was `snapshots/2026-11-05/1220.jsonl`, timestamp `2026-11-05T12:20:03+00:00`. The first file was `snapshots/2026-11-04/0515.jsonl.gz`, timestamp `2026-11-04T05:15:03+00:00`. Snapshot files included: 258. A file that arrived after that listing was left out by the cutoff. `execution_allowed` and `live_orders` stayed false. The machine-readable result is `research/giant-brain/expanding_window_2026-11-05.json`.
+
+Folds are 4 hours of clock time. The first scored fold starts 4 hours after the first snapshot. The holdout is the last 4 hours of the store, snapped to the first snapshot at or after that line, which is `snapshots/2026-11-05/0825.jsonl` at `2026-11-05T08:25:01+00:00`. The empty stretch inside the 455-minute gap is not a fold. For each fold the FlyVis logistic readout is fit on every decision whose next price was already printed before the fold start, and crow memory is filled from every row whose `outcome_end_ms` is before that same start. The frozen 19-file artifact is not the voter and was not overwritten. Its sha256 is still `3d1aa9b2d2a266646f3772f02c0d5e490c6afde0334502ea0201c093afabdcfe`. Holder reads and pool trades are joined when their clock is at or before the decision. They are not readout labels. The entry veto stayed off and was not searched. The thesis gate stayed 600000 ppm. The entry floor stayed on. The retained universe stayed on. No minute-candle directory was passed.
+
+Train folds may mark a position through later train snapshots and stop at the holdout, so a holdout price is not part of a train pnl. The last train fold also stops new opens 3600000 ms before the holdout, which is `2026-11-05T07:25:01+00:00`, so both candidate horizons can finish before the holdout. The candidates were fixed before the holdout trades were read: `single_target` at 300000 ms and at 3600000 ms, each with the primary-vote gate on and off, and `ladder_e` with that gate on and off. The ladder horizon stays 172800000 ms. On the train folds only, the config with at least one closed trade and the highest pnl after modeled costs is kept. A tie would prefer more closes, then the gate on, then the shorter horizon. The holdout is not an input.
+
+| Fold | Role | First file | Last file | Files | Crow rows | Latest crow outcome |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | train | `snapshots/2026-11-04/0920.jsonl.gz` | `snapshots/2026-11-04/1315.jsonl.gz` | 40 | 2150 | `2026-11-04T09:15:01+00:00` |
+| 1 | train | `snapshots/2026-11-04/1320.jsonl.gz` | `snapshots/2026-11-04/1425.jsonl.gz` | 14 | 3739 | `2026-11-04T13:00:01+00:00` |
+| 2 | train | `snapshots/2026-11-04/2200.jsonl.gz` | `snapshots/2026-11-05/0200.jsonl` | 45 | 4339 | `2026-11-04T14:25:01+00:00` |
+| 3 | train | `snapshots/2026-11-05/0205.jsonl` | `snapshots/2026-11-05/0600.jsonl` | 40 | 6509 | `2026-11-05T02:00:01+00:00` |
+| 4 | train | `snapshots/2026-11-05/0606.jsonl` | `snapshots/2026-11-05/0820.jsonl` | 26 | 8468 | `2026-11-05T06:00:02+00:00` |
+| 5 | holdout | `snapshots/2026-11-05/0825.jsonl` | `snapshots/2026-11-05/1220.jsonl` | 45 | 9920 | `2026-11-05T08:00:01+00:00` |
+
+Fold 2 still has 4339 crow rows ending `2026-11-04T14:25:01+00:00` because the gap after `1425` has no later price to learn. Later folds add the rows that finish before they start. Every fold's latest training outcome is before that fold's start.
+
+The refit readout does not beat the majority class out of sample. On 14126 decisions whose label resolved inside the fold and before the holdout for a train fold, accuracy was 0.6486620416253717. That is 9163 of 14126. The down class is also 9163 of 14126, so the majority-class accuracy is 0.6486620416253717. `beats_majority_class` is false. Up calls were 0. Every probability stayed below 500000 ppm (280318–461378). Log loss was 0.6411144814250319. The frozen artifact, scored on those same rows and not used to open a position, also called down on all 14126, accuracy 0.6486620416253717, ppm 344714–473420, log loss 0.6505545008446254. A lower log loss with the same class calls is not a beat of the majority class. The same tie holds on the holdout alone: 3006 decisions, accuracy 0.6630073186959414, majority 0.6630073186959414, up calls 0.
+
+| Fold | Decisions | Accuracy | Majority-class accuracy | Beats majority | Up calls |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 2504 | 0.6417731629392971 | 0.6417731629392971 | false | 0 |
+| 1 | 806 | 0.6439205955334988 | 0.6439205955334988 | false | 0 |
+| 2 | 3072 | 0.6324869791666666 | 0.6324869791666666 | false | 0 |
+| 3 | 2900 | 0.6589655172413793 | 0.6589655172413793 | false | 0 |
+| 4 | 1838 | 0.6474428726877041 | 0.6474428726877041 | false | 0 |
+| 5 holdout | 3006 | 0.6630073186959414 | 0.6630073186959414 | false | 0 |
+| All folds | 14126 | 0.6486620416253717 | 0.6486620416253717 | false | 0 |
+
+The train folds chose `single_target` at 3600000 ms with the primary-vote gate on. That book closed 3 trades, win rate after costs 0.3333333333333333, pnl after modeled costs -9.692102131038768. The same gate at 300000 ms closed 3, win rate after costs 0.0, pnl after modeled costs -10.831222454253728. Turning the gate off closed 13 trades at either horizon and lost more (-134.72243744058795 at 300000 ms, -117.12362355350626 at 3600000 ms). `ladder_e` with the gate on closed 1, pnl after modeled costs -51.92656479289024. With the gate off it closed 9, pnl after modeled costs -131.17972138252992. The gate stays on for both policies. The horizon chosen for `single_target` is 3600000 ms.
+
+The holdout was then scored with those choices and with the 300000 ms book. It was not used to change them.
+
+| | Train folds, 300000 ms, gate on | Train folds, 3600000 ms, gate on | Holdout, 300000 ms, gate on | Holdout, 3600000 ms, gate on | All folds, 3600000 ms, gate on |
+| --- | --- | --- | --- | --- | --- |
+| Closed | 3 | 3 | 3 | 3 | 6 |
+| Still open | 0 | 0 | 0 | 0 | 0 |
+| Win rate after costs | 0.0 | 0.3333333333333333 | 0.3333333333333333 | 0.3333333333333333 | 0.3333333333333333 |
+| Pnl before fees | -2.322325194454839 | -1.149685838241028 | 59.00771839631683 | 28.19243355141624 | 27.04274771317521 |
+| Pnl after modeled costs | -10.831222454253728 | -9.692102131038768 | 48.74574697603964 | 18.81129437006322 | 9.119192239024454 |
+
+Per fold, primary gate on. A fold with no close has no win rate and no pnl after costs.
+
+| Fold | 300000 ms closed | 300000 ms win rate after costs | 300000 ms pnl after costs | 3600000 ms closed | 3600000 ms win rate after costs | 3600000 ms pnl after costs |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0 | 1 | 0.0 | -5.494473865991219 | 1 | 0.0 | -5.840694925098168 |
+| 1 | 0 | not defined | not defined | 0 | not defined | not defined |
+| 2 | 1 | 0.0 | -4.113243060362587 | 1 | 1.0 | 1.2497413920496319 |
+| 3 | 0 | not defined | not defined | 0 | not defined | not defined |
+| 4 | 1 | 0.0 | -1.2235055278999227 | 1 | 0.0 | -5.101148597990232 |
+| 5 holdout | 3 | 0.3333333333333333 | 48.74574697603964 | 3 | 0.3333333333333333 | 18.81129437006322 |
+
+The three train closes at 3600000 ms are CHILLCATS (timeout, -5.840694925098168), GAVELDROP (timeout, 1.2497413920496319), and RICO (timeout, -5.101148597990232). The three holdout closes are Democat (stop, -11.456615930249727), NONUT (timeout, 33.69681744293837), and CR (vanished at the last positive print, -3.42890714262542). The 300000 ms holdout closed the same three names and made more after costs, 48.74574697603964, because NONUT's 5-minute timeout was 68.063395891828. That holdout figure was not the selection input. The train folds had already kept 3600000 ms.
+
+`ladder_e` with the gate on:
+
+| Fold | Closed | Still open | Win rate after costs | Pnl after modeled costs |
+| --- | --- | --- | --- | --- |
+| 0 | 1 | 0 | 0.0 | -51.92656479289024 |
+| 1 | 0 | 0 | not defined | not defined |
+| 2 | 0 | 1 | not defined | not defined |
+| 3 | 0 | 0 | not defined | not defined |
+| 4 | 0 | 1 | not defined | not defined |
+| 5 holdout | 1 | 2 | 0.0 | -3.42890714262542 |
+| Train folds | 1 | 2 | 0.0 | -51.92656479289024 |
+| All folds | 2 | 4 | 0.0 | -55.35547193551566 |
+
+The train close is CHILLCATS, a stop. The holdout close is CR, vanished. Two holdout positions were still inside the 48-hour horizon at `2026-11-05T12:20:03+00:00`. Still open is counted inside each fold's own ledger. The books do not share one account.
+
+The earlier gated holdout, 2026-11-05 04:00 through `snapshots/2026-11-05/0800.jsonl`, closed 2 `single_target` trades with the stale voters, win rate after costs 0.0, pnl after modeled costs -4.812983878720072. The same clock was scored again with a readout and crow memory fit only on outcomes that ended before `2026-11-05T04:00:00+00:00`. That fit's latest readout outcome is `2026-11-05T03:55:01+00:00`. Crow memory is 7367 rows ending `2026-11-05T03:40:02+00:00`. This rescore is not a selection input. At 300000 ms with the gate on it closed 2, win rate after costs 0.5, pnl before fees 7.476984386044731, pnl after modeled costs 1.5464074791034186. The closes are Look (2.7699130070033413 after costs) and RICO (-1.2235055278999227). At 3600000 ms with the gate on that same clock closed 2, win rate after costs 0.0, pnl after modeled costs -41.929477826489574. `ladder_e` with the gate on closed 1, win rate after costs 0.0, pnl after modeled costs -43.737230943255874.
+
 ## Next steps for a later self-improvement run
 
 1. The flash-kernel readout on the 05:15–06:45 UTC store ties the down majority and never cleared 500000 ppm out of sample. The pinned FlyVis worker still has not run on a real encoded tape. A later run can store that activity export and teach this voter to read it. Do not invent a fly score in this process.
@@ -614,3 +697,4 @@ The gate cut the holdout `single_target` loss after costs from -31.3180896068499
 8. Done on 2026-11-05. The pump.fun frontend list is disabled. `frontend-api-v3.pump.fun` returns HTTP 403, a Cloudflare interstitial, including with a browser User-Agent and `Origin: https://pump.fun`. The collector stores GeckoTerminal new pools for dex `pump-fun` and `pumpswap` instead. `snapshots/2026-11-05/0430.jsonl` has 24 `pumpfun_bonding_curve` rows and 9 `pumpfun_graduation` rows. Holder reads recur from the existing 15-minute `cycle.sh`. The `2026-11-05T04:32:02Z` run stored 8 new `AVAILABLE` shares and left fresh reads cached. A frozen walk-forward through `snapshots/2026-11-05/0415.jsonl` joined 353 scored `single_target` prints with crow (301 `CLEAR`, 52 `RAISED`) and did not change closed pnl. `single_target` with crow closed 7 trades, pnl after modeled costs -124.40205465953413. `ladder_e` with crow closed 2, pnl after modeled costs -146.2049145498137. Without holder reads those pnl figures are the same and the join counts are 0. See Pump.fun feeds and recurring holder reads.
 9. Done on 2026-11-05. GeckoTerminal pool trades are stored in `pool-trades/YYYY-MM-DD.jsonl` with `read_ts_ms`. The `2026-11-05T06:34:12Z` capture stored 8 HTTP 200 pages. Large-sell share ran from 48393 to 191020 ppm, all under the 500000 ppm veto line. A frozen walk-forward through `snapshots/2026-11-05/0640.jsonl` was scored with and without `--entry-veto`. The books match. `single_target` with crow closed 8 trades, win rate 0.25, win rate after costs 0.125, pnl before fees -78.13764073283825, pnl after modeled costs -98.77154502120209. `ladder_e` with crow closed 3, win rate 0.0, pnl after modeled costs -198.51638973487644. The veto stayed off. See Pool trades.
 10. Done on 2026-11-05. The paper backtest keeps vanished mints, and a new open is refused when FlyVis has no numeric vote. On the holdout from `2026-11-05T04:00:00+00:00` through `snapshots/2026-11-05/0800.jsonl`, `single_target` with crow and without the gate closed 7, win rate after costs 0.14285714285714285, pnl before fees -11.641879321245218, pnl after modeled costs -31.31808960684995. With the gate it closed 2, win rate after costs 0.0, pnl before fees 0.930465606796853, pnl after modeled costs -4.812983878720072. The gate is on by default. The kept book is still a loss. See Survivorship and the frozen 08:00 cutoff.
+11. Done on 2026-11-05. The store was read through `snapshots/2026-11-05/1220.jsonl` at `2026-11-05T12:20:03+00:00`, 258 files from `snapshots/2026-11-04/0515.jsonl.gz`. Each expanding-window fold refit the FlyVis readout and refilled crow memory using only outcomes that ended before the fold. The refit readout does not beat the majority class out of sample: accuracy 0.6486620416253717 on 14126 decisions, the same as always calling down, and 0 calls at or above 500000 ppm. Train folds chose `single_target` horizon 3600000 ms with the primary-vote gate on. That train book closed 3, win rate after costs 0.3333333333333333, pnl after modeled costs -9.692102131038768, against -10.831222454253728 at 300000 ms. The untouched holdout from `2026-11-05T08:25:01+00:00` through `snapshots/2026-11-05/1220.jsonl` closed 3 of the 3600000 ms trades, win rate after costs 0.3333333333333333, pnl after modeled costs 18.81129437006322. The 300000 ms book on that holdout closed 3, win rate after costs 0.3333333333333333, pnl after modeled costs 48.74574697603964, and was not used to choose the horizon. `ladder_e` with the gate on closed 2 across all folds, win rate after costs 0.0, pnl after modeled costs -55.35547193551566. On the earlier 04:00–08:00 clock the refit 300000 ms book closed 2, win rate after costs 0.5, pnl after modeled costs 1.5464074791034186, against the previous gated figure of 0.0 and -4.812983878720072. See Expanding window.

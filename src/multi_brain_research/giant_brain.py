@@ -38,8 +38,18 @@ TASK_SHA = hashlib.sha256(json.dumps(TASK, sort_keys=True, separators=(",", ":")
 FEATURE_SET_SHA = hashlib.sha256(b"giant_brain_feature_m001_v1").hexdigest()
 
 
+_PIN_CACHE: dict[tuple, str] = {}
+
+
 def _pin_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _PIN_CACHE.get(key)
+    if cached is not None:
+        return cached
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    _PIN_CACHE[key] = digest
+    return digest
 
 
 def _rule(name: str) -> str:
@@ -199,7 +209,7 @@ def _shell(row: dict, reason: str, fly: dict) -> dict:
     }
 
 
-def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> dict:
+def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None, readout: dict | None = None) -> dict:
     if type(now_ms) is not int or now_ms < 0:
         raise ValueError("INVALID_TIME")
     fly = fly_status()
@@ -210,7 +220,7 @@ def fuse(observation: dict, *, now_ms: int, memory_path: Path | None = None) -> 
         return _shell(row, str(error), fly)
     tape_score = paper_long_support(mapped)
     crow_score = recall(mapped["features"], memory_path, now_ms=now_ms)
-    fly_vote = fly_score_history(_fly_history(row))
+    fly_vote = fly_score_history(_fly_history(row), readout=readout)
     council = roster()
     hemibrain_vote = _hemibrain_vote(row)
     here = Path(__file__).resolve().parent

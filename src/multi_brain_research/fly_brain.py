@@ -15,7 +15,20 @@ ROOT = Path(__file__).resolve().parents[2]
 REGISTRATION = ROOT / "experiments/flyvis_trained_reference/registration.json"
 
 
+_DESCRIBE = None
+
+
 def describe() -> dict:
+    """Pinned FlyVis identity. The registration file does not change during a run."""
+    global _DESCRIBE
+    if _DESCRIBE is None:
+        _DESCRIBE = _describe()
+    body = dict(_DESCRIBE)
+    body["missing"] = list(_DESCRIBE["missing"])
+    return body
+
+
+def _describe() -> dict:
     checkpoint = None
     try:
         from .flyvis_reference import load_registration

@@ -155,26 +155,28 @@ def enrich(observation: dict, hist: list[dict]) -> dict:
     return obs
 
 
-def _remember_row(series: dict[str, list[dict]], row: dict, now_ms: int, memory: Path, seen: set) -> bool:
+def memory_row(series: dict[str, list[dict]], row: dict, now_ms: int, seen: set) -> dict | None:
+    """One crow row whose outcome is the price at `now_ms`. Later prints are not read."""
     mint = row.get("token_address")
     if type(mint) is not str:
-        return False
+        return None
     hist = causal_tail(series.get(mint, []), now_ms)
     if len(hist) < 3 or hist[-1]["ts_ms"] != now_ms:
-        return False
+        return None
     previous, current = hist[-2], hist[-1]
     before = hist[-3]
     observed = observation_from_pair(previous["record"], before["record"])
     mapped = tape_features(_prepare(observed))
     values = mapped["features"]
     if any(type(values.get(name)) not in (int, float) or isinstance(values.get(name), bool) for name in _FEATURE_NAMES):
-        return False
+        return None
     digest = hashlib.sha256(json.dumps({"f": values, "mint": mint, "ts": previous["ts"]}, sort_keys=True).encode()).hexdigest()
     if digest in seen:
-        return False
+        return None
     if not previous["price_usd"] > 0:
-        return False
-    remember(memory, {
+        return None
+    seen.add(digest)
+    return {
         "mint": mint,
         "features": values,
         "later_return": (current["price_usd"] - previous["price_usd"]) / previous["price_usd"],
@@ -183,9 +185,32 @@ def _remember_row(series: dict[str, list[dict]], row: dict, now_ms: int, memory:
         "outcome_end_ms": current["ts_ms"],
         "action": "NO_EXECUTION",
         "execution_allowed": False,
-    })
-    seen.add(digest)
+    }
+
+
+def _remember_row(series: dict[str, list[dict]], row: dict, now_ms: int, memory: Path, seen: set) -> bool:
+    record = memory_row(series, row, now_ms, seen)
+    if record is None:
+        return False
+    remember(memory, record)
     return True
+
+
+def collect_memory_rows(root: Path, stamped: list[dict]) -> list[dict]:
+    """Every crow row in these snapshots. The caller drops rows that end too late."""
+    series = load_series(root, [item["file"] for item in stamped])
+    seen: set[str] = set()
+    rows = []
+    for item in stamped:
+        for row in item["rows"]:
+            stamp = row.get("ts") or row.get("fetched_at")
+            if type(stamp) is not str:
+                continue
+            now_ms = parse_time_ms(stamp)
+            record = memory_row(series, row, now_ms, seen)
+            if record is not None:
+                rows.append(record)
+    return rows
 
 
 def fill_crow_memory(root: Path, memory: Path, *, before_ms: int, cutoff_file: str | None = None, not_after_ms: int | None = None) -> int:
@@ -256,7 +281,7 @@ def _trades(ledger: Path, symbols: dict[str, str]) -> list[dict]:
     return trades
 
 
-def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, cutoff_file: str | None = None, not_after_ms: int | None = None, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None) -> dict:
+def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, cutoff_file: str | None = None, not_after_ms: int | None = None, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None, horizon_ms: int = 300_000, open_not_after_ms: int | None = None, readout: dict | None = None, score_cache: dict | None = None) -> dict:
     dest.mkdir(parents=True, exist_ok=True)
     ledger = dest / "paper.jsonl"
     theses = dest / "theses"
@@ -268,8 +293,15 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
                 path.unlink()
 
     def score(observation, now_ms):
-        hist = causal_tail(series.get(observation.get("mint"), []), now_ms)
-        return fuse(enrich(observation, hist), now_ms=now_ms, memory_path=memory)
+        mint = observation.get("mint")
+        key = (mint, now_ms)
+        if score_cache is not None and key in score_cache:
+            return score_cache[key]
+        hist = causal_tail(series.get(mint, []), now_ms)
+        signal = fuse(enrich(observation, hist), now_ms=now_ms, memory_path=memory, readout=readout)
+        if score_cache is not None:
+            score_cache[key] = signal
+        return signal
 
     counted = replay(
         root, ledger, theses,
@@ -279,7 +311,7 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         use_entry_veto=use_entry_veto, retain_universe=retain_universe, cutoff_file=cutoff_file,
         not_after_ms=not_after_ms, min_recalled_return=min_recalled_return,
         max_crow_distance=max_crow_distance, require_primary_vote=require_primary_vote,
-        audit_path=audit_path,
+        audit_path=audit_path, horizon_ms=horizon_ms, open_not_after_ms=open_not_after_ms,
     )
     summary = metrics(ledger)
     closed = state(ledger)["closed"]
@@ -316,6 +348,8 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         "min_recalled_return": min_recalled_return,
         "max_crow_distance": max_crow_distance,
         "require_primary_vote": require_primary_vote,
+        "horizon_ms": horizon_ms,
+        "open_not_after_ms": open_not_after_ms,
         "holder_joined": counted.get("holder_joined", 0),
         "holder_clear": counted.get("holder_clear", 0),
         "holder_raised": counted.get("holder_raised", 0),

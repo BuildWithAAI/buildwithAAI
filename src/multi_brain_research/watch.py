@@ -97,7 +97,7 @@ def _candles_for(candle_dir: Path | None, position: dict):
     return load_jsonl(path)
 
 
-def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, not_after_ms: int | None = None, cutoff_file: str | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None) -> dict:
+def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, not_after_ms: int | None = None, cutoff_file: str | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None, horizon_ms: int = 300_000, open_not_after_ms: int | None = None) -> dict:
     """Score snapshot pairs and mark paper exits.
 
     `retain_universe` keeps every mint that appears, including after it falls
@@ -112,6 +112,10 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
     if max_crow_distance is not None and (type(max_crow_distance) is bool or type(max_crow_distance) not in (int, float)):
         raise ValueError("CROW_DISTANCE")
     if not_after_ms is not None and type(not_after_ms) is not int:
+        raise ValueError("INVALID_TIME")
+    if type(horizon_ms) is not int or horizon_ms < 1:
+        raise ValueError("HORIZON")
+    if open_not_after_ms is not None and type(open_not_after_ms) is not int:
         raise ValueError("INVALID_TIME")
     holder_index = load_holder_reads(root) if use_holder_reads else {}
     flow_index = load_flow_reads(root)
@@ -191,6 +195,8 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
                 seen[mint] = record
             if thesis_id is not None or (not_before_ms is not None and now_ms < not_before_ms):
                 continue
+            if open_not_after_ms is not None and now_ms >= open_not_after_ms:
+                continue
             try:
                 observation = observation_from_pair(record, prior)
                 observation["fly_history"] = trail
@@ -217,7 +223,7 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
                     elif joined.get("status") == "NOT_OBSERVED":
                         holder_not_observed += 1
                 signal = score(observation, now_ms)
-                thesis = write_thesis(signal, scored_record, now_ms=now_ms, threshold_ppm=threshold_ppm)
+                thesis = write_thesis(signal, scored_record, now_ms=now_ms, threshold_ppm=threshold_ppm, horizon_ms=horizon_ms)
             except (SnapshotError, ThesisError, ValueError):
                 skipped += 1
                 continue
@@ -359,6 +365,8 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
         "min_recalled_return": min_recalled_return,
         "max_crow_distance": max_crow_distance,
         "require_primary_vote": require_primary_vote,
+        "horizon_ms": horizon_ms,
+        "open_not_after_ms": open_not_after_ms,
         "universe_mints": len(appeared),
         "priced_mints": len(priced_mints),
         "never_priced": len(appeared - priced_mints),

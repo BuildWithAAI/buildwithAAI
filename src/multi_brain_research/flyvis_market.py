@@ -199,14 +199,105 @@ def decisions_from_series(series: dict[str, list[dict]]) -> list[dict]:
             nxt = ordered[index + 1]["price_usd"]
             if current <= 0 or nxt <= 0:
                 continue
+            nxt_point = ordered[index + 1]
+            end = nxt_point.get("ts_ms")
+            decision_ms = ordered[index].get("ts_ms")
             rows.append({
                 "mint": mint,
                 "ts": ordered[index]["ts"],
+                "ts_ms": decision_ms if type(decision_ms) is int else None,
+                "outcome_end_ms": end if type(end) is int else None,
                 "label": 1 if nxt > current else 0,
                 "activity": project(trace, kernels),
                 "trace": trace,
             })
     return rows
+
+
+def score_rows(rows: list[dict], weights: list[float], bias: float) -> dict:
+    """Accuracy against the supplied labels. A tie with the majority class is not a beat."""
+    metrics = _metrics(rows, weights, bias)
+    if not rows:
+        return {
+            **metrics,
+            "correct": 0,
+            "positives": 0,
+            "majority_class_accuracy": None,
+            "beats_majority_class": None,
+            "up_calls": 0,
+            "ppm_min": None,
+            "ppm_max": None,
+        }
+    correct = 0
+    positives = 0
+    up_calls = 0
+    ppm_min = None
+    ppm_max = None
+    for row in rows:
+        ppm = predict_ppm(row["activity"], weights, bias)
+        chosen = 1 if ppm >= 500_000 else 0
+        label = row["label"]
+        positives += label
+        correct += chosen == label
+        up_calls += chosen
+        ppm_min = ppm if ppm_min is None else min(ppm_min, ppm)
+        ppm_max = ppm if ppm_max is None else max(ppm_max, ppm)
+    count = len(rows)
+    majority = max(positives, count - positives) / count
+    return {
+        **metrics,
+        "correct": correct,
+        "positives": positives,
+        "majority_class_accuracy": majority,
+        "beats_majority_class": metrics["accuracy"] > majority,
+        "up_calls": up_calls,
+        "ppm_min": ppm_min,
+        "ppm_max": ppm_max,
+    }
+
+
+def fit_on_rows(rows: list[dict]) -> dict:
+    """Fit on every supplied row. The caller has already dropped later outcomes.
+
+    There is no internal holdout here. The walk-forward fold is the test.
+    """
+    if len(rows) < 4:
+        raise ReadoutError("NEED_ROWS")
+    if any(type(row.get("outcome_end_ms")) is not int or type(row.get("ts_ms")) is not int for row in rows):
+        raise ReadoutError("OUTCOME_WINDOW")
+    if any(row["outcome_end_ms"] < row["ts_ms"] for row in rows):
+        raise ReadoutError("OUTCOME_WINDOW")
+    weights, bias = fit_weights(rows)
+    labels, _kernels = frozen_kernels()
+    end_ms = max(row["outcome_end_ms"] for row in rows)
+    report = {
+        "protocol": "AAI_FLYVIS_MARKET_READOUT_V1",
+        "stimulus": STIMULUS,
+        "activity_source": ACTIVITY_SOURCE,
+        "network_forward_pass": False,
+        "cell_labels": labels,
+        "weights": [round(weight, 8) for weight in weights],
+        "bias": round(bias, 8),
+        "train": _metrics(rows, weights, bias),
+        "train_rows": len(rows),
+        "train_end_ts": max(row["ts"] for row in rows),
+        "train_outcome_end_max_ms": end_ms,
+        "market_validation_established": False,
+        "execution_allowed": False,
+        "action": "NO_EXECUTION",
+    }
+    identity = {
+        "stimulus": report["stimulus"],
+        "activity_source": report["activity_source"],
+        "cell_labels": report["cell_labels"],
+        "weights": report["weights"],
+        "bias": report["bias"],
+        "train_outcome_end_max_ms": end_ms,
+    }
+    report["readout_sha256"] = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    return report
 
 
 def fit_readout(series: dict[str, list[dict]]) -> dict:
