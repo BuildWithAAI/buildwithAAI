@@ -40,6 +40,13 @@ def main() -> int:
     parser.add_argument("--pool-trade-pending", action="store_true", help="With --capture-pool-trades, skip mints that already have a fresh read")
     parser.add_argument("--pool-trade-limit", type=int, help="Cap the number of pools read")
     parser.add_argument("--entry-veto", action="store_true", help="Refuse a paper open when a causal holder read is RAISED or a causal large-sell share is at least half")
+    parser.add_argument("--cutoff-file", help="Last snapshot included, relative to the store. Later files stay out")
+    parser.add_argument("--not-after-ms", type=int, help="Drop snapshots whose timestamp is at or after this millisecond")
+    parser.add_argument("--top-volume-only", action="store_true", help="Score only the volume-ranked limit and do not close vanished mints")
+    parser.add_argument("--min-recalled-return", type=float, help="Refuse a paper open unless crow recalled at least this later return")
+    parser.add_argument("--max-crow-distance", type=float, help="Refuse a paper open when the crow match is farther than this")
+    parser.add_argument("--require-primary-vote", action=argparse.BooleanOptionalAction, default=True, help="Refuse a paper open when FlyVis has no numeric vote. On by default. --no-require-primary-vote scores without that refusal")
+    parser.add_argument("--audit-path", type=Path, help="Write one JSONL row per scored print for the with-crow books")
     parser.add_argument("--work-dir", type=Path, help="Ledger and memory directory for --walk-forward")
     parser.add_argument("--status", action="store_true", help="Print which sources are configured")
     args = parser.parse_args()
@@ -51,7 +58,10 @@ def main() -> int:
         print(json.dumps(walk_forward(
             args.snapshot_root, args.work_dir, limit=args.limit, threshold_ppm=args.threshold_ppm,
             candle_dir=args.candle_dir, use_holder_reads=not args.no_holder_reads,
-            use_entry_veto=args.entry_veto,
+            use_entry_veto=args.entry_veto, retain_universe=not args.top_volume_only,
+            cutoff_file=args.cutoff_file, not_before_ms=args.not_before_ms, not_after_ms=args.not_after_ms,
+            min_recalled_return=args.min_recalled_return, max_crow_distance=args.max_crow_distance,
+            require_primary_vote=args.require_primary_vote, audit_path=args.audit_path,
         ), sort_keys=True))
         return 0
     if args.capture_pool_trades:
@@ -86,9 +96,12 @@ def main() -> int:
             parser.error("--snapshot-root requires --theses-dir and --ledger")
         print(json.dumps(replay(
             args.snapshot_root, args.ledger, args.theses_dir, threshold_ppm=args.threshold_ppm,
-            limit=args.limit, not_before_ms=args.not_before_ms, candle_dir=args.candle_dir,
+            limit=args.limit, not_before_ms=args.not_before_ms, not_after_ms=args.not_after_ms,
+            cutoff_file=args.cutoff_file, candle_dir=args.candle_dir,
             exit_policy=args.exit_policy, use_holder_reads=not args.no_holder_reads,
-            use_entry_veto=args.entry_veto,
+            use_entry_veto=args.entry_veto, retain_universe=not args.top_volume_only,
+            min_recalled_return=args.min_recalled_return, max_crow_distance=args.max_crow_distance,
+            require_primary_vote=args.require_primary_vote, audit_path=args.audit_path,
         ), sort_keys=True))
         return 0
     if args.tape is None and args.observation is None:

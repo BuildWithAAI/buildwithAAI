@@ -22,6 +22,7 @@ from .giant_brain import _prepare, fuse
 from .paper_trader import metrics, state
 from .snapshot_feed import (
     canonical_pairs,
+    files_through,
     load_snapshot,
     observation_from_pair,
     parse_time_ms,
@@ -40,16 +41,19 @@ def _iso(ms: int) -> str:
     return datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat()
 
 
-def _stamped(root: Path) -> list[dict]:
+def _stamped(root: Path, cutoff_file: str | None = None, not_after_ms: int | None = None) -> list[dict]:
     stamped = []
-    for relative in snapshot_files(root):
+    for relative in files_through(snapshot_files(root), cutoff_file):
         rows = list(canonical_pairs(load_snapshot(root, relative)).values())
         times = [row.get("ts") or row.get("fetched_at") for row in rows]
         times = [value for value in times if type(value) is str]
         if not times:
             continue
         stamp = min(times)
-        stamped.append({"file": relative, "ms": parse_time_ms(stamp), "ts": stamp, "rows": rows})
+        ms = parse_time_ms(stamp)
+        if not_after_ms is not None and ms >= not_after_ms:
+            continue
+        stamped.append({"file": relative, "ms": ms, "ts": stamp, "rows": rows})
     return stamped
 
 
@@ -184,14 +188,14 @@ def _remember_row(series: dict[str, list[dict]], row: dict, now_ms: int, memory:
     return True
 
 
-def fill_crow_memory(root: Path, memory: Path, *, before_ms: int) -> int:
+def fill_crow_memory(root: Path, memory: Path, *, before_ms: int, cutoff_file: str | None = None, not_after_ms: int | None = None) -> int:
     """Write outcomes whose window ends strictly before `before_ms`."""
     if type(before_ms) is not int or before_ms < 0:
         raise ValueError("INVALID_TIME")
     root = resolve_root(root)
     if memory.exists():
         memory.unlink()
-    stamped = _stamped(root)
+    stamped = _stamped(root, cutoff_file, not_after_ms)
     series = load_series(root, [item["file"] for item in stamped if item["ms"] < before_ms])
     seen: set[str] = set()
     added = 0
@@ -252,7 +256,7 @@ def _trades(ledger: Path, symbols: dict[str, str]) -> list[dict]:
     return trades
 
 
-def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False) -> dict:
+def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = False, cutoff_file: str | None = None, not_after_ms: int | None = None, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = False, audit_path: Path | None = None) -> dict:
     dest.mkdir(parents=True, exist_ok=True)
     ledger = dest / "paper.jsonl"
     theses = dest / "theses"
@@ -272,7 +276,10 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         threshold_ppm=threshold_ppm, limit=limit, score=score,
         not_before_ms=not_before_ms, candle_dir=candle_dir, exit_policy=exit_policy,
         entry_floor=entry_floor, gap_fill=gap_fill, use_holder_reads=use_holder_reads,
-        use_entry_veto=use_entry_veto,
+        use_entry_veto=use_entry_veto, retain_universe=retain_universe, cutoff_file=cutoff_file,
+        not_after_ms=not_after_ms, min_recalled_return=min_recalled_return,
+        max_crow_distance=max_crow_distance, require_primary_vote=require_primary_vote,
+        audit_path=audit_path,
     )
     summary = metrics(ledger)
     closed = state(ledger)["closed"]
@@ -298,6 +305,17 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         "skipped": counted["skipped"],
         "entry_skipped": counted.get("entry_skipped", 0),
         "skip_reasons": counted.get("skip_reasons") or {},
+        "scored": counted.get("scored", 0),
+        "abstained": counted.get("abstained", 0),
+        "abstention_rate": counted.get("abstention_rate"),
+        "universe_mints": counted.get("universe_mints", 0),
+        "priced_mints": counted.get("priced_mints", 0),
+        "never_priced": counted.get("never_priced", 0),
+        "vanished": summary.get("vanished", 0),
+        "not_observed_exits": summary.get("unpriced_exits", 0),
+        "min_recalled_return": min_recalled_return,
+        "max_crow_distance": max_crow_distance,
+        "require_primary_vote": require_primary_vote,
         "holder_joined": counted.get("holder_joined", 0),
         "holder_clear": counted.get("holder_clear", 0),
         "holder_raised": counted.get("holder_raised", 0),
@@ -312,21 +330,37 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
     }
 
 
-def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False) -> dict:
-    """Fill crow memory before the longest gap and score the later snapshots twice."""
+def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, use_holder_reads: bool = True, use_entry_veto: bool = False, retain_universe: bool = True, cutoff_file: str | None = None, not_before_ms: int | None = None, not_after_ms: int | None = None, min_recalled_return: float | None = None, max_crow_distance: float | None = None, require_primary_vote: bool = True, audit_path: Path | None = None) -> dict:
+    """Fill crow memory before the longest gap and score the later snapshots twice.
+
+    Memory still stops at the gap when `not_before_ms` moves the open window
+    later. A cutoff file drops snapshots that arrived after the study froze.
+    Every mint stays in the set. A vanished open exits at its last positive
+    price. New opens require a numeric FlyVis vote unless that gate is off.
+    """
     root = resolve_root(root)
     work.mkdir(parents=True, exist_ok=True)
-    stamped = _stamped(root)
+    if not_after_ms is not None and type(not_after_ms) is not int:
+        raise ValueError("INVALID_TIME")
+    stamped = _stamped(root, cutoff_file, not_after_ms)
     split = _holdout(stamped)
-    before_ms = split["holdout"]["ms"]
+    gap_ms = split["holdout"]["ms"]
+    if not_before_ms is None:
+        before_ms = gap_ms
+    else:
+        if type(not_before_ms) is not int or not_before_ms < gap_ms:
+            raise ValueError("SCORE_WINDOW")
+        before_ms = not_before_ms
     memory = work / "crow.jsonl"
-    memory_rows = fill_crow_memory(root, memory, before_ms=before_ms)
+    memory_rows = fill_crow_memory(
+        root, memory, before_ms=gap_ms, cutoff_file=cutoff_file, not_after_ms=not_after_ms,
+    )
     ends = []
     if memory.is_file() and memory.read_text(encoding="utf-8").strip():
         for line in memory.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 ends.append(json.loads(line)["outcome_end_ms"])
-    if any(end >= before_ms for end in ends):
+    if any(end >= gap_ms for end in ends):
         raise RuntimeError("HOLDOUT_LEAKED_INTO_MEMORY")
     series = load_series(root, [item["file"] for item in stamped])
     policies = {}
@@ -336,18 +370,24 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
                 root, work / policy / "with_crow", series, memory=memory, not_before_ms=before_ms,
                 limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir, exit_policy=policy,
                 entry_floor=entry_floor, gap_fill=gap_fill, use_holder_reads=use_holder_reads,
-                use_entry_veto=use_entry_veto,
+                use_entry_veto=use_entry_veto, retain_universe=retain_universe, cutoff_file=cutoff_file,
+                not_after_ms=not_after_ms, min_recalled_return=min_recalled_return,
+                max_crow_distance=max_crow_distance, require_primary_vote=require_primary_vote,
+                audit_path=None if audit_path is None else audit_path / policy / "with_crow.jsonl",
             ),
             "without_crow": _book(
                 root, work / policy / "without_crow", series, memory=None, not_before_ms=before_ms,
                 limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir, exit_policy=policy,
                 entry_floor=entry_floor, gap_fill=gap_fill, use_holder_reads=use_holder_reads,
-                use_entry_veto=use_entry_veto,
+                use_entry_veto=use_entry_veto, retain_universe=retain_universe, cutoff_file=cutoff_file,
+                not_after_ms=not_after_ms, min_recalled_return=min_recalled_return,
+                max_crow_distance=max_crow_distance, require_primary_vote=require_primary_vote,
             ),
         }
     chosen = policies[exit_policy]
-    fill_files = [item["file"] for item in stamped if item["ms"] < before_ms]
-    holdout_files = [item["file"] for item in stamped if item["ms"] >= before_ms]
+    fill_files = [item["file"] for item in stamped if item["ms"] < gap_ms]
+    holdout_files = [item["file"] for item in stamped if item["ms"] >= gap_ms]
+    score_files = [item["file"] for item in stamped if item["ms"] >= before_ms]
     return {
         "protocol": "AAI_GIANT_BRAIN_WALK_FORWARD_V1",
         "mode": "PAPER",
@@ -370,7 +410,9 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
         "holdout_files": len(holdout_files),
         "holdout_file": split["holdout"]["file"],
         "holdout_ts": split["holdout"]["ts"],
-        "holdout_ms": before_ms,
+        "holdout_ms": gap_ms,
+        "score_files": len(score_files),
+        "score_from_file": None if not score_files else score_files[0],
         "gap_ms": split["gap_ms"],
         "memory_rows": memory_rows,
         "memory_outcome_end_max_ms": None if not ends else max(ends),
@@ -380,6 +422,14 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
         "entry_floor": entry_floor,
         "gap_fill": gap_fill,
         "entry_veto": use_entry_veto,
+        "retain_universe": retain_universe,
+        "cutoff_file": cutoff_file,
+        "not_after_ms": not_after_ms,
+        "open_not_before_ms": before_ms,
+        "memory_filled_before_ms": gap_ms,
+        "min_recalled_return": min_recalled_return,
+        "max_crow_distance": max_crow_distance,
+        "require_primary_vote": require_primary_vote,
         "policies": policies,
         "with_crow": chosen["with_crow"],
         "without_crow": chosen["without_crow"],

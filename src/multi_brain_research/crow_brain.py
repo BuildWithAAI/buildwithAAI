@@ -35,9 +35,17 @@ def _vector(features: dict) -> tuple[float, float, float] | None:
     return tuple(values)
 
 
+_LOAD_CACHE: dict[tuple, list[dict]] = {}
+
+
 def _load(path: Path | None) -> list[dict]:
     if path is None or not path.exists() or not path.read_text().strip():
         return []
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _LOAD_CACHE.get(key)
+    if cached is not None:
+        return cached
     rows = []
     for line in path.read_text().splitlines():
         if not line.strip():
@@ -45,6 +53,8 @@ def _load(path: Path | None) -> list[dict]:
         row = json.loads(line)
         if type(row) is dict:
             rows.append(row)
+    _LOAD_CACHE.clear()
+    _LOAD_CACHE[key] = rows
     return rows
 
 

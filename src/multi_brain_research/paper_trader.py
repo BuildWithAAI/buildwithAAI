@@ -584,6 +584,96 @@ def _cost_stats(values: list[float]) -> dict:
     }
 
 
+def _priced(value) -> bool:
+    return type(value) in (int, float) and not isinstance(value, bool)
+
+
+def close_vanished(path: Path, thesis_id: str, *, now_ms: int, last_price, last_price_ms) -> dict:
+    """Close a paper position whose mint left the snapshot set.
+
+    The exit price is the last positive print, at that print's own timestamp.
+    A missing print is `NOT_OBSERVED` and carries no pnl. Nothing here fills
+    at zero or at the stop unless that stop was itself the last print.
+    """
+    if type(now_ms) is not int:
+        raise PaperError("NO_PRICE")
+    position = state(path)["open"].get(thesis_id)
+    if position is None:
+        raise PaperError("NO_OPEN_POSITION")
+    usable = (
+        _priced(last_price) and last_price > 0 and type(last_price_ms) is int
+        and 0 <= last_price_ms <= now_ms
+    )
+    if not usable:
+        return _append(path, _paper({
+            "type": "CLOSE",
+            "status": "CLOSED",
+            "reason": "NOT_OBSERVED",
+            "path": "NOT_OBSERVED",
+            "price_path": "NOT_OBSERVED",
+            "fill_model": "NOT_OBSERVED",
+            "exit_policy": position.get("exit_policy"),
+            "thesis_id": thesis_id,
+            "mint": position.get("mint"),
+            "closed_ms": now_ms,
+            "recognized_ms": now_ms,
+            "fees": "NOT_OBSERVED",
+        }))
+    raw = float(last_price)
+    if position.get("exit_policy") == "ladder_e":
+        final_pnl = _leg_pnl(position["entry_fill_usd"], raw, position["quantity"], position["remaining_fraction"])
+        realized = position.get("realized_partial_pnl_usd", 0.0)
+        total = realized + final_pnl
+        event = _snapshot(position, kind="CLOSE", now_ms=now_ms, price_path="LAST_OBSERVED_PRICE", candles_in=None)
+        event.update({
+            "closed_ms": last_price_ms,
+            "recognized_ms": now_ms,
+            "reason": "VANISHED",
+            "path": "LAST_OBSERVED_PRICE",
+            "exit_raw_usd": raw,
+            "exit_fill_usd": _sell_fill(raw),
+            "fill_model": "LAST_OBSERVED_PRICE",
+            "final_leg_pnl_usd": final_pnl,
+            "realized_partial_pnl_usd": realized,
+            "remaining_fraction": 0.0,
+            "pnl_usd": total,
+            "pnl_after_costs_usd": total,
+            "r_multiple": total / position["planned_risk_usd"],
+            "attribution_usd": _attribution(position, total),
+            "fees": "APPLIED",
+            "mark_price_usd": raw,
+            "last_price_ms": last_price_ms,
+        })
+        return _append(path, event)
+    slip = position["slippage_bps"] / 10_000
+    exit_fill = raw * (1 - slip)
+    pnl = (exit_fill - position["entry_fill_usd"]) * position["quantity"]
+    return _append(path, _paper({
+        "type": "CLOSE",
+        "exit_policy": position.get("exit_policy") or "single_target",
+        "fill_model": "LAST_OBSERVED_PRICE",
+        "price_path": "LAST_OBSERVED_PRICE",
+        "thesis_id": thesis_id,
+        "mint": position["mint"],
+        "closed_ms": last_price_ms,
+        "recognized_ms": now_ms,
+        "reason": "VANISHED",
+        "path": "LAST_OBSERVED_PRICE",
+        "mark_price_usd": raw,
+        "last_price_ms": last_price_ms,
+        "entry_price_usd": position.get("entry_price_usd", position.get("mark_price_usd")),
+        "exit_raw_usd": raw,
+        "exit_fill_usd": exit_fill,
+        "pnl_usd": pnl,
+        "pnl_after_costs_usd": modeled_cost_pnl(
+            position.get("entry_price_usd", position["mark_price_usd"]), raw, position["notional_usd"],
+        ),
+        "r_multiple": pnl / position["planned_risk_usd"],
+        "attribution_usd": _attribution(position, pnl),
+        "fees": "NOT_OBSERVED",
+    }))
+
+
 def metrics(path: Path) -> dict:
     closed = state(path)["closed"]
     equity = peak = max_drawdown = 0.0
@@ -591,21 +681,29 @@ def metrics(path: Path) -> dict:
     r_values = []
     attribution = {}
     after_costs = []
+    unpriced = vanished = 0
+    priced_rows = []
     for row in closed:
-        pnl = row["pnl_usd"]
+        pnl = row.get("pnl_usd")
+        if not _priced(pnl):
+            unpriced += 1
+            continue
+        priced_rows.append(row)
+        if row.get("reason") == "VANISHED":
+            vanished += 1
         equity += pnl
         peak = max(peak, equity)
         max_drawdown = max(max_drawdown, peak - equity)
         if pnl > 0:
             wins += 1
-        if type(row.get("r_multiple")) in (int, float) and not isinstance(row.get("r_multiple"), bool):
+        if _priced(row.get("r_multiple")):
             r_values.append(row["r_multiple"])
         cost = row.get("pnl_after_costs_usd")
-        if type(cost) in (int, float) and not isinstance(cost, bool):
+        if _priced(cost):
             after_costs.append(cost)
         for name, share in (row.get("attribution_usd") or {}).items():
             attribution[name] = attribution.get(name, 0.0) + share
-    count = len(closed)
+    count = len(priced_rows)
     stats = _cost_stats(after_costs) if len(after_costs) == count else {
         "win_rate_after_costs": None,
         "avg_win": None,
@@ -616,6 +714,8 @@ def metrics(path: Path) -> dict:
     }
     return {
         "closed": count,
+        "unpriced_exits": unpriced,
+        "vanished": vanished,
         "open": len(state(path)["open"]),
         "win_rate": None if count == 0 else wins / count,
         "avg_r": None if not r_values else sum(r_values) / len(r_values),

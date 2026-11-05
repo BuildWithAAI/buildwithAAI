@@ -90,6 +90,28 @@ def snapshot_files(root: Path) -> list[str]:
     return [path.relative_to(root).as_posix() for path in chosen.values()]
 
 
+def files_through(files: list[str], cutoff_file: str | None) -> list[str]:
+    """Keep snapshots up to and including `cutoff_file`.
+
+    A later file that arrives while a study is running stays outside the
+    frozen cutoff. The plain name and the gzipped name are the same snapshot.
+    """
+    if cutoff_file is None:
+        return list(files)
+    if type(cutoff_file) is not str or not cutoff_file or ".." in Path(cutoff_file).parts:
+        raise SnapshotError("CUTOFF_FILE")
+    needle = cutoff_file[:-3] if cutoff_file.endswith(".gz") else cutoff_file
+    found = None
+    for index, name in enumerate(files):
+        plain = name[:-3] if name.endswith(".gz") else name
+        if name == cutoff_file or plain == needle:
+            found = index
+            break
+    if found is None:
+        raise SnapshotError("CUTOFF_NOT_IN_STORE")
+    return list(files[: found + 1])
+
+
 def load_latest(root: Path) -> dict:
     data = json.loads((root / "latest.json").read_text(encoding="utf-8"))
     if type(data) is not dict or type(data.get("snapshot_file")) is not str or type(data.get("sources")) is not dict:
@@ -139,10 +161,23 @@ def resolve_snapshot(root: Path, relative: str) -> Path:
     raise FileNotFoundError(relative)
 
 
+_SNAPSHOT_CACHE: dict[tuple, list[dict]] = {}
+
+
 def load_snapshot(root: Path, relative: str | None = None) -> list[dict]:
     if relative is None:
         relative = load_latest(root)["snapshot_file"]
-    return read_jsonl(resolve_snapshot(root, relative))
+    path = resolve_snapshot(root, relative)
+    stat = path.stat()
+    key = (str(path), stat.st_mtime_ns, stat.st_size)
+    cached = _SNAPSHOT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    rows = read_jsonl(path)
+    if len(_SNAPSHOT_CACHE) > 400:
+        _SNAPSHOT_CACHE.clear()
+    _SNAPSHOT_CACHE[key] = rows
+    return rows
 
 
 def canonical_pairs(records: list[dict]) -> dict[str, dict]:
