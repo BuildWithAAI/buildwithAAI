@@ -107,7 +107,7 @@ python scripts/run_giant_brain.py \
 
 `--not-before-ms 1793772604000` is `2026-11-04T06:10:04+00:00`, the first test timestamp of the loaded readout. Earlier prints still build the causal price trail and do not open a position. `--limit 500` keeps every DexScreener pair in the file. The default limit is 25, ranked by `volume_h1`. `--candle-dir` points at JSONL files named `{pair_address}.jsonl`. A missing file leaves that mark on the snapshot price.
 
-Snapshot files are read in UTC day order, then the `HHMM` stamp. A `.jsonl` and a `.jsonl.gz` for the same day and stamp are one snapshot, and the plain file is kept. Gzipped files are not replayed after every plain file.
+Snapshot files are read in UTC day order, then the `HHMM` stamp. A `.jsonl` and a `.jsonl.gz` for the same day and stamp are one snapshot, and the gzipped file is kept when both exist. A listed plain path that has already been replaced by the gzip still opens the gzip. Gzipped files are not replayed after every plain file. Crow memory appends retry a `BlockingIOError` up to 8 times.
 
 The walk-forward below fills crow memory only from snapshots before the longest gap, then scores the later snapshots twice:
 
