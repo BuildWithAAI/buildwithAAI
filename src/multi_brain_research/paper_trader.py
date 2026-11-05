@@ -27,6 +27,11 @@ INSTANT_TRAIL_PCT = 0.20
 STANDARD_TRAIL_PCT = 0.40
 FILL_MODEL_LADDER = "FEE_1PCT_SLIP_0_5PCT"
 FILL_MODEL_SINGLE = "ASSUMED_FROM_OBSERVED_LIQUIDITY"
+FILL_MODEL_GAP_CANDLE = "GAP_AT_CANDLE_LOW"
+FILL_MODEL_GAP_SNAPSHOT = "GAP_AT_SNAPSHOT_MARK"
+MIN_LIQUIDITY_USD = 10_000.0
+MIN_MARKET_CAP_USD = 20_000.0
+MAX_HOUR_DROP_PERCENT = -80.0
 _LADDER_RUNGS = ((2.0, 0.50), (4.0, 0.25))
 _POSITION_SKIP = frozenset({"type", "action", "execution_allowed", "live_orders", "replayed", "status"})
 
@@ -74,6 +79,51 @@ def modeled_cost_pnl(entry_mark: float, exit_raw: float, notional: float) -> flo
 
 def _leg_pnl(entry_fill: float, raw: float, quantity: float, fraction: float) -> float:
     return (_sell_fill(raw) - entry_fill) * quantity * fraction
+
+
+def _finite(value):
+    if type(value) is bool or type(value) not in (int, float):
+        return None
+    return float(value)
+
+
+def entry_skip_reasons(record: dict, *, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT) -> list[str]:
+    """Reasons a paper open is refused. An empty list means the row clears the floor."""
+    if type(record) is not dict:
+        return ["RECORD_MISSING"]
+    reasons = []
+    liquidity = _finite(record.get("liquidity_usd"))
+    if liquidity is None:
+        reasons.append("LIQUIDITY_UNAVAILABLE")
+    elif liquidity < min_liquidity_usd:
+        reasons.append("LIQUIDITY_BELOW_MIN")
+    cap = _finite(record.get("market_cap"))
+    if cap is None:
+        cap = _finite(record.get("market_cap_usd"))
+    if cap is None:
+        reasons.append("MARKET_CAP_UNAVAILABLE")
+    elif cap < min_market_cap_usd:
+        reasons.append("MARKET_CAP_BELOW_MIN")
+    change = _finite(record.get("price_change_h1"))
+    if change is not None and change < max_hour_drop_percent:
+        reasons.append("HOUR_DROP_OVER_LIMIT")
+    return reasons
+
+
+def skip_entry(path: Path, thesis: dict, record: dict, reasons: list[str], *, min_liquidity_usd: float, min_market_cap_usd: float, max_hour_drop_percent: float) -> dict:
+    return _append(path, _paper({
+        "type": "SKIP",
+        "skip_reasons": list(reasons),
+        "thesis_id": thesis.get("thesis_id"),
+        "mint": thesis.get("mint") or record.get("token_address"),
+        "symbol": record.get("symbol") or thesis.get("symbol"),
+        "liquidity_usd": _finite(record.get("liquidity_usd")),
+        "market_cap_usd": _finite(record.get("market_cap") if record.get("market_cap") is not None else record.get("market_cap_usd")),
+        "price_change_h1": _finite(record.get("price_change_h1")),
+        "min_liquidity_usd": min_liquidity_usd,
+        "min_market_cap_usd": min_market_cap_usd,
+        "max_hour_drop_percent": max_hour_drop_percent,
+    }))
 
 
 def _trail_for(instant_graduation) -> tuple[float, str]:
@@ -127,7 +177,7 @@ def state(path: Path) -> dict:
     return {"open": open_positions, "closed": closed}
 
 
-def open_position(path: Path, thesis: dict, *, mark_price_usd: float, now_ms: int, notional_usd: float, exit_policy: str = "ladder_e", instant_graduation=None) -> dict:
+def open_position(path: Path, thesis: dict, *, mark_price_usd: float, now_ms: int, notional_usd: float, exit_policy: str = "ladder_e", instant_graduation=None, gap_fill: bool = True) -> dict:
     try:
         validate_thesis(thesis)
     except ThesisError as error:
@@ -160,6 +210,7 @@ def open_position(path: Path, thesis: dict, *, mark_price_usd: float, now_ms: in
             "type": "OPEN",
             "exit_policy": "ladder_e",
             "fill_model": FILL_MODEL_LADDER,
+            "gap_fill": gap_fill is True,
             "fee_rate": FEE_RATE,
             "slippage_rate": SLIPPAGE_RATE,
             "thesis_id": thesis["thesis_id"],
@@ -277,18 +328,30 @@ def _paper(event: dict) -> dict:
     return event
 
 
-def _ladder_bar(position: dict, low: float, high: float, filled_at: int) -> tuple[str | None, float | None, list[dict]]:
+def _gap_fill(level: float, observed: float, source: str, gap_fill: bool) -> tuple[float, str]:
+    """A print through the stop fills at that print. A touch fills at the stop."""
+    if gap_fill and observed < level:
+        if source == "MINUTE_CANDLE":
+            return observed, FILL_MODEL_GAP_CANDLE
+        return observed, FILL_MODEL_GAP_SNAPSHOT
+    return level, FILL_MODEL_LADDER
+
+
+def _ladder_bar(position: dict, low: float, high: float, filled_at: int, source: str) -> tuple[str | None, float | None, list[dict], str | None, float | None]:
     """Apply one bar. The low is checked before the high can raise the trail."""
     entry = position["entry_price_usd"]
     partials = []
+    gap_fill = position.get("gap_fill") is not False
     if not _first_rung_filled(position):
         stop_px = entry * position["stop_multiple"]
         if low <= stop_px:
-            return "STOP", stop_px, partials
+            raw, model = _gap_fill(stop_px, low, source, gap_fill)
+            return "STOP", raw, partials, model, stop_px
     else:
         trail_px = position["running_high"] * (1 - position["trail_pct"])
         if low <= trail_px:
-            return "TRAIL", trail_px, partials
+            raw, model = _gap_fill(trail_px, low, source, gap_fill)
+            return "TRAIL", raw, partials, model, trail_px
     for level in position["tp_levels"]:
         if level.get("filled_at") is not None:
             continue
@@ -311,7 +374,7 @@ def _ladder_bar(position: dict, low: float, high: float, filled_at: int) -> tupl
     if high > position["running_high"]:
         position["running_high"] = high
     position["trail_stop_usd"] = _trail_stop(position)
-    return None, None, partials
+    return None, None, partials, None, None
 
 
 def _ladder_steps(position: dict, mark_price_usd: float, now_ms: int, candles):
@@ -379,14 +442,17 @@ def _mark_ladder(path: Path, position: dict, mark_price_usd: float, now_ms: int,
     exit_reason = None
     exit_raw = None
     exit_at = now_ms
+    exit_model = None
+    stop_level = None
     for low, high, stamp, source, _candle in steps:
-        reason, raw, partials = _ladder_bar(working, low, high, stamp)
+        reason, raw, partials, model, level = _ladder_bar(working, low, high, stamp, source)
         for partial in partials:
             event = _snapshot(working, kind="PARTIAL", now_ms=stamp, price_path=source, candles_in=candles_in)
             event.update(partial)
             _append(path, event)
         if reason is not None:
             exit_reason, exit_raw, exit_at, price_path = reason, raw, stamp, source
+            exit_model, stop_level = model, level
             break
         working["last_mark_ms"] = stamp + (WIDTH_MS if source == "MINUTE_CANDLE" else 0)
         if source == "SNAPSHOT_MARK":
@@ -416,6 +482,8 @@ def _mark_ladder(path: Path, position: dict, mark_price_usd: float, now_ms: int,
         "path": price_path,
         "exit_raw_usd": exit_raw,
         "exit_fill_usd": _sell_fill(exit_raw),
+        "stop_level_usd": stop_level,
+        "fill_model": exit_model or working.get("fill_model") or FILL_MODEL_LADDER,
         "final_leg_pnl_usd": final_pnl,
         "realized_partial_pnl_usd": realized,
         "pnl_usd": total,

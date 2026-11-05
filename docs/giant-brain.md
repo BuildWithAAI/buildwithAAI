@@ -258,7 +258,7 @@ The 4-of-5 result does not hold on these hours. Those five closes opened from 07
 | Field | Meaning |
 | --- | --- |
 | `exit_policy` | `ladder_e` or `single_target` |
-| `fill_model` | `FEE_1PCT_SLIP_0_5PCT` on the ladder. `ASSUMED_FROM_OBSERVED_LIQUIDITY` on the single target |
+| `fill_model` | `FEE_1PCT_SLIP_0_5PCT` when a rung or a stop is touched at its level. `GAP_AT_CANDLE_LOW` or `GAP_AT_SNAPSHOT_MARK` when the observed print is already through the stop. `ASSUMED_FROM_OBSERVED_LIQUIDITY` on the single target |
 | `price_path` | `MINUTE_CANDLE` when a new in-window minute candle was applied, otherwise `SNAPSHOT_MARK` |
 | `entry_price_usd` | Observed mark. Rungs and the stop are multiples of this mark |
 | `entry_fill_usd` | Mark times `(1 + slippage_rate) * (1 + fee_rate)` |
@@ -301,6 +301,35 @@ Win rate after costs counts a closed trade as a win when `pnl_after_costs_usd` i
 The single-target close is the same GATO timeout as the earlier walk-forward, thesis `55f3bf13a2baef95f257b426ec14d83df07b4c9e26bb49cd9bce97f6c4179312`. Its liquidity-slippage pnl, with fees `NOT_OBSERVED`, is still 0.5757024869207977. Restated with the 1% fee and 0.5% slippage on the buy and the sell, `pnl_after_costs_usd` is -2.299179950441493. That is one loss, so the average win and the P/L ratio are not defined, and the profit factor is 0.0.
 
 The ladder opened that same GATO position at `2026-11-04T22:05:01+00:00` and had not closed it by `2026-11-04T22:55:01+00:00`. `remaining_fraction` was 1. `running_high` was 0.01094. The -50% stop is 0.005175 and the 2x rung is 0.0207. Neither printed. The first three marks used minute candles. Later marks had no new candle in the recorded page, so they used the snapshot price. The 48-hour horizon had not arrived, so there is no closed trade and the after-cost totals are not defined.
+
+## Gap fill and entry floor
+
+A ladder stop or trail that is only touched fills at that level, and `fill_model` stays `FEE_1PCT_SLIP_0_5PCT`. When the candle low or the snapshot mark is already below the level, the fill is that observed price. `fill_model` is then `GAP_AT_CANDLE_LOW` or `GAP_AT_SNAPSHOT_MARK`. `stop_level_usd` still records the level that was crossed. The recorded GDA minute at `1793833080000` opened at 0.0001190453536428696 and printed a low of 2.1961568505861504e-06. Against the 22:55 mark of 9.242e-05, that low is through the -50% stop, so the paper fill is the low.
+
+A new paper open also has to clear three checks. Liquidity must be at least `min_liquidity_usd` 10000. Market cap must be at least `min_market_cap_usd` 20000. `price_change_h1` below `max_hour_drop_percent` -80 is refused. A missing liquidity or market cap is refused too. A row that fails is not opened. The ledger gets a `SKIP` with `skip_reasons`. The GDA row at `2026-11-04T23:10:03+00:00` is market cap 1943, liquidity 1986.8, and `price_change_h1` -94.84, so the reasons are `LIQUIDITY_BELOW_MIN`, `MARKET_CAP_BELOW_MIN`, and `HOUR_DROP_OVER_LIMIT`.
+
+The walk-forward was run twice on the same frozen copy of the store, 126 files from `0515.jsonl` through `2355.jsonl`. Memory was filled only before the gap: 4339 rows, latest end `2026-11-04T14:25:01+00:00`. Holdout files: 24, from `2200.jsonl`. Before means no entry floor and a stop fill at the stop. After means the floor and the gap fill. No ladder position in this window printed a stop, so the gap-fill rule does not change the closed ladder pnl. The floor is what changes the book. The file is `research/giant-brain/walk_forward_floor_2026-11-04.json`.
+
+| | Before, with crow | After, with crow |
+| --- | --- | --- |
+| `single_target` theses | 3 | 3 |
+| `single_target` opened | 3 | 2 |
+| `single_target` closed | 2 | 1 |
+| `single_target` still open | 1 | 1 |
+| `single_target` entry skips | 0 | 1 |
+| `single_target` win rate after costs | 0.0 | 0.0 |
+| `single_target` average win | not defined | not defined |
+| `single_target` average loss | -2.876949692950391 | -2.299179950441493 |
+| `single_target` P/L ratio | not defined | not defined |
+| `single_target` profit factor | 0.0 | 0.0 |
+| `single_target` pnl after modeled costs | -5.753899385900782 | -2.299179950441493 |
+| `ladder_e` opened | 3 | 2 |
+| `ladder_e` closed | 0 | 0 |
+| `ladder_e` still open | 3 | 2 |
+| `ladder_e` entry skips | 0 | 1 |
+| `ladder_e` win rate, average win, average loss, P/L ratio, profit factor, pnl after costs | not defined | not defined |
+
+Without crow, both policies opened nothing before and after, so those after-cost metrics stay undefined. The skipped open is GDA. CASSO at `2026-11-04T23:50:03+00:00` has liquidity 39880.66, market cap 237145, and `price_change_h1` 522, so it still opens. It is the position still open at the last snapshot. GATO remains the one single-target close, pnl after costs -2.299179950441493. The removed GDA single-target timeout had pnl after costs -3.454719435459289. `execution_allowed` and `live_orders` stayed false.
 
 ## Live trading is not enabled
 

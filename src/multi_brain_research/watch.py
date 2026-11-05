@@ -7,7 +7,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .paper_trader import PaperError, mark, open_position, state
+from .paper_trader import (
+    MAX_HOUR_DROP_PERCENT,
+    MIN_LIQUIDITY_USD,
+    MIN_MARKET_CAP_USD,
+    PaperError,
+    entry_skip_reasons,
+    mark,
+    open_position,
+    skip_entry,
+    state,
+)
 from .snapshot_feed import (
     SnapshotError,
     canonical_pairs,
@@ -44,7 +54,7 @@ def _candles_for(candle_dir: Path | None, position: dict):
     return load_jsonl(path)
 
 
-def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e") -> dict:
+def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 600_000, limit: int = 25, score=None, not_before_ms: int | None = None, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True, min_liquidity_usd: float = MIN_LIQUIDITY_USD, min_market_cap_usd: float = MIN_MARKET_CAP_USD, max_hour_drop_percent: float = MAX_HOUR_DROP_PERCENT) -> dict:
     root = resolve_root(root)
     if score is None:
         from .giant_brain import fuse
@@ -52,7 +62,8 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
         def score(observation, now_ms):
             return fuse(observation, now_ms=now_ms)
 
-    opened = closed = skipped = 0
+    opened = closed = skipped = entry_skipped = 0
+    skip_reasons: dict[str, int] = {}
     seen: dict[str, dict] = {}
     history: dict[str, list[dict]] = {}
     for relative in _files(root):
@@ -106,12 +117,27 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
             write_files(theses_dir, thesis)
             if type(record.get("price_usd")) not in (int, float):
                 continue
+            if entry_floor:
+                reasons = entry_skip_reasons(
+                    record, min_liquidity_usd=min_liquidity_usd, min_market_cap_usd=min_market_cap_usd,
+                    max_hour_drop_percent=max_hour_drop_percent,
+                )
+                if reasons:
+                    skip_entry(
+                        ledger, thesis, record, reasons, min_liquidity_usd=min_liquidity_usd,
+                        min_market_cap_usd=min_market_cap_usd, max_hour_drop_percent=max_hour_drop_percent,
+                    )
+                    entry_skipped += 1
+                    for reason in reasons:
+                        skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+                    continue
             try:
                 flag = record.get("instant_graduation")
                 opened_row = open_position(
                     ledger, thesis, mark_price_usd=record["price_usd"], now_ms=now_ms, notional_usd=100,
                     exit_policy=exit_policy,
                     instant_graduation=flag if type(flag) is bool else None,
+                    gap_fill=gap_fill,
                 )
             except PaperError:
                 skipped += 1
@@ -122,6 +148,8 @@ def replay(root: Path, ledger: Path, theses_dir: Path, *, threshold_ppm: int = 6
         "opened": opened,
         "closed": closed,
         "skipped": skipped,
+        "entry_skipped": entry_skipped,
+        "skip_reasons": skip_reasons,
         "mode": "PAPER",
         "action": "NO_EXECUTION",
         "execution_allowed": False,

@@ -252,7 +252,7 @@ def _trades(ledger: Path, symbols: dict[str, str]) -> list[dict]:
     return trades
 
 
-def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e") -> dict:
+def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_before_ms: int, limit: int, threshold_ppm: int, candle_dir: Path | None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True) -> dict:
     dest.mkdir(parents=True, exist_ok=True)
     ledger = dest / "paper.jsonl"
     theses = dest / "theses"
@@ -271,6 +271,7 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         root, ledger, theses,
         threshold_ppm=threshold_ppm, limit=limit, score=score,
         not_before_ms=not_before_ms, candle_dir=candle_dir, exit_policy=exit_policy,
+        entry_floor=entry_floor, gap_fill=gap_fill,
     )
     summary = metrics(ledger)
     closed = state(ledger)["closed"]
@@ -294,13 +295,15 @@ def _book(root: Path, dest: Path, series: dict, *, memory: Path | None, not_befo
         "fees": "APPLIED" if exit_policy == "ladder_e" else "NOT_OBSERVED",
         "cost_model": "FEE_1PCT_SLIP_0_5PCT" if exit_policy == "ladder_e" else "ASSUMED_FROM_OBSERVED_LIQUIDITY",
         "skipped": counted["skipped"],
+        "entry_skipped": counted.get("entry_skipped", 0),
+        "skip_reasons": counted.get("skip_reasons") or {},
         "trades": _trades(ledger, symbols),
         "execution_allowed": False,
         "live_orders": False,
     }
 
 
-def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e") -> dict:
+def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int = 600_000, candle_dir: Path | None = None, exit_policy: str = "ladder_e", entry_floor: bool = True, gap_fill: bool = True) -> dict:
     """Fill crow memory before the longest gap and score the later snapshots twice."""
     root = resolve_root(root)
     work.mkdir(parents=True, exist_ok=True)
@@ -323,10 +326,12 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
             "with_crow": _book(
                 root, work / policy / "with_crow", series, memory=memory, not_before_ms=before_ms,
                 limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir, exit_policy=policy,
+                entry_floor=entry_floor, gap_fill=gap_fill,
             ),
             "without_crow": _book(
                 root, work / policy / "without_crow", series, memory=None, not_before_ms=before_ms,
                 limit=limit, threshold_ppm=threshold_ppm, candle_dir=candle_dir, exit_policy=policy,
+                entry_floor=entry_floor, gap_fill=gap_fill,
             ),
         }
     chosen = policies[exit_policy]
@@ -361,6 +366,8 @@ def walk_forward(root: Path, work: Path, *, limit: int = 25, threshold_ppm: int 
         "memory_outcome_end_max_ts": None if not ends else _iso(max(ends)),
         "candle_dir": None if candle_dir is None else str(candle_dir),
         "exit_policy": exit_policy,
+        "entry_floor": entry_floor,
+        "gap_fill": gap_fill,
         "policies": policies,
         "with_crow": chosen["with_crow"],
         "without_crow": chosen["without_crow"],

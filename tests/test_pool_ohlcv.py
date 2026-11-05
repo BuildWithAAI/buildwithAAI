@@ -156,6 +156,7 @@ class PathTests(unittest.TestCase):
             "dex": "pumpswap",
             "price_usd": 1.0,
             "liquidity_usd": 50_000.0,
+            "market_cap": 100_000.0,
             "volume_h1": 1_000.0,
             "price_change_h1": 20.0,
             "buys_h1": 3,

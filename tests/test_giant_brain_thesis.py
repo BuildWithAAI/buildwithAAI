@@ -59,6 +59,7 @@ def _record(**overrides):
         "dex": "pump_fun",
         "price_usd": 1.0,
         "liquidity_usd": 50_000.0,
+        "market_cap": 100_000.0,
         "volume_h1": 10_000.0,
         "price_change_h1": 20.0,
         "buys_h1": 30,
