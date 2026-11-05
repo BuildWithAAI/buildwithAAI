@@ -64,8 +64,10 @@ def snapshot_files(root: Path) -> list[str]:
     """Snapshot paths in UTC day order, then clock order.
 
     A plain `.jsonl` and a `.jsonl.gz` for the same day and stamp are one
-    snapshot. The plain file is kept. Gzipped files are not appended after
-    every plain file, so an earlier day's archive stays before the next day.
+    snapshot. The gzipped file is kept when both exist, because the collector
+    deletes the plain file after the gzip finishes. Gzipped files are not
+    sorted after every plain file, so an earlier day's archive stays before
+    the next day.
     """
     folder = root / "snapshots"
     if not folder.is_dir():
@@ -78,7 +80,7 @@ def snapshot_files(root: Path) -> list[str]:
     def sort_key(path: Path) -> tuple:
         relative = path.relative_to(folder)
         day = relative.parts[0] if len(relative.parts) > 1 else ""
-        return (day, path.name.split(".")[0], path.name.endswith(".gz"), relative.as_posix())
+        return (day, path.name.split(".")[0], not path.name.endswith(".jsonl.gz"), relative.as_posix())
 
     chosen: dict[tuple[str, str], Path] = {}
     for path in sorted(paths, key=sort_key):
@@ -119,10 +121,28 @@ def read_jsonl(path: Path) -> list[dict]:
     return rows
 
 
+def resolve_snapshot(root: Path, relative: str) -> Path:
+    """Open the snapshot that is still on disk.
+
+    The collector can replace `HHMM.jsonl` with `HHMM.jsonl.gz` after a path
+    was listed. When both names exist, the gzipped file is the one kept.
+    """
+    if type(relative) is not str or not (relative.endswith(".jsonl") or relative.endswith(".jsonl.gz")):
+        return _under(root, relative)
+    plain_rel = relative[:-3] if relative.endswith(".jsonl.gz") else relative
+    gz = _under(root, plain_rel + ".gz")
+    plain = _under(root, plain_rel)
+    if gz.is_file():
+        return gz
+    if plain.is_file():
+        return plain
+    raise FileNotFoundError(relative)
+
+
 def load_snapshot(root: Path, relative: str | None = None) -> list[dict]:
     if relative is None:
         relative = load_latest(root)["snapshot_file"]
-    return read_jsonl(_under(root, relative))
+    return read_jsonl(resolve_snapshot(root, relative))
 
 
 def canonical_pairs(records: list[dict]) -> dict[str, dict]:

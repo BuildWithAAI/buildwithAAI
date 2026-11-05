@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from pathlib import Path
 
 from .brain_input import paper_long_support
 
 _FIELDS = ("signed_return", "flow_imbalance", "liquidity_change")
 _MAX_DISTANCE = 0.6
+_REMEMBER_ATTEMPTS = 8
 
 
 def _vector(features: dict) -> tuple[float, float, float] | None:
@@ -134,5 +136,20 @@ def remember(path: Path, record: dict) -> None:
         line["outcome_end_ms"] = end
     if type(start) is int and start >= 0:
         line["outcome_start_ms"] = start
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(line, sort_keys=True) + "\n")
+    _append_line(path, json.dumps(line, sort_keys=True) + "\n")
+
+
+def _append_line(path: Path, text: str, *, attempts: int = _REMEMBER_ATTEMPTS, sleep=None) -> None:
+    """Append one line. A shared store can raise EAGAIN; retry that and nothing else."""
+    pause = time.sleep if sleep is None else sleep
+    delay = 0.05
+    for attempt in range(attempts):
+        try:
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(text)
+            return
+        except BlockingIOError:
+            if attempt + 1 >= attempts:
+                raise
+            pause(delay)
+            delay = min(1.0, delay * 2)

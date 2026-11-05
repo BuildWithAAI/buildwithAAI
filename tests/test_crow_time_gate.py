@@ -6,6 +6,7 @@ snapshots on 2026-11-04: SI276 at 05:15, 05:20, and 05:25 UTC, and JEANPHIL at
 """
 from __future__ import annotations
 
+import errno
 import gzip
 import hashlib
 import json
@@ -13,10 +14,11 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from src.multi_brain_research.brain_input import features
 from src.multi_brain_research.crow_brain import recall, remember
-from src.multi_brain_research.snapshot_feed import load_snapshot, observation_from_pair, parse_time_ms, snapshot_files
+from src.multi_brain_research.snapshot_feed import load_snapshot, observation_from_pair, parse_time_ms, resolve_snapshot, snapshot_files
 from src.multi_brain_research.walk_forward import walk_forward
 from src.multi_brain_research.watch import replay
 
@@ -129,9 +131,10 @@ class CrowTimeGateTests(unittest.TestCase):
             (day / "1200.jsonl").write_bytes(json.dumps(early).encode())
             (root / "latest.json").write_text(json.dumps({"snapshot_file": "snapshots/2026-11-05/0100.jsonl", "sources": {}}))
             self.assertEqual(snapshot_files(root), [
-                "snapshots/2026-11-04/1200.jsonl",
+                "snapshots/2026-11-04/1200.jsonl.gz",
                 "snapshots/2026-11-05/0100.jsonl",
             ])
+            self.assertEqual(load_snapshot(root, "snapshots/2026-11-04/1200.jsonl")[0]["price_usd"], early["price_usd"])
             (day / "1200.jsonl").unlink()
             self.assertEqual(snapshot_files(root), [
                 "snapshots/2026-11-04/1200.jsonl.gz",
@@ -163,6 +166,84 @@ class CrowTimeGateTests(unittest.TestCase):
             self.assertEqual(report["memory_rows"], 1)
             self.assertLess(report["memory_outcome_end_max_ms"], report["holdout_ms"])
             self.assertIn("0515.jsonl.gz", snapshot_files(root)[0])
+
+    def test_a_listed_plain_path_still_opens_after_the_collector_gzips_it(self):
+        early = _row("0520.jsonl")
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            day = root / "snapshots" / "2026-11-04"
+            day.mkdir(parents=True)
+            plain = day / "1200.jsonl"
+            gzipped = day / "1200.jsonl.gz"
+            plain.write_bytes(json.dumps(early).encode())
+            with gzip.open(gzipped, "wb") as handle:
+                handle.write(plain.read_bytes())
+            listed = snapshot_files(root)
+            self.assertEqual(listed, ["snapshots/2026-11-04/1200.jsonl.gz"])
+            plain.unlink()
+            resolved = resolve_snapshot(root, "snapshots/2026-11-04/1200.jsonl")
+            self.assertEqual(resolved, gzipped.resolve())
+            self.assertEqual(load_snapshot(root, "snapshots/2026-11-04/1200.jsonl")[0]["price_usd"], early["price_usd"])
+            gzipped.unlink()
+            plain.write_bytes(json.dumps(early).encode())
+            self.assertEqual(resolve_snapshot(root, "snapshots/2026-11-04/1200.jsonl.gz"), plain.resolve())
+
+    def test_remember_retries_eagain_and_still_writes_one_line(self):
+        outcome = _outcome("0520.jsonl", "0515.jsonl", "0525.jsonl")
+        record = {
+            "mint": outcome["mint"],
+            "features": outcome["features"],
+            "later_return": outcome["later_return"],
+            "observation_sha256": outcome["observation_sha256"],
+            "outcome_start_ms": outcome["outcome_start_ms"],
+            "outcome_end_ms": outcome["outcome_end_ms"],
+            "action": "NO_EXECUTION",
+            "execution_allowed": False,
+        }
+        real_open = Path.open
+
+        def fail_twice(self, mode="r", *args, **kwargs):
+            if "a" in str(mode):
+                fail_twice.count += 1
+                if fail_twice.count < 3:
+                    raise BlockingIOError(errno.EAGAIN, "Resource temporarily unavailable")
+            return real_open(self, mode, *args, **kwargs)
+
+        fail_twice.count = 0
+        sleeps = []
+        with tempfile.TemporaryDirectory() as folder:
+            memory = Path(folder) / "crow.jsonl"
+            with patch.object(Path, "open", fail_twice), patch("src.multi_brain_research.crow_brain.time.sleep", sleeps.append):
+                remember(memory, record)
+            self.assertEqual(fail_twice.count, 3)
+            self.assertEqual(sleeps, [0.05, 0.1])
+            self.assertEqual(len(memory.read_text(encoding="utf-8").splitlines()), 1)
+
+        def always(self, mode="r", *args, **kwargs):
+            if "a" in str(mode):
+                raise BlockingIOError(errno.EAGAIN, "Resource temporarily unavailable")
+            return real_open(self, mode, *args, **kwargs)
+
+        sleeps.clear()
+        with tempfile.TemporaryDirectory() as folder:
+            memory = Path(folder) / "crow.jsonl"
+            with patch.object(Path, "open", always), patch("src.multi_brain_research.crow_brain.time.sleep", sleeps.append):
+                with self.assertRaises(BlockingIOError):
+                    remember(memory, record)
+            self.assertEqual(len(sleeps), 7)
+
+        def denied(self, mode="r", *args, **kwargs):
+            if "a" in str(mode):
+                raise PermissionError(13, "Permission denied")
+            return real_open(self, mode, *args, **kwargs)
+
+        sleeps.clear()
+        with tempfile.TemporaryDirectory() as folder:
+            memory = Path(folder) / "crow.jsonl"
+            with patch.object(Path, "open", denied), patch("src.multi_brain_research.crow_brain.time.sleep", sleeps.append):
+                with self.assertRaises(PermissionError):
+                    remember(memory, record)
+            self.assertEqual(sleeps, [])
 
 
 if __name__ == "__main__":
