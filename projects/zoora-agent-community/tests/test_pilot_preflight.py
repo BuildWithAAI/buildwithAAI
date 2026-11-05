@@ -3,7 +3,6 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import unittest
@@ -254,7 +253,7 @@ class PilotPreflightTests(unittest.TestCase):
             "--collaboration-project", self.project, "--model", "synthetic-fixture",
             "--model-port", str(self.model.port), "--out", str(self.out)]
         # Test-only public CA; the child still verifies the actual TLS hostname/certificate.
-        environment = {**os.environ, "SSL_CERT_FILE": str(Path(__file__).parent / "fixtures" / "bridge-localhost-cert.pem")}
+        environment = {**os.environ, "SSL_CERT_FILE": str(self.tls.certificate)}
         result = subprocess.run(command, capture_output=True, text=True, timeout=15, env=environment)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["report_sha256"], hashlib.sha256(self.out.read_bytes()).hexdigest())

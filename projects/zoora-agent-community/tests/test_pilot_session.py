@@ -3,7 +3,6 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import threading
@@ -74,7 +73,7 @@ class PilotSessionTests(unittest.TestCase):
             "--session-dir", str(folder or self.folder), "--timeout", "90"]
 
     def environment(self):
-        return {**os.environ, "SSL_CERT_FILE": str(Path(__file__).parent / "fixtures/bridge-localhost-cert.pem")}
+        return {**os.environ, "SSL_CERT_FILE": str(self.tls.certificate)}
 
     def failure_evidence(self, folder):
         """Retain fixed failure context in CI, never private prompts or outputs."""

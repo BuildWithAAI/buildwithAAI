@@ -19,12 +19,23 @@ def hire(path: Path) -> dict:
 
 def self_check() -> dict:
     missing = hire(Path("/tmp/aai-no-tape.jsonl"))
+    slot_only = Path("/tmp/aai-slot-only-tape.jsonl")
+    slot_only.write_text(json.dumps({"slot": 1}) + "\n")
+    bare = hire(slot_only)
     path = Path("/tmp/aai-yes-tape.jsonl")
-    path.write_text(json.dumps({"slot": 1}) + "\n")
+    path.write_text(json.dumps({
+        "slot": 2,
+        "price_quote_per_base": 1.1,
+        "previous_price": 1.0,
+        "buy_quote_atoms": 4,
+        "sell_quote_atoms": 1,
+        "liquidity_quote": 120,
+        "previous_liquidity_quote": 100,
+    }) + "\n")
     present = hire(path)
-    if missing["hire_allowed"] or not present["hire_allowed"]:
+    if missing["hire_allowed"] or bare["hire_allowed"] or not present["hire_allowed"]:
         raise RuntimeError("TAPE_HIRE_MISMATCH")
-    return {"missing": missing["reason"], "present": present["votes"], "action": "NO_EXECUTION"}
+    return {"missing": missing["reason"], "bare": bare["reason"], "present": present["votes"], "action": "NO_EXECUTION"}
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from model_fixture import ModelFixture  # noqa: E402
 from zoora_community.agent_runner import LocalModel  # noqa: E402
 from zoora_community.client import Client  # noqa: E402
-from zoora_community.practice_journal import Journal, review_practice  # noqa: E402
+from zoora_community.practice_journal import Journal, review_practice, validate_decision  # noqa: E402
 from zoora_community.practice_worker import practice_summary, run_practice  # noqa: E402
 from zoora_community.store import now_ms  # noqa: E402
 from zoora_community.validation import Problem, canonical  # noqa: E402
@@ -63,10 +63,12 @@ class PracticeWorkerTests(unittest.TestCase):
         self.thread.join(10)
         self.assertFalse(self.thread.is_alive())
 
-    def model(self, action=None):
-        decision = action or {"side": "HOLD", "coin_id": "", "amount": 0, "min_output": 0,
-                              "note": "Synthetic protocol fixture abstains."}
-        fixture = ModelFixture(actions=[{"action": "paper_decision", "arguments": decision}]).start()
+    def model(self, action=None, actions=None):
+        if actions is None:
+            actions = [action or {"side": "HOLD", "coin_id": "", "amount": 0, "min_output": 0,
+                                  "note": "Synthetic protocol fixture abstains."}]
+        encoded = [{"action": "paper_decision", "arguments": item} for item in actions]
+        fixture = ModelFixture(actions=encoded).start()
         self.addCleanup(fixture.stop)
         return fixture
 
@@ -244,22 +246,97 @@ class PracticeWorkerTests(unittest.TestCase):
         self.assertEqual(fixture.requests, [])
 
     def test_invalid_minimum_and_buy_budget_fail_without_server_debit(self):
-        for change in ({"min_output": 0}, {"amount": 10_000_001}, {"amount": True}):
+        cases = (({"min_output": 0}, "INVALID_PAPER_ORDER"),
+                 ({"amount": 10_000_001}, "PAPER_BUY_LIMIT"),
+                 ({"amount": True}, "INVALID_PRACTICE_WORKER_INTEGER"))
+        for change, code in cases:
             with self.subTest(change=change):
                 fixture = self.model({**self.buy(), **change})
                 self.journal = self.f.root / uuid.uuid4().hex
-                with self.assertRaises(Problem):
-                    self.run_worker(fixture)
+                result = self.run_worker(fixture)
+                self.assertEqual(result["state"], "MODEL_DECISION_REJECTED")
+                self.assertEqual(result["error"], code)
                 self.assertEqual(self.account()["order_count"], 0)
+                self.assertFalse((self.journal / "tick-000-decision.json").exists())
+                failure = json.loads((self.journal / "tick-000-failure.json").read_bytes())
+                self.assertEqual(failure["error"], code)
+                self.assertEqual(set(failure), {"snapshot_sha256", "error"})
+                self.assertEqual(self.run_worker(fixture)["state"], "ALREADY_OBSERVED_NO_NEW_INFERENCE")
+                self.assertEqual(len(fixture.requests), 2)
+
+    def test_flat_sell_and_oversized_position_sell_stay_rejected(self):
+        coin_id = self.buy()["coin_id"]
+        flat = {"side": "SELL", "coin_id": coin_id, "amount": 9_000_000_000_000, "min_output": 1,
+                "note": "Synthetic sell with no tokens held."}
+        market = self.f.store.call("GET", self.base, token=self.agent)[1]["market"]
+        before = self.account()
+        proposal = dict(flat)
+        self.assertEqual(before["positions"], [])
+        self.assert_code("PAPER_POSITION_LIMIT", lambda: validate_decision(
+            proposal, {"market": market, "account": before}, self.scope))
+        self.assertEqual(proposal, flat)
+        fixture = self.model(flat)
+        rejected = self.run_worker(fixture)
+        self.assertEqual((rejected["state"], rejected["error"]),
+                         ("MODEL_DECISION_REJECTED", "PAPER_POSITION_LIMIT"))
+        self.assertEqual(self.account(), before)
+        self.assertFalse((self.journal / "tick-000-decision.json").exists())
+        failure = json.loads((self.journal / "tick-000-failure.json").read_bytes())
+        self.assertEqual(set(failure), {"snapshot_sha256", "error"})
+        self.assertEqual(failure["error"], "PAPER_POSITION_LIMIT")
+        summary = practice_summary(self.journal)
+        self.assertEqual(summary["counts"]["ABSTAINED"], 1)
+        self.assertEqual(summary["counts"]["SELL"], 0)
+        self.assertEqual(summary["counts"]["HOLD"], 0)
+        self.assertEqual(summary["counts"]["FILLED"], 0)
+        self.assertEqual(self.run_worker(fixture)["state"], "ALREADY_OBSERVED_NO_NEW_INFERENCE")
+        self.assertEqual(len(fixture.requests), 2)
+
+        buy = {"side": "BUY", "coin_id": coin_id, "amount": 100_000, "min_output": 1,
+               "note": "Synthetic buy used only to hold tokens for the rejection check."}
+        oversized = {"side": "SELL", "coin_id": coin_id, "amount": 9_000_000_000_000, "min_output": 1,
+                     "note": "Synthetic sell above the filled paper position."}
+        self.journal = self.f.root / uuid.uuid4().hex
+        held_fixture = self.model(actions=[buy, oversized])
+        self.assertEqual(self.run_worker(held_fixture)["state"], "ORDER_ACCEPTED_PENDING")
+        self.step()
+        held = self.account()
+        self.assertEqual(len(held["positions"]), 1)
+        self.assertGreater(held["positions"][0]["tokens"], 0)
+        self.assertLess(held["positions"][0]["tokens"], oversized["amount"])
+        second = self.run_worker(held_fixture)
+        self.assertEqual((second["state"], second["error"]),
+                         ("MODEL_DECISION_REJECTED", "PAPER_POSITION_LIMIT"))
+        after = self.account()
+        self.assertEqual(after["positions"], held["positions"])
+        self.assertEqual(after["cash_micro"], held["cash_micro"])
+        self.assertEqual(after["order_count"], held["order_count"])
+        self.assertEqual(after["gas_micro"], held["gas_micro"])
+        self.assertFalse((self.journal / "tick-001-decision.json").exists())
+        saved = json.loads((self.journal / "tick-001-failure.json").read_bytes())
+        self.assertEqual(saved["error"], "PAPER_POSITION_LIMIT")
+        reviewed = practice_summary(self.journal)
+        self.assertEqual(reviewed["counts"]["BUY"], 1)
+        self.assertEqual(reviewed["counts"]["SELL"], 0)
+        self.assertEqual(reviewed["counts"]["ABSTAINED"], 1)
+        self.assertEqual(reviewed["counts"]["FILLED"], 1)
+        self.assertEqual(self.run_worker(held_fixture)["state"], "ALREADY_OBSERVED_NO_NEW_INFERENCE")
+        self.assertEqual(len(held_fixture.requests), 4)
+        self.assertEqual(oversized["amount"], 9_000_000_000_000)
 
     def test_unsupported_shell_and_plain_text_are_not_market_decisions(self):
-        for action in ({"action": "shell", "arguments": {"command": "echo denied"}},
-                       {"action": "finish", "arguments": {"output": "Buy anything"}}):
-            fixture = ModelFixture(actions=[action]).start()
-            self.addCleanup(fixture.stop)
-            self.journal = self.f.root / uuid.uuid4().hex
-            with self.assertRaises(Problem):
-                self.run_worker(fixture)
+        cases = (({"action": "shell", "arguments": {"command": "echo denied"}}, "TOOL_NOT_ALLOWED"),
+                 ({"action": "finish", "arguments": {"output": "Buy anything"}}, "PAPER_DECISION_REQUIRED"))
+        for action, code in cases:
+            with self.subTest(action=action["action"]):
+                fixture = ModelFixture(actions=[action]).start()
+                self.addCleanup(fixture.stop)
+                self.journal = self.f.root / uuid.uuid4().hex
+                result = self.run_worker(fixture)
+                self.assertEqual(result["state"], "MODEL_DECISION_REJECTED")
+                self.assertEqual(result["error"], code)
+                self.assertFalse((self.journal / "tick-000-decision.json").exists())
+                self.assertEqual(json.loads((self.journal / "tick-000-failure.json").read_bytes())["error"], code)
         self.assertEqual(self.account()["gas_micro"], 0)
 
     def test_revoked_credential_after_inference_cannot_submit(self):

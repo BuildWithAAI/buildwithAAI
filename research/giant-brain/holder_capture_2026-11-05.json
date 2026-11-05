@@ -1,0 +1,149 @@
+{
+  "protocol": "AAI_HOLDER_CAPTURE_REPORT_V1",
+  "action": "NO_EXECUTION",
+  "execution_allowed": false,
+  "live_orders": false,
+  "snapshot_file": "snapshots/2026-11-05/0215.jsonl",
+  "mints": 96,
+  "stored_lines": 98,
+  "available_reads": 96,
+  "not_observed_lines": 2,
+  "mints_with_a_share": 96,
+  "clear_mints": 84,
+  "raised_mints": 12,
+  "rule_top10_share_ppm": 500000,
+  "top10_ex_vault_share_ppm": {
+    "min": 0,
+    "median": 192314.5,
+    "max": 999999
+  },
+  "first_read_ts": "2026-11-05T02:20:18.502000Z",
+  "first_read_ts_ms": 1793845218502,
+  "last_read_ts": "2026-11-05T02:26:31.615000Z",
+  "last_read_ts_ms": 1793845591615,
+  "source_used": "https://api.rugcheck.xyz",
+  "rpc_probes": [
+    {
+      "source": "https://api.mainnet-beta.solana.com",
+      "method": "getTokenLargestAccounts",
+      "status": "NOT_OBSERVED",
+      "reason": "RATE_LIMITED",
+      "http_status": 429,
+      "retry_after_seconds": 10,
+      "rpc_error_code": 429,
+      "rpc_retries": 1,
+      "supply_slot": 465534329,
+      "read_ts_ms": 1793845205840
+    },
+    {
+      "source": "https://api.mainnet.solana.com",
+      "method": "getTokenLargestAccounts",
+      "status": "NOT_OBSERVED",
+      "reason": "RATE_LIMITED",
+      "http_status": 429,
+      "retry_after_seconds": 10,
+      "rpc_error_code": 429,
+      "rpc_retries": 1,
+      "supply_slot": 465534383,
+      "read_ts_ms": 1793845217102
+    }
+  ],
+  "first_pass": {
+    "body_limit_bytes": 1000000,
+    "succeeded": 94,
+    "not_observed": 2,
+    "not_observed_reason": "RESPONSE_TOO_LARGE",
+    "not_observed_mints": [
+      {
+        "symbol": "TRUMP",
+        "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "body_bytes": 1556350
+      },
+      {
+        "symbol": "ANSEM",
+        "mint": "9cRCn9rGT8V2imeM2BaKs13yhMEais3ruM3rPvTGpump",
+        "body_bytes": 1105341
+      }
+    ]
+  },
+  "retry_after_body_limit_bytes": 4000000,
+  "retry": [
+    {
+      "symbol": "TRUMP",
+      "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+      "status": "AVAILABLE",
+      "top10_ex_vault_share_ppm": 884932,
+      "vaults_identified": 2,
+      "read_ts_ms": 1793845589233
+    },
+    {
+      "symbol": "ANSEM",
+      "mint": "9cRCn9rGT8V2imeM2BaKs13yhMEais3ruM3rPvTGpump",
+      "status": "AVAILABLE",
+      "top10_ex_vault_share_ppm": 655636,
+      "vaults_identified": 2,
+      "read_ts_ms": 1793845591615
+    }
+  ],
+  "walk_forward": {
+    "store": "frozen copy of the snapshot root including holder-reads",
+    "snapshot_files": 153,
+    "first_file": "snapshots/2026-11-04/0515.jsonl.gz",
+    "last_file": "snapshots/2026-11-05/0240.jsonl",
+    "last_ts": "2026-11-05T02:40:01+00:00",
+    "holdout_files": 51,
+    "holdout_ts": "2026-11-04T22:00:03+00:00",
+    "gap_ms": 27302000,
+    "memory_rows": 4339,
+    "limit": 25,
+    "threshold_ppm": 600000,
+    "note": "Closed trades match with and without the holder reads. The read is an input and a risk flag. It does not change the fused score.",
+    "single_target_with_crow": {
+      "theses": 7,
+      "opened": 6,
+      "closed": 5,
+      "open": 1,
+      "entry_skipped": 1,
+      "win_rate": 0.2,
+      "avg_r": -0.44504410436151154,
+      "pnl_before_fees": -81.09108378448943,
+      "win_rate_after_costs": 0.0,
+      "avg_loss": -18.613057372083365,
+      "profit_factor": 0.0,
+      "pnl_after_costs": -93.06528686041682,
+      "fees": "NOT_OBSERVED",
+      "holder_joined_with_reads": 49,
+      "holder_clear_with_reads": 40,
+      "holder_raised_with_reads": 9,
+      "holder_joined_without_reads": 0
+    },
+    "ladder_e_with_crow": {
+      "theses": 7,
+      "opened": 6,
+      "closed": 2,
+      "open": 4,
+      "entry_skipped": 1,
+      "win_rate": 0.0,
+      "avg_r": -1.4200784509237687,
+      "pnl_before_fees": -146.2049145498137,
+      "win_rate_after_costs": 0.0,
+      "avg_loss": -73.10245727490685,
+      "profit_factor": 0.0,
+      "pnl_after_costs": -146.2049145498137,
+      "fees": "APPLIED",
+      "holder_joined_with_reads": 45,
+      "holder_clear_with_reads": 36,
+      "holder_raised_with_reads": 9,
+      "holder_joined_without_reads": 0
+    },
+    "without_crow": {
+      "theses": 0,
+      "closed": 0,
+      "pnl_after_costs": null,
+      "holder_joined_with_reads": 49,
+      "holder_clear_with_reads": 40,
+      "holder_raised_with_reads": 9,
+      "holder_joined_without_reads": 0
+    }
+  }
+}

@@ -48,7 +48,22 @@ def _sha(prefix: bytes, payload: object) -> str:
     return hashlib.sha256(prefix + _canonical(payload)).hexdigest()
 
 
+_GRAPH_CACHE: dict[tuple, dict] = {}
+
+
 def load_graph(path: Path) -> dict:
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size)
+    cached = _GRAPH_CACHE.get(key)
+    if cached is not None:
+        return cached
+    loaded = _load_graph(path)
+    _GRAPH_CACHE.clear()
+    _GRAPH_CACHE[key] = loaded
+    return loaded
+
+
+def _load_graph(path: Path) -> dict:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if raw.get("source_id") != SOURCE_ID or raw.get("neuronal_dynamics") != "NOT_IMPLEMENTED":
         raise FirstBrainError("UNEXPECTED_GRAPH")
@@ -195,6 +210,120 @@ def receipt(edges, model, features, band_ppm: int, graph_sha256: str) -> dict:
         body["uncertainty_ppm"] = uncertainty
         body["abstain_reason"] = None
     return body
+
+
+PLACEHOLDERS = frozenset({"a" * 64, "0" * 64})
+_ADMISSION = None
+
+
+def graph_file() -> Path | None:
+    here = Path(__file__).resolve()
+    candidates = []
+    if len(here.parents) > 2:
+        candidates.append(here.parents[2] / "research/brain-assets/hemibrain_v1_2_first128.json")
+    candidates.append(here.parent / "hemibrain_v1_2_first128.json")
+    return next((path for path in candidates if path.is_file()), None)
+
+
+def _valid_pin(value) -> bool:
+    return type(value) is str and len(value) == 64 and all(c in "0123456789abcdef" for c in value) and value not in PLACEHOLDERS
+
+
+def score_episode(observations, index: int, graph_path: Path, *, steps: int = 5) -> dict:
+    """Score one decision from feature_loader rows and the pinned hemibrain graph.
+
+    Labels used for the fit are earlier rows whose horizon has already arrived
+    by `index`. The current row is not given a made-up label.
+    """
+    from .feature_loader import FEATURE_NAMES, features_from_observations, label_adverse
+
+    features = features_from_observations(observations, index)
+    graph = load_graph(graph_path)
+    if not _valid_pin(graph["graph_sha256"]):
+        raise FirstBrainError("PLACEHOLDER_PROVENANCE")
+    past = []
+    for earlier in range(index):
+        if earlier + 1 > index:
+            continue
+        label = label_adverse(observations, earlier, 1)
+        if label is None:
+            continue
+        past.append((features_from_observations(observations, earlier), label))
+    task_sha = _sha(b"BUILDWITHAAI_FIRST_BRAIN_TASK_V1\0", TASK)
+    named = dict(zip(FEATURE_NAMES, features))
+    if len(past) < 2:
+        model_sha = _sha(b"BUILDWITHAAI_FIRST_BRAIN_MODEL_V1\0", {"state": "NOT_FIT", "reason": "INSUFFICIENT_PAST_LABELS"})
+        return {
+            "module_id": MODULE_ID,
+            "source_id": SOURCE_ID,
+            "graph_sha256": graph["graph_sha256"],
+            "model_sha256": model_sha,
+            "task_sha256": task_sha,
+            "horizon_ms": HORIZON_MS,
+            "prediction_ppm": None,
+            "paper_long_support_ppm": None,
+            "uncertainty_ppm": None,
+            "abstain_reason": "MISSING_DATA",
+            "features": named,
+            "past_labels": len(past),
+            "action": "NO_EXECUTION",
+            "execution_allowed": False,
+        }
+    model = train(graph["edges"], past, seed=7, steps=steps)
+    body = receipt(graph["edges"], model, features, 0, graph["graph_sha256"])
+    if not _valid_pin(body["model_sha256"]) or not _valid_pin(body["task_sha256"]):
+        raise FirstBrainError("PLACEHOLDER_PROVENANCE")
+    if body["prediction_ppm"] is None:
+        body["paper_long_support_ppm"] = None
+    else:
+        body["paper_long_support_ppm"] = 1_000_000 - body["prediction_ppm"]
+    body["features"] = named
+    body["past_labels"] = len(past)
+    body["adverse_ppm"] = body["prediction_ppm"]
+    return body
+
+
+def admission(path: Path | None = None) -> dict:
+    """Council gate: graph pin, feature_loader path, and a non-placeholder receipt."""
+    global _ADMISSION
+    if path is None and _ADMISSION is not None:
+        return _ADMISSION
+    reasons = []
+    chosen = path if path is not None else graph_file()
+    if chosen is None:
+        reasons.append("GRAPH_FILE_ABSENT")
+    else:
+        episode = [
+            {"last_trade_price": 1.0, "quote_atoms": 100.0, "signed_quote_flow": 0.0},
+            {"last_trade_price": 1.2, "quote_atoms": 110.0, "signed_quote_flow": 10.0},
+            {"last_trade_price": 0.9, "quote_atoms": 90.0, "signed_quote_flow": -20.0},
+            {"last_trade_price": 0.95, "quote_atoms": 95.0, "signed_quote_flow": 5.0},
+        ]
+        try:
+            from .feature_loader import features_from_observations
+            early = features_from_observations(episode, 1)
+            later = features_from_observations(episode, 2)
+            if early == later:
+                reasons.append("FEATURES_IGNORE_PRICE")
+            scored = score_episode(episode, 3, chosen, steps=3)
+            for field in ("graph_sha256", "model_sha256", "task_sha256"):
+                if not _valid_pin(scored.get(field)):
+                    reasons.append("PLACEHOLDER_PROVENANCE")
+            if scored.get("action") != "NO_EXECUTION":
+                reasons.append("EXECUTION_LEAK")
+        except (FirstBrainError, ValueError):
+            reasons.append("FEATURE_OR_GRAPH_PATH")
+    result = {
+        "ready": not reasons,
+        "reasons": sorted(set(reasons)),
+        "role": "COUNCIL" if not reasons else "SHADOW",
+        "module_id": MODULE_ID,
+        "action": "NO_EXECUTION",
+        "execution_allowed": False,
+    }
+    if path is None:
+        _ADMISSION = result
+    return result
 
 
 def run_self_check(graph_path: Path) -> dict:

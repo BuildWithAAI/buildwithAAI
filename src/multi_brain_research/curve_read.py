@@ -6,25 +6,18 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from urllib.request import Request, build_opener
+
+from .public_rpc import post
+from .rpc_allow import ALLOWED
 
 CURVE = "Eq93BkkDVBLkjgHxZU6qVk7hrnzTnAyVfCNrXCVix1PL"
 PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
 
 
 def read_curve(endpoint: str, out: Path) -> dict:
-    if not endpoint.startswith("https://"):
+    if endpoint not in ALLOWED:
         raise ValueError("REFUSED")
-    body = json.dumps({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "getAccountInfo",
-        "params": [CURVE, {"encoding": "base64", "commitment": "finalized"}],
-    }).encode()
-    request = Request(endpoint, data=body, headers={"Content-Type": "application/json"}, method="POST")
-    with build_opener().open(request, timeout=20) as response:
-        raw = response.read(262144)
-    payload = json.loads(raw)
+    payload = post(endpoint, "getAccountInfo", [CURVE, {"encoding": "base64", "commitment": "finalized"}])
     value = (payload.get("result") or {}).get("value") or {}
     if value.get("owner") != PUMP:
         raise ValueError("NOT_PUMP_CURVE")
