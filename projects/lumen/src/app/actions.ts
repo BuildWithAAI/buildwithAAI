@@ -2,12 +2,12 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { OWNER_COOKIE } from "../auth/owner";
+import { clientAddress, OWNER_COOKIE } from "../auth/owner";
 import { getEngine } from "../server/engine";
 
 async function ip(): Promise<string> {
   const header = await headers();
-  return header.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  return clientAddress((name) => header.get(name), process.env.LUMEN_TRUSTED_PROXY);
 }
 
 async function gate() {

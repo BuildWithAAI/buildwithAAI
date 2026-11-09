@@ -8,7 +8,7 @@ export type IssuerResult = {
 
 export interface CardIssuer {
   name: "mock" | "stripe_issuing" | "privacy";
-  authorize(intent: PurchaseIntent): IssuerResult;
+  authorize(intent: PurchaseIntent, idempotencyKey: string): IssuerResult;
   listActivity(): { provider: string; providerTransactionId: string; amountCents: number; kind: string }[];
 }
 
@@ -23,10 +23,13 @@ export function assertNoCardMaterial(value: unknown): void {
 export class MockIssuer implements CardIssuer {
   name = "mock" as const;
   calls: PurchaseIntent[] = [];
+  keys: string[] = [];
   activity: { provider: string; providerTransactionId: string; amountCents: number; kind: string }[] = [];
-  authorize(intent: PurchaseIntent): IssuerResult {
+  authorize(intent: PurchaseIntent, idempotencyKey: string): IssuerResult {
     assertNoCardMaterial(intent);
+    if (!idempotencyKey) throw new Error("IDEMPOTENCY_KEY_REQUIRED");
     this.calls.push(intent);
+    this.keys.push(idempotencyKey);
     const providerTransactionId = `mock_${intent.id}`;
     this.activity.push({ provider: "mock", providerTransactionId, amountCents: intent.amountCents, kind: "purchase" });
     return { providerTransactionId, status: "approved", reason: "MOCK_APPROVED" };
@@ -39,8 +42,9 @@ export class MockIssuer implements CardIssuer {
 /** Stub. It does not call Stripe and it cannot see a card number. */
 export class StripeIssuingStub implements CardIssuer {
   name = "stripe_issuing" as const;
-  authorize(intent: PurchaseIntent): IssuerResult {
+  authorize(intent: PurchaseIntent, idempotencyKey: string): IssuerResult {
     assertNoCardMaterial(intent);
+    if (!idempotencyKey) throw new Error("IDEMPOTENCY_KEY_REQUIRED");
     return { providerTransactionId: "", status: "declined", reason: "STRIPE_ISSUING_NOT_CONNECTED" };
   }
   listActivity() {
@@ -51,8 +55,9 @@ export class StripeIssuingStub implements CardIssuer {
 /** Stub. Privacy.com stays unconnected until the owner adds it. */
 export class PrivacyStub implements CardIssuer {
   name = "privacy" as const;
-  authorize(intent: PurchaseIntent): IssuerResult {
+  authorize(intent: PurchaseIntent, idempotencyKey: string): IssuerResult {
     assertNoCardMaterial(intent);
+    if (!idempotencyKey) throw new Error("IDEMPOTENCY_KEY_REQUIRED");
     return { providerTransactionId: "", status: "declined", reason: "PRIVACY_NOT_CONNECTED" };
   }
   listActivity() {

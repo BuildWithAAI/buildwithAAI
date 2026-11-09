@@ -6,6 +6,8 @@ export type PolicyContext = {
   spendOpen: boolean;
   killed: boolean;
   reconciliationAlert: boolean;
+  /** An open card dispute pauses automatic spending and approvals. */
+  openDispute?: boolean;
   spentTodayCents: number;
   spentMonthCents: number;
   recentIntentCount: number;
@@ -47,7 +49,8 @@ export function evaluatePolicy(intent: PurchaseIntent, ctx: PolicyContext): Deci
   if (ctx.rules.monthlyCapCents != null && ctx.spentMonthCents + intent.amountCents > ctx.rules.monthlyCapCents) {
     return { outcome: "decline", reason: "MONTHLY_CAP" };
   }
-  if (!ctx.ownerConfirmed && ctx.reconciliationAlert) return { outcome: "queue", reason: "RECONCILIATION_HOLD" };
+  if (ctx.reconciliationAlert) return { outcome: "queue", reason: "RECONCILIATION_HOLD" };
+  if (ctx.openDispute) return { outcome: "queue", reason: "DISPUTE_HOLD" };
   if (!ctx.ownerConfirmed && ctx.rules.autoApproveCapCents == null) return { outcome: "queue", reason: "AUTO_CAP_UNSET" };
   if (!ctx.ownerConfirmed && ctx.rules.autoApproveCapCents != null && intent.amountCents > ctx.rules.autoApproveCapCents) {
     return { outcome: "queue", reason: "ABOVE_AUTO_CAP" };

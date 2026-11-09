@@ -7,9 +7,10 @@ import { applyNeedDeltas } from "../brain/feel";
 import { blendEmotions } from "../brain/emotions";
 import { blankProduct, initialState, labelsOf, tick, type TickResult } from "../brain/tick";
 import type { BrainState, PurchaseIntent, Wish } from "../brain/types";
-import { createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
+import { allowLogin, createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
 import { allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
 import { executeIntent } from "../money/execute";
+import { deskNotifier, listAlerts } from "../money/notify";
 import { createIssuer, type CardIssuer } from "../money/issuers";
 import { Ledger, moneyView, type LedgerRow } from "../money/ledger";
 import { evaluatePolicy, type PolicyContext } from "../money/policy";
@@ -155,7 +156,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
   if (ctx) {
     for (const intent of result.intents) {
       db.prepare("INSERT OR IGNORE INTO audit(at_ms, kind, detail) VALUES(?, 'intent', ?)").run(now, intent.id);
-      executeIntent(intent, ctx, issuer, new Ledger(db), now);
+      executeIntent(db, intent, ctx, issuer, now);
     }
   }
   for (const listing of result.listings) {
@@ -274,7 +275,7 @@ function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) 
 }
 
 function login(db: DatabaseSync, env: Env, secret: string, ip: string) {
-  if (!allowRate(db, `login:${ip}`, 8, 15 * 60_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
+  if (!allowLogin(db, ip, Date.now())) return { ok: false, error: "RATE_LIMIT" };
   if (!ownerConfigured(env) || !credentialsMatch(secret, env)) return { ok: false, error: "DENIED" };
   const token = createSession(db, Date.now());
   return { ok: true, token };
@@ -317,7 +318,7 @@ function wishlistAct(db: DatabaseSync, env: Env, issuer: CardIssuer, id: string,
     const intent = wishToIntent(wish);
     const ctx = policyContext(db, env);
     if (!ctx) return { ok: false, error: "CONFIG_INVALID" };
-    execution = executeIntent(intent, ctx, issuer, new Ledger(db), Date.now());
+    execution = executeIntent(db, intent, ctx, issuer, Date.now());
     db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'owner', 'lumen', ?, 0, 'replied', NULL, ?)").run(
       randomBytes(8).toString("hex"),
       reaction.memory,
@@ -419,10 +420,12 @@ async function refund(db: DatabaseSync, env: Env, chargeId: string, idempotencyK
   const ledger = new Ledger(db);
   const prior = ledger.list().find((row) => row.idempotencyKey === `refund:${idempotencyKey}`);
   if (prior) return { ok: true, duplicate: true, id: prior.id };
-  const sale = ledger.list().find((row) => row.kind === "sale" && row.providerTransactionId === chargeId);
+  const sale = ledger.list().find((row) => row.kind === "sale" && (row.providerTransactionId === chargeId || row.chargeId === chargeId || row.paymentIntentId === chargeId));
   if (!sale) return { ok: false, error: "SALE_NOT_FOUND" };
   const client = stripeSalesClient(env.STRIPE_SECRET_KEY ?? "");
-  const result = await client.createRefund({ chargeId, idempotencyKey });
+  const charge = sale.chargeId ?? (sale.providerTransactionId?.startsWith("ch_") ? sale.providerTransactionId : null);
+  const paymentIntent = sale.paymentIntentId ?? (sale.providerTransactionId?.startsWith("pi_") ? sale.providerTransactionId : chargeId.startsWith("pi_") ? chargeId : null);
+  const result = await client.createRefund({ chargeId: charge, paymentIntentId: paymentIntent, idempotencyKey });
   ledger.append({
     id: `refund-owner-${idempotencyKey}`,
     atMs: Date.now(),
@@ -438,24 +441,34 @@ async function refund(db: DatabaseSync, env: Env, chargeId: string, idempotencyK
   return { ok: true, duplicate: false, id: result.id };
 }
 
-async function reconcileNow(db: DatabaseSync, env: Env, issuer: CardIssuer, provided?: { stripe: ProviderRecord[]; issuer: ProviderRecord[] }) {
+async function reconcileNow(db: DatabaseSync, env: Env, issuer: CardIssuer, provided?: { stripe: ProviderRecord[]; issuer: ProviderRecord[]; fetchedKinds?: string[] }) {
   const rows = new Ledger(db).list();
   let stripeRecords = provided?.stripe ?? [];
+  let fetchedKinds = provided?.fetchedKinds ?? ["sale", "refund", "payout", "dispute", "purchase"];
   if (!provided && env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET) {
     try {
-      stripeRecords = await stripeSalesClient(env.STRIPE_SECRET_KEY).listCharges();
+      stripeRecords = await stripeSalesClient(env.STRIPE_SECRET_KEY).listRecords();
+      fetchedKinds = ["sale", "refund", "payout", "dispute"];
+      if ((env.LUMEN_CARD_ISSUER ?? "mock") !== "mock") fetchedKinds.push("purchase");
     } catch {
       setFlag(db, "reconciliation_alert", "1");
+      deskNotifier(db).notify({ kind: "reconciliation", title: "Reconciliation could not read Stripe", detail: "Automatic spending and approvals are paused until this is cleared." });
       kvSet(db, "last_reconcile", JSON.stringify({ at: Date.now(), mismatches: [{ code: "FETCH_FAILED", provider: "stripe", providerTransactionId: "", detail: "Stripe records could not be read." }] }));
       setFlag(db, "last_reconcile_day", new Date().toISOString().slice(0, 10));
       return { mismatches: [{ code: "FETCH_FAILED", provider: "stripe", providerTransactionId: "", detail: "Stripe records could not be read." }], alert: true };
     }
+  } else if (!provided) {
+    fetchedKinds = (env.LUMEN_CARD_ISSUER ?? "mock") === "mock" ? [] : ["purchase"];
   }
   const issuerRecords = provided?.issuer ?? issuer.listActivity();
   const providers = ["stripe"];
   if ((env.LUMEN_CARD_ISSUER ?? "mock") !== "mock") providers.push(env.LUMEN_CARD_ISSUER ?? "");
-  const mismatches = compareRecords(rows, [...stripeRecords, ...issuerRecords], providers);
-  if (mismatches.length) setFlag(db, "reconciliation_alert", "1");
+  const mismatches = compareRecords(rows, [...stripeRecords, ...issuerRecords], providers, fetchedKinds);
+  if (mismatches.length) {
+    const already = flag(db, "reconciliation_alert") === "1";
+    setFlag(db, "reconciliation_alert", "1");
+    if (!already) deskNotifier(db).notify({ kind: "reconciliation", title: "Reconciliation mismatch", detail: `${mismatches.length} mismatch(es). Automatic spending and approvals are paused.` });
+  }
   kvSet(db, "last_reconcile", JSON.stringify({ at: Date.now(), mismatches }));
   setFlag(db, "last_reconcile_day", new Date().toISOString().slice(0, 10));
   return { mismatches, alert: mismatches.length > 0 };
@@ -495,7 +508,7 @@ function executeQueued(db: DatabaseSync, env: Env, issuer: CardIssuer, intentId:
     influencedByOwnerChat: false,
     influencedByWeb: false,
   };
-  const execution = executeIntent(forced, { ...ctx, ownerConfirmed: true, recentIntentCount: 0 }, issuer, new Ledger(db), Date.now());
+  const execution = executeIntent(db, forced, { ...ctx, ownerConfirmed: true }, issuer, Date.now());
   return { ok: execution.decision.outcome === "auto_approve", execution, issuerCalled: execution.issuerCalled };
 }
 
@@ -566,6 +579,9 @@ function snapshot(db: DatabaseSync, env: Env) {
       rulesOk: parsed.ok,
       ruleErrors: parsed.ok ? [] : parsed.errors,
       reconciliationAlert: flag(db, "reconciliation_alert") === "1",
+      openDispute: (disputes as { open?: number }[]).length > 0,
+      autoPaused: flag(db, "reconciliation_alert") === "1" || (disputes as unknown[]).length > 0,
+      alerts: listAlerts(db),
       reconcile: reconcile ? JSON.parse(reconcile) : null,
       view: moneyView(ledger),
       ledger: ledger.slice(-40).reverse().map(publicLedger),
@@ -631,7 +647,7 @@ export function startLoop(): void {
   const beat = () => {
     void engine.tickOnce().catch(() => undefined);
     const day = new Date().toISOString().slice(0, 10);
-    if (flag(engine.db, "last_reconcile_day", "") !== day) engine.reconcileNow();
+    if (flag(engine.db, "last_reconcile_day", "") !== day) void engine.reconcileNow().catch(() => undefined);
   };
   beat();
   setInterval(beat, interval);

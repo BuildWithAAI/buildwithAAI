@@ -80,7 +80,7 @@ All of these live in `src/money/rules.ts` and `src/money/policy.ts`.
 | Merchant allowlist | Every merchant needs approval | Only listed merchants can pass |
 | Product types | Every type needs approval. Gigs stay off | Listed types can pass |
 | Auto-approve cap | Nothing auto-approves | At or under the cap can auto-approve |
-| Per-purchase, daily, monthly caps | Not applied. The card limit is the ceiling | Amounts over the cap decline |
+| Per-purchase, daily, monthly caps | Not applied. The card limit is the ceiling. Flip `REQUIRE_HARD_CAPS_WHEN_SPENDING` in `src/money/rules.ts` to require all three | Amounts over the cap decline |
 | Sales channel | Checkout stays closed | `stripe_checkout` required to sell |
 | Spend | Off unless `SPEND_ENABLED=true` and the keeper toggle is on | Both required |
 | New merchant, product, channel, limit, or payout | Proposal or `needs_approval`. Not executed | Keeper approval recorded in the ledger |

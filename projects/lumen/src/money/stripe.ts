@@ -28,11 +28,46 @@ export function parseStripeEvent(payload: string): StripeEvent {
   return parsed;
 }
 
+export type StripeRecord = {
+  provider: "stripe";
+  providerTransactionId: string;
+  paymentIntentId: string | null;
+  amountCents: number;
+  kind: "sale" | "refund" | "payout" | "dispute";
+};
+
 export type SalesClient = {
   createCheckout(input: { creationId: string; title: string; priceCents: number; origin: string; idempotencyKey: string }): Promise<{ id: string; url: string }>;
-  createRefund(input: { chargeId: string; idempotencyKey: string }): Promise<{ id: string }>;
-  listCharges(): Promise<{ provider: string; providerTransactionId: string; amountCents: number; kind: string }[]>;
+  createRefund(input: { chargeId?: string | null; paymentIntentId?: string | null; idempotencyKey: string }): Promise<{ id: string }>;
+  listRecords(): Promise<StripeRecord[]>;
 };
+
+export function refundFormBody(input: { chargeId?: string | null; paymentIntentId?: string | null }): URLSearchParams {
+  const charge = input.chargeId ?? "";
+  const paymentIntent = input.paymentIntentId ?? "";
+  if (charge.startsWith("ch_")) return new URLSearchParams({ charge });
+  if (paymentIntent.startsWith("pi_") || charge.startsWith("pi_")) return new URLSearchParams({ payment_intent: paymentIntent || charge });
+  if (charge) return new URLSearchParams({ charge });
+  throw new Error("REFUND_ID");
+}
+
+export async function listStripeCollection(fetchImpl: typeof fetch, secret: string, resource: string): Promise<Record<string, unknown>[]> {
+  const all: Record<string, unknown>[] = [];
+  let startingAfter = "";
+  for (let page = 0; page < 50; page += 1) {
+    const url = `https://api.stripe.com/v1/${resource}?limit=100${startingAfter ? `&starting_after=${encodeURIComponent(startingAfter)}` : ""}`;
+    const response = await fetchImpl(url, { headers: { Authorization: `Bearer ${secret}` } });
+    if (!response.ok) throw new Error("SALES_PROVIDER_ERROR");
+    const json = (await response.json()) as { data?: Record<string, unknown>[]; has_more?: boolean };
+    const data = json.data ?? [];
+    all.push(...data);
+    if (!json.has_more || data.length === 0) break;
+    const last = String(data[data.length - 1]?.id ?? "");
+    if (!last || last === startingAfter) break;
+    startingAfter = last;
+  }
+  return all;
+}
 
 export function stripeSalesClient(secret: string, fetchImpl: typeof fetch = fetch): SalesClient {
   return {
@@ -62,7 +97,7 @@ export function stripeSalesClient(secret: string, fetchImpl: typeof fetch = fetc
       return { id: json.id, url: json.url };
     },
     async createRefund(input) {
-      const body = new URLSearchParams({ charge: input.chargeId });
+      const body = refundFormBody(input);
       const response = await fetchImpl("https://api.stripe.com/v1/refunds", {
         method: "POST",
         headers: {
@@ -77,18 +112,29 @@ export function stripeSalesClient(secret: string, fetchImpl: typeof fetch = fetc
       if (!json.id) throw new Error("SALES_PROVIDER_ERROR");
       return { id: json.id };
     },
-    async listCharges() {
-      const response = await fetchImpl("https://api.stripe.com/v1/charges?limit=100", {
-        headers: { Authorization: `Bearer ${secret}` },
-      });
-      if (!response.ok) throw new Error("SALES_PROVIDER_ERROR");
-      const json = (await response.json()) as { data?: { id: string; amount: number; paid?: boolean }[] };
-      return (json.data ?? []).filter((row) => row.paid).map((row) => ({
-        provider: "stripe",
-        providerTransactionId: row.id,
-        amountCents: row.amount,
-        kind: "sale",
-      }));
+    async listRecords() {
+      const [charges, refunds, payouts, disputes] = await Promise.all([
+        listStripeCollection(fetchImpl, secret, "charges"),
+        listStripeCollection(fetchImpl, secret, "refunds"),
+        listStripeCollection(fetchImpl, secret, "payouts"),
+        listStripeCollection(fetchImpl, secret, "disputes"),
+      ]);
+      return [
+        ...toRecords(charges.filter((row) => row.paid !== false), "sale"),
+        ...toRecords(refunds, "refund"),
+        ...toRecords(payouts.filter((row) => row.status === undefined || row.status === "paid"), "payout"),
+        ...toRecords(disputes, "dispute"),
+      ];
     },
   };
+}
+
+function toRecords(rows: Record<string, unknown>[], kind: StripeRecord["kind"]): StripeRecord[] {
+  return rows.flatMap((row) => {
+    const id = typeof row.id === "string" ? row.id : "";
+    if (!id) return [];
+    const paymentIntent = typeof row.payment_intent === "string" ? row.payment_intent : null;
+    const amount = typeof row.amount === "number" ? row.amount : 0;
+    return [{ provider: "stripe" as const, providerTransactionId: id, paymentIntentId: paymentIntent, amountCents: amount, kind }];
+  });
 }

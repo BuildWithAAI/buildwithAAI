@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   status TEXT NOT NULL,
   provider TEXT,
   provider_transaction_id TEXT,
+  charge_id TEXT,
+  payment_intent_id TEXT,
   idempotency_key TEXT NOT NULL UNIQUE,
   body_hash TEXT NOT NULL,
   ref TEXT,
@@ -114,6 +116,21 @@ CREATE TABLE IF NOT EXISTS proposals (
   status TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS purchase_claims (
+  intent_id TEXT PRIMARY KEY,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  state TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  ledger_id TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS owner_alerts (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
 CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries
 BEGIN SELECT RAISE(ABORT, 'append-only'); END;
 CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger_entries
@@ -125,7 +142,14 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   const db = new DatabaseSync(file);
   db.exec(SCHEMA);
   db.exec("PRAGMA journal_mode = WAL");
+  ensureColumn(db, "ledger_entries", "charge_id", "charge_id TEXT");
+  ensureColumn(db, "ledger_entries", "payment_intent_id", "payment_intent_id TEXT");
   return db;
+}
+
+function ensureColumn(db: DatabaseSync, table: string, column: string, ddl: string): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((col) => col.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
 }
 
 export function kvGet(db: DatabaseSync, key: string): string | null {

@@ -1,6 +1,8 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 
+const LOGIN_WINDOW_MS = 15 * 60_000;
+
 const SESSION_MS = 12 * 60 * 60 * 1000;
 
 export function hashPassword(password: string): string {
@@ -61,3 +63,51 @@ export function readCookie(header: string | null, name: string): string | null {
 }
 
 export const OWNER_COOKIE = "lumen_owner";
+
+/**
+ * Unset or "none": ignore X-Forwarded-For. The client can put anything there.
+ * "fly": use Fly-Client-IP, which Fly sets and the client cannot choose.
+ * "forwarded": use the last X-Forwarded-For hop, the one a trusted proxy appends.
+ */
+export function clientAddress(get: (name: string) => string | null, trustedProxy: string | undefined): string {
+  const mode = (trustedProxy ?? "none").trim().toLowerCase();
+  if (mode === "fly") {
+    const ip = get("fly-client-ip")?.trim() ?? "";
+    return isIp(ip) ? ip : "unknown";
+  }
+  if (mode === "forwarded") {
+    const hops = (get("x-forwarded-for") ?? "").split(",").map((part) => part.trim()).filter(Boolean);
+    const last = hops[hops.length - 1] ?? "";
+    return isIp(last) ? last : "unknown";
+  }
+  return "direct";
+}
+
+function isIp(value: string): boolean {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(value) || /^[0-9a-f:]+$/i.test(value);
+}
+
+export function allowLogin(db: DatabaseSync, addressKey: string, now: number, limits = { global: 20, account: 8, perAddress: 8 }): boolean {
+  const since = now - LOGIN_WINDOW_MS;
+  const buckets: [string, number][] = [
+    ["login:global", limits.global],
+    ["login:account:owner", limits.account],
+    [`login:ip:${addressKey}`, limits.perAddress],
+  ];
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const [bucket, limit] of buckets) {
+      const row = db.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = ? AND at_ms >= ?").get(bucket, since) as { n: number };
+      if (Number(row.n) >= limit) {
+        db.exec("COMMIT");
+        return false;
+      }
+    }
+    for (const [bucket] of buckets) db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)").run(bucket, now);
+    db.exec("COMMIT");
+    return true;
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    throw error;
+  }
+}

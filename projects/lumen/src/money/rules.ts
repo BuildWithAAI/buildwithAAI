@@ -17,6 +17,7 @@
  * LUMEN_PER_PURCHASE_CAP_CENTS       Optional hard cap. Unset means no software per-purchase cap.
  * LUMEN_DAILY_CAP_CENTS              Optional. Unset means no software daily cap.
  * LUMEN_MONTHLY_CAP_CENTS            Optional. Unset means no software monthly cap.
+ * REQUIRE_HARD_CAPS_WHEN_SPENDING    One constant in this file. False keeps those three caps optional.
  * LUMEN_PRODUCT_MERCHANTS            type:merchant pairs. Example: art_supplies:paper-shop
  * LUMEN_PRODUCT_AMOUNT_CENTS         type:cents pairs. No amount, no intent.
  * LUMEN_ART_PRICE_CENTS              Integer cents for a listing, or unset. Unset means art is not priced.
@@ -54,6 +55,28 @@ export type MoneyRules = {
 export type Env = Record<string, string | undefined>;
 
 const NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+/**
+ * One-line owner switch. False: an unset per-purchase, daily, or monthly cap means
+ * the card's own limit is the ceiling. True: spending stays closed until all three
+ * are set. Dollar amounts always come from env, never from this file.
+ */
+export const REQUIRE_HARD_CAPS_WHEN_SPENDING = false;
+
+export function hardCapGap(rules: MoneyRules, requireHardCaps = REQUIRE_HARD_CAPS_WHEN_SPENDING): string | null {
+  if (!requireHardCaps) return null;
+  if (rules.perPurchaseCapCents == null) return "PER_PURCHASE_CAP_REQUIRED";
+  if (rules.dailyCapCents == null) return "DAILY_CAP_REQUIRED";
+  if (rules.monthlyCapCents == null) return "MONTHLY_CAP_REQUIRED";
+  const auto = rules.autoApproveCapCents;
+  const per = rules.perPurchaseCapCents;
+  const daily = rules.dailyCapCents;
+  const monthly = rules.monthlyCapCents;
+  if (auto != null && per != null && auto > per) return "AUTO_CAP_ABOVE_PER_PURCHASE";
+  if (per != null && daily != null && per > daily) return "PER_PURCHASE_ABOVE_DAILY";
+  if (daily != null && monthly != null && daily > monthly) return "DAILY_ABOVE_MONTHLY";
+  return null;
+}
 
 export function parseMoneyRules(env: Env): { ok: true; rules: MoneyRules } | { ok: false; errors: string[] } {
   const errors: string[] = [];
@@ -166,5 +189,11 @@ export function spendAllowed(env: Env, rulesOk: boolean, killed: boolean, adminS
   if (!rulesOk) return { open: false, reason: "CONFIG_INVALID" };
   if (env.SPEND_ENABLED !== "true") return { open: false, reason: "SPEND_DISABLED" };
   if (!adminSpend) return { open: false, reason: "SPEND_ADMIN_OFF" };
+  if (REQUIRE_HARD_CAPS_WHEN_SPENDING) {
+    const parsed = parseMoneyRules(env);
+    if (!parsed.ok) return { open: false, reason: "CONFIG_INVALID" };
+    const gap = hardCapGap(parsed.rules, true);
+    if (gap) return { open: false, reason: gap };
+  }
   return { open: true, reason: "OPEN" };
 }

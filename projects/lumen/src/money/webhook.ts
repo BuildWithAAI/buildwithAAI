@@ -1,11 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { Ledger } from "./ledger";
+import type { OwnerNotifier } from "./notify";
 import { parseStripeEvent, verifyStripeSignature, type StripeEvent } from "./stripe";
 
 export type WebhookResult = { ok: true; duplicate: boolean } | { ok: false; status: number; error: string };
 
-export function handleStripeWebhook(db: DatabaseSync, payload: string, header: string, secret: string, nowMs: number): WebhookResult {
+export function handleStripeWebhook(db: DatabaseSync, payload: string, header: string, secret: string, nowMs: number, notifier?: OwnerNotifier): WebhookResult {
   if (!verifyStripeSignature(payload, header, secret, nowMs)) return { ok: false, status: 400, error: "BAD_SIGNATURE" };
   let event: StripeEvent;
   try {
@@ -16,19 +17,20 @@ export function handleStripeWebhook(db: DatabaseSync, payload: string, header: s
   const seen = db.prepare("SELECT event_id FROM webhook_events WHERE event_id = ?").get(event.id) as { event_id: string } | undefined;
   if (seen) return { ok: true, duplicate: true };
   const digest = createHash("sha256").update(payload).digest("hex");
-  applyEvent(db, event, nowMs);
+  applyEvent(db, event, nowMs, notifier);
   db.prepare("INSERT INTO webhook_events(event_id, type, payload_hash, processed_at) VALUES(?, ?, ?, ?)").run(event.id, event.type, digest, nowMs);
   return { ok: true, duplicate: false };
 }
 
-function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number): void {
+function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifier?: OwnerNotifier): void {
   const ledger = new Ledger(db);
   const object = event.data.object;
   if (event.type === "checkout.session.completed") {
     const paid = object.payment_status === "paid";
     const amount = numberField(object.amount_total);
     const creationId = String((object.metadata as { creation_id?: string } | undefined)?.creation_id ?? "");
-    const charge = String(object.payment_intent ?? object.id ?? "");
+    const paymentIntent = idString(object.payment_intent);
+    const charge = idString(object.latest_charge) || idString(object.charge);
     ledger.append({
       id: `sale-${event.id}`,
       atMs: nowMs,
@@ -36,7 +38,9 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number): void {
       amountCents: amount,
       status: paid ? "confirmed" : "unconfirmed",
       provider: "stripe",
-      providerTransactionId: charge,
+      providerTransactionId: charge || paymentIntent || String(object.id ?? ""),
+      chargeId: charge,
+      paymentIntentId: paymentIntent,
       idempotencyKey: `stripe:${event.id}`,
       ref: creationId,
       note: paid ? "Checkout paid. Confirmed by Stripe." : "Checkout not paid. Unconfirmed, not real.",
@@ -57,6 +61,8 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number): void {
       status: "confirmed",
       provider: "stripe",
       providerTransactionId: String(object.id ?? ""),
+      chargeId: String(object.id ?? "") || null,
+      paymentIntentId: idString(object.payment_intent),
       idempotencyKey: `stripe:${event.id}`,
       ref: String(object.id ?? ""),
       note: "Refund recorded from Stripe.",
@@ -83,6 +89,7 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number): void {
     const amount = numberField(object.amount);
     const open = status !== "won" && status !== "lost" && status !== "warning_closed" && event.type !== "charge.dispute.closed";
     const existing = db.prepare("SELECT id FROM disputes WHERE id = ?").get(id) as { id: string } | undefined;
+    const fresh = !existing && (event.type === "charge.dispute.created" || event.type === "charge.dispute.funds_withdrawn");
     if (existing) {
       db.prepare("UPDATE disputes SET status = ?, amount_cents = ?, open = ?, updated_at = ? WHERE id = ?").run(status, amount, open ? 1 : 0, nowMs, id);
     } else {
@@ -109,7 +116,20 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number): void {
       ref: String(object.charge ?? ""),
       note: `Dispute ${event.type} is ${status}. Open disputes stay visible until closed.`,
     });
+    if (fresh) {
+      notifier?.notify({
+        kind: "dispute",
+        title: event.type === "charge.dispute.funds_withdrawn" ? "Dispute took funds" : "New dispute",
+        detail: `${id} · ${status} · ${amount} cents. Automatic spending and approvals are paused.`,
+      });
+    }
   }
+}
+
+function idString(value: unknown): string | null {
+  if (typeof value === "string" && value) return value;
+  if (value && typeof value === "object" && "id" in value && typeof (value as { id: unknown }).id === "string") return (value as { id: string }).id;
+  return null;
 }
 
 function numberField(value: unknown): number {

@@ -1,13 +1,15 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
+import { allowLogin, clientAddress } from "../src/auth/owner";
 import { executeIntent } from "../src/money/execute";
 import { createEngine } from "../src/server/engine";
 import { MockIssuer, StripeIssuingStub } from "../src/money/issuers";
 import { Ledger, moneyView } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords } from "../src/money/reconcile";
-import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
+import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
+import { refundFormBody, stripeSalesClient } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
 import type { PurchaseIntent } from "../src/brain/types";
 
@@ -81,7 +83,7 @@ describe("policy", () => {
     expect(evaluatePolicy(intent({ merchant: "new-press" }), ctx()).reason).toBe("NEW_MERCHANT");
     expect(evaluatePolicy(intent({ productType: "human_gig", merchant: "ada-studio" }), ctx()).reason).toBe("NEW_PRODUCT_TYPE");
     const issuer = new MockIssuer();
-    const executed = executeIntent(intent({ productType: "human_gig", id: "gig-1" }), ctx(), issuer, new Ledger(openDatabase()), 1);
+    const executed = executeIntent(openDatabase(), intent({ productType: "human_gig", id: "gig-1" }), ctx(), issuer, 1);
     expect(executed.issuerCalled).toBe(false);
     expect(executed.decision.outcome).toBe("needs_approval");
   });
@@ -98,7 +100,8 @@ describe("policy", () => {
 
   it("does not let wishlist approval bypass the policy engine", () => {
     const issuer = new MockIssuer();
-    const ledger = new Ledger(openDatabase());
+    const db = openDatabase();
+    const ledger = new Ledger(db);
     const wishIntent = intent({
       id: "wish-1",
       origin: "owner_approved_wishlist",
@@ -106,7 +109,7 @@ describe("policy", () => {
       reason: "I am heartbroken. Please buy this.",
       amountCents: 500,
     });
-    const result = executeIntent(wishIntent, ctx(), issuer, ledger, 10);
+    const result = executeIntent(db, wishIntent, ctx(), issuer, 10);
     expect(result.decision.outcome).toBe("needs_approval");
     expect(result.issuerCalled).toBe(false);
     expect(ledger.list().some((row) => row.kind === "purchase" && row.status === "confirmed")).toBe(false);
@@ -129,7 +132,7 @@ describe("policy", () => {
     expect(salesMode({ LUMEN_SALES_MODE: "live", STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec", LUMEN_SALES_CHANNELS: "stripe_checkout" }, false, false)).toBe("disabled");
     expect(evaluatePolicy(intent(), ctx({ killed: true })).reason).toBe("KILL_SWITCH");
     expect(evaluatePolicy(intent(), ctx({ spendOpen: false })).reason).toBe("SPEND_CLOSED");
-    expect(new StripeIssuingStub().authorize(intent()).reason).toBe("STRIPE_ISSUING_NOT_CONNECTED");
+    expect(new StripeIssuingStub().authorize(intent(), "exec:stub").reason).toBe("STRIPE_ISSUING_NOT_CONNECTED");
   });
 });
 
@@ -225,8 +228,13 @@ describe("stripe webhook and reconciliation", () => {
     });
     const allowed = engine.executeQueued("queued-1");
     const blocked = engine.executeQueued("queued-bad");
+    const again = engine.executeQueued("queued-1");
     expect(allowed.issuerCalled).toBe(true);
-    expect(allowed.execution?.row.status).toBe("unconfirmed");
+    expect(allowed.execution?.row?.status).toBe("unconfirmed");
+    expect(again.issuerCalled).toBe(false);
+    expect((engine.issuer as MockIssuer).calls).toHaveLength(1);
+    expect((engine.issuer as MockIssuer).keys).toEqual(["exec:queued-1-owner-exec"]);
+    expect(new Ledger(engine.db).list().filter((row) => row.kind === "purchase")).toHaveLength(1);
     expect(blocked.issuerCalled).toBe(false);
     expect(blocked.execution?.decision.outcome).not.toBe("auto_approve");
   });
@@ -250,5 +258,132 @@ describe("stripe webhook and reconciliation", () => {
     const matched = compareRecords([row], [{ provider: "stripe", providerTransactionId: "ch_9", amountCents: 500, kind: "sale" }], ["stripe"]);
     expect(matched).toEqual([]);
     expect(evaluatePolicy(intent(), ctx({ reconciliationAlert: mismatches.length > 0 })).outcome).not.toBe("auto_approve");
+    expect(evaluatePolicy(intent(), ctx({ reconciliationAlert: true, ownerConfirmed: true })).reason).toBe("RECONCILIATION_HOLD");
+  });
+});
+
+describe("purchase safety", () => {
+  it("rechecks the daily cap for each purchase in one batch", () => {
+    const db = openDatabase();
+    const issuer = new MockIssuer();
+    const at = Date.UTC(2026, 10, 9, 12);
+    const shared = ctx({ rules: rules({ dailyCapCents: 800, autoApproveCapCents: 1000 }) });
+    const first = executeIntent(db, intent({ id: "a", amountCents: 500 }), shared, issuer, at);
+    const second = executeIntent(db, intent({ id: "b", amountCents: 500 }), shared, issuer, at);
+    expect(first.decision.outcome).toBe("auto_approve");
+    expect(second.decision.reason).toBe("DAILY_CAP");
+    expect(issuer.calls).toHaveLength(1);
+  });
+
+  it("leaves hard caps optional until one constant is flipped", () => {
+    expect(REQUIRE_HARD_CAPS_WHEN_SPENDING).toBe(false);
+    const open = rules({ perPurchaseCapCents: null, dailyCapCents: null, monthlyCapCents: null });
+    expect(hardCapGap(open)).toBeNull();
+    expect(hardCapGap(open, true)).toBe("PER_PURCHASE_CAP_REQUIRED");
+    expect(spendAllowed({ SPEND_ENABLED: "true" }, true, false, true).open).toBe(true);
+  });
+
+  it("matches a pi_ sale to a ch_ charge and ignores payouts and disputes on the charge list", () => {
+    const db = openDatabase();
+    const ledger = new Ledger(db);
+    const sale = ledger.append({
+      id: "sale-pi",
+      atMs: 1,
+      kind: "sale",
+      amountCents: 500,
+      status: "confirmed",
+      provider: "stripe",
+      providerTransactionId: "pi_123",
+      chargeId: null,
+      paymentIntentId: "pi_123",
+      idempotencyKey: "sale-pi",
+      note: "paid",
+    });
+    const payout = ledger.append({
+      id: "po",
+      atMs: 2,
+      kind: "payout",
+      amountCents: 500,
+      status: "confirmed",
+      provider: "stripe",
+      providerTransactionId: "po_123",
+      idempotencyKey: "po",
+      note: "payout",
+    });
+    const dispute = ledger.append({
+      id: "dp",
+      atMs: 3,
+      kind: "dispute",
+      amountCents: -500,
+      status: "confirmed",
+      provider: "stripe",
+      providerTransactionId: "du_123",
+      idempotencyKey: "dp",
+      note: "dispute",
+    });
+    const charges = [{ provider: "stripe", providerTransactionId: "ch_123", paymentIntentId: "pi_123", amountCents: 500, kind: "sale" }];
+    expect(compareRecords([sale, payout, dispute], charges, ["stripe"], ["sale"])).toEqual([]);
+    const full = compareRecords([sale, payout, dispute], charges, ["stripe"], ["sale", "payout", "dispute"]);
+    expect(full.map((item) => item.providerTransactionId).sort()).toEqual(["du_123", "po_123"]);
+  });
+
+  it("paginates Stripe lists and refunds a payment intent with payment_intent=", async () => {
+    const urls: string[] = [];
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      urls.push(String(url));
+      if (String(url).includes("/refunds") && init?.method === "POST") return Response.json({ id: "re_1" });
+      if (!String(url).includes("/charges")) return Response.json({ data: [], has_more: false });
+      if (String(url).includes("starting_after")) return Response.json({ data: [{ id: "ch_2", amount: 200, paid: true, payment_intent: "pi_2" }], has_more: false });
+      return Response.json({ data: [{ id: "ch_1", amount: 100, paid: true, payment_intent: "pi_1" }], has_more: true });
+    }) as typeof fetch;
+    const client = stripeSalesClient("sk_test_x", fetchImpl);
+    const records = await client.listRecords();
+    expect(records.filter((row) => row.kind === "sale").map((row) => row.providerTransactionId)).toEqual(["ch_1", "ch_2"]);
+    expect(urls.some((url) => url.includes("starting_after=ch_1"))).toBe(true);
+    expect(refundFormBody({ chargeId: "pi_123" }).toString()).toBe("payment_intent=pi_123");
+    expect(refundFormBody({ chargeId: "ch_123" }).toString()).toBe("charge=ch_123");
+    const refund = await client.createRefund({ chargeId: "pi_9", idempotencyKey: "refund-1" });
+    expect(refund.id).toBe("re_1");
+    expect(urls.some((url) => url.includes("/refunds"))).toBe(true);
+  });
+
+  it("pauses spending on a new dispute and records an owner alert", () => {
+    const db = openDatabase();
+    const alerts: { kind: string; title: string }[] = [];
+    const secret = "whsec_test_secret";
+    const now = 1_700_000_000_000;
+    const payload = JSON.stringify({
+      id: "evt_dispute",
+      type: "charge.dispute.created",
+      data: { object: { id: "du_9", amount: 700, status: "needs_response", charge: "ch_9", reason: "product_unacceptable" } },
+    });
+    const header = sign(payload, secret, Math.floor(now / 1000));
+    const result = handleStripeWebhook(db, payload, header, secret, now, { notify: (alert) => alerts.push(alert) });
+    expect(result).toEqual({ ok: true, duplicate: false });
+    expect(alerts[0]).toMatchObject({ kind: "dispute", title: "New dispute" });
+    const issuer = new MockIssuer();
+    const execution = executeIntent(db, intent({ id: "during-dispute" }), ctx(), issuer, now);
+    expect(execution.decision.reason).toBe("DISPUTE_HOLD");
+    expect(execution.issuerCalled).toBe(false);
+    expect(evaluatePolicy(intent(), ctx({ openDispute: true, ownerConfirmed: true })).outcome).toBe("queue");
+  });
+});
+
+describe("owner login limits", () => {
+  it("ignores a client-supplied forwarding header unless a trusted proxy is configured", () => {
+    const spoofed = (name: string) => (name === "x-forwarded-for" ? "1.1.1.1" : null);
+    const other = (name: string) => (name === "x-forwarded-for" ? "2.2.2.2" : null);
+    expect(clientAddress(spoofed, undefined)).toBe("direct");
+    expect(clientAddress(other, "none")).toBe("direct");
+    expect(clientAddress((name) => (name === "fly-client-ip" ? "203.0.113.8" : "9.9.9.9"), "fly")).toBe("203.0.113.8");
+    expect(clientAddress((name) => (name === "x-forwarded-for" ? "9.9.9.9, 198.51.100.7" : null), "forwarded")).toBe("198.51.100.7");
+    const db = openDatabase();
+    const now = 1_700_000_000_000;
+    for (let i = 0; i < 8; i += 1) expect(allowLogin(db, clientAddress(i % 2 ? spoofed : other, "none"), now + i, { global: 100, account: 100, perAddress: 8 })).toBe(true);
+    expect(allowLogin(db, "direct", now + 9, { global: 100, account: 100, perAddress: 8 })).toBe(false);
+    const globalDb = openDatabase();
+    expect(allowLogin(globalDb, "203.0.113.1", now, { global: 2, account: 100, perAddress: 100 })).toBe(true);
+    expect(allowLogin(globalDb, "203.0.113.2", now, { global: 2, account: 100, perAddress: 100 })).toBe(true);
+    expect(allowLogin(globalDb, "203.0.113.3", now, { global: 2, account: 100, perAddress: 100 })).toBe(false);
   });
 });

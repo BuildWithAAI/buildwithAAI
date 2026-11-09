@@ -12,6 +12,8 @@ export type LedgerInput = {
   status: "intent" | "pending" | "confirmed" | "declined" | "unconfirmed";
   provider?: string | null;
   providerTransactionId?: string | null;
+  chargeId?: string | null;
+  paymentIntentId?: string | null;
   idempotencyKey: string;
   ref?: string | null;
   note: string;
@@ -42,6 +44,8 @@ export function bodyHash(input: LedgerInput): string {
     status: input.status,
     provider: input.provider ?? null,
     providerTransactionId: input.providerTransactionId ?? null,
+    chargeId: input.chargeId ?? null,
+    paymentIntentId: input.paymentIntentId ?? null,
     ref: input.ref ?? null,
     note: input.note,
   })).digest("hex");
@@ -64,8 +68,8 @@ export class Ledger {
     const entryHash = createHash("sha256").update(prevHash + hash).digest("hex");
     this.db.prepare(
       `INSERT INTO ledger_entries
-        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, idempotency_key, body_hash, ref, note, prev_hash, entry_hash)
-       VALUES (?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, prev_hash, entry_hash)
+       VALUES (?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       input.id,
       input.atMs,
@@ -74,6 +78,8 @@ export class Ledger {
       input.status,
       input.provider ?? null,
       input.providerTransactionId ?? null,
+      input.chargeId ?? null,
+      input.paymentIntentId ?? null,
       input.idempotencyKey,
       hash,
       input.ref ?? null,
@@ -88,6 +94,11 @@ export class Ledger {
   list(): LedgerRow[] {
     return (this.db.prepare("SELECT * FROM ledger_entries ORDER BY seq ASC").all() as Record<string, unknown>[]).map(mapRow);
   }
+
+  findByIdempotency(key: string): LedgerRow | null {
+    const row = this.db.prepare("SELECT * FROM ledger_entries WHERE idempotency_key = ?").get(key) as Record<string, unknown> | undefined;
+    return row ? mapRow(row) : null;
+  }
 }
 
 function mapRow(row: Record<string, unknown>): LedgerRow {
@@ -100,6 +111,8 @@ function mapRow(row: Record<string, unknown>): LedgerRow {
     status: row.status as LedgerRow["status"],
     provider: (row.provider as string | null) ?? null,
     providerTransactionId: (row.provider_transaction_id as string | null) ?? null,
+    chargeId: (row.charge_id as string | null) ?? null,
+    paymentIntentId: (row.payment_intent_id as string | null) ?? null,
     idempotencyKey: String(row.idempotency_key),
     ref: (row.ref as string | null) ?? null,
     note: String(row.note),
