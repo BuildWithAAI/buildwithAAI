@@ -10,6 +10,7 @@ import type { BrainState, PurchaseIntent, Wish } from "../brain/types";
 import { allowLogin, createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
 import { allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
 import { executeIntent } from "../money/execute";
+import { publishJarvis } from "../integrations/jarvis";
 import { buildOwnerNotifier, deskNotifier, listAlerts } from "../money/notify";
 import { createIssuer, type CardIssuer } from "../money/issuers";
 import { Ledger, moneyView, type LedgerRow } from "../money/ledger";
@@ -159,6 +160,11 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       executeIntent(db, intent, ctx, issuer, now);
     }
   }
+  for (const item of result.feed) {
+    const type = item.kind === "thread" && item.text.includes("keeper") ? "wishlist" : item.kind === "want" || item.kind === "thread" ? "want" : "feed";
+    void publishJarvis(env, { type, text: item.text }).catch(() => undefined);
+  }
+  void publishJarvis(env, { type: "mood", text: labelsOf(result.state).feeling }).catch(() => undefined);
   for (const listing of result.listings) {
     const creation = db.prepare("SELECT id FROM creations WHERE title = ?").get(listing.title) as { id: string } | undefined;
     if (!creation) continue;

@@ -1,3 +1,4 @@
+import { publishJarvis } from "../../../../integrations/jarvis";
 import { getEngine } from "../../../../server/engine";
 import { buildOwnerNotifier, deskNotifier } from "../../../../money/notify";
 import { handleStripeWebhook } from "../../../../money/webhook";
@@ -16,5 +17,10 @@ export async function POST(request: Request) {
     previousSecret: process.env.STRIPE_WEBHOOK_SECRET_PREVIOUS,
   });
   if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
+  if (!result.duplicate) {
+    const event = JSON.parse(payload) as { type?: string; id?: string };
+    const type = event.type === "checkout.session.completed" ? "sale" : event.type?.startsWith("charge.dispute") ? "alert" : null;
+    if (type) void publishJarvis(process.env, { type, text: event.type ?? type }).catch(() => undefined);
+  }
   return Response.json({ received: true, duplicate: result.duplicate });
 }

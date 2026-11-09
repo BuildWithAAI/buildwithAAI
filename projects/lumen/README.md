@@ -33,7 +33,7 @@ Memory keeps 24 short-term and 24 long-term items. Sleep may add a character-she
 
 Owner chat is text-first. Zoora can say what it wants, push back, and ask the keeper to buy supplies. Those asks are guesses unless you set a guess in env, and approving one still goes through the policy engine. Chat cannot spend.
 
-See [docs/EMOTIONS.md](docs/EMOTIONS.md).
+See [docs/EMOTIONS.md](docs/EMOTIONS.md) and [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 
 ## Printed objects
 
