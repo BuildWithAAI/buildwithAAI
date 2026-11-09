@@ -124,6 +124,18 @@ CREATE TABLE IF NOT EXISTS purchase_claims (
   ledger_id TEXT,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS print_orders (
+  id TEXT PRIMARY KEY,
+  design_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL,
+  adapter TEXT NOT NULL,
+  material TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  estimated_cost_cents INTEGER,
+  created_at INTEGER NOT NULL,
+  reason TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS owner_alerts (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL,

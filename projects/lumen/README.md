@@ -35,6 +35,12 @@ Owner chat is text-first. Zoora can say what it wants, push back, and ask the ke
 
 See [docs/EMOTIONS.md](docs/EMOTIONS.md).
 
+## Printed objects
+
+Zoora's first workshop is 3D-printed goods. The brain may only propose a design or a listing. Code checks the license, material, size, and price bounds. A design prints or lists only when it is Zoora's own work, or when a recorded license allows commercial printing and sale.
+
+Fulfillment stays off until `LUMEN_FULFILLMENT` is set. The print-farm adapter speaks a generic HTTP shape and does not name a vendor. Candidates the owner might connect later include Craftcloud, Slant 3D, and Shapeways. Local queues are stubs for OctoPrint, Bambu, and Prusa Connect. None of them start a physical job in this build. Filament, parts, and a printer, if Zoora asks, are normal card-purchase intents and still face the policy engine. Cost of goods is an unconfirmed ledger estimate until a provider confirms it.
+
 ## Environment
 
 Copy `.env.example` to `.env.local`. Amounts are cents, integers, and unset until you choose them. Do not commit `.env.local`.

@@ -36,6 +36,7 @@ export default async function LedgerPage() {
             <tr><th>Sales</th><td>{money(view.salesCents)}</td></tr>
             <tr><th>Purchases</th><td>{money(view.purchaseCents)}</td></tr>
             <tr><th>Fees</th><td>{money(view.feeCents)}</td></tr>
+            <tr><th>COGS estimates (not real)</th><td className="warn">{money(view.cogsEstimateCents)}</td></tr>
             <tr><th>Refunds</th><td>{money(view.refundCents)}</td></tr>
             <tr><th>Payouts</th><td>{money(view.payoutCents)}</td></tr>
             <tr><th>Disputes (signed)</th><td>{money(view.disputeCents)}</td></tr>

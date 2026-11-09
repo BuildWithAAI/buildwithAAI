@@ -139,6 +139,7 @@ export type MoneyView = {
   salesCents: number;
   purchaseCents: number;
   feeCents: number;
+  cogsEstimateCents: number;
   refundCents: number;
   payoutCents: number;
   disputeCents: number;
@@ -151,6 +152,7 @@ export function moneyView(rows: LedgerRow[]): MoneyView {
     salesCents: 0,
     purchaseCents: 0,
     feeCents: 0,
+    cogsEstimateCents: 0,
     refundCents: 0,
     payoutCents: 0,
     disputeCents: 0,
@@ -167,6 +169,7 @@ export function moneyView(rows: LedgerRow[]): MoneyView {
       if (row.kind === "dispute") view.disputeCents += row.amountCents;
     } else if (row.status === "pending" || row.status === "unconfirmed" || row.status === "intent") {
       view.unconfirmedCents += signed;
+      if (row.kind === "fee" && row.note.startsWith("COGS estimate")) view.cogsEstimateCents += Math.abs(row.amountCents);
     }
   }
   return view;
