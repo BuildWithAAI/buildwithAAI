@@ -101,5 +101,5 @@ export function Scene({ color, pulseMs, amplitude, eventKind, asleep, mood }: Pr
     };
   }, [amplitude, asleep, color, eventKind, mood, pulseMs]);
 
-  return <canvas ref={ref} className="bowl" aria-label="Lumen in the Glass Bowl" />;
+  return <canvas ref={ref} className="bowl" aria-label="Zoora in the Glass Bowl" />;
 }

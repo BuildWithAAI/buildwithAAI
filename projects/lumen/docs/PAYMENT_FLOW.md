@@ -1,4 +1,4 @@
-# Lumen payment flow
+# Zoora payment flow
 
 Status: test or disabled. This build does not move live money. No card number, CVC, or issuer token is stored, logged, or shown to the model. Secrets live in environment variables or a host vault, never in the repo.
 
@@ -9,25 +9,25 @@ Zoora's trading and payment runtime is not imported. The ledger shape is origina
 ```mermaid
 sequenceDiagram
   participant Visitor
-  participant Lumen
+  participant Zoora
   participant Policy
   participant Stripe
   participant Ledger
-  Visitor->>Lumen: Buy a listed piece
-  Lumen->>Policy: sales gate
+  Visitor->>Zoora: Buy a listed piece
+  Zoora->>Policy: sales gate
   alt kill switch, bad config, or no test key
     Policy-->>Visitor: Sales closed
   else test or live gate open
-    Lumen->>Stripe: Checkout session, idempotency key
+    Zoora->>Stripe: Checkout session, idempotency key
     Stripe-->>Visitor: Hosted checkout
-    Stripe->>Lumen: webhook checkout.session.completed
-    Lumen->>Lumen: verify Stripe-Signature HMAC
-    Lumen->>Ledger: append sale, confirmed only if paid
-    Lumen->>Visitor: expiring SVG link (72h)
+    Stripe->>Zoora: webhook checkout.session.completed
+    Zoora->>Zoora: verify Stripe-Signature HMAC
+    Zoora->>Ledger: append sale, confirmed only if paid
+    Zoora->>Visitor: expiring SVG link (72h)
   end
 ```
 
-1. A piece is listed only after the keeper approves a proposal. The price is `LUMEN_ART_PRICE_CENTS`. Lumen cannot invent one.
+1. A piece is listed only after the keeper approves a proposal. The price is `LUMEN_ART_PRICE_CENTS`. Zoora cannot invent one.
 2. `LUMEN_SALES_MODE` must be `test` with an `sk_test_` key, or `live` with an `sk_live_` key. Anything else, including a missing webhook secret or a missing `stripe_checkout` channel, disables the store.
 3. Live mode also requires a valid money-rules config. Invalid config disables live sales and all spending.
 4. Checkout is idempotent and rate-limited. The Stripe secret is an Authorization header only.

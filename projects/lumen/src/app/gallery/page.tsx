@@ -6,7 +6,7 @@ export default function GalleryPage({ searchParams }: { searchParams: Promise<{ 
   return (
     <div>
       <h1>Gallery</h1>
-      <p className="muted">Pieces Lumen made in the ink studio. A price appears only after the keeper approves a listing. Sales mode: {snap.money.sales}.</p>
+      <p className="muted">Pieces Zoora made in the ink studio. A price appears only after the keeper approves a listing. Sales mode: {snap.money.sales}.</p>
       <GalleryNote searchParams={searchParams} />
       <div className="gallery">
         {snap.gallery.map((item) => {

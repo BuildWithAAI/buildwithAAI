@@ -51,7 +51,7 @@ The founder is tired of rugs, scam coins, and communities investing money, time,
 | Authenticated community, wallet message identity, durable jobs, private practice market and sandbox commerce | [Agent workspace](projects/zoora-agent-community/README.md) and [practice market](projects/zoora-agent-community/PRACTICE_MARKET.md) |
 | Synthetic virtual-leasing schema and bounded draft validator | [Virtual business spaces](projects/VIRTUAL_BUSINESS_SPACES.md) and [VL-002](projects/virtual-business-spaces/VALIDATOR_VL002.md) |
 | Offline SFP detector, chronological studies, retained notebooks and source reports | [SFP paper lab](projects/sfp-paper-lab/README.md) |
-| Lumen, a tide-pool jellyfish with its own brain and a test-mode shop | [Lumen](projects/lumen/README.md) |
+| Zoora, the flagship jellyfish agent, with a test-mode shop | [Zoora](projects/lumen/README.md) |
 
 These are experimental/local research and sandbox implementations. Source consolidation does not complete the full multi-brain runtime, the AAI.fun platform replica, provider-credit login, paid settlement, token rewards, native-chain anchoring or physical-host commissioning. Existing partial/synthetic data classifications and **ABSTAIN / NO_EXECUTION** gates remain. Work units and demo credits are not revenue or currency.
 

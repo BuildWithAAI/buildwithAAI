@@ -2,7 +2,7 @@
   "name": "lumen",
   "private": true,
   "version": "0.1.0",
-  "description": "Lumen, a tide-pool jellyfish with its own brain. Test-mode payments only.",
+  "description": "Zoora, a tide-pool jellyfish with its own brain. Test-mode payments only.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

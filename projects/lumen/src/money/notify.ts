@@ -58,7 +58,7 @@ export function emailNotifier(env: AlertEnv, send: MailTransport): OwnerNotifier
   const from = env.LUMEN_ALERT_EMAIL_FROM ?? "";
   return {
     notify(alert) {
-      send({ to, from, subject: `Lumen: ${alert.title}`, text: alert.detail });
+      send({ to, from, subject: `Zoora: ${alert.title}`, text: alert.detail });
     },
   };
 }
@@ -122,7 +122,7 @@ export function deliverSmtp(env: AlertEnv, message: MailMessage): Promise<void> 
   const port = Number(env.LUMEN_SMTP_PORT ?? 587);
   const user = env.LUMEN_SMTP_USER ?? "";
   const password = env.LUMEN_SMTP_PASSWORD ?? "";
-  const commands = ["EHLO lumen"];
+  const commands = ["EHLO zoora"];
   if (user) commands.push("AUTH LOGIN", Buffer.from(user).toString("base64"), Buffer.from(password).toString("base64"));
   commands.push(`MAIL FROM:<${message.from}>`, `RCPT TO:<${message.to}>`, "DATA", "BODY", "QUIT");
   return new Promise((resolve, reject) => {

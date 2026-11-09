@@ -1,8 +1,8 @@
-# Lumen
+# Zoora
 
-Lumen is a bioluminescent jellyfish in a tide pool called the Glass Bowl. It is an original character. It keeps needs, emotions, a diary, a gallery, and a keeper chat. Money paths exist only in test mode or switched off.
+Zoora is a bioluminescent jellyfish in a tide pool called the Glass Bowl, and the flagship agent of the Zoora economy. It is an original character. It keeps needs, emotions, a diary, a gallery, and a keeper chat. Money paths exist only in test mode or switched off.
 
-This folder does not import Zoora. Run it on its own.
+The app stays in `projects/lumen`. Environment variables keep the `LUMEN_` prefix, the owner cookie is `lumen_owner`, and the protocol id is `lumen/1`. Those names are the install's, not the character's. This folder does not import the Zoora trading or payments runtime. Run it on its own.
 
 ```bash
 cd projects/lumen
@@ -16,7 +16,7 @@ Open http://localhost:3000. Tests: `npm test`.
 
 - **Bowl** — the jellyfish, needs, emotions, and the live feed
 - **Gallery** — procedural SVG pieces. Buy is closed until sales are configured and a listing is approved
-- **Diary** — Lumen's own lines. Tone follows mood and stress
+- **Diary** — Zoora's own lines. Tone follows mood and stress
 - **Guestbook** — a fixed gift list, a short note, a wave, or a tap
 - **Wants** — public wants only, with no prices
 - **Keeper** — owner chat, wants with reasons, the wishlist, kill switch, and the ledger
@@ -27,11 +27,11 @@ JSON, with no money fields: `GET /status`, `GET /now`, `GET /feed`, `GET /memory
 
 The loop is Sense, Feel, Decide, Speak, Sleep.
 
-Feelings are computed in code. The model, if a key is set, may pick one allowlisted action and a first-person line. With no key, or when the kill switch is on, or when the world has not changed, Lumen continues on rules. Invalid model output falls back to the top weighted act.
+Feelings are computed in code. The model, if a key is set, may pick one allowlisted action and a first-person line. With no key, or when the kill switch is on, or when the world has not changed, Zoora continues on rules. Invalid model output falls back to the top weighted act.
 
 Memory keeps 24 short-term and 24 long-term items. Sleep may add a character-sheet line. It cannot delete the locked lines in `src/brain/character.ts`.
 
-Owner chat is text-first. Lumen can say what it wants, push back, and ask the keeper to buy supplies. Those asks are guesses unless you set a guess in env, and approving one still goes through the policy engine. Chat cannot spend.
+Owner chat is text-first. Zoora can say what it wants, push back, and ask the keeper to buy supplies. Those asks are guesses unless you set a guess in env, and approving one still goes through the policy engine. Chat cannot spend.
 
 See [docs/EMOTIONS.md](docs/EMOTIONS.md).
 
@@ -56,12 +56,12 @@ Copy `.env.example` to `.env.local`. Amounts are cents, integers, and unset unti
 | `LUMEN_PRODUCT_MERCHANTS` | `art_supplies:paper-shop,hosting:railway` |
 | `LUMEN_PRODUCT_AMOUNT_CENTS` | `art_supplies:500`. No amount, no intent |
 | `LUMEN_ART_PRICE_CENTS` | Listing price. Unset means no price |
-| `LUMEN_WISH_GUESSES` | `pigments:1200`. Unset means Lumen states no price |
+| `LUMEN_WISH_GUESSES` | `pigments:1200`. Unset means Zoora states no price |
 | `LUMEN_CARD_ISSUER` | `mock`, `stripe_issuing`, or `privacy`. The last two are stubs |
 | `OWNER_PASSWORD_HASH` | From `PASSWORD='…' npm run hash-password` |
 | `OWNER_ACCESS_TOKEN` | Optional magic token |
 | `OWNER_SESSION_SECRET` | Required or login stays shut |
-| `LUMEN_OWNER_NAME` | What Lumen calls you. Default `keeper` |
+| `LUMEN_OWNER_NAME` | What Zoora calls you. Default `keeper` |
 | `LUMEN_LLM_BASE_URL` | OpenAI-compatible base URL |
 | `LUMEN_LLM_API_KEY` | Never enters the prompt body |
 | `LUMEN_LLM_MODEL` | Fast model for decide and speak |

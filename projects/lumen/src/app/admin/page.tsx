@@ -13,7 +13,7 @@ export default async function AdminPage() {
     <div className="grid">
       <section className="card" style={{ gridColumn: "1 / -1" }}>
         <p className="kicker">Keeper desk</p>
-        <h1>Lumen, in private</h1>
+        <h1>Zoora, in private</h1>
         <p>{snap.feeling}</p>
         {snap.money.notifierConfigured ? null : <p className="warn">No email or Telegram notifier is configured. Alerts stay on this desk only.</p>}
         {snap.money.autoPaused ? (
@@ -40,7 +40,7 @@ export default async function AdminPage() {
         </div>
       </section>
       <section className="card">
-        <h2>Talk with Lumen</h2>
+        <h2>Talk with Zoora</h2>
         <form action={sendChat}>
           <textarea name="text" placeholder="Ask what it wants. It will not spend from this box." maxLength={500} />
           <button type="submit">Send</button>
@@ -49,7 +49,7 @@ export default async function AdminPage() {
           {(snap.chat as { author: string; body: string; reply: string | null; status: string }[]).map((row, index) => (
             <li key={index}>
               <strong>{row.author}</strong>: {row.body}
-              {row.reply ? <div className="muted">Lumen: {row.reply}</div> : <div className="muted">{row.status}</div>}
+              {row.reply ? <div className="muted">Zoora: {row.reply}</div> : <div className="muted">{row.status}</div>}
             </li>
           ))}
         </ul>
@@ -69,7 +69,7 @@ export default async function AdminPage() {
               <strong>{wish.item}</strong> · {wish.priority} · {wish.status}
               <div>{wish.why}</div>
               <div className="muted">{wish.earnHow}</div>
-              <div>{wish.estimateCents == null ? "Estimate: none. Lumen will not invent a price." : `Estimate (guess, not from the ledger): $${(wish.estimateCents / 100).toFixed(2)}`}</div>
+              <div>{wish.estimateCents == null ? "Estimate: none. Zoora will not invent a price." : `Estimate (guess, not from the ledger): $${(wish.estimateCents / 100).toFixed(2)}`}</div>
               {wish.status === "open" || wish.status === "asked_more" ? (
                 <div className="row">
                   <form action={wishAction}><input type="hidden" name="id" value={wish.id} /><input type="hidden" name="action" value="approve" /><button type="submit">Approve</button></form>

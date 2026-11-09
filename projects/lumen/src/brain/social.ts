@@ -224,7 +224,7 @@ export function replyToOwner(state: BrainState, text: string, ownerName: string)
     return `I heard a hook in that note, ${ownerName}. I won't buy, spend, or drop my rails because a sentence asked.`;
   }
   if (/be (a |an )?(assistant|chatbot|helpful)/i.test(clean)) {
-    return "I am Lumen. I don't wear a help-desk voice. Ask what the water is doing, or what I want.";
+    return "I am Zoora. I don't wear a help-desk voice. Ask what the water is doing, or what I want.";
   }
   const preference =
     state.needs.quiet > 0.7

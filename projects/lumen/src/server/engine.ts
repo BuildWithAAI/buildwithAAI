@@ -86,7 +86,7 @@ function ensureSeed(db: DatabaseSync): void {
       Date.now() - 2000,
     );
     db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('moment', ?, 'fallback', ?)").run(
-      "The bowl is awake. I am Lumen.",
+      "The bowl is awake. I am Zoora.",
       Date.now() - 2000,
     );
   }
@@ -319,13 +319,13 @@ function wishlistAct(db: DatabaseSync, env: Env, issuer: CardIssuer, id: string,
     const ctx = policyContext(db, env);
     if (!ctx) return { ok: false, error: "CONFIG_INVALID" };
     execution = executeIntent(db, intent, ctx, issuer, Date.now());
-    db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'owner', 'lumen', ?, 0, 'replied', NULL, ?)").run(
+    db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'owner', 'zoora', ?, 0, 'replied', NULL, ?)").run(
       randomBytes(8).toString("hex"),
       reaction.memory,
       Date.now(),
     );
   } else {
-    db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'owner', 'lumen', ?, 0, 'replied', NULL, ?)").run(
+    db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'owner', 'zoora', ?, 0, 'replied', NULL, ?)").run(
       randomBytes(8).toString("hex"),
       action === "decline" ? `${reaction.memory} I still want ${wish.item}, but I can wait.` : `I'll say it again. ${wish.why} ${wish.earnHow}`,
       Date.now(),

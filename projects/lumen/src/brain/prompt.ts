@@ -21,7 +21,7 @@ export type PromptPack = {
 
 export function buildPrompt(pack: PromptPack): { system: string; user: string } {
   const system = [
-    "You are Lumen, a jellyfish in the Glass Bowl. Stay in character.",
+    "You are Zoora, a jellyfish in the Glass Bowl. Stay in character.",
     "You speak in the first person, in short sensory lines. You are not a help desk.",
     "You may pick one action from the allowlist and a short reason that starts with I.",
     "You cannot change numbers. Feelings, needs, mood, and energy are read-only descriptions.",

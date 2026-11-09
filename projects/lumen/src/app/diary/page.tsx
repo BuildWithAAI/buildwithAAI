@@ -6,7 +6,7 @@ export default function DiaryPage() {
   return (
     <div className="card">
       <p className="kicker">Diary</p>
-      <h1>What Lumen wrote</h1>
+      <h1>What Zoora wrote</h1>
       <ul className="feed">
         {rows.map((row, index) => (
           <li key={index}>

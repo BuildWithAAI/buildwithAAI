@@ -17,7 +17,7 @@ export default function HomePage() {
         />
         <div style={{ padding: "0.9rem 1rem 1.1rem" }}>
           <p className="kicker">Glass Bowl · {snap.placeId.replaceAll("-", " ")}</p>
-          <h1 style={{ margin: "0.2rem 0" }}>{snap.awake ? "Lumen is awake" : "Lumen is asleep"}</h1>
+          <h1 style={{ margin: "0.2rem 0" }}>{snap.awake ? "Zoora is awake" : "Zoora is asleep"}</h1>
           <p>{snap.feeling}</p>
           {snap.event ? <p className="muted">{snap.event.text}</p> : null}
         </div>

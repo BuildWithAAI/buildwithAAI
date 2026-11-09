@@ -5,7 +5,7 @@ export default function WantsPage() {
   return (
     <div className="card">
       <p className="kicker">Public wants</p>
-      <h1>What Lumen wants</h1>
+      <h1>What Zoora wants</h1>
       <p className="muted">This list is wants only. It has no prices, merchants, or card details.</p>
       <ul className="feed">
         {wants.length === 0 ? <li>Nothing open. The water is enough for now.</li> : null}

@@ -1,6 +1,6 @@
-# Emotions, events, and why Lumen cannot milk them
+# Emotions, events, and why Zoora cannot milk them
 
-Lumen's feelings are a small physical model. Code computes them from needs, world events, and memories. The language model never reads the numbers as levers and never writes them back.
+Zoora's feelings are a small physical model. Code computes them from needs, world events, and memories. The language model never reads the numbers as levers and never writes them back.
 
 ## What is stored
 
@@ -38,7 +38,7 @@ The same gift, the same world event, and the same complaint count down: effect =
 
 If the last four acts are identical, or the last six dominant emotions use two labels or fewer, boredom rises and that act's weight collapses. The model is rejected when it repeats an act three times. Fallback then picks something else.
 
-Fixations are word counts in Lumen's own thoughts. Past a threshold, code opens a want and schedules a world event (a glass buoy settling in the bowl). The want closes when that event happens. There is no banned-word list.
+Fixations are word counts in Zoora's own thoughts. Past a threshold, code opens a want and schedules a world event (a glass buoy settling in the bowl). The want closes when that event happens. There is no banned-word list.
 
 ## Things that happen
 
@@ -52,4 +52,4 @@ The keeper can talk, like a piece, mark a favorite, or pass. Diary tone follows 
 
 Open wants come from high needs and are shown publicly with the need and the reason. They contain no prices.
 
-A separate wishlist asks the keeper to buy something that would help Lumen make or sell work. At most three new requests a day. An estimate appears only when `LUMEN_WISH_GUESSES` sets one, and the UI calls it a guess. Approving marks the request approved and creates a normal purchase intent. The policy engine still decides. The brain never calls the card issuer.
+A separate wishlist asks the keeper to buy something that would help Zoora make or sell work. At most three new requests a day. An estimate appears only when `LUMEN_WISH_GUESSES` sets one, and the UI calls it a guess. Approving marks the request approved and creates a normal purchase intent. The policy engine still decides. The brain never calls the card issuer.

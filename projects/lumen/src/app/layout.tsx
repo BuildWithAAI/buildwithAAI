@@ -5,7 +5,7 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Lumen",
+  title: "Zoora",
   description: "A bioluminescent jellyfish living in the Glass Bowl.",
 };
 

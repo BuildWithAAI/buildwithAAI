@@ -28,7 +28,7 @@ export default function GuestbookPage() {
         <p className="kicker">Guestbook</p>
         <form action={sendNote}>
           <input name="author" placeholder="Your name" maxLength={40} />
-          <textarea name="note" maxLength={280} placeholder="A note for later. Lumen reads it in its own time." />
+          <textarea name="note" maxLength={280} placeholder="A note for later. Zoora reads it in its own time." />
           <button type="submit">Leave note</button>
         </form>
       </section>

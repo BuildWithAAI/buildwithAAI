@@ -21,7 +21,7 @@
  * LUMEN_PRODUCT_MERCHANTS            type:merchant pairs. Example: art_supplies:paper-shop
  * LUMEN_PRODUCT_AMOUNT_CENTS         type:cents pairs. No amount, no intent.
  * LUMEN_ART_PRICE_CENTS              Integer cents for a listing, or unset. Unset means art is not priced.
- * LUMEN_WISH_GUESSES                 catalogId:cents guesses. Unset means Lumen states no price.
+ * LUMEN_WISH_GUESSES                 catalogId:cents guesses. Unset means Zoora states no price.
  * LUMEN_CARD_ISSUER                  mock, stripe_issuing, or privacy.
  * OWNER_PASSWORD_HASH                scrypt hash from `npm run hash-password`.
  * OWNER_ACCESS_TOKEN                 Optional magic token. Compared in constant time.

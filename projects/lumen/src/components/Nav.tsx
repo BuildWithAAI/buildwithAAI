@@ -3,7 +3,7 @@ import Link from "next/link";
 export function Nav() {
   return (
     <nav className="nav">
-      <strong>Lumen</strong>
+      <strong>Zoora</strong>
       <Link href="/">Bowl</Link>
       <Link href="/gallery">Gallery</Link>
       <Link href="/diary">Diary</Link>
