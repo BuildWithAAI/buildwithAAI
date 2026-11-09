@@ -1,16 +1,18 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export function verifyStripeSignature(payload: string, header: string, secret: string, nowMs: number, toleranceSec = 300): boolean {
+export function verifyStripeSignature(payload: string, header: string, secret: string, nowMs: number, toleranceSec = 300, previousSecret = ""): boolean {
   if (!payload || !header || !secret) return false;
-  const parts = Object.fromEntries(header.split(",").map((part) => {
-    const [key, value] = part.split("=");
-    return [key, value];
-  }));
-  const timestamp = parts.t;
-  const signature = parts.v1;
-  if (!timestamp || !signature || !/^\d+$/.test(timestamp)) return false;
+  const pieces = header.split(",").map((part) => part.trim());
+  const timestamp = pieces.find((part) => part.startsWith("t="))?.slice(2);
+  const signatures = pieces.filter((part) => part.startsWith("v1=")).map((part) => part.slice(3));
+  if (!timestamp || signatures.length === 0 || !/^\d+$/.test(timestamp)) return false;
   const age = Math.abs(nowMs / 1000 - Number(timestamp));
   if (age > toleranceSec) return false;
+  const secrets = [secret, previousSecret].filter((value) => value.length > 0);
+  return signatures.some((signature) => secrets.some((value) => hmacEqual(value, timestamp, payload, signature)));
+}
+
+function hmacEqual(secret: string, timestamp: string, payload: string, signature: string): boolean {
   const expected = createHmac("sha256", secret).update(`${timestamp}.${payload}`).digest("hex");
   const a = Buffer.from(expected);
   const b = Buffer.from(signature);
@@ -18,7 +20,7 @@ export function verifyStripeSignature(payload: string, header: string, secret: s
   return timingSafeEqual(a, b);
 }
 
-export type StripeEvent = { id: string; type: string; data: { object: Record<string, unknown> } };
+export type StripeEvent = { id: string; type: string; livemode?: boolean; data: { object: Record<string, unknown> } };
 
 export function parseStripeEvent(payload: string): StripeEvent {
   const parsed = JSON.parse(payload) as StripeEvent;

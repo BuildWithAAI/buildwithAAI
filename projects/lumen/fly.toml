@@ -19,4 +19,5 @@ primary_region = "iad"
 
 [env]
   LUMEN_DATA = "/data/lumen.sqlite"
+  LUMEN_TRUSTED_PROXY = "fly"
   PORT = "3000"

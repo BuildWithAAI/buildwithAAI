@@ -1,15 +1,19 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { allowLogin, clientAddress } from "../src/auth/owner";
 import { executeIntent } from "../src/money/execute";
 import { createEngine } from "../src/server/engine";
-import { MockIssuer, StripeIssuingStub } from "../src/money/issuers";
+import { MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers";
 import { Ledger, moneyView } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords } from "../src/money/reconcile";
+import { buildOwnerNotifier } from "../src/money/notify";
 import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
-import { refundFormBody, stripeSalesClient } from "../src/money/stripe";
+import { refundFormBody, stripeSalesClient, verifyStripeSignature } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
 import type { PurchaseIntent } from "../src/brain/types";
 
@@ -385,5 +389,120 @@ describe("owner login limits", () => {
     expect(allowLogin(globalDb, "203.0.113.1", now, { global: 2, account: 100, perAddress: 100 })).toBe(true);
     expect(allowLogin(globalDb, "203.0.113.2", now, { global: 2, account: 100, perAddress: 100 })).toBe(true);
     expect(allowLogin(globalDb, "203.0.113.3", now, { global: 2, account: 100, perAddress: 100 })).toBe(false);
+  });
+});
+
+describe("held execute, disputes, refunds, and alerts", () => {
+  const at = Date.UTC(2026, 10, 9, 15);
+
+  it("executes a held purchase once, including a repeat and an overlapping call", () => {
+    const db = openDatabase();
+    const issuer = new MockIssuer();
+    const purchase = intent({ id: "held-1", amountCents: 400 });
+    const held = executeIntent(db, purchase, ctx({ reconciliationAlert: true, ownerConfirmed: true }), issuer, at);
+    expect(held.issuerCalled).toBe(false);
+    expect(held.decision.reason).toBe("RECONCILIATION_HOLD");
+    const cleared = executeIntent(db, purchase, ctx({ ownerConfirmed: true }), issuer, at);
+    const repeat = executeIntent(db, purchase, ctx({ ownerConfirmed: true }), issuer, at);
+    expect(cleared.issuerCalled).toBe(true);
+    expect(repeat.issuerCalled).toBe(false);
+    expect(issuer.calls).toHaveLength(1);
+    expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(1);
+    expect(cleared.row?.id).toBe("purchase-held-1");
+
+    const file = path.join(mkdtempSync(path.join(tmpdir(), "lumen-")), "race.sqlite");
+    const left = openDatabase(file);
+    const right = openDatabase(file);
+    const overlapping = {
+      name: "mock" as const,
+      calls: [] as string[],
+      authorize(next: ReturnType<typeof intent>, key: string) {
+        this.calls.push(key);
+        executeIntent(right, next, ctx({ ownerConfirmed: true }), overlapping, at);
+        return { providerTransactionId: "mock_race", status: "approved" as const, reason: "MOCK_APPROVED" };
+      },
+      listActivity() { return []; },
+    };
+    executeIntent(left, intent({ id: "race-1", amountCents: 400 }), ctx({ ownerConfirmed: true }), overlapping, at);
+    expect(overlapping.calls).toEqual(["exec:race-1"]);
+    expect(new Ledger(left).list().filter((row) => row.kind === "purchase")).toHaveLength(1);
+  });
+
+  it("keeps a ledger reservation if the issuer throws, and does not let a decline consume the daily cap", () => {
+    const db = openDatabase();
+    const atMs = Date.UTC(2026, 10, 9, 16);
+    const failing = new MockIssuer();
+    failing.authorize = () => { failing.calls.push(intent()); throw new Error("ISSUER_DOWN"); };
+    const blown = executeIntent(db, intent({ id: "boom", amountCents: 500 }), ctx(), failing, atMs);
+    expect(blown.decision.reason).toBe("ISSUER_ERROR");
+    expect(blown.issuerCalled).toBe(true);
+    const rows = new Ledger(db).list();
+    expect(rows.some((row) => row.idempotencyKey === "reserve:boom")).toBe(true);
+    expect(rows.filter((row) => row.kind === "purchase")).toHaveLength(0);
+    const declined = executeIntent(db, intent({ id: "nope", amountCents: 500 }), ctx({ rules: rules({ dailyCapCents: 800 }) }), new PrivacyStub(), atMs);
+    expect(declined.decision.outcome).toBe("decline");
+    const next = executeIntent(db, intent({ id: "after", amountCents: 500 }), ctx({ rules: rules({ dailyCapCents: 800 }) }), new MockIssuer(), atMs);
+    expect(next.decision.outcome).toBe("auto_approve");
+  });
+
+  it("treats many dispute events as one dispute and books each partial refund", () => {
+    const db = openDatabase();
+    const secret = "whsec_test_secret";
+    const now = 1_700_000_000_000;
+    const post = (id: string, type: string, object: Record<string, unknown>) => {
+      const payload = JSON.stringify({ id, type, livemode: false, data: { object } });
+      const header = sign(payload, secret, Math.floor(now / 1000));
+      expect(handleStripeWebhook(db, payload, header, secret, now, undefined, { livemode: false }).ok).toBe(true);
+    };
+    post("evt_d1", "charge.dispute.created", { id: "du_1", amount: 700, status: "needs_response", charge: "ch_1", reason: "fraudulent" });
+    post("evt_d2", "charge.dispute.funds_withdrawn", { id: "du_1", amount: 700, status: "needs_response", charge: "ch_1", reason: "fraudulent" });
+    post("evt_d3", "charge.dispute.closed", { id: "du_1", amount: 700, status: "lost", charge: "ch_1", reason: "fraudulent" });
+    const disputeRows = new Ledger(db).list().filter((row) => row.kind === "dispute");
+    expect(disputeRows.length).toBeGreaterThan(1);
+    expect(compareRecords(new Ledger(db).list(), [{ provider: "stripe", providerTransactionId: "du_1", amountCents: 700, kind: "dispute" }], ["stripe"], ["dispute"])).toEqual([]);
+    post("evt_r1", "charge.refunded", { id: "ch_1", amount_refunded: 500, payment_intent: "pi_1", refunds: { data: [{ id: "re_1", amount: 500 }] } });
+    post("evt_r2", "charge.refunded", { id: "ch_1", amount_refunded: 1000, payment_intent: "pi_1", refunds: { data: [{ id: "re_2", amount: 500 }, { id: "re_1", amount: 500 }] } });
+    const refunds = new Ledger(db).list().filter((row) => row.kind === "refund");
+    expect(refunds.map((row) => row.amountCents).sort()).toEqual([500, 500]);
+    expect(compareRecords(new Ledger(db).list(), [
+      { provider: "stripe", providerTransactionId: "re_1", amountCents: 500, kind: "refund" },
+      { provider: "stripe", providerTransactionId: "re_2", amountCents: 500, kind: "refund" },
+    ], ["stripe"], ["refund"])).toEqual([]);
+  });
+
+  it("accepts a rotated webhook secret and rejects a livemode mismatch", () => {
+    const payload = JSON.stringify({ id: "evt_live", type: "payout.paid", livemode: true, data: { object: { id: "po_1", amount: 100 } } });
+    const now = 1_700_000_000_000;
+    const current = sign(payload, "whsec_new", Math.floor(now / 1000));
+    const previous = sign(payload, "whsec_old", Math.floor(now / 1000));
+    const rotated = `${previous},v1=${current.split("v1=")[1]}`;
+    expect(verifyStripeSignature(payload, rotated, "whsec_new", now)).toBe(true);
+    expect(verifyStripeSignature(payload, previous, "whsec_new", now, 300, "whsec_old")).toBe(true);
+    const db = openDatabase();
+    const header = sign(payload, "whsec_new", Math.floor(now / 1000));
+    expect(handleStripeWebhook(db, payload, header, "whsec_new", now, undefined, { livemode: false })).toEqual({ ok: false, status: 400, error: "LIVEMODE_MISMATCH" });
+  });
+
+  it("sends an alert to every configured notifier and warns when none are configured", () => {
+    const mail: string[] = [];
+    const telegram: string[] = [];
+    const env = {
+      LUMEN_ALERT_EMAIL_TO: "owner@example.com",
+      LUMEN_ALERT_EMAIL_FROM: "lumen@example.com",
+      LUMEN_SMTP_HOST: "smtp.example.com",
+      LUMEN_ALERT_TELEGRAM_BOT_TOKEN: "bot-token",
+      LUMEN_ALERT_TELEGRAM_CHAT_ID: "4242",
+    };
+    const built = buildOwnerNotifier(env, {
+      sendMail: (message) => mail.push(message.to),
+      sendTelegram: (message) => telegram.push(message.chatId),
+    });
+    expect(built.externalConfigured).toBe(true);
+    expect(built.channels).toEqual(["email", "telegram"]);
+    built.notifier.notify({ kind: "dispute", title: "New dispute", detail: "du_1" });
+    expect(mail).toEqual(["owner@example.com"]);
+    expect(telegram).toEqual(["4242"]);
+    expect(buildOwnerNotifier({}).externalConfigured).toBe(false);
+    expect(REQUIRE_HARD_CAPS_WHEN_SPENDING).toBe(false);
   });
 });

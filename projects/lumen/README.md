@@ -69,6 +69,10 @@ Copy `.env.example` to `.env.local`. Amounts are cents, integers, and unset unti
 | `LUMEN_TICK_MS` | Default 8000, minimum 4000 |
 | `LUMEN_DATA` | SQLite file. Docker uses `/data/lumen.sqlite` |
 | `LUMEN_QUIET_HOURS` | UTC `start-end`, default `0-6` |
+| `LUMEN_TRUSTED_PROXY` | `none`, `fly`, or `forwarded`. Fly's config sets `fly` |
+| `STRIPE_WEBHOOK_SECRET_PREVIOUS` | Previous webhook secret, accepted during rotation |
+| `LUMEN_ALERT_EMAIL_TO` / `LUMEN_ALERT_EMAIL_FROM` / `LUMEN_SMTP_HOST` | Email alerts. Off until all three are set |
+| `LUMEN_ALERT_TELEGRAM_BOT_TOKEN` / `LUMEN_ALERT_TELEGRAM_CHAT_ID` | Telegram alerts. Off until both are set |
 
 The keeper desk also has a spend toggle. Both the env flag and the toggle must be on. The full review is [docs/PAYMENT_FLOW.md](docs/PAYMENT_FLOW.md). The single config parser is `src/money/rules.ts`.
 

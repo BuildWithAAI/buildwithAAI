@@ -10,7 +10,7 @@ import type { BrainState, PurchaseIntent, Wish } from "../brain/types";
 import { allowLogin, createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
 import { allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
 import { executeIntent } from "../money/execute";
-import { deskNotifier, listAlerts } from "../money/notify";
+import { buildOwnerNotifier, deskNotifier, listAlerts } from "../money/notify";
 import { createIssuer, type CardIssuer } from "../money/issuers";
 import { Ledger, moneyView, type LedgerRow } from "../money/ledger";
 import { evaluatePolicy, type PolicyContext } from "../money/policy";
@@ -452,7 +452,7 @@ async function reconcileNow(db: DatabaseSync, env: Env, issuer: CardIssuer, prov
       if ((env.LUMEN_CARD_ISSUER ?? "mock") !== "mock") fetchedKinds.push("purchase");
     } catch {
       setFlag(db, "reconciliation_alert", "1");
-      deskNotifier(db).notify({ kind: "reconciliation", title: "Reconciliation could not read Stripe", detail: "Automatic spending and approvals are paused until this is cleared." });
+      buildOwnerNotifier(env, { desk: deskNotifier(db) }).notifier.notify({ kind: "reconciliation", title: "Reconciliation could not read Stripe", detail: "Automatic spending and approvals are paused until this is cleared." });
       kvSet(db, "last_reconcile", JSON.stringify({ at: Date.now(), mismatches: [{ code: "FETCH_FAILED", provider: "stripe", providerTransactionId: "", detail: "Stripe records could not be read." }] }));
       setFlag(db, "last_reconcile_day", new Date().toISOString().slice(0, 10));
       return { mismatches: [{ code: "FETCH_FAILED", provider: "stripe", providerTransactionId: "", detail: "Stripe records could not be read." }], alert: true };
@@ -467,7 +467,7 @@ async function reconcileNow(db: DatabaseSync, env: Env, issuer: CardIssuer, prov
   if (mismatches.length) {
     const already = flag(db, "reconciliation_alert") === "1";
     setFlag(db, "reconciliation_alert", "1");
-    if (!already) deskNotifier(db).notify({ kind: "reconciliation", title: "Reconciliation mismatch", detail: `${mismatches.length} mismatch(es). Automatic spending and approvals are paused.` });
+    if (!already) buildOwnerNotifier(env, { desk: deskNotifier(db) }).notifier.notify({ kind: "reconciliation", title: "Reconciliation mismatch", detail: `${mismatches.length} mismatch(es). Automatic spending and approvals are paused.` });
   }
   kvSet(db, "last_reconcile", JSON.stringify({ at: Date.now(), mismatches }));
   setFlag(db, "last_reconcile_day", new Date().toISOString().slice(0, 10));
@@ -582,6 +582,7 @@ function snapshot(db: DatabaseSync, env: Env) {
       openDispute: (disputes as { open?: number }[]).length > 0,
       autoPaused: flag(db, "reconciliation_alert") === "1" || (disputes as unknown[]).length > 0,
       alerts: listAlerts(db),
+      notifierConfigured: buildOwnerNotifier(env).externalConfigured,
       reconcile: reconcile ? JSON.parse(reconcile) : null,
       view: moneyView(ledger),
       ledger: ledger.slice(-40).reverse().map(publicLedger),

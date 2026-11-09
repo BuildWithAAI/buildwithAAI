@@ -37,8 +37,8 @@ function amountAgrees(row: LedgerRow, record: ProviderRecord): boolean {
 export function compareRecords(rows: LedgerRow[], external: ProviderRecord[], providers: string[], fetchedKinds: string[] = DEFAULT_KINDS): Mismatch[] {
   const wanted = new Set(fetchedKinds);
   const mismatches: Mismatch[] = [];
-  const relevant = rows.filter((row) => row.status === "confirmed" && row.provider && providers.includes(row.provider) && wanted.has(row.kind) && idsOfRow(row).length > 0);
-  const pool = external.filter((record) => providers.includes(record.provider) && wanted.has(record.kind));
+  const relevant = rows.filter((row) => row.status === "confirmed" && row.provider && providers.includes(row.provider) && wanted.has(row.kind) && idsOfRow(row).length > 0 && row.kind !== "dispute");
+  const pool = external.filter((record) => providers.includes(record.provider) && wanted.has(record.kind) && record.kind !== "dispute");
   const unused = new Set(pool.map((_, index) => index));
   for (const row of relevant) {
     const hit = pool.findIndex((record, index) => unused.has(index) && record.kind === row.kind && sharesId(row, record));
@@ -51,6 +51,32 @@ export function compareRecords(rows: LedgerRow[], external: ProviderRecord[], pr
     if (found && !amountAgrees(row, found)) {
       mismatches.push({ code: "AMOUNT", provider: row.provider ?? "", providerTransactionId: row.providerTransactionId ?? "", detail: "Amount differs." });
     }
+  }
+  if (wanted.has("dispute")) {
+    const disputeRows = rows.filter((row) => row.kind === "dispute" && row.provider && providers.includes(row.provider) && idsOfRow(row).length > 0);
+    const disputeRecords = external.filter((record) => record.kind === "dispute" && providers.includes(record.provider));
+    const groups = new Map<string, LedgerRow[]>();
+    for (const row of disputeRows) {
+      const id = row.providerTransactionId ?? "";
+      groups.set(id, [...(groups.get(id) ?? []), row]);
+    }
+    const used = new Set<number>();
+    for (const [id, group] of groups) {
+      const hit = disputeRecords.findIndex((record, index) => !used.has(index) && (record.providerTransactionId === id || idsOfRecord(record).includes(id)));
+      if (hit < 0) {
+        mismatches.push({ code: "LEDGER_ONLY", provider: group[0]?.provider ?? "", providerTransactionId: id, detail: "Dispute has no provider record." });
+        continue;
+      }
+      used.add(hit);
+      const found = disputeRecords[hit];
+      const amounts = group.map((row) => Math.abs(row.amountCents)).filter((amount) => amount > 0);
+      if (found && amounts.length > 0 && !amounts.includes(found.amountCents)) {
+        mismatches.push({ code: "AMOUNT", provider: found.provider, providerTransactionId: id, detail: "Dispute amount differs." });
+      }
+    }
+    disputeRecords.forEach((record, index) => {
+      if (!used.has(index)) mismatches.push({ code: "PROVIDER_ONLY", provider: record.provider, providerTransactionId: record.providerTransactionId, detail: "Provider dispute is missing from the ledger." });
+    });
   }
   for (const index of unused) {
     const record = pool[index];

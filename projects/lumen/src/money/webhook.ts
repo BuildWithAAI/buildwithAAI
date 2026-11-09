@@ -6,13 +6,16 @@ import { parseStripeEvent, verifyStripeSignature, type StripeEvent } from "./str
 
 export type WebhookResult = { ok: true; duplicate: boolean } | { ok: false; status: number; error: string };
 
-export function handleStripeWebhook(db: DatabaseSync, payload: string, header: string, secret: string, nowMs: number, notifier?: OwnerNotifier): WebhookResult {
-  if (!verifyStripeSignature(payload, header, secret, nowMs)) return { ok: false, status: 400, error: "BAD_SIGNATURE" };
+export function handleStripeWebhook(db: DatabaseSync, payload: string, header: string, secret: string, nowMs: number, notifier?: OwnerNotifier, options?: { livemode?: boolean; previousSecret?: string }): WebhookResult {
+  if (!verifyStripeSignature(payload, header, secret, nowMs, 300, options?.previousSecret ?? "")) return { ok: false, status: 400, error: "BAD_SIGNATURE" };
   let event: StripeEvent;
   try {
     event = parseStripeEvent(payload);
   } catch {
     return { ok: false, status: 400, error: "BAD_PAYLOAD" };
+  }
+  if (typeof options?.livemode === "boolean" && typeof event.livemode === "boolean" && event.livemode !== options.livemode) {
+    return { ok: false, status: 400, error: "LIVEMODE_MISMATCH" };
   }
   const seen = db.prepare("SELECT event_id FROM webhook_events WHERE event_id = ?").get(event.id) as { event_id: string } | undefined;
   if (seen) return { ok: true, duplicate: true };
@@ -52,21 +55,8 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
     }
     return;
   }
-  if (event.type === "charge.refunded") {
-    ledger.append({
-      id: `refund-${event.id}`,
-      atMs: nowMs,
-      kind: "refund",
-      amountCents: numberField(object.amount_refunded),
-      status: "confirmed",
-      provider: "stripe",
-      providerTransactionId: String(object.id ?? ""),
-      chargeId: String(object.id ?? "") || null,
-      paymentIntentId: idString(object.payment_intent),
-      idempotencyKey: `stripe:${event.id}`,
-      ref: String(object.id ?? ""),
-      note: "Refund recorded from Stripe.",
-    });
+  if (event.type === "charge.refunded" || event.type === "refund.created") {
+    bookRefunds(ledger, event, nowMs);
     return;
   }
   if (event.type === "payout.paid") {
@@ -89,7 +79,7 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
     const amount = numberField(object.amount);
     const open = status !== "won" && status !== "lost" && status !== "warning_closed" && event.type !== "charge.dispute.closed";
     const existing = db.prepare("SELECT id FROM disputes WHERE id = ?").get(id) as { id: string } | undefined;
-    const fresh = !existing && (event.type === "charge.dispute.created" || event.type === "charge.dispute.funds_withdrawn");
+    const shouldAlert = (event.type === "charge.dispute.created" && !existing) || event.type === "charge.dispute.funds_withdrawn";
     if (existing) {
       db.prepare("UPDATE disputes SET status = ?, amount_cents = ?, open = ?, updated_at = ? WHERE id = ?").run(status, amount, open ? 1 : 0, nowMs, id);
     } else {
@@ -116,7 +106,7 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
       ref: String(object.charge ?? ""),
       note: `Dispute ${event.type} is ${status}. Open disputes stay visible until closed.`,
     });
-    if (fresh) {
+    if (shouldAlert) {
       notifier?.notify({
         kind: "dispute",
         title: event.type === "charge.dispute.funds_withdrawn" ? "Dispute took funds" : "New dispute",
@@ -124,6 +114,57 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
       });
     }
   }
+}
+
+function bookRefunds(ledger: Ledger, event: StripeEvent, nowMs: number): void {
+  const object = event.data.object;
+  const chargeId = event.type === "refund.created" ? idString(object.charge) ?? "" : String(object.id ?? "");
+  const embedded = event.type === "refund.created"
+    ? [{ id: String(object.id ?? ""), amount: numberField(object.amount) }]
+    : refundItems(object);
+  if (embedded.length > 0) {
+    for (const refund of embedded) {
+      if (!refund.id || ledger.findByIdempotency(`stripe:refund:${refund.id}`)) continue;
+      ledger.append({
+        id: `refund-${refund.id}`,
+        atMs: nowMs,
+        kind: "refund",
+        amountCents: refund.amount,
+        status: "confirmed",
+        provider: "stripe",
+        providerTransactionId: refund.id,
+        chargeId: chargeId || null,
+        paymentIntentId: idString(object.payment_intent),
+        idempotencyKey: `stripe:refund:${refund.id}`,
+        ref: chargeId,
+        note: "Individual refund, not a running total.",
+      });
+    }
+    return;
+  }
+  const cumulative = numberField(object.amount_refunded);
+  const prior = ledger.list().filter((row) => row.kind === "refund" && row.chargeId === chargeId).reduce((sum, row) => sum + row.amountCents, 0);
+  const delta = cumulative - prior;
+  if (delta <= 0) return;
+  ledger.append({
+    id: `refund-${event.id}`,
+    atMs: nowMs,
+    kind: "refund",
+    amountCents: delta,
+    status: "confirmed",
+    provider: "stripe",
+    providerTransactionId: `delta:${event.id}`,
+    chargeId: chargeId || null,
+    paymentIntentId: idString(object.payment_intent),
+    idempotencyKey: `stripe:${event.id}`,
+    ref: chargeId,
+    note: "Refund delta since the previous charge.refunded event.",
+  });
+}
+
+function refundItems(object: Record<string, unknown>): { id: string; amount: number }[] {
+  const data = (object.refunds as { data?: { id?: string; amount?: number }[] } | undefined)?.data ?? [];
+  return data.flatMap((item) => (item.id ? [{ id: item.id, amount: numberField(item.amount) }] : []));
 }
 
 function idString(value: unknown): string | null {

@@ -15,6 +15,7 @@ export default async function AdminPage() {
         <p className="kicker">Keeper desk</p>
         <h1>Lumen, in private</h1>
         <p>{snap.feeling}</p>
+        {snap.money.notifierConfigured ? null : <p className="warn">No email or Telegram notifier is configured. Alerts stay on this desk only.</p>}
         {snap.money.autoPaused ? (
           <div className="banner">
             Automatic spending and approvals are paused.
