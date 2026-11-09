@@ -1,0 +1,106 @@
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { OWNER_COOKIE } from "../../auth/owner";
+import { artAction, clearAlertAction, controlAction, logout, proposalAction, reconcileAction, sendChat, wishAction } from "../actions";
+import { getEngine } from "../../server/engine";
+
+export default async function AdminPage() {
+  const jar = await cookies();
+  const token = jar.get(OWNER_COOKIE)?.value ?? null;
+  if (!getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`)) redirect("/admin/login");
+  const snap = getEngine().snapshot();
+  return (
+    <div className="grid">
+      <section className="card" style={{ gridColumn: "1 / -1" }}>
+        <p className="kicker">Keeper desk</p>
+        <h1>Lumen, in private</h1>
+        <p>{snap.feeling}</p>
+        {snap.money.reconciliationAlert ? (
+          <div className="banner">
+            Reconciliation mismatch. Auto-approval is paused until you clear it.
+            <form action={clearAlertAction}><button type="submit">Clear alert</button></form>
+          </div>
+        ) : null}
+        <p>Kill switch: {snap.money.kill ? "ON" : "off"} · Spend: {snap.money.spendOpen ? "open" : `closed (${snap.money.spendReason})`} · Sales: {snap.money.sales}</p>
+        <div className="row">
+          <form action={controlAction}><input type="hidden" name="key" value="kill" /><input type="hidden" name="value" value={snap.money.kill ? "0" : "1"} /><button type="submit">{snap.money.kill ? "Release kill switch" : "Kill switch"}</button></form>
+          <form action={controlAction}><input type="hidden" name="key" value="spend" /><input type="hidden" name="value" value="1" /><button type="submit">Enable spend toggle</button></form>
+          <form action={controlAction}><input type="hidden" name="key" value="spend" /><input type="hidden" name="value" value="0" /><button type="submit">Disable spend toggle</button></form>
+          <form action={reconcileAction}><button type="submit">Run reconciliation</button></form>
+          <form action={logout}><button type="submit">Log out</button></form>
+          <a className="button" href="/admin/ledger">Balance and P&amp;L</a>
+        </div>
+      </section>
+      <section className="card">
+        <h2>Talk with Lumen</h2>
+        <form action={sendChat}>
+          <textarea name="text" placeholder="Ask what it wants. It will not spend from this box." maxLength={500} />
+          <button type="submit">Send</button>
+        </form>
+        <ul className="feed">
+          {(snap.chat as { author: string; body: string; reply: string | null; status: string }[]).map((row, index) => (
+            <li key={index}>
+              <strong>{row.author}</strong>: {row.body}
+              {row.reply ? <div className="muted">Lumen: {row.reply}</div> : <div className="muted">{row.status}</div>}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="card">
+        <h2>Wants</h2>
+        <ul className="feed">
+          {snap.wants.map((want) => (
+            <li key={want.id}><strong>{want.text}</strong><div className="muted">{want.need}: {want.reason}</div></li>
+          ))}
+        </ul>
+        <h2>Wishlist for the keeper</h2>
+        <p className="muted">Estimates are guesses, never ledger facts. Approve submits a purchase intent to the policy engine. It does not skip it.</p>
+        <ul className="feed">
+          {snap.wishes.map((wish) => (
+            <li key={wish.id}>
+              <strong>{wish.item}</strong> · {wish.priority} · {wish.status}
+              <div>{wish.why}</div>
+              <div className="muted">{wish.earnHow}</div>
+              <div>{wish.estimateCents == null ? "Estimate: none. Lumen will not invent a price." : `Estimate (guess, not from the ledger): $${(wish.estimateCents / 100).toFixed(2)}`}</div>
+              {wish.status === "open" || wish.status === "asked_more" ? (
+                <div className="row">
+                  <form action={wishAction}><input type="hidden" name="id" value={wish.id} /><input type="hidden" name="action" value="approve" /><button type="submit">Approve</button></form>
+                  <form action={wishAction}><input type="hidden" name="id" value={wish.id} /><input type="hidden" name="action" value="decline" /><button type="submit">Decline</button></form>
+                  <form action={wishAction}><input type="hidden" name="id" value={wish.id} /><input type="hidden" name="action" value="ask" /><button type="submit">Ask more</button></form>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="card" style={{ gridColumn: "1 / -1" }}>
+        <h2>Art reactions and listings</h2>
+        <div className="gallery">
+          {snap.gallery.slice(0, 6).map((item) => {
+            const art = item as { id: string; title: string };
+            return (
+              <article key={art.id}>
+                <strong>{art.title}</strong>
+                <div className="row">
+                  <form action={artAction}><input type="hidden" name="id" value={art.id} /><input type="hidden" name="kind" value="like" /><button type="submit">Like</button></form>
+                  <form action={artAction}><input type="hidden" name="id" value={art.id} /><input type="hidden" name="kind" value="favorite" /><button type="submit">Favorite</button></form>
+                  <form action={artAction}><input type="hidden" name="id" value={art.id} /><input type="hidden" name="kind" value="pass" /><button type="submit">Pass</button></form>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <ul className="feed">
+          {(snap.money.proposals as { id: string; kind: string; status: string; payload: string }[]).map((proposal) => (
+            <li key={proposal.id}>
+              {proposal.kind} · {proposal.status} · {proposal.payload}
+              {proposal.status === "proposed" ? (
+                <form action={proposalAction}><input type="hidden" name="id" value={proposal.id} /><button type="submit">Approve proposal</button></form>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}

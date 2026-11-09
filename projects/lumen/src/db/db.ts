@@ -1,0 +1,156 @@
+import { DatabaseSync } from "node:sqlite";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS feed (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  text TEXT NOT NULL,
+  source TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS diary (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  text TEXT NOT NULL,
+  tone TEXT NOT NULL,
+  private INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS creations (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  svg TEXT NOT NULL,
+  listed INTEGER NOT NULL,
+  price_cents INTEGER,
+  likes INTEGER NOT NULL,
+  favorites INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  channel TEXT NOT NULL,
+  author TEXT NOT NULL,
+  body TEXT NOT NULL,
+  untrusted INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  reply TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS gifts (
+  id TEXT PRIMARY KEY,
+  gift_id TEXT NOT NULL,
+  note TEXT NOT NULL,
+  untrusted INTEGER NOT NULL,
+  author TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  at_ms INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL,
+  status TEXT NOT NULL,
+  provider TEXT,
+  provider_transaction_id TEXT,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  body_hash TEXT NOT NULL,
+  ref TEXT,
+  note TEXT NOT NULL,
+  prev_hash TEXT NOT NULL,
+  entry_hash TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS flags (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS webhook_events (
+  event_id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  payload_hash TEXT NOT NULL,
+  processed_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS disputes (
+  id TEXT PRIMARY KEY,
+  status TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  charge_id TEXT,
+  reason TEXT,
+  open INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS checkouts (
+  id TEXT PRIMARY KEY,
+  creation_id TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  session_id TEXT,
+  url TEXT,
+  status TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS deliveries (
+  token TEXT PRIMARY KEY,
+  creation_id TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS rate_limits (
+  bucket TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at_ms INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  detail TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS proposals (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries
+BEGIN SELECT RAISE(ABORT, 'append-only'); END;
+CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger_entries
+BEGIN SELECT RAISE(ABORT, 'append-only'); END;
+`;
+
+export function openDatabase(file = ":memory:"): DatabaseSync {
+  if (file !== ":memory:") mkdirSync(path.dirname(file), { recursive: true });
+  const db = new DatabaseSync(file);
+  db.exec(SCHEMA);
+  db.exec("PRAGMA journal_mode = WAL");
+  return db;
+}
+
+export function kvGet(db: DatabaseSync, key: string): string | null {
+  const row = db.prepare("SELECT value FROM kv WHERE key = ?").get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+export function kvSet(db: DatabaseSync, key: string, value: string): void {
+  db.prepare("INSERT INTO kv(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
+}
+
+export function flag(db: DatabaseSync, key: string, fallback = "0"): string {
+  const row = db.prepare("SELECT value FROM flags WHERE key = ?").get(key) as { value: string } | undefined;
+  return row?.value ?? fallback;
+}
+
+export function setFlag(db: DatabaseSync, key: string, value: string): void {
+  db.prepare("INSERT INTO flags(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
+}
+
+export function allowRate(db: DatabaseSync, bucket: string, limit: number, windowMs: number, now: number): boolean {
+  const since = now - windowMs;
+  db.prepare("DELETE FROM rate_limits WHERE at_ms < ?").run(since);
+  const row = db.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = ? AND at_ms >= ?").get(bucket, since) as { n: number };
+  if (Number(row.n) >= limit) return false;
+  db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)").run(bucket, now);
+  return true;
+}
