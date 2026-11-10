@@ -110,6 +110,12 @@ export async function issueWorldTokenAction(_prev: { name?: string; token?: stri
   return { name: issued.name, token: issued.token };
 }
 
+export async function resolveUnknownAction(form: FormData) {
+  await gate();
+  const verdict = form.get("verdict") === "charged" ? "charged" : "not_charged";
+  await getEngine().resolveUnknownClaim(String(form.get("intentId") ?? ""), verdict);
+}
+
 export async function executeAction(form: FormData) {
   await gate();
   await getEngine().executeQueued(String(form.get("id") ?? ""));

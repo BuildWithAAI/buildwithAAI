@@ -106,18 +106,66 @@ export function retryDelayMs(attempt: number): number {
   return Math.min(60_000, 1000 * 2 ** Math.max(1, attempt));
 }
 
+export const ALERT_RETRY_LIMIT = 5;
+
+type RetryRow = { id: string; kind: string; title: string; detail: string; attempt: number; next_at: number };
+
+export function scheduleAlertRetry(db: DatabaseSync, alert: OwnerAlert, now = Date.now(), priorAttempt = 0): "scheduled" | "gave_up" {
+  const detail = alert.detail.slice(0, 500);
+  const existing = db.prepare("SELECT id, attempt FROM alert_retries WHERE kind = ? AND title = ? AND detail = ?").get(alert.kind, alert.title, detail) as { id: string; attempt: number } | undefined;
+  const attempt = Math.max(existing?.attempt ?? 0, priorAttempt) + 1;
+  if (attempt > ALERT_RETRY_LIMIT) {
+    if (existing) db.prepare("DELETE FROM alert_retries WHERE id = ?").run(existing.id);
+    deskNotifier(db).notify({ kind: "delivery", title: "Alert delivery gave up", detail });
+    return "gave_up";
+  }
+  const nextAt = now + retryDelayMs(attempt);
+  if (existing) db.prepare("UPDATE alert_retries SET attempt = ?, next_at = ? WHERE id = ?").run(attempt, nextAt, existing.id);
+  else db.prepare("INSERT INTO alert_retries(id, kind, title, detail, attempt, next_at) VALUES(?, ?, ?, ?, ?, ?)").run(randomBytes(8).toString("hex"), alert.kind, alert.title, detail, attempt, nextAt);
+  return "scheduled";
+}
+
 export function reportDeliveryFailure(db: DatabaseSync, error: unknown, now = Date.now()): void {
   const detail = error instanceof Error ? error.message : "Alert delivery failed.";
   const alert: OwnerAlert = { kind: "delivery", title: "Alert delivery failed", detail };
   deskNotifier(db).notify(alert);
-  db.prepare("INSERT INTO alert_retries(id, kind, title, detail, attempt, next_at) VALUES(?, ?, ?, ?, ?, ?)").run(
-    randomBytes(8).toString("hex"),
-    alert.kind,
-    alert.title,
-    alert.detail.slice(0, 500),
-    1,
-    now + retryDelayMs(1),
-  );
+  scheduleAlertRetry(db, alert, now);
+}
+
+/** Re-send due alert retries. A throw schedules the next backoff. Past the limit, the row is dropped. */
+export function drainAlertRetries(db: DatabaseSync, deliver: (alert: OwnerAlert, attempt: number) => void, now = Date.now()): { sent: number; gaveUp: number } {
+  const due = db.prepare("SELECT id, kind, title, detail, attempt, next_at FROM alert_retries WHERE next_at <= ? ORDER BY next_at ASC").all(now) as RetryRow[];
+  let sent = 0;
+  let gaveUp = 0;
+  for (const row of due) {
+    const alert: OwnerAlert = { kind: row.kind as OwnerAlert["kind"], title: row.title, detail: row.detail };
+    if (row.attempt > ALERT_RETRY_LIMIT) {
+      db.prepare("DELETE FROM alert_retries WHERE id = ?").run(row.id);
+      deskNotifier(db).notify({ kind: "delivery", title: "Alert delivery gave up", detail: row.detail });
+      gaveUp += 1;
+      continue;
+    }
+    try {
+      deliver(alert, row.attempt);
+      db.prepare("DELETE FROM alert_retries WHERE id = ?").run(row.id);
+      sent += 1;
+    } catch {
+      if (scheduleAlertRetry(db, alert, now, row.attempt) === "gave_up") gaveUp += 1;
+    }
+  }
+  return { sent, gaveUp };
+}
+
+export function deliverDueAlerts(db: DatabaseSync, env: AlertEnv, now = Date.now()): { sent: number; gaveUp: number } {
+  if (!emailConfigured(env) && !telegramConfigured(env)) return { sent: 0, gaveUp: 0 };
+  return drainAlertRetries(db, (alert, attempt) => {
+    const fail = (error: unknown) => { scheduleAlertRetry(db, { ...alert, detail: error instanceof Error ? error.message : alert.detail }, Date.now(), attempt); };
+    const built = buildOwnerNotifier(env, {
+      sendMail: (message) => { void deliverSmtp(env, message).catch(fail); },
+      sendTelegram: telegramApiTransport(fetch, fail),
+    });
+    built.notifier.notify(alert);
+  }, now);
 }
 
 export function buildOwnerNotifier(env: AlertEnv, io: { desk?: OwnerNotifier; db?: DatabaseSync; sendMail?: MailTransport; sendTelegram?: TelegramTransport } = {}): { notifier: OwnerNotifier; externalConfigured: boolean; channels: string[] } {

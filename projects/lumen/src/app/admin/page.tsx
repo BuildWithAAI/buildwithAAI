@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { OWNER_COOKIE } from "../../auth/owner";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, logout, proposalAction, reconcileAction, sendChat, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
 import { getEngine } from "../../server/engine";
 
 export default async function AdminPage() {
@@ -46,6 +46,23 @@ export default async function AdminPage() {
         <h2>World tokens</h2>
         <p className="muted">One token, one agent. Joining the island does not approve a purchase.</p>
         <IssueWorldToken />
+        {(snap.money.unknownClaims as { intentId: string; amountCents: number }[]).length ? (
+          <div>
+            <h3>Unknown charges</h3>
+            <p className="muted">Mark whether the card was charged. This does not call the issuer again.</p>
+            <ul className="feed">
+              {(snap.money.unknownClaims as { intentId: string; amountCents: number }[]).map((claim) => (
+                <li key={claim.intentId}>
+                  {claim.intentId} · {claim.amountCents}¢
+                  <div className="row">
+                    <form action={resolveUnknownAction}><input type="hidden" name="intentId" value={claim.intentId} /><input type="hidden" name="verdict" value="charged" /><button type="submit">Charged</button></form>
+                    <form action={resolveUnknownAction}><input type="hidden" name="intentId" value={claim.intentId} /><input type="hidden" name="verdict" value="not_charged" /><button type="submit">Not charged</button></form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
       <section className="card">
         <h2>Talk with Zoora</h2>

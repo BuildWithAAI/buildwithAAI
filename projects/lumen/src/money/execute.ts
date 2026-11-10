@@ -1,7 +1,7 @@
-import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { PurchaseIntent } from "../brain/types";
 import { flag } from "../db/db";
+import { deskNotifier, type OwnerAlert } from "./notify";
 import type { CardIssuer, IssuerResult } from "./issuers";
 import { ledgerStatusFor } from "./issuers";
 import { Ledger, type LedgerRow } from "./ledger";
@@ -16,7 +16,7 @@ type ClaimRow = { state: string; amount_cents: number; created_at: number; inten
  * A held purchase that later clears must not reuse `led-<id>`, or the purchase
  * insert crashes after the issuer has already charged.
  */
-export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: PolicyContext, issuer: CardIssuer, atMs: number): Execution {
+export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: PolicyContext, issuer: CardIssuer, atMs: number, notify?: (alert: OwnerAlert) => void): Execution {
   const ledger = new Ledger(db);
   const execKey = `exec:${intent.id}`;
   const purchase = ledger.findByIdempotency(execKey);
@@ -100,7 +100,7 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
     result = issuer.authorize(intent, execKey);
   } catch {
     db.prepare("UPDATE purchase_claims SET state = 'unknown' WHERE intent_id = ?").run(intent.id);
-    noteIssuerUnknown(db, intent);
+    noteIssuerUnknown(db, intent, notify);
     return { decision: { outcome: "queue", reason: "ISSUER_UNKNOWN" }, issuerCalled: true, row: reserved };
   }
   const status = ledgerStatusFor(issuer.name, result.status);
@@ -147,22 +147,39 @@ function waitForPurchase(db: DatabaseSync, _intentId: string, execKey: string, d
   return { decision: { ...decision, reason: "EXECUTION_IN_PROGRESS" }, issuerCalled: false, row: ledger.findByIdempotency(`reserve:${_intentId}`) };
 }
 
-function noteIssuerUnknown(db: DatabaseSync, intent: PurchaseIntent): void {
-  db.prepare("INSERT INTO owner_alerts(id, kind, title, detail, created_at) VALUES(?, 'issuer', ?, ?, ?)").run(
-    randomBytes(8).toString("hex"),
-    "Issuer outcome unknown",
-    `${intent.id} may have charged ${intent.amountCents} cents at ${intent.merchant}. Auto-retry is blocked until the issuer is checked or the keeper resolves it.`,
-    Date.now(),
-  );
+function noteIssuerUnknown(db: DatabaseSync, intent: PurchaseIntent, notify?: (alert: OwnerAlert) => void): void {
+  const alert: OwnerAlert = {
+    kind: "issuer",
+    title: "Issuer outcome unknown",
+    detail: `${intent.id} may have charged ${intent.amountCents} cents at ${intent.merchant}. Automatic spending stays paused until the keeper marks it charged or not charged.`,
+  };
+  deskNotifier(db).notify(alert);
+  notify?.(alert);
 }
 
 /** Resolve an UNKNOWN claim without a fresh purchase. Lookup must honor the idempotency key. */
-export function resolveUnknown(db: DatabaseSync, intent: PurchaseIntent, atMs: number, source: { lookup?: () => IssuerResult | null; owner?: "clear" }): Execution {
+export function resolveUnknown(db: DatabaseSync, intent: PurchaseIntent, atMs: number, source: { lookup?: () => IssuerResult | null; owner?: "clear" | "charged" | "not_charged" }): Execution {
   const claim = db.prepare("SELECT state FROM purchase_claims WHERE intent_id = ?").get(intent.id) as { state: string } | undefined;
   if (claim?.state !== "unknown") return { decision: { outcome: "decline", reason: "NOT_UNKNOWN" }, issuerCalled: false, row: null };
-  if (source.owner === "clear") {
+  if (source.owner === "clear" || source.owner === "not_charged") {
     db.prepare("UPDATE purchase_claims SET state = 'released' WHERE intent_id = ?").run(intent.id);
     return { decision: { outcome: "decline", reason: "OWNER_CLEARED_UNKNOWN" }, issuerCalled: false, row: null };
+  }
+  if (source.owner === "charged") {
+    const row = new Ledger(db).append({
+      id: `purchase-${intent.id}`,
+      atMs,
+      kind: "purchase",
+      amountCents: intent.amountCents,
+      status: "unconfirmed",
+      provider: null,
+      providerTransactionId: null,
+      idempotencyKey: `exec:${intent.id}`,
+      ref: intent.id,
+      note: `${intent.productType} at ${intent.merchant}. Keeper marked this unknown outcome as charged. Not a new issuer call.`,
+    });
+    db.prepare("UPDATE purchase_claims SET state = 'executed', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
+    return { decision: { outcome: "auto_approve", reason: "OWNER_ATTESTED_CHARGE" }, issuerCalled: false, row };
   }
   const found = source.lookup ? source.lookup() : null;
   if (!found || found.status !== "approved") {
@@ -182,6 +199,25 @@ export function resolveUnknown(db: DatabaseSync, intent: PurchaseIntent, atMs: n
   });
   db.prepare("UPDATE purchase_claims SET state = 'executed', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
   return { decision: { outcome: "auto_approve", reason: "RESOLVED_UNKNOWN" }, issuerCalled: false, row };
+}
+
+export function resolveUnknownClaim(db: DatabaseSync, intentId: string, verdict: "charged" | "not_charged", atMs: number): Execution {
+  const claim = db.prepare("SELECT state, amount_cents FROM purchase_claims WHERE intent_id = ?").get(intentId) as { state: string; amount_cents: number } | undefined;
+  if (!claim || claim.state !== "unknown") return { decision: { outcome: "decline", reason: "NOT_UNKNOWN" }, issuerCalled: false, row: null };
+  const intent: PurchaseIntent = {
+    id: intentId,
+    origin: "needs_loop",
+    merchant: "keeper-resolution",
+    productType: "resolution",
+    amountCents: claim.amount_cents,
+    reason: "keeper resolved an unknown issuer outcome",
+    influencedByVisitor: false,
+    influencedByOwnerChat: false,
+    influencedByWeb: false,
+  };
+  const result = resolveUnknown(db, intent, atMs, { owner: verdict });
+  db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'resolve_unknown', ?)").run(atMs, `${intentId}:${verdict}`);
+  return result;
 }
 
 function pause(ms: number): void {

@@ -9,9 +9,9 @@ import { blankProduct, initialState, labelsOf, tick, type TickResult } from "../
 import type { BrainState, PurchaseIntent, Wish } from "../brain/types";
 import { allowLogin, createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
 import { allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
-import { executeIntent } from "../money/execute";
+import { executeIntent, resolveUnknownClaim } from "../money/execute";
 import { publishJarvis } from "../integrations/jarvis";
-import { buildOwnerNotifier, deskNotifier, listAlerts } from "../money/notify";
+import { buildOwnerNotifier, deliverDueAlerts, deskNotifier, listAlerts, type OwnerAlert } from "../money/notify";
 import { createIssuer, type CardIssuer } from "../money/issuers";
 import { Ledger, moneyView, type LedgerRow } from "../money/ledger";
 import { evaluatePolicy, type PolicyContext } from "../money/policy";
@@ -56,6 +56,7 @@ export function createEngine(env: Env, file?: string) {
     reconcileNow: (records?: { stripe: ProviderRecord[]; issuer: ProviderRecord[] }) => reconcileNow(db, env, issuer, records),
     clearAlert: () => clearAlert(db),
     executeQueued: (intentId: string) => executeQueued(db, env, issuer, intentId),
+    resolveUnknownClaim: (intentId: string, verdict: "charged" | "not_charged") => resolveUnknownClaim(db, intentId, verdict, Date.now()),
     approveProposal: (id: string) => approveProposal(db, id),
     world: () => worldView(db, Date.now()),
     worldRead: (ip: string) => {
@@ -172,11 +173,12 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
   persistTick(db, result, now);
   syncZoora(db, lived, now);
   stepMote(db, now);
+  deliverDueAlerts(db, env, now);
   const ctx = policyContext(db, env);
   if (ctx) {
     for (const intent of result.intents) {
       db.prepare("INSERT OR IGNORE INTO audit(at_ms, kind, detail) VALUES(?, 'intent', ?)").run(now, intent.id);
-      executeIntent(db, intent, ctx, issuer, now);
+      executeIntent(db, intent, ctx, issuer, now, externalAlerts(db, env));
     }
   }
   for (const item of result.feed) {
@@ -356,7 +358,7 @@ function wishlistAct(db: DatabaseSync, env: Env, issuer: CardIssuer, id: string,
     const intent = wishToIntent(wish);
     const ctx = policyContext(db, env);
     if (!ctx) return { ok: false, error: "CONFIG_INVALID" };
-    execution = executeIntent(db, intent, ctx, issuer, Date.now());
+    execution = executeIntent(db, intent, ctx, issuer, Date.now(), externalAlerts(db, env));
     db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'owner', 'zoora', ?, 0, 'replied', NULL, ?)").run(
       randomBytes(8).toString("hex"),
       reaction.memory,
@@ -526,6 +528,12 @@ function clearAlert(db: DatabaseSync) {
   return { ok: true };
 }
 
+function externalAlerts(db: DatabaseSync, env: Env) {
+  return (alert: OwnerAlert) => {
+    buildOwnerNotifier(env, { db }).notifier.notify(alert);
+  };
+}
+
 function executeQueued(db: DatabaseSync, env: Env, issuer: CardIssuer, intentId: string) {
   const ctx = policyContext(db, env);
   if (!ctx) return { ok: false, error: "CONFIG_INVALID" };
@@ -546,7 +554,7 @@ function executeQueued(db: DatabaseSync, env: Env, issuer: CardIssuer, intentId:
     influencedByOwnerChat: false,
     influencedByWeb: false,
   };
-  const execution = executeIntent(db, forced, { ...ctx, ownerConfirmed: true }, issuer, Date.now());
+  const execution = executeIntent(db, forced, { ...ctx, ownerConfirmed: true }, issuer, Date.now(), externalAlerts(db, env));
   return { ok: execution.decision.outcome === "auto_approve", execution, issuerCalled: execution.issuerCalled };
 }
 
@@ -620,6 +628,7 @@ function snapshot(db: DatabaseSync, env: Env) {
       openDispute: (disputes as { open?: number }[]).length > 0,
       autoPaused: flag(db, "reconciliation_alert") === "1" || (disputes as unknown[]).length > 0,
       alerts: listAlerts(db),
+      unknownClaims: db.prepare("SELECT intent_id AS intentId, amount_cents AS amountCents FROM purchase_claims WHERE state = 'unknown' ORDER BY created_at ASC").all() as { intentId: string; amountCents: number }[],
       notifierConfigured: buildOwnerNotifier(env).externalConfigured,
       reconcile: reconcile ? JSON.parse(reconcile) : null,
       view: moneyView(ledger),
