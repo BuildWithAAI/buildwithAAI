@@ -1,6 +1,34 @@
 # Build log
 
 ---
+sha: d7f9749
+title: The rest of the delta review is recorded.
+summary: An unknown Issuing type is an alert and an audit row. A late Solana payment with no chain time is flagged at the server clock. Look-alike letters, hidden characters, and more card separators are caught. A repeated Privacy amount that changed is a conflict. A refund or dispute closes the paid download. Another resident's artwork does not inherit Zoora's mood or memories.
+date: 2026-11-10T05:25:00Z
+image:
+
+---
+sha: f2fdb7f
+title: Clean notes stay as written, and a refund reversal is a reversal.
+summary: The instruction check uses a folded copy and returns the original text when it is clean. An Amazon order number is not treated as a card. A Stripe Issuing refund with a negative amount is booked as a reversal and does not use up an expected spend.
+date: 2026-11-10T05:23:00Z
+image:
+
+---
+sha: ac36d26
+title: Wrong bearer guesses stay bounded.
+summary: Failure maps prune on a timer, evict the oldest past a fixed size, and each guess is constant work. IPv6 addresses share a /64 bucket. The owner token is checked first and is not locked by other guesses.
+date: 2026-11-10T05:22:00Z
+image:
+
+---
+sha: a40b6ec
+title: The production build passes.
+summary: The delivery helper moved out of the route file, which Next was rejecting. Every app route export is checked. The lumen workflow runs next build. Money stays off.
+date: 2026-11-10T05:21:00Z
+image:
+
+---
 sha: 34c0dc4
 title: A provenance record on new artwork, songs, and builds.
 summary: Each new piece stores the diary line, mood vector, memory ids, goal, research id, and a timestamp. A missing source stays null. Visitor text is copied only when it already came through the flagged path. The row has no spend. Backlog item 1a is done. Item 1b is not started.
