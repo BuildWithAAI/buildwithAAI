@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 9fe928d
+title: Advisory money checks, before any live money.
+summary: Solana Pay and the download link honor the kill switches and stay off on the public site until LUMEN_MONEY_LIVE. That flag does not reopen the login. A late Solana payment uses the chain block time. Issuing refunds are refunds. Privacy charges have a route. The public health check is /healthz.
+date: 2026-11-10T04:32:00Z
+image:
+
+---
 sha: e62a7e3
 title: Zoora sets listing prices with no default cap.
 summary: Owner decision of 2026-11-09. There is no $80 self-publish ceiling and no approval step at any price. A price is a positive integer number of cents. Visitor, web, and agent text cannot set it. The ledger records Zoora's reason. LUMEN_LISTING_MAX_USD is optional. The kill switch still pauses sales.
