@@ -1,12 +1,23 @@
 import { clientAddress } from "../../../auth/owner";
 import { allowPublicRequest } from "../../../auth/public";
 import { publicModeOn } from "../../../auth/publicMode";
+import { readLimitedText, WORLD_MAX_BYTES } from "../../../http/bodyLimit";
 import { getEngine } from "../../../server/engine";
 
 export async function worldPost(op: "join" | "move" | "act" | "leave", request: Request): Promise<Response> {
+  const limited = await readLimitedText(request, WORLD_MAX_BYTES);
+  if (!limited.ok) return Response.json({ error: "BODY_TOO_LARGE" }, { status: 413 });
   const header = request.headers.get("authorization") ?? "";
   const match = /^Bearer\s+(.+)$/i.exec(header);
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  let body: Record<string, unknown> = {};
+  if (limited.text) {
+    try {
+      const parsed = JSON.parse(limited.text) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) body = parsed as Record<string, unknown>;
+    } catch {
+      body = {};
+    }
+  }
   const ip = clientAddress((name) => request.headers.get(name), process.env.LUMEN_TRUSTED_PROXY, publicModeOn());
   const engine = getEngine();
   if (publicModeOn() && !allowPublicRequest(engine.db, ip)) {

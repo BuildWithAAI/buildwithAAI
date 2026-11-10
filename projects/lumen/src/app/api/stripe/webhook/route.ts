@@ -1,4 +1,5 @@
 import { publishJarvis } from "../../../../integrations/jarvis";
+import { readLimitedText, WEBHOOK_MAX_BYTES } from "../../../../http/bodyLimit";
 import { getEngine } from "../../../../server/engine";
 import { buildOwnerNotifier, deskNotifier } from "../../../../money/notify";
 import { handleStripeWebhook } from "../../../../money/webhook";
@@ -6,7 +7,9 @@ import { handleStripeWebhook } from "../../../../money/webhook";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const payload = await request.text();
+  const limited = await readLimitedText(request, WEBHOOK_MAX_BYTES);
+  if (!limited.ok) return Response.json({ error: "BODY_TOO_LARGE" }, { status: 413 });
+  const payload = limited.text;
   const signature = request.headers.get("stripe-signature") ?? "";
   const secret = process.env.STRIPE_WEBHOOK_SECRET ?? "";
   const engine = getEngine();
