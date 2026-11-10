@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DISTINCT_BEARER_LIMIT, distinctBearerBlocked, noteDistinctBearerMiss, ownerTokenKey, ownerTokenLocked, resetOwnerTokens } from "../src/auth/ownerToken";
+import { DISTINCT_BEARER_LIMIT, OWNER_TOKEN_MAP_CAP, allowOwnerToken, distinctBearerBlocked, noteDistinctBearerMiss, noteOwnerTokenFailure, ownerTokenKey, ownerTokenLoad, ownerTokenLocked, resetOwnerTokens } from "../src/auth/ownerToken";
 import { readDeliveryToken } from "../src/shop/delivery";
 import { openDatabase, setFlag } from "../src/db/db";
 import { PRIVACY_MAX_CENTS, bookPrivacyReport, openExpectedSpend } from "../src/money/card";
@@ -108,6 +108,28 @@ describe("pre-deploy advisory", () => {
     expect(distinctBearerBlocked("203.0.113.9", now)).toBe(true);
     expect(ownerTokenLocked(owner, now)).toBe(false);
     expect(distinctBearerBlocked("198.51.100.8", now)).toBe(false);
+    for (let i = 0; i < DISTINCT_BEARER_LIMIT; i += 1) noteDistinctBearerMiss(`2001:db8:1:2::${i}`, ownerTokenKey(`v6-${i}`), now);
+    expect(distinctBearerBlocked("2001:db8:1:2::abcd", now)).toBe(true);
+    expect(distinctBearerBlocked("2001:db8:9:9::1", now)).toBe(false);
+    expect(ownerTokenLocked(owner, now)).toBe(false);
+  });
+
+  it("keeps sixty thousand distinct-address failures fast and bounded", () => {
+    resetOwnerTokens();
+    const owner = ownerTokenKey("owner-secret-token");
+    const started = performance.now();
+    for (let i = 0; i < 60_000; i += 1) {
+      const ip = `2001:${(i >>> 16).toString(16)}:${(i & 0xffff).toString(16)}:1::1`;
+      const key = ownerTokenKey(`guess-${i}`);
+      noteOwnerTokenFailure(key, now);
+      allowOwnerToken(key, now);
+      noteDistinctBearerMiss(ip, key, now);
+      distinctBearerBlocked(ip, now);
+    }
+    expect(performance.now() - started).toBeLessThan(5_000);
+    expect(ownerTokenLoad()).toBeLessThanOrEqual(OWNER_TOKEN_MAP_CAP);
+    expect(ownerTokenLocked(owner, now)).toBe(false);
+    expect(allowOwnerToken(owner, now)).toBe(true);
   });
 
   it("caps a Privacy report and stamps it with the server time", () => {
