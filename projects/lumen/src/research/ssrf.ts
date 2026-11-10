@@ -106,33 +106,54 @@ export async function fetchPinnedPage(url: string, options: { lookup?: LookupFn;
   const exchange = options.exchange ?? defaultExchange;
   const timeoutMs = options.timeoutMs ?? FETCH_TIMEOUT_MS;
   const maxBytes = options.maxBytes ?? PAGE_BYTE_LIMIT;
+  return withinDeadline(timeoutMs, (signal) => readPinned(url, lookup, exchange, maxBytes, signal));
+}
+
+/** One clock covers DNS, connect, the TLS handshake, redirects, and the body. */
+export async function withinDeadline<T>(timeoutMs: number, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<{ ok: false; error: PageRefused }>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve({ ok: false, error: new PageRefused("TIMEOUT") });
+    }, timeoutMs);
+  });
+  const attempt = work(controller.signal).then(
+    (value) => ({ ok: true as const, value }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
+  try {
+    const result = await Promise.race([attempt, timeout]);
+    if (!result.ok) throw result.error;
+    return result.value;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function readPinned(url: string, lookup: LookupFn, exchange: Exchange, maxBytes: number, signal: AbortSignal): Promise<string> {
   let current = url;
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
+    if (signal.aborted) throw new PageRefused("TIMEOUT");
     const vetted = vetResearchUrl(current);
     if (!vetted.ok) throw new PageRefused(vetted.reason);
     const ip = await resolvePublicIp(vetted.hostname, lookup);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    let reply: PinnedReply;
-    try {
-      reply = await exchange({
-        ip,
-        port: vetted.port,
-        hostname: vetted.hostname,
-        path: vetted.path,
-        protocol: vetted.protocol,
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timer);
-    }
+    const reply = await exchange({
+      ip,
+      port: vetted.port,
+      hostname: vetted.hostname,
+      path: vetted.path,
+      protocol: vetted.protocol,
+      signal,
+    });
     if (reply.status >= 300 && reply.status < 400) {
       const location = headerValue(reply.headers, "location");
       if (!location || redirect === MAX_REDIRECTS) throw new PageRefused("REDIRECT");
       current = new URL(location, current).href;
       continue;
     }
-    const bytes = await readCapped(reply.body, maxBytes, controller.signal);
+    const bytes = await readCapped(reply.body, maxBytes, signal);
     return new TextDecoder().decode(bytes);
   }
   throw new PageRefused("REDIRECT");

@@ -97,4 +97,14 @@ describe("research fetch address checks", () => {
     })).rejects.toMatchObject({ reason: "TIMEOUT" });
     expect(Date.now() - started).toBeLessThan(1000);
   });
+
+  it("ends a stalled handshake that never watches the abort signal", async () => {
+    const started = Date.now();
+    await expect(fetchPublicPage("https://example.com/blackhole", {
+      lookup: publicLookup,
+      timeoutMs: 40,
+      exchange: () => new Promise<PinnedReply>(() => undefined),
+    })).rejects.toMatchObject({ reason: "TIMEOUT" });
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
 });
