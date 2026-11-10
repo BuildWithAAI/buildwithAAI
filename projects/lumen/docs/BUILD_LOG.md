@@ -1,6 +1,27 @@
 # Build log
 
 ---
+sha: 77c1aff
+title: A wider address block, and cleaner notes.
+summary: A /48 counter stays after a /64 is evicted, and IPv6 addresses are normalised before they are bucketed. Joined words, tag letters, Armenian look-alikes, and direction marks are caught. Accents and other scripts stay. An em dash or a colon no longer hides a card number. Another resident's song does not take Zoora's mood. CI uses npm ci and pinned actions.
+date: 2026-11-10T05:44:00Z
+image:
+
+---
+sha: e7db3ef
+title: Order numbers are checked, except the Amazon pattern.
+summary: orderNumber and order_number go through Luhn. A ###-#######-####### order number is still accepted.
+date: 2026-11-10T05:42:00Z
+image:
+
+---
+sha: 56c240a
+title: Issuing refunds credit, and one refund closes one download.
+summary: A -400 capture, a +400 merchant refund, and a -400 reversal net to -400. The expected spend stays on the capture. Refunding one buyer leaves the other buyer's file for the same listing.
+date: 2026-11-10T05:42:00Z
+image:
+
+---
 sha: d7f9749
 title: The rest of the delta review is recorded.
 summary: An unknown Issuing type is an alert and an audit row. A late Solana payment with no chain time is flagged at the server clock. Look-alike letters, hidden characters, and more card separators are caught. A repeated Privacy amount that changed is a conflict. A refund or dispute closes the paid download. Another resident's artwork does not inherit Zoora's mood or memories.
