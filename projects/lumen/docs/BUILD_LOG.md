@@ -2,6 +2,13 @@
 
 ---
 sha:
+title: Compact the island home on a narrow screen.
+summary: At 800px and below, the camera hint is a bottom toast, status lines sit behind Menu, and the place list sits behind Places. Name labels keep to one line, stay inside the screen, and step apart. The thought bubble stays above Zoora. The time pill is one short line. Desktop is unchanged. Smoke saves 390x844 and 768x1024.
+date: 2026-11-10T23:30:00Z
+image:
+
+---
+sha:
 title: Separate the home overlays and tighten long card runs.
 summary: An empty ledger with paper rows says PAPER / SIMULATED and that live money is off. The AI notice no longer covers the WebGL fallback, and the camera tip no longer sits on the greeting on a narrow screen. CI uploads the desk login and the mobile home shot. A 20–22 digit run is a card only when a Luhn window has a known prefix and sits on an edge, on repeated padding, or between separators. FedEx numbers that start with 96 are not cards. Random spaced USPS numbers stay clear.
 date: 2026-11-10T23:10:00Z

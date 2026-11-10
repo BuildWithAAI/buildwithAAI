@@ -7,6 +7,7 @@ import { addExpandedAreas } from "./islandAreas";
 import type { PublicAgent, PublicWorld } from "../world/public";
 import type { Vec3 } from "../world/places";
 import { directionFromHorizon } from "../world/sky";
+import { clampLabelPoint, labelCaption, placeThought, shortSkyLine, type ScreenPoint } from "../world/labels";
 import { AREAS } from "../world/areas";
 import { WORLD_TIP, WORLD_TIP_KEY, worldTipOpen } from "./visit";
 
@@ -45,6 +46,8 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
   const [follow, setFollow] = useState(Boolean(CAMS[cam]?.follow));
   const [lowDetail, setLowDetail] = useState(false);
   const [tip, setTip] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [placesOpen, setPlacesOpen] = useState(false);
   const viewRef = useRef(view);
   const followRef = useRef(follow);
   const jump = useRef<(name: string) => void>(() => undefined);
@@ -419,10 +422,12 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
           tint.emissive.set(agent.color);
           tint.emissiveIntensity = night ? 0.55 : 0.28;
         }
-        const text = `${agent.name}\n${agent.activity}\n${agent.feeling || agent.speech}`.slice(0, 180);
+        const narrowLabel = (host.clientWidth || 1) <= 800;
+        const text = labelCaption(agent.name, agent.activity, agent.feeling || agent.speech, narrowLabel);
         if (entry.key !== text) {
           entry.key = text;
           paintLabel(entry.label, text);
+          entry.label.scale.set(text.includes("\n") ? 2.6 : 1.15, text.includes("\n") ? 0.9 : 0.26, 1);
         }
         if (agent.name === "Zoora") leader = entry.group;
       }
@@ -445,19 +450,58 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
       }
       controls.update();
       const bubble = bubbleRef.current;
+      const width = host.clientWidth || 1;
+      const height = host.clientHeight || 1;
+      const narrow = width <= 800;
+      const placed: (ScreenPoint & { name: string })[] = [];
+      const boardPoint = new THREE.Vector3(0, terrainHeight(0, -4.2) + 1.55, -4.2).project(camera);
+      const board = narrow && boardPoint.z <= 1
+        ? { x: (boardPoint.x * 0.5 + 0.5) * width, y: (-boardPoint.y * 0.5 + 0.5) * height }
+        : undefined;
+      for (const agent of snap.agents) {
+        const entry = agents.get(agent.id);
+        if (!entry) continue;
+        if (!narrow) {
+          entry.label.visible = true;
+          entry.label.position.set(0, 1.15, 0);
+          entry.label.scale.set(entry.key.includes("\n") ? 2.6 : 1.15, entry.key.includes("\n") ? 0.9 : 0.26, 1);
+          continue;
+        }
+        const anchor = entry.group.localToWorld(new THREE.Vector3(0, 1.45, 0));
+        const projected = anchor.clone().project(camera);
+        if (projected.z > 1) {
+          entry.label.visible = false;
+          continue;
+        }
+        entry.label.visible = true;
+        const distance = Math.max(0.5, camera.position.distanceTo(anchor));
+        const pixelPerUnit = height / (2 * Math.tan((camera.fov * Math.PI) / 360) * distance);
+        const targetW = 132;
+        const worldW = targetW / Math.max(1, pixelPerUnit);
+        entry.label.scale.set(worldW, worldW * (96 / 512), 1);
+        const screen = clampLabelPoint((projected.x * 0.5 + 0.5) * width, (-projected.y * 0.5 + 0.5) * height, width, height, placed, board, targetW / 2 + 8);
+        placed.push({ ...screen, name: agent.name });
+        const next = new THREE.Vector3((screen.x / width) * 2 - 1, -(screen.y / height) * 2 + 1, projected.z);
+        entry.label.position.copy(entry.group.worldToLocal(next.unproject(camera)));
+      }
       if (bubble) {
         if (!leader) bubble.hidden = true;
         else {
           head.set(0, 1.7, 0);
           leader.localToWorld(head);
           head.project(camera);
-          const width = host.clientWidth || 1;
-          const height = host.clientHeight || 1;
           const x = (head.x * 0.5 + 0.5) * width;
           const y = (-head.y * 0.5 + 0.5) * height;
-          bubble.hidden = head.z > 1 || x < -80 || y < -80 || x > width + 80 || y > height + 80;
-          bubble.style.left = `${x}px`;
-          bubble.style.top = `${y}px`;
+          if (narrow) {
+            const spot = placeThought({ x, y }, placed.find((item) => item.name === "Zoora"), width, height);
+            bubble.hidden = head.z > 1 || x < 0 || x > width;
+            bubble.style.left = `${spot.x}px`;
+            bubble.style.top = `${spot.y}px`;
+          } else {
+            bubble.hidden = head.z > 1 || x < -80 || y < -80 || x > width + 80 || y > height + 80;
+            bubble.style.left = `${x}px`;
+            bubble.style.top = `${y}px`;
+          }
         }
       }
       renderer.render(scene, camera);
@@ -483,12 +527,20 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
     <div className="world-stage">
       <div className="world-canvas" ref={mount} />
       {thought ? <p ref={bubbleRef} className="world-bubble" data-thought="1">{thought}</p> : null}
-      <div className="world-banner">
-        <span>{live.sky ? `${live.sky.localTime} · up ${shortTime(live.sky.sunrise, live.sky.tz)} down ${shortTime(live.sky.sunset, live.sky.tz)} · moon ${live.sky.moonPhaseName}` : (live.night ? "Night" : "Day")}</span>
-        <span>{live.weather === "clear" ? "Clear paths" : live.weatherText ?? live.weather}</span>
-        <span>{live.agents.map((agent) => agent.name).join(" · ") || "No one is here"}</span>
-        <span>{lowDetail ? "Light detail" : "Soft shadows"}</span>
-        <span>Watching only</span>
+      <div className={menuOpen ? "world-banner menu-open" : "world-banner"}>
+        <span className="banner-time">
+          {live.sky ? (
+            <>
+              <span className="banner-time-full">{`${live.sky.localTime} · up ${shortTime(live.sky.sunrise, live.sky.tz)} down ${shortTime(live.sky.sunset, live.sky.tz)} · moon ${live.sky.moonPhaseName}`}</span>
+              <span className="banner-time-short">{shortSkyLine(shortTime(live.sky.utc, live.sky.tz), live.sky.moonPhaseName)}</span>
+            </>
+          ) : (live.night ? "Night" : "Day")}
+        </span>
+        <button type="button" className="banner-menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>Menu</button>
+        <span className="banner-extra">{live.weather === "clear" ? "Clear paths" : live.weatherText ?? live.weather}</span>
+        <span className="banner-extra">{live.agents.map((agent) => agent.name).join(" · ") || "No one is here"}</span>
+        <span className="banner-extra">{lowDetail ? "Light detail" : "Soft shadows"}</span>
+        <span className="banner-extra">Watching only</span>
       </div>
       {tip ? (
         <div className="world-tip card">
@@ -497,10 +549,13 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
         </div>
       ) : null}
       <div className="world-hud">
-        {["overview", "island", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "saloon", "saloon-in", "floor", "floor-in", "together", "zoora", "follow"].map((name) => (
-          <button key={name} type="button" onClick={() => choose(name)}>{name === "follow" && follow ? "following" : name}</button>
-        ))}
-        <button type="button" onClick={() => setSound((on) => !on)}>{sound ? "Sound on" : "Sound off"}</button>
+        <button type="button" className="places-toggle" aria-expanded={placesOpen} onClick={() => setPlacesOpen((open) => !open)}>Places</button>
+        <div className={placesOpen ? "places-sheet open" : "places-sheet"}>
+          {["overview", "island", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "saloon", "saloon-in", "floor", "floor-in", "together", "zoora", "follow"].map((name) => (
+            <button key={name} type="button" onClick={() => choose(name)}>{name === "follow" && follow ? "following" : name}</button>
+          ))}
+          <button type="button" onClick={() => setSound((on) => !on)}>{sound ? "Sound on" : "Sound off"}</button>
+        </div>
       </div>
     </div>
   );
@@ -1053,18 +1108,21 @@ function visualPosition(agent: PublicAgent, now: number, curves: Map<string, { k
 }
 
 function paintLabel(sprite: THREE.Sprite, text: string): void {
+  const lines = text.split("\n").slice(0, 3);
+  const compact = lines.length === 1;
   const canvas = document.createElement("canvas");
   canvas.width = 512;
-  canvas.height = 180;
+  canvas.height = compact ? 96 : 180;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "rgba(12, 24, 28, 0.72)";
-  roundRect(ctx, 24, 18, 464, 144, 28);
+  roundRect(ctx, 24, compact ? 16 : 18, 464, compact ? 64 : 144, 28);
   ctx.fill();
   ctx.fillStyle = "#f4fff8";
-  ctx.font = "28px sans-serif";
+  ctx.font = compact ? "36px sans-serif" : "28px sans-serif";
   ctx.textAlign = "center";
-  text.split("\n").slice(0, 3).forEach((line, index) => ctx.fillText(line.slice(0, 40), 256, 62 + index * 36));
+  lines.forEach((line, index) => ctx.fillText(line.slice(0, 40), 256, (compact ? 58 : 62) + index * 36));
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const material = sprite.material as THREE.SpriteMaterial;
