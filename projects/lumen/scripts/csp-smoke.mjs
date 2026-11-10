@@ -127,6 +127,27 @@ try {
     if (!open.url().endsWith("/") && !open.url().includes("/?")) throw new Error(`world did not return home: ${open.url()}`);
   });
   await page.screenshot({ path: `${shots}/world-tip.png` });
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const mobile = await phone.newPage();
+  await mobile.goto(`${base}/`, { waitUntil: "domcontentloaded" });
+  await mobile.waitForSelector("[data-hydrated=yes]", { timeout: 15000, state: "attached" });
+  const mobileDismiss = mobile.getByRole("button", { name: "Dismiss" });
+  if (await mobileDismiss.count()) {
+    await mobileDismiss.click();
+    await mobile.waitForSelector("[role=dialog]", { state: "detached" });
+  }
+  await mobile.locator(".world-tip").waitFor({ timeout: 15000 });
+  await mobile.locator("[data-greeting]").waitFor();
+  const tipBox = await mobile.locator(".world-tip").boundingBox();
+  const greetBox = await mobile.locator("[data-greeting]").boundingBox();
+  const overlaps = tipBox && greetBox
+    && tipBox.y < greetBox.y + greetBox.height
+    && tipBox.y + tipBox.height > greetBox.y
+    && tipBox.x < greetBox.x + greetBox.width
+    && tipBox.x + tipBox.width > greetBox.x;
+  if (overlaps) throw new Error("camera tip overlaps the greeting");
+  await mobile.screenshot({ path: `${shots}/home-mobile.png` });
+  await phone.close();
   let deskUp = false;
   for (let i = 0; i < 40; i += 1) {
     try {
@@ -156,6 +177,11 @@ try {
   await fallback.getByText("can't draw the 3D world").waitFor({ timeout: 15000 });
   const greeting = await fallback.locator("[data-greeting]").innerText();
   if (!/Hello\.|I'm resting/.test(greeting)) throw new Error(`fallback missing greeting: ${greeting}`);
+  const noticeBox = await fallback.locator("[role=dialog]").boundingBox();
+  const cardBox = await fallback.locator("[data-world-fallback]").boundingBox();
+  if (noticeBox && cardBox && cardBox.y < noticeBox.y + noticeBox.height - 8) {
+    throw new Error("AI notice covers the WebGL fallback");
+  }
   const body = await fallback.locator("body").innerText();
   if (/application error/i.test(body) || crashed.length) throw new Error(`WebGL fallback crashed: ${crashed.join(" | ")} ${body.slice(0, 200)}`);
   await fallback.screenshot({ path: `${shots}/world-fallback.png` });

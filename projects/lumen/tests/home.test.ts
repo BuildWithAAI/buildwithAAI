@@ -69,6 +69,8 @@ describe("the island home", () => {
     expect(empty.simulated).toEqual([{ label: "SIMULATED SOL buy" }]);
     const html = renderToStaticMarkup(createElement(LedgerPanel, { books: empty }));
     expect(html).toContain("No transactions yet. Live money is off.");
+    expect(html).toContain("PAPER / SIMULATED");
+    expect(html).toContain("Live money is off.");
     expect(html).toContain("SIMULATED SOL buy");
     expect(html).not.toMatch(/\$\d/);
     expect(html).not.toContain("<form");

@@ -57,5 +57,7 @@ jobs:
             ${{ runner.temp }}/guestbook.png
             ${{ runner.temp }}/world-tip.png
             ${{ runner.temp }}/world-fallback.png
+            ${{ runner.temp }}/desk-login.png
+            ${{ runner.temp }}/home-mobile.png
             ${{ runner.temp }}/csp-smoke-ok
           if-no-files-found: error

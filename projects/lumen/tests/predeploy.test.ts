@@ -151,7 +151,39 @@ describe("pre-deploy advisory", () => {
       const mixed = `12${extra}4242424242424242`;
       expect(rejectPan({ note: mixed })).toBe(true);
     }
+    const plain = rand(41);
+    const starters = ["1", "7", "8"];
+    for (let i = 0; i < 1000; i += 1) {
+      let body = "";
+      while (body.length < 8) body += starters[plain() % 3] ?? "1";
+      while (body.length < 20) body += String(plain() % 10);
+      expect(rejectPan({ note: body })).toBe(false);
+    }
+    const edged = rand(83);
+    for (let i = 0; i < 1000; i += 1) {
+      let tail = "";
+      const width = i % 2 === 0 ? 4 : 6;
+      while (tail.length < width) tail += String(edged() % 10);
+      expect(rejectPan({ note: `4242424242424242${tail}` })).toBe(true);
+    }
+    const fedex = rand(53);
+    for (let i = 0; i < 1000; i += 1) {
+      let body = "96";
+      while (body.length < 15) body += String(fedex() % 10);
+      expect(rejectPan({ note: body })).toBe(false);
+    }
+    const wrapped = rand(67);
     const pan = "4242424242424242";
+    for (let i = 0; i < 1000; i += 1) {
+      const left = `9${1 + (wrapped() % 8)}`;
+      let right = `${1 + (wrapped() % 8)}${wrapped() % 10}`;
+      if (right[0] === right[1]) right = `${right[0]}${(Number(right[1]) + 1) % 10}`;
+      const total = i % 2 === 0 ? 20 : 22;
+      const body = (left + pan + right).slice(0, total).padEnd(total, "7");
+      if (body.slice(left.length, left.length + 16) !== pan) continue;
+      expect(rejectPan({ note: body })).toBe(true);
+      expect(rejectPan({ note: `${left} ${pan} ${right}` })).toBe(true);
+    }
     for (let i = 0; i < 1000; i += 1) {
       const prefixLen = 1 + (i % 3);
       const total = i % 2 === 0 ? 20 : 22;

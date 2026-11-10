@@ -2,6 +2,13 @@
 
 ---
 sha:
+title: Separate the home overlays and tighten long card runs.
+summary: An empty ledger with paper rows says PAPER / SIMULATED and that live money is off. The AI notice no longer covers the WebGL fallback, and the camera tip no longer sits on the greeting on a narrow screen. CI uploads the desk login and the mobile home shot. A 20–22 digit run is a card only when a Luhn window has a known prefix and sits on an edge, on repeated padding, or between separators. FedEx numbers that start with 96 are not cards. Random spaced USPS numbers stay clear.
+date: 2026-11-10T23:10:00Z
+image:
+
+---
+sha:
 title: Close the leftover Telegram and desk checks.
 summary: The desk cookie omits Secure only after public mode and loginReachable both pass on a non-HTTPS request. Telegram chat and user ids must be numeric or the bot stays mock. Polling refuses private keys, issuer names, any Stripe name, and every other secret or token except the bot token, and the minimal process must match that allowlist exactly. A Luhn-valid card padded with repeated digits inside a tracking-shaped number is still caught. Random spaced USPS numbers are not.
 date: 2026-11-10T22:45:00Z

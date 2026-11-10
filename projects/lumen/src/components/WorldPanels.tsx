@@ -26,8 +26,8 @@ export function LedgerPanel({ books }: { books: PublicBooks }) {
       )}
       {books.simulated.length ? (
         <div data-simulated="1">
-          <p className="kicker">SIMULATED</p>
-          <p className="muted">Paper and Saloon results stay here. They are not the ledger balance.</p>
+          <p className="kicker">PAPER / SIMULATED</p>
+          <p>{books.liveMoney ? "Paper and Saloon results stay here. They are not the ledger balance." : "Live money is off. Paper and Saloon results stay here. They are not the ledger balance."}</p>
           <ul className="feed">
             {books.simulated.map((row) => <li key={row.label}>{row.label}</li>)}
           </ul>

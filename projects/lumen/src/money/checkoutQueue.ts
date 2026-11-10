@@ -72,31 +72,88 @@ function trackingToken(token: string): boolean {
   return digits === compact && trackingDigits(digits);
 }
 
-function uniform(digits: string): boolean {
-  return digits.length === 0 || /^(.)\1*$/.test(digits);
+function knownIin(digits: string): boolean {
+  if (digits.startsWith("4")) return true;
+  const two = Number(digits.slice(0, 2));
+  const three = Number(digits.slice(0, 3));
+  const four = Number(digits.slice(0, 4));
+  if (two >= 51 && two <= 55) return true;
+  if (four >= 2221 && four <= 2720) return true;
+  if (two === 34 || two === 37) return true;
+  if (digits.startsWith("6011") || two === 65) return true;
+  if (three >= 644 && three <= 649) return true;
+  if (two === 35) return true;
+  if (two === 30 || two === 36 || two === 38) return true;
+  return false;
 }
 
-/** A real card with a short repeated prefix and suffix, hidden in a tracking-shaped length. */
+/** Repeated padding. A single extra digit counts only outside a 15-digit tracking number. */
+function sidePadding(side: string): boolean {
+  if (side.length === 0) return true;
+  return /^(.)\1*$/.test(side);
+}
+
+function cardWindow(window: string): boolean {
+  return window.length >= 13 && window.length <= 19 && knownIin(window) && luhnOk(window);
+}
+
+/** A real card with repeated digits on both sides, not a single extra digit. */
 function paddedCard(digits: string): boolean {
+  if (digits.length === 15) return false;
   if (!trackingDigits(digits)) return false;
   for (let length = 13; length <= 19; length += 1) {
     if (length >= digits.length) continue;
     for (let start = 0; start + length <= digits.length; start += 1) {
-      if (!luhnOk(digits.slice(start, start + length))) continue;
+      const window = digits.slice(start, start + length);
+      if (!cardWindow(window)) continue;
       const prefix = digits.slice(0, start);
       const suffix = digits.slice(start + length);
-      if (uniform(prefix) && uniform(suffix)) return true;
+      if (sidePadding(prefix) && sidePadding(suffix) && prefix.length + suffix.length > 0) return true;
     }
   }
   return false;
 }
 
-function luhnWindow(digits: string): boolean {
-  if (trackingDigits(digits)) return paddedCard(digits);
-  if (digits.length >= 13 && digits.length <= 19 && luhnOk(digits)) return true;
+/** Card inside a 9… tracking length whose prefix and suffix are not repeated padding. */
+function wrappedCard(digits: string): boolean {
+  if (!((digits.length === 20 || digits.length === 22) && digits.startsWith("9"))) return false;
+  for (let length = 16; length <= 16; length += 1) {
+    for (let start = 2; start + length <= digits.length - 2; start += 1) {
+      const window = digits.slice(start, start + length);
+      if (!cardWindow(window)) continue;
+      const prefix = digits.slice(0, start);
+      const suffix = digits.slice(start + length);
+      if (prefix.length < 2 || suffix.length < 2) continue;
+      if (sidePadding(prefix) || sidePadding(suffix)) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+function edgeCard(digits: string): boolean {
   for (let length = 13; length <= 19; length += 1) {
-    for (let start = 0; start + length <= digits.length; start += 1) {
-      if (luhnOk(digits.slice(start, start + length))) return true;
+    if (length >= digits.length) continue;
+    const head = digits.slice(0, length);
+    const tail = digits.slice(digits.length - length);
+    if (cardWindow(head) || cardWindow(tail)) return true;
+  }
+  return false;
+}
+
+function luhnWindow(digits: string): boolean {
+  if (digits.length === 15 && digits.startsWith("96")) return false;
+  if (digits.length >= 13 && digits.length <= 19) {
+    if (luhnOk(digits)) return true;
+    return edgeCard(digits);
+  }
+  if ((digits.length === 20 || digits.length === 22) && digits.startsWith("9")) return paddedCard(digits) || wrappedCard(digits);
+  if (digits.length >= 20 && digits.length <= 22) return edgeCard(digits);
+  if (digits.length > 22) {
+    for (let length = 13; length <= 19; length += 1) {
+      for (let start = 0; start + length <= digits.length; start += 1) {
+        if (luhnOk(digits.slice(start, start + length))) return true;
+      }
     }
   }
   return false;
@@ -106,14 +163,26 @@ function looksLikePan(value: string): boolean {
   const normalized = foldIndicDigits(value.normalize("NFKC")).trim();
   if (AMAZON_ORDER.test(normalized)) return false;
   const compact = normalized.replace(/[\s-]/g, "");
+  const separated = /[\s-]/.test(normalized);
   if (/^1Z[0-9A-Z]{16}$/i.test(compact)) return false;
-  if (/^\d+$/.test(compact) && trackingDigits(compact)) return paddedCard(compact);
+  if (!separated && /^\d+$/.test(compact) && trackingDigits(compact)) return paddedCard(compact) || wrappedCard(compact);
   const withoutAmazon = normalized.replace(AMAZON_ANYWHERE, " ");
   const chunks = withoutAmazon.split(/\s+/).filter(Boolean);
   let groups: string[] = [];
   let found = false;
   const takeGroups = () => {
-    if (groups.length && luhnWindow(groups.join(""))) found = true;
+    if (!groups.length) return;
+    for (const group of groups) {
+      if (group.length >= 13 && group.length <= 19 && luhnOk(group)) found = true;
+    }
+    const joined = groups.join("");
+    if (groups.length === 1) {
+      if (luhnWindow(joined)) found = true;
+    } else if ((joined.length === 20 || joined.length === 22) && joined.startsWith("9")) {
+      if (paddedCard(joined)) found = true;
+    } else if (joined.length >= 20 && joined.length <= 22) {
+      if (edgeCard(joined)) found = true;
+    } else if (luhnWindow(joined)) found = true;
     groups = [];
   };
   for (const chunk of chunks) {

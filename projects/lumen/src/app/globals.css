@@ -126,6 +126,8 @@ body.immersive { overflow: hidden; }
   94%, 100% { opacity: 1; }
 }
 body.immersive .banner { position: fixed; z-index: 6; top: 0.6rem; left: 0.6rem; right: 0.6rem; margin: 0; background: #1a1210; }
+.home-stage:has([data-world-fallback]) { padding-top: 12rem; }
+[data-world-fallback] { position: relative; z-index: 2; margin: 0.8rem; }
 
 .site-footer {
   width: min(1120px, calc(100% - 2rem));
@@ -143,7 +145,9 @@ body.immersive .banner { position: fixed; z-index: 6; top: 0.6rem; left: 0.6rem;
   .nav { flex-wrap: wrap; gap: 0.7rem; }
   .world-stage { height: 68vh; min-height: 320px; }
   .home-stage .world-stage { height: 100%; min-height: 0; }
-  .home-drawer { bottom: auto; top: 3.4rem; max-height: 40vh; }
+  .world-tip { top: 6.4rem; left: 0.6rem; right: 0.6rem; max-width: none; }
+  .home-drawer { top: auto; bottom: 0.45rem; max-height: 24vh; }
+  .world-hud { bottom: 4.6rem; }
   .world-bubble { max-width: 11rem; font-size: 0.85rem; }
   .home-tools button, .world-hud button { padding: 0.28rem 0.5rem; font-size: 0.78rem; }
 }
