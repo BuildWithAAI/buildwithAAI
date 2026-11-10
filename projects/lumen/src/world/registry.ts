@@ -3,7 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
 import { feelingSentence } from "../brain/emotions";
 import { eventOf } from "../brain/events";
-import { sensorsFromClock } from "../brain/habitat";
+import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
 import { allowRate, kvGet, kvSet } from "../db/db";
@@ -308,6 +308,14 @@ function produce(db: DatabaseSync, row: AgentRow, action: WorldActivity, now: nu
   if (action === "hum" || action === "compose") {
     kvSet(db, "world_tune", JSON.stringify(composeTune(now)));
     logLine(db, row.id, `${row.name} set a short phrase on the stand. Sound stays off until someone turns it on.`, now);
+    return;
+  }
+  if (action === "show-art" || action === "browse") {
+    logLine(db, row.id, `${row.name} set a piece on the market stall. It is not for sale.`, now);
+    return;
+  }
+  if (action === "tend" || action === "water-plants") {
+    logLine(db, row.id, `${row.name} tended a bed in the greenhouse.`, now);
   }
 }
 
@@ -348,12 +356,11 @@ export function allowWorldRead(ip: string, now: number, limit = 90, windowMs = 6
   return true;
 }
 
-export function worldView(db: DatabaseSync, now: number): PublicWorld {
+export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?: string; LUMEN_WORLD_LON?: string; LUMEN_WORLD_TZ?: string; LUMEN_SKY_AT?: string } = {}): PublicWorld {
   ensureResidents(db, now);
   const fresh = db.prepare("SELECT * FROM world_agents WHERE present = 1 ORDER BY joined_at ASC").all() as AgentRow[];
-  const brainRaw = kvGet(db, "brain");
-  const minute = brainRaw ? Number((JSON.parse(brainRaw) as BrainState).worldMinute ?? 12 * 60) : 12 * 60;
   const weather = readWeather(db, now);
+  const sky = skyAt(skyInstant(env, now), env);
   const tuneRaw = kvGet(db, "world_tune");
   const easel = db.prepare("SELECT title, svg FROM creations ORDER BY created_at DESC LIMIT 1").get() as { title: string; svg: string } | undefined;
   const feed = db.prepare("SELECT text FROM feed ORDER BY id DESC LIMIT 6").all() as { text: string }[];
@@ -361,7 +368,8 @@ export function worldView(db: DatabaseSync, now: number): PublicWorld {
   const log = db.prepare("SELECT text FROM world_log ORDER BY id DESC LIMIT 6").all() as { text: string }[];
   return {
     now,
-    night: sensorsFromClock(Number.isFinite(minute) ? minute : 12 * 60, 0).night,
+    night: sky.sunAltitude <= 0,
+    sky,
     weather: weather.kind,
     weatherText: weather.text,
     places: PLACE_IDS.map((id) => ({ id, label: PLACE_LABELS[id], ...ANCHORS[id] })),
@@ -371,8 +379,21 @@ export function worldView(db: DatabaseSync, now: number): PublicWorld {
     log: log.map((item) => item.text),
     tune: tuneRaw ? JSON.parse(tuneRaw) as { notes: number[]; title: string } : null,
     easel: easel ? { title: String(easel.title), svg: String(easel.svg) } : null,
+    gardenGrowth: gardenGrowth(db, now),
     watchOnly: true,
   };
+}
+
+const GARDEN_GROW_MS = 6 * 60 * 60 * 1000;
+
+function gardenGrowth(db: DatabaseSync, now: number): number {
+  const raw = kvGet(db, "garden_planted_at");
+  if (!raw) {
+    kvSet(db, "garden_planted_at", String(now));
+    return 0;
+  }
+  const age = Math.max(0, now - Number(raw));
+  return Math.min(1, age / GARDEN_GROW_MS);
 }
 
 export type WorldCommand = {
@@ -474,6 +495,11 @@ function act(db: DatabaseSync, agent: AgentRow, command: WorldCommand): { status
   if (action === "read-board") current.activity = "reading the notice board";
   if (action === "study") current.activity = "studying the easel";
   if (action === "read-log") current.activity = "reading the log";
+  if (action === "gather" || action === "wade") current.activity = "looking for shells";
+  if (action === "hike" || action === "rest-trail") current.activity = "walking the trail";
+  if (action === "tend" || action === "water-plants") current.activity = "tending the beds";
+  if (action === "show-art" || action === "browse") current.activity = "showing a piece, not selling it";
+  if (action === "lookout" || action === "wonder") current.activity = "watching from the hill";
   current.speech = speech;
   current.seen_at = command.now;
   saveRow(db, current);

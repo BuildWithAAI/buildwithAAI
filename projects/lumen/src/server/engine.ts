@@ -19,6 +19,7 @@ import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, type Env } from "../money/rules";
 import { stripeSalesClient } from "../money/stripe";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
+import { localMinutes, skyAt, skyInstant } from "../world/sky";
 
 type GlobalEngine = { engine?: Engine };
 
@@ -58,11 +59,11 @@ export function createEngine(env: Env, file?: string) {
     executeQueued: (intentId: string) => executeQueued(db, env, issuer, intentId),
     resolveUnknownClaim: (intentId: string, verdict: "charged" | "not_charged", proof?: ChargeProof) => resolveUnknownClaim(db, intentId, verdict, Date.now(), proof),
     approveProposal: (id: string) => approveProposal(db, id),
-    world: () => worldView(db, Date.now()),
+    world: () => worldView(db, Date.now(), env),
     worldRead: (ip: string) => {
       const now = Date.now();
       if (!allowWorldRead(ip, now)) return { status: 429 as const, body: { error: "RATE_LIMIT" } };
-      return { status: 200 as const, body: worldView(db, now) };
+      return { status: 200 as const, body: worldView(db, now, env) };
     },
     worldCommand: (command: WorldCommand) => handleWorldCommand(db, command, { jarvisToken: env.LUMEN_JARVIS_TOKEN, ownerToken: env.OWNER_ACCESS_TOKEN }),
     jarvisView: () => jarvisView(db, env),
@@ -141,6 +142,8 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
 async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: number): Promise<TickResult> {
   const parsed = rulesOf(env);
   const state = loadState(db);
+  const sky = skyAt(skyInstant(env, now), env);
+  state.worldMinute = localMinutes(skyInstant(env, now), sky.tz);
   const kill = killed(db, env);
   const product = parsed.ok
     ? {
@@ -163,7 +166,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
     readAllowlist: (env.LUMEN_READ_ALLOWLIST ?? "").split(",").map((item) => item.trim()).filter(Boolean),
     ownerName: env.LUMEN_OWNER_NAME || "keeper",
     product,
-    quietHours: inQuietHours(env, now),
+    quietHours: inQuietHours(env, now) || sky.sunAltitude < 0,
     model: env.LUMEN_LLM_API_KEY ? (body) => callModel(env, body) : undefined,
   });
   let lived = result.state;

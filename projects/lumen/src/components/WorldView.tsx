@@ -3,18 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { addExpandedAreas } from "./islandAreas";
 import type { PublicAgent, PublicWorld } from "../world/public";
 import type { Vec3 } from "../world/places";
+import { directionFromHorizon } from "../world/sky";
+import { AREAS } from "../world/areas";
 
-const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number]; night?: boolean; follow?: boolean }> = {
-  overview: { pos: [46, 28, 46], look: [0, 0, 2] },
+const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number]; follow?: boolean }> = {
+  overview: { pos: [78, 48, 78], look: [0, 1, 4] },
   town: { pos: [9, 5.2, 11], look: [0, 1.1, -1] },
   art: { pos: [24, 5.4, 14], look: [25, 1.6, 1] },
   music: { pos: [12, 5.2, 24], look: [0, 1.6, 26] },
   code: { pos: [-16, 5.5, 12], look: [-27, 0.2, 0] },
   together: { pos: [6, 4.2, 8], look: [0, 1.2, 0.4] },
   zoora: { pos: [1.4, 1.55, 3.1], look: [-1.2, 1.05, 0.7] },
-  night: { pos: [40, 22, 38], look: [2, 1, 2], night: true },
+  beach: { pos: [44, 6, 6], look: [52, 1.2, -4] },
+  forest: { pos: [-34, 8, 28], look: [-48, 2, 40] },
+  garden: { pos: [14, 5, -26], look: [22, 1.6, -36] },
+  market: { pos: [-24, 5, -18], look: [-34, 1.4, -28] },
+  lighthouse: { pos: [18, 8, 46], look: [6, 4, 58] },
   follow: { pos: [8, 5, 10], look: [0, 1, 0], follow: true },
 };
 
@@ -27,15 +34,12 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
   const [sound, setSound] = useState(false);
   const [view, setView] = useState(CAMS[cam] ? cam : "overview");
   const [follow, setFollow] = useState(Boolean(CAMS[cam]?.follow));
-  const [nightHold, setNightHold] = useState(Boolean(CAMS[cam]?.night));
   const [lowDetail, setLowDetail] = useState(false);
   const viewRef = useRef(view);
   const followRef = useRef(follow);
-  const nightRef = useRef(nightHold);
   const jump = useRef<(name: string) => void>(() => undefined);
   viewRef.current = view;
   followRef.current = follow;
-  nightRef.current = nightHold;
 
   useEffect(() => {
     world.current = live;
@@ -103,11 +107,9 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
-    const segs = low ? 36 : 72;
-    const terrain = buildTerrain(segs);
-    terrain.receiveShadow = !low;
+    const terrain = buildTerrain(low);
     scene.add(terrain);
-    const water = buildWater(low ? 24 : 48);
+    const water = buildWater(low ? 28 : 56);
     scene.add(water);
     const windows: THREE.MeshStandardMaterial[] = [];
     const lamps: THREE.PointLight[] = [];
@@ -115,7 +117,12 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     scene.add(buildArtStudio(windows, lamps, low));
     scene.add(buildMusicStudio(windows, lamps, low));
     scene.add(buildBasement(windows, lamps, low));
+    const extra = addExpandedAreas(scene, low, terrainHeight, windows, lamps);
     scatterNature(scene, low);
+    const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(2.2, 20, 16), new THREE.MeshBasicMaterial({ color: 0xfff1c2 }));
+    const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(1.15, 20, 16), new THREE.MeshBasicMaterial({ color: 0xf4f7ff }));
+    const stars = buildStars(low ? 80 : 220);
+    scene.add(sunDisc, moonDisc, stars);
 
     const notice = boardTexture(["The square is open."], "#f3efe4", "#243028");
     const noticeMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), new THREE.MeshBasicMaterial({ map: notice.texture }));
@@ -145,10 +152,10 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       sun.shadow.mapSize.set(1024, 1024);
       sun.shadow.camera.near = 8;
       sun.shadow.camera.far = 80;
-      sun.shadow.camera.left = -36;
-      sun.shadow.camera.right = 36;
-      sun.shadow.camera.top = 36;
-      sun.shadow.camera.bottom = -36;
+      sun.shadow.camera.left = -70;
+      sun.shadow.camera.right = 70;
+      sun.shadow.camera.top = 70;
+      sun.shadow.camera.bottom = -70;
       sun.shadow.bias = -0.00015;
       sun.shadow.normalBias = 0.04;
     }
@@ -185,10 +192,6 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       const shot = CAMS[name] ?? CAMS.overview!;
       followRef.current = Boolean(shot.follow);
       setFollow(Boolean(shot.follow));
-      if (shot.night) {
-        nightRef.current = true;
-        setNightHold(true);
-      }
       anim.fromPos.copy(camera.position);
       anim.fromLook.copy(controls.target);
       anim.toPos.set(...shot.pos);
@@ -225,16 +228,32 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       const time = performance.now() / 1000;
       const snap = world.current;
       const now = Date.now() + clockOffset;
-      const night = nightRef.current || snap.night;
-      const sky = night ? 0x141a30 : 0x9fd6d4;
-      const fogColor = night ? 0x1a2238 : 0xb7e0dc;
-      scene.background = new THREE.Color(sky);
-      scene.fog = new THREE.FogExp2(fogColor, night ? 0.02 : 0.016);
-      ambient.intensity = night ? 0.28 : 0.72;
-      ambient.color.set(night ? 0x6e88c4 : 0xc5e6ff);
-      sun.intensity = night ? 0.18 : 1.25;
-      sun.color.set(night ? 0x9eb0ff : 0xfff1d4);
-      renderer.toneMappingExposure = night ? 0.78 : 1.02;
+      const skyState = snap.sky;
+      const altitude = skyState?.sunAltitude ?? (snap.night ? -0.4 : 0.8);
+      const night = altitude <= 0;
+      const colors = skyColors(altitude);
+      scene.background = new THREE.Color(colors.sky);
+      scene.fog = new THREE.FogExp2(colors.fog, night ? 0.012 : 0.01);
+      ambient.intensity = colors.ambient;
+      ambient.color.set(colors.hemi);
+      const sunDir = directionFromHorizon(altitude, skyState?.sunAzimuth ?? 0.4);
+      sun.position.set(sunDir.x * 80, Math.max(4, sunDir.y * 80), sunDir.z * 80);
+      sun.intensity = colors.sun;
+      sun.color.set(colors.sunColor);
+      sunDisc.position.copy(sun.position).setLength(95);
+      sunDisc.material.color.set(colors.sunColor);
+      const moonDir = directionFromHorizon(skyState?.moonAltitude ?? 0.4, skyState?.moonAzimuth ?? -1);
+      moonDisc.position.set(moonDir.x * 88, moonDir.y * 88, moonDir.z * 88);
+      moonDisc.visible = skyState ? skyState.moonAltitude > -0.05 : night;
+      (moonDisc.material as THREE.MeshBasicMaterial).color.set(moonColor(skyState?.moonPhase ?? 0.5));
+      stars.visible = altitude < -0.05;
+      extra.beam.visible = altitude <= 0;
+      extra.beam.rotation.y = time * 0.35;
+      extra.fireflies.visible = altitude <= 0;
+      extra.shells.visible = snap.weather === "tide-shell";
+      const growth = 0.28 + 0.72 * (snap.gardenGrowth ?? 0) + (snap.weather === "plant-bloom" ? 0.15 : 0);
+      for (const plant of extra.plants) plant.scale.setScalar(growth);
+      renderer.toneMappingExposure = colors.exposure;
       for (const material of windows) material.emissiveIntensity = night ? 1.35 : 0.12;
       for (const lamp of lamps) lamp.intensity = night ? (low ? 0.8 : 1.5) : 0.08;
       const wave = water.userData.tick as ((time: number) => void) | undefined;
@@ -332,20 +351,54 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     <div className="world-stage">
       <div className="world-canvas" ref={mount} />
       <div className="world-banner">
-        <span>{nightHold || live.night ? "Night" : "Day"}</span>
+        <span>{live.sky ? `${live.sky.localTime} · up ${shortTime(live.sky.sunrise, live.sky.tz)} down ${shortTime(live.sky.sunset, live.sky.tz)} · moon ${live.sky.moonPhaseName}` : (live.night ? "Night" : "Day")}</span>
         <span>{live.weather === "clear" ? "Clear paths" : live.weatherText ?? live.weather}</span>
         <span>{live.agents.map((agent) => agent.name).join(" · ") || "No one is here"}</span>
         <span>{lowDetail ? "Light detail" : "Soft shadows"}</span>
         <span>Watching only</span>
       </div>
       <div className="world-hud">
-        {["overview", "town", "art", "music", "code", "together", "zoora", "night", "follow"].map((name) => (
+        {["overview", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "together", "zoora", "follow"].map((name) => (
           <button key={name} type="button" onClick={() => choose(name)}>{name === "follow" && follow ? "following" : name}</button>
         ))}
         <button type="button" onClick={() => setSound((on) => !on)}>{sound ? "Sound on" : "Sound off"}</button>
       </div>
     </div>
   );
+}
+
+function skyColors(altitude: number): { sky: number; fog: number; hemi: number; sun: number; sunColor: number; ambient: number; exposure: number } {
+  if (altitude > 0.45) return { sky: 0x8fd4ea, fog: 0xb7e4ea, hemi: 0xc5e6ff, sun: 1.25, sunColor: 0xfff4cf, ambient: 0.7, exposure: 1.02 };
+  if (altitude > 0.12) return { sky: 0xf0b56a, fog: 0xf2c9a0, hemi: 0xffd7b0, sun: 1.05, sunColor: 0xffb15a, ambient: 0.55, exposure: 1 };
+  if (altitude > 0) return { sky: 0xe37a62, fog: 0xd98978, hemi: 0xffc2a8, sun: 0.7, sunColor: 0xff8a4a, ambient: 0.4, exposure: 0.92 };
+  if (altitude > -0.12) return { sky: 0x3a3f78, fog: 0x4a4570, hemi: 0x8ea0d8, sun: 0.22, sunColor: 0xffb08a, ambient: 0.28, exposure: 0.8 };
+  return { sky: 0x12182e, fog: 0x1a2340, hemi: 0x6e88c4, sun: 0.05, sunColor: 0xd7e4ff, ambient: 0.16, exposure: 0.72 };
+}
+
+function moonColor(phase: number): number {
+  const full = Math.cos((phase - 0.5) * Math.PI * 2);
+  return full > 0.35 ? 0xf7f8ff : full > -0.2 ? 0xc5cbe0 : 0x6d7388;
+}
+
+function buildStars(count: number): THREE.Points {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i += 1) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI * 0.45;
+    const radius = 120;
+    positions[i * 3] = Math.cos(theta) * Math.sin(phi) * radius;
+    positions[i * 3 + 1] = Math.cos(phi) * radius;
+    positions[i * 3 + 2] = Math.sin(theta) * Math.sin(phi) * radius;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xf7fbff, size: 0.7, sizeAttenuation: false, transparent: true, opacity: 0.85 }));
+}
+
+function shortTime(iso: string, tz: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(date);
 }
 
 function ease(t: number): number {
@@ -359,52 +412,72 @@ function fade(edge0: number, edge1: number, value: number): number {
 
 function terrainHeight(x: number, z: number): number {
   const radius = Math.hypot(x, z);
-  const shore = fade(30, 39, radius);
-  const hills = Math.sin(x * 0.16) * Math.cos(z * 0.14) * 0.85 + Math.sin((x + z) * 0.07) * 0.45;
-  const town = Math.exp(-(x * x + z * z) / 36);
-  const art = Math.exp(-((x - 25) ** 2 + (z - 1) ** 2) / 20);
-  const music = Math.exp(-(x * x + (z - 26) ** 2) / 20);
+  const shore = fade(58, 72, radius);
+  const hills = Math.sin(x * 0.11) * Math.cos(z * 0.1) * 0.9 + Math.sin((x + z) * 0.05) * 0.4;
+  const hill = Math.exp(-((x - 6) ** 2 + (z - 58) ** 2) / 80);
+  let flat = 0;
+  for (const area of AREAS) {
+    flat = Math.max(flat, Math.exp(-((x - area.x) ** 2 + (z - area.z) ** 2) / 22));
+    flat = Math.max(flat, nearSegment(x, z, area.x, area.z, 2.6));
+  }
+  let height = hills * (1 - flat * 0.92) + hill * 3.2 * (1 - flat);
   const bowl = Math.exp(-((x + 27.5) ** 2 + z * z) / 16);
-  const onPath = (Math.abs(z) < 2.4 && x > -16 && x < 22) || (Math.abs(x) < 2.4 && z > 2 && z < 23) ? 1 : 0;
-  const flat = Math.max(town, art, music, onPath);
-  let height = hills * (1 - flat * 0.94);
   height -= bowl * 0.55;
-  height = height * (1 - shore) - 2.1 * shore;
+  height = height * (1 - shore) - 2.4 * shore;
   return height;
 }
 
-function buildTerrain(segs: number): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(84, 84, segs, segs);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position as THREE.BufferAttribute;
-  const colors = new Float32Array(pos.count * 3);
+function nearSegment(x: number, z: number, ax: number, az: number, width: number): number {
+  const denom = ax * ax + az * az || 1;
+  const t = Math.max(0, Math.min(1, (x * ax + z * az) / denom));
+  return Math.hypot(x - ax * t, z - az * t) < width ? 1 : 0;
+}
+
+function buildTerrain(low: boolean): THREE.Group {
+  const group = new THREE.Group();
+  const span = 180;
+  const chunks = low ? 2 : 3;
+  const chunk = span / chunks;
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 });
   const grass = new THREE.Color("#3f9a62");
   const deep = new THREE.Color("#2c6d46");
   const sand = new THREE.Color("#e6d3a6");
   const soil = new THREE.Color("#c4a574");
   const tint = new THREE.Color();
-  for (let i = 0; i < pos.count; i += 1) {
-    const x = pos.getX(i);
-    const z = pos.getZ(i);
-    const height = terrainHeight(x, z);
-    pos.setY(i, height);
-    const radius = Math.hypot(x, z);
-    const shore = fade(27, 37, radius);
-    const onPath = (Math.abs(z) < 2.1 && x > -16 && x < 22) || (Math.abs(x) < 2.1 && z > 2 && z < 23) ? 1 : 0;
-    tint.copy(grass).lerp(deep, Math.max(0, height) * 0.35).lerp(sand, Math.max(onPath, shore * 0.9)).lerp(soil, Math.max(0, -height) * 0.25);
-    colors[i * 3] = tint.r;
-    colors[i * 3 + 1] = tint.g;
-    colors[i * 3 + 2] = tint.b;
+  for (let ix = 0; ix < chunks; ix += 1) {
+    for (let iz = 0; iz < chunks; iz += 1) {
+      const cx = -span / 2 + chunk * (ix + 0.5);
+      const cz = -span / 2 + chunk * (iz + 0.5);
+      const segs = low ? 8 : Math.hypot(cx, cz) < 42 ? 24 : 12;
+      const geo = new THREE.PlaneGeometry(chunk, chunk, segs, segs);
+      geo.rotateX(-Math.PI / 2);
+      const pos = geo.attributes.position as THREE.BufferAttribute;
+      const colors = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i += 1) {
+        const x = pos.getX(i) + cx;
+        const z = pos.getZ(i) + cz;
+        const height = terrainHeight(x, z);
+        pos.setY(i, height);
+        const shore = fade(54, 70, Math.hypot(x, z));
+        const onPath = AREAS.some((area) => nearSegment(x, z, area.x, area.z, 2.4) > 0) ? 1 : 0;
+        tint.copy(grass).lerp(deep, Math.max(0, height) * 0.2).lerp(sand, Math.max(onPath, shore * 0.85)).lerp(soil, Math.max(0, -height) * 0.25);
+        colors[i * 3] = tint.r;
+        colors[i * 3 + 1] = tint.g;
+        colors[i * 3 + 2] = tint.b;
+      }
+      geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, material);
+      mesh.position.set(cx, 0, cz);
+      mesh.receiveShadow = !low;
+      group.add(mesh);
+    }
   }
-  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  geo.computeVertexNormals();
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 }));
-  mesh.receiveShadow = true;
-  return mesh;
+  return group;
 }
 
 function buildWater(segs: number): THREE.Mesh {
-  const geo = new THREE.CircleGeometry(52, segs);
+  const geo = new THREE.CircleGeometry(110, segs);
   const material = new THREE.MeshStandardMaterial({ color: 0x1b7c8e, transparent: true, opacity: 0.8, roughness: 0.18, metalness: 0.04 });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = { value: 0 };

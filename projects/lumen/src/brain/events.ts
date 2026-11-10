@@ -15,7 +15,10 @@ export type EventKind =
   | "moon-path"
   | "rain"
   | "visitor"
-  | "found-item";
+  | "found-item"
+  | "tide-shell"
+  | "firefly-night"
+  | "plant-bloom";
 
 export type WorldEvent = {
   kind: EventKind;
@@ -41,6 +44,9 @@ const COPY: Record<EventKind, Omit<WorldEvent, "kind">> = {
   rain: { text: "Rain crossed the paths between the studios.", outcome: "win", magnitude: 0.04, minutes: 12 },
   visitor: { text: "A visitor stopped at the town notice board.", outcome: "win", magnitude: 0.05, minutes: 8 },
   "found-item": { text: "Something small and bright was lying on the path.", outcome: "win", magnitude: 0.06, minutes: 8 },
+  "tide-shell": { text: "The tide left a small shell on the sand.", outcome: "win", magnitude: 0.05, minutes: 10 },
+  "firefly-night": { text: "Fireflies lit the trail between the trees.", outcome: "win", magnitude: 0.05, minutes: 12 },
+  "plant-bloom": { text: "A plant in the greenhouse opened.", outcome: "win", magnitude: 0.05, minutes: 10 },
 };
 
 export function eventOf(kind: EventKind, prior = 0): WorldEvent {
@@ -103,6 +109,12 @@ export function impulseFor(kind: EventKind, scale: number): Partial<Record<"joy"
       return { joy: 0.08 * s, loneliness: -0.12 * s };
     case "found-item":
       return { curiosity: 0.18 * s, joy: 0.1 * s };
+    case "tide-shell":
+      return { curiosity: 0.12 * s, joy: 0.1 * s };
+    case "firefly-night":
+      return { calm: 0.14 * s, joy: 0.08 * s };
+    case "plant-bloom":
+      return { pride: 0.1 * s, joy: 0.12 * s };
     default:
       return { calm: 0.04 * s };
   }

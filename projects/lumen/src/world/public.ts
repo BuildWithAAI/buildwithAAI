@@ -1,4 +1,5 @@
 import type { PlaceId, Vec3 } from "./places";
+import type { SkyState } from "./sky";
 
 export type PublicAgent = {
   id: string;
@@ -21,7 +22,9 @@ export type PublicAgent = {
 export type PublicWorld = {
   now: number;
   night: boolean;
-  weather: "clear" | "rain" | "visitor" | "found-item";
+  sky: SkyState;
+  weather: "clear" | "rain" | "visitor" | "found-item" | "tide-shell" | "firefly-night" | "plant-bloom";
+  gardenGrowth: number;
   weatherText: string | null;
   places: { id: PlaceId; label: string; x: number; y: number; z: number }[];
   agents: PublicAgent[];

@@ -8,7 +8,7 @@ import { kvGet, kvSet, openDatabase } from "../src/db/db";
 import { Ledger } from "../src/money/ledger";
 import { chooseDestination } from "../src/world/choose";
 import { applyVoxelEvent, requestVoxelEvent } from "../src/world/happen";
-import { ANCHORS, WALK_SPEED, pathBetween, pathLength, placeAt, routePlaces, travelMs } from "../src/world/places";
+import { ANCHORS, PLACE_IDS, WALK_SPEED, pathBetween, pathLength, placeAt, routePlaces, standAt, travelMs } from "../src/world/places";
 import { createEngine } from "../src/server/engine";
 import { allowWorldRead, beginMove, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, worldView } from "../src/world/registry";
 import type { Emotions, Needs } from "../src/brain/types";
@@ -37,11 +37,28 @@ describe("world paths and mood", () => {
     expect(Math.hypot(mid.x - end.x, mid.z - end.z)).toBeGreaterThan(length * 0.2);
   });
 
+  it("reaches every place along a path", () => {
+    for (const from of PLACE_IDS) {
+      for (const to of PLACE_IDS) {
+        const path = pathBetween(ANCHORS[from], to, 0);
+        const end = path[path.length - 1]!;
+        const goal = standAt(to, 0);
+        expect(Math.hypot(end.x - goal.x, end.z - goal.z)).toBeLessThan(1);
+        expect(path.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("picks a room from needs and emotions", () => {
     expect(chooseDestination({ needs: needs({ expression: 0.92 }), emotions: emotions({ pride: 0.8, joy: 0.7 }) })).toBe("art-studio");
     expect(chooseDestination({ needs: needs({ quiet: 0.4 }), emotions: emotions({ calm: 0.9, loneliness: 0.85 }) })).toBe("music-studio");
     expect(chooseDestination({ needs: needs({ curiosity: 0.95 }), emotions: emotions({ curiosity: 0.9 }) })).toBe("coding-basement");
     expect(chooseDestination({ needs: needs({ social: 0.95 }), emotions: emotions() })).toBe("town-center");
+    expect(chooseDestination({ needs: needs({ rest: 0.95 }), emotions: emotions() })).toBe("beach-dock");
+    expect(chooseDestination({ needs: needs({ rest: 0.55, quiet: 0.9 }), emotions: emotions() })).toBe("forest-trail");
+    expect(chooseDestination({ needs: needs(), emotions: emotions({ calm: 0.95, loneliness: 0.02 }) })).toBe("garden-greenhouse");
+    expect(chooseDestination({ needs: needs({ social: 0.35 }), emotions: emotions({ pride: 0.95 }) })).toBe("market-row");
+    expect(chooseDestination({ needs: needs({ curiosity: 0.12 }), emotions: emotions({ curiosity: 0.92, calm: 0.75, loneliness: 0.02 }) })).toBe("lighthouse-hill");
   });
 });
 
@@ -179,11 +196,33 @@ describe("world agents", () => {
     const happened = applyVoxelEvent(state, "rain");
     expect(happened.intents).toEqual([]);
     expect(happened.state.emotions.calm).toBeGreaterThan(state.emotions.calm);
+    const shell = applyVoxelEvent(state, "tide-shell");
+    expect(shell.intents).toEqual([]);
+    expect(shell.state.emotions.joy).toBeGreaterThan(state.emotions.joy);
+    expect(applyVoxelEvent(state, "plant-bloom").intents).toEqual([]);
+    expect(rollAndApply(openDatabase(), state, () => 0.11, now).activeEvent?.kind).toBe("tide-shell");
     const lived = rollAndApply(db, state, () => 0, now + 50);
     expect(lived.activeEvent?.kind).toBe("rain");
     expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
     const bought = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: agent.arriveAt + 30, action: "buy" });
     expect(bought.status).toBe(400);
     expect(new Ledger(db).list()).toHaveLength(0);
+  });
+
+  it("lets an agent show art at the market without spending", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 10, 16);
+    const issued = issueAgent(db, "Pebble", now);
+    expect(issued.ok).toBe(true);
+    if (!issued.ok) return;
+    handleWorldCommand(db, { op: "join", token: issued.token, ip: "1.1.1.1", now });
+    const moved = handleWorldCommand(db, { op: "move", token: issued.token, ip: "1.1.1.1", now: now + 1, placeId: "market-row" });
+    const arriveAt = (moved.body.agent as { arriveAt: number }).arriveAt;
+    const stall = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 20, action: "show-art", say: "buy this piece" });
+    expect(stall.status).toBe(200);
+    expect(stall.body.intents).toEqual([]);
+    expect((stall.body.agent as { speech: string }).speech).toMatch(/won't spend/);
+    expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
+    expect(handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 30, action: "checkout" }).status).toBe(400);
   });
 });

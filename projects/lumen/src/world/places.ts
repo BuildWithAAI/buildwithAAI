@@ -1,24 +1,16 @@
-export const PLACE_IDS = ["town-center", "art-studio", "music-studio", "coding-basement"] as const;
-export type PlaceId = (typeof PLACE_IDS)[number];
+import { AREAS, AREA_IDS, type AreaId } from "./areas";
+
+export const PLACE_IDS = AREA_IDS;
+export type PlaceId = AreaId;
 
 export type Vec3 = { x: number; y: number; z: number };
 
 export const WALK_SPEED = 4;
 
 /** Feet rest on the surface. The basement floor sits below the island. */
-export const ANCHORS: Record<PlaceId, Vec3> = {
-  "town-center": { x: 0, y: 0.85, z: 0 },
-  "art-studio": { x: 24, y: 0.85, z: 1 },
-  "music-studio": { x: 0, y: 0.85, z: 24 },
-  "coding-basement": { x: -26, y: -1.15, z: 0 },
-};
+export const ANCHORS: Record<PlaceId, Vec3> = Object.fromEntries(AREAS.map((area) => [area.id, { x: area.x, y: area.y, z: area.z }])) as Record<PlaceId, Vec3>;
 
-export const PLACE_LABELS: Record<PlaceId, string> = {
-  "town-center": "Town Center",
-  "art-studio": "Art Studio",
-  "music-studio": "Music Studio",
-  "coding-basement": "Coding Basement",
-};
+export const PLACE_LABELS: Record<PlaceId, string> = Object.fromEntries(AREAS.map((area) => [area.id, area.label])) as Record<PlaceId, string>;
 
 const STAND_OFFSETS: Vec3[] = [
   { x: 0, y: 0, z: 0 },

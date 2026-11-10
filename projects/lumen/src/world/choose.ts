@@ -1,14 +1,10 @@
 import type { Emotions, Needs } from "../brain/types";
+import { AREAS, type AreaActivity } from "./areas";
 import { PLACE_LABELS, type PlaceId } from "./places";
 
-export type WorldActivity = "paint" | "study" | "hum" | "compose" | "write" | "read-log" | "greet" | "read-board";
+export type WorldActivity = AreaActivity;
 
-const ACTS: Record<PlaceId, WorldActivity[]> = {
-  "town-center": ["greet", "read-board"],
-  "art-studio": ["paint", "study"],
-  "music-studio": ["hum", "compose"],
-  "coding-basement": ["write", "read-log"],
-};
+const ACTS: Record<PlaceId, WorldActivity[]> = Object.fromEntries(AREAS.map((area) => [area.id, area.acts])) as Record<PlaceId, WorldActivity[]>;
 
 export function actsAt(place: PlaceId): WorldActivity[] {
   return ACTS[place];
@@ -18,23 +14,17 @@ export function isWorldActivity(place: PlaceId, action: string): action is World
   return (ACTS[place] as string[]).includes(action);
 }
 
-/**
- * The brain picks a room from needs and emotions.
- * Inspired -> art, calm or lonely -> music, curious -> basement, social -> town.
- */
+/** The brain picks a room from the area config. Weights live next to the coordinates. */
 export function chooseDestination(input: { needs: Needs; emotions: Emotions }): PlaceId {
-  const scores: Record<PlaceId, number> = {
-    "art-studio": input.needs.expression * 1.4 + input.emotions.pride * 0.8 + input.emotions.joy * 0.35,
-    "music-studio": input.emotions.calm * 1.15 + input.emotions.loneliness * 1.05 + input.needs.quiet * 0.25,
-    "coding-basement": input.needs.curiosity * 1.45 + input.emotions.curiosity * 0.9,
-    "town-center": input.needs.social * 1.45 + input.emotions.loneliness * 0.15,
-  };
   let best: PlaceId = "town-center";
   let bestScore = -Infinity;
-  for (const id of ["town-center", "art-studio", "music-studio", "coding-basement"] as const) {
-    if (scores[id] > bestScore) {
-      best = id;
-      bestScore = scores[id];
+  for (const area of AREAS) {
+    let score = 0;
+    for (const [name, weight] of Object.entries(area.needs)) score += (input.needs[name as keyof Needs] ?? 0) * (weight ?? 0);
+    for (const [name, weight] of Object.entries(area.emotions)) score += (input.emotions[name as keyof Emotions] ?? 0) * (weight ?? 0);
+    if (score > bestScore) {
+      best = area.id;
+      bestScore = score;
     }
   }
   return best;
@@ -48,6 +38,11 @@ export function activityFor(place: PlaceId, emotions: Emotions): { action: World
       : { action: "compose", label: "composing a short phrase" };
   }
   if (place === "coding-basement") return { action: "write", label: "writing at the desk" };
+  if (place === "beach-dock") return { action: "gather", label: "looking for shells" };
+  if (place === "forest-trail") return { action: "hike", label: "walking the trail" };
+  if (place === "garden-greenhouse") return { action: "tend", label: "tending the beds" };
+  if (place === "market-row") return { action: "show-art", label: "showing a piece, not selling it" };
+  if (place === "lighthouse-hill") return { action: "lookout", label: "watching from the hill" };
   return { action: "read-board", label: "reading the notice board" };
 }
 
