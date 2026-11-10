@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: cd5effb
+title: SOL sales and a queue for the owner's card.
+summary: Buyers can pay SOL to the owner's public wallet after a finalized on-chain check. Zoora's card purchases wait in a queue the owner settles outside the app. The card number never enters this process.
+date: 2026-11-10T03:14:00Z
+image:
+
+---
 sha: 5d540fd
 title: Live money turns on with the owner's credentials.
 summary: Spending, shop checkout, and minting are on when their secrets exist and off when they do not. Zoora publishes listings. A card charge waits for the issuer, and the public books show only confirmed rows.
