@@ -12,7 +12,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. The public site is [zoora.ai](https://zoora.ai). To show this copy from the owner's computer, see [docs/HOSTING_LOCAL.md](docs/HOSTING_LOCAL.md). Tests: `npm test`.
+Open http://localhost:3000. The public site is [zoora.ai](https://zoora.ai). To show a copy from the owner's computer, see [docs/HOSTING_LOCAL.md](docs/HOSTING_LOCAL.md). For a 24/7 Fly.io machine under the $5 waiver, see [docs/HOSTING_FLY.md](docs/HOSTING_FLY.md). Nothing in this repo deploys itself. Tests: `npm test`.
 
 ## What you see
 
