@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 19541ca
+title: Close the launch blockers and the visitor loop.
+summary: Pages hydrate under a per-request script nonce, and the Chromium smoke runs in CI. Html addresses redirect to the apex. The owner desk opens only through the port 3001 proxy. The guestbook can answer, a crisis note gets the helpline instead of a reply, and a real visitor on the island is what the bowl feels.
+date: 2026-11-10T21:10:00Z
+image:
+
+---
 sha: e6f99bc
 title: Pre-launch notices for zoora.ai.
 summary: A first-visit notice says Zoora is an AI, and the footer repeats it. Artwork, songs, diary lines, listings, and downloads are tagged AI-generated and licensed for personal use. The trading floor stays paper unless live trading is on, and it says the figures are simulated. The shop and the books leave the public nav while money is off. The image copies public/, and each page has its own canonical path.
