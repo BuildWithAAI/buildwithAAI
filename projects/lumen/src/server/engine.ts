@@ -18,6 +18,7 @@ import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, type Env } from "../money/rules";
 import { stripeSalesClient } from "../money/stripe";
+import { ensureResidents, handleWorldCommand, issueAgent, rollAndApply, syncZoora, worldView, type WorldCommand } from "../world/registry";
 
 type GlobalEngine = { engine?: Engine };
 
@@ -56,6 +57,19 @@ export function createEngine(env: Env, file?: string) {
     clearAlert: () => clearAlert(db),
     executeQueued: (intentId: string) => executeQueued(db, env, issuer, intentId),
     approveProposal: (id: string) => approveProposal(db, id),
+    world: () => worldView(db, Date.now()),
+    worldCommand: (command: WorldCommand) => handleWorldCommand(db, command),
+    issueWorldToken: (name: string) => {
+      const issued = issueAgent(db, name, Date.now());
+      if (!issued.ok) return issued;
+      kvSet(db, "world_token_flash", JSON.stringify({ name: issued.name, token: issued.token }));
+      return issued;
+    },
+    peekWorldToken: () => {
+      const raw = kvGet(db, "world_token_flash");
+      if (!raw) return null;
+      return JSON.parse(raw) as { name: string; token: string };
+    },
   };
 }
 
@@ -71,6 +85,7 @@ function saveState(db: DatabaseSync, state: BrainState): void {
 
 function ensureSeed(db: DatabaseSync): void {
   if (!kvGet(db, "brain")) saveState(db, initialState());
+  ensureResidents(db, Date.now());
   const count = db.prepare("SELECT COUNT(*) AS n FROM creations").get() as { n: number };
   if (Number(count.n) === 0) {
     for (let i = 1; i <= 3; i += 1) {
@@ -151,8 +166,12 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
     quietHours: inQuietHours(env, now),
     model: env.LUMEN_LLM_API_KEY ? (body) => callModel(env, body) : undefined,
   });
-  saveState(db, result.state);
+  let lived = result.state;
+  const rolled = rollAndApply(db, lived, Math.random, now);
+  if (rolled !== lived) lived = rolled;
+  saveState(db, lived);
   persistTick(db, result, now);
+  syncZoora(db, lived, now);
   const ctx = policyContext(db, env);
   if (ctx) {
     for (const intent of result.intents) {

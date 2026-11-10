@@ -15,6 +15,7 @@ Open http://localhost:3000. Tests: `npm test`.
 ## What you see
 
 - **Bowl** — the jellyfish, needs, emotions, and the live feed
+- **World** — a small voxel island with four rooms. Zoora and a demo agent, Mote, can both be there. See [docs/WORLD.md](docs/WORLD.md)
 - **Gallery** — procedural SVG pieces. Buy is closed until sales are configured and a listing is approved
 - **Diary** — Zoora's own lines. Tone follows mood and stress
 - **Guestbook** — a fixed gift list, a short note, a wave, or a tap

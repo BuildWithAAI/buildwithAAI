@@ -103,6 +103,11 @@ export async function proposalAction(form: FormData) {
   await getEngine().approveProposal(String(form.get("id") ?? ""));
 }
 
+export async function issueWorldTokenAction(form: FormData) {
+  await gate();
+  await getEngine().issueWorldToken(String(form.get("name") ?? ""));
+}
+
 export async function executeAction(form: FormData) {
   await gate();
   await getEngine().executeQueued(String(form.get("id") ?? ""));

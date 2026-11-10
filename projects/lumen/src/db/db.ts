@@ -144,6 +144,33 @@ CREATE TABLE IF NOT EXISTS alert_retries (
   attempt INTEGER NOT NULL,
   next_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS world_agents (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL,
+  resident INTEGER NOT NULL,
+  present INTEGER NOT NULL,
+  place_id TEXT NOT NULL,
+  x REAL NOT NULL,
+  y REAL NOT NULL,
+  z REAL NOT NULL,
+  dest_place TEXT,
+  path_json TEXT NOT NULL,
+  depart_at INTEGER,
+  arrive_at INTEGER,
+  activity TEXT NOT NULL,
+  speech TEXT NOT NULL,
+  feeling TEXT NOT NULL,
+  joined_at INTEGER NOT NULL,
+  seen_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS world_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS owner_alerts (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL,

@@ -84,7 +84,18 @@ table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 0.4rem 0.2rem; vertical-align: top; }
 .banner { border: 1px solid var(--warn); color: var(--warn); padding: 0.7rem 0.9rem; border-radius: 12px; margin-bottom: 1rem; }
 
+.world-stage { position: relative; height: min(74vh, 780px); min-height: 460px; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #071418; }
+.world-canvas { position: absolute; inset: 0; }
+.world-stage canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+.world-banner, .world-hud { position: absolute; z-index: 2; left: 0.6rem; right: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.world-banner { top: 0.6rem; color: var(--ink); text-shadow: 0 1px 2px #000; pointer-events: none; }
+.world-hud { bottom: 0.6rem; }
+.world-hud button, .world-banner span { background: rgba(6, 18, 22, 0.78); border: 1px solid var(--line); border-radius: 999px; padding: 0.35rem 0.7rem; }
+.world-banner span { pointer-events: none; }
+
 @media (max-width: 800px) {
   .grid { grid-template-columns: 1fr; }
   canvas.bowl { height: 300px; }
+  .nav { flex-wrap: wrap; gap: 0.7rem; }
+  .world-stage { height: 68vh; min-height: 320px; }
 }
