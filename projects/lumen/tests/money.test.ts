@@ -6,13 +6,13 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { allowLogin, clientAddress } from "../src/auth/owner";
-import { executeIntent, resolveUnknown, resolveUnknownClaim } from "../src/money/execute";
+import { executeIntent, resolutionProvider, resolveUnknown, resolveUnknownClaim } from "../src/money/execute";
 import { createEngine } from "../src/server/engine";
 import { MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers";
 import { Ledger, moneyView } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords } from "../src/money/reconcile";
-import { ALERT_GIVE_UP_MS, buildOwnerNotifier, deliverSmtp, drainAlertRetries, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
+import { ALERT_GIVE_UP_MS, buildOwnerNotifier, deliverSmtp, deskClock, drainAlertRetries, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
 import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
 import { refundFormBody, stripeSalesClient, verifyStripeSignature } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
@@ -614,8 +614,14 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect(drainAlertRetries(retryDb, () => { throw new Error("last"); }, due.next_at).gaveUp).toBe(2);
     expect(drainAlertRetries(retryDb, () => { throw new Error("again"); }, due.next_at).gaveUp).toBe(0);
     expect((retryDb.prepare("SELECT COUNT(*) AS n FROM alert_retries").get() as { n: number }).n).toBe(0);
-    const gaveUp = (retryDb.prepare("SELECT title FROM owner_alerts WHERE title = 'Alert delivery gave up'").all() as { title: string }[]);
-    expect(gaveUp).toHaveLength(1);
+    const gaveUp = (retryDb.prepare("SELECT detail FROM owner_alerts WHERE title = 'Alert delivery gave up' ORDER BY detail").all() as { detail: string }[]);
+    expect(gaveUp.map((row) => row.detail)).toEqual(["email: New dispute: du_9", "telegram: New dispute: du_9"]);
+    const later = { kind: "issuer" as const, title: "Issuer outcome unknown", detail: "second alert" };
+    reportDeliveryFailure(retryDb, new Error("SMTP_DOWN"), at, later, "email");
+    retryDb.prepare("UPDATE alert_retries SET started_at = ?, next_at = ? WHERE title = ?").run(at - ALERT_GIVE_UP_MS - 1, due.next_at, later.title);
+    expect(drainAlertRetries(retryDb, () => { throw new Error("later"); }, due.next_at).gaveUp).toBe(1);
+    const afterLater = (retryDb.prepare("SELECT detail FROM owner_alerts WHERE title = 'Alert delivery gave up'").all() as { detail: string }[]);
+    expect(afterLater.map((row) => row.detail)).toContain("email: Issuer outcome unknown: second alert");
 
     const fresh = openDatabase();
     reportDeliveryFailure(fresh, new Error("SMTP_DOWN"), at, source, "email");
@@ -669,6 +675,31 @@ describe("held execute, disputes, refunds, and alerts", () => {
     const attested = resolveUnknownClaim(quiet, "unk-quiet", "charged", atMs, { confirm: true, unknownId: true });
     expect(attested.row?.providerTransactionId).toBe("unknown");
     expect(attested.row?.note).toContain("id:unknown");
-    expect(compareRecords(new Ledger(quiet).list(), [{ provider: "issuer", providerTransactionId: "pc_real", amountCents: 400, kind: "purchase" }], ["issuer"], ["purchase"])).toEqual([]);
+    expect(compareRecords(new Ledger(quiet).list(), [{ provider: "issuer", providerTransactionId: "pc_real", amountCents: 400, kind: "purchase", merchant: "paper-shop", atMs }], ["issuer"], ["purchase"])).toEqual([]);
+    expect(deskClock(Date.UTC(2026, 10, 9, 18, 30))).toBe("Nov 9, 12:30 Chicago · 2026-11-09T18:30:00Z");
+  });
+
+  it("books a charged unknown outcome under the configured issuer and matches one same-merchant charge", () => {
+    const db = openDatabase();
+    const atMs = Date.UTC(2026, 10, 9, 21);
+    const shop = ctx({ rules: rules({ merchants: ["shop.example.com"], productMerchants: { art_supplies: "shop.example.com" } }) });
+    const down = new MockIssuer();
+    down.authorize = () => { throw new Error("ISSUER_TIMEOUT"); };
+    executeIntent(db, intent({ id: "unk-shop", amountCents: 500, merchant: "shop.example.com" }), shop, down, atMs);
+    expect(resolutionProvider(undefined, "privacy")).toBe("privacy");
+    expect(resolutionProvider("", "privacy")).toBe("privacy");
+    const booked = resolveUnknownClaim(db, "unk-shop", "charged", atMs, { confirm: true, unknownId: true, configuredIssuer: "privacy" });
+    expect(booked.row?.provider).toBe("privacy");
+    expect(booked.row?.merchant).toBe("shop.example.com");
+    expect(booked.row?.provider).not.toBe("issuer");
+    const rows = new Ledger(db).list();
+    const charge = { provider: "privacy", amountCents: 500, kind: "purchase" as const, merchant: "shop.example.com", atMs };
+    const two = compareRecords(rows, [
+      { ...charge, providerTransactionId: "pc_1" },
+      { ...charge, providerTransactionId: "pc_2" },
+    ], ["privacy"], ["purchase"]);
+    expect(two).toEqual([{ code: "PROVIDER_ONLY", provider: "privacy", providerTransactionId: "pc_2", detail: "Provider purchase is missing from the ledger." }]);
+    expect(compareRecords(rows, [{ ...charge, providerTransactionId: "pc_other", merchant: "other.example.com" }], ["privacy"], ["purchase"])[0]?.code).toBe("PROVIDER_ONLY");
+    expect(compareRecords(rows, [{ ...charge, providerTransactionId: "pc_late", atMs: atMs + 73 * 60 * 60 * 1000 }], ["privacy"], ["purchase"])[0]?.code).toBe("PROVIDER_ONLY");
   });
 });

@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   body_hash TEXT NOT NULL,
   ref TEXT,
   note TEXT NOT NULL,
+  merchant TEXT,
   prev_hash TEXT NOT NULL,
   entry_hash TEXT NOT NULL
 );
@@ -193,6 +194,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   db.exec("PRAGMA journal_mode = WAL");
   ensureColumn(db, "ledger_entries", "charge_id", "charge_id TEXT");
   ensureColumn(db, "ledger_entries", "payment_intent_id", "payment_intent_id TEXT");
+  ensureColumn(db, "ledger_entries", "merchant", "merchant TEXT");
   ensureColumn(db, "alert_retries", "channel", "channel TEXT NOT NULL DEFAULT 'email'");
   ensureColumn(db, "alert_retries", "started_at", "started_at INTEGER NOT NULL DEFAULT 0");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();

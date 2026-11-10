@@ -35,6 +35,19 @@ export function deskNotifier(db: DatabaseSync): OwnerNotifier {
   };
 }
 
+/** Desk clocks show America/Chicago next to the UTC instant. */
+export function deskClock(ms: number): string {
+  const local = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(ms));
+  return `${local} Chicago · ${new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z")}`;
+}
+
 export function listAlerts(db: DatabaseSync): { id: string; kind: string; title: string; detail: string; created_at: number }[] {
   return db.prepare("SELECT id, kind, title, detail, created_at FROM owner_alerts ORDER BY created_at DESC LIMIT 20").all() as {
     id: string;
@@ -113,12 +126,12 @@ export const ALERT_GIVE_UP_MS = 30 * 60 * 1000;
 
 type RetryRow = { id: string; kind: string; title: string; detail: string; attempt: number; next_at: number; channel: string; started_at: number };
 
-function giveUpDetail(alert: OwnerAlert): string {
-  return `${alert.title}: ${alert.detail}`.slice(0, 500);
+function giveUpDetail(alert: OwnerAlert, channel: string): string {
+  return `${channel}: ${alert.title}: ${alert.detail}`.slice(0, 500);
 }
 
-function noteGiveUp(db: DatabaseSync, alert: OwnerAlert): void {
-  const detail = giveUpDetail(alert);
+function noteGiveUp(db: DatabaseSync, alert: OwnerAlert, channel: string): void {
+  const detail = giveUpDetail(alert, channel);
   const existing = db.prepare("SELECT id FROM owner_alerts WHERE kind = 'delivery' AND title = 'Alert delivery gave up' AND detail = ?").get(detail);
   if (existing) return;
   deskNotifier(db).notify({ kind: "delivery", title: "Alert delivery gave up", detail });
@@ -130,7 +143,7 @@ export function scheduleAlertRetry(db: DatabaseSync, alert: OwnerAlert, channel:
   const began = existing?.started_at || startedAt || now;
   if (now - began >= giveUpMs) {
     if (existing) db.prepare("DELETE FROM alert_retries WHERE id = ?").run(existing.id);
-    noteGiveUp(db, alert);
+    noteGiveUp(db, alert, channel);
     return "gave_up";
   }
   const attempt = existing ? Math.max(existing.attempt, priorAttempt) + 1 : (priorAttempt > 0 ? priorAttempt + 1 : 1);
@@ -150,7 +163,7 @@ export function reportDeliveryFailure(db: DatabaseSync, error: unknown, now = Da
   if (!row) scheduleAlertRetry(db, alert, channel, now);
 }
 
-/** Re-send each channel's copy of the original alert. A throw backs off. Past the window, one give-up notice is enough. */
+/** Re-send each channel's copy of the original alert. A throw backs off. Each channel, and each later alert, gets its own give-up notice. */
 export function drainAlertRetries(db: DatabaseSync, deliver: (alert: OwnerAlert, channel: AlertChannel, attempt: number, startedAt: number) => void, now = Date.now(), giveUpMs = ALERT_GIVE_UP_MS): { sent: number; gaveUp: number } {
   const due = db.prepare("SELECT id, kind, title, detail, attempt, next_at, channel, started_at FROM alert_retries WHERE next_at <= ? ORDER BY next_at ASC").all(now) as RetryRow[];
   let sent = 0;
@@ -161,7 +174,7 @@ export function drainAlertRetries(db: DatabaseSync, deliver: (alert: OwnerAlert,
     const began = row.started_at || now;
     if (now - began >= giveUpMs) {
       db.prepare("DELETE FROM alert_retries WHERE id = ?").run(row.id);
-      noteGiveUp(db, alert);
+      noteGiveUp(db, alert, channel);
       gaveUp += 1;
       continue;
     }

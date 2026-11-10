@@ -53,6 +53,7 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
         idempotencyKey: `hold:${intent.id}:${decision.reason}`,
         ref: intent.id,
         note: `${decision.outcome}:${decision.reason}:${intent.productType}:${intent.merchant}`,
+        merchant: intent.merchant,
       });
       db.exec("COMMIT");
       return { decision, issuerCalled: false, row };
@@ -81,6 +82,7 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
       idempotencyKey: `reserve:${intent.id}`,
       ref: intent.id,
       note: `Reserved before issuer. ${intent.productType} at ${intent.merchant}.`,
+      merchant: intent.merchant,
     });
     if (claim?.state === "released") {
       db.prepare("UPDATE purchase_claims SET state = 'claimed', amount_cents = ?, created_at = ? WHERE intent_id = ?").run(intent.amountCents, atMs, intent.id);
@@ -117,6 +119,7 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
       idempotencyKey: `decline:${intent.id}`,
       ref: intent.id,
       note: `Issuer declined ${intent.productType} at ${intent.merchant}. Not counted toward caps.`,
+      merchant: intent.merchant,
     });
     db.prepare("UPDATE purchase_claims SET state = 'released', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
     return { decision: { outcome: "decline", reason: result.reason || "ISSUER_DECLINED" }, issuerCalled: true, row };
@@ -132,6 +135,7 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
     idempotencyKey: execKey,
     ref: intent.id,
     note: `${intent.productType} at ${intent.merchant}. ${intent.reason}`,
+    merchant: intent.merchant,
   });
   db.prepare("UPDATE purchase_claims SET state = 'executed', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
   void ownsClaim;
@@ -159,7 +163,7 @@ function noteIssuerUnknown(db: DatabaseSync, intent: PurchaseIntent, notify?: (a
 }
 
 /** Resolve an UNKNOWN claim without a fresh purchase. Lookup must honor the idempotency key. */
-export function resolveUnknown(db: DatabaseSync, intent: PurchaseIntent, atMs: number, source: { lookup?: () => IssuerResult | null; owner?: "clear" | "charged" | "not_charged"; providerTransactionId?: string; unknownId?: boolean; provider?: string }): Execution {
+export function resolveUnknown(db: DatabaseSync, intent: PurchaseIntent, atMs: number, source: { lookup?: () => IssuerResult | null; owner?: "clear" | "charged" | "not_charged"; providerTransactionId?: string; unknownId?: boolean; provider?: string; configuredIssuer?: string }): Execution {
   const claim = db.prepare("SELECT state FROM purchase_claims WHERE intent_id = ?").get(intent.id) as { state: string } | undefined;
   if (claim?.state !== "unknown") return { decision: { outcome: "decline", reason: "NOT_UNKNOWN" }, issuerCalled: false, row: null };
   const ledger = new Ledger(db);
@@ -175,6 +179,7 @@ export function resolveUnknown(db: DatabaseSync, intent: PurchaseIntent, atMs: n
       idempotencyKey: `void:${intent.id}`,
       ref: intent.id,
       note: `Not charged. ${intent.productType} at ${intent.merchant}. Keeper voided the unknown outcome.`,
+      merchant: intent.merchant,
     });
     db.prepare("UPDATE purchase_claims SET state = 'released' WHERE intent_id = ?").run(intent.id);
     return { decision: { outcome: "decline", reason: "OWNER_CLEARED_UNKNOWN" }, issuerCalled: false, row };
@@ -189,11 +194,12 @@ export function resolveUnknown(db: DatabaseSync, intent: PurchaseIntent, atMs: n
       kind: "purchase",
       amountCents: intent.amountCents,
       status: "unconfirmed",
-      provider: unknown ? null : (source.provider ?? "issuer"),
+      provider: resolutionProvider(source.provider, source.configuredIssuer),
       providerTransactionId: unknown ? UNKNOWN_PROVIDER_ID : given,
       idempotencyKey: `exec:${intent.id}`,
       ref: intent.id,
       note: `${intent.productType} at ${intent.merchant}. Keeper marked this unknown outcome as charged.${unknown ? " id:unknown." : ""} Not a new issuer call.`,
+      merchant: intent.merchant,
     });
     db.prepare("UPDATE purchase_claims SET state = 'executed', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
     return { decision: { outcome: "auto_approve", reason: "OWNER_ATTESTED_CHARGE" }, issuerCalled: false, row };
@@ -213,17 +219,26 @@ export function resolveUnknown(db: DatabaseSync, intent: PurchaseIntent, atMs: n
     idempotencyKey: `exec:${intent.id}`,
     ref: intent.id,
     note: `${intent.productType} at ${intent.merchant}. Resolved from the issuer key, not a new charge.`,
+    merchant: intent.merchant,
   });
   db.prepare("UPDATE purchase_claims SET state = 'executed', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
   return { decision: { outcome: "auto_approve", reason: "RESOLVED_UNKNOWN" }, issuerCalled: false, row };
 }
 
-export type ChargeProof = { confirm?: boolean; providerTransactionId?: string; unknownId?: boolean; provider?: string };
+export type ChargeProof = { confirm?: boolean; providerTransactionId?: string; unknownId?: boolean; provider?: string; configuredIssuer?: string };
+
+/** The booked provider is the one the keeper named, otherwise the configured card issuer. */
+export function resolutionProvider(explicit?: string, configured?: string): string {
+  const given = explicit?.trim();
+  if (given) return given;
+  const card = configured?.trim();
+  return card || "mock";
+}
 
 export function describeUnknownClaim(db: DatabaseSync, intentId: string): { merchant: string; productType: string } {
   const reserve = new Ledger(db).findByIdempotency(`reserve:${intentId}`);
-  const match = /Reserved before issuer\. (.+) at ([^.]+)\./.exec(reserve?.note ?? "");
-  return { productType: match?.[1] ?? "resolution", merchant: match?.[2] ?? "unknown" };
+  const product = /Reserved before issuer\. (.+) at /.exec(reserve?.note ?? "");
+  return { productType: product?.[1] ?? "resolution", merchant: reserve?.merchant?.trim() || "unknown" };
 }
 
 export function listUnknownClaims(db: DatabaseSync): { intentId: string; amountCents: number; atMs: number; merchant: string; productType: string }[] {
@@ -251,7 +266,7 @@ export function resolveUnknownClaim(db: DatabaseSync, intentId: string, verdict:
     influencedByWeb: false,
   };
   const result = verdict === "charged"
-    ? resolveUnknown(db, intent, atMs, { owner: "charged", providerTransactionId: proof.providerTransactionId, unknownId: proof.unknownId, provider: proof.provider })
+    ? resolveUnknown(db, intent, atMs, { owner: "charged", providerTransactionId: proof.providerTransactionId, unknownId: proof.unknownId, provider: proof.provider, configuredIssuer: proof.configuredIssuer })
     : resolveUnknown(db, intent, atMs, { owner: "not_charged" });
   if (result.decision.reason !== "NOT_UNKNOWN" && result.decision.reason !== "NEEDS_PROVIDER_ID" && result.decision.reason !== "CONFIRM_REQUIRED") {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'resolve_unknown', ?)").run(atMs, `${intentId}:${verdict}:${described.merchant}:${claim.amount_cents}`);

@@ -17,6 +17,7 @@ export type LedgerInput = {
   idempotencyKey: string;
   ref?: string | null;
   note: string;
+  merchant?: string | null;
 };
 
 export type LedgerRow = LedgerInput & { seq: number; currency: string; prevHash: string; entryHash: string; bodyHash: string };
@@ -68,8 +69,8 @@ export class Ledger {
     const entryHash = createHash("sha256").update(prevHash + hash).digest("hex");
     this.db.prepare(
       `INSERT INTO ledger_entries
-        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, prev_hash, entry_hash)
-       VALUES (?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, prev_hash, entry_hash)
+       VALUES (?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       input.id,
       input.atMs,
@@ -84,6 +85,7 @@ export class Ledger {
       hash,
       input.ref ?? null,
       input.note,
+      input.merchant ?? null,
       prevHash,
       entryHash,
     );
@@ -116,6 +118,7 @@ function mapRow(row: Record<string, unknown>): LedgerRow {
     idempotencyKey: String(row.idempotency_key),
     ref: (row.ref as string | null) ?? null,
     note: String(row.note),
+    merchant: row.merchant == null || row.merchant === "" ? null : String(row.merchant),
     currency: String(row.currency),
     prevHash: String(row.prev_hash),
     entryHash: String(row.entry_hash),

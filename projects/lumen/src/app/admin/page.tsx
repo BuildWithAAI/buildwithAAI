@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { OWNER_COOKIE } from "../../auth/owner";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
 import { artAction, clearAlertAction, controlAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
+import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
 export default async function AdminPage() {
@@ -28,7 +29,7 @@ export default async function AdminPage() {
         {snap.money.alerts.length ? (
           <ul className="feed">
             {snap.money.alerts.map((alert) => (
-              <li key={alert.id}><strong>{alert.title}</strong> — {alert.detail}</li>
+              <li key={alert.id}><strong>{alert.title}</strong> — {alert.detail} <span className="muted">{deskClock(alert.created_at)}</span></li>
             ))}
           </ul>
         ) : null}
@@ -53,7 +54,7 @@ export default async function AdminPage() {
             <ul className="feed">
               {(snap.money.unknownClaims as { intentId: string; amountCents: number; atMs: number; merchant: string }[]).map((claim) => (
                 <li key={claim.intentId}>
-                  <strong>{claim.merchant}</strong> · {claim.amountCents}¢ · {new Date(claim.atMs).toISOString()}
+                  <strong>{claim.merchant}</strong> · {claim.amountCents}¢ · {deskClock(claim.atMs)}
                   <form action={resolveUnknownAction}>
                     <input type="hidden" name="intentId" value={claim.intentId} />
                     <input type="hidden" name="verdict" value="charged" />

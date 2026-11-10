@@ -57,7 +57,10 @@ export function createEngine(env: Env, file?: string) {
     reconcileNow: (records?: { stripe: ProviderRecord[]; issuer: ProviderRecord[] }) => reconcileNow(db, env, issuer, records),
     clearAlert: () => clearAlert(db),
     executeQueued: (intentId: string) => executeQueued(db, env, issuer, intentId),
-    resolveUnknownClaim: (intentId: string, verdict: "charged" | "not_charged", proof?: ChargeProof) => resolveUnknownClaim(db, intentId, verdict, Date.now(), proof),
+    resolveUnknownClaim: (intentId: string, verdict: "charged" | "not_charged", proof?: ChargeProof) => resolveUnknownClaim(db, intentId, verdict, Date.now(), {
+      ...proof,
+      configuredIssuer: proof?.configuredIssuer || env.LUMEN_CARD_ISSUER,
+    }),
     approveProposal: (id: string) => approveProposal(db, id),
     world: () => worldView(db, Date.now(), env),
     worldRead: (ip: string) => {
@@ -702,5 +705,11 @@ export function startLoop(): void {
   beat();
   setInterval(beat, interval);
   const drainMs = Math.max(5_000, Number(process.env.LUMEN_ALERT_DRAIN_MS ?? 15_000));
-  setInterval(() => { deliverDueAlerts(engine.db, engine.env, Date.now()); }, drainMs);
+  setInterval(() => {
+    try {
+      deliverDueAlerts(engine.db, engine.env, Date.now());
+    } catch {
+      /* a database error must not stop the next drain */
+    }
+  }, drainMs);
 }
