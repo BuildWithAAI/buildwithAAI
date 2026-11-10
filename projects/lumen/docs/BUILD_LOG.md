@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: d35c2b5
+title: The island is the front door.
+summary: / opens the full-screen world, with Zoora in it. The greeting, the AI notice, the advice line, the Kit form, and the nav sit in a drawer. /world redirects home and keeps the camera query, so the canonical page is /. Without WebGL the same page shows the friendly fallback and the greeting. A thought bubble follows her head and uses her activity, diary, scene reason, wish, or a canned guestbook reply. It never shows a raw visitor note and it cannot spend. The ledger panel reads confirmed rows only. With none, it says no transactions yet and that live money is off. Paper rows are labeled SIMULATED and stay out of the balance. The wishlist panel is read-only. The nonce CSP, public mode, and crisis replies are unchanged.
+date: 2026-11-10T22:20:00Z
+image:
+
+---
 sha: fa5d843
 title: Zoora can answer her owner on Telegram, including without a public webhook.
 summary: /mood, /needs, /status, /world, and /help are read from her recorded state and only from the owner chat. /status says live money is off and does not invent a balance. Any other slash is talk. None of them can spend, flip a switch, mint, or change a price. npm run telegram:poll calls deleteWebhook, then getUpdates with an offset. That process removes LUMEN_MONEY_LIVE and LUMEN_TRADING_LIVE, closes checkout, and keeps the Saloon on paper. Without an xAI key the replies stay canned. With LUMEN_XAI_API_KEY, ordinary talk can use Grok. The bot token is not printed.
