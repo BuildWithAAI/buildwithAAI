@@ -55,29 +55,71 @@ export async function advanceResearch(db: DatabaseSync, env: Env, state: BrainSt
   db.prepare("INSERT INTO research_queries(at_ms, question) VALUES (?, ?)").run(now, question);
   const hits = await adapter.search(question);
   const hit = hits.find((item) => item.url);
-  let page = hit?.snippet ?? "";
-  if (hit) {
-    try {
-      page = await adapter.fetchPage(hit.url);
-    } catch {
-      page = hit.snippet;
-    }
-  }
-  const finding = hit ? makeFinding({ ideaId: active.id, question, hit, page, atMs: now }) : null;
-  if (!finding || !finding.sourceUrl) {
+  if (!hit) {
     if (earlier > 0) parkIdea(db, active, now);
     return { state, intents: [] };
   }
-  if (nothingNew(findings, question, finding)) {
-    parkIdea(db, active, now);
-    return { state, intents: [] };
-  }
-  db.prepare("INSERT INTO findings(id, idea_id, question, summary, source_url, at_ms) VALUES(?, ?, ?, ?, ?, ?)").run(
-    finding.id, finding.ideaId, finding.question, finding.summary, finding.sourceUrl, finding.atMs,
-  );
-  const done = listFindings(db, active.id);
-  if (done.length >= 3) return { state: finishIdea(db, state, active, done, now), intents: [] };
+  db.prepare(
+    "INSERT INTO research_pending(id, idea_id, question, url, title, snippet, at_ms) VALUES(?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET url = excluded.url, title = excluded.title, snippet = excluded.snippet, at_ms = excluded.at_ms",
+  ).run(`pending-${active.id}`, active.id, question, hit.url, hit.title, hit.snippet, now);
   return { state, intents: [] };
+}
+
+/** Page fetches run here, not inside the brain tick. */
+export async function settleResearch(db: DatabaseSync, adapter: ResearchAdapter, now = Date.now(), state: BrainState | null = null): Promise<BrainState | null> {
+  if (settling) return state;
+  settling = true;
+  let lived = state;
+  try {
+    const rows = db.prepare("SELECT id, idea_id, question, url, title, snippet, at_ms FROM research_pending ORDER BY at_ms ASC").all() as PendingRow[];
+    for (const row of rows) {
+      const idea = listIdeas(db).find((item) => item.id === row.idea_id);
+      if (!idea || idea.status !== "researching") {
+        db.prepare("DELETE FROM research_pending WHERE id = ?").run(row.id);
+        continue;
+      }
+      let page = row.snippet;
+      try {
+        page = await adapter.fetchPage(row.url);
+      } catch {
+        page = row.snippet;
+      }
+      db.prepare("DELETE FROM research_pending WHERE id = ?").run(row.id);
+      const findings = listFindings(db, idea.id);
+      const finding = makeFinding({ ideaId: idea.id, question: row.question, hit: { title: row.title, url: row.url, snippet: row.snippet }, page, atMs: row.at_ms });
+      if (!finding || !finding.sourceUrl) {
+        if (findings.some((item) => item.question === row.question)) parkIdea(db, idea, now);
+        continue;
+      }
+      if (nothingNew(findings, row.question, finding)) {
+        parkIdea(db, idea, now);
+        continue;
+      }
+      db.prepare("INSERT INTO findings(id, idea_id, question, summary, source_url, at_ms) VALUES(?, ?, ?, ?, ?, ?)").run(
+        finding.id, finding.ideaId, finding.question, finding.summary, finding.sourceUrl, finding.atMs,
+      );
+      const done = listFindings(db, idea.id);
+      if (done.length >= 3) {
+        const base = lived ?? loadBrain(db);
+        if (base) lived = finishIdea(db, base, idea, done, now);
+      }
+    }
+    if (lived) saveBrain(db, lived);
+    return lived;
+  } finally {
+    settling = false;
+  }
+}
+
+let settling = false;
+
+function loadBrain(db: DatabaseSync): BrainState | null {
+  const raw = db.prepare("SELECT value FROM kv WHERE key = 'brain'").get() as { value: string } | undefined;
+  return raw ? JSON.parse(raw.value) as BrainState : null;
+}
+
+function saveBrain(db: DatabaseSync, state: BrainState): void {
+  db.prepare("INSERT INTO kv(key, value) VALUES('brain', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(state));
 }
 
 function parkIdea(db: DatabaseSync, idea: Idea, now: number): void {
@@ -127,6 +169,7 @@ function finishIdea(db: DatabaseSync, state: BrainState, idea: Idea, findings: F
   return { ...state, wishes: [...state.wishes, wish] };
 }
 
+type PendingRow = { id: string; idea_id: string; question: string; url: string; title: string; snippet: string; at_ms: number };
 type IdeaRow = { id: string; title: string; why: string; kind: string; status: string; created_at: number; updated_at: number };
 type FindingRow = { id: string; idea_id: string; question: string; summary: string; source_url: string; at_ms: number };
 type BriefRow = { idea_id: string; problem: string; who_pays: string; costs: string; risks: string; first_test: string; at_ms: number };

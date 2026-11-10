@@ -204,6 +204,15 @@ CREATE TABLE IF NOT EXISTS research_queries (
   at_ms INTEGER NOT NULL,
   question TEXT
 );
+CREATE TABLE IF NOT EXISTS research_pending (
+  id TEXT PRIMARY KEY,
+  idea_id TEXT NOT NULL,
+  question TEXT NOT NULL,
+  url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  snippet TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS research_briefs (
   idea_id TEXT PRIMARY KEY,
   problem TEXT NOT NULL,

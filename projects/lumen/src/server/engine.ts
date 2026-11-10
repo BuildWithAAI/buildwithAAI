@@ -18,7 +18,8 @@ import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, type Env } from "../money/rules";
 import { researchChatReply } from "../research/ideas";
-import { advanceResearch, ideaBoard, readBrief } from "../research/run";
+import { researchAdapter } from "../research/search";
+import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
 import { stripeSalesClient } from "../money/stripe";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -737,5 +738,6 @@ export function startLoop(): void {
     } catch {
       /* a database error must not stop the next drain */
     }
+    void settleResearch(engine.db, researchAdapter(engine.env), Date.now(), loadState(engine.db)).catch(() => undefined);
   }, drainMs);
 }

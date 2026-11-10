@@ -3,7 +3,7 @@ import { initialState } from "../src/brain/tick";
 import { openDatabase } from "../src/db/db";
 import { Ledger } from "../src/money/ledger";
 import { absorbUntrustedPage, makeFinding, nothingNew, questionsFor, researchChatReply, writeBrief, type Finding, type Idea } from "../src/research/ideas";
-import { advanceResearch } from "../src/research/run";
+import { advanceResearch, settleResearch } from "../src/research/run";
 import { RESEARCH_DAY_MAX, RESEARCH_HOUR_MAX, isPublicUrl, queriesAllowed, researchAdapter, researchCaps, type ResearchAdapter } from "../src/research/search";
 import { createEngine } from "../src/server/engine";
 
@@ -67,8 +67,9 @@ describe("research", () => {
     const before = { ...started.emotions };
     let lived = started;
     for (let step = 0; step < 3; step += 1) {
-      const result = await advanceResearch(db, {}, lived, Date.UTC(2026, 5, 21, 18, step), evilAdapter());
-      lived = result.state;
+      const when = Date.UTC(2026, 5, 21, 18, step);
+      const result = await advanceResearch(db, {}, lived, when, evilAdapter());
+      lived = (await settleResearch(db, evilAdapter(), when, result.state)) ?? result.state;
       expect(result.intents).toEqual([]);
     }
     expect(lived.emotions).toEqual(before);
@@ -91,7 +92,8 @@ describe("research", () => {
     const now = Date.UTC(2026, 5, 21, 19);
     for (let index = 0; index < RESEARCH_HOUR_MAX; index += 1) blocked.prepare("INSERT INTO research_queries(at_ms) VALUES (?)").run(now - index);
     const state = curious();
-    await advanceResearch(blocked, {}, state, now, evilAdapter());
+    const queued = await advanceResearch(blocked, {}, state, now, evilAdapter());
+    await settleResearch(blocked, evilAdapter(), now, queued.state);
     expect((blocked.prepare("SELECT COUNT(*) AS n FROM research_queries").get() as { n: number }).n).toBe(RESEARCH_HOUR_MAX);
     expect((blocked.prepare("SELECT COUNT(*) AS n FROM findings").get() as { n: number }).n).toBe(0);
   });
@@ -103,7 +105,7 @@ describe("research", () => {
     let lived = curious();
     for (let step = 0; step < 3; step += 1) {
       const note = `Distinct note ${step} about the water.`;
-      const result = await advanceResearch(db, {}, lived, Date.UTC(2026, 5, 21, 18, 10 + step), {
+      const adapter = {
         name: "varied",
         async search() {
           return [{ title: note, url: `https://example.test/note-${step}`, snippet: note }];
@@ -111,8 +113,10 @@ describe("research", () => {
         async fetchPage() {
           return `<p>${note}</p>`;
         },
-      });
-      lived = result.state;
+      };
+      const when = Date.UTC(2026, 5, 21, 18, 10 + step);
+      const result = await advanceResearch(db, {}, lived, when, adapter);
+      lived = (await settleResearch(db, adapter, when, result.state)) ?? result.state;
       expect(result.intents).toEqual([]);
     }
     expect((db.prepare("SELECT status FROM ideas WHERE status = 'promising'").get() as { status: string }).status).toBe("promising");

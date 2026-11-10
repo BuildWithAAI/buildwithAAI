@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fetchPublicPage } from "../src/research/search";
-import { ipBlocked, PageRefused, vetResearchUrl, type PinnedReply } from "../src/research/ssrf";
+import { fetchPublicPage, PAGE_BYTE_LIMIT } from "../src/research/search";
+import { ipBlocked, PageRefused, readCapped, vetResearchUrl, type PinnedReply } from "../src/research/ssrf";
 
 const publicLookup = async () => ["93.184.216.34"];
 
@@ -65,5 +65,27 @@ describe("research fetch address checks", () => {
       },
     })).rejects.toMatchObject({ reason: "REDIRECT" });
     expect(hops).toBe(4);
+  });
+
+  it("stops reading a large page at 64KB and aborts a page that hangs", async () => {
+    let pulled = 0;
+    async function* huge() {
+      while (pulled < 200) {
+        pulled += 1;
+        yield new Uint8Array(1000);
+      }
+    }
+    const capped = await readCapped(huge(), PAGE_BYTE_LIMIT);
+    expect(capped.byteLength).toBe(PAGE_BYTE_LIMIT);
+    expect(pulled).toBeLessThanOrEqual(65);
+    const started = Date.now();
+    await expect(fetchPublicPage("https://example.com/slow", {
+      lookup: publicLookup,
+      timeoutMs: 40,
+      exchange: (_request) => new Promise((_resolve, reject) => {
+        _request.signal.addEventListener("abort", () => reject(new PageRefused("TIMEOUT")), { once: true });
+      }),
+    })).rejects.toMatchObject({ reason: "TIMEOUT" });
+    expect(Date.now() - started).toBeLessThan(1000);
   });
 });

@@ -177,7 +177,7 @@ async function defaultExchange(request: PinnedRequest): Promise<PinnedReply> {
   const path = request.path.startsWith("/") ? request.path : `/${request.path}`;
   socket.write(`GET ${path} HTTP/1.1\r\nHost: ${request.hostname}\r\nAccept: text/html,text/plain\r\nConnection: close\r\n\r\n`);
   const raw = await readSocket(socket, request.signal);
-  const split = raw.indexOf("\r\n\r\n");
+  const split = findHeaderEnd(raw);
   if (split < 0) throw new PageRefused("PAGE");
   const head = new TextDecoder().decode(raw.subarray(0, split));
   const lines = head.split("\r\n");
@@ -190,13 +190,31 @@ async function defaultExchange(request: PinnedRequest): Promise<PinnedReply> {
   return { status, headers, body: raw.subarray(split + 4) };
 }
 
+function findHeaderEnd(raw: Uint8Array): number {
+  for (let index = 0; index < raw.length - 3; index += 1) {
+    if (raw[index] === 13 && raw[index + 1] === 10 && raw[index + 2] === 13 && raw[index + 3] === 10) return index;
+  }
+  return -1;
+}
+
 function readSocket(socket: net.Socket, signal: AbortSignal): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    const fail = (error: Error) => reject(error);
-    socket.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-    socket.on("error", fail);
-    socket.on("end", () => resolve(Buffer.concat(chunks)));
+    let total = 0;
+    const finish = () => resolve(Buffer.concat(chunks));
+    socket.on("data", (chunk) => {
+      const room = PAGE_BYTE_LIMIT - total;
+      if (room <= 0) {
+        socket.destroy();
+        return;
+      }
+      const slice = chunk.byteLength > room ? chunk.subarray(0, room) : chunk;
+      chunks.push(Buffer.from(slice));
+      total += slice.byteLength;
+      if (total >= PAGE_BYTE_LIMIT) socket.destroy();
+    });
+    socket.on("error", () => finish());
+    socket.on("close", finish);
     signal.addEventListener("abort", () => {
       socket.destroy();
       reject(new PageRefused("TIMEOUT"));
