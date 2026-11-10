@@ -8,7 +8,7 @@ const CURIOUS_NEED = 0.45;
 const CURIOUS_FEELING = 0.7;
 
 export function listIdeas(db: DatabaseSync): Idea[] {
-  return (db.prepare("SELECT id, title, why, kind, status, created_at, updated_at FROM ideas ORDER BY updated_at DESC, id ASC").all() as IdeaRow[]).map(mapIdea);
+  return (db.prepare("SELECT id, title, why, kind, status, source_key, created_at, updated_at FROM ideas ORDER BY updated_at DESC, id ASC").all() as IdeaRow[]).map(mapIdea);
 }
 
 export function listFindings(db: DatabaseSync, ideaId: string): Finding[] {
@@ -139,21 +139,22 @@ function seedIdeas(db: DatabaseSync, state: BrainState, now: number): void {
     wants: state.wants.filter((want) => want.status === "open"),
     soldTitles: sales.map((row) => row.note).filter(Boolean),
     visitorNotes: visitors.map((row) => row.body),
+    rememberedNoteKeys: (db.prepare("SELECT source_key FROM ideas WHERE source_key IS NOT NULL AND source_key != ''").all() as { source_key: string }[]).map((row) => row.source_key),
     now,
     existingTitles: listIdeas(db).map((idea) => idea.title),
   });
-  const insert = db.prepare("INSERT OR IGNORE INTO ideas(id, title, why, kind, status, created_at, updated_at) VALUES(?, ?, ?, ?, 'seed', ?, ?)");
-  for (const idea of drafts) insert.run(idea.id, idea.title, idea.why, idea.kind, idea.createdAt, idea.updatedAt);
+  const insert = db.prepare("INSERT OR IGNORE INTO ideas(id, title, why, kind, status, source_key, created_at, updated_at) VALUES(?, ?, ?, ?, 'seed', ?, ?, ?)");
+  for (const idea of drafts) insert.run(idea.id, idea.title, idea.why, idea.kind, idea.sourceKey, idea.createdAt, idea.updatedAt);
 }
 
 function promoteWhenCurious(db: DatabaseSync, state: BrainState, now: number): Idea | null {
-  const current = db.prepare("SELECT id, title, why, kind, status, created_at, updated_at FROM ideas WHERE status = 'researching' ORDER BY updated_at ASC LIMIT 1").get() as IdeaRow | undefined;
+  const current = db.prepare("SELECT id, title, why, kind, status, source_key, created_at, updated_at FROM ideas WHERE status = 'researching' ORDER BY updated_at ASC LIMIT 1").get() as IdeaRow | undefined;
   if (current) return mapIdea(current);
   if (state.needs.curiosity < CURIOUS_NEED && state.emotions.curiosity < CURIOUS_FEELING) return null;
   const seed = db.prepare("SELECT id FROM ideas WHERE status = 'seed' ORDER BY created_at ASC LIMIT 1").get() as { id: string } | undefined;
   if (!seed) return null;
   db.prepare("UPDATE ideas SET status = 'researching', updated_at = ? WHERE id = ?").run(now, seed.id);
-  const row = db.prepare("SELECT id, title, why, kind, status, created_at, updated_at FROM ideas WHERE id = ?").get(seed.id) as IdeaRow;
+  const row = db.prepare("SELECT id, title, why, kind, status, source_key, created_at, updated_at FROM ideas WHERE id = ?").get(seed.id) as IdeaRow;
   return mapIdea(row);
 }
 
@@ -170,7 +171,7 @@ function finishIdea(db: DatabaseSync, state: BrainState, idea: Idea, findings: F
 }
 
 type PendingRow = { id: string; idea_id: string; question: string; url: string; title: string; snippet: string; at_ms: number };
-type IdeaRow = { id: string; title: string; why: string; kind: string; status: string; created_at: number; updated_at: number };
+type IdeaRow = { id: string; title: string; why: string; kind: string; status: string; source_key: string | null; created_at: number; updated_at: number };
 type FindingRow = { id: string; idea_id: string; question: string; summary: string; source_url: string; at_ms: number };
 type BriefRow = { idea_id: string; problem: string; who_pays: string; costs: string; risks: string; first_test: string; at_ms: number };
 
@@ -181,6 +182,7 @@ function mapIdea(row: IdeaRow): Idea {
     why: row.why,
     kind: row.kind === "business" ? "business" : "life",
     status: row.status as Idea["status"],
+    sourceKey: row.source_key ? String(row.source_key) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

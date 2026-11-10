@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Needs, Wish } from "../brain/types";
 import { isPublicUrl, stripPage, type SearchHit } from "./search";
 
@@ -10,6 +11,7 @@ export type Idea = {
   why: string;
   kind: IdeaKind;
   status: IdeaStatus;
+  sourceKey: string | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -38,6 +40,7 @@ export type IdeaSignals = {
   wants: { text: string }[];
   soldTitles: string[];
   visitorNotes: string[];
+  rememberedNoteKeys: string[];
   now: number;
   existingTitles: string[];
 };
@@ -140,24 +143,37 @@ export function researchChatReply(ownerName: string, idea: Idea | null, brief: B
   return `${ownerName}, here's what I found and what I'd like you to buy to try it. ${idea.title}. Problem: ${brief.problem} Who would pay: ${brief.whoPays} Rough costs: ${brief.costs} Risks: ${brief.risks} First test: ${brief.firstTest} That stays a proposal until you approve it. This note does not spend.`;
 }
 
+/** Same guestbook line, ignoring case and repeated spaces. */
+export function visitorNoteKey(note: string): string {
+  return note.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
 export function ideasFromLife(input: IdeaSignals): Idea[] {
   const known = new Set(input.existingTitles.map((title) => title.toLowerCase()));
-  const drafts: { title: string; why: string; kind: IdeaKind }[] = [];
+  const remembered = new Set(input.rememberedNoteKeys.map(visitorNoteKey).filter(Boolean));
+  const drafts: { title: string; why: string; kind: IdeaKind; sourceKey: string | null }[] = [];
   const sold = input.soldTitles.find((title) => title.trim());
-  if (sold) drafts.push({ title: `Another look at ${sold.slice(0, 48)}`, why: "Someone already paid for this piece.", kind: "business" });
-  if (input.needs.expression >= 0.7) drafts.push({ title: "A piece someone might want to hold", why: "Expression is high, and the gallery is where that shows.", kind: "business" });
-  if (input.needs.curiosity >= 0.55) drafts.push({ title: "What the night water is asking", why: "Curiosity is high enough to sit with one question.", kind: "life" });
-  const note = input.visitorNotes.find((line) => line.trim());
-  if (note) drafts.push({ title: "A visitor left a thread", why: `A visitor wrote: ${note.replace(/\s+/g, " ").trim().slice(0, 140)}`, kind: "life" });
+  if (sold) drafts.push({ title: `Another look at ${sold.slice(0, 48)}`, why: "Someone already paid for this piece.", kind: "business", sourceKey: null });
+  if (input.needs.expression >= 0.7) drafts.push({ title: "A piece someone might want to hold", why: "Expression is high, and the gallery is where that shows.", kind: "business", sourceKey: null });
+  if (input.needs.curiosity >= 0.55) drafts.push({ title: "What the night water is asking", why: "Curiosity is high enough to sit with one question.", kind: "life", sourceKey: null });
+  for (const line of input.visitorNotes) {
+    const key = visitorNoteKey(line);
+    if (!key || remembered.has(key)) continue;
+    remembered.add(key);
+    drafts.push({ title: "A visitor left a thread", why: `A visitor wrote: ${key.slice(0, 140)}`, kind: "life", sourceKey: key });
+    break;
+  }
   const want = input.wants.find((item) => item.text.trim());
-  if (want) drafts.push({ title: `Following a want`, why: want.text.replace(/\s+/g, " ").trim().slice(0, 160), kind: "life" });
-  const fresh = drafts.filter((draft) => !known.has(draft.title.toLowerCase())).slice(0, 2);
-  return fresh.map((draft) => ({
-    id: `idea-${slug(draft.title)}`,
+  if (want) drafts.push({ title: "Following a want", why: want.text.replace(/\s+/g, " ").trim().slice(0, 160), kind: "life", sourceKey: null });
+  const fresh = drafts.filter((draft) => draft.sourceKey || !known.has(draft.title.toLowerCase()));
+  const picked = [...fresh.filter((draft) => !draft.sourceKey).slice(0, 1), ...fresh.filter((draft) => draft.sourceKey).slice(0, 1)];
+  return picked.map((draft) => ({
+    id: draft.sourceKey ? `idea-note-${createHash("sha256").update(draft.sourceKey).digest("hex").slice(0, 12)}` : `idea-${slug(draft.title)}`,
     title: draft.title,
     why: draft.why,
     kind: draft.kind,
     status: "seed" as const,
+    sourceKey: draft.sourceKey,
     createdAt: input.now,
     updatedAt: input.now,
   }));

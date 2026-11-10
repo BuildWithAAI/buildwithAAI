@@ -372,6 +372,7 @@ function briefReply(db: DatabaseSync, ownerName: string): string {
     why: idea.why,
     kind: idea.kind === "business" ? "business" : "life",
     status: idea.status as "promising",
+    sourceKey: null,
     createdAt: idea.created_at,
     updatedAt: idea.updated_at,
   }, readBrief(db, idea.id));

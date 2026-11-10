@@ -188,6 +188,7 @@ CREATE TABLE IF NOT EXISTS ideas (
   why TEXT NOT NULL,
   kind TEXT NOT NULL,
   status TEXT NOT NULL,
+  source_key TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -239,6 +240,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "alert_retries", "channel", "channel TEXT NOT NULL DEFAULT 'email'");
   ensureColumn(db, "alert_retries", "started_at", "started_at INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "research_queries", "question", "question TEXT");
+  ensureColumn(db, "ideas", "source_key", "source_key TEXT");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   return db;
