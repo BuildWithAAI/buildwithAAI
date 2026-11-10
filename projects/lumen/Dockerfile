@@ -10,6 +10,7 @@ FROM node:22-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/.next/standalone ./
+RUN rm -rf node_modules/typescript node_modules/@types
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/zoora ./zoora
 COPY --from=build /app/docs/BUILD_LOG.md ./docs/BUILD_LOG.md

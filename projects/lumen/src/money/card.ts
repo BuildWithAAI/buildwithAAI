@@ -35,14 +35,22 @@ export function descriptorMap(env: Env): Record<string, string> {
 export function cardCredentials(env: Env): boolean {
   const issuer = env.LUMEN_CARD_ISSUER;
   if (issuer === "mock") return true;
-  if (issuer === "stripe_issuing") return (env.STRIPE_ISSUING_KEY ?? "").startsWith("sk_");
+  if (issuer === "stripe_issuing") return issuingKeySeparate(env);
   if (issuer === "privacy") return Boolean(env.PRIVACY_API_KEY);
   if (issuer === "owner_checkout") return true;
   return false;
 }
 
+export function issuingKeySeparate(env: Env): boolean {
+  const key = env.STRIPE_ISSUING_KEY ?? "";
+  const sales = env.STRIPE_SECRET_KEY ?? "";
+  if (!key.startsWith("sk_")) return false;
+  if (sales && key === sales) return false;
+  return true;
+}
+
 export function issuingKey(env: Env): string {
-  if (env.LUMEN_CARD_ISSUER !== "stripe_issuing") return "";
+  if (env.LUMEN_CARD_ISSUER !== "stripe_issuing" || !issuingKeySeparate(env)) return "";
   const key = env.STRIPE_ISSUING_KEY ?? "";
   return key.startsWith("sk_live_") || key.startsWith("sk_test_") ? key : "";
 }
@@ -75,7 +83,26 @@ export function decideAuthorization(db: DatabaseSync, merchant: string, amountCe
 
 /** A reported issuer transaction is booked once. A matching expected spend is linked; an unmatched charge is still booked. */
 export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number; atMs: number; provider: string }): { booked: boolean; matched: boolean } {
-  if (!input.transactionId || input.amountCents <= 0) return { booked: false, matched: false };
+  if (!input.transactionId || !Number.isInteger(input.amountCents) || input.amountCents === 0) return { booked: false, matched: false };
+  if (input.amountCents < 0) {
+    const ledger = new Ledger(db);
+    const key = `issuing-refund:${input.transactionId}`;
+    if (!ledger.findByIdempotency(key)) {
+      ledger.append({
+        id: `refund-${input.transactionId}`,
+        atMs: input.atMs,
+        kind: "refund",
+        amountCents: -input.amountCents,
+        status: "confirmed",
+        provider: input.provider,
+        providerTransactionId: input.transactionId,
+        idempotencyKey: key,
+        note: `Issuer refund ${input.transactionId}.`,
+        merchant: input.merchant,
+      });
+    }
+    return { booked: true, matched: false };
+  }
   const rows = db.prepare("SELECT intent_id, merchant, max_cents, expires_at, status FROM expected_spends WHERE status IN ('open', 'authorized')").all() as {
     intent_id: string; merchant: string; max_cents: number; expires_at: number; status: string;
   }[];

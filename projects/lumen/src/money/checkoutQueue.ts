@@ -8,8 +8,7 @@ import { flag } from "../db/db";
 
 export const CLAIM_MS = 30 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
-const PAN_KEY = /^(pan|cvc|cvv|card_number|cardnumber|full_number|card|number)$/i;
-const PAN_VALUE = /\b\d{13,19}\b/;
+const PAN_KEY = /^(pan|cvc|cvv|card_number|cardnumber|full_number|card)$/i;
 
 export type CheckoutItem = {
   id: string;
@@ -31,10 +30,28 @@ export function rejectPan(value: unknown): boolean {
   return false;
 }
 
+function luhnOk(digits: string): boolean {
+  let sum = 0;
+  let alt = false;
+  for (let i = digits.length - 1; i >= 0; i -= 1) {
+    let n = digits.charCodeAt(i) - 48;
+    if (n < 0 || n > 9) return false;
+    if (alt) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+    alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+
 function looksLikePan(value: string): boolean {
-  if (PAN_VALUE.test(value)) return true;
-  const digits = value.replace(/[\s-]/g, "");
-  return /^\d{13,19}$/.test(digits);
+  const groups = value.match(/\d[\d\s.-]{11,30}\d/g) ?? [];
+  return groups.some((group) => {
+    const digits = group.replace(/[\s.-]/g, "");
+    return /^\d{13,19}$/.test(digits) && luhnOk(digits);
+  });
 }
 
 export function enqueueCheckout(db: DatabaseSync, env: Env, intent: PurchaseIntent, now: number): { ok: true; id: string } | { ok: false; reason: string } {

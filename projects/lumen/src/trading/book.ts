@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { flag, setFlag } from "../db/db";
 import { Ledger } from "../money/ledger";
+import { publicMoneyClosed } from "../money/rules";
 import { signerHeaders } from "../money/signerAuth";
 import { vetResearchUrl } from "../research/ssrf";
 
@@ -57,6 +58,7 @@ export function evaluateTrade(proposal: TradeProposal, env: TradeEnv, db: Databa
   const loss = dailyLossCents(db, tradingLive(env) ? "live" : "paper");
   if (loss + proposal.usdCents > caps.maxDailyLossCents) return { ok: false, reason: "DAILY_LOSS" };
   if (!tradingLive(env)) return { ok: true, mode: "paper" };
+  if (publicMoneyClosed(env)) return { ok: false, reason: "PUBLIC_MODE" };
   const signer = env.LUMEN_TRADE_SIGNER_URL ?? "";
   if (!signer.startsWith("https://")) return { ok: false, reason: "NO_SIGNER" };
   return { ok: true, mode: "live" };

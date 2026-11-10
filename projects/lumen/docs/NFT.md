@@ -2,7 +2,7 @@
 
 Owner accepted live-money risk without a test stage on 2026-11-09.
 
-One-of-one pieces on Solana mainnet. There is no devnet stage. `MINT_ENABLED` is on when `MINT_SIGNER_URL` is an `https://` address, and off when that address is missing or `MINT_ENABLED=false`. The keeper mint kill switch stops it. Zoora and the model never see a private key. If a private key is placed in this app's environment, minting stays closed.
+One-of-one pieces on Solana. Mainnet is the default. `LUMEN_MINT_NETWORK=devnet` is the owner's own test network and stays off unless it is exactly `devnet`. Minting needs `MINT_SIGNER_URL` on `https://` and `LUMEN_MINT_SIGNER_SECRET`. The signer must check `x-lumen-signature`. On the public site, minting also needs `LUMEN_MONEY_LIVE=true`. That flag does not open the desk login. `MINT_ENABLED=false` or the keeper mint kill switch stops it. Zoora and the model never see a private key. If a private key is placed in this app's environment, minting stays closed.
 
 ## Standard
 

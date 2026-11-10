@@ -1,17 +1,33 @@
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { flag } from "../db/db";
 import { Ledger } from "./ledger";
 import { vetResearchUrl } from "../research/ssrf";
-import type { Env } from "./rules";
+import { killSwitchOn, publicMoneyClosed, type Env } from "./rules";
 
 const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const LAMPORTS = 1_000_000_000n;
 const DEFAULT_QUOTE_MS = 10 * 60 * 1000;
 
 export type SolTx = {
+  blockTime?: number | null;
   meta?: { err?: unknown; preBalances?: number[]; postBalances?: number[] } | null;
   transaction?: { message?: { accountKeys?: (string | { pubkey?: string })[] }; signatures?: string[] };
 };
+
+/** Unix seconds from getTransaction, as milliseconds. Missing time stays undefined. */
+export function chainTimeMs(tx: SolTx | null): number | undefined {
+  if (typeof tx?.blockTime !== "number" || !Number.isFinite(tx.blockTime)) return undefined;
+  return Math.round(tx.blockTime * 1000);
+}
+
+/** Quote, verify, and the download link all stop for these. */
+export function solanaPayBlock(db: DatabaseSync, env: Env): "KILL_SWITCH" | "SHOP_KILL" | "PUBLIC_MODE" | null {
+  if (killSwitchOn(env, flag(db, "kill") === "1")) return "KILL_SWITCH";
+  if (flag(db, "shop_kill") === "1") return "SHOP_KILL";
+  if (publicMoneyClosed(env)) return "PUBLIC_MODE";
+  return null;
+}
 
 export function encodeBase58(bytes: Uint8Array): string {
   let zeros = 0;
@@ -132,6 +148,8 @@ export function verifySolTransaction(tx: SolTx | null, expect: { recipient: stri
 }
 
 export async function quoteSolOrder(db: DatabaseSync, env: Env, input: { kind: "shop" | "nft"; itemId: string; title: string; usdCents: number }, now: number, fetchImpl: typeof fetch = fetch): Promise<{ ok: true; id: string; url: string; lamports: string; expiresAt: number } | { ok: false; reason: string }> {
+  const blocked = solanaPayBlock(db, env);
+  if (blocked) return { ok: false, reason: blocked };
   const recipient = (env.LUMEN_SOL_RECEIVE_ADDRESS ?? "").trim();
   if (!publicKeyOk(recipient)) return { ok: false, reason: "NO_ADDRESS" };
   const priceUrl = env.LUMEN_SOL_PRICE_URL ?? "";
@@ -192,7 +210,9 @@ function flagSolRefund(db: DatabaseSync, orderId: string, signature: string, rea
   db.prepare("INSERT INTO sol_refund_flags(order_id, signature, reason, lamports, created_at) VALUES(?, ?, ?, ?, ?)").run(orderId, signature, reason, lamports.toString(), now);
 }
 
-export function verifySolPayment(db: DatabaseSync, orderId: string, signature: string, tx: SolTx | null, now: number, proof?: { txTime?: number }): { ok: true; token: string | null } | { ok: false; reason: string } {
+export function verifySolPayment(db: DatabaseSync, orderId: string, signature: string, tx: SolTx | null, now: number, proof?: { txTime?: number }, env: Env = process.env): { ok: true; token: string | null } | { ok: false; reason: string } {
+  const blocked = solanaPayBlock(db, env);
+  if (blocked) return { ok: false, reason: blocked };
   if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) return { ok: false, reason: "SIGNATURE" };
   const used = db.prepare("SELECT id FROM sol_orders WHERE signature = ?").get(signature) as { id: string } | undefined;
   if (used) return { ok: false, reason: "REUSED" };

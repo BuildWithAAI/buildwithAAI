@@ -25,7 +25,7 @@ primary_region = "iad"
   interval = "30s"
   timeout = "5s"
   method = "GET"
-  path = "/api/health"
+  path = "/healthz"
 
   [http_service.checks.headers]
     X-Forwarded-Proto = "https"

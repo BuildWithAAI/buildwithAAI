@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 const WINDOW_MS = 60_000;
 const LIMIT = 8;
 const LOCK_MS = 15 * 60_000;
@@ -5,6 +7,11 @@ const FAIL_LIMIT = 5;
 const hits = new Map<string, number[]>();
 const failures = new Map<string, number[]>();
 const lockedUntil = new Map<string, number>();
+
+/** The lockout key is the whole token, not a shared prefix. */
+export function ownerTokenKey(token: string): string {
+  return `bearer:${createHash("sha256").update(token).digest("hex")}`;
+}
 
 export function allowOwnerToken(key: string, now: number): boolean {
   pruneOwnerTokens(now);

@@ -3,6 +3,9 @@ import { securityHeaders } from "./src/auth/publicMode";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingExcludes: {
+    "*": ["node_modules/typescript/**/*", "node_modules/@types/**/*"],
+  },
   serverExternalPackages: ["node:sqlite"],
   poweredByHeader: false,
   experimental: {

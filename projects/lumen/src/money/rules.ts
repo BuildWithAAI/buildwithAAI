@@ -47,7 +47,8 @@ import { cardCredentials } from "./card";
  * LUMEN_TICK_MS                      Tick interval, minimum 4000.
  * LUMEN_DATA                         SQLite path.
  * LUMEN_QUIET_HOURS                  "start-end" UTC hours, default 0-6.
- * LUMEN_PUBLIC_MODE                  "true" locks the public desk and keeps spending, live sales, and minting off.
+ * LUMEN_PUBLIC_MODE                  "true" is the public site and closes the desk login. It is not the money switch.
+ * LUMEN_MONEY_LIVE                   Exact "true" lets spend, live sales, minting, Solana Pay, and live trading run while the public login stays closed. Unset keeps that money off on the public site.
  * LUMEN_LISTING_MAX_USD              Optional dollar cap for a listing Zoora publishes. Unset means no cap. A bad value closes new prices.
  * LUMEN_TRUSTED_PROXY                none, fly, forwarded, cloudflare (CF-Connecting-IP), or ngrok.
  */
@@ -193,6 +194,16 @@ function amountPairs(raw: string | undefined, errors: string[]): Record<string, 
   return out;
 }
 
+/** Live money on the public site. This does not open the desk login. */
+export function moneyLive(env: Env = process.env): boolean {
+  return env.LUMEN_MONEY_LIVE === "true";
+}
+
+/** Public mode keeps money off until LUMEN_MONEY_LIVE is set. The login check stays separate. */
+export function publicMoneyClosed(env: Env = process.env): boolean {
+  return publicModeOn(env) && !moneyLive(env);
+}
+
 export function killSwitchOn(env: Env, adminFlag: boolean): boolean {
   const raw = env.LUMEN_KILL_SWITCH;
   if (raw === undefined || raw === "" || raw === "false") return adminFlag;
@@ -207,7 +218,7 @@ export function salesCredentials(env: Env): boolean {
 }
 
 export function salesMode(env: Env, rulesOk: boolean, killed: boolean): SalesMode {
-  if (publicModeOn(env) || killed || !rulesOk) return "disabled";
+  if (publicMoneyClosed(env) || killed || !rulesOk) return "disabled";
   if (env.LUMEN_SALES_MODE === "disabled") return "disabled";
   const mode = env.LUMEN_SALES_MODE;
   const key = env.STRIPE_SECRET_KEY ?? "";
@@ -223,12 +234,12 @@ export function salesMode(env: Env, rulesOk: boolean, killed: boolean): SalesMod
 }
 
 export function spendSwitchOn(env: Env): boolean {
-  if (publicModeOn(env)) return false;
+  if (publicMoneyClosed(env)) return false;
   return env.LUMEN_SPEND_ENABLED === "true" && cardCredentials(env);
 }
 
 export function spendAllowed(env: Env, rulesOk: boolean, killed: boolean, adminSpend: boolean): { open: boolean; reason: string } {
-  if (publicModeOn(env)) return { open: false, reason: "PUBLIC_MODE" };
+  if (publicMoneyClosed(env)) return { open: false, reason: "PUBLIC_MODE" };
   if (killed) return { open: false, reason: "KILL_SWITCH" };
   if (!rulesOk) return { open: false, reason: "CONFIG_INVALID" };
   if (!spendSwitchOn(env)) return { open: false, reason: "SPEND_DISABLED" };

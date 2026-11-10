@@ -88,7 +88,9 @@ describe("public mode", () => {
     expect(docker).toContain("/healthz");
     expect(entry).toContain("gosu node");
     expect(fly).toContain("[[http_service.checks]]");
-    expect(fly).toContain("path = \"/api/health\"");
+    expect(fly).toContain("path = \"/healthz\"");
+    expect(fly).toContain("LUMEN_PUBLIC_MODE = \"true\"");
+    expect(fly).not.toContain("LUMEN_MONEY_LIVE");
     expect(fly).toContain("LUMEN_TRUSTED_PROXY = \"fly\"");
     expect(fly).toContain("snapshot_retention = 5");
     expect(fly).toContain("scheduled_snapshots = true");

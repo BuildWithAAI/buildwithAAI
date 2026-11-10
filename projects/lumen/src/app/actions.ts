@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clientAddress, OWNER_COOKIE } from "../auth/owner";
 import { loginReachable, publicModeOn } from "../auth/publicMode";
-import { fetchFinalized, quoteSolOrder, verifySolPayment } from "../money/solana";
+import { chainTimeMs, fetchFinalized, quoteSolOrder, verifySolPayment } from "../money/solana";
 import { listShop } from "../shop/store";
 import { getEngine } from "../server/engine";
 
@@ -90,7 +90,7 @@ export async function solVerify(form: FormData) {
   const signature = String(form.get("signature") ?? "").trim();
   const rpc = engine.env.LUMEN_SOL_RPC_URL ?? "";
   const tx = rpc ? await fetchFinalized(rpc, signature) : null;
-  const result = verifySolPayment(engine.db, orderId, signature, tx, Date.now());
+  const result = verifySolPayment(engine.db, orderId, signature, tx, Date.now(), { txTime: chainTimeMs(tx) }, engine.env);
   if (!result.ok) redirect(`/shop/sol?order=${orderId}&error=${result.reason}`);
   redirect(`/shop/sol?order=${orderId}&paid=1`);
 }

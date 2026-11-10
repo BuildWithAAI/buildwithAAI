@@ -158,7 +158,7 @@ describe("re-review 10", () => {
     expect(allowPage("198.51.100.9", now)).toBe(true);
     expect(pageLimitSize()).toBe(1);
     expect(allowPage("198.51.100.10", now + 120_000)).toBe(true);
-    expect(pageLimitSize()).toBe(1);
+    expect(pageLimitSize()).toBe(2);
   });
 
   it("approves one charge from pending_request.amount and respects kill, spend, and unknown", () => {

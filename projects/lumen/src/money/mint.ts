@@ -1,5 +1,4 @@
-import { publicModeOn } from "../auth/publicMode";
-import type { Env } from "./rules";
+import { publicMoneyClosed, type Env } from "./rules";
 import { signerHeaders } from "./signerAuth";
 
 /**
@@ -11,7 +10,7 @@ export function mintNetwork(env: Env): "mainnet" | "devnet" {
 }
 
 export function mintSwitch(env: Env, killed = false): { open: boolean; reason: string } {
-  if (publicModeOn(env)) return { open: false, reason: "PUBLIC_MODE" };
+  if (publicMoneyClosed(env)) return { open: false, reason: "PUBLIC_MODE" };
   if (killed || env.MINT_KILL === "true") return { open: false, reason: "MINT_KILL" };
   if (env.MINT_PRIVATE_KEY || env.SOLANA_PRIVATE_KEY || env.MINT_KEYPAIR) return { open: false, reason: "KEY_MUST_STAY_IN_SIGNER" };
   if (env.MINT_ENABLED === "false") return { open: false, reason: "MINT_OFF" };

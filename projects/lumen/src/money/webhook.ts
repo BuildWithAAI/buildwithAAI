@@ -145,7 +145,7 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
     const booked = confirmIssuerTransaction(db, {
       transactionId: String(object.id ?? ""),
       merchant,
-      amountCents: Math.abs(numberField(object.amount)),
+      amountCents: numberField(object.amount),
       atMs: typeof object.created === "number" ? object.created * 1000 : nowMs,
       provider: "stripe_issuing",
     });

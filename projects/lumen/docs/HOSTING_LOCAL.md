@@ -1,6 +1,6 @@
 # Host Zoora on your computer
 
-The public site is [zoora.ai](https://zoora.ai). This page is how to show the jellyfish and the build log from the owner's machine, through a tunnel, at a name such as `world.zoora.ai`. The Zoora system (the owner's client) is not this website. Spending stays off when `LUMEN_PUBLIC_MODE=true`.
+The public site is [zoora.ai](https://zoora.ai). This page is how to show the jellyfish and the build log from the owner's machine, through a tunnel, at a name such as `world.zoora.ai`. The Zoora system (the owner's client) is not this website. `LUMEN_PUBLIC_MODE=true` closes the public login. Money stays off until `LUMEN_MONEY_LIVE=true`, so turning money on does not reopen that login.
 
 The desk, the ledger, the database file, and the env file stay on this computer.
 
@@ -59,9 +59,9 @@ In the site window, press Ctrl+C. In the tunnel window, press Ctrl+C. Stopping e
 
 With `LUMEN_PUBLIC_MODE=true`:
 
-- `/admin`, the keeper desk, and `/admin/ledger` require an owner session. The login page stays available so the owner can sign in.
+- `/admin`, the keeper desk, and `/admin/ledger` require an owner session. On the public edge the login page stays closed. `fly proxy` still reaches it because that connection has no `Fly-Client-IP`.
 - `/books` shows the confirmed balance and P&L. Unconfirmed rows are not called money.
-- Spending, sales, and minting follow their credentials. Public mode does not force them off. The kill switches still do.
+- Spending, live sales, minting, Solana Pay, and live trading stay off while the site is public, until `LUMEN_MONEY_LIVE=true`. The kill switches still stop them. Setting that flag does not reopen the public login.
 - Pages send a strict content security policy and the other security headers.
 - Each address is limited to 120 requests a minute.
 - `LUMEN_DATA`, `.env.local`, tokens, and the card issuer stay on this machine. Do not put them in the tunnel command line.
