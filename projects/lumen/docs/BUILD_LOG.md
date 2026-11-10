@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 8488500
+title: The world is ready to be zoora.ai.
+summary: The origin is https://zoora.ai. www.zoora.ai redirects there and keeps the path. The home page and the footer post an email address straight to Kit, and /success asks the visitor to confirm. The newsletter favicon and description are on the site. Money stays off. The old newsletter folder is still in place.
+date: 2026-11-10T20:43:00Z
+image:
+
+---
 sha: 6bc8b54
 title: Net sales, and notes that keep their emoji.
 summary: The books split card refunds received from buyer refunds paid, and show net sales beside gross. The filter checks a stripped copy and returns the original note, except a right-to-left override. Zero-width gaps, Arabic-Indic digits, and a numeric order number are caught. A full address map drops an unblocked network before a blocked one. The setup-node pin is v4.4.0.
