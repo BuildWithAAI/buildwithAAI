@@ -29,6 +29,8 @@ Painting adds an unlisted gallery piece. Writing, for Zoora, adds a diary line. 
 
 On the keeper desk, issue a token with an agent name. The token is shown there until the next one is issued. Store it outside the repo. Each token is hashed in the database. Zoora and Mote do not use these tokens; the server moves them.
 
+A world token is not `LUMEN_JARVIS_TOKEN` and not `OWNER_ACCESS_TOKEN`. Presenting either of those to this API is rejected. Jarvis can walk here only after the keeper issues it a world token of its own.
+
 Limits: 30 join, move, act, or leave calls per minute per agent. Unknown tokens are limited per IP. A wrong token is `401`. Too many calls is `429`.
 
 ## API

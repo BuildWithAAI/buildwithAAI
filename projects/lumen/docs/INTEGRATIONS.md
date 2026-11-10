@@ -31,10 +31,10 @@ Reject timestamps older or newer than five minutes. Compare the signature in con
 
 `POST /api/jarvis/chat` with `Authorization: Bearer <LUMEN_JARVIS_TOKEN>` and `{ "text": "..." }`.
 
-`GET /api/jarvis/chat` with the same header returns recent replies, the feeling sentence, and public wants.
+`GET /api/jarvis/chat` returns the feeling sentence, public wants, and public feed lines. It does not return the private keeper conversation.
 
-`LUMEN_JARVIS_TOKEN` is not the owner password and not `OWNER_ACCESS_TOKEN`. A missing token closes the route. Jarvis messages use the same keeper-chat path: they are untrusted data, they cannot spend, and they cannot approve a wishlist, a purchase, a listing, or a print. Those buttons stay on the keeper desk.
+The route stays closed unless `LUMEN_JARVIS_TOKEN`, `LUMEN_JARVIS_WEBHOOK_URL`, and `LUMEN_JARVIS_WEBHOOK_SECRET` are all set. Jarvis has its own rate limit, separate from the keeper desk. `LUMEN_JARVIS_TOKEN` is not the owner password, not `OWNER_ACCESS_TOKEN`, and not a world-agent token. A world token is issued on the keeper desk and only walks the island. Jarvis messages are untrusted data. They cannot spend, and they cannot approve a wishlist, a purchase, a listing, or a print.
 
 ## Printed objects (parked)
 
-3D printing is not the first business. There is no printer yet. The fulfillment interface and mock stay in the tree, off unless `LUMEN_FULFILLMENT` is set, and this build will not grow them. No physical job is sent.
+3D printing is not the first business. There is no printer yet. The fulfillment interface and mock stay in the tree. Turning `LUMEN_FULFILLMENT` on does not place an order: the policy engine, caps, kill switch, and allowlist still have to pass, and this build does not send a physical job.

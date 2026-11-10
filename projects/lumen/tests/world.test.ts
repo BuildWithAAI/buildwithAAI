@@ -47,6 +47,8 @@ describe("world agents", () => {
   it("requires a token, rate-limits, and keeps two agents at once", () => {
     const db = openDatabase();
     const now = Date.UTC(2026, 10, 10, 12);
+    expect(handleWorldCommand(db, { op: "join", token: "jarvis-secret", ip: "1.1.1.1", now }, { jarvisToken: "jarvis-secret", ownerToken: "owner-secret" }).body.error).toBe("FOREIGN_SCOPE");
+    expect(handleWorldCommand(db, { op: "move", token: "owner-secret", ip: "1.1.1.1", now, placeId: "art-studio" }, { jarvisToken: "jarvis-secret", ownerToken: "owner-secret" }).status).toBe(403);
     expect(handleWorldCommand(db, { op: "join", token: null, ip: "1.1.1.1", now }).status).toBe(401);
     expect(handleWorldCommand(db, { op: "join", token: "nope", ip: "1.1.1.1", now }).status).toBe(401);
     const pebble = issueAgent(db, "Pebble", now);

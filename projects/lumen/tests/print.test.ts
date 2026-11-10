@@ -91,11 +91,22 @@ describe("print designs", () => {
     expect(chat.intents).toEqual([]);
   });
 
-  it("queues only on the mock adapter and records an unconfirmed cost estimate", () => {
+  it("throws unless policy, caps, the kill switch, and the allowlist pass", () => {
     const db = openDatabase();
+    const mock = new MockFulfillment();
     expect(createFulfillment({}).name).toBe("off");
+    expect(createFulfillment({ LUMEN_FULFILLMENT: "mock" }).configured).toBe(true);
     expect(new PrintFarmStub("", "").submit({ id: "j", designId: "d", title: "t", material: "pla", quantity: 1 }).reason).toBe("NOT_CONFIGURED");
-    const order = openPrintOrder(db, design(), new MockFulfillment(), 10);
+    expect(() => openPrintOrder(db, design(), createFulfillment({ LUMEN_FULFILLMENT: "mock" }), 10)).toThrow(/PRINT_POLICY_REQUIRED/);
+    const open = policy();
+    open.rules = { ...open.rules, merchants: ["filament-shop"], productTypes: ["filament"], autoApproveCapCents: 5000 };
+    const gate = { ctx: open, merchant: "filament-shop", productType: "filament" };
+    expect(() => openPrintOrder(db, design(), mock, 10, { ...gate, ctx: { ...open, killed: true } })).toThrow(/PRINT_POLICY_REQUIRED/);
+    expect(() => openPrintOrder(db, design(), mock, 10, { ...gate, merchant: "other-shop" })).toThrow(/PRINT_POLICY_REQUIRED/);
+    expect(() => openPrintOrder(db, design(), mock, 10, { ...gate, ctx: { ...open, rules: { ...open.rules, dailyCapCents: 100 } } })).toThrow(/PRINT_POLICY_REQUIRED/);
+    expect(mock.jobs).toHaveLength(0);
+    expect(new Ledger(db).list()).toHaveLength(0);
+    const order = openPrintOrder(db, design(), mock, 10, gate);
     expect(order.status).toBe("queued");
     expect(order.reason).toBe("MOCK_QUEUED");
     const view = moneyView(new Ledger(db).list());

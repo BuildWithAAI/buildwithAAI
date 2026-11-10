@@ -74,7 +74,7 @@ export function telegramNotifier(env: AlertEnv, send: TelegramTransport): OwnerN
 }
 
 /** Default Telegram transport. Tests pass their own and never call this. */
-export function telegramApiTransport(fetchImpl: typeof fetch = fetch): TelegramTransport {
+export function telegramApiTransport(fetchImpl: typeof fetch = fetch, onError?: (error: unknown) => void): TelegramTransport {
   return ({ token, chatId, text }) => {
     void fetchImpl(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
@@ -82,6 +82,8 @@ export function telegramApiTransport(fetchImpl: typeof fetch = fetch): TelegramT
       body: JSON.stringify({ chat_id: chatId, text }),
     }).then((response) => {
       if (!response.ok) throw new Error("TELEGRAM_ALERT_FAILED");
+    }).catch((error) => {
+      onError?.(error);
     });
   };
 }
@@ -133,7 +135,8 @@ export function buildOwnerNotifier(env: AlertEnv, io: { desk?: OwnerNotifier; db
     channels.push("email");
   }
   if (telegramConfigured(env)) {
-    notifiers.push(telegramNotifier(env, io.sendTelegram ?? telegramApiTransport()));
+    const fail = (error: unknown) => { if (io.db) reportDeliveryFailure(io.db, error); };
+    notifiers.push(telegramNotifier(env, io.sendTelegram ?? telegramApiTransport(fetch, fail)));
     channels.push("telegram");
   }
   return {
@@ -162,7 +165,7 @@ export function deliverSmtp(env: AlertEnv, message: MailMessage): Promise<void> 
   });
 }
 
-function smtpDialogue(socket: net.Socket, env: AlertEnv, message: MailMessage, encrypted: boolean): Promise<void> {
+function smtpDialogue(socket: net.Socket, env: AlertEnv, message: MailMessage, encrypted: boolean, speakFirst = false): Promise<void> {
   const user = env.LUMEN_SMTP_USER ?? "";
   const password = env.LUMEN_SMTP_PASSWORD ?? "";
   const commands = ["EHLO zoora"];
@@ -196,12 +199,13 @@ function smtpDialogue(socket: net.Socket, env: AlertEnv, message: MailMessage, e
         sentStartTls = false;
         if (!last.startsWith("220")) { fail(new Error("SMTP_TLS_REQUIRED")); return; }
         const secure = tls.connect({ socket, servername: env.LUMEN_SMTP_HOST });
-        secure.once("secureConnect", () => { smtpDialogue(secure, env, message, true).then(resolve, reject); });
+        secure.once("secureConnect", () => { smtpDialogue(secure, env, message, true, true).then(resolve, reject); });
         secure.on("error", fail);
         return;
       }
       if (!/^[23]/.test(last)) { fail(new Error("SMTP_REJECTED")); return; }
       sendNext();
     });
+    if (speakFirst) sendNext();
   });
 }

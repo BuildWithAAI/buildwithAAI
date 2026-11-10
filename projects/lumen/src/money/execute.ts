@@ -30,6 +30,7 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
   let ownsClaim = false;
   try {
     const totals = spendSnapshot(db, atMs);
+    const unknown = db.prepare("SELECT COUNT(*) AS n FROM purchase_claims WHERE state = 'unknown'").get() as { n: number };
     decision = evaluatePolicy(intent, {
       ...ctx,
       spentTodayCents: totals.today,
@@ -37,6 +38,7 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
       recentIntentCount: totals.recent,
       reconciliationAlert: ctx.reconciliationAlert || flag(db, "reconciliation_alert") === "1",
       openDispute: ctx.openDispute || totals.openDispute,
+      unknownSpend: Boolean(ctx.unknownSpend) || Number(unknown.n) > 0,
     });
     if (decision.outcome !== "auto_approve") {
       const row = ledger.append({

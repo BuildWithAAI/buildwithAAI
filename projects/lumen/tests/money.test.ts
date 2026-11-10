@@ -12,7 +12,7 @@ import { MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers
 import { Ledger, moneyView } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords } from "../src/money/reconcile";
-import { buildOwnerNotifier, deliverSmtp, reportDeliveryFailure } from "../src/money/notify";
+import { buildOwnerNotifier, deliverSmtp, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
 import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
 import { refundFormBody, stripeSalesClient, verifyStripeSignature } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
@@ -478,6 +478,15 @@ describe("held execute, disputes, refunds, and alerts", () => {
 
     const capped = executeIntent(ignoring, intent({ id: "t3", amountCents: 500 }), shared, new MockIssuer(), atMs);
     expect(capped.decision.reason).toBe("DAILY_CAP");
+    const wide = openDatabase();
+    const down = new MockIssuer();
+    down.authorize = () => { throw new Error("ISSUER_TIMEOUT"); };
+    executeIntent(wide, intent({ id: "unk", amountCents: 100 }), ctx(), down, atMs);
+    const nextIssuer = new MockIssuer();
+    const paused = executeIntent(wide, intent({ id: "other", amountCents: 100 }), ctx(), nextIssuer, atMs);
+    expect(paused.decision.reason).toBe("UNKNOWN_SPEND");
+    expect(paused.issuerCalled).toBe(false);
+    expect(nextIssuer.calls).toHaveLength(0);
     const alerts = ignoring.prepare("SELECT title FROM owner_alerts").all() as { title: string }[];
     expect(alerts.some((row) => row.title === "Issuer outcome unknown")).toBe(true);
   });
@@ -578,5 +587,12 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect(retry.next_at).toBeGreaterThan(now);
     const alerts = db.prepare("SELECT title FROM owner_alerts").all() as { title: string }[];
     expect(alerts.map((row) => row.title)).toContain("Alert delivery failed");
+
+    const telegramDb = openDatabase();
+    const send = telegramApiTransport(async () => { throw new Error("TELEGRAM_DOWN"); }, (error) => reportDeliveryFailure(telegramDb, error));
+    send({ token: "bot", chatId: "1", text: "hi" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const telegramAlerts = telegramDb.prepare("SELECT title FROM owner_alerts").all() as { title: string }[];
+    expect(telegramAlerts.map((row) => row.title)).toContain("Alert delivery failed");
   });
 });

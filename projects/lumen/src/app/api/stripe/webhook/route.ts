@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const engine = getEngine();
   const mode = process.env.LUMEN_SALES_MODE;
   const livemode = mode === "live" ? true : mode === "test" ? false : undefined;
-  const result = handleStripeWebhook(engine.db, payload, signature, secret, Date.now(), buildOwnerNotifier(process.env, { desk: deskNotifier(engine.db) }).notifier, {
+  const result = handleStripeWebhook(engine.db, payload, signature, secret, Date.now(), buildOwnerNotifier(process.env, { desk: deskNotifier(engine.db), db: engine.db }).notifier, {
     livemode,
     previousSecret: process.env.STRIPE_WEBHOOK_SECRET_PREVIOUS,
   });

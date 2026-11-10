@@ -58,7 +58,9 @@ export function createEngine(env: Env, file?: string) {
     executeQueued: (intentId: string) => executeQueued(db, env, issuer, intentId),
     approveProposal: (id: string) => approveProposal(db, id),
     world: () => worldView(db, Date.now()),
-    worldCommand: (command: WorldCommand) => handleWorldCommand(db, command),
+    worldCommand: (command: WorldCommand) => handleWorldCommand(db, command, { jarvisToken: env.LUMEN_JARVIS_TOKEN, ownerToken: env.OWNER_ACCESS_TOKEN }),
+    jarvisView: () => jarvisView(db, env),
+    jarvisTalk: (text: string) => ownerChat(db, env, text, "jarvis-chat"),
     issueWorldToken: (name: string) => {
       const issued = issueAgent(db, name, Date.now());
       if (!issued.ok) return issued;
@@ -127,6 +129,7 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
   const spentMonth = rows.filter((row) => row.kind === "purchase" && row.status !== "declined" && new Date(row.atMs).toISOString().slice(0, 7) === month).reduce((sum, row) => sum + row.amountCents, 0);
   const hourAgo = Date.now() - 3600_000;
   const recent = rows.filter((row) => row.atMs >= hourAgo && (row.kind === "purchase" || row.kind === "decline" || row.kind === "approval")).length;
+  const unknown = db.prepare("SELECT COUNT(*) AS n FROM purchase_claims WHERE state = 'unknown'").get() as { n: number };
   return {
     rules: parsed.rules,
     spendOpen: spend.open,
@@ -135,6 +138,7 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
     spentTodayCents: spentToday,
     spentMonthCents: spentMonth,
     recentIntentCount: recent,
+    unknownSpend: Number(unknown.n) > 0,
   };
 }
 
@@ -313,8 +317,19 @@ function logout(db: DatabaseSync, cookieHeader: string | null) {
   db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash);
 }
 
-function ownerChat(db: DatabaseSync, env: Env, text: string) {
-  if (!allowRate(db, "owner-chat", 30, 3600_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
+function jarvisView(db: DatabaseSync, env: Env) {
+  if (!allowRate(db, "jarvis-read", 60, 60_000, Date.now())) return { ok: false as const, error: "RATE_LIMIT" };
+  const snap = snapshot(db, env);
+  return {
+    ok: true as const,
+    mood: snap.feeling,
+    wants: snap.publicWants,
+    feed: (snap.feed as { text: string }[]).slice(0, 8).map((item) => item.text),
+  };
+}
+
+function ownerChat(db: DatabaseSync, env: Env, text: string, bucket = "owner-chat") {
+  if (!allowRate(db, bucket, 30, 3600_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
   const state = loadState(db);
   const turn = ownerTurn(state, text, env.LUMEN_OWNER_NAME || "keeper");
   const id = randomBytes(8).toString("hex");
@@ -477,7 +492,7 @@ async function reconcileNow(db: DatabaseSync, env: Env, issuer: CardIssuer, prov
       if ((env.LUMEN_CARD_ISSUER ?? "mock") !== "mock") fetchedKinds.push("purchase");
     } catch {
       setFlag(db, "reconciliation_alert", "1");
-      buildOwnerNotifier(env, { desk: deskNotifier(db) }).notifier.notify({ kind: "reconciliation", title: "Reconciliation could not read Stripe", detail: "Automatic spending and approvals are paused until this is cleared." });
+      buildOwnerNotifier(env, { desk: deskNotifier(db), db }).notifier.notify({ kind: "reconciliation", title: "Reconciliation could not read Stripe", detail: "Automatic spending and approvals are paused until this is cleared." });
       kvSet(db, "last_reconcile", JSON.stringify({ at: Date.now(), mismatches: [{ code: "FETCH_FAILED", provider: "stripe", providerTransactionId: "", detail: "Stripe records could not be read." }] }));
       setFlag(db, "last_reconcile_day", new Date().toISOString().slice(0, 10));
       return { mismatches: [{ code: "FETCH_FAILED", provider: "stripe", providerTransactionId: "", detail: "Stripe records could not be read." }], alert: true };
@@ -492,7 +507,7 @@ async function reconcileNow(db: DatabaseSync, env: Env, issuer: CardIssuer, prov
   if (mismatches.length) {
     const already = flag(db, "reconciliation_alert") === "1";
     setFlag(db, "reconciliation_alert", "1");
-    if (!already) buildOwnerNotifier(env, { desk: deskNotifier(db) }).notifier.notify({ kind: "reconciliation", title: "Reconciliation mismatch", detail: `${mismatches.length} mismatch(es). Automatic spending and approvals are paused.` });
+    if (!already) buildOwnerNotifier(env, { desk: deskNotifier(db), db }).notifier.notify({ kind: "reconciliation", title: "Reconciliation mismatch", detail: `${mismatches.length} mismatch(es). Automatic spending and approvals are paused.` });
   }
   kvSet(db, "last_reconcile", JSON.stringify({ at: Date.now(), mismatches }));
   setFlag(db, "last_reconcile_day", new Date().toISOString().slice(0, 10));

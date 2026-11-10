@@ -377,7 +377,15 @@ export type WorldCommand = {
   forceEvent?: unknown;
 };
 
-export function handleWorldCommand(db: DatabaseSync, command: WorldCommand): { status: number; body: Record<string, unknown> } {
+export function sameSecret(token: string, secret: string | undefined): boolean {
+  if (!secret || token.length !== secret.length) return false;
+  return timingSafeEqual(Buffer.from(token), Buffer.from(secret));
+}
+
+export function handleWorldCommand(db: DatabaseSync, command: WorldCommand, scopes: { jarvisToken?: string; ownerToken?: string } = {}): { status: number; body: Record<string, unknown> } {
+  if (command.token && (sameSecret(command.token, scopes.jarvisToken) || sameSecret(command.token, scopes.ownerToken))) {
+    return { status: 403, body: { error: "FOREIGN_SCOPE" } };
+  }
   if (command.event !== undefined || command.weather !== undefined || command.forceEvent !== undefined) {
     return { status: 400, body: { error: "EVENTS_ARE_NOT_REQUESTS" } };
   }

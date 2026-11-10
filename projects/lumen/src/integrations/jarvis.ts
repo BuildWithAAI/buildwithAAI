@@ -30,9 +30,15 @@ export function jarvisConfigured(env: JarvisEnv): boolean {
 }
 
 export function jarvisTokenOk(token: string | null, env: JarvisEnv): boolean {
+  if (!jarvisConfigured(env)) return false;
   const expected = env.LUMEN_JARVIS_TOKEN ?? "";
-  if (!token || !expected || token.length !== expected.length) return false;
+  if (!token || token.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+}
+
+/** Read scope. The private keeper conversation is not part of it. */
+export function jarvisReadBody(input: { mood: string; wants: unknown; feed: unknown }): { mood: string; wants: unknown; feed: unknown } {
+  return { mood: input.mood, wants: input.wants, feed: input.feed };
 }
 
 /** Same door as the keeper's chat. No intents, no approvals. */

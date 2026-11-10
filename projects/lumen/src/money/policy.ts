@@ -14,6 +14,8 @@ export type PolicyContext = {
   hourlyIntentLimit?: number;
   /** Owner pressed execute on an already reviewed intent. Does not skip allowlists or caps. */
   ownerConfirmed?: boolean;
+  /** Any purchase whose issuer outcome is still unknown. Pauses automatic spending. */
+  unknownSpend?: boolean;
 };
 
 export type Decision =
@@ -51,6 +53,7 @@ export function evaluatePolicy(intent: PurchaseIntent, ctx: PolicyContext): Deci
   }
   if (ctx.reconciliationAlert) return { outcome: "queue", reason: "RECONCILIATION_HOLD" };
   if (ctx.openDispute) return { outcome: "queue", reason: "DISPUTE_HOLD" };
+  if (!ctx.ownerConfirmed && ctx.unknownSpend) return { outcome: "queue", reason: "UNKNOWN_SPEND" };
   if (!ctx.ownerConfirmed && ctx.rules.autoApproveCapCents == null) return { outcome: "queue", reason: "AUTO_CAP_UNSET" };
   if (!ctx.ownerConfirmed && ctx.rules.autoApproveCapCents != null && intent.amountCents > ctx.rules.autoApproveCapCents) {
     return { outcome: "queue", reason: "ABOVE_AUTO_CAP" };
