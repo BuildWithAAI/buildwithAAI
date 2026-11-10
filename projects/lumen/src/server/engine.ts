@@ -65,7 +65,7 @@ export function createEngine(env: Env, file?: string) {
     },
     worldCommand: (command: WorldCommand) => handleWorldCommand(db, command, { jarvisToken: env.LUMEN_JARVIS_TOKEN, ownerToken: env.OWNER_ACCESS_TOKEN }),
     jarvisView: () => jarvisView(db, env),
-    jarvisTalk: (text: string) => ownerChat(db, env, text, "jarvis-chat"),
+    jarvisTalk: (text: string) => ownerChat(db, env, text, "jarvis-chat", "jarvis"),
     issueWorldToken: (name: string) => issueAgent(db, name, Date.now()),
   };
 }
@@ -324,14 +324,16 @@ function jarvisView(db: DatabaseSync, env: Env) {
   };
 }
 
-function ownerChat(db: DatabaseSync, env: Env, text: string, bucket = "owner-chat") {
+function ownerChat(db: DatabaseSync, env: Env, text: string, bucket = "owner-chat", author = "owner") {
   if (!allowRate(db, bucket, 30, 3600_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
   const state = loadState(db);
+  const name = author === "jarvis" ? "jarvis" : (env.LUMEN_OWNER_NAME || "keeper");
   const turn = ownerTurn(state, text, env.LUMEN_OWNER_NAME || "keeper");
   const id = randomBytes(8).toString("hex");
-  db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'owner', ?, ?, 1, ?, ?, ?)").run(
+  db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, ?, ?, ?, 1, ?, ?, ?)").run(
     id,
-    env.LUMEN_OWNER_NAME || "keeper",
+    author === "jarvis" ? "jarvis" : "owner",
+    name,
     text.slice(0, 500),
     turn.queued ? "queued" : "replied",
     turn.reply,

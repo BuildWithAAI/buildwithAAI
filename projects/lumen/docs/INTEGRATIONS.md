@@ -33,7 +33,7 @@ Reject timestamps older or newer than five minutes. Compare the signature in con
 
 `GET /api/jarvis/chat` returns the feeling sentence, public wants, and public feed lines. It does not return the private keeper conversation.
 
-The route stays closed unless `LUMEN_JARVIS_TOKEN`, `LUMEN_JARVIS_WEBHOOK_URL`, and `LUMEN_JARVIS_WEBHOOK_SECRET` are all set. Jarvis has its own rate limit, separate from the keeper desk. `LUMEN_JARVIS_TOKEN` is not the owner password, not `OWNER_ACCESS_TOKEN`, and not a world-agent token. A world token is issued on the keeper desk and only walks the island. Jarvis messages are untrusted data. They cannot spend, and they cannot approve a wishlist, a purchase, a listing, or a print.
+The route stays closed unless `LUMEN_JARVIS_TOKEN`, `LUMEN_JARVIS_WEBHOOK_URL`, and `LUMEN_JARVIS_WEBHOOK_SECRET` are all set. Jarvis has its own rate limit, separate from the keeper desk. Its messages are stored with author `jarvis`, not as the keeper. `LUMEN_JARVIS_TOKEN` is not the owner password, not `OWNER_ACCESS_TOKEN`, and not a world-agent token. A world token is issued on the keeper desk and only walks the island. Jarvis messages are untrusted data. They cannot spend, and they cannot approve a wishlist, a purchase, a listing, or a print.
 
 ## Printed objects (parked)
 
