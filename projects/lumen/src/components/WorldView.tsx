@@ -3,17 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import type { PublicWorld } from "../world/public";
-import { placeAt } from "../world/places";
+import type { PublicAgent, PublicWorld } from "../world/public";
+import type { Vec3 } from "../world/places";
 
-const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number] }> = {
-  overview: { pos: [42, 34, 42], look: [0, 0, 0] },
-  town: { pos: [12, 8, 14], look: [0, 1, 0] },
-  art: { pos: [24, 8, 16], look: [24, 1.5, 1] },
-  music: { pos: [14, 8, 24], look: [0, 1.5, 24] },
-  code: { pos: [-14, 7, 14], look: [-26, -0.4, 0] },
-  together: { pos: [7, 5.5, 9], look: [0.2, 1.3, 0.1] },
+const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number]; night?: boolean; follow?: boolean }> = {
+  overview: { pos: [46, 28, 46], look: [0, 0, 2] },
+  town: { pos: [9, 5.2, 11], look: [0, 1.1, -1] },
+  art: { pos: [24, 5.4, 14], look: [25, 1.6, 1] },
+  music: { pos: [12, 5.2, 24], look: [0, 1.6, 26] },
+  code: { pos: [-16, 5.5, 12], look: [-27, 0.2, 0] },
+  together: { pos: [6, 4.2, 8], look: [0, 1.2, 0.4] },
+  zoora: { pos: [1.4, 1.55, 3.1], look: [-1.2, 1.05, 0.7] },
+  night: { pos: [40, 22, 38], look: [2, 1, 2], night: true },
+  follow: { pos: [8, 5, 10], look: [0, 1, 0], follow: true },
 };
+
+type Board = { texture: THREE.CanvasTexture; paint: (lines: string[]) => void };
 
 export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string }) {
   const mount = useRef<HTMLDivElement | null>(null);
@@ -21,9 +26,16 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
   const [live, setLive] = useState(initial);
   const [sound, setSound] = useState(false);
   const [view, setView] = useState(CAMS[cam] ? cam : "overview");
+  const [follow, setFollow] = useState(Boolean(CAMS[cam]?.follow));
+  const [nightHold, setNightHold] = useState(Boolean(CAMS[cam]?.night));
+  const [lowDetail, setLowDetail] = useState(false);
   const viewRef = useRef(view);
-  viewRef.current = view;
+  const followRef = useRef(follow);
+  const nightRef = useRef(nightHold);
   const jump = useRef<(name: string) => void>(() => undefined);
+  viewRef.current = view;
+  followRef.current = follow;
+  nightRef.current = nightHold;
 
   useEffect(() => {
     world.current = live;
@@ -41,7 +53,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
           setLive(next);
         }
       } catch {
-        /* the last snapshot stays on screen */
+        /* keep the last snapshot */
       }
     };
     const timer = setInterval(() => void pull(), 700);
@@ -68,167 +80,129 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       osc.start(at);
       osc.stop(at + 0.25);
     }
-    return () => {
-      void audio.close();
-    };
+    return () => void audio.close();
   }, [sound, live.tune]);
 
   useEffect(() => {
     const host = mount.current;
     if (!host) return;
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    const low = new URLSearchParams(window.location.search).get("quality") === "low" || window.innerWidth < 780 || (nav.deviceMemory != null && nav.deviceMemory <= 4);
+    setLowDetail(low);
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 200);
-    const renderer = new THREE.WebGLRenderer({ antialias: window.innerWidth >= 800, alpha: false, powerPreference: "low-power" });
-    renderer.setPixelRatio(window.innerWidth < 800 ? 1 : Math.min(window.devicePixelRatio, 1.5));
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 220);
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !low,
+      alpha: false,
+      powerPreference: "low-power",
+    });
+    renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.shadowMap.enabled = !low;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
-    const clockOffset = world.current.now - Date.now();
-    const mats = new Map<number, THREE.MeshLambertMaterial>();
-    const unit = new THREE.BoxGeometry(0.92, 0.92, 0.92);
-    const mat = (color: number, extra?: Partial<THREE.MeshLambertMaterialParameters>) => {
-      const key = color + (extra?.emissive ? 1 : 0);
-      const found = mats.get(key);
-      if (found && !extra) return found;
-      const made = new THREE.MeshLambertMaterial({ color, ...extra });
-      if (!extra) mats.set(color, made);
-      return made;
-    };
-    const voxel = (x: number, y: number, z: number, color: number, extra?: Partial<THREE.MeshLambertMaterialParameters>) => {
-      const mesh = new THREE.Mesh(unit, mat(color, extra));
-      mesh.position.set(x, y + 0.46, z);
-      scene.add(mesh);
-      return mesh;
-    };
+    const segs = low ? 36 : 72;
+    const terrain = buildTerrain(segs);
+    terrain.receiveShadow = !low;
+    scene.add(terrain);
+    const water = buildWater(low ? 24 : 48);
+    scene.add(water);
+    const windows: THREE.MeshStandardMaterial[] = [];
+    const lamps: THREE.PointLight[] = [];
+    scene.add(buildTown(windows, lamps, low));
+    scene.add(buildArtStudio(windows, lamps, low));
+    scene.add(buildMusicStudio(windows, lamps, low));
+    scene.add(buildBasement(windows, lamps, low));
+    scatterNature(scene, low);
 
-    const moss: number[] = [];
-    const sand: number[] = [];
-    for (let x = -34; x <= 34; x += 1) {
-      for (let z = -34; z <= 34; z += 1) {
-        if (x * x + z * z > 34 * 34) continue;
-        const pit = x <= -18 && x >= -32 && z >= -5 && z <= 5;
-        const path = (Math.abs(z) <= 1 && x >= -16 && x <= 22) || (Math.abs(x) <= 1 && z >= 2 && z <= 22);
-        if (pit) continue;
-        (path ? sand : moss).push(x, 0, z);
-      }
-    }
-    const scatter = (coords: number[], color: number, y: number) => {
-      const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.96, 0.4, 0.96), mat(color), coords.length / 3);
-      const dummy = new THREE.Object3D();
-      for (let i = 0; i < coords.length; i += 3) {
-        dummy.position.set(coords[i]!, y, coords[i + 2]!);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(i / 3, dummy.matrix);
-      }
-      scene.add(mesh);
-    };
-    scatter(moss, 0x1d6a55, -0.2);
-    scatter(sand, 0xd8c4a2, -0.12);
-    for (let x = -31; x <= -21; x += 1) {
-      for (let z = -4; z <= 4; z += 1) voxel(x, -2, z, 0x2a313c);
-    }
-    for (let i = 0; i < 6; i += 1) {
-      for (const z of [-1, 0, 1]) voxel(-17 - i, -i * 0.45, z, 0x5c5346);
-    }
-
-    const shell = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: number, doorX: number | null, doorZ: number | null) => {
-      for (let x = x0; x <= x1; x += 1) {
-        for (let z = z0; z <= z1; z += 1) {
-          for (let y = y0; y <= y1; y += 1) {
-            const edge = x === x0 || x === x1 || z === z0 || z === z1 || y === y1 || y === y0;
-            if (!edge) continue;
-            const opening = y > y0 && y < y0 + 3 && ((doorX != null && x === doorX && Math.abs(z - (z0 + z1) / 2) < 1.2) || (doorZ != null && z === doorZ && Math.abs(x - (x0 + x1) / 2) < 1.2));
-            if (opening) continue;
-            voxel(x, y, z, color);
-          }
-        }
-      }
-    };
-    shell(21, 0, -3, 29, 4, 5, 0xc56b45, 21, null);
-    voxel(24, 1, 1, 0x8d4630);
-    voxel(25, 1, 1, 0x8d4630);
-    const easel = boardTexture(["The easel is waiting."], "#3a2018", "#f4d7b0");
-    const easelMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.8), new THREE.MeshBasicMaterial({ map: easel.texture }));
-    easelMesh.position.set(24.6, 2.1, 1);
+    const notice = boardTexture(["The square is open."], "#f3efe4", "#243028");
+    const noticeMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), new THREE.MeshBasicMaterial({ map: notice.texture }));
+    noticeMesh.position.set(0, terrainHeight(0, -4.2) + 1.55, -4.2);
+    scene.add(noticeMesh);
+    const easelBoard = boardTexture(["The easel is waiting."], "#f6e7d4", "#3a2018");
+    const easelMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 1.35), new THREE.MeshBasicMaterial({ map: easelBoard.texture }));
+    easelMesh.position.set(23.15, terrainHeight(23.15, 1) + 1.35, 1.05);
+    easelMesh.rotation.y = -0.5;
     scene.add(easelMesh);
-
-    shell(-4, 0, 21, 4, 4, 29, 0x8a5a32, null, 21);
-    for (let i = 0; i < 5; i += 1) voxel(-1 + i * 0.0 + (i - 2) * 0.7, 1, 25, 0xf2e2c4);
-    voxel(1, 0, 26, 0x5c3b22);
-    voxel(1, 0, 27, 0x5c3b22);
-
-    shell(-31, -2, -4, -21, 2, 4, 0x3c4654, -21, null);
-    const diaryBoard = boardTexture(["The desk is quiet."], "#10241c", "#b6ffd9");
-    const logBoard = boardTexture(["No log yet."], "#101820", "#d5e4ff");
-    const diaryMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3), new THREE.MeshBasicMaterial({ map: diaryBoard.texture }));
-    const logMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3), new THREE.MeshBasicMaterial({ map: logBoard.texture }));
-    diaryMesh.position.set(-26, -0.5, -2.4);
-    logMesh.position.set(-26, -0.5, 1.6);
-    diaryMesh.rotation.x = -0.4;
-    logMesh.rotation.x = -0.4;
+    const diaryBoard = boardTexture(["The desk is quiet."], "#10241c", "#c8ffe2");
+    const logBoard = boardTexture(["No log yet."], "#141c28", "#d5e6ff");
+    const diaryMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.85), new THREE.MeshBasicMaterial({ map: diaryBoard.texture }));
+    const logMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.85), new THREE.MeshBasicMaterial({ map: logBoard.texture }));
+    diaryMesh.position.set(-27.2, terrainHeight(-27.2, -0.55) + 0.95, -0.55);
+    logMesh.position.set(-27.2, terrainHeight(-27.2, 0.7) + 0.95, 0.7);
+    diaryMesh.rotation.y = Math.PI / 2;
+    logMesh.rotation.y = Math.PI / 2;
     scene.add(diaryMesh, logMesh);
 
-    const notice = boardTexture(["The square is open."], "#243028", "#e7fff6");
-    const noticeMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2), new THREE.MeshBasicMaterial({ map: notice.texture }));
-    noticeMesh.position.set(0, 2.1, -5);
-    scene.add(noticeMesh);
-    voxel(-2, 0, -5, 0x5c5346);
-    voxel(2, 0, -5, 0x5c5346);
-    voxel(-2, 1, -5, 0x5c5346);
-    voxel(2, 1, -5, 0x5c5346);
-    for (const [x, z] of [[-6, -6], [6, -6], [6, 6], [-6, 6]] as const) {
-      voxel(x, 0, z, 0x5c5346);
-      voxel(x, 1, z, 0x5c5346);
-      voxel(x, 2, z, 0xffd27a, { emissive: 0xffd27a, emissiveIntensity: 0.7 });
+    const ambient = new THREE.HemisphereLight(0xc5e6ff, 0x3d6a45, 0.72);
+    const sun = new THREE.DirectionalLight(0xfff1d4, 1.25);
+    sun.position.set(28, 36, 14);
+    sun.target.position.set(0, 0, 0);
+    if (!low) {
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(1024, 1024);
+      sun.shadow.camera.near = 8;
+      sun.shadow.camera.far = 80;
+      sun.shadow.camera.left = -36;
+      sun.shadow.camera.right = 36;
+      sun.shadow.camera.top = 36;
+      sun.shadow.camera.bottom = -36;
+      sun.shadow.bias = -0.00015;
+      sun.shadow.normalBias = 0.04;
     }
-    const water = new THREE.Mesh(new THREE.BoxGeometry(6, 0.25, 4), new THREE.MeshLambertMaterial({ color: 0x1c7594, transparent: true, opacity: 0.86 }));
-    water.position.set(10, 0.05, 8);
-    scene.add(water);
+    scene.add(ambient, sun, sun.target);
+    const fill = new THREE.DirectionalLight(0x9ecbff, 0.25);
+    fill.position.set(-20, 12, -10);
+    scene.add(fill);
 
-    const visitor = new THREE.Group();
-    const body = new THREE.Mesh(unit, mat(0xd7c4a3));
-    body.position.set(2.2, 0.9, -3);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), mat(0xf0ddc4));
-    head.position.set(2.2, 1.7, -3);
-    visitor.add(body, head);
-    visitor.visible = false;
-    scene.add(visitor);
-    const gem = voxel(8, 0, 0, 0xe6c36a, { emissive: 0xe6c36a, emissiveIntensity: 0.45 });
-    gem.visible = false;
-
-    const rainGeo = new THREE.BufferGeometry();
-    const drops = new Float32Array(240 * 3);
-    for (let i = 0; i < 240; i += 1) {
-      drops[i * 3] = (Math.random() - 0.5) * 50;
-      drops[i * 3 + 1] = Math.random() * 16;
-      drops[i * 3 + 2] = (Math.random() - 0.5) * 50;
-    }
-    rainGeo.setAttribute("position", new THREE.BufferAttribute(drops, 3));
-    const rain = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0xd5f4ff, size: 0.08 }));
-    rain.visible = false;
+    const rain = buildRain();
     scene.add(rain);
-
-    const ambient = new THREE.AmbientLight(0xc5fff0, 0.55);
-    const sun = new THREE.DirectionalLight(0xfff1cf, 1.15);
-    sun.position.set(20, 28, 10);
-    const hemi = new THREE.HemisphereLight(0x9fd8ff, 0x1d6a55, 0.45);
-    scene.add(ambient, sun, hemi);
+    const visitor = buildVisitor();
+    scene.add(visitor);
+    const gem = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.22, 0),
+      new THREE.MeshStandardMaterial({ color: 0xf0c86a, emissive: 0xf0c86a, emissiveIntensity: 0.6, roughness: 0.25 }),
+    );
+    gem.position.set(8, terrainHeight(8, 0) + 0.28, 0);
+    scene.add(gem);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.maxPolarAngle = Math.PI * 0.48;
-    controls.minDistance = 4;
-    controls.maxDistance = 80;
-    const applyCam = (name: string) => {
-      const shot = CAMS[name] ?? CAMS.overview!;
-      camera.position.set(...shot.pos);
-      controls.target.set(...shot.look);
-      controls.update();
+    controls.maxPolarAngle = Math.PI * 0.49;
+    controls.minDistance = 2.2;
+    controls.maxDistance = 90;
+    const anim = {
+      fromPos: new THREE.Vector3(),
+      toPos: new THREE.Vector3(),
+      fromLook: new THREE.Vector3(),
+      toLook: new THREE.Vector3(),
+      started: 0,
+      active: false,
     };
-    applyCam(viewRef.current);
-    jump.current = applyCam;
+    const go = (name: string) => {
+      const shot = CAMS[name] ?? CAMS.overview!;
+      followRef.current = Boolean(shot.follow);
+      setFollow(Boolean(shot.follow));
+      if (shot.night) {
+        nightRef.current = true;
+        setNightHold(true);
+      }
+      anim.fromPos.copy(camera.position);
+      anim.fromLook.copy(controls.target);
+      anim.toPos.set(...shot.pos);
+      anim.toLook.set(...shot.look);
+      anim.started = performance.now();
+      anim.active = !shot.follow;
+      if (shot.follow) anim.active = false;
+    };
+    jump.current = go;
+    go(viewRef.current);
 
-    const agents = new Map<string, { group: THREE.Group; label: THREE.Sprite; key: string }>();
+    const agents = new Map<string, { group: THREE.Group; label: THREE.Sprite; key: string; kind: "jelly" | "mote"; phase: number; glow: THREE.PointLight; mats: THREE.ShaderMaterial[] }>();
+    const curves = new Map<string, { key: string; curve: THREE.CatmullRomCurve3 }>();
+    const clockOffset = world.current.now - Date.now();
     const resize = () => {
       const width = host.clientWidth || 800;
       const height = host.clientHeight || 520;
@@ -248,56 +222,92 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     let svgKey = "";
     const tick = () => {
       frame = requestAnimationFrame(tick);
+      const time = performance.now() / 1000;
       const snap = world.current;
       const now = Date.now() + clockOffset;
-      const night = snap.night;
-      scene.background = new THREE.Color(night ? 0x10182a : 0x8eced4);
-      scene.fog = new THREE.Fog(night ? 0x10182a : 0x8eced4, 28, 90);
-      ambient.intensity = night ? 0.28 : 0.55;
-      sun.intensity = night ? 0.22 : 1.15;
+      const night = nightRef.current || snap.night;
+      const sky = night ? 0x141a30 : 0x9fd6d4;
+      const fogColor = night ? 0x1a2238 : 0xb7e0dc;
+      scene.background = new THREE.Color(sky);
+      scene.fog = new THREE.FogExp2(fogColor, night ? 0.02 : 0.016);
+      ambient.intensity = night ? 0.28 : 0.72;
+      ambient.color.set(night ? 0x6e88c4 : 0xc5e6ff);
+      sun.intensity = night ? 0.18 : 1.25;
+      sun.color.set(night ? 0x9eb0ff : 0xfff1d4);
+      renderer.toneMappingExposure = night ? 0.78 : 1.02;
+      for (const material of windows) material.emissiveIntensity = night ? 1.35 : 0.12;
+      for (const lamp of lamps) lamp.intensity = night ? (low ? 0.8 : 1.5) : 0.08;
+      const wave = water.userData.tick as ((time: number) => void) | undefined;
+      wave?.(time);
       rain.visible = snap.weather === "rain";
+      if (rain.visible) rain.position.y = ((time * 3) % 4) - 1;
       visitor.visible = snap.weather === "visitor";
       gem.visible = snap.weather === "found-item";
-      if (rain.visible) {
-        const attr = rainGeo.getAttribute("position") as THREE.BufferAttribute;
-        for (let i = 0; i < 240; i += 1) {
-          let y = attr.getY(i) - 0.18;
-          if (y < 0) y = 16;
-          attr.setY(i, y);
-        }
-        attr.needsUpdate = true;
+      if (snap.feed.join("|") !== feedKey) {
+        feedKey = snap.feed.join("|");
+        notice.paint(snap.feed.length ? snap.feed : ["The square is open."]);
       }
-      const nextFeed = (snap.feed.length ? snap.feed : ["The square is open."]).join("|");
-      const nextDiary = (snap.diary.length ? snap.diary : ["The desk is quiet."]).join("|");
-      const nextLog = (snap.log.length ? snap.log : ["No log yet."]).join("|");
-      if (nextFeed !== feedKey) { feedKey = nextFeed; paintBoard(notice, nextFeed.split("|")); }
-      if (nextDiary !== diaryKey) { diaryKey = nextDiary; paintBoard(diaryBoard, nextDiary.split("|")); }
-      if (nextLog !== logKey) { logKey = nextLog; paintBoard(logBoard, nextLog.split("|")); }
-      if (snap.easel?.svg && snap.easel.svg !== svgKey) { svgKey = snap.easel.svg; paintSvg(easel, snap.easel.svg); }
+      if (snap.diary.join("|") !== diaryKey) {
+        diaryKey = snap.diary.join("|");
+        diaryBoard.paint(snap.diary.length ? snap.diary : ["The desk is quiet."]);
+      }
+      if (snap.log.join("|") !== logKey) {
+        logKey = snap.log.join("|");
+        logBoard.paint(snap.log.length ? snap.log : ["No log yet."]);
+      }
+      if (snap.easel?.svg && snap.easel.svg !== svgKey) {
+        svgKey = snap.easel.svg;
+        paintSvg(easelBoard, snap.easel.svg);
+      }
+
       const seen = new Set<string>();
+      let leader: THREE.Object3D | null = null;
       for (const agent of snap.agents) {
         seen.add(agent.id);
         let entry = agents.get(agent.id);
         if (!entry) {
-          entry = makeAgent(agent.color, agent.name);
+          entry = agent.name === "Mote" ? makeMote(agent.color) : makeJelly(agent.color, low);
           agents.set(agent.id, entry);
           scene.add(entry.group);
         }
-        const pos = agent.walking && agent.path.length && agent.departAt != null && agent.arriveAt != null
-          ? placeAt(agent.path, agent.departAt, agent.arriveAt, now)
-          : { x: agent.x, y: agent.y, z: agent.z };
-        entry.group.position.set(pos.x, pos.y, pos.z);
+        const pos = visualPosition(agent, now, curves);
+        const ground = terrainHeight(pos.x, pos.z);
+        const bob = Math.sin(time * (entry.kind === "jelly" ? 1.6 : 2.2) + entry.phase) * (entry.kind === "jelly" ? 0.08 : 0.04);
+        entry.group.position.set(pos.x, ground + (entry.kind === "jelly" ? 0.95 : 0.42) + bob, pos.z);
+        entry.glow.color.set(agent.color);
+        entry.glow.intensity = night ? 1.1 : 0.45;
+        for (const material of entry.mats) {
+          if (material.uniforms.uTime) material.uniforms.uTime.value = time;
+        }
+        const tint = entry.group.userData.tint as THREE.MeshStandardMaterial | undefined;
+        if (tint) {
+          tint.color.set(agent.color);
+          tint.emissive.set(agent.color);
+          tint.emissiveIntensity = night ? 0.55 : 0.28;
+        }
         const text = `${agent.name}\n${agent.activity}\n${agent.feeling || agent.speech}`.slice(0, 180);
         if (entry.key !== text) {
           entry.key = text;
           paintLabel(entry.label, text);
         }
+        if (agent.name === "Zoora") leader = entry.group;
       }
       for (const [id, entry] of agents) {
-        if (!seen.has(id)) {
-          scene.remove(entry.group);
-          agents.delete(id);
-        }
+        if (seen.has(id)) continue;
+        scene.remove(entry.group);
+        agents.delete(id);
+        curves.delete(id);
+      }
+
+      if (anim.active) {
+        const t = ease((performance.now() - anim.started) / 1100);
+        camera.position.lerpVectors(anim.fromPos, anim.toPos, t);
+        controls.target.lerpVectors(anim.fromLook, anim.toLook, t);
+        if (t >= 1) anim.active = false;
+      } else if (followRef.current && leader) {
+        const desired = leader.position.clone().add(new THREE.Vector3(3.4, 2.4, 4.2));
+        camera.position.lerp(desired, 0.06);
+        controls.target.lerp(leader.position.clone().add(new THREE.Vector3(0, 0.2, 0)), 0.1);
       }
       controls.update();
       renderer.render(scene, camera);
@@ -308,22 +318,29 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       observer.disconnect();
       controls.dispose();
       renderer.dispose();
-      host.removeChild(renderer.domElement);
+      if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
     };
   }, []);
+
+  const choose = (name: string) => {
+    setView(name);
+    if (!CAMS[name]?.follow) setFollow(false);
+    jump.current(name);
+  };
 
   return (
     <div className="world-stage">
       <div className="world-canvas" ref={mount} />
       <div className="world-banner">
-        <span>{live.night ? "Night" : "Day"}</span>
+        <span>{nightHold || live.night ? "Night" : "Day"}</span>
         <span>{live.weather === "clear" ? "Clear paths" : live.weatherText ?? live.weather}</span>
         <span>{live.agents.map((agent) => agent.name).join(" · ") || "No one is here"}</span>
+        <span>{lowDetail ? "Light detail" : "Soft shadows"}</span>
         <span>Watching only</span>
       </div>
       <div className="world-hud">
-        {Object.keys(CAMS).map((name) => (
-          <button key={name} type="button" onClick={() => { setView(name); jump.current(name); }}>{name}</button>
+        {["overview", "town", "art", "music", "code", "together", "zoora", "night", "follow"].map((name) => (
+          <button key={name} type="button" onClick={() => choose(name)}>{name === "follow" && follow ? "following" : name}</button>
         ))}
         <button type="button" onClick={() => setSound((on) => !on)}>{sound ? "Sound on" : "Sound off"}</button>
       </div>
@@ -331,28 +348,401 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
   );
 }
 
-function makeAgent(color: string, name: string): { group: THREE.Group; label: THREE.Sprite; key: string } {
+function ease(t: number): number {
+  const x = Math.min(1, Math.max(0, t));
+  return x * x * (3 - 2 * x);
+}
+
+function fade(edge0: number, edge1: number, value: number): number {
+  return ease((value - edge0) / Math.max(0.0001, edge1 - edge0));
+}
+
+function terrainHeight(x: number, z: number): number {
+  const radius = Math.hypot(x, z);
+  const shore = fade(30, 39, radius);
+  const hills = Math.sin(x * 0.16) * Math.cos(z * 0.14) * 0.85 + Math.sin((x + z) * 0.07) * 0.45;
+  const town = Math.exp(-(x * x + z * z) / 36);
+  const art = Math.exp(-((x - 25) ** 2 + (z - 1) ** 2) / 20);
+  const music = Math.exp(-(x * x + (z - 26) ** 2) / 20);
+  const bowl = Math.exp(-((x + 27.5) ** 2 + z * z) / 16);
+  const onPath = (Math.abs(z) < 2.4 && x > -16 && x < 22) || (Math.abs(x) < 2.4 && z > 2 && z < 23) ? 1 : 0;
+  const flat = Math.max(town, art, music, onPath);
+  let height = hills * (1 - flat * 0.94);
+  height -= bowl * 0.55;
+  height = height * (1 - shore) - 2.1 * shore;
+  return height;
+}
+
+function buildTerrain(segs: number): THREE.Mesh {
+  const geo = new THREE.PlaneGeometry(84, 84, segs, segs);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position as THREE.BufferAttribute;
+  const colors = new Float32Array(pos.count * 3);
+  const grass = new THREE.Color("#3f9a62");
+  const deep = new THREE.Color("#2c6d46");
+  const sand = new THREE.Color("#e6d3a6");
+  const soil = new THREE.Color("#c4a574");
+  const tint = new THREE.Color();
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const height = terrainHeight(x, z);
+    pos.setY(i, height);
+    const radius = Math.hypot(x, z);
+    const shore = fade(27, 37, radius);
+    const onPath = (Math.abs(z) < 2.1 && x > -16 && x < 22) || (Math.abs(x) < 2.1 && z > 2 && z < 23) ? 1 : 0;
+    tint.copy(grass).lerp(deep, Math.max(0, height) * 0.35).lerp(sand, Math.max(onPath, shore * 0.9)).lerp(soil, Math.max(0, -height) * 0.25);
+    colors[i * 3] = tint.r;
+    colors[i * 3 + 1] = tint.g;
+    colors[i * 3 + 2] = tint.b;
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 }));
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function buildWater(segs: number): THREE.Mesh {
+  const geo = new THREE.CircleGeometry(52, segs);
+  const material = new THREE.MeshStandardMaterial({ color: 0x1b7c8e, transparent: true, opacity: 0.8, roughness: 0.18, metalness: 0.04 });
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = { value: 0 };
+    shader.vertexShader = `uniform float uTime;\n${shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      `#include <begin_vertex>
+       transformed.z += sin(transformed.x * 0.32 + uTime * 0.8) * cos(transformed.y * 0.26 + uTime * 0.65) * 0.05;`,
+    )}`;
+    material.userData.shader = shader;
+  };
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = -1.05;
+  mesh.userData.tick = (time: number) => {
+    const shader = material.userData.shader as { uniforms: { uTime?: { value: number } } } | undefined;
+    if (shader?.uniforms.uTime) shader.uniforms.uTime.value = time;
+  };
+  return mesh;
+}
+
+function buildTown(windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[], low: boolean): THREE.Group {
+  const group = new THREE.Group();
+  const y = terrainHeight(0, 0);
+  const stone = new THREE.MeshStandardMaterial({ color: 0xd7d0c4, roughness: 0.8 });
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8a6240, roughness: 0.7 });
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(4.4, low ? 20 : 40), new THREE.MeshStandardMaterial({ color: 0xe7d7b0, roughness: 0.95 }));
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.y = y + 0.03;
+  plaza.receiveShadow = !low;
+  group.add(plaza);
+  const basin = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.25, 0.38, low ? 12 : 24), stone);
+  basin.position.y = y + 0.28;
+  basin.castShadow = !low;
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.08, 8, low ? 16 : 28), stone);
+  lip.rotation.x = Math.PI / 2;
+  lip.position.y = y + 0.46;
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(1.0, 20), new THREE.MeshStandardMaterial({ color: 0x7ec8d4, roughness: 0.15, metalness: 0.05 }));
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.y = y + 0.42;
+  const jet = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), new THREE.MeshStandardMaterial({ color: 0xd7f4ff, transparent: true, opacity: 0.85 }));
+  jet.position.y = y + 0.85;
+  group.add(basin, lip, pool, jet);
+  for (const [x, z] of [[-3.2, -3.2], [3.2, -3.2], [3.2, 3.2], [-3.2, 3.2]] as const) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5, 8), wood);
+    post.position.set(x, y + 0.75, z);
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffb15a, emissiveIntensity: 0.2 }));
+    globe.position.set(x, y + 1.6, z);
+    windows.push(globe.material as THREE.MeshStandardMaterial);
+    group.add(post, globe);
+    if (!low) {
+      const light = new THREE.PointLight(0xffb15a, 0.1, 6);
+      light.position.set(x, y + 1.6, z);
+      lamps.push(light);
+      group.add(light);
+    }
+  }
+  const postL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 1.3, 8), wood);
+  const postR = postL.clone();
+  postL.position.set(-1.15, y + 0.7, -4.2);
+  postR.position.set(1.15, y + 0.7, -4.2);
+  group.add(postL, postR);
+  return group;
+}
+
+function buildArtStudio(windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[], low: boolean): THREE.Group {
+  const group = new THREE.Group();
+  const x = 25.4;
+  const z = 1;
+  const y = terrainHeight(x, z);
+  const stucco = new THREE.MeshStandardMaterial({ color: 0xf0d2b4, roughness: 0.86 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0xc45c3e, roughness: 0.7 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.3, 3.4), stucco);
+  body.position.set(x, y + 1.2, z);
+  body.castShadow = !low;
+  body.receiveShadow = !low;
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(3.3, 1.35, 4), roofMat);
+  roof.position.set(x, y + 2.9, z);
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = !low;
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0xb7e4ff, emissive: 0xffc48a, emissiveIntensity: 0.15, roughness: 0.08, metalness: 0.02, transparent: true, opacity: 0.88 });
+  windows.push(glassMat);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.45, 1.25, 0.08), new THREE.MeshStandardMaterial({ color: 0xf7f1e6, roughness: 0.5 }));
+  frame.position.set(x, y + 1.35, z + 1.72);
+  const window = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.0), glassMat);
+  window.position.set(x, y + 1.35, z + 1.77);
+  group.add(frame);
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x8d5a3c, roughness: 0.6 }));
+  door.position.set(x - 2.11, y + 0.75, z);
+  door.rotation.y = -Math.PI / 2;
+  group.add(body, roof, window, door);
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 6), new THREE.MeshStandardMaterial({ color: 0x6b4630 }));
+  leg.position.set(23.15, y + 0.55, 1.05);
+  leg.rotation.z = 0.15;
+  group.add(leg);
+  if (!low) {
+    const light = new THREE.PointLight(0xffb06a, 0.1, 7);
+    light.position.set(x, y + 1.6, z + 1.2);
+    lamps.push(light);
+    group.add(light);
+  }
+  return group;
+}
+
+function buildMusicStudio(windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[], low: boolean): THREE.Group {
+  const group = new THREE.Group();
+  const z = 26.2;
+  const y = terrainHeight(0, z);
+  const timber = new THREE.MeshStandardMaterial({ color: 0xa87445, roughness: 0.62 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x6a4328, roughness: 0.55 });
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.45, 1.7, low ? 12 : 24), timber);
+  drum.position.set(0, y + 0.9, z);
+  drum.castShadow = !low;
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(2.7, 1.15, low ? 12 : 24), dark);
+  cap.position.set(0, y + 2.15, z);
+  cap.castShadow = !low;
+  group.add(drum, cap);
+  for (let i = 0; i < 6; i += 1) {
+    const string = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.7, 5), new THREE.MeshStandardMaterial({ color: 0xf6edd4, metalness: 0.25, roughness: 0.3 }));
+    string.position.set(2.15, y + 1.2, z - 0.7 + i * 0.28);
+    group.add(string);
+  }
+  const hand = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.06, 8, 20, Math.PI), dark);
+  hand.position.set(2.15, y + 1.35, z);
+  hand.rotation.z = Math.PI / 2;
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.35, 16), dark);
+  head.position.set(-1.6, y + 0.55, z + 1.7);
+  group.add(hand, head);
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0xffe7c4, emissive: 0xffb36a, emissiveIntensity: 0.12, roughness: 0.25 });
+  windows.push(glassMat);
+  const pane = new THREE.Mesh(new THREE.CircleGeometry(0.45, 16), glassMat);
+  pane.position.set(0, y + 1.15, z + 2.46);
+  group.add(pane);
+  if (!low) {
+    const light = new THREE.PointLight(0xffb36a, 0.1, 7);
+    light.position.set(0, y + 1.4, z + 1.5);
+    lamps.push(light);
+    group.add(light);
+  }
+  return group;
+}
+
+function buildBasement(windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[], low: boolean): THREE.Group {
+  const group = new THREE.Group();
+  const x = -28.2;
+  const y = terrainHeight(x, 0);
+  const plaster = new THREE.MeshStandardMaterial({ color: 0xd9c7ae, roughness: 0.88 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x4d6a78, roughness: 0.6 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.1, 3.2), plaster);
+  body.position.set(x, y + 1.05, 0);
+  body.castShadow = !low;
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.7, 1.05, 4), roofMat);
+  roof.position.set(x, y + 2.4, 0);
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = !low;
+  group.add(body, roof);
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0xd7fff0, emissive: 0x8ef0c4, emissiveIntensity: 0.2, roughness: 0.25 });
+  windows.push(glassMat);
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.7), glassMat);
+  pane.position.set(x + 1.81, y + 1.15, 0);
+  pane.rotation.y = Math.PI / 2;
+  group.add(pane);
+  const stepMat = new THREE.MeshStandardMaterial({ color: 0xcbb89a, roughness: 0.8 });
+  for (let i = 0; i < 6; i += 1) {
+    const step = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 1.5), stepMat);
+    const sx = -20.5 - i * 1.05;
+    step.position.set(sx, terrainHeight(sx, 0) + 0.08 + i * 0.02, 0);
+    step.castShadow = !low;
+    group.add(step);
+  }
+  if (!low) {
+    const light = new THREE.PointLight(0x8ef0c4, 0.15, 6);
+    light.position.set(x + 1.2, y + 1.2, 0);
+    lamps.push(light);
+    group.add(light);
+  }
+  return group;
+}
+
+function scatterNature(scene: THREE.Scene, low: boolean): void {
+  const trunk = new THREE.MeshStandardMaterial({ color: 0x8d6244, roughness: 0.85 });
+  const leaf = new THREE.MeshStandardMaterial({ color: 0x2f8f55, roughness: 0.8 });
+  const rock = new THREE.MeshStandardMaterial({ color: 0x8d9088, roughness: 0.95 });
+  const spots: [number, number][] = [[12, 14], [-8, 16], [16, -12], [-14, -10], [8, -16], [32, 6], [-8, 32], [20, 16]];
+  for (const [x, z] of spots) {
+    if (Math.hypot(x, z) > 33) continue;
+    const y = terrainHeight(x, z);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 1.1, 6), trunk);
+    stem.position.set(x, y + 0.55, z);
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 0), leaf);
+    crown.position.set(x, y + 1.45, z);
+    crown.scale.y = 0.8;
+    stem.castShadow = !low;
+    crown.castShadow = !low;
+    scene.add(stem, crown);
+  }
+  for (const [x, z, s] of [[18, -8, 0.55], [-16, 10, 0.4], [7, 18, 0.35]] as const) {
+    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rock);
+    stone.position.set(x, terrainHeight(x, z) + s * 0.4, z);
+    stone.castShadow = !low;
+    scene.add(stone);
+  }
+}
+
+function buildRain(): THREE.Points {
+  const count = 180;
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i += 1) {
+    positions[i * 3] = (Math.random() - 0.5) * 50;
+    positions[i * 3 + 1] = Math.random() * 12;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const points = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd5f6ff, size: 0.06, transparent: true, opacity: 0.7 }));
+  points.visible = false;
+  return points;
+}
+
+function buildVisitor(): THREE.Group {
+  const group = new THREE.Group();
+  const cloth = new THREE.MeshStandardMaterial({ color: 0xd7c4a8, roughness: 0.7 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.55, 4, 8), cloth);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), new THREE.MeshStandardMaterial({ color: 0xf0ddc8, roughness: 0.6 }));
+  const y = terrainHeight(2.2, -3);
+  body.position.set(2.2, y + 0.6, -3);
+  head.position.set(2.2, y + 1.15, -3);
+  group.add(body, head);
+  group.visible = false;
+  return group;
+}
+
+function makeJelly(color: string, low: boolean): { group: THREE.Group; label: THREE.Sprite; key: string; kind: "jelly"; phase: number; glow: THREE.PointLight; mats: THREE.ShaderMaterial[] } {
   const group = new THREE.Group();
   const tint = new THREE.Color(color);
-  const bell = new THREE.Mesh(new THREE.BoxGeometry(name === "Mote" ? 0.7 : 1.05, name === "Mote" ? 0.7 : 0.62, name === "Mote" ? 0.7 : 1.05), new THREE.MeshLambertMaterial({ color: tint }));
-  bell.position.y = name === "Mote" ? 0.7 : 0.85;
-  group.add(bell);
-  if (name !== "Mote") {
-    for (const x of [-0.28, 0, 0.28]) {
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.12), new THREE.MeshLambertMaterial({ color: tint.clone().multiplyScalar(0.75) }));
-      arm.position.set(x, 0.28, 0);
-      group.add(arm);
-    }
-  } else {
-    const brim = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.16, 0.7), new THREE.MeshLambertMaterial({ color: 0x8a5a32 }));
-    brim.position.y = 1.1;
-    group.add(brim);
+  const bellMat = new THREE.MeshStandardMaterial({
+    color: tint,
+    transparent: true,
+    opacity: 0.62,
+    roughness: 0.18,
+    metalness: 0.02,
+    emissive: tint,
+    emissiveIntensity: 0.32,
+    side: THREE.DoubleSide,
+  });
+  const bell = new THREE.Mesh(new THREE.SphereGeometry(0.48, low ? 16 : 28, low ? 12 : 20, 0, Math.PI * 2, 0, Math.PI * 0.58), bellMat);
+  bell.scale.set(1, 0.72, 1);
+  bell.castShadow = !low;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.035, 8, low ? 12 : 24), bellMat);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = -0.08;
+  group.add(bell, rim);
+  const mats: THREE.ShaderMaterial[] = [];
+  const count = low ? 5 : 8;
+  for (let i = 0; i < count; i += 1) {
+    const phase = (i / count) * Math.PI * 2;
+    const material = new THREE.ShaderMaterial({
+      transparent: true,
+      uniforms: {
+        uTime: { value: 0 },
+        uPhase: { value: phase },
+        uColor: { value: tint.clone() },
+      },
+      vertexShader: `
+        uniform float uTime;
+        uniform float uPhase;
+        varying float vFade;
+        void main() {
+          vec3 p = position;
+          float sway = sin(uTime * 1.7 + uPhase + p.y * 6.0);
+          p.x += sway * (0.15 - p.y) * 0.55;
+          p.z += cos(uTime * 1.25 + uPhase) * (0.15 - p.y) * 0.4;
+          vFade = smoothstep(-0.7, 0.1, p.y);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        varying float vFade;
+        void main() {
+          gl_FragColor = vec4(uColor, 0.28 + vFade * 0.45);
+        }
+      `,
+    });
+    mats.push(material);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.012, 0.85, low ? 4 : 6), material);
+    const angle = phase;
+    arm.position.set(Math.cos(angle) * 0.22, -0.48, Math.sin(angle) * 0.22);
+    group.add(arm);
   }
-  const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true }));
-  label.position.y = 2.15;
-  label.scale.set(3.4, 1.15, 1);
+  const glow = new THREE.PointLight(tint, 0.6, low ? 3.5 : 6);
+  glow.position.y = 0.1;
+  group.add(glow);
+  group.userData.tint = bellMat;
+  const label = makeLabelSprite();
   group.add(label);
-  return { group, label, key: "" };
+  return { group, label, key: "", kind: "jelly", phase: 0.4, glow, mats };
+}
+
+function makeMote(color: string): { group: THREE.Group; label: THREE.Sprite; key: string; kind: "mote"; phase: number; glow: THREE.PointLight; mats: THREE.ShaderMaterial[] } {
+  const group = new THREE.Group();
+  const tint = new THREE.Color(color);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: tint, roughness: 0.45, emissive: tint, emissiveIntensity: 0.12 });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 20, 16), bodyMat);
+  body.scale.set(1.05, 0.82, 0.95);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), bodyMat);
+  head.position.y = 0.38;
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x8d5a32, roughness: 0.6 }));
+  cap.position.y = 0.48;
+  group.add(body, head, cap);
+  const glow = new THREE.PointLight(tint, 0.25, 3);
+  group.add(glow);
+  const label = makeLabelSprite();
+  group.add(label);
+  return { group, label, key: "", kind: "mote", phase: 1.2, glow, mats: [] };
+}
+
+function makeLabelSprite(): THREE.Sprite {
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+  sprite.position.y = 1.15;
+  sprite.scale.set(2.6, 0.9, 1);
+  return sprite;
+}
+
+function visualPosition(agent: PublicAgent, now: number, curves: Map<string, { key: string; curve: THREE.CatmullRomCurve3 }>): { x: number; y: number; z: number } {
+  if (!(agent.walking && agent.path.length > 1 && agent.departAt != null && agent.arriveAt != null)) {
+    return { x: agent.x, y: agent.y, z: agent.z };
+  }
+  const key = `${agent.departAt}:${agent.path.length}:${agent.destPlace}`;
+  let cached = curves.get(agent.id);
+  if (!cached || cached.key !== key) {
+    const points = agent.path.map((point: Vec3) => new THREE.Vector3(point.x, terrainHeight(point.x, point.z), point.z));
+    cached = { key, curve: new THREE.CatmullRomCurve3(points, false, "catmullrom", 0.2) };
+    curves.set(agent.id, cached);
+  }
+  const span = Math.max(1, agent.arriveAt - agent.departAt);
+  const along = ease((now - agent.departAt) / span);
+  const point = cached.curve.getPointAt(Math.min(1, Math.max(0, along)));
+  return { x: point.x, y: point.y, z: point.z };
 }
 
 function paintLabel(sprite: THREE.Sprite, text: string): void {
@@ -361,12 +751,13 @@ function paintLabel(sprite: THREE.Sprite, text: string): void {
   canvas.height = 180;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  ctx.fillStyle = "rgba(6, 16, 20, 0.78)";
-  ctx.fillRect(16, 16, 480, 148);
-  ctx.fillStyle = "#e7fff6";
+  ctx.fillStyle = "rgba(12, 24, 28, 0.72)";
+  roundRect(ctx, 24, 18, 464, 144, 28);
+  ctx.fill();
+  ctx.fillStyle = "#f4fff8";
   ctx.font = "28px sans-serif";
   ctx.textAlign = "center";
-  text.split("\n").slice(0, 3).forEach((line, index) => ctx.fillText(line.slice(0, 42), 256, 58 + index * 36));
+  text.split("\n").slice(0, 3).forEach((line, index) => ctx.fillText(line.slice(0, 40), 256, 62 + index * 36));
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const material = sprite.material as THREE.SpriteMaterial;
@@ -375,7 +766,15 @@ function paintLabel(sprite: THREE.Sprite, text: string): void {
   material.needsUpdate = true;
 }
 
-type Board = { texture: THREE.CanvasTexture; paint: (lines: string[]) => void };
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 
 function boardTexture(lines: string[], paper: string, ink: string): Board {
   const canvas = document.createElement("canvas");
@@ -390,15 +789,11 @@ function boardTexture(lines: string[], paper: string, ink: string): Board {
     ctx.fillRect(0, 0, 512, 320);
     ctx.fillStyle = ink;
     ctx.font = "28px sans-serif";
-    next.slice(0, 5).forEach((line, index) => ctx.fillText(line.slice(0, 32), 24, 56 + index * 48));
+    next.slice(0, 5).forEach((line, index) => ctx.fillText(line.slice(0, 32), 24, 58 + index * 48));
     texture.needsUpdate = true;
   };
   paint(lines);
   return { texture, paint };
-}
-
-function paintBoard(board: Board, lines: string[]): void {
-  board.paint(lines);
 }
 
 function paintSvg(board: Board, svg: string): void {
@@ -407,9 +802,9 @@ function paintSvg(board: Board, svg: string): void {
     const canvas = board.texture.image as HTMLCanvasElement;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "#f4d7b0";
+    ctx.fillStyle = "#f6e7d4";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(image, 40, 20, 432, 280);
+    ctx.drawImage(image, 48, 24, 416, 272);
     board.texture.needsUpdate = true;
   };
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

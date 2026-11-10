@@ -12,3 +12,7 @@ Pino's public repositories are unlicensed. Zoora uses the published ideas (a sen
 - [x] Voice is text-first and optional; this build does not ship TTS
 
 Reviewed with the tree under `projects/lumen` on 2026-11-09.
+
+## Island meshes (2026-11-10)
+
+The world view is drawn with code in `src/components/WorldView.tsx`. Terrain, water, trees, rocks, the four buildings, Zoora, and Mote are generated in that file from Three.js primitives and small shaders. No glTF, texture image, or other model file was added. Three.js itself remains the existing MIT-licensed dependency. Nothing in the scene is taken from Minecraft or from another game's asset pack.
