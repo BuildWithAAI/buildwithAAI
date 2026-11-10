@@ -45,6 +45,12 @@ summary: The query window follows the latest query, so setting the clock back do
 date: 2026-11-10T01:34:09Z
 image:
 ---
+sha: 18999b6
+title: Remember which guestbook lines already became ideas.
+summary: The same visitor note, aside from case and spacing, does not open a second seed. A different line still can. The note does not spend.
+date: 2026-11-10T01:49:00Z
+image:
+---
 sha: 8de89fd
 title: Prepare a 512MB always-on Fly.io config for the public world.
 summary: fly.toml keeps one shared-cpu machine in Ashburn with a 1GB volume, public mode on, and spending off. The owner runs the deploy later. Nothing was deployed from this change.
