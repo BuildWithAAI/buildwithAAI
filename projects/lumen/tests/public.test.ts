@@ -89,7 +89,8 @@ describe("public mode", () => {
     expect(docker).toContain("COPY --from=build /app/public ./public");
     expect(docker).toContain("sha256:aaa4b5baf1ecff3b283486bb1f90405cdda225a3e6f79660d2c559fa510a7292");
     expect(docker).not.toContain("chown -R node:node /app");
-    expect(entry).toContain("desk-proxy.mjs");
+    expect(entry).toContain("gosu node node ./desk-proxy.mjs &");
+    expect(readFileSync(new URL("../desk-proxy.mjs", import.meta.url), "utf8")).toContain('host: "::"');
     expect(docker).toContain("HEALTHCHECK");
     expect(docker).toContain("/healthz");
     expect(entry).toContain("gosu node");

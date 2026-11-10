@@ -33,4 +33,4 @@ const server = http.createServer((req, res) => {
   req.pipe(upstream);
 });
 
-server.listen(listenPort, "0.0.0.0");
+server.listen({ port: listenPort, host: "::", ipv6Only: false });
