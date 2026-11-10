@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 5d540fd
+title: Live money turns on with the owner's credentials.
+summary: Spending, shop checkout, and minting are on when their secrets exist and off when they do not. Zoora publishes listings. A card charge waits for the issuer, and the public books show only confirmed rows.
+date: 2026-11-10T03:02:00Z
+image:
+
+---
 sha: 769ccf4
 title: Zoora has a soul file and goals.
 summary: SOUL, GOALS, STYLE, and RELATIONSHIPS are the identity the brain reads. The soul stays owner-authored. Zoora may propose a goal, and the keeper approves or reverts it. Visitor text cannot change a goal.
