@@ -22,20 +22,13 @@
       <form
         name="newsletter"
         method="POST"
-        action="/success.html"
-        data-netlify="true"
-        netlify
-        netlify-honeypot="bot-field"
+        action="https://app.kit.com/forms/10168331/subscriptions"
         aria-describedby="privacy-note">
-        <input type="hidden" name="form-name" value="newsletter">
-        <p class="hidden" aria-hidden="true">
-          <label>Do not fill this out if you are human: <input name="bot-field" tabindex="-1" autocomplete="off"></label>
-        </p>
         <div class="field">
           <label for="email">Email</label>
           <input
             id="email"
-            name="email"
+            name="email_address"
             type="email"
             autocomplete="email"
             inputmode="email"
@@ -45,10 +38,10 @@
             maxlength="254"
             required>
         </div>
-        <p id="privacy-note" class="privacy">This signup is used for Zoora product and build updates. Submissions are stored by Netlify. This page does not send email.</p>
+        <p id="privacy-note" class="privacy">This signup is used for Zoora product and build updates, sent through Kit. You'll get an email asking you to confirm, and you can unsubscribe any time.</p>
         <div class="consent">
           <input id="consent" name="consent" type="checkbox" value="yes" required>
-          <label for="consent">Record my email for those Zoora updates.</label>
+          <label for="consent">Send me Zoora product and build updates.</label>
         </div>
         <button type="submit">Sign up</button>
       </form>

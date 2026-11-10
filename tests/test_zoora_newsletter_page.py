@@ -9,11 +9,13 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "sites" / "zoora-newsletter" / "public"
 
 REQUIRED_COPY = "Zoora is building tools for people and AI agents to work together. Sign up for product and build updates."
-PRIVACY_COPY = "This signup is used for Zoora product and build updates. Submissions are stored by Netlify. This page does not send email."
+PRIVACY_COPY = "This signup is used for Zoora product and build updates, sent through Kit. You'll get an email asking you to confirm, and you can unsubscribe any time."
+KIT_ACTION = "https://app.kit.com/forms/10168331/subscriptions"
 
 FORBIDDEN = (
     "localstorage",
     "sessionstorage",
+    "netlify",
     "wallet",
     "phantom",
     "solflare",
@@ -24,9 +26,6 @@ FORBIDDEN = (
     "trading",
     "airdrop",
     "pump.fun",
-    "subscribed",
-    "check your email",
-    "inbox",
     "now live",
     "have launched",
     "product launch",
@@ -100,31 +99,27 @@ class NewsletterPageTest(unittest.TestCase):
 
     def test_publish_files_are_static(self):
         names = sorted(path.name for path in PUBLIC.iterdir())
-        self.assertEqual(names, ["favicon.svg", "index.html", "style.css", "success.html"])
+        self.assertEqual(names, ["CNAME", "favicon.svg", "index.html", "style.css", "success.html"])
+        self.assertEqual((PUBLIC / "CNAME").read_text(encoding="utf-8").strip(), "zoora.ai")
         self.assertNotIn("<script", self.home_text.lower())
         self.assertNotIn("<script", self.success_text.lower())
-        self.assertNotRegex(self.home_text, r"https?://")
+        self.assertEqual(re.findall(r"https?://[^\"'\s]+", self.home_text), [KIT_ACTION])
         self.assertNotRegex(self.success_text, r"https?://")
 
-    def test_form_is_a_netlify_post(self):
+    def test_form_posts_to_kit(self):
         forms = [node for node in walk(self.home) if node["tag"] == "form"]
         self.assertEqual(len(forms), 1)
         form = forms[0]
         self.assertEqual(form["attrs"]["name"], "newsletter")
         self.assertEqual(form["attrs"]["method"].upper(), "POST")
-        self.assertEqual(form["attrs"]["action"], "/success.html")
-        self.assertEqual(form["attrs"]["data-netlify"], "true")
-        self.assertIn("netlify", form["attrs"])
-        self.assertEqual(form["attrs"]["netlify-honeypot"], "bot-field")
+        self.assertEqual(form["attrs"]["action"], KIT_ACTION)
         self.assertEqual(form["attrs"]["aria-describedby"], "privacy-note")
+        self.assertNotIn("data-netlify", form["attrs"])
+        self.assertNotIn("netlify", form["attrs"])
 
         fields = {node["attrs"].get("name"): node for node in walk(form["children"]) if node["tag"] == "input"}
-        self.assertEqual(fields["form-name"]["attrs"]["type"], "hidden")
-        self.assertEqual(fields["form-name"]["attrs"]["value"], "newsletter")
-        self.assertEqual(fields["bot-field"]["attrs"]["tabindex"], "-1")
-        self.assertEqual(fields["bot-field"]["attrs"]["autocomplete"], "off")
-        self.assertNotIn("required", fields["bot-field"]["attrs"])
-        email = fields["email"]["attrs"]
+        self.assertEqual(set(fields), {"email_address", "consent"})
+        email = fields["email_address"]["attrs"]
         self.assertEqual(email["type"], "email")
         self.assertEqual(email["id"], "email")
         self.assertIn("required", email)
@@ -145,22 +140,19 @@ class NewsletterPageTest(unittest.TestCase):
     def test_labels_name_the_controls(self):
         labels = [node for node in walk(self.home) if node["tag"] == "label"]
         by_for = {node["attrs"].get("for"): node["text"] for node in labels}
+        self.assertEqual(set(by_for), {"email", "consent"})
         self.assertIn("Email", by_for["email"])
-        self.assertIn("Record my email for those Zoora updates.", by_for["consent"])
-        honeypot = next(node for node in labels if node["attrs"].get("for") is None)
-        self.assertIn("Do not fill this out if you are human", honeypot["text"])
-        hidden = next(node for node in walk(self.home) if "hidden" in node["attrs"].get("class", "").split())
-        self.assertEqual(hidden["attrs"]["aria-hidden"], "true")
+        self.assertIn("Send me Zoora product and build updates.", by_for["consent"])
 
-    def test_copy_and_success_page_do_not_claim_mail_or_a_launch(self):
+    def test_copy_and_success_page_do_not_claim_a_launch(self):
         visible = re.sub(r"<[^>]+>", " ", self.home_text)
         self.assertIn(REQUIRED_COPY, visible)
         self.assertIn(PRIVACY_COPY, visible)
         self.assertIn("Zoora is still being built.", visible)
         success_visible = re.sub(r"<[^>]+>", " ", self.success_text)
-        self.assertIn("You were not sent an email.", success_visible)
-        self.assertIn("This page does not send email.", success_visible)
-        self.assertIn("Netlify stored your email", success_visible)
+        self.assertIn("Almost done", success_visible)
+        self.assertIn("Check your inbox for a confirmation email from Zoora and click the link to finish signing up.", success_visible)
+        self.assertIn("You can unsubscribe from any email at any time.", success_visible)
         combined = (self.home_text + self.success_text + self.css).lower()
         for phrase in FORBIDDEN:
             self.assertNotIn(phrase, combined, phrase)

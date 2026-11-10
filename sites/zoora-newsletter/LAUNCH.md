@@ -1,59 +1,33 @@
 # Zoora public newsletter page
 
-Static interest page for the existing Netlify site. It replaces the published page that saved an address in `localStorage` under `zoora-newsletter` and told the visitor that nothing was mailed. This folder does not deploy, create a Netlify project, change DNS, send mail, or alter Railway or the platform app.
+Static interest page for zoora.ai. GitHub Pages publishes `sites/zoora-newsletter/public`. This folder does not change Railway or the platform app. `LAUNCH.md` stays outside `public/` and is not part of the site.
 
-Rechecked 9 November 2026 (America/Chicago): `https://zoora-oh1r.netlify.app` still served that older page from site `zoora-oh1r`, id `26388513-a228-4ec3-acb9-8115c563f787`. Netlify Forms was already enabled for a form named `newsletter` with an email field. The site has no Git connection and is updated by manual upload. Publishing this directory replaces the files on that same site. It does not, by itself, prove the custom domain `zoora.ai` is attached.
+The signup form POSTs `email_address` to Kit at `https://app.kit.com/forms/10168331/subscriptions`. The visitor is asked to confirm by email and can unsubscribe. This repository does not send that mail.
 
 ## Publish directory
 
-Upload the contents of this directory as the site root:
-
 `sites/zoora-newsletter/public`
-
-Files:
 
 | File | Role |
 | --- | --- |
-| `index.html` | Landing page and form |
-| `success.html` | Page shown after Netlify accepts the POST |
+| `index.html` | Landing page and Kit form |
+| `success.html` | On-site page at `/success.html` |
 | `style.css` | Shared styles |
 | `favicon.svg` | Site icon |
+| `CNAME` | `zoora.ai` |
 
-The deploy-ready archive is `zoora_newsletter_public.zip`. Its four files sit at the archive root. Unpack it and upload those files as the existing site root. Do not upload `LAUNCH.md`.
+`.github/workflows/zoora-pages.yml` deploys that directory. It runs on a push to `main` when `sites/zoora-newsletter/public/**` changes, and when someone starts it with `workflow_dispatch`. The build job checks out the repo, configures Pages, and uploads `sites/zoora-newsletter/public`. The deploy job publishes that artifact to the `github-pages` environment.
 
-## Form
+Merging the workflow does not attach the domain by itself. Pages has to be enabled for this repository, and the custom domain has to be saved in the repository settings.
 
-The form is static HTML so Netlify can detect it at deploy time. There is no script and no `localStorage`.
+## Namecheap DNS
 
-- Form `name`: `newsletter`
-- Method: `POST`
-- Action: `/success.html`
-- Detection: `data-netlify="true"` and the `netlify` attribute
-- Hidden field: `form-name` = `newsletter`
-- Address field: `email` (`type="email"`, required)
-- Consent field: `consent` = `yes` when checked (required)
-- Honeypot: `netlify-honeypot="bot-field"` and an unfilled `bot-field` input
+At Namecheap, for `zoora.ai`:
 
-After a manual production deploy, the existing `newsletter` form should keep receiving submissions. The extra `consent` value is stored with the submission. This repository does not turn on Netlify email notifications. The page states that it does not send email. A stored submission is not a delivered message and is not a product launch.
+- A records on `@`: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`.
+- CNAME record for `www` pointing at `buildwithaai.github.io`.
 
-## Manual upload only
-
-Use the existing site. Do not run `netlify sites:create`, connect a Git repository, change a domain, or edit another site.
-
-Example, for a machine already logged into the Netlify account that owns this site. This command is not part of the change and was not run here:
-
-```bash
-netlify deploy --prod --site 26388513-a228-4ec3-acb9-8115c563f787 --dir sites/zoora-newsletter/public
-```
-
-Equivalent manual API upload: zip the files inside `sites/zoora-newsletter/public` (not the parent folder) and deploy that archive to site `26388513-a228-4ec3-acb9-8115c563f787`.
-
-Check after deploy, without using a personal address:
-
-- `GET /` returns the new page, with the form present in the HTML.
-- `GET /success.html` returns the receipt page.
-- Netlify’s form UI lists `newsletter`.
-- A real signup is an owner action. Do not post a personal or test inbox from CI.
+In the repository: Settings → Pages. Set the custom domain to `zoora.ai` and turn on Enforce HTTPS. The `CNAME` file in the publish directory repeats `zoora.ai`. It is harmless when the domain is also set in Settings.
 
 ## What this page says
 
@@ -61,4 +35,4 @@ Zoora is building tools for people and AI agents to work together. Visitors can 
 
 ## Checks recorded with the source
 
-`python -m unittest tests.test_zoora_newsletter_page` reads the static files only. It checks form name, POST, Netlify attributes, honeypot, email and consent labels, the success page, reduced-motion CSS, and contrast. It does not submit the form.
+`python -m unittest tests.test_zoora_newsletter_page` reads the static files only. It checks the Kit POST, the `email_address` field, consent, the success page, reduced-motion CSS, and contrast. It does not submit the form.
