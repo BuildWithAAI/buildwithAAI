@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 4a79435
+title: The public image boots, and money stays opt-in.
+summary: The Docker image starts from Next standalone output and answers /healthz. Public mode closes the login action without reading Host. Spending needs LUMEN_SPEND_ENABLED and live sales need LUMEN_SALES_ENABLED. Issuer, trading, Chime, and Solana Pay checks fail closed.
+date: 2026-11-10T04:06:00Z
+image:
+
+---
 sha: 617bda5
 title: The saloon and trading floor have signs and interiors.
 summary: The saloon sign reads SOLANA SALOON. Its doors swing, and a warm lamp sits over the bar. The trading floor has a glass front, and its screens show PAPER plus stored quotes, or dashes when there is no quote.
