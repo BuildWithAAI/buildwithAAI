@@ -20,10 +20,10 @@ export function isVoxelEvent(kind: string): kind is VoxelEventKind {
 }
 
 /** Ambient roll only. Callers cannot pass a requested kind. */
-export function rollVoxelEvent(rng: () => number): VoxelEventKind | null {
+export function rollVoxelEvent(rng: () => number, visitorPresence = 0): VoxelEventKind | null {
   const roll = rng();
   if (roll < 0.04) return "rain";
-  if (roll < 0.07) return "visitor";
+  if (roll < 0.07) return visitorPresence > 0 ? "visitor" : null;
   if (roll < 0.1) return "found-item";
   if (roll < 0.125) return "tide-shell";
   if (roll < 0.15) return "firefly-night";

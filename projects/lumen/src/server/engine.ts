@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
 import { glowFor } from "../brain/emotions";
+import { crisisMatch, guestbookReply } from "../brain/crisis";
 import { giftById, giftDeltas, interactDeltas, moderateNote, ownerTurn, publicWants, reactionToOwnerDecision, sortInbox, artReaction, GIFT_CATALOG } from "../brain/social";
 import { applyNeedDeltas } from "../brain/feel";
 import { blendEmotions } from "../brain/emotions";
@@ -9,6 +10,8 @@ import { blankProduct, initialState, labelsOf, tick, type TickResult } from "../
 import type { BrainState, PurchaseIntent, Wish } from "../brain/types";
 import { allowLogin, createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
 import { allowGuestNote, allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
+import { logSecurity } from "../http/log";
+import { presenceLevel } from "../world/presence";
 import { executeIntent, listUnknownClaims, resolveUnknownClaim, sweepStuckPurchases, type ChargeProof } from "../money/execute";
 import { publishJarvis } from "../integrations/jarvis";
 import { buildOwnerNotifier, deliverDueAlerts, deskNotifier, listAlerts, type OwnerAlert } from "../money/notify";
@@ -79,7 +82,10 @@ export function createEngine(env: Env, file?: string) {
     world: () => worldView(db, Date.now(), env),
     worldRead: (ip: string) => {
       const now = Date.now();
-      if (!allowWorldRead(ip, now)) return { status: 429 as const, body: { error: "RATE_LIMIT" } };
+      if (!allowWorldRead(ip, now)) {
+        logSecurity({ event: "rate_limited", status: 429, route: "/api/world" });
+        return { status: 429 as const, body: { error: "RATE_LIMIT" } };
+      }
       return { status: 200 as const, body: worldView(db, now, env) };
     },
     worldCommand: (command: WorldCommand) => handleWorldCommand(db, command, { jarvisToken: env.LUMEN_JARVIS_TOKEN, ownerToken: env.OWNER_ACCESS_TOKEN }),
@@ -229,10 +235,11 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
     ownerName: env.LUMEN_OWNER_NAME || "keeper",
     product,
     quietHours: inQuietHours(env, now) || sky.sunAltitude < 0,
+    visitorPresence: presenceLevel(now),
     model: env.LUMEN_LLM_API_KEY ? (body) => callModel(env, body) : undefined,
   });
   let lived = result.state;
-  const rolled = rollAndApply(db, lived, Math.random, now);
+  const rolled = rollAndApply(db, lived, Math.random, now, presenceLevel(now));
   if (rolled !== lived) lived = rolled;
   try {
     const researched = await advanceResearch(db, env, lived, now);
@@ -332,6 +339,10 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
   if (!gift) return { ok: false, error: "UNKNOWN_GIFT" };
   const moderated = moderateNote(note);
   if (!moderated.ok) return moderated;
+  if (moderated.note && crisisMatch(moderated.note)) {
+    db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'gift')").run(Date.now());
+    return { ok: false, error: "CRISIS" };
+  }
   const state = loadState(db);
   const prior = state.giftCounts[giftId] ?? 0;
   const deltas = giftDeltas(giftId, prior);
@@ -345,7 +356,7 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
   saveState(db, next);
   const id = randomBytes(8).toString("hex");
   db.prepare("INSERT INTO gifts(id, gift_id, note, untrusted, author, created_at) VALUES(?, ?, ?, 1, ?, ?)").run(id, giftId, moderated.note, author.slice(0, 40) || "visitor", Date.now());
-  db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`A visitor left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
+  db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`${visitorName(author)} left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
   void env;
   return { ok: true, id };
 }
@@ -375,6 +386,10 @@ function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) 
   const moderated = moderateNote(note, 280);
   if (!moderated.ok) return moderated;
   if (!moderated.note) return { ok: false, error: "EMPTY" };
+  if (crisisMatch(moderated.note)) {
+    db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'guestbook')").run(Date.now());
+    return { ok: false, error: "CRISIS" };
+  }
   const state = loadState(db);
   const messages = (db.prepare("SELECT id, channel, author FROM messages WHERE status = 'queued'").all() as { id: string; channel: "owner" | "visitor"; author: string }[]);
   const id = randomBytes(8).toString("hex");
@@ -383,15 +398,19 @@ function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) 
     { stress: state.stress, adopted: state.sorterAdopted, cap: 8, alreadyToday: state.inboxToday, regulars: state.visitorSeen },
   );
   const dropped = sorted.droppedIds.includes(id);
-  db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'visitor', ?, ?, 1, ?, NULL, ?)").run(
+  const reply = dropped ? null : guestbookReply(id);
+  db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'visitor', ?, ?, 1, ?, ?, ?)").run(
     id,
     (author || "visitor").slice(0, 40),
     moderated.note,
     dropped ? "dropped" : "queued",
+    reply,
     Date.now(),
   );
+  const name = (author || "visitor").slice(0, 40);
   saveState(db, {
     ...state,
+    visitorSeen: state.visitorSeen.includes(name) ? state.visitorSeen : [...state.visitorSeen, name].slice(-40),
     unread: state.unread + (dropped ? 0 : 1),
     sorterAdopted: sorted.adopted,
     inboxToday: state.inboxToday + (dropped ? 0 : 1),
@@ -408,10 +427,22 @@ function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) 
 }
 
 function login(db: DatabaseSync, env: Env, secret: string, ip: string) {
-  if (!allowLogin(db, ip, Date.now())) return { ok: false, error: "RATE_LIMIT" };
-  if (!ownerConfigured(env) || !credentialsMatch(secret, env)) return { ok: false, error: "DENIED" };
+  if (!allowLogin(db, ip, Date.now())) {
+    logSecurity({ event: "login", status: 429, route: "/admin/login" });
+    return { ok: false, error: "RATE_LIMIT" };
+  }
+  if (!ownerConfigured(env) || !credentialsMatch(secret, env)) {
+    logSecurity({ event: "login", status: 401, route: "/admin/login" });
+    return { ok: false, error: "DENIED" };
+  }
+  logSecurity({ event: "login", status: 200, route: "/admin/login" });
   const token = createSession(db, Date.now());
   return { ok: true, token };
+}
+
+function visitorName(author: string): string {
+  const cleaned = author.replace(/[<>&"'`]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
+  return cleaned || "visitor";
 }
 
 function logout(db: DatabaseSync, cookieHeader: string | null) {

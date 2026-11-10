@@ -1,0 +1,4 @@
+[allowlist]
+paths = [
+  '''projects/zoora-agent-community/tests/fixtures/bridge-localhost-public-test-key.pem''',
+]

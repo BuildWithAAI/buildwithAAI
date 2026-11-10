@@ -2,6 +2,7 @@ import { OWNER_COOKIE, readCookie, safeEqual, sessionValid } from "../../../auth
 import { clientAddress } from "../../../auth/owner";
 import { publicModeOn } from "../../../auth/publicMode";
 import { allowOwnerToken, distinctBearerBlocked, noteDistinctBearerMiss, noteOwnerTokenFailure, ownerTokenKey, ownerTokenLocked } from "../../../auth/ownerToken";
+import { logSecurity } from "../../../http/log";
 import { getEngine } from "../../../server/engine";
 
 const PUBLIC_ORIGINS = ["https://zoora.ai", "https://world.zoora.ai"];
@@ -34,7 +35,10 @@ export function checkoutAuth(request: Request, now = Date.now()): { ok: true } |
     const key = ownerTokenKey(token);
     if (expected && safeEqual(token, expected)) return { ok: true };
     const ip = clientAddress((name) => request.headers.get(name), process.env.LUMEN_TRUSTED_PROXY, publicModeOn());
-    if (distinctBearerBlocked(ip, now) || ownerTokenLocked(key, now) || !allowOwnerToken(key, now)) return { ok: false, status: 429, error: "RATE" };
+    if (distinctBearerBlocked(ip, now) || ownerTokenLocked(key, now) || !allowOwnerToken(key, now)) {
+      logSecurity({ event: "rate_limited", status: 429, route: "/api/checkout" });
+      return { ok: false, status: 429, error: "RATE" };
+    }
     noteOwnerTokenFailure(key, now);
     noteDistinctBearerMiss(ip, key, now);
     return { ok: false, status: 401, error: "UNAUTHORIZED" };

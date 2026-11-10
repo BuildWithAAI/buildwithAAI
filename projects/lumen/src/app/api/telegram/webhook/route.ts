@@ -2,6 +2,7 @@ import { clientAddress } from "../../../../auth/owner";
 import { publicModeOn } from "../../../../auth/publicMode";
 import { allowRate } from "../../../../db/db";
 import { readLimitedText } from "../../../../http/bodyLimit";
+import { logSecurity } from "../../../../http/log";
 import { acceptTelegramUpdate, TELEGRAM_BODY_MAX } from "../../../../integrations/telegramOwner";
 import { getEngine } from "../../../../server/engine";
 
@@ -13,6 +14,7 @@ export async function POST(request: Request) {
   const engine = getEngine();
   const ip = clientAddress((name) => request.headers.get(name), process.env.LUMEN_TRUSTED_PROXY, publicModeOn());
   if (!allowRate(engine.db, `telegram:${ip}`, 30, 60_000, Date.now())) {
+    logSecurity({ event: "rate_limited", status: 429, route: "/api/telegram/webhook" });
     return Response.json({ error: "RATE_LIMIT" }, { status: 429 });
   }
   const result = acceptTelegramUpdate(

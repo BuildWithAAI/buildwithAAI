@@ -140,13 +140,17 @@ Open `https://lumen-tidepool.fly.dev/build` and `https://lumen-tidepool.fly.dev/
 
 The login form is not on the public site. A burst of guesses from other addresses cannot lock the owner out. Each address has its own slow backoff, and there is no shared counter.
 
+A missing or empty `Fly-Client-IP` does not open the desk. The public edge sets that header. A session cookie on that edge still cannot open the desk, because every desk page and every desk action checks the same gate.
+
+The machine also listens on port 3001. That port is not an `[http_service]` port, so the public edge cannot route to it. A small proxy on 3001 strips `Fly-Client-IP` and adds `x-lumen-desk`. The secret is generated when the machine boots. It is not in `fly.toml`.
+
 Reach the desk with Fly's proxy, from your own machine:
 
 ```powershell
-fly proxy 3000:3000 -a lumen-tidepool
+fly proxy 3001:3001 -a lumen-tidepool
 ```
 
-Then open `http://127.0.0.1:3000/admin/login`. That connection has no `Fly-Client-IP` header, so the login form is served. `world.zoora.ai` and `lumen-tidepool.fly.dev` are the public edge. They set `Fly-Client-IP`, and `/admin/login` stays closed there. Do not open the desk through the private WireGuard hostname.
+Then open `http://127.0.0.1:3001/admin/login`. Port 3000 is the public site. Do not use it for the desk. `world.zoora.ai`, `zoora.ai`, and `lumen-tidepool.fly.dev` are the public edge. They set `Fly-Client-IP`, and `/admin/login` stays closed there. Do not open the desk through the private WireGuard hostname.
 
 ## Custom domain world.zoora.ai
 
@@ -179,6 +183,29 @@ fly certs check world.zoora.ai -a lumen-tidepool
 ```
 
 The first single-hostname certificate is inside the ten free certificates.
+
+## Apex zoora.ai and www
+
+Verify the domain in GitHub Pages first, while the current site still lives there. Add the TXT or other records GitHub shows for zoora.ai. Wait until GitHub says the domain is verified.
+
+Then cut DNS over to this app. Keep the existing MX records and the SPF record. Do not delete them when you add Fly.
+
+In Namecheap, open Domain List, zoora.ai, Advanced DNS. Use the shared IPv4 and the IPv6 from `fly ips list`, not a dedicated IPv4.
+
+| Type | Host | Value |
+| --- | --- | --- |
+| A | @ | the shared IPv4 from `fly ips list` |
+| AAAA | @ | the IPv6 from `fly ips list` |
+| CNAME | www | lumen-tidepool.fly.dev |
+
+```powershell
+fly certs add zoora.ai -a lumen-tidepool
+fly certs add www.zoora.ai -a lumen-tidepool
+fly certs check zoora.ai -a lumen-tidepool
+fly certs check www.zoora.ai -a lumen-tidepool
+```
+
+`www.zoora.ai` answers with a redirect to `https://zoora.ai` and keeps the path. After `https://zoora.ai/` is serving this app, remove zoora.ai and www.zoora.ai from the GitHub Pages custom domain settings.
 
 ## Billing alert and the $3.84 check
 

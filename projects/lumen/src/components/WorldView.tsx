@@ -50,6 +50,29 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
   followRef.current = follow;
 
   useEffect(() => {
+    let slot = "";
+    try {
+      slot = window.sessionStorage.getItem("zoora-presence") ?? "";
+      if (!/^[a-z0-9]{8,16}$/i.test(slot)) {
+        slot = Math.random().toString(36).slice(2, 12).padEnd(8, "a");
+        window.sessionStorage.setItem("zoora-presence", slot);
+      }
+    } catch {
+      return;
+    }
+    const beat = () => {
+      fetch("/api/world/here", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slot }),
+      }).catch(() => undefined);
+    };
+    beat();
+    const timer = window.setInterval(beat, 20_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     world.current = live;
   }, [live]);
 

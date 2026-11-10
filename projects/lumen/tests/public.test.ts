@@ -31,17 +31,19 @@ describe("public mode", () => {
     expect(ownerRouteOpen("/admin", true, env)).toBe(true);
     expect(ownerRouteOpen("/admin/login", false, env)).toBe(false);
     expect(loginReachable("203.0.113.8", env)).toBe(false);
-    expect(loginReachable(null, env)).toBe(true);
-    expect(loginReachable("   ", env)).toBe(true);
+    expect(loginReachable(null, env)).toBe(false);
+    expect(loginReachable("   ", env)).toBe(false);
+    expect(loginReachable(null, { ...env, LUMEN_DESK_SECRET: "desk-secret" }, "desk-secret")).toBe(true);
+    expect(loginReachable("203.0.113.8", { ...env, LUMEN_DESK_SECRET: "desk-secret" }, "desk-secret")).toBe(false);
     expect(loginReachable("203.0.113.8", {})).toBe(true);
     expect(ownerRouteOpen("/world", false, env)).toBe(true);
     expect(ownerRouteOpen("/build", false, env)).toBe(true);
     expect(ownerRouteOpen("/admin", false, {})).toBe(true);
     expect(spendAllowed({ LUMEN_PUBLIC_MODE: "true", LUMEN_SPEND_ENABLED: "true", LUMEN_CARD_ISSUER: "owner_checkout" }, true, false, true).open).toBe(false);
     expect(spendAllowed({ LUMEN_PUBLIC_MODE: "true" }, true, false, true).open).toBe(false);
-    expect(securityHeaders(true).some((header) => header.key === "Content-Security-Policy")).toBe(true);
+    expect(securityHeaders(true).some((header) => header.key === "Content-Security-Policy")).toBe(false);
     expect(securityHeaders(false).some((header) => header.key === "Strict-Transport-Security")).toBe(true);
-    expect(securityHeaders().some((header) => header.key === "Content-Security-Policy")).toBe(true);
+    expect(securityHeaders().some((header) => header.key === "Strict-Transport-Security")).toBe(true);
   });
 
   it("trusts Cloudflare Tunnel and ngrok, and rate-limits the public", () => {
@@ -85,6 +87,9 @@ describe("public mode", () => {
     expect(readFileSync(new URL("../next.config.ts", import.meta.url), "utf8")).toContain('output: "standalone"');
     expect(docker).toContain('CMD ["node", "server.js"]');
     expect(docker).toContain("COPY --from=build /app/public ./public");
+    expect(docker).toContain("sha256:aaa4b5baf1ecff3b283486bb1f90405cdda225a3e6f79660d2c559fa510a7292");
+    expect(docker).not.toContain("chown -R node:node /app");
+    expect(entry).toContain("desk-proxy.mjs");
     expect(docker).toContain("HEALTHCHECK");
     expect(docker).toContain("/healthz");
     expect(entry).toContain("gosu node");

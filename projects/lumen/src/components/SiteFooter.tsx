@@ -11,7 +11,8 @@ export function SiteFooter() {
         <Link href="/prints">Prints</Link>
         <Link href="/ideas">Ideas</Link>
         <Link href="/floor">Floor</Link>
-        <Link href="/wants">Wants</Link>
+        <Link href="/wishlist">Wishes</Link>
+        <Link href="/safety">Safety</Link>
       </p>
       <p>Zoora is still being built. This signup only collects interest in product and build updates.</p>
       <p>Zoora is an AI, not a human.</p>

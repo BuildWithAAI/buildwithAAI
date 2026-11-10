@@ -12,6 +12,7 @@ const failures = new Map<string, number[]>();
 const lockedUntil = new Map<string, number>();
 const distinctMisses = new Map<string, { keys: Set<string>; until: number }>();
 const prefix48Misses = new Map<string, { keys: Set<string>; until: number; blockedAt: number }>();
+const prefix48Evict = new Map<string, true>();
 let prunedAt = 0;
 
 /** The lockout key is the whole token, not a shared prefix. */
@@ -98,6 +99,7 @@ export function resetOwnerTokens(): void {
   lockedUntil.clear();
   distinctMisses.clear();
   prefix48Misses.clear();
+  prefix48Evict.clear();
   prunedAt = 0;
 }
 
@@ -119,7 +121,10 @@ export function pruneOwnerTokens(now: number): void {
     if (entry.until <= now) distinctMisses.delete(key);
   }
   for (const [key, entry] of prefix48Misses) {
-    if (entry.until <= now) prefix48Misses.delete(key);
+    if (entry.until <= now) {
+      prefix48Misses.delete(key);
+      prefix48Evict.delete(key);
+    }
   }
 }
 
@@ -132,29 +137,24 @@ function addDistinctMiss(map: Map<string, { keys: Set<string>; until: number }>,
 }
 
 function addPrefix48Miss(bucket: string, key: string, now: number): void {
+  maybePrune(now);
   const current = prefix48Misses.get(bucket);
   const fresh = !current || current.until <= now;
   const keys = fresh ? new Set<string>() : current.keys;
   if (keys.size < DISTINCT_BEARER_LIMIT) keys.add(key);
   const blocked = keys.size >= DISTINCT_BEARER_LIMIT;
   prefix48Misses.delete(bucket);
-  prefix48Misses.set(bucket, { keys, until: now + LOCK_MS, blockedAt: blocked ? now : 0 });
+  prefix48Misses.set(bucket, { keys, until: now + LOCK_MS, blockedAt: blocked ? (current?.blockedAt || now) : 0 });
+  if (blocked) prefix48Evict.delete(bucket);
+  else {
+    prefix48Evict.delete(bucket);
+    prefix48Evict.set(bucket, true);
+  }
   while (prefix48Misses.size > OWNER_TOKEN_MAP_CAP) {
-    let victim: string | null = null;
-    let rank = Infinity;
-    for (const [name, entry] of prefix48Misses) {
-      const live = entry.until > now && entry.keys.size >= DISTINCT_BEARER_LIMIT;
-      if (!live) {
-        victim = name;
-        break;
-      }
-      if (entry.blockedAt < rank) {
-        rank = entry.blockedAt;
-        victim = name;
-      }
-    }
-    if (!victim) break;
-    prefix48Misses.delete(victim);
+    const oldest = prefix48Evict.keys().next().value;
+    if (oldest === undefined) break;
+    prefix48Evict.delete(oldest);
+    prefix48Misses.delete(oldest);
   }
 }
 

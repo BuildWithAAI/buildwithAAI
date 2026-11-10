@@ -17,8 +17,7 @@ export function Nav({ showKeeper = false, showMoney = false }: { showKeeper?: bo
         <Link href="/floor">Floor</Link>
         <Link href="/prints">Prints</Link>
         <Link href="/ideas">Ideas</Link>
-        <Link href="/wants">Wants</Link>
-        <Link href="/wishlist">Wishlist</Link>
+        <Link href="/wishlist">Wishes</Link>
         {showMoney ? <Link href="/shop">Shop</Link> : null}
         {showMoney ? <Link href="/books">Books</Link> : null}
         {showKeeper ? <Link href="/admin">Keeper</Link> : null}

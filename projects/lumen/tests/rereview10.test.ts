@@ -98,10 +98,11 @@ describe("re-review 10", () => {
   it("closes the login action without trusting Host", () => {
     const env = { LUMEN_PUBLIC_MODE: "true" };
     expect(loginReachable("203.0.113.9", env)).toBe(false);
-    expect(loginReachable(null, env)).toBe(true);
+    expect(loginReachable(null, env)).toBe(false);
+    expect(loginReachable(null, { ...env, LUMEN_DESK_SECRET: "desk-secret" }, "desk-secret")).toBe(true);
     const actions = readFileSync(new URL("../src/app/actions.ts", import.meta.url), "utf8");
     const login = actions.slice(actions.indexOf("export async function login"), actions.indexOf("export async function logout"));
-    expect(login).toContain('loginReachable(header.get("fly-client-ip"))');
+    expect(login).toContain('loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))');
     expect(login).not.toMatch(/get\("host"\)/i);
     const pages = ["admin/login/page.tsx", "admin/page.tsx", "admin/ledger/page.tsx"].map((file) => readFileSync(new URL(`../src/app/${file}`, import.meta.url), "utf8")).join("\n");
     expect(pages).toContain('get("fly-client-ip")');
@@ -330,7 +331,8 @@ describe("re-review 10", () => {
     expect(shop).toContain("LUMEN_LISTING_MAX_USD");
     expect(shop).toContain("no default ceiling");
     const fly = readFileSync(new URL("../docs/HOSTING_FLY.md", import.meta.url), "utf8");
-    expect(fly).toContain("fly proxy 3000:3000");
+    expect(fly).toContain("fly proxy 3001:3001");
+    expect(fly).toContain("missing or empty `Fly-Client-IP` does not open the desk");
     expect(fly).toContain("Delete `secrets.env`");
     expect(fly).not.toContain("http://lumen-tidepool.internal");
     expect(readFileSync(new URL("../docs/TRADING.md", import.meta.url), "utf8")).toContain("must authenticate the caller");

@@ -14,6 +14,7 @@ import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
 import { allowRate, kvGet, kvSet } from "../db/db";
+import { logSecurity } from "../http/log";
 import { activityFor, actsAt, composeTune, isWorldActivity, walkingLabel, type WorldActivity } from "./choose";
 import { chooseDestination } from "./choose";
 import { applyVoxelEvent, requestVoxelEvent, rollVoxelEvent, type VoxelEventKind } from "./happen";
@@ -230,11 +231,11 @@ function writeWeather(db: DatabaseSync, weather: Weather): void {
 }
 
 /** Server clock only. A caller cannot name the event. */
-export function rollAndApply(db: DatabaseSync, state: BrainState, rng: () => number, now: number): BrainState {
+export function rollAndApply(db: DatabaseSync, state: BrainState, rng: () => number, now: number, visitorPresence = 0): BrainState {
   if (requestVoxelEvent() !== null) return state;
   const weather = readWeather(db, now);
   if (weather.kind !== "clear") return state;
-  const kind = rollVoxelEvent(rng);
+  const kind = rollVoxelEvent(rng, visitorPresence);
   if (!kind) return state;
   const applied = applyVoxelEvent(state, kind);
   const happened = eventOf(kind, state.eventCounts[kind] ?? 0);
@@ -472,11 +473,13 @@ export function handleWorldCommand(db: DatabaseSync, command: WorldCommand, scop
   const agent = rowByToken(db, command.token);
   if (!agent || !tokenMatches(command.token, agent.token_hash)) {
     if (!allowRate(db, `world-auth:${command.ip}`, 10, ACTION_WINDOW_MS, command.now)) {
+      logSecurity({ event: "rate_limited", status: 429, route: "/api/world" });
       return { status: 429, body: { error: "RATE_LIMIT" } };
     }
     return { status: 401, body: { error: "UNAUTHORIZED" } };
   }
   if (!allowRate(db, `world-act:${agent.id}`, ACTION_LIMIT, ACTION_WINDOW_MS, command.now)) {
+    logSecurity({ event: "rate_limited", status: 429, route: "/api/world" });
     return { status: 429, body: { error: "RATE_LIMIT" } };
   }
   if (command.op === "join") return join(db, agent, command.now);

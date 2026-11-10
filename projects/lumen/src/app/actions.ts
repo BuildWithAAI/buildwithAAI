@@ -14,28 +14,40 @@ async function ip(): Promise<string> {
 }
 
 async function gate() {
+  const header = await headers();
+  if (!loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))) redirect("/");
   const jar = await cookies();
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
   if (!getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`)) redirect("/admin/login");
 }
 
+function guestError(result: { ok: boolean; error?: string; reason?: string }): string | null {
+  if (result.ok) return null;
+  return result.error ?? result.reason ?? "NOTE";
+}
+
 export async function sendGift(form: FormData) {
-  const engine = getEngine();
-  await engine.leaveGift(String(form.get("gift") ?? ""), form.get("note"), String(form.get("author") ?? "visitor"), await ip());
+  const result = await getEngine().leaveGift(String(form.get("gift") ?? ""), form.get("note"), String(form.get("author") ?? "visitor"), await ip());
+  const error = guestError(result);
+  redirect(error ? `/guestbook?error=${encodeURIComponent(error)}` : "/guestbook?sent=gift");
 }
 
 export async function sendTouch(form: FormData) {
   const kind = form.get("kind") === "tap" ? "tap" : "wave";
-  await getEngine().interact(kind, await ip());
+  const result = await getEngine().interact(kind, await ip());
+  const error = guestError(result);
+  redirect(error ? `/guestbook?error=${encodeURIComponent(error)}` : `/guestbook?sent=${kind}`);
 }
 
 export async function sendNote(form: FormData) {
-  await getEngine().guestbook(form.get("note"), String(form.get("author") ?? "visitor"), await ip());
+  const result = await getEngine().guestbook(form.get("note"), String(form.get("author") ?? "visitor"), await ip());
+  const error = guestError(result);
+  redirect(error ? `/guestbook?error=${encodeURIComponent(error)}` : "/guestbook?sent=note");
 }
 
 export async function login(form: FormData) {
   const header = await headers();
-  if (!loginReachable(header.get("fly-client-ip"))) redirect("/");
+  if (!loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))) redirect("/");
   const result = await getEngine().login(String(form.get("secret") ?? ""), await ip());
   if (!result.ok || !("token" in result) || !result.token) redirect("/admin/login?error=1");
   const jar = await cookies();
@@ -50,6 +62,7 @@ export async function login(form: FormData) {
 }
 
 export async function logout() {
+  await gate();
   const jar = await cookies();
   await getEngine().logout(jar.get(OWNER_COOKIE)?.value ? `${OWNER_COOKIE}=${jar.get(OWNER_COOKIE)?.value}` : null);
   jar.delete(OWNER_COOKIE);
@@ -63,7 +76,7 @@ export async function sendChat(form: FormData) {
 
 export async function keeperListAction(form: FormData) {
   const header = await headers();
-  if (!loginReachable(header.get("fly-client-ip"))) redirect("/");
+  if (!loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))) redirect("/");
   await gate();
   const op = form.get("op") === "bought" ? "bought" : form.get("op") === "declined" ? "declined" : null;
   if (!op) return;

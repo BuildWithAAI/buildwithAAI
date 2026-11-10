@@ -53,6 +53,7 @@ export type TickInput = {
   fetchPage?: (url: string) => Promise<string> | string;
   model?: (body: string) => Promise<unknown> | unknown;
   quietHours?: boolean;
+  visitorPresence?: number;
 };
 
 export type ArtMade = { seed: number; title: string; svg: string; emotion: string };
@@ -176,7 +177,7 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
   let webNote: string | null = null;
   const prevMinute = state.worldMinute;
   const worldMinute = state.worldMinute + minutes;
-  const sensors = sensorsFromClock(worldMinute, Math.min(1, state.unread * 0.1));
+  const sensors = sensorsFromClock(worldMinute, input.visitorPresence ?? Math.min(1, state.unread * 0.1));
   let needs = applyForces(driftNeeds(state.needs, minutes || 0.01), sensors);
   let mood = decayMood(state.mood);
   let energy = state.asleep ? clamp01(state.energy + 0.02 * Math.max(minutes, 0.1)) : clamp01(state.energy - 0.006 * Math.max(minutes, 0.1));

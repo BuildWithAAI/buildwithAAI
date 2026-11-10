@@ -14,6 +14,10 @@ export function homeGreeting(awake: boolean, feeling: string): string {
   return line ? `Hello. ${line}` : "Hello. I'm Zoora.";
 }
 
+export function sinceLast<T extends { at: number }>(items: T[], lastSeen: number): T[] {
+  return items.filter((item) => item.at > lastSeen);
+}
+
 export function welcomeBack(stored: string | null, now: number): string | null {
   const seen = Number(stored);
   if (!Number.isFinite(seen) || seen <= 0) return null;

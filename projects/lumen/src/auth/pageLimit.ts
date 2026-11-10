@@ -1,3 +1,5 @@
+import { logSecurity } from "../http/log";
+
 const WINDOW_MS = 60_000;
 const LIMIT = 120;
 export const PAGE_PRUNE_MS = 5 * 60_000;
@@ -37,6 +39,7 @@ export function resetPageLimits(): void {
 }
 
 export function limitedPage(): Response {
+  logSecurity({ event: "rate_limited", status: 429, route: "page" });
   return new Response("Too many requests. Wait a minute and try again.", {
     status: 429,
     headers: { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8" },

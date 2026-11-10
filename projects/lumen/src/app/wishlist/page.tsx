@@ -16,5 +16,5 @@ export default function WishlistPage() {
       linkText: link.text,
     };
   });
-  return <WishlistView items={items} />;
+  return <WishlistView items={items} wants={engine.snapshot().publicWants} />;
 }

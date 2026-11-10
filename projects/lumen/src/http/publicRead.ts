@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { clientAddress } from "../auth/owner";
 import { allowPublicRequest } from "../auth/public";
 import { publicModeOn } from "../auth/publicMode";
+import { logSecurity } from "./log";
 import { getEngine } from "../server/engine";
 
 export const SNAPSHOT_CACHE_MS = 3_000;
@@ -30,6 +31,9 @@ export function publicReadAllowed(db: DatabaseSync, request: Request, now = Date
 }
 
 export function jsonOrLimited(allowed: boolean, body: unknown): Response {
-  if (!allowed) return Response.json({ error: "RATE_LIMIT" }, { status: 429, headers: { "cache-control": "no-store" } });
+  if (!allowed) {
+    logSecurity({ event: "rate_limited", status: 429, route: "public" });
+    return Response.json({ error: "RATE_LIMIT" }, { status: 429, headers: { "cache-control": "no-store" } });
+  }
   return Response.json(body, { headers: { "cache-control": "public, max-age=3" } });
 }

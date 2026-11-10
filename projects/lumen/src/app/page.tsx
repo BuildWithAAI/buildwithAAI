@@ -1,12 +1,24 @@
 import React from "react";
 import { Scene } from "../components/Scene";
 import { SignupForm } from "../components/SignupForm";
+import { VisitBoard } from "../components/VisitBoard";
 import { homeGreeting } from "../components/visit";
 import { getEngine } from "../server/engine";
 
 export default function HomePage() {
-  const snap = getEngine().snapshot();
+  const engine = getEngine();
+  const snap = engine.snapshot();
   const needs = Object.entries(snap.needs);
+  const diary = snap.diary as { text: string; created_at: number }[];
+  const gallery = snap.gallery as { title: string; created_at: number }[];
+  const builds = engine.db.prepare(
+    "SELECT title, kind, created_at FROM world_builds ORDER BY created_at DESC LIMIT 8",
+  ).all() as { title: string; kind: string; created_at: number }[];
+  const items = [
+    ...diary.slice(0, 5).map((row) => ({ kind: "diary", text: row.text, at: row.created_at })),
+    ...gallery.slice(0, 5).map((row) => ({ kind: "gallery", text: row.title, at: row.created_at })),
+    ...builds.map((row) => ({ kind: row.kind === "garden" ? "garden" : "build", text: row.title, at: row.created_at })),
+  ];
   return (
     <div className="grid">
       <section className="card scene-card">
@@ -45,6 +57,7 @@ export default function HomePage() {
           </div>
         </details>
       </section>
+      <VisitBoard items={items} />
       <section className="card" id="signup" style={{ gridColumn: "1 / -1" }}>
         <h2>Tools for people and AI agents to work together.</h2>
         <p>Zoora is building tools for people and AI agents to work together. Sign up for product and build updates.</p>

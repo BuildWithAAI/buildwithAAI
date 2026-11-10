@@ -13,13 +13,20 @@ export function ownerRouteOpen(path: string, authed: boolean, env: Env = process
 }
 
 /**
- * Public mode closes the login form and the login action on the public edge.
- * Fly sets Fly-Client-IP on public requests. A direct `fly proxy 3000` connection does not.
+ * Public mode closes the desk on the public edge.
+ * Fly sets Fly-Client-IP there. A missing or empty header is not a back door.
+ * The desk proxy on port 3001 strips that header and sets x-lumen-desk.
  * The Host header is not consulted.
  */
-export function loginReachable(flyClientIp: string | null, env: Env = process.env): boolean {
+export function loginReachable(flyClientIp: string | null, env: Env = process.env, deskHeader: string | null = null): boolean {
   if (!publicModeOn(env)) return true;
-  return !(flyClientIp ?? "").trim();
+  if ((flyClientIp ?? "").trim()) return false;
+  const secret = (env.LUMEN_DESK_SECRET ?? "").trim();
+  const presented = (deskHeader ?? "").trim();
+  if (!secret || secret.length !== presented.length) return false;
+  let diff = 0;
+  for (let i = 0; i < secret.length; i += 1) diff |= secret.charCodeAt(i) ^ presented.charCodeAt(i);
+  return diff === 0;
 }
 
 export function privateDeskHost(host: string | null): boolean {
@@ -37,17 +44,30 @@ function deskHostname(host: string | null): string {
   return raw.split(":")[0] ?? "";
 }
 
-/** Sent on every response. Next bakes these at build time, so they cannot depend on a runtime flag. */
+/** Static headers. The content security policy is per request, so it is not in this list. */
 export function securityHeaders(_publicMode?: boolean): { key: string; value: string }[] {
   return [
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "Referrer-Policy", value: "no-referrer" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "X-DNS-Prefetch-Control", value: "off" },
-    { key: "Content-Security-Policy", value: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://app.kit.com" },
     { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
     { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
     { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   ];
+}
+
+/** One nonce per document. strict-dynamic lets Next load its own chunks. No unsafe-inline scripts. */
+export function contentSecurityPolicy(nonce: string): string {
+  return [
+    "default-src 'self'",
+    "img-src 'self' data:",
+    "style-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self' https://app.kit.com",
+  ].join("; ");
 }

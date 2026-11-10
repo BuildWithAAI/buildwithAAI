@@ -1,8 +1,10 @@
 import React from "react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { publicModeOn } from "../auth/publicMode";
 import { moneyLive } from "../money/rules";
 import { AiNotice } from "../components/AiNotice";
+import { HydrationMark } from "../components/HydrationMark";
 import { Nav } from "../components/Nav";
 import { SiteFooter } from "../components/SiteFooter";
 import "./globals.css";
@@ -30,10 +32,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? "";
   return (
-    <html lang="en">
+    <html lang="en" data-csp={nonce ? "nonce" : "open"}>
       <body>
+        <HydrationMark />
         <AiNotice />
         <Nav showKeeper={!publicModeOn()} showMoney={moneyLive()} />
         <main className="wrap">{children}</main>

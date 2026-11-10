@@ -403,8 +403,14 @@ function noteChange(db: DatabaseSync, id: string, action: string, title: string,
   void kvGet;
 }
 
+/** Procedural marks only. Titles, visitor notes, model text, and web text stay out of the file. */
+export function artworkSvg(hue: number): string {
+  const turn = ((hue % 360) + 360) % 360;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="hsl(${turn} 40% 85%)"/><circle cx="40" cy="40" r="16" fill="hsl(${turn} 50% 45%)"/></svg>`;
+}
+
 function renderFile(kind: ListingKind, title: string, hue: number): string {
-  if (kind === "art") return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="hsl(${hue} 40% 85%)"/><circle cx="40" cy="40" r="16" fill="hsl(${hue} 50% 45%)"/><text x="40" y="74" text-anchor="middle" font-size="6">${title}</text></svg>`;
+  if (kind === "art") return artworkSvg(hue);
   if (kind === "music") return `title: ${title}\nscore: C4 E4 G4\nmade by an AI\n`;
   if (kind === "service") return `${title}\nI will write one original note. Made by an AI.\n`;
   return `${title}\nA short original page. Made by an AI.\n`;

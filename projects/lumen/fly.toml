@@ -8,6 +8,7 @@ primary_region = "iad"
   dockerfile = "Dockerfile"
 
 [http_service]
+  # Port 3001 is the owner desk proxy. It is not listed here, so the public edge cannot route to it.
   internal_port = 3000
   force_https = true
   # Stay running when nobody is connected. The brain tick starts with the process, not with a visitor.

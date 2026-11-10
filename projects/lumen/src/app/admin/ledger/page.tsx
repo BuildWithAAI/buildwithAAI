@@ -11,13 +11,12 @@ function money(cents: number): string {
 }
 
 export default async function LedgerPage() {
+  const header = await headers();
+  if (!loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))) notFound();
   const jar = await cookies();
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
   const authed = getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`);
-  if (!authed || !ownerRouteOpen("/admin/ledger", authed)) {
-    if (!loginReachable((await headers()).get("fly-client-ip"))) notFound();
-    redirect("/admin/login");
-  }
+  if (!authed || !ownerRouteOpen("/admin/ledger", authed)) redirect("/admin/login");
   const snap = getEngine().snapshot();
   const view = snap.money.view;
   const rows = snap.money.ledger as { id: string; kind: string; amountCents: number; status: string; label: string; providerTransactionId: string | null; note: string; ref: string | null }[];

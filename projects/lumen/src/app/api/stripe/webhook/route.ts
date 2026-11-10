@@ -2,6 +2,7 @@ import { publishJarvis } from "../../../../integrations/jarvis";
 import { readLimitedText, WEBHOOK_MAX_BYTES } from "../../../../http/bodyLimit";
 import { getEngine } from "../../../../server/engine";
 import { buildOwnerNotifier, deskNotifier } from "../../../../money/notify";
+import { logSecurity } from "../../../../http/log";
 import { handleStripeWebhook } from "../../../../money/webhook";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,10 @@ export async function POST(request: Request) {
     livemode,
     previousSecret: process.env.STRIPE_WEBHOOK_SECRET_PREVIOUS,
   });
-  if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
+  if (!result.ok) {
+    if (result.error === "BAD_SIGNATURE") logSecurity({ event: "bad_signature", status: result.status, route: "/api/stripe/webhook" });
+    return Response.json({ error: result.error }, { status: result.status });
+  }
   if (typeof result.approved === "boolean") return Response.json({ approved: result.approved });
   if (!result.duplicate) {
     const event = JSON.parse(payload) as { type?: string; id?: string };

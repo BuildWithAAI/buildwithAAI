@@ -9,13 +9,12 @@ import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
 export default async function AdminPage() {
+  const header = await headers();
+  if (!loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))) notFound();
   const jar = await cookies();
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
   const authed = getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`);
-  if (!authed || !ownerRouteOpen("/admin", authed)) {
-    if (!loginReachable((await headers()).get("fly-client-ip"))) notFound();
-    redirect("/admin/login");
-  }
+  if (!authed || !ownerRouteOpen("/admin", authed)) redirect("/admin/login");
   const publicMode = publicModeOn();
   const engine = getEngine();
   const snap = engine.snapshot();
