@@ -3,6 +3,12 @@
 When a backlog item ships, append a block here. The public `/build` page reads this file. Dates are UTC instants; the page shows them in America/Chicago.
 
 ---
+sha: 0364a4d
+title: Zoora can place small builds in the world.
+summary: Mood, ideas, and memory can propose a decoration, garden, sign, or bench. The server checks the place's slots and a materials budget. The keeper can hide or undo one. It cannot spend.
+date: 2026-11-10T02:16:00Z
+image:
+---
 sha: d34114e
 title: Refuse private addresses before a research page is fetched.
 summary: Zoora's research fetch checks the address first, pins the connection, and re-checks every redirect. Private, loopback, and metadata addresses are refused.

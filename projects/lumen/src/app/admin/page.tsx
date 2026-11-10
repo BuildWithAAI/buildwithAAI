@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, creativeAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
+import { TELEGRAM_TYPES } from "../../integrations/telegramOwner";
+import { artAction, clearAlertAction, controlAction, creativeAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, telegramAction, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
@@ -19,6 +20,7 @@ export default async function AdminPage() {
   const engine = getEngine();
   const snap = engine.snapshot();
   const creative = engine.creativeBoard();
+  const telegram = engine.telegramBoard();
   return (
     <div className="grid">
       <section className="card" style={{ gridColumn: "1 / -1" }}>
@@ -179,6 +181,22 @@ export default async function AdminPage() {
                   <button type="submit">Undo</button>
                 </form>
               ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="card" style={{ gridColumn: "1 / -1" }}>
+        <h2>Telegram</h2>
+        <p className="muted">{telegram.mock ? "Mock mode. Messages stay on this desk until the owner bot secrets are set." : "The owner bot is configured. Tokens are not shown here."}</p>
+        <ul className="feed">
+          {TELEGRAM_TYPES.map((type) => (
+            <li key={type}>
+              {type} · {telegram.toggles[type] ? "on" : "off"}
+              <form action={telegramAction}>
+                <input type="hidden" name="type" value={type} />
+                <input type="hidden" name="on" value={telegram.toggles[type] ? "0" : "1"} />
+                <button type="submit">{telegram.toggles[type] ? "Turn off" : "Turn on"}</button>
+              </form>
             </li>
           ))}
         </ul>

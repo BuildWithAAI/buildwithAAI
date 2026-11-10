@@ -64,6 +64,11 @@ export async function wishAction(form: FormData) {
   await getEngine().wishlistAct(String(form.get("id") ?? ""), action);
 }
 
+export async function telegramAction(form: FormData) {
+  await gate();
+  getEngine().setTelegram(String(form.get("type") ?? ""), form.get("on") === "1");
+}
+
 export async function creativeAction(form: FormData) {
   await gate();
   const engine = getEngine();
