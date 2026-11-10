@@ -105,10 +105,6 @@ export async function goalDesk(form: FormData) {
 export async function shopDesk(form: FormData) {
   await gate();
   const op = String(form.get("op") ?? "");
-  if (op === "cap") {
-    getEngine().setShopCap(Number(form.get("cents") ?? 0));
-    return;
-  }
   const allowed = op === "publish" || op === "hide" || op === "retire" || op === "kill" || op === "sales" || op === "approve";
   if (!allowed) return;
   await getEngine().shopAct(op, String(form.get("id") ?? ""), form.get("on") === "1");

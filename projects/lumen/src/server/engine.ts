@@ -25,7 +25,7 @@ import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../resear
 import { stripeSalesClient } from "../money/stripe";
 import { composeThought, offerThought } from "../integrations/telegramOwner";
 import { latestThesis } from "../trading/book";
-import { considerShop, hideListing, listShop, ownerPriceCap, publishListing, readShop, retireListing, setPriceCap, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
+import { considerShop, hideListing, listShop, listingMaxCents, publishListing, readShop, retireListing, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
 import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
@@ -92,7 +92,7 @@ export function createEngine(env: Env, file?: string) {
       shop: readShop(db),
       listings: listShop(db, true),
       checkout: shopCheckoutOpen(db, env),
-      cap: ownerPriceCap(db),
+      cap: listingMaxCents(env),
       approve: flag(db, "shop_approve", "0") === "1",
       kill: flag(db, "shop_kill", "0") === "1",
     }),
@@ -111,7 +111,6 @@ export function createEngine(env: Env, file?: string) {
       if (op === "revert") return revertGoal(db, id, now);
       return editOwnerGoal(db, id, text, now);
     },
-    setShopCap: (cents: number) => setPriceCap(db, cents),
     shopCheckout: (id: string, note: string, ip = "unknown") => shopCheckout(db, env, id, note, Date.now(), ip),
     telegramBoard: () => ({
       mock: !(env.LUMEN_TELEGRAM_BOT_TOKEN && env.LUMEN_TELEGRAM_OWNER_CHAT_ID),
@@ -259,7 +258,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       ideaSourceKey: idea?.source_key ?? null,
       memory: goal ?? lived.longTerm[0]?.text ?? null,
       research: finding?.question ?? null,
-    }, now);
+    }, now, env);
     reflectOnGoals(db, lived.longTerm[0]?.text ? `I still remember ${lived.longTerm[0].text}.` : "The water is quiet.", now);
     expireClaims(db, now);
   } catch { /* a note home must not stop the tick */ }

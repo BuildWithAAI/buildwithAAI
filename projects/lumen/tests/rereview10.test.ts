@@ -19,7 +19,7 @@ import { handleStripeWebhook } from "../src/money/webhook";
 import { makeFinding, scrubInstructions } from "../src/research/ideas";
 import { ipBlocked } from "../src/research/ssrf";
 import { createEngine } from "../src/server/engine";
-import { ownerPriceCap, priceCeiling, setPriceCap, shopCheckout } from "../src/shop/store";
+import { shopCheckout } from "../src/shop/store";
 import { latestThesis, proposeTrade, tape, type TradeProposal } from "../src/trading/book";
 
 const now = Date.UTC(2026, 10, 9, 16);
@@ -322,19 +322,13 @@ describe("re-review 10", () => {
     })).toBeNull();
   });
 
-  it("requires an explicit spend opt-in, an explicit live-sales opt-in, and keeps the $80 ceiling owner-set", () => {
+  it("requires an explicit spend opt-in and an explicit live-sales opt-in", () => {
     expect(spendAllowed({ LUMEN_SPEND_ENABLED: "true", STRIPE_SECRET_KEY: "sk_live_sales", LUMEN_CARD_ISSUER: "stripe_issuing" }, true, false, true).open).toBe(false);
     expect(salesMode({ STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec" }, true, false)).toBe("disabled");
     expect(salesMode({ LUMEN_PUBLIC_MODE: "true", LUMEN_SALES_ENABLED: "true", STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec" }, true, false)).toBe("disabled");
-    expect(priceCeiling({})).toBe(8000);
-    expect(priceCeiling({ LUMEN_SHOP_PRICE_CAP_CENTS: "6400" })).toBe(6400);
-    const db = openDatabase();
-    setPriceCap(db, 9000, { LUMEN_SHOP_PRICE_CAP_CENTS: "8000" });
-    expect(ownerPriceCap(db, { LUMEN_SHOP_PRICE_CAP_CENTS: "8000" })).toBe(8000);
-    setPriceCap(db, 5000, { LUMEN_SHOP_PRICE_CAP_CENTS: "8000" });
-    expect(ownerPriceCap(db, { LUMEN_SHOP_PRICE_CAP_CENTS: "8000" })).toBe(5000);
     const shop = readFileSync(new URL("../docs/SHOP.md", import.meta.url), "utf8");
-    expect(shop).toContain("The owner decides");
+    expect(shop).toContain("LUMEN_LISTING_MAX_USD");
+    expect(shop).toContain("no default ceiling");
     const fly = readFileSync(new URL("../docs/HOSTING_FLY.md", import.meta.url), "utf8");
     expect(fly).toContain("fly proxy 3000:3000");
     expect(fly).toContain("Delete `secrets.env`");

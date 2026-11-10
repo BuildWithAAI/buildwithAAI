@@ -48,7 +48,7 @@ import { cardCredentials } from "./card";
  * LUMEN_DATA                         SQLite path.
  * LUMEN_QUIET_HOURS                  "start-end" UTC hours, default 0-6.
  * LUMEN_PUBLIC_MODE                  "true" locks the public desk and keeps spending, live sales, and minting off.
- * LUMEN_SHOP_PRICE_CAP_CENTS         Owner ceiling for a self-published listing. Default 8000 ($80). The owner decides this number. The desk can only lower it.
+ * LUMEN_LISTING_MAX_USD              Optional dollar cap for a listing Zoora publishes. Unset means no cap. A bad value closes new prices.
  * LUMEN_TRUSTED_PROXY                none, fly, forwarded, cloudflare (CF-Connecting-IP), or ngrok.
  */
 

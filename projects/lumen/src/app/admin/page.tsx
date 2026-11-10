@@ -225,7 +225,7 @@ export default async function AdminPage() {
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
         <h2>Shop</h2>
-        <p className="muted">{shop.shop ? shop.shop.name : "No shop yet."} Checkout is {shop.checkout ? "open" : "coming soon"}. Approve before publish is {shop.approve ? "on" : "off"}. Price cap {(shop.cap / 100).toFixed(0)} dollars.</p>
+        <p className="muted">{shop.shop ? shop.shop.name : "No shop yet."} Checkout is {shop.checkout ? "open" : "coming soon"}. Approve before publish is {shop.approve ? "on" : "off"}. {shop.cap == null ? "No listing cap." : Number.isFinite(shop.cap) ? `Listing cap $${(shop.cap / 100).toFixed(2)}.` : "Listing cap is not a valid dollar amount."}</p>
         <div className="row">
           <form action={shopDesk}><input type="hidden" name="op" value="sales" /><input type="hidden" name="on" value="1" /><button type="submit">Allow checkout</button></form>
           <form action={shopDesk}><input type="hidden" name="op" value="sales" /><input type="hidden" name="on" value="0" /><button type="submit">Coming soon</button></form>

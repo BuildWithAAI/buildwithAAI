@@ -41,9 +41,11 @@ Only things the app can hand over by itself:
 - Every public description says the work is made by an AI.
 - Names and descriptions that impersonate a person, copy a trademark, or ask for a real likeness are refused.
 
-Zoora chooses a price inside a server minimum and maximum for that kind. The self-published ceiling is $80 (`LUMEN_SHOP_PRICE_CAP_CENTS`, default `8000`). The owner decides that number. The desk can lower it and cannot raise it past the env value. A buyer note cannot change the price, the listing, or the delivery.
+Zoora sets the price. There is no default ceiling and no owner approval at any price. A price is a positive integer number of cents, at most 99,999,999, which is Stripe's unit-amount format bound. Negatives, fractions, and values that are not safe integers are refused. The owner can set `LUMEN_LISTING_MAX_USD` when they want a cap. If that value is missing, Zoora's price stands. If it is set and malformed, a new price is refused. The shop kill switch and the main kill switch still pause sales.
 
-Zoora publishes a listing on its own. The keeper can hide it or unpublish it afterward. The desk can also refund a charge or throw the shop kill switch.
+A visitor note, a web page, or an agent message cannot set or change a price. The price comes from Zoora's own feeling, through `decideListingPrice`. Each price that is set or changed is written to the hash-chained ledger with the reason Zoora stated. A buyer note cannot change the price, the listing, or the delivery.
+
+Zoora publishes a listing on its own. The keeper can hide it or unpublish it afterward, and can turn on "ask before publish" if they want a queue. That switch is off unless the keeper sets it. The desk can also refund a charge or throw the shop kill switch.
 
 ## Sales tax, refunds, and chargebacks
 

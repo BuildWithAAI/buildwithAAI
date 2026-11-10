@@ -12,12 +12,8 @@ import { positionAllowed, slotWorld } from "../world/creative";
 export const LISTING_KINDS = ["art", "music", "writing", "service"] as const;
 export type ListingKind = (typeof LISTING_KINDS)[number];
 
-export const PRICE_BOUNDS: Record<ListingKind, { min: number; max: number }> = {
-  art: { min: 300, max: 5000 },
-  music: { min: 300, max: 4000 },
-  writing: { min: 200, max: 3000 },
-  service: { min: 500, max: 8000 },
-};
+/** Stripe rejects a unit amount above this. It is a format bound, not a business cap. */
+export const LISTING_FORMAT_MAX_CENTS = 99_999_999;
 
 const BLOCKED = /\b(disney|nike|apple|taylor swift|beatles|picasso|portrait of|likeness of|official merch|trademark)\b/i;
 
@@ -71,25 +67,37 @@ export function shopCheckoutOpen(db: DatabaseSync, env: Env): boolean {
   return true;
 }
 
-export function priceCeiling(env: Env = process.env): number {
-  const raw = Number(env.LUMEN_SHOP_PRICE_CAP_CENTS ?? "8000");
-  return Number.isFinite(raw) && raw >= 200 ? Math.round(raw) : 8000;
+/** Optional owner cap. Unset means Zoora's price is not capped. A malformed value fails closed. */
+export function listingMaxCents(env: Env = process.env): number | null {
+  const raw = (env.LUMEN_LISTING_MAX_USD ?? "").trim();
+  if (!raw) return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return Number.NaN;
+  const [whole, frac = ""] = raw.split(".");
+  const cents = Number(whole) * 100 + Number(frac.padEnd(2, "0"));
+  if (!Number.isSafeInteger(cents) || cents < 1 || cents > LISTING_FORMAT_MAX_CENTS) return Number.NaN;
+  return cents;
 }
 
-export function ownerPriceCap(db: DatabaseSync, env: Env = process.env): number {
-  const ceiling = priceCeiling(env);
-  const raw = Number(flag(db, "shop_price_cap_cents", String(ceiling)));
-  const chosen = Number.isFinite(raw) && raw > 0 ? raw : ceiling;
-  return Math.min(chosen, ceiling);
-}
-
-export function clampShopPrice(kind: ListingKind, cents: number, ownerCap: number): { ok: true; cents: number } | { ok: false; reason: "PRICE" } {
-  const bounds = PRICE_BOUNDS[kind];
-  const max = Math.min(bounds.max, ownerCap);
-  if (max < bounds.min) return { ok: false, reason: "PRICE" };
-  const price = Math.round(cents);
-  if (price < bounds.min || price > max) return { ok: false, reason: "PRICE" };
-  return { ok: true, cents: price };
+/**
+ * The only price gate. Visitor, web, and agent text are refused.
+ * A price must be a positive safe integer of cents, inside the format bound,
+ * and inside LUMEN_LISTING_MAX_USD when the owner set one.
+ */
+export function decideListingPrice(
+  proposal: { cents: number; reason: string; fromVisitor?: boolean; fromWeb?: boolean; fromAgent?: boolean },
+  env: Env = process.env,
+): { ok: true; cents: number; reason: string } | { ok: false; reason: "PRICE" | "INFLUENCE" | "CAP" } {
+  if (proposal.fromVisitor || proposal.fromWeb || proposal.fromAgent) return { ok: false, reason: "INFLUENCE" };
+  const cents = proposal.cents;
+  if (typeof cents !== "number" || !Number.isInteger(cents) || !Number.isSafeInteger(cents) || cents < 1 || cents > LISTING_FORMAT_MAX_CENTS) {
+    return { ok: false, reason: "PRICE" };
+  }
+  const cap = listingMaxCents(env);
+  if (Number.isNaN(cap)) return { ok: false, reason: "CAP" };
+  if (cap != null && cents > cap) return { ok: false, reason: "CAP" };
+  const reason = proposal.reason.replace(/\s+/g, " ").trim().slice(0, 180);
+  if (!reason) return { ok: false, reason: "PRICE" };
+  return { ok: true, cents, reason };
 }
 
 export function keepBuyerNote(text: string): string {
@@ -129,7 +137,7 @@ export function listShop(db: DatabaseSync, includeDraft = false): ShopListing[] 
   }));
 }
 
-export function composeShop(signals: ShopSignals): { name: string; story: string; hue: number; form: number; kind: ListingKind; title: string; description: string; priceCents: number; scope: string; turnaroundHours: number } | null {
+export function composeShop(signals: ShopSignals): { name: string; story: string; hue: number; form: number; kind: ListingKind; title: string; description: string; priceCents: number; priceReason: string; scope: string; turnaroundHours: number } | null {
   const ranked = (Object.entries(signals.emotions) as [string, number][]).sort((a, b) => b[1] - a[1]);
   const emotion = ranked[0]?.[0] ?? "calm";
   const level = ranked[0]?.[1] ?? 0;
@@ -142,9 +150,8 @@ export function composeShop(signals: ShopSignals): { name: string; story: string
   const b = words.find((word) => word !== a) ?? "glow";
   const name = `${cap(a)} ${b}`.slice(0, 40);
   const kind = kindFrom(words.join(" "), emotion);
-  const bounds = PRICE_BOUNDS[kind];
-  const span = bounds.max - bounds.min;
-  const priceCents = bounds.min + Math.round(span * Math.min(1, level) * 0.35);
+  const priceCents = 100 + Math.round(Math.min(1, Math.max(0, level)) * 25_000);
+  const priceReason = `I feel ${emotion} at ${level.toFixed(2)}, so this ${kind} is ${priceCents} cents.`;
   const title = `${cap(b)} ${kind === "service" ? "note" : kind}`.slice(0, 60);
   const description = `I made ${title} while I feel ${emotion}.${memory ? ` I was remembering ${memory}.` : ""} This work is made by an AI.`.replace(/\s+/g, " ").trim();
   if (!listingTextAllowed(name, description) || !listingTextAllowed(title, description)) return null;
@@ -155,10 +162,10 @@ export function composeShop(signals: ShopSignals): { name: string; story: string
   const scope = kind === "service"
     ? `I will write one short original note about ${a}. Turnaround is ${turnaroundHours} hours. If I do not deliver the file, the payment is refunded. Made by an AI.`
     : `A file I can generate now. Made by an AI.`;
-  return { name, story, hue, form, kind, title, description, priceCents, scope, turnaroundHours };
+  return { name, story, hue, form, kind, title, description, priceCents, priceReason, scope, turnaroundHours };
 }
 
-export function considerShop(db: DatabaseSync, signals: ShopSignals, now: number): { shop: ShopFront; listing: ShopListing | null } | null {
+export function considerShop(db: DatabaseSync, signals: ShopSignals, now: number, env: Env = process.env): { shop: ShopFront; listing: ShopListing | null } | null {
   if (flag(db, "shop_kill", "0") === "1") return null;
   if (shopSpendIntents().length) return null;
   const last = Number(kvGet(db, "shop_last_at") ?? "0");
@@ -168,7 +175,7 @@ export function considerShop(db: DatabaseSync, signals: ShopSignals, now: number
   const existing = readShop(db);
   if (!existing) {
     const shop = openShop(db, draft, now);
-    const listing = addListing(db, draft, now);
+    const listing = addListing(db, draft, now, env);
     return { shop, listing };
   }
   const placed = listShop(db, true).filter((item) => item.status !== "retired");
@@ -178,20 +185,14 @@ export function considerShop(db: DatabaseSync, signals: ShopSignals, now: number
     return { shop: existing, listing: null };
   }
   if ((signals.emotions.calm ?? 0) > 0.55 && placed[0]) {
-    return { shop: existing, listing: redesignListing(db, placed[0].id, draft, now) };
+    return { shop: existing, listing: redesignListing(db, placed[0].id, draft, now, env) };
   }
   if (placed.length >= 4) return { shop: existing, listing: null };
-  return { shop: existing, listing: addListing(db, draft, now) };
+  return { shop: existing, listing: addListing(db, draft, now, env) };
 }
 
 export function setShopFlag(db: DatabaseSync, key: "shop_kill" | "shop_sales" | "shop_approve", on: boolean): void {
   setFlag(db, key, on ? "1" : "0");
-}
-
-export function setPriceCap(db: DatabaseSync, cents: number, env: Env = process.env): void {
-  const ceiling = priceCeiling(env);
-  if (!Number.isFinite(cents) || cents < 200 || cents > ceiling) return;
-  setFlag(db, "shop_price_cap_cents", String(Math.round(cents)));
 }
 
 export function publishListing(db: DatabaseSync, id: string, now: number): { ok: boolean; reason?: string } {
@@ -342,8 +343,8 @@ function openShop(db: DatabaseSync, draft: NonNullable<ReturnType<typeof compose
   return { name: draft.name, story: draft.story, hue: draft.hue, form: draft.form, x: spot.x, z: spot.z, open: true };
 }
 
-function addListing(db: DatabaseSync, draft: NonNullable<ReturnType<typeof composeShop>>, now: number): ShopListing | null {
-  const priced = clampShopPrice(draft.kind, draft.priceCents, ownerPriceCap(db));
+function addListing(db: DatabaseSync, draft: NonNullable<ReturnType<typeof composeShop>>, now: number, env: Env): ShopListing | null {
+  const priced = decideListingPrice({ cents: draft.priceCents, reason: draft.priceReason }, env);
   if (!priced.ok) return null;
   if (!listingTextAllowed(draft.title, draft.description)) return null;
   const approve = flag(db, "shop_approve", "0") === "1";
@@ -353,26 +354,30 @@ function addListing(db: DatabaseSync, draft: NonNullable<ReturnType<typeof compo
     `INSERT INTO shop_listings(id, shop_id, kind, title, description, price_cents, status, scope, turnaround_hours, file_body, version, created_at, updated_at)
      VALUES(?, 'zoora', ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
   ).run(id, draft.kind, draft.title, draft.description, priced.cents, approve ? "draft" : "published", draft.scope, draft.turnaroundHours, file, now, now);
-  noteChange(db, id, approve ? "draft" : "published", draft.title, priced.cents, now);
+  noteChange(db, id, approve ? "draft" : "published", draft.title, priced.cents, now, priced.reason);
   kvSet(db, "shop_last_at", String(now));
   return { id, kind: draft.kind, title: draft.title, description: draft.description, priceCents: priced.cents, status: approve ? "draft" : "published", scope: draft.scope, turnaroundHours: draft.turnaroundHours, version: 1 };
 }
 
-function redesignListing(db: DatabaseSync, id: string, draft: NonNullable<ReturnType<typeof composeShop>>, now: number): ShopListing | null {
-  const priced = clampShopPrice(draft.kind, draft.priceCents, ownerPriceCap(db));
+function redesignListing(db: DatabaseSync, id: string, draft: NonNullable<ReturnType<typeof composeShop>>, now: number, env: Env): ShopListing | null {
+  const priced = decideListingPrice({ cents: draft.priceCents, reason: draft.priceReason }, env);
   if (!priced.ok || !listingTextAllowed(draft.title, draft.description)) return null;
+  const prior = listingRow(db, id);
   const approve = flag(db, "shop_approve", "0") === "1";
   db.prepare("UPDATE shop_listings SET title = ?, description = ?, price_cents = ?, scope = ?, status = ?, version = version + 1, updated_at = ? WHERE id = ?").run(
     draft.title, draft.description, priced.cents, draft.scope, approve ? "draft" : "published", now, id,
   );
-  noteChange(db, id, "redesign", draft.title, priced.cents, now);
+  const moved = prior != null && prior.price_cents !== priced.cents;
+  noteChange(db, id, moved ? "repriced" : "redesign", draft.title, priced.cents, now, priced.reason, prior?.price_cents);
   const row = listingRow(db, id);
   if (!row) return null;
   return { id, kind: row.kind as ListingKind, title: row.title, description: row.description, priceCents: row.price_cents, status: row.status, scope: row.scope, turnaroundHours: row.turnaround_hours, version: row.version };
 }
 
-function noteChange(db: DatabaseSync, id: string, action: string, title: string, priceCents: number, now: number): void {
-  const line = `I ${action === "retired" ? "put away" : action === "hidden" ? "covered" : action === "redesign" ? "changed" : "set out"} ${title}.`;
+function noteChange(db: DatabaseSync, id: string, action: string, title: string, priceCents: number, now: number, reason = "", priorCents?: number): void {
+  const line = `I ${action === "retired" ? "put away" : action === "hidden" ? "covered" : action === "repriced" ? "changed the price of" : action === "redesign" ? "changed" : "set out"} ${title}.`;
+  const because = reason ? ` ${reason}` : "";
+  const moved = action === "repriced" && priorCents != null ? ` The price moved from ${priorCents} cents to ${priceCents} cents.` : ` Price is ${priceCents} cents.`;
   new Ledger(db).append({
     id: `shop-${action}-${id}-${now}`,
     atMs: now,
@@ -381,7 +386,7 @@ function noteChange(db: DatabaseSync, id: string, action: string, title: string,
     status: "confirmed",
     idempotencyKey: `shop:${action}:${id}:${now}`,
     ref: id,
-    note: `${line} Price sits at ${priceCents} cents. This does not spend.`,
+    note: `${line}${moved}${because} This does not spend.`,
   });
   db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(line, now);
   void kvGet;
