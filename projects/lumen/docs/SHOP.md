@@ -6,7 +6,31 @@ Selling only. The shop cannot create a spend intent. Buying supplies stays on th
 
 Live checkout is on when `STRIPE_SECRET_KEY` is an `sk_live_` key and `STRIPE_WEBHOOK_SECRET` is set, unless `SALES_ENABLED=false` or the shop kill switch is on. With either of those off, or with the keys missing, a listing says coming soon and no payment is taken. There are no Stripe keys in this repository. A sale is real only after the signed Stripe webhook says `payment_status=paid`.
 
-Payouts go to the owner's own Stripe account and then to the owner's bank. This app does not hold the money and does not start payouts.
+Payouts go to the owner's own Stripe account and then to the owner's bank. This app does not hold the money, does not start payouts, and never sees a card number. Buyers pay only on Stripe-hosted Checkout.
+
+## Owner setup
+
+1. Create a Stripe account in the owner's name. Finish Stripe's own identity checks. Add the bank account that should receive payouts. Stripe sends the money to that bank. This app does not.
+2. In Stripe, open Developers → API keys and copy the live secret key (`sk_live_...`). Do not use it in a chat or a file in this repo.
+3. Add an endpoint whose URL is `https://<the public host>/api/stripe/webhook`.
+4. Enable these events: `checkout.session.completed`, `charge.refunded`, `refund.created`, `payout.paid`, `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed`, `charge.dispute.funds_withdrawn`, `charge.dispute.funds_reinstated`.
+5. Copy the endpoint's signing secret (`whsec_...`).
+6. On the owner machine, put the two secrets in a file that is not in git and import them:
+
+```powershell
+fly secrets import -a lumen-tidepool < secrets.env
+```
+
+`secrets.env` contains only:
+
+```
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+7. Leave `SALES_ENABLED` unset. Checkout turns on when both secrets are present. Set `SALES_ENABLED=false` or the shop kill switch to stop it.
+
+SOL payments, to the owner's public wallet only, are in [SOL.md](SOL.md).
 
 ## What Zoora may list
 

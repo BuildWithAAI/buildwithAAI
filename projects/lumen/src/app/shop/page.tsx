@@ -1,12 +1,14 @@
+import { publicKeyOk } from "../../money/solana";
 import { shopCheckoutOpen, listShop, readShop } from "../../shop/store";
 import { getEngine } from "../../server/engine";
-import { shopBuy } from "../actions";
+import { shopBuy, solQuote } from "../actions";
 
 export default function ShopPage({ searchParams }: { searchParams: Promise<{ sales?: string }> }) {
   const engine = getEngine();
   const shop = readShop(engine.db);
   const listings = listShop(engine.db);
   const open = shopCheckoutOpen(engine.db, engine.env);
+  const sol = publicKeyOk(engine.env.LUMEN_SOL_RECEIVE_ADDRESS ?? "") && Boolean(engine.env.LUMEN_SOL_PRICE_URL && engine.env.LUMEN_SOL_RPC_URL);
   return (
     <div>
       <p className="kicker">Zoora's shop</p>
@@ -25,11 +27,17 @@ export default function ShopPage({ searchParams }: { searchParams: Promise<{ sal
             <form action={shopBuy}>
               <input type="hidden" name="id" value={item.id} />
               <input name="note" placeholder="A note for Zoora" />
-              <button type="submit">Buy</button>
+              <button type="submit">Pay by card</button>
             </form>
           ) : (
-            <p className="muted">Coming soon. No payment is taken.</p>
+            <p className="muted">Card checkout is not open. No card payment is taken.</p>
           )}
+          {sol ? (
+            <form action={solQuote}>
+              <input type="hidden" name="id" value={item.id} />
+              <button type="submit">Pay with SOL</button>
+            </form>
+          ) : null}
         </article>
       ))}
     </div>

@@ -140,6 +140,18 @@ While any purchase claim is `unknown`, automatic spending is paused. The keeper'
 
 Alert retries keep the original alert, one row per channel, and give up after about 30 minutes. The drainer runs on its own timer. A give-up notice is written once per failed alert.
 
+## Owner card
+
+Zoora's spending card is the owner's Chime Credit Builder card. Chime has no issuing API. Set `LUMEN_CARD_ISSUER=owner_checkout`. The card number never enters this app, its environment, its logs, or the model.
+
+An approved intent is policy-checked, kill-switchable, and limited to a merchant and a maximum amount for one day. It is placed on a checkout queue. The owner's assistant pays with the card from the owner's own vault, outside this app. The assistant lists pending intents at `GET /api/checkout`, claims one at `POST /api/checkout/claim` (a claim is single-use), and reports the result at `POST /api/checkout/report`. The report includes an order number, the exact amount charged, the merchant, and a receipt reference, or a failure. Authorization is the owner session or `Authorization: Bearer` with `OWNER_ACCESS_TOKEN`.
+
+The ledger records a purchase only when that report says the charge happened, and it records the reported amount. A claim that is not reported within 30 minutes becomes an unknown outcome and pauses automatic spending. The cap is `LUMEN_CARD_AVAILABLE_USD`, which the owner updates. If it is unset, owner-checkout spending stays closed. The app does not invent a balance.
+
+## SOL
+
+Inbound SOL uses [SOL.md](SOL.md). The recipient is a public key. Verification requires a finalized transaction, the right recipient, enough lamports, the order reference, and a signature that has not been used.
+
 ## Shop
 
 Zoora may open a shop and list original files or a small service it can deliver as a file. Details, tax, refunds, and chargebacks are in [SHOP.md](SHOP.md). Checkout uses the live Stripe key when that key and the webhook secret are set. A buyer note cannot change a price. The shop does not create a spend intent. Minting is in [NFT.md](NFT.md).

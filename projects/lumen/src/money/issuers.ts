@@ -9,7 +9,7 @@ export type IssuerResult = {
 };
 
 export interface CardIssuer {
-  name: "mock" | "stripe_issuing" | "privacy";
+  name: "mock" | "stripe_issuing" | "privacy" | "owner_checkout";
   authorize(intent: PurchaseIntent, idempotencyKey: string): IssuerResult;
   listActivity(): { provider: string; providerTransactionId: string; amountCents: number; kind: string }[];
 }
@@ -70,6 +70,19 @@ export class StripeIssuingStub implements CardIssuer {
   }
 }
 
+/** The owner's card stays outside this app. An approval only joins the checkout queue. */
+export class OwnerCheckoutIssuer implements CardIssuer {
+  name = "owner_checkout" as const;
+  authorize(intent: PurchaseIntent, idempotencyKey: string): IssuerResult {
+    assertNoCardMaterial(intent);
+    if (!idempotencyKey) throw new Error("IDEMPOTENCY_KEY_REQUIRED");
+    return { providerTransactionId: "", status: "approved", reason: "CHECKOUT_QUEUE" };
+  }
+  listActivity() {
+    return [];
+  }
+}
+
 /** Stub. Privacy.com stays unconnected until the owner adds it. */
 export class PrivacyStub implements CardIssuer {
   name = "privacy" as const;
@@ -86,6 +99,7 @@ export class PrivacyStub implements CardIssuer {
 export function createIssuer(kind: string, env: Env = {}): CardIssuer {
   if (kind === "stripe_issuing") return cardCredentials({ ...env, LUMEN_CARD_ISSUER: "stripe_issuing" }) ? new ExpectedIssuer("stripe_issuing") : new StripeIssuingStub();
   if (kind === "privacy") return cardCredentials({ ...env, LUMEN_CARD_ISSUER: "privacy" }) ? new ExpectedIssuer("privacy") : new PrivacyStub();
+  if (kind === "owner_checkout") return new OwnerCheckoutIssuer();
   return new MockIssuer();
 }
 

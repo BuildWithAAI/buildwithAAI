@@ -17,7 +17,8 @@ import { Ledger, moneyView, type LedgerRow } from "../money/ledger";
 import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { cardCredentials, issuingKey, listIssuingTransactions, descriptorMap } from "../money/card";
-import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, type Env } from "../money/rules";
+import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, cardAvailableCents, type Env } from "../money/rules";
+import { expireClaims } from "../money/checkoutQueue";
 import { researchChatReply } from "../research/ideas";
 import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
@@ -189,6 +190,7 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
     spentMonthCents: spentMonth,
     recentIntentCount: recent,
     unknownSpend: Number(unknown.n) > 0,
+    cardAvailableCents: env.LUMEN_CARD_ISSUER === "owner_checkout" ? cardAvailableCents(env) : undefined,
   };
 }
 
@@ -256,6 +258,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       research: finding?.question ?? null,
     }, now);
     reflectOnGoals(db, lived.longTerm[0]?.text ? `I still remember ${lived.longTerm[0].text}.` : "The water is quiet.", now);
+    expireClaims(db, now);
   } catch { /* a note home must not stop the tick */ }
   syncZoora(db, lived, now);
   stepMote(db, now);

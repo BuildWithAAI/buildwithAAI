@@ -16,6 +16,8 @@ export type PolicyContext = {
   ownerConfirmed?: boolean;
   /** Any purchase whose issuer outcome is still unknown. Pauses automatic spending. */
   unknownSpend?: boolean;
+  /** Set for owner_checkout. Null means the owner has not stated the card limit. */
+  cardAvailableCents?: number | null;
 };
 
 export type Decision =
@@ -38,6 +40,10 @@ export function evaluatePolicy(intent: PurchaseIntent, ctx: PolicyContext): Deci
   if (ctx.killed) return { outcome: "decline", reason: "KILL_SWITCH" };
   if (!ctx.spendOpen) return { outcome: "decline", reason: "SPEND_CLOSED" };
   if (!Number.isInteger(intent.amountCents) || intent.amountCents <= 0) return { outcome: "decline", reason: "AMOUNT" };
+  if (ctx.cardAvailableCents !== undefined) {
+    if (ctx.cardAvailableCents == null) return { outcome: "decline", reason: "CARD_BALANCE_UNSET" };
+    if (intent.amountCents > ctx.cardAvailableCents) return { outcome: "decline", reason: "CARD_LIMIT" };
+  }
   const limit = ctx.hourlyIntentLimit ?? 6;
   if (ctx.recentIntentCount >= limit) return { outcome: "decline", reason: "RATE_LIMIT" };
   if (!ctx.rules.productTypes.includes(intent.productType)) return { outcome: "needs_approval", reason: "NEW_PRODUCT_TYPE" };

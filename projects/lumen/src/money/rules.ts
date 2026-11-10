@@ -26,7 +26,8 @@ import { cardCredentials } from "./card";
  * LUMEN_PRODUCT_AMOUNT_CENTS         type:cents pairs. No amount, no intent.
  * LUMEN_ART_PRICE_CENTS              Integer cents for a listing, or unset. Unset means art is not priced.
  * LUMEN_WISH_GUESSES                 catalogId:cents guesses. Unset means Zoora states no price.
- * LUMEN_CARD_ISSUER                  mock, stripe_issuing, or privacy.
+ * LUMEN_CARD_ISSUER                  mock, stripe_issuing, privacy, or owner_checkout.
+ * LUMEN_CARD_AVAILABLE_USD           Owner-updated card balance or limit. Unset means owner_checkout cannot spend.
  * OWNER_PASSWORD_HASH                scrypt hash from `npm run hash-password`.
  * OWNER_ACCESS_TOKEN                 Optional magic token. Compared in constant time.
  * OWNER_SESSION_SECRET               Extra signer material for session ids. Required for admin login.
@@ -59,7 +60,7 @@ export type MoneyRules = {
   productAmounts: Record<string, number>;
   artPriceCents: number | null;
   wishGuesses: Record<string, number>;
-  cardIssuer: "mock" | "stripe_issuing" | "privacy";
+  cardIssuer: "mock" | "stripe_issuing" | "privacy" | "owner_checkout";
 };
 
 export type Env = Record<string, string | undefined>;
@@ -108,7 +109,9 @@ export function parseMoneyRules(env: Env): { ok: true; rules: MoneyRules } | { o
   const productAmounts = amountPairs(env.LUMEN_PRODUCT_AMOUNT_CENTS, errors);
   const wishGuesses = amountPairs(env.LUMEN_WISH_GUESSES, errors);
   const issuerRaw = env.LUMEN_CARD_ISSUER ?? "mock";
-  if (issuerRaw !== "mock" && issuerRaw !== "stripe_issuing" && issuerRaw !== "privacy") errors.push("LUMEN_CARD_ISSUER");
+  if (issuerRaw !== "mock" && issuerRaw !== "stripe_issuing" && issuerRaw !== "privacy" && issuerRaw !== "owner_checkout") errors.push("LUMEN_CARD_ISSUER");
+  const available = cardAvailableCents(env);
+  if (env.LUMEN_CARD_AVAILABLE_USD !== undefined && env.LUMEN_CARD_AVAILABLE_USD !== "" && available == null) errors.push("LUMEN_CARD_AVAILABLE_USD");
   if (errors.length) return { ok: false, errors };
   return {
     ok: true,
@@ -127,6 +130,17 @@ export function parseMoneyRules(env: Env): { ok: true; rules: MoneyRules } | { o
       cardIssuer: issuerRaw as MoneyRules["cardIssuer"],
     },
   };
+}
+
+/** Dollars the owner last set. Missing or malformed is null. This does not invent a balance. */
+export function cardAvailableCents(env: Env): number | null {
+  const raw = (env.LUMEN_CARD_AVAILABLE_USD ?? "").trim();
+  if (!raw) return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return null;
+  const [whole, frac = ""] = raw.split(".");
+  const cents = Number(whole) * 100 + Number(frac.padEnd(2, "0"));
+  if (!Number.isSafeInteger(cents) || cents <= 0) return null;
+  return cents;
 }
 
 function cents(raw: string | undefined, label: string, errors: string[]): number | null {

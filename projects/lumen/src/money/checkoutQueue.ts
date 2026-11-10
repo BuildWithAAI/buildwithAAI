@@ -1,0 +1,126 @@
+import { randomBytes } from "node:crypto";
+import type { DatabaseSync } from "node:sqlite";
+import type { PurchaseIntent } from "../brain/types";
+import { deskNotifier } from "./notify";
+import { Ledger } from "./ledger";
+import { killSwitchOn, type Env } from "./rules";
+import { flag } from "../db/db";
+
+export const CLAIM_MS = 30 * 60 * 1000;
+const DAY = 24 * 60 * 60 * 1000;
+const PAN_KEY = /^(pan|cvc|cvv|card_number|cardnumber|full_number|card|number)$/i;
+const PAN_VALUE = /\b\d{13,19}\b/;
+
+export type CheckoutItem = {
+  id: string;
+  intentId: string;
+  merchant: string;
+  maxCents: number;
+  status: string;
+  expiresAt: number;
+};
+
+/** Refuse a body that tries to carry a card number. The queue has no card fields. */
+export function rejectPan(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (PAN_KEY.test(key)) return true;
+    if (typeof item === "string" && PAN_VALUE.test(item)) return true;
+    if (item && typeof item === "object" && rejectPan(item)) return true;
+  }
+  return false;
+}
+
+export function enqueueCheckout(db: DatabaseSync, env: Env, intent: PurchaseIntent, now: number): { ok: true; id: string } | { ok: false; reason: string } {
+  if (killSwitchOn(env, flag(db, "kill") === "1")) return { ok: false, reason: "KILL_SWITCH" };
+  const id = `chk-${randomBytes(4).toString("hex")}`;
+  db.prepare(
+    `INSERT INTO checkout_queue(id, intent_id, merchant, max_cents, status, claim_token, claimed_at, expires_at, order_number, charged_cents, receipt, created_at)
+     VALUES(?, ?, ?, ?, 'pending', NULL, NULL, ?, NULL, NULL, NULL, ?)`,
+  ).run(id, intent.id, intent.merchant, intent.amountCents, now + DAY, now);
+  return { ok: true, id };
+}
+
+export function listPending(db: DatabaseSync, now: number): CheckoutItem[] {
+  expireClaims(db, now);
+  const rows = db.prepare("SELECT id, intent_id, merchant, max_cents, status, expires_at FROM checkout_queue WHERE status = 'pending' AND expires_at > ? ORDER BY created_at ASC").all(now) as {
+    id: string; intent_id: string; merchant: string; max_cents: number; status: string; expires_at: number;
+  }[];
+  return rows.map((row) => ({ id: row.id, intentId: row.intent_id, merchant: row.merchant, maxCents: row.max_cents, status: row.status, expiresAt: row.expires_at }));
+}
+
+export function claimCheckout(db: DatabaseSync, id: string, now: number): { ok: true; claimToken: string; item: CheckoutItem } | { ok: false; reason: string } {
+  expireClaims(db, now);
+  const row = db.prepare("SELECT id, intent_id, merchant, max_cents, status, expires_at FROM checkout_queue WHERE id = ?").get(id) as {
+    id: string; intent_id: string; merchant: string; max_cents: number; status: string; expires_at: number;
+  } | undefined;
+  if (!row) return { ok: false, reason: "MISSING" };
+  if (row.status !== "pending" || row.expires_at <= now) return { ok: false, reason: "CLAIMED" };
+  const token = randomBytes(16).toString("hex");
+  const changed = db.prepare("UPDATE checkout_queue SET status = 'claimed', claim_token = ?, claimed_at = ? WHERE id = ? AND status = 'pending'").run(token, now, id);
+  if (Number(changed.changes) !== 1) return { ok: false, reason: "CLAIMED" };
+  return { ok: true, claimToken: token, item: { id: row.id, intentId: row.intent_id, merchant: row.merchant, maxCents: row.max_cents, status: "claimed", expiresAt: row.expires_at } };
+}
+
+export function reportCheckout(db: DatabaseSync, input: { id: string; claimToken: string; ok: boolean; orderNumber?: string; amountCents?: number; merchant?: string; receipt?: string; reason?: string }, now: number): { ok: true } | { ok: false; reason: string } {
+  if (rejectPan(input)) return { ok: false, reason: "PAN_REJECTED" };
+  const row = db.prepare("SELECT id, intent_id, merchant, max_cents, status, claim_token FROM checkout_queue WHERE id = ?").get(input.id) as {
+    id: string; intent_id: string; merchant: string; max_cents: number; status: string; claim_token: string | null;
+  } | undefined;
+  if (!row || row.status !== "claimed" || !row.claim_token || row.claim_token !== input.claimToken) return { ok: false, reason: "CLAIM" };
+  const ledger = new Ledger(db);
+  if (!input.ok) {
+    ledger.append({
+      id: `decline-${row.intent_id}`,
+      atMs: now,
+      kind: "decline",
+      amountCents: 0,
+      status: "declined",
+      provider: "owner_checkout",
+      providerTransactionId: null,
+      idempotencyKey: `decline:${row.intent_id}`,
+      ref: row.intent_id,
+      note: `Checkout failed at ${row.merchant}. ${input.reason ?? "No charge."}`,
+      merchant: row.merchant,
+    });
+    db.prepare("UPDATE checkout_queue SET status = 'failed' WHERE id = ?").run(row.id);
+    db.prepare("UPDATE purchase_claims SET state = 'released' WHERE intent_id = ?").run(row.intent_id);
+    return { ok: true };
+  }
+  const amount = input.amountCents;
+  if (!Number.isInteger(amount) || amount == null || amount <= 0) return { ok: false, reason: "AMOUNT" };
+  if (!input.orderNumber || !input.merchant || !input.receipt) return { ok: false, reason: "REPORT" };
+  if (input.merchant.trim() !== row.merchant) return { ok: false, reason: "MERCHANT" };
+  const booked = ledger.append({
+    id: `purchase-${row.intent_id}`,
+    atMs: now,
+    kind: "purchase",
+    amountCents: amount,
+    status: "confirmed",
+    provider: "owner_checkout",
+    providerTransactionId: input.receipt.slice(0, 80),
+    idempotencyKey: `exec:${row.intent_id}`,
+    ref: row.intent_id,
+    note: `Owner checkout ${input.orderNumber} at ${row.merchant}.`,
+    merchant: row.merchant,
+  });
+  db.prepare("UPDATE checkout_queue SET status = 'reported', order_number = ?, charged_cents = ?, receipt = ? WHERE id = ?").run(input.orderNumber.slice(0, 80), amount, input.receipt.slice(0, 80), row.id);
+  db.prepare("UPDATE purchase_claims SET state = 'executed', ledger_id = ? WHERE intent_id = ?").run(booked.id, row.intent_id);
+  return { ok: true };
+}
+
+export function expireClaims(db: DatabaseSync, now: number): number {
+  const late = db.prepare("SELECT id, intent_id, merchant, max_cents FROM checkout_queue WHERE status = 'claimed' AND claimed_at IS NOT NULL AND claimed_at + ? <= ?").all(CLAIM_MS, now) as {
+    id: string; intent_id: string; merchant: string; max_cents: number;
+  }[];
+  for (const row of late) {
+    db.prepare("UPDATE checkout_queue SET status = 'unknown' WHERE id = ? AND status = 'claimed'").run(row.id);
+    db.prepare("UPDATE purchase_claims SET state = 'unknown' WHERE intent_id = ?").run(row.intent_id);
+    deskNotifier(db).notify({
+      kind: "issuer",
+      title: "Issuer outcome unknown",
+      detail: `${row.intent_id} was claimed for ${row.max_cents} cents at ${row.merchant} and was not reported. Automatic spending stays paused.`,
+    });
+  }
+  return late.length;
+}

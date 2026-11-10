@@ -4,6 +4,7 @@ import { flag } from "../db/db";
 import { deskNotifier, type OwnerAlert } from "./notify";
 import { UNKNOWN_PROVIDER_ID } from "./reconcile";
 import { openExpectedSpend } from "./card";
+import { enqueueCheckout } from "./checkoutQueue";
 import type { CardIssuer, IssuerResult } from "./issuers";
 import { ledgerStatusFor } from "./issuers";
 import { Ledger, type LedgerRow } from "./ledger";
@@ -111,6 +112,41 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
     db.prepare("UPDATE purchase_claims SET state = 'unknown' WHERE intent_id = ?").run(intent.id);
     noteIssuerUnknown(db, intent, notify);
     return { decision: { outcome: "queue", reason: "ISSUER_UNKNOWN" }, issuerCalled: true, row: reserved };
+  }
+  if (result.reason === "CHECKOUT_QUEUE") {
+    const queued = enqueueCheckout(db, {}, intent, atMs);
+    if (!queued.ok) {
+      const row = ledger.append({
+        id: `decline-${intent.id}`,
+        atMs,
+        kind: "decline",
+        amountCents: 0,
+        status: "declined",
+        provider: issuer.name,
+        providerTransactionId: null,
+        idempotencyKey: `decline:${intent.id}`,
+        ref: intent.id,
+        note: `Checkout queue refused ${intent.merchant}.`,
+        merchant: intent.merchant,
+      });
+      db.prepare("UPDATE purchase_claims SET state = 'released', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
+      return { decision: { outcome: "decline", reason: queued.reason }, issuerCalled: true, row };
+    }
+    const row = ledger.append({
+      id: `queue-${intent.id}`,
+      atMs,
+      kind: "approval",
+      amountCents: intent.amountCents,
+      status: "intent",
+      provider: "owner_checkout",
+      providerTransactionId: null,
+      idempotencyKey: `queue:${intent.id}`,
+      ref: intent.id,
+      note: `Checkout queue for ${intent.merchant}. Not charged until the owner reports it.`,
+      merchant: intent.merchant,
+    });
+    db.prepare("UPDATE purchase_claims SET state = 'queued', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
+    return { decision: { outcome: "queue", reason: "CHECKOUT_QUEUE" }, issuerCalled: true, row };
   }
   if (result.status === "approved" && !result.providerTransactionId) {
     openExpectedSpend(db, intent, atMs);

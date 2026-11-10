@@ -118,6 +118,35 @@ CREATE TABLE IF NOT EXISTS proposals (
   status TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS sol_orders (
+  id TEXT PRIMARY KEY,
+  item_kind TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  usd_cents INTEGER NOT NULL,
+  lamports INTEGER NOT NULL,
+  sol_usd_micro INTEGER NOT NULL,
+  recipient TEXT NOT NULL,
+  reference_key TEXT NOT NULL UNIQUE,
+  signature TEXT UNIQUE,
+  status TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS checkout_queue (
+  id TEXT PRIMARY KEY,
+  intent_id TEXT NOT NULL UNIQUE,
+  merchant TEXT NOT NULL,
+  max_cents INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  claim_token TEXT,
+  claimed_at INTEGER,
+  expires_at INTEGER NOT NULL,
+  order_number TEXT,
+  charged_cents INTEGER,
+  receipt TEXT,
+  created_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS expected_spends (
   intent_id TEXT PRIMARY KEY,
   merchant TEXT NOT NULL,

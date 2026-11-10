@@ -37,6 +37,7 @@ export function cardCredentials(env: Env): boolean {
   const stripe = env.STRIPE_ISSUING_KEY || env.STRIPE_SECRET_KEY || "";
   if (issuer === "stripe_issuing") return stripe.startsWith("sk_live_") || stripe.startsWith("sk_test_");
   if (issuer === "privacy") return Boolean(env.PRIVACY_API_KEY);
+  if (issuer === "owner_checkout") return true;
   return false;
 }
 

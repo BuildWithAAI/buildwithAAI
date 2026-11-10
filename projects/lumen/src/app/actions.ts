@@ -4,6 +4,8 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clientAddress, OWNER_COOKIE } from "../auth/owner";
 import { publicModeOn } from "../auth/publicMode";
+import { fetchFinalized, quoteSolOrder, verifySolPayment } from "../money/solana";
+import { listShop } from "../shop/store";
 import { getEngine } from "../server/engine";
 
 async function ip(): Promise<string> {
@@ -68,6 +70,27 @@ export async function shopBuy(form: FormData) {
   const result = await getEngine().shopCheckout(String(form.get("id") ?? ""), String(form.get("note") ?? ""));
   if (!result.ok || result.comingSoon || !result.url || !result.url.startsWith("http")) redirect("/shop?sales=soon");
   redirect(result.url);
+}
+
+export async function solQuote(form: FormData) {
+  const engine = getEngine();
+  const id = String(form.get("id") ?? "");
+  const listing = listShop(engine.db).find((item) => item.id === id);
+  if (!listing) redirect("/shop?sales=sol");
+  const quote = await quoteSolOrder(engine.db, engine.env, { kind: "shop", itemId: listing.id, title: listing.title, usdCents: listing.priceCents }, Date.now());
+  if (!quote.ok) redirect("/shop?sales=sol");
+  redirect(`/shop/sol?order=${quote.id}`);
+}
+
+export async function solVerify(form: FormData) {
+  const engine = getEngine();
+  const orderId = String(form.get("order") ?? "");
+  const signature = String(form.get("signature") ?? "").trim();
+  const rpc = engine.env.LUMEN_SOL_RPC_URL ?? "";
+  const tx = rpc ? await fetchFinalized(rpc, signature) : null;
+  const result = verifySolPayment(engine.db, orderId, signature, tx, Date.now());
+  if (!result.ok) redirect(`/shop/sol?order=${orderId}&error=${result.reason}`);
+  redirect(`/shop/sol?order=${orderId}&paid=1`);
 }
 
 export async function goalDesk(form: FormData) {
