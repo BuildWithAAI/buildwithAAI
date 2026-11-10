@@ -1,6 +1,27 @@
 # Build log
 
 ---
+sha: 6bc8b54
+title: Net sales, and notes that keep their emoji.
+summary: The books split card refunds received from buyer refunds paid, and show net sales beside gross. The filter checks a stripped copy and returns the original note, except a right-to-left override. Zero-width gaps, Arabic-Indic digits, and a numeric order number are caught. A full address map drops an unblocked network before a blocked one. The setup-node pin is v4.4.0.
+date: 2026-11-10T06:00:00Z
+image:
+
+---
+sha: d4dcd31
+title: A card inside a longer number, and partial refunds.
+summary: Every 13 to 19 digit window is checked after separators come out. Only a field that is exactly an Amazon order number is exempt. A partial refund is written on the ledger and the file stays, unless LUMEN_REVOKE_ON_PARTIAL_REFUND is true. A full refund or a dispute still closes that buyer's download.
+date: 2026-11-10T05:58:00Z
+image:
+
+---
+sha: d312c10
+title: Refunds and disputes match the payment intent.
+summary: A Checkout Session stores payment_intent, and the charge id only when Stripe sent one. A refund and a dispute carry a different charge id plus the same payment intent, and that intent closes the order and the download. Tests use a session, a charge.refunded event, a dispute, and a refund object.
+date: 2026-11-10T05:57:00Z
+image:
+
+---
 sha: 77c1aff
 title: A wider address block, and cleaner notes.
 summary: A /48 counter stays after a /64 is evicted, and IPv6 addresses are normalised before they are bucketed. Joined words, tag letters, Armenian look-alikes, and direction marks are caught. Accents and other scripts stay. An em dash or a colon no longer hides a card number. Another resident's song does not take Zoora's mood. CI uses npm ci and pinned actions.
