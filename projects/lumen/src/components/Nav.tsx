@@ -6,6 +6,7 @@ export function Nav() {
       <strong>Zoora</strong>
       <Link href="/">Bowl</Link>
       <Link href="/world">World</Link>
+      <Link href="/build">Build</Link>
       <Link href="/gallery">Gallery</Link>
       <Link href="/prints">Prints</Link>
       <Link href="/diary">Diary</Link>

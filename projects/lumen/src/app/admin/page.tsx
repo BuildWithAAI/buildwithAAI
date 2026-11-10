@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { OWNER_COOKIE } from "../../auth/owner";
+import { ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
 import { artAction, clearAlertAction, controlAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
@@ -9,7 +10,9 @@ import { getEngine } from "../../server/engine";
 export default async function AdminPage() {
   const jar = await cookies();
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
-  if (!getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`)) redirect("/admin/login");
+  const authed = getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`);
+  if (!authed || !ownerRouteOpen("/admin", authed)) redirect("/admin/login");
+  const publicMode = publicModeOn();
   const snap = getEngine().snapshot();
   return (
     <div className="grid">
@@ -33,14 +36,14 @@ export default async function AdminPage() {
             ))}
           </ul>
         ) : null}
-        <p>Kill switch: {snap.money.kill ? "ON" : "off"} · Spend: {snap.money.spendOpen ? "open" : `closed (${snap.money.spendReason})`} · Sales: {snap.money.sales}</p>
+        <p>{publicMode ? "Spending stays off while the island is public." : `Kill switch: ${snap.money.kill ? "ON" : "off"} · Spend: ${snap.money.spendOpen ? "open" : `closed (${snap.money.spendReason})`} · Sales: ${snap.money.sales}`}</p>
         <div className="row">
           <form action={controlAction}><input type="hidden" name="key" value="kill" /><input type="hidden" name="value" value={snap.money.kill ? "0" : "1"} /><button type="submit">{snap.money.kill ? "Release kill switch" : "Kill switch"}</button></form>
           <form action={controlAction}><input type="hidden" name="key" value="spend" /><input type="hidden" name="value" value="1" /><button type="submit">Enable spend toggle</button></form>
           <form action={controlAction}><input type="hidden" name="key" value="spend" /><input type="hidden" name="value" value="0" /><button type="submit">Disable spend toggle</button></form>
           <form action={reconcileAction}><button type="submit">Run reconciliation</button></form>
           <form action={logout}><button type="submit">Log out</button></form>
-          <a className="button" href="/admin/ledger">Balance and P&amp;L</a>
+          {publicMode ? null : <a className="button" href="/admin/ledger">Balance and P&amp;L</a>}
         </div>
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>

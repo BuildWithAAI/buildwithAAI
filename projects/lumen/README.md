@@ -12,7 +12,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Tests: `npm test`.
+Open http://localhost:3000. The public site is [zoora.ai](https://zoora.ai). To show this copy from the owner's computer, see [docs/HOSTING_LOCAL.md](docs/HOSTING_LOCAL.md). Tests: `npm test`.
 
 ## What you see
 

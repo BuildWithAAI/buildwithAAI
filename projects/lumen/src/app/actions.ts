@@ -3,11 +3,12 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clientAddress, OWNER_COOKIE } from "../auth/owner";
+import { publicModeOn } from "../auth/publicMode";
 import { getEngine } from "../server/engine";
 
 async function ip(): Promise<string> {
   const header = await headers();
-  return clientAddress((name) => header.get(name), process.env.LUMEN_TRUSTED_PROXY);
+  return clientAddress((name) => header.get(name), process.env.LUMEN_TRUSTED_PROXY, publicModeOn());
 }
 
 async function gate() {

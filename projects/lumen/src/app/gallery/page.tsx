@@ -1,12 +1,14 @@
+import { publicModeOn } from "../../auth/publicMode";
 import { buyArt } from "../actions";
 import { getEngine } from "../../server/engine";
 
 export default function GalleryPage({ searchParams }: { searchParams: Promise<{ sales?: string }> }) {
   const snap = getEngine().snapshot();
+  const publicMode = publicModeOn();
   return (
     <div>
       <h1>Gallery</h1>
-      <p className="muted">Pieces Zoora made in the ink studio. A price appears only after the keeper approves a listing. Sales mode: {snap.money.sales}.</p>
+      <p className="muted">{publicMode ? "Pieces Zoora made. Nothing here is for sale while the island is public." : `Pieces Zoora made in the ink studio. A price appears only after the keeper approves a listing. Sales mode: ${snap.money.sales}.`}</p>
       <GalleryNote searchParams={searchParams} />
       <div className="gallery">
         {snap.gallery.map((item) => {
@@ -16,7 +18,7 @@ export default function GalleryPage({ searchParams }: { searchParams: Promise<{ 
               <div dangerouslySetInnerHTML={{ __html: art.svg }} />
               <h2>{art.title}</h2>
               <p className="muted">{art.likes} likes · {art.favorites} favorites</p>
-              {art.listed && art.price_cents != null ? (
+              {!publicMode && art.listed && art.price_cents != null ? (
                 <form action={buyArt}>
                   <input type="hidden" name="id" value={art.id} />
                   <input type="hidden" name="key" value={`buy-${art.id}-${art.price_cents}`} />

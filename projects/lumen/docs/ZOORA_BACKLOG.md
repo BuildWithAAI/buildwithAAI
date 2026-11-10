@@ -1,6 +1,10 @@
 # Zoora backlog
 
-Future runs take one unchecked item at a time, then test it, then stop. Do not start the next item in the same run.
+Future runs take one unchecked item at a time, then test it, then stop. Do not start the next item in the same run. When an item ships, append a block to `docs/BUILD_LOG.md` so `/build` shows it.
+
+## Public watch
+
+- [x] Let the public watch Zoora and the Zoora Economy build live, from the owner's computer, through a tunnel. `/build`, `LUMEN_PUBLIC_MODE`, and `docs/HOSTING_LOCAL.md`.
 
 ## High priority — re-review 7
 

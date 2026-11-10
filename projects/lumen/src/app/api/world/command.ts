@@ -1,12 +1,18 @@
 import { clientAddress } from "../../../auth/owner";
+import { allowPublicRequest } from "../../../auth/public";
+import { publicModeOn } from "../../../auth/publicMode";
 import { getEngine } from "../../../server/engine";
 
 export async function worldPost(op: "join" | "move" | "act" | "leave", request: Request): Promise<Response> {
   const header = request.headers.get("authorization") ?? "";
   const match = /^Bearer\s+(.+)$/i.exec(header);
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const ip = clientAddress((name) => request.headers.get(name), process.env.LUMEN_TRUSTED_PROXY);
-  const result = getEngine().worldCommand({
+  const ip = clientAddress((name) => request.headers.get(name), process.env.LUMEN_TRUSTED_PROXY, publicModeOn());
+  const engine = getEngine();
+  if (publicModeOn() && !allowPublicRequest(engine.db, ip)) {
+    return Response.json({ error: "RATE_LIMIT" }, { status: 429 });
+  }
+  const result = engine.worldCommand({
     op,
     token: match?.[1] ?? null,
     ip,

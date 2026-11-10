@@ -1,3 +1,4 @@
+import { publicModeOn } from "../../auth/publicMode";
 import { getEngine } from "../../server/engine";
 
 export default function PrintsPage() {
@@ -21,7 +22,7 @@ export default function PrintsPage() {
         {rows.map((row) => (
           <li key={row.id}>
             <strong>{row.title}</strong> · {row.material} · {row.status} · {row.adapter}
-            <div className="muted">{row.reason}{row.estimated_cost_cents == null ? "" : ` · estimate $${(row.estimated_cost_cents / 100).toFixed(2)}, not a confirmed cost`}</div>
+            <div className="muted">{row.reason}{publicModeOn() || row.estimated_cost_cents == null ? "" : ` · estimate $${(row.estimated_cost_cents / 100).toFixed(2)}, not a confirmed cost`}</div>
           </li>
         ))}
       </ul>

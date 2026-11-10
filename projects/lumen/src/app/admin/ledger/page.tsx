@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../../auth/owner";
+import { ownerRouteOpen, publicModeOn } from "../../../auth/publicMode";
 import { executeAction, refundAction } from "../../actions";
 import { getEngine } from "../../../server/engine";
 
@@ -12,7 +13,16 @@ function money(cents: number): string {
 export default async function LedgerPage() {
   const jar = await cookies();
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
-  if (!getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`)) redirect("/admin/login");
+  const authed = getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`);
+  if (!authed || !ownerRouteOpen("/admin/ledger", authed)) redirect("/admin/login");
+  if (publicModeOn()) {
+    return (
+      <div className="card">
+        <h1>Balance and P&amp;L</h1>
+        <p>These views stay on this computer. They are hidden while the island is public.</p>
+      </div>
+    );
+  }
   const snap = getEngine().snapshot();
   const view = snap.money.view;
   const rows = snap.money.ledger as { id: string; kind: string; amountCents: number; status: string; label: string; providerTransactionId: string | null; note: string; ref: string | null }[];
