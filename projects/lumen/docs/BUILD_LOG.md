@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: fa5d843
+title: Zoora can answer her owner on Telegram, including without a public webhook.
+summary: /mood, /needs, /status, /world, and /help are read from her recorded state and only from the owner chat. /status says live money is off and does not invent a balance. Any other slash is talk. None of them can spend, flip a switch, mint, or change a price. npm run telegram:poll calls deleteWebhook, then getUpdates with an offset. That process removes LUMEN_MONEY_LIVE and LUMEN_TRADING_LIVE, closes checkout, and keeps the Saloon on paper. Without an xAI key the replies stay canned. With LUMEN_XAI_API_KEY, ordinary talk can use Grok. The bot token is not printed.
+date: 2026-11-10T22:05:00Z
+image:
+
+---
 sha: b236723
 title: Zoora publishes her own scene.
 summary: The tick writes a validated scene: palette, sky mood, weather, decoration, garden stage, and up to six gallery ids. Unknown fields are rejected. The reason is one of her own lines, and a visitor note cannot replace it. She can publish once every ten minutes, eight times a day. The desk can freeze the scene or roll it back one step. The shop stays closed and the Saloon stays paper. The choices show on the world page.
