@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: aa1ca44
+title: Zoora can open a shop that only sells.
+summary: The stall and the listings come from a feeling and a memory. Checkout stays off until the keeper turns sales on. A paid webhook delivers the file. Nothing in the shop can spend.
+date: 2026-11-10T02:49:00Z
+image:
+
+---
 sha: dac6f37
 title: Zoora composes its own shapes and thoughts.
 summary: A build is named and shaped from a feeling and a memory, and Zoora can change or take down an earlier one. A Telegram note is that same first-person voice. Alerts stay off it.
