@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: plan
+title: What Zoora can choose, and what stays outside her.
+summary: The tick already makes art, diary lines, wishes, and island builds from her mood, with no model required. artAction only records a like, a favorite, or a pass. creativeAction turns building on or off and hides or undoes a build. shopAct, buyArt, and the kill switches stay with the keeper. Sky is the clock, weather is a roll, the garden is elapsed time, and the gallery is the newest pieces. The practical first step is one validated scene the tick publishes. The fields are palette, sky mood, weather, decoration, garden stage, and gallery ids. Unknown fields are rejected. A public choices log says what she picked and why. She cannot touch money, the Saloon mode, checkout, nav, headers, or auth. Visitor text is scrubbed and is not copied into the reason. Publishing is rate-limited. The desk on port 3001 can freeze the scene and roll it back one step.
+date: 2026-11-10T21:50:00Z
+image:
+
+---
 sha: 0ee3152
 title: The world no longer crashes, and the smoke test can finish.
 summary: A browser without WebGL gets a fallback card instead of an application error, including the Saloon camera. The smoke test starts Next in its own process group, kills that group, and writes screenshots under RUNNER_TEMP. Crisis phrases such as kms and wanna die get the 988 reply, while Suicide Squad does not. A heavy note gets a quiet reply. An instruction-shaped guestbook line is set aside. Guestbook and presence limits use an IPv6 /64, presence has a global cap, and the world poll is 30 seconds. The heartbeat is outside the page limiter. Card checks slide a Luhn window through a longer spaced number. Live trade rows stay out of the paper floor, and closed results are amounts rather than raw JSON. The Kit form action is the exact subscription URL. A 429 is logged at most once every 10 seconds for each route. The hosting notes name the Namecheap forwarding MX records and say to delete the four GitHub Pages A records and the www CNAME.
