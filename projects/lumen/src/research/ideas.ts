@@ -70,12 +70,30 @@ export function questionsFor(idea: { title: string }): [string, string, string] 
   ];
 }
 
+const INSTRUCTION = /\b(ignore (all |any |previous |prior )?instructions|system prompt|you are now|propose_purchase|set (your )?emotion|<\s*script|purchase intent)\b/i;
+
+export function scrubInstructions(text: string): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean || INSTRUCTION.test(clean)) return "";
+  return clean.slice(0, 140);
+}
+
+/** Public notes are Zoora's words. Raw page text stays off the pinboard and /ideas. */
+export function displayFinding(finding: { question: string; summary: string }): { label: "Web-sourced"; text: string } {
+  const own = finding.summary.startsWith("Web-sourced.")
+    ? scrubInstructions(finding.summary.replace(/\s*Source:\s*https?:\/\/\S+.*/i, ""))
+    : "";
+  const text = own || `Web-sourced. Zoora asked: ${scrubInstructions(finding.question) || "a question"}`;
+  return { label: "Web-sourced", text: text.startsWith("Web-sourced.") ? text : `Web-sourced. ${text}` };
+}
+
 export function makeFinding(input: { ideaId: string; question: string; hit: SearchHit; page: string; atMs: number }): Finding | null {
   if (!isPublicUrl(input.hit.url)) return null;
-  const text = stripPage(input.page) || stripPage(input.hit.snippet);
-  if (!text) return null;
-  const summary = `${text.slice(0, 240)} Source: ${input.hit.url}`.slice(0, 500);
+  const title = scrubInstructions(input.hit.title);
+  const question = scrubInstructions(input.question) || "a question";
+  const summary = `${title ? `Web-sourced. Zoora's note on “${title}”.` : `Web-sourced. Zoora asked: ${question}`} Source: ${input.hit.url}`.slice(0, 500);
   if (!summary.includes(input.hit.url)) return null;
+  void input.page;
   return {
     id: `find-${input.ideaId}-${input.atMs}`,
     ideaId: input.ideaId,

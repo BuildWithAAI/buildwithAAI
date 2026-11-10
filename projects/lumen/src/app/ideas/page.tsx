@@ -1,3 +1,4 @@
+import { displayFinding } from "../../research/ideas";
 import { getEngine } from "../../server/engine";
 
 export default function IdeasPage() {
@@ -15,13 +16,16 @@ export default function IdeasPage() {
           <p>{idea.why}</p>
           {findings.length ? (
             <ul className="feed">
-              {findings.map((finding) => (
-                <li key={finding.id}>
-                  <strong>{finding.question}</strong>
-                  <p>{finding.summary}</p>
-                  <p className="muted"><a href={finding.sourceUrl}>{finding.sourceUrl}</a></p>
-                </li>
-              ))}
+              {findings.map((finding) => {
+                const shown = displayFinding(finding);
+                return (
+                  <li key={finding.id}>
+                    <strong>{shown.label}</strong>
+                    <p>{shown.text}</p>
+                    <p className="muted"><a href={finding.sourceUrl}>{finding.sourceUrl}</a></p>
+                  </li>
+                );
+              })}
             </ul>
           ) : <p className="muted">No sourced findings yet.</p>}
           {brief ? (

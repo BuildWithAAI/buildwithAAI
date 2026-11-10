@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { BrainState } from "../brain/types";
 import type { Env } from "../money/rules";
-import { ideasFromLife, makeFinding, nothingNew, questionsFor, wishFromBrief, writeBrief, type Brief, type Finding, type Idea } from "./ideas";
+import { displayFinding, ideasFromLife, makeFinding, nothingNew, questionsFor, wishFromBrief, writeBrief, type Brief, type Finding, type Idea } from "./ideas";
 import { queriesAllowed, researchAdapter, researchCaps, type ResearchAdapter } from "./search";
 
 const CURIOUS_NEED = 0.45;
@@ -37,7 +37,7 @@ export function stationView(db: DatabaseSync): { idea: string | null; question: 
   return {
     idea: idea.title,
     question,
-    pins: findings.slice(-4).map((finding) => finding.summary.replace(/\s*Source:.*$/, "").slice(0, 80)),
+    pins: findings.slice(-4).map((finding) => displayFinding(finding).text.slice(0, 80)),
   };
 }
 
