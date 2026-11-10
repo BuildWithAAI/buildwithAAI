@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,6 +9,7 @@ import { Ledger } from "../src/money/ledger";
 import { chooseDestination } from "../src/world/choose";
 import { applyVoxelEvent, requestVoxelEvent } from "../src/world/happen";
 import { ANCHORS, WALK_SPEED, pathBetween, pathLength, placeAt, routePlaces, travelMs } from "../src/world/places";
+import { createEngine } from "../src/server/engine";
 import { beginMove, handleWorldCommand, issueAgent, rollAndApply, worldView } from "../src/world/registry";
 import type { Emotions, Needs } from "../src/brain/types";
 
@@ -44,6 +46,18 @@ describe("world paths and mood", () => {
 });
 
 describe("world agents", () => {
+  it("returns a world token once and stores only its hash", () => {
+    const engine = createEngine({}, ":memory:");
+    const issued = engine.issueWorldToken("Pebble");
+    expect(issued.ok).toBe(true);
+    if (!issued.ok) return;
+    const stored = JSON.stringify(engine.db.prepare("SELECT key, value FROM kv").all());
+    expect(stored.includes(issued.token)).toBe(false);
+    const row = engine.db.prepare("SELECT token_hash FROM world_agents WHERE name = ?").get("Pebble") as { token_hash: string };
+    expect(row.token_hash).toBe(createHash("sha256").update(issued.token).digest("hex"));
+    expect(JSON.stringify(engine.snapshot()).includes(issued.token)).toBe(false);
+  });
+
   it("requires a token, rate-limits, and keeps two agents at once", () => {
     const db = openDatabase();
     const now = Date.UTC(2026, 10, 10, 12);

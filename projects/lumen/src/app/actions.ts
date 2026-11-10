@@ -103,9 +103,11 @@ export async function proposalAction(form: FormData) {
   await getEngine().approveProposal(String(form.get("id") ?? ""));
 }
 
-export async function issueWorldTokenAction(form: FormData) {
+export async function issueWorldTokenAction(_prev: { name?: string; token?: string; error?: string } | null, form: FormData) {
   await gate();
-  await getEngine().issueWorldToken(String(form.get("name") ?? ""));
+  const issued = await getEngine().issueWorldToken(String(form.get("name") ?? ""));
+  if (!issued.ok) return { error: issued.error };
+  return { name: issued.name, token: issued.token };
 }
 
 export async function executeAction(form: FormData) {

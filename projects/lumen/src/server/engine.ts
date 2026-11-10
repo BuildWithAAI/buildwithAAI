@@ -61,17 +61,7 @@ export function createEngine(env: Env, file?: string) {
     worldCommand: (command: WorldCommand) => handleWorldCommand(db, command, { jarvisToken: env.LUMEN_JARVIS_TOKEN, ownerToken: env.OWNER_ACCESS_TOKEN }),
     jarvisView: () => jarvisView(db, env),
     jarvisTalk: (text: string) => ownerChat(db, env, text, "jarvis-chat"),
-    issueWorldToken: (name: string) => {
-      const issued = issueAgent(db, name, Date.now());
-      if (!issued.ok) return issued;
-      kvSet(db, "world_token_flash", JSON.stringify({ name: issued.name, token: issued.token }));
-      return issued;
-    },
-    peekWorldToken: () => {
-      const raw = kvGet(db, "world_token_flash");
-      if (!raw) return null;
-      return JSON.parse(raw) as { name: string; token: string };
-    },
+    issueWorldToken: (name: string) => issueAgent(db, name, Date.now()),
   };
 }
 

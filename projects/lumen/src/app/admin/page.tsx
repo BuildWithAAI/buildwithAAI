@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { OWNER_COOKIE } from "../../auth/owner";
-import { artAction, clearAlertAction, controlAction, issueWorldTokenAction, logout, proposalAction, reconcileAction, sendChat, wishAction } from "../actions";
+import { IssueWorldToken } from "../../components/IssueWorldToken";
+import { artAction, clearAlertAction, controlAction, logout, proposalAction, reconcileAction, sendChat, wishAction } from "../actions";
 import { getEngine } from "../../server/engine";
 
 export default async function AdminPage() {
@@ -9,7 +10,6 @@ export default async function AdminPage() {
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
   if (!getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`)) redirect("/admin/login");
   const snap = getEngine().snapshot();
-  const worldToken = getEngine().peekWorldToken();
   return (
     <div className="grid">
       <section className="card" style={{ gridColumn: "1 / -1" }}>
@@ -45,11 +45,7 @@ export default async function AdminPage() {
       <section className="card" style={{ gridColumn: "1 / -1" }}>
         <h2>World tokens</h2>
         <p className="muted">One token, one agent. Joining the island does not approve a purchase.</p>
-        <form action={issueWorldTokenAction}>
-          <input name="name" placeholder="Agent name" maxLength={24} />
-          <button type="submit">Issue token</button>
-        </form>
-        {worldToken ? <p>Copy this once. It stays on this desk until you issue another. <strong>{worldToken.name}</strong> <code>{worldToken.token}</code></p> : null}
+        <IssueWorldToken />
       </section>
       <section className="card">
         <h2>Talk with Zoora</h2>

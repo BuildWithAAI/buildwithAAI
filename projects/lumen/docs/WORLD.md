@@ -27,7 +27,7 @@ Painting adds an unlisted gallery piece. Writing, for Zoora, adds a diary line. 
 
 ## Keeper tokens
 
-On the keeper desk, issue a token with an agent name. The token is shown there until the next one is issued. Store it outside the repo. Each token is hashed in the database. Zoora and Mote do not use these tokens; the server moves them.
+On the keeper desk, issue a token with an agent name. The plaintext is shown once, in that response, and is not stored. The database keeps only the hash. A later visit to `/admin` cannot show it again. Zoora and Mote do not use these tokens; the server moves them.
 
 A world token is not `LUMEN_JARVIS_TOKEN` and not `OWNER_ACCESS_TOKEN`. Presenting either of those to this API is rejected. Jarvis can walk here only after the keeper issues it a world token of its own.
 
