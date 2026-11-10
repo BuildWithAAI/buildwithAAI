@@ -5,20 +5,24 @@ export function Nav({ showKeeper = false, showMoney = false }: { showKeeper?: bo
   return (
     <nav className="nav">
       <strong>Zoora</strong>
-      <Link href="/">Bowl</Link>
       <Link href="/world">World</Link>
-      <Link href="/build">Build</Link>
-      {showMoney ? <Link href="/shop">Shop</Link> : null}
-      <Link href="/floor">Floor</Link>
-      {showMoney ? <Link href="/books">Books</Link> : null}
       <Link href="/gallery">Gallery</Link>
-      <Link href="/prints">Prints</Link>
       <Link href="/diary">Diary</Link>
       <Link href="/guestbook">Guestbook</Link>
-      <Link href="/wants">Wants</Link>
-      <Link href="/wishlist">Wishlist</Link>
-      <Link href="/ideas">Ideas</Link>
-      {showKeeper ? <Link href="/admin">Keeper</Link> : null}
+      <Link href="/world?cam=saloon">Saloon</Link>
+      <details className="nav-more">
+        <summary>More</summary>
+        <Link href="/">Bowl</Link>
+        <Link href="/build">Build</Link>
+        <Link href="/floor">Floor</Link>
+        <Link href="/prints">Prints</Link>
+        <Link href="/ideas">Ideas</Link>
+        <Link href="/wants">Wants</Link>
+        <Link href="/wishlist">Wishlist</Link>
+        {showMoney ? <Link href="/shop">Shop</Link> : null}
+        {showMoney ? <Link href="/books">Books</Link> : null}
+        {showKeeper ? <Link href="/admin">Keeper</Link> : null}
+      </details>
     </nav>
   );
 }

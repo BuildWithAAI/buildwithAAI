@@ -8,6 +8,7 @@ import type { PublicAgent, PublicWorld } from "../world/public";
 import type { Vec3 } from "../world/places";
 import { directionFromHorizon } from "../world/sky";
 import { AREAS } from "../world/areas";
+import { WORLD_TIP, WORLD_TIP_KEY, worldTipOpen } from "./visit";
 
 const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number]; follow?: boolean }> = {
   overview: { pos: [78, 48, 78], look: [0, 1, 4] },
@@ -41,6 +42,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
   const [view, setView] = useState(CAMS[cam] ? cam : "overview");
   const [follow, setFollow] = useState(Boolean(CAMS[cam]?.follow));
   const [lowDetail, setLowDetail] = useState(false);
+  const [tip, setTip] = useState(false);
   const viewRef = useRef(view);
   const followRef = useRef(follow);
   const jump = useRef<(name: string) => void>(() => undefined);
@@ -223,7 +225,15 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       if (shot.follow) anim.active = false;
     };
     jump.current = go;
-    go(viewRef.current);
+    const firstLook = viewRef.current === "overview" && worldTipOpen(window.localStorage.getItem(WORLD_TIP_KEY));
+    if (firstLook) {
+      camera.position.set(...CAMS.island!.pos);
+      controls.target.set(...CAMS.island!.look);
+      setTip(true);
+      window.setTimeout(() => go("town"), 700);
+    } else {
+      go(viewRef.current);
+    }
 
     const agents = new Map<string, { group: THREE.Group; label: THREE.Sprite; key: string; kind: "jelly" | "mote"; phase: number; glow: THREE.PointLight; mats: THREE.ShaderMaterial[] }>();
     const curves = new Map<string, { key: string; curve: THREE.CatmullRomCurve3 }>();
@@ -410,6 +420,12 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         <span>{lowDetail ? "Light detail" : "Soft shadows"}</span>
         <span>Watching only</span>
       </div>
+      {tip ? (
+        <div className="world-tip card">
+          <p>{WORLD_TIP}</p>
+          <button type="button" onClick={() => { window.localStorage.setItem(WORLD_TIP_KEY, "1"); setTip(false); }}>Got it</button>
+        </div>
+      ) : null}
       <div className="world-hud">
         {["overview", "island", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "saloon", "saloon-in", "floor", "floor-in", "together", "zoora", "follow"].map((name) => (
           <button key={name} type="button" onClick={() => choose(name)}>{name === "follow" && follow ? "following" : name}</button>

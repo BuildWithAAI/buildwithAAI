@@ -36,6 +36,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .nav strong { font-family: Palatino, Georgia, serif; font-size: 1.4rem; }
 .nav a { text-decoration: none; color: var(--dim); }
 .nav a:hover { color: var(--ink); }
+.nav-more { position: relative; }
+.nav-more summary { cursor: pointer; color: var(--dim); list-style: none; }
+.nav-more[open] { display: flex; gap: 0.8rem; align-items: center; }
+.world-tip { position: absolute; z-index: 3; left: 1rem; top: 4.2rem; max-width: 18rem; }
 
 .wrap { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.2rem 0 3rem; }
 .grid { display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 1rem; }

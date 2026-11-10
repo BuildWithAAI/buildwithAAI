@@ -1,6 +1,7 @@
 import React from "react";
 import { Scene } from "../components/Scene";
 import { SignupForm } from "../components/SignupForm";
+import { homeGreeting } from "../components/visit";
 import { getEngine } from "../server/engine";
 
 export default function HomePage() {
@@ -19,28 +20,30 @@ export default function HomePage() {
         />
         <div style={{ padding: "0.9rem 1rem 1.1rem" }}>
           <p className="kicker">Glass Bowl · {snap.placeId.replaceAll("-", " ")}</p>
-          <h1 style={{ margin: "0.2rem 0" }}>{snap.awake ? "Zoora is awake" : "Zoora is asleep"}</h1>
-          <p>{snap.feeling}</p>
+          <h1 style={{ margin: "0.2rem 0" }}>{homeGreeting(snap.awake, snap.feeling)}</h1>
           {snap.event ? <p className="muted">{snap.event.text}</p> : null}
         </div>
       </section>
       <section className="card">
-        <p className="kicker">Needs and mood</p>
-        <p>Mood {snap.labels.moodLabel} · energy {snap.labels.energyLabel} · stress {snap.stress.toFixed(2)}</p>
-        <div className="chips">
-          {Object.entries(snap.emotions).map(([name, value]) => (
-            <span className="chip" key={name}>{name} {Number(value).toFixed(2)}</span>
-          ))}
-        </div>
-        <div className="bars" style={{ marginTop: "0.8rem" }}>
-          {needs.map(([name, value]) => (
-            <div className="bar" key={name}>
-              <span>{name}</span>
-              <div className="track"><div className="fill" style={{ width: `${Math.round(Number(value) * 100)}%` }} /></div>
-              <span>{Number(value).toFixed(2)}</span>
-            </div>
-          ))}
-        </div>
+        <p className="kicker">How the water feels</p>
+        <p>{snap.feeling}</p>
+        <details>
+          <summary>The numbers underneath</summary>
+          <p className="muted">Mood {snap.labels.moodLabel} · energy {snap.labels.energyLabel}</p>
+          <div className="chips">
+            {Object.entries(snap.emotions).map(([name, value]) => (
+              <span className="chip" key={name}>{name} {Number(value).toFixed(2)}</span>
+            ))}
+          </div>
+          <div className="bars" style={{ marginTop: "0.8rem" }}>
+            {needs.map(([name, value]) => (
+              <div className="bar" key={name}>
+                <span>{name}</span>
+                <div className="track"><div className="fill" style={{ width: `${Math.round(Number(value) * 100)}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </details>
       </section>
       <section className="card" id="signup" style={{ gridColumn: "1 / -1" }}>
         <h2>Tools for people and AI agents to work together.</h2>
