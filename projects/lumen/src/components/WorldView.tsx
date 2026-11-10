@@ -11,6 +11,7 @@ import { AREAS } from "../world/areas";
 
 const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number]; follow?: boolean }> = {
   overview: { pos: [78, 48, 78], look: [0, 1, 4] },
+  island: { pos: [8, 168, 28], look: [2, 0, 6] },
   town: { pos: [9, 5.2, 11], look: [0, 1.1, -1] },
   art: { pos: [24, 5.4, 14], look: [25, 1.6, 1] },
   music: { pos: [12, 5.2, 24], look: [0, 1.6, 26] },
@@ -99,7 +100,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     const low = new URLSearchParams(window.location.search).get("quality") === "low" || window.innerWidth < 780 || (nav.deviceMemory != null && nav.deviceMemory <= 4);
     setLowDetail(low);
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 220);
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 600);
     const renderer = new THREE.WebGLRenderer({
       antialias: !low,
       alpha: false,
@@ -195,7 +196,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI * 0.49;
     controls.minDistance = 2.2;
-    controls.maxDistance = 90;
+    controls.maxDistance = 240;
     const anim = {
       fromPos: new THREE.Vector3(),
       toPos: new THREE.Vector3(),
@@ -253,7 +254,9 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       const night = altitude <= 0;
       const colors = skyColors(altitude);
       scene.background = new THREE.Color(colors.sky);
-      scene.fog = new THREE.FogExp2(colors.fog, night ? 0.012 : 0.01);
+      scene.fog = viewRef.current === "island"
+        ? new THREE.Fog(colors.fog, 220, 520)
+        : new THREE.FogExp2(colors.fog, night ? 0.012 : 0.01);
       ambient.intensity = colors.ambient;
       ambient.color.set(colors.hemi);
       const sunDir = directionFromHorizon(altitude, skyState?.sunAzimuth ?? 0.4);
@@ -396,7 +399,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         <span>Watching only</span>
       </div>
       <div className="world-hud">
-        {["overview", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "saloon", "saloon-in", "floor", "floor-in", "together", "zoora", "follow"].map((name) => (
+        {["overview", "island", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "saloon", "saloon-in", "floor", "floor-in", "together", "zoora", "follow"].map((name) => (
           <button key={name} type="button" onClick={() => choose(name)}>{name === "follow" && follow ? "following" : name}</button>
         ))}
         <button type="button" onClick={() => setSound((on) => !on)}>{sound ? "Sound on" : "Sound off"}</button>
