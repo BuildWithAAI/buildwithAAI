@@ -4,17 +4,41 @@ import { areaById } from "../world/areas";
 type Height = (x: number, z: number) => number;
 
 /** Original meshes for the added areas. No imported models. */
-export function addExpandedAreas(scene: THREE.Scene, low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { stall: THREE.Mesh; plants: THREE.Object3D[]; shells: THREE.Object3D; fireflies: THREE.Points; beam: THREE.Mesh; screen: THREE.Mesh; pin: THREE.Mesh; tape: THREE.Mesh; saloonSign: THREE.Mesh } {
+export function addExpandedAreas(scene: THREE.Scene, low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): {
+  stall: THREE.Mesh;
+  plants: THREE.Object3D[];
+  shells: THREE.Object3D;
+  fireflies: THREE.Points;
+  beam: THREE.Mesh;
+  screen: THREE.Mesh;
+  pin: THREE.Mesh;
+  tape: THREE.Mesh;
+  saloonSign: THREE.Mesh;
+  doors: THREE.Object3D[];
+  paintTape: (lines: string[]) => void;
+} {
   const beach = buildBeach(low, heightAt);
   const forest = buildForest(low, heightAt);
   const garden = buildGarden(low, heightAt, windows, lamps);
   const market = buildMarket(low, heightAt, windows);
   const light = buildLighthouse(low, heightAt, windows, lamps);
   const research = buildResearch(low, heightAt, windows, lamps);
-  const saloon = buildSaloon(low, heightAt, windows, lamps);
-  const floor = buildFloor(low, heightAt, windows, lamps);
+  const saloon = buildSaloon(low, heightAt, windows);
+  const floor = buildFloor(low, heightAt);
   scene.add(beach.group, forest.group, garden.group, market.group, light.group, research.group, saloon.group, floor.group);
-  return { stall: market.stall, plants: garden.plants, shells: beach.shells, fireflies: forest.fireflies, beam: light.beam, screen: research.screen, pin: research.pin, tape: floor.tape, saloonSign: saloon.sign };
+  return {
+    stall: market.stall,
+    plants: garden.plants,
+    shells: beach.shells,
+    fireflies: forest.fireflies,
+    beam: light.beam,
+    screen: research.screen,
+    pin: research.pin,
+    tape: floor.tape,
+    saloonSign: saloon.sign,
+    doors: saloon.doors,
+    paintTape: floor.paint,
+  };
 }
 
 function buildBeach(low: boolean, heightAt: Height): { group: THREE.Group; shells: THREE.Object3D } {
@@ -215,76 +239,192 @@ function buildResearch(low: boolean, heightAt: Height, windows: THREE.MeshStanda
   return { group, screen, pin };
 }
 
-function buildSaloon(low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { group: THREE.Group; sign: THREE.Mesh } {
+function buildSaloon(low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[]): { group: THREE.Group; sign: THREE.Mesh; doors: THREE.Object3D[] } {
   const spot = areaById("solana-saloon");
   const x = spot?.x ?? 19;
   const z = spot?.z ?? 40;
   const y = heightAt(x, z);
   const group = new THREE.Group();
-  const wood = new THREE.MeshStandardMaterial({ color: 0x8a4b2f, roughness: 0.82 });
-  const trim = new THREE.MeshStandardMaterial({ color: 0xe7d3a1, roughness: 0.55 });
-  const front = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.2, 4.2), wood);
-  front.position.set(x, y + 1.6, z);
-  front.castShadow = !low;
-  const falseFront = new THREE.Mesh(new THREE.BoxGeometry(6.6, 1.3, 0.18), trim);
-  falseFront.position.set(x, y + 3.5, z + 2.1);
-  const porch = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.12, 1.4), wood);
-  porch.position.set(x, y + 0.2, z + 2.6);
-  const postMat = new THREE.MeshStandardMaterial({ color: 0x5c3317, roughness: 0.8 });
-  for (const dx of [-2.4, 2.4]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.2, 0.16), postMat);
-    post.position.set(x + dx, y + 1.2, z + 3.1);
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8a4b2f, roughness: 0.82, side: THREE.DoubleSide });
+  const trim = new THREE.MeshStandardMaterial({ color: 0x14b8a6, roughness: 0.45 });
+  const purple = new THREE.MeshStandardMaterial({ color: 0x6d28d9, roughness: 0.5 });
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.08, 4.4), new THREE.MeshStandardMaterial({ color: 0x5c3317, roughness: 0.9 }));
+  floor.position.set(x, y + 0.04, z);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(6.2, 2.8, 0.16), wood);
+  back.position.set(x, y + 1.45, z - 2.05);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.8, 4.2), wood);
+  left.position.set(x - 3.05, y + 1.45, z);
+  const right = left.clone();
+  right.position.x = x + 3.05;
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.14, 4.8), purple);
+  roof.position.set(x, y + 2.95, z);
+  const falseFront = new THREE.Mesh(new THREE.BoxGeometry(6.8, 1.15, 0.16), trim);
+  falseFront.position.set(x, y + 3.45, z + 2.15);
+  const porch = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.1, 1.5), wood);
+  porch.position.set(x, y + 0.12, z + 2.7);
+  group.add(floor, back, left, right, roof, falseFront, porch);
+  for (const dx of [-2.6, 2.6]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.4, 0.14), purple);
+    post.position.set(x + dx, y + 1.3, z + 3.15);
     group.add(post);
   }
-  const door = new THREE.MeshStandardMaterial({ color: 0x6b3a22, roughness: 0.7 });
-  for (const dx of [-0.28, 0.28]) {
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.3, 0.08), door);
-    wing.position.set(x + dx, y + 0.8, z + 2.16);
-    group.add(wing);
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0xf3e2b8, roughness: 0.4 });
+  const paneMat = new THREE.MeshStandardMaterial({ color: 0x2dd4bf, emissive: 0x14b8a6, emissiveIntensity: 0.55, roughness: 0.2 });
+  windows.push(paneMat);
+  for (const side of [-1, 1]) {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, 1.15), frameMat);
+    frame.position.set(x + side * 3.12, y + 1.7, z);
+    const pane = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.7), paneMat);
+    pane.position.set(x + side * 3.18, y + 1.7, z);
+    pane.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+    const frontFrame = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.7, 0.08), frameMat);
+    frontFrame.position.set(x + side * 1.85, y + 1.85, z + 2.16);
+    const frontPane = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.48), paneMat);
+    frontPane.position.set(x + side * 1.85, y + 1.85, z + 2.22);
+    group.add(frame, pane, frontFrame, frontPane);
   }
-  const signMat = new THREE.MeshBasicMaterial({ color: 0xf3e2b8 });
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.7), signMat);
-  sign.position.set(x, y + 3.5, z + 2.22);
-  group.add(front, falseFront, porch, sign);
-  if (!low) {
-    const lamp = new THREE.PointLight(0xffb15a, 0.2, 10);
-    lamp.position.set(x, y + 2.4, z + 2.4);
-    lamps.push(lamp);
-    group.add(lamp);
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x6b3a22, roughness: 0.65 });
+  const doors: THREE.Object3D[] = [];
+  for (const side of [-1, 1]) {
+    const hinge = new THREE.Group();
+    hinge.position.set(x + side * 0.52, y + 0.85, z + 2.12);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.35, 0.07), doorMat);
+    wing.position.x = side * -0.25;
+    hinge.add(wing);
+    hinge.rotation.y = side * -0.45;
+    doors.push(hinge);
+    group.add(hinge);
   }
-  const glow = new THREE.MeshStandardMaterial({ color: 0xffd7a1, emissive: 0xffb15a, emissiveIntensity: 0.2 });
-  windows.push(glow);
-  return { group, sign };
+  const signBoard = signTexture("SOLANA SALOON", "#3b0764", "#5eead4", "#f8f1d0");
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 0.72), new THREE.MeshBasicMaterial({ map: signBoard }));
+  sign.position.set(x, y + 3.48, z + 2.26);
+  const railMat = new THREE.MeshStandardMaterial({ color: 0x4a2c1a, roughness: 0.8 });
+  for (const dx of [-1.7, 1.7]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.9, 6), railMat);
+    post.position.set(x + dx, y + 0.5, z + 4.15);
+    group.add(post);
+  }
+  const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.2, 6), railMat);
+  rail.rotation.z = Math.PI / 2;
+  rail.position.set(x, y + 0.82, z + 4.15);
+  const barrelMat = new THREE.MeshStandardMaterial({ color: 0x9a5b32, roughness: 0.75 });
+  const hoop = new THREE.MeshStandardMaterial({ color: 0x5eead4, metalness: 0.4, roughness: 0.35 });
+  for (const dx of [-2.35, 2.45]) {
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.55, low ? 6 : 8), barrelMat);
+    barrel.position.set(x + dx, y + 0.32, z + 3.35);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 4, 8), hoop);
+    band.rotation.x = Math.PI / 2;
+    band.position.copy(barrel.position);
+    group.add(barrel, band);
+  }
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.9, 0.55), new THREE.MeshStandardMaterial({ color: 0x6d28d9, roughness: 0.45 }));
+  bar.position.set(x, y + 0.55, z - 1.35);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffc56b }));
+  bulb.position.set(x, y + 2.35, z - 0.4);
+  const lamp = new THREE.PointLight(0xffb15a, 2.4, 9);
+  lamp.position.copy(bulb.position);
+  group.add(sign, rail, bar, bulb, lamp);
+  return { group, sign, doors };
 }
 
-function buildFloor(low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { group: THREE.Group; tape: THREE.Mesh } {
+function buildFloor(low: boolean, heightAt: Height): { group: THREE.Group; tape: THREE.Mesh; paint: (lines: string[]) => void } {
   const spot = areaById("trading-floor");
   const x = spot?.x ?? -42;
   const z = spot?.z ?? -8;
   const y = heightAt(x, z);
   const group = new THREE.Group();
-  const stone = new THREE.MeshStandardMaterial({ color: 0x243044, roughness: 0.7 });
-  const room = new THREE.Mesh(new THREE.BoxGeometry(7.2, 2.6, 4.6), stone);
-  room.position.set(x, y + 1.3, z);
-  room.castShadow = !low;
-  const tapeMat = new THREE.MeshBasicMaterial({ color: 0x102033 });
-  const tape = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.5), tapeMat);
-  tape.position.set(x, y + 1.7, z + 2.32);
-  const desk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 0.8), new THREE.MeshStandardMaterial({ color: 0x1b2836, roughness: 0.5 }));
-  desk.position.set(x, y + 0.7, z + 1.2);
-  group.add(room, tape, desk);
-  for (const dx of [-2.2, 0, 2.2]) {
-    const glow = new THREE.MeshStandardMaterial({ color: 0x7dffa8, emissive: 0x39d98a, emissiveIntensity: 0.35 });
-    windows.push(glow);
-    const pixel = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.7), glow);
-    pixel.position.set(x + dx, y + 1.7, z + 2.2);
-    group.add(pixel);
+  const shell = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.62, side: THREE.DoubleSide });
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.08, 5), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 }));
+  deck.position.set(x, y + 0.04, z);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(7.2, 2.7, 0.14), shell);
+  back.position.set(x, y + 1.4, z - 2.3);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.7, 4.6), shell);
+  left.position.set(x - 3.55, y + 1.4, z);
+  const right = left.clone();
+  right.position.x = x + 3.55;
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.12, 5.1), new THREE.MeshStandardMaterial({ color: 0x6d28d9, roughness: 0.45 }));
+  roof.position.set(x, y + 2.8, z);
+  const glass = new THREE.Mesh(
+    new THREE.PlaneGeometry(6.4, 2.2),
+    new THREE.MeshStandardMaterial({ color: 0x99f6e4, transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.1, side: THREE.DoubleSide }),
+  );
+  glass.position.set(x, y + 1.45, z + 2.35);
+  const frame = new THREE.MeshStandardMaterial({ color: 0x5eead4, roughness: 0.35 });
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.12, 0.12), frame);
+  lintel.position.set(x, y + 2.6, z + 2.35);
+  const sill = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.1, 0.12), frame);
+  sill.position.set(x, y + 0.28, z + 2.35);
+  group.add(deck, back, left, right, roof, glass, lintel, sill);
+  const signBoard = signTexture("ZOORA TRADING FLOOR", "#042f2e", "#c4b5fd", "#f8fafc");
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 0.62), new THREE.MeshBasicMaterial({ map: signBoard }));
+  sign.position.set(x, y + 3.15, z + 2.42);
+  const screen = quoteBoard(["PAPER", "— — —", "— — —"]);
+  const tape = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.7), new THREE.MeshBasicMaterial({ map: screen.texture }));
+  tape.position.set(x, y + 1.65, z - 2.18);
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.7), new THREE.MeshStandardMaterial({ color: 0x134e4a, roughness: 0.45 }));
+  desk.position.set(x + 0.2, y + 0.78, z + 0.15);
+  const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.45, 6), new THREE.MeshStandardMaterial({ color: 0x6d28d9, roughness: 0.5 }));
+  stool.position.set(x + 0.2, y + 0.28, z + 0.7);
+  const bell = new THREE.Mesh(new THREE.SphereGeometry(0.22, low ? 8 : 12, 8), new THREE.MeshStandardMaterial({ color: 0x5eead4, roughness: 0.35, emissive: 0x14b8a6, emissiveIntensity: 0.35 }));
+  bell.position.set(x + 0.2, y + 1.15, z + 0.55);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshStandardMaterial({ color: 0xc4b5fd, roughness: 0.4 }));
+  cap.position.set(x + 0.2, y + 1.38, z + 0.55);
+  const glow = new THREE.PointLight(0x5eead4, 1.6, 8);
+  glow.position.set(x, y + 2.2, z - 1.2);
+  group.add(sign, tape, desk, stool, bell, cap, glow);
+  return { group, tape, paint: screen.paint };
+}
+
+function signTexture(title: string, bg: string, accent: string, ink: string): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 160;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, 1024, 160);
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, 18, 160);
+    ctx.fillRect(1006, 0, 18, 160);
+    ctx.fillStyle = ink;
+    ctx.font = "700 72px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(title, 512, 84);
   }
-  if (!low) {
-    const lamp = new THREE.PointLight(0x7dffa8, 0.12, 9);
-    lamp.position.set(x, y + 2.2, z);
-    lamps.push(lamp);
-    group.add(lamp);
-  }
-  return { group, tape };
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function quoteBoard(lines: string[]): { texture: THREE.CanvasTexture; paint: (next: string[]) => void } {
+  const canvas = document.createElement("canvas");
+  canvas.width = 768;
+  canvas.height = 320;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const paint = (next: string[]) => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#07141c";
+    ctx.fillRect(0, 0, 768, 320);
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillRect(28, 22, 150, 42);
+    ctx.fillStyle = "#1c1917";
+    ctx.font = "700 26px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("PAPER", 48, 51);
+    const rows = next.filter((line) => line !== "PAPER");
+    const shown = rows.length ? rows : ["— — —", "— — —"];
+    shown.slice(0, 4).forEach((line, index) => {
+      const empty = line.includes("—");
+      ctx.fillStyle = empty ? "#64748b" : "#99f6e4";
+      ctx.font = index === shown.length - 1 && !empty ? "22px sans-serif" : "32px sans-serif";
+      ctx.fillText(line.slice(0, 36), 36, 110 + index * 48);
+    });
+    texture.needsUpdate = true;
+  };
+  paint(lines);
+  return { texture, paint };
 }

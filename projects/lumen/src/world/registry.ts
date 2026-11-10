@@ -415,9 +415,10 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
 function tapeLines(db: DatabaseSync): { mode: "PAPER" | "LIVE"; lines: string[] } {
   const board = tape(db);
   const lines = ["PAPER"];
-  if (!board.quotes.length) lines.push("No public quote yet.");
-  for (const quote of board.quotes.slice(0, 3)) lines.push(`${quote.symbol} ${quote.priceUsd} USD`);
-  if (board.positions.length) lines.push(`${board.positions.length} open`);
+  if (!board.quotes.length) lines.push("— — —", "— — —");
+  for (const quote of board.quotes.slice(0, 2)) lines.push(`${quote.symbol} ${quote.priceUsd} USD`);
+  const thesis = board.history[0]?.thesis;
+  lines.push(thesis ? thesis.slice(0, 42) : "— — —");
   return { mode: "PAPER", lines };
 }
 
