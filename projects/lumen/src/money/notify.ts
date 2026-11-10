@@ -96,7 +96,11 @@ export function telegramApiTransport(fetchImpl: typeof fetch = fetch, onError?: 
     }).then((response) => {
       if (!response.ok) throw new Error("TELEGRAM_ALERT_FAILED");
     }).catch((error) => {
-      onError?.(error);
+      try {
+        onError?.(error);
+      } catch {
+        /* a database error on the async path must not escape */
+      }
     });
   };
 }
@@ -123,6 +127,19 @@ export function retryDelayMs(attempt: number): number {
 }
 
 export const ALERT_GIVE_UP_MS = 30 * 60 * 1000;
+/** The same channel and alert can give up again after this window. */
+export const GIVE_UP_NOTICE_WINDOW_MS = 60 * 60 * 1000;
+
+/** A throw inside an async SMTP or Telegram retry must not escape the drain timer. */
+export function guardAsyncRetry(retry: () => void): () => void {
+  return () => {
+    try {
+      retry();
+    } catch {
+      /* a database error on the async path must not escape */
+    }
+  };
+}
 
 type RetryRow = { id: string; kind: string; title: string; detail: string; attempt: number; next_at: number; channel: string; started_at: number };
 
@@ -130,11 +147,11 @@ function giveUpDetail(alert: OwnerAlert, channel: string): string {
   return `${channel}: ${alert.title}: ${alert.detail}`.slice(0, 500);
 }
 
-function noteGiveUp(db: DatabaseSync, alert: OwnerAlert, channel: string): void {
+function noteGiveUp(db: DatabaseSync, alert: OwnerAlert, channel: string, now: number): void {
   const detail = giveUpDetail(alert, channel);
-  const existing = db.prepare("SELECT id FROM owner_alerts WHERE kind = 'delivery' AND title = 'Alert delivery gave up' AND detail = ?").get(detail);
-  if (existing) return;
-  deskNotifier(db).notify({ kind: "delivery", title: "Alert delivery gave up", detail });
+  const recent = db.prepare("SELECT created_at FROM owner_alerts WHERE kind = 'delivery' AND title = 'Alert delivery gave up' AND detail = ? ORDER BY created_at DESC LIMIT 1").get(detail) as { created_at: number } | undefined;
+  if (recent && now - Number(recent.created_at) < GIVE_UP_NOTICE_WINDOW_MS) return;
+  db.prepare("INSERT INTO owner_alerts(id, kind, title, detail, created_at) VALUES(?, 'delivery', 'Alert delivery gave up', ?, ?)").run(randomBytes(8).toString("hex"), detail, now);
 }
 
 export function scheduleAlertRetry(db: DatabaseSync, alert: OwnerAlert, channel: AlertChannel, now = Date.now(), priorAttempt = 0, startedAt = now, giveUpMs = ALERT_GIVE_UP_MS): "scheduled" | "gave_up" {
@@ -143,7 +160,7 @@ export function scheduleAlertRetry(db: DatabaseSync, alert: OwnerAlert, channel:
   const began = existing?.started_at || startedAt || now;
   if (now - began >= giveUpMs) {
     if (existing) db.prepare("DELETE FROM alert_retries WHERE id = ?").run(existing.id);
-    noteGiveUp(db, alert, channel);
+    noteGiveUp(db, alert, channel, now);
     return "gave_up";
   }
   const attempt = existing ? Math.max(existing.attempt, priorAttempt) + 1 : (priorAttempt > 0 ? priorAttempt + 1 : 1);
@@ -174,7 +191,7 @@ export function drainAlertRetries(db: DatabaseSync, deliver: (alert: OwnerAlert,
     const began = row.started_at || now;
     if (now - began >= giveUpMs) {
       db.prepare("DELETE FROM alert_retries WHERE id = ?").run(row.id);
-      noteGiveUp(db, alert, channel);
+      noteGiveUp(db, alert, channel, now);
       gaveUp += 1;
       continue;
     }
@@ -191,7 +208,7 @@ export function drainAlertRetries(db: DatabaseSync, deliver: (alert: OwnerAlert,
 
 export function deliverDueAlerts(db: DatabaseSync, env: AlertEnv, now = Date.now()): { sent: number; gaveUp: number } {
   return drainAlertRetries(db, (alert, channel, attempt, startedAt) => {
-    const again = () => { scheduleAlertRetry(db, alert, channel, Date.now(), attempt, startedAt); };
+    const again = guardAsyncRetry(() => { scheduleAlertRetry(db, alert, channel, Date.now(), attempt, startedAt); });
     if (channel === "email") {
       if (!emailConfigured(env)) throw new Error("EMAIL_NOT_CONFIGURED");
       void deliverSmtp(env, { to: env.LUMEN_ALERT_EMAIL_TO ?? "", from: env.LUMEN_ALERT_EMAIL_FROM ?? "", subject: `Zoora: ${alert.title}`, text: alert.detail }).catch(again);

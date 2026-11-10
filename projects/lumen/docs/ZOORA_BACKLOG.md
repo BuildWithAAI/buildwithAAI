@@ -4,13 +4,13 @@ Future runs take one unchecked item at a time, then test it, then stop. Do not s
 
 ## High priority — re-review 7
 
-Do these before the life, business, and polish items.
+Done in the follow-up to the research station. Leave them checked. The full R7a fix is still open under blocker 4.
 
-- [ ] R7b: backfill the merchant column from the old note for existing rows.
-- [ ] R7c: key the give-up notice per time window, not by exact text forever. The same alert gives up again 3 hours later and a new notice is written.
-- [ ] R7d: include merchant in the ledger tamper-detection hash, with a migration.
-- [ ] R7a interim: case-insensitive, normalized merchant matching. `PAPER SHOP INC` matches `paper-shop`.
-- [ ] Low: catch errors in the async retry path of the drain timer.
+- [x] R7b: backfill the merchant column from the old note for existing rows.
+- [x] R7c: key the give-up notice per time window, not by exact text forever. The same alert gives up again 3 hours later and a new notice is written.
+- [x] R7d: include merchant in the ledger tamper-detection hash, with a migration.
+- [x] R7a interim: case-insensitive, normalized merchant matching. `PAPER SHOP INC` matches `paper-shop`.
+- [x] Low: catch errors in the async retry path of the drain timer.
 
 The full R7a fix stays with blocker 4. Issuer activity still has to supply the merchant and the time, and descriptors still have to be mapped. Do not build that here.
 

@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { migrateMerchantHashes } from "../money/ledger";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -228,6 +229,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "alert_retries", "channel", "channel TEXT NOT NULL DEFAULT 'email'");
   ensureColumn(db, "alert_retries", "started_at", "started_at INTEGER NOT NULL DEFAULT 0");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
+  migrateMerchantHashes(db);
   return db;
 }
 

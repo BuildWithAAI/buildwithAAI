@@ -1,6 +1,6 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { openDatabase } from "../src/db/db";
+import { kvSet, openDatabase } from "../src/db/db";
 import net from "node:net";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,10 +9,10 @@ import { allowLogin, clientAddress } from "../src/auth/owner";
 import { executeIntent, resolutionProvider, resolveUnknown, resolveUnknownClaim } from "../src/money/execute";
 import { createEngine } from "../src/server/engine";
 import { MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers";
-import { Ledger, moneyView } from "../src/money/ledger";
+import { Ledger, bodyHash, canonical, merchantFromLegacyNote, migrateMerchantHashes, moneyView, verifyLedgerChain } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
-import { compareRecords } from "../src/money/reconcile";
-import { ALERT_GIVE_UP_MS, buildOwnerNotifier, deliverSmtp, deskClock, drainAlertRetries, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
+import { compareRecords, normalizeMerchant } from "../src/money/reconcile";
+import { ALERT_GIVE_UP_MS, buildOwnerNotifier, deliverSmtp, deskClock, drainAlertRetries, guardAsyncRetry, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
 import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
 import { refundFormBody, stripeSalesClient, verifyStripeSignature } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
@@ -701,5 +701,82 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect(two).toEqual([{ code: "PROVIDER_ONLY", provider: "privacy", providerTransactionId: "pc_2", detail: "Provider purchase is missing from the ledger." }]);
     expect(compareRecords(rows, [{ ...charge, providerTransactionId: "pc_other", merchant: "other.example.com" }], ["privacy"], ["purchase"])[0]?.code).toBe("PROVIDER_ONLY");
     expect(compareRecords(rows, [{ ...charge, providerTransactionId: "pc_late", atMs: atMs + 73 * 60 * 60 * 1000 }], ["privacy"], ["purchase"])[0]?.code).toBe("PROVIDER_ONLY");
+  });
+
+  it("matches a merchant name after case and suffix normalization", () => {
+    expect(normalizeMerchant("PAPER SHOP INC")).toBe(normalizeMerchant("paper-shop"));
+    expect(normalizeMerchant("Paper Shop, Inc.")).toBe("paper-shop");
+    const db = openDatabase();
+    const atMs = Date.UTC(2026, 10, 9, 22);
+    new Ledger(db).append({
+      id: "norm-1",
+      atMs,
+      kind: "purchase",
+      amountCents: 500,
+      status: "unconfirmed",
+      provider: "privacy",
+      providerTransactionId: "unknown",
+      idempotencyKey: "exec:norm",
+      ref: "norm",
+      note: "art_supplies at paper-shop. id:unknown.",
+      merchant: "paper-shop",
+    });
+    const matched = compareRecords(new Ledger(db).list(), [{
+      provider: "privacy",
+      providerTransactionId: "pc_norm",
+      amountCents: 500,
+      kind: "purchase",
+      merchant: "PAPER SHOP INC",
+      atMs,
+    }], ["privacy"], ["purchase"]);
+    expect(matched).toEqual([]);
+  });
+
+  it("backfills merchant from the old note and hashes it into the chain", () => {
+    expect(merchantFromLegacyNote("Reserved before issuer. art_supplies at shop.example.com.")).toBe("shop.example.com");
+    expect(merchantFromLegacyNote("art_supplies at paper-shop. Expression need is above 0.85.")).toBe("paper-shop");
+    const db = openDatabase();
+    const note = "Reserved before issuer. art_supplies at shop.example.com.";
+    const legacy = createHash("sha256").update(canonical({
+      kind: "approval",
+      amountCents: 100,
+      status: "intent",
+      provider: null,
+      providerTransactionId: null,
+      chargeId: null,
+      paymentIntentId: null,
+      ref: "old-1",
+      note,
+    })).digest("hex");
+    const entry = createHash("sha256").update(`GENESIS${legacy}`).digest("hex");
+    db.prepare(
+      `INSERT INTO ledger_entries
+        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, prev_hash, entry_hash)
+       VALUES (?, ?, 'approval', 100, 'usd', 'intent', NULL, NULL, NULL, NULL, ?, ?, 'old-1', ?, NULL, 'GENESIS', ?)`,
+    ).run("old-1", Date.UTC(2026, 10, 1), "reserve:old-1", legacy, note, entry);
+    kvSet(db, "ledger_hash_version", "1");
+    migrateMerchantHashes(db);
+    const row = new Ledger(db).list()[0];
+    expect(row?.merchant).toBe("shop.example.com");
+    expect(row?.bodyHash).toBe(bodyHash(row!));
+    expect(verifyLedgerChain(db)).toBe(true);
+    expect(bodyHash({ ...row!, merchant: "paper-shop" })).not.toBe(row?.bodyHash);
+  });
+
+  it("writes a new give-up notice when the same alert gives up again 3 hours later", () => {
+    const db = openDatabase();
+    const at = Date.UTC(2026, 10, 9, 12);
+    const source = { kind: "dispute" as const, title: "New dispute", detail: "du_again" };
+    const giveUp = (when: number) => {
+      reportDeliveryFailure(db, new Error("down"), when, source, "email");
+      db.prepare("UPDATE alert_retries SET started_at = ?, next_at = ? WHERE channel = 'email' AND detail = ?").run(when - ALERT_GIVE_UP_MS - 1, when, source.detail);
+      expect(drainAlertRetries(db, () => { throw new Error("last"); }, when).gaveUp).toBe(1);
+    };
+    giveUp(at);
+    giveUp(at + 3 * 60 * 60 * 1000);
+    const notices = db.prepare("SELECT created_at FROM owner_alerts WHERE title = 'Alert delivery gave up' AND detail = ?").all("email: New dispute: du_again") as { created_at: number }[];
+    expect(notices).toHaveLength(2);
+    expect(notices[1]!.created_at - notices[0]!.created_at).toBe(3 * 60 * 60 * 1000);
+    expect(() => guardAsyncRetry(() => { throw new Error("db down"); })()).not.toThrow();
   });
 });

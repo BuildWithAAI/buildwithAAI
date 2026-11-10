@@ -14,6 +14,14 @@ export type Mismatch = { code: string; provider: string; providerTransactionId: 
 
 const DEFAULT_KINDS = ["sale", "refund", "payout", "dispute", "purchase"];
 const UNKNOWN_WINDOW_MS = 72 * 60 * 60 * 1000;
+const MERCHANT_SUFFIX = /-(inc|llc|ltd|corp|company|co)$/;
+
+/** Compare merchants without case, punctuation, or a trailing company suffix. */
+export function normalizeMerchant(value: string): string {
+  let name = value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  while (MERCHANT_SUFFIX.test(name)) name = name.replace(MERCHANT_SUFFIX, "");
+  return name;
+}
 
 /** A keeper attested a charge but the issuer id was not available. Reconciliation must not treat this as a mismatch. */
 export const UNKNOWN_PROVIDER_ID = "unknown";
@@ -97,9 +105,12 @@ export function compareRecords(rows: LedgerRow[], external: ProviderRecord[], pr
   for (const index of unused) {
     const record = pool[index];
     if (!record) continue;
-    if (record.kind === "purchase" && record.merchant && record.atMs != null) {
+    const merchant = record.merchant ?? "";
+    if (record.kind === "purchase" && merchant && record.atMs != null) {
+      const named = normalizeMerchant(merchant);
       const slot = unknownLeft.findIndex((row) =>
-        row.merchant === record.merchant
+        named.length > 0
+        && normalizeMerchant(row.merchant ?? "") === named
         && Math.abs(row.amountCents) === record.amountCents
         && Math.abs(record.atMs! - row.atMs) <= UNKNOWN_WINDOW_MS);
       if (slot >= 0) {

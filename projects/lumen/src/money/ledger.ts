@@ -49,7 +49,68 @@ export function bodyHash(input: LedgerInput): string {
     paymentIntentId: input.paymentIntentId ?? null,
     ref: input.ref ?? null,
     note: input.note,
+    merchant: input.merchant ?? null,
   })).digest("hex");
+}
+
+/** Pull a merchant out of a note written before the merchant column existed. */
+export function merchantFromLegacyNote(note: string): string | null {
+  const at = note.match(/ at (.+?)(?:\. |$)/);
+  if (at?.[1]) {
+    const merchant = at[1].replace(/\.$/, "").trim();
+    if (merchant) return merchant;
+  }
+  const hold = note.match(/^(?:decline|queue|auto_approve|needs_approval):[A-Z0-9_]+:[A-Za-z0-9._-]+:(.+)$/);
+  if (hold?.[1]) return hold[1].trim();
+  return null;
+}
+
+export function backfillMerchants(db: DatabaseSync): number {
+  const rows = db.prepare("SELECT id, note FROM ledger_entries WHERE merchant IS NULL OR merchant = ''").all() as { id: string; note: string }[];
+  if (!rows.length) return 0;
+  db.exec("DROP TRIGGER IF EXISTS ledger_no_update");
+  const update = db.prepare("UPDATE ledger_entries SET merchant = ? WHERE id = ? AND (merchant IS NULL OR merchant = '')");
+  let filled = 0;
+  for (const row of rows) {
+    const merchant = merchantFromLegacyNote(row.note ?? "");
+    if (!merchant) continue;
+    update.run(merchant, row.id);
+    filled += 1;
+  }
+  db.exec("CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+  return filled;
+}
+
+/** Recompute the chain so the merchant is inside the tamper hash. */
+export function migrateMerchantHashes(db: DatabaseSync): void {
+  const version = db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string } | undefined;
+  if (version?.value === "2") return;
+  backfillMerchants(db);
+  const rows = new Ledger(db).list();
+  db.exec("DROP TRIGGER IF EXISTS ledger_no_update");
+  const update = db.prepare("UPDATE ledger_entries SET body_hash = ?, prev_hash = ?, entry_hash = ? WHERE id = ?");
+  let prev = "GENESIS";
+  for (const row of rows) {
+    const hash = bodyHash(row);
+    const entry = createHash("sha256").update(prev + hash).digest("hex");
+    if (row.bodyHash !== hash || row.prevHash !== prev || row.entryHash !== entry) update.run(hash, prev, entry, row.id);
+    prev = entry;
+  }
+  db.exec("CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+  db.prepare("INSERT INTO kv(key, value) VALUES('ledger_hash_version', '2') ON CONFLICT(key) DO UPDATE SET value = '2'").run();
+}
+
+export function verifyLedgerChain(db: DatabaseSync): boolean {
+  const rows = new Ledger(db).list();
+  let prev = "GENESIS";
+  for (const row of rows) {
+    const hash = bodyHash(row);
+    if (hash !== row.bodyHash || row.prevHash !== prev) return false;
+    const entry = createHash("sha256").update(prev + hash).digest("hex");
+    if (entry !== row.entryHash) return false;
+    prev = entry;
+  }
+  return true;
 }
 
 export class Ledger {
