@@ -84,6 +84,7 @@ describe("public mode", () => {
     const fly = readFileSync(new URL("../fly.toml", import.meta.url), "utf8");
     expect(readFileSync(new URL("../next.config.ts", import.meta.url), "utf8")).toContain('output: "standalone"');
     expect(docker).toContain('CMD ["node", "server.js"]');
+    expect(docker).toContain("COPY --from=build /app/public ./public");
     expect(docker).toContain("HEALTHCHECK");
     expect(docker).toContain("/healthz");
     expect(entry).toContain("gosu node");

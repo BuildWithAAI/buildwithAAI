@@ -1,5 +1,12 @@
 import type { DatabaseSync } from "node:sqlite";
 
+export const DOWNLOAD_LICENSE = "AI-generated. Licensed for personal use. This is not a transfer of ownership or copyright.";
+
+export function labelDownload(body: string): string {
+  if (body.includes(DOWNLOAD_LICENSE)) return body;
+  return `<!-- ${DOWNLOAD_LICENSE} -->\n${body}`;
+}
+
 /** A paid delivery stays readable until it expires. A kill switch does not hide it. */
 export function readDeliveryToken(db: DatabaseSync, token: string, now: number): { creationId: string } | null {
   const row = db.prepare("SELECT creation_id, expires_at FROM deliveries WHERE token = ?").get(token) as { creation_id: string; expires_at: number } | undefined;

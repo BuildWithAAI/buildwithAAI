@@ -180,7 +180,8 @@ CREATE TABLE IF NOT EXISTS price_quotes (
   symbol TEXT NOT NULL,
   price_usd TEXT NOT NULL,
   price_sol TEXT NOT NULL,
-  quoted_at INTEGER NOT NULL
+  quoted_at INTEGER NOT NULL,
+  pair_created_at INTEGER
 );
 CREATE TABLE IF NOT EXISTS expected_spends (
   intent_id TEXT PRIMARY KEY,
@@ -450,6 +451,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "deliveries", "charge_id", "charge_id TEXT");
   ensureColumn(db, "deliveries", "payment_intent_id", "payment_intent_id TEXT");
   ensureColumn(db, "shop_orders", "payment_intent_id", "payment_intent_id TEXT");
+  ensureColumn(db, "price_quotes", "pair_created_at", "pair_created_at INTEGER");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   return db;

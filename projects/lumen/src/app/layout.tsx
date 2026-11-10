@@ -1,6 +1,8 @@
 import React from "react";
 import type { Metadata } from "next";
 import { publicModeOn } from "../auth/publicMode";
+import { moneyLive } from "../money/rules";
+import { AiNotice } from "../components/AiNotice";
 import { Nav } from "../components/Nav";
 import { SiteFooter } from "../components/SiteFooter";
 import "./globals.css";
@@ -13,7 +15,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://zoora.ai"),
   title: "Zoora",
   description: DESCRIPTION,
-  alternates: { canonical: "https://zoora.ai/" },
+  alternates: { canonical: "./" },
   icons: { icon: "/favicon.svg" },
   openGraph: {
     title: "Zoora",
@@ -32,7 +34,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <Nav showKeeper={!publicModeOn()} />
+        <AiNotice />
+        <Nav showKeeper={!publicModeOn()} showMoney={moneyLive()} />
         <main className="wrap">{children}</main>
         <SiteFooter />
       </body>

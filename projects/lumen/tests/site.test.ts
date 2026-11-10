@@ -55,7 +55,9 @@ describe("zoora.ai site", () => {
     expect(fly).not.toMatch(/LUMEN_MONEY_LIVE\s*=/);
     expect(fly).not.toMatch(/sk_live_|STRIPE_|KIT_/);
     const layout = readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
-    expect(layout).toContain("https://zoora.ai/");
+    expect(layout).toContain('metadataBase: new URL("https://zoora.ai")');
+    expect(layout).toContain('canonical: "./"');
+    expect(layout).not.toContain('canonical: "https://zoora.ai/"');
     expect(layout).toContain("Zoora is building tools for people and AI agents to work together.");
     expect(readFileSync(new URL("../public/favicon.svg", import.meta.url), "utf8")).toContain("<svg");
   });

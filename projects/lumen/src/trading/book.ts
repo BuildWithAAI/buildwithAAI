@@ -25,7 +25,7 @@ export type TradeDecision = { ok: true; mode: "paper" | "live" } | { ok: false; 
 
 const MINT = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
-export function tradingLive(env: TradeEnv): boolean {
+export function tradingLive(env: TradeEnv = process.env): boolean {
   return env.LUMEN_TRADING_LIVE === "true";
 }
 
@@ -69,10 +69,11 @@ export type DexPair = {
   priceNative?: string;
   liquidity?: { usd?: number };
   labels?: string[];
+  pairCreatedAt?: number;
   baseToken?: { address?: string; symbol?: string };
 };
 
-export function parseDexQuote(json: { pairs?: DexPair[] }, mint: string, at: number): { symbol: string; priceUsd: string; priceSol: string; liquidityUsd: number; labels: string[] } | null {
+export function parseDexQuote(json: { pairs?: DexPair[] }, mint: string, at: number): { symbol: string; priceUsd: string; priceSol: string; liquidityUsd: number; labels: string[]; pairCreatedAt: number | null } | null {
   const pair = (json.pairs ?? []).find((item) => (item.baseToken?.address ?? "").toLowerCase() === mint.toLowerCase()) ?? json.pairs?.[0];
   if (!pair?.priceUsd || !pair.priceNative) return null;
   if (!positive(pair.priceUsd) || !positive(pair.priceNative)) return null;
@@ -82,6 +83,7 @@ export function parseDexQuote(json: { pairs?: DexPair[] }, mint: string, at: num
     priceSol: pair.priceNative,
     liquidityUsd: pair.liquidity?.usd ?? 0,
     labels: pair.labels ?? [],
+    pairCreatedAt: typeof pair.pairCreatedAt === "number" ? pair.pairCreatedAt : null,
   };
 }
 
@@ -124,8 +126,8 @@ export function flagUnknown(db: DatabaseSync, _now: number): void {
   setFlag(db, "trading_unknown", "1");
 }
 
-export function tape(db: DatabaseSync): { mode: "PAPER" | "LIVE"; quotes: { symbol: string; priceUsd: string; priceSol: string; quotedAt: number }[]; positions: { symbol: string; usdCents: number; solMicro: number }[]; history: { symbol: string; side: string; result: string | null; thesis: string; exitPlan: string; quotedAt: number; mode: string }[]; pnl: { usdCents: number; solMicro: number; paperUsdCents: number; paperSolMicro: number; liveUsdCents: number; liveSolMicro: number } } {
-  const quotes = db.prepare("SELECT symbol, price_usd, price_sol, quoted_at FROM price_quotes ORDER BY quoted_at DESC LIMIT 6").all() as { symbol: string; price_usd: string; price_sol: string; quoted_at: number }[];
+export function tape(db: DatabaseSync, env: TradeEnv = process.env): { mode: "PAPER" | "LIVE"; showLivePnl: boolean; quotes: { symbol: string; priceUsd: string; priceSol: string; quotedAt: number; pairCreatedAt: number | null }[]; positions: { symbol: string; usdCents: number; solMicro: number }[]; history: { symbol: string; side: string; result: string | null; thesis: string; exitPlan: string; quotedAt: number; mode: string }[]; pnl: { usdCents: number; solMicro: number; paperUsdCents: number; paperSolMicro: number; liveUsdCents: number; liveSolMicro: number } } {
+  const quotes = db.prepare("SELECT symbol, price_usd, price_sol, quoted_at, pair_created_at FROM price_quotes ORDER BY quoted_at DESC LIMIT 6").all() as { symbol: string; price_usd: string; price_sol: string; quoted_at: number; pair_created_at: number | null }[];
   const open = db.prepare("SELECT symbol, usd_cents, sol_micro FROM paper_trades WHERE status = 'open'").all() as { symbol: string; usd_cents: number; sol_micro: number }[];
   const history = db.prepare("SELECT symbol, side, result, thesis, exit_plan, quoted_at, mode FROM paper_trades ORDER BY created_at DESC LIMIT 8").all() as { symbol: string; side: string; result: string | null; thesis: string; exit_plan: string; quoted_at: number; mode: string }[];
   const closed = db.prepare("SELECT result, mode FROM paper_trades WHERE status = 'closed' AND result IS NOT NULL").all() as { result: string; mode: string }[];
@@ -140,10 +142,11 @@ export function tape(db: DatabaseSync): { mode: "PAPER" | "LIVE"; quotes: { symb
       totals.paperSol += parsed.solMicro ?? 0;
     }
   }
-  const live = history.some((row) => row.mode === "live");
+  const live = tradingLive(env);
   return {
     mode: live ? "LIVE" : "PAPER",
-    quotes: quotes.map((row) => ({ symbol: row.symbol, priceUsd: row.price_usd, priceSol: row.price_sol, quotedAt: row.quoted_at })),
+    showLivePnl: live,
+    quotes: quotes.map((row) => ({ symbol: row.symbol, priceUsd: row.price_usd, priceSol: row.price_sol, quotedAt: row.quoted_at, pairCreatedAt: row.pair_created_at })),
     positions: open.map((row) => ({ symbol: row.symbol, usdCents: row.usd_cents, solMicro: row.sol_micro })),
     history: history.map((row) => ({ symbol: row.symbol, side: row.side, result: row.result, thesis: row.thesis, exitPlan: row.exit_plan, quotedAt: row.quoted_at, mode: row.mode })),
     pnl: {
@@ -168,9 +171,9 @@ function book(db: DatabaseSync, proposal: TradeProposal, quote: NonNullable<Retu
   const id = `tr-${randomBytes(4).toString("hex")}`;
   const solMicro = solNotional(proposal.usdCents, quote.priceUsd, quote.priceSol);
   db.prepare(
-    `INSERT INTO price_quotes(mint, symbol, price_usd, price_sol, quoted_at) VALUES(?, ?, ?, ?, ?)
-     ON CONFLICT(mint) DO UPDATE SET symbol = excluded.symbol, price_usd = excluded.price_usd, price_sol = excluded.price_sol, quoted_at = excluded.quoted_at`,
-  ).run(proposal.mint, quote.symbol, quote.priceUsd, quote.priceSol, now);
+    `INSERT INTO price_quotes(mint, symbol, price_usd, price_sol, quoted_at, pair_created_at) VALUES(?, ?, ?, ?, ?, ?)
+     ON CONFLICT(mint) DO UPDATE SET symbol = excluded.symbol, price_usd = excluded.price_usd, price_sol = excluded.price_sol, quoted_at = excluded.quoted_at, pair_created_at = excluded.pair_created_at`,
+  ).run(proposal.mint, quote.symbol, quote.priceUsd, quote.priceSol, now, quote.pairCreatedAt ?? null);
   if (proposal.side === "sell") {
     const open = db.prepare("SELECT id, usd_cents, sol_micro FROM paper_trades WHERE mint = ? AND status = 'open' AND mode = ? ORDER BY created_at ASC LIMIT 1").get(proposal.mint, mode) as { id: string; usd_cents: number; sol_micro: number } | undefined;
     const pnl = open ? { usdCents: proposal.usdCents - open.usd_cents, solMicro: solMicro - open.sol_micro } : { usdCents: 0, solMicro: 0 };

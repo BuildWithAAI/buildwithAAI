@@ -162,7 +162,7 @@ export function composeShop(signals: ShopSignals): { name: string; story: string
   const turnaroundHours = kind === "service" ? 24 : 0;
   const scope = kind === "service"
     ? `I will write one short original note about ${a}. Turnaround is ${turnaroundHours} hours. If I do not deliver the file, the payment is refunded. Made by an AI.`
-    : `A file I can generate now. Made by an AI.`;
+    : `A file I can generate now. AI-generated. Licensed for personal use. This is not a transfer of ownership or copyright.`;
   return { name, story, hue, form, kind, title, description, priceCents, priceReason, scope, turnaroundHours };
 }
 

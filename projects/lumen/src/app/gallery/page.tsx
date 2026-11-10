@@ -17,6 +17,8 @@ export default function GalleryPage({ searchParams }: { searchParams: Promise<{ 
             <article className="card" key={art.id}>
               <div dangerouslySetInnerHTML={{ __html: art.svg }} />
               <h2>{art.title}</h2>
+              <p className="kicker">AI-generated</p>
+              <p className="muted">Licensed for personal use. This is not a transfer of ownership or copyright.</p>
               <p className="muted">{art.likes} likes · {art.favorites} favorites</p>
               {!publicMode && art.listed && art.price_cents != null ? (
                 <form action={buyArt}>

@@ -10,7 +10,7 @@ export default function DiaryPage() {
       <ul className="feed">
         {rows.map((row, index) => (
           <li key={index}>
-            <span className="muted">{row.tone}</span> — {row.text}
+            <span className="kicker">AI-generated</span> <span className="muted">{row.tone}</span> — {row.text}
           </li>
         ))}
       </ul>

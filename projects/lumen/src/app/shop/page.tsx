@@ -18,10 +18,10 @@ export default function ShopPage({ searchParams }: { searchParams: Promise<{ sal
       {listings.length === 0 ? <p>No listings are out.</p> : null}
       {listings.map((item) => (
         <article className="card" key={item.id} style={{ marginTop: "1rem" }}>
-          <p className="kicker">{item.kind} · made by an AI</p>
+          <p className="kicker">{item.kind} · AI-generated</p>
           <h2>{item.title}</h2>
           <p>{item.description}</p>
-          <p className="muted">{item.scope}</p>
+          <p className="muted">{item.scope} Licensed for personal use. This is not a transfer of ownership or copyright.</p>
           <p>${(item.priceCents / 100).toFixed(2)}</p>
           {open ? (
             <form action={shopBuy}>
@@ -30,7 +30,7 @@ export default function ShopPage({ searchParams }: { searchParams: Promise<{ sal
               <button type="submit">Pay by card</button>
             </form>
           ) : (
-            <p className="muted">Card checkout is not open. No card payment is taken. This is not live.</p>
+            <p className="muted">Checkout is closed. No card payment is taken. This is not live.</p>
           )}
           {sol ? (
             <form action={solQuote}>

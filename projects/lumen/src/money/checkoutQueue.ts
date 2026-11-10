@@ -48,7 +48,8 @@ function luhnOk(digits: string): boolean {
   return sum % 10 === 0;
 }
 
-const PAN_SEPARATORS = /[\s.,·:|_/–—\-\u200b]/g;
+const CARD_JOIN = /[.\-_/·,:–—|\u200b]/g;
+const AMAZON_ANYWHERE = /\d{3}-\d{7}-\d{7}/g;
 
 function foldIndicDigits(value: string): string {
   return value.replace(/[\u0660-\u0669\u06f0-\u06f9]/g, (char) => {
@@ -58,20 +59,39 @@ function foldIndicDigits(value: string): string {
   });
 }
 
+function cardRun(digits: string): boolean {
+  return digits.length >= 13 && digits.length <= 19 && luhnOk(digits);
+}
+
 function looksLikePan(value: string): boolean {
   const normalized = foldIndicDigits(value.normalize("NFKC")).trim();
   if (AMAZON_ORDER.test(normalized)) return false;
-  const joined = normalized.replace(PAN_SEPARATORS, "");
-  const runs = joined.match(/\d{13,}/g) ?? [];
-  return runs.some((run) => {
-    const span = run.length > 80 ? run.slice(0, 80) : run;
-    for (let length = 13; length <= 19; length += 1) {
-      for (let start = 0; start + length <= span.length; start += 1) {
-        if (luhnOk(span.slice(start, start + length))) return true;
+  const withoutAmazon = normalized.replace(AMAZON_ANYWHERE, " ");
+  const chunks = withoutAmazon.split(/\s+/).filter(Boolean);
+  let spaced = "";
+  let found = false;
+  const takeSpaced = () => {
+    if (cardRun(spaced)) found = true;
+    spaced = "";
+  };
+  for (const chunk of chunks) {
+    const stripped = chunk.replace(CARD_JOIN, "");
+    if (/^\d+$/.test(stripped)) {
+      if (spaced.length + stripped.length > 19) {
+        spaced = stripped.length <= 19 ? stripped : "";
+        if (cardRun(stripped)) found = true;
+        continue;
       }
+      spaced += stripped;
+      continue;
     }
-    return false;
-  });
+    takeSpaced();
+    for (const run of stripped.match(/\d+/g) ?? []) {
+      if (cardRun(run)) found = true;
+    }
+  }
+  takeSpaced();
+  return found;
 }
 
 export function enqueueCheckout(db: DatabaseSync, env: Env, intent: PurchaseIntent, now: number): { ok: true; id: string } | { ok: false; reason: string } {

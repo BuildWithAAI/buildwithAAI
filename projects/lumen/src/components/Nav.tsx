@@ -1,15 +1,16 @@
+import React from "react";
 import Link from "next/link";
 
-export function Nav({ showKeeper = false }: { showKeeper?: boolean }) {
+export function Nav({ showKeeper = false, showMoney = false }: { showKeeper?: boolean; showMoney?: boolean }) {
   return (
     <nav className="nav">
       <strong>Zoora</strong>
       <Link href="/">Bowl</Link>
       <Link href="/world">World</Link>
       <Link href="/build">Build</Link>
-      <Link href="/shop">Shop</Link>
+      {showMoney ? <Link href="/shop">Shop</Link> : null}
       <Link href="/floor">Floor</Link>
-      <Link href="/books">Books</Link>
+      {showMoney ? <Link href="/books">Books</Link> : null}
       <Link href="/gallery">Gallery</Link>
       <Link href="/prints">Prints</Link>
       <Link href="/diary">Diary</Link>

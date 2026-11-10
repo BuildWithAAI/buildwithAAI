@@ -8,6 +8,7 @@ import { visibleBuilds } from "./creative";
 import { readShop } from "../shop/store";
 import { tape } from "../trading/book";
 import { publicWishLines } from "../wishlist/board";
+import { SIMULATED, publicQuotes } from "../trading/public";
 import { recordProvenance } from "../build/provenance";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
@@ -421,9 +422,10 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
 
 function tapeLines(db: DatabaseSync): { mode: "PAPER" | "LIVE"; lines: string[] } {
   const board = tape(db);
-  const lines: string[] = [board.mode];
-  if (!board.quotes.length) lines.push("— — —", "— — —");
-  for (const quote of board.quotes.slice(0, 2)) lines.push(`${quote.symbol} ${quote.priceUsd} USD`);
+  const lines: string[] = [board.mode, SIMULATED];
+  const quotes = publicQuotes(board.quotes, Date.now());
+  if (!quotes.length) lines.push("— — —");
+  for (const quote of quotes.slice(0, 2)) lines.push(`${quote.symbol} ${quote.priceUsd} USD`);
   const thesis = board.history[0]?.thesis;
   lines.push(thesis ? thesis.slice(0, 42) : "— — —");
   return { mode: board.mode, lines };

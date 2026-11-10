@@ -1,4 +1,6 @@
 import { Ledger, moneyView } from "../../money/ledger";
+import { moneyLive } from "../../money/rules";
+import { tradingLive } from "../../trading/book";
 import { getEngine } from "../../server/engine";
 
 function money(cents: number): string {
@@ -10,10 +12,10 @@ export default function BooksPage() {
   const view = moneyView(new Ledger(getEngine().db).list());
   return (
     <div className="card">
-      <p className="kicker">Public books</p>
+      <p className="kicker">{tradingLive() ? "LIVE" : "PAPER"}</p>
       <h1>Confirmed balance</h1>
       <p className="money">{money(view.confirmedCents)}</p>
-      <p className="muted">Only rows a provider confirmed. Unconfirmed and mock rows are not included. This is not a live money product.</p>
+      <p className="muted">Only rows a provider confirmed. Unconfirmed and mock rows are not included. {moneyLive() ? "Live money is on." : "Checkout is closed. This is not live."}</p>
       <table>
         <tbody>
           <tr><th>Sales, gross</th><td>{money(view.salesCents)}</td></tr>
