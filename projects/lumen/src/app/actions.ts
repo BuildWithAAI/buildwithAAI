@@ -64,6 +64,16 @@ export async function wishAction(form: FormData) {
   await getEngine().wishlistAct(String(form.get("id") ?? ""), action);
 }
 
+export async function creativeAction(form: FormData) {
+  await gate();
+  const engine = getEngine();
+  const op = String(form.get("op") ?? "");
+  if (op === "on") engine.setCreative(true);
+  if (op === "off") engine.setCreative(false);
+  if (op === "hide") engine.hideBuild(String(form.get("id") ?? ""));
+  if (op === "undo") engine.undoBuild(String(form.get("id") ?? ""));
+}
+
 export async function controlAction(form: FormData) {
   await gate();
   const key = form.get("key") === "spend" ? "spend" : "kill";

@@ -230,6 +230,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     requestAnimationFrame(resize);
 
     let frame = 0;
+    const buildPieces = new Map<string, THREE.Group>();
     let feedKey = "";
     let diaryKey = "";
     let logKey = "";
@@ -290,6 +291,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         svgKey = snap.easel.svg;
         paintSvg(easelBoard, snap.easel.svg);
       }
+      syncBuilds(scene, buildPieces, snap.builds ?? []);
       const researchText = `${snap.research?.question ?? ""}|${(snap.research?.pins ?? []).join("|")}`;
       if (researchText !== researchKey) {
         researchKey = researchText;
@@ -441,6 +443,71 @@ function ease(t: number): number {
 
 function fade(edge0: number, edge1: number, value: number): number {
   return ease((value - edge0) / Math.max(0.0001, edge1 - edge0));
+}
+
+function syncBuilds(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds: { id: string; kind: string; title: string; x: number; z: number; size: number; yaw: number }[]): void {
+  const seen = new Set<string>();
+  for (const build of builds) {
+    seen.add(build.id);
+    let group = pieces.get(build.id);
+    if (!group) {
+      group = makeBuildPiece(build.kind, build.size, build.title);
+      pieces.set(build.id, group);
+      scene.add(group);
+    }
+    group.position.set(build.x, terrainHeight(build.x, build.z), build.z);
+    group.rotation.y = build.yaw;
+  }
+  for (const [id, group] of pieces) {
+    if (seen.has(id)) continue;
+    scene.remove(group);
+    pieces.delete(id);
+  }
+}
+
+function makeBuildPiece(kind: string, size: number, title: string): THREE.Group {
+  const group = new THREE.Group();
+  const clay = (color: number, emissive = 0x000000) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.02, emissive, emissiveIntensity: emissive ? 0.35 : 0 });
+  const add = (mesh: THREE.Mesh, y: number) => {
+    mesh.position.y = y;
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+  if (kind === "bench") {
+    add(new THREE.Mesh(new THREE.BoxGeometry(size * 1.3, 0.08, size * 0.42), clay(0x8d6a45)), 0.42);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.08), clay(0x5c4632)), 0.2);
+  } else if (kind === "garden") {
+    add(new THREE.Mesh(new THREE.CylinderGeometry(size * 0.55, size * 0.6, 0.08, 8), clay(0x6a4a32)), 0.04);
+    add(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.55, 6), clay(0x2f8f55)), 0.34);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), clay(0xf2d26b)), 0.62);
+  } else if (kind === "structure") {
+    add(new THREE.Mesh(new THREE.BoxGeometry(size, size * 0.7, size * 0.8), clay(0xd7c4a3)), size * 0.35);
+    add(new THREE.Mesh(new THREE.ConeGeometry(size * 0.72, 0.36, 4), clay(0x8e4d3c)), size * 0.85);
+  } else if (kind === "sign" || kind === "path") {
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), clay(0x6b5140)), 0.35);
+    add(new THREE.Mesh(new THREE.BoxGeometry(size * 0.9, 0.36, 0.06), clay(0xf4e1a8)), 0.78);
+  } else if (kind === "mural") {
+    add(new THREE.Mesh(new THREE.BoxGeometry(size * 1.2, size * 0.8, 0.06), clay(0x243044)), size * 0.5);
+    add(new THREE.Mesh(new THREE.BoxGeometry(size * 0.3, size * 0.5, 0.08), clay(0x3ec6c6, 0x146666)), size * 0.55);
+  } else if (kind === "music") {
+    for (const [index, height] of [0.45, 0.7, 0.55].entries()) {
+      const chime = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, height, 8), clay(0xd7e7ff, 0x335577));
+      chime.position.set((index - 1) * 0.18, height / 2, 0);
+      group.add(chime);
+    }
+  } else if (kind === "art") {
+    add(new THREE.Mesh(new THREE.TorusGeometry(size * 0.28, 0.05, 8, 16), clay(0xf08a5d, 0x662211)), 0.55);
+    add(new THREE.Mesh(new THREE.OctahedronGeometry(size * 0.22, 0), clay(0x7fdbda, 0x114444)), 0.95);
+  } else {
+    add(new THREE.Mesh(new THREE.SphereGeometry(size * 0.22, 12, 8), clay(0x9be7c4, 0x145544)), 0.28);
+    add(new THREE.Mesh(new THREE.TorusGeometry(size * 0.18, 0.03, 6, 12), clay(0xe8fff4)), 0.5);
+  }
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+  label.position.y = size + 0.8;
+  label.scale.set(1.8, 0.6, 1);
+  paintLabel(label, title);
+  group.add(label);
+  return group;
 }
 
 function terrainHeight(x: number, z: number): number {

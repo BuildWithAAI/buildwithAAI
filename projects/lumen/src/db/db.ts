@@ -214,6 +214,50 @@ CREATE TABLE IF NOT EXISTS research_pending (
   snippet TEXT NOT NULL,
   at_ms INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS world_builds (
+  id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL,
+  place_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  why TEXT NOT NULL,
+  emotion TEXT NOT NULL,
+  x REAL NOT NULL,
+  z REAL NOT NULL,
+  size REAL NOT NULL,
+  yaw REAL NOT NULL,
+  status TEXT NOT NULL,
+  materials INTEGER NOT NULL,
+  influenced INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS world_build_versions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  build_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS creative_log (
+  build_id TEXT PRIMARY KEY,
+  sha TEXT NOT NULL,
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  at_ms INTEGER NOT NULL,
+  undone INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS telegram_outbox (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS telegram_drops (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chat_id TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS research_briefs (
   idea_id TEXT PRIMARY KEY,
   problem TEXT NOT NULL,

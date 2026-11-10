@@ -34,5 +34,6 @@ export type PublicWorld = {
   tune: { notes: number[]; title: string } | null;
   easel: { title: string; svg: string } | null;
   research: { idea: string | null; question: string; pins: string[] };
+  builds: { id: string; kind: string; title: string; x: number; z: number; size: number; yaw: number }[];
   watchOnly: true;
 };

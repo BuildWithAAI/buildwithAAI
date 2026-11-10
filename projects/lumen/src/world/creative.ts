@@ -1,0 +1,410 @@
+import { randomBytes } from "node:crypto";
+import type { DatabaseSync } from "node:sqlite";
+import type { EmotionName, Emotions } from "../brain/types";
+import { flag, kvGet, kvSet, setFlag } from "../db/db";
+import { scrubInstructions } from "../research/ideas";
+import { AREAS, areaById, type AreaId, type BuildSlot } from "./areas";
+import type { BuildEntry } from "../build/log";
+
+export const BUILD_KINDS = ["decoration", "art", "garden", "structure", "sign", "mural", "music", "path", "bench"] as const;
+export type BuildKind = (typeof BUILD_KINDS)[number];
+export type BuildStatus = "placed" | "hidden" | "undone";
+
+export const DAILY_BUILD_CAP = 6;
+export const PLACE_BUILD_CAP = 3;
+export const DAILY_MATERIALS = 12;
+export const DOOR_CLEARANCE = 2.3;
+export const PATH_CLEARANCE = 1.7;
+
+const KIND_COST: Record<BuildKind, number> = {
+  decoration: 1,
+  sign: 1,
+  bench: 2,
+  garden: 2,
+  art: 2,
+  music: 2,
+  path: 2,
+  mural: 3,
+  structure: 3,
+};
+
+const KIND_SIZE: Record<BuildKind, number> = {
+  decoration: 0.7,
+  sign: 0.8,
+  bench: 1,
+  garden: 0.9,
+  art: 1.1,
+  music: 0.85,
+  path: 1.2,
+  mural: 1.3,
+  structure: 1.4,
+};
+
+export type WorldBuild = {
+  id: string;
+  version: number;
+  placeId: AreaId;
+  kind: BuildKind;
+  title: string;
+  why: string;
+  emotion: string;
+  x: number;
+  z: number;
+  size: number;
+  yaw: number;
+  status: BuildStatus;
+  materials: number;
+  influenced: boolean;
+  createdAt: number;
+};
+
+export type CreativeSignals = {
+  emotions: Emotions;
+  placeId: string;
+  ideaTitle: string | null;
+  ideaSourceKey: string | null;
+  memory: string | null;
+  research: string | null;
+};
+
+type BuildRow = {
+  id: string;
+  version: number;
+  place_id: string;
+  kind: string;
+  title: string;
+  why: string;
+  emotion: string;
+  x: number;
+  z: number;
+  size: number;
+  yaw: number;
+  status: string;
+  materials: number;
+  influenced: number;
+  created_at: number;
+};
+
+/** World builds never become purchase intents. */
+export function creativeSpendIntents(): [] {
+  return [];
+}
+
+export function creativeEnabled(db: DatabaseSync): boolean {
+  return flag(db, "creative_building", "1") === "1";
+}
+
+export function setCreativeEnabled(db: DatabaseSync, on: boolean): void {
+  setFlag(db, "creative_building", on ? "1" : "0");
+}
+
+export function chicagoDay(ms: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+}
+
+export function materialsLeft(db: DatabaseSync, now: number): number {
+  const spent = Number(kvGet(db, `materials-spent:${chicagoDay(now)}`) ?? "0");
+  return Math.max(0, DAILY_MATERIALS - (Number.isFinite(spent) ? spent : 0));
+}
+
+export function listBuilds(db: DatabaseSync): WorldBuild[] {
+  const rows = db.prepare("SELECT * FROM world_builds ORDER BY created_at DESC").all() as BuildRow[];
+  return rows.map(toBuild);
+}
+
+export function visibleBuilds(db: DatabaseSync): WorldBuild[] {
+  return listBuilds(db).filter((build) => build.status === "placed");
+}
+
+export function creativeLogEntries(db: DatabaseSync): BuildEntry[] {
+  const rows = db.prepare("SELECT sha, title, summary, at_ms FROM creative_log WHERE undone = 0 ORDER BY at_ms DESC").all() as { sha: string; title: string; summary: string; at_ms: number }[];
+  return rows.map((row) => ({
+    sha: row.sha,
+    title: row.title,
+    summary: row.summary,
+    date: new Date(row.at_ms).toISOString(),
+    image: "",
+  }));
+}
+
+/** Visitors cannot place a build. A flagged note can only inspire Zoora's own proposal. */
+export function visitorBuildRequest(): { ok: false; reason: "VISITOR" } {
+  return { ok: false, reason: "VISITOR" };
+}
+
+export function slotWorld(placeId: AreaId, slot: BuildSlot): { x: number; z: number } {
+  const area = areaById(placeId);
+  if (!area) return { x: slot.dx, z: slot.dz };
+  return { x: area.x + slot.dx, z: area.z + slot.dz };
+}
+
+export function positionAllowed(placeId: string, x: number, z: number): { ok: true } | { ok: false; reason: string } {
+  const area = areaById(placeId);
+  if (!area) return { ok: false, reason: "PLACE" };
+  const onSlot = area.buildSlots.some((slot) => {
+    const world = slotWorld(area.id, slot);
+    return Math.hypot(world.x - x, world.z - z) < 0.2;
+  });
+  if (!onSlot) return { ok: false, reason: "ZONE" };
+  if (Math.hypot(x - area.x, z - area.z) < DOOR_CLEARANCE) return { ok: false, reason: "DOOR" };
+  for (const other of AREAS) {
+    if (other.id === "town-center") continue;
+    if (pointSegmentDistance(x, z, 0, 0, other.x, other.z) < PATH_CLEARANCE) return { ok: false, reason: "PATH" };
+  }
+  if (area.id === "beach-dock") {
+    const len = Math.hypot(area.x, area.z) || 1;
+    const outward = ((x - area.x) * area.x + (z - area.z) * area.z) / len;
+    if (outward > 0.8) return { ok: false, reason: "DOCK" };
+  }
+  return { ok: true };
+}
+
+export function chooseCreative(signals: CreativeSignals): { placeId: AreaId; kind: BuildKind; emotion: string; title: string; why: string; influenced: boolean } {
+  const emotion = hottest(signals.emotions);
+  const kind = kindFor(emotion, signals.placeId);
+  const placeId = placeFor(emotion, signals.placeId);
+  const influenced = Boolean(signals.ideaSourceKey);
+  const idea = influenced ? "" : scrubInstructions(signals.ideaTitle ?? "");
+  const memory = influenced ? "" : scrubInstructions(signals.memory ?? "");
+  const research = influenced ? "" : scrubInstructions(signals.research ?? "");
+  const title = titleFor(kind, emotion, idea);
+  const why = whyFor(kind, emotion, placeId, idea, memory, research, influenced);
+  return { placeId, kind, emotion, title, why, influenced };
+}
+
+export function placeCreative(db: DatabaseSync, signals: CreativeSignals, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
+  if (!creativeEnabled(db)) return { ok: false, reason: "OFF" };
+  if (creativeSpendIntents().length) return { ok: false, reason: "SPEND" };
+  const draft = chooseCreative(signals);
+  if (!BUILD_KINDS.includes(draft.kind)) return { ok: false, reason: "KIND" };
+  const size = KIND_SIZE[draft.kind];
+  if (size < 0.4 || size > 1.6) return { ok: false, reason: "SIZE" };
+  const day = chicagoDay(now);
+  const today = listBuilds(db).filter((build) => build.status !== "undone" && chicagoDay(build.createdAt) === day);
+  if (today.length >= DAILY_BUILD_CAP) return { ok: false, reason: "DAY_CAP" };
+  const cost = KIND_COST[draft.kind];
+  if (materialsLeft(db, now) < cost) return { ok: false, reason: "MATERIALS" };
+  const order = [draft.placeId, ...AREAS.map((area) => area.id).filter((id) => id !== draft.placeId)];
+  let chosen: { areaId: AreaId; slot: BuildSlot } | null = null;
+  let sawFull = false;
+  for (const placeId of order) {
+    const area = areaById(placeId);
+    if (!area) continue;
+    const occupying = listBuilds(db).filter((build) => build.placeId === placeId && build.status !== "undone");
+    if (occupying.length >= PLACE_BUILD_CAP) {
+      sawFull = true;
+      continue;
+    }
+    const slot = area.buildSlots.find((candidate) => {
+      const world = slotWorld(area.id, candidate);
+      if (!positionAllowed(area.id, world.x, world.z).ok) return false;
+      return occupying.every((build) => Math.hypot(build.x - world.x, build.z - world.z) >= 1.5);
+    });
+    if (slot) {
+      chosen = { areaId: area.id, slot };
+      break;
+    }
+  }
+  if (!chosen) return { ok: false, reason: sawFull ? "PLACE_CAP" : "ZONE" };
+  const world = slotWorld(chosen.areaId, chosen.slot);
+  const why = whyFor(draft.kind, draft.emotion, chosen.areaId, draft.influenced ? "" : scrubInstructions(signals.ideaTitle ?? ""), draft.influenced ? "" : scrubInstructions(signals.memory ?? ""), draft.influenced ? "" : scrubInstructions(signals.research ?? ""), draft.influenced);
+  const id = `build-${randomBytes(6).toString("hex")}`;
+  const build: WorldBuild = {
+    id,
+    version: 1,
+    placeId: chosen.areaId,
+    kind: draft.kind,
+    title: draft.title,
+    why,
+    emotion: draft.emotion,
+    x: world.x,
+    z: world.z,
+    size,
+    yaw: Math.atan2(chosen.slot.dx, chosen.slot.dz),
+    status: "placed",
+    materials: cost,
+    influenced: draft.influenced,
+    createdAt: now,
+  };
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    insertBuild(db, build);
+    recordVersion(db, build, now);
+    const spent = DAILY_MATERIALS - materialsLeft(db, now);
+    kvSet(db, `materials-spent:${day}`, String(spent + cost));
+    db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(build.why, now);
+    db.prepare("INSERT INTO creative_log(build_id, sha, title, summary, at_ms, undone) VALUES(?, ?, ?, ?, ?, 0)").run(
+      build.id,
+      build.id.slice(0, 12),
+      build.title,
+      build.why,
+      now,
+    );
+    db.exec("COMMIT");
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    throw error;
+  }
+  return { ok: true, build };
+}
+
+export function hideBuild(db: DatabaseSync, id: string, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
+  return changeStatus(db, id, "placed", "hidden", now);
+}
+
+export function undoBuild(db: DatabaseSync, id: string, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
+  const current = listBuilds(db).find((build) => build.id === id);
+  if (!current || current.status === "undone") return { ok: false, reason: "NOT_PLACED" };
+  const changed = changeStatus(db, id, current.status, "undone", now);
+  if (!changed.ok) return changed;
+  db.prepare("UPDATE creative_log SET undone = 1 WHERE build_id = ?").run(id);
+  if (chicagoDay(current.createdAt) === chicagoDay(now)) {
+    const key = `materials-spent:${chicagoDay(now)}`;
+    const spent = Number(kvGet(db, key) ?? "0");
+    kvSet(db, key, String(Math.max(0, spent - current.materials)));
+  }
+  return changed;
+}
+
+export function buildVersions(db: DatabaseSync, id: string): { version: number; status: string; atMs: number }[] {
+  const rows = db.prepare("SELECT version, status, at_ms FROM world_build_versions WHERE build_id = ? ORDER BY version ASC").all(id) as { version: number; status: string; at_ms: number }[];
+  return rows.map((row) => ({ version: row.version, status: row.status, atMs: row.at_ms }));
+}
+
+function changeStatus(db: DatabaseSync, id: string, from: string, to: BuildStatus, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
+  const current = listBuilds(db).find((build) => build.id === id);
+  if (!current || (from !== current.status && to !== "undone")) return { ok: false, reason: "NOT_PLACED" };
+  if (current.status === "undone") return { ok: false, reason: "NOT_PLACED" };
+  if (to === "hidden" && current.status !== "placed") return { ok: false, reason: "NOT_PLACED" };
+  const next = { ...current, status: to, version: current.version + 1 };
+  db.prepare("UPDATE world_builds SET status = ?, version = ? WHERE id = ?").run(to, next.version, id);
+  recordVersion(db, next, now);
+  return { ok: true, build: next };
+}
+
+function insertBuild(db: DatabaseSync, build: WorldBuild): void {
+  db.prepare(
+    `INSERT INTO world_builds(id, version, place_id, kind, title, why, emotion, x, z, size, yaw, status, materials, influenced, created_at)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(build.id, build.version, build.placeId, build.kind, build.title, build.why, build.emotion, build.x, build.z, build.size, build.yaw, build.status, build.materials, build.influenced ? 1 : 0, build.createdAt);
+}
+
+function recordVersion(db: DatabaseSync, build: WorldBuild, now: number): void {
+  db.prepare("INSERT INTO world_build_versions(build_id, version, status, at_ms) VALUES(?, ?, ?, ?)").run(build.id, build.version, build.status, now);
+}
+
+function toBuild(row: BuildRow): WorldBuild {
+  return {
+    id: row.id,
+    version: row.version,
+    placeId: row.place_id as AreaId,
+    kind: row.kind as BuildKind,
+    title: row.title,
+    why: row.why,
+    emotion: row.emotion,
+    x: row.x,
+    z: row.z,
+    size: row.size,
+    yaw: row.yaw,
+    status: row.status as BuildStatus,
+    materials: row.materials,
+    influenced: row.influenced === 1,
+    createdAt: row.created_at,
+  };
+}
+
+export function creativeBoard(db: DatabaseSync, now: number): { on: boolean; left: number; builds: WorldBuild[] } {
+  return { on: creativeEnabled(db), left: materialsLeft(db, now), builds: listBuilds(db).slice(0, 16) };
+}
+
+export function considerCreative(db: DatabaseSync, state: { emotions: Emotions; placeId: string; longTerm: { text: string }[] }, now: number): WorldBuild | null {
+  if (!creativeEnabled(db)) return null;
+  const last = Number(kvGet(db, "creative_last_at") ?? "0");
+  if (Number.isFinite(last) && last > 0 && now - last < 30 * 60_000) return null;
+  const idea = db.prepare("SELECT title, source_key FROM ideas ORDER BY updated_at DESC LIMIT 1").get() as { title: string; source_key: string | null } | undefined;
+  const research = db.prepare("SELECT question FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { question: string } | undefined;
+  const placed = placeCreative(db, {
+    emotions: state.emotions,
+    placeId: state.placeId || "town-center",
+    ideaTitle: idea?.title ?? null,
+    ideaSourceKey: idea?.source_key ?? null,
+    memory: state.longTerm[0]?.text ?? null,
+    research: research?.question ?? null,
+  }, now);
+  if (!placed.ok) return null;
+  kvSet(db, "creative_last_at", String(now));
+  return placed.build;
+}
+
+function hottest(emotions: Emotions): EmotionName {
+  let best: EmotionName = "calm";
+  let score = -1;
+  for (const [name, value] of Object.entries(emotions) as [EmotionName, number][]) {
+    if (value > score) {
+      best = name;
+      score = value;
+    }
+  }
+  return best;
+}
+
+function kindFor(emotion: EmotionName, placeId: string): BuildKind {
+  if (placeId === "music-studio" && (emotion === "loneliness" || emotion === "calm")) return "music";
+  if (placeId === "garden-greenhouse" && emotion === "calm") return "garden";
+  if (emotion === "joy" || emotion === "pride") return "art";
+  if (emotion === "calm") return "garden";
+  if (emotion === "curiosity") return "sign";
+  if (emotion === "loneliness") return "music";
+  if (emotion === "frustration") return "bench";
+  if (emotion === "worry") return "structure";
+  if (emotion === "boredom") return "decoration";
+  return "mural";
+}
+
+function placeFor(emotion: EmotionName, current: string): AreaId {
+  const preferred: Partial<Record<EmotionName, AreaId>> = {
+    joy: "art-studio",
+    pride: "art-studio",
+    calm: "garden-greenhouse",
+    curiosity: "research-station",
+    loneliness: "music-studio",
+    frustration: "forest-trail",
+    worry: "lighthouse-hill",
+    boredom: "town-center",
+  };
+  const wanted = preferred[emotion] ?? "town-center";
+  if (areaById(current)?.buildSlots.length) return (preferred[emotion] && emotion !== "boredom" ? wanted : current) as AreaId;
+  return wanted;
+}
+
+function titleFor(kind: BuildKind, emotion: string, idea: string): string {
+  const named = idea ? idea.split(" ").slice(0, 4).join(" ") : "";
+  const base: Record<BuildKind, string> = {
+    decoration: "A glass charm",
+    art: "A small installation",
+    garden: "A garden plot",
+    structure: "A low shelter",
+    sign: "A painted sign",
+    mural: "A wall of color",
+    music: "A chime stand",
+    path: "A short spur",
+    bench: "A resting bench",
+  };
+  const title = named ? `${base[kind]} for ${named}` : `${base[kind]}`;
+  return `${title} (${emotion})`.slice(0, 80);
+}
+
+function whyFor(kind: BuildKind, emotion: string, placeId: string, idea: string, memory: string, research: string, influenced: boolean): string {
+  const place = areaById(placeId)?.label ?? placeId;
+  if (influenced) return `I set a ${kind} at ${place} because I feel ${emotion}. A visitor note is flagged, so the words stay off the island. This shape cannot spend.`;
+  const extra = [idea && `The idea was ${idea}.`, memory && `I remembered ${memory}.`, research && `Research left ${research}.`].filter(Boolean).join(" ");
+  return `I set a ${kind} at ${place} because I feel ${emotion}. ${extra} Materials are from the island, not money.`.replace(/\s+/g, " ").trim().slice(0, 280);
+}
+
+function pointSegmentDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+  const abx = bx - ax;
+  const abz = bz - az;
+  const ab2 = abx * abx + abz * abz;
+  const t = ab2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * abx + (pz - az) * abz) / ab2));
+  return Math.hypot(px - (ax + abx * t), pz - (az + abz * t));
+}

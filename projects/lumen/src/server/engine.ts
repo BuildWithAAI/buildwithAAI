@@ -21,6 +21,7 @@ import { researchChatReply } from "../research/ideas";
 import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
 import { stripeSalesClient } from "../money/stripe";
+import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
 
@@ -75,6 +76,10 @@ export function createEngine(env: Env, file?: string) {
     jarvisView: () => jarvisView(db, env),
     jarvisTalk: (text: string) => ownerChat(db, env, text, "jarvis-chat", "jarvis"),
     issueWorldToken: (name: string) => issueAgent(db, name, Date.now()),
+    creativeBoard: () => creativeBoard(db, Date.now()),
+    setCreative: (on: boolean) => setCreativeEnabled(db, on),
+    hideBuild: (id: string) => hideWorldBuild(db, id, Date.now()),
+    undoBuild: (id: string) => undoWorldBuild(db, id, Date.now()),
   };
 }
 
@@ -186,6 +191,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
   }
   saveState(db, lived);
   persistTick(db, result, now);
+  try { considerCreative(db, lived, now); } catch { /* a build failure must not stop the tick */ }
   syncZoora(db, lived, now);
   stepMote(db, now);
   const ctx = policyContext(db, env);

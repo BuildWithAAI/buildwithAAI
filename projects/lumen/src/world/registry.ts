@@ -4,6 +4,7 @@ import { makeSvg, artTitle } from "../brain/art";
 import { feelingSentence } from "../brain/emotions";
 import { eventOf } from "../brain/events";
 import { researching, stationView } from "../research/run";
+import { visibleBuilds } from "./creative";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
@@ -386,6 +387,15 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
     easel: easel ? { title: String(easel.title), svg: String(easel.svg) } : null,
     research: stationView(db),
     gardenGrowth: gardenGrowth(db, now),
+    builds: visibleBuilds(db).map((build) => ({
+      id: build.id,
+      kind: build.kind,
+      title: build.title,
+      x: build.x,
+      z: build.z,
+      size: build.size,
+      yaw: build.yaw,
+    })),
     watchOnly: true,
   };
 }

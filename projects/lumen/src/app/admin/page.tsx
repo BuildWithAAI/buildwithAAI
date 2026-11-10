@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, creativeAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
@@ -16,7 +16,9 @@ export default async function AdminPage() {
     redirect("/admin/login");
   }
   const publicMode = publicModeOn();
-  const snap = getEngine().snapshot();
+  const engine = getEngine();
+  const snap = engine.snapshot();
+  const creative = engine.creativeBoard();
   return (
     <div className="grid">
       <section className="card" style={{ gridColumn: "1 / -1" }}>
@@ -146,6 +148,36 @@ export default async function AdminPage() {
               {proposal.kind} · {proposal.status} · {proposal.payload}
               {proposal.status === "proposed" ? (
                 <form action={proposalAction}><input type="hidden" name="id" value={proposal.id} /><button type="submit">Approve proposal</button></form>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="card" style={{ gridColumn: "1 / -1" }}>
+        <h2>Creative building</h2>
+        <p className="muted">Zoora spends island materials, not money. {creative.left} materials left today. Building is {creative.on ? "on" : "off"}.</p>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value={creative.on ? "off" : "on"} />
+          <button type="submit">{creative.on ? "Turn creative building off" : "Turn creative building on"}</button>
+        </form>
+        <ul className="feed">
+          {creative.builds.map((build) => (
+            <li key={build.id}>
+              <strong>{build.title}</strong> · {build.kind} · {build.placeId} · v{build.version} · {build.status}
+              <p>{build.why}</p>
+              {build.status === "placed" ? (
+                <form action={creativeAction}>
+                  <input type="hidden" name="op" value="hide" />
+                  <input type="hidden" name="id" value={build.id} />
+                  <button type="submit">Hide</button>
+                </form>
+              ) : null}
+              {build.status !== "undone" ? (
+                <form action={creativeAction}>
+                  <input type="hidden" name="op" value="undo" />
+                  <input type="hidden" name="id" value={build.id} />
+                  <button type="submit">Undo</button>
+                </form>
               ) : null}
             </li>
           ))}
