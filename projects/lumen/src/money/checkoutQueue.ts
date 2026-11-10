@@ -48,7 +48,7 @@ function luhnOk(digits: string): boolean {
   return sum % 10 === 0;
 }
 
-const CARD_JOIN = /[.\-_/·,:–—|\u200b]/g;
+const CARD_JOIN = /[.\-_/·,:–—|]|\p{Cf}/gu;
 const AMAZON_ANYWHERE = /\d{3}-\d{7}-\d{7}/g;
 
 function foldIndicDigits(value: string): string {
@@ -65,11 +65,29 @@ function trackingDigits(digits: string): boolean {
   return digits.length === 15 && digits.startsWith("96");
 }
 
+/** UPS 1Z is 18 characters. A Luhn-valid card parked after 1Z is not a tracking number. */
+function upsTracking(compact: string): boolean {
+  const match = /^1Z([0-9A-Z]{16})$/i.exec(compact);
+  if (!match) return false;
+  const tail = match[1] ?? "";
+  return !(/^\d{16}$/.test(tail) && luhnOk(tail));
+}
+
 function trackingToken(token: string): boolean {
   const compact = token.replace(/[\s-]/g, "");
-  if (/^1Z[0-9A-Z]{16}$/i.test(compact)) return true;
+  if (upsTracking(compact)) return true;
   const digits = compact.replace(/\D/g, "");
   return digits === compact && trackingDigits(digits);
+}
+
+/** USPS Mod 10. The rightmost data digit has weight 3, and the last digit is the check. */
+function uspsMod10(digits: string): boolean {
+  if (!((digits.length === 20 || digits.length === 22) && digits.startsWith("9"))) return false;
+  let sum = 0;
+  for (let i = digits.length - 2, weight = 3; i >= 0; i -= 1, weight = weight === 3 ? 1 : 3) {
+    sum += (digits.charCodeAt(i) - 48) * weight;
+  }
+  return (10 - (sum % 10)) % 10 === digits.charCodeAt(digits.length - 1) - 48;
 }
 
 function knownIin(digits: string): boolean {
@@ -87,48 +105,24 @@ function knownIin(digits: string): boolean {
   return false;
 }
 
-/** Repeated padding. A single extra digit counts only outside a 15-digit tracking number. */
-function sidePadding(side: string): boolean {
-  if (side.length === 0) return true;
-  return /^(.)\1*$/.test(side);
-}
-
 function cardWindow(window: string): boolean {
   return window.length >= 13 && window.length <= 19 && knownIin(window) && luhnOk(window);
 }
 
-/** A real card with repeated digits on both sides, not a single extra digit. */
-function paddedCard(digits: string): boolean {
-  if (digits.length === 15) return false;
-  if (!trackingDigits(digits)) return false;
+/** A 9… number of 20 or 22 digits hides a card unless the whole number is a real USPS check. */
+function nineTrackingCard(digits: string): boolean {
+  if (!((digits.length === 20 || digits.length === 22) && digits.startsWith("9"))) return false;
+  if (uspsMod10(digits)) return false;
   for (let length = 13; length <= 19; length += 1) {
-    if (length >= digits.length) continue;
     for (let start = 0; start + length <= digits.length; start += 1) {
-      const window = digits.slice(start, start + length);
-      if (!cardWindow(window)) continue;
-      const prefix = digits.slice(0, start);
-      const suffix = digits.slice(start + length);
-      if (sidePadding(prefix) && sidePadding(suffix) && prefix.length + suffix.length > 0) return true;
+      if (cardWindow(digits.slice(start, start + length))) return true;
     }
   }
   return false;
 }
 
-/** Card inside a 9… tracking length whose prefix and suffix are not repeated padding. */
-function wrappedCard(digits: string): boolean {
-  if (!((digits.length === 20 || digits.length === 22) && digits.startsWith("9"))) return false;
-  for (let length = 16; length <= 16; length += 1) {
-    for (let start = 2; start + length <= digits.length - 2; start += 1) {
-      const window = digits.slice(start, start + length);
-      if (!cardWindow(window)) continue;
-      const prefix = digits.slice(0, start);
-      const suffix = digits.slice(start + length);
-      if (prefix.length < 2 || suffix.length < 2) continue;
-      if (sidePadding(prefix) || sidePadding(suffix)) continue;
-      return true;
-    }
-  }
-  return false;
+function joinSingleLetters(value: string): string {
+  return value.replace(/(\d)[A-Za-z](?=\d)/g, "$1");
 }
 
 function edgeCard(digits: string): boolean {
@@ -147,7 +141,7 @@ function luhnWindow(digits: string): boolean {
     if (luhnOk(digits)) return true;
     return edgeCard(digits);
   }
-  if ((digits.length === 20 || digits.length === 22) && digits.startsWith("9")) return paddedCard(digits) || wrappedCard(digits);
+  if ((digits.length === 20 || digits.length === 22) && digits.startsWith("9")) return nineTrackingCard(digits);
   if (digits.length >= 20 && digits.length <= 22) return edgeCard(digits);
   if (digits.length > 22) {
     for (let length = 13; length <= 19; length += 1) {
@@ -163,11 +157,18 @@ function looksLikePan(value: string): boolean {
   const normalized = foldIndicDigits(value.normalize("NFKC")).trim();
   if (AMAZON_ORDER.test(normalized)) return false;
   const compact = normalized.replace(/[\s-]/g, "");
-  const separated = /[\s-]/.test(normalized);
-  if (/^1Z[0-9A-Z]{16}$/i.test(compact)) return false;
-  if (!separated && /^\d+$/.test(compact) && trackingDigits(compact)) return paddedCard(compact) || wrappedCard(compact);
+  if (upsTracking(compact)) return false;
+  const oneZCard = /^1Z(\d{16})$/i.exec(compact);
+  if (oneZCard?.[1] && luhnOk(oneZCard[1])) return true;
   const withoutAmazon = normalized.replace(AMAZON_ANYWHERE, " ");
-  const chunks = withoutAmazon.split(/\s+/).filter(Boolean);
+  CARD_JOIN.lastIndex = 0;
+  const flattened = joinSingleLetters(withoutAmazon.replace(CARD_JOIN, ""));
+  const flatCompact = flattened.replace(/\s+/g, "");
+  if (/^\d+$/.test(flatCompact) && flatCompact.length === 15 && flatCompact.startsWith("96")) return false;
+  if (/^\d+$/.test(flatCompact) && (flatCompact.length === 20 || flatCompact.length === 22) && flatCompact.startsWith("9")) {
+    return nineTrackingCard(flatCompact);
+  }
+  const chunks = flattened.split(/\s+/).filter(Boolean);
   let groups: string[] = [];
   let found = false;
   const takeGroups = () => {
@@ -176,27 +177,30 @@ function looksLikePan(value: string): boolean {
       if (group.length >= 13 && group.length <= 19 && luhnOk(group)) found = true;
     }
     const joined = groups.join("");
-    if (groups.length === 1) {
+    if (joined.length === 15 && joined.startsWith("96")) {
+      groups = [];
+      return;
+    }
+    if ((joined.length === 20 || joined.length === 22) && joined.startsWith("9")) {
+      if (nineTrackingCard(joined)) found = true;
+    } else if (groups.length === 1) {
       if (luhnWindow(joined)) found = true;
-    } else if ((joined.length === 20 || joined.length === 22) && joined.startsWith("9")) {
-      if (paddedCard(joined)) found = true;
     } else if (joined.length >= 20 && joined.length <= 22) {
       if (edgeCard(joined)) found = true;
     } else if (luhnWindow(joined)) found = true;
     groups = [];
   };
   for (const chunk of chunks) {
-    const stripped = chunk.replace(CARD_JOIN, "");
-    if (trackingToken(chunk)) {
+    if (trackingToken(chunk) && !(chunk.replace(/\D/g, "").length >= 20 && chunk.replace(/\D/g, "").startsWith("9"))) {
       takeGroups();
       continue;
     }
-    if (/^\d+$/.test(stripped)) {
-      groups.push(stripped);
+    if (/^\d+$/.test(chunk)) {
+      groups.push(chunk);
       continue;
     }
     takeGroups();
-    for (const run of stripped.match(/\d+/g) ?? []) {
+    for (const run of chunk.match(/\d+/g) ?? []) {
       if (luhnWindow(run)) found = true;
     }
   }

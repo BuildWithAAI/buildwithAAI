@@ -115,7 +115,11 @@ body.immersive { overflow: hidden; }
   z-index: 3;
   max-width: 14rem;
   margin: 0;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
   transform: translate(-50%, -120%);
   background: rgba(6, 18, 22, 0.88);
   border: 1px solid var(--line);
@@ -128,7 +132,20 @@ body.immersive { overflow: hidden; }
   64%, 82% { opacity: 0; }
   94%, 100% { opacity: 1; }
 }
-body.immersive .banner { position: fixed; z-index: 6; top: 0.6rem; left: 0.6rem; right: 0.6rem; margin: 0; background: #1a1210; }
+body.immersive .banner {
+  position: fixed;
+  z-index: 4;
+  top: 4.8rem;
+  left: 0.6rem;
+  right: 0.6rem;
+  margin: 0;
+  background: #1a1210;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.7rem;
+}
+body.immersive .banner p { margin: 0; }
 .home-stage:has([data-world-fallback]) { padding-top: 12rem; }
 [data-world-fallback] { position: relative; z-index: 2; margin: 0.8rem; }
 
@@ -164,6 +181,7 @@ body.immersive .banner { position: fixed; z-index: 6; top: 0.6rem; left: 0.6rem;
   }
   .world-tip p { margin: 0; font-size: 0.78rem; line-height: 1.25; }
   .world-tip button { flex: none; padding: 0.28rem 0.55rem; }
+  .home-stage:has(.home-drawer[open]) .world-tip { display: none; }
   .home-drawer { top: auto; bottom: 0.45rem; max-height: 24vh; }
   .world-hud { left: auto; right: 0.6rem; bottom: 4.8rem; width: auto; flex-wrap: nowrap; z-index: 5; }
   .banner-menu, .places-toggle { display: inline-flex; pointer-events: auto; }
@@ -198,10 +216,9 @@ body.immersive .banner { position: fixed; z-index: 6; top: 0.6rem; left: 0.6rem;
     opacity: 1;
     transform: translate(-50%, -100%);
     z-index: 4;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: block;
+    overflow: visible;
+    white-space: normal;
   }
   .home-tools button, .world-hud button { padding: 0.28rem 0.5rem; font-size: 0.78rem; }
 }

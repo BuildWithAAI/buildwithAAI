@@ -7,7 +7,7 @@ import { addExpandedAreas } from "./islandAreas";
 import type { PublicAgent, PublicWorld } from "../world/public";
 import type { Vec3 } from "../world/places";
 import { directionFromHorizon } from "../world/sky";
-import { clampLabelPoint, labelCaption, placeThought, shortSkyLine, type ScreenPoint } from "../world/labels";
+import { clampLabelPoint, clipThought, labelCaption, placeThought, shortSkyLine, type ScreenPoint } from "../world/labels";
 import { AREAS } from "../world/areas";
 import { WORLD_TIP, WORLD_TIP_KEY, worldTipOpen } from "./visit";
 
@@ -37,7 +37,8 @@ type Board = { texture: THREE.CanvasTexture; paint: (lines: string[]) => void };
 
 export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorld; cam: string; thoughts?: string[] }) {
   const mount = useRef<HTMLDivElement | null>(null);
-  const bubbleRef = useRef<HTMLParagraphElement | null>(null);
+  const bubbleRef = useRef<HTMLButtonElement | null>(null);
+  const [thoughtOpen, setThoughtOpen] = useState(false);
   const [thoughtIndex, setThoughtIndex] = useState(0);
   const world = useRef(initial);
   const [live, setLive] = useState(initial);
@@ -474,15 +475,18 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
           continue;
         }
         entry.label.visible = true;
-        const distance = Math.max(0.5, camera.position.distanceTo(anchor));
-        const pixelPerUnit = height / (2 * Math.tan((camera.fov * Math.PI) / 360) * distance);
-        const targetW = 132;
-        const worldW = targetW / Math.max(1, pixelPerUnit);
-        entry.label.scale.set(worldW, worldW * (96 / 512), 1);
-        const screen = clampLabelPoint((projected.x * 0.5 + 0.5) * width, (-projected.y * 0.5 + 0.5) * height, width, height, placed, board, targetW / 2 + 8);
+        const targetW = 112;
+        const screen = clampLabelPoint((projected.x * 0.5 + 0.5) * width, (-projected.y * 0.5 + 0.5) * height, width, height, placed, board, targetW / 2 + 56);
         placed.push({ ...screen, name: agent.name });
         const next = new THREE.Vector3((screen.x / width) * 2 - 1, -(screen.y / height) * 2 + 1, projected.z);
-        entry.label.position.copy(entry.group.worldToLocal(next.unproject(camera)));
+        next.unproject(camera);
+        const worldPoint = next.clone();
+        entry.label.position.copy(entry.group.worldToLocal(next));
+        const settled = Math.max(0.5, camera.position.distanceTo(worldPoint));
+        const settledUnit = height / (2 * Math.tan((camera.fov * Math.PI) / 360) * settled);
+        const worldW = targetW / Math.max(1, settledUnit);
+        entry.label.scale.set(worldW, worldW * (64 / 512), 1);
+        entry.label.center.set(0.5, 0.5);
       }
       if (bubble) {
         if (!leader) bubble.hidden = true;
@@ -523,10 +527,22 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
   };
 
   const thought = thoughts.length ? thoughts[thoughtIndex % thoughts.length] : "";
+  const shownThought = clipThought(thought, thoughtOpen);
   return (
     <div className="world-stage">
       <div className="world-canvas" ref={mount} />
-      {thought ? <p ref={bubbleRef} className="world-bubble" data-thought="1">{thought}</p> : null}
+      {thought ? (
+        <button
+          ref={bubbleRef}
+          type="button"
+          className="world-bubble"
+          data-thought="1"
+          aria-expanded={thoughtOpen}
+          onClick={() => setThoughtOpen((open) => !open)}
+        >
+          {shownThought}
+        </button>
+      ) : null}
       <div className={menuOpen ? "world-banner menu-open" : "world-banner"}>
         <span className="banner-time">
           {live.sky ? (

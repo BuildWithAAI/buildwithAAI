@@ -129,6 +129,11 @@ describe("pre-deploy advisory", () => {
     expect(rejectPan({ note: "9400111899223344556677" })).toBe(false);
     expect(rejectPan({ note: "1Z999AA10123456784" })).toBe(false);
     expect(rejectPan({ note: "1Z 999 AA1 01 2345 6784" })).toBe(false);
+    expect(rejectPan({ note: "1Z4242424242424242" })).toBe(true);
+    expect(rejectPan({ note: "1Z 4242 4242 4242 4242" })).toBe(true);
+    expect(rejectPan({ note: "4242\u200d4242\u200d4242\u200d4242" })).toBe(true);
+    expect(rejectPan({ note: "4242\u00ad4242\u00ad4242\u00ad4242" })).toBe(true);
+    expect(rejectPan({ note: "4242a4242a4242a4242" })).toBe(true);
     expect(rejectPan({ note: "9612 3456 7890 123" })).toBe(false);
     const rand = (seed: number) => {
       let state = seed >>> 0;
@@ -137,12 +142,41 @@ describe("pre-deploy advisory", () => {
         return state;
       };
     };
+    const uspsCheck = (body: string) => {
+      let sum = 0;
+      for (let i = body.length - 1, weight = 3; i >= 0; i -= 1, weight = weight === 3 ? 1 : 3) sum += Number(body[i]) * weight;
+      return String((10 - (sum % 10)) % 10);
+    };
     const usps = rand(11);
     for (let i = 0; i < 1000; i += 1) {
-      let body = "94";
-      for (let digit = 0; digit < 20; digit += 1) body += String(usps() % 10);
-      const spaced = body.replace(/(.{4})/g, "$1 ").trim();
+      let body = i % 2 === 0 ? "94" : "92";
+      const width = i % 2 === 0 ? 21 : 19;
+      while (body.length < width) body += String(usps() % 10);
+      const full = body + uspsCheck(body);
+      const spaced = full.replace(/(.{4})/g, "$1 ").trim();
+      expect(rejectPan({ note: full })).toBe(false);
       expect(rejectPan({ note: spaced })).toBe(false);
+    }
+    const hidden = rand(97);
+    for (let i = 0; i < 1000; i += 1) {
+      const total = i % 2 === 0 ? 20 : 22;
+      const spare = total - 16;
+      const prefixLen = 1 + (hidden() % (spare - 1));
+      let prefix = "9";
+      while (prefix.length < prefixLen) prefix += String(hidden() % 10);
+      let suffix = "";
+      while (suffix.length < spare - prefixLen) suffix += String(1 + (hidden() % 9));
+      let body = `${prefix}4242424242424242${suffix}`;
+      const flip = body.length - 1;
+      let guard = 0;
+      while (uspsCheck(body.slice(0, -1)) === body[body.length - 1] && guard < 9) {
+        body = `${body.slice(0, flip)}${String((Number(body[flip]) + 1) % 10)}`;
+        guard += 1;
+      }
+      expect(body.startsWith("9")).toBe(true);
+      expect(body.includes("4242424242424242")).toBe(true);
+      expect(rejectPan({ note: body })).toBe(true);
+      expect(rejectPan({ note: body.replace(/(.{4})/g, "$1 ").trim() })).toBe(true);
     }
     const cards = rand(29);
     for (let i = 0; i < 1000; i += 1) {
@@ -179,10 +213,15 @@ describe("pre-deploy advisory", () => {
       let right = `${1 + (wrapped() % 8)}${wrapped() % 10}`;
       if (right[0] === right[1]) right = `${right[0]}${(Number(right[1]) + 1) % 10}`;
       const total = i % 2 === 0 ? 20 : 22;
-      const body = (left + pan + right).slice(0, total).padEnd(total, "7");
+      let body = (left + pan + right).slice(0, total).padEnd(total, "7");
       if (body.slice(left.length, left.length + 16) !== pan) continue;
+      let guard = 0;
+      while (uspsCheck(body.slice(0, -1)) === body[body.length - 1] && guard < 9) {
+        body = `${body.slice(0, -1)}${String((Number(body[body.length - 1]) + 1) % 10)}`;
+        guard += 1;
+      }
       expect(rejectPan({ note: body })).toBe(true);
-      expect(rejectPan({ note: `${left} ${pan} ${right}` })).toBe(true);
+      expect(rejectPan({ note: body.replace(/(.{4})/g, "$1 ").trim() })).toBe(true);
     }
     for (let i = 0; i < 1000; i += 1) {
       const prefixLen = 1 + (i % 3);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampLabelPoint, labelCaption, placeThought, shortSkyLine } from "../src/world/labels";
+import { clampLabelPoint, clipThought, labelCaption, placeThought, shortSkyLine } from "../src/world/labels";
 
 describe("narrow island labels", () => {
   it("keeps the name and shortens the sky pill", () => {
@@ -15,6 +15,15 @@ describe("narrow island labels", () => {
     expect(clipped.y).toBeLessThan(844 - 120);
     const second = clampLabelPoint(clipped.x, clipped.y, 390, 844, [clipped]);
     expect(Math.abs(second.y - clipped.y)).toBeGreaterThan(20);
+  });
+
+  it("ends a closed thought on a word with an ellipsis", () => {
+    const long = "I looked at my goal, Learn the island's places and leave a few shapes that are mine.";
+    const closed = clipThought(long, false, 48);
+    expect(closed.endsWith("…")).toBe(true);
+    expect(closed.endsWith(" …")).toBe(false);
+    expect(closed.includes("shapes that are mine")).toBe(false);
+    expect(clipThought(long, true, 48)).toBe(long);
   });
 
   it("puts the thought above the name when there is room", () => {

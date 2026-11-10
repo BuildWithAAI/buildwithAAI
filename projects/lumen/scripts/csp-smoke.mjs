@@ -34,14 +34,25 @@ async function shootNarrow(browser, base, shots, viewport, file) {
   const mobile = await context.newPage();
   await mobile.goto(`${base}/`, { waitUntil: "domcontentloaded" });
   await mobile.waitForSelector("[data-hydrated=yes]", { timeout: 15000, state: "attached" });
-  const dismiss = mobile.getByRole("button", { name: "Dismiss" });
-  if (await dismiss.count()) {
-    await dismiss.click();
+  const notice = mobile.getByRole("dialog", { name: "AI disclosure" });
+  if (await notice.count()) {
+    await notice.waitFor({ timeout: 5000 });
+    const noticeBox = await notice.boundingBox();
+    const controls = [
+      ["Ledger", await mobile.getByRole("button", { name: "Ledger" }).boundingBox()],
+      ["Wishes", await mobile.getByRole("button", { name: "Wishes" }).boundingBox()],
+      ["Menu", await mobile.getByRole("button", { name: "Menu" }).boundingBox()],
+      ["time", await mobile.locator(".banner-time").boundingBox()],
+    ];
+    for (const [name, box] of controls) {
+      if (boxesOverlap(noticeBox, box)) throw new Error(`AI notice covers ${name}`);
+    }
+    await mobile.getByRole("button", { name: "Dismiss" }).click();
     await mobile.waitForSelector("[role=dialog]", { state: "detached" });
   }
   await mobile.locator(".world-tip").waitFor({ timeout: 15000 });
   await mobile.locator("[data-greeting]").waitFor();
-  await mobile.getByRole("button", { name: "Places" }).waitFor();
+  await mobile.getByRole("button", { name: "Places", exact: true }).waitFor();
   await mobile.getByRole("button", { name: "Menu" }).waitFor();
   await mobile.getByRole("button", { name: "Ledger" }).waitFor();
   await mobile.getByRole("button", { name: "Wishes" }).waitFor();
@@ -59,16 +70,27 @@ async function shootNarrow(browser, base, shots, viewport, file) {
   await mobile.waitForTimeout(1200);
   const tipBox = await mobile.locator(".world-tip").boundingBox();
   const greetBox = await mobile.locator("[data-greeting]").boundingBox();
-  const placesBox = await mobile.getByRole("button", { name: "Places" }).boundingBox();
+  const placesBox = await mobile.getByRole("button", { name: "Places", exact: true }).boundingBox();
   const menuBox = await mobile.getByRole("button", { name: "Menu" }).boundingBox();
   const thoughtBox = await mobile.locator("[data-thought]").boundingBox();
   if (boxesOverlap(tipBox, greetBox)) throw new Error("camera tip overlaps the greeting");
   if (boxesOverlap(tipBox, placesBox)) throw new Error("camera tip overlaps Places");
   if (boxesOverlap(tipBox, menuBox)) throw new Error("camera tip overlaps Menu");
+  const ledgerBox = await mobile.getByRole("button", { name: "Ledger" }).boundingBox();
+  if (boxesOverlap(thoughtBox, ledgerBox) || boxesOverlap(thoughtBox, menuBox)) {
+    throw new Error("thought bubble covers a top control");
+  }
   if (!thoughtBox || thoughtBox.x < -1 || thoughtBox.y < -1 || thoughtBox.x + thoughtBox.width > viewport.width + 1 || thoughtBox.y + thoughtBox.height > viewport.height + 1) {
     throw new Error(`thought bubble is off the ${viewport.width}px screen`);
   }
   await mobile.screenshot({ path: `${shots}/${file}` });
+  await mobile.locator("[data-greeting]").click();
+  await mobile.locator("[data-home-notices]").waitFor();
+  if (await mobile.locator(".world-tip").isVisible()) {
+    const openTip = await mobile.locator(".world-tip").boundingBox();
+    const drawer = await mobile.locator(".home-drawer").boundingBox();
+    if (boxesOverlap(openTip, drawer)) throw new Error("camera toast overlaps the open drawer");
+  }
   await context.close();
 }
 
@@ -188,6 +210,8 @@ try {
   if (!deskUp) throw new Error("desk proxy did not open /admin/login");
   const login = await browser.newPage();
   await login.goto("http://127.0.0.1:3001/admin/login", { waitUntil: "domcontentloaded" });
+  await login.locator("input[name=secret]").waitFor();
+  await login.screenshot({ path: `${shots}/desk-login.png` });
   await login.locator("input[name=secret]").fill(ownerToken);
   await login.getByRole("button", { name: "Enter" }).click();
   await login.getByRole("heading", { name: "Zoora, in private" }).waitFor({ timeout: 15000 });
@@ -195,7 +219,6 @@ try {
   await login.getByRole("heading", { name: "Zoora, in private" }).waitFor({ timeout: 15000 });
   const stored = (await login.context().cookies("http://127.0.0.1:3001")).find((item) => item.name === "lumen_owner");
   if (!stored || stored.secure) throw new Error("loopback desk did not keep a non-Secure session cookie");
-  await login.screenshot({ path: `${shots}/desk-login.png` });
   await browser.close();
 
   const plain = await chromium.launch({ args: ["--disable-dev-shm-usage", "--disable-webgl"] });

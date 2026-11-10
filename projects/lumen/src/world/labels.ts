@@ -41,15 +41,26 @@ export function clampLabelPoint(
   return { x: nx, y: ny };
 }
 
+/** One clean line of the thought, with an ellipsis, until it is opened. */
+export function clipThought(text: string, open: boolean, limit = 72): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (open || clean.length <= limit) return clean;
+  const cut = clean.slice(0, limit);
+  const space = cut.lastIndexOf(" ");
+  const base = (space > 24 ? cut.slice(0, space) : cut).trimEnd();
+  return `${base}…`;
+}
+
 /** Sit the thought just above Zoora's head, clear of her name. */
 export function placeThought(head: ScreenPoint, label: ScreenPoint | undefined, width: number, height: number): ScreenPoint {
   const half = Math.min(96, Math.max(40, width / 2 - 8));
   const x = Math.min(width - half, Math.max(half, head.x));
+  const minTop = 210;
   let y = head.y - 78;
   if (label && Math.abs(x - label.x) < 130 && y > label.y - 84) y = label.y - 92;
-  if (y < 132) y = Math.min(height - 150, Math.max(head.y, label?.y ?? head.y) + 96);
+  if (y < minTop) y = Math.max(minTop, (label?.y ?? head.y) + 110);
   return {
     x,
-    y: Math.min(height - 150, Math.max(120, y)),
+    y: Math.min(height - 150, Math.max(minTop, y)),
   };
 }

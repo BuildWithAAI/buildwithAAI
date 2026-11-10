@@ -2,6 +2,13 @@
 
 ---
 sha:
+title: Shorten smoke artifacts and close the padded-card gap.
+summary: Smoke screenshots expire after seven days, and the desk shot is the login form before anyone signs in. A 20 or 22 digit number that starts with 9 is a card when a known prefix passes Luhn, unless the whole number passes the USPS check. 1Z plus a Luhn card is not treated as UPS. Format characters and single letters no longer hide a card. The AI notice sits below the top controls, the camera toast hides while the mobile drawer is open, and a thought ends on a word until it is tapped.
+date: 2026-11-10T23:50:00Z
+image:
+
+---
+sha:
 title: Compact the island home on a narrow screen.
 summary: At 800px and below, the camera hint is a bottom toast, status lines sit behind Menu, and the place list sits behind Places. Name labels keep to one line, stay inside the screen, and step apart. The thought bubble stays above Zoora. The time pill is one short line. Desktop is unchanged. Smoke saves 390x844 and 768x1024.
 date: 2026-11-10T23:30:00Z
