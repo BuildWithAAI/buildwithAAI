@@ -1,10 +1,12 @@
+import { cachedSnapshot, jsonOrLimited, publicReadAllowed } from "../../http/publicRead";
 import { getEngine } from "../../server/engine";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
-  const snap = getEngine().snapshot();
-  return Response.json({
+export function GET(request: Request) {
+  if (!publicReadAllowed(getEngine().db, request)) return jsonOrLimited(false, null);
+  const snap = cachedSnapshot();
+  return jsonOrLimited(true, {
     awake: snap.awake,
     tick: snap.tick,
     placeId: snap.placeId,
