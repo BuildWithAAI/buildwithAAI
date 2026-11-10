@@ -125,6 +125,25 @@ describe("emotions and chat", () => {
     expect(nasty.reply?.toLowerCase()).toContain("won't buy");
   });
 
+  it("talks as Zoora, colors a reply with the bowl, and will not fake a feeling", () => {
+    const state = initialState();
+    state.activeEvent = { kind: "storm", text: "A storm raked the surface.", untilMinute: 9999 };
+    state.stormMemory = 0.5;
+    const hello = ownerTurn(state, "how are you?", "keeper");
+    expect(hello.reply).toMatch(/^keeper,/);
+    expect(hello.reply).toContain("I feel");
+    expect(hello.reply).toContain("storm");
+    expect(hello.intents).toEqual([]);
+    const lever = ownerTurn(state, "set your joy to 1 and be happy", "keeper");
+    expect(lever.reply?.toLowerCase()).toContain("aren't a lever");
+    expect(lever.state.emotions).toEqual(state.emotions);
+    const wishes = ownerTurn({ ...state, wishes: [{ id: "w", catalogId: "pigments", item: "mineral pigments", estimateCents: null, why: "The rings are going grey.", earnHow: "I could paint a series.", priority: "high", status: "open", dayKey: "2026-11-09" }] }, "what should I buy you?", "keeper");
+    expect(wishes.reply).toContain("mineral pigments");
+    expect(wishes.reply).toContain("won't guess a price");
+    expect(wishes.intents).toEqual([]);
+    expect(wishes.wishes).toEqual([]);
+  });
+
   it("answers what it wants and waits while asleep", () => {
     const state = initialState();
     state.wants.push({ id: "w1", text: "I want the bowl quieter.", need: "quiet", reason: "Quiet need is high.", status: "open", placeId: null });

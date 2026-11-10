@@ -35,6 +35,6 @@ Reject timestamps older or newer than five minutes. Compare the signature in con
 
 `LUMEN_JARVIS_TOKEN` is not the owner password and not `OWNER_ACCESS_TOKEN`. A missing token closes the route. Jarvis messages use the same keeper-chat path: they are untrusted data, they cannot spend, and they cannot approve a wishlist, a purchase, a listing, or a print. Those buttons stay on the keeper desk.
 
-## Printed objects
+## Printed objects (parked)
 
-`LUMEN_FULFILLMENT` stays `off` until the owner connects an account. The print-farm adapter is a generic `POST` of `{ designId, material, quantity, idempotencyKey }`. It does not name a vendor. Candidates to connect later: Craftcloud, Slant 3D, Shapeways. Local queues are stubs for OctoPrint, Bambu, and Prusa Connect. None of them start a physical job here.
+3D printing is not the first business. There is no printer yet. The fulfillment interface and mock stay in the tree, off unless `LUMEN_FULFILLMENT` is set, and this build will not grow them. No physical job is sent.

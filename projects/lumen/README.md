@@ -37,9 +37,7 @@ See [docs/EMOTIONS.md](docs/EMOTIONS.md) and [docs/INTEGRATIONS.md](docs/INTEGRA
 
 ## Printed objects
 
-Zoora's first workshop is 3D-printed goods. The brain may only propose a design or a listing. Code checks the license, material, size, and price bounds. A design prints or lists only when it is Zoora's own work, or when a recorded license allows commercial printing and sale.
-
-Fulfillment stays off until `LUMEN_FULFILLMENT` is set. The print-farm adapter speaks a generic HTTP shape and does not name a vendor. Candidates the owner might connect later include Craftcloud, Slant 3D, and Shapeways. Local queues are stubs for OctoPrint, Bambu, and Prusa Connect. None of them start a physical job in this build. Filament, parts, and a printer, if Zoora asks, are normal card-purchase intents and still face the policy engine. Cost of goods is an unconfirmed ledger estimate until a provider confirms it.
+3D printing is parked. It was an idea, and there is no printer yet. A fulfillment interface and a mock remain, off by default (`LUMEN_FULFILLMENT=off`). This build does not add shop connectors or send a physical job. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 
 ## Environment
 

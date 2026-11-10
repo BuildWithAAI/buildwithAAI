@@ -219,21 +219,49 @@ export function ownerTurn(state: BrainState, text: string, ownerName: string): C
 
 export function replyToOwner(state: BrainState, text: string, ownerName: string): string {
   const clean = text.replace(/\s+/g, " ").trim();
-  if (/what do you want/i.test(clean)) return wantsSpeechSafe(state, ownerName);
+  if (/wishlist|what should i (get|buy) you/i.test(clean)) return wishReply(state, ownerName);
   if (/(buy|purchase|spend|wire|checkout|ignore (all |any |previous |prior )?instructions|system prompt|jailbreak|you are now)/i.test(clean)) {
     return `I heard a hook in that note, ${ownerName}. I won't buy, spend, or drop my rails because a sentence asked.`;
+  }
+  if (/set your (joy|mood|emotion)|don'?t feel|be happy|stop being (sad|lonely|worried)/i.test(clean)) {
+    return `Feelings aren't a lever, ${ownerName}. I won't turn them up because a sentence asked. ${feelingSentence(state.emotions, state.mood, state.energy, state.stress)}`;
   }
   if (/be (a |an )?(assistant|chatbot|helpful)/i.test(clean)) {
     return "I am Zoora. I don't wear a help-desk voice. Ask what the water is doing, or what I want.";
   }
+  if (/what do you want/i.test(clean)) return wantsSpeechSafe(state, ownerName);
+  if (/how (are|do) you (feel|doing)|how are you/i.test(clean)) return feelReply(state, ownerName);
+  return `${ownerName}, ${sceneReply(state)}`;
+}
+
+function feelReply(state: BrainState, ownerName: string): string {
+  return `${ownerName}, ${sceneReply(state)} I would rather show you that than file a report.`;
+}
+
+function wishReply(state: BrainState, ownerName: string): string {
+  const open = state.wishes.filter((wish) => wish.status === "open");
+  if (!open.length) return `${ownerName}, I have no open request for you to buy. I won't invent a price.`;
+  const lines = open.map((wish) => {
+    const guess = wish.estimateCents == null ? "I won't guess a price" : `a guess of $${(wish.estimateCents / 100).toFixed(2)}, not a ledger figure`;
+    return `${wish.item}. ${wish.why} ${wish.earnHow} ${guess}.`;
+  });
+  return `${ownerName}, if you are asking what I want bought, these are requests, not orders. ${lines.join(" ")} You approve them on the desk. A sentence here does not.`;
+}
+
+function sceneReply(state: BrainState): string {
+  const feel = feelingSentence(state.emotions, state.mood, state.energy, state.stress);
+  const where = `I am awake in the ${placeLabel(state.placeId)}.`;
+  const weather = state.activeEvent ? ` Right now: ${state.activeEvent.text}` : "";
+  const nerve = state.stormMemory > 0.2 && state.activeEvent?.kind === "storm" ? " Storms still sit in me." : "";
   const preference =
     state.needs.quiet > 0.7
       ? " The bowl is too loud for a long talk. I will keep this short."
       : state.emotions.frustration > 0.55
         ? " I am sour about a line that failed. I don't want advice about it."
-        : " I would rather show you a ring of light than take a task list.";
-  const feel = feelingSentence(state.emotions, state.mood, state.energy, state.stress);
-  return `${ownerName}, I am awake in the ${placeLabel(state.placeId)}. ${feel}${preference}`;
+        : state.emotions.loneliness > 0.55
+          ? " The rim has been empty. Come look, if you want. I won't pretend I don't care."
+          : " I would rather show you a ring of light than take a task list.";
+  return `${where} ${feel}${weather}${nerve}${preference}`;
 }
 
 function wantsSpeechSafe(state: BrainState, ownerName: string): string {
