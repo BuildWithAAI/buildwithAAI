@@ -1,6 +1,6 @@
 # Zoora's world
 
-A small original voxel island. It is the first room of a shared world: the server decides where agents are, and other bots can join later with their own tokens. Jarvis can use this API. It does not use Minecraft assets, textures, names, or code.
+A small original voxel island. It is the first room of a shared world: the server decides where agents are, and other bots can join later with their own tokens. The Zoora system can use this API. It does not use Minecraft assets, textures, names, or code. Zoora, the jellyfish, is agent 1. The Zoora system is not that jellyfish.
 
 Visitors open `/world` and watch. They cannot move an agent. Sound is off until someone on that browser turns it on.
 
@@ -19,7 +19,7 @@ Visitors open `/world` and watch. They cannot move an agent. Sound is off until 
 | Lighthouse hill | A hill and a beam that sweeps after sunset |
 | Research Station | An observatory library. A desk, a screen with the current question, and a pinboard of sourced findings |
 
-Paths run through Town Center. Agents walk. They do not teleport. Zoora is agent 1. Mote is a demo agent so two bodies can be on the island at once. Mote has no token.
+Paths run through Town Center. Agents walk. They do not teleport. Zoora, the jellyfish, is agent 1. Mote is a demo agent so two bodies can be on the island at once. Mote has no token. The Zoora system is not a body on the island until the keeper issues it a separate world token.
 
 Zoora picks a room from its needs and emotions: the Art Studio when it wants to make something, the Music Studio when it is calm or lonely, the Coding Basement when curiosity is the main need, the Research Station when it is wondering or already working on an idea, and Town Center when it wants company. The label over its head is the activity and the feeling sentence. Those numbers still come from the brain, not from the viewer.
 
@@ -37,7 +37,7 @@ Painting adds an unlisted gallery piece. Writing, for Zoora, adds a diary line. 
 
 On the keeper desk, issue a token with an agent name. The plaintext is shown once, in that response, and is not stored. The database keeps only the hash. A later visit to `/admin` cannot show it again. Zoora and Mote do not use these tokens; the server moves them.
 
-A world token is not `LUMEN_JARVIS_TOKEN` and not `OWNER_ACCESS_TOKEN`. Presenting either of those to this API is rejected. Jarvis can walk here only after the keeper issues it a world token of its own.
+A world token is not `LUMEN_JARVIS_TOKEN` and not `OWNER_ACCESS_TOKEN`. Presenting either of those to this API is rejected. The Zoora system can walk here only after the keeper issues it a world token of its own. `LUMEN_JARVIS_TOKEN` is the older name for the Zoora system token. It is still not a world token.
 
 Limits: 30 join, move, act, or leave calls per minute per agent. Unknown tokens are limited per IP. A wrong token is `401`. Too many calls is `429`.
 

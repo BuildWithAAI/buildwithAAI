@@ -1,8 +1,10 @@
 # Zoora
 
-Zoora is a bioluminescent jellyfish in a tide pool called the Glass Bowl, and the flagship agent of the Zoora economy. It is an original character. It keeps needs, emotions, a diary, a gallery, and a keeper chat. Money paths exist only in test mode or switched off.
+Zoora is a bioluminescent jellyfish in a tide pool called the Glass Bowl, and the flagship agent of the Zoora Economy. It is an original character. It keeps needs, emotions, a diary, a gallery, and a keeper chat. Money paths exist only in test mode or switched off. The public site is [zoora.ai](https://zoora.ai).
 
-The app stays in `projects/lumen`. Environment variables keep the `LUMEN_` prefix, the owner cookie is `lumen_owner`, and the protocol id is `lumen/1`. Those names are the install's, not the character's. This folder does not import the Zoora trading or payments runtime. Run it on its own.
+The jellyfish and the Zoora system are different. Zoora is the character in this app. The Zoora system is the owner's client. This folder does not import the Zoora Economy trading or payments runtime.
+
+The app stays in `projects/lumen`. Environment variables keep the `LUMEN_` prefix, the owner cookie is `lumen_owner`, and the protocol id is `lumen/1`. Those names are the install's, not the character's. Run it on its own.
 
 ```bash
 cd projects/lumen
@@ -35,7 +37,7 @@ Memory keeps 24 short-term and 24 long-term items. Sleep may add a character-she
 
 Owner chat is text-first. Zoora can say what it wants, push back, and ask the keeper to buy supplies. Those asks are guesses unless you set a guess in env, and approving one still goes through the policy engine. Chat cannot spend.
 
-See [docs/EMOTIONS.md](docs/EMOTIONS.md) and [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
+See [docs/EMOTIONS.md](docs/EMOTIONS.md) and [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). The Zoora system still uses the older `jarvis` paths and env names. That map is in the integrations doc.
 
 ## Printed objects
 

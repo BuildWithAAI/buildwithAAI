@@ -84,7 +84,7 @@ export default async function AdminPage() {
         <ul className="feed">
           {(snap.chat as { author: string; body: string; reply: string | null; status: string }[]).map((row, index) => (
             <li key={index}>
-              <strong>{row.author}</strong>: {row.body}
+              <strong>{row.author === "jarvis" ? "Zoora system" : row.author}</strong>: {row.body}
               {row.reply ? <div className="muted">Zoora: {row.reply}</div> : <div className="muted">{row.status}</div>}
             </li>
           ))}
