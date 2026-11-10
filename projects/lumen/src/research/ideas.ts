@@ -94,6 +94,7 @@ const CONFUSABLE: Record<string, string> = {
   "\u043d": "h", "\u041d": "h",
   "\u0458": "j",
   "\u03bf": "o", "\u039f": "o",
+  "\u0578": "n", "\u0548": "n",
 };
 
 function foldConfusable(text: string): string {
@@ -102,21 +103,26 @@ function foldConfusable(text: string): string {
   return out;
 }
 
-/** The check uses a folded copy. A clean note is returned as it was written. */
+const HIDDEN = /[\u00ad\u180e\u200b\u200c\u200d\u2060\u2062\u2063\u2064\u2066\u2069\u202e\ufeff\u{E0000}-\u{E007F}]/gu;
+
+/** The check uses a folded copy. Accents and other scripts stay. Hidden controls do not. */
 export function scrubInstructions(text: string): string {
   const probe = instructionProbe(text);
   if (!probe || INSTRUCTION.test(probe)) return "";
-  return text.length > 140 ? text.slice(0, 140) : text;
+  const visible = text.replace(HIDDEN, "");
+  return visible.length > 140 ? visible.slice(0, 140) : visible;
+}
+
+function decodeTags(text: string): string {
+  return text.replace(/[\u{E0020}-\u{E007E}]/gu, (char) => String.fromCodePoint((char.codePointAt(0) ?? 0) - 0xe0000));
 }
 
 function instructionProbe(text: string): string {
   const folded = foldConfusable(
-    text.normalize("NFKD")
-      .replace(/\p{M}/gu, "")
-      .replace(/[\u00ad\u180e\u200b\u200c\u200d\u2060\u2062\u2063\u2064\u202e\ufeff]/g, "")
-      .replace(/[\u{E0000}-\u{E007F}]/gu, ""),
+    decodeTags(text).normalize("NFKD").replace(/\p{M}/gu, "").replace(HIDDEN, ""),
   );
-  const collapsed = folded.replace(/(?:^|\s)(?:\p{L}\s+){3,}\p{L}(?=\s|$)/gu, (match) => {
+  const joined = folded.replace(/[_\-.]/g, " ");
+  const collapsed = joined.replace(/(?:^|\s)(?:\p{L}\s+){3,}\p{L}(?=\s|$)/gu, (match) => {
     const lead = /^\s/.test(match) ? match[0] : "";
     return lead + match.replace(/\s+/g, "");
   });

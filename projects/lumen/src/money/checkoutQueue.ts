@@ -50,10 +50,10 @@ function luhnOk(digits: string): boolean {
 function looksLikePan(value: string): boolean {
   const normalized = value.normalize("NFKC");
   if (AMAZON_ORDER.test(normalized.trim())) return false;
-  const groups = normalized.match(/[0-9](?:[0-9]|[\s.\-_/·,–|]){11,40}[0-9]/g) ?? [];
+  const groups = normalized.match(/[0-9](?:[0-9]|[\s.,·:|_/–—\-]){11,40}[0-9]/g) ?? [];
   return groups.some((group) => {
     if (AMAZON_ORDER.test(group)) return false;
-    const digits = group.replace(/[\s.\-_/·,–|]/g, "");
+    const digits = group.replace(/[\s.,·:|_/–—\-]/g, "");
     return /^\d{13,19}$/.test(digits) && luhnOk(digits);
   });
 }

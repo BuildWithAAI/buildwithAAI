@@ -136,7 +136,13 @@ describe("pre-deploy advisory", () => {
     expect(distinctBearerBlocked("198.51.100.8", now)).toBe(false);
     for (let i = 0; i < DISTINCT_BEARER_LIMIT; i += 1) noteDistinctBearerMiss(`2001:db8:1:2::${i}`, ownerTokenKey(`v6-${i}`), now);
     expect(distinctBearerBlocked("2001:db8:1:2::abcd", now)).toBe(true);
+    expect(distinctBearerBlocked("2001:0db8:0001:0002:0000:0000:0000:0001", now)).toBe(true);
     expect(distinctBearerBlocked("2001:db8:9:9::1", now)).toBe(false);
+    resetOwnerTokens();
+    for (let i = 0; i < DISTINCT_BEARER_LIMIT; i += 1) noteDistinctBearerMiss("2001:db8:aaaa:1::1", ownerTokenKey(`stay-${i}`), now);
+    for (let i = 0; i < OWNER_TOKEN_MAP_CAP; i += 1) noteDistinctBearerMiss(`2001:db8:aaaa:${(i + 2).toString(16)}::1`, ownerTokenKey(`rot-${i}`), now);
+    expect(distinctBearerBlocked("2001:db8:aaaa:eeee::1", now)).toBe(true);
+    expect(distinctBearerBlocked("2001:db9:1:1::1", now)).toBe(false);
     expect(ownerTokenLocked(owner, now)).toBe(false);
   });
 
