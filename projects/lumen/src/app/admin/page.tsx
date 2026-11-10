@@ -21,13 +21,15 @@ export default async function AdminPage() {
             Automatic spending and approvals are paused.
             {snap.money.reconciliationAlert ? " Reconciliation mismatch." : ""}
             {snap.money.openDispute ? " A dispute is open." : ""}
-            <ul className="feed">
-              {snap.money.alerts.map((alert) => (
-                <li key={alert.id}><strong>{alert.title}</strong> — {alert.detail}</li>
-              ))}
-            </ul>
             {snap.money.reconciliationAlert ? <form action={clearAlertAction}><button type="submit">Clear reconciliation alert</button></form> : null}
           </div>
+        ) : null}
+        {snap.money.alerts.length ? (
+          <ul className="feed">
+            {snap.money.alerts.map((alert) => (
+              <li key={alert.id}><strong>{alert.title}</strong> — {alert.detail}</li>
+            ))}
+          </ul>
         ) : null}
         <p>Kill switch: {snap.money.kill ? "ON" : "off"} · Spend: {snap.money.spendOpen ? "open" : `closed (${snap.money.spendReason})`} · Sales: {snap.money.sales}</p>
         <div className="row">

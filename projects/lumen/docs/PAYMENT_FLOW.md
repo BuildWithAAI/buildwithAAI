@@ -127,6 +127,14 @@ The prompt builder redacts key-shaped strings and long digit runs inside untrust
 | Spend while unsupervised | Fail closed. Kill switch. Reconciliation hold on auto-approval |
 | Visitor opens the desk | Session cookie, httpOnly. Password hash or magic token. No default password |
 
+## Pending, not in this build
+
+These stay for a later review. They are not implemented here.
+
+- Real cards are not "make a purchase" APIs. Stripe Issuing charges arrive as `issuing_authorization.request` and transaction events. Privacy.com can be a merchant-locked card with a spend limit. An approved intent should become an expected spend (merchant, max amount, expiry). The issuer key would be read from the environment only inside that future adapter, and the adapter would report a provider transaction id plus approved, declined, or unknown. The current Stripe Issuing and Privacy adapters are stubs and do not do this.
+- A `charge.refunded` event that arrives before `refund.created`, without embedded refund ids, can book the same refund twice. Reconciliation flags the extra row. The ordering fix is pending.
+- A sweeper for a purchase stuck in progress, with an owner alert after a timeout, is pending.
+
 ## What this is not
 
 No live charge has been made by this repository. A green test with a mocked Stripe client is not a settlement. The keeper connects the Stripe account and the card issuer, then turns spend on.

@@ -4,7 +4,7 @@ import tls from "node:tls";
 import type { DatabaseSync } from "node:sqlite";
 
 export type OwnerAlert = {
-  kind: "reconciliation" | "dispute";
+  kind: "reconciliation" | "dispute" | "delivery" | "issuer";
   title: string;
   detail: string;
 };
@@ -80,25 +80,45 @@ export function telegramApiTransport(fetchImpl: typeof fetch = fetch): TelegramT
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text }),
+    }).then((response) => {
+      if (!response.ok) throw new Error("TELEGRAM_ALERT_FAILED");
     });
   };
 }
 
-export function fanout(notifiers: OwnerNotifier[]): OwnerNotifier {
+export function fanout(notifiers: OwnerNotifier[], onError?: (error: unknown) => void): OwnerNotifier {
   return {
     notify(alert) {
       for (const notifier of notifiers) {
         try {
           notifier.notify(alert);
-        } catch {
-          /* one channel failing must not drop the others */
+        } catch (error) {
+          onError?.(error);
         }
       }
     },
   };
 }
 
-export function buildOwnerNotifier(env: AlertEnv, io: { desk?: OwnerNotifier; sendMail?: MailTransport; sendTelegram?: TelegramTransport } = {}): { notifier: OwnerNotifier; externalConfigured: boolean; channels: string[] } {
+export function retryDelayMs(attempt: number): number {
+  return Math.min(60_000, 1000 * 2 ** Math.max(1, attempt));
+}
+
+export function reportDeliveryFailure(db: DatabaseSync, error: unknown, now = Date.now()): void {
+  const detail = error instanceof Error ? error.message : "Alert delivery failed.";
+  const alert: OwnerAlert = { kind: "delivery", title: "Alert delivery failed", detail };
+  deskNotifier(db).notify(alert);
+  db.prepare("INSERT INTO alert_retries(id, kind, title, detail, attempt, next_at) VALUES(?, ?, ?, ?, ?, ?)").run(
+    randomBytes(8).toString("hex"),
+    alert.kind,
+    alert.title,
+    alert.detail.slice(0, 500),
+    1,
+    now + retryDelayMs(1),
+  );
+}
+
+export function buildOwnerNotifier(env: AlertEnv, io: { desk?: OwnerNotifier; db?: DatabaseSync; sendMail?: MailTransport; sendTelegram?: TelegramTransport } = {}): { notifier: OwnerNotifier; externalConfigured: boolean; channels: string[] } {
   const channels: string[] = [];
   const notifiers: OwnerNotifier[] = [];
   if (io.desk) {
@@ -106,39 +126,63 @@ export function buildOwnerNotifier(env: AlertEnv, io: { desk?: OwnerNotifier; se
     channels.push("desk");
   }
   if (emailConfigured(env)) {
-    notifiers.push(emailNotifier(env, io.sendMail ?? ((message) => { void deliverSmtp(env, message); })));
+    const send = io.sendMail ?? ((message: MailMessage) => {
+      void deliverSmtp(env, message).catch((error) => { if (io.db) reportDeliveryFailure(io.db, error); });
+    });
+    notifiers.push(emailNotifier(env, send));
     channels.push("email");
   }
   if (telegramConfigured(env)) {
     notifiers.push(telegramNotifier(env, io.sendTelegram ?? telegramApiTransport()));
     channels.push("telegram");
   }
-  return { notifier: fanout(notifiers), externalConfigured: channels.includes("email") || channels.includes("telegram"), channels };
+  return {
+    notifier: fanout(notifiers, (error) => { if (io.db) reportDeliveryFailure(io.db, error); }),
+    externalConfigured: channels.includes("email") || channels.includes("telegram"),
+    channels,
+  };
 }
 
-/** Minimal SMTP submission. Port 465 uses TLS. Other ports speak plain SMTP, which is enough for a local relay. */
+/** AUTH is allowed only after implicit TLS (465) or a completed STARTTLS (587). */
+export function smtpAuthAllowed(encrypted: boolean): boolean {
+  return encrypted;
+}
+
+/** Port 465 is implicit TLS. Port 587 must STARTTLS before any AUTH. Other ports are refused. */
 export function deliverSmtp(env: AlertEnv, message: MailMessage): Promise<void> {
   const host = env.LUMEN_SMTP_HOST ?? "";
   const port = Number(env.LUMEN_SMTP_PORT ?? 587);
+  if (!Number.isInteger(port) || port <= 0) return Promise.reject(new Error("SMTP_PORT_REFUSED"));
+  if (port === 465) {
+    return smtpDialogue(tls.connect({ host, port, servername: host }), env, message, true);
+  }
+  return new Promise((resolve, reject) => {
+    const plain = net.connect({ host, port });
+    smtpDialogue(plain, env, message, false).then(resolve, reject);
+  });
+}
+
+function smtpDialogue(socket: net.Socket, env: AlertEnv, message: MailMessage, encrypted: boolean): Promise<void> {
   const user = env.LUMEN_SMTP_USER ?? "";
   const password = env.LUMEN_SMTP_PASSWORD ?? "";
   const commands = ["EHLO zoora"];
-  if (user) commands.push("AUTH LOGIN", Buffer.from(user).toString("base64"), Buffer.from(password).toString("base64"));
-  commands.push(`MAIL FROM:<${message.from}>`, `RCPT TO:<${message.to}>`, "DATA", "BODY", "QUIT");
+  if (!encrypted) commands.push("STARTTLS");
+  else if (user) commands.push("AUTH LOGIN", Buffer.from(user).toString("base64"), Buffer.from(password).toString("base64"));
+  if (encrypted) commands.push(`MAIL FROM:<${message.from}>`, `RCPT TO:<${message.to}>`, "DATA", "BODY", "QUIT");
   return new Promise((resolve, reject) => {
-    const socket = port === 465 ? tls.connect({ host, port, servername: host }) : net.connect({ host, port });
     let buffer = "";
     let index = 0;
+    let sentStartTls = false;
     const fail = (error: Error) => { socket.destroy(); reject(error); };
     const sendNext = () => {
       const command = commands[index];
       index += 1;
+      if (!command || command === "QUIT") { socket.end("QUIT\r\n"); resolve(); return; }
       if (command === "BODY") {
-        const text = `From: ${message.from}\r\nTo: ${message.to}\r\nSubject: ${message.subject}\r\n\r\n${message.text.replace(/^\./gm, "..")}\r\n.\r\n`;
-        socket.write(text);
+        socket.write(`From: ${message.from}\r\nTo: ${message.to}\r\nSubject: ${message.subject}\r\n\r\n${message.text.replace(/^\./gm, "..")}\r\n.\r\n`);
         return;
       }
-      if (command === "QUIT") { socket.end("QUIT\r\n"); resolve(); return; }
+      if (command === "STARTTLS") sentStartTls = true;
       socket.write(`${command}\r\n`);
     };
     socket.setTimeout(10_000, () => fail(new Error("SMTP_TIMEOUT")));
@@ -146,9 +190,16 @@ export function deliverSmtp(env: AlertEnv, message: MailMessage): Promise<void> 
     socket.on("data", (chunk) => {
       buffer += chunk.toString("utf8");
       if (!buffer.endsWith("\n")) return;
-      const lines = buffer.trim().split(/\r?\n/);
+      const last = buffer.trim().split(/\r?\n/).pop() ?? "";
       buffer = "";
-      const last = lines[lines.length - 1] ?? "";
+      if (sentStartTls) {
+        sentStartTls = false;
+        if (!last.startsWith("220")) { fail(new Error("SMTP_TLS_REQUIRED")); return; }
+        const secure = tls.connect({ socket, servername: env.LUMEN_SMTP_HOST });
+        secure.once("secureConnect", () => { smtpDialogue(secure, env, message, true).then(resolve, reject); });
+        secure.on("error", fail);
+        return;
+      }
       if (!/^[23]/.test(last)) { fail(new Error("SMTP_REJECTED")); return; }
       sendNext();
     });

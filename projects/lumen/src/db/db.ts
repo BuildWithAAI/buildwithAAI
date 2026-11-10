@@ -136,6 +136,14 @@ CREATE TABLE IF NOT EXISTS print_orders (
   created_at INTEGER NOT NULL,
   reason TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS alert_retries (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  attempt INTEGER NOT NULL,
+  next_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS owner_alerts (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL,

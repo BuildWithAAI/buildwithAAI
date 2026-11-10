@@ -1,17 +1,18 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
+import net from "node:net";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { allowLogin, clientAddress } from "../src/auth/owner";
-import { executeIntent } from "../src/money/execute";
+import { executeIntent, resolveUnknown } from "../src/money/execute";
 import { createEngine } from "../src/server/engine";
 import { MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers";
 import { Ledger, moneyView } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords } from "../src/money/reconcile";
-import { buildOwnerNotifier } from "../src/money/notify";
+import { buildOwnerNotifier, deliverSmtp, reportDeliveryFailure } from "../src/money/notify";
 import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
 import { refundFormBody, stripeSalesClient, verifyStripeSignature } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
@@ -428,21 +429,57 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect(new Ledger(left).list().filter((row) => row.kind === "purchase")).toHaveLength(1);
   });
 
-  it("keeps a ledger reservation if the issuer throws, and does not let a decline consume the daily cap", () => {
+  it("does not let a decline consume the daily cap", () => {
     const db = openDatabase();
     const atMs = Date.UTC(2026, 10, 9, 16);
-    const failing = new MockIssuer();
-    failing.authorize = () => { failing.calls.push(intent()); throw new Error("ISSUER_DOWN"); };
-    const blown = executeIntent(db, intent({ id: "boom", amountCents: 500 }), ctx(), failing, atMs);
-    expect(blown.decision.reason).toBe("ISSUER_ERROR");
-    expect(blown.issuerCalled).toBe(true);
-    const rows = new Ledger(db).list();
-    expect(rows.some((row) => row.idempotencyKey === "reserve:boom")).toBe(true);
-    expect(rows.filter((row) => row.kind === "purchase")).toHaveLength(0);
     const declined = executeIntent(db, intent({ id: "nope", amountCents: 500 }), ctx({ rules: rules({ dailyCapCents: 800 }) }), new PrivacyStub(), atMs);
     expect(declined.decision.outcome).toBe("decline");
     const next = executeIntent(db, intent({ id: "after", amountCents: 500 }), ctx({ rules: rules({ dailyCapCents: 800 }) }), new MockIssuer(), atMs);
     expect(next.decision.outcome).toBe("auto_approve");
+  });
+
+  it("holds an unknown issuer outcome, blocks a retry, and keeps the cap", () => {
+    const atMs = Date.UTC(2026, 10, 9, 16);
+    const shared = ctx({ rules: rules({ dailyCapCents: 800 }) });
+    const honoring = openDatabase();
+    const seen = new Map<string, { providerTransactionId: string; status: "approved"; reason: string }>();
+    const dedupe = new MockIssuer();
+    dedupe.authorize = (next, key) => {
+      dedupe.calls.push(next);
+      dedupe.keys.push(key);
+      if (seen.has(key)) return seen.get(key)!;
+      seen.set(key, { providerTransactionId: "pc_1", status: "approved", reason: "CHARGED_THEN_TIMEOUT" });
+      throw new Error("ISSUER_TIMEOUT");
+    };
+    const first = executeIntent(honoring, intent({ id: "t1", amountCents: 500 }), shared, dedupe, atMs);
+    expect(first.decision.reason).toBe("ISSUER_UNKNOWN");
+    const retry = executeIntent(honoring, intent({ id: "t1", amountCents: 500 }), shared, dedupe, atMs);
+    expect(retry.issuerCalled).toBe(false);
+    expect(dedupe.calls).toHaveLength(1);
+    const resolved = resolveUnknown(honoring, intent({ id: "t1", amountCents: 500 }), atMs, { lookup: () => seen.get("exec:t1") ?? null });
+    expect(resolved.issuerCalled).toBe(false);
+    expect(resolved.decision.reason).toBe("RESOLVED_UNKNOWN");
+    expect(new Ledger(honoring).list().filter((row) => row.kind === "purchase")).toHaveLength(1);
+    expect(dedupe.calls).toHaveLength(1);
+
+    const ignoring = openDatabase();
+    const fresh = new MockIssuer();
+    fresh.authorize = (next, key) => {
+      fresh.calls.push(next);
+      fresh.keys.push(key);
+      throw new Error("ISSUER_TIMEOUT");
+    };
+    executeIntent(ignoring, intent({ id: "t2", amountCents: 500 }), shared, fresh, atMs);
+    executeIntent(ignoring, intent({ id: "t2", amountCents: 500 }), shared, fresh, atMs);
+    const still = resolveUnknown(ignoring, intent({ id: "t2", amountCents: 500 }), atMs, { lookup: () => null });
+    expect(fresh.calls).toHaveLength(1);
+    expect(still.decision.reason).toBe("ISSUER_UNKNOWN");
+    expect(new Ledger(ignoring).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
+
+    const capped = executeIntent(ignoring, intent({ id: "t3", amountCents: 500 }), shared, new MockIssuer(), atMs);
+    expect(capped.decision.reason).toBe("DAILY_CAP");
+    const alerts = ignoring.prepare("SELECT title FROM owner_alerts").all() as { title: string }[];
+    expect(alerts.some((row) => row.title === "Issuer outcome unknown")).toBe(true);
   });
 
   it("treats many dispute events as one dispute and books each partial refund", () => {
@@ -504,5 +541,42 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect(telegram).toEqual(["4242"]);
     expect(buildOwnerNotifier({}).externalConfigured).toBe(false);
     expect(REQUIRE_HARD_CAPS_WHEN_SPENDING).toBe(false);
+  });
+
+  it("refuses SMTP auth before TLS and records a failed alert delivery", async () => {
+    const received: string[] = [];
+    const server = net.createServer((socket) => {
+      socket.write("220 ready\r\n");
+      socket.on("data", (chunk) => {
+        const line = chunk.toString("utf8");
+        received.push(line);
+        if (line.startsWith("EHLO")) socket.write("250 zoora\r\n");
+        else if (line.startsWith("STARTTLS")) socket.write("454 TLS not available\r\n");
+        else socket.write("250 ok\r\n");
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+    await expect(deliverSmtp({
+      LUMEN_SMTP_HOST: "127.0.0.1",
+      LUMEN_SMTP_PORT: String(port),
+      LUMEN_SMTP_USER: "mailbox",
+      LUMEN_SMTP_PASSWORD: "secret-pass",
+      LUMEN_ALERT_EMAIL_FROM: "zoora@example.com",
+      LUMEN_ALERT_EMAIL_TO: "owner@example.com",
+    }, { from: "zoora@example.com", to: "owner@example.com", subject: "Zoora", text: "hello" })).rejects.toThrow(/SMTP_TLS_REQUIRED/);
+    expect(received.join("")).not.toContain("AUTH");
+    expect(received.join("")).not.toContain(Buffer.from("secret-pass").toString("base64"));
+    server.close();
+
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 9, 18);
+    reportDeliveryFailure(db, new Error("SMTP_DOWN"), now);
+    const retry = db.prepare("SELECT attempt, next_at FROM alert_retries").get() as { attempt: number; next_at: number };
+    expect(retry.attempt).toBe(1);
+    expect(retry.next_at).toBeGreaterThan(now);
+    const alerts = db.prepare("SELECT title FROM owner_alerts").all() as { title: string }[];
+    expect(alerts.map((row) => row.title)).toContain("Alert delivery failed");
   });
 });
