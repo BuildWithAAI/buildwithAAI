@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -62,5 +63,13 @@ describe("public mode", () => {
     expect(html).toContain("researching an idea");
     expect(html).toContain("/world");
     expect(html).toContain("Chicago");
+  });
+
+  it("keeps the build log in the image context", () => {
+    const ignore = readFileSync(new URL("../.dockerignore", import.meta.url), "utf8");
+    expect(ignore).toContain("!docs/BUILD_LOG.md");
+    expect(ignore.split("\n").includes("docs")).toBe(false);
+    const text = readFileSync(new URL("../docs/BUILD_LOG.md", import.meta.url), "utf8");
+    expect(parseBuildLog(text).length).toBeGreaterThan(0);
   });
 });
