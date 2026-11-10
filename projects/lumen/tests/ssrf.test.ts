@@ -23,6 +23,13 @@ describe("research fetch address checks", () => {
       "http://172.16.0.1/",
       "http://169.254.169.254/",
       "http://100.64.0.1/",
+      "http://198.18.0.1/",
+      "http://198.19.255.1/",
+      "http://192.0.0.8/",
+      "http://[64:ff9b::8.8.8.8]/",
+      "http://[2002:c000:201::]/",
+      "http://[::7f00:1]/",
+      "http://[fec0::1]/",
       "http://[::1]/",
       "http://[::ffff:127.0.0.1]/",
       "http://[::ffff:7f00:1]/",
@@ -39,6 +46,8 @@ describe("research fetch address checks", () => {
     for (const url of blocked) expect(vetResearchUrl(url).ok, url).toBe(false);
     expect(ipBlocked("127.0.0.1")).toBe(true);
     expect(ipBlocked("93.184.216.34")).toBe(false);
+    expect(ipBlocked("192.0.2.1")).toBe(false);
+    expect(ipBlocked("198.51.100.1")).toBe(false);
     expect(vetResearchUrl("https://example.com/path").ok).toBe(true);
     expect(vetResearchUrl("http://example.com/").ok).toBe(true);
   });

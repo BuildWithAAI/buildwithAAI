@@ -238,11 +238,14 @@ function nameBlocked(hostname: string): boolean {
 function ipv4Blocked(value: number): boolean {
   const a = (value >>> 24) & 255;
   const b = (value >>> 16) & 255;
+  const c = (value >>> 8) & 255;
   if (a === 0 || a === 10 || a === 127) return true;
   if (a === 169 && b === 254) return true;
   if (a === 172 && b >= 16 && b <= 31) return true;
   if (a === 192 && b === 168) return true;
   if (a === 100 && b >= 64 && b <= 127) return true;
+  if (a === 198 && (b === 18 || b === 19)) return true;
+  if (a === 192 && b === 0 && c === 0) return true;
   if (a >= 224) return true;
   return false;
 }
@@ -255,8 +258,16 @@ function ipv6Blocked(bytes: Uint8Array): boolean {
   if (bytes.slice(0, 15).every((byte) => byte === 0) && bytes[15] === 1) return true;
   if ((first & 0xfe00) === 0xfc00) return true;
   if ((first & 0xffc0) === 0xfe80) return true;
+  if ((first & 0xffc0) === 0xfec0) return true;
+  if (first === 0x2002) return true;
+  if (isNat64(bytes)) return true;
+  if (bytes.slice(0, 12).every((byte) => byte === 0) && bytes.slice(12).some((byte) => byte !== 0)) return true;
   if ((bytes[0]! & 0xff) === 0xff) return true;
   return false;
+}
+
+function isNat64(bytes: Uint8Array): boolean {
+  return bytes[0] === 0x00 && bytes[1] === 0x64 && bytes[2] === 0xff && bytes[3] === 0x9b && bytes.slice(4, 12).every((byte) => byte === 0);
 }
 
 function mappedIpv4(bytes: Uint8Array): number | null {
