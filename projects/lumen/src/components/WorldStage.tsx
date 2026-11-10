@@ -28,12 +28,12 @@ export function WorldFallback() {
   );
 }
 
-export function WorldStage({ initial, cam }: { initial: PublicWorld; cam: string }) {
+export function WorldStage({ initial, cam, thoughts = [] }: { initial: PublicWorld; cam: string; thoughts?: string[] }) {
   const [ready, setReady] = useState<"wait" | "yes" | "no">("wait");
   useEffect(() => {
     setReady(webglAvailable() ? "yes" : "no");
   }, []);
   if (ready === "no") return <WorldFallback />;
   if (ready === "wait") return <p className="world-loading">The island is coming into view.</p>;
-  return <WorldView initial={initial} cam={cam} />;
+  return <WorldView initial={initial} cam={cam} thoughts={thoughts} />;
 }

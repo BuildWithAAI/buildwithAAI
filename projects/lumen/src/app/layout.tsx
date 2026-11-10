@@ -34,14 +34,15 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const nonce = (await headers()).get("x-nonce") ?? "";
+  const immersive = (await headers()).get("x-lumen-path") === "/";
   return (
     <html lang="en" data-csp={nonce ? "nonce" : "open"}>
-      <body>
+      <body className={immersive ? "immersive" : undefined}>
         <HydrationMark />
         <AiNotice />
-        <Nav showKeeper={!publicModeOn()} showMoney={moneyLive()} />
-        <main className="wrap">{children}</main>
-        <SiteFooter />
+        {immersive ? null : <Nav showKeeper={!publicModeOn()} showMoney={moneyLive()} />}
+        <main className={immersive ? "home-main" : "wrap"}>{children}</main>
+        {immersive ? null : <SiteFooter />}
       </body>
     </html>
   );

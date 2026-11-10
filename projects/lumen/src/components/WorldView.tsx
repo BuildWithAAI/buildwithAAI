@@ -34,8 +34,10 @@ const CAMS: Record<string, { pos: [number, number, number]; look: [number, numbe
 
 type Board = { texture: THREE.CanvasTexture; paint: (lines: string[]) => void };
 
-export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string }) {
+export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorld; cam: string; thoughts?: string[] }) {
   const mount = useRef<HTMLDivElement | null>(null);
+  const bubbleRef = useRef<HTMLParagraphElement | null>(null);
+  const [thoughtIndex, setThoughtIndex] = useState(0);
   const world = useRef(initial);
   const [live, setLive] = useState(initial);
   const [sound, setSound] = useState(false);
@@ -117,6 +119,12 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     }
     return () => void audio.close();
   }, [sound, live.tune]);
+
+  useEffect(() => {
+    if (thoughts.length < 2) return;
+    const timer = window.setInterval(() => setThoughtIndex((index) => index + 1), 14_000);
+    return () => window.clearInterval(timer);
+  }, [thoughts.length]);
 
   useEffect(() => {
     const host = mount.current;
@@ -293,6 +301,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     observer.observe(host);
     requestAnimationFrame(resize);
 
+    const head = new THREE.Vector3();
     let frame = 0;
     const buildPieces = new Map<string, THREE.Group>();
     const shopPiece: { key: string; group: THREE.Group } | { key: "" } = { key: "" };
@@ -435,6 +444,22 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         controls.target.lerp(leader.position.clone().add(new THREE.Vector3(0, 0.2, 0)), 0.1);
       }
       controls.update();
+      const bubble = bubbleRef.current;
+      if (bubble) {
+        if (!leader) bubble.hidden = true;
+        else {
+          head.set(0, 1.7, 0);
+          leader.localToWorld(head);
+          head.project(camera);
+          const width = host.clientWidth || 1;
+          const height = host.clientHeight || 1;
+          const x = (head.x * 0.5 + 0.5) * width;
+          const y = (-head.y * 0.5 + 0.5) * height;
+          bubble.hidden = head.z > 1 || x < -80 || y < -80 || x > width + 80 || y > height + 80;
+          bubble.style.left = `${x}px`;
+          bubble.style.top = `${y}px`;
+        }
+      }
       renderer.render(scene, camera);
     };
     tick();
@@ -453,9 +478,11 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     jump.current(name);
   };
 
+  const thought = thoughts.length ? thoughts[thoughtIndex % thoughts.length] : "";
   return (
     <div className="world-stage">
       <div className="world-canvas" ref={mount} />
+      {thought ? <p ref={bubbleRef} className="world-bubble" data-thought="1">{thought}</p> : null}
       <div className="world-banner">
         <span>{live.sky ? `${live.sky.localTime} · up ${shortTime(live.sky.sunrise, live.sky.tz)} down ${shortTime(live.sky.sunset, live.sky.tz)} · moon ${live.sky.moonPhaseName}` : (live.night ? "Night" : "Day")}</span>
         <span>{live.weather === "clear" ? "Clear paths" : live.weatherText ?? live.weather}</span>

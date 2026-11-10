@@ -39,6 +39,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .nav-more { position: relative; }
 .nav-more summary { cursor: pointer; color: var(--dim); list-style: none; }
 .nav-more[open] { display: flex; gap: 0.8rem; align-items: center; }
+.nav-compact { border: 0; padding: 0.4rem 0; flex-wrap: wrap; gap: 0.7rem; }
 .world-tip { position: absolute; z-index: 3; left: 1rem; top: 4.2rem; max-width: 18rem; }
 
 .wrap { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.2rem 0 3rem; }
@@ -96,6 +97,35 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 0.4rem
 .world-hud { bottom: 0.6rem; }
 .world-hud button, .world-banner span { background: rgba(6, 18, 22, 0.78); border: 1px solid var(--line); border-radius: 999px; padding: 0.35rem 0.7rem; }
 .world-banner span { pointer-events: none; }
+.home-main { margin: 0; padding: 0; }
+body.immersive { overflow: hidden; }
+.home-stage { position: fixed; inset: 0; z-index: 1; background: #071418; }
+.home-stage .world-stage { height: 100%; min-height: 0; border: 0; border-radius: 0; }
+.home-stage .world-banner { right: 9.5rem; }
+.home-tools { position: absolute; z-index: 5; top: 0.6rem; right: 0.6rem; display: flex; gap: 0.35rem; }
+.home-tools button { background: rgba(6, 18, 22, 0.78); }
+.world-panel { position: absolute; z-index: 5; top: 3.4rem; right: 0.6rem; width: min(24rem, calc(100% - 1.2rem)); max-height: 46vh; overflow: auto; }
+.home-drawer { position: absolute; z-index: 5; left: 0.6rem; bottom: 4.8rem; width: min(28rem, calc(100% - 1.2rem)); max-height: 46vh; overflow: auto; }
+.home-drawer summary { cursor: pointer; }
+.world-bubble {
+  position: absolute;
+  z-index: 3;
+  max-width: 14rem;
+  margin: 0;
+  pointer-events: none;
+  transform: translate(-50%, -120%);
+  background: rgba(6, 18, 22, 0.88);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 0.45rem 0.7rem;
+  animation: bubble-fade 14s ease-in-out infinite;
+}
+@keyframes bubble-fade {
+  0%, 50% { opacity: 1; }
+  64%, 82% { opacity: 0; }
+  94%, 100% { opacity: 1; }
+}
+body.immersive .banner { position: fixed; z-index: 6; top: 0.6rem; left: 0.6rem; right: 0.6rem; margin: 0; background: #1a1210; }
 
 .site-footer {
   width: min(1120px, calc(100% - 2rem));
@@ -112,4 +142,11 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 0.4rem
   canvas.bowl { height: 300px; }
   .nav { flex-wrap: wrap; gap: 0.7rem; }
   .world-stage { height: 68vh; min-height: 320px; }
+  .home-stage .world-stage { height: 100%; min-height: 0; }
+  .home-drawer { bottom: auto; top: 3.4rem; max-height: 40vh; }
+  .world-bubble { max-width: 11rem; font-size: 0.85rem; }
+  .home-tools button, .world-hud button { padding: 0.28rem 0.5rem; font-size: 0.78rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-bubble { animation: none; opacity: 1; }
 }

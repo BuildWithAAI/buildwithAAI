@@ -19,6 +19,12 @@ function hostname(host: string | null): string {
  * www goes to the apex. Old .html addresses fold onto the app routes.
  * The base is always https://zoora.ai. X-Forwarded-Host and X-Forwarded-Proto do not choose it.
  */
+/** The island lives at /. /world keeps the camera query and does not publish a second canonical. */
+export function worldHomeRedirect(pathname: string, search = ""): string | null {
+  if (pathname !== "/world") return null;
+  return `/${search}`;
+}
+
 export function publicRedirect(host: string | null, pathname: string, search = "", forwardedHost: string | null = null, forwardedProto: string | null = null): string | null {
   void forwardedHost;
   void forwardedProto;
@@ -48,6 +54,11 @@ export function middleware(request: NextRequest) {
     request.headers.get("x-forwarded-proto"),
   );
   if (target) return NextResponse.redirect(target, 301);
+  if (worldHomeRedirect(request.nextUrl.pathname, request.nextUrl.search)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url, 307);
+  }
   if (request.nextUrl.pathname.startsWith("/api/delivery/")) {
     const response = NextResponse.next();
     response.headers.set("Content-Security-Policy", "sandbox");
@@ -57,6 +68,7 @@ export function middleware(request: NextRequest) {
   const policy = contentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-lumen-path", request.nextUrl.pathname);
   requestHeaders.set("content-security-policy", policy);
   if (publicModeOn() && request.nextUrl.pathname !== "/api/world/here") {
     const ip = clientAddress((name) => request.headers.get(name), process.env.LUMEN_TRUSTED_PROXY, true);

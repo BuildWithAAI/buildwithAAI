@@ -1,18 +1,17 @@
 import React from "react";
 import Link from "next/link";
 
-export function Nav({ showKeeper = false, showMoney = false }: { showKeeper?: boolean; showMoney?: boolean }) {
+export function Nav({ showKeeper = false, showMoney = false, compact = false }: { showKeeper?: boolean; showMoney?: boolean; compact?: boolean }) {
   return (
-    <nav className="nav">
+    <nav className={compact ? "nav nav-compact" : "nav"}>
       <strong>Zoora</strong>
-      <Link href="/world">World</Link>
+      <Link href="/">World</Link>
       <Link href="/gallery">Gallery</Link>
       <Link href="/diary">Diary</Link>
       <Link href="/guestbook">Guestbook</Link>
-      <Link href="/world?cam=saloon">Saloon</Link>
+      <Link href="/?cam=saloon">Saloon</Link>
       <details className="nav-more">
         <summary>More</summary>
-        <Link href="/">Bowl</Link>
         <Link href="/build">Build</Link>
         <Link href="/floor">Floor</Link>
         <Link href="/prints">Prints</Link>

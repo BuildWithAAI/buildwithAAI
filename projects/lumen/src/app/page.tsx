@@ -1,77 +1,58 @@
-import React from "react";
-import { Scene } from "../components/Scene";
-import { SignupForm } from "../components/SignupForm";
-import { VisitBoard } from "../components/VisitBoard";
+import { publicModeOn } from "../auth/publicMode";
+import { HomeFrame } from "../components/HomeFrame";
 import { homeGreeting } from "../components/visit";
+import type { WishlistItemView } from "../components/WishlistView";
+import { Ledger } from "../money/ledger";
+import { publicBooks, type PaperRow } from "../money/publicBooks";
+import { moneyLive } from "../money/rules";
 import { getEngine } from "../server/engine";
+import { thoughtLines } from "../world/bubble";
+import { listKeeperWishes, publicWishLink } from "../wishlist/board";
 
-export default function HomePage() {
+export const metadata = {
+  alternates: { canonical: "./" },
+  description: "Zoora's island. She is an AI, not a human. Not financial advice.",
+};
+
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ cam?: string }> }) {
+  const params = await searchParams;
+  const cam = params.cam && /^[a-z-]{1,16}$/.test(params.cam) ? params.cam : "overview";
   const engine = getEngine();
+  const world = JSON.parse(JSON.stringify(engine.world()));
   const snap = engine.snapshot();
-  const needs = Object.entries(snap.needs);
-  const diary = snap.diary as { text: string; created_at: number }[];
-  const gallery = snap.gallery as { title: string; created_at: number }[];
-  const builds = engine.db.prepare(
-    "SELECT title, kind, created_at FROM world_builds ORDER BY created_at DESC LIMIT 8",
-  ).all() as { title: string; kind: string; created_at: number }[];
-  const items = [
-    ...diary.slice(0, 5).map((row) => ({ kind: "diary", text: row.text, at: row.created_at })),
-    ...gallery.slice(0, 5).map((row) => ({ kind: "gallery", text: row.title, at: row.created_at })),
-    ...builds.map((row) => ({ kind: row.kind === "garden" ? "garden" : "build", text: row.title, at: row.created_at })),
-  ];
+  const zoora = world.agents.find((agent: { name: string }) => agent.name === "Zoora");
+  const guest = engine.db.prepare("SELECT reply FROM messages WHERE channel = 'visitor' AND reply IS NOT NULL ORDER BY created_at DESC LIMIT 1").get() as { reply: string } | undefined;
+  const thoughts = thoughtLines({
+    activity: typeof zoora?.activity === "string" ? zoora.activity : null,
+    diary: world.diary.find((line: string) => !world.choices.includes(line)) ?? null,
+    sceneWhy: world.choices[0] ?? null,
+    wish: (world.wishlist as string[]).find((line) => line !== "The board is blank.") ?? null,
+    guestReply: guest?.reply ?? null,
+  });
+  const paper = engine.db.prepare("SELECT symbol, side, mode FROM paper_trades WHERE mode != 'live' ORDER BY created_at DESC LIMIT 6").all() as PaperRow[];
+  const books = publicBooks(new Ledger(engine.db).list(), paper, moneyLive(engine.env));
+  const wishes: WishlistItemView[] = listKeeperWishes(engine.db, "open").map((item) => {
+    const link = publicWishLink(item.link, engine.env);
+    return {
+      id: item.id,
+      rank: item.rank,
+      name: item.name,
+      why: item.why,
+      estimateCents: item.estimateCents,
+      linkHref: link.href,
+      linkText: link.text,
+    };
+  });
   return (
-    <div className="grid">
-      <section className="card scene-card">
-        <Scene
-          color={snap.glow.color}
-          pulseMs={snap.glow.pulseMs}
-          amplitude={snap.glow.amplitude}
-          eventKind={snap.event?.kind ?? null}
-          asleep={!snap.awake}
-          mood={snap.mood}
-        />
-        <div style={{ padding: "0.9rem 1rem 1.1rem" }}>
-          <p className="kicker">Glass Bowl · {snap.placeId.replaceAll("-", " ")}</p>
-          <h1 style={{ margin: "0.2rem 0" }}>{homeGreeting(snap.awake, snap.feeling)}</h1>
-          {snap.event ? <p className="muted">{snap.event.text}</p> : null}
-        </div>
-      </section>
-      <section className="card">
-        <p className="kicker">How the water feels</p>
-        <p>{snap.feeling}</p>
-        <details>
-          <summary>The numbers underneath</summary>
-          <p className="muted">Mood {snap.labels.moodLabel} · energy {snap.labels.energyLabel}</p>
-          <div className="chips">
-            {Object.entries(snap.emotions).map(([name, value]) => (
-              <span className="chip" key={name}>{name} {Number(value).toFixed(2)}</span>
-            ))}
-          </div>
-          <div className="bars" style={{ marginTop: "0.8rem" }}>
-            {needs.map(([name, value]) => (
-              <div className="bar" key={name}>
-                <span>{name}</span>
-                <div className="track"><div className="fill" style={{ width: `${Math.round(Number(value) * 100)}%` }} /></div>
-              </div>
-            ))}
-          </div>
-        </details>
-      </section>
-      <VisitBoard items={items} />
-      <section className="card" id="signup" style={{ gridColumn: "1 / -1" }}>
-        <h2>Tools for people and AI agents to work together.</h2>
-        <p>Zoora is building tools for people and AI agents to work together. Sign up for product and build updates.</p>
-        <SignupForm />
-      </section>
-      <section className="card" style={{ gridColumn: "1 / -1" }}>
-        <p className="kicker">Live feed</p>
-        <ul className="feed">
-          {snap.feed.slice(0, 8).map((item, index) => {
-            const row = item as { kind: string; text: string; source: string };
-            return <li key={index}><span className="muted">{row.kind}</span> — {row.text}</li>;
-          })}
-        </ul>
-      </section>
-    </div>
+    <HomeFrame
+      world={world}
+      cam={cam}
+      greeting={homeGreeting(snap.awake, snap.feeling)}
+      thoughts={thoughts}
+      books={books}
+      wishes={wishes}
+      showKeeper={!publicModeOn(engine.env)}
+      showMoney={moneyLive(engine.env)}
+    />
   );
 }

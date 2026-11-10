@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { contentSecurityPolicy, securityHeaders } from "../src/auth/publicMode";
 import { SignupForm } from "../src/components/SignupForm";
 import { SiteFooter } from "../src/components/SiteFooter";
-import { publicRedirect } from "../src/middleware";
+import { publicRedirect, worldHomeRedirect } from "../src/middleware";
 import SuccessPage from "../src/app/success/page";
 
 const KIT = "https://app.kit.com/forms/10168331/subscriptions";
@@ -16,6 +16,9 @@ describe("zoora.ai site", () => {
     expect(publicRedirect("www.zoora.ai", "/success.html", "")).toBe("https://zoora.ai/success");
     expect(publicRedirect("WWW.ZOORA.AI:443", "/", "")).toBe("https://zoora.ai/");
     expect(publicRedirect("zoora.ai", "/world", "")).toBeNull();
+    expect(worldHomeRedirect("/world", "?cam=saloon")).toBe("/?cam=saloon");
+    expect(worldHomeRedirect("/world", "")).toBe("/");
+    expect(worldHomeRedirect("/gallery", "")).toBeNull();
     expect(publicRedirect("localhost:3000", "/world", "")).toBeNull();
   });
 

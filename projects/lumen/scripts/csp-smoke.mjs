@@ -83,12 +83,27 @@ try {
       await dismiss.click();
       await open.waitForSelector("[role=dialog]", { state: "detached" });
     }
+    await open.locator("[data-home-world]").waitFor({ timeout: 15000 });
+    await open.locator(".world-tip, [data-world-fallback]").first().waitFor({ timeout: 15000 });
+    const greeting = await open.locator("[data-greeting]").innerText();
+    if (!/Hello\.|I'm resting/.test(greeting)) throw new Error(`missing greeting: ${greeting}`);
+    await open.waitForTimeout(1600);
+    await open.getByRole("button", { name: "follow", exact: true }).click();
+    await open.waitForTimeout(1600);
+    await open.screenshot({ path: `${shots}/home.png` });
+    await open.locator("[data-greeting]").click();
+    await open.locator("[data-home-notices]").getByText("Not financial advice.").waitFor();
+    await open.locator("[data-home-notices]").getByText("Zoora is an AI, not a human.").waitFor();
+    await open.getByRole("button", { name: "Ledger" }).click();
+    await open.locator("[data-ledger-panel]").waitFor();
+    await open.getByRole("button", { name: "Wishes" }).click();
+    await open.locator("[data-wish-panel]").waitFor();
   });
-  await page.screenshot({ path: `${shots}/home.png`, fullPage: true });
   await check(page, "/guestbook");
   await page.screenshot({ path: `${shots}/guestbook.png`, fullPage: true });
   await check(page, "/world", async (open) => {
-    await open.locator(".world-tip, [data-world-fallback]").first().waitFor({ timeout: 15000 });
+    await open.locator("[data-home-world]").waitFor({ timeout: 15000 });
+    if (!open.url().endsWith("/") && !open.url().includes("/?")) throw new Error(`world did not return home: ${open.url()}`);
   });
   await page.screenshot({ path: `${shots}/world-tip.png` });
   await browser.close();
@@ -97,8 +112,10 @@ try {
   const fallback = await plain.newPage();
   const crashed = [];
   fallback.on("pageerror", (error) => crashed.push(String(error)));
-  await fallback.goto(`${base}/world?cam=saloon`, { waitUntil: "domcontentloaded" });
+  await fallback.goto(`${base}/?cam=saloon`, { waitUntil: "domcontentloaded" });
   await fallback.getByText("can't draw the 3D world").waitFor({ timeout: 15000 });
+  const greeting = await fallback.locator("[data-greeting]").innerText();
+  if (!/Hello\.|I'm resting/.test(greeting)) throw new Error(`fallback missing greeting: ${greeting}`);
   const body = await fallback.locator("body").innerText();
   if (/application error/i.test(body) || crashed.length) throw new Error(`WebGL fallback crashed: ${crashed.join(" | ")} ${body.slice(0, 200)}`);
   await fallback.screenshot({ path: `${shots}/world-fallback.png` });
