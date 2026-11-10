@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 5ed4022
+title: The desk starts, and the smoke test can run.
+summary: 38bcd98 runs the desk proxy under node and binds it to ::. a7084ef moves the CSP smoke to the Ubuntu 24.04 runner and writes its marker under RUNNER_TEMP. 5ed4022 puts the gitleaks defaults back, keeps a sandbox policy on deliveries, places the licence after the XML declaration, refuses an owner cookie on the public edge, caps presence slots per address, and keeps blocked bearer buckets within 4096. The hosting notes keep the GitHub verification, add certificates before the DNS switch, then CAA, DMARC, Kit DKIM, and DNSSEC a week later.
+date: 2026-11-10T21:30:00Z
+image:
+
+---
 sha: 19541ca
 title: Close the launch blockers and the visitor loop.
 summary: Pages hydrate under a per-request script nonce, and the Chromium smoke runs in CI. Html addresses redirect to the apex. The owner desk opens only through the port 3001 proxy. The guestbook can answer, a crisis note gets the helpline instead of a reply, and a real visitor on the island is what the bowl feels.
