@@ -8,7 +8,7 @@ import { blendEmotions } from "../brain/emotions";
 import { blankProduct, initialState, labelsOf, tick, type TickResult } from "../brain/tick";
 import type { BrainState, PurchaseIntent, Wish } from "../brain/types";
 import { allowLogin, createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
-import { allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
+import { allowGuestNote, allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
 import { executeIntent, listUnknownClaims, resolveUnknownClaim, type ChargeProof } from "../money/execute";
 import { publishJarvis } from "../integrations/jarvis";
 import { buildOwnerNotifier, deliverDueAlerts, deskNotifier, listAlerts, type OwnerAlert } from "../money/notify";
@@ -279,7 +279,7 @@ function interact(db: DatabaseSync, kind: "wave" | "tap", ip: string) {
 }
 
 function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) {
-  if (!allowRate(db, `book:${ip}`, 8, 3600_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
+  if (!allowGuestNote(db, ip, Date.now())) return { ok: false, error: "RATE_LIMIT" };
   const moderated = moderateNote(note, 280);
   if (!moderated.ok) return moderated;
   if (!moderated.note) return { ok: false, error: "EMPTY" };

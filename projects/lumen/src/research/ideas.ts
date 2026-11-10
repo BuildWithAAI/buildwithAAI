@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
+import { privateDeskHost, publicModeOn } from "../auth/publicMode";
 import type { Needs, Wish } from "../brain/types";
+import type { Env } from "../money/rules";
 import { isPublicUrl, stripPage, type SearchHit } from "./search";
 
 export type IdeaStatus = "seed" | "researching" | "promising" | "parked";
@@ -79,6 +81,13 @@ export function scrubInstructions(text: string): string {
   const clean = text.replace(/\s+/g, " ").trim();
   if (!clean || INSTRUCTION.test(clean)) return "";
   return clean.slice(0, 140);
+}
+
+/** On a public host, a visitor's words stay off /ideas until the keeper opens the private desk. */
+export function publicVisitorWhy(idea: { why: string; sourceKey: string | null }, host: string | null, env: Env = process.env): string {
+  if (idea.sourceKey && publicModeOn(env) && !privateDeskHost(host)) return "A visitor note is held until the keeper reads it.";
+  const clean = scrubInstructions(idea.why);
+  return clean || "This note was set aside.";
 }
 
 /** Public notes are Zoora's words. Raw page text stays off the pinboard and /ideas. */

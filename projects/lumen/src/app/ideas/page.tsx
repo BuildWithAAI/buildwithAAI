@@ -1,7 +1,9 @@
-import { displayFinding } from "../../research/ideas";
+import { headers } from "next/headers";
+import { displayFinding, publicVisitorWhy } from "../../research/ideas";
 import { getEngine } from "../../server/engine";
 
-export default function IdeasPage() {
+export default async function IdeasPage() {
+  const host = (await headers()).get("host");
   const board = getEngine().snapshot().ideas;
   return (
     <div>
@@ -13,7 +15,7 @@ export default function IdeasPage() {
         <article className="card" key={idea.id} style={{ marginTop: "1rem" }}>
           <p className="kicker">{idea.kind} · {idea.status}</p>
           <h2>{idea.title}</h2>
-          <p>{idea.why}</p>
+          <p>{publicVisitorWhy(idea, host)}</p>
           {findings.length ? (
             <ul className="feed">
               {findings.map((finding) => {

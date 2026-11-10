@@ -269,6 +269,32 @@ export function setFlag(db: DatabaseSync, key: string, value: string): void {
   db.prepare("INSERT INTO flags(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
 }
 
+export const GUESTBOOK_IP_LIMIT = 8;
+export const GUESTBOOK_GLOBAL_LIMIT = 30;
+const GUESTBOOK_WINDOW_MS = 3_600_000;
+
+/** Per-address cap plus one shared cap, counted together so a flood cannot fill the book. */
+export function allowGuestNote(db: DatabaseSync, ip: string, now: number, limits = { perIp: GUESTBOOK_IP_LIMIT, global: GUESTBOOK_GLOBAL_LIMIT }): boolean {
+  const since = now - GUESTBOOK_WINDOW_MS;
+  const ipBucket = `book:${ip}`;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const count = (bucket: string) => Number((db.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = ? AND at_ms >= ?").get(bucket, since) as { n: number }).n);
+    if (count(ipBucket) >= limits.perIp || count("book:global") >= limits.global) {
+      db.exec("COMMIT");
+      return false;
+    }
+    const insert = db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)");
+    insert.run(ipBucket, now);
+    insert.run("book:global", now);
+    db.exec("COMMIT");
+    return true;
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    throw error;
+  }
+}
+
 export function allowRate(db: DatabaseSync, bucket: string, limit: number, windowMs: number, now: number): boolean {
   const since = now - windowMs;
   db.prepare("DELETE FROM rate_limits WHERE at_ms < ?").run(since);
