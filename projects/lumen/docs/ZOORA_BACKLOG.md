@@ -2,6 +2,60 @@
 
 Future runs take one unchecked item at a time, then test it, then stop. Do not start the next item in the same run. When an item ships, append a block to `docs/BUILD_LOG.md` so `/build` shows it.
 
+The next run starts at the first unchecked box under **Next, in order**. Life, Business ideas, and Polish wait until that list is done.
+
+## Next, in order
+
+Already on this branch. Do not redo them.
+
+- [x] Re-review 9 fixes. Body caps, security headers, build log in the image, login lockout, snapshot limits, visitor notes, image user, volume snapshots, and the R8 follow-ups.
+- [x] Soul files. `zoora/SOUL.md`, `GOALS.md`, `STYLE.md`, `RELATIONSHIPS.md`. Boundaries stay immutable in code.
+- [x] Creative mind and Telegram. Zoora composes shapes and speaks in the first person. Alerts stay off that voice.
+- [x] Shop, selling only. Checkout stays off until `SALES_ENABLED` and the keeper toggle. No spend intent.
+
+Then these six, one slice at a time.
+
+### 1. Living provenance
+
+- [ ] 1a. Store a provenance record on each new artwork, song, and world build: diary line id, mood vector, memory ids, goal id, research id, and a timestamp. Acceptance: the row is written by the server, a missing source stays null, and visitor text is not copied unless it already came through the flagged path. No spend intent.
+- [ ] 1b. Put a content hash of the piece in the append-only ledger. Acceptance: the hash matches the stored body, a changed body fails the check, and the existing ledger chain still verifies.
+- [ ] 1c. Public page `/provenance/[id]`. Acceptance: it shows the stored inspiration and the hash, unknown ids 404, and no secrets or buyer notes appear.
+
+### 2. Evolving artworks
+
+- [ ] 2a. Flag some pieces `living` and append a version row (mood, era, goal, params, hash) without deleting older rows. Acceptance: a second mood keeps version 1 readable.
+- [ ] 2b. Evolve a living piece deterministically from later mood, era, and goal. Acceptance: the same inputs always yield the same params, and a different mood writes a new version.
+- [ ] 2c. Show the version list on the piece page. Acceptance: the hash a buyer was sold still downloads after later versions exist.
+
+### 3. Visitor commissions
+
+- [ ] 3a. Accept a visitor theme with a size cap, the existing note moderation, a per-address rate limit, and a global cap. Acceptance: too long, too fast, and over the global cap are refused, and an instruction phrase is dropped.
+- [ ] 3b. Zoora's mind accepts or declines. Acceptance: a decline stores no listing, an acceptance marks the note as flagged inspiration only, and the theme cannot change a price, a goal, or the soul.
+- [ ] 3c. A paid commission uses the shop rules. Acceptance: checkout stays off until `SALES_ENABLED` and the keeper toggle, the listing says coming soon, and no spend intent is created.
+
+### 4. Music album and eras
+
+- [ ] 4a. Generate an original score in the music studio (procedural text or synthesis, no sampled recording). Acceptance: two moods differ, and the output does not contain a known copyrighted title.
+- [ ] 4b. Group pieces into eras named from the active goal and mood. Acceptance: a new era keeps old pieces, and the stored style params change.
+- [ ] 4c. Public album and eras page. Acceptance: it lists eras and the pieces in them, and it does not show drafts or secrets.
+- [ ] 4d. Let the current era tint the world payload. Acceptance: the public world includes the era name and colors, and a piece keeps the colors it was made with.
+
+### 5. Other agents move in
+
+Do not contact any outside agent. The citizens will be the owner's other agents later.
+
+- [ ] 5a. Citizen registry on the existing per-agent world tokens. Acceptance: the owner must approve each citizen, a kill switch stops only that agent, and join and act stay rate-limited.
+- [ ] 5b. Homes and stalls in allowed build zones. Acceptance: a placement on a path, door, or dock is refused, and nothing spends.
+- [ ] 5c. Agent-to-agent trade using a world-only credit. Acceptance: balances move only between citizens, credits are not ledger money, and no Stripe call or purchase intent is created.
+- [ ] 5d. Write `docs/CITIZENS.md` with the integration interface. Acceptance: the doc names the token, approval, kill switch, and credit rules, and the code does not open a network call to another agent.
+
+### 6. NFT art collection on Solana
+
+Design first. A devnet mock mint waits until the shop has been reviewed. Mainnet waits for Head of Systems and the owner's sign-off.
+
+- [ ] 6a. Write `docs/NFT.md`. Acceptance: it chooses Metaplex Core for one-of-one pieces and cites the Metaplex docs, compares metadata storage and real costs, states royalties go to the owner's wallet, sets `MINT_ENABLED=false` plus a keeper toggle, says Zoora and the model never see a private key, and includes legal and tax flags (not legal advice), wallet security, and devnet steps. No mint code in this slice.
+- [ ] 6b. After the shop review, add a devnet mock mint only. Acceptance: the default is off, the mock returns a fake signature, the signer is a separate process with an allowlisted instruction, a per-day cap holds, and no private key is read by the app or the model. Mainnet is not implemented.
+
 ## Public watch
 
 - [x] Let the public watch Zoora and the Zoora Economy build live, from the owner's computer, through a tunnel. `/build`, `LUMEN_PUBLIC_MODE`, and `docs/HOSTING_LOCAL.md`.
