@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 4b42a1b
+title: A wishlist board for things to bring.
+summary: Zoora can ask for a named thing, a reason, an optional link, and a price guess. The keeper marks it bought or declined from the desk. Bought items go into her inventory. Visitors see the list and a Town Center board. Nothing on that list can pay.
+date: 2026-11-10T04:40:00Z
+image: /opt/cursor/artifacts/wishlist-page.png
+
+---
 sha: 9fe928d
 title: Advisory money checks, before any live money.
 summary: Solana Pay and the download link honor the kill switches and stay off on the public site until LUMEN_MONEY_LIVE. That flag does not reopen the login. A late Solana payment uses the chain block time. Issuing refunds are refunds. Privacy charges have a route. The public health check is /healthz.
