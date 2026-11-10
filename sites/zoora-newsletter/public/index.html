@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0c0d10">
+  <meta name="description" content="Zoora is building tools for people and AI agents to work together. Sign up for product and build updates.">
+  <title>Zoora</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#signup">Skip to signup</a>
+  <main>
+    <p class="brand">Zoora</p>
+    <h1>Tools for people and AI agents to work together.</h1>
+    <p class="lede">Zoora is building tools for people and AI agents to work together. Sign up for product and build updates.</p>
+
+    <section id="signup" aria-labelledby="signup-title">
+      <h2 id="signup-title">Product and build updates</h2>
+      <form
+        name="newsletter"
+        method="POST"
+        action="https://app.kit.com/forms/10168331/subscriptions"
+        aria-describedby="privacy-note">
+        <div class="field">
+          <label for="email">Email</label>
+          <input
+            id="email"
+            name="email_address"
+            type="email"
+            autocomplete="email"
+            inputmode="email"
+            autocapitalize="none"
+            spellcheck="false"
+            enterkeyhint="send"
+            maxlength="254"
+            required>
+        </div>
+        <p id="privacy-note" class="privacy">This signup is used for Zoora product and build updates, sent through Kit. You'll get an email asking you to confirm, and you can unsubscribe any time.</p>
+        <div class="consent">
+          <input id="consent" name="consent" type="checkbox" value="yes" required>
+          <label for="consent">Send me Zoora product and build updates.</label>
+        </div>
+        <button type="submit">Sign up</button>
+      </form>
+    </section>
+  </main>
+  <footer>
+    <p>Zoora is still being built. This page only collects interest in product and build updates.</p>
+  </footer>
+</body>
+</html>
