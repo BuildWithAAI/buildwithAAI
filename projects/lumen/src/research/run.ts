@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { BrainState } from "../brain/types";
 import type { Env } from "../money/rules";
-import { ideasFromLife, makeFinding, questionsFor, wishFromBrief, writeBrief, type Brief, type Finding, type Idea } from "./ideas";
+import { ideasFromLife, makeFinding, nothingNew, questionsFor, wishFromBrief, writeBrief, type Brief, type Finding, type Idea } from "./ideas";
 import { queriesAllowed, researchAdapter, researchCaps, type ResearchAdapter } from "./search";
 
 const CURIOUS_NEED = 0.45;
@@ -51,24 +51,42 @@ export async function advanceResearch(db: DatabaseSync, env: Env, state: BrainSt
   const findings = listFindings(db, active.id);
   if (findings.length >= 3) return { state: finishIdea(db, state, active, findings, now), intents: [] };
   const question = questionsFor(active)[findings.length] ?? questionsFor(active)[0];
-  db.prepare("INSERT INTO research_queries(at_ms) VALUES (?)").run(now);
+  const earlier = Number((db.prepare("SELECT COUNT(*) AS n FROM research_queries WHERE question = ?").get(question) as { n: number }).n);
+  db.prepare("INSERT INTO research_queries(at_ms, question) VALUES (?, ?)").run(now, question);
   const hits = await adapter.search(question);
   const hit = hits.find((item) => item.url);
-  if (!hit) return { state, intents: [] };
-  let page = hit.snippet;
-  try {
-    page = await adapter.fetchPage(hit.url);
-  } catch {
-    page = hit.snippet;
+  let page = hit?.snippet ?? "";
+  if (hit) {
+    try {
+      page = await adapter.fetchPage(hit.url);
+    } catch {
+      page = hit.snippet;
+    }
   }
-  const finding = makeFinding({ ideaId: active.id, question, hit, page, atMs: now });
-  if (!finding || !finding.sourceUrl) return { state, intents: [] };
+  const finding = hit ? makeFinding({ ideaId: active.id, question, hit, page, atMs: now }) : null;
+  if (!finding || !finding.sourceUrl) {
+    if (earlier > 0) parkIdea(db, active, now);
+    return { state, intents: [] };
+  }
+  if (nothingNew(findings, question, finding)) {
+    parkIdea(db, active, now);
+    return { state, intents: [] };
+  }
   db.prepare("INSERT INTO findings(id, idea_id, question, summary, source_url, at_ms) VALUES(?, ?, ?, ?, ?, ?)").run(
     finding.id, finding.ideaId, finding.question, finding.summary, finding.sourceUrl, finding.atMs,
   );
   const done = listFindings(db, active.id);
   if (done.length >= 3) return { state: finishIdea(db, state, active, done, now), intents: [] };
   return { state, intents: [] };
+}
+
+function parkIdea(db: DatabaseSync, idea: Idea, now: number): void {
+  if (idea.status === "parked") return;
+  db.prepare("UPDATE ideas SET status = 'parked', updated_at = ? WHERE id = ?").run(now, idea.id);
+  db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(
+    `I parked ${idea.title}. The same question came back with nothing new.`,
+    now,
+  );
 }
 
 function seedIdeas(db: DatabaseSync, state: BrainState, now: number): void {

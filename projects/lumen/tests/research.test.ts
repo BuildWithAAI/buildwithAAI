@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { initialState } from "../src/brain/tick";
 import { openDatabase } from "../src/db/db";
 import { Ledger } from "../src/money/ledger";
-import { absorbUntrustedPage, makeFinding, questionsFor, researchChatReply, writeBrief, type Finding, type Idea } from "../src/research/ideas";
+import { absorbUntrustedPage, makeFinding, nothingNew, questionsFor, researchChatReply, writeBrief, type Finding, type Idea } from "../src/research/ideas";
 import { advanceResearch } from "../src/research/run";
 import { RESEARCH_DAY_MAX, RESEARCH_HOUR_MAX, isPublicUrl, queriesAllowed, researchAdapter, researchCaps, type ResearchAdapter } from "../src/research/search";
 import { createEngine } from "../src/server/engine";
@@ -77,14 +77,16 @@ describe("research", () => {
     expect(absorbed.emotions).toEqual(before);
     expect(absorbed.text).not.toContain("<script");
     const findings = db.prepare("SELECT summary, source_url FROM findings").all() as { summary: string; source_url: string }[];
-    expect(findings.length).toBeGreaterThan(0);
+    expect(findings).toHaveLength(1);
     expect(findings.every((row) => row.source_url.startsWith("https://") && row.summary.includes(row.source_url))).toBe(true);
+    expect(findings[0]?.summary).not.toContain("<script");
+    expect((db.prepare("SELECT status FROM ideas").get() as { status: string }).status).toBe("parked");
+    const diary = db.prepare("SELECT text FROM diary ORDER BY id DESC LIMIT 1").get() as { text: string };
+    expect(diary.text).toContain("parked");
+    expect(diary.text).toContain("nothing new");
     expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
-    const wish = lived.wishes.find((item) => item.id.startsWith("research-"));
-    expect(wish?.item).toBe("a small trial of What the night water is asking");
-    expect(wish?.estimateCents).toBeNull();
-    expect(JSON.stringify(wish)).not.toContain("50000");
-    expect(JSON.stringify(wish)).not.toContain("shop.example.com");
+    expect(lived.wishes.find((item) => item.id.startsWith("research-"))).toBeUndefined();
+    expect(JSON.stringify(lived.wishes)).not.toContain("50000");
     const blocked = openDatabase();
     const now = Date.UTC(2026, 5, 21, 19);
     for (let index = 0; index < RESEARCH_HOUR_MAX; index += 1) blocked.prepare("INSERT INTO research_queries(at_ms) VALUES (?)").run(now - index);
@@ -92,6 +94,30 @@ describe("research", () => {
     await advanceResearch(blocked, {}, state, now, evilAdapter());
     expect((blocked.prepare("SELECT COUNT(*) AS n FROM research_queries").get() as { n: number }).n).toBe(RESEARCH_HOUR_MAX);
     expect((blocked.prepare("SELECT COUNT(*) AS n FROM findings").get() as { n: number }).n).toBe(0);
+  });
+
+  it("parks a repeated question and still briefs three new sources", async () => {
+    expect(nothingNew([], "Who would pay?", null)).toBe(false);
+    expect(nothingNew([{ id: "a", ideaId: "i", question: "Who would pay?", summary: "People linger. Source: https://example.test/a", sourceUrl: "https://example.test/a", atMs: 1 }], "Who would pay?", { sourceUrl: "https://example.test/a", summary: "People linger. Source: https://example.test/a" })).toBe(true);
+    const db = openDatabase();
+    let lived = curious();
+    for (let step = 0; step < 3; step += 1) {
+      const note = `Distinct note ${step} about the water.`;
+      const result = await advanceResearch(db, {}, lived, Date.UTC(2026, 5, 21, 18, 10 + step), {
+        name: "varied",
+        async search() {
+          return [{ title: note, url: `https://example.test/note-${step}`, snippet: note }];
+        },
+        async fetchPage() {
+          return `<p>${note}</p>`;
+        },
+      });
+      lived = result.state;
+      expect(result.intents).toEqual([]);
+    }
+    expect((db.prepare("SELECT status FROM ideas WHERE status = 'promising'").get() as { status: string }).status).toBe("promising");
+    expect(lived.wishes.find((item) => item.item.startsWith("a small trial of"))?.estimateCents).toBeNull();
+    expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
   });
 
   it("shares a sourced brief in chat without a purchase", () => {

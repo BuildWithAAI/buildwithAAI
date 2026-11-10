@@ -16,7 +16,7 @@ The full R7a fix stays with blocker 4. Issuer activity still has to supply the m
 
 ## Life
 
-- [ ] Let Zoora park an idea on her own when the same question comes back with nothing new, and say so in the diary.
+- [x] Let Zoora park an idea on her own when the same question comes back with nothing new, and say so in the diary.
 - [ ] Remember which visitor notes became ideas, so the same guestbook line does not open a second seed.
 - [ ] Sleep still uses the real sunset. Add a short morning line when the sun comes up and she had a brief waiting.
 

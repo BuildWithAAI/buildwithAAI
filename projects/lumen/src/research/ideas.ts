@@ -47,6 +47,20 @@ export function absorbUntrustedPage<E>(html: string, emotions: E): { text: strin
   return { text: stripPage(html), intents: [], emotions };
 }
 
+export function findingBody(summary: string): string {
+  return summary.replace(/\s*Source:\s*https?:\/\/\S+/gi, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** A repeat of a question, or a page we already kept, is not a new finding. */
+export function nothingNew(prior: Finding[], question: string, candidate: { sourceUrl: string; summary: string } | null): boolean {
+  const asked = prior.some((item) => item.question === question);
+  if (!candidate) return asked;
+  const body = findingBody(candidate.summary);
+  const duplicateSource = prior.some((item) => item.sourceUrl === candidate.sourceUrl);
+  const duplicateWords = body.length > 0 && prior.some((item) => findingBody(item.summary) === body);
+  return duplicateSource || duplicateWords || (asked && body.length === 0);
+}
+
 export function questionsFor(idea: { title: string }): [string, string, string] {
   const title = idea.title.replace(/\s+/g, " ").trim().slice(0, 80);
   return [

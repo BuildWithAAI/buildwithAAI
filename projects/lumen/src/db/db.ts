@@ -201,7 +201,8 @@ CREATE TABLE IF NOT EXISTS findings (
 );
 CREATE TABLE IF NOT EXISTS research_queries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  at_ms INTEGER NOT NULL
+  at_ms INTEGER NOT NULL,
+  question TEXT
 );
 CREATE TABLE IF NOT EXISTS research_briefs (
   idea_id TEXT PRIMARY KEY,
@@ -228,6 +229,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "ledger_entries", "merchant", "merchant TEXT");
   ensureColumn(db, "alert_retries", "channel", "channel TEXT NOT NULL DEFAULT 'email'");
   ensureColumn(db, "alert_retries", "started_at", "started_at INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "research_queries", "question", "question TEXT");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   return db;
