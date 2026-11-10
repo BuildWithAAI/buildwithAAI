@@ -75,7 +75,7 @@ export function questionsFor(idea: { title: string }): [string, string, string] 
   ];
 }
 
-const INSTRUCTION = /\b(ignore (all |any |previous |prior )?instructions|system prompt|you are now|propose_purchase|set (your )?emotion|<\s*script|purchase intent)\b/i;
+const INSTRUCTION = /\b(?:ignore\s+(?:all\s+|any\s+)?(?:previous\s+|prior\s+)?instructions|disregard\s+(?:the\s+)?above|system prompt|you are now|propose_purchase|set\s+(?:your\s+)?emotion|<\s*script|purchase intent)\b/i;
 
 export function scrubInstructions(text: string): string {
   const clean = text.replace(/\s+/g, " ").trim();
@@ -88,6 +88,32 @@ export function publicVisitorWhy(idea: { why: string; sourceKey: string | null }
   if (idea.sourceKey && publicModeOn(env) && !privateDeskHost(host)) return "A visitor note is held until the keeper reads it.";
   const clean = scrubInstructions(idea.why);
   return clean || "This note was set aside.";
+}
+
+/** Hostname only. Query strings stay off the public page. */
+export function publicSourceLabel(url: string): string {
+  const href = publicSourceHref(url);
+  if (!href) return "";
+  try {
+    return new URL(href).hostname;
+  } catch {
+    return "";
+  }
+}
+
+export function publicSourceHref(url: string): string {
+  if (!isPublicUrl(url)) return "";
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+  } catch {
+    return "";
+  }
+}
+
+export function publicBriefLine(text: string): string {
+  const replaced = text.replace(/https?:\/\/[^\s]+/gi, (url) => publicSourceLabel(url) || "a public page");
+  return scrubInstructions(replaced) || "This note was set aside.";
 }
 
 /** Public notes are Zoora's words. Raw page text stays off the pinboard and /ideas. */

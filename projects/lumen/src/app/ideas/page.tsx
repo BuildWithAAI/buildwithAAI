@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { displayFinding, publicVisitorWhy } from "../../research/ideas";
+import { displayFinding, publicBriefLine, publicSourceHref, publicSourceLabel, publicVisitorWhy } from "../../research/ideas";
 import { getEngine } from "../../server/engine";
 
 export default async function IdeasPage() {
@@ -20,11 +20,13 @@ export default async function IdeasPage() {
             <ul className="feed">
               {findings.map((finding) => {
                 const shown = displayFinding(finding);
+                const source = publicSourceLabel(finding.sourceUrl);
+                const href = publicSourceHref(finding.sourceUrl);
                 return (
                   <li key={finding.id}>
                     <strong>{shown.label}</strong>
                     <p>{shown.text}</p>
-                    <p className="muted"><a href={finding.sourceUrl}>{finding.sourceUrl}</a></p>
+                    {source && href ? <p className="muted"><a href={href}>{source}</a></p> : null}
                   </li>
                 );
               })}
@@ -33,11 +35,11 @@ export default async function IdeasPage() {
           {brief ? (
             <div>
               <h3>Brief</h3>
-              <p><strong>Problem.</strong> {brief.problem}</p>
-              <p><strong>Who would pay.</strong> {brief.whoPays}</p>
-              <p><strong>Rough costs.</strong> {brief.costs}</p>
-              <p><strong>Risks.</strong> {brief.risks}</p>
-              <p><strong>First test.</strong> {brief.firstTest}</p>
+              <p><strong>Problem.</strong> {publicBriefLine(brief.problem)}</p>
+              <p><strong>Who would pay.</strong> {publicBriefLine(brief.whoPays)}</p>
+              <p><strong>Rough costs.</strong> {publicBriefLine(brief.costs)}</p>
+              <p><strong>Risks.</strong> {publicBriefLine(brief.risks)}</p>
+              <p><strong>First test.</strong> {publicBriefLine(brief.firstTest)}</p>
             </div>
           ) : null}
         </article>
