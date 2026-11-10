@@ -95,7 +95,7 @@ export async function runTelegramPoll(env: AlertEnv = process.env, hooks: {
   const safe = pollSafeEnv(env);
   const token = safe.LUMEN_TELEGRAM_BOT_TOKEN ?? "";
   if (ownerTelegram(safe).mode !== "live") {
-    throw new Error("Polling needs LUMEN_TELEGRAM_BOT_TOKEN, LUMEN_TELEGRAM_OWNER_CHAT_ID, and LUMEN_TELEGRAM_OWNER_USER_ID. Nothing was sent.");
+    throw new Error("Polling needs LUMEN_TELEGRAM_BOT_TOKEN and numeric LUMEN_TELEGRAM_OWNER_CHAT_ID and LUMEN_TELEGRAM_OWNER_USER_ID. Nothing was sent.");
   }
   const call = hooks.call ?? telegramCaller(token);
   await pollStartup(call);

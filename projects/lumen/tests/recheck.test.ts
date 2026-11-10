@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { createSession, OWNER_COOKIE, ownerCookie, ownerCookieSecure } from "../src/auth/owner";
+import { createSession, deskHttpSession, OWNER_COOKIE, ownerCookie, ownerCookieSecure } from "../src/auth/owner";
 import { DISTINCT_BEARER_LIMIT, OWNER_TOKEN_MAP_CAP, noteDistinctBearerMiss, ownerTokenKey, ownerTokenLoad, resetOwnerTokens } from "../src/auth/ownerToken";
 import { POST as reportCheckoutRoute } from "../src/app/api/checkout/report/route";
 import { getEngine } from "../src/server/engine";
@@ -52,6 +52,14 @@ describe("security recheck", () => {
     expect(ownerCookieSecure({ forwardedProto: "https", deskHttp: true })).toBe(true);
     expect(ownerCookieSecure({ forwardedProto: null, deskHttp: false })).toBe(true);
     expect(ownerCookie({ forwardedProto: "https", deskHttp: false })).toMatchObject({ httpOnly: true, sameSite: "strict", secure: true, path: "/" });
+    expect(deskHttpSession(true, true, "http")).toBe(true);
+    expect(deskHttpSession(true, true, "https")).toBe(false);
+    expect(deskHttpSession(true, false, null)).toBe(false);
+    expect(deskHttpSession(false, true, null)).toBe(false);
+    const login = readFileSync(new URL("../src/app/actions.ts", import.meta.url), "utf8");
+    const body = login.slice(login.indexOf("export async function login"), login.indexOf("export async function logout"));
+    expect(body).toContain("publicModeOn() && loginReachable(");
+    expect(body).not.toContain('Boolean((header.get("x-lumen-desk")');
   });
 
   it("rejects an owner session cookie on the public edge", async () => {

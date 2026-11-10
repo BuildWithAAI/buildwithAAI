@@ -72,8 +72,27 @@ function trackingToken(token: string): boolean {
   return digits === compact && trackingDigits(digits);
 }
 
+function uniform(digits: string): boolean {
+  return digits.length === 0 || /^(.)\1*$/.test(digits);
+}
+
+/** A real card with a short repeated prefix and suffix, hidden in a tracking-shaped length. */
+function paddedCard(digits: string): boolean {
+  if (!trackingDigits(digits)) return false;
+  for (let length = 13; length <= 19; length += 1) {
+    if (length >= digits.length) continue;
+    for (let start = 0; start + length <= digits.length; start += 1) {
+      if (!luhnOk(digits.slice(start, start + length))) continue;
+      const prefix = digits.slice(0, start);
+      const suffix = digits.slice(start + length);
+      if (uniform(prefix) && uniform(suffix)) return true;
+    }
+  }
+  return false;
+}
+
 function luhnWindow(digits: string): boolean {
-  if (trackingDigits(digits)) return false;
+  if (trackingDigits(digits)) return paddedCard(digits);
   if (digits.length >= 13 && digits.length <= 19 && luhnOk(digits)) return true;
   for (let length = 13; length <= 19; length += 1) {
     for (let start = 0; start + length <= digits.length; start += 1) {
@@ -88,7 +107,7 @@ function looksLikePan(value: string): boolean {
   if (AMAZON_ORDER.test(normalized)) return false;
   const compact = normalized.replace(/[\s-]/g, "");
   if (/^1Z[0-9A-Z]{16}$/i.test(compact)) return false;
-  if (/^\d+$/.test(compact) && trackingDigits(compact)) return false;
+  if (/^\d+$/.test(compact) && trackingDigits(compact)) return paddedCard(compact);
   const withoutAmazon = normalized.replace(AMAZON_ANYWHERE, " ");
   const chunks = withoutAmazon.split(/\s+/).filter(Boolean);
   let groups: string[] = [];

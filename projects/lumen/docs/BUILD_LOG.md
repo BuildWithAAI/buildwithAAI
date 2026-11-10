@@ -2,6 +2,13 @@
 
 ---
 sha:
+title: Close the leftover Telegram and desk checks.
+summary: The desk cookie omits Secure only after public mode and loginReachable both pass on a non-HTTPS request. Telegram chat and user ids must be numeric or the bot stays mock. Polling refuses private keys, issuer names, any Stripe name, and every other secret or token except the bot token, and the minimal process must match that allowlist exactly. A Luhn-valid card padded with repeated digits inside a tracking-shaped number is still caught. Random spaced USPS numbers are not.
+date: 2026-11-10T22:45:00Z
+image:
+
+---
+sha:
 title: Telegram is owner-only, and the desk cookie works over loopback HTTP.
 summary: An update is accepted only from a private chat when the user id and the chat id both match. A group, a forward, and an edit are dropped. Commands-only is the default, so plain text is not stored and is not sent to xAI. Polling refuses money, Stripe, issuing, privacy, signer, and mint variables, then runs in a clean environment. Dropped chat ids are capped, and the poll bundle is deleted on exit. /status says it reads this instance's local data. The desk cookie is Secure only on HTTPS. The loopback desk over HTTP can keep the session. HttpOnly and SameSite=Strict stay. Crisis phrases cover ending it, hurt myself, and not wanting to be alive. Self-harm awareness week stays a quiet reply. Spaced USPS, UPS, and FedEx numbers are not treated as cards. A /48 cannot fill the presence cap. The smoke test logs in at http://127.0.0.1:3001 and reloads the desk.
 date: 2026-11-10T22:30:00Z

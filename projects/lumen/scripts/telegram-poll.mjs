@@ -6,16 +6,27 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { redactToken } from "./telegram-redact.mjs";
 
-const ALLOWED = ["PATH", "NODE_ENV", "TZ", "LUMEN_TELEGRAM_BOT_TOKEN", "LUMEN_TELEGRAM_OWNER_CHAT_ID", "LUMEN_TELEGRAM_OWNER_USER_ID", "LUMEN_DATA"];
+export const POLL_ALLOWLIST = ["PATH", "NODE_ENV", "TZ", "LUMEN_DATA", "LUMEN_TELEGRAM_BOT_TOKEN", "LUMEN_TELEGRAM_OWNER_CHAT_ID", "LUMEN_TELEGRAM_OWNER_USER_ID", "LUMEN_TELEGRAM_MODE"];
 
 export function forbiddenPollKeys(env) {
   return Object.keys(env).filter((key) => {
     const value = env[key];
     if (value == null || String(value).length === 0) return false;
-    if (key === "LUMEN_MONEY_LIVE" || key === "LUMEN_TRADING_LIVE") return true;
-    if (key.startsWith("STRIPE_")) return true;
+    const upper = key.toUpperCase();
+    if (upper === "LUMEN_MONEY_LIVE" || upper === "LUMEN_TRADING_LIVE") return true;
+    if (upper.includes("PRIVATE_KEY") || upper.includes("ISSUER") || upper.includes("STRIPE")) return true;
+    if (upper.startsWith("LUMEN_STRIPE_")) return true;
+    if ((upper.endsWith("_SECRET") || upper.endsWith("_TOKEN")) && upper !== "LUMEN_TELEGRAM_BOT_TOKEN") return true;
     return /ISSUING|PRIVACY|SIGNER|MINT/i.test(key);
   });
+}
+
+/** True only when the process environment is exactly the poll allowlist. */
+export function pollEnvAllowed(env) {
+  const keys = Object.keys(env).filter((key) => env[key] != null && String(env[key]).length > 0);
+  if (keys.length !== POLL_ALLOWLIST.length) return false;
+  const allow = new Set(POLL_ALLOWLIST);
+  return keys.every((key) => allow.has(key));
 }
 
 /** The child process receives only these names. Secrets stay in the environment, not in argv. */
@@ -26,7 +37,7 @@ export function minimalPollEnv(env) {
     TZ: env.TZ || "UTC",
     LUMEN_TELEGRAM_MODE: "poll",
   };
-  for (const key of ALLOWED) {
+  for (const key of POLL_ALLOWLIST) {
     if (env[key]) next[key] = env[key];
   }
   if (!next.LUMEN_DATA) next.LUMEN_DATA = "data/lumen.sqlite";
@@ -107,6 +118,10 @@ if (import.meta.url === entry && !process.argv.includes("--minimal")) {
 }
 
 if (import.meta.url === entry) {
+  if (!pollEnvAllowed(process.env)) {
+    console.error("Refusing to poll because the environment is not the Telegram allowlist.");
+    process.exit(1);
+  }
   let bundle = "";
   const code = await launchPoll({
     run: async () => {

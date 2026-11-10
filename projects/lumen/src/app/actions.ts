@@ -47,12 +47,13 @@ export async function sendNote(form: FormData) {
 
 export async function login(form: FormData) {
   const header = await headers();
-  if (!loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))) redirect("/");
+  const reachable = loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"));
+  if (!reachable) redirect("/");
   const result = await getEngine().login(String(form.get("secret") ?? ""), await ip());
   if (!result.ok || !("token" in result) || !result.token) redirect("/admin/login?error=1");
   const jar = await cookies();
   const proto = header.get("x-forwarded-proto");
-  const deskHttp = Boolean((header.get("x-lumen-desk") ?? "").trim()) && (proto ?? "").split(",")[0]?.trim().toLowerCase() !== "https";
+  const deskHttp = publicModeOn() && loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk")) && (proto ?? "").split(",")[0]?.trim().toLowerCase() !== "https";
   jar.set(OWNER_COOKIE, result.token, ownerCookie({ forwardedProto: proto, deskHttp }));
   redirect("/admin");
 }

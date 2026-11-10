@@ -37,11 +37,16 @@ export function commandsOnly(env: AlertEnv): boolean {
   return (env.LUMEN_TELEGRAM_COMMANDS_ONLY ?? "").trim().toLowerCase() !== "false";
 }
 
-/** Private chat, owner user, and owner chat must all match. A missing id fails closed. */
+/** Telegram chat and user ids are decimal. Anything else fails closed. */
+export function numericTelegramId(value: string): boolean {
+  return /^[1-9][0-9]{0,19}$/.test(value);
+}
+
+/** Private chat, owner user, and owner chat must all match. A missing or non-numeric id fails closed. */
 export function ownerUpdateAllowed(env: AlertEnv, message: InboundMessage | undefined): boolean {
   const chatId = (env.LUMEN_TELEGRAM_OWNER_CHAT_ID ?? "").trim();
   const userId = (env.LUMEN_TELEGRAM_OWNER_USER_ID ?? "").trim();
-  if (!chatId || !userId || !message) return false;
+  if (!numericTelegramId(chatId) || !numericTelegramId(userId) || !message) return false;
   if (message.edit_date != null) return false;
   if (message.forward_date != null || message.forward_from != null || message.forward_origin != null || message.forward_sender_name != null) return false;
   if (message.chat?.type !== "private") return false;
@@ -57,11 +62,14 @@ export function pruneTelegramDrops(db: DatabaseSync, now: number): void {
 
 export type OwnerTelegram = { mode: "live" | "mock"; chatId: string; secretSet: boolean };
 
-/** Token and chat id stay out of logs. Unset means mock. */
+/** Token, numeric chat id, and numeric user id. Anything missing stays mock and does not start. */
 export function ownerTelegram(env: AlertEnv): OwnerTelegram {
   const token = env.LUMEN_TELEGRAM_BOT_TOKEN ?? "";
-  const chatId = env.LUMEN_TELEGRAM_OWNER_CHAT_ID ?? "";
-  if (!token || !chatId) return { mode: "mock", chatId: "", secretSet: Boolean(env.LUMEN_TELEGRAM_WEBHOOK_SECRET) };
+  const chatId = (env.LUMEN_TELEGRAM_OWNER_CHAT_ID ?? "").trim();
+  const userId = (env.LUMEN_TELEGRAM_OWNER_USER_ID ?? "").trim();
+  if (!token || !numericTelegramId(chatId) || !numericTelegramId(userId)) {
+    return { mode: "mock", chatId: "", secretSet: Boolean(env.LUMEN_TELEGRAM_WEBHOOK_SECRET) };
+  }
   return { mode: "live", chatId, secretSet: Boolean(env.LUMEN_TELEGRAM_WEBHOOK_SECRET) };
 }
 

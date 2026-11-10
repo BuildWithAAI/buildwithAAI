@@ -11,7 +11,9 @@ import {
   inQuietHours,
   knownCommand,
   offerThought,
+  numericTelegramId,
   ownerTelegram,
+  ownerUpdateAllowed,
   pollSafeEnv,
   readVoiceFacts,
   redactSecrets,
@@ -27,7 +29,7 @@ import { tradingLive } from "../src/trading/book";
 import { initialState } from "../src/brain/tick";
 import { creativeEnabled, setCreativeEnabled } from "../src/world/creative";
 import { BOT_COMMANDS, setMyCommands } from "../scripts/telegram-set-commands.mjs";
-import { forbiddenPollKeys, launchPoll, minimalPollEnv, preparePollEnv, removePollBundle } from "../scripts/telegram-poll.mjs";
+import { forbiddenPollKeys, launchPoll, minimalPollEnv, pollEnvAllowed, preparePollEnv, removePollBundle } from "../scripts/telegram-poll.mjs";
 
 const live = {
   LUMEN_TELEGRAM_BOT_TOKEN: "secret-token",
@@ -406,5 +408,32 @@ describe("Zoora's telegram voice", () => {
     removePollBundle(file);
     expect(existsSync(file)).toBe(false);
     expect(existsSync(dir)).toBe(false);
+    expect(numericTelegramId("77")).toBe(true);
+    expect(numericTelegramId("4242")).toBe(true);
+    expect(numericTelegramId("")).toBe(false);
+    expect(numericTelegramId("77abc")).toBe(false);
+    expect(numericTelegramId("0")).toBe(false);
+    expect(ownerTelegram({ ...live, LUMEN_TELEGRAM_OWNER_USER_ID: "77" }).mode).toBe("live");
+    expect(ownerTelegram({ ...live, LUMEN_TELEGRAM_OWNER_USER_ID: "" }).mode).toBe("mock");
+    expect(ownerTelegram({ ...live, LUMEN_TELEGRAM_OWNER_CHAT_ID: "chat" }).mode).toBe("mock");
+    expect(ownerUpdateAllowed({ ...live, LUMEN_TELEGRAM_OWNER_USER_ID: "user" }, { chat: { id: 4242, type: "private" }, from: { id: "user" }, text: "/help" })).toBe(false);
+    const clean = minimalPollEnv({
+      PATH: "/usr/bin",
+      LUMEN_TELEGRAM_BOT_TOKEN: "secret-token",
+      LUMEN_TELEGRAM_OWNER_CHAT_ID: "4242",
+      LUMEN_TELEGRAM_OWNER_USER_ID: "77",
+    });
+    expect(pollEnvAllowed(clean)).toBe(true);
+    expect(pollEnvAllowed({ ...clean, HOME: "/tmp" })).toBe(false);
+    const { LUMEN_DATA: _dropped, ...missing } = clean;
+    expect(pollEnvAllowed(missing)).toBe(false);
+    expect(forbiddenPollKeys({
+      stripe_secret_key: "sk",
+      LUMEN_STRIPE_KEY: "x",
+      MY_PRIVATE_KEY: "k",
+      CARD_ISSUER: "stripe",
+      OTHER_TOKEN: "t",
+      LUMEN_TELEGRAM_BOT_TOKEN: "secret-token",
+    }).sort()).toEqual(["CARD_ISSUER", "LUMEN_STRIPE_KEY", "MY_PRIVATE_KEY", "OTHER_TOKEN", "stripe_secret_key"]);
   });
 });

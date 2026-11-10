@@ -151,6 +151,15 @@ describe("pre-deploy advisory", () => {
       const mixed = `12${extra}4242424242424242`;
       expect(rejectPan({ note: mixed })).toBe(true);
     }
+    const pan = "4242424242424242";
+    for (let i = 0; i < 1000; i += 1) {
+      const prefixLen = 1 + (i % 3);
+      const total = i % 2 === 0 ? 20 : 22;
+      const suffixLen = total - prefixLen - pan.length;
+      const body = "9".repeat(prefixLen) + pan + "0".repeat(suffixLen);
+      const spaced = body.replace(/(.{4})/g, "$1 ").trim();
+      expect(rejectPan({ note: spaced })).toBe(true);
+    }
     expect(rejectPan({ note: "123-4567890-1234569 4242424242424242" })).toBe(true);
   });
 

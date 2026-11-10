@@ -67,6 +67,12 @@ export function readCookie(header: string | null, name: string): string | null {
 
 export const OWNER_COOKIE = "lumen_owner";
 
+/** True only for a validated public-mode desk login that is not HTTPS. */
+export function deskHttpSession(publicMode: boolean, reachable: boolean, forwardedProto: string | null): boolean {
+  const https = (forwardedProto ?? "").split(",")[0]?.trim().toLowerCase() === "https";
+  return publicMode && reachable && !https;
+}
+
 /**
  * Secure on HTTPS. The desk proxy is HTTP and is the only public-mode login that
  * may omit Secure. The Host header is not consulted.
