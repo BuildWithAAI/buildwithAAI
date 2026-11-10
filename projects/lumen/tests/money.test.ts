@@ -763,6 +763,36 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect(bodyHash({ ...row!, merchant: "paper-shop" })).not.toBe(row?.bodyHash);
   });
 
+  it("refuses a merchant-hash migration when a pre-upgrade row was tampered", () => {
+    const db = openDatabase();
+    const note = "Reserved before issuer. art_supplies at paper-shop.";
+    const legacy = createHash("sha256").update(canonical({
+      kind: "approval",
+      amountCents: 100,
+      status: "intent",
+      provider: null,
+      providerTransactionId: null,
+      chargeId: null,
+      paymentIntentId: null,
+      ref: "old-2",
+      note,
+    })).digest("hex");
+    const entry = createHash("sha256").update(`GENESIS${legacy}`).digest("hex");
+    db.prepare(
+      `INSERT INTO ledger_entries
+        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, prev_hash, entry_hash)
+       VALUES (?, ?, 'approval', 100, 'usd', 'intent', NULL, NULL, NULL, NULL, ?, ?, 'old-2', ?, NULL, 'GENESIS', ?)`,
+    ).run("old-2", Date.UTC(2026, 10, 2), "reserve:old-2", legacy, note, entry);
+    db.exec("DROP TRIGGER IF EXISTS ledger_no_update");
+    db.prepare("UPDATE ledger_entries SET note = ? WHERE id = ?").run("Tampered note.", "old-2");
+    db.exec("CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    kvSet(db, "ledger_hash_version", "1");
+    migrateMerchantHashes(db);
+    expect((db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string }).value).toBe("1");
+    expect((db.prepare("SELECT note FROM ledger_entries WHERE id = 'old-2'").get() as { note: string }).note).toBe("Tampered note.");
+    expect((db.prepare("SELECT title FROM owner_alerts WHERE title = 'Ledger chain broken'").get() as { title: string }).title).toBe("Ledger chain broken");
+  });
+
   it("writes a new give-up notice when the same alert gives up again 3 hours later", () => {
     const db = openDatabase();
     const at = Date.UTC(2026, 10, 9, 12);

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 
 export const LEDGER_KINDS = ["purchase", "sale", "fee", "refund", "payout", "approval", "decline", "dispute"] as const;
@@ -81,23 +81,71 @@ export function backfillMerchants(db: DatabaseSync): number {
   return filled;
 }
 
-/** Recompute the chain so the merchant is inside the tamper hash. */
+/** Hash used before the merchant column joined the chain. */
+export function legacyBodyHash(input: LedgerInput): string {
+  return createHash("sha256").update(canonical({
+    kind: input.kind,
+    amountCents: input.amountCents,
+    status: input.status,
+    provider: input.provider ?? null,
+    providerTransactionId: input.providerTransactionId ?? null,
+    chargeId: input.chargeId ?? null,
+    paymentIntentId: input.paymentIntentId ?? null,
+    ref: input.ref ?? null,
+    note: input.note,
+  })).digest("hex");
+}
+
+export function verifyLegacyChain(rows: LedgerRow[]): boolean {
+  let prev = "GENESIS";
+  for (const row of rows) {
+    const hash = legacyBodyHash(row);
+    if (row.bodyHash !== hash || row.prevHash !== prev) return false;
+    const entry = createHash("sha256").update(prev + hash).digest("hex");
+    if (row.entryHash !== entry) return false;
+    prev = entry;
+  }
+  return true;
+}
+
+/** Recompute the chain so the merchant is inside the tamper hash. A broken old chain is left untouched. */
 export function migrateMerchantHashes(db: DatabaseSync): void {
   const version = db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string } | undefined;
   if (version?.value === "2") return;
-  backfillMerchants(db);
   const rows = new Ledger(db).list();
-  db.exec("DROP TRIGGER IF EXISTS ledger_no_update");
-  const update = db.prepare("UPDATE ledger_entries SET body_hash = ?, prev_hash = ?, entry_hash = ? WHERE id = ?");
-  let prev = "GENESIS";
-  for (const row of rows) {
-    const hash = bodyHash(row);
-    const entry = createHash("sha256").update(prev + hash).digest("hex");
-    if (row.bodyHash !== hash || row.prevHash !== prev || row.entryHash !== entry) update.run(hash, prev, entry, row.id);
-    prev = entry;
+  if (!verifyLegacyChain(rows)) {
+    const title = "Ledger chain broken";
+    const existing = db.prepare("SELECT id FROM owner_alerts WHERE title = ?").get(title);
+    if (!existing) {
+      db.prepare("INSERT INTO owner_alerts(id, kind, title, detail, created_at) VALUES(?, 'ledger', ?, ?, ?)").run(
+        randomBytes(8).toString("hex"),
+        title,
+        "The pre-upgrade ledger chain did not verify. Merchant hashes were not rewritten.",
+        Date.now(),
+      );
+    }
+    return;
   }
-  db.exec("CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'append-only'); END");
-  db.prepare("INSERT INTO kv(key, value) VALUES('ledger_hash_version', '2') ON CONFLICT(key) DO UPDATE SET value = '2'").run();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    backfillMerchants(db);
+    const filled = new Ledger(db).list();
+    db.exec("DROP TRIGGER IF EXISTS ledger_no_update");
+    const update = db.prepare("UPDATE ledger_entries SET body_hash = ?, prev_hash = ?, entry_hash = ? WHERE id = ?");
+    let prev = "GENESIS";
+    for (const row of filled) {
+      const hash = bodyHash(row);
+      const entry = createHash("sha256").update(prev + hash).digest("hex");
+      if (row.bodyHash !== hash || row.prevHash !== prev || row.entryHash !== entry) update.run(hash, prev, entry, row.id);
+      prev = entry;
+    }
+    db.exec("CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    db.prepare("INSERT INTO kv(key, value) VALUES('ledger_hash_version', '2') ON CONFLICT(key) DO UPDATE SET value = '2'").run();
+    db.exec("COMMIT");
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    throw error;
+  }
 }
 
 export function verifyLedgerChain(db: DatabaseSync): boolean {
