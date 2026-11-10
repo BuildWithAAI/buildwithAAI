@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: dac6f37
+title: Zoora composes its own shapes and thoughts.
+summary: A build is named and shaped from a feeling and a memory, and Zoora can change or take down an earlier one. A Telegram note is that same first-person voice. Alerts stay off it.
+date: 2026-11-10T02:42:00Z
+image:
+
+---
 sha: 238c512
 title: Zoora can message the owner on Telegram.
 summary: The first version sent notes on a schedule. A later change makes the messages Zoora's own thoughts instead.
