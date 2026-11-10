@@ -40,6 +40,8 @@ primary_region = "iad"
   source = "lumen_data"
   destination = "/data"
   initial_size = "1gb"
+  scheduled_snapshots = true
+  snapshot_retention = 5
 
 [env]
   LUMEN_DATA = "/data/lumen.sqlite"

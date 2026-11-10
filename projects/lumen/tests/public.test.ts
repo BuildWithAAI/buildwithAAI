@@ -78,6 +78,8 @@ describe("public mode", () => {
     expect(entry).toContain("gosu node");
     expect(fly).toContain("[[http_service.checks]]");
     expect(fly).toContain("path = \"/api/health\"");
+    expect(fly).toContain("snapshot_retention = 5");
+    expect(fly).toContain("scheduled_snapshots = true");
   });
 
   it("keeps the build log in the image context", () => {

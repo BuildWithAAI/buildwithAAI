@@ -64,6 +64,21 @@ fly volumes create lumen_data --region iad --size 1 -a lumen-tidepool --yes
 
 `fly launch --no-deploy` is the other way to create the app from `fly.toml` without deploying. If the app name `lumen-tidepool` is taken, pick another name, change `app` in `fly.toml`, and use that name in the commands below. Do not run a plain `fly launch` that deploys.
 
+## Volume snapshots
+
+The SQLite file on `lumen_data` is the ledger and the memory. `fly.toml` keeps automatic daily snapshots and retains them for 5 days (`snapshot_retention = 5`, `scheduled_snapshots = true`). Five days is the platform default. The minimum is 1 day and the maximum is 60. A longer retention keeps more copies of the 1GB volume and can add snapshot storage.
+
+Snapshot storage is $0.08 per GB per month after the first 10GB, which is free. Five daily copies of this 1GB volume stay inside that free 10GB.
+
+List the copies:
+
+```powershell
+fly volumes list -a lumen-tidepool
+fly volumes snapshots list <volume-id> -a lumen-tidepool
+```
+
+To restore, create a new volume in `iad` from one of those snapshot ids, mount it, and open the desk. Do not destroy the current volume until that copy is the one the machine is using.
+
 Confirm the volume is 1GB in `iad`:
 
 ```powershell
