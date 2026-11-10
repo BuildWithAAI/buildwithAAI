@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { mkdir, access } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
 
@@ -59,7 +60,7 @@ try {
     await dismiss.click();
     await page.waitForSelector("[role=dialog]", { state: "detached" });
   }
-  const shots = "/opt/cursor/artifacts";
+  const shots = process.env.RUNNER_TEMP || tmpdir();
   await mkdir(shots, { recursive: true });
   await page.screenshot({ path: `${shots}/home.png`, fullPage: true });
 
@@ -76,7 +77,7 @@ try {
   if (problems.length) throw new Error(`console error on /world: ${problems.join(" | ")}`);
   await page.screenshot({ path: `${shots}/world-tip.png` });
   await browser.close();
-  await access(`${shots}/home.png`);
+  await writeFile(`${shots}/csp-smoke-ok`, "ok\n");
 } finally {
   server.kill("SIGTERM");
   await delay(300);
