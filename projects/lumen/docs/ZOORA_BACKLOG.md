@@ -17,7 +17,7 @@ Then these six, one slice at a time.
 
 ### 1. Living provenance
 
-- [ ] 1a. Store a provenance record on each new artwork, song, and world build: diary line id, mood vector, memory ids, goal id, research id, and a timestamp. Acceptance: the row is written by the server, a missing source stays null, and visitor text is not copied unless it already came through the flagged path. No spend intent.
+- [x] 1a. Store a provenance record on each new artwork, song, and world build: diary line id, mood vector, memory ids, goal id, research id, and a timestamp. Acceptance: the row is written by the server, a missing source stays null, and visitor text is not copied unless it already came through the flagged path. No spend intent.
 - [ ] 1b. Put a content hash of the piece in the append-only ledger. Acceptance: the hash matches the stored body, a changed body fails the check, and the existing ledger chain still verifies.
 - [ ] 1c. Public page `/provenance/[id]`. Acceptance: it shows the stored inspiration and the hash, unknown ids 404, and no secrets or buyer notes appear.
 

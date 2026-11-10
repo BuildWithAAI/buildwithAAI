@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { EmotionName, Emotions } from "../brain/types";
 import { flag, kvGet, kvSet, setFlag } from "../db/db";
 import { scrubInstructions } from "../research/ideas";
+import { recordProvenance } from "../build/provenance";
 import { AREAS, areaById, type AreaId, type BuildSlot } from "./areas";
 import type { BuildEntry } from "../build/log";
 
@@ -229,11 +230,11 @@ export function placeCreative(db: DatabaseSync, signals: CreativeSignals, now: n
   };
   db.exec("BEGIN IMMEDIATE");
   try {
+    db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(build.why, now);
     insertBuild(db, build);
     recordVersion(db, build, now);
     const spent = DAILY_MATERIALS - materialsLeft(db, now);
     kvSet(db, `materials-spent:${day}`, String(spent + cost));
-    db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(build.why, now);
     db.prepare("INSERT INTO creative_log(build_id, sha, title, summary, at_ms, undone) VALUES(?, ?, ?, ?, ?, 0)").run(
       build.id,
       build.id.slice(0, 12),
@@ -288,6 +289,12 @@ function insertBuild(db: DatabaseSync, build: WorldBuild): void {
     `INSERT INTO world_builds(id, version, place_id, kind, title, why, emotion, x, z, size, yaw, status, materials, influenced, created_at, params)
      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(build.id, build.version, build.placeId, build.kind, build.title, build.why, build.emotion, build.x, build.z, build.size, build.yaw, build.status, build.materials, build.influenced ? 1 : 0, build.createdAt, JSON.stringify(build.params));
+  recordProvenance(db, {
+    pieceKind: "build",
+    pieceId: build.id,
+    atMs: build.createdAt,
+    flaggedVisitorText: build.influenced ? build.why : null,
+  });
 }
 
 function recordVersion(db: DatabaseSync, build: WorldBuild, now: number): void {

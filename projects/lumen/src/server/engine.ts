@@ -27,6 +27,7 @@ import { composeThought, offerThought } from "../integrations/telegramOwner";
 import { latestThesis } from "../trading/book";
 import { considerShop, hideListing, listShop, listingMaxCents, publishListing, readShop, retireListing, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
 import { considerKeeperList, inventoryLine, listKeeperWishes, markKeeperWish } from "../wishlist/board";
+import { recordProvenance } from "../build/provenance";
 import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
@@ -139,12 +140,14 @@ function ensureSeed(db: DatabaseSync): void {
   if (Number(count.n) === 0) {
     for (let i = 1; i <= 3; i += 1) {
       const seed = 1000 + i * 17;
+      const seededAt = Date.now() - i * 1000;
       db.prepare("INSERT INTO creations(id, title, svg, listed, price_cents, likes, favorites, created_at) VALUES(?, ?, ?, 0, NULL, 0, 0, ?)").run(
         `seed-${i}`,
         artTitle(seed),
         makeSvg(seed, i === 2 ? "#ffd27a" : "#8ef0d8"),
-        Date.now() - i * 1000,
+        seededAt,
       );
+      recordProvenance(db, { pieceKind: "art", pieceId: `seed-${i}`, atMs: seededAt });
     }
     db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(
       "I woke in the still pocket. The arch was already lit. I am not in a hurry.",
@@ -307,12 +310,14 @@ function persistTick(db: DatabaseSync, result: TickResult, now: number): void {
     db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, ?, ?, ?)").run(item.text, item.tone, item.private ? 1 : 0, now);
   }
   if (result.art) {
+    const artId = `art-${result.art.seed}`;
     db.prepare("INSERT INTO creations(id, title, svg, listed, price_cents, likes, favorites, created_at) VALUES(?, ?, ?, 0, NULL, 0, 0, ?)").run(
-      `art-${result.art.seed}`,
+      artId,
       result.art.title,
       result.art.svg,
       now,
     );
+    recordProvenance(db, { pieceKind: "art", pieceId: artId, atMs: now });
   }
   for (const audit of result.audits) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, ?, ?)").run(now, audit.kind, audit.detail);

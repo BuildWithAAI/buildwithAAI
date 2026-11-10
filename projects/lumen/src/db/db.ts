@@ -373,6 +373,18 @@ CREATE TABLE IF NOT EXISTS shop_orders (
   created_at INTEGER NOT NULL,
   buyer_ip TEXT
 );
+CREATE TABLE IF NOT EXISTS provenance (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  piece_kind TEXT NOT NULL,
+  piece_id TEXT NOT NULL,
+  diary_id INTEGER,
+  mood_json TEXT,
+  memory_ids TEXT NOT NULL,
+  goal_id TEXT,
+  research_id TEXT,
+  visitor_text TEXT,
+  at_ms INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS keeper_wishlist (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

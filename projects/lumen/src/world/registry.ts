@@ -8,6 +8,7 @@ import { visibleBuilds } from "./creative";
 import { readShop } from "../shop/store";
 import { tape } from "../trading/book";
 import { publicWishLines } from "../wishlist/board";
+import { recordProvenance } from "../build/provenance";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
@@ -291,12 +292,14 @@ function produce(db: DatabaseSync, row: AgentRow, action: WorldActivity, now: nu
   if (action === "paint" || action === "study") {
     const seed = (now % 100000) + row.name.length * 17;
     const emotion = row.id === "zoora" ? "calm" : "joy";
+    const artId = `art-${row.id}-${now}`;
     db.prepare("INSERT INTO creations(id, title, svg, listed, price_cents, likes, favorites, created_at) VALUES(?, ?, ?, 0, NULL, 0, 0, ?)").run(
-      `art-${row.id}-${now}`,
+      artId,
       artTitle(seed),
       makeSvg(seed, emotion === "joy" ? "#e7b15a" : "#7ee0c8"),
       now,
     );
+    recordProvenance(db, { pieceKind: "art", pieceId: artId, atMs: now });
     logLine(db, row.id, `${row.name} left a piece on the easel.`, now);
     return;
   }
@@ -311,7 +314,9 @@ function produce(db: DatabaseSync, row: AgentRow, action: WorldActivity, now: nu
     return;
   }
   if (action === "hum" || action === "compose") {
-    kvSet(db, "world_tune", JSON.stringify(composeTune(now)));
+    const songId = `song-${row.id}-${now}`;
+    kvSet(db, "world_tune", JSON.stringify({ ...composeTune(now), id: songId }));
+    recordProvenance(db, { pieceKind: "song", pieceId: songId, atMs: now });
     logLine(db, row.id, `${row.name} set a short phrase on the stand. Sound stays off until someone turns it on.`, now);
     return;
   }
