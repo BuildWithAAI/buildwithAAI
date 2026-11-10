@@ -118,7 +118,9 @@ describe("pre-deploy advisory", () => {
     expect(rejectPan({ order_number: "123-4567890-1234569" })).toBe(false);
     expect(rejectPan({ orderNumber: "4242424242424242" })).toBe(true);
     expect(rejectPan({ order_number: "4242-4242-4242-4242" })).toBe(true);
-    expect(rejectPan({ note: "order 123-4567890-1234569" })).toBe(false);
+    expect(rejectPan({ note: "4242 4242 4242 4242 1228 123" })).toBe(true);
+    expect(rejectPan({ note: "4242 4242 4242 4242 12/28" })).toBe(true);
+    expect(rejectPan({ note: "123-4567890-1234569 4242424242424242" })).toBe(true);
   });
 
   it("labels a refused wishlist link instead of showing the raw address", () => {

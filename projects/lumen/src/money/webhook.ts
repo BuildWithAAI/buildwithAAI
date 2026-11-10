@@ -69,7 +69,7 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
   if (event.type === "charge.refunded" || event.type === "refund.created") {
     bookRefunds(ledger, event, nowMs);
     const refs = stripeRefs(event.type, object);
-    if (refs.paymentIntentId || refs.chargeId) {
+    if ((refs.paymentIntentId || refs.chargeId) && refundClosesAccess(db, event.type, object, process.env)) {
       refundShopCharge(db, refs);
       revokePaidDownload(db, refs, nowMs);
     }
@@ -249,6 +249,26 @@ function merchantName(object: Record<string, unknown>): string {
 function refundItems(object: Record<string, unknown>): { id: string; amount: number }[] {
   const data = (object.refunds as { data?: { id?: string; amount?: number }[] } | undefined)?.data ?? [];
   return data.flatMap((item) => (item.id ? [{ id: item.id, amount: numberField(item.amount) }] : []));
+}
+
+/** A partial refund stays in the ledger and keeps the file. Set LUMEN_REVOKE_ON_PARTIAL_REFUND=true to close the file on a partial refund too. A dispute always closes it. */
+export function refundClosesAccess(db: DatabaseSync, type: string, object: Record<string, unknown>, env: Record<string, string | undefined> = process.env): boolean {
+  if (env.LUMEN_REVOKE_ON_PARTIAL_REFUND === "true") return true;
+  if (type === "charge.refunded") {
+    if (object.refunded === true) return true;
+    const amount = numberField(object.amount);
+    return amount > 0 && numberField(object.amount_refunded) >= amount;
+  }
+  const refs = stripeRefs(type, object);
+  const paymentIntentId = refs.paymentIntentId || "";
+  const chargeId = refs.chargeId || "";
+  const sale = db.prepare(
+    `SELECT amount_cents FROM ledger_entries WHERE kind = 'sale' AND (
+      (? != '' AND payment_intent_id = ?) OR (? != '' AND charge_id = ?)
+    ) ORDER BY seq DESC LIMIT 1`,
+  ).get(paymentIntentId, paymentIntentId, chargeId, chargeId) as { amount_cents: number } | undefined;
+  if (!sale) return false;
+  return numberField(object.amount) >= sale.amount_cents;
 }
 
 /**

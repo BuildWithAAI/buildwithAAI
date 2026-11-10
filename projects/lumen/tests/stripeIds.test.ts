@@ -100,4 +100,43 @@ describe("Stripe payment intent matching", () => {
     expect(readDeliveryToken(db, second.delivery_token, now)).toBeNull();
     expect(readDeliveryToken(db, first.delivery_token, now)).toBeNull();
   });
+
+  it("keeps a download after a partial refund unless the override is set", () => {
+    const db = openDatabase();
+    db.prepare("INSERT INTO creations(id, title, svg, listed, price_cents, likes, favorites, created_at) VALUES('piece-p', 'Part', '<svg></svg>', 1, 1000, 0, 0, 1)").run();
+    expect(post(db, "evt_part_cs", "checkout.session.completed", {
+      id: "cs_part",
+      object: "checkout.session",
+      payment_status: "paid",
+      amount_total: 1000,
+      payment_intent: "pi_part",
+      metadata: { creation_id: "piece-p" },
+    }).ok).toBe(true);
+    const token = (db.prepare("SELECT token FROM deliveries WHERE payment_intent_id = 'pi_part'").get() as { token: string }).token;
+    expect(post(db, "evt_part_ch", "charge.refunded", {
+      id: "ch_part",
+      object: "charge",
+      amount: 1000,
+      amount_refunded: 400,
+      refunded: false,
+      payment_intent: "pi_part",
+      refunds: { object: "list", data: [{ id: "re_part", object: "refund", amount: 400, charge: "ch_part", payment_intent: "pi_part" }] },
+    }).ok).toBe(true);
+    expect(readDeliveryToken(db, token, now)).toEqual({ creationId: "piece-p" });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM ledger_entries WHERE kind = 'refund'").get()).toEqual({ n: 1 });
+    process.env.LUMEN_REVOKE_ON_PARTIAL_REFUND = "true";
+    try {
+      expect(post(db, "evt_part_re", "refund.created", {
+        id: "re_more",
+        object: "refund",
+        amount: 100,
+        charge: "ch_part",
+        payment_intent: "pi_part",
+        status: "succeeded",
+      }).ok).toBe(true);
+    } finally {
+      delete process.env.LUMEN_REVOKE_ON_PARTIAL_REFUND;
+    }
+    expect(readDeliveryToken(db, token, now)).toBeNull();
+  });
 });

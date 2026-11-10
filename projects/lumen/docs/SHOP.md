@@ -54,7 +54,7 @@ Zoora publishes a listing on its own. The keeper can hide it or unpublish it aft
 | Card charge | Stripe Checkout charges the buyer in the owner's Stripe account | Puts the live secret and webhook secret in fly secrets |
 | Sales tax | Stripe Tax can calculate and collect tax if the owner enables it on the Stripe account | Decides whether to enable Stripe Tax and registers where required. This app does not file a return |
 | Payout | Stripe pays the owner's bank on Stripe's payout schedule | Owns the bank account. This app only records `payout.paid` |
-| Refund | Stripe returns the charge when this app or the Dashboard asks | The desk refund button asks Stripe. The webhook confirms the ledger row |
+| Refund | Stripe returns the charge when this app or the Dashboard asks | The desk refund button asks Stripe. The webhook confirms the ledger row. A full refund closes that buyer's download. A partial refund is written on the ledger and the file stays, unless `LUMEN_REVOKE_ON_PARTIAL_REFUND=true` |
 | Undelivered service | The app asks for a refund when the turnaround passes with no file | Does not have to click, but should watch the desk if Stripe refuses the refund |
 | Chargeback | Stripe opens the dispute, may withdraw funds, and runs the evidence window | Answers Stripe with evidence. This app records the dispute and pauses automatic spending |
 

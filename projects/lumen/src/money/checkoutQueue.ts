@@ -47,14 +47,21 @@ function luhnOk(digits: string): boolean {
   return sum % 10 === 0;
 }
 
+const PAN_SEPARATORS = /[\s.,·:|_/–—\-]/g;
+
 function looksLikePan(value: string): boolean {
-  const normalized = value.normalize("NFKC");
-  if (AMAZON_ORDER.test(normalized.trim())) return false;
-  const groups = normalized.match(/[0-9](?:[0-9]|[\s.,·:|_/–—\-]){11,40}[0-9]/g) ?? [];
-  return groups.some((group) => {
-    if (AMAZON_ORDER.test(group)) return false;
-    const digits = group.replace(/[\s.,·:|_/–—\-]/g, "");
-    return /^\d{13,19}$/.test(digits) && luhnOk(digits);
+  const normalized = value.normalize("NFKC").trim();
+  if (AMAZON_ORDER.test(normalized)) return false;
+  const joined = normalized.replace(PAN_SEPARATORS, "");
+  const runs = joined.match(/\d{13,}/g) ?? [];
+  return runs.some((run) => {
+    const span = run.length > 80 ? run.slice(0, 80) : run;
+    for (let length = 13; length <= 19; length += 1) {
+      for (let start = 0; start + length <= span.length; start += 1) {
+        if (luhnOk(span.slice(start, start + length))) return true;
+      }
+    }
+    return false;
   });
 }
 
