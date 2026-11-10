@@ -102,6 +102,18 @@ describe("delta review", () => {
     expect(readDeliveryToken(db, disputed, now)).toBeNull();
   });
 
+  it("revokes one buyer's download and leaves the other buyer's file", () => {
+    const db = openDatabase();
+    const later = now + 72 * 3600_000;
+    db.prepare("INSERT INTO deliveries(token, creation_id, expires_at, charge_id) VALUES('tok-a', 'lamp', ?, 'ch_a')").run(later);
+    db.prepare("INSERT INTO deliveries(token, creation_id, expires_at, charge_id) VALUES('tok-b', 'lamp', ?, 'ch_b')").run(later);
+    db.prepare("INSERT INTO shop_orders(id, listing_id, buyer_note, status, charge_id, delivery_token, due_at, created_at) VALUES('ord-a', 'lamp', '', 'delivered', 'ch_a', 'tok-a', ?, ?)").run(later, now);
+    db.prepare("INSERT INTO shop_orders(id, listing_id, buyer_note, status, charge_id, delivery_token, due_at, created_at) VALUES('ord-b', 'lamp', '', 'delivered', 'ch_b', 'tok-b', ?, ?)").run(later, now);
+    expect(post(db, "evt_one", "refund.created", { id: "re_a", amount: 500, charge: "ch_a" }).ok).toBe(true);
+    expect(readDeliveryToken(db, "tok-a", now)).toBeNull();
+    expect(readDeliveryToken(db, "tok-b", now)).toEqual({ creationId: "lamp" });
+  });
+
   it("does not store Zoora's mood or memories on another resident's artwork", () => {
     const db = openDatabase();
     kvSet(db, "brain", JSON.stringify({ emotions: { joy: 0.9 }, longTerm: [{ id: "zoora-mem" }] }));

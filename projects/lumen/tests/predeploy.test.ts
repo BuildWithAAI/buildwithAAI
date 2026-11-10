@@ -6,7 +6,7 @@ import { readDeliveryToken } from "../src/shop/delivery";
 import { openDatabase, setFlag } from "../src/db/db";
 import { PRIVACY_MAX_CENTS, bookPrivacyReport, openExpectedSpend } from "../src/money/card";
 import { rejectPan } from "../src/money/checkoutQueue";
-import { Ledger } from "../src/money/ledger";
+import { Ledger, moneyView } from "../src/money/ledger";
 import { quoteSolOrder, randomReference, solanaPayBlock, verifySolPayment, type SolTx } from "../src/money/solana";
 import { handleStripeWebhook } from "../src/money/webhook";
 import { scrubInstructions } from "../src/research/ideas";
@@ -69,6 +69,17 @@ describe("pre-deploy advisory", () => {
     expect(new Ledger(reversal).list().find((row) => row.providerTransactionId === "ipi_rev")).toMatchObject({ kind: "reversal", amountCents: 400 });
     expect(new Ledger(reversal).list().some((row) => row.kind === "refund")).toBe(false);
     expect((reversal.prepare("SELECT status FROM expected_spends WHERE intent_id = 'exp-sign'").get() as { status: string }).status).toBe("open");
+    const books = openDatabase();
+    openExpectedSpend(books, intent(500), now);
+    const sequence = (id: string, object: Record<string, unknown>) => {
+      const payload = JSON.stringify({ id, type: "issuing_transaction.created", livemode: true, data: { object } });
+      return handleStripeWebhook(books, payload, sign(payload, secret, Math.floor(now / 1000)), secret, now);
+    };
+    expect(sequence("evt_seq_cap", { id: "ipi_seq_cap", type: "capture", amount: -400, created: Math.floor(now / 1000), merchant_data: { name: "paper-shop" } }).ok).toBe(true);
+    expect(sequence("evt_seq_ref", { id: "ipi_seq_ref", type: "refund", amount: 400, created: Math.floor(now / 1000), merchant_data: { name: "paper-shop" } }).ok).toBe(true);
+    expect(sequence("evt_seq_rev", { id: "ipi_seq_rev", type: "refund", amount: -400, created: Math.floor(now / 1000), merchant_data: { name: "paper-shop" } }).ok).toBe(true);
+    expect(moneyView(new Ledger(books).list()).confirmedCents).toBe(-400);
+    expect((books.prepare("SELECT status FROM expected_spends WHERE intent_id = 'exp-sign'").get() as { status: string }).status).toBe("confirmed");
   });
 
   it("records a Solana payment that lands after the quote and flags it for refund", async () => {

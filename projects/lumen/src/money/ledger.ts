@@ -245,10 +245,16 @@ function mapRow(row: Record<string, unknown>): LedgerRow {
 }
 
 const INFLOW = new Set(["sale"]);
-const OUTFLOW = new Set(["purchase", "fee", "refund", "reversal", "payout"]);
+const OUTFLOW = new Set(["purchase", "fee", "payout"]);
 
 export function signedAmount(row: LedgerRow): number {
   if (row.kind === "dispute") return row.amountCents;
+  if (row.kind === "refund") {
+    const cents = Math.abs(row.amountCents);
+    // A merchant refund on the issuing card comes back. A sale refund pays the buyer.
+    return row.provider === "stripe_issuing" ? cents : -cents;
+  }
+  if (row.kind === "reversal") return -Math.abs(row.amountCents);
   if (INFLOW.has(row.kind)) return Math.abs(row.amountCents);
   if (OUTFLOW.has(row.kind)) return -Math.abs(row.amountCents);
   return 0;

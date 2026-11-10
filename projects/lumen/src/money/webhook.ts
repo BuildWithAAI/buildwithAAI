@@ -60,7 +60,7 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
     });
     if (paid && creationId) {
       const token = randomBytes(24).toString("hex");
-      db.prepare("INSERT INTO deliveries(token, creation_id, expires_at) VALUES(?, ?, ?)").run(token, creationId, nowMs + 72 * 3600 * 1000);
+      db.prepare("INSERT INTO deliveries(token, creation_id, expires_at, charge_id) VALUES(?, ?, ?, ?)").run(token, creationId, nowMs + 72 * 3600 * 1000, charge || null);
       db.prepare("UPDATE creations SET listed = 0 WHERE id = ?").run(creationId);
     }
     return;

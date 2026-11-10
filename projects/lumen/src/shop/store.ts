@@ -270,7 +270,7 @@ export function deliverShopSale(db: DatabaseSync, listingId: string, chargeId: s
   db.prepare("INSERT INTO shop_orders(id, listing_id, buyer_note, status, charge_id, delivery_token, due_at, created_at) VALUES(?, ?, '', 'delivered', ?, ?, ?, ?)").run(
     orderId, listingId, chargeId, token, now, now,
   );
-  db.prepare("INSERT INTO deliveries(token, creation_id, expires_at) VALUES(?, ?, ?)").run(token, listingId, now + 72 * 3600_000);
+  db.prepare("INSERT INTO deliveries(token, creation_id, expires_at, charge_id) VALUES(?, ?, ?, ?)").run(token, listingId, now + 72 * 3600_000, chargeId);
   new Ledger(db).append({
     id: `shop-sale-${orderId}`,
     atMs: now,
