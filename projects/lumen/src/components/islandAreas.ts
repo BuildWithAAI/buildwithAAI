@@ -195,22 +195,15 @@ function buildResearch(low: boolean, heightAt: Height, windows: THREE.MeshStanda
   const leg = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 0.12), timber);
   leg.position.set(x - 0.4, y + 0.4, z + 0.55);
   const screenMat = new THREE.MeshBasicMaterial({ color: 0x16304a });
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.25), screenMat);
-  screen.position.set(x + 0.2, y + 1.55, z + 2.16);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.45), screenMat);
+  screen.position.set(x + 0.85, y + 1.45, z + 2.28);
   const cork = new THREE.MeshStandardMaterial({ color: 0xc6a15a, roughness: 0.85 });
-  const board = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 0.08), cork);
-  board.position.set(x - 2.4, y + 1.45, z - 0.2);
-  board.rotation.y = 0.4;
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.55, 1.35, 0.06), cork);
+  board.position.set(x - 1.85, y + 1.45, z + 2.22);
   const pinMat = new THREE.MeshBasicMaterial({ color: 0xf4efe4 });
-  const pin = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), pinMat);
-  pin.position.set(x - 2.32, y + 1.45, z - 0.12);
-  pin.rotation.y = 0.4;
+  const pin = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.15), pinMat);
+  pin.position.set(x - 1.85, y + 1.45, z + 2.3);
   group.add(wall, dome, desk, leg, screen, board, pin);
-  const glass = new THREE.MeshStandardMaterial({ color: 0xd7ecff, emissive: 0x9fd0ff, emissiveIntensity: 0.15, roughness: 0.2 });
-  windows.push(glass);
-  const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), glass);
-  pane.position.set(x + 2.2, y + 1.4, z + 2.22);
-  group.add(pane);
   if (!low) {
     const lamp = new THREE.PointLight(0xfff1c9, 0.15, 8);
     lamp.position.set(x, y + 2.2, z);

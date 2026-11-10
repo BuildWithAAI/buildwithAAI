@@ -22,7 +22,7 @@ const CAMS: Record<string, { pos: [number, number, number]; look: [number, numbe
   garden: { pos: [14, 5, -26], look: [22, 1.6, -36] },
   market: { pos: [-24, 5, -18], look: [-34, 1.4, -28] },
   lighthouse: { pos: [18, 8, 46], look: [6, 4, 58] },
-  research: { pos: [-6, 6.5, -32], look: [-16, 1.8, -44] },
+  research: { pos: [-4, 5.2, -34], look: [-15, 1.6, -43.2] },
   follow: { pos: [8, 5, 10], look: [0, 1, 0], follow: true },
 };
 

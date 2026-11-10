@@ -79,8 +79,8 @@ export function mockAdapter(): ResearchAdapter {
         snippet: `A public note about ${q}. This stand-in is not a live web result.`,
       }];
     },
-    async fetchPage(url) {
-      return `<p>Public note for ${url}. No credentials were sent.</p>`;
+    async fetchPage() {
+      return "<p>A public note. No credentials were sent.</p>";
     },
   };
 }
