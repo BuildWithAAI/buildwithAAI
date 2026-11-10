@@ -161,11 +161,33 @@ export function bookPrivacyCharge(db: DatabaseSync, input: { transactionId: stri
   return confirmIssuerTransaction(db, { ...input, provider: "privacy", transactionType: "capture" });
 }
 
-/** Privacy reports use the server clock. The caller cannot choose the time or exceed the amount cap. */
-export function bookPrivacyReport(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number }, now: number): { ok: true; atMs: number } | { ok: false; error: "REPORT" | "AMOUNT" } {
-  if (!input.transactionId.trim() || !input.merchant.trim()) return { ok: false, error: "REPORT" };
+/** Privacy reports use the server clock. The caller cannot choose the time or exceed the amount cap. A repeated id with a different amount is a conflict. */
+export function bookPrivacyReport(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number }, now: number): { ok: true; atMs: number } | { ok: false; error: "REPORT" | "AMOUNT" | "CONFLICT" } {
+  const transactionId = input.transactionId.trim();
+  const merchant = input.merchant.trim();
+  if (!transactionId || !merchant) return { ok: false, error: "REPORT" };
   if (!Number.isInteger(input.amountCents) || input.amountCents < 1 || input.amountCents > PRIVACY_MAX_CENTS) return { ok: false, error: "AMOUNT" };
-  bookPrivacyCharge(db, { transactionId: input.transactionId.trim(), merchant: input.merchant.trim(), amountCents: input.amountCents, atMs: now });
+  const prior = db.prepare("SELECT amount_cents FROM ledger_entries WHERE provider = 'privacy' AND provider_transaction_id = ? AND kind = 'purchase'").get(transactionId) as { amount_cents: number } | undefined;
+  if (prior && prior.amount_cents !== input.amountCents) {
+    const ledger = new Ledger(db);
+    const key = `privacy-conflict:${transactionId}:${input.amountCents}`;
+    if (!ledger.findByIdempotency(key)) {
+      ledger.append({
+        id: `audit-privacy-${transactionId}-${input.amountCents}`,
+        atMs: now,
+        kind: "audit",
+        amountCents: input.amountCents,
+        status: "unconfirmed",
+        provider: "privacy",
+        providerTransactionId: transactionId,
+        idempotencyKey: key,
+        note: `Privacy transaction ${transactionId} was reported as ${input.amountCents} cents after ${prior.amount_cents} cents.`,
+        merchant,
+      });
+    }
+    return { ok: false, error: "CONFLICT" };
+  }
+  if (!prior) bookPrivacyCharge(db, { transactionId, merchant, amountCents: input.amountCents, atMs: now });
   return { ok: true, atMs: now };
 }
 

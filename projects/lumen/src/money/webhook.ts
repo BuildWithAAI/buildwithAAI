@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { Ledger } from "./ledger";
 import type { OwnerNotifier } from "./notify";
+import { revokePaidDownload } from "../shop/delivery";
 import { deliverShopSale, refundShopCharge } from "../shop/store";
 import { cardCredentials, confirmIssuerTransaction, decideAuthorization, mapDescriptor } from "./card";
 import { killSwitchOn, parseMoneyRules, spendAllowed } from "./rules";
@@ -67,7 +68,10 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
   if (event.type === "charge.refunded" || event.type === "refund.created") {
     bookRefunds(ledger, event, nowMs);
     const chargeId = event.type === "refund.created" ? idString(object.charge) ?? "" : String(object.id ?? "");
-    if (chargeId) refundShopCharge(db, chargeId, nowMs);
+    if (chargeId) {
+      refundShopCharge(db, chargeId, nowMs);
+      revokePaidDownload(db, chargeId, nowMs);
+    }
     return;
   }
   if (event.type === "payout.paid") {
@@ -124,6 +128,8 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
         detail: `${id} · ${status} · ${amount} cents. Automatic spending and approvals are paused.`,
       });
     }
+    const disputeCharge = idString(object.charge) ?? "";
+    if (disputeCharge && (event.type === "charge.dispute.created" || event.type === "charge.dispute.funds_withdrawn")) revokePaidDownload(db, disputeCharge, nowMs);
     return;
   }
   if (event.type === "issuing_authorization.request") {
@@ -143,6 +149,30 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
     const name = merchantName(object);
     const merchant = mapDescriptor(name, [name], {}) ?? "";
     const transactionType = typeof object.type === "string" ? object.type : "";
+    if (transactionType !== "capture" && transactionType !== "refund") {
+      const transactionId = String(object.id ?? event.id);
+      const key = `issuing-audit:${event.id}`;
+      if (!ledger.findByIdempotency(key)) {
+        ledger.append({
+          id: `audit-${event.id}`,
+          atMs: nowMs,
+          kind: "audit",
+          amountCents: Math.abs(numberField(object.amount)),
+          status: "unconfirmed",
+          provider: "stripe_issuing",
+          providerTransactionId: transactionId,
+          idempotencyKey: key,
+          note: `Issuer transaction ${transactionId} had type ${transactionType || "unknown"} and was not booked.`,
+          merchant,
+        });
+      }
+      notifier?.notify({
+        kind: "issuer",
+        title: "Issuer transaction type was not booked",
+        detail: `${transactionId} type ${transactionType || "unknown"} was recorded for audit.`,
+      });
+      return;
+    }
     const booked = confirmIssuerTransaction(db, {
       transactionId: String(object.id ?? ""),
       merchant,

@@ -231,12 +231,26 @@ export function verifySolPayment(db: DatabaseSync, orderId: string, signature: s
   if (row.status !== "quoted") return { ok: false, reason: "MISSING" };
   const sentInside = proof?.txTime != null && proof.txTime >= row.created_at && proof.txTime <= row.expires_at;
   const landedLate = proof?.txTime != null && proof.txTime > row.expires_at;
-  if (row.expires_at < now && !sentInside && !landedLate) return { ok: false, reason: "EXPIRED" };
   const checked = verifySolTransaction(tx, { recipient: row.recipient, lamports: BigInt(row.lamports), reference: row.reference_key });
-  if (!checked.ok) return checked;
-  if (landedLate) {
+  const windowClosed = row.expires_at < now && !sentInside;
+  if (!checked.ok) return windowClosed && !landedLate ? { ok: false, reason: "EXPIRED" } : checked;
+  if (landedLate || (windowClosed && proof?.txTime == null)) {
     flagSolRefund(db, orderId, signature, "LATE", checked.paid, now);
     db.prepare("UPDATE sol_orders SET status = 'refund_due', signature = ? WHERE id = ?").run(signature, orderId);
+    if (proof?.txTime == null) {
+      new Ledger(db).append({
+        id: `sol-late-${orderId}`,
+        atMs: now,
+        kind: "audit",
+        amountCents: row.usd_cents,
+        status: "unconfirmed",
+        provider: "solana",
+        providerTransactionId: signature,
+        idempotencyKey: `sol-late:${signature}`,
+        ref: row.item_id,
+        note: "Late SOL payment has no chain time. Flagged for refund. The row time is the server clock.",
+      });
+    }
     return { ok: false, reason: "REFUND" };
   }
   const expected = BigInt(row.lamports);

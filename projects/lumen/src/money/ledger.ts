@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { buildOwnerNotifier, deskNotifier, type AlertEnv, type MailTransport, type TelegramTransport } from "./notify";
 
-export const LEDGER_KINDS = ["purchase", "sale", "fee", "refund", "reversal", "payout", "approval", "decline", "dispute"] as const;
+export const LEDGER_KINDS = ["purchase", "sale", "fee", "refund", "reversal", "payout", "approval", "decline", "dispute", "audit"] as const;
 export type LedgerKind = (typeof LEDGER_KINDS)[number];
 
 export type LedgerInput = {

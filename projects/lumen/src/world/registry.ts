@@ -299,7 +299,7 @@ function produce(db: DatabaseSync, row: AgentRow, action: WorldActivity, now: nu
       makeSvg(seed, emotion === "joy" ? "#e7b15a" : "#7ee0c8"),
       now,
     );
-    recordProvenance(db, { pieceKind: "art", pieceId: artId, atMs: now });
+    recordProvenance(db, { pieceKind: "art", pieceId: artId, atMs: now, mind: row.id === "zoora" });
     logLine(db, row.id, `${row.name} left a piece on the easel.`, now);
     return;
   }

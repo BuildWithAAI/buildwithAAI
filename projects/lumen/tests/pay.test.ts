@@ -72,7 +72,7 @@ describe("Solana Pay", () => {
     expect(verifySolPayment(db, quoted.id, signature, tx({ recipient, reference: row.reference_key, delta: 1 }), now)).toEqual({ ok: false, reason: "UNDERPAID" });
     expect(verifySolPayment(db, quoted.id, signature, null, now)).toEqual({ ok: false, reason: "UNFINALIZED" });
     db.prepare("UPDATE sol_orders SET expires_at = ? WHERE id = ?").run(now - 1, quoted.id);
-    expect(verifySolPayment(db, quoted.id, signature, tx({ recipient, reference: row.reference_key, delta: Number(row.lamports) }), now)).toEqual({ ok: false, reason: "EXPIRED" });
+    expect(verifySolPayment(db, quoted.id, signature, null, now)).toEqual({ ok: false, reason: "EXPIRED" });
     db.prepare("UPDATE sol_orders SET expires_at = ? WHERE id = ?").run(now + 60_000, quoted.id);
     expect(verifySolPayment(db, quoted.id, signature, tx({ recipient, reference: row.reference_key, delta: Number(row.lamports) }), now).ok).toBe(true);
     expect(verifySolPayment(db, quoted.id, signature, tx({ recipient, reference: row.reference_key, delta: Number(row.lamports) }), now)).toEqual({ ok: false, reason: "REUSED" });

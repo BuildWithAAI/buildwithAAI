@@ -18,11 +18,11 @@ export type ProvenanceRow = {
 };
 
 /** Server-written sources for a new piece. Missing sources stay null. Visitor text is stored only when the caller already flagged it. */
-export function recordProvenance(db: DatabaseSync, input: { pieceKind: PieceKind; pieceId: string; atMs: number; flaggedVisitorText?: string | null }): ProvenanceRow {
+export function recordProvenance(db: DatabaseSync, input: { pieceKind: PieceKind; pieceId: string; atMs: number; flaggedVisitorText?: string | null; mind?: boolean }): ProvenanceRow {
   const diary = db.prepare("SELECT id FROM diary ORDER BY id DESC LIMIT 1").get() as { id: number } | undefined;
   const goal = db.prepare("SELECT id FROM zoora_goals WHERE status = 'active' ORDER BY updated_at DESC LIMIT 1").get() as { id: string } | undefined;
   const research = db.prepare("SELECT id FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { id: string } | undefined;
-  const brain = readBrain(db);
+  const brain = input.mind === false ? null : readBrain(db);
   const mood = brain?.emotions ?? null;
   const memoryIds = (brain?.longTerm ?? []).map((item) => item.id).filter(Boolean);
   const visitorText = input.flaggedVisitorText ? scrubInstructions(input.flaggedVisitorText) || null : null;

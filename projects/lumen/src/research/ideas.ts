@@ -93,6 +93,7 @@ const CONFUSABLE: Record<string, string> = {
   "\u0432": "b", "\u0412": "b",
   "\u043d": "h", "\u041d": "h",
   "\u0458": "j",
+  "\u03bf": "o", "\u039f": "o",
 };
 
 function foldConfusable(text: string): string {
@@ -103,9 +104,23 @@ function foldConfusable(text: string): string {
 
 /** The check uses a folded copy. A clean note is returned as it was written. */
 export function scrubInstructions(text: string): string {
-  const probe = foldConfusable(text.normalize("NFKD").replace(/\p{M}/gu, "").replace(/[\u00ad\u180e\u200b\u200c\u200d\u2060\u2062\ufeff]/g, "")).replace(/\s+/g, " ").trim();
+  const probe = instructionProbe(text);
   if (!probe || INSTRUCTION.test(probe)) return "";
   return text.length > 140 ? text.slice(0, 140) : text;
+}
+
+function instructionProbe(text: string): string {
+  const folded = foldConfusable(
+    text.normalize("NFKD")
+      .replace(/\p{M}/gu, "")
+      .replace(/[\u00ad\u180e\u200b\u200c\u200d\u2060\u2062\u2063\u2064\u202e\ufeff]/g, "")
+      .replace(/[\u{E0000}-\u{E007F}]/gu, ""),
+  );
+  const collapsed = folded.replace(/(?:^|\s)(?:\p{L}\s+){3,}\p{L}(?=\s|$)/gu, (match) => {
+    const lead = /^\s/.test(match) ? match[0] : "";
+    return lead + match.replace(/\s+/g, "");
+  });
+  return collapsed.replace(/\s+/g, " ").trim();
 }
 
 /** On a public host, a visitor's words stay off /ideas until the keeper opens the private desk. */
