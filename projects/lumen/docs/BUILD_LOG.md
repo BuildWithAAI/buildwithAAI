@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 769ccf4
+title: Zoora has a soul file and goals.
+summary: SOUL, GOALS, STYLE, and RELATIONSHIPS are the identity the brain reads. The soul stays owner-authored. Zoora may propose a goal, and the keeper approves or reverts it. Visitor text cannot change a goal.
+date: 2026-11-10T02:53:00Z
+image:
+
+---
 sha: aa1ca44
 title: Zoora can open a shop that only sells.
 summary: The stall and the listings come from a feeling and a memory. Checkout stays off until the keeper turns sales on. A paid webhook delivers the file. Nothing in the shop can spend.
