@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 34c0dc4
+title: A provenance record on new artwork, songs, and builds.
+summary: Each new piece stores the diary line, mood vector, memory ids, goal, research id, and a timestamp. A missing source stays null. Visitor text is copied only when it already came through the flagged path. The row has no spend. Backlog item 1a is done. Item 1b is not started.
+date: 2026-11-10T04:59:10Z
+image:
+
+---
 sha: c7247af
 title: Pre-deploy advisory fixes, still with money off.
 summary: Issuing captures book as purchases and refunds do not use up an expected spend. A Solana payment that lands after its quote is recorded for refund. Hidden characters, look-alike letters, split card numbers, refused wishlist links, wrong bearer guesses, Privacy amounts, and paid downloads follow the check. The fly comment no longer says money turns on by itself.
