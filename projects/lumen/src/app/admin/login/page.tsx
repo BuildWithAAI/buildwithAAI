@@ -1,6 +1,11 @@
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
+import { loginReachable } from "../../../auth/publicMode";
 import { login } from "../../actions";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const host = (await headers()).get("host");
+  if (!loginReachable(host)) notFound();
   const params = await searchParams;
   return (
     <section className="card" style={{ maxWidth: 460 }}>

@@ -384,12 +384,15 @@ describe("owner login limits", () => {
     expect(clientAddress((name) => (name === "x-forwarded-for" ? "9.9.9.9, 198.51.100.7" : null), "forwarded")).toBe("198.51.100.7");
     const db = openDatabase();
     const now = 1_700_000_000_000;
-    for (let i = 0; i < 8; i += 1) expect(allowLogin(db, clientAddress(i % 2 ? spoofed : other, "none"), now + i, { global: 100, account: 100, perAddress: 8 })).toBe(true);
-    expect(allowLogin(db, "direct", now + 9, { global: 100, account: 100, perAddress: 8 })).toBe(false);
-    const globalDb = openDatabase();
-    expect(allowLogin(globalDb, "203.0.113.1", now, { global: 2, account: 100, perAddress: 100 })).toBe(true);
-    expect(allowLogin(globalDb, "203.0.113.2", now, { global: 2, account: 100, perAddress: 100 })).toBe(true);
-    expect(allowLogin(globalDb, "203.0.113.3", now, { global: 2, account: 100, perAddress: 100 })).toBe(false);
+    for (let i = 0; i < 5; i += 1) expect(allowLogin(db, "direct", now + i)).toBe(true);
+    expect(allowLogin(db, "direct", now + 5)).toBe(false);
+    expect(allowLogin(db, "203.0.113.9", now + 5)).toBe(true);
+    expect(allowLogin(db, "direct", now + 5 + 30_000)).toBe(true);
+    const otherIp = openDatabase();
+    const spaced = [0, 1, 2, 3, 4, 31_000, 91_000, 211_000];
+    for (const at of spaced) expect(allowLogin(otherIp, "203.0.113.1", now + at)).toBe(true);
+    expect(allowLogin(otherIp, "203.0.113.1", now + 211_001)).toBe(false);
+    expect(allowLogin(otherIp, "203.0.113.2", now)).toBe(true);
   });
 });
 

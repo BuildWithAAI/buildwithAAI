@@ -24,7 +24,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body>
-        <Nav />
+        <Nav showKeeper={!publicModeOn()} />
         <main className="wrap">{limited ? <p>Too many requests. Wait a minute and try again.</p> : children}</main>
       </body>
     </html>

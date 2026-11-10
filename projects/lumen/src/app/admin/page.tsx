@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../auth/owner";
-import { ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
+import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
 import { artAction, clearAlertAction, controlAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
@@ -11,7 +11,10 @@ export default async function AdminPage() {
   const jar = await cookies();
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
   const authed = getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`);
-  if (!authed || !ownerRouteOpen("/admin", authed)) redirect("/admin/login");
+  if (!authed || !ownerRouteOpen("/admin", authed)) {
+    if (!loginReachable((await headers()).get("host"))) notFound();
+    redirect("/admin/login");
+  }
   const publicMode = publicModeOn();
   const snap = getEngine().snapshot();
   return (

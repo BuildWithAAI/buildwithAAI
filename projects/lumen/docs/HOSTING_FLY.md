@@ -117,7 +117,29 @@ fly status -a lumen-tidepool
 fly checks list -a lumen-tidepool
 ```
 
-Open `https://lumen-tidepool.fly.dev/build` and `https://lumen-tidepool.fly.dev/world`. The desk at `/admin` asks for the owner session. Balance and P&L stay hidden. Spending stays off.
+Open `https://lumen-tidepool.fly.dev/build` and `https://lumen-tidepool.fly.dev/world`. `/admin` and `/admin/login` answer 404 on the public hostname. Balance and P&L stay hidden. Spending stays off.
+
+## Owner desk
+
+The login form is not on the public site. A burst of guesses from other addresses cannot lock the owner out. Each address has its own slow backoff, and there is no shared counter.
+
+Reach the desk on the private network, then open `/admin/login`.
+
+Fly proxy, from your own machine:
+
+```powershell
+fly proxy 3000:3000 -a lumen-tidepool
+```
+
+Then open `http://127.0.0.1:3000/admin/login`.
+
+WireGuard, if you want the private network without a proxy:
+
+```powershell
+fly wireguard create personal iad zoora-desk
+```
+
+Import the config into WireGuard, connect, and open `http://lumen-tidepool.internal:3000/admin/login`. The `.internal` name is served. `world.zoora.ai` and `lumen-tidepool.fly.dev` are not.
 
 ## Custom domain world.zoora.ai
 

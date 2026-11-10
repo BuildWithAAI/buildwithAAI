@@ -1,7 +1,7 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../../auth/owner";
-import { ownerRouteOpen, publicModeOn } from "../../../auth/publicMode";
+import { loginReachable, ownerRouteOpen, publicModeOn } from "../../../auth/publicMode";
 import { executeAction, refundAction } from "../../actions";
 import { getEngine } from "../../../server/engine";
 
@@ -14,7 +14,10 @@ export default async function LedgerPage() {
   const jar = await cookies();
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
   const authed = getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`);
-  if (!authed || !ownerRouteOpen("/admin/ledger", authed)) redirect("/admin/login");
+  if (!authed || !ownerRouteOpen("/admin/ledger", authed)) {
+    if (!loginReachable((await headers()).get("host"))) notFound();
+    redirect("/admin/login");
+  }
   if (publicModeOn()) {
     return (
       <div className="card">

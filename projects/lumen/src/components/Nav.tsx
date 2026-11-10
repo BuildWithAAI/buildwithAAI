@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function Nav() {
+export function Nav({ showKeeper = false }: { showKeeper?: boolean }) {
   return (
     <nav className="nav">
       <strong>Zoora</strong>
@@ -13,7 +13,7 @@ export function Nav() {
       <Link href="/guestbook">Guestbook</Link>
       <Link href="/wants">Wants</Link>
       <Link href="/ideas">Ideas</Link>
-      <Link href="/admin">Keeper</Link>
+      {showKeeper ? <Link href="/admin">Keeper</Link> : null}
     </nav>
   );
 }

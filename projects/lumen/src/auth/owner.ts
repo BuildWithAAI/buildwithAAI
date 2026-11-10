@@ -100,23 +100,25 @@ function isIp(value: string): boolean {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(value) || /^[0-9a-f:]+$/i.test(value);
 }
 
-export function allowLogin(db: DatabaseSync, addressKey: string, now: number, limits = { global: 20, account: 8, perAddress: 8 }): boolean {
+/** Wait grows after five failures from one address. There is no shared lockout across addresses. */
+export function loginBackoffMs(failures: number): number {
+  if (failures < 5) return 0;
+  return Math.min(LOGIN_WINDOW_MS, 30_000 * 2 ** (failures - 5));
+}
+
+export function allowLogin(db: DatabaseSync, addressKey: string, now: number, limits = { perAddress: 8 }): boolean {
   const since = now - LOGIN_WINDOW_MS;
-  const buckets: [string, number][] = [
-    ["login:global", limits.global],
-    ["login:account:owner", limits.account],
-    [`login:ip:${addressKey}`, limits.perAddress],
-  ];
+  const bucket = `login:ip:${addressKey}`;
   db.exec("BEGIN IMMEDIATE");
   try {
-    for (const [bucket, limit] of buckets) {
-      const row = db.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = ? AND at_ms >= ?").get(bucket, since) as { n: number };
-      if (Number(row.n) >= limit) {
-        db.exec("COMMIT");
-        return false;
-      }
+    const rows = db.prepare("SELECT at_ms FROM rate_limits WHERE bucket = ? AND at_ms >= ? ORDER BY at_ms ASC").all(bucket, since) as { at_ms: number }[];
+    const last = rows.length ? Number(rows[rows.length - 1]!.at_ms) : 0;
+    const wait = loginBackoffMs(rows.length);
+    if (rows.length >= limits.perAddress || (wait > 0 && now - last < wait)) {
+      db.exec("COMMIT");
+      return false;
     }
-    for (const [bucket] of buckets) db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)").run(bucket, now);
+    db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)").run(bucket, now);
     db.exec("COMMIT");
     return true;
   } catch (error) {
