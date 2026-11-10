@@ -30,6 +30,8 @@ describe("public mode", () => {
     expect(ownerRouteOpen("/admin", false, {})).toBe(true);
     expect(spendAllowed({ LUMEN_PUBLIC_MODE: "true", SPEND_ENABLED: "true" }, true, false, true)).toEqual({ open: false, reason: "PUBLIC_MODE" });
     expect(securityHeaders(true).some((header) => header.key === "Content-Security-Policy")).toBe(true);
+    expect(securityHeaders(false).some((header) => header.key === "Strict-Transport-Security")).toBe(true);
+    expect(securityHeaders().some((header) => header.key === "Content-Security-Policy")).toBe(true);
   });
 
   it("trusts Cloudflare Tunnel and ngrok, and rate-limits the public", () => {

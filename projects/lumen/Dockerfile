@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+ENV LUMEN_PUBLIC_MODE=true
 RUN npm run build
 ENV NODE_ENV=production
 ENV LUMEN_DATA=/data/lumen.sqlite

@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { publicModeOn, securityHeaders } from "./src/auth/publicMode";
+import { securityHeaders } from "./src/auth/publicMode";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["node:sqlite"],
@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders(publicModeOn()),
+        headers: securityHeaders(true),
       },
     ];
   },

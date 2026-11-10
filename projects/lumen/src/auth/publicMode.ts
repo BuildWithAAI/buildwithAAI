@@ -13,16 +13,13 @@ export function ownerRouteOpen(path: string, authed: boolean, env: Env = process
   return true;
 }
 
-export function securityHeaders(publicMode: boolean): { key: string; value: string }[] {
-  const headers = [
+/** Sent on every response. Next bakes these at build time, so they cannot depend on a runtime flag. */
+export function securityHeaders(_publicMode?: boolean): { key: string; value: string }[] {
+  return [
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "Referrer-Policy", value: "no-referrer" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "X-DNS-Prefetch-Control", value: "off" },
-  ];
-  if (!publicMode) return headers;
-  return [
-    ...headers,
     { key: "Content-Security-Policy", value: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" },
     { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
