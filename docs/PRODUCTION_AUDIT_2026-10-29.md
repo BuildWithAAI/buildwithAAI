@@ -1,13 +1,15 @@
 # Production integration audit — October 29, 2026
 
-Baseline: `3358ad17bb168c7f0063219202315a094eac01ac`; verified Git tree `cf8f8d28de4aa597df06647ef6cd4952e3734e38`, 1,182 tracked files, not truncated. Scope: repository composition, recent source additions, existing deployment metadata, and the production integration change. This is not a security certification or a claim that every historical self-check was executed.
+**Superseded in part on November 9, 2026.** This file remains the audit of the October 29 tree. Where it calls the $30 activation fee, the 40/40/20 split, an activation program, or a delegated signer the current production policy, that policy is no longer v1. [B-021](DECISIONS.md) and the [production build plan](PRODUCTION_BUILD_PLAN.md) replace those gates. The findings about source, deployment, and research sketches stay as observed.
+
+Baseline: `3358ad17bb168c7f0063219202315a094eac01ac`; verified Git tree `cf8f8d28de4aa597df06647ef6cd4952e3734e38`, 1,182 tracked files, not truncated. Scope: repository composition, recent source additions, existing deployment metadata, and the production integration change. This is not a security certification, an insurance policy, or a claim that every historical self-check was executed.
 
 ## Findings that change the build
 
 1. The existing Railway `BuildWithAAI` / `private-pilot` service `zoora-private-pilot` was still sourced from `feature/live-connections-audit` at `f4e7eceee46070aac09ab22f29a2f8ba05985a8d`, with the community subdirectory as its root. The main consolidation did not update this running service or expose the rest of the monorepo to its container.
 2. Since `591c32f…`, the snapshot adds 270 files, including 253 multi-brain Python modules. It adds no `tests/` files or CI workflow changes. Existing green root tests do not establish coverage of these new standalone `self_check()` routines.
 3. The new `first_brain`, `functional_pass` and `live_pass` are not mounted by the existing community/ecosystem HTTP runtime. Source import relationships do not establish a persistent live website/worker connection.
-4. The screenshot incorrectly conflates a wallet identity signature with the $30 activation payment. No such signature proves a paid fee. New production code must have separate financial intent, wallet authorization, chain receipt, allocation and entitlement states.
+4. The screenshot incorrectly conflates a wallet identity signature with the $30 activation payment. No such signature proves a paid fee. The November 9 decision also puts that fee on hold, so v1 has no activation entitlement to grant. A USDC payment still needs its own quote, user signature, and verified receipt.
 5. Earlier research `NO_EXECUTION` boundaries are accurate for those artifacts. The owner's October 29 instruction authorizes implementing production capabilities; those historical boundaries are not a permanent prohibition on development.
 
 ## Research admission defects
@@ -20,7 +22,7 @@ Baseline: `3358ad17bb168c7f0063219202315a094eac01ac`; verified Git tree `cf8f8d2
 | `receipt_bridge.py` | Missing graph/model provenance is replaced by `"a" * 64` | Require real pinned provenance at production ingestion |
 | `live_curve.py` | Arbitrary HTTPS endpoint/redirects and insufficient account/discriminator/size/reserve/unit validation | Do not expose to visitor-selected endpoints; use audited bounded adapters and server-owned resources |
 | `solana_research/anon_tape.py`, `coin_filter.py` | Arbitrary dictionaries or block/mint substring matches can be labelled real/successful without identifying successful token transactions | Exclude from verified market-learning intake; prefer hardened raw capture/reconstruction/replay |
-| `new_wallet_fee.py` | Separate 1%/2.5% and 50/50 fee sketches | Not the approved $30 activation / 40/40/20 production policy |
+| `new_wallet_fee.py` | Separate 1%/2.5% and 50/50 fee sketches | Not a v1 policy. The $30 / 40/40/20 proposal is on hold under B-021 |
 | `second_brain.py`, `third_brain.py` | Fixed-rule prior and no-trade control | Not additional trained animal-model runtimes |
 
 These findings are not resolved by flipping status flags. The new production registry does not expose these sketches as callable payment/execution tools. Future research corrections must preserve source classification and add tests for the actual defect.
@@ -29,9 +31,9 @@ These findings are not resolved by flipping status flags. The new production reg
 
 `projects/zoora-platform` composes the existing strict WSGI/community transport with one website, private persistent job/schedule/payment ledgers, fenced workers, rechecked credentials, fixed scanner/research adapters, supported provider transports and a bounded model/tool loop. The legacy community/workspace/practice flows remain mounted. New jobs do not persist recoverable bearer credentials.
 
-The service-payment adapter prepares an unsigned standard SPL transfer message for a specifically quoted payer/mint/amount/recipient/memo. Signing and submission occur in the user's Phantom wallet. Background reconciliation reuses the exact finalized transaction verifier and a durable unique signature constraint. It does not claim to perform activation burn/lock/liquidity allocation, hold signing keys, or enable venue trading.
+The service-payment adapter prepares an unsigned standard SPL transfer message for a specifically quoted payer, mint, amount, recipient, and memo. Signing and submission occur in the user's Phantom wallet. Background reconciliation reuses the exact finalized transaction verifier and a durable unique signature constraint. It does not hold signing keys or enable venue trading. It is not the v1 USDC x402 path, and it is not an activation, burn, lock, or liquidity program.
 
-The production build plan covers the remaining provider onboarding, pinned native workers, service/blueprint extension installation, activation allocation contract, paid contracts, delegated signer, venues, collectives, leasing, ASE and chain anchoring. Missing keys/addresses/program deployments remain factual requirements rather than permanent product restrictions.
+The October 29 plan text below this audit originally listed an activation allocation contract and a delegated signer as remaining work. The November 9 plan replaces that list. Do not treat this audit as permission to build those gates.
 
 ## Verification record
 

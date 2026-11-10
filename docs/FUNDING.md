@@ -1,6 +1,8 @@
 # Creator-fee funding and community benefit
 
-**October 15 addition:** the [community-funded agent proposal](COMMUNITY_FUNDED_AGENTS.md) records a separate idea for contributor-funded agents and amount/time-based profit participation. It is simulation planning, with no fundraising, custody or distribution enabled. The creator-fee intent below retains its historical scope.
+**November 9, 2026:** [B-021](DECISIONS.md) removes any token from the agent-economy plan and keeps v1 noncustodial. This funding note is a historical proposal. It does not open a trading account, a custody arrangement, a buyback, or a token purchase.
+
+**October 15 addition:** the [community-funded agent proposal](COMMUNITY_FUNDED_AGENTS.md) records a separate idea for contributor-funded agents and amount/time-based profit participation. It is simulation planning, with no fundraising, custody, or distribution enabled. The creator-fee intent below retains its historical scope.
 
 **Updated September 22, 2026. Status: founder intent recorded; allocation, account operation, and distributions remain PROPOSED.**
 

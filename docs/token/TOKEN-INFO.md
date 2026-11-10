@@ -1,8 +1,8 @@
 # Canonical community-token information
 
-**Status: no verified launch record entered. This template is not evidence of a launch.**
+**Status: empty historical template. Not a launch, and not part of v1.**
 
-AAI is the existing community working brand. The founder has not confirmed final launch metadata for this record. The future blockchain name is separately undecided between Zoora Blockchain and AAI Blockchain; this token is not its native currency under either name.
+[B-021](../DECISIONS.md) removes any token from the agent-economy plan. This file does not record a mint, a supply, or a receive address. Do not guess those values. The future blockchain name is separately undecided between Zoora Blockchain and AAI Blockchain. v1 does not add a native currency under either name.
 
 | Field | Value | Evidence / verifier / observed UTC |
 | --- | --- | --- |

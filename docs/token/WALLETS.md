@@ -2,6 +2,8 @@
 
 **No verified project wallet is entered in this register.** All actual addresses and control facts are **TBD — DO NOT GUESS**. This is not a claim that no wallet exists elsewhere.
 
+The November 9 v1 plan uses `<COMPANY_RECEIVE_ADDRESS>` as a placeholder for Zoora's own x402 receipts. Do not add that placeholder, or any guessed public key, as a row. User wallet public keys are account metadata in the product design. They are not project-controlled wallets and they do not belong in this register.
+
 Do not insert sample addresses that could be mistaken for a real payment destination. Add a row only when a real project-controlled wallet exists, control has been checked, and the owner approves disclosure. Never include secrets or undisclosed personal wallets.
 
 | Required field for each real record | What to establish |

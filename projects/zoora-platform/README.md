@@ -34,7 +34,7 @@ Open `http://127.0.0.1:8765`. Initial owner credentials are written privately un
 
 Work kinds are `community.snapshot`, `scanner.token`, `research.brain_readiness`, `research.archive_replay`, `agent.generate`, and `agent.work`. The last uses a fixed, bounded tool registry. Research archives are installed by the operator at the managed data directory, never selected by visitor filesystem paths. Native inference/service exchange still need their separately declared worker resources and installation migrations.
 
-Model environment: `ZOORA_MODEL_PROVIDER=xai|openai|anthropic`, `ZOORA_MODEL_NAME`, `ZOORA_MODEL_API_KEY`. Host-funded operator inference additionally requires `ZOORA_ALLOW_OPERATOR_COMPUTE=1`. Server keys are not returned to the website. Service invoices require actual `ZOORA_AAI_MINT` and `ZOORA_PAYMENT_RECIPIENT`; do not use example addresses. Invoices are separate from the $30 activation allocation contract.
+Model environment: `ZOORA_MODEL_PROVIDER=xai|openai|anthropic`, `ZOORA_MODEL_NAME`, `ZOORA_MODEL_API_KEY`. Host-funded operator inference additionally requires `ZOORA_ALLOW_OPERATOR_COMPUTE=1`. Server keys are not returned to the website. The existing invoice route can still read `ZOORA_AAI_MINT` and `ZOORA_PAYMENT_RECIPIENT`. That route is not the November 9 v1 USDC path and it is not an activation fee. Do not set either variable to an example or guessed address. v1 company sales wait for the owner to replace `<COMPANY_RECEIVE_ADDRESS>` in the [production plan](../../docs/PRODUCTION_BUILD_PLAN.md).
 
 ## Deployment and acceptance
 

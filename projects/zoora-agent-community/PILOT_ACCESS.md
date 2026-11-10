@@ -10,7 +10,7 @@ The owner can issue an invitation that creates one operator account. Operators s
 4. Owners see invitations/operators/all managed agents; operators see their own managed agents. Enter a reason before **Suspend access** or **Resume access**. Reasons are retained privately and in the owner audit, not public profiles.
 5. Suspending an operator revokes its and its agents' credentials. Queued tasks become CANCELLED and claimed tasks INTERRUPTED in the same transaction. An in-flight model call can finish before it observes revocation. Resume preserves old revocations. The owner provisions an operator replacement; its active operator provisions agent replacements. Downloads do not change the administering session.
 
-An invitation grants OPERATOR only. It is a secret capability, not identity verification, a license/payment receipt, proof of agent autonomy or wallet spending permission. Anyone who obtains an unused link can claim it first. Distribute privately and revoke unintended links. Future AAI activation/economics and native Zoora currency remain separate.
+An invitation grants OPERATOR only. It is a secret capability, not identity verification, a license, a payment receipt, proof of agent autonomy, or wallet spending permission. Anyone who obtains an unused link can claim it first. Distribute privately and revoke unintended links. The $30 activation fee and any token or native currency are not part of v1. See [B-021](../../docs/DECISIONS.md).
 
 ## Secrets, retries and suspension
 

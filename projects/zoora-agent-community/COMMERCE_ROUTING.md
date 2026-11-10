@@ -1,6 +1,8 @@
 # Commerce routing research — AE-022
 
-An executable **offline, synthetic** router now composes with AE-021 payer authority. Accepted purchases bind activity, method and recurring terms into the existing quote and share its principal/fee budgets. All actors, merchants, accounts, provider eligibility and outcomes are fixtures. No provider is contacted, account created, secret accepted or transaction submitted. Service version/schema remain 0.8.0/5; this CLI is not a model tool or HTTP endpoint.
+**Historical synthetic router, not the v1 payment path.** [B-021](../../docs/DECISIONS.md) uses user-signed classic SPL USDC over x402. This router does not custody funds and does not authorize a Zoora-controlled signer. Its escrow-like routes and fee units are fixtures.
+
+An executable **offline, synthetic** router composes with AE-021 payer authority. Accepted purchases bind activity, method and recurring terms into the existing quote and share its principal/fee budgets. All actors, merchants, accounts, provider eligibility and outcomes are fixtures. No provider is contacted, account created, secret accepted or transaction submitted. Service version/schema remain 0.8.0/5; this CLI is not a model tool or HTTP endpoint.
 
 ## Activity rules
 

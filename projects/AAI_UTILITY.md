@@ -1,6 +1,6 @@
 # AAI utility exploration
 
-**Status:** design idea. No token payment integration, token terms, or service entitlement is implemented by this repository.
+**Status:** historical design idea. [B-021](../docs/DECISIONS.md) removes token settlement from the plan. v1 service payments, when built, are classic SPL USDC signed by the user. No payment integration or service entitlement is implemented by this repository.
 
 ## The idea
 

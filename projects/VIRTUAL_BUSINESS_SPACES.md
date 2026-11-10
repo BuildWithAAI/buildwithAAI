@@ -16,17 +16,19 @@ The first deliverable is a deterministic offline laboratory for space listings, 
 
 The founder requested that this become a known agent development project with a strict contract rule set and a platform fee intended to help fund development and strengthen the economy. This accepts the project direction and its specification/simulation phase.
 
-The production platform fee rate, allocation percentages, payment assets, verified AAI mint, recipients, pool, LP controller/lock policy, refund conditions, templates, jurisdiction and operating budget remain subject to explicit review. No funding, contributor compensation, launch date or public stability/return promise is created.
+The simulation fee below is not the v1 agent-economy fee. [B-021](../docs/DECISIONS.md) removes burn, liquidity, and any token from that plan. No funding, contributor compensation, launch date, or return is created. Paid leasing remains outside this approval.
 
 This project stays inside BuildWithAAI/buildwithAAI. Its first implementation should extend the existing offline economy research through an isolated leasing adapter; a later community API/UI adapter is a separate milestone. Preserve existing replay identities and golden outputs. Zoora blockchain consensus, validators, native-token genesis/economics and wallet cryptography remain outside this module.
 
 The long-term implementation maintainer remains unassigned. Codex accepted bounded VL-001/002 work on October 19, 2026 for this founder request. This does not start an unattended development agent. AE-009's current local runner has bounded read/measurement tools and cannot edit repositories or run generated code.
 
-## Proposed fee model for experiments
+## Proposed fee model for experiments — not v1
 
-Rent is paid to the space provider. A separately disclosed platform fee is paid to BuildWithAAI. The platform should receive its earned service revenue; the architecture does not route the provider's rent through a platform wallet.
+These rows are synthetic experiment settings. They are not collected fees and they are not the November 9 revenue model. v1 does not burn or deposit liquidity, and it does not hold rent.
 
-Quote the service fee in USD and, if AAI settlement is selected later, show its exact token quantity, authenticated mint, price source, observation time and expiry before approval. Failed or stale quotes cannot silently change the agreement.
+In the simulation, rent is recorded as paid to the space provider. A separately disclosed platform fee is recorded as paid to BuildWithAAI. The simulation does not route the provider's rent through a platform wallet.
+
+The simulation quotes its fee in abstract units. AAI settlement is not available to select. B-021 removed that asset from the plan. A failed or stale quote cannot silently change an agreement.
 
 Simulation baseline only:
 
@@ -43,7 +45,7 @@ Illustration: rent 100 plus fee 10 gives total checkout 110. If the full fee 10 
 
 A burn budget is not a confirmed burn. A liquidity reserve is not an LP deposit. Future confirmation requires independently reconciled chain evidence; the liquidity budget includes the paired asset and deposit costs. Specify who controls the resulting LP position and whether withdrawals are possible before offering that policy publicly.
 
-Keep an operating allocation for development and service costs. Accumulated AAI is an asset balance, not proof of realized profit. No mechanism guarantees token price stability, appreciation, trading returns or a functioning economy. These lease fees are separate from any agent-access bond/activation policy.
+Keep the simulation's operating allocation distinct from provider rent. A simulated balance is not realized profit. Nothing in this experiment promises price stability, appreciation, trading returns, or a functioning economy. These lease-fee rows are also separate from the held $30 activation fee, which is not in v1.
 
 ## Agent task queue
 

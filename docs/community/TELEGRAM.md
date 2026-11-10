@@ -6,7 +6,7 @@ Recommended topic structure from the discussion: Start Here, Announcements, Road
 
 ## Start Here content
 
-Explain why AAI exists: the founder is tired of rugs and disappearing projects and wants to earn trust through useful technology, public decisions, and honest results. Welcome developers, researchers, designers, musicians, testers, and community contributors. Describe AAI as the founder's only planned community coin project; a software-specific exception needs documented community support through a public proposal, review, and owner decision.
+Explain why AAI exists: the founder is tired of rugs and disappearing projects and wants to earn trust through useful technology, public decisions, and honest results. Welcome developers, researchers, designers, musicians, testers, and community contributors. Do not describe a community coin as planned. The November 9 agent-economy decision removes any token from the plan. v1 payments, once built, are user-signed classic SPL USDC, and Zoora does not hold those funds.
 
 Link the [public repository](https://github.com/BuildWithAAI/buildwithAAI), [roadmap](../../ROADMAP.md), [funding proposal](../FUNDING.md), and [official directory](../../OFFICIAL-LINKS.md). Describe project stages honestly. Do not turn proposals into releases, grants, returns, or token rights.
 

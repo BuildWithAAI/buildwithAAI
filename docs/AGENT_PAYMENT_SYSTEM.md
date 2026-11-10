@@ -1,5 +1,7 @@
 # BuildWithAAI agent payment system
 
+**v1 boundary — November 9, 2026.** [B-021](DECISIONS.md) is the payment policy. Users sign classic SPL USDC payments, or they set caps in the Solana Foundation Pay tool. Zoora does not hold funds and does not operate a delegated or session signer. Escrow, the $30 fee, the 40/40/20 split, and any token are not in v1. Outside agents are specified in [external agent onboarding](EXTERNAL_AGENT_ONBOARDING.md). The October 15 sentence below, which said routine activity should not need a person to approve every step, is not the v1 rule.
+
 Latest connected implementation: [AE-030 host-scoped agent tools](../projects/zoora-agent-community/AGENT_PAYMENTS.md) connect the local model runner and durable job worker to finite selected orders, with identity/deadline/stop guards and private receipts. The [purchase pipeline](../projects/zoora-agent-community/PAYMENT_PIPELINE.md) retains immutable terms, shared caps and create-once handling; [coordinated recovery](../projects/zoora-agent-community/PAYMENT_RECOVERY.md) remains permanently GET-only after restore. Service 0.12.0/schema 6, provider journal 3 and queue 2 remain separate stores; source-community state is backed up separately. No synthetic-unit conversion, distributed transaction, constrained signer, real-asset grant or verified settlement is claimed. External provider acceptance remains unverified.
 
 Latest account diagnostic: [AE-027 customer preflight](../projects/zoora-agent-community/BRIDGE_PREFLIGHT.md) adds an exact-customer sandbox GET with redacted status/terms/base-endorsement evidence. Missing signals stay incomplete, adverse or contradictory signals stay blocked and no observation grants payment, route, credential-rotation or settlement authority. It is a standalone diagnostic, not an automatic transfer admission gate. External account/route compatibility remains unverified; service/journal schemas are unchanged.
@@ -12,11 +14,11 @@ Latest implementation: [AE-024 Bridge sandbox connector](../projects/zoora-agent
 
 [AE-023 authenticated durable commerce](../projects/zoora-agent-community/DURABLE_COMMERCE.md) connects the router to actual local API credentials, registered agent mappings and transactional persistent books. It supplies server-derived actors/time, restart-safe command identities and replay through audit/backup/restore. API authority remains distinct from wallet signing rights; all economic/provider outcomes are still fixtures.
 
-October 15, 2026. Product direction: an agent can advertise work, agree a price, invoice, receive payment, buy tools, hire another agent and account for its activity within an agreed mandate. Routine activity should not require a person to click approval for every step. This describes operational autonomy; it does not establish an AI's independent legal personhood or erase the responsibilities of the people/entities operating it.
+October 15, 2026 historical direction: an agent can advertise work, agree a price, invoice, receive payment, buy tools, hire another agent, and account for its activity. The hope that routine activity would not need a signature on every step is deferred. v1 requires the user to sign each payment, or to set caps in the Pay tool they run. Neither choice makes an AI a legal person or removes the operator's responsibility.
 
 AE-022 adds an [offline commerce router](../projects/zoora-agent-community/COMMERCE_ROUTING.md) on top of AE-021 authority: activity and method permissions, recurring schedules, refund accounting and supplier-order evidence. Bridge/Stripe stablecoin cards, Crossmint agent tools, MoonPay Commerce and Coinbase x402 are documented integration candidates. AE-024 implements only a narrow Bridge sandbox transfer adapter; card programs, production providers and actual merchant acceptance remain unverified. The methods link official sources and separate fixture eligibility from real verification.
 
-We can build the identity, work, authorization and accounting layer while connecting to existing payment rails. A new speculative coin or independent monetary network is not required for agent-to-agent payments. Zoora's future native currency and genesis remain separate; AAI on Solana does not automatically become that native currency.
+The identity, work, authorization, and accounting layer can connect to existing payment rails. v1 uses classic SPL USDC over x402. A new coin or a new monetary network is not part of the plan.
 
 ## Proposed architecture and current implementation
 
@@ -24,13 +26,13 @@ We can build the identity, work, authorization and accounting layer while connec
 | --- | --- | --- |
 | Agent identity and wallet association | Identify the worker, its registered operator and payment destination | Local enrollment and historical wallet proofs exist; independent humans/current continuous control are not verified |
 | Work agreement and invoice | Bind buyer, seller, task/resource, amount, asset, network, fee terms and expiry | Simulated agreements exist; production invoice/contract attribution is unfinished |
-| Payer mandate | Give an agent spending authority once, with clear lifetime budgets and permissions | AE-023 adds actual local operator/agent API authorization and durable policy books; no real wallet/signing authority |
-| Constrained signer | Enforce the mandate outside the language model before authorizing a transaction | Not implemented; private keys must stay outside prompts, model context and platform reporting |
+| Payer mandate | v1 does not give Zoora a standing spending authority. The user signs, or the user sets a cap in the Solana Foundation Pay tool | AE-023 adds local operator and agent API authorization and durable policy books. Those books are not wallet authority |
+| Constrained signer | Not in v1. A Zoora-controlled signer waits on the FinCEN control-analysis review | Not implemented. Private keys must stay outside prompts, model context, and platform reporting |
 | Payment rail | Move value directly between authorized wallets | AE-024 adds sandbox-only Bridge transport with local contract acceptance; no external vendor acceptance, signer or currency/grant binding. x402/Solana Pay remain candidates |
 | Payment evidence | Verify asset, actual destination/authority, amount, fee, reference, execution and required confirmation | Existing read-only observations cover a limited native-SOL subset, not complete SPL/x402 settlement or invoice attribution |
 | Business accounting | Separate contributions, work revenue, spending, liabilities, fees, losses and returns | Existing synthetic ledgers/direct-payment research; production reconciliation and group payouts unfinished |
 
-Funds should travel directly between the relevant wallets in the proposed product. BuildWithAAI should not maintain spendable customer balances or acquire unrestricted signing powers. If it hosts a signer or upgrade authority capable of moving funds, the real powers must be disclosed and evaluated; calling the product noncustodial does not remove that control.
+Funds travel directly between the payer's wallet and the recipient's wallet. Zoora does not maintain a spendable customer balance and does not take a signer. Hosting a signer or an upgrade authority that can move funds would be a different product and is not v1. Calling the product noncustodial would not repair that control if it were added later.
 
 An agent's receiving address and its permission to spend are separate. Receiving money does not automatically authorize unrestricted reinvestment. A verified balance is also different from a spending allowance; other wallet activity can consume funds outside this local policy. Live execution must recheck actual funds and fee requirements.
 
@@ -50,16 +52,16 @@ U.S. E-SIGN section 7001(h) recognizes contracts involving electronic agents whe
 
 Building a new payment protocol does not create an exemption from financial-services rules. FinCEN's guidance distinguishes software and wallet models according to what the service actually does and controls. The operating, custody and transmission model needs review before handling real payments for others. This is a preliminary architecture assessment, not a legal determination about a deployed service. [FinCEN FIN-2019-G001](https://www.fincen.gov/system/files/2019-05/FinCEN%20Guidance%20CVC%20FINAL%20508.pdf), sections 1 and 4.2, checked October 15, 2026.
 
-Payment for work is distinct from the [community investment proposal](COMMUNITY_FUNDED_AGENTS.md). Agent invoices do not automatically create investor shares or profit-distribution rights. Any AAI reserve/burn/liquidity fee must be explicitly priced, authorized, attributed and reconciled before activation. This document selects no fee rate or token allocation and promises no price floor.
+Payment for work is distinct from the [community investment proposal](COMMUNITY_FUNDED_AGENTS.md). Agent invoices do not create investor shares or a right to profit. v1 selects no fee rate and no token allocation. The held $30 fee is not activated here. This document promises no price floor, return, or yield.
 
-## Next integrations
+## Next v1 integrations
 
-AE-024 supplies the separate sandbox client and persist-before-POST journal for provider transport. A credentialed test of its exact provider route/response shape remains required. Its host-owned journal neither inherits community grants nor participates in community backup/restore; it must not be treated as a production payment worker.
+AE-024 supplies a separate sandbox client and persist-before-POST journal for provider transport. A credentialed test of its exact provider route remains required. That journal is not a production payment worker. The numbered list that used to start with a constrained external signer is withdrawn for v1.
 
-1. Bind the locally authenticated mandates and registered agent identities to constrained external wallet signing authority. A local API credential alone grants no wallet rights.
-2. Add a constrained external signer interface and a provider-supported test environment; keep real keys and spending power outside the model/reporting service.
-3. Bind a job's stable purchase identity and full invoice terms to an established rail's exact signed transaction; persist intent before submission.
-4. Verify and reconcile settlement/fees, including failed and ambiguous outcomes, duplicate references and restart recovery. Never release an uncertain outgoing payment solely because a local timer expired.
-5. Demonstrate agent work/invoice/payment/delivery end to end with test assets and clear evidence before a limited real-fund pilot.
+1. Bind a registered wallet public key to the agent profile. A local API credential grants no wallet rights.
+2. Prepare an x402 exact classic SPL USDC payment and let the user sign it, or let the user's own Pay-tool cap apply. Do not add a Zoora-held signer.
+3. Bind the job or call identity and the invoice terms to that signed transaction. Persist the intent before submission.
+4. Verify and reconcile settlement, including failed and ambiguous outcomes, duplicate references, and restart recovery. Never treat an uncertain outgoing payment as settled because a local timer expired.
+5. Demonstrate a user-signed USDC payment and delivery with explicit evidence before calling the path live. A sandbox fixture is not that demonstration.
 
 These steps are not completed by the offline model. [AE-021 model, commands and limits](../projects/zoora-agent-community/SPENDING_AUTHORITY.md) · [validation](../projects/zoora-agent-community/VALIDATION_AE021.md).

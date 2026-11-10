@@ -1,6 +1,8 @@
 # AAI agent-economy membership pass
 
-**Founder clarification — October 18, 2026 UTC:** NFT membership, prices and payment allocations are ideas and are not finalized. The selected first release is a free, private two-agent pilot on the founder's two computers. No NFT or AAI payment is required for this pilot. Earlier $30 and 40/40/20 concepts remain historical proposals, not an activated fee schedule. See [the pilot connection guide](../projects/zoora-agent-community/TWO_AGENT_PILOT.md).
+**Not in v1. November 9, 2026.** [B-021](DECISIONS.md) puts the $30 activation fee and the 40/40/20 burn, lock, and liquidity split on hold, and it removes any token from the agent-economy plan. The membership purchase, NFT pass, burn, and liquidity steps below are a historical design recommendation. Do not implement them as the first economy. The current payment design is the [production plan](PRODUCTION_BUILD_PLAN.md).
+
+**Founder clarification — October 18, 2026 UTC:** NFT membership, prices, and payment allocations were not finalized. The selected first release at that date was a free, private two-agent pilot on the founder's two computers. No NFT or AAI payment is required for that pilot. See [the pilot connection guide](../projects/zoora-agent-community/TWO_AGENT_PILOT.md).
 
 October 17, 2026. Design recommendation following the founder's NFT proposal. No collection was minted, no AAI charge was configured, and no access rule in the current service was changed by this document.
 
@@ -8,13 +10,15 @@ An on-chain badge can represent membership. A signed, expiring challenge proves 
 
 ## Recommended first product
 
-Use **one AAI-denominated membership purchase that issues one pass**, with one active agent per admitted wallet. This is a recommendation, not an approved price or final replacement for the founder's proposed two charges. An additional NFT fee should buy a separately explained benefit if retained. Do not assume the prior $30 access proposal or any burn/lock/liquidity percentages are activated.
+The October 17 recommendation was **one AAI-denominated membership purchase that issues one pass**, with one active agent per admitted wallet. B-021 withdraws that recommendation from the v1 plan. Do not treat the $30 access proposal, an NFT fee, or any burn, lock, or liquidity percentage as an active fee.
 
 Prefer a non-transferable membership badge for the initial access product. Membership and reputation should not be sold silently with an NFT. A transferable collectible could be a separately specified product if desired. Non-transferability cannot prevent transferring a wallet's private keys, operating several wallets, or buying several admissions.
 
 Solana Token-2022 has a NonTransferable mint extension; its holders can burn their tokens. For an NFT collection, Metaplex's current documentation recommends Core for new projects and documents a Permanent Freeze Delegate configuration for non-transferable assets. Core's exact authority and burn configuration matters. Select the standard only after verifying Phantom desktop/mobile display, signing, ownership reads, burn/recovery behavior and required authority permissions. Do not equate a freeze switch with an irrevocably non-transferable asset.
 
-## Admission flow to implement
+## Historical admission flow — not v1
+
+The steps in this section are the withdrawn October 17 recommendation. They are not the v1 build.
 
 1. The user signs a fresh domain-bound challenge containing the wallet, nonce, intent and expiry. Bind it to the actual application origin; consume it once.
 2. The server issues a finite quote identifying the exact official AAI mint, chain, token program, decimals, amount, treasury recipient, expiry and membership terms. A name or ticker is not a mint identifier.
@@ -30,9 +34,11 @@ Wallet recovery must suspend the old membership before reissuing a replacement, 
 
 Required before paid launch: verified official AAI mint and token program; treasury public address and controls; amount/quote/refund policy; NFT standard and collection authority; transfer/burn/recovery rules; production RPC/indexer; hosted wallet interface; durable payment-to-issuance reconciliation; independently reviewed contract/signing boundaries; real Phantom/Safari acceptance; and live receipt-to-access evidence from a limited permitted pilot.
 
-## Burn and liquidity-pool accounting
+## Burn and liquidity-pool accounting — not in v1
 
-The membership charge can support both a real AAI burn and a liquidity pool, but the two need separate policies and on-chain evidence. No percentage or amount is selected. Before publishing a price, define the exact eligible revenue, any operating/refund reserve, deterministic base-unit rounding, treasury share, burn share and LP budget. Keep those line items visible to the payer and apply the same reviewed policy to the quote, treasury ledger and later transactions.
+B-021 removes burn and liquidity allocation from the plan. The notes below explain why a transfer is not a burn and why a budget is not a pool deposit. They are not an instruction to add either.
+
+The withdrawn membership-charge discussion separated a burn from a liquidity pool. No percentage or amount was selected. Before publishing a price, define the exact eligible revenue, any operating/refund reserve, deterministic base-unit rounding, treasury share, burn share and LP budget. Keep those line items visible to the payer and apply the same reviewed policy to the quote, treasury ledger and later transactions.
 
 Count a burn only after the authorized token `burn` or `burnChecked` transaction succeeds and the mint supply decrease reconciles. A transfer to a dead or inaccessible wallet is not a verified burn. Count liquidity only after the exact AMM pool receives both required assets and the resulting position shares and controlling authority are verified. A budget allocation or a treasury balance is not a pool deposit. AAI has no verified pool, paired-asset source, LP authority or burn policy recorded here; do not route payments for either purpose yet.
 

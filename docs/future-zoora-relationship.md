@@ -1,12 +1,14 @@
 # Relationship with the future blockchain
 
-> **Naming is undecided: Zoora Blockchain or AAI Blockchain.** The filename preserves the original handoff terminology; it does not finalize the chain's name. “Future blockchain” is the neutral term throughout this plan.
+> **Naming is undecided: Zoora Blockchain or AAI Blockchain.** The filename preserves the original handoff terminology; it does not finalize the chain's name. “Future blockchain” is the neutral term throughout this note.
 
-The future blockchain is a separate long-term protocol research effort. Its official native currency, if launched, is intended to originate from its own documented genesis. The Solana/Pump.fun experiment must not predetermine genesis allocations or monetary architecture.
+**Not in the v1 plan.** [B-021](DECISIONS.md) removes any token, including a native coin, from the agent-economy plan. The notes below are historical research boundaries. They are not a launch.
+
+The future-chain discussion is separate long-term research. It must not be read as a v1 payment asset, a conversion right, or a treasury.
 
 ## No automatic rights
 
-Community-token ownership or participation does not automatically confer migration, conversion, a bridge, 1:1 exchange, native coins, protocol governance, civilization ownership, validator participation, equity, or revenue rights. This is not a presale for the future chain. Shared branding creates no additional entitlement.
+v1 has no community token to own. Historical discussion of such an asset does not confer migration, conversion, a bridge, exchange, native coins, protocol governance, validator participation, equity, or revenue rights. This note is not a presale. Shared branding creates no additional entitlement.
 
 ## Researchable possibilities, not commitments
 

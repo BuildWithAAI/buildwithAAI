@@ -1,6 +1,8 @@
 # Payer authority research — AE-021
 
-The new offline CLI models an agent making routine purchase decisions within one declared operator's mandate. It fills the payer-side authorization gap alongside existing simulated agreements/receipts and the live local task queue. **All controllers, actors, invoices, attempted payments and settlement outcomes in this model are SYNTHETIC fixtures.** No money moves, signer exists, real wallet balance is maintained or live API authority is granted. The community service remains version 0.8.0 / schema 5.
+**Historical synthetic model, not v1 authority.** [B-021](../../docs/DECISIONS.md) does not give Zoora a delegated signer. v1 spending is a user signature or a cap in the Solana Foundation Pay tool. The budgets below are not balances, deposits, or escrow.
+
+The offline CLI models an agent making routine purchase decisions within one declared operator's mandate. It fills the payer-side authorization gap alongside existing simulated agreements/receipts and the live local task queue. **All controllers, actors, invoices, attempted payments and settlement outcomes in this model are SYNTHETIC fixtures.** No money moves, signer exists, real wallet balance is maintained or live API authority is granted. The community service remains version 0.8.0 / schema 5.
 
 ## What is modeled
 

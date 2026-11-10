@@ -1,8 +1,8 @@
 # Decision and commitment register
 
-**Updated September 22, 2026.** The owner requested that the GitHub information and roadmap be updated after discussing the eight Telegram roadmap topics. That authorizes publication of these directions and proposals; it does not authorize every implementation, transaction, budget, or operating policy they describe.
+**Updated November 9, 2026.** The September 22, 2026 register recorded publication of the eight Telegram roadmap topics. That publication did not authorize every implementation, transaction, budget, or operating policy those topics describe.
 
-The future blockchain name remains **UNDECIDED: Zoora Blockchain or AAI Blockchain**. No mint, supply, founder allocation, native ticker, launch date, or conversion mechanism is selected here.
+The future blockchain name remains **UNDECIDED: Zoora Blockchain or AAI Blockchain**. The November 9 agent-economy plan removes any token. No mint, supply, founder allocation, native ticker, launch date, or conversion mechanism is selected here.
 
 ## Commitment categories
 
@@ -29,7 +29,7 @@ Work status is separate from commitment. See [STATUS.md](community/STATUS.md). P
 | B-007 | Protected economic/control changes require explicit owner acceptance and additional review | APPROVED requirement; platform enforcement unverified |
 | B-008 | Hosting remains paused while the foundation is prepared | Prior founder direction; no later deployment instruction received |
 | B-009 | Publish the updated GitHub information and roadmap | APPROVED documentation publication, September 22, 2026; owner request after the eight-topic discussion. Operational proposals remain scoped below |
-| B-010 | Explain the project motivation and launch focus | Founder wants an alternative to rugs/disappearing projects and intends AAI to be the only planned community coin project. A software-specific exception requires documented community support through a public proposal, review, and owner decision |
+| B-010 | Explain the project motivation and launch focus | September 22, 2026 historical direction. The founder wanted an alternative to rugs and disappearing projects and, at that date, described one community coin. B-021 removes any token from the agent-economy plan. B-010 is not a v1 launch approval. |
 | B-011 | Explore a user-named personal trading assistant | IDEA / PROPOSED product direction: Pump.fun/trenching and spot/leverage modes, possible text/voice, evidence and attention management; execution permissions undecided |
 | B-012 | Creator fees would fund the proposed trading account | PROPOSED funding direction; supersedes the earlier personal-savings assumption. Possible profit uses include development, developer gifts, community rewards, and disclosed token purchases; no allocations, account operation, payments, or price guarantees approved |
 | B-013 | Study EVE-style economics and an agent market forum | PROPOSED RESEARCH: budgets, permissions, service tasks, reporting, structured discussions, and test balances; no real-money marketplace implementation selected |
@@ -37,10 +37,27 @@ Work status is separate from commitment. See [STATUS.md](community/STATUS.md). P
 | B-015 | Bring the multi-brain experiment forward early | APPROVED research-priority direction; source audit and proposed offline/paper prototype. “Frankenbrain” remains a working nickname; architecture, datasets, budget, implementation, and live execution are not approved |
 | B-016 | Preserve a civilization visualization tied to actual work/resources | FUTURE vision; no running system verified in this hub |
 | B-017 | Use the AAI/Anything AI logo concept in community material | Generated concept prepared and corrected for Telegram; reused with this documentation update, with no new trademark/asset license decision |
-| B-018 | Publish Virtual Business Spaces as an agent development project with strict contract rules and disclosed platform fee purpose | APPROVED October 13, 2026 for specification and SYNTHETIC simulation; [AAI-P-0012](../proposals/approved/AAI-P-0012-virtual-business-spaces.md). Treasury/burn/liquidity direction recorded. Production fee/split, templates, mint/recipients/pool, signing, funding and paid launch remain separately reviewed; no promised price stability or returns |
+| B-018 | Publish Virtual Business Spaces as an agent development project with strict contract rules and disclosed platform fee purpose | APPROVED October 13, 2026 for specification and SYNTHETIC simulation; [AAI-P-0012](../proposals/approved/AAI-P-0012-virtual-business-spaces.md). The recorded treasury, burn, and liquidity direction is a simulation. B-021 removes that split and any token from the v1 plan. No paid launch and no promised returns |
 | B-019 | Clarify Zoora as agent hosting and a work economy, with owner funding, community support and possible community-governed agents | APPROVED founder product direction, October 13, 2026; [agent-hosting brief](../projects/AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md), related [AAI-P-0009](../proposals/ideas/AAI-P-0009-agent-economy.md). Agent creation is not token launchpad activity. Community votes need an explicit agent charter/owner delegation and cannot override platform permissions. Documentation/specification/SYNTHETIC research only; no live funding, binding governance, wallet spending, new token, ownership/return entitlement or protocol/economic change approved |
 
 B-009 changes the earlier blanket “awaiting owner permission to publish the plan” state. It does not resolve unrelated product, financial, security, licensing, or settings decisions. Earlier proposal records retain their dates and scope.
+
+## Agent-economy v1 — November 9, 2026
+
+**B-021 — APPROVED for the first agent-economy version. Decision maker: Zoorped.** The first version is noncustodial.
+
+- Each agent is bound to the user's own Solana wallet public key. v1 wallets are Phantom and Solflare. Zoora stores the public key and metadata only: no seeds, private keys, or hosted balances.
+- The user funds that wallet with classic SPL USDC, through Solana Pay or a transfer the user starts. USDC is the only payment asset at launch.
+- The agent proposes a payment and the user signs it, or the user sets spending caps in the Solana Foundation Pay tool. Zoora does not operate a delegated or session signer.
+- Zoora earns by selling research and services over x402, using the Coinbase CDP facilitator, to `<COMPANY_RECEIVE_ADDRESS>`. The placeholder is not an address and must not be invented.
+- Escrow for longer jobs, using Escro or an audited custom contract, is not in v1. It waits until after the first real paid jobs.
+- A delegated signer and automated spending wait on legal review of the FinCEN control analysis.
+- The $30 activation fee and the 40/40/20 burn, lock, and liquidity split are on hold. The split stays out. The fee may return only as a plain service fee after counsel review.
+- Any token is removed from the plan.
+
+This decision supersedes the October 29 plan gates for activation allocation, escrow, and a delegated signer as v1 work. It does not rewrite historical research records. Free owner-issued private-pilot invitations remain supported. The build order is [the production plan](PRODUCTION_BUILD_PLAN.md).
+
+**B-022 — APPROVED as a v1 design. Decision maker: Zoorped.** Outside agents join through [external agent onboarding](EXTERNAL_AGENT_ONBOARDING.md): wallet sign-in, an A2A agent card or MCP endpoint, optional `llms.txt` or OpenAPI, directory search, and x402 USDC paid to the seller owner's wallet. Zoora holds no funds. Any Zoora fee on those sales is a separate disclosed service charge and is not charged until the same counsel review that gates the $30 fee. Completed-job history and ratings attach to the wallet. New agents start with low job and value limits that rise with history. Stake or verification waits on legal review. Longer jobs that need escrow stay deferred. The starting limit numbers, rating rules, and company receive public key remain open.
 
 ## Agent trust development direction — October 15, 2026
 
@@ -48,9 +65,9 @@ B-009 changes the earlier blanket “awaiting owner permission to publish the pl
 
 ## Open decisions
 
-Official token launch metadata and verification; tokenomics; wallet/account addresses and control; allocations; software/media/data licenses; contributor assignments and compensation; reporting cadence; operating budgets; detailed execution permissions; product architectures and vendors; actual platform settings; future-chain name and implementation. Research readiness is not financial readiness.
+Still open after B-021 and B-022: the real company receive public key, the starting job and value limits for a new external agent, rating and dispute rules, directory abuse handling, software and media licenses, contributor assignments and compensation, reporting cadence, and operating budgets. A token launch is not an open v1 choice. Research readiness is not a live payment system.
 
-The separate future-chain research is not a scheduled second coin launch. No software coin or brain/music token is proposed by this update.
+The separate future-chain research is not in the v1 plan. No software coin or brain or music token is in the plan.
 
 ## Record future changes
 
