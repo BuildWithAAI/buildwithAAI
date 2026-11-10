@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: aa34630
+title: A saloon and a paper trading floor.
+summary: The island has a Solana Saloon and a trading floor. Quotes come from a public price source. Trades stay on paper until the owner turns on the live switch and a signer. The floor says PAPER.
+date: 2026-11-10T03:32:00Z
+image:
+
+---
 sha: cd5effb
 title: SOL sales and a queue for the owner's card.
 summary: Buyers can pay SOL to the owner's public wallet after a finalized on-chain check. Zoora's card purchases wait in a queue the owner settles outside the app. The card number never enters this process.
