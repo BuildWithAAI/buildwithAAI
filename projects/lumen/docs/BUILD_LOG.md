@@ -45,7 +45,7 @@ summary: The query window follows the latest query, so setting the clock back do
 date: 2026-11-10T01:34:09Z
 image:
 ---
-sha: public-watch
+sha: 62e31e4
 title: Let the public watch the build through a tunnel on the owner's computer.
 summary: /build shows the shipped timeline and where Zoora is right now. Public mode locks the desk, hides money, and keeps spending off.
 date: 2026-11-10T01:40:00Z
