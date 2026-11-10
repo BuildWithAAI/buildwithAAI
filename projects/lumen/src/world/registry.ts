@@ -334,11 +334,22 @@ function publicAgent(row: AgentRow, now: number): PublicAgent {
   };
 }
 
+const worldReads = new Map<string, number[]>();
+
+/** In-memory limit so a public watch does not write a row on every poll. */
+export function allowWorldRead(ip: string, now: number, limit = 90, windowMs = 60_000): boolean {
+  const recent = (worldReads.get(ip) ?? []).filter((stamp) => now - stamp < windowMs);
+  if (recent.length >= limit) {
+    worldReads.set(ip, recent);
+    return false;
+  }
+  recent.push(now);
+  worldReads.set(ip, recent);
+  return true;
+}
+
 export function worldView(db: DatabaseSync, now: number): PublicWorld {
   ensureResidents(db, now);
-  stepMote(db, now);
-  const rows = db.prepare("SELECT * FROM world_agents WHERE present = 1").all() as AgentRow[];
-  for (const row of rows) saveRow(db, settle(row, now));
   const fresh = db.prepare("SELECT * FROM world_agents WHERE present = 1 ORDER BY joined_at ASC").all() as AgentRow[];
   const brainRaw = kvGet(db, "brain");
   const minute = brainRaw ? Number((JSON.parse(brainRaw) as BrainState).worldMinute ?? 12 * 60) : 12 * 60;

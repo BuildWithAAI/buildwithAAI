@@ -18,7 +18,7 @@ import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, type Env } from "../money/rules";
 import { stripeSalesClient } from "../money/stripe";
-import { ensureResidents, handleWorldCommand, issueAgent, rollAndApply, syncZoora, worldView, type WorldCommand } from "../world/registry";
+import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 
 type GlobalEngine = { engine?: Engine };
 
@@ -58,6 +58,11 @@ export function createEngine(env: Env, file?: string) {
     executeQueued: (intentId: string) => executeQueued(db, env, issuer, intentId),
     approveProposal: (id: string) => approveProposal(db, id),
     world: () => worldView(db, Date.now()),
+    worldRead: (ip: string) => {
+      const now = Date.now();
+      if (!allowWorldRead(ip, now)) return { status: 429 as const, body: { error: "RATE_LIMIT" } };
+      return { status: 200 as const, body: worldView(db, now) };
+    },
     worldCommand: (command: WorldCommand) => handleWorldCommand(db, command, { jarvisToken: env.LUMEN_JARVIS_TOKEN, ownerToken: env.OWNER_ACCESS_TOKEN }),
     jarvisView: () => jarvisView(db, env),
     jarvisTalk: (text: string) => ownerChat(db, env, text, "jarvis-chat"),
@@ -166,6 +171,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
   saveState(db, lived);
   persistTick(db, result, now);
   syncZoora(db, lived, now);
+  stepMote(db, now);
   const ctx = policyContext(db, env);
   if (ctx) {
     for (const intent of result.intents) {

@@ -10,7 +10,7 @@ import { chooseDestination } from "../src/world/choose";
 import { applyVoxelEvent, requestVoxelEvent } from "../src/world/happen";
 import { ANCHORS, WALK_SPEED, pathBetween, pathLength, placeAt, routePlaces, travelMs } from "../src/world/places";
 import { createEngine } from "../src/server/engine";
-import { beginMove, handleWorldCommand, issueAgent, rollAndApply, worldView } from "../src/world/registry";
+import { allowWorldRead, beginMove, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, worldView } from "../src/world/registry";
 import type { Emotions, Needs } from "../src/brain/types";
 
 const needs = (over: Partial<Needs> = {}): Needs => ({ rest: 0.1, curiosity: 0.1, social: 0.1, expression: 0.1, quiet: 0.1, ...over });
@@ -56,6 +56,20 @@ describe("world agents", () => {
     const row = engine.db.prepare("SELECT token_hash FROM world_agents WHERE name = ?").get("Pebble") as { token_hash: string };
     expect(row.token_hash).toBe(createHash("sha256").update(issued.token).digest("hex"));
     expect(JSON.stringify(engine.snapshot()).includes(issued.token)).toBe(false);
+  });
+
+  it("serves a public read without writing and rate-limits it", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 10, 15);
+    ensureResidents(db, now);
+    const before = JSON.stringify(db.prepare("SELECT id, x, y, z, seen_at, activity, path_json FROM world_agents").all());
+    worldView(db, now);
+    worldView(db, now + 5_000);
+    const after = JSON.stringify(db.prepare("SELECT id, x, y, z, seen_at, activity, path_json FROM world_agents").all());
+    expect(after).toBe(before);
+    expect(allowWorldRead("203.0.113.9", now, 2)).toBe(true);
+    expect(allowWorldRead("203.0.113.9", now + 1, 2)).toBe(true);
+    expect(allowWorldRead("203.0.113.9", now + 2, 2)).toBe(false);
   });
 
   it("requires a token, rate-limits, and keeps two agents at once", () => {
