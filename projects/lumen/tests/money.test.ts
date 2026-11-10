@@ -9,7 +9,7 @@ import { allowLogin, clientAddress } from "../src/auth/owner";
 import { executeIntent, resolutionProvider, resolveUnknown, resolveUnknownClaim } from "../src/money/execute";
 import { createEngine } from "../src/server/engine";
 import { MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers";
-import { Ledger, bodyHash, canonical, merchantFromLegacyNote, migrateMerchantHashes, moneyView, verifyLedgerChain } from "../src/money/ledger";
+import { Ledger, bodyHash, canonical, merchantFromLegacyNote, migrateMerchantHashes, moneyView, notifyChainBroken, verifyLedgerChain } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords, normalizeMerchant } from "../src/money/reconcile";
 import { ALERT_GIVE_UP_MS, buildOwnerNotifier, deliverSmtp, deskClock, drainAlertRetries, guardAsyncRetry, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
@@ -796,6 +796,28 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect((db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string }).value).toBe("1");
     expect((db.prepare("SELECT note FROM ledger_entries WHERE id = 'old-2'").get() as { note: string }).note).toBe("Tampered note.");
     expect((db.prepare("SELECT title FROM owner_alerts WHERE title = 'Ledger chain broken'").get() as { title: string }).title).toBe("Ledger chain broken");
+  });
+
+  it("sends a broken ledger chain through email and Telegram", () => {
+    const db = openDatabase();
+    const mail: string[] = [];
+    const telegram: string[] = [];
+    const env = {
+      LUMEN_ALERT_EMAIL_TO: "owner@example.com",
+      LUMEN_ALERT_EMAIL_FROM: "zoora@example.com",
+      LUMEN_SMTP_HOST: "smtp.example.com",
+      LUMEN_ALERT_TELEGRAM_BOT_TOKEN: "bot",
+      LUMEN_ALERT_TELEGRAM_CHAT_ID: "1",
+    };
+    notifyChainBroken(db, env, {
+      sendMail: (message) => { mail.push(message.subject); },
+      sendTelegram: (message) => { telegram.push(message.text); },
+    });
+    expect(mail).toEqual(["Zoora: Ledger chain broken"]);
+    expect(telegram[0]).toContain("Ledger chain broken");
+    expect(telegram[0]).toContain("Merchant hashes were not rewritten");
+    notifyChainBroken(db, env, { sendMail: () => { mail.push("again"); } });
+    expect(mail).toEqual(["Zoora: Ledger chain broken"]);
   });
 
   it("writes a new give-up notice when the same alert gives up again 3 hours later", () => {

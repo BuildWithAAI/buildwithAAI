@@ -4,7 +4,7 @@ import tls from "node:tls";
 import type { DatabaseSync } from "node:sqlite";
 
 export type OwnerAlert = {
-  kind: "reconciliation" | "dispute" | "delivery" | "issuer";
+  kind: "reconciliation" | "dispute" | "delivery" | "issuer" | "ledger";
   title: string;
   detail: string;
 };

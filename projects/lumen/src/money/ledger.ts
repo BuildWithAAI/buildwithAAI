@@ -1,5 +1,6 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { buildOwnerNotifier, deskNotifier, type AlertEnv, type MailTransport, type TelegramTransport } from "./notify";
 
 export const LEDGER_KINDS = ["purchase", "sale", "fee", "refund", "payout", "approval", "decline", "dispute"] as const;
 export type LedgerKind = (typeof LEDGER_KINDS)[number];
@@ -112,22 +113,26 @@ export function verifyLegacyChain(rows: LedgerRow[]): boolean {
   return true;
 }
 
+const CHAIN_BROKEN = {
+  kind: "ledger" as const,
+  title: "Ledger chain broken",
+  detail: "The pre-upgrade ledger chain did not verify. Merchant hashes were not rewritten.",
+};
+
+/** Desk, and email or Telegram when those channels are configured. A second call does not send again. */
+export function notifyChainBroken(db: DatabaseSync, env: AlertEnv = process.env, io: { sendMail?: MailTransport; sendTelegram?: TelegramTransport } = {}): void {
+  const existing = db.prepare("SELECT id FROM owner_alerts WHERE title = ?").get(CHAIN_BROKEN.title);
+  if (existing) return;
+  buildOwnerNotifier(env, { desk: deskNotifier(db), db, sendMail: io.sendMail, sendTelegram: io.sendTelegram }).notifier.notify(CHAIN_BROKEN);
+}
+
 /** Recompute the chain so the merchant is inside the tamper hash. A broken old chain is left untouched. */
 export function migrateMerchantHashes(db: DatabaseSync): void {
   const version = db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string } | undefined;
   if (version?.value === "2") return;
   const rows = new Ledger(db).list();
   if (!verifyLegacyChain(rows)) {
-    const title = "Ledger chain broken";
-    const existing = db.prepare("SELECT id FROM owner_alerts WHERE title = ?").get(title);
-    if (!existing) {
-      db.prepare("INSERT INTO owner_alerts(id, kind, title, detail, created_at) VALUES(?, 'ledger', ?, ?, ?)").run(
-        randomBytes(8).toString("hex"),
-        title,
-        "The pre-upgrade ledger chain did not verify. Merchant hashes were not rewritten.",
-        Date.now(),
-      );
-    }
+    notifyChainBroken(db, process.env);
     return;
   }
   db.exec("BEGIN IMMEDIATE");
