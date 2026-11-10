@@ -27,10 +27,11 @@ function capped(raw: string | undefined, max: number): number {
   return Math.min(max, parsed);
 }
 
-/** Counts are enforced here. A higher env value cannot raise the cap. */
+/** Counts are enforced here. A higher env value cannot raise the cap. A clock moved backward still counts the later stamps. */
 export function queriesAllowed(stamps: number[], now: number, caps = { hour: RESEARCH_HOUR_MAX, day: RESEARCH_DAY_MAX }): boolean {
-  const hour = stamps.filter((stamp) => now - stamp >= 0 && now - stamp < HOUR_MS).length;
-  const day = stamps.filter((stamp) => now - stamp >= 0 && now - stamp < DAY_MS).length;
+  const mark = stamps.reduce((latest, stamp) => Math.max(latest, stamp), now);
+  const hour = stamps.filter((stamp) => mark - stamp >= 0 && mark - stamp < HOUR_MS).length;
+  const day = stamps.filter((stamp) => mark - stamp >= 0 && mark - stamp < DAY_MS).length;
   return hour < caps.hour && day < caps.day;
 }
 

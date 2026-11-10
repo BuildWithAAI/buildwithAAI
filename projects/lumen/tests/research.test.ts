@@ -36,6 +36,7 @@ describe("research", () => {
     const yesterday = Array.from({ length: RESEARCH_DAY_MAX }, (_, index) => now - 2 * 60 * 60 * 1000 - index * 1000);
     expect(queriesAllowed(yesterday, now)).toBe(false);
     expect(queriesAllowed(yesterday.slice(0, 3), now)).toBe(true);
+    expect(queriesAllowed(stamps, now - 3 * 60 * 60 * 1000)).toBe(false);
     expect(researchCaps({ LUMEN_RESEARCH_HOUR_MAX: "100", LUMEN_RESEARCH_DAY_MAX: "1000" })).toEqual({ hour: RESEARCH_HOUR_MAX, day: RESEARCH_DAY_MAX });
     expect(researchAdapter({}).name).toBe("mock");
     expect(researchAdapter({ LUMEN_SEARCH_PROVIDER: "brave" }).name).toBe("mock");
