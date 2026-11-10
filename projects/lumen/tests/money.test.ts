@@ -735,6 +735,8 @@ describe("held execute, disputes, refunds, and alerts", () => {
   it("backfills merchant from the old note and hashes it into the chain", () => {
     expect(merchantFromLegacyNote("Reserved before issuer. art_supplies at shop.example.com.")).toBe("shop.example.com");
     expect(merchantFromLegacyNote("art_supplies at paper-shop. Expression need is above 0.85.")).toBe("paper-shop");
+    expect(merchantFromLegacyNote("Look at the water. Then leave.")).toBeNull();
+    expect(merchantFromLegacyNote("Checked at dawn. Reserved before issuer. art_supplies at paper-shop.")).toBeNull();
     const db = openDatabase();
     const note = "Reserved before issuer. art_supplies at shop.example.com.";
     const legacy = createHash("sha256").update(canonical({

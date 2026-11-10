@@ -53,15 +53,19 @@ export function bodyHash(input: LedgerInput): string {
   })).digest("hex");
 }
 
-/** Pull a merchant out of a note written before the merchant column existed. */
+/** Pull a merchant out of a known ledger note. A loose " at " in other text is ignored. */
 export function merchantFromLegacyNote(note: string): string | null {
-  const at = note.match(/ at (.+?)(?:\. |$)/);
-  if (at?.[1]) {
-    const merchant = at[1].replace(/\.$/, "").trim();
-    if (merchant) return merchant;
+  const templates = [
+    /^Reserved before issuer\. [A-Za-z0-9._-]+ at ([A-Za-z0-9._-]+)\.$/,
+    /^Issuer declined [A-Za-z0-9._-]+ at ([A-Za-z0-9._-]+)\. Not counted toward caps\.$/,
+    /^Not charged\. [A-Za-z0-9._-]+ at ([A-Za-z0-9._-]+)\. Keeper voided the unknown outcome\.$/,
+    /^[a-z][a-z0-9._-]* at ([A-Za-z0-9._-]+)\. /,
+    /^(?:decline|queue|auto_approve|needs_approval):[A-Z0-9_]+:[A-Za-z0-9._-]+:([A-Za-z0-9._-]+)$/,
+  ];
+  for (const pattern of templates) {
+    const match = pattern.exec(note);
+    if (match?.[1]) return match[1];
   }
-  const hold = note.match(/^(?:decline|queue|auto_approve|needs_approval):[A-Z0-9_]+:[A-Za-z0-9._-]+:(.+)$/);
-  if (hold?.[1]) return hold[1].trim();
   return null;
 }
 
