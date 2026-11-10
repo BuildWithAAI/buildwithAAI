@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { buildOwnerNotifier, deskNotifier, type AlertEnv, type MailTransport, type TelegramTransport } from "./notify";
 
-export const LEDGER_KINDS = ["purchase", "sale", "fee", "refund", "payout", "approval", "decline", "dispute"] as const;
+export const LEDGER_KINDS = ["purchase", "sale", "fee", "refund", "reversal", "payout", "approval", "decline", "dispute"] as const;
 export type LedgerKind = (typeof LEDGER_KINDS)[number];
 
 export type LedgerInput = {
@@ -245,7 +245,7 @@ function mapRow(row: Record<string, unknown>): LedgerRow {
 }
 
 const INFLOW = new Set(["sale"]);
-const OUTFLOW = new Set(["purchase", "fee", "refund", "payout"]);
+const OUTFLOW = new Set(["purchase", "fee", "refund", "reversal", "payout"]);
 
 export function signedAmount(row: LedgerRow): number {
   if (row.kind === "dispute") return row.amountCents;
@@ -262,6 +262,7 @@ export type MoneyView = {
   feeCents: number;
   cogsEstimateCents: number;
   refundCents: number;
+  reversalCents: number;
   payoutCents: number;
   disputeCents: number;
 };
@@ -275,6 +276,7 @@ export function moneyView(rows: LedgerRow[]): MoneyView {
     feeCents: 0,
     cogsEstimateCents: 0,
     refundCents: 0,
+    reversalCents: 0,
     payoutCents: 0,
     disputeCents: 0,
   };
@@ -289,6 +291,7 @@ export function moneyView(rows: LedgerRow[]): MoneyView {
       if (row.kind === "purchase") view.purchaseCents += Math.abs(row.amountCents);
       if (row.kind === "fee") view.feeCents += Math.abs(row.amountCents);
       if (row.kind === "refund") view.refundCents += Math.abs(row.amountCents);
+      if (row.kind === "reversal") view.reversalCents += Math.abs(row.amountCents);
       if (row.kind === "payout") view.payoutCents += Math.abs(row.amountCents);
       if (row.kind === "dispute") view.disputeCents += row.amountCents;
     } else if (row.status === "pending" || row.status === "unconfirmed" || row.status === "intent") {

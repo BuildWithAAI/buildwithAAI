@@ -82,15 +82,33 @@ export function decideAuthorization(db: DatabaseSync, merchant: string, amountCe
 }
 
 /**
- * Stripe Issuing: `type` is `capture` or `refund`. Captures are negative amounts
- * and refunds are positive. The kind follows `type`, not the sign.
- * A refund does not consume an expected spend.
+ * Stripe Issuing: `type` is `capture` or `refund`. Captures are negative.
+ * A refund is a positive amount. A refund reversal is `type: refund` with a
+ * negative amount, and is booked as a reversal. Neither consumes an expected spend.
  */
 export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number; atMs: number; provider: string; transactionType?: string }): { booked: boolean; matched: boolean } {
-  const kind = input.transactionType === "refund" ? "refund" : input.transactionType === "capture" ? "purchase" : null;
   const cents = Math.abs(input.amountCents);
-  if (!input.transactionId || !kind || !Number.isInteger(input.amountCents) || cents <= 0) return { booked: false, matched: false };
-  if (kind === "refund") {
+  if (!input.transactionId || !Number.isInteger(input.amountCents) || cents <= 0) return { booked: false, matched: false };
+  if (input.transactionType === "refund" && input.amountCents < 0) {
+    const ledger = new Ledger(db);
+    const key = `issuing-reversal:${input.transactionId}`;
+    if (!ledger.findByIdempotency(key)) {
+      ledger.append({
+        id: `reversal-${input.transactionId}`,
+        atMs: input.atMs,
+        kind: "reversal",
+        amountCents: cents,
+        status: "confirmed",
+        provider: input.provider,
+        providerTransactionId: input.transactionId,
+        idempotencyKey: key,
+        note: `Issuer refund reversal ${input.transactionId}.`,
+        merchant: input.merchant,
+      });
+    }
+    return { booked: true, matched: false };
+  }
+  if (input.transactionType === "refund") {
     const ledger = new Ledger(db);
     const key = `issuing-refund:${input.transactionId}`;
     if (!ledger.findByIdempotency(key)) {
@@ -109,6 +127,7 @@ export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionI
     }
     return { booked: true, matched: false };
   }
+  if (input.transactionType !== "capture") return { booked: false, matched: false };
   const rows = db.prepare("SELECT intent_id, merchant, max_cents, expires_at, status FROM expected_spends WHERE status IN ('open', 'authorized')").all() as {
     intent_id: string; merchant: string; max_cents: number; expires_at: number; status: string;
   }[];

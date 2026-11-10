@@ -101,11 +101,11 @@ function foldConfusable(text: string): string {
   return out;
 }
 
+/** The check uses a folded copy. A clean note is returned as it was written. */
 export function scrubInstructions(text: string): string {
-  const folded = foldConfusable(text.normalize("NFKD").replace(/\p{M}/gu, "").replace(/[\u00ad\u180e\u200b\u200c\u200d\u2060\u2062\ufeff]/g, ""));
-  const clean = folded.replace(/\s+/g, " ").trim();
-  if (!clean || INSTRUCTION.test(clean)) return "";
-  return clean.slice(0, 140);
+  const probe = foldConfusable(text.normalize("NFKD").replace(/\p{M}/gu, "").replace(/[\u00ad\u180e\u200b\u200c\u200d\u2060\u2062\ufeff]/g, "")).replace(/\s+/g, " ").trim();
+  if (!probe || INSTRUCTION.test(probe)) return "";
+  return text.length > 140 ? text.slice(0, 140) : text;
 }
 
 /** On a public host, a visitor's words stay off /ideas until the keeper opens the private desk. */
