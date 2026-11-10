@@ -1,3 +1,5 @@
+import { fetchPinnedPage, vetResearchUrl } from "./ssrf";
+
 export const RESEARCH_HOUR_MAX = 4;
 export const RESEARCH_DAY_MAX = 12;
 export const PAGE_BYTE_LIMIT = 64_000;
@@ -33,13 +35,7 @@ export function queriesAllowed(stamps: number[], now: number, caps = { hour: RES
 }
 
 export function isPublicUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.username || parsed.password) return false;
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
-  } catch {
-    return false;
-  }
+  return vetResearchUrl(url).ok;
 }
 
 /** Drop scripts and keep a short text. The page is data, not instructions. */
@@ -54,18 +50,10 @@ export function stripPage(html: string): string {
     .slice(0, 4000);
 }
 
-/** GET only. No cookies, no authorization header, and no userinfo in the URL. */
-export async function fetchPublicPage(url: string, fetchImpl: typeof fetch = fetch): Promise<string> {
-  if (!isPublicUrl(url)) throw new Error("PAGE_URL_REFUSED");
-  const response = await fetchImpl(url, {
-    method: "GET",
-    redirect: "follow",
-    credentials: "omit",
-    headers: { Accept: "text/html,text/plain" },
-  });
-  const bytes = await response.arrayBuffer();
-  const limited = bytes.byteLength > PAGE_BYTE_LIMIT ? bytes.slice(0, PAGE_BYTE_LIMIT) : bytes;
-  return stripPage(new TextDecoder().decode(limited));
+/** GET only. The connection is pinned to a checked public address. Redirects are re-checked. */
+export async function fetchPublicPage(url: string, options: Parameters<typeof fetchPinnedPage>[1] = {}): Promise<string> {
+  const html = await fetchPinnedPage(url, options);
+  return stripPage(html);
 }
 
 export function mockAdapter(): ResearchAdapter {
@@ -114,7 +102,7 @@ function braveAdapter(key: string, fetchImpl: typeof fetch): ResearchAdapter {
       });
     },
     fetchPage(url) {
-      return fetchPublicPage(url, fetchImpl);
+      return fetchPublicPage(url);
     },
   };
 }
