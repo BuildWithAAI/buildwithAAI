@@ -9,7 +9,6 @@ import { flag } from "../db/db";
 export const CLAIM_MS = 30 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
 const PAN_KEY = /^(pan|cvc|cvv|card_number|cardnumber|full_number|card)$/i;
-const ORDER_KEY = /^(order_?number)$/i;
 const AMAZON_ORDER = /^\d{3}-\d{7}-\d{7}$/;
 
 export type CheckoutItem = {
@@ -26,7 +25,6 @@ export function rejectPan(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (PAN_KEY.test(key)) return true;
-    if (ORDER_KEY.test(key)) continue;
     if (typeof item === "string" && looksLikePan(item)) return true;
     if (item && typeof item === "object" && rejectPan(item)) return true;
   }

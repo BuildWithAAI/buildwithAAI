@@ -115,6 +115,9 @@ describe("pre-deploy advisory", () => {
     expect(rejectPan({ note: "４２４２／４２４２／４２４２／４２４２" })).toBe(true);
     expect(rejectPan({ orderNumber: "123-1234567-1234567" })).toBe(false);
     expect(rejectPan({ orderNumber: "123-4567890-1234569" })).toBe(false);
+    expect(rejectPan({ order_number: "123-4567890-1234569" })).toBe(false);
+    expect(rejectPan({ orderNumber: "4242424242424242" })).toBe(true);
+    expect(rejectPan({ order_number: "4242-4242-4242-4242" })).toBe(true);
     expect(rejectPan({ note: "order 123-4567890-1234569" })).toBe(false);
   });
 
