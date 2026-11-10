@@ -45,6 +45,12 @@ summary: The query window follows the latest query, so setting the clock back do
 date: 2026-11-10T01:34:09Z
 image:
 ---
+sha: 8de89fd
+title: Prepare a 512MB always-on Fly.io config for the public world.
+summary: fly.toml keeps one shared-cpu machine in Ashburn with a 1GB volume, public mode on, and spending off. The owner runs the deploy later. Nothing was deployed from this change.
+date: 2026-11-10T01:42:00Z
+image:
+---
 sha: 62e31e4
 title: Let the public watch the build through a tunnel on the owner's computer.
 summary: /build shows the shipped timeline and where Zoora is right now. Public mode locks the desk, hides money, and keeps spending off.
