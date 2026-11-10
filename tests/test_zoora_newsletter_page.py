@@ -103,8 +103,45 @@ class NewsletterPageTest(unittest.TestCase):
         self.assertEqual((PUBLIC / "CNAME").read_text(encoding="utf-8").strip(), "zoora.ai")
         self.assertNotIn("<script", self.home_text.lower())
         self.assertNotIn("<script", self.success_text.lower())
-        self.assertEqual(re.findall(r"https?://[^\"'\s]+", self.home_text), [KIT_ACTION])
+        self.assertEqual(
+            re.findall(r"https?://[^\"'\s]+", self.home_text),
+            ["https://zoora.ai/", "https://zoora.ai/", KIT_ACTION],
+        )
         self.assertNotRegex(self.success_text, r"https?://")
+
+    def test_social_and_canonical_tags(self):
+        description = "Zoora is building tools for people and AI agents to work together. Sign up for product and build updates."
+        by_property = {}
+        by_name = {}
+        for node in walk(self.home):
+            if node["tag"] != "meta":
+                continue
+            if "property" in node["attrs"]:
+                by_property[node["attrs"]["property"]] = node["attrs"].get("content")
+            if "name" in node["attrs"]:
+                by_name[node["attrs"]["name"]] = node["attrs"].get("content")
+        self.assertEqual(by_name["description"], description)
+        self.assertEqual(by_property["og:type"], "website")
+        self.assertEqual(by_property["og:site_name"], "Zoora")
+        self.assertEqual(by_property["og:title"], "Zoora")
+        self.assertEqual(by_property["og:description"], description)
+        self.assertEqual(by_property["og:url"], "https://zoora.ai/")
+        self.assertNotIn("og:image", by_property)
+        self.assertEqual(by_name["twitter:card"], "summary")
+        self.assertEqual(by_name["twitter:title"], "Zoora")
+        self.assertEqual(by_name["twitter:description"], description)
+        canonical = [
+            node for node in walk(self.home)
+            if node["tag"] == "link" and node["attrs"].get("rel") == "canonical"
+        ]
+        self.assertEqual(len(canonical), 1)
+        self.assertEqual(canonical[0]["attrs"].get("href"), "https://zoora.ai/")
+        robots = [
+            node["attrs"].get("content")
+            for node in walk(self.success)
+            if node["tag"] == "meta" and node["attrs"].get("name") == "robots"
+        ]
+        self.assertEqual(robots, ["noindex"])
 
     def test_form_posts_to_kit(self):
         forms = [node for node in walk(self.home) if node["tag"] == "form"]
