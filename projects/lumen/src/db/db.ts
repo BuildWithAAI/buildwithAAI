@@ -247,6 +247,24 @@ CREATE TABLE IF NOT EXISTS creative_log (
   at_ms INTEGER NOT NULL,
   undone INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS zoora_goals (
+  id TEXT PRIMARY KEY,
+  horizon TEXT NOT NULL,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL,
+  source TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS zoora_goal_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  goal_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS shop (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

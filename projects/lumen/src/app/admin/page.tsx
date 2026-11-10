@@ -2,8 +2,9 @@ import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
+import { loadIdentity } from "../../identity/load";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, creativeAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sendChat, shopDesk, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sendChat, shopDesk, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
@@ -21,6 +22,8 @@ export default async function AdminPage() {
   const creative = engine.creativeBoard();
   const telegram = engine.telegramBoard();
   const shop = engine.shopBoard();
+  const goals = engine.goals();
+  const soul = loadIdentity();
   return (
     <div className="grid">
       <section className="card" style={{ gridColumn: "1 / -1" }}>
@@ -156,6 +159,39 @@ export default async function AdminPage() {
         </ul>
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
+        <h2>Soul and goals</h2>
+        <p className="muted">The soul is owner-authored. Zoora can read it and cannot change the boundaries.</p>
+        <ul className="feed">
+          {soul.boundaries.slice(0, 4).map((line) => <li key={line}>{line}</li>)}
+        </ul>
+        <ul className="feed">
+          {goals.map((goal) => (
+            <li key={goal.id}>
+              <strong>{goal.horizon}</strong> · {goal.source} · {goal.status}
+              <p>{goal.text}</p>
+              {goal.status === "proposed" ? (
+                <form action={goalDesk}>
+                  <input type="hidden" name="op" value="approve" />
+                  <input type="hidden" name="id" value={goal.id} />
+                  <button type="submit">Approve</button>
+                </form>
+              ) : null}
+              <form action={goalDesk}>
+                <input type="hidden" name="op" value="revert" />
+                <input type="hidden" name="id" value={goal.id} />
+                <button type="submit">Revert</button>
+              </form>
+              {goal.source === "owner" ? (
+                <form action={goalDesk}>
+                  <input type="hidden" name="op" value="edit" />
+                  <input type="hidden" name="id" value={goal.id} />
+                  <input name="text" defaultValue={goal.text} />
+                  <button type="submit">Save owner line</button>
+                </form>
+              ) : null}
+            </li>
+          ))}
+        </ul>
         <h2>Creative building</h2>
         <p className="muted">Zoora spends island materials, not money. {creative.left} materials left today. Building is {creative.on ? "on" : "off"}.</p>
         <form action={creativeAction}>

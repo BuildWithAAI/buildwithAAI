@@ -70,6 +70,13 @@ export async function shopBuy(form: FormData) {
   redirect(result.url);
 }
 
+export async function goalDesk(form: FormData) {
+  await gate();
+  const op = String(form.get("op") ?? "");
+  if (op !== "approve" && op !== "revert" && op !== "edit") return;
+  await getEngine().goalAct(op, String(form.get("id") ?? ""), String(form.get("text") ?? ""));
+}
+
 export async function shopDesk(form: FormData) {
   await gate();
   const op = String(form.get("op") ?? "");

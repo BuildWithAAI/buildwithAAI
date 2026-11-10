@@ -23,6 +23,8 @@ import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../resear
 import { stripeSalesClient } from "../money/stripe";
 import { composeThought, offerThought } from "../integrations/telegramOwner";
 import { considerShop, hideListing, listShop, ownerPriceCap, publishListing, readShop, retireListing, setPriceCap, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
+import { loadIdentity } from "../identity/load";
+import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -41,6 +43,7 @@ export function createEngine(env: Env, file?: string) {
   const db = openDatabase(file ?? env.LUMEN_DATA ?? `${process.cwd()}/data/lumen.sqlite`);
   const issuer = createIssuer(env.LUMEN_CARD_ISSUER ?? "mock");
   ensureSeed(db);
+  try { seedOwnerGoals(db, loadIdentity(), Date.now()); } catch { /* identity files are optional until the folder is present */ }
   return {
     db,
     env,
@@ -97,6 +100,13 @@ export function createEngine(env: Env, file?: string) {
       if (op === "retire") return retireListing(db, id, now);
       if (op === "kill" || op === "sales" || op === "approve") setShopFlag(db, op === "kill" ? "shop_kill" : op === "sales" ? "shop_sales" : "shop_approve", on);
       return { ok: true };
+    },
+    goals: () => listGoals(db),
+    goalAct: (op: "approve" | "revert" | "edit", id: string, text = "") => {
+      const now = Date.now();
+      if (op === "approve") return approveGoal(db, id, now);
+      if (op === "revert") return revertGoal(db, id, now);
+      return editOwnerGoal(db, id, text, now);
     },
     setShopCap: (cents: number) => setPriceCap(db, cents),
     shopCheckout: (id: string, note: string) => shopCheckout(db, env, id, note, Date.now()),
@@ -216,11 +226,15 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
   saveState(db, lived);
   persistTick(db, result, now);
   try {
-    const built = considerCreative(db, lived, now);
+    const goal = activeGoalText(db);
+    const minded = goal
+      ? { ...lived, longTerm: [{ id: "goal", tier: "long" as const, section: "fact" as const, text: goal, salience: 1, placeId: null, atMinute: 0 }, ...lived.longTerm] }
+      : lived;
+    const built = considerCreative(db, minded, now);
     const finding = db.prepare("SELECT question FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { question: string } | undefined;
     const thought = composeThought({
       emotions: lived.emotions,
-      memory: lived.longTerm[0]?.text ?? null,
+      memory: goal ?? lived.longTerm[0]?.text ?? null,
       buildName: built?.title ?? null,
       wondering: lived.emotions.curiosity > 0.5 ? finding?.question ?? null : null,
     });
@@ -230,9 +244,10 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       emotions: lived.emotions,
       ideaTitle: idea?.title ?? null,
       ideaSourceKey: idea?.source_key ?? null,
-      memory: lived.longTerm[0]?.text ?? null,
+      memory: goal ?? lived.longTerm[0]?.text ?? null,
       research: finding?.question ?? null,
     }, now);
+    reflectOnGoals(db, lived.longTerm[0]?.text ? `I still remember ${lived.longTerm[0].text}.` : "The water is quiet.", now);
   } catch { /* a note home must not stop the tick */ }
   syncZoora(db, lived, now);
   stepMote(db, now);
