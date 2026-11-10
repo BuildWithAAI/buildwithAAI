@@ -1,7 +1,7 @@
 # Build log
 
 ---
-sha: PLACEHOLDER
+sha: 0ee3152
 title: The world no longer crashes, and the smoke test can finish.
 summary: A browser without WebGL gets a fallback card instead of an application error, including the Saloon camera. The smoke test starts Next in its own process group, kills that group, and writes screenshots under RUNNER_TEMP. Crisis phrases such as kms and wanna die get the 988 reply, while Suicide Squad does not. A heavy note gets a quiet reply. An instruction-shaped guestbook line is set aside. Guestbook and presence limits use an IPv6 /64, presence has a global cap, and the world poll is 30 seconds. The heartbeat is outside the page limiter. Card checks slide a Luhn window through a longer spaced number. Live trade rows stay out of the paper floor, and closed results are amounts rather than raw JSON. The Kit form action is the exact subscription URL. A 429 is logged at most once every 10 seconds for each route. The hosting notes name the Namecheap forwarding MX records and say to delete the four GitHub Pages A records and the www CNAME.
 date: 2026-11-10T21:45:00Z
