@@ -9,7 +9,7 @@ import { blankProduct, initialState, labelsOf, tick, type TickResult } from "../
 import type { BrainState, PurchaseIntent, Wish } from "../brain/types";
 import { allowLogin, createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
 import { allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
-import { executeIntent, resolveUnknownClaim } from "../money/execute";
+import { executeIntent, listUnknownClaims, resolveUnknownClaim, type ChargeProof } from "../money/execute";
 import { publishJarvis } from "../integrations/jarvis";
 import { buildOwnerNotifier, deliverDueAlerts, deskNotifier, listAlerts, type OwnerAlert } from "../money/notify";
 import { createIssuer, type CardIssuer } from "../money/issuers";
@@ -56,7 +56,7 @@ export function createEngine(env: Env, file?: string) {
     reconcileNow: (records?: { stripe: ProviderRecord[]; issuer: ProviderRecord[] }) => reconcileNow(db, env, issuer, records),
     clearAlert: () => clearAlert(db),
     executeQueued: (intentId: string) => executeQueued(db, env, issuer, intentId),
-    resolveUnknownClaim: (intentId: string, verdict: "charged" | "not_charged") => resolveUnknownClaim(db, intentId, verdict, Date.now()),
+    resolveUnknownClaim: (intentId: string, verdict: "charged" | "not_charged", proof?: ChargeProof) => resolveUnknownClaim(db, intentId, verdict, Date.now(), proof),
     approveProposal: (id: string) => approveProposal(db, id),
     world: () => worldView(db, Date.now()),
     worldRead: (ip: string) => {
@@ -173,7 +173,6 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
   persistTick(db, result, now);
   syncZoora(db, lived, now);
   stepMote(db, now);
-  deliverDueAlerts(db, env, now);
   const ctx = policyContext(db, env);
   if (ctx) {
     for (const intent of result.intents) {
@@ -628,7 +627,7 @@ function snapshot(db: DatabaseSync, env: Env) {
       openDispute: (disputes as { open?: number }[]).length > 0,
       autoPaused: flag(db, "reconciliation_alert") === "1" || (disputes as unknown[]).length > 0,
       alerts: listAlerts(db),
-      unknownClaims: db.prepare("SELECT intent_id AS intentId, amount_cents AS amountCents FROM purchase_claims WHERE state = 'unknown' ORDER BY created_at ASC").all() as { intentId: string; amountCents: number }[],
+      unknownClaims: listUnknownClaims(db),
       notifierConfigured: buildOwnerNotifier(env).externalConfigured,
       reconcile: reconcile ? JSON.parse(reconcile) : null,
       view: moneyView(ledger),
@@ -699,4 +698,6 @@ export function startLoop(): void {
   };
   beat();
   setInterval(beat, interval);
+  const drainMs = Math.max(5_000, Number(process.env.LUMEN_ALERT_DRAIN_MS ?? 15_000));
+  setInterval(() => { deliverDueAlerts(engine.db, engine.env, Date.now()); }, drainMs);
 }

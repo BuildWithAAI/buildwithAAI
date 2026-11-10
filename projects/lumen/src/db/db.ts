@@ -142,7 +142,9 @@ CREATE TABLE IF NOT EXISTS alert_retries (
   title TEXT NOT NULL,
   detail TEXT NOT NULL,
   attempt INTEGER NOT NULL,
-  next_at INTEGER NOT NULL
+  next_at INTEGER NOT NULL,
+  channel TEXT NOT NULL DEFAULT 'email',
+  started_at INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS world_agents (
   id TEXT PRIMARY KEY,
@@ -191,6 +193,9 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   db.exec("PRAGMA journal_mode = WAL");
   ensureColumn(db, "ledger_entries", "charge_id", "charge_id TEXT");
   ensureColumn(db, "ledger_entries", "payment_intent_id", "payment_intent_id TEXT");
+  ensureColumn(db, "alert_retries", "channel", "channel TEXT NOT NULL DEFAULT 'email'");
+  ensureColumn(db, "alert_retries", "started_at", "started_at INTEGER NOT NULL DEFAULT 0");
+  db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   return db;
 }
 

@@ -51,13 +51,23 @@ export default async function AdminPage() {
             <h3>Unknown charges</h3>
             <p className="muted">Mark whether the card was charged. This does not call the issuer again.</p>
             <ul className="feed">
-              {(snap.money.unknownClaims as { intentId: string; amountCents: number }[]).map((claim) => (
+              {(snap.money.unknownClaims as { intentId: string; amountCents: number; atMs: number; merchant: string }[]).map((claim) => (
                 <li key={claim.intentId}>
-                  {claim.intentId} · {claim.amountCents}¢
-                  <div className="row">
-                    <form action={resolveUnknownAction}><input type="hidden" name="intentId" value={claim.intentId} /><input type="hidden" name="verdict" value="charged" /><button type="submit">Charged</button></form>
-                    <form action={resolveUnknownAction}><input type="hidden" name="intentId" value={claim.intentId} /><input type="hidden" name="verdict" value="not_charged" /><button type="submit">Not charged</button></form>
-                  </div>
+                  <strong>{claim.merchant}</strong> · {claim.amountCents}¢ · {new Date(claim.atMs).toISOString()}
+                  <form action={resolveUnknownAction}>
+                    <input type="hidden" name="intentId" value={claim.intentId} />
+                    <input type="hidden" name="verdict" value="charged" />
+                    <input name="providerTransactionId" placeholder="Issuer transaction id" />
+                    <label><input type="checkbox" name="unknownId" value="1" /> Id unknown</label>
+                    <label><input type="checkbox" name="confirm" value="1" required /> Confirm charged</label>
+                    <button type="submit">Mark charged</button>
+                  </form>
+                  <form action={resolveUnknownAction}>
+                    <input type="hidden" name="intentId" value={claim.intentId} />
+                    <input type="hidden" name="verdict" value="not_charged" />
+                    <label><input type="checkbox" name="confirm" value="1" required /> Confirm not charged</label>
+                    <button type="submit">Mark not charged</button>
+                  </form>
                 </li>
               ))}
             </ul>

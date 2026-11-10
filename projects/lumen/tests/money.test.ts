@@ -12,7 +12,7 @@ import { MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers
 import { Ledger, moneyView } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords } from "../src/money/reconcile";
-import { ALERT_RETRY_LIMIT, buildOwnerNotifier, deliverSmtp, drainAlertRetries, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
+import { ALERT_GIVE_UP_MS, buildOwnerNotifier, deliverSmtp, drainAlertRetries, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
 import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
 import { refundFormBody, stripeSalesClient, verifyStripeSignature } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
@@ -581,10 +581,12 @@ describe("held execute, disputes, refunds, and alerts", () => {
 
     const db = openDatabase();
     const now = Date.UTC(2026, 10, 9, 18);
-    reportDeliveryFailure(db, new Error("SMTP_DOWN"), now);
-    const retry = db.prepare("SELECT attempt, next_at FROM alert_retries").get() as { attempt: number; next_at: number };
-    expect(retry.attempt).toBe(1);
-    expect(retry.next_at).toBeGreaterThan(now);
+    const original = { kind: "issuer" as const, title: "Issuer outcome unknown", detail: "boom may have charged" };
+    reportDeliveryFailure(db, new Error("SMTP_DOWN"), now, original, "email");
+    reportDeliveryFailure(db, new Error("TELEGRAM_DOWN"), now, original, "telegram");
+    const retries = db.prepare("SELECT title, channel, attempt, next_at FROM alert_retries ORDER BY channel").all() as { title: string; channel: string; attempt: number; next_at: number }[];
+    expect(retries.map((row) => row.channel)).toEqual(["email", "telegram"]);
+    expect(retries.every((row) => row.title === "Issuer outcome unknown" && row.attempt === 1 && row.next_at > now)).toBe(true);
     const alerts = db.prepare("SELECT title FROM owner_alerts").all() as { title: string }[];
     expect(alerts.map((row) => row.title)).toContain("Alert delivery failed");
 
@@ -597,23 +599,30 @@ describe("held execute, disputes, refunds, and alerts", () => {
 
     const retryDb = openDatabase();
     const at = Date.UTC(2026, 10, 9, 19);
-    reportDeliveryFailure(retryDb, new Error("SMTP_DOWN"), at);
+    const source = { kind: "dispute" as const, title: "New dispute", detail: "du_9" };
+    reportDeliveryFailure(retryDb, new Error("SMTP_DOWN"), at, source, "email");
+    reportDeliveryFailure(retryDb, new Error("TELEGRAM_DOWN"), at, source, "telegram");
+    const sent: string[] = [];
     expect(drainAlertRetries(retryDb, () => undefined, at).sent).toBe(0);
-    const due = retryDb.prepare("SELECT next_at FROM alert_retries").get() as { next_at: number };
-    expect(drainAlertRetries(retryDb, () => { throw new Error("still down"); }, due.next_at).sent).toBe(0);
-    const bumped = retryDb.prepare("SELECT attempt, next_at FROM alert_retries").get() as { attempt: number; next_at: number };
+    const due = retryDb.prepare("SELECT next_at FROM alert_retries WHERE channel = 'email'").get() as { next_at: number };
+    expect(drainAlertRetries(retryDb, (alert) => { sent.push(alert.title); throw new Error("still down"); }, due.next_at).sent).toBe(0);
+    expect(sent.every((title) => title === "New dispute")).toBe(true);
+    const bumped = retryDb.prepare("SELECT attempt, next_at FROM alert_retries WHERE channel = 'email'").get() as { attempt: number; next_at: number };
     expect(bumped.attempt).toBe(2);
     expect(bumped.next_at).toBeGreaterThan(due.next_at);
-    retryDb.prepare("UPDATE alert_retries SET attempt = ?, next_at = ?").run(ALERT_RETRY_LIMIT, due.next_at);
-    expect(drainAlertRetries(retryDb, () => { throw new Error("last"); }, due.next_at).gaveUp).toBe(1);
+    retryDb.prepare("UPDATE alert_retries SET started_at = ?, next_at = ?").run(at - ALERT_GIVE_UP_MS - 1, due.next_at);
+    expect(drainAlertRetries(retryDb, () => { throw new Error("last"); }, due.next_at).gaveUp).toBe(2);
+    expect(drainAlertRetries(retryDb, () => { throw new Error("again"); }, due.next_at).gaveUp).toBe(0);
     expect((retryDb.prepare("SELECT COUNT(*) AS n FROM alert_retries").get() as { n: number }).n).toBe(0);
-    const titles = (retryDb.prepare("SELECT title FROM owner_alerts").all() as { title: string }[]).map((row) => row.title);
-    expect(titles).toContain("Alert delivery gave up");
+    const gaveUp = (retryDb.prepare("SELECT title FROM owner_alerts WHERE title = 'Alert delivery gave up'").all() as { title: string }[]);
+    expect(gaveUp).toHaveLength(1);
 
     const fresh = openDatabase();
-    reportDeliveryFailure(fresh, new Error("SMTP_DOWN"), at);
+    reportDeliveryFailure(fresh, new Error("SMTP_DOWN"), at, source, "email");
     const when = (fresh.prepare("SELECT next_at FROM alert_retries").get() as { next_at: number }).next_at;
-    expect(drainAlertRetries(fresh, () => undefined, when).sent).toBe(1);
+    const delivered: string[] = [];
+    expect(drainAlertRetries(fresh, (alert) => { delivered.push(alert.title); }, when).sent).toBe(1);
+    expect(delivered).toEqual(["New dispute"]);
     expect((fresh.prepare("SELECT COUNT(*) AS n FROM alert_retries").get() as { n: number }).n).toBe(0);
   });
 
@@ -628,11 +637,15 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect((db.prepare("SELECT title FROM owner_alerts").all() as { title: string }[]).some((row) => row.title === "Issuer outcome unknown")).toBe(true);
     const blocked = executeIntent(db, intent({ id: "while-unknown", amountCents: 100 }), ctx(), new MockIssuer(), atMs);
     expect(blocked.decision.reason).toBe("UNKNOWN_SPEND");
-    const cleared = resolveUnknownClaim(db, "unk-mail", "not_charged", atMs);
+    expect(resolveUnknownClaim(db, "unk-mail", "not_charged", atMs).decision.reason).toBe("CONFIRM_REQUIRED");
+    const cleared = resolveUnknownClaim(db, "unk-mail", "not_charged", atMs, { confirm: true });
     expect(cleared.issuerCalled).toBe(false);
     expect(cleared.decision.reason).toBe("OWNER_CLEARED_UNKNOWN");
+    const voided = new Ledger(db).list().find((row) => row.idempotencyKey === "void:unk-mail");
+    expect(voided?.amountCents).toBe(0);
+    expect(voided?.note).toContain("paper-shop");
     const audit = db.prepare("SELECT kind, detail FROM audit").all() as { kind: string; detail: string }[];
-    expect(audit).toContainEqual({ kind: "resolve_unknown", detail: "unk-mail:not_charged" });
+    expect(audit.some((row) => row.kind === "resolve_unknown" && row.detail.includes("unk-mail:not_charged:paper-shop:100"))).toBe(true);
     const resumed = executeIntent(db, intent({ id: "after-clear", amountCents: 100 }), ctx(), new MockIssuer(), atMs);
     expect(resumed.decision.outcome).toBe("auto_approve");
     expect(resumed.issuerCalled).toBe(true);
@@ -641,10 +654,21 @@ describe("held execute, disputes, refunds, and alerts", () => {
     const down = new MockIssuer();
     down.authorize = () => { throw new Error("ISSUER_TIMEOUT"); };
     executeIntent(other, intent({ id: "unk-charged", amountCents: 400 }), ctx(), down, atMs);
-    const marked = resolveUnknownClaim(other, "unk-charged", "charged", atMs);
+    expect(resolveUnknownClaim(other, "unk-charged", "charged", atMs, { confirm: true }).decision.reason).toBe("NEEDS_PROVIDER_ID");
+    const marked = resolveUnknownClaim(other, "unk-charged", "charged", atMs, { confirm: true, providerTransactionId: "pc_kept", provider: "issuer" });
     expect(marked.issuerCalled).toBe(false);
     expect(marked.decision.reason).toBe("OWNER_ATTESTED_CHARGE");
-    expect(new Ledger(other).list().filter((row) => row.kind === "purchase")).toHaveLength(1);
-    expect(other.prepare("SELECT detail FROM audit WHERE kind = 'resolve_unknown'").get()).toEqual({ detail: "unk-charged:charged" });
+    expect(marked.row?.note).toContain("paper-shop");
+    expect(marked.row?.providerTransactionId).toBe("pc_kept");
+    expect(compareRecords(new Ledger(other).list(), [{ provider: "issuer", providerTransactionId: "pc_kept", amountCents: 400, kind: "purchase" }], ["issuer"], ["purchase"])).toEqual([]);
+
+    const quiet = openDatabase();
+    const quietDown = new MockIssuer();
+    quietDown.authorize = () => { throw new Error("ISSUER_TIMEOUT"); };
+    executeIntent(quiet, intent({ id: "unk-quiet", amountCents: 400 }), ctx(), quietDown, atMs);
+    const attested = resolveUnknownClaim(quiet, "unk-quiet", "charged", atMs, { confirm: true, unknownId: true });
+    expect(attested.row?.providerTransactionId).toBe("unknown");
+    expect(attested.row?.note).toContain("id:unknown");
+    expect(compareRecords(new Ledger(quiet).list(), [{ provider: "issuer", providerTransactionId: "pc_real", amountCents: 400, kind: "purchase" }], ["issuer"], ["purchase"])).toEqual([]);
   });
 });

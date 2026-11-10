@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { initialState } from "../src/brain/tick";
-import { openDatabase } from "../src/db/db";
+import { kvGet, kvSet, openDatabase } from "../src/db/db";
 import { Ledger } from "../src/money/ledger";
 import { chooseDestination } from "../src/world/choose";
 import { applyVoxelEvent, requestVoxelEvent } from "../src/world/happen";
@@ -56,6 +56,16 @@ describe("world agents", () => {
     const row = engine.db.prepare("SELECT token_hash FROM world_agents WHERE name = ?").get("Pebble") as { token_hash: string };
     expect(row.token_hash).toBe(createHash("sha256").update(issued.token).digest("hex"));
     expect(JSON.stringify(engine.snapshot()).includes(issued.token)).toBe(false);
+  });
+
+  it("deletes a leftover plaintext world token on open", () => {
+    const file = path.join(mkdtempSync(path.join(tmpdir(), "zoora-token-")), "token.sqlite");
+    const first = openDatabase(file);
+    kvSet(first, "world_token_flash", JSON.stringify({ name: "Pebble", token: "plaintext-secret" }));
+    first.close();
+    const again = openDatabase(file);
+    expect(kvGet(again, "world_token_flash")).toBeNull();
+    again.close();
   });
 
   it("serves a public read without writing and rate-limits it", () => {

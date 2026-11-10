@@ -102,69 +102,90 @@ export function fanout(notifiers: OwnerNotifier[], onError?: (error: unknown) =>
   };
 }
 
+export type AlertChannel = "email" | "telegram";
+
+/** About half a minute, then doubling, capped so the whole window stays near 30 minutes. */
 export function retryDelayMs(attempt: number): number {
-  return Math.min(60_000, 1000 * 2 ** Math.max(1, attempt));
+  return Math.min(15 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempt - 1));
 }
 
-export const ALERT_RETRY_LIMIT = 5;
+export const ALERT_GIVE_UP_MS = 30 * 60 * 1000;
 
-type RetryRow = { id: string; kind: string; title: string; detail: string; attempt: number; next_at: number };
+type RetryRow = { id: string; kind: string; title: string; detail: string; attempt: number; next_at: number; channel: string; started_at: number };
 
-export function scheduleAlertRetry(db: DatabaseSync, alert: OwnerAlert, now = Date.now(), priorAttempt = 0): "scheduled" | "gave_up" {
+function giveUpDetail(alert: OwnerAlert): string {
+  return `${alert.title}: ${alert.detail}`.slice(0, 500);
+}
+
+function noteGiveUp(db: DatabaseSync, alert: OwnerAlert): void {
+  const detail = giveUpDetail(alert);
+  const existing = db.prepare("SELECT id FROM owner_alerts WHERE kind = 'delivery' AND title = 'Alert delivery gave up' AND detail = ?").get(detail);
+  if (existing) return;
+  deskNotifier(db).notify({ kind: "delivery", title: "Alert delivery gave up", detail });
+}
+
+export function scheduleAlertRetry(db: DatabaseSync, alert: OwnerAlert, channel: AlertChannel, now = Date.now(), priorAttempt = 0, startedAt = now, giveUpMs = ALERT_GIVE_UP_MS): "scheduled" | "gave_up" {
   const detail = alert.detail.slice(0, 500);
-  const existing = db.prepare("SELECT id, attempt FROM alert_retries WHERE kind = ? AND title = ? AND detail = ?").get(alert.kind, alert.title, detail) as { id: string; attempt: number } | undefined;
-  const attempt = Math.max(existing?.attempt ?? 0, priorAttempt) + 1;
-  if (attempt > ALERT_RETRY_LIMIT) {
+  const existing = db.prepare("SELECT id, attempt, started_at FROM alert_retries WHERE channel = ? AND kind = ? AND title = ? AND detail = ?").get(channel, alert.kind, alert.title, detail) as { id: string; attempt: number; started_at: number } | undefined;
+  const began = existing?.started_at || startedAt || now;
+  if (now - began >= giveUpMs) {
     if (existing) db.prepare("DELETE FROM alert_retries WHERE id = ?").run(existing.id);
-    deskNotifier(db).notify({ kind: "delivery", title: "Alert delivery gave up", detail });
+    noteGiveUp(db, alert);
     return "gave_up";
   }
+  const attempt = existing ? Math.max(existing.attempt, priorAttempt) + 1 : (priorAttempt > 0 ? priorAttempt + 1 : 1);
   const nextAt = now + retryDelayMs(attempt);
-  if (existing) db.prepare("UPDATE alert_retries SET attempt = ?, next_at = ? WHERE id = ?").run(attempt, nextAt, existing.id);
-  else db.prepare("INSERT INTO alert_retries(id, kind, title, detail, attempt, next_at) VALUES(?, ?, ?, ?, ?, ?)").run(randomBytes(8).toString("hex"), alert.kind, alert.title, detail, attempt, nextAt);
+  if (existing) db.prepare("UPDATE alert_retries SET attempt = ?, next_at = ?, started_at = ? WHERE id = ?").run(attempt, nextAt, began, existing.id);
+  else db.prepare("INSERT INTO alert_retries(id, kind, title, detail, attempt, next_at, channel, started_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)").run(randomBytes(8).toString("hex"), alert.kind, alert.title, detail, attempt, nextAt, channel, began);
   return "scheduled";
 }
 
-export function reportDeliveryFailure(db: DatabaseSync, error: unknown, now = Date.now()): void {
-  const detail = error instanceof Error ? error.message : "Alert delivery failed.";
-  const alert: OwnerAlert = { kind: "delivery", title: "Alert delivery failed", detail };
-  deskNotifier(db).notify(alert);
-  scheduleAlertRetry(db, alert, now);
+/** The desk hears that delivery failed. The retry row keeps the original alert. */
+export function reportDeliveryFailure(db: DatabaseSync, error: unknown, now = Date.now(), original?: OwnerAlert, channel: AlertChannel = "email"): void {
+  const alert = original ?? { kind: "delivery" as const, title: "Alert delivery failed", detail: error instanceof Error ? error.message : "Alert delivery failed." };
+  const notice = `Could not deliver "${alert.title}". ${error instanceof Error ? error.message : "Alert delivery failed."}`.slice(0, 500);
+  const already = db.prepare("SELECT id FROM owner_alerts WHERE kind = 'delivery' AND title = 'Alert delivery failed' AND detail = ?").get(notice);
+  if (!already) deskNotifier(db).notify({ kind: "delivery", title: "Alert delivery failed", detail: notice });
+  const row = db.prepare("SELECT id FROM alert_retries WHERE channel = ? AND kind = ? AND title = ? AND detail = ?").get(channel, alert.kind, alert.title, alert.detail.slice(0, 500));
+  if (!row) scheduleAlertRetry(db, alert, channel, now);
 }
 
-/** Re-send due alert retries. A throw schedules the next backoff. Past the limit, the row is dropped. */
-export function drainAlertRetries(db: DatabaseSync, deliver: (alert: OwnerAlert, attempt: number) => void, now = Date.now()): { sent: number; gaveUp: number } {
-  const due = db.prepare("SELECT id, kind, title, detail, attempt, next_at FROM alert_retries WHERE next_at <= ? ORDER BY next_at ASC").all(now) as RetryRow[];
+/** Re-send each channel's copy of the original alert. A throw backs off. Past the window, one give-up notice is enough. */
+export function drainAlertRetries(db: DatabaseSync, deliver: (alert: OwnerAlert, channel: AlertChannel, attempt: number, startedAt: number) => void, now = Date.now(), giveUpMs = ALERT_GIVE_UP_MS): { sent: number; gaveUp: number } {
+  const due = db.prepare("SELECT id, kind, title, detail, attempt, next_at, channel, started_at FROM alert_retries WHERE next_at <= ? ORDER BY next_at ASC").all(now) as RetryRow[];
   let sent = 0;
   let gaveUp = 0;
   for (const row of due) {
     const alert: OwnerAlert = { kind: row.kind as OwnerAlert["kind"], title: row.title, detail: row.detail };
-    if (row.attempt > ALERT_RETRY_LIMIT) {
+    const channel: AlertChannel = row.channel === "telegram" ? "telegram" : "email";
+    const began = row.started_at || now;
+    if (now - began >= giveUpMs) {
       db.prepare("DELETE FROM alert_retries WHERE id = ?").run(row.id);
-      deskNotifier(db).notify({ kind: "delivery", title: "Alert delivery gave up", detail: row.detail });
+      noteGiveUp(db, alert);
       gaveUp += 1;
       continue;
     }
     try {
-      deliver(alert, row.attempt);
+      deliver(alert, channel, row.attempt, began);
       db.prepare("DELETE FROM alert_retries WHERE id = ?").run(row.id);
       sent += 1;
     } catch {
-      if (scheduleAlertRetry(db, alert, now, row.attempt) === "gave_up") gaveUp += 1;
+      if (scheduleAlertRetry(db, alert, channel, now, row.attempt, began, giveUpMs) === "gave_up") gaveUp += 1;
     }
   }
   return { sent, gaveUp };
 }
 
 export function deliverDueAlerts(db: DatabaseSync, env: AlertEnv, now = Date.now()): { sent: number; gaveUp: number } {
-  if (!emailConfigured(env) && !telegramConfigured(env)) return { sent: 0, gaveUp: 0 };
-  return drainAlertRetries(db, (alert, attempt) => {
-    const fail = (error: unknown) => { scheduleAlertRetry(db, { ...alert, detail: error instanceof Error ? error.message : alert.detail }, Date.now(), attempt); };
-    const built = buildOwnerNotifier(env, {
-      sendMail: (message) => { void deliverSmtp(env, message).catch(fail); },
-      sendTelegram: telegramApiTransport(fetch, fail),
-    });
-    built.notifier.notify(alert);
+  return drainAlertRetries(db, (alert, channel, attempt, startedAt) => {
+    const again = () => { scheduleAlertRetry(db, alert, channel, Date.now(), attempt, startedAt); };
+    if (channel === "email") {
+      if (!emailConfigured(env)) throw new Error("EMAIL_NOT_CONFIGURED");
+      void deliverSmtp(env, { to: env.LUMEN_ALERT_EMAIL_TO ?? "", from: env.LUMEN_ALERT_EMAIL_FROM ?? "", subject: `Zoora: ${alert.title}`, text: alert.detail }).catch(again);
+      return;
+    }
+    if (!telegramConfigured(env)) throw new Error("TELEGRAM_NOT_CONFIGURED");
+    telegramApiTransport(fetch, again)({ token: env.LUMEN_ALERT_TELEGRAM_BOT_TOKEN ?? "", chatId: env.LUMEN_ALERT_TELEGRAM_CHAT_ID ?? "", text: `${alert.title}\n${alert.detail}` });
   }, now);
 }
 
@@ -176,19 +197,38 @@ export function buildOwnerNotifier(env: AlertEnv, io: { desk?: OwnerNotifier; db
     channels.push("desk");
   }
   if (emailConfigured(env)) {
-    const send = io.sendMail ?? ((message: MailMessage) => {
-      void deliverSmtp(env, message).catch((error) => { if (io.db) reportDeliveryFailure(io.db, error); });
+    const to = env.LUMEN_ALERT_EMAIL_TO ?? "";
+    const from = env.LUMEN_ALERT_EMAIL_FROM ?? "";
+    notifiers.push({
+      notify(alert) {
+        const message = { to, from, subject: `Zoora: ${alert.title}`, text: alert.detail };
+        const fail = (error: unknown) => { if (io.db) reportDeliveryFailure(io.db, error, Date.now(), alert, "email"); };
+        try {
+          if (io.sendMail) io.sendMail(message);
+          else void deliverSmtp(env, message).catch(fail);
+        } catch (error) {
+          fail(error);
+        }
+      },
     });
-    notifiers.push(emailNotifier(env, send));
     channels.push("email");
   }
   if (telegramConfigured(env)) {
-    const fail = (error: unknown) => { if (io.db) reportDeliveryFailure(io.db, error); };
-    notifiers.push(telegramNotifier(env, io.sendTelegram ?? telegramApiTransport(fetch, fail)));
+    notifiers.push({
+      notify(alert) {
+        const fail = (error: unknown) => { if (io.db) reportDeliveryFailure(io.db, error, Date.now(), alert, "telegram"); };
+        const send = io.sendTelegram ?? telegramApiTransport(fetch, fail);
+        try {
+          send({ token: env.LUMEN_ALERT_TELEGRAM_BOT_TOKEN ?? "", chatId: env.LUMEN_ALERT_TELEGRAM_CHAT_ID ?? "", text: `${alert.title}\n${alert.detail}` });
+        } catch (error) {
+          fail(error);
+        }
+      },
+    });
     channels.push("telegram");
   }
   return {
-    notifier: fanout(notifiers, (error) => { if (io.db) reportDeliveryFailure(io.db, error); }),
+    notifier: fanout(notifiers),
     externalConfigured: channels.includes("email") || channels.includes("telegram"),
     channels,
   };

@@ -112,8 +112,14 @@ export async function issueWorldTokenAction(_prev: { name?: string; token?: stri
 
 export async function resolveUnknownAction(form: FormData) {
   await gate();
+  if (form.get("confirm") !== "1") return;
   const verdict = form.get("verdict") === "charged" ? "charged" : "not_charged";
-  await getEngine().resolveUnknownClaim(String(form.get("intentId") ?? ""), verdict);
+  await getEngine().resolveUnknownClaim(String(form.get("intentId") ?? ""), verdict, {
+    confirm: true,
+    providerTransactionId: String(form.get("providerTransactionId") ?? ""),
+    unknownId: form.get("unknownId") === "1",
+    provider: String(form.get("provider") ?? "") || undefined,
+  });
 }
 
 export async function executeAction(form: FormData) {

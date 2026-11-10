@@ -12,8 +12,15 @@ export type Mismatch = { code: string; provider: string; providerTransactionId: 
 
 const DEFAULT_KINDS = ["sale", "refund", "payout", "dispute", "purchase"];
 
+/** A keeper attested a charge but the issuer id was not available. Reconciliation must not treat this as a mismatch. */
+export const UNKNOWN_PROVIDER_ID = "unknown";
+
 function idsOfRow(row: LedgerRow): string[] {
-  return [row.providerTransactionId, row.chargeId, row.paymentIntentId].filter((id): id is string => Boolean(id));
+  return [row.providerTransactionId, row.chargeId, row.paymentIntentId].filter((id): id is string => Boolean(id) && id !== UNKNOWN_PROVIDER_ID);
+}
+
+function unknownCharge(row: LedgerRow): boolean {
+  return row.kind === "purchase" && (row.providerTransactionId === UNKNOWN_PROVIDER_ID || row.note.includes("id:unknown"));
 }
 
 function idsOfRecord(record: ProviderRecord): string[] {
@@ -37,7 +44,12 @@ function amountAgrees(row: LedgerRow, record: ProviderRecord): boolean {
 export function compareRecords(rows: LedgerRow[], external: ProviderRecord[], providers: string[], fetchedKinds: string[] = DEFAULT_KINDS): Mismatch[] {
   const wanted = new Set(fetchedKinds);
   const mismatches: Mismatch[] = [];
-  const relevant = rows.filter((row) => row.status === "confirmed" && row.provider && providers.includes(row.provider) && wanted.has(row.kind) && idsOfRow(row).length > 0 && row.kind !== "dispute");
+  const relevant = rows.filter((row) => {
+    if (!row.provider || !providers.includes(row.provider) || !wanted.has(row.kind) || row.kind === "dispute" || unknownCharge(row)) return false;
+    if (idsOfRow(row).length === 0) return false;
+    if (row.kind === "purchase") return row.status === "confirmed" || row.status === "unconfirmed";
+    return row.status === "confirmed";
+  });
   const pool = external.filter((record) => providers.includes(record.provider) && wanted.has(record.kind) && record.kind !== "dispute");
   const unused = new Set(pool.map((_, index) => index));
   for (const row of relevant) {
@@ -78,9 +90,17 @@ export function compareRecords(rows: LedgerRow[], external: ProviderRecord[], pr
       if (!used.has(index)) mismatches.push({ code: "PROVIDER_ONLY", provider: record.provider, providerTransactionId: record.providerTransactionId, detail: "Provider dispute is missing from the ledger." });
     });
   }
+  const unknownLeft = rows.filter(unknownCharge);
   for (const index of unused) {
     const record = pool[index];
     if (!record) continue;
+    if (record.kind === "purchase") {
+      const slot = unknownLeft.findIndex((row) => Math.abs(row.amountCents) === record.amountCents);
+      if (slot >= 0) {
+        unknownLeft.splice(slot, 1);
+        continue;
+      }
+    }
     mismatches.push({ code: "PROVIDER_ONLY", provider: record.provider, providerTransactionId: record.providerTransactionId, detail: `Provider ${record.kind} is missing from the ledger.` });
   }
   return mismatches;

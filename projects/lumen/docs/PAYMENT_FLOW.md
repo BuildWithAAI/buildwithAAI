@@ -134,7 +134,9 @@ These stay for a later review. They are not implemented here.
 - Real cards are not "make a purchase" APIs. Stripe Issuing charges arrive as `issuing_authorization.request` and transaction events. Privacy.com can be a merchant-locked card with a spend limit. An approved intent should become an expected spend (merchant, max amount, expiry). The issuer key would be read from the environment only inside that future adapter, and the adapter would report a provider transaction id plus approved, declined, or unknown. The current Stripe Issuing and Privacy adapters are stubs and do not do this.
 - A `charge.refunded` event that arrives before `refund.created`, without embedded refund ids, can book the same refund twice. Reconciliation flags the extra row. The ordering fix is pending.
 - A sweeper for a purchase stuck in progress, with an owner alert after a timeout, is pending.
-While any purchase claim is `unknown`, automatic spending is paused. The keeper's desk has a button for that claim: charged, or not charged. Either choice writes an audit row and does not call the issuer again. Charged records the purchase. Not charged releases the claim so automatic spending can resume. The unknown amount keeps counting toward the caps until then.
+While any purchase claim is `unknown`, automatic spending is paused. The keeper's desk shows the merchant, amount, and time, and asks for a confirmation. Charged needs the issuer transaction id, or an explicit unknown-id mark that reconciliation does not treat as a mismatch. The purchase is booked under the original merchant. Not charged writes a zero ledger row linked to the claim. Neither choice calls the issuer again.
+
+Alert retries keep the original alert, one row per channel, and give up after about 30 minutes. The drainer runs on its own timer. A give-up notice is written once per failed alert.
 
 The card authorization model and refund ordering are still pending.
 
