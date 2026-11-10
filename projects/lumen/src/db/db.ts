@@ -96,7 +96,8 @@ CREATE TABLE IF NOT EXISTS deliveries (
   token TEXT PRIMARY KEY,
   creation_id TEXT NOT NULL,
   expires_at INTEGER NOT NULL,
-  charge_id TEXT
+  charge_id TEXT,
+  payment_intent_id TEXT
 );
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
@@ -369,6 +370,7 @@ CREATE TABLE IF NOT EXISTS shop_orders (
   buyer_note TEXT NOT NULL,
   status TEXT NOT NULL,
   charge_id TEXT,
+  payment_intent_id TEXT,
   delivery_token TEXT,
   due_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
@@ -446,6 +448,8 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "world_builds", "params", "params TEXT NOT NULL DEFAULT '{}'");
   ensureColumn(db, "shop_orders", "buyer_ip", "buyer_ip TEXT");
   ensureColumn(db, "deliveries", "charge_id", "charge_id TEXT");
+  ensureColumn(db, "deliveries", "payment_intent_id", "payment_intent_id TEXT");
+  ensureColumn(db, "shop_orders", "payment_intent_id", "payment_intent_id TEXT");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   return db;

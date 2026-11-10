@@ -37,13 +37,12 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
     const paid = object.payment_status === "paid";
     const amount = numberField(object.amount_total);
     const shopListing = String((object.metadata as { shop_listing?: string } | undefined)?.shop_listing ?? "");
+    const paidRefs = stripeRefs(event.type, object);
     if (shopListing) {
-      if (paid) deliverShopSale(db, shopListing, idString(object.latest_charge) || idString(object.payment_intent) || String(object.id ?? ""), amount, nowMs);
+      if (paid) deliverShopSale(db, shopListing, paidRefs, amount, nowMs);
       return;
     }
     const creationId = String((object.metadata as { creation_id?: string } | undefined)?.creation_id ?? "");
-    const paymentIntent = idString(object.payment_intent);
-    const charge = idString(object.latest_charge) || idString(object.charge);
     ledger.append({
       id: `sale-${event.id}`,
       atMs: nowMs,
@@ -51,26 +50,28 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
       amountCents: amount,
       status: paid ? "confirmed" : "unconfirmed",
       provider: "stripe",
-      providerTransactionId: charge || paymentIntent || String(object.id ?? ""),
-      chargeId: charge,
-      paymentIntentId: paymentIntent,
+      providerTransactionId: paidRefs.chargeId || paidRefs.paymentIntentId || String(object.id ?? ""),
+      chargeId: paidRefs.chargeId,
+      paymentIntentId: paidRefs.paymentIntentId,
       idempotencyKey: `stripe:${event.id}`,
       ref: creationId,
       note: paid ? "Checkout paid. Confirmed by Stripe." : "Checkout not paid. Unconfirmed, not real.",
     });
     if (paid && creationId) {
       const token = randomBytes(24).toString("hex");
-      db.prepare("INSERT INTO deliveries(token, creation_id, expires_at, charge_id) VALUES(?, ?, ?, ?)").run(token, creationId, nowMs + 72 * 3600 * 1000, charge || null);
+      db.prepare("INSERT INTO deliveries(token, creation_id, expires_at, charge_id, payment_intent_id) VALUES(?, ?, ?, ?, ?)").run(
+        token, creationId, nowMs + 72 * 3600 * 1000, paidRefs.chargeId, paidRefs.paymentIntentId,
+      );
       db.prepare("UPDATE creations SET listed = 0 WHERE id = ?").run(creationId);
     }
     return;
   }
   if (event.type === "charge.refunded" || event.type === "refund.created") {
     bookRefunds(ledger, event, nowMs);
-    const chargeId = event.type === "refund.created" ? idString(object.charge) ?? "" : String(object.id ?? "");
-    if (chargeId) {
-      refundShopCharge(db, chargeId, nowMs);
-      revokePaidDownload(db, chargeId, nowMs);
+    const refs = stripeRefs(event.type, object);
+    if (refs.paymentIntentId || refs.chargeId) {
+      refundShopCharge(db, refs);
+      revokePaidDownload(db, refs, nowMs);
     }
     return;
   }
@@ -128,8 +129,11 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
         detail: `${id} · ${status} · ${amount} cents. Automatic spending and approvals are paused.`,
       });
     }
-    const disputeCharge = idString(object.charge) ?? "";
-    if (disputeCharge && (event.type === "charge.dispute.created" || event.type === "charge.dispute.funds_withdrawn")) revokePaidDownload(db, disputeCharge, nowMs);
+    const disputeRefs = stripeRefs(event.type, object);
+    if ((disputeRefs.paymentIntentId || disputeRefs.chargeId) && (event.type === "charge.dispute.created" || event.type === "charge.dispute.funds_withdrawn")) {
+      refundShopCharge(db, disputeRefs, "disputed");
+      revokePaidDownload(db, disputeRefs, nowMs);
+    }
     return;
   }
   if (event.type === "issuing_authorization.request") {
@@ -245,6 +249,21 @@ function merchantName(object: Record<string, unknown>): string {
 function refundItems(object: Record<string, unknown>): { id: string; amount: number }[] {
   const data = (object.refunds as { data?: { id?: string; amount?: number }[] } | undefined)?.data ?? [];
   return data.flatMap((item) => (item.id ? [{ id: item.id, amount: numberField(item.amount) }] : []));
+}
+
+/**
+ * Checkout Session carries `payment_intent` and usually no charge.
+ * A Charge carries `id` (ch_...) and `payment_intent`.
+ * A Refund and a Dispute carry both `charge` and `payment_intent`.
+ */
+export function stripeRefs(type: string, object: Record<string, unknown>): { paymentIntentId: string | null; chargeId: string | null } {
+  const paymentIntentId = idString(object.payment_intent);
+  if (type === "charge.refunded") {
+    const id = typeof object.id === "string" ? object.id : "";
+    return { paymentIntentId, chargeId: id.startsWith("ch_") || id.startsWith("py_") ? id : null };
+  }
+  const charge = idString(object.charge) || idString(object.latest_charge);
+  return { paymentIntentId, chargeId: charge && !charge.startsWith("pi_") ? charge : null };
 }
 
 function idString(value: unknown): string | null {

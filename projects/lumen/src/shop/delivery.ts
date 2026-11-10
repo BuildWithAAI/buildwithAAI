@@ -7,11 +7,22 @@ export function readDeliveryToken(db: DatabaseSync, token: string, now: number):
   return { creationId: row.creation_id };
 }
 
-/** A refund or a dispute closes the file for this charge. Other buyers of the same listing keep theirs. */
-export function revokePaidDownload(db: DatabaseSync, chargeId: string, now: number): void {
-  if (!chargeId) return;
-  db.prepare("UPDATE deliveries SET expires_at = ? WHERE charge_id = ? AND expires_at >= ?").run(now - 1, chargeId, now);
-  const orders = db.prepare("SELECT delivery_token FROM shop_orders WHERE charge_id = ?").all(chargeId) as { delivery_token: string | null }[];
+export type PaymentRefs = { paymentIntentId?: string | null; chargeId?: string | null };
+
+/** A refund or a dispute closes the file for this payment. Other buyers of the same listing keep theirs. */
+export function revokePaidDownload(db: DatabaseSync, refs: PaymentRefs, now: number): void {
+  const paymentIntentId = refs.paymentIntentId || "";
+  const chargeId = refs.chargeId || "";
+  if (!paymentIntentId && !chargeId) return;
+  db.prepare(
+    `UPDATE deliveries SET expires_at = ? WHERE expires_at >= ? AND (
+      (? != '' AND payment_intent_id = ?) OR (? != '' AND charge_id = ?)
+    )`,
+  ).run(now - 1, now, paymentIntentId, paymentIntentId, chargeId, chargeId);
+  const orders = db.prepare(
+    `SELECT delivery_token FROM shop_orders WHERE
+      (? != '' AND payment_intent_id = ?) OR (? != '' AND charge_id = ?)`,
+  ).all(paymentIntentId, paymentIntentId, chargeId, chargeId) as { delivery_token: string | null }[];
   for (const order of orders) {
     if (order.delivery_token) db.prepare("UPDATE deliveries SET expires_at = ? WHERE token = ?").run(now - 1, order.delivery_token);
   }

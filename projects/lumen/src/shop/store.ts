@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import type { PaymentRefs } from "./delivery";
 import type { Emotions } from "../brain/types";
 import { flag, kvGet, kvSet, setFlag } from "../db/db";
 import { Ledger } from "../money/ledger";
@@ -262,15 +263,18 @@ export async function shopCheckout(db: DatabaseSync, env: Env, listingId: string
   return { ok: true, comingSoon: false, url };
 }
 
-export function deliverShopSale(db: DatabaseSync, listingId: string, chargeId: string, amountCents: number, now: number): { token: string } | null {
+export function deliverShopSale(db: DatabaseSync, listingId: string, refs: PaymentRefs, amountCents: number, now: number): { token: string } | null {
   const row = listingRow(db, listingId);
   if (!row) return null;
   const token = randomBytes(24).toString("hex");
   const orderId = `ord-${randomBytes(4).toString("hex")}`;
-  db.prepare("INSERT INTO shop_orders(id, listing_id, buyer_note, status, charge_id, delivery_token, due_at, created_at) VALUES(?, ?, '', 'delivered', ?, ?, ?, ?)").run(
-    orderId, listingId, chargeId, token, now, now,
+  const paymentIntentId = refs.paymentIntentId || null;
+  const chargeId = refs.chargeId || null;
+  const providerId = chargeId || paymentIntentId || orderId;
+  db.prepare("INSERT INTO shop_orders(id, listing_id, buyer_note, status, charge_id, payment_intent_id, delivery_token, due_at, created_at) VALUES(?, ?, '', 'delivered', ?, ?, ?, ?, ?)").run(
+    orderId, listingId, chargeId, paymentIntentId, token, now, now,
   );
-  db.prepare("INSERT INTO deliveries(token, creation_id, expires_at, charge_id) VALUES(?, ?, ?, ?)").run(token, listingId, now + 72 * 3600_000, chargeId);
+  db.prepare("INSERT INTO deliveries(token, creation_id, expires_at, charge_id, payment_intent_id) VALUES(?, ?, ?, ?, ?)").run(token, listingId, now + 72 * 3600_000, chargeId, paymentIntentId);
   new Ledger(db).append({
     id: `shop-sale-${orderId}`,
     atMs: now,
@@ -278,9 +282,10 @@ export function deliverShopSale(db: DatabaseSync, listingId: string, chargeId: s
     amountCents,
     status: "confirmed",
     provider: "stripe",
-    providerTransactionId: chargeId,
+    providerTransactionId: providerId,
     chargeId,
-    idempotencyKey: `shop:${chargeId}`,
+    paymentIntentId,
+    idempotencyKey: `shop:${paymentIntentId || chargeId || orderId}`,
     ref: listingId,
     note: `I sold ${row.title}. The file is ready. Made by an AI.`,
   });
@@ -288,8 +293,14 @@ export function deliverShopSale(db: DatabaseSync, listingId: string, chargeId: s
   return { token };
 }
 
-export function refundShopCharge(db: DatabaseSync, chargeId: string, now: number): void {
-  db.prepare("UPDATE shop_orders SET status = 'refunded' WHERE charge_id = ?").run(chargeId);
+export function refundShopCharge(db: DatabaseSync, refs: PaymentRefs, status: "refunded" | "disputed" = "refunded"): void {
+  const paymentIntentId = refs.paymentIntentId || "";
+  const chargeId = refs.chargeId || "";
+  if (!paymentIntentId && !chargeId) return;
+  db.prepare(
+    `UPDATE shop_orders SET status = ? WHERE
+      (? != '' AND payment_intent_id = ?) OR (? != '' AND charge_id = ?)`,
+  ).run(status, paymentIntentId, paymentIntentId, chargeId, chargeId);
 }
 
 export function sweepUndelivered(db: DatabaseSync, now: number): number {
