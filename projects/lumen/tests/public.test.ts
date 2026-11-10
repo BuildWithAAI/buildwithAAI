@@ -69,6 +69,17 @@ describe("public mode", () => {
     expect(html).toContain("Chicago");
   });
 
+  it("runs the image as node, with a health check", () => {
+    const docker = readFileSync(new URL("../Dockerfile", import.meta.url), "utf8");
+    const entry = readFileSync(new URL("../docker-entrypoint.sh", import.meta.url), "utf8");
+    const fly = readFileSync(new URL("../fly.toml", import.meta.url), "utf8");
+    expect(docker).toContain("npm prune --omit=dev");
+    expect(docker).toContain("HEALTHCHECK");
+    expect(entry).toContain("gosu node");
+    expect(fly).toContain("[[http_service.checks]]");
+    expect(fly).toContain("path = \"/api/health\"");
+  });
+
   it("keeps the build log in the image context", () => {
     const ignore = readFileSync(new URL("../.dockerignore", import.meta.url), "utf8");
     expect(ignore).toContain("!docs/BUILD_LOG.md");

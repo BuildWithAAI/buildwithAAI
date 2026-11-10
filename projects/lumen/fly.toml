@@ -20,6 +20,16 @@ primary_region = "iad"
     soft_limit = 20
     hard_limit = 25
 
+[[http_service.checks]]
+  grace_period = "25s"
+  interval = "30s"
+  timeout = "5s"
+  method = "GET"
+  path = "/api/health"
+
+  [http_service.checks.headers]
+    X-Forwarded-Proto = "https"
+
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"
