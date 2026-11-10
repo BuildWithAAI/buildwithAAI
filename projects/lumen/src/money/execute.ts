@@ -199,8 +199,8 @@ export function spendSnapshot(db: DatabaseSync, atMs: number): { today: number; 
   let monthTotal = 0;
   let recent = 0;
   for (const row of rows) {
-    if (row.kind === "purchase" && row.status !== "declined") {
-      covered.add(row.ref ?? row.id);
+    if ((row.kind === "purchase" || row.kind === "fee") && row.status !== "declined") {
+      if (row.kind === "purchase") covered.add(row.ref ?? row.id);
       const stamp = new Date(row.atMs).toISOString();
       if (stamp.slice(0, 10) === day) today += row.amountCents;
       if (stamp.slice(0, 7) === month) monthTotal += row.amountCents;

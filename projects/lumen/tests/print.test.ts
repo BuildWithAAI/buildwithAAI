@@ -5,6 +5,8 @@ import { openDatabase } from "../src/db/db";
 import { createFulfillment, MockFulfillment, PrintFarmStub } from "../src/fulfillment/adapters";
 import { listItemForSale, proposeDesign, supplyIntent, supplyIntentFromChat, type DesignProposal, type PrintBounds } from "../src/fulfillment/design";
 import { openPrintOrder } from "../src/fulfillment/orders";
+import { executeIntent } from "../src/money/execute";
+import { MockIssuer } from "../src/money/issuers";
 import { Ledger, moneyView } from "../src/money/ledger";
 import { evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import type { MoneyRules } from "../src/money/rules";
@@ -106,11 +108,28 @@ describe("print designs", () => {
     expect(() => openPrintOrder(db, design(), mock, 10, { ...gate, ctx: { ...open, rules: { ...open.rules, dailyCapCents: 100 } } })).toThrow(/PRINT_POLICY_REQUIRED/);
     expect(mock.jobs).toHaveLength(0);
     expect(new Ledger(db).list()).toHaveLength(0);
-    const order = openPrintOrder(db, design(), mock, 10, gate);
+    const order = openPrintOrder(db, design({ id: "shell-ok" }), mock, 10, gate);
     expect(order.status).toBe("queued");
     expect(order.reason).toBe("MOCK_QUEUED");
     const view = moneyView(new Ledger(db).list());
     expect(view.confirmedCents).toBe(0);
     expect(view.cogsEstimateCents).toBe(250);
+  });
+
+  it("counts print costs from the ledger toward an 800 cent cap", () => {
+    const db = openDatabase();
+    const at = Date.UTC(2026, 10, 10, 12);
+    const open = policy();
+    open.rules = { ...open.rules, merchants: ["filament-shop"], productTypes: ["filament"], autoApproveCapCents: 5000, dailyCapCents: 800 };
+    open.spentTodayCents = 999999;
+    open.spentMonthCents = 999999;
+    const gate = { ctx: open, merchant: "filament-shop", productType: "filament" };
+    const mock = new MockFulfillment();
+    openPrintOrder(db, design({ id: "print-a", estimatedCostCents: 500 }), mock, at, gate);
+    expect(() => openPrintOrder(db, design({ id: "print-b", estimatedCostCents: 500 }), mock, at, { ...gate, ctx: { ...open, spentTodayCents: 0, spentMonthCents: 0 } })).toThrow(/PRINT_POLICY_REQUIRED/);
+    const purchase = executeIntent(db, supplyIntent({ id: "buy-spool", productType: "filament", merchant: "filament-shop", amountCents: 500, reason: "another spool" }), { ...open, spentTodayCents: 0, spentMonthCents: 0 }, new MockIssuer(), at);
+    expect(purchase.decision.reason).toBe("DAILY_CAP");
+    expect(purchase.issuerCalled).toBe(false);
+    expect(mock.jobs).toHaveLength(1);
   });
 });
