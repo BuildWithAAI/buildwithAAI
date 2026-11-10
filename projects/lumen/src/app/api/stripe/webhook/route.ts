@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     previousSecret: process.env.STRIPE_WEBHOOK_SECRET_PREVIOUS,
   });
   if (!result.ok) return Response.json({ error: result.error }, { status: result.status });
+  if (typeof result.approved === "boolean") return Response.json({ approved: result.approved });
   if (!result.duplicate) {
     const event = JSON.parse(payload) as { type?: string; id?: string };
     const type = event.type === "checkout.session.completed" ? "sale" : event.type?.startsWith("charge.dispute") ? "alert" : null;

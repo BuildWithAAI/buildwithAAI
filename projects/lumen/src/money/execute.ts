@@ -3,6 +3,7 @@ import type { PurchaseIntent } from "../brain/types";
 import { flag } from "../db/db";
 import { deskNotifier, type OwnerAlert } from "./notify";
 import { UNKNOWN_PROVIDER_ID } from "./reconcile";
+import { openExpectedSpend } from "./card";
 import type { CardIssuer, IssuerResult } from "./issuers";
 import { ledgerStatusFor } from "./issuers";
 import { Ledger, type LedgerRow } from "./ledger";
@@ -105,6 +106,29 @@ export function executeIntent(db: DatabaseSync, intent: PurchaseIntent, ctx: Pol
     db.prepare("UPDATE purchase_claims SET state = 'unknown' WHERE intent_id = ?").run(intent.id);
     noteIssuerUnknown(db, intent, notify);
     return { decision: { outcome: "queue", reason: "ISSUER_UNKNOWN" }, issuerCalled: true, row: reserved };
+  }
+  if (result.status === "unknown") {
+    db.prepare("UPDATE purchase_claims SET state = 'unknown' WHERE intent_id = ?").run(intent.id);
+    noteIssuerUnknown(db, intent, notify);
+    return { decision: { outcome: "queue", reason: "ISSUER_UNKNOWN" }, issuerCalled: true, row: reserved };
+  }
+  if (result.status === "approved" && !result.providerTransactionId) {
+    openExpectedSpend(db, intent, atMs);
+    const row = ledger.append({
+      id: `expected-${intent.id}`,
+      atMs,
+      kind: "approval",
+      amountCents: intent.amountCents,
+      status: "intent",
+      provider: issuer.name,
+      providerTransactionId: null,
+      idempotencyKey: `expected:${intent.id}`,
+      ref: intent.id,
+      note: `Expected spend at ${intent.merchant}. Not charged until the issuer reports it.`,
+      merchant: intent.merchant,
+    });
+    db.prepare("UPDATE purchase_claims SET state = 'expected', ledger_id = ? WHERE intent_id = ?").run(row.id, intent.id);
+    return { decision: { outcome: "queue", reason: "EXPECTED_SPEND" }, issuerCalled: true, row };
   }
   const status = ledgerStatusFor(issuer.name, result.status);
   if (result.status === "declined") {

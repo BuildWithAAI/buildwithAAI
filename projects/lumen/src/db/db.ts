@@ -118,6 +118,14 @@ CREATE TABLE IF NOT EXISTS proposals (
   status TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS expected_spends (
+  intent_id TEXT PRIMARY KEY,
+  merchant TEXT NOT NULL,
+  max_cents INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS purchase_claims (
   intent_id TEXT PRIMARY KEY,
   idempotency_key TEXT NOT NULL UNIQUE,

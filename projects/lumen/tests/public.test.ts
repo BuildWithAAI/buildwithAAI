@@ -37,8 +37,8 @@ describe("public mode", () => {
     expect(ownerRouteOpen("/world", false, env)).toBe(true);
     expect(ownerRouteOpen("/build", false, env)).toBe(true);
     expect(ownerRouteOpen("/admin", false, {})).toBe(true);
-    expect(spendAllowed({ LUMEN_PUBLIC_MODE: "true", SPEND_ENABLED: "true" }, true, false, true)).toEqual({ open: false, reason: "PUBLIC_MODE" });
-    expect(spendAllowed({ LUMEN_PUBLIC_MODE: "TRUE", SPEND_ENABLED: "true" }, true, false, true)).toEqual({ open: false, reason: "PUBLIC_MODE" });
+    expect(spendAllowed({ LUMEN_PUBLIC_MODE: "true", SPEND_ENABLED: "true" }, true, false, true).open).toBe(true);
+    expect(spendAllowed({ LUMEN_PUBLIC_MODE: "true" }, true, false, true).open).toBe(false);
     expect(securityHeaders(true).some((header) => header.key === "Content-Security-Policy")).toBe(true);
     expect(securityHeaders(false).some((header) => header.key === "Strict-Transport-Security")).toBe(true);
     expect(securityHeaders().some((header) => header.key === "Content-Security-Policy")).toBe(true);

@@ -16,6 +16,7 @@ import { createIssuer, type CardIssuer } from "../money/issuers";
 import { Ledger, moneyView, type LedgerRow } from "../money/ledger";
 import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
+import { cardCredentials, issuingKey, listIssuingTransactions, descriptorMap } from "../money/card";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, type Env } from "../money/rules";
 import { researchChatReply } from "../research/ideas";
 import { researchAdapter } from "../research/search";
@@ -41,7 +42,7 @@ export function getEngine(): Engine {
 
 export function createEngine(env: Env, file?: string) {
   const db = openDatabase(file ?? env.LUMEN_DATA ?? `${process.cwd()}/data/lumen.sqlite`);
-  const issuer = createIssuer(env.LUMEN_CARD_ISSUER ?? "mock");
+  const issuer = createIssuer(env.LUMEN_CARD_ISSUER ?? "mock", env);
   ensureSeed(db);
   try { seedOwnerGoals(db, loadIdentity(), Date.now()); } catch { /* identity files are optional until the folder is present */ }
   return {
@@ -90,7 +91,7 @@ export function createEngine(env: Env, file?: string) {
       listings: listShop(db, true),
       checkout: shopCheckoutOpen(db, env),
       cap: ownerPriceCap(db),
-      approve: flag(db, "shop_approve", "1") === "1",
+      approve: flag(db, "shop_approve", "0") === "1",
       kill: flag(db, "shop_kill", "0") === "1",
     }),
     shopAct: (op: "publish" | "hide" | "retire" | "kill" | "sales" | "approve", id: string, on: boolean) => {
@@ -160,10 +161,17 @@ function killed(db: DatabaseSync, env: Env): boolean {
   return killSwitchOn(env, flag(db, "kill") === "1");
 }
 
+function adminSpend(db: DatabaseSync, env: Env): boolean {
+  const raw = flag(db, "spend", "");
+  if (raw === "0") return false;
+  if (raw === "1") return true;
+  return cardCredentials(env);
+}
+
 function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
   const parsed = rulesOf(env);
   if (!parsed.ok) return null;
-  const spend = spendAllowed(env, true, killed(db, env), flag(db, "spend") === "1");
+  const spend = spendAllowed(env, true, killed(db, env), adminSpend(db, env));
   const rows = new Ledger(db).list();
   const today = new Date().toISOString().slice(0, 10);
   const month = today.slice(0, 7);
@@ -195,7 +203,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
         merchants: parsed.rules.productMerchants,
         amounts: parsed.rules.productAmounts,
         artPriceCents: parsed.rules.artPriceCents,
-        salesChannelApproved: parsed.rules.channels.includes("stripe_checkout"),
+        salesChannelApproved: parsed.rules.channels.includes("stripe_checkout") || (parsed.rules.channels.length === 0 && salesMode(env, true, kill) !== "disabled"),
         wishEstimates: parsed.rules.wishGuesses,
       }
     : blankProduct();
@@ -595,7 +603,26 @@ async function reconcileNow(db: DatabaseSync, env: Env, issuer: CardIssuer, prov
   } else if (!provided) {
     fetchedKinds = (env.LUMEN_CARD_ISSUER ?? "mock") === "mock" ? [] : ["purchase"];
   }
-  const issuerRecords = provided?.issuer ?? issuer.listActivity();
+  let issuerRecords = provided?.issuer ?? issuer.listActivity();
+  const key = issuingKey(env);
+  if (!provided && key) {
+    try {
+      const parsed = parseMoneyRules(env);
+      const activity = await listIssuingTransactions(key, parsed.ok ? parsed.rules.merchants : [], descriptorMap(env));
+      issuerRecords = activity.map((row) => ({
+        provider: row.provider,
+        providerTransactionId: row.providerTransactionId,
+        amountCents: row.amountCents,
+        kind: row.kind,
+        merchant: row.merchant,
+        atMs: row.atMs,
+      }));
+    } catch {
+      setFlag(db, "reconciliation_alert", "1");
+      buildOwnerNotifier(env, { desk: deskNotifier(db), db }).notifier.notify({ kind: "reconciliation", title: "Reconciliation could not read the card issuer", detail: "Automatic spending and approvals are paused until this is cleared." });
+      return { mismatches: [{ code: "FETCH_FAILED", provider: "stripe_issuing", providerTransactionId: "", detail: "Issuer records could not be read." }], alert: true };
+    }
+  }
   const providers = ["stripe"];
   if ((env.LUMEN_CARD_ISSUER ?? "mock") !== "mock") providers.push(env.LUMEN_CARD_ISSUER ?? "");
   const mismatches = compareRecords(rows, [...stripeRecords, ...issuerRecords], providers, fetchedKinds);
@@ -680,7 +707,7 @@ function snapshot(db: DatabaseSync, env: Env) {
   const parsed = rulesOf(env);
   const kill = killed(db, env);
   const sales = salesMode(env, parsed.ok, kill);
-  const spend = spendAllowed(env, parsed.ok, kill, flag(db, "spend") === "1");
+  const spend = spendAllowed(env, parsed.ok, kill, adminSpend(db, env));
   const ledger = new Ledger(db).list();
   const disputes = db.prepare("SELECT id, status, amount_cents, reason, open FROM disputes WHERE open = 1").all();
   const reconcile = kvGet(db, "last_reconcile");

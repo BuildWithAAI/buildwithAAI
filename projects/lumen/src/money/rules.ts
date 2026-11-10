@@ -1,4 +1,4 @@
-import { publicModeOn } from "../auth/publicMode";
+import { cardCredentials } from "./card";
 
 /**
  * Money rules, in one place, for review.
@@ -7,7 +7,9 @@ import { publicModeOn } from "../auth/publicMode";
  * A missing optional cap means the card's own limit is the ceiling.
  * A missing or malformed value fails closed: no spending and no live sales.
  *
- * SPEND_ENABLED                      "true" or "false". Missing means spending is off. Anything else is invalid.
+ * SPEND_ENABLED                      "true" or "false". Missing is on when card credentials exist, and off otherwise. Anything else is invalid.
+ * SALES_ENABLED                      "true" or "false". Missing is on when a live Stripe key and webhook secret exist.
+ * MINT_ENABLED                       "true" or "false". Missing is on when MINT_SIGNER_URL is set. This process never holds the mint key.
  * LUMEN_KILL_SWITCH                  "true" stops LLM, purchases, and the storefront. Missing or "false" leaves it to the admin flag. Anything else kills.
  * LUMEN_SALES_MODE                   "disabled", "test", or "live". Missing means disabled.
  * STRIPE_SECRET_KEY                  Stripe secret. Test mode requires sk_test_. Live mode requires sk_live_.
@@ -41,7 +43,7 @@ import { publicModeOn } from "../auth/publicMode";
  * LUMEN_TICK_MS                      Tick interval, minimum 4000.
  * LUMEN_DATA                         SQLite path.
  * LUMEN_QUIET_HOURS                  "start-end" UTC hours, default 0-6.
- * LUMEN_PUBLIC_MODE                  "true" locks the desk, hides money, and forces spending off. Case does not matter.
+ * LUMEN_PUBLIC_MODE                  "true" locks the public desk login. It does not turn spending, sales, or minting off.
  * LUMEN_TRUSTED_PROXY                none, fly, forwarded, cloudflare (CF-Connecting-IP), or ngrok.
  */
 
@@ -88,8 +90,10 @@ export function hardCapGap(rules: MoneyRules, requireHardCaps = REQUIRE_HARD_CAP
 
 export function parseMoneyRules(env: Env): { ok: true; rules: MoneyRules } | { ok: false; errors: string[] } {
   const errors: string[] = [];
-  const spend = env.SPEND_ENABLED;
-  if (spend !== undefined && spend !== "true" && spend !== "false") errors.push("SPEND_ENABLED");
+  for (const key of ["SPEND_ENABLED", "SALES_ENABLED", "MINT_ENABLED"]) {
+    const value = env[key];
+    if (value !== undefined && value !== "" && value !== "true" && value !== "false") errors.push(key);
+  }
   const mode = env.LUMEN_SALES_MODE;
   if (mode !== undefined && mode !== "" && mode !== "disabled" && mode !== "test" && mode !== "live") errors.push("LUMEN_SALES_MODE");
   const auto = cents(env.LUMEN_AUTO_APPROVE_CAP_CENTS, "LUMEN_AUTO_APPROVE_CAP_CENTS", errors);
@@ -179,24 +183,38 @@ export function killSwitchOn(env: Env, adminFlag: boolean): boolean {
 
 export type SalesMode = "disabled" | "test" | "live";
 
+export function salesCredentials(env: Env): boolean {
+  const key = env.STRIPE_SECRET_KEY ?? "";
+  return key.startsWith("sk_live_") && Boolean(env.STRIPE_WEBHOOK_SECRET);
+}
+
 export function salesMode(env: Env, rulesOk: boolean, killed: boolean): SalesMode {
-  if (publicModeOn(env) || killed || !rulesOk) return "disabled";
+  if (killed || !rulesOk) return "disabled";
+  if (env.SALES_ENABLED === "false" || env.LUMEN_SALES_MODE === "disabled") return "disabled";
   const mode = env.LUMEN_SALES_MODE;
   const key = env.STRIPE_SECRET_KEY ?? "";
   const webhook = env.STRIPE_WEBHOOK_SECRET ?? "";
   if (!key || !webhook) return "disabled";
   const parsed = parseMoneyRules(env);
-  if (!parsed.ok || !parsed.rules.channels.includes("stripe_checkout")) return "disabled";
+  if (!parsed.ok) return "disabled";
+  const channel = parsed.rules.channels.includes("stripe_checkout") || parsed.rules.channels.length === 0;
+  if (!channel) return "disabled";
   if (mode === "test" && key.startsWith("sk_test_")) return "test";
   if (mode === "live" && key.startsWith("sk_live_")) return "live";
+  if ((mode === undefined || mode === "") && key.startsWith("sk_live_")) return "live";
   return "disabled";
 }
 
+export function spendSwitchOn(env: Env): boolean {
+  if (env.SPEND_ENABLED === "false") return false;
+  if (env.SPEND_ENABLED === "true") return true;
+  return cardCredentials(env);
+}
+
 export function spendAllowed(env: Env, rulesOk: boolean, killed: boolean, adminSpend: boolean): { open: boolean; reason: string } {
-  if (publicModeOn(env)) return { open: false, reason: "PUBLIC_MODE" };
   if (killed) return { open: false, reason: "KILL_SWITCH" };
   if (!rulesOk) return { open: false, reason: "CONFIG_INVALID" };
-  if (env.SPEND_ENABLED !== "true") return { open: false, reason: "SPEND_DISABLED" };
+  if (!spendSwitchOn(env)) return { open: false, reason: "SPEND_DISABLED" };
   if (!adminSpend) return { open: false, reason: "SPEND_ADMIN_OFF" };
   if (REQUIRE_HARD_CAPS_WHEN_SPENDING) {
     const parsed = parseMoneyRules(env);

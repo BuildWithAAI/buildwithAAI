@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../../auth/owner";
-import { loginReachable, ownerRouteOpen, publicModeOn } from "../../../auth/publicMode";
+import { loginReachable, ownerRouteOpen } from "../../../auth/publicMode";
 import { executeAction, refundAction } from "../../actions";
 import { getEngine } from "../../../server/engine";
 
@@ -17,14 +17,6 @@ export default async function LedgerPage() {
   if (!authed || !ownerRouteOpen("/admin/ledger", authed)) {
     if (!loginReachable((await headers()).get("host"))) notFound();
     redirect("/admin/login");
-  }
-  if (publicModeOn()) {
-    return (
-      <div className="card">
-        <h1>Balance and P&amp;L</h1>
-        <p>These views stay on this computer. They are hidden while the island is public.</p>
-      </div>
-    );
   }
   const snap = getEngine().snapshot();
   const view = snap.money.view;

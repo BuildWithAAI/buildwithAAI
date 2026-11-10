@@ -60,8 +60,8 @@ In the site window, press Ctrl+C. In the tunnel window, press Ctrl+C. Stopping e
 With `LUMEN_PUBLIC_MODE=true`:
 
 - `/admin`, the keeper desk, and `/admin/ledger` require an owner session. The login page stays available so the owner can sign in.
-- Balance and P&L are hidden. Gallery prices and print cost figures are hidden.
-- Spending is forced off, even if `SPEND_ENABLED=true`.
+- `/books` shows the confirmed balance and P&L. Unconfirmed rows are not called money.
+- Spending, sales, and minting follow their credentials. Public mode does not force them off. The kill switches still do.
 - Pages send a strict content security policy and the other security headers.
 - Each address is limited to 120 requests a minute.
 - `LUMEN_DATA`, `.env.local`, tokens, and the card issuer stay on this machine. Do not put them in the tunnel command line.

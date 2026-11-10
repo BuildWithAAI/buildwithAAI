@@ -46,7 +46,7 @@ primary_region = "iad"
 [env]
   LUMEN_DATA = "/data/lumen.sqlite"
   LUMEN_PUBLIC_MODE = "true"
-  SPEND_ENABLED = "false"
-  SALES_ENABLED = "false"
+  # SPEND_ENABLED, SALES_ENABLED, and MINT_ENABLED are unset on purpose.
+  # Each turns on when its credential is present in fly secrets, and stays off when that credential is missing.
   LUMEN_TRUSTED_PROXY = "fly"
   PORT = "3000"

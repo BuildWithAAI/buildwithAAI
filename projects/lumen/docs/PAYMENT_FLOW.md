@@ -1,6 +1,8 @@
 # Zoora payment flow
 
-Status: test or disabled. This build does not move live money. No card number, CVC, or issuer token is stored, logged, or shown to the model. Secrets live in environment variables or a host vault, never in the repo.
+Owner accepted live-money risk without a test stage on 2026-11-09.
+
+Spending, sales, and minting turn on when their credentials are present. They stay off, or on a mock that never confirms money, when those credentials are missing. No card number, CVC, private key, or issuer token is stored, logged, or shown to the model. Secrets live in environment variables or fly secrets, never in the repo.
 
 Zoora's trading and payment runtime is not imported. The ledger shape is original.
 
@@ -15,9 +17,9 @@ sequenceDiagram
   participant Ledger
   Visitor->>Zoora: Buy a listed piece
   Zoora->>Policy: sales gate
-  alt kill switch, bad config, or no test key
+  alt kill switch, bad config, or no live key
     Policy-->>Visitor: Sales closed
-  else test or live gate open
+  else live gate open
     Zoora->>Stripe: Checkout session, idempotency key
     Stripe-->>Visitor: Hosted checkout
     Stripe->>Zoora: webhook checkout.session.completed
@@ -82,14 +84,14 @@ All of these live in `src/money/rules.ts` and `src/money/policy.ts`.
 | Auto-approve cap | Nothing auto-approves | At or under the cap can auto-approve |
 | Per-purchase, daily, monthly caps | Not applied. The card limit is the ceiling. Flip `REQUIRE_HARD_CAPS_WHEN_SPENDING` in `src/money/rules.ts` to require all three | Amounts over the cap decline |
 | Sales channel | Checkout stays closed | `stripe_checkout` required to sell |
-| Spend | Off unless `SPEND_ENABLED=true` and the keeper toggle is on | Both required |
+| Spend | On when card credentials exist, unless `SPEND_ENABLED=false` or the spend kill switch is on | The card's own limit is the cap |
 | New merchant, product, channel, limit, or payout | Proposal or `needs_approval`. Not executed | Keeper approval recorded in the ledger |
 
 Owner-execute on a queued intent re-checks allowlists, caps, influence, kill switch, and the spend gate. It does not skip them. It may proceed when the only hold was the auto cap or a queue, because the keeper is the approver. A reconciliation alert pauses auto-approval; the keeper clears the alert before auto-approval resumes.
 
 ## Kill switch
 
-`LUMEN_KILL_SWITCH=true`, or any value other than empty or `false`, stops model calls, purchases, and the storefront. The keeper can also set it in the desk. Spending stays off unless `SPEND_ENABLED` is exactly `true` and the desk toggle is on. A missing or malformed money value fails closed.
+`LUMEN_KILL_SWITCH=true`, or any value other than empty or `false`, stops model calls, purchases, and the storefront. The keeper can also set it in the desk. Separate kill switches stop the shop, spending, and minting. A missing or malformed money value fails closed. Unset `SPEND_ENABLED` is on only when the card issuer and its key are configured.
 
 ## Reconciliation
 
@@ -127,23 +129,21 @@ The prompt builder redacts key-shaped strings and long digit runs inside untrust
 | Spend while unsupervised | Fail closed. Kill switch. Reconciliation hold on auto-approval |
 | Visitor opens the desk | Session cookie, httpOnly. Password hash or magic token. No default password |
 
-## Pending, not in this build
+## Card authorization and refund order
 
-These stay for a later review. They are not implemented here.
+An approved purchase is an expected spend: merchant, maximum amount, and a one-day expiry. It is not a confirmed charge. Stripe Issuing sends `issuing_authorization.request`. The app approves that request only when the descriptor maps to the expected merchant and the amount is inside the cap. `issuing_transaction.created` then appends one confirmed purchase, with the issuer's transaction id and time. A descriptor such as `PAPER SHOP INC` maps to `paper-shop`. A charge with no matching expected spend is not invented as a ledger row. The issuer key is read only to call the issuer and is not given to the model.
 
-- Real cards are not "make a purchase" APIs. Stripe Issuing charges arrive as `issuing_authorization.request` and transaction events. Privacy.com can be a merchant-locked card with a spend limit. An approved intent should become an expected spend (merchant, max amount, expiry). The issuer key would be read from the environment only inside that future adapter, and the adapter would report a provider transaction id plus approved, declined, or unknown. The current Stripe Issuing and Privacy adapters are stubs and do not do this.
-- A `charge.refunded` event that arrives before `refund.created`, without embedded refund ids, can book the same refund twice. Reconciliation flags the extra row. The ordering fix is pending.
-- A sweeper for a purchase stuck in progress, with an owner alert after a timeout, is pending.
+A `charge.refunded` event with no refund id is stored as unconfirmed. `refund.created` appends the confirmed refund once. The public balance counts the confirmed row only.
+
+A sweeper for a purchase stuck in progress, with an owner alert after a timeout, is still pending.
 While any purchase claim is `unknown`, automatic spending is paused. The keeper's desk shows the merchant, amount, and time in America/Chicago and UTC, and asks for a confirmation. Charged needs the issuer transaction id, or an explicit unknown-id mark. The booked provider is the configured card issuer (`LUMEN_CARD_ISSUER`), not a placeholder named `issuer`. The merchant is its own ledger column, so a name like `shop.example.com` stays intact. Older notes are backfilled into that column, and the merchant is part of the ledger hash. Matching ignores case, punctuation, and a trailing company suffix, so `PAPER SHOP INC` matches `paper-shop`. An unknown-id mark covers at most one provider purchase of the same merchant and amount inside 72 hours, then it expires. A give-up notice for the same channel can be written again after an hour. Not charged writes a zero ledger row linked to the claim. Neither choice calls the issuer again. A give-up notice names the channel, and a later alert that also gives up gets its own notice.
 
 Alert retries keep the original alert, one row per channel, and give up after about 30 minutes. The drainer runs on its own timer. A give-up notice is written once per failed alert.
 
-The card authorization model and refund ordering are still pending.
-
 ## Shop
 
-Zoora may open a shop and list original files or a small service it can deliver as a file. Details, tax, refunds, and chargebacks are in [SHOP.md](SHOP.md). Checkout stays off until `SALES_ENABLED=true` and the keeper sales toggle are both on. A buyer note cannot change a price. The shop does not create a spend intent.
+Zoora may open a shop and list original files or a small service it can deliver as a file. Details, tax, refunds, and chargebacks are in [SHOP.md](SHOP.md). Checkout uses the live Stripe key when that key and the webhook secret are set. A buyer note cannot change a price. The shop does not create a spend intent. Minting is in [NFT.md](NFT.md).
 
 ## What this is not
 
-No live charge has been made by this repository. A green test with a mocked Stripe client is not a settlement. The keeper connects the Stripe account and the card issuer, then turns spend on.
+A green unit test with a mocked Stripe client is not a settlement. A confirmed row exists only after the provider reports it. The keeper's kill switches still stop spending, sales, and minting.

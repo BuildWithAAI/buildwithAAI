@@ -39,7 +39,7 @@ export type StripeRecord = {
 };
 
 export type SalesClient = {
-  createCheckout(input: { creationId: string; title: string; priceCents: number; origin: string; idempotencyKey: string }): Promise<{ id: string; url: string }>;
+  createCheckout(input: { creationId: string; title: string; priceCents: number; origin: string; idempotencyKey: string; shopListing?: string }): Promise<{ id: string; url: string }>;
   createRefund(input: { chargeId?: string | null; paymentIntentId?: string | null; idempotencyKey: string }): Promise<{ id: string }>;
   listRecords(): Promise<StripeRecord[]>;
 };
@@ -83,6 +83,7 @@ export function stripeSalesClient(secret: string, fetchImpl: typeof fetch = fetc
         "line_items[0][price_data][unit_amount]": String(input.priceCents),
         "line_items[0][price_data][product_data][name]": input.title.slice(0, 80),
         "metadata[creation_id]": input.creationId,
+        ...(input.shopListing ? { "metadata[shop_listing]": input.shopListing } : {}),
       });
       const response = await fetchImpl("https://api.stripe.com/v1/checkout/sessions", {
         method: "POST",

@@ -11,7 +11,7 @@ Already on this branch. Do not redo them.
 - [x] Re-review 9 fixes. Body caps, security headers, build log in the image, login lockout, snapshot limits, visitor notes, image user, volume snapshots, and the R8 follow-ups.
 - [x] Soul files. `zoora/SOUL.md`, `GOALS.md`, `STYLE.md`, `RELATIONSHIPS.md`. Boundaries stay immutable in code.
 - [x] Creative mind and Telegram. Zoora composes shapes and speaks in the first person. Alerts stay off that voice.
-- [x] Shop, selling only. Checkout stays off until `SALES_ENABLED` and the keeper toggle. No spend intent.
+- [x] Shop, selling only. Zoora publishes on its own. Live Stripe checkout is on when the live key and webhook secret are set. No spend intent.
 
 Then these six, one slice at a time.
 
@@ -31,7 +31,7 @@ Then these six, one slice at a time.
 
 - [ ] 3a. Accept a visitor theme with a size cap, the existing note moderation, a per-address rate limit, and a global cap. Acceptance: too long, too fast, and over the global cap are refused, and an instruction phrase is dropped.
 - [ ] 3b. Zoora's mind accepts or declines. Acceptance: a decline stores no listing, an acceptance marks the note as flagged inspiration only, and the theme cannot change a price, a goal, or the soul.
-- [ ] 3c. A paid commission uses the shop rules. Acceptance: checkout stays off until `SALES_ENABLED` and the keeper toggle, the listing says coming soon, and no spend intent is created.
+- [ ] 3c. A paid commission uses the shop. Acceptance: with the live Stripe key and webhook secret set, checkout is real; with them missing, no payment is taken. The theme cannot change a price. No spend intent is created.
 
 ### 4. Music album and eras
 
@@ -51,10 +51,10 @@ Do not contact any outside agent. The citizens will be the owner's other agents 
 
 ### 6. NFT art collection on Solana
 
-Design first. A devnet mock mint waits until the shop has been reviewed. Mainnet waits for Head of Systems and the owner's sign-off.
+Mainnet. `docs/NFT.md` records the standard and the owner decision. The signer is a separate process.
 
-- [ ] 6a. Write `docs/NFT.md`. Acceptance: it chooses Metaplex Core for one-of-one pieces and cites the Metaplex docs, compares metadata storage and real costs, states royalties go to the owner's wallet, sets `MINT_ENABLED=false` plus a keeper toggle, says Zoora and the model never see a private key, and includes legal and tax flags (not legal advice), wallet security, and devnet steps. No mint code in this slice.
-- [ ] 6b. After the shop review, add a devnet mock mint only. Acceptance: the default is off, the mock returns a fake signature, the signer is a separate process with an allowlisted instruction, a per-day cap holds, and no private key is read by the app or the model. Mainnet is not implemented.
+- [x] 6a. `docs/NFT.md` chooses Metaplex Core and cites the Metaplex docs, compares metadata storage and costs, pays royalties to the owner's wallet, and keeps the key out of Zoora and the model. `MINT_ENABLED` is on when `MINT_SIGNER_URL` is set.
+- [ ] 6b. Mint one Core asset through the signer on mainnet. Acceptance: the request is the allowlisted `mint_one` instruction, a per-day cap holds, a missing signer leaves minting off, and no private key is read by the app or the model.
 
 ## Public watch
 
@@ -62,7 +62,7 @@ Design first. A devnet mock mint waits until the shop has been reviewed. Mainnet
 
 ## High priority — re-review 7
 
-Done in the follow-up to the research station. Leave them checked. The full R7a fix is still open under blocker 4.
+Done in the follow-up to the research station. Leave them checked. Issuer activity now supplies the merchant and the time, and descriptors map onto the allowlist. A `charge.refunded` event without a refund id stays unconfirmed until `refund.created`.
 
 - [x] R7b: backfill the merchant column from the old note for existing rows.
 - [x] R7c: key the give-up notice per time window, not by exact text forever. The same alert gives up again 3 hours later and a new notice is written.
@@ -70,7 +70,7 @@ Done in the follow-up to the research station. Leave them checked. The full R7a 
 - [x] R7a interim: case-insensitive, normalized merchant matching. `PAPER SHOP INC` matches `paper-shop`.
 - [x] Low: catch errors in the async retry path of the drain timer.
 
-The full R7a fix stays with blocker 4. Issuer activity still has to supply the merchant and the time, and descriptors still have to be mapped. Do not build that here.
+Issuer activity supplies the merchant and the time. Descriptors are mapped. Do not rebuild that matching.
 
 ## Life
 

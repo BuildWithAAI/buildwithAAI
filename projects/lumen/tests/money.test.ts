@@ -8,12 +8,14 @@ import path from "node:path";
 import { allowLogin, clientAddress } from "../src/auth/owner";
 import { executeIntent, resolutionProvider, resolveUnknown, resolveUnknownClaim } from "../src/money/execute";
 import { createEngine } from "../src/server/engine";
-import { MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers";
+import { mapDescriptor } from "../src/money/card";
+import { ExpectedIssuer, MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers";
+import { mintSwitch, requestMint } from "../src/money/mint";
 import { Ledger, bodyHash, canonical, merchantFromLegacyNote, migrateMerchantHashes, moneyView, notifyChainBroken, verifyLedgerChain } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords, normalizeMerchant } from "../src/money/reconcile";
 import { ALERT_GIVE_UP_MS, buildOwnerNotifier, deliverSmtp, deskClock, drainAlertRetries, guardAsyncRetry, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
-import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
+import { hardCapGap, killSwitchOn, parseMoneyRules, REQUIRE_HARD_CAPS_WHEN_SPENDING, salesCredentials, salesMode, spendAllowed, type MoneyRules } from "../src/money/rules";
 import { refundFormBody, stripeSalesClient, verifyStripeSignature } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
 import type { PurchaseIntent } from "../src/brain/types";
@@ -135,6 +137,10 @@ describe("policy", () => {
     expect(salesMode({ LUMEN_SALES_MODE: "live", STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec" }, true, false)).toBe("disabled");
     expect(salesMode({ LUMEN_SALES_MODE: "test", STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec", LUMEN_SALES_CHANNELS: "stripe_checkout" }, true, false)).toBe("test");
     expect(salesMode({ LUMEN_SALES_MODE: "live", STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec", LUMEN_SALES_CHANNELS: "stripe_checkout" }, false, false)).toBe("disabled");
+    expect(salesMode({ STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec" }, true, false)).toBe("live");
+    expect(salesMode({ STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec", SALES_ENABLED: "false" }, true, false)).toBe("disabled");
+    expect(spendAllowed({ LUMEN_CARD_ISSUER: "stripe_issuing", STRIPE_SECRET_KEY: "sk_live_x" }, true, false, true).open).toBe(true);
+    expect(spendAllowed({ LUMEN_CARD_ISSUER: "stripe_issuing", STRIPE_SECRET_KEY: "sk_live_x", SPEND_ENABLED: "false" }, true, false, true).open).toBe(false);
     expect(evaluatePolicy(intent(), ctx({ killed: true })).reason).toBe("KILL_SWITCH");
     expect(evaluatePolicy(intent(), ctx({ spendOpen: false })).reason).toBe("SPEND_CLOSED");
     expect(new StripeIssuingStub().authorize(intent(), "exec:stub").reason).toBe("STRIPE_ISSUING_NOT_CONNECTED");
@@ -835,5 +841,61 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect(notices).toHaveLength(2);
     expect(notices[1]!.created_at - notices[0]!.created_at).toBe(3 * 60 * 60 * 1000);
     expect(() => guardAsyncRetry(() => { throw new Error("db down"); })()).not.toThrow();
+  });
+});
+
+describe("live money", () => {
+  it("maps a card descriptor and confirms only a matching issuer transaction", () => {
+    expect(mapDescriptor("PAPER SHOP INC", ["paper-shop"])).toBe("paper-shop");
+    expect(salesCredentials({ STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec" })).toBe(true);
+    const db = openDatabase();
+    const at = Date.UTC(2026, 10, 9, 12);
+    const result = executeIntent(db, intent({ id: "exp-1" }), ctx(), new ExpectedIssuer("stripe_issuing"), at);
+    expect(result.decision.reason).toBe("EXPECTED_SPEND");
+    expect(new Ledger(db).list().some((row) => row.kind === "purchase" && row.status === "confirmed")).toBe(false);
+    const secret = "whsec_issuing";
+    const post = (id: string, type: string, object: Record<string, unknown>) => {
+      const payload = JSON.stringify({ id, type, livemode: true, data: { object } });
+      const header = sign(payload, secret, Math.floor(at / 1000));
+      return handleStripeWebhook(db, payload, header, secret, at);
+    };
+    expect(post("evt_auth", "issuing_authorization.request", { id: "iauth_1", amount: 400, merchant_data: { name: "PAPER SHOP INC" } }).approved).toBe(true);
+    expect(post("evt_over", "issuing_authorization.request", { id: "iauth_2", amount: 900, merchant_data: { name: "PAPER SHOP INC" } }).approved).toBe(false);
+    expect(post("evt_tx", "issuing_transaction.created", { id: "ipi_1", amount: 400, created: Math.floor(at / 1000), merchant_data: { name: "PAPER SHOP INC" } }).ok).toBe(true);
+    const purchase = new Ledger(db).list().find((row) => row.kind === "purchase" && row.status === "confirmed");
+    expect(purchase?.providerTransactionId).toBe("ipi_1");
+    expect(purchase?.amountCents).toBe(400);
+    expect(purchase?.merchant).toBe("paper-shop");
+  });
+
+  it("does not book the same refund twice when charge.refunded arrives first", () => {
+    const db = openDatabase();
+    const secret = "whsec_refund_order";
+    const now = 1_700_000_000_000;
+    const post = (id: string, type: string, object: Record<string, unknown>) => {
+      const payload = JSON.stringify({ id, type, livemode: true, data: { object } });
+      const header = sign(payload, secret, Math.floor(now / 1000));
+      expect(handleStripeWebhook(db, payload, header, secret, now).ok).toBe(true);
+    };
+    post("evt_bare", "charge.refunded", { id: "ch_bare", amount_refunded: 500, payment_intent: "pi_bare" });
+    post("evt_named", "refund.created", { id: "re_bare", amount: 500, charge: "ch_bare", payment_intent: "pi_bare" });
+    const refunds = new Ledger(db).list().filter((row) => row.kind === "refund");
+    expect(refunds.filter((row) => row.status === "confirmed").map((row) => row.amountCents)).toEqual([500]);
+    expect(moneyView(new Ledger(db).list()).refundCents).toBe(500);
+  });
+
+  it("keeps the mint key out of this process", async () => {
+    expect(mintSwitch({}).reason).toBe("MINT_SIGNER_MISSING");
+    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", MINT_PRIVATE_KEY: "secret" }).reason).toBe("KEY_MUST_STAY_IN_SIGNER");
+    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", MINT_ENABLED: "false" }).open).toBe(false);
+    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example" }).open).toBe(true);
+    let body = "";
+    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
+      body = String(init?.body ?? "");
+      return new Response(JSON.stringify({ signature: "mainnet-sig" }), { status: 200 });
+    });
+    expect(minted).toEqual({ ok: true, signature: "mainnet-sig" });
+    expect(body).toContain("\"network\":\"mainnet\"");
+    expect(body).not.toContain("secret");
   });
 });

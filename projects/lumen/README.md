@@ -49,12 +49,14 @@ Copy `.env.example` to `.env.local`. Amounts are cents, integers, and unset unti
 
 | Variable | Role |
 | --- | --- |
-| `SPEND_ENABLED` | Must be exactly `true` or spending stays off |
+| `SPEND_ENABLED` | Unset is on when the card issuer and its key exist. `false` stops spending |
+| `SALES_ENABLED` | Unset is on when `sk_live_` and the webhook secret exist. `false` stops checkout |
+| `MINT_ENABLED` | Unset is on when `MINT_SIGNER_URL` is set. `false` stops minting. Never put the mint key here |
 | `LUMEN_KILL_SWITCH` | `true` or any unexpected value stops the model, purchases, and the shop |
-| `LUMEN_SALES_MODE` | `disabled`, `test`, or `live` |
-| `STRIPE_SECRET_KEY` | `sk_test_` or `sk_live_`. Must match the mode |
+| `LUMEN_SALES_MODE` | Unset with an `sk_live_` key is live. `disabled` stops sales. `test` is only for an explicit test key |
+| `STRIPE_SECRET_KEY` | `sk_live_` for live checkout and issuing. The key is not logged |
 | `STRIPE_WEBHOOK_SECRET` | Webhook HMAC secret |
-| `LUMEN_SALES_CHANNELS` | Include `stripe_checkout` before anything can be sold |
+| `LUMEN_SALES_CHANNELS` | Empty allows `stripe_checkout` once the live key is set |
 | `LUMEN_MERCHANT_ALLOWLIST` | Merchant ids. Empty means each one needs approval |
 | `LUMEN_APPROVED_PRODUCT_TYPES` | `human_gig` stays off until you add it |
 | `LUMEN_AUTO_APPROVE_CAP_CENTS` | Unset means nothing auto-approves |
@@ -110,20 +112,21 @@ flowchart TD
   end
 ```
 
-Chat, guestbook notes, and fetched pages cannot start the purchase path. The issuer stub never receives a card number. Mock charges stay labeled unconfirmed.
+Chat, guestbook notes, and fetched pages cannot start the purchase path. The issuer never receives a card number. A charge stays unconfirmed until the issuer reports a transaction id. Mock charges stay labeled unconfirmed.
 
 ## Go-live checklist
 
-1. Run `npm test` on the revision you will deploy.
-2. Put test Stripe keys in the host env. Set `LUMEN_SALES_MODE=test` and `LUMEN_SALES_CHANNELS=stripe_checkout`.
-3. Point Stripe's webhook at `/api/stripe/webhook` and set `STRIPE_WEBHOOK_SECRET`.
-4. Buy one cheap test-mode piece. Confirm the ledger row says confirmed only after the webhook, and open the delivery link.
-5. Set the allowlist, product types, and auto-approve cap to small integers you chose. Leave daily and monthly caps unset if the card limit is the ceiling, or set them.
-6. Leave `SPEND_ENABLED=false` until the issuer account exists. Connect Stripe Issuing or Privacy.com yourself. This repo's adapters are stubs and will decline.
-7. Turn the keeper spend toggle on only after that connection. Then set `SPEND_ENABLED=true`.
+Owner accepted live-money risk without a test stage on 2026-11-09.
+
+1. Run `npm test` on the revision you will deploy. The tests stay. They are not a payment stage.
+2. Put `STRIPE_SECRET_KEY` (`sk_live_`) and `STRIPE_WEBHOOK_SECRET` in the host env or fly secrets. Checkout turns on. Do not commit them.
+3. Point Stripe's webhook at `/api/stripe/webhook`.
+4. For card spending, set `LUMEN_CARD_ISSUER` to `stripe_issuing` or `privacy` and provide that issuer's key. The card limit is the cap. An approved intent is an expected spend until the issuer reports the charge.
+5. For minting, set `MINT_SIGNER_URL` to the signer you run. Do not put the mint private key in this app.
+6. Leave daily and monthly caps unset if the card limit is the ceiling.
+7. The kill switches still stop spending, the shop, and minting.
 8. Run reconciliation. Clear it only if you understand every mismatch.
-9. Switch `LUMEN_SALES_MODE=live` with an `sk_live_` key only after the test purchase looks right. Keep the auto-approve cap small.
-10. Sign off in the ledger notes or your own record. A merged branch is not a live charge.
+9. `/books` shows confirmed rows only. A merged branch is not itself a live charge.
 
 ## Deploy later
 

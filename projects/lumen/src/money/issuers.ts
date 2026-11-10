@@ -1,8 +1,10 @@
 import type { PurchaseIntent } from "../brain/types";
+import { cardCredentials } from "./card";
+import type { Env } from "./rules";
 
 export type IssuerResult = {
   providerTransactionId: string;
-  status: "approved" | "declined";
+  status: "approved" | "declined" | "unknown";
   reason: string;
 };
 
@@ -39,6 +41,22 @@ export class MockIssuer implements CardIssuer {
   }
 }
 
+/**
+ * Live card path. An approved intent is an expected spend. The issuer charges later.
+ * This object does not keep the API key and it never sees a card number.
+ */
+export class ExpectedIssuer implements CardIssuer {
+  constructor(readonly name: "stripe_issuing" | "privacy") {}
+  authorize(intent: PurchaseIntent, idempotencyKey: string): IssuerResult {
+    assertNoCardMaterial(intent);
+    if (!idempotencyKey) throw new Error("IDEMPOTENCY_KEY_REQUIRED");
+    return { providerTransactionId: "", status: "approved", reason: "EXPECTED_SPEND" };
+  }
+  listActivity() {
+    return [];
+  }
+}
+
 /** Stub. It does not call Stripe and it cannot see a card number. */
 export class StripeIssuingStub implements CardIssuer {
   name = "stripe_issuing" as const;
@@ -65,9 +83,9 @@ export class PrivacyStub implements CardIssuer {
   }
 }
 
-export function createIssuer(kind: string): CardIssuer {
-  if (kind === "stripe_issuing") return new StripeIssuingStub();
-  if (kind === "privacy") return new PrivacyStub();
+export function createIssuer(kind: string, env: Env = {}): CardIssuer {
+  if (kind === "stripe_issuing") return cardCredentials({ ...env, LUMEN_CARD_ISSUER: "stripe_issuing" }) ? new ExpectedIssuer("stripe_issuing") : new StripeIssuingStub();
+  if (kind === "privacy") return cardCredentials({ ...env, LUMEN_CARD_ISSUER: "privacy" }) ? new ExpectedIssuer("privacy") : new PrivacyStub();
   return new MockIssuer();
 }
 

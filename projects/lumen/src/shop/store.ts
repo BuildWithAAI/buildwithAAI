@@ -3,7 +3,8 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Emotions } from "../brain/types";
 import { flag, kvGet, kvSet, setFlag } from "../db/db";
 import { Ledger } from "../money/ledger";
-import type { Env } from "../money/rules";
+import { killSwitchOn, parseMoneyRules, salesMode, type Env } from "../money/rules";
+import { stripeSalesClient } from "../money/stripe";
 import { scrubInstructions } from "../research/ideas";
 import { areaById } from "../world/areas";
 import { positionAllowed, slotWorld } from "../world/creative";
@@ -56,13 +57,17 @@ export function shopSpendIntents(): [] {
 }
 
 export function salesSwitchOn(env: Env): boolean {
-  return (env.SALES_ENABLED ?? "").trim().toLowerCase() === "true";
+  if ((env.SALES_ENABLED ?? "").trim().toLowerCase() === "false") return false;
+  const parsed = parseMoneyRules(env);
+  return salesMode(env, parsed.ok, false) !== "disabled";
 }
 
 export function shopCheckoutOpen(db: DatabaseSync, env: Env): boolean {
   if (flag(db, "shop_kill", "0") === "1") return false;
-  if (!salesSwitchOn(env)) return false;
-  if (flag(db, "shop_sales", "0") !== "1") return false;
+  const parsed = parseMoneyRules(env);
+  const killed = killSwitchOn(env, flag(db, "kill") === "1");
+  if (salesMode(env, parsed.ok, killed) === "disabled") return false;
+  if (flag(db, "shop_sales", "") === "0") return false;
   return true;
 }
 
@@ -205,7 +210,7 @@ export function retireListing(db: DatabaseSync, id: string, now: number): { ok: 
   return { ok: true };
 }
 
-export function shopCheckout(db: DatabaseSync, env: Env, listingId: string, note: string, now: number): { ok: true; comingSoon: boolean; url: string | null } | { ok: false; error: string } {
+export async function shopCheckout(db: DatabaseSync, env: Env, listingId: string, note: string, now: number): Promise<{ ok: true; comingSoon: boolean; url: string | null } | { ok: false; error: string }> {
   if (shopSpendIntents().length) return { ok: false, error: "SPEND" };
   const row = listingRow(db, listingId);
   if (!row || row.status !== "published") return { ok: false, error: "NOT_LISTED" };
@@ -217,9 +222,25 @@ export function shopCheckout(db: DatabaseSync, env: Env, listingId: string, note
     return { ok: true, comingSoon: true, url: null };
   }
   const secret = env.STRIPE_SECRET_KEY ?? "";
-  const url = secret ? null : `mock://shop/${listingId}`;
+  const orderId = `ord-${randomBytes(4).toString("hex")}`;
+  let url: string | null = null;
+  if (secret.startsWith("sk_live_") || secret.startsWith("sk_test_")) {
+    try {
+      const session = await stripeSalesClient(secret).createCheckout({
+        creationId: listingId,
+        shopListing: listingId,
+        title: row.title,
+        priceCents: row.price_cents,
+        origin: env.LUMEN_ORIGIN || "https://zoora.ai",
+        idempotencyKey: `shop:${orderId}`,
+      });
+      url = session.url;
+    } catch {
+      return { ok: false, error: "SALES_PROVIDER_ERROR" };
+    }
+  }
   db.prepare("INSERT INTO shop_orders(id, listing_id, buyer_note, status, charge_id, delivery_token, due_at, created_at) VALUES(?, ?, ?, 'pending', NULL, NULL, ?, ?)").run(
-    `ord-${randomBytes(4).toString("hex")}`, listingId, kept, now + row.turnaround_hours * 3600_000, now,
+    orderId, listingId, kept, now + row.turnaround_hours * 3600_000, now,
   );
   return { ok: true, comingSoon: false, url };
 }
@@ -309,7 +330,7 @@ function addListing(db: DatabaseSync, draft: NonNullable<ReturnType<typeof compo
   const priced = clampShopPrice(draft.kind, draft.priceCents, ownerPriceCap(db));
   if (!priced.ok) return null;
   if (!listingTextAllowed(draft.title, draft.description)) return null;
-  const approve = flag(db, "shop_approve", "1") === "1";
+  const approve = flag(db, "shop_approve", "0") === "1";
   const id = `list-${randomBytes(4).toString("hex")}`;
   const file = renderFile(draft.kind, draft.title, draft.hue ?? hashText(draft.title));
   db.prepare(
@@ -324,7 +345,7 @@ function addListing(db: DatabaseSync, draft: NonNullable<ReturnType<typeof compo
 function redesignListing(db: DatabaseSync, id: string, draft: NonNullable<ReturnType<typeof composeShop>>, now: number): ShopListing | null {
   const priced = clampShopPrice(draft.kind, draft.priceCents, ownerPriceCap(db));
   if (!priced.ok || !listingTextAllowed(draft.title, draft.description)) return null;
-  const approve = flag(db, "shop_approve", "1") === "1";
+  const approve = flag(db, "shop_approve", "0") === "1";
   db.prepare("UPDATE shop_listings SET title = ?, description = ?, price_cents = ?, scope = ?, status = ?, version = version + 1, updated_at = ? WHERE id = ?").run(
     draft.title, draft.description, priced.cents, draft.scope, approve ? "draft" : "published", now, id,
   );

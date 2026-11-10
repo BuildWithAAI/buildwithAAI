@@ -3,9 +3,10 @@ import type { DatabaseSync } from "node:sqlite";
 import { Ledger } from "./ledger";
 import type { OwnerNotifier } from "./notify";
 import { deliverShopSale, refundShopCharge } from "../shop/store";
+import { confirmIssuerTransaction, decideAuthorization, mapDescriptor } from "./card";
 import { parseStripeEvent, verifyStripeSignature, type StripeEvent } from "./stripe";
 
-export type WebhookResult = { ok: true; duplicate: boolean } | { ok: false; status: number; error: string };
+export type WebhookResult = { ok: true; duplicate: boolean; approved?: boolean } | { ok: false; status: number; error: string };
 
 export function handleStripeWebhook(db: DatabaseSync, payload: string, header: string, secret: string, nowMs: number, notifier?: OwnerNotifier, options?: { livemode?: boolean; previousSecret?: string }): WebhookResult {
   if (!verifyStripeSignature(payload, header, secret, nowMs, 300, options?.previousSecret ?? "")) return { ok: false, status: 400, error: "BAD_SIGNATURE" };
@@ -21,12 +22,12 @@ export function handleStripeWebhook(db: DatabaseSync, payload: string, header: s
   const seen = db.prepare("SELECT event_id FROM webhook_events WHERE event_id = ?").get(event.id) as { event_id: string } | undefined;
   if (seen) return { ok: true, duplicate: true };
   const digest = createHash("sha256").update(payload).digest("hex");
-  applyEvent(db, event, nowMs, notifier);
+  const approved = applyEvent(db, event, nowMs, notifier);
   db.prepare("INSERT INTO webhook_events(event_id, type, payload_hash, processed_at) VALUES(?, ?, ?, ?)").run(event.id, event.type, digest, nowMs);
-  return { ok: true, duplicate: false };
+  return approved === undefined ? { ok: true, duplicate: false } : { ok: true, duplicate: false, approved };
 }
 
-function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifier?: OwnerNotifier): void {
+function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifier?: OwnerNotifier): boolean | undefined {
   const ledger = new Ledger(db);
   const object = event.data.object;
   if (event.type === "checkout.session.completed") {
@@ -121,6 +122,30 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
         detail: `${id} · ${status} · ${amount} cents. Automatic spending and approvals are paused.`,
       });
     }
+    return;
+  }
+  if (event.type === "issuing_authorization.request") {
+    const name = merchantName(object);
+    const merchant = mapDescriptor(name, [name], {}) ?? name;
+    return decideAuthorization(db, merchant, numberField(object.amount), nowMs);
+  }
+  if (event.type === "issuing_transaction.created") {
+    const name = merchantName(object);
+    const merchant = mapDescriptor(name, [name], {}) ?? "";
+    const booked = confirmIssuerTransaction(db, {
+      transactionId: String(object.id ?? ""),
+      merchant,
+      amountCents: Math.abs(numberField(object.amount)),
+      atMs: typeof object.created === "number" ? object.created * 1000 : nowMs,
+      provider: "stripe_issuing",
+    });
+    if (!booked.booked) {
+      notifier?.notify({
+        kind: "issuer",
+        title: "Issuer charge without an expected spend",
+        detail: `${String(object.id ?? "")} at ${name || "an unmapped descriptor"} was not booked.`,
+      });
+    }
   }
 }
 
@@ -159,15 +184,20 @@ function bookRefunds(ledger: Ledger, event: StripeEvent, nowMs: number): void {
     atMs: nowMs,
     kind: "refund",
     amountCents: delta,
-    status: "confirmed",
+    status: "unconfirmed",
     provider: "stripe",
     providerTransactionId: `delta:${event.id}`,
     chargeId: chargeId || null,
     paymentIntentId: idString(object.payment_intent),
     idempotencyKey: `stripe:${event.id}`,
     ref: chargeId,
-    note: "Refund delta since the previous charge.refunded event.",
+    note: "Refund reported without a refund id. Not confirmed until refund.created names it.",
   });
+}
+
+function merchantName(object: Record<string, unknown>): string {
+  const data = object.merchant_data as { name?: string } | undefined;
+  return typeof data?.name === "string" ? data.name : "";
 }
 
 function refundItems(object: Record<string, unknown>): { id: string; amount: number }[] {
