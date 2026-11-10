@@ -4,15 +4,17 @@ import { areaById } from "../world/areas";
 type Height = (x: number, z: number) => number;
 
 /** Original meshes for the added areas. No imported models. */
-export function addExpandedAreas(scene: THREE.Scene, low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { stall: THREE.Mesh; plants: THREE.Object3D[]; shells: THREE.Object3D; fireflies: THREE.Points; beam: THREE.Mesh; screen: THREE.Mesh; pin: THREE.Mesh } {
+export function addExpandedAreas(scene: THREE.Scene, low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { stall: THREE.Mesh; plants: THREE.Object3D[]; shells: THREE.Object3D; fireflies: THREE.Points; beam: THREE.Mesh; screen: THREE.Mesh; pin: THREE.Mesh; tape: THREE.Mesh; saloonSign: THREE.Mesh } {
   const beach = buildBeach(low, heightAt);
   const forest = buildForest(low, heightAt);
   const garden = buildGarden(low, heightAt, windows, lamps);
   const market = buildMarket(low, heightAt, windows);
   const light = buildLighthouse(low, heightAt, windows, lamps);
   const research = buildResearch(low, heightAt, windows, lamps);
-  scene.add(beach.group, forest.group, garden.group, market.group, light.group, research.group);
-  return { stall: market.stall, plants: garden.plants, shells: beach.shells, fireflies: forest.fireflies, beam: light.beam, screen: research.screen, pin: research.pin };
+  const saloon = buildSaloon(low, heightAt, windows, lamps);
+  const floor = buildFloor(low, heightAt, windows, lamps);
+  scene.add(beach.group, forest.group, garden.group, market.group, light.group, research.group, saloon.group, floor.group);
+  return { stall: market.stall, plants: garden.plants, shells: beach.shells, fireflies: forest.fireflies, beam: light.beam, screen: research.screen, pin: research.pin, tape: floor.tape, saloonSign: saloon.sign };
 }
 
 function buildBeach(low: boolean, heightAt: Height): { group: THREE.Group; shells: THREE.Object3D } {
@@ -211,4 +213,78 @@ function buildResearch(low: boolean, heightAt: Height, windows: THREE.MeshStanda
     group.add(lamp);
   }
   return { group, screen, pin };
+}
+
+function buildSaloon(low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { group: THREE.Group; sign: THREE.Mesh } {
+  const spot = areaById("solana-saloon");
+  const x = spot?.x ?? 19;
+  const z = spot?.z ?? 40;
+  const y = heightAt(x, z);
+  const group = new THREE.Group();
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8a4b2f, roughness: 0.82 });
+  const trim = new THREE.MeshStandardMaterial({ color: 0xe7d3a1, roughness: 0.55 });
+  const front = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.2, 4.2), wood);
+  front.position.set(x, y + 1.6, z);
+  front.castShadow = !low;
+  const falseFront = new THREE.Mesh(new THREE.BoxGeometry(6.6, 1.3, 0.18), trim);
+  falseFront.position.set(x, y + 3.5, z + 2.1);
+  const porch = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.12, 1.4), wood);
+  porch.position.set(x, y + 0.2, z + 2.6);
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x5c3317, roughness: 0.8 });
+  for (const dx of [-2.4, 2.4]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.2, 0.16), postMat);
+    post.position.set(x + dx, y + 1.2, z + 3.1);
+    group.add(post);
+  }
+  const door = new THREE.MeshStandardMaterial({ color: 0x6b3a22, roughness: 0.7 });
+  for (const dx of [-0.28, 0.28]) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.3, 0.08), door);
+    wing.position.set(x + dx, y + 0.8, z + 2.16);
+    group.add(wing);
+  }
+  const signMat = new THREE.MeshBasicMaterial({ color: 0xf3e2b8 });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.7), signMat);
+  sign.position.set(x, y + 3.5, z + 2.22);
+  group.add(front, falseFront, porch, sign);
+  if (!low) {
+    const lamp = new THREE.PointLight(0xffb15a, 0.2, 10);
+    lamp.position.set(x, y + 2.4, z + 2.4);
+    lamps.push(lamp);
+    group.add(lamp);
+  }
+  const glow = new THREE.MeshStandardMaterial({ color: 0xffd7a1, emissive: 0xffb15a, emissiveIntensity: 0.2 });
+  windows.push(glow);
+  return { group, sign };
+}
+
+function buildFloor(low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { group: THREE.Group; tape: THREE.Mesh } {
+  const spot = areaById("trading-floor");
+  const x = spot?.x ?? -42;
+  const z = spot?.z ?? -8;
+  const y = heightAt(x, z);
+  const group = new THREE.Group();
+  const stone = new THREE.MeshStandardMaterial({ color: 0x243044, roughness: 0.7 });
+  const room = new THREE.Mesh(new THREE.BoxGeometry(7.2, 2.6, 4.6), stone);
+  room.position.set(x, y + 1.3, z);
+  room.castShadow = !low;
+  const tapeMat = new THREE.MeshBasicMaterial({ color: 0x102033 });
+  const tape = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.5), tapeMat);
+  tape.position.set(x, y + 1.7, z + 2.32);
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.1, 0.8), new THREE.MeshStandardMaterial({ color: 0x1b2836, roughness: 0.5 }));
+  desk.position.set(x, y + 0.7, z + 1.2);
+  group.add(room, tape, desk);
+  for (const dx of [-2.2, 0, 2.2]) {
+    const glow = new THREE.MeshStandardMaterial({ color: 0x7dffa8, emissive: 0x39d98a, emissiveIntensity: 0.35 });
+    windows.push(glow);
+    const pixel = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.7), glow);
+    pixel.position.set(x + dx, y + 1.7, z + 2.2);
+    group.add(pixel);
+  }
+  if (!low) {
+    const lamp = new THREE.PointLight(0x7dffa8, 0.12, 9);
+    lamp.position.set(x, y + 2.2, z);
+    lamps.push(lamp);
+    group.add(lamp);
+  }
+  return { group, tape };
 }

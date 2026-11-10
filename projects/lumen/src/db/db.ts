@@ -147,6 +147,31 @@ CREATE TABLE IF NOT EXISTS checkout_queue (
   receipt TEXT,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS paper_trades (
+  id TEXT PRIMARY KEY,
+  mode TEXT NOT NULL,
+  mint TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  side TEXT NOT NULL,
+  usd_cents INTEGER NOT NULL,
+  sol_micro INTEGER NOT NULL,
+  price_usd TEXT NOT NULL,
+  price_sol TEXT NOT NULL,
+  quoted_at INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  thesis TEXT NOT NULL,
+  exit_plan TEXT NOT NULL,
+  result TEXT,
+  signature TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS price_quotes (
+  mint TEXT PRIMARY KEY,
+  symbol TEXT NOT NULL,
+  price_usd TEXT NOT NULL,
+  price_sol TEXT NOT NULL,
+  quoted_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS expected_spends (
   intent_id TEXT PRIMARY KEY,
   merchant TEXT NOT NULL,

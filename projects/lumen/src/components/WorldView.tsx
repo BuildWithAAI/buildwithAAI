@@ -23,6 +23,8 @@ const CAMS: Record<string, { pos: [number, number, number]; look: [number, numbe
   market: { pos: [-24, 5, -18], look: [-34, 1.4, -28] },
   lighthouse: { pos: [18, 8, 46], look: [6, 4, 58] },
   research: { pos: [-4, 5.2, -34], look: [-15, 1.6, -43.2] },
+  saloon: { pos: [8, 6, 32], look: [19, 2.2, 40] },
+  floor: { pos: [-32, 5.4, 4], look: [-42, 1.8, -8] },
   follow: { pos: [8, 5, 10], look: [0, 1, 0], follow: true },
 };
 
@@ -121,6 +123,8 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     const extra = addExpandedAreas(scene, low, terrainHeight, windows, lamps);
     const questionBoard = boardTexture(["The desk is waiting."], "#102033", "#d7ecff");
     const pinBoard = boardTexture(["No findings yet."], "#f4efe4", "#3a2a18");
+    const tapeBoard = boardTexture(["PAPER", "No public quote yet."], "#102033", "#b6ffd0");
+    const saloonBoard = boardTexture(["PAPER", "Solana Saloon"], "#3a2414", "#f3e2b8");
     const screenMat = extra.screen.material as THREE.MeshBasicMaterial;
     const pinMat = extra.pin.material as THREE.MeshBasicMaterial;
     screenMat.map = questionBoard.texture;
@@ -129,6 +133,14 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     pinMat.map = pinBoard.texture;
     pinMat.color.set(0xffffff);
     pinMat.needsUpdate = true;
+    const tapeMat = extra.tape.material as THREE.MeshBasicMaterial;
+    const saloonMat = extra.saloonSign.material as THREE.MeshBasicMaterial;
+    tapeMat.map = tapeBoard.texture;
+    tapeMat.color.set(0xffffff);
+    tapeMat.needsUpdate = true;
+    saloonMat.map = saloonBoard.texture;
+    saloonMat.color.set(0xffffff);
+    saloonMat.needsUpdate = true;
     scatterNature(scene, low);
     const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(2.2, 20, 16), new THREE.MeshBasicMaterial({ color: 0xfff1c2 }));
     const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(1.15, 20, 16), new THREE.MeshBasicMaterial({ color: 0xf4f7ff }));
@@ -237,6 +249,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     let logKey = "";
     let svgKey = "";
     let researchKey = "";
+    let tapeKey = "";
     const tick = () => {
       frame = requestAnimationFrame(tick);
       const time = performance.now() / 1000;
@@ -299,6 +312,11 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         researchKey = researchText;
         questionBoard.paint(wrapLines(snap.research?.question || "The desk is waiting."));
         pinBoard.paint(snap.research?.pins?.length ? snap.research.pins : ["No findings yet."]);
+      }
+      const tapeText = (snap.tape?.lines ?? ["PAPER"]).join("|");
+      if (tapeText !== tapeKey) {
+        tapeKey = tapeText;
+        tapeBoard.paint(snap.tape?.lines?.length ? snap.tape.lines : ["PAPER", "No public quote yet."]);
       }
 
       const seen = new Set<string>();
@@ -380,7 +398,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         <span>Watching only</span>
       </div>
       <div className="world-hud">
-        {["overview", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "together", "zoora", "follow"].map((name) => (
+        {["overview", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "saloon", "floor", "together", "zoora", "follow"].map((name) => (
           <button key={name} type="button" onClick={() => choose(name)}>{name === "follow" && follow ? "following" : name}</button>
         ))}
         <button type="button" onClick={() => setSound((on) => !on)}>{sound ? "Sound on" : "Sound off"}</button>

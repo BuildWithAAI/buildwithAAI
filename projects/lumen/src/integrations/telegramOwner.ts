@@ -35,6 +35,7 @@ export type ThoughtInput = {
   memory: string | null;
   buildName: string | null;
   wondering: string | null;
+  tradeNote?: string | null;
 };
 
 /** Zoora decides whether there is anything worth saying. Silence is a result. */
@@ -49,7 +50,9 @@ export function composeThought(input: ThoughtInput): string | null {
   if (memory) bits.push(`What stays with me is ${memory}.`);
   if (input.buildName) bits.push(`I shaped ${input.buildName} because the feeling wanted somewhere to sit.`);
   if (wonder) bits.push(`I wonder about ${wonder.replace(/[?.!]$/, "")}.`);
-  return bits.join(" ").slice(0, 320);
+  const trade = scrubInstructions(input.tradeNote ?? "");
+  if (trade) bits.push(trade.endsWith("not advice.") ? trade : `${trade} This is my own note, not advice.`);
+  return bits.join(" ").slice(0, 420);
 }
 
 export function offerThought(

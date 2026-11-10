@@ -45,6 +45,8 @@ export function activityFor(place: PlaceId, emotions: Emotions): { action: World
   if (place === "market-row") return { action: "show-art", label: "showing a piece, not selling it" };
   if (place === "lighthouse-hill") return { action: "lookout", label: "watching from the hill" };
   if (place === "research-station") return { action: "research", label: "researching an idea" };
+  if (place === "solana-saloon") return { action: "paper-trade", label: "marking a paper trade at the saloon" };
+  if (place === "trading-floor") return { action: "watch-screens", label: "watching the paper tape" };
   return { action: "read-board", label: "reading the notice board" };
 }
 

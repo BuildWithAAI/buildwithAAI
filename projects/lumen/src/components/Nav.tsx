@@ -8,6 +8,7 @@ export function Nav({ showKeeper = false }: { showKeeper?: boolean }) {
       <Link href="/world">World</Link>
       <Link href="/build">Build</Link>
       <Link href="/shop">Shop</Link>
+      <Link href="/floor">Floor</Link>
       <Link href="/books">Books</Link>
       <Link href="/gallery">Gallery</Link>
       <Link href="/prints">Prints</Link>

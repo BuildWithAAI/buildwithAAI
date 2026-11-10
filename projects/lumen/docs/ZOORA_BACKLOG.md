@@ -56,6 +56,10 @@ Mainnet. `docs/NFT.md` records the standard and the owner decision. The signer i
 - [x] 6a. `docs/NFT.md` chooses Metaplex Core and cites the Metaplex docs, compares metadata storage and costs, pays royalties to the owner's wallet, and keeps the key out of Zoora and the model. `MINT_ENABLED` is on when `MINT_SIGNER_URL` is set.
 - [ ] 6b. Mint one Core asset through the signer on mainnet. Acceptance: the request is the allowlisted `mint_one` instruction, a per-day cap holds, a missing signer leaves minting off, and no private key is read by the app or the model.
 
+## Trading places
+
+- [x] Solana Saloon and the trading floor. Paper quotes only until `LUMEN_TRADING_LIVE=true` and the signer URL are both set. See `docs/TRADING.md`.
+
 ## Public watch
 
 - [x] Let the public watch Zoora and the Zoora Economy build live, from the owner's computer, through a tunnel. `/build`, `LUMEN_PUBLIC_MODE`, and `docs/HOSTING_LOCAL.md`.

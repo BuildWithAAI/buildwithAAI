@@ -24,6 +24,7 @@ import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
 import { stripeSalesClient } from "../money/stripe";
 import { composeThought, offerThought } from "../integrations/telegramOwner";
+import { latestThesis } from "../trading/book";
 import { considerShop, hideListing, listShop, ownerPriceCap, publishListing, readShop, retireListing, setPriceCap, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
 import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
@@ -247,6 +248,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       memory: goal ?? lived.longTerm[0]?.text ?? null,
       buildName: built?.title ?? null,
       wondering: lived.emotions.curiosity > 0.5 ? finding?.question ?? null : null,
+      tradeNote: latestThesis(db),
     });
     if (thought) offerThought(db, env, thought, now);
     const idea = db.prepare("SELECT title, source_key FROM ideas ORDER BY updated_at DESC LIMIT 1").get() as { title: string; source_key: string | null } | undefined;

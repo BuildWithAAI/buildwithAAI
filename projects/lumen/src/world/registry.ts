@@ -6,6 +6,7 @@ import { eventOf } from "../brain/events";
 import { researching, stationView } from "../research/run";
 import { visibleBuilds } from "./creative";
 import { readShop } from "../shop/store";
+import { tape } from "../trading/book";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
@@ -406,8 +407,18 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
       const shop = readShop(db);
       return shop ? { name: shop.name, hue: shop.hue, form: shop.form, x: shop.x, z: shop.z, open: shop.open } : null;
     })(),
+    tape: tapeLines(db),
     watchOnly: true,
   };
+}
+
+function tapeLines(db: DatabaseSync): { mode: "PAPER" | "LIVE"; lines: string[] } {
+  const board = tape(db);
+  const lines = ["PAPER"];
+  if (!board.quotes.length) lines.push("No public quote yet.");
+  for (const quote of board.quotes.slice(0, 3)) lines.push(`${quote.symbol} ${quote.priceUsd} USD`);
+  if (board.positions.length) lines.push(`${board.positions.length} open`);
+  return { mode: "PAPER", lines };
 }
 
 const GARDEN_GROW_MS = 6 * 60 * 60 * 1000;
