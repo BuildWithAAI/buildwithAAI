@@ -46,7 +46,8 @@ primary_region = "iad"
 [env]
   LUMEN_DATA = "/data/lumen.sqlite"
   LUMEN_PUBLIC_MODE = "true"
-  # SPEND_ENABLED, SALES_ENABLED, and MINT_ENABLED are unset on purpose.
-  # Each turns on when its credential is present in fly secrets, and stays off when that credential is missing.
+  # LUMEN_PUBLIC_MODE is the public site and the closed login. It is not a money switch.
+  # Live money needs LUMEN_MONEY_LIVE set to true, plus LUMEN_SPEND_ENABLED or LUMEN_SALES_ENABLED.
+  # Those secrets are not set in this file. A sales key does not turn spending on.
   LUMEN_TRUSTED_PROXY = "fly"
   PORT = "3000"

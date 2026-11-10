@@ -869,7 +869,7 @@ describe("live money", () => {
     process.env.STRIPE_ISSUING_KEY = "sk_test_issuing";
     expect(post("evt_auth", "issuing_authorization.request", { id: "iauth_1", amount: 400, merchant_data: { name: "PAPER SHOP INC" } }).approved).toBe(true);
     expect(post("evt_over", "issuing_authorization.request", { id: "iauth_2", amount: 900, merchant_data: { name: "PAPER SHOP INC" } }).approved).toBe(false);
-    expect(post("evt_tx", "issuing_transaction.created", { id: "ipi_1", amount: 400, created: Math.floor(at / 1000), merchant_data: { name: "PAPER SHOP INC" } }).ok).toBe(true);
+    expect(post("evt_tx", "issuing_transaction.created", { id: "ipi_1", type: "capture", amount: -400, created: Math.floor(at / 1000), merchant_data: { name: "PAPER SHOP INC" } }).ok).toBe(true);
     const purchase = new Ledger(db).list().find((row) => row.kind === "purchase" && row.status === "confirmed");
     expect(purchase?.providerTransactionId).toBe("ipi_1");
     expect(purchase?.amountCents).toBe(400);

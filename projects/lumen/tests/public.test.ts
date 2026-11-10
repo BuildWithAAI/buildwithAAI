@@ -90,7 +90,7 @@ describe("public mode", () => {
     expect(fly).toContain("[[http_service.checks]]");
     expect(fly).toContain("path = \"/healthz\"");
     expect(fly).toContain("LUMEN_PUBLIC_MODE = \"true\"");
-    expect(fly).not.toContain("LUMEN_MONEY_LIVE");
+    expect(fly).not.toMatch(/LUMEN_MONEY_LIVE\s*=/);
     expect(fly).toContain("LUMEN_TRUSTED_PROXY = \"fly\"");
     expect(fly).toContain("snapshot_retention = 5");
     expect(fly).toContain("scheduled_snapshots = true");

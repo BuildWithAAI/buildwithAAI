@@ -1,4 +1,4 @@
-import { bookPrivacyCharge } from "../../../../money/card";
+import { bookPrivacyReport } from "../../../../money/card";
 import { checkoutAuth } from "../../checkout/auth";
 import { getEngine } from "../../../../server/engine";
 
@@ -14,17 +14,10 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: "REPORT" }, { status: 400 });
   }
-  const transactionId = typeof body.transactionId === "string" ? body.transactionId.trim() : "";
-  const merchant = typeof body.merchant === "string" ? body.merchant.trim() : "";
-  const amountCents = body.amountCents;
-  if (!transactionId || !merchant || typeof amountCents !== "number" || !Number.isInteger(amountCents) || amountCents === 0) {
-    return Response.json({ error: "REPORT" }, { status: 400 });
-  }
-  const booked = bookPrivacyCharge(getEngine().db, {
-    transactionId,
-    merchant,
-    amountCents,
-    atMs: typeof body.atMs === "number" ? body.atMs : Date.now(),
-  });
-  return Response.json({ ok: booked.booked, matched: booked.matched });
+  const transactionId = typeof body.transactionId === "string" ? body.transactionId : "";
+  const merchant = typeof body.merchant === "string" ? body.merchant : "";
+  const amountCents = typeof body.amountCents === "number" ? body.amountCents : Number.NaN;
+  const booked = bookPrivacyReport(getEngine().db, { transactionId, merchant, amountCents }, Date.now());
+  if (!booked.ok) return Response.json({ error: booked.error }, { status: 400 });
+  return Response.json({ ok: true, atMs: booked.atMs });
 }

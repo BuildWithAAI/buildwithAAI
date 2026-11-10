@@ -81,10 +81,16 @@ export function decideAuthorization(db: DatabaseSync, merchant: string, amountCe
   return Number(changed.changes) === 1;
 }
 
-/** A reported issuer transaction is booked once. A matching expected spend is linked; an unmatched charge is still booked. */
-export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number; atMs: number; provider: string }): { booked: boolean; matched: boolean } {
-  if (!input.transactionId || !Number.isInteger(input.amountCents) || input.amountCents === 0) return { booked: false, matched: false };
-  if (input.amountCents < 0) {
+/**
+ * Stripe Issuing: `type` is `capture` or `refund`. Captures are negative amounts
+ * and refunds are positive. The kind follows `type`, not the sign.
+ * A refund does not consume an expected spend.
+ */
+export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number; atMs: number; provider: string; transactionType?: string }): { booked: boolean; matched: boolean } {
+  const kind = input.transactionType === "refund" ? "refund" : input.transactionType === "capture" ? "purchase" : null;
+  const cents = Math.abs(input.amountCents);
+  if (!input.transactionId || !kind || !Number.isInteger(input.amountCents) || cents <= 0) return { booked: false, matched: false };
+  if (kind === "refund") {
     const ledger = new Ledger(db);
     const key = `issuing-refund:${input.transactionId}`;
     if (!ledger.findByIdempotency(key)) {
@@ -92,7 +98,7 @@ export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionI
         id: `refund-${input.transactionId}`,
         atMs: input.atMs,
         kind: "refund",
-        amountCents: -input.amountCents,
+        amountCents: cents,
         status: "confirmed",
         provider: input.provider,
         providerTransactionId: input.transactionId,
@@ -107,7 +113,7 @@ export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionI
     intent_id: string; merchant: string; max_cents: number; expires_at: number; status: string;
   }[];
   const named = normalizeMerchant(input.merchant);
-  const hit = rows.find((row) => normalizeMerchant(row.merchant) === named && input.amountCents <= row.max_cents);
+  const hit = rows.find((row) => normalizeMerchant(row.merchant) === named && cents <= row.max_cents);
   const ledger = new Ledger(db);
   const key = hit ? `exec:${hit.intent_id}` : `issuing:${input.transactionId}`;
   if (!ledger.findByIdempotency(key)) {
@@ -115,7 +121,7 @@ export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionI
       id: hit ? `purchase-${hit.intent_id}` : `purchase-${input.transactionId}`,
       atMs: input.atMs,
       kind: "purchase",
-      amountCents: input.amountCents,
+      amountCents: cents,
       status: "confirmed",
       provider: input.provider,
       providerTransactionId: input.transactionId,
@@ -130,8 +136,18 @@ export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionI
   return { booked: true, matched: Boolean(hit) };
 }
 
+export const PRIVACY_MAX_CENTS = 100_000;
+
 export function bookPrivacyCharge(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number; atMs: number }): { booked: boolean; matched: boolean } {
-  return confirmIssuerTransaction(db, { ...input, provider: "privacy" });
+  return confirmIssuerTransaction(db, { ...input, provider: "privacy", transactionType: "capture" });
+}
+
+/** Privacy reports use the server clock. The caller cannot choose the time or exceed the amount cap. */
+export function bookPrivacyReport(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number }, now: number): { ok: true; atMs: number } | { ok: false; error: "REPORT" | "AMOUNT" } {
+  if (!input.transactionId.trim() || !input.merchant.trim()) return { ok: false, error: "REPORT" };
+  if (!Number.isInteger(input.amountCents) || input.amountCents < 1 || input.amountCents > PRIVACY_MAX_CENTS) return { ok: false, error: "AMOUNT" };
+  bookPrivacyCharge(db, { transactionId: input.transactionId.trim(), merchant: input.merchant.trim(), amountCents: input.amountCents, atMs: now });
+  return { ok: true, atMs: now };
 }
 
 export type IssuingActivity = { provider: string; providerTransactionId: string; amountCents: number; kind: string; merchant: string | null; atMs: number | null };

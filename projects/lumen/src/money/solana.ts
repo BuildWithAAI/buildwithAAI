@@ -230,9 +230,15 @@ export function verifySolPayment(db: DatabaseSync, orderId: string, signature: s
   }
   if (row.status !== "quoted") return { ok: false, reason: "MISSING" };
   const sentInside = proof?.txTime != null && proof.txTime >= row.created_at && proof.txTime <= row.expires_at;
-  if (row.expires_at < now && !sentInside) return { ok: false, reason: "EXPIRED" };
+  const landedLate = proof?.txTime != null && proof.txTime > row.expires_at;
+  if (row.expires_at < now && !sentInside && !landedLate) return { ok: false, reason: "EXPIRED" };
   const checked = verifySolTransaction(tx, { recipient: row.recipient, lamports: BigInt(row.lamports), reference: row.reference_key });
   if (!checked.ok) return checked;
+  if (landedLate) {
+    flagSolRefund(db, orderId, signature, "LATE", checked.paid, now);
+    db.prepare("UPDATE sol_orders SET status = 'refund_due', signature = ? WHERE id = ?").run(signature, orderId);
+    return { ok: false, reason: "REFUND" };
+  }
   const expected = BigInt(row.lamports);
   if (checked.paid > expected) flagSolRefund(db, orderId, signature, "OVERPAY", checked.paid - expected, now);
   db.prepare("UPDATE sol_orders SET status = 'paid', signature = ? WHERE id = ?").run(signature, orderId);

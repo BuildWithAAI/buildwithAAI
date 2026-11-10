@@ -111,7 +111,7 @@ describe("re-review 11", () => {
       id: "evt_issuing_refund",
       type: "issuing_transaction.created",
       livemode: true,
-      data: { object: { id: "ipi_refund", amount: -250, created: Math.floor(now / 1000), merchant_data: { name: "paper-shop" } } },
+      data: { object: { id: "ipi_refund", type: "refund", amount: 250, created: Math.floor(now / 1000), merchant_data: { name: "paper-shop" } } },
     });
     expect(handleStripeWebhook(db, payload, sign(payload, secret, Math.floor(now / 1000)), secret, now).ok).toBe(true);
     const rows = new Ledger(db).list();
@@ -135,7 +135,7 @@ describe("re-review 11", () => {
       body: JSON.stringify({ transactionId: "priv_x", merchant: "paper", amountCents: 100 }),
     }));
     expect(refused.status).toBe(403);
-    expect(readText(new URL("../src/app/api/privacy/charge/route.ts", import.meta.url), "utf8")).toContain("bookPrivacyCharge");
+    expect(readText(new URL("../src/app/api/privacy/charge/route.ts", import.meta.url), "utf8")).toContain("bookPrivacyReport");
     expect(readText(new URL("../docs/HOSTING_FLY.md", import.meta.url), "utf8")).toContain("/api/privacy/charge");
   });
 
@@ -176,7 +176,7 @@ describe("re-review 11", () => {
     const fly = readText(new URL("../fly.toml", import.meta.url), "utf8");
     expect(fly).toContain("path = \"/healthz\"");
     expect(fly).toContain("LUMEN_PUBLIC_MODE = \"true\"");
-    expect(fly).not.toContain("LUMEN_MONEY_LIVE");
+    expect(fly).not.toMatch(/LUMEN_MONEY_LIVE\s*=/);
     expect(fly).toContain("auto_stop_machines = \"off\"");
     const config = readText(new URL("../next.config.ts", import.meta.url), "utf8");
     expect(config).toContain("node_modules/typescript/**/*");

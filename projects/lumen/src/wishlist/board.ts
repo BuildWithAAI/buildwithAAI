@@ -39,10 +39,10 @@ export function publicWishLink(raw: string | null, env: Env = process.env): { hr
   } catch {
     return { href: null, text };
   }
-  if (url.protocol !== "https:" || url.username || url.password) return { href: null, text };
-  if (!vetResearchUrl(url.toString()).ok) return { href: null, text };
+  if (url.protocol !== "https:" || url.username || url.password) return { href: null, text: "link withheld" };
+  if (!vetResearchUrl(url.toString()).ok) return { href: null, text: "link withheld" };
   const hosts = (env.LUMEN_WISH_LINK_HOSTS ?? "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
-  if (!hosts.includes(url.hostname.toLowerCase())) return { href: null, text };
+  if (!hosts.includes(url.hostname.toLowerCase())) return { href: null, text: "link withheld" };
   return { href: `${url.origin}${url.pathname}`, text: url.hostname };
 }
 

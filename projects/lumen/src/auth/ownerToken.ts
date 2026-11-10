@@ -4,9 +4,11 @@ const WINDOW_MS = 60_000;
 const LIMIT = 8;
 const LOCK_MS = 15 * 60_000;
 const FAIL_LIMIT = 5;
+export const DISTINCT_BEARER_LIMIT = 20;
 const hits = new Map<string, number[]>();
 const failures = new Map<string, number[]>();
 const lockedUntil = new Map<string, number>();
+const distinctMisses = new Map<string, { keys: Set<string>; until: number }>();
 
 /** The lockout key is the whole token, not a shared prefix. */
 export function ownerTokenKey(token: string): string {
@@ -37,10 +39,26 @@ export function ownerTokenLocked(key: string, now: number): boolean {
   return (lockedUntil.get(key) ?? 0) > now;
 }
 
+/** Many different wrong tokens from one address are refused. The owner's own token is not locked by them. */
+export function noteDistinctBearerMiss(ip: string, key: string, now: number): void {
+  const current = distinctMisses.get(ip);
+  const fresh = !current || current.until <= now;
+  const keys = fresh ? new Set<string>() : current.keys;
+  keys.add(key);
+  distinctMisses.set(ip, { keys, until: now + LOCK_MS });
+}
+
+export function distinctBearerBlocked(ip: string, now: number): boolean {
+  const current = distinctMisses.get(ip);
+  if (!current || current.until <= now) return false;
+  return current.keys.size >= DISTINCT_BEARER_LIMIT;
+}
+
 export function resetOwnerTokens(): void {
   hits.clear();
   failures.clear();
   lockedUntil.clear();
+  distinctMisses.clear();
 }
 
 export function pruneOwnerTokens(now: number): void {

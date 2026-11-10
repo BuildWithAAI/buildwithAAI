@@ -47,9 +47,10 @@ function luhnOk(digits: string): boolean {
 }
 
 function looksLikePan(value: string): boolean {
-  const groups = value.match(/\d[\d\s.-]{11,30}\d/g) ?? [];
+  const normalized = value.normalize("NFKC");
+  const groups = normalized.match(/[0-9][0-9\s.\-_/]{11,40}[0-9]/g) ?? [];
   return groups.some((group) => {
-    const digits = group.replace(/[\s.-]/g, "");
+    const digits = group.replace(/[\s.\-_/]/g, "");
     return /^\d{13,19}$/.test(digits) && luhnOk(digits);
   });
 }

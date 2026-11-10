@@ -86,8 +86,8 @@ describe("keeper wishlist", () => {
     expect(html).not.toContain("<form");
     expect(html).not.toContain("<button");
     expect(html).not.toMatch(/checkout|donate/i);
-    expect(html).toContain("127.0.0.1/secret");
-    expect(html).not.toContain('href="https://127.0.0.1');
+    expect(html).toContain("link withheld");
+    expect(html).not.toContain("127.0.0.1");
     const actions = readFileSync(new URL("../src/app/actions.ts", import.meta.url), "utf8");
     const desk = actions.slice(actions.indexOf("export async function keeperListAction"), actions.indexOf("export async function wishAction"));
     expect(desk.indexOf("loginReachable")).toBeLessThan(desk.indexOf("keeperListAct("));

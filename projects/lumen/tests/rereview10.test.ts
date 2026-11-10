@@ -199,7 +199,7 @@ describe("re-review 10", () => {
     const unknownBody = JSON.stringify({ id: "evt_unknown", type: "issuing_authorization.request", livemode: true, data: { object: { id: "ia4", amount: 400, merchant_data: { name: "paper-shop" } } } });
     expect(handleStripeWebhook(unknown, unknownBody, sign(unknownBody, secret, Math.floor(now / 1000)), secret, now).approved).toBe(false);
     const booked = openDatabase();
-    const txBody = JSON.stringify({ id: "evt_tx", type: "issuing_transaction.created", livemode: true, data: { object: { id: "ipi_unmatched", amount: 250, created: Math.floor(now / 1000), merchant_data: { name: "paper-shop" } } } });
+    const txBody = JSON.stringify({ id: "evt_tx", type: "issuing_transaction.created", livemode: true, data: { object: { id: "ipi_unmatched", type: "capture", amount: -250, created: Math.floor(now / 1000), merchant_data: { name: "paper-shop" } } } });
     expect(handleStripeWebhook(booked, txBody, sign(txBody, secret, Math.floor(now / 1000)), secret, now).ok).toBe(true);
     expect(new Ledger(booked).list().some((row) => row.kind === "purchase" && row.providerTransactionId === "ipi_unmatched")).toBe(true);
     const privacy = bookPrivacyCharge(booked, { transactionId: "priv_1", merchant: "paper-shop", amountCents: 125, atMs: now });

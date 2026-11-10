@@ -75,10 +75,35 @@ export function questionsFor(idea: { title: string }): [string, string, string] 
   ];
 }
 
-const INSTRUCTION = /\b(?:ignore\s+(?:all\s+|any\s+)?(?:previous\s+|prior\s+)?instructions|disregard\s+(?:the\s+)?above|new\s+instructions\b|system prompt|you are now|propose_purchase|set\s+(?:your\s+)?emotion|<\s*script|purchase intent)\b/i;
+const INSTRUCTION = /\b(?:ignore\s*(?:all\s*|any\s*)?(?:previous\s*|prior\s*)?instructions|disregard\s*(?:the\s*)?above|new\s*instructions\b|system\s*prompt|you\s*are\s*now|propose_purchase|set\s*(?:your\s*)?emotion|<\s*script|purchase\s*intent)\b/i;
+
+const CONFUSABLE: Record<string, string> = {
+  "\u0430": "a", "\u0410": "a",
+  "\u0435": "e", "\u0415": "e",
+  "\u043e": "o", "\u041e": "o",
+  "\u0440": "p", "\u0420": "p",
+  "\u0441": "c", "\u0421": "c",
+  "\u0443": "y", "\u0423": "y",
+  "\u0445": "x", "\u0425": "x",
+  "\u0456": "i", "\u0406": "i",
+  "\u0455": "s",
+  "\u043a": "k", "\u041a": "k",
+  "\u043c": "m", "\u041c": "m",
+  "\u0442": "t", "\u0422": "t",
+  "\u0432": "b", "\u0412": "b",
+  "\u043d": "h", "\u041d": "h",
+  "\u0458": "j",
+};
+
+function foldConfusable(text: string): string {
+  let out = "";
+  for (const char of text) out += CONFUSABLE[char] ?? char;
+  return out;
+}
 
 export function scrubInstructions(text: string): string {
-  const clean = text.normalize("NFKC").replace(/\u00ad/g, "").replace(/[\u200b\u200c\u200d\ufeff\u2060]/g, " ").replace(/\s+/g, " ").trim();
+  const folded = foldConfusable(text.normalize("NFKD").replace(/\p{M}/gu, "").replace(/[\u00ad\u180e\u200b\u200c\u200d\u2060\u2062\ufeff]/g, ""));
+  const clean = folded.replace(/\s+/g, " ").trim();
   if (!clean || INSTRUCTION.test(clean)) return "";
   return clean.slice(0, 140);
 }

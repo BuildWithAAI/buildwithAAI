@@ -142,14 +142,16 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
   if (event.type === "issuing_transaction.created") {
     const name = merchantName(object);
     const merchant = mapDescriptor(name, [name], {}) ?? "";
+    const transactionType = typeof object.type === "string" ? object.type : "";
     const booked = confirmIssuerTransaction(db, {
       transactionId: String(object.id ?? ""),
       merchant,
       amountCents: numberField(object.amount),
       atMs: typeof object.created === "number" ? object.created * 1000 : nowMs,
       provider: "stripe_issuing",
+      transactionType,
     });
-    if (!booked.matched) {
+    if (transactionType === "capture" && !booked.matched) {
       notifier?.notify({
         kind: "issuer",
         title: "Issuer charge without an expected spend",
