@@ -11,7 +11,7 @@ const hits = new Map<string, number[]>();
 const failures = new Map<string, number[]>();
 const lockedUntil = new Map<string, number>();
 const distinctMisses = new Map<string, { keys: Set<string>; until: number }>();
-const prefix48Misses = new Map<string, { keys: Set<string>; until: number }>();
+const prefix48Misses = new Map<string, { keys: Set<string>; until: number; blockedAt: number }>();
 let prunedAt = 0;
 
 /** The lockout key is the whole token, not a shared prefix. */
@@ -80,7 +80,7 @@ export function ownerTokenLocked(key: string, now: number): boolean {
 export function noteDistinctBearerMiss(ip: string, key: string, now: number): void {
   const nets = bearerNets(ip);
   addDistinctMiss(distinctMisses, nets.prefix64, key, now);
-  addDistinctMiss(prefix48Misses, nets.prefix48, key, now);
+  addPrefix48Miss(nets.prefix48, key, now);
 }
 
 export function distinctBearerBlocked(ip: string, now: number): boolean {
@@ -129,6 +129,33 @@ function addDistinctMiss(map: Map<string, { keys: Set<string>; until: number }>,
   const keys = fresh ? new Set<string>() : current.keys;
   if (keys.size < DISTINCT_BEARER_LIMIT) keys.add(key);
   remember(map, bucket, { keys, until: now + LOCK_MS });
+}
+
+function addPrefix48Miss(bucket: string, key: string, now: number): void {
+  const current = prefix48Misses.get(bucket);
+  const fresh = !current || current.until <= now;
+  const keys = fresh ? new Set<string>() : current.keys;
+  if (keys.size < DISTINCT_BEARER_LIMIT) keys.add(key);
+  const blocked = keys.size >= DISTINCT_BEARER_LIMIT;
+  prefix48Misses.delete(bucket);
+  prefix48Misses.set(bucket, { keys, until: now + LOCK_MS, blockedAt: blocked ? now : 0 });
+  while (prefix48Misses.size > OWNER_TOKEN_MAP_CAP) {
+    let victim: string | null = null;
+    let rank = Infinity;
+    for (const [name, entry] of prefix48Misses) {
+      const live = entry.until > now && entry.keys.size >= DISTINCT_BEARER_LIMIT;
+      if (!live) {
+        victim = name;
+        break;
+      }
+      if (entry.blockedAt < rank) {
+        rank = entry.blockedAt;
+        victim = name;
+      }
+    }
+    if (!victim) break;
+    prefix48Misses.delete(victim);
+  }
 }
 
 function distinctBucketBlocked(map: Map<string, { keys: Set<string>; until: number }>, bucket: string, now: number): boolean {

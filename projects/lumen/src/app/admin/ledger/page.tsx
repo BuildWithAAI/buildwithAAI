@@ -38,11 +38,13 @@ export default async function LedgerPage() {
         <h2>P&amp;L from confirmed rows</h2>
         <table>
           <tbody>
-            <tr><th>Sales</th><td>{money(view.salesCents)}</td></tr>
+            <tr><th>Sales, gross</th><td>{money(view.salesCents)}</td></tr>
+            <tr><th>Net sales</th><td>{money(view.netSalesCents)}</td></tr>
             <tr><th>Purchases</th><td>{money(view.purchaseCents)}</td></tr>
             <tr><th>Fees</th><td>{money(view.feeCents)}</td></tr>
             <tr><th>COGS estimates (not real)</th><td className="warn">{money(view.cogsEstimateCents)}</td></tr>
-            <tr><th>Refunds</th><td>{money(view.refundCents)}</td></tr>
+            <tr><th>Card refunds received</th><td>{money(view.cardRefundCents)}</td></tr>
+            <tr><th>Buyer refunds paid</th><td>{money(view.buyerRefundCents)}</td></tr>
             <tr><th>Payouts</th><td>{money(view.payoutCents)}</td></tr>
             <tr><th>Disputes (signed)</th><td>{money(view.disputeCents)}</td></tr>
           </tbody>

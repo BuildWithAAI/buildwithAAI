@@ -26,6 +26,7 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # actions/setup-node v4.4.0. The tag v4.4.0 is commit 49933ea5288caeca8642d1e84afbd3f7d6820020.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"

@@ -268,6 +268,9 @@ export type MoneyView = {
   feeCents: number;
   cogsEstimateCents: number;
   refundCents: number;
+  cardRefundCents: number;
+  buyerRefundCents: number;
+  netSalesCents: number;
   reversalCents: number;
   payoutCents: number;
   disputeCents: number;
@@ -282,6 +285,9 @@ export function moneyView(rows: LedgerRow[]): MoneyView {
     feeCents: 0,
     cogsEstimateCents: 0,
     refundCents: 0,
+    cardRefundCents: 0,
+    buyerRefundCents: 0,
+    netSalesCents: 0,
     reversalCents: 0,
     payoutCents: 0,
     disputeCents: 0,
@@ -296,7 +302,12 @@ export function moneyView(rows: LedgerRow[]): MoneyView {
       if (row.kind === "sale") view.salesCents += Math.abs(row.amountCents);
       if (row.kind === "purchase") view.purchaseCents += Math.abs(row.amountCents);
       if (row.kind === "fee") view.feeCents += Math.abs(row.amountCents);
-      if (row.kind === "refund") view.refundCents += Math.abs(row.amountCents);
+      if (row.kind === "refund") {
+        const cents = Math.abs(row.amountCents);
+        view.refundCents += cents;
+        if (row.provider === "stripe_issuing") view.cardRefundCents += cents;
+        else view.buyerRefundCents += cents;
+      }
       if (row.kind === "reversal") view.reversalCents += Math.abs(row.amountCents);
       if (row.kind === "payout") view.payoutCents += Math.abs(row.amountCents);
       if (row.kind === "dispute") view.disputeCents += row.amountCents;
@@ -305,5 +316,6 @@ export function moneyView(rows: LedgerRow[]): MoneyView {
       if (row.kind === "fee" && row.note.startsWith("COGS estimate")) view.cogsEstimateCents += Math.abs(row.amountCents);
     }
   }
+  view.netSalesCents = view.salesCents - view.buyerRefundCents;
   return view;
 }

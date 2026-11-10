@@ -25,6 +25,7 @@ export function rejectPan(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (PAN_KEY.test(key)) return true;
+    if (typeof item === "number" && Number.isSafeInteger(item) && looksLikePan(String(item))) return true;
     if (typeof item === "string" && looksLikePan(item)) return true;
     if (item && typeof item === "object" && rejectPan(item)) return true;
   }
@@ -47,10 +48,18 @@ function luhnOk(digits: string): boolean {
   return sum % 10 === 0;
 }
 
-const PAN_SEPARATORS = /[\s.,·:|_/–—\-]/g;
+const PAN_SEPARATORS = /[\s.,·:|_/–—\-\u200b]/g;
+
+function foldIndicDigits(value: string): string {
+  return value.replace(/[\u0660-\u0669\u06f0-\u06f9]/g, (char) => {
+    const code = char.charCodeAt(0);
+    const base = code >= 0x06f0 ? 0x06f0 : 0x0660;
+    return String.fromCharCode(48 + code - base);
+  });
+}
 
 function looksLikePan(value: string): boolean {
-  const normalized = value.normalize("NFKC").trim();
+  const normalized = foldIndicDigits(value.normalize("NFKC")).trim();
   if (AMAZON_ORDER.test(normalized)) return false;
   const joined = normalized.replace(PAN_SEPARATORS, "");
   const runs = joined.match(/\d{13,}/g) ?? [];

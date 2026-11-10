@@ -103,13 +103,13 @@ function foldConfusable(text: string): string {
   return out;
 }
 
-const HIDDEN = /[\u00ad\u180e\u200b\u200c\u200d\u2060\u2062\u2063\u2064\u2066\u2069\u202e\ufeff\u{E0000}-\u{E007F}]/gu;
+const PROBE_HIDDEN = /[\u00ad\u180e\u200b\u200c\u200d\u200e\u200f\u061c\u115f\u1160\u2060\u2062\u2063\u2064\u2066\u2067\u2068\u2069\u202e\u3164\ufeff\u{E0000}-\u{E007F}]/gu;
 
-/** The check uses a folded copy. Accents and other scripts stay. Hidden controls do not. */
+/** The check uses a folded copy. The returned note keeps emoji joins, flags, and other scripts. A right-to-left override is removed. */
 export function scrubInstructions(text: string): string {
   const probe = instructionProbe(text);
   if (!probe || INSTRUCTION.test(probe)) return "";
-  const visible = text.replace(HIDDEN, "");
+  const visible = text.replace(/\u202e/g, "");
   return visible.length > 140 ? visible.slice(0, 140) : visible;
 }
 
@@ -119,9 +119,9 @@ function decodeTags(text: string): string {
 
 function instructionProbe(text: string): string {
   const folded = foldConfusable(
-    decodeTags(text).normalize("NFKD").replace(/\p{M}/gu, "").replace(HIDDEN, ""),
+    decodeTags(text).replace(PROBE_HIDDEN, "").normalize("NFKD").replace(/\p{M}/gu, "").replace(PROBE_HIDDEN, ""),
   );
-  const joined = folded.replace(/[_\-.]/g, " ");
+  const joined = folded.replace(/[_\-./+~,]/g, " ");
   const collapsed = joined.replace(/(?:^|\s)(?:\p{L}\s+){3,}\p{L}(?=\s|$)/gu, (match) => {
     const lead = /^\s/.test(match) ? match[0] : "";
     return lead + match.replace(/\s+/g, "");

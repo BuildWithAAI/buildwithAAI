@@ -62,4 +62,4 @@ Zoora publishes a listing on its own. The keeper can hide it or unpublish it aft
 
 The shop is inbound money only. It does not authorize a card issued to Zoora, and it does not call the purchase policy. A listing change is an append-only ledger note with a zero amount. A paid webhook appends a confirmed sale. A refund or an undelivered service appends a refund. Disputes keep the existing dispute path. Nothing in the shop is allowed to emit `propose_purchase`.
 
-The public books page shows confirmed sales, purchases, refunds, payouts, and disputes. It does not include unconfirmed rows.
+The public books page shows gross sales, net sales, card refunds received, buyer refunds paid, purchases, payouts, and disputes. It does not include unconfirmed rows.

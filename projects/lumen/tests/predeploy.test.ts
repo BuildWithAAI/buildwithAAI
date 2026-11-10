@@ -145,6 +145,10 @@ describe("pre-deploy advisory", () => {
     for (let i = 0; i < OWNER_TOKEN_MAP_CAP; i += 1) noteDistinctBearerMiss(`2001:db8:aaaa:${(i + 2).toString(16)}::1`, ownerTokenKey(`rot-${i}`), now);
     expect(distinctBearerBlocked("2001:db8:aaaa:eeee::1", now)).toBe(true);
     expect(distinctBearerBlocked("2001:db9:1:1::1", now)).toBe(false);
+    resetOwnerTokens();
+    for (let i = 0; i < DISTINCT_BEARER_LIMIT; i += 1) noteDistinctBearerMiss("2001:db8:1111:1::1", ownerTokenKey(`keep-${i}`), now);
+    for (let i = 0; i < OWNER_TOKEN_MAP_CAP; i += 1) noteDistinctBearerMiss(`2001:${(i + 16).toString(16)}:1:1::1`, ownerTokenKey(`flood-${i}`), now);
+    expect(distinctBearerBlocked("2001:db8:1111:9::1", now)).toBe(true);
     expect(ownerTokenLocked(owner, now)).toBe(false);
   });
 

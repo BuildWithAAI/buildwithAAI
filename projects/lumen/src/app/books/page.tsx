@@ -16,9 +16,11 @@ export default function BooksPage() {
       <p className="muted">Only rows a provider confirmed. Unconfirmed and mock rows are not included.</p>
       <table>
         <tbody>
-          <tr><th>Sales</th><td>{money(view.salesCents)}</td></tr>
+          <tr><th>Sales, gross</th><td>{money(view.salesCents)}</td></tr>
+          <tr><th>Net sales</th><td>{money(view.netSalesCents)}</td></tr>
           <tr><th>Purchases</th><td>{money(view.purchaseCents)}</td></tr>
-          <tr><th>Refunds</th><td>{money(view.refundCents)}</td></tr>
+          <tr><th>Card refunds received</th><td>{money(view.cardRefundCents)}</td></tr>
+          <tr><th>Buyer refunds paid</th><td>{money(view.buyerRefundCents)}</td></tr>
           <tr><th>Payouts</th><td>{money(view.payoutCents)}</td></tr>
           <tr><th>Disputes</th><td>{money(view.disputeCents)}</td></tr>
         </tbody>
