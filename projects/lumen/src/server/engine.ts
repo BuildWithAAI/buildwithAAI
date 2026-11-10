@@ -9,7 +9,7 @@ import { blankProduct, initialState, labelsOf, tick, type TickResult } from "../
 import type { BrainState, PurchaseIntent, Wish } from "../brain/types";
 import { allowLogin, createSession, credentialsMatch, OWNER_COOKIE, ownerConfigured, readCookie, sessionValid } from "../auth/owner";
 import { allowGuestNote, allowRate, flag, kvGet, kvSet, openDatabase, setFlag } from "../db/db";
-import { executeIntent, listUnknownClaims, resolveUnknownClaim, type ChargeProof } from "../money/execute";
+import { executeIntent, listUnknownClaims, resolveUnknownClaim, sweepStuckPurchases, type ChargeProof } from "../money/execute";
 import { publishJarvis } from "../integrations/jarvis";
 import { buildOwnerNotifier, deliverDueAlerts, deskNotifier, listAlerts, type OwnerAlert } from "../money/notify";
 import { createIssuer, type CardIssuer } from "../money/issuers";
@@ -62,7 +62,7 @@ export function createEngine(env: Env, file?: string) {
     authed: (cookieHeader: string | null) => sessionValid(db, readCookie(cookieHeader, OWNER_COOKIE), Date.now()),
     ownerChat: (text: string) => ownerChat(db, env, text),
     wishlistAct: (id: string, action: "approve" | "decline" | "ask") => wishlistAct(db, env, issuer, id, action),
-    setControl: (key: "kill" | "spend", value: boolean) => setControl(db, key, value),
+    setControl: (key: "kill" | "spend" | "trading_kill" | "trading_clear", value: boolean) => setControl(db, key, value),
     reactArt: (id: string, kind: "like" | "favorite" | "pass") => reactArt(db, id, kind),
     checkout: (creationId: string, idempotencyKey: string, origin: string, ip: string) => checkout(db, env, creationId, idempotencyKey, origin, ip),
     refund: (chargeId: string, idempotencyKey: string) => refund(db, env, chargeId, idempotencyKey),
@@ -112,7 +112,7 @@ export function createEngine(env: Env, file?: string) {
       return editOwnerGoal(db, id, text, now);
     },
     setShopCap: (cents: number) => setPriceCap(db, cents),
-    shopCheckout: (id: string, note: string) => shopCheckout(db, env, id, note, Date.now()),
+    shopCheckout: (id: string, note: string, ip = "unknown") => shopCheckout(db, env, id, note, Date.now(), ip),
     telegramBoard: () => ({
       mock: !(env.LUMEN_TELEGRAM_BOT_TOKEN && env.LUMEN_TELEGRAM_OWNER_CHAT_ID),
       thoughts: db.prepare("SELECT text, at_ms FROM telegram_outbox WHERE status IN ('mock', 'sent') ORDER BY id DESC LIMIT 8").all() as { text: string; at_ms: number }[],
@@ -196,6 +196,7 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
 }
 
 async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: number): Promise<TickResult> {
+  sweepStuckPurchases(db, now);
   const parsed = rulesOf(env);
   const state = loadState(db);
   const sky = skyAt(skyInstant(env, now), env);
@@ -515,7 +516,18 @@ function wishToIntent(wish: Wish): PurchaseIntent {
   };
 }
 
-function setControl(db: DatabaseSync, key: "kill" | "spend", value: boolean) {
+function setControl(db: DatabaseSync, key: "kill" | "spend" | "trading_kill" | "trading_clear", value: boolean) {
+  const now = Date.now();
+  if (key === "trading_clear") {
+    setFlag(db, "trading_unknown", "0");
+    db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'trading_unknown_clear', ?)").run(now, "owner cleared the trading pause");
+    return { ok: true, kill: flag(db, "kill") === "1", spend: flag(db, "spend") === "1" };
+  }
+  if (key === "trading_kill") {
+    setFlag(db, "trading_kill", value ? "1" : "0");
+    db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'trading_kill', ?)").run(now, value ? "on" : "off");
+    return { ok: true, kill: flag(db, "kill") === "1", spend: flag(db, "spend") === "1" };
+  }
   setFlag(db, key, value ? "1" : "0");
   return { ok: true, kill: flag(db, "kill") === "1", spend: flag(db, "spend") === "1" };
 }
@@ -750,6 +762,8 @@ function snapshot(db: DatabaseSync, env: Env) {
       spendOpen: spend.open,
       spendReason: spend.reason,
       kill,
+      tradingKill: flag(db, "trading_kill") === "1",
+      tradingUnknown: flag(db, "trading_unknown") === "1",
       rulesOk: parsed.ok,
       ruleErrors: parsed.ok ? [] : parsed.errors,
       reconciliationAlert: flag(db, "reconciliation_alert") === "1",

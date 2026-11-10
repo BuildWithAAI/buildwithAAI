@@ -95,13 +95,17 @@ export function solanaPayUrl(input: { recipient: string; lamports: bigint; refer
 }
 
 export async function fetchSolUsd(url: string, fetchImpl: typeof fetch = fetch): Promise<number | null> {
-  const vetted = vetResearchUrl(url);
-  if (!vetted.ok) return null;
-  const response = await fetchImpl(url);
+  if (!url.startsWith("https://") || !vetResearchUrl(url).ok) return null;
+  let response: Response;
+  try {
+    response = await fetchImpl(url, { signal: AbortSignal.timeout(6000) });
+  } catch {
+    return null;
+  }
   if (!response.ok) return null;
   const json = (await response.json()) as { usd?: unknown; solana?: { usd?: unknown } };
   const raw = typeof json.usd === "number" ? json.usd : json.solana?.usd;
-  if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) return null;
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 1 || raw > 100_000) return null;
   return raw;
 }
 
@@ -112,7 +116,7 @@ export function accountKeys(tx: SolTx): string[] {
   });
 }
 
-export function verifySolTransaction(tx: SolTx | null, expect: { recipient: string; lamports: bigint; reference: string }): { ok: true } | { ok: false; reason: string } {
+export function verifySolTransaction(tx: SolTx | null, expect: { recipient: string; lamports: bigint; reference: string }): { ok: true; paid: bigint } | { ok: false; reason: string } {
   if (!tx) return { ok: false, reason: "UNFINALIZED" };
   if (tx.meta?.err) return { ok: false, reason: "FAILED" };
   const keys = accountKeys(tx);
@@ -122,8 +126,9 @@ export function verifySolTransaction(tx: SolTx | null, expect: { recipient: stri
   const before = tx.meta?.preBalances?.[index];
   const after = tx.meta?.postBalances?.[index];
   if (typeof before !== "number" || typeof after !== "number") return { ok: false, reason: "RECIPIENT" };
-  if (BigInt(after) - BigInt(before) < expect.lamports) return { ok: false, reason: "UNDERPAID" };
-  return { ok: true };
+  const paid = BigInt(after) - BigInt(before);
+  if (paid < expect.lamports) return { ok: false, reason: "UNDERPAID" };
+  return { ok: true, paid };
 }
 
 export async function quoteSolOrder(db: DatabaseSync, env: Env, input: { kind: "shop" | "nft"; itemId: string; title: string; usdCents: number }, now: number, fetchImpl: typeof fetch = fetch): Promise<{ ok: true; id: string; url: string; lamports: string; expiresAt: number } | { ok: false; reason: string }> {
@@ -162,8 +167,10 @@ export function readSolOrder(db: DatabaseSync, id: string): { id: string; title:
 }
 
 export async function fetchFinalized(url: string, signature: string, fetchImpl: typeof fetch = fetch): Promise<SolTx | null> {
-  if (!vetResearchUrl(url).ok) return null;
-  const response = await fetchImpl(url, {
+  if (!url.startsWith("https://") || !vetResearchUrl(url).ok) return null;
+  let response: Response;
+  try {
+    response = await fetchImpl(url, { signal: AbortSignal.timeout(6000),
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -173,22 +180,41 @@ export async function fetchFinalized(url: string, signature: string, fetchImpl: 
       params: [signature, { commitment: "finalized", encoding: "json", maxSupportedTransactionVersion: 0 }],
     }),
   });
+  } catch {
+    return null;
+  }
   if (!response.ok) return null;
   const json = (await response.json()) as { result?: SolTx | null };
   return json.result ?? null;
 }
 
-export function verifySolPayment(db: DatabaseSync, orderId: string, signature: string, tx: SolTx | null, now: number): { ok: true; token: string | null } | { ok: false; reason: string } {
+function flagSolRefund(db: DatabaseSync, orderId: string, signature: string, reason: string, lamports: bigint, now: number): void {
+  db.prepare("INSERT INTO sol_refund_flags(order_id, signature, reason, lamports, created_at) VALUES(?, ?, ?, ?, ?)").run(orderId, signature, reason, lamports.toString(), now);
+}
+
+export function verifySolPayment(db: DatabaseSync, orderId: string, signature: string, tx: SolTx | null, now: number, proof?: { txTime?: number }): { ok: true; token: string | null } | { ok: false; reason: string } {
   if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) return { ok: false, reason: "SIGNATURE" };
   const used = db.prepare("SELECT id FROM sol_orders WHERE signature = ?").get(signature) as { id: string } | undefined;
   if (used) return { ok: false, reason: "REUSED" };
-  const row = db.prepare("SELECT id, item_kind, item_id, title, usd_cents, lamports, recipient, reference_key, status, expires_at FROM sol_orders WHERE id = ?").get(orderId) as {
-    id: string; item_kind: string; item_id: string; title: string; usd_cents: number; lamports: string; recipient: string; reference_key: string; status: string; expires_at: number;
+  const flagged = db.prepare("SELECT id FROM sol_refund_flags WHERE signature = ?").get(signature) as { id: number } | undefined;
+  if (flagged) return { ok: false, reason: "REUSED" };
+  const row = db.prepare("SELECT id, item_kind, item_id, title, usd_cents, lamports, recipient, reference_key, status, expires_at, created_at FROM sol_orders WHERE id = ?").get(orderId) as {
+    id: string; item_kind: string; item_id: string; title: string; usd_cents: number; lamports: string; recipient: string; reference_key: string; status: string; expires_at: number; created_at: number;
   } | undefined;
-  if (!row || row.status !== "quoted") return { ok: false, reason: "MISSING" };
-  if (row.expires_at < now) return { ok: false, reason: "EXPIRED" };
+  if (!row) return { ok: false, reason: "MISSING" };
+  if (row.status === "paid") {
+    const checked = verifySolTransaction(tx, { recipient: row.recipient, lamports: 1n, reference: row.reference_key });
+    const extra = checked.ok ? checked.paid : 0n;
+    flagSolRefund(db, orderId, signature, "SECOND", extra, now);
+    return { ok: false, reason: "SECOND" };
+  }
+  if (row.status !== "quoted") return { ok: false, reason: "MISSING" };
+  const sentInside = proof?.txTime != null && proof.txTime >= row.created_at && proof.txTime <= row.expires_at;
+  if (row.expires_at < now && !sentInside) return { ok: false, reason: "EXPIRED" };
   const checked = verifySolTransaction(tx, { recipient: row.recipient, lamports: BigInt(row.lamports), reference: row.reference_key });
   if (!checked.ok) return checked;
+  const expected = BigInt(row.lamports);
+  if (checked.paid > expected) flagSolRefund(db, orderId, signature, "OVERPAY", checked.paid - expected, now);
   db.prepare("UPDATE sol_orders SET status = 'paid', signature = ? WHERE id = ?").run(signature, orderId);
   new Ledger(db).append({
     id: `sol-${orderId}`,

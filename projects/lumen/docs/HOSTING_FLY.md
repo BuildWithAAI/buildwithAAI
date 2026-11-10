@@ -16,7 +16,7 @@ Prices below are from that pricing page as of November 2026, for a machine that 
 
 A dedicated IPv4 is $2/month. Do not allocate one. Outbound traffic is $0.02/GB in North America, so a quiet site stays near the estimate. A 31-day month is billed a little higher because machines are billed by the second. Check the dashboard estimate before you leave the app running.
 
-`projects/lumen/fly.toml` already sets the machine size, `iad`, `auto_stop_machines = "off"`, `min_machines_running = 1`, the 1GB volume mount, `LUMEN_DATA=/data/lumen.sqlite`, and `LUMEN_PUBLIC_MODE=true`. Spending, sales, and minting are not forced off. They turn on when the matching secret is set. The brain tick starts when the Node process starts (`src/instrumentation.ts`), not when a visitor connects, so the world keeps moving on an empty island.
+`projects/lumen/fly.toml` already sets the machine size, `iad`, `auto_stop_machines = "off"`, `min_machines_running = 1`, the 1GB volume mount, `LUMEN_DATA=/data/lumen.sqlite`, and `LUMEN_PUBLIC_MODE=true`. Public mode keeps spending, live sales, and minting off. Spending also needs `LUMEN_SPEND_ENABLED=true` and an issuing key that is not the sales key. Live sales also need `LUMEN_SALES_ENABLED=true`. The brain tick starts when the Node process starts (`src/instrumentation.ts`), not when a visitor connects, so the world keeps moving on an empty island.
 
 A local production `npm start`, after `/`, `/world`, and `/build`, and after further ticks with no new requests, measured 187,240 kB RSS (about 183 MiB) for the `next-server` process. That fits in 512MB, which also has to hold the guest operating system. The machine size stays 512MB.
 
@@ -107,9 +107,9 @@ Set secrets in PowerShell. They are not written to `fly.toml` or git. Set only t
 
 - `OWNER_ACCESS_TOKEN` or `OWNER_PASSWORD_HASH`, plus `OWNER_SESSION_SECRET`
 - `LUMEN_OWNER_NAME` if you want a name other than keeper
-- `STRIPE_SECRET_KEY` (`sk_live_`) and `STRIPE_WEBHOOK_SECRET` turn on shop checkout.
-- `LUMEN_CARD_ISSUER=stripe_issuing` plus that Stripe key, or `PRIVACY_API_KEY`, turns on card spending. The card's own limit is the cap.
-- `MINT_SIGNER_URL` turns on minting. Do not put the mint private key here. The signer process holds it.
+- `STRIPE_SECRET_KEY` (`sk_live_`), `STRIPE_WEBHOOK_SECRET`, and `LUMEN_SALES_ENABLED=true` turn on shop checkout. The keys alone do not.
+- `LUMEN_SPEND_ENABLED=true` plus `LUMEN_CARD_ISSUER=stripe_issuing` and `STRIPE_ISSUING_KEY`, or `PRIVACY_API_KEY`, turns on card spending. Reusing the sales key does not. The card's own limit is the cap.
+- `MINT_SIGNER_URL` and `LUMEN_MINT_SIGNER_SECRET` turn on minting. Do not put the mint private key here. The signer process holds it and must reject a caller that does not present `x-lumen-signature`. `LUMEN_MINT_NETWORK=devnet` is off unless the owner sets that exact value for their own testing.
 
 Put the values in a file on your machine, not in this repo. `secrets.env` is only an example name:
 
@@ -117,7 +117,7 @@ Put the values in a file on your machine, not in this repo. `secrets.env` is onl
 fly secrets import -a lumen-tidepool < secrets.env
 ```
 
-`fly secrets import` stages them for the next deploy. Do not commit `secrets.env`.
+`fly secrets import` stages them for the next deploy. Do not commit `secrets.env`. Delete `secrets.env` from the owner machine after the import succeeds.
 
 ## Deploy one machine
 
@@ -140,23 +140,13 @@ Open `https://lumen-tidepool.fly.dev/build` and `https://lumen-tidepool.fly.dev/
 
 The login form is not on the public site. A burst of guesses from other addresses cannot lock the owner out. Each address has its own slow backoff, and there is no shared counter.
 
-Reach the desk on the private network, then open `/admin/login`.
-
-Fly proxy, from your own machine:
+Reach the desk with Fly's proxy, from your own machine:
 
 ```powershell
 fly proxy 3000:3000 -a lumen-tidepool
 ```
 
-Then open `http://127.0.0.1:3000/admin/login`.
-
-WireGuard, if you want the private network without a proxy:
-
-```powershell
-fly wireguard create personal iad zoora-desk
-```
-
-Import the config into WireGuard, connect, and open `http://lumen-tidepool.internal:3000/admin/login`. The `.internal` name is served. `world.zoora.ai` and `lumen-tidepool.fly.dev` are not.
+Then open `http://127.0.0.1:3000/admin/login`. That connection has no `Fly-Client-IP` header, so the login form is served. `world.zoora.ai` and `lumen-tidepool.fly.dev` are the public edge. They set `Fly-Client-IP`, and `/admin/login` stays closed there. Do not open the desk through the private WireGuard hostname.
 
 ## Custom domain world.zoora.ai
 

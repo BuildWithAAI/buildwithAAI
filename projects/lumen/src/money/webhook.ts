@@ -3,7 +3,9 @@ import type { DatabaseSync } from "node:sqlite";
 import { Ledger } from "./ledger";
 import type { OwnerNotifier } from "./notify";
 import { deliverShopSale, refundShopCharge } from "../shop/store";
-import { confirmIssuerTransaction, decideAuthorization, mapDescriptor } from "./card";
+import { cardCredentials, confirmIssuerTransaction, decideAuthorization, mapDescriptor } from "./card";
+import { killSwitchOn, parseMoneyRules, spendAllowed } from "./rules";
+import { flag } from "../db/db";
 import { parseStripeEvent, verifyStripeSignature, type StripeEvent } from "./stripe";
 
 export type WebhookResult = { ok: true; duplicate: boolean; approved?: boolean } | { ok: false; status: number; error: string };
@@ -127,7 +129,15 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
   if (event.type === "issuing_authorization.request") {
     const name = merchantName(object);
     const merchant = mapDescriptor(name, [name], {}) ?? name;
-    return decideAuthorization(db, merchant, numberField(object.amount), nowMs);
+    const pending = object.pending_request as { amount?: number } | undefined;
+    const amount = typeof pending?.amount === "number" ? pending.amount : numberField(object.amount);
+    const killed = killSwitchOn(process.env, flag(db, "kill") === "1");
+    const rulesOk = parseMoneyRules(process.env).ok;
+    const unknown = Number((db.prepare("SELECT COUNT(*) AS n FROM purchase_claims WHERE state = 'unknown'").get() as { n: number }).n) > 0;
+    const spendFlag = flag(db, "spend", "");
+    const adminSpend = spendFlag === "0" ? false : spendFlag === "1" ? true : cardCredentials(process.env);
+    const spend = spendAllowed(process.env, rulesOk, killed, adminSpend);
+    return decideAuthorization(db, merchant, amount, nowMs, { killed, spendOpen: spend.open, unknown });
   }
   if (event.type === "issuing_transaction.created") {
     const name = merchantName(object);
@@ -139,11 +149,11 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
       atMs: typeof object.created === "number" ? object.created * 1000 : nowMs,
       provider: "stripe_issuing",
     });
-    if (!booked.booked) {
+    if (!booked.matched) {
       notifier?.notify({
         kind: "issuer",
         title: "Issuer charge without an expected spend",
-        detail: `${String(object.id ?? "")} at ${name || "an unmapped descriptor"} was not booked.`,
+        detail: `${String(object.id ?? "")} at ${name || "an unmapped descriptor"} was booked without a matching expected spend.`,
       });
     }
   }

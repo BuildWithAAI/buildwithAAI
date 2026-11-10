@@ -15,9 +15,9 @@ export default function FloorPage() {
   const board = tape(getEngine().db);
   return (
     <div>
-      <p className="kicker">PAPER</p>
+      <p className="kicker">{board.mode}</p>
       <h1>Zoora's trading floor</h1>
-      <p className="muted">PAPER. These figures use stored public quotes. A missing quote is not a price. Nothing here is advice, and nothing here is a live order unless the owner has turned live trading on outside this page.</p>
+      <p className="muted">{board.mode === "LIVE" ? "LIVE and paper books stay separate." : "PAPER."} These figures use stored public quotes. A missing quote is not a price. Nothing here is advice.</p>
       <section className="card">
         <h2>Quotes</h2>
         {board.quotes.length === 0 ? <p>No public quote yet.</p> : null}
@@ -33,7 +33,8 @@ export default function FloorPage() {
         <ul className="feed">
           {board.positions.map((row) => <li key={row.symbol}>{row.symbol} · {money(row.usdCents)} · {sol(row.solMicro)}</li>)}
         </ul>
-        <p>Closed P&L {money(board.pnl.usdCents)} · {sol(board.pnl.solMicro)}</p>
+        <p>Paper P&L {money(board.pnl.paperUsdCents)} · {sol(board.pnl.paperSolMicro)}</p>
+        <p>Live P&L {money(board.pnl.liveUsdCents)} · {sol(board.pnl.liveSolMicro)}</p>
       </section>
       <section className="card" style={{ marginTop: "1rem" }}>
         <h2>Theses</h2>

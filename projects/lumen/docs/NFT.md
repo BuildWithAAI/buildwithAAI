@@ -22,7 +22,7 @@ Royalties are enforced only where the buyer and the marketplace honor the plugin
 
 ## Signer
 
-Minting is a POST to the owner's signer process. The body is `{ "instruction": "mint_one", "network": "mainnet", "name", "uri" }`. The signer holds the key, signs that instruction only, and enforces a per-day cap. This repository does not contain that key and does not log it.
+Minting is a POST to the owner's signer process. The body is `{ "instruction": "mint_one", "network": "mainnet", "name", "uri" }`. The signer holds the key, signs that instruction only, and enforces a per-day cap. It must authenticate the caller: the request includes `x-lumen-signature`, an HMAC-SHA256 of the body using `LUMEN_MINT_SIGNER_SECRET`, and a missing signature is refused. Network stays `mainnet` unless the owner sets `LUMEN_MINT_NETWORK=devnet` for their own testing. This repository does not contain that key and does not log it.
 
 ## Legal and tax flags
 

@@ -15,7 +15,7 @@ export default async function LedgerPage() {
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
   const authed = getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`);
   if (!authed || !ownerRouteOpen("/admin/ledger", authed)) {
-    if (!loginReachable((await headers()).get("host"))) notFound();
+    if (!loginReachable((await headers()).get("fly-client-ip"))) notFound();
     redirect("/admin/login");
   }
   const snap = getEngine().snapshot();

@@ -278,7 +278,10 @@ export function moneyView(rows: LedgerRow[]): MoneyView {
     payoutCents: 0,
     disputeCents: 0,
   };
+  const confirmedRefunds = new Set(rows.filter((row) => row.kind === "refund" && row.status === "confirmed" && row.chargeId).map((row) => row.chargeId));
   for (const row of rows) {
+    const stale = row.kind === "refund" && row.status === "unconfirmed" && row.chargeId && confirmedRefunds.has(row.chargeId) && row.note.includes("without a refund id");
+    if (stale) continue;
     const signed = signedAmount(row);
     if (row.status === "confirmed") {
       view.confirmedCents += signed;

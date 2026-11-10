@@ -25,10 +25,16 @@ export function rejectPan(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (PAN_KEY.test(key)) return true;
-    if (typeof item === "string" && PAN_VALUE.test(item)) return true;
+    if (typeof item === "string" && looksLikePan(item)) return true;
     if (item && typeof item === "object" && rejectPan(item)) return true;
   }
   return false;
+}
+
+function looksLikePan(value: string): boolean {
+  if (PAN_VALUE.test(value)) return true;
+  const digits = value.replace(/[\s-]/g, "");
+  return /^\d{13,19}$/.test(digits);
 }
 
 export function enqueueCheckout(db: DatabaseSync, env: Env, intent: PurchaseIntent, now: number): { ok: true; id: string } | { ok: false; reason: string } {
@@ -89,6 +95,10 @@ export function reportCheckout(db: DatabaseSync, input: { id: string; claimToken
   }
   const amount = input.amountCents;
   if (!Number.isInteger(amount) || amount == null || amount <= 0) return { ok: false, reason: "AMOUNT" };
+  if (amount > row.max_cents) {
+    deskNotifier(db).notify({ kind: "issuer", title: "Checkout report over the claim", detail: `${row.intent_id} reported ${amount} cents against a ${row.max_cents} cent claim.` });
+    return { ok: false, reason: "OVER_CAP" };
+  }
   if (!input.orderNumber || !input.merchant || !input.receipt) return { ok: false, reason: "REPORT" };
   if (input.merchant.trim() !== row.merchant) return { ok: false, reason: "MERCHANT" };
   const booked = ledger.append({

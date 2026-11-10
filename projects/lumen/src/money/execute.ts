@@ -301,6 +301,20 @@ export function describeUnknownClaim(db: DatabaseSync, intentId: string): { merc
   return { productType: product?.[1] ?? "resolution", merchant: reserve?.merchant?.trim() || "unknown" };
 }
 
+const STUCK_CLAIM_MS = 15 * 60 * 1000;
+
+/** A claim left in claimed or expected past the window becomes unknown and is not charged again. */
+export function sweepStuckPurchases(db: DatabaseSync, now: number): number {
+  const rows = db.prepare("SELECT intent_id FROM purchase_claims WHERE state IN ('claimed', 'expected') AND created_at <= ?").all(now - STUCK_CLAIM_MS) as { intent_id: string }[];
+  const note = deskNotifier(db);
+  for (const row of rows) {
+    const changed = db.prepare("UPDATE purchase_claims SET state = 'unknown' WHERE intent_id = ? AND state IN ('claimed', 'expected')").run(row.intent_id);
+    if (Number(changed.changes) !== 1) continue;
+    note.notify({ kind: "issuer", title: "Stuck purchase", detail: `${row.intent_id} stayed claimed or expected and is now unknown. It will not be charged again from this row.` });
+  }
+  return rows.length;
+}
+
 export function listUnknownClaims(db: DatabaseSync): { intentId: string; amountCents: number; atMs: number; merchant: string; productType: string }[] {
   const claims = db.prepare("SELECT intent_id, amount_cents, created_at FROM purchase_claims WHERE state = 'unknown' ORDER BY created_at ASC").all() as { intent_id: string; amount_cents: number; created_at: number }[];
   return claims.map((claim) => {

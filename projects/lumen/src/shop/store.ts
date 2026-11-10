@@ -71,9 +71,16 @@ export function shopCheckoutOpen(db: DatabaseSync, env: Env): boolean {
   return true;
 }
 
-export function ownerPriceCap(db: DatabaseSync): number {
-  const raw = Number(flag(db, "shop_price_cap_cents", "8000"));
-  return Number.isFinite(raw) && raw > 0 ? raw : 8000;
+export function priceCeiling(env: Env = process.env): number {
+  const raw = Number(env.LUMEN_SHOP_PRICE_CAP_CENTS ?? "8000");
+  return Number.isFinite(raw) && raw >= 200 ? Math.round(raw) : 8000;
+}
+
+export function ownerPriceCap(db: DatabaseSync, env: Env = process.env): number {
+  const ceiling = priceCeiling(env);
+  const raw = Number(flag(db, "shop_price_cap_cents", String(ceiling)));
+  const chosen = Number.isFinite(raw) && raw > 0 ? raw : ceiling;
+  return Math.min(chosen, ceiling);
 }
 
 export function clampShopPrice(kind: ListingKind, cents: number, ownerCap: number): { ok: true; cents: number } | { ok: false; reason: "PRICE" } {
@@ -181,8 +188,9 @@ export function setShopFlag(db: DatabaseSync, key: "shop_kill" | "shop_sales" | 
   setFlag(db, key, on ? "1" : "0");
 }
 
-export function setPriceCap(db: DatabaseSync, cents: number): void {
-  if (!Number.isFinite(cents) || cents < 200 || cents > 8000) return;
+export function setPriceCap(db: DatabaseSync, cents: number, env: Env = process.env): void {
+  const ceiling = priceCeiling(env);
+  if (!Number.isFinite(cents) || cents < 200 || cents > ceiling) return;
   setFlag(db, "shop_price_cap_cents", String(Math.round(cents)));
 }
 
@@ -210,14 +218,22 @@ export function retireListing(db: DatabaseSync, id: string, now: number): { ok: 
   return { ok: true };
 }
 
-export async function shopCheckout(db: DatabaseSync, env: Env, listingId: string, note: string, now: number): Promise<{ ok: true; comingSoon: boolean; url: string | null } | { ok: false; error: string }> {
+const HELD_CAP = 3;
+const HELD_WINDOW_MS = 60 * 60 * 1000;
+
+export async function shopCheckout(db: DatabaseSync, env: Env, listingId: string, note: string, now: number, ip = "unknown"): Promise<{ ok: true; comingSoon: boolean; url: string | null } | { ok: false; error: string }> {
   if (shopSpendIntents().length) return { ok: false, error: "SPEND" };
   const row = listingRow(db, listingId);
   if (!row || row.status !== "published") return { ok: false, error: "NOT_LISTED" };
   const kept = keepBuyerNote(note);
   if (!shopCheckoutOpen(db, env)) {
-    db.prepare("INSERT INTO shop_orders(id, listing_id, buyer_note, status, charge_id, delivery_token, due_at, created_at) VALUES(?, ?, ?, 'held', NULL, NULL, ?, ?)").run(
-      `ord-${randomBytes(4).toString("hex")}`, listingId, kept, now, now,
+    const since = now - HELD_WINDOW_MS;
+    const same = db.prepare("SELECT id FROM shop_orders WHERE listing_id = ? AND buyer_ip = ? AND status = 'held' AND created_at >= ? LIMIT 1").get(listingId, ip, since) as { id: string } | undefined;
+    if (same) return { ok: true, comingSoon: true, url: null };
+    const count = db.prepare("SELECT COUNT(*) AS n FROM shop_orders WHERE buyer_ip = ? AND status = 'held' AND created_at >= ?").get(ip, since) as { n: number };
+    if (Number(count.n) >= HELD_CAP) return { ok: false, error: "HELD_CAP" };
+    db.prepare("INSERT INTO shop_orders(id, listing_id, buyer_note, status, charge_id, delivery_token, due_at, created_at, buyer_ip) VALUES(?, ?, ?, 'held', NULL, NULL, ?, ?, ?)").run(
+      `ord-${randomBytes(4).toString("hex")}`, listingId, kept, now, now, ip,
     );
     return { ok: true, comingSoon: true, url: null };
   }

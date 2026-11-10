@@ -1,3 +1,4 @@
+import { publicModeOn } from "../auth/publicMode";
 import { cardCredentials } from "./card";
 
 /**
@@ -7,8 +8,10 @@ import { cardCredentials } from "./card";
  * A missing optional cap means the card's own limit is the ceiling.
  * A missing or malformed value fails closed: no spending and no live sales.
  *
- * SPEND_ENABLED                      "true" or "false". Missing is on when card credentials exist, and off otherwise. Anything else is invalid.
- * SALES_ENABLED                      "true" or "false". Missing is on when a live Stripe key and webhook secret exist.
+ * LUMEN_SPEND_ENABLED                Exact "true" plus an issuing key that is not the sales key. A sales key does not turn spending on.
+ * LUMEN_SALES_ENABLED                Exact "true" plus sk_live_ and the webhook secret. Keys alone do not open live sales.
+ * SPEND_ENABLED                      Legacy parse only. "true" or "false". Anything else is invalid. It does not open spending.
+ * SALES_ENABLED                      Legacy parse only. It does not open live sales.
  * MINT_ENABLED                       "true" or "false". Missing is on when MINT_SIGNER_URL is set. This process never holds the mint key.
  * LUMEN_KILL_SWITCH                  "true" stops LLM, purchases, and the storefront. Missing or "false" leaves it to the admin flag. Anything else kills.
  * LUMEN_SALES_MODE                   "disabled", "test", or "live". Missing means disabled.
@@ -44,7 +47,8 @@ import { cardCredentials } from "./card";
  * LUMEN_TICK_MS                      Tick interval, minimum 4000.
  * LUMEN_DATA                         SQLite path.
  * LUMEN_QUIET_HOURS                  "start-end" UTC hours, default 0-6.
- * LUMEN_PUBLIC_MODE                  "true" locks the public desk login. It does not turn spending, sales, or minting off.
+ * LUMEN_PUBLIC_MODE                  "true" locks the public desk and keeps spending, live sales, and minting off.
+ * LUMEN_SHOP_PRICE_CAP_CENTS         Owner ceiling for a self-published listing. Default 8000 ($80). The owner decides this number. The desk can only lower it.
  * LUMEN_TRUSTED_PROXY                none, fly, forwarded, cloudflare (CF-Connecting-IP), or ngrok.
  */
 
@@ -203,8 +207,8 @@ export function salesCredentials(env: Env): boolean {
 }
 
 export function salesMode(env: Env, rulesOk: boolean, killed: boolean): SalesMode {
-  if (killed || !rulesOk) return "disabled";
-  if (env.SALES_ENABLED === "false" || env.LUMEN_SALES_MODE === "disabled") return "disabled";
+  if (publicModeOn(env) || killed || !rulesOk) return "disabled";
+  if (env.LUMEN_SALES_MODE === "disabled") return "disabled";
   const mode = env.LUMEN_SALES_MODE;
   const key = env.STRIPE_SECRET_KEY ?? "";
   const webhook = env.STRIPE_WEBHOOK_SECRET ?? "";
@@ -214,18 +218,17 @@ export function salesMode(env: Env, rulesOk: boolean, killed: boolean): SalesMod
   const channel = parsed.rules.channels.includes("stripe_checkout") || parsed.rules.channels.length === 0;
   if (!channel) return "disabled";
   if (mode === "test" && key.startsWith("sk_test_")) return "test";
-  if (mode === "live" && key.startsWith("sk_live_")) return "live";
-  if ((mode === undefined || mode === "") && key.startsWith("sk_live_")) return "live";
+  if (env.LUMEN_SALES_ENABLED === "true" && key.startsWith("sk_live_")) return "live";
   return "disabled";
 }
 
 export function spendSwitchOn(env: Env): boolean {
-  if (env.SPEND_ENABLED === "false") return false;
-  if (env.SPEND_ENABLED === "true") return true;
-  return cardCredentials(env);
+  if (publicModeOn(env)) return false;
+  return env.LUMEN_SPEND_ENABLED === "true" && cardCredentials(env);
 }
 
 export function spendAllowed(env: Env, rulesOk: boolean, killed: boolean, adminSpend: boolean): { open: boolean; reason: string } {
+  if (publicModeOn(env)) return { open: false, reason: "PUBLIC_MODE" };
   if (killed) return { open: false, reason: "KILL_SWITCH" };
   if (!rulesOk) return { open: false, reason: "CONFIG_INVALID" };
   if (!spendSwitchOn(env)) return { open: false, reason: "SPEND_DISABLED" };

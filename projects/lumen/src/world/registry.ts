@@ -414,12 +414,12 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
 
 function tapeLines(db: DatabaseSync): { mode: "PAPER" | "LIVE"; lines: string[] } {
   const board = tape(db);
-  const lines = ["PAPER"];
+  const lines: string[] = [board.mode];
   if (!board.quotes.length) lines.push("— — —", "— — —");
   for (const quote of board.quotes.slice(0, 2)) lines.push(`${quote.symbol} ${quote.priceUsd} USD`);
   const thesis = board.history[0]?.thesis;
   lines.push(thesis ? thesis.slice(0, 42) : "— — —");
-  return { mode: "PAPER", lines };
+  return { mode: board.mode, lines };
 }
 
 const GARDEN_GROW_MS = 6 * 60 * 60 * 1000;

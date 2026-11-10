@@ -34,8 +34,8 @@ export function descriptorMap(env: Env): Record<string, string> {
 
 export function cardCredentials(env: Env): boolean {
   const issuer = env.LUMEN_CARD_ISSUER;
-  const stripe = env.STRIPE_ISSUING_KEY || env.STRIPE_SECRET_KEY || "";
-  if (issuer === "stripe_issuing") return stripe.startsWith("sk_live_") || stripe.startsWith("sk_test_");
+  if (issuer === "mock") return true;
+  if (issuer === "stripe_issuing") return (env.STRIPE_ISSUING_KEY ?? "").startsWith("sk_");
   if (issuer === "privacy") return Boolean(env.PRIVACY_API_KEY);
   if (issuer === "owner_checkout") return true;
   return false;
@@ -43,7 +43,7 @@ export function cardCredentials(env: Env): boolean {
 
 export function issuingKey(env: Env): string {
   if (env.LUMEN_CARD_ISSUER !== "stripe_issuing") return "";
-  const key = env.STRIPE_ISSUING_KEY || env.STRIPE_SECRET_KEY || "";
+  const key = env.STRIPE_ISSUING_KEY ?? "";
   return key.startsWith("sk_live_") || key.startsWith("sk_test_") ? key : "";
 }
 
@@ -60,27 +60,32 @@ export function matchExpectedSpend(db: DatabaseSync, merchant: string, amountCen
     intent_id: string; merchant: string; max_cents: number; expires_at: number; status: string;
   }[];
   const named = normalizeMerchant(merchant);
-  const hit = rows.find((row) => normalizeMerchant(row.merchant) === named && amountCents <= row.max_cents && row.expires_at >= now);
+  const hit = rows.find((row) => normalizeMerchant(row.merchant) === named && amountCents <= row.max_cents && row.expires_at >= now && row.status === "open");
   if (!hit) return null;
   return { intentId: hit.intent_id, merchant: hit.merchant, maxCents: hit.max_cents, expiresAt: hit.expires_at, status: hit.status };
 }
 
-export function decideAuthorization(db: DatabaseSync, merchant: string, amountCents: number, now: number): boolean {
+export function decideAuthorization(db: DatabaseSync, merchant: string, amountCents: number, now: number, gate: { killed: boolean; spendOpen: boolean; unknown: boolean } = { killed: false, spendOpen: true, unknown: false }): boolean {
+  if (gate.killed || !gate.spendOpen || gate.unknown || amountCents <= 0) return false;
   const hit = matchExpectedSpend(db, merchant, amountCents, now);
   if (!hit) return false;
-  db.prepare("UPDATE expected_spends SET status = 'authorized' WHERE intent_id = ?").run(hit.intentId);
-  return true;
+  const changed = db.prepare("UPDATE expected_spends SET status = 'authorized' WHERE intent_id = ? AND status = 'open'").run(hit.intentId);
+  return Number(changed.changes) === 1;
 }
 
-/** A reported issuer transaction becomes a confirmed purchase once, and only if an expected spend matches. */
-export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number; atMs: number; provider: string }): { booked: boolean } {
-  const hit = matchExpectedSpend(db, input.merchant, input.amountCents, input.atMs);
-  if (!hit || !input.transactionId) return { booked: false };
+/** A reported issuer transaction is booked once. A matching expected spend is linked; an unmatched charge is still booked. */
+export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number; atMs: number; provider: string }): { booked: boolean; matched: boolean } {
+  if (!input.transactionId || input.amountCents <= 0) return { booked: false, matched: false };
+  const rows = db.prepare("SELECT intent_id, merchant, max_cents, expires_at, status FROM expected_spends WHERE status IN ('open', 'authorized')").all() as {
+    intent_id: string; merchant: string; max_cents: number; expires_at: number; status: string;
+  }[];
+  const named = normalizeMerchant(input.merchant);
+  const hit = rows.find((row) => normalizeMerchant(row.merchant) === named && input.amountCents <= row.max_cents);
   const ledger = new Ledger(db);
-  const key = `exec:${hit.intentId}`;
+  const key = hit ? `exec:${hit.intent_id}` : `issuing:${input.transactionId}`;
   if (!ledger.findByIdempotency(key)) {
     const row = ledger.append({
-      id: `purchase-${hit.intentId}`,
+      id: hit ? `purchase-${hit.intent_id}` : `purchase-${input.transactionId}`,
       atMs: input.atMs,
       kind: "purchase",
       amountCents: input.amountCents,
@@ -88,14 +93,18 @@ export function confirmIssuerTransaction(db: DatabaseSync, input: { transactionI
       provider: input.provider,
       providerTransactionId: input.transactionId,
       idempotencyKey: key,
-      ref: hit.intentId,
-      note: `Issuer reported ${hit.merchant}.`,
-      merchant: hit.merchant,
+      ref: hit?.intent_id ?? null,
+      note: hit ? `Issuer reported ${hit.merchant}.` : `Issuer charge ${input.transactionId} had no expected spend.`,
+      merchant: hit?.merchant ?? input.merchant,
     });
-    db.prepare("UPDATE purchase_claims SET state = 'executed', ledger_id = ? WHERE intent_id = ?").run(row.id, hit.intentId);
+    if (hit) db.prepare("UPDATE purchase_claims SET state = 'executed', ledger_id = ? WHERE intent_id = ?").run(row.id, hit.intent_id);
   }
-  db.prepare("UPDATE expected_spends SET status = 'confirmed' WHERE intent_id = ?").run(hit.intentId);
-  return { booked: true };
+  if (hit) db.prepare("UPDATE expected_spends SET status = 'confirmed' WHERE intent_id = ?").run(hit.intent_id);
+  return { booked: true, matched: Boolean(hit) };
+}
+
+export function bookPrivacyCharge(db: DatabaseSync, input: { transactionId: string; merchant: string; amountCents: number; atMs: number }): { booked: boolean; matched: boolean } {
+  return confirmIssuerTransaction(db, { ...input, provider: "privacy" });
 }
 
 export type IssuingActivity = { provider: string; providerTransactionId: string; amountCents: number; kind: string; merchant: string | null; atMs: number | null };

@@ -272,6 +272,10 @@ function ipv4Blocked(value: number): boolean {
 }
 
 function ipv6Blocked(bytes: Uint8Array): boolean {
+  if (isV4MappedCompat(bytes)) {
+    const mapped = ((bytes[12]! << 24) | (bytes[13]! << 16) | (bytes[14]! << 8) | bytes[15]!) >>> 0;
+    if (ipv4Blocked(mapped)) return true;
+  }
   const mapped = mappedIpv4(bytes);
   if (mapped != null) return ipv4Blocked(mapped);
   const first = (bytes[0]! << 8) | bytes[1]!;
@@ -281,14 +285,35 @@ function ipv6Blocked(bytes: Uint8Array): boolean {
   if ((first & 0xffc0) === 0xfe80) return true;
   if ((first & 0xffc0) === 0xfec0) return true;
   if (first === 0x2002) return true;
-  if (isNat64(bytes)) return true;
+  if (isNat64(bytes) || isTeredo(bytes) || isDiscardPrefix(bytes) || isShiftedMapped(bytes)) return true;
   if (bytes.slice(0, 12).every((byte) => byte === 0) && bytes.slice(12).some((byte) => byte !== 0)) return true;
   if ((bytes[0]! & 0xff) === 0xff) return true;
   return false;
 }
 
 function isNat64(bytes: Uint8Array): boolean {
-  return bytes[0] === 0x00 && bytes[1] === 0x64 && bytes[2] === 0xff && bytes[3] === 0x9b && bytes.slice(4, 12).every((byte) => byte === 0);
+  const classic = bytes[0] === 0x00 && bytes[1] === 0x64 && bytes[2] === 0xff && bytes[3] === 0x9b && bytes.slice(4, 12).every((byte) => byte === 0);
+  const local = bytes[0] === 0x00 && bytes[1] === 0x64 && bytes[2] === 0xff && bytes[3] === 0x9b && bytes[4] === 0x00 && bytes[5] === 0x01;
+  return classic || local;
+}
+
+function isTeredo(bytes: Uint8Array): boolean {
+  return bytes[0] === 0x20 && bytes[1] === 0x01 && bytes[2] === 0x00 && bytes[3] === 0x00;
+}
+
+function isDiscardPrefix(bytes: Uint8Array): boolean {
+  return bytes[0] === 0x01 && bytes[1] === 0x00 && bytes.slice(2, 8).every((byte) => byte === 0);
+}
+
+function isShiftedMapped(bytes: Uint8Array): boolean {
+  return bytes.slice(0, 8).every((byte) => byte === 0) && bytes[8] === 0xff && bytes[9] === 0xff && bytes[10] === 0 && bytes[11] === 0;
+}
+
+function isV4MappedCompat(bytes: Uint8Array): boolean {
+  const head = bytes.slice(0, 12);
+  const nat = head[10] === 0xff && head[11] === 0xff;
+  const dotted = head.every((byte, index) => (index === 10 || index === 11 ? byte === 0 : byte === 0)) && bytes[10] === 0 && bytes[11] === 0;
+  return nat || (dotted && bytes.slice(12).some((byte) => byte !== 0));
 }
 
 function mappedIpv4(bytes: Uint8Array): number | null {

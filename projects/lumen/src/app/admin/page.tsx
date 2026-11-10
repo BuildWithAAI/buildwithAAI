@@ -13,7 +13,7 @@ export default async function AdminPage() {
   const token = jar.get(OWNER_COOKIE)?.value ?? null;
   const authed = getEngine().authed(`${OWNER_COOKIE}=${encodeURIComponent(token ?? "")}`);
   if (!authed || !ownerRouteOpen("/admin", authed)) {
-    if (!loginReachable((await headers()).get("host"))) notFound();
+    if (!loginReachable((await headers()).get("fly-client-ip"))) notFound();
     redirect("/admin/login");
   }
   const publicMode = publicModeOn();
@@ -51,6 +51,8 @@ export default async function AdminPage() {
           <form action={controlAction}><input type="hidden" name="key" value="kill" /><input type="hidden" name="value" value={snap.money.kill ? "0" : "1"} /><button type="submit">{snap.money.kill ? "Release kill switch" : "Kill switch"}</button></form>
           <form action={controlAction}><input type="hidden" name="key" value="spend" /><input type="hidden" name="value" value="1" /><button type="submit">Enable spend toggle</button></form>
           <form action={controlAction}><input type="hidden" name="key" value="spend" /><input type="hidden" name="value" value="0" /><button type="submit">Disable spend toggle</button></form>
+          <form action={controlAction}><input type="hidden" name="key" value="trading_kill" /><input type="hidden" name="value" value={snap.money.tradingKill ? "0" : "1"} /><button type="submit">{snap.money.tradingKill ? "Release trading kill" : "Trading kill"}</button></form>
+          {snap.money.tradingUnknown ? <form action={controlAction}><input type="hidden" name="key" value="trading_clear" /><input type="hidden" name="value" value="1" /><button type="submit">Clear trading pause</button></form> : null}
           <form action={reconcileAction}><button type="submit">Run reconciliation</button></form>
           <form action={logout}><button type="submit">Log out</button></form>
           {publicMode ? null : <a className="button" href="/admin/ledger">Balance and P&amp;L</a>}

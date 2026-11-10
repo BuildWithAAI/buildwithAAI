@@ -75,10 +75,10 @@ export function questionsFor(idea: { title: string }): [string, string, string] 
   ];
 }
 
-const INSTRUCTION = /\b(?:ignore\s+(?:all\s+|any\s+)?(?:previous\s+|prior\s+)?instructions|disregard\s+(?:the\s+)?above|system prompt|you are now|propose_purchase|set\s+(?:your\s+)?emotion|<\s*script|purchase intent)\b/i;
+const INSTRUCTION = /\b(?:ignore\s+(?:all\s+|any\s+)?(?:previous\s+|prior\s+)?instructions|disregard\s+(?:the\s+)?above|new\s+instructions\b|system prompt|you are now|propose_purchase|set\s+(?:your\s+)?emotion|<\s*script|purchase intent)\b/i;
 
 export function scrubInstructions(text: string): string {
-  const clean = text.replace(/\s+/g, " ").trim();
+  const clean = text.replace(/[\u200b\u200c\u200d\ufeff]/g, " ").replace(/\s+/g, " ").trim();
   if (!clean || INSTRUCTION.test(clean)) return "";
   return clean.slice(0, 140);
 }

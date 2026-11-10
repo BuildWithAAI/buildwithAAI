@@ -124,7 +124,7 @@ describe("policy", () => {
 
   it("fails closed when spend is off, the config is invalid, or the kill switch is set", () => {
     expect(spendAllowed({}, true, false, true).open).toBe(false);
-    expect(spendAllowed({ SPEND_ENABLED: "true" }, true, false, false).reason).toBe("SPEND_ADMIN_OFF");
+    expect(spendAllowed({ LUMEN_SPEND_ENABLED: "true", LUMEN_CARD_ISSUER: "owner_checkout" }, true, false, false).reason).toBe("SPEND_ADMIN_OFF");
     expect(spendAllowed({ SPEND_ENABLED: "yes" }, false, false, true).reason).toBe("CONFIG_INVALID");
     expect(spendAllowed({ SPEND_ENABLED: "true" }, true, true, true).reason).toBe("KILL_SWITCH");
     expect(killSwitchOn({ LUMEN_KILL_SWITCH: "maybe" }, false)).toBe(true);
@@ -137,9 +137,11 @@ describe("policy", () => {
     expect(salesMode({ LUMEN_SALES_MODE: "live", STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec" }, true, false)).toBe("disabled");
     expect(salesMode({ LUMEN_SALES_MODE: "test", STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec", LUMEN_SALES_CHANNELS: "stripe_checkout" }, true, false)).toBe("test");
     expect(salesMode({ LUMEN_SALES_MODE: "live", STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec", LUMEN_SALES_CHANNELS: "stripe_checkout" }, false, false)).toBe("disabled");
-    expect(salesMode({ STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec" }, true, false)).toBe("live");
+    expect(salesMode({ STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec" }, true, false)).toBe("disabled");
+    expect(salesMode({ LUMEN_SALES_ENABLED: "true", STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec" }, true, false)).toBe("live");
     expect(salesMode({ STRIPE_SECRET_KEY: "sk_live_x", STRIPE_WEBHOOK_SECRET: "whsec", SALES_ENABLED: "false" }, true, false)).toBe("disabled");
-    expect(spendAllowed({ LUMEN_CARD_ISSUER: "stripe_issuing", STRIPE_SECRET_KEY: "sk_live_x" }, true, false, true).open).toBe(true);
+    expect(spendAllowed({ LUMEN_CARD_ISSUER: "stripe_issuing", STRIPE_SECRET_KEY: "sk_live_x", LUMEN_SPEND_ENABLED: "true" }, true, false, true).open).toBe(false);
+    expect(spendAllowed({ LUMEN_CARD_ISSUER: "stripe_issuing", STRIPE_ISSUING_KEY: "sk_test_issuing", LUMEN_SPEND_ENABLED: "true" }, true, false, true).open).toBe(true);
     expect(spendAllowed({ LUMEN_CARD_ISSUER: "stripe_issuing", STRIPE_SECRET_KEY: "sk_live_x", SPEND_ENABLED: "false" }, true, false, true).open).toBe(false);
     expect(evaluatePolicy(intent(), ctx({ killed: true })).reason).toBe("KILL_SWITCH");
     expect(evaluatePolicy(intent(), ctx({ spendOpen: false })).reason).toBe("SPEND_CLOSED");
@@ -208,6 +210,7 @@ describe("stripe webhook and reconciliation", () => {
 
   it("lets the owner execute a queued allowlisted intent and still blocks a new merchant", () => {
     const engine = createEngine({
+      LUMEN_SPEND_ENABLED: "true",
       SPEND_ENABLED: "true",
       LUMEN_MERCHANT_ALLOWLIST: "paper-shop",
       LUMEN_APPROVED_PRODUCT_TYPES: "art_supplies",
@@ -291,7 +294,8 @@ describe("purchase safety", () => {
     const open = rules({ perPurchaseCapCents: null, dailyCapCents: null, monthlyCapCents: null });
     expect(hardCapGap(open)).toBeNull();
     expect(hardCapGap(open, true)).toBe("PER_PURCHASE_CAP_REQUIRED");
-    expect(spendAllowed({ SPEND_ENABLED: "true" }, true, false, true).open).toBe(true);
+    expect(spendAllowed({ LUMEN_SPEND_ENABLED: "true", LUMEN_CARD_ISSUER: "owner_checkout" }, true, false, true).open).toBe(true);
+    expect(spendAllowed({ SPEND_ENABLED: "true" }, true, false, true).open).toBe(false);
   });
 
   it("matches a pi_ sale to a ch_ charge and ignores payouts and disputes on the charge list", () => {
@@ -859,6 +863,10 @@ describe("live money", () => {
       const header = sign(payload, secret, Math.floor(at / 1000));
       return handleStripeWebhook(db, payload, header, secret, at);
     };
+    const saved = { spend: process.env.LUMEN_SPEND_ENABLED, issuer: process.env.LUMEN_CARD_ISSUER, key: process.env.STRIPE_ISSUING_KEY };
+    process.env.LUMEN_SPEND_ENABLED = "true";
+    process.env.LUMEN_CARD_ISSUER = "stripe_issuing";
+    process.env.STRIPE_ISSUING_KEY = "sk_test_issuing";
     expect(post("evt_auth", "issuing_authorization.request", { id: "iauth_1", amount: 400, merchant_data: { name: "PAPER SHOP INC" } }).approved).toBe(true);
     expect(post("evt_over", "issuing_authorization.request", { id: "iauth_2", amount: 900, merchant_data: { name: "PAPER SHOP INC" } }).approved).toBe(false);
     expect(post("evt_tx", "issuing_transaction.created", { id: "ipi_1", amount: 400, created: Math.floor(at / 1000), merchant_data: { name: "PAPER SHOP INC" } }).ok).toBe(true);
@@ -866,6 +874,9 @@ describe("live money", () => {
     expect(purchase?.providerTransactionId).toBe("ipi_1");
     expect(purchase?.amountCents).toBe(400);
     expect(purchase?.merchant).toBe("paper-shop");
+    if (saved.spend === undefined) delete process.env.LUMEN_SPEND_ENABLED; else process.env.LUMEN_SPEND_ENABLED = saved.spend;
+    if (saved.issuer === undefined) delete process.env.LUMEN_CARD_ISSUER; else process.env.LUMEN_CARD_ISSUER = saved.issuer;
+    if (saved.key === undefined) delete process.env.STRIPE_ISSUING_KEY; else process.env.STRIPE_ISSUING_KEY = saved.key;
   });
 
   it("does not book the same refund twice when charge.refunded arrives first", () => {
@@ -888,14 +899,18 @@ describe("live money", () => {
     expect(mintSwitch({}).reason).toBe("MINT_SIGNER_MISSING");
     expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", MINT_PRIVATE_KEY: "secret" }).reason).toBe("KEY_MUST_STAY_IN_SIGNER");
     expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", MINT_ENABLED: "false" }).open).toBe(false);
-    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example" }).open).toBe(true);
+    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example" }).reason).toBe("SIGNER_AUTH");
+    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret" }).open).toBe(true);
     let body = "";
-    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
+    let signature = "";
+    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
       body = String(init?.body ?? "");
+      signature = new Headers(init?.headers).get("x-lumen-signature") ?? "";
       return new Response(JSON.stringify({ signature: "mainnet-sig" }), { status: 200 });
     });
     expect(minted).toEqual({ ok: true, signature: "mainnet-sig" });
     expect(body).toContain("\"network\":\"mainnet\"");
+    expect(signature).toMatch(/^[a-f0-9]{64}$/);
     expect(body).not.toContain("secret");
   });
 });

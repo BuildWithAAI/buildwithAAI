@@ -12,10 +12,14 @@ export function ownerRouteOpen(path: string, authed: boolean, env: Env = process
   return true;
 }
 
-/** In public mode the login form is only served on the private desk (localhost, fly proxy, or *.internal). */
-export function loginReachable(host: string | null, env: Env = process.env): boolean {
+/**
+ * Public mode closes the login form and the login action on the public edge.
+ * Fly sets Fly-Client-IP on public requests. A direct `fly proxy 3000` connection does not.
+ * The Host header is not consulted.
+ */
+export function loginReachable(flyClientIp: string | null, env: Env = process.env): boolean {
   if (!publicModeOn(env)) return true;
-  return privateDeskHost(host);
+  return !(flyClientIp ?? "").trim();
 }
 
 export function privateDeskHost(host: string | null): boolean {

@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { clientAddress, OWNER_COOKIE } from "../auth/owner";
-import { publicModeOn } from "../auth/publicMode";
+import { loginReachable, publicModeOn } from "../auth/publicMode";
 import { fetchFinalized, quoteSolOrder, verifySolPayment } from "../money/solana";
 import { listShop } from "../shop/store";
 import { getEngine } from "../server/engine";
@@ -34,6 +34,8 @@ export async function sendNote(form: FormData) {
 }
 
 export async function login(form: FormData) {
+  const header = await headers();
+  if (!loginReachable(header.get("fly-client-ip"))) redirect("/");
   const result = await getEngine().login(String(form.get("secret") ?? ""), await ip());
   if (!result.ok || !("token" in result) || !result.token) redirect("/admin/login?error=1");
   const jar = await cookies();
@@ -67,7 +69,7 @@ export async function wishAction(form: FormData) {
 }
 
 export async function shopBuy(form: FormData) {
-  const result = await getEngine().shopCheckout(String(form.get("id") ?? ""), String(form.get("note") ?? ""));
+  const result = await getEngine().shopCheckout(String(form.get("id") ?? ""), String(form.get("note") ?? ""), await ip());
   if (!result.ok || result.comingSoon || !result.url || !result.url.startsWith("http")) redirect("/shop?sales=soon");
   redirect(result.url);
 }
@@ -124,7 +126,8 @@ export async function creativeAction(form: FormData) {
 
 export async function controlAction(form: FormData) {
   await gate();
-  const key = form.get("key") === "spend" ? "spend" : "kill";
+  const raw = String(form.get("key") ?? "");
+  const key = raw === "spend" || raw === "trading_kill" || raw === "trading_clear" ? raw : "kill";
   await getEngine().setControl(key, form.get("value") === "1");
 }
 

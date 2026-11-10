@@ -133,6 +133,14 @@ CREATE TABLE IF NOT EXISTS sol_orders (
   expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS sol_refund_flags (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  lamports TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS checkout_queue (
   id TEXT PRIMARY KEY,
   intent_id TEXT NOT NULL UNIQUE,
@@ -362,7 +370,8 @@ CREATE TABLE IF NOT EXISTS shop_orders (
   charge_id TEXT,
   delivery_token TEXT,
   due_at INTEGER NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  buyer_ip TEXT
 );
 CREATE TABLE IF NOT EXISTS telegram_outbox (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -404,6 +413,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "research_queries", "question", "question TEXT");
   ensureColumn(db, "ideas", "source_key", "source_key TEXT");
   ensureColumn(db, "world_builds", "params", "params TEXT NOT NULL DEFAULT '{}'");
+  ensureColumn(db, "shop_orders", "buyer_ip", "buyer_ip TEXT");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   return db;

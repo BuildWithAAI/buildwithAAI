@@ -39,7 +39,7 @@ On Fly.io:
 fly secrets import -a lumen-tidepool < secrets.env
 ```
 
-The webhook secret is the value Telegram sends in `X-Telegram-Bot-Api-Secret-Token`. Zoora rejects the webhook when the header does not match.
+Delete `secrets.env` after the import succeeds. The webhook secret is the value Telegram sends in `X-Telegram-Bot-Api-Secret-Token`. Zoora rejects the webhook when the header does not match.
 
 Zoora may stay quiet for hours. At most about one thought goes out every 30 minutes. Quiet hours are 23:00–07:00 America/Chicago. A thought it has already told the owner is not sent again.
 

@@ -2,8 +2,12 @@ import type { NextConfig } from "next";
 import { securityHeaders } from "./src/auth/publicMode";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   serverExternalPackages: ["node:sqlite"],
   poweredByHeader: false,
+  experimental: {
+    middlewareClientMaxBodySize: "64kb",
+  },
   webpack: (config, { nextRuntime }) => {
     if (nextRuntime === "edge") {
       config.plugins.push({

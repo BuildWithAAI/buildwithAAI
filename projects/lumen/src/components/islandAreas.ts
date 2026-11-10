@@ -414,8 +414,9 @@ function quoteBoard(lines: string[]): { texture: THREE.CanvasTexture; paint: (ne
     ctx.fillStyle = "#1c1917";
     ctx.font = "700 26px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("PAPER", 48, 51);
-    const rows = next.filter((line) => line !== "PAPER");
+    const badge = next[0] === "LIVE" ? "LIVE" : "PAPER";
+    ctx.fillText(badge, 48, 51);
+    const rows = next.filter((line) => line !== "PAPER" && line !== "LIVE");
     const shown = rows.length ? rows : ["— — —", "— — —"];
     shown.slice(0, 4).forEach((line, index) => {
       const empty = line.includes("—");

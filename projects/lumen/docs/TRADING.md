@@ -10,7 +10,7 @@ Trading starts in paper mode. The word PAPER is on the floor page, on the world 
 
 ## Live switch
 
-`LUMEN_TRADING_LIVE` is off unless it is exactly `true`. Live orders go only to `LUMEN_TRADE_SIGNER_URL`, an `https://` signer the owner runs. The body is `{ "instruction": "swap", "network": "mainnet", ... }`. This app does not hold a private key. If `LUMEN_TRADING_PRIVATE_KEY` or `SOLANA_PRIVATE_KEY` is set, trading stays closed.
+`LUMEN_TRADING_LIVE` is off unless it is exactly `true`. Live orders go only to `LUMEN_TRADE_SIGNER_URL`, an `https://` signer the owner runs. The body is `{ "instruction": "swap", "network": "mainnet", ... }`, and the request carries `x-lumen-signature`, an HMAC-SHA256 of that body using `LUMEN_TRADE_SIGNER_SECRET`. The signer must authenticate the caller and reject a missing or wrong signature. This app does not hold a private key. If `LUMEN_TRADING_PRIVATE_KEY` or `SOLANA_PRIVATE_KEY` is set, trading stays closed. A signer network error is stored as unknown and pauses trading. It is not retried. Paper P&L and live P&L are stored apart, and a live fill is never labeled PAPER.
 
 The owner also sets:
 
@@ -20,7 +20,7 @@ The owner also sets:
 - `LUMEN_TRADE_ALLOW` and `LUMEN_TRADE_DENY`, comma-separated mints
 - `LUMEN_RUG_LIQUIDITY_USD`, the liquidity in dollars under which a pair is refused. If this is unset, the check uses $5,000. The trade-size caps stay closed until the owner sets them.
 
-A pair with a honeypot label, or with no usable quote, is refused. The kill switch stops a new trade. An uncertain signer reply is stored as unknown and pauses further trading.
+A pair with a honeypot label, or with no usable quote, is refused. The kill switch stops a new trade. The desk also has a trading kill and a control that clears the unknown pause. Both require the owner session and both write an audit row. An uncertain signer reply is stored as unknown and pauses further trading.
 
 The brain may propose a trade. The policy function decides. A visitor note, a web page, or a Telegram message cannot be the reason a trade is allowed.
 

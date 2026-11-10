@@ -4,8 +4,8 @@ import { loginReachable } from "../../../auth/publicMode";
 import { login } from "../../actions";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const host = (await headers()).get("host");
-  if (!loginReachable(host)) notFound();
+  const flyClient = (await headers()).get("fly-client-ip");
+  if (!loginReachable(flyClient)) notFound();
   const params = await searchParams;
   return (
     <section className="card" style={{ maxWidth: 460 }}>

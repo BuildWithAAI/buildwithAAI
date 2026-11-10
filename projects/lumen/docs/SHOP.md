@@ -4,7 +4,7 @@ Owner accepted live-money risk without a test stage on 2026-11-09.
 
 Selling only. The shop cannot create a spend intent. Buying supplies stays on the card policy.
 
-Live checkout is on when `STRIPE_SECRET_KEY` is an `sk_live_` key and `STRIPE_WEBHOOK_SECRET` is set, unless `SALES_ENABLED=false` or the shop kill switch is on. With either of those off, or with the keys missing, a listing says coming soon and no payment is taken. There are no Stripe keys in this repository. A sale is real only after the signed Stripe webhook says `payment_status=paid`.
+Live checkout is on when `LUMEN_SALES_ENABLED=true`, `STRIPE_SECRET_KEY` is an `sk_live_` key, and `STRIPE_WEBHOOK_SECRET` is set, and the shop kill switch is off. Public mode keeps it off. Keys alone do not open it. A listing then says coming soon and no payment is taken. There are no Stripe keys in this repository. A sale is real only after the signed Stripe webhook says `payment_status=paid`.
 
 Payouts go to the owner's own Stripe account and then to the owner's bank. This app does not hold the money, does not start payouts, and never sees a card number. Buyers pay only on Stripe-hosted Checkout.
 
@@ -21,14 +21,14 @@ Payouts go to the owner's own Stripe account and then to the owner's bank. This 
 fly secrets import -a lumen-tidepool < secrets.env
 ```
 
-`secrets.env` contains only:
+Delete `secrets.env` after the import succeeds. `secrets.env` contains only:
 
 ```
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
-7. Leave `SALES_ENABLED` unset. Checkout turns on when both secrets are present. Set `SALES_ENABLED=false` or the shop kill switch to stop it.
+7. Set `LUMEN_SALES_ENABLED=true` as well. Checkout stays closed until that value is exactly `true`. The shop kill switch stops it. Public mode also keeps checkout closed.
 
 SOL payments, to the owner's public wallet only, are in [SOL.md](SOL.md).
 
@@ -41,7 +41,7 @@ Only things the app can hand over by itself:
 - Every public description says the work is made by an AI.
 - Names and descriptions that impersonate a person, copy a trademark, or ask for a real likeness are refused.
 
-Zoora chooses a price inside a server minimum and maximum for that kind. The keeper can lower the ceiling with the shop price cap. A buyer note cannot change the price, the listing, or the delivery.
+Zoora chooses a price inside a server minimum and maximum for that kind. The self-published ceiling is $80 (`LUMEN_SHOP_PRICE_CAP_CENTS`, default `8000`). The owner decides that number. The desk can lower it and cannot raise it past the env value. A buyer note cannot change the price, the listing, or the delivery.
 
 Zoora publishes a listing on its own. The keeper can hide it or unpublish it afterward. The desk can also refund a charge or throw the shop kill switch.
 
