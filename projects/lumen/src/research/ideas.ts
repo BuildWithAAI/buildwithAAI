@@ -131,6 +131,7 @@ export function wishFromBrief(idea: Idea, brief: Brief, dayKey: string): Wish {
     priority: "low",
     status: "open",
     dayKey,
+    influencedByWeb: true,
   };
 }
 

@@ -50,6 +50,7 @@ export type Wish = {
   priority: "low" | "medium" | "high";
   status: "open" | "approved" | "declined" | "asked_more";
   dayKey: string;
+  influencedByWeb?: boolean;
 };
 
 export type BrainState = {

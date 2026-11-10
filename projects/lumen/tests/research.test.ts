@@ -125,7 +125,9 @@ describe("research", () => {
       expect(result.intents).toEqual([]);
     }
     expect((db.prepare("SELECT status FROM ideas WHERE status = 'promising'").get() as { status: string }).status).toBe("promising");
-    expect(lived.wishes.find((item) => item.item.startsWith("a small trial of"))?.estimateCents).toBeNull();
+    const trial = lived.wishes.find((item) => item.item.startsWith("a small trial of"));
+    expect(trial?.estimateCents).toBeNull();
+    expect(trial?.influencedByWeb).toBe(true);
     expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
   });
 

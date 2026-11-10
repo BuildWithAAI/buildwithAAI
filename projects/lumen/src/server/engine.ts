@@ -434,7 +434,7 @@ function wishToIntent(wish: Wish): PurchaseIntent {
     reason: `${wish.item}. ${wish.why}`,
     influencedByVisitor: false,
     influencedByOwnerChat: false,
-    influencedByWeb: false,
+    influencedByWeb: wish.influencedByWeb === true || wish.catalogId === "research-trial",
   };
 }
 
