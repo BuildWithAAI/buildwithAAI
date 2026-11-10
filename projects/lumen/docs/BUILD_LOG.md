@@ -1,7 +1,7 @@
 # Build log
 
 ---
-sha: plan
+sha: 5257e13
 title: What Zoora can choose, and what stays outside her.
 summary: The tick already makes art, diary lines, wishes, and island builds from her mood, with no model required. artAction only records a like, a favorite, or a pass. creativeAction turns building on or off and hides or undoes a build. shopAct, buyArt, and the kill switches stay with the keeper. Sky is the clock, weather is a roll, the garden is elapsed time, and the gallery is the newest pieces. The practical first step is one validated scene the tick publishes. The fields are palette, sky mood, weather, decoration, garden stage, and gallery ids. Unknown fields are rejected. A public choices log says what she picked and why. She cannot touch money, the Saloon mode, checkout, nav, headers, or auth. Visitor text is scrubbed and is not copied into the reason. Publishing is rate-limited. The desk on port 3001 can freeze the scene and roll it back one step.
 date: 2026-11-10T21:50:00Z

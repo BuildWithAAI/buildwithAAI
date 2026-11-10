@@ -142,6 +142,14 @@ export async function creativeAction(form: FormData) {
   if (op === "undo") engine.undoBuild(String(form.get("id") ?? ""));
 }
 
+export async function sceneDesk(form: FormData) {
+  await gate();
+  const op = String(form.get("op") ?? "");
+  if (op === "rollback") await getEngine().rollbackScene();
+  if (op === "freeze") await getEngine().freezeScene(true);
+  if (op === "unfreeze") await getEngine().freezeScene(false);
+}
+
 export async function controlAction(form: FormData) {
   await gate();
   const raw = String(form.get("key") ?? "");

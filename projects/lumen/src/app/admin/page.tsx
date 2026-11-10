@@ -4,7 +4,7 @@ import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { loadIdentity } from "../../identity/load";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, keeperListAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sendChat, shopDesk, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, keeperListAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sceneDesk, sendChat, shopDesk, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
@@ -208,6 +208,20 @@ export default async function AdminPage() {
             </li>
           ))}
         </ul>
+        <h2>Scene</h2>
+        <p className="muted">Zoora publishes the palette, sky, weather, decoration, garden stage, and gallery. This desk can freeze that or roll it back one step. It does not open checkout.</p>
+        <form action={sceneDesk}>
+          <input type="hidden" name="op" value="rollback" />
+          <button type="submit">Roll the scene back</button>
+        </form>
+        <form action={sceneDesk}>
+          <input type="hidden" name="op" value="freeze" />
+          <button type="submit">Freeze her scene</button>
+        </form>
+        <form action={sceneDesk}>
+          <input type="hidden" name="op" value="unfreeze" />
+          <button type="submit">Let her choose again</button>
+        </form>
         <h2>Creative building</h2>
         <p className="muted">Zoora spends island materials, not money. {creative.left} materials left today. Building is {creative.on ? "on" : "off"}.</p>
         <form action={creativeAction}>

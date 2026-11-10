@@ -38,5 +38,6 @@ export type PublicWorld = {
   builds: { id: string; kind: string; title: string; x: number; z: number; size: number; yaw: number; version: number; hue: number; parts: number; twist: number; form: number }[];
   shop: { name: string; hue: number; form: number; x: number; z: number; open: boolean } | null;
   tape: { mode: "PAPER" | "LIVE"; lines: string[] };
+  choices: string[];
   watchOnly: true;
 };

@@ -5,6 +5,7 @@ import { feelingSentence } from "../brain/emotions";
 import { eventOf } from "../brain/events";
 import { researching, stationView } from "../research/run";
 import { visibleBuilds } from "./creative";
+import { readScene, sceneChoices, sceneWeatherKind, sceneWeatherText } from "./scene";
 import { readShop } from "../shop/store";
 import { tape } from "../trading/book";
 import { publicWishLines } from "../wishlist/board";
@@ -376,6 +377,7 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
   ensureResidents(db, now);
   const fresh = db.prepare("SELECT * FROM world_agents WHERE present = 1 ORDER BY joined_at ASC").all() as AgentRow[];
   const weather = readWeather(db, now);
+  const scene = readScene(db);
   const sky = skyAt(skyInstant(env, now), env);
   const tuneRaw = kvGet(db, "world_tune");
   const easel = db.prepare("SELECT title, svg FROM creations ORDER BY created_at DESC LIMIT 1").get() as { title: string; svg: string } | undefined;
@@ -386,18 +388,18 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
     now,
     night: sky.sunAltitude <= 0,
     sky,
-    weather: weather.kind,
-    weatherText: weather.text,
+    weather: scene ? sceneWeatherKind(scene.weather) : weather.kind,
+    weatherText: scene ? sceneWeatherText(scene.weather) : weather.text,
     places: PLACE_IDS.map((id) => ({ id, label: PLACE_LABELS[id], ...ANCHORS[id] })),
     agents: fresh.map((row) => publicAgent(row, now)),
     feed: feed.map((item) => item.text),
     wishlist: publicWishLines(db),
-    diary: diary.map((item) => item.text),
+    diary: [...sceneChoices(db), ...diary.map((item) => item.text)].slice(0, 8),
     log: log.map((item) => item.text),
     tune: tuneRaw ? JSON.parse(tuneRaw) as { notes: number[]; title: string } : null,
     easel: easel ? { title: String(easel.title), svg: String(easel.svg) } : null,
     research: stationView(db),
-    gardenGrowth: gardenGrowth(db, now),
+    gardenGrowth: scene ? scene.gardenStage / 3 : gardenGrowth(db, now),
     builds: visibleBuilds(db).map((build) => ({
       id: build.id,
       kind: build.kind,
@@ -417,6 +419,7 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
       return shop ? { name: shop.name, hue: shop.hue, form: shop.form, x: shop.x, z: shop.z, open: shop.open } : null;
     })(),
     tape: tapeLines(db),
+    choices: sceneChoices(db),
     watchOnly: true,
   };
 }

@@ -1,17 +1,23 @@
 import { publicModeOn } from "../../auth/publicMode";
+import { readScene } from "../../world/scene";
 import { buyArt } from "../actions";
 import { getEngine } from "../../server/engine";
 
 export default function GalleryPage({ searchParams }: { searchParams: Promise<{ sales?: string }> }) {
-  const snap = getEngine().snapshot();
+  const engine = getEngine();
+  const snap = engine.snapshot();
   const publicMode = publicModeOn();
+  const chosen = new Set(readScene(engine.db)?.galleryIds ?? []);
+  const gallery = chosen.size
+    ? snap.gallery.filter((item) => chosen.has((item as { id: string }).id))
+    : snap.gallery;
   return (
     <div>
       <h1>Gallery</h1>
       <p className="muted">{publicMode ? "Pieces Zoora made. Nothing here is for sale while the island is public." : `Pieces Zoora made in the ink studio. A price appears only after the keeper approves a listing. Sales mode: ${snap.money.sales}.`}</p>
       <GalleryNote searchParams={searchParams} />
       <div className="gallery">
-        {snap.gallery.map((item) => {
+        {gallery.map((item) => {
           const art = item as { id: string; title: string; svg: string; listed: number; price_cents: number | null; likes: number; favorites: number };
           return (
             <article className="card" key={art.id}>
