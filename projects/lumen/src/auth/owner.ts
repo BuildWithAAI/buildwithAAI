@@ -67,6 +67,32 @@ export function readCookie(header: string | null, name: string): string | null {
 
 export const OWNER_COOKIE = "lumen_owner";
 
+/**
+ * Secure on HTTPS. The desk proxy is HTTP and is the only public-mode login that
+ * may omit Secure. The Host header is not consulted.
+ */
+export function ownerCookieSecure(input: { forwardedProto: string | null; deskHttp: boolean }): boolean {
+  const proto = (input.forwardedProto ?? "").split(",")[0]?.trim().toLowerCase();
+  if (proto === "https") return true;
+  return !input.deskHttp;
+}
+
+export function ownerCookie(input: { forwardedProto: string | null; deskHttp: boolean }): {
+  httpOnly: true;
+  sameSite: "strict";
+  secure: boolean;
+  path: "/";
+  maxAge: number;
+} {
+  return {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: ownerCookieSecure(input),
+    path: "/",
+    maxAge: 60 * 60 * 12,
+  };
+}
+
 /** Wait grows after five failures from one address. There is no shared lockout across addresses. */
 export function loginBackoffMs(failures: number): number {
   if (failures < 5) return 0;

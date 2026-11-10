@@ -6,22 +6,25 @@ When `LUMEN_TELEGRAM_BOT_TOKEN` or `LUMEN_TELEGRAM_OWNER_CHAT_ID` is unset, Zoor
 
 Operational alerts (an unknown charge, a broken ledger chain, the kill switch, a failed delivery) do not use this voice. They go by email. If `LUMEN_ALERT_TELEGRAM_BOT_TOKEN` and `LUMEN_ALERT_TELEGRAM_CHAT_ID` are set, those alerts also go to that separate channel and are labelled `System:`.
 
+## One bot, one mode
+
+Use a bot that BotFather can revoke, and do not share it. The Fly webhook and local polling cannot use the same bot: polling calls `deleteWebhook`, which turns the Fly route off. Alerts use `LUMEN_ALERT_TELEGRAM_BOT_TOKEN`, a different bot, and stay labelled `System:`.
+
 ## Create the bot
 
 1. In Telegram, open `@BotFather`.
-2. Send `/newbot` and follow the prompts. The bot in this note is `@ZooraJellyfishBot`.
+2. Send `/newbot` and follow the prompts. This voice bot is not the alert bot.
 3. Copy the bot token into the environment. It is a secret. Do not commit it, do not pass it as a command argument, and do not paste it into a log.
 
-## Chat id
+## Chat id and user id
 
-Send any message to the new bot from the owner account, then read the chat id. Put the token in the environment first so it is not stored in the shell history as part of a copied command:
+Send any private message to the new bot from the owner account. Read the update with the token only in the environment, not on the command line:
 
 ```powershell
-# PowerShell. The token stays in the environment.
-curl "https://api.telegram.org/bot$env:LUMEN_TELEGRAM_BOT_TOKEN/getUpdates"
+node scripts/telegram-get-updates.mjs
 ```
 
-Use the `chat.id` from that reply as `LUMEN_TELEGRAM_OWNER_CHAT_ID`. Zoora accepts talk and the read-only commands only from this id. Every other chat is dropped and the id is logged without the message text.
+Use `message.chat.id` as `LUMEN_TELEGRAM_OWNER_CHAT_ID` and `message.from.id` as `LUMEN_TELEGRAM_OWNER_USER_ID`. Zoora accepts an update only when `chat.type` is `private`, `from.id` is that user, and `chat.id` is that chat. If either id is unset, she accepts nothing. A group that contains the owner, a forwarded message, and an edited message are dropped. The dropped chat id is kept, without the message text, for at most 1,000 rows or 7 days.
 
 ## Two ways to hear her
 
@@ -35,6 +38,7 @@ Local env, in a file that is not committed:
 # secrets.env
 LUMEN_TELEGRAM_BOT_TOKEN=...
 LUMEN_TELEGRAM_OWNER_CHAT_ID=...
+LUMEN_TELEGRAM_OWNER_USER_ID=...
 LUMEN_TELEGRAM_WEBHOOK_SECRET=...
 ```
 
@@ -44,22 +48,43 @@ On Fly.io:
 fly secrets import -a lumen-tidepool < secrets.env
 ```
 
-Delete `secrets.env` after the import succeeds. Point Telegram at the Fly app with `setWebhook`, including the same secret header. Do not print the token while you do it. Polling calls `deleteWebhook` when it starts, so turn polling off before you rely on this route again.
+Delete `secrets.env` after the import succeeds. Point Telegram at the Fly app with `setWebhook`, including the same secret header. Do not print the token while you do it. Do not point this same bot at local polling.
 
 ### B. Local polling
 
-Polling is for a machine that should not expose a public webhook. From `projects/lumen`, with the token and the owner chat id already in the environment:
+Polling is a separate bot on a machine that should not expose a public webhook. It refuses to start when the environment contains `LUMEN_MONEY_LIVE`, `LUMEN_TRADING_LIVE`, any `STRIPE_*` variable, or an issuing, privacy, signer, or mint key. `npm run telegram:poll` then starts a child with a clean environment, the same isolation as `env -i`, holding only:
+
+```text
+PATH
+NODE_ENV
+TZ
+LUMEN_DATA
+LUMEN_TELEGRAM_BOT_TOKEN
+LUMEN_TELEGRAM_OWNER_CHAT_ID
+LUMEN_TELEGRAM_OWNER_USER_ID
+```
+
+The token is in that environment, not in the argument list. From `projects/lumen`:
 
 ```powershell
 $env:LUMEN_TELEGRAM_MODE = "poll"
 npm run telegram:poll
 ```
 
-The script sets `LUMEN_TELEGRAM_MODE=poll` when it is unset, and it refuses to start when that variable is set to anything else. On start it calls `deleteWebhook`, then `getUpdates`, and it remembers the update offset. It uses the same owner-only handler as the webhook. A thought she offers on her own still waits about 30 minutes, and she stays quiet from 23:00 to 07:00 America/Chicago. A direct command still answers.
+Or, with the same limits, from a POSIX shell:
 
-Polling also forces money off for that process: `LUMEN_MONEY_LIVE` and `LUMEN_TRADING_LIVE` are removed, sales and spend and mint are set off, the shop checkout stays fail-closed, and the Saloon stays paper only.
+```sh
+env -i PATH="$PATH" NODE_ENV="${NODE_ENV:-production}" TZ="${TZ:-UTC}" \
+  LUMEN_DATA="${LUMEN_DATA:-data/lumen.sqlite}" \
+  LUMEN_TELEGRAM_BOT_TOKEN="$LUMEN_TELEGRAM_BOT_TOKEN" \
+  LUMEN_TELEGRAM_OWNER_CHAT_ID="$LUMEN_TELEGRAM_OWNER_CHAT_ID" \
+  LUMEN_TELEGRAM_OWNER_USER_ID="$LUMEN_TELEGRAM_OWNER_USER_ID" \
+  node scripts/telegram-poll.mjs
+```
 
-Without `LUMEN_XAI_API_KEY`, replies are the canned lines from her state. When that key is set, ordinary talk can use Grok (`LUMEN_XAI_MODEL`, default `grok-4`). The read-only commands stay on the recorded state either way. The key and the bot token are not written into the prompt body or the log. Any error text that contains the bot token, or a `api.telegram.org/bot...` URL, is redacted before it is printed.
+The script sets `LUMEN_TELEGRAM_MODE=poll` when it is unset, and it refuses to start when that variable is set to anything else. On start it calls `deleteWebhook`, then `getUpdates`, and it remembers the update offset. The temporary bundle is deleted when the process exits. It uses the same owner check as the webhook. A thought she offers on her own still waits about 30 minutes, and she stays quiet from 23:00 to 07:00 America/Chicago. A direct command still answers.
+
+Plain text is commands-only unless `LUMEN_TELEGRAM_COMMANDS_ONLY` is the exact string `false`. In the default mode she answers `I only answer /help, /mood, /needs, /status and /world here for now`, writes nothing to messages or brain state, and does not call api.x.ai. Talk, including Grok when `LUMEN_XAI_API_KEY` is set, runs only when that flag is `false`. The read-only commands stay on the recorded state either way. `/status` says it reads this instance's local data, not production. The key and the bot token are not written into the prompt body or the log. Any error text that contains the bot token, or a `api.telegram.org/bot...` URL, is redacted before it is printed.
 
 ## Command menu
 
@@ -77,10 +102,10 @@ These five commands are accepted only from `LUMEN_TELEGRAM_OWNER_CHAT_ID`. They 
 | --- | --- |
 | `/mood` | The mood sentence already in her brain. If she has not woken, she says so. |
 | `/needs` | Rest, curiosity, social, expression, and quiet, as stored. |
-| `/status` | Awake or asleep, the tick, whether live money is on, whether checkout is open, whether the Saloon is paper, and the kill switch. No balance is invented. With live money off, she says she does not have one. |
+| `/status` | Awake or asleep, the tick, whether live money is on, whether checkout is open, whether the Saloon is paper, and the kill switch. She says this is this instance's local data, not production. No balance is invented. With live money off, she says she does not have one. |
 | `/world` | Her place, and the scene she published: palette, sky, weather, decoration, garden stage. |
 | `/help` | The list above, and the reminder that a message cannot spend. |
 
-An unknown slash, including one that names a switch, is talk. It can be heard. It cannot spend, change a toggle, mint, touch the kill switch, or change a price. A chat that is not the owner is dropped.
+With commands-only on, an unknown slash gets the same short canned line as plain text. It is not talk and it cannot spend. Set `LUMEN_TELEGRAM_COMMANDS_ONLY=false` to let plain text through as talk. That talk still cannot spend, change a toggle, mint, touch the kill switch, or change a price. A chat that is not a private message from the owner user in the owner chat is dropped.
 
 Zoora may stay quiet for hours. At most about one unsolicited thought goes out every 30 minutes. Quiet hours are 23:00–07:00 America/Chicago. A thought she has already told the owner is not sent again.

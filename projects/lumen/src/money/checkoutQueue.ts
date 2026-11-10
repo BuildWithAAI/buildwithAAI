@@ -59,9 +59,22 @@ function foldIndicDigits(value: string): string {
   });
 }
 
-function luhnWindow(digits: string, solid: boolean): boolean {
+/** USPS and FedEx SmartPost are 20/22 digits starting with 9. FedEx Ground here is 15 digits starting with 96. */
+function trackingDigits(digits: string): boolean {
+  if ((digits.length === 20 || digits.length === 22) && digits.startsWith("9")) return true;
+  return digits.length === 15 && digits.startsWith("96");
+}
+
+function trackingToken(token: string): boolean {
+  const compact = token.replace(/[\s-]/g, "");
+  if (/^1Z[0-9A-Z]{16}$/i.test(compact)) return true;
+  const digits = compact.replace(/\D/g, "");
+  return digits === compact && trackingDigits(digits);
+}
+
+function luhnWindow(digits: string): boolean {
+  if (trackingDigits(digits)) return false;
   if (digits.length >= 13 && digits.length <= 19 && luhnOk(digits)) return true;
-  if (solid && digits.length >= 20 && digits.length <= 22) return false;
   for (let length = 13; length <= 19; length += 1) {
     for (let start = 0; start + length <= digits.length; start += 1) {
       if (luhnOk(digits.slice(start, start + length))) return true;
@@ -73,23 +86,30 @@ function luhnWindow(digits: string, solid: boolean): boolean {
 function looksLikePan(value: string): boolean {
   const normalized = foldIndicDigits(value.normalize("NFKC")).trim();
   if (AMAZON_ORDER.test(normalized)) return false;
+  const compact = normalized.replace(/[\s-]/g, "");
+  if (/^1Z[0-9A-Z]{16}$/i.test(compact)) return false;
+  if (/^\d+$/.test(compact) && trackingDigits(compact)) return false;
   const withoutAmazon = normalized.replace(AMAZON_ANYWHERE, " ");
   const chunks = withoutAmazon.split(/\s+/).filter(Boolean);
   let groups: string[] = [];
   let found = false;
   const takeGroups = () => {
-    if (groups.length && luhnWindow(groups.join(""), groups.length === 1)) found = true;
+    if (groups.length && luhnWindow(groups.join(""))) found = true;
     groups = [];
   };
   for (const chunk of chunks) {
     const stripped = chunk.replace(CARD_JOIN, "");
+    if (trackingToken(chunk)) {
+      takeGroups();
+      continue;
+    }
     if (/^\d+$/.test(stripped)) {
       groups.push(stripped);
       continue;
     }
     takeGroups();
     for (const run of stripped.match(/\d+/g) ?? []) {
-      if (luhnWindow(run, true)) found = true;
+      if (luhnWindow(run)) found = true;
     }
   }
   takeGroups();

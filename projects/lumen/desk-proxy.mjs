@@ -13,6 +13,9 @@ const server = http.createServer((req, res) => {
   const headers = { ...req.headers, "x-lumen-desk": secret };
   delete headers["fly-client-ip"];
   delete headers["Fly-Client-IP"];
+  delete headers["x-forwarded-proto"];
+  delete headers["X-Forwarded-Proto"];
+  headers["x-forwarded-proto"] = "http";
   const upstream = http.request(
     {
       hostname: "127.0.0.1",

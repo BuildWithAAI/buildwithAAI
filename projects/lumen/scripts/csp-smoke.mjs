@@ -27,9 +27,27 @@ function run(command, args) {
 await run("npx", ["next", "build"]);
 await mkdir(shots, { recursive: true });
 
+const deskSecret = "desk-smoke-secret";
+const ownerToken = "desk-login-token";
 const server = spawn("npx", ["next", "start", "-p", String(port)], {
   cwd: root,
-  env: { ...process.env, PORT: String(port), HOSTNAME: "127.0.0.1", LUMEN_PUBLIC_MODE: "true", NODE_ENV: "production" },
+  env: {
+    ...process.env,
+    PORT: String(port),
+    HOSTNAME: "127.0.0.1",
+    LUMEN_PUBLIC_MODE: "true",
+    NODE_ENV: "production",
+    LUMEN_DESK_SECRET: deskSecret,
+    OWNER_ACCESS_TOKEN: ownerToken,
+    OWNER_SESSION_SECRET: "desk-session-secret",
+    LUMEN_DATA: `${tmpdir()}/lumen-smoke-${port}.sqlite`,
+  },
+  detached: true,
+  stdio: ["ignore", "pipe", "pipe"],
+});
+const desk = spawn(process.execPath, ["desk-proxy.mjs"], {
+  cwd: root,
+  env: { ...process.env, LUMEN_DESK_SECRET: deskSecret, PORT: String(port), LUMEN_DESK_PORT: "3001" },
   detached: true,
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -38,6 +56,9 @@ server.stdout?.on("data", (chunk) => { serverLog += chunk; });
 server.stderr?.on("data", (chunk) => { serverLog += chunk; });
 
 function stopServer() {
+  if (desk.pid) {
+    try { process.kill(-desk.pid, "SIGTERM"); } catch { desk.kill("SIGTERM"); }
+  }
   if (!server.pid) return;
   try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
 }
@@ -46,7 +67,7 @@ const hard = setTimeout(() => {
   stopServer();
   console.error(serverLog.slice(-2000));
   process.exit(1);
-}, 180_000);
+}, 240_000);
 hard.unref?.();
 
 try {
@@ -106,6 +127,25 @@ try {
     if (!open.url().endsWith("/") && !open.url().includes("/?")) throw new Error(`world did not return home: ${open.url()}`);
   });
   await page.screenshot({ path: `${shots}/world-tip.png` });
+  let deskUp = false;
+  for (let i = 0; i < 40; i += 1) {
+    try {
+      const ready = await fetch("http://127.0.0.1:3001/admin/login");
+      if (ready.status === 200) { deskUp = true; break; }
+    } catch { /* proxy is still binding */ }
+    await delay(250);
+  }
+  if (!deskUp) throw new Error("desk proxy did not open /admin/login");
+  const login = await browser.newPage();
+  await login.goto("http://127.0.0.1:3001/admin/login", { waitUntil: "domcontentloaded" });
+  await login.locator("input[name=secret]").fill(ownerToken);
+  await login.getByRole("button", { name: "Enter" }).click();
+  await login.getByRole("heading", { name: "Zoora, in private" }).waitFor({ timeout: 15000 });
+  await login.reload({ waitUntil: "domcontentloaded" });
+  await login.getByRole("heading", { name: "Zoora, in private" }).waitFor({ timeout: 15000 });
+  const stored = (await login.context().cookies("http://127.0.0.1:3001")).find((item) => item.name === "lumen_owner");
+  if (!stored || stored.secure) throw new Error("loopback desk did not keep a non-Secure session cookie");
+  await login.screenshot({ path: `${shots}/desk-login.png` });
   await browser.close();
 
   const plain = await chromium.launch({ args: ["--disable-dev-shm-usage", "--disable-webgl"] });

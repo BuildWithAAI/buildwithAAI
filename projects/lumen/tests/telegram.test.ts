@@ -5,6 +5,7 @@ import { readLimitedText } from "../src/http/bodyLimit";
 import {
   acceptTelegramUpdate,
   chicagoHour,
+  COMMANDS_ONLY_REPLY,
   commandReply,
   composeThought,
   inQuietHours,
@@ -26,13 +27,25 @@ import { tradingLive } from "../src/trading/book";
 import { initialState } from "../src/brain/tick";
 import { creativeEnabled, setCreativeEnabled } from "../src/world/creative";
 import { BOT_COMMANDS, setMyCommands } from "../scripts/telegram-set-commands.mjs";
-import { launchPoll, preparePollEnv } from "../scripts/telegram-poll.mjs";
+import { forbiddenPollKeys, launchPoll, minimalPollEnv, preparePollEnv, removePollBundle } from "../scripts/telegram-poll.mjs";
 
 const live = {
   LUMEN_TELEGRAM_BOT_TOKEN: "secret-token",
   LUMEN_TELEGRAM_OWNER_CHAT_ID: "4242",
+  LUMEN_TELEGRAM_OWNER_USER_ID: "77",
   LUMEN_TELEGRAM_WEBHOOK_SECRET: "hook-secret",
 };
+
+function ownerPacket(text: string, message: Record<string, unknown> = {}) {
+  return JSON.stringify({
+    message: {
+      chat: { id: 4242, type: "private" },
+      from: { id: 77 },
+      text,
+      ...message,
+    },
+  });
+}
 
 function feelings(over: Partial<Emotions> = {}): Emotions {
   return { joy: 0, calm: 0.1, curiosity: 0, loneliness: 0, frustration: 0, pride: 0, boredom: 0, worry: 0, ...over };
@@ -83,8 +96,8 @@ describe("Zoora's telegram voice", () => {
     const stranger = JSON.stringify({ message: { chat: { id: 9 }, text: "/pause_builds" } });
     expect((await acceptTelegramUpdate(db, live, stranger, "hook-secret", talk, atHour(12))).reply).toBe("");
     expect(db.prepare("SELECT chat_id FROM telegram_drops").get()).toEqual({ chat_id: "9" });
-    const command = JSON.stringify({ message: { chat: { id: 4242 }, text: "/pause_builds" } });
-    const accepted = await acceptTelegramUpdate(db, live, command, "hook-secret", talk, atHour(12));
+    const command = ownerPacket("/pause_builds");
+    const accepted = await acceptTelegramUpdate(db, { ...live, LUMEN_TELEGRAM_COMMANDS_ONLY: "false" }, command, "hook-secret", talk, atHour(12));
     expect(accepted.reply).toBe("I heard you. I am not touching any switch.");
     expect(creativeEnabled(db)).toBe(true);
     expect(sent).toEqual(["/pause_builds"]);
@@ -120,26 +133,27 @@ describe("Zoora's telegram voice", () => {
       return { ok: true, reply: "I would have touched a switch." };
     };
     const noon = atHour(12);
-    const mood = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 4242 }, text: "/mood@ZooraJellyfishBot" } }), "hook-secret", talk, noon);
+    const mood = await acceptTelegramUpdate(db, live, ownerPacket("/mood@ZooraJellyfishBot"), "hook-secret", talk, noon);
     expect(mood.reply).toBe(commandReply("mood", readVoiceFacts(db, live)));
     expect(mood.reply).toMatch(/^I feel /);
     expect(knownCommand("/pause_builds")).toBeNull();
     const stranger = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 9 }, text: "/status" } }), "hook-secret", talk, noon);
     expect(stranger.reply).toBe("");
-    const status = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 4242 }, text: "/status" } }), "hook-secret", talk, noon);
+    const status = await acceptTelegramUpdate(db, live, ownerPacket("/status"), "hook-secret", talk, noon);
     expect(status.reply).toContain("Live money is off.");
+    expect(status.reply).toContain("local data, not production");
     expect(status.reply).toContain("I do not have a balance");
     expect(status.reply).toContain("The shop checkout is closed.");
     expect(status.reply).toContain("The Saloon is paper only.");
     expect(status.reply).not.toMatch(/\$\s?\d/);
-    const world = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 4242 }, text: "/world" } }), "hook-secret", talk, noon);
+    const world = await acceptTelegramUpdate(db, live, ownerPacket("/world"), "hook-secret", talk, noon);
     expect(world.reply).toContain("Art Studio");
     expect(world.reply).toContain("lantern palette");
     expect(world.reply).toContain("stage 2");
-    const help = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 4242 }, text: "/help" } }), "hook-secret", talk, noon);
+    const help = await acceptTelegramUpdate(db, live, ownerPacket("/help"), "hook-secret", talk, noon);
     expect(help.reply).toContain("/needs");
     expect(help.reply).toContain("will not spend");
-    const needs = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 4242 }, text: "/needs" } }), "hook-secret", talk, noon);
+    const needs = await acceptTelegramUpdate(db, live, ownerPacket("/needs"), "hook-secret", talk, noon);
     expect(needs.reply).toContain("curiosity 0.36");
     expect(sent).toEqual([]);
     expect(kvGet(db, "brain")).toBe(beforeBrain);
@@ -151,7 +165,7 @@ describe("Zoora's telegram voice", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM ledger_entries WHERE kind = 'purchase'").get()).toEqual({ n: 0 });
     expect(db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
     expect(JSON.stringify(db.prepare("SELECT text FROM telegram_outbox").all())).not.toContain("secret-token");
-    const quiet = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 4242 }, text: "/mood" } }), "hook-secret", talk, atHour(23), { send: () => undefined });
+    const quiet = await acceptTelegramUpdate(db, live, ownerPacket("/mood"), "hook-secret", talk, atHour(23), { send: () => undefined });
     expect(quiet.reply).toMatch(/^I feel /);
     expect(offerThought(db, live, "A separate thought.", atHour(23)).status).toBe("quiet");
   });
@@ -168,12 +182,12 @@ describe("Zoora's telegram voice", () => {
       expect(String(init?.headers && JSON.stringify(init.headers))).not.toContain("secret-token");
       return new Response(JSON.stringify({ choices: [{ message: { content: "The dock bell is soft tonight." } }] }), { status: 200 });
     }) as typeof fetch;
-    const withKey = { ...live, LUMEN_XAI_API_KEY: "xai-test-key-123456" };
-    const talked = await acceptTelegramUpdate(db, withKey, JSON.stringify({ message: { chat: { id: 4242 }, text: "hello from the dock" } }), "hook-secret", () => ({ ok: true, reply: "I heard the dock in your note." }), atHour(12), { fetch: fetchImpl, send: () => undefined });
+    const withKey = { ...live, LUMEN_XAI_API_KEY: "xai-test-key-123456", LUMEN_TELEGRAM_COMMANDS_ONLY: "false" };
+    const talked = await acceptTelegramUpdate(db, withKey, ownerPacket("hello from the dock"), "hook-secret", () => ({ ok: true, reply: "I heard the dock in your note." }), atHour(12), { fetch: fetchImpl, send: () => undefined });
     expect(talked.reply).toBe("The dock bell is soft tonight.");
     expect(calls).toEqual(["https://api.x.ai/v1/chat/completions"]);
     calls.length = 0;
-    const commanded = await acceptTelegramUpdate(db, withKey, JSON.stringify({ message: { chat: { id: 4242 }, text: "/mood" } }), "hook-secret", () => ({ ok: true, reply: "should not be used" }), atHour(12), { fetch: fetchImpl, send: () => undefined });
+    const commanded = await acceptTelegramUpdate(db, withKey, ownerPacket("/mood"), "hook-secret", () => ({ ok: true, reply: "should not be used" }), atHour(12), { fetch: fetchImpl, send: () => undefined });
     expect(commanded.reply).toMatch(/^I feel /);
     expect(calls).toEqual([]);
     const invented = await speakWithGrok(withKey, readVoiceFacts(db, withKey), "hi", "canned line", (async () => new Response(JSON.stringify({ choices: [{ message: { content: "Your balance is $40." } }] }), { status: 200 })) as typeof fetch);
@@ -212,10 +226,10 @@ describe("Zoora's telegram voice", () => {
     };
     const noon = atHour(12);
     for (let i = 0; i < 30; i += 1) {
-      const reply = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 4242 }, text: "/mood" } }), "hook-secret", talk, noon);
+      const reply = await acceptTelegramUpdate(db, live, ownerPacket("/mood"), "hook-secret", talk, noon);
       expect(reply.reply).toMatch(/^I feel /);
     }
-    const blocked = await acceptTelegramUpdate(db, live, JSON.stringify({ message: { chat: { id: 4242 }, text: "/pause_builds" } }), "hook-secret", talk, noon);
+    const blocked = await acceptTelegramUpdate(db, live, ownerPacket("/pause_builds"), "hook-secret", talk, noon);
     expect(blocked.reply).toBe("");
     expect(talks).toBe(0);
     expect(db.prepare("SELECT value FROM flags WHERE key = 'kill'").get()).toBeUndefined();
@@ -257,16 +271,16 @@ describe("Zoora's telegram voice", () => {
       expect(body.timeout).toBe(0);
       expect(body.offset).toBe(0);
       return [
-        { update_id: 4, message: { chat: { id: 9 }, text: "/mood" } },
-        { update_id: 5, message: { chat: { id: 4242 }, text: "/status" } },
-        { update_id: 6, message: { chat: { id: 4242 }, text: "/not-a-command" } },
+        { update_id: 4, message: { chat: { id: 9, type: "private" }, from: { id: 77 }, text: "/mood" } },
+        { update_id: 5, message: { chat: { id: 4242, type: "private" }, from: { id: 77 }, text: "/status" } },
+        { update_id: 6, message: { chat: { id: 4242, type: "group" }, from: { id: 77 }, text: "/not-a-command" } },
       ];
     }, (text) => {
       talked.push(text);
       return { ok: true, reply: "I heard that as talk." };
     }, atHour(12), 0, { send: (message) => sent.push(message.text) });
     expect(next).toBe(7);
-    expect(talked).toEqual(["/not-a-command"]);
+    expect(talked).toEqual([]);
     expect(sent.join(" ")).toContain("Live money is off");
     expect(sent.join(" ")).toContain("The Saloon is paper only.");
     expect(sent.join(" ")).not.toMatch(/\$\s?\d/);
@@ -283,7 +297,7 @@ describe("Zoora's telegram voice", () => {
       send: (message) => replies.push(message.text),
       call: async (method) => {
         if (method === "deleteWebhook") return true;
-        return [{ update_id: 1, message: { chat: { id: "4242" }, text: "/status" } }];
+        return [{ update_id: 1, message: { chat: { id: "4242", type: "private" }, from: { id: 77 }, text: "/status" } }];
       },
     });
     await expect(runTelegramPoll({ LUMEN_DATA: ":memory:" }, { once: true, call: async () => true })).rejects.toThrow(/Nothing was sent/);
@@ -320,20 +334,77 @@ describe("Zoora's telegram voice", () => {
     expect(failed).toBe(1);
     expect(errors.join(" ")).not.toContain(token);
     expect(errors.join(" ")).toContain("[redacted]");
-    const env = { LUMEN_MONEY_LIVE: "true", LUMEN_TRADING_LIVE: "true", LUMEN_SALES_MODE: "live", LUMEN_SPEND_ENABLED: "true", MINT_ENABLED: "true", LUMEN_TELEGRAM_BOT_TOKEN: token };
+    const env = { LUMEN_MONEY_LIVE: "true", LUMEN_TRADING_LIVE: "true", LUMEN_SALES_MODE: "live", LUMEN_SPEND_ENABLED: "true", MINT_ENABLED: "true", STRIPE_SECRET_KEY: "sk_live_x", LUMEN_TELEGRAM_BOT_TOKEN: token };
     expect(preparePollEnv({ LUMEN_TELEGRAM_MODE: "webhook" })).toBe(false);
     const logged: string[] = [];
+    let ran = false;
     const code = await launchPoll({
       env,
       run: async () => {
-        throw new Error(`https://api.telegram.org/bot${token}/getUpdates`);
+        ran = true;
       },
       writeError: (line: string) => logged.push(line),
     });
     expect(code).toBe(1);
-    expect(env.LUMEN_MONEY_LIVE).toBeUndefined();
-    expect(env.LUMEN_TRADING_LIVE).toBeUndefined();
-    expect(env.LUMEN_SALES_MODE).toBe("disabled");
+    expect(ran).toBe(false);
+    expect(logged.join(" ")).toContain("Refusing to poll");
     expect(logged.join(" ")).not.toContain(token);
+    expect(logged.join(" ")).not.toContain("sk_live");
+  });
+
+  it("accepts only a private message from the owner user in the owner chat", async () => {
+    const db = openDatabase();
+    const talk = () => ({ ok: true, reply: "talk" });
+    const noon = atHour(12);
+    const group = await acceptTelegramUpdate(db, live, ownerPacket("/mood", { chat: { id: 4242, type: "group" }, from: { id: 77 } }), "hook-secret", talk, noon);
+    expect(group.reply).toBe("");
+    const forwarded = await acceptTelegramUpdate(db, live, ownerPacket("/mood", { forward_origin: { type: "user" } }), "hook-secret", talk, noon);
+    expect(forwarded.reply).toBe("");
+    const edited = await acceptTelegramUpdate(db, live, JSON.stringify({ edited_message: { chat: { id: 4242, type: "private" }, from: { id: 77 }, text: "/mood", edit_date: 5 } }), "hook-secret", talk, noon);
+    expect(edited.reply).toBe("");
+    const missing = await acceptTelegramUpdate(db, { ...live, LUMEN_TELEGRAM_OWNER_USER_ID: "" }, ownerPacket("/mood"), "hook-secret", talk, noon);
+    expect(missing.reply).toBe("");
+    expect(db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+    const kept = await acceptTelegramUpdate(db, live, ownerPacket("/help"), "hook-secret", talk, noon);
+    expect(kept.reply).toContain("/status");
+  });
+
+  it("does not store plain text or call xAI when commands-only is the default", async () => {
+    const db = openDatabase();
+    kvSet(db, "brain", JSON.stringify(initialState()));
+    const before = kvGet(db, "brain");
+    let called = 0;
+    const fetchImpl = (async () => {
+      called += 1;
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    const env = { ...live, LUMEN_XAI_API_KEY: "xai-test-key-123456" };
+    const reply = await acceptTelegramUpdate(db, env, ownerPacket("hello from the dock"), "hook-secret", () => {
+      throw new Error("talk");
+    }, atHour(12), { fetch: fetchImpl, send: () => undefined });
+    expect(reply.reply).toBe(COMMANDS_ONLY_REPLY);
+    expect(called).toBe(0);
+    expect(kvGet(db, "brain")).toBe(before);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+    const minimal = minimalPollEnv({
+      PATH: "/usr/bin",
+      HOME: "/tmp/secret-home",
+      STRIPE_SECRET_KEY: "sk_live_nope",
+      LUMEN_MINT_SIGNER_SECRET: "mint",
+      LUMEN_TELEGRAM_BOT_TOKEN: "secret-token",
+      LUMEN_TELEGRAM_OWNER_CHAT_ID: "4242",
+      LUMEN_TELEGRAM_OWNER_USER_ID: "77",
+    });
+    expect(Object.keys(minimal).sort()).toEqual(["LUMEN_DATA", "LUMEN_TELEGRAM_BOT_TOKEN", "LUMEN_TELEGRAM_MODE", "LUMEN_TELEGRAM_OWNER_CHAT_ID", "LUMEN_TELEGRAM_OWNER_USER_ID", "NODE_ENV", "PATH", "TZ"]);
+    expect(JSON.stringify(minimal)).not.toContain("sk_live");
+    expect(forbiddenPollKeys({ STRIPE_WEBHOOK_SECRET: "whsec", LUMEN_PRIVACY_KEY: "p", PATH: "/bin" }).sort()).toEqual(["LUMEN_PRIVACY_KEY", "STRIPE_WEBHOOK_SECRET"]);
+    const dir = `${process.cwd()}/data/tg-bundle-test`;
+    const file = `${dir}/poll.mjs`;
+    const { mkdirSync, writeFileSync, existsSync } = await import("node:fs");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(file, "bundle");
+    removePollBundle(file);
+    expect(existsSync(file)).toBe(false);
+    expect(existsSync(dir)).toBe(false);
   });
 });

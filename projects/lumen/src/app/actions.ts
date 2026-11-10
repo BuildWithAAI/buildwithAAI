@@ -2,7 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { clientAddress, OWNER_COOKIE } from "../auth/owner";
+import { clientAddress, OWNER_COOKIE, ownerCookie } from "../auth/owner";
 import { loginReachable, publicModeOn } from "../auth/publicMode";
 import { chainTimeMs, fetchFinalized, quoteSolOrder, verifySolPayment } from "../money/solana";
 import { listShop } from "../shop/store";
@@ -51,13 +51,9 @@ export async function login(form: FormData) {
   const result = await getEngine().login(String(form.get("secret") ?? ""), await ip());
   if (!result.ok || !("token" in result) || !result.token) redirect("/admin/login?error=1");
   const jar = await cookies();
-  jar.set(OWNER_COOKIE, result.token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 12,
-  });
+  const proto = header.get("x-forwarded-proto");
+  const deskHttp = Boolean((header.get("x-lumen-desk") ?? "").trim()) && (proto ?? "").split(",")[0]?.trim().toLowerCase() !== "https";
+  jar.set(OWNER_COOKIE, result.token, ownerCookie({ forwardedProto: proto, deskHttp }));
   redirect("/admin");
 }
 

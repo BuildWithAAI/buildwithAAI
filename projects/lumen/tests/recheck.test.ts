@@ -1,15 +1,21 @@
 import { spawn } from "node:child_process";
+import { mkdtempSync } from "node:fs";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { createSession, OWNER_COOKIE } from "../src/auth/owner";
+import { createSession, OWNER_COOKIE, ownerCookie, ownerCookieSecure } from "../src/auth/owner";
 import { DISTINCT_BEARER_LIMIT, OWNER_TOKEN_MAP_CAP, noteDistinctBearerMiss, ownerTokenKey, ownerTokenLoad, resetOwnerTokens } from "../src/auth/ownerToken";
 import { POST as reportCheckoutRoute } from "../src/app/api/checkout/report/route";
 import { getEngine } from "../src/server/engine";
-import { notePresence, presenceCount, presenceSize, PRESENCE_GLOBAL_CAP, PRESENCE_PER_IP, resetPresence } from "../src/world/presence";
+import { notePresence, presenceCount, presenceSize, PRESENCE_GLOBAL_CAP, PRESENCE_PER_48, PRESENCE_PER_IP, resetPresence } from "../src/world/presence";
 import { allowGuestNote, openDatabase } from "../src/db/db";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FloorView } from "../src/components/FloorView";
+
+const isolated = path.join(mkdtempSync(path.join(tmpdir(), "lumen-recheck-")), "lumen.sqlite");
+process.env.LUMEN_DATA = isolated;
 
 describe("security recheck", () => {
   it("starts the desk proxy and answers on ipv6 localhost", async () => {
@@ -40,10 +46,19 @@ describe("security recheck", () => {
     expect(body).toBe("desk-ok");
   });
 
+  it("keeps the owner cookie strict, and omits Secure only on the loopback desk", () => {
+    expect(ownerCookieSecure({ forwardedProto: null, deskHttp: true })).toBe(false);
+    expect(ownerCookieSecure({ forwardedProto: "http", deskHttp: true })).toBe(false);
+    expect(ownerCookieSecure({ forwardedProto: "https", deskHttp: true })).toBe(true);
+    expect(ownerCookieSecure({ forwardedProto: null, deskHttp: false })).toBe(true);
+    expect(ownerCookie({ forwardedProto: "https", deskHttp: false })).toMatchObject({ httpOnly: true, sameSite: "strict", secure: true, path: "/" });
+  });
+
   it("rejects an owner session cookie on the public edge", async () => {
     const previous = process.env.LUMEN_PUBLIC_MODE;
     process.env.LUMEN_PUBLIC_MODE = "true";
     try {
+      delete (globalThis as { engine?: unknown }).engine;
       const engine = getEngine();
       const token = createSession(engine.db, Date.now());
       const headers = { cookie: `${OWNER_COOKIE}=${token}`, origin: "https://zoora.ai", "content-type": "application/json" };
@@ -86,6 +101,11 @@ describe("security recheck", () => {
     expect(presenceCount(9_000)).toBe(PRESENCE_PER_IP);
     for (let i = 0; i < PRESENCE_GLOBAL_CAP + 10; i += 1) notePresence(`cap${i.toString(16).padEnd(6, "b")}`, 9_000, `203.0.113.${i % 200}`);
     expect(presenceSize()).toBeLessThanOrEqual(PRESENCE_GLOBAL_CAP);
+    resetPresence();
+    for (let net = 0; net < 40; net += 1) notePresence(`net${net.toString(16).padEnd(6, "c")}`, 9_000, `2001:db8:1:${net.toString(16)}::1`);
+    expect(presenceCount(9_000)).toBe(PRESENCE_PER_48);
+    notePresence("othernet1", 9_000, "2001:db8:9:1::1");
+    expect(presenceCount(9_000)).toBe(PRESENCE_PER_48 + 1);
     const book = openDatabase();
     const at = 1_800_000_000_000;
     for (let i = 0; i < 8; i += 1) expect(allowGuestNote(book, "2001:db8:9:9::1", at + i)).toBe(true);

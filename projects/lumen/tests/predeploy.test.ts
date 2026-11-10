@@ -125,7 +125,32 @@ describe("pre-deploy advisory", () => {
     expect(rejectPan({ note: "3782 822463 10005 12/28" })).toBe(true);
     expect(rejectPan({ note: "order 123-4567890-1234569 thanks" })).toBe(false);
     expect(rejectPan({ note: "9400111899223344556677" })).toBe(false);
-    expect(rejectPan({ note: "42424242424242420000" })).toBe(false);
+    expect(rejectPan({ note: "42424242424242420000" })).toBe(true);
+    expect(rejectPan({ note: "9400111899223344556677" })).toBe(false);
+    expect(rejectPan({ note: "1Z999AA10123456784" })).toBe(false);
+    expect(rejectPan({ note: "1Z 999 AA1 01 2345 6784" })).toBe(false);
+    expect(rejectPan({ note: "9612 3456 7890 123" })).toBe(false);
+    const rand = (seed: number) => {
+      let state = seed >>> 0;
+      return () => {
+        state = (Math.imul(1664525, state) + 1013904223) >>> 0;
+        return state;
+      };
+    };
+    const usps = rand(11);
+    for (let i = 0; i < 1000; i += 1) {
+      let body = "94";
+      for (let digit = 0; digit < 20; digit += 1) body += String(usps() % 10);
+      const spaced = body.replace(/(.{4})/g, "$1 ").trim();
+      expect(rejectPan({ note: spaced })).toBe(false);
+    }
+    const cards = rand(29);
+    for (let i = 0; i < 1000; i += 1) {
+      let extra = "";
+      for (let digit = 0; digit < 6; digit += 1) extra += String(cards() % 10);
+      const mixed = `12${extra}4242424242424242`;
+      expect(rejectPan({ note: mixed })).toBe(true);
+    }
     expect(rejectPan({ note: "123-4567890-1234569 4242424242424242" })).toBe(true);
   });
 

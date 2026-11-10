@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha:
+title: Telegram is owner-only, and the desk cookie works over loopback HTTP.
+summary: An update is accepted only from a private chat when the user id and the chat id both match. A group, a forward, and an edit are dropped. Commands-only is the default, so plain text is not stored and is not sent to xAI. Polling refuses money, Stripe, issuing, privacy, signer, and mint variables, then runs in a clean environment. Dropped chat ids are capped, and the poll bundle is deleted on exit. /status says it reads this instance's local data. The desk cookie is Secure only on HTTPS. The loopback desk over HTTP can keep the session. HttpOnly and SameSite=Strict stay. Crisis phrases cover ending it, hurt myself, and not wanting to be alive. Self-harm awareness week stays a quiet reply. Spaced USPS, UPS, and FedEx numbers are not treated as cards. A /48 cannot fill the presence cap. The smoke test logs in at http://127.0.0.1:3001 and reloads the desk.
+date: 2026-11-10T22:30:00Z
+image:
+
+---
 sha: d35c2b5
 title: The island is the front door.
 summary: / opens the full-screen world, with Zoora in it. The greeting, the AI notice, the advice line, the Kit form, and the nav sit in a drawer. /world redirects home and keeps the camera query, so the canonical page is /. Without WebGL the same page shows the friendly fallback and the greeting. A thought bubble follows her head and uses her activity, diary, scene reason, wish, or a canned guestbook reply. It never shows a raw visitor note and it cannot spend. The ledger panel reads confirmed rows only. With none, it says no transactions yet and that live money is off. Paper rows are labeled SIMULATED and stay out of the balance. The wishlist panel is read-only. The nonce CSP, public mode, and crisis replies are unchanged.

@@ -7,10 +7,13 @@ const CRISIS = [
   /\bkill myself\b/i,
   /\bending my life\b/i,
   /\bend it all\b/i,
-  /\bself[-\s]?harm/i,
+  /\bending it\b/i,
+  /\bend(?:ing)? my life\b/i,
+  /\bhurt myself\b/i,
   /\bwant to die\b/i,
   /\bwanna die\b/i,
-  /\bdon?t want to be alive\b/i,
+  /\b(?:do not|dont|don'?t) want to be alive\b/i,
+  /\bnot want to be alive\b/i,
   /\bno re(?:ason|son|asan) to live\b/i,
   /\bme quiero morir\b/i,
   /\bquiero morir\b/i,
@@ -18,7 +21,7 @@ const CRISIS = [
   /\bich will sterben\b/i,
 ];
 
-const HEAVY = /\b(sad|lonely|depress\w*|hopeless|worthless|hurt|awful|terrible|hate|miserable|empty|numb|anxious|anxiety|give up|no point|tired of|dont want|do not want)\b/i;
+const HEAVY = /\b(sad|lonely|depress\w*|hopeless|worthless|hurt|awful|terrible|hate|miserable|empty|numb|anxious|anxiety|give up|no point|tired of|dont want|do not want|self[-\s]?harm)\b/i;
 
 export const CRISIS_REPLY = "If you are in crisis, call or text 988 (US Suicide & Crisis Lifeline). Outside the US, visit https://findahelpline.com. Zoora is an AI, not a human.";
 export const NEUTRAL_REPLY = "I read this quietly. Zoora is an AI, not a human.";

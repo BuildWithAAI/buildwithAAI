@@ -17,6 +17,43 @@ export const TELEGRAM_THROTTLE_MS = 30 * 60_000;
 export const TELEGRAM_BODY_MAX = 8 * 1024;
 export const TELEGRAM_COMMANDS = ["mood", "needs", "status", "world", "help"] as const;
 export type TelegramCommand = (typeof TELEGRAM_COMMANDS)[number];
+export const COMMANDS_ONLY_REPLY = "I only answer /help, /mood, /needs, /status and /world here for now";
+export const DROP_KEEP = 1_000;
+export const DROP_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type InboundMessage = {
+  chat?: { id?: number | string; type?: string };
+  from?: { id?: number | string };
+  text?: string;
+  forward_date?: unknown;
+  forward_from?: unknown;
+  forward_origin?: unknown;
+  forward_sender_name?: unknown;
+  edit_date?: unknown;
+};
+
+/** Commands-only unless the owner sets the flag to the exact string false. */
+export function commandsOnly(env: AlertEnv): boolean {
+  return (env.LUMEN_TELEGRAM_COMMANDS_ONLY ?? "").trim().toLowerCase() !== "false";
+}
+
+/** Private chat, owner user, and owner chat must all match. A missing id fails closed. */
+export function ownerUpdateAllowed(env: AlertEnv, message: InboundMessage | undefined): boolean {
+  const chatId = (env.LUMEN_TELEGRAM_OWNER_CHAT_ID ?? "").trim();
+  const userId = (env.LUMEN_TELEGRAM_OWNER_USER_ID ?? "").trim();
+  if (!chatId || !userId || !message) return false;
+  if (message.edit_date != null) return false;
+  if (message.forward_date != null || message.forward_from != null || message.forward_origin != null || message.forward_sender_name != null) return false;
+  if (message.chat?.type !== "private") return false;
+  if (String(message.from?.id ?? "") !== userId) return false;
+  if (String(message.chat?.id ?? "") !== chatId) return false;
+  return true;
+}
+
+export function pruneTelegramDrops(db: DatabaseSync, now: number): void {
+  db.prepare("DELETE FROM telegram_drops WHERE at_ms < ?").run(now - DROP_KEEP_MS);
+  db.prepare(`DELETE FROM telegram_drops WHERE id NOT IN (SELECT id FROM telegram_drops ORDER BY id DESC LIMIT ${DROP_KEEP})`).run();
+}
 
 export type OwnerTelegram = { mode: "live" | "mock"; chatId: string; secretSet: boolean };
 
@@ -190,35 +227,40 @@ export async function acceptTelegramUpdate(
   } catch {
     return { status: 400, reply: "" };
   }
-  const chatId = String(update.message?.chat?.id ?? "");
-  const text = update.message?.text ?? "";
-  return dispatchOwnerMessage(db, env, chatId, text, talk, now, io);
+  const parsed = update as { message?: InboundMessage; edited_message?: InboundMessage };
+  if (parsed.edited_message && !parsed.message) {
+    rememberDrop(db, String(parsed.edited_message.chat?.id ?? "edited"), now);
+    return { status: 200, reply: "" };
+  }
+  return dispatchOwnerMessage(db, env, parsed.message, talk, now, io);
 }
 
 export async function dispatchOwnerMessage(
   db: DatabaseSync,
   env: AlertEnv,
-  chatId: string,
-  text: string,
+  message: InboundMessage | undefined,
   talk: TalkBack,
   now: number,
   io: { send?: TelegramTransport; fetch?: typeof fetch } = {},
 ): Promise<{ status: number; reply: string }> {
-  const config = ownerTelegram(env);
-  if (!chatId || chatId !== config.chatId) {
-    db.prepare("INSERT INTO telegram_drops(chat_id, at_ms) VALUES(?, ?)").run(chatId || "missing", now);
+  if (!ownerUpdateAllowed(env, message)) {
+    rememberDrop(db, String(message?.chat?.id ?? "missing"), now);
     return { status: 200, reply: "" };
   }
   if (!allowRate(db, "telegram-owner", 30, 60_000, now)) {
     record(db, "reply", "quiet minute", "throttled", now);
     return { status: 200, reply: "" };
   }
-  const body = text.trim().slice(0, 500);
+  const body = (message?.text ?? "").trim().slice(0, 500);
   const command = knownCommand(body);
   if (command) {
     const reply = commandReply(command, readVoiceFacts(db, env));
     sendOwnerReply(db, env, reply, now, io);
     return { status: 200, reply };
+  }
+  if (commandsOnly(env)) {
+    sendOwnerReply(db, env, COMMANDS_ONLY_REPLY, now, io);
+    return { status: 200, reply: COMMANDS_ONLY_REPLY };
   }
   const turn = await Promise.resolve(talk(body));
   let reply = (turn.reply ?? "").replace(/\s+/g, " ").trim();
@@ -304,7 +346,7 @@ function statusReply(facts: VoiceFacts): string {
   const shop = facts.checkoutOpen ? "The shop checkout is open." : "The shop checkout is closed.";
   const saloon = facts.tradingLive ? "The Saloon is live." : "The Saloon is paper only.";
   const kill = facts.kill ? "The kill switch is on." : "The kill switch is off.";
-  return `${awake} ${money} ${shop} ${saloon} ${kill}`;
+  return `${awake} ${money} ${shop} ${saloon} ${kill} This reads this instance's local data, not production.`;
 }
 
 function worldReply(facts: VoiceFacts): string {
@@ -355,6 +397,11 @@ function alreadyTold(db: DatabaseSync, text: string): boolean {
 function record(db: DatabaseSync, type: string, text: string, status: string, now: number): { status: "sent" | "mock" | "throttled" | "quiet" | "repeat" | "silent" } {
   db.prepare("INSERT INTO telegram_outbox(kind, text, status, at_ms) VALUES(?, ?, ?, ?)").run(type, text.slice(0, 500), status, now);
   return { status: status as "sent" | "mock" | "throttled" | "quiet" | "repeat" | "silent" };
+}
+
+function rememberDrop(db: DatabaseSync, chatId: string, now: number): void {
+  db.prepare("INSERT INTO telegram_drops(chat_id, at_ms) VALUES(?, ?)").run(chatId || "missing", now);
+  pruneTelegramDrops(db, now);
 }
 
 function secretMatches(expected: string | undefined, header: string | null): boolean {

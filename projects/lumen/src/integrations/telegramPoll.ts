@@ -7,6 +7,7 @@ import { tradingLive } from "../trading/book";
 import { kvGet, kvSet } from "../db/db";
 import {
   dispatchOwnerMessage,
+  type InboundMessage,
   ownerTelegram,
   pollSafeEnv,
   redactSecrets,
@@ -15,7 +16,8 @@ import {
 
 export type TgUpdate = {
   update_id?: number;
-  message?: { chat?: { id?: number | string }; text?: string };
+  message?: InboundMessage;
+  edited_message?: InboundMessage;
 };
 
 export type TgCall = (method: string, body: Record<string, unknown>) => Promise<unknown>;
@@ -66,13 +68,18 @@ export async function pollCycle(
   }
   const offset = Number(kvGet(db, "tg_poll_offset") ?? "0");
   const start = Number.isFinite(offset) && offset >= 0 ? Math.floor(offset) : 0;
-  const result = await call("getUpdates", { offset: start, timeout, allowed_updates: ["message"] });
+  const result = await call("getUpdates", { offset: start, timeout, allowed_updates: ["message", "edited_message"] });
   const updates = Array.isArray(result) ? result as TgUpdate[] : [];
   let next = start;
   for (const update of updates) {
     const id = Number(update.update_id);
     if (Number.isFinite(id)) next = Math.max(next, id + 1);
-    await dispatchOwnerMessage(db, safe, String(update.message?.chat?.id ?? ""), update.message?.text ?? "", talk, now, io);
+    const inbound = update.edited_message && !update.message ? update.edited_message : update.message;
+    if (update.edited_message && !update.message) {
+      await dispatchOwnerMessage(db, safe, { ...inbound, edit_date: inbound?.edit_date ?? 1 }, talk, now, io);
+    } else {
+      await dispatchOwnerMessage(db, safe, inbound, talk, now, io);
+    }
     kvSet(db, "tg_poll_offset", String(next));
   }
   kvSet(db, "tg_poll_offset", String(next));
@@ -88,7 +95,7 @@ export async function runTelegramPoll(env: AlertEnv = process.env, hooks: {
   const safe = pollSafeEnv(env);
   const token = safe.LUMEN_TELEGRAM_BOT_TOKEN ?? "";
   if (ownerTelegram(safe).mode !== "live") {
-    throw new Error("Polling needs LUMEN_TELEGRAM_BOT_TOKEN and LUMEN_TELEGRAM_OWNER_CHAT_ID. Nothing was sent.");
+    throw new Error("Polling needs LUMEN_TELEGRAM_BOT_TOKEN, LUMEN_TELEGRAM_OWNER_CHAT_ID, and LUMEN_TELEGRAM_OWNER_USER_ID. Nothing was sent.");
   }
   const call = hooks.call ?? telegramCaller(token);
   await pollStartup(call);

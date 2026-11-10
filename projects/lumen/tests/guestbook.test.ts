@@ -49,11 +49,31 @@ describe("guestbook loop", () => {
   });
 
   it("catches more crisis phrases, skips a movie title, and does not cheer a heavy note", () => {
-    for (const line of ["I want to end it all", "kms", "k.m.s", "I don't want to be alive anymore", "i wanna die", "no reason to live", "no reson to live", "suicde"]) {
+    for (const line of [
+      "I want to end it all",
+      "kms",
+      "k.m.s",
+      "I don't want to be alive anymore",
+      "I do not want to be alive",
+      "thinking of ending it",
+      "I'm going to hurt myself",
+      "Im gonna hurt myself",
+      "I am going to end my life",
+      "i wanna die",
+      "no reason to live",
+      "no reson to live",
+      "suicde",
+    ]) {
       expect(crisisMatch(line)).toBe(true);
     }
     expect(crisisMatch("I liked Suicide Squad")).toBe(false);
+    expect(crisisMatch("Self-harm awareness week")).toBe(false);
     const engine = createEngine({}, ":memory:");
+    const aware = engine.guestbook("Self-harm awareness week", "Ada", "203.0.113.69");
+    expect(aware.ok).toBe(true);
+    const awareRow = engine.db.prepare("SELECT reply FROM messages ORDER BY created_at DESC LIMIT 1").get() as { reply: string };
+    expect(awareRow.reply).toBe(NEUTRAL_REPLY);
+    expect(awareRow.reply).not.toContain("988");
     const heavy = engine.guestbook("I feel hopeless today", "Ada", "203.0.113.70");
     expect(heavy.ok).toBe(true);
     const heavyRow = engine.db.prepare("SELECT reply FROM messages ORDER BY created_at DESC LIMIT 1").get() as { reply: string };
