@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DISTINCT_BEARER_LIMIT, distinctBearerBlocked, noteDistinctBearerMiss, ownerTokenKey, ownerTokenLocked, resetOwnerTokens } from "../src/auth/ownerToken";
-import { readDeliveryToken } from "../src/app/api/delivery/[token]/route";
+import { readDeliveryToken } from "../src/shop/delivery";
 import { openDatabase, setFlag } from "../src/db/db";
 import { PRIVACY_MAX_CENTS, bookPrivacyReport, openExpectedSpend } from "../src/money/card";
 import { rejectPan } from "../src/money/checkoutQueue";

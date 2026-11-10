@@ -1,15 +1,8 @@
+import { readDeliveryToken } from "../../../../shop/delivery";
 import { shopFile } from "../../../../shop/store";
 import { getEngine } from "../../../../server/engine";
-import type { DatabaseSync } from "node:sqlite";
 
 export const dynamic = "force-dynamic";
-
-/** A paid delivery stays readable. A kill switch stops new sales, not this file. */
-export function readDeliveryToken(db: DatabaseSync, token: string, now: number): { creationId: string } | null {
-  const row = db.prepare("SELECT creation_id, expires_at FROM deliveries WHERE token = ?").get(token) as { creation_id: string; expires_at: number } | undefined;
-  if (!row || row.expires_at < now) return null;
-  return { creationId: row.creation_id };
-}
 
 export async function GET(_request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
