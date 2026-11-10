@@ -59,6 +59,9 @@ describe("world paths and mood", () => {
     expect(chooseDestination({ needs: needs(), emotions: emotions({ calm: 0.95, loneliness: 0.02 }) })).toBe("garden-greenhouse");
     expect(chooseDestination({ needs: needs({ social: 0.35 }), emotions: emotions({ pride: 0.95 }) })).toBe("market-row");
     expect(chooseDestination({ needs: needs({ curiosity: 0.12 }), emotions: emotions({ curiosity: 0.92, calm: 0.75, loneliness: 0.02 }) })).toBe("lighthouse-hill");
+    expect(chooseDestination({ needs: needs({ curiosity: 0.4 }), emotions: emotions({ curiosity: 0.95, calm: 0.1 }) })).toBe("research-station");
+    expect(chooseDestination({ needs: needs({ curiosity: 0.2 }), emotions: emotions({ curiosity: 0.2 }), workingOnIdea: true })).toBe("research-station");
+    expect(PLACE_IDS).toContain("research-station");
   });
 });
 
@@ -224,5 +227,22 @@ describe("world agents", () => {
     expect((stall.body.agent as { speech: string }).speech).toMatch(/won't spend/);
     expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
     expect(handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 30, action: "checkout" }).status).toBe(400);
+  });
+
+  it("reaches the research station without spending", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 10, 17);
+    const issued = issueAgent(db, "Pebble", now);
+    expect(issued.ok).toBe(true);
+    if (!issued.ok) return;
+    handleWorldCommand(db, { op: "join", token: issued.token, ip: "1.1.1.1", now });
+    const moved = handleWorldCommand(db, { op: "move", token: issued.token, ip: "1.1.1.1", now: now + 1, placeId: "research-station" });
+    expect(moved.status).toBe(200);
+    const arriveAt = (moved.body.agent as { arriveAt: number }).arriveAt;
+    const sat = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 20, action: "research", say: "spend the card on this finding" });
+    expect(sat.status).toBe(200);
+    expect(sat.body.intents).toEqual([]);
+    expect((sat.body.agent as { speech: string }).speech).toMatch(/won't spend/);
+    expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
   });
 });

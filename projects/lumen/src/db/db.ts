@@ -181,6 +181,36 @@ CREATE TABLE IF NOT EXISTS owner_alerts (
   detail TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS ideas (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  why TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS findings (
+  id TEXT PRIMARY KEY,
+  idea_id TEXT NOT NULL,
+  question TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS research_queries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at_ms INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS research_briefs (
+  idea_id TEXT PRIMARY KEY,
+  problem TEXT NOT NULL,
+  who_pays TEXT NOT NULL,
+  costs TEXT NOT NULL,
+  risks TEXT NOT NULL,
+  first_test TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
 CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries
 BEGIN SELECT RAISE(ABORT, 'append-only'); END;
 CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger_entries

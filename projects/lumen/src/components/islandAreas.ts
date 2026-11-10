@@ -1,16 +1,18 @@
 import * as THREE from "three";
+import { areaById } from "../world/areas";
 
 type Height = (x: number, z: number) => number;
 
-/** Original meshes for the five added areas. No imported models. */
-export function addExpandedAreas(scene: THREE.Scene, low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { stall: THREE.Mesh; plants: THREE.Object3D[]; shells: THREE.Object3D; fireflies: THREE.Points; beam: THREE.Mesh } {
+/** Original meshes for the added areas. No imported models. */
+export function addExpandedAreas(scene: THREE.Scene, low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { stall: THREE.Mesh; plants: THREE.Object3D[]; shells: THREE.Object3D; fireflies: THREE.Points; beam: THREE.Mesh; screen: THREE.Mesh; pin: THREE.Mesh } {
   const beach = buildBeach(low, heightAt);
   const forest = buildForest(low, heightAt);
   const garden = buildGarden(low, heightAt, windows, lamps);
   const market = buildMarket(low, heightAt, windows);
   const light = buildLighthouse(low, heightAt, windows, lamps);
-  scene.add(beach.group, forest.group, garden.group, market.group, light.group);
-  return { stall: market.stall, plants: garden.plants, shells: beach.shells, fireflies: forest.fireflies, beam: light.beam };
+  const research = buildResearch(low, heightAt, windows, lamps);
+  scene.add(beach.group, forest.group, garden.group, market.group, light.group, research.group);
+  return { stall: market.stall, plants: garden.plants, shells: beach.shells, fireflies: forest.fireflies, beam: light.beam, screen: research.screen, pin: research.pin };
 }
 
 function buildBeach(low: boolean, heightAt: Height): { group: THREE.Group; shells: THREE.Object3D } {
@@ -172,4 +174,48 @@ function buildLighthouse(low: boolean, heightAt: Height, windows: THREE.MeshStan
     group.add(light);
   }
   return { group, beam };
+}
+
+function buildResearch(low: boolean, heightAt: Height, windows: THREE.MeshStandardMaterial[], lamps: THREE.PointLight[]): { group: THREE.Group; screen: THREE.Mesh; pin: THREE.Mesh } {
+  const spot = areaById("research-station");
+  const x = spot?.x ?? -16;
+  const z = spot?.z ?? -44;
+  const y = heightAt(x, z);
+  const group = new THREE.Group();
+  const stone = new THREE.MeshStandardMaterial({ color: 0xd7d2c8, roughness: 0.8 });
+  const timber = new THREE.MeshStandardMaterial({ color: 0x8d5a3c, roughness: 0.7 });
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(6.2, 2.3, 4.4), stone);
+  wall.position.set(x, y + 1.15, z);
+  wall.castShadow = !low;
+  const domeMat = new THREE.MeshStandardMaterial({ color: 0xb9d7e8, roughness: 0.15, transparent: true, opacity: 0.45 });
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(1.7, low ? 8 : 18, low ? 6 : 12, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+  dome.position.set(x, y + 2.3, z);
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.8), timber);
+  desk.position.set(x - 0.4, y + 0.72, z + 0.3);
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 0.12), timber);
+  leg.position.set(x - 0.4, y + 0.4, z + 0.55);
+  const screenMat = new THREE.MeshBasicMaterial({ color: 0x16304a });
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.25), screenMat);
+  screen.position.set(x + 0.2, y + 1.55, z + 2.16);
+  const cork = new THREE.MeshStandardMaterial({ color: 0xc6a15a, roughness: 0.85 });
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.3, 0.08), cork);
+  board.position.set(x - 2.4, y + 1.45, z - 0.2);
+  board.rotation.y = 0.4;
+  const pinMat = new THREE.MeshBasicMaterial({ color: 0xf4efe4 });
+  const pin = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), pinMat);
+  pin.position.set(x - 2.32, y + 1.45, z - 0.12);
+  pin.rotation.y = 0.4;
+  group.add(wall, dome, desk, leg, screen, board, pin);
+  const glass = new THREE.MeshStandardMaterial({ color: 0xd7ecff, emissive: 0x9fd0ff, emissiveIntensity: 0.15, roughness: 0.2 });
+  windows.push(glass);
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), glass);
+  pane.position.set(x + 2.2, y + 1.4, z + 2.22);
+  group.add(pane);
+  if (!low) {
+    const lamp = new THREE.PointLight(0xfff1c9, 0.15, 8);
+    lamp.position.set(x, y + 2.2, z);
+    lamps.push(lamp);
+    group.add(lamp);
+  }
+  return { group, screen, pin };
 }

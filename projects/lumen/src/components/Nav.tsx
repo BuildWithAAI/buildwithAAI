@@ -11,6 +11,7 @@ export function Nav() {
       <Link href="/diary">Diary</Link>
       <Link href="/guestbook">Guestbook</Link>
       <Link href="/wants">Wants</Link>
+      <Link href="/ideas">Ideas</Link>
       <Link href="/admin">Keeper</Link>
     </nav>
   );

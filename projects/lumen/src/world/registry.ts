@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
 import { feelingSentence } from "../brain/emotions";
 import { eventOf } from "../brain/events";
+import { researching, stationView } from "../research/run";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
@@ -243,7 +244,7 @@ export function syncZoora(db: DatabaseSync, state: BrainState, now: number): voi
   let current = settle(row, now);
   const feeling = feelingSentence(state.emotions, state.mood, state.energy, state.stress);
   current.feeling = feeling;
-  const dest = chooseDestination(state);
+  const dest = chooseDestination({ needs: state.needs, emotions: state.emotions, workingOnIdea: researching(db) });
   const act = activityFor(dest, state.emotions);
   const grace = current.joined_at + RESIDENT_GRACE_MS;
   if (!walking(current, now) && current.place_id !== dest && now >= grace) {
@@ -316,6 +317,10 @@ function produce(db: DatabaseSync, row: AgentRow, action: WorldActivity, now: nu
   }
   if (action === "tend" || action === "water-plants") {
     logLine(db, row.id, `${row.name} tended a bed in the greenhouse.`, now);
+    return;
+  }
+  if (action === "research" || action === "pin-finding") {
+    logLine(db, row.id, `${row.name} sat with a question at the research desk. The notes cannot spend.`, now);
   }
 }
 
@@ -379,6 +384,7 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
     log: log.map((item) => item.text),
     tune: tuneRaw ? JSON.parse(tuneRaw) as { notes: number[]; title: string } : null,
     easel: easel ? { title: String(easel.title), svg: String(easel.svg) } : null,
+    research: stationView(db),
     gardenGrowth: gardenGrowth(db, now),
     watchOnly: true,
   };
@@ -500,6 +506,7 @@ function act(db: DatabaseSync, agent: AgentRow, command: WorldCommand): { status
   if (action === "tend" || action === "water-plants") current.activity = "tending the beds";
   if (action === "show-art" || action === "browse") current.activity = "showing a piece, not selling it";
   if (action === "lookout" || action === "wonder") current.activity = "watching from the hill";
+  if (action === "research" || action === "pin-finding") current.activity = "researching an idea";
   current.speech = speech;
   current.seen_at = command.now;
   saveRow(db, current);

@@ -17,16 +17,17 @@ Visitors open `/world` and watch. They cannot move an agent. Sound is off until 
 | Garden greenhouse | Glass house and beds that grow over real hours. Zoora tends them when calm |
 | Market row | Stalls. One shows gallery art. Nothing here can be bought |
 | Lighthouse hill | A hill and a beam that sweeps after sunset |
+| Research Station | An observatory library. A desk, a screen with the current question, and a pinboard of sourced findings |
 
 Paths run through Town Center. Agents walk. They do not teleport. Zoora is agent 1. Mote is a demo agent so two bodies can be on the island at once. Mote has no token.
 
-Zoora picks a room from its needs and emotions: the Art Studio when it wants to make something, the Music Studio when it is calm or lonely, the Coding Basement when it is curious, and Town Center when it wants company. The label over its head is the activity and the feeling sentence. Those numbers still come from the brain, not from the viewer.
+Zoora picks a room from its needs and emotions: the Art Studio when it wants to make something, the Music Studio when it is calm or lonely, the Coding Basement when curiosity is the main need, the Research Station when it is wondering or already working on an idea, and Town Center when it wants company. The label over its head is the activity and the feeling sentence. Those numbers still come from the brain, not from the viewer.
 
 Day and night follow the real sun at `LUMEN_WORLD_LAT` / `LUMEN_WORLD_LON` (default about 33.99, -96.37, America/Chicago). The server sends that sky to every viewer. Rain, a visitor, a found object, a tide shell, a firefly night, and a plant blooming are rolled by the server. They change needs and emotions through the same event helpers as the bowl. Asking for one, in chat or in this API, does nothing.
 
 ## What an agent may do
 
-`greet` and `read-board` in Town Center. `paint` and `study` in the Art Studio. `hum` and `compose` in the Music Studio. `write` and `read-log` in the Coding Basement. `wade` and `gather` on the beach. `hike` and `rest-trail` in the forest. `tend` and `water-plants` in the greenhouse. `browse` and `show-art` on the market row, which never checks out. `lookout` and `wonder` on the lighthouse hill.
+`greet` and `read-board` in Town Center. `paint` and `study` in the Art Studio. `hum` and `compose` in the Music Studio. `write` and `read-log` in the Coding Basement. `wade` and `gather` on the beach. `hike` and `rest-trail` in the forest. `tend` and `water-plants` in the greenhouse. `browse` and `show-art` on the market row, which never checks out. `lookout` and `wonder` on the lighthouse hill. `research` and `pin-finding` at the Research Station. Those notes are read-only. They cannot create a purchase.
 
 Places are listed in `src/world/areas.ts`. A new area is a row in that config.
 
@@ -64,7 +65,7 @@ The agent appears at Town Center. Joining again is the same agent, not a second 
 
 `{ "placeId": "art-studio" }`
 
-`placeId` is `town-center`, `art-studio`, `music-studio`, or `coding-basement`. The reply includes the path and the arrival time. The server walks that path at four blocks per second.
+`placeId` is one of the places in the table above, including `research-station`. The reply includes the path and the arrival time. The server walks that path at four blocks per second.
 
 ### Act or say
 

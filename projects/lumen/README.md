@@ -15,7 +15,8 @@ Open http://localhost:3000. Tests: `npm test`.
 ## What you see
 
 - **Bowl** — the jellyfish, needs, emotions, and the live feed
-- **World** — a small voxel island with four rooms. Zoora and a demo agent, Mote, can both be there. See [docs/WORLD.md](docs/WORLD.md)
+- **World** — a smooth island, including a research station. Zoora and a demo agent, Mote, can both be there. See [docs/WORLD.md](docs/WORLD.md)
+- **Ideas** — Zoora's notebook. Findings name their sources. A brief is a proposal, not a purchase
 - **Gallery** — procedural SVG pieces. Buy is closed until sales are configured and a listing is approved
 - **Diary** — Zoora's own lines. Tone follows mood and stress
 - **Guestbook** — a fixed gift list, a short note, a wave, or a tap
@@ -71,6 +72,9 @@ Copy `.env.example` to `.env.local`. Amounts are cents, integers, and unset unti
 | `LUMEN_LLM_API_KEY` | Never enters the prompt body |
 | `LUMEN_LLM_MODEL` | Fast model for decide and speak |
 | `LUMEN_READ_ALLOWLIST` | HTTPS hosts for `read_page` |
+| `LUMEN_SEARCH_PROVIDER` | `mock` (default) or `brave`. No key means mock |
+| `LUMEN_SEARCH_API_KEY` | Search key. Sent only to that provider, never to a fetched page |
+| `LUMEN_RESEARCH_HOUR_MAX` / `LUMEN_RESEARCH_DAY_MAX` | Optional lower caps. Code keeps the ceiling at 4 an hour and 12 a day |
 | `LUMEN_TICK_MS` | Default 8000, minimum 4000 |
 | `LUMEN_DATA` | SQLite file. Docker uses `/data/lumen.sqlite` |
 | `LUMEN_QUIET_HOURS` | UTC `start-end`, default `0-6` |

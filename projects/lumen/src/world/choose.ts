@@ -15,13 +15,14 @@ export function isWorldActivity(place: PlaceId, action: string): action is World
 }
 
 /** The brain picks a room from the area config. Weights live next to the coordinates. */
-export function chooseDestination(input: { needs: Needs; emotions: Emotions }): PlaceId {
+export function chooseDestination(input: { needs: Needs; emotions: Emotions; workingOnIdea?: boolean }): PlaceId {
   let best: PlaceId = "town-center";
   let bestScore = -Infinity;
   for (const area of AREAS) {
     let score = 0;
     for (const [name, weight] of Object.entries(area.needs)) score += (input.needs[name as keyof Needs] ?? 0) * (weight ?? 0);
     for (const [name, weight] of Object.entries(area.emotions)) score += (input.emotions[name as keyof Emotions] ?? 0) * (weight ?? 0);
+    if (area.id === "research-station" && input.workingOnIdea) score += 1.2;
     if (score > bestScore) {
       best = area.id;
       bestScore = score;
@@ -43,6 +44,7 @@ export function activityFor(place: PlaceId, emotions: Emotions): { action: World
   if (place === "garden-greenhouse") return { action: "tend", label: "tending the beds" };
   if (place === "market-row") return { action: "show-art", label: "showing a piece, not selling it" };
   if (place === "lighthouse-hill") return { action: "lookout", label: "watching from the hill" };
+  if (place === "research-station") return { action: "research", label: "researching an idea" };
   return { action: "read-board", label: "reading the notice board" };
 }
 

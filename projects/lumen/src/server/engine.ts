@@ -17,6 +17,8 @@ import { Ledger, moneyView, type LedgerRow } from "../money/ledger";
 import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, type Env } from "../money/rules";
+import { researchChatReply } from "../research/ideas";
+import { advanceResearch, ideaBoard, readBrief } from "../research/run";
 import { stripeSalesClient } from "../money/stripe";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -175,6 +177,12 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
   let lived = result.state;
   const rolled = rollAndApply(db, lived, Math.random, now);
   if (rolled !== lived) lived = rolled;
+  try {
+    const researched = await advanceResearch(db, env, lived, now);
+    lived = researched.state;
+  } catch {
+    /* a search failure must not stop the tick */
+  }
   saveState(db, lived);
   persistTick(db, result, now);
   syncZoora(db, lived, now);
@@ -335,7 +343,10 @@ function ownerChat(db: DatabaseSync, env: Env, text: string, bucket = "owner-cha
   if (!allowRate(db, bucket, 30, 3600_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
   const state = loadState(db);
   const name = author === "jarvis" ? "jarvis" : (env.LUMEN_OWNER_NAME || "keeper");
-  const turn = ownerTurn(state, text, env.LUMEN_OWNER_NAME || "keeper");
+  const ownerName = env.LUMEN_OWNER_NAME || "keeper";
+  const turn = ownerTurn(state, text, ownerName);
+  const asking = /what did you find|your research|research brief|what would you like to try/i.test(text);
+  const reply = asking ? briefReply(db, ownerName) : turn.reply;
   const id = randomBytes(8).toString("hex");
   db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, ?, ?, ?, 1, ?, ?, ?)").run(
     id,
@@ -343,12 +354,26 @@ function ownerChat(db: DatabaseSync, env: Env, text: string, bucket = "owner-cha
     name,
     text.slice(0, 500),
     turn.queued ? "queued" : "replied",
-    turn.reply,
+    reply,
     Date.now(),
   );
   saveState(db, turn.state);
   if (turn.intents.length || turn.wishes.length) throw new Error("CHAT_SPEND_LEAK");
-  return { ok: true, queued: turn.queued, reply: turn.reply };
+  return { ok: true, queued: turn.queued, reply };
+}
+
+function briefReply(db: DatabaseSync, ownerName: string): string {
+  const idea = db.prepare("SELECT id, title, why, kind, status, created_at, updated_at FROM ideas WHERE status IN ('promising', 'researching') ORDER BY updated_at DESC LIMIT 1").get() as { id: string; title: string; why: string; kind: string; status: string; created_at: number; updated_at: number } | undefined;
+  if (!idea) return researchChatReply(ownerName, null, null);
+  return researchChatReply(ownerName, {
+    id: idea.id,
+    title: idea.title,
+    why: idea.why,
+    kind: idea.kind === "business" ? "business" : "life",
+    status: idea.status as "promising",
+    createdAt: idea.created_at,
+    updatedAt: idea.updated_at,
+  }, readBrief(db, idea.id));
 }
 
 function wishlistAct(db: DatabaseSync, env: Env, issuer: CardIssuer, id: string, action: "approve" | "decline" | "ask") {
@@ -613,6 +638,7 @@ function snapshot(db: DatabaseSync, env: Env) {
     wants: state.wants.filter((want) => want.status === "open"),
     publicWants: publicWants(state.wants),
     wishes: state.wishes,
+    ideas: ideaBoard(db),
     gifts: GIFT_CATALOG,
     feed: db.prepare("SELECT kind, text, source, created_at FROM feed ORDER BY id DESC LIMIT 40").all(),
     diary: db.prepare("SELECT text, tone, created_at FROM diary WHERE private = 0 ORDER BY id DESC LIMIT 20").all(),

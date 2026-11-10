@@ -22,6 +22,7 @@ const CAMS: Record<string, { pos: [number, number, number]; look: [number, numbe
   garden: { pos: [14, 5, -26], look: [22, 1.6, -36] },
   market: { pos: [-24, 5, -18], look: [-34, 1.4, -28] },
   lighthouse: { pos: [18, 8, 46], look: [6, 4, 58] },
+  research: { pos: [-6, 6.5, -32], look: [-16, 1.8, -44] },
   follow: { pos: [8, 5, 10], look: [0, 1, 0], follow: true },
 };
 
@@ -118,6 +119,16 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     scene.add(buildMusicStudio(windows, lamps, low));
     scene.add(buildBasement(windows, lamps, low));
     const extra = addExpandedAreas(scene, low, terrainHeight, windows, lamps);
+    const questionBoard = boardTexture(["The desk is waiting."], "#102033", "#d7ecff");
+    const pinBoard = boardTexture(["No findings yet."], "#f4efe4", "#3a2a18");
+    const screenMat = extra.screen.material as THREE.MeshBasicMaterial;
+    const pinMat = extra.pin.material as THREE.MeshBasicMaterial;
+    screenMat.map = questionBoard.texture;
+    screenMat.color.set(0xffffff);
+    screenMat.needsUpdate = true;
+    pinMat.map = pinBoard.texture;
+    pinMat.color.set(0xffffff);
+    pinMat.needsUpdate = true;
     scatterNature(scene, low);
     const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(2.2, 20, 16), new THREE.MeshBasicMaterial({ color: 0xfff1c2 }));
     const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(1.15, 20, 16), new THREE.MeshBasicMaterial({ color: 0xf4f7ff }));
@@ -223,6 +234,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     let diaryKey = "";
     let logKey = "";
     let svgKey = "";
+    let researchKey = "";
     const tick = () => {
       frame = requestAnimationFrame(tick);
       const time = performance.now() / 1000;
@@ -277,6 +289,12 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       if (snap.easel?.svg && snap.easel.svg !== svgKey) {
         svgKey = snap.easel.svg;
         paintSvg(easelBoard, snap.easel.svg);
+      }
+      const researchText = `${snap.research?.question ?? ""}|${(snap.research?.pins ?? []).join("|")}`;
+      if (researchText !== researchKey) {
+        researchKey = researchText;
+        questionBoard.paint(wrapLines(snap.research?.question || "The desk is waiting."));
+        pinBoard.paint(snap.research?.pins?.length ? snap.research.pins : ["No findings yet."]);
       }
 
       const seen = new Set<string>();
@@ -358,13 +376,28 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         <span>Watching only</span>
       </div>
       <div className="world-hud">
-        {["overview", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "together", "zoora", "follow"].map((name) => (
+        {["overview", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "together", "zoora", "follow"].map((name) => (
           <button key={name} type="button" onClick={() => choose(name)}>{name === "follow" && follow ? "following" : name}</button>
         ))}
         <button type="button" onClick={() => setSound((on) => !on)}>{sound ? "Sound on" : "Sound off"}</button>
       </div>
     </div>
   );
+}
+
+function wrapLines(text: string): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > 28 && line) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines.slice(0, 5);
 }
 
 function skyColors(altitude: number): { sky: number; fog: number; hemi: number; sun: number; sunColor: number; ambient: number; exposure: number } {

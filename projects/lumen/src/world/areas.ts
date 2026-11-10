@@ -9,7 +9,8 @@ export type AreaId =
   | "forest-trail"
   | "garden-greenhouse"
   | "market-row"
-  | "lighthouse-hill";
+  | "lighthouse-hill"
+  | "research-station";
 
 export type AreaActivity =
   | "paint"
@@ -29,7 +30,9 @@ export type AreaActivity =
   | "browse"
   | "show-art"
   | "lookout"
-  | "wonder";
+  | "wonder"
+  | "research"
+  | "pin-finding";
 
 export type AreaDef = {
   id: AreaId;
@@ -54,6 +57,7 @@ export const AREAS: AreaDef[] = [
   { id: "garden-greenhouse", label: "Garden greenhouse", x: 22, y: 0.85, z: -36, acts: ["tend", "water-plants"], needs: {}, emotions: { calm: 1.4 } },
   { id: "market-row", label: "Market row", x: -36, y: 0.85, z: -28, acts: ["browse", "show-art"], needs: { social: 0.55 }, emotions: { pride: 1.25 } },
   { id: "lighthouse-hill", label: "Lighthouse hill", x: 6, y: 0.85, z: 58, acts: ["lookout", "wonder"], needs: { curiosity: 0.2 }, emotions: { curiosity: 1.2, calm: 0.9 } },
+  { id: "research-station", label: "Research Station", x: -16, y: 0.85, z: -44, acts: ["research", "pin-finding"], needs: { curiosity: 0.35 }, emotions: { curiosity: 1.55 } },
 ];
 
 export const AREA_IDS = AREAS.map((area) => area.id);

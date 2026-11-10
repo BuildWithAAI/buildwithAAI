@@ -32,6 +32,10 @@
  * LUMEN_LLM_MODEL                    Fast model for Decide/Speak.
  * LUMEN_LLM_QUALITY_MODEL            Optional model name recorded for Sleep. Local sleep does not call it.
  * LUMEN_READ_ALLOWLIST               HTTPS hosts the read_page action may fetch.
+ * LUMEN_SEARCH_PROVIDER             mock (default) or brave. Missing key uses mock.
+ * LUMEN_SEARCH_API_KEY              Search key. It is not sent when fetching a page.
+ * LUMEN_RESEARCH_HOUR_MAX           Optional. Cannot raise the code cap of 4 queries an hour.
+ * LUMEN_RESEARCH_DAY_MAX            Optional. Cannot raise the code cap of 12 queries a day.
  * LUMEN_TICK_MS                      Tick interval, minimum 4000.
  * LUMEN_DATA                         SQLite path.
  * LUMEN_QUIET_HOURS                  "start-end" UTC hours, default 0-6.
