@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: c7247af
+title: Pre-deploy advisory fixes, still with money off.
+summary: Issuing captures book as purchases and refunds do not use up an expected spend. A Solana payment that lands after its quote is recorded for refund. Hidden characters, look-alike letters, split card numbers, refused wishlist links, wrong bearer guesses, Privacy amounts, and paid downloads follow the check. The fly comment no longer says money turns on by itself.
+date: 2026-11-10T04:58:36Z
+image:
+
+---
 sha: 4b42a1b
 title: A wishlist board for things to bring.
 summary: Zoora can ask for a named thing, a reason, an optional link, and a price guess. The keeper marks it bought or declined from the desk. Bought items go into her inventory. Visitors see the list and a Town Center board. Nothing on that list can pay.
