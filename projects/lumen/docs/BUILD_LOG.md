@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 617bda5
+title: The saloon and trading floor have signs and interiors.
+summary: The saloon sign reads SOLANA SALOON. Its doors swing, and a warm lamp sits over the bar. The trading floor has a glass front, and its screens show PAPER plus stored quotes, or dashes when there is no quote.
+date: 2026-11-10T03:36:00Z
+image:
+
+---
 sha: aa34630
 title: A saloon and a paper trading floor.
 summary: The island has a Solana Saloon and a trading floor. Quotes come from a public price source. Trades stay on paper until the owner turns on the live switch and a signer. The floor says PAPER.
