@@ -3,7 +3,7 @@
 ---
 sha: 238c512
 title: Zoora can message the owner on Telegram.
-summary: Notes about builds, research, and the day wait for quiet hours and a 30 minute gap. Alerts do not. Talk-back accepts only the owner chat and cannot spend.
+summary: The first version sent notes on a schedule. A later change makes the messages Zoora's own thoughts instead.
 date: 2026-11-10T02:36:00Z
 image:
 

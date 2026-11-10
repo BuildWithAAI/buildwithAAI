@@ -1,8 +1,10 @@
 # Telegram with the owner
 
-Zoora can message the keeper, and the keeper can talk back. This is not a spending channel. A message cannot approve a purchase, change the kill switch, or mint a token.
+Zoora writes in its own voice when it feels like it. A message is a thought, a feeling, something it noticed, something it is dreaming, why it made a shape, or a question. It is not a status report.
 
-When `LUMEN_TELEGRAM_BOT_TOKEN` or `LUMEN_TELEGRAM_OWNER_CHAT_ID` is unset, Zoora stays in mock mode. Messages are stored for the desk and nothing is sent.
+When `LUMEN_TELEGRAM_BOT_TOKEN` or `LUMEN_TELEGRAM_OWNER_CHAT_ID` is unset, Zoora stays in mock mode. The thought is stored and nothing is sent.
+
+Operational alerts (an unknown charge, a broken ledger chain, the kill switch, a failed delivery) do not use this voice. They go by email. If `LUMEN_ALERT_TELEGRAM_BOT_TOKEN` and `LUMEN_ALERT_TELEGRAM_CHAT_ID` are set, those alerts also go to that separate channel and are labelled `System:`.
 
 ## Create the bot
 
@@ -18,7 +20,7 @@ Send any message to the new bot from the owner account, then read the chat id:
 curl "https://api.telegram.org/bot<token>/getUpdates"
 ```
 
-Use the `chat.id` from that reply. That number is `LUMEN_TELEGRAM_OWNER_CHAT_ID`. Zoora accepts talk-back only from this id. Every other chat is dropped and the id is logged without the message text.
+Use the `chat.id` from that reply as `LUMEN_TELEGRAM_OWNER_CHAT_ID`. Zoora accepts talk-back only from this id. Every other chat is dropped and the id is logged without the message text.
 
 ## Secrets
 
@@ -37,10 +39,10 @@ On Fly.io:
 fly secrets import -a lumen-tidepool < secrets.env
 ```
 
-The webhook secret is the value Telegram sends in `X-Telegram-Bot-Api-Secret-Token`. Set it on the bot when you call `setWebhook`. Zoora rejects the webhook when the header does not match.
+The webhook secret is the value Telegram sends in `X-Telegram-Bot-Api-Secret-Token`. Zoora rejects the webhook when the header does not match.
 
-Quiet hours are 23:00–07:00 America/Chicago. Alerts still go out. Other notes wait, and at most one non-alert note goes out every 30 minutes. The desk can turn each kind off: build, diary, research, summary, alert.
+Zoora may stay quiet for hours. At most about one thought goes out every 30 minutes. Quiet hours are 23:00–07:00 America/Chicago. A thought it has already told the owner is not sent again.
 
 ## Talk-back
 
-The only commands are `/status`, `/diary`, and `/pause_builds`. Anything else is owner chat, the same as the desk. `/pause_builds` only stops creative building.
+There are no slash commands. A message from the owner is talk, the same as the desk. It can change Zoora's mood and memory. It cannot spend, change a toggle, mint a token, or touch the kill switch.

@@ -112,15 +112,39 @@ describe("creative builds", () => {
     if (!placed.ok) return;
     expect(placed.build.influenced).toBe(true);
     expect(placed.build.why).not.toContain(raw);
-    expect(placed.build.why).toContain("cannot spend");
+    expect(placed.build.why).toContain("left the visitor's words");
     expect(creativeSpendIntents()).toEqual([]);
     expect(visitorBuildRequest()).toEqual({ ok: false, reason: "VISITOR" });
     expect(db.prepare("SELECT COUNT(*) AS n FROM ledger_entries WHERE kind = 'purchase'").get()).toEqual({ n: 0 });
     expect(db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 0 });
     setCreativeEnabled(db, false);
     expect(placeCreative(db, signals(), day + 1)).toMatchObject({ ok: false, reason: "OFF" });
-    const chosen = chooseCreative(signals({ emotions: emotions({ loneliness: 0.8 }) }));
-    expect(chosen.kind).toBe("music");
-    expect(chosen.placeId).toBe("music-studio");
+  });
+
+  it("names and shapes a piece from the feeling, then revises or takes it down", () => {
+    const fixed = ["A glass charm", "A garden plot", "A painted sign", "A chime stand", "A resting bench", "A low shelter", "A wall of color", "A small installation", "A short spur"];
+    const dock = chooseCreative(signals({ emotions: emotions({ loneliness: 0.8 }), memory: "the dock bell", ideaTitle: null, research: null }));
+    const moss = chooseCreative(signals({ emotions: emotions({ loneliness: 0.8 }), memory: "soft moss on the step", ideaTitle: null, research: null }), dock.params);
+    expect(dock.title).toBe("Dock bell");
+    expect(moss.title).not.toBe(dock.title);
+    expect(moss.params.hue).not.toBe(dock.params.hue);
+    for (const title of [dock.title, moss.title]) {
+      expect(fixed.some((banned) => title.startsWith(banned))).toBe(false);
+    }
+    const db = openDatabase();
+    const made = placeCreative(db, signals({ emotions: emotions({ joy: 0.7 }), memory: "the dock bell" }), day);
+    expect(made.ok).toBe(true);
+    if (!made.ok) return;
+    const revised = placeCreative(db, signals({ emotions: emotions({ calm: 0.8 }), memory: "evening glass" }), day + 1);
+    expect(revised.ok).toBe(true);
+    if (!revised.ok) return;
+    expect(revised.build.id).toBe(made.build.id);
+    expect(revised.build.version).toBe(2);
+    expect(revised.build.title).not.toBe(made.build.title);
+    const torn = placeCreative(db, signals({ emotions: emotions({ frustration: 0.9 }), memory: "too much glitter" }), day + 2);
+    expect(torn.ok).toBe(true);
+    if (!torn.ok) return;
+    expect(torn.build.status).toBe("undone");
+    expect(db.prepare("SELECT COUNT(*) AS n FROM ledger_entries WHERE kind = 'purchase'").get()).toEqual({ n: 0 });
   });
 });

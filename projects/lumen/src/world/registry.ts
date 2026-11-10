@@ -395,6 +395,11 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
       z: build.z,
       size: build.size,
       yaw: build.yaw,
+      version: build.version,
+      hue: build.params.hue,
+      parts: build.params.parts,
+      twist: build.params.twist,
+      form: build.params.form,
     })),
     watchOnly: true,
   };

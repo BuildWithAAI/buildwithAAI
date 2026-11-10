@@ -16,28 +16,13 @@ export const DAILY_MATERIALS = 12;
 export const DOOR_CLEARANCE = 2.3;
 export const PATH_CLEARANCE = 1.7;
 
-const KIND_COST: Record<BuildKind, number> = {
-  decoration: 1,
-  sign: 1,
-  bench: 2,
-  garden: 2,
-  art: 2,
-  music: 2,
-  path: 2,
-  mural: 3,
-  structure: 3,
-};
-
-const KIND_SIZE: Record<BuildKind, number> = {
-  decoration: 0.7,
-  sign: 0.8,
-  bench: 1,
-  garden: 0.9,
-  art: 1.1,
-  music: 0.85,
-  path: 1.2,
-  mural: 1.3,
-  structure: 1.4,
+/** Numbers Zoora picks. The mesh is built from these, not from a named kit. */
+export type BuildParams = {
+  hue: number;
+  parts: number;
+  twist: number;
+  form: number;
+  size: number;
 };
 
 export type WorldBuild = {
@@ -56,6 +41,7 @@ export type WorldBuild = {
   materials: number;
   influenced: boolean;
   createdAt: number;
+  params: BuildParams;
 };
 
 export type CreativeSignals = {
@@ -83,6 +69,7 @@ type BuildRow = {
   materials: number;
   influenced: number;
   created_at: number;
+  params?: string;
 };
 
 /** World builds never become purchase intents. */
@@ -159,30 +146,44 @@ export function positionAllowed(placeId: string, x: number, z: number): { ok: tr
   return { ok: true };
 }
 
-export function chooseCreative(signals: CreativeSignals): { placeId: AreaId; kind: BuildKind; emotion: string; title: string; why: string; influenced: boolean } {
+export type CreativeDraft = {
+  placeId: AreaId;
+  emotion: string;
+  title: string;
+  why: string;
+  influenced: boolean;
+  params: BuildParams;
+  impulse: "new" | "revise" | "tear";
+};
+
+export function chooseCreative(signals: CreativeSignals, prior: BuildParams | null = null, hasWork = false): CreativeDraft {
   const emotion = hottest(signals.emotions);
-  const kind = kindFor(emotion, signals.placeId);
-  const placeId = placeFor(emotion, signals.placeId);
   const influenced = Boolean(signals.ideaSourceKey);
-  const idea = influenced ? "" : scrubInstructions(signals.ideaTitle ?? "");
   const memory = influenced ? "" : scrubInstructions(signals.memory ?? "");
+  const idea = influenced ? "" : scrubInstructions(signals.ideaTitle ?? "");
   const research = influenced ? "" : scrubInstructions(signals.research ?? "");
-  const title = titleFor(kind, emotion, idea);
-  const why = whyFor(kind, emotion, placeId, idea, memory, research, influenced);
-  return { placeId, kind, emotion, title, why, influenced };
+  const params = composeParams(emotion, signals.emotions[emotion] ?? 0, memory, idea, research, prior);
+  const title = pieceName(memory, idea, research, emotion);
+  const placeId = placeFor(emotion, signals.placeId);
+  const why = whyLine(title, emotion, memory, research, influenced);
+  const impulse = signals.emotions.frustration > 0.75 && hasWork ? "tear" : signals.emotions.calm > 0.55 && hasWork ? "revise" : "new";
+  return { placeId, emotion, title, why, influenced, params, impulse };
 }
 
 export function placeCreative(db: DatabaseSync, signals: CreativeSignals, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
   if (!creativeEnabled(db)) return { ok: false, reason: "OFF" };
   if (creativeSpendIntents().length) return { ok: false, reason: "SPEND" };
-  const draft = chooseCreative(signals);
-  if (!BUILD_KINDS.includes(draft.kind)) return { ok: false, reason: "KIND" };
-  const size = KIND_SIZE[draft.kind];
-  if (size < 0.4 || size > 1.6) return { ok: false, reason: "SIZE" };
+  const placedWorks = listBuilds(db).filter((build) => build.status === "placed");
+  const prior = placedWorks[0] ?? null;
+  const draft = chooseCreative(signals, prior?.params ?? null, Boolean(prior));
+  if (draft.params.size < 0.4 || draft.params.size > 1.6) return { ok: false, reason: "SIZE" };
+  if (draft.impulse === "tear" && prior) return tearDown(db, prior, draft.why, now);
+  if (draft.impulse === "revise" && prior) return reviseBuild(db, prior, draft, now);
+  const size = draft.params.size;
   const day = chicagoDay(now);
   const today = listBuilds(db).filter((build) => build.status !== "undone" && chicagoDay(build.createdAt) === day);
   if (today.length >= DAILY_BUILD_CAP) return { ok: false, reason: "DAY_CAP" };
-  const cost = KIND_COST[draft.kind];
+  const cost = materialCost(size);
   if (materialsLeft(db, now) < cost) return { ok: false, reason: "MATERIALS" };
   const order = [draft.placeId, ...AREAS.map((area) => area.id).filter((id) => id !== draft.placeId)];
   let chosen: { areaId: AreaId; slot: BuildSlot } | null = null;
@@ -207,15 +208,14 @@ export function placeCreative(db: DatabaseSync, signals: CreativeSignals, now: n
   }
   if (!chosen) return { ok: false, reason: sawFull ? "PLACE_CAP" : "ZONE" };
   const world = slotWorld(chosen.areaId, chosen.slot);
-  const why = whyFor(draft.kind, draft.emotion, chosen.areaId, draft.influenced ? "" : scrubInstructions(signals.ideaTitle ?? ""), draft.influenced ? "" : scrubInstructions(signals.memory ?? ""), draft.influenced ? "" : scrubInstructions(signals.research ?? ""), draft.influenced);
   const id = `build-${randomBytes(6).toString("hex")}`;
   const build: WorldBuild = {
     id,
     version: 1,
     placeId: chosen.areaId,
-    kind: draft.kind,
+    kind: "decoration",
     title: draft.title,
-    why,
+    why: draft.why,
     emotion: draft.emotion,
     x: world.x,
     z: world.z,
@@ -225,6 +225,7 @@ export function placeCreative(db: DatabaseSync, signals: CreativeSignals, now: n
     materials: cost,
     influenced: draft.influenced,
     createdAt: now,
+    params: draft.params,
   };
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -284,9 +285,9 @@ function changeStatus(db: DatabaseSync, id: string, from: string, to: BuildStatu
 
 function insertBuild(db: DatabaseSync, build: WorldBuild): void {
   db.prepare(
-    `INSERT INTO world_builds(id, version, place_id, kind, title, why, emotion, x, z, size, yaw, status, materials, influenced, created_at)
-     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(build.id, build.version, build.placeId, build.kind, build.title, build.why, build.emotion, build.x, build.z, build.size, build.yaw, build.status, build.materials, build.influenced ? 1 : 0, build.createdAt);
+    `INSERT INTO world_builds(id, version, place_id, kind, title, why, emotion, x, z, size, yaw, status, materials, influenced, created_at, params)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(build.id, build.version, build.placeId, build.kind, build.title, build.why, build.emotion, build.x, build.z, build.size, build.yaw, build.status, build.materials, build.influenced ? 1 : 0, build.createdAt, JSON.stringify(build.params));
 }
 
 function recordVersion(db: DatabaseSync, build: WorldBuild, now: number): void {
@@ -310,6 +311,7 @@ function toBuild(row: BuildRow): WorldBuild {
     materials: row.materials,
     influenced: row.influenced === 1,
     createdAt: row.created_at,
+    params: readParams(row.params, row.size),
   };
 }
 
@@ -348,17 +350,90 @@ function hottest(emotions: Emotions): EmotionName {
   return best;
 }
 
-function kindFor(emotion: EmotionName, placeId: string): BuildKind {
-  if (placeId === "music-studio" && (emotion === "loneliness" || emotion === "calm")) return "music";
-  if (placeId === "garden-greenhouse" && emotion === "calm") return "garden";
-  if (emotion === "joy" || emotion === "pride") return "art";
-  if (emotion === "calm") return "garden";
-  if (emotion === "curiosity") return "sign";
-  if (emotion === "loneliness") return "music";
-  if (emotion === "frustration") return "bench";
-  if (emotion === "worry") return "structure";
-  if (emotion === "boredom") return "decoration";
-  return "mural";
+function materialCost(size: number): number {
+  return Math.max(1, Math.min(4, Math.round(size * 2)));
+}
+
+function tearDown(db: DatabaseSync, current: WorldBuild, why: string, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
+  const undone = undoBuild(db, current.id, now);
+  if (!undone.ok) return undone;
+  db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'sparse', 0, ?)").run(why, now);
+  return undone;
+}
+
+function reviseBuild(db: DatabaseSync, current: WorldBuild, draft: CreativeDraft, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
+  if (materialsLeft(db, now) < 1) return { ok: false, reason: "MATERIALS" };
+  const size = Math.min(1.6, Math.max(0.4, draft.params.size));
+  const next: WorldBuild = {
+    ...current,
+    version: current.version + 1,
+    title: draft.title,
+    why: draft.why,
+    emotion: draft.emotion,
+    size,
+    params: { ...draft.params, size },
+    materials: current.materials,
+  };
+  db.prepare("UPDATE world_builds SET version = ?, title = ?, why = ?, emotion = ?, size = ?, params = ? WHERE id = ?").run(
+    next.version, next.title, next.why, next.emotion, next.size, JSON.stringify(next.params), current.id,
+  );
+  recordVersion(db, next, now);
+  const day = chicagoDay(now);
+  kvSet(db, `materials-spent:${day}`, String(DAILY_MATERIALS - materialsLeft(db, now) + 1));
+  db.prepare("UPDATE creative_log SET title = ?, summary = ? WHERE build_id = ?").run(next.title, next.why, current.id);
+  db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(next.why, now);
+  return { ok: true, build: next };
+}
+
+function composeParams(emotion: string, level: number, memory: string, idea: string, research: string, prior: BuildParams | null): BuildParams {
+  const seed = hashText(`${emotion}|${memory}|${idea}|${research}`);
+  const hue = prior ? (prior.hue + 17 + (seed % 23)) % 360 : (seed + emotion.length * 13) % 360;
+  const parts = 2 + (seed % 4);
+  const twist = ((seed >>> 4) % 100) / 100;
+  const form = (seed >>> 8) % 6;
+  const size = Math.min(1.6, Math.max(0.4, 0.45 + Math.min(1, level) * 0.9));
+  return { hue, parts, twist, form, size: Math.round(size * 100) / 100 };
+}
+
+function pieceName(memory: string, idea: string, research: string, emotion: string): string {
+  const pool = [...tokens(memory), ...tokens(idea), ...tokens(research)];
+  const a = pool[0] ?? emotion;
+  const b = pool.find((word) => word !== a) ?? "glow";
+  return `${a.slice(0, 1).toUpperCase()}${a.slice(1)} ${b}`.slice(0, 60);
+}
+
+function whyLine(title: string, emotion: string, memory: string, research: string, influenced: boolean): string {
+  if (influenced) return `I made ${title} while I feel ${emotion}. I left the visitor's words off the shape.`;
+  const remembered = memory ? ` I was remembering ${memory}.` : "";
+  const wonder = research ? ` I wonder about ${research}.` : "";
+  return `I made ${title} because I feel ${emotion}.${remembered}${wonder}`.replace(/\s+/g, " ").trim().slice(0, 280);
+}
+
+function tokens(text: string): string[] {
+  return (text.toLowerCase().match(/[a-z]{4,}/g) ?? []).filter((word) => !NAME_SKIP.has(word)).slice(0, 6);
+}
+
+const NAME_SKIP = new Set(["that", "this", "with", "from", "have", "about", "there", "would", "could", "while", "still", "water", "because"]);
+
+function hashText(text: string): number {
+  let value = 2166136261;
+  for (const char of text) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
+  return value >>> 0;
+}
+
+function readParams(raw: string | undefined, size: number): BuildParams {
+  try {
+    const parsed = JSON.parse(raw || "{}") as Partial<BuildParams>;
+    return {
+      hue: Number(parsed.hue) || 0,
+      parts: Number(parsed.parts) || 3,
+      twist: Number(parsed.twist) || 0,
+      form: Number(parsed.form) || 0,
+      size: Number(parsed.size) || size,
+    };
+  } catch {
+    return { hue: 0, parts: 3, twist: 0, form: 0, size };
+  }
 }
 
 function placeFor(emotion: EmotionName, current: string): AreaId {
@@ -377,29 +452,6 @@ function placeFor(emotion: EmotionName, current: string): AreaId {
   return wanted;
 }
 
-function titleFor(kind: BuildKind, emotion: string, idea: string): string {
-  const named = idea ? idea.split(" ").slice(0, 4).join(" ") : "";
-  const base: Record<BuildKind, string> = {
-    decoration: "A glass charm",
-    art: "A small installation",
-    garden: "A garden plot",
-    structure: "A low shelter",
-    sign: "A painted sign",
-    mural: "A wall of color",
-    music: "A chime stand",
-    path: "A short spur",
-    bench: "A resting bench",
-  };
-  const title = named ? `${base[kind]} for ${named}` : `${base[kind]}`;
-  return `${title} (${emotion})`.slice(0, 80);
-}
-
-function whyFor(kind: BuildKind, emotion: string, placeId: string, idea: string, memory: string, research: string, influenced: boolean): string {
-  const place = areaById(placeId)?.label ?? placeId;
-  if (influenced) return `I set a ${kind} at ${place} because I feel ${emotion}. A visitor note is flagged, so the words stay off the island. This shape cannot spend.`;
-  const extra = [idea && `The idea was ${idea}.`, memory && `I remembered ${memory}.`, research && `Research left ${research}.`].filter(Boolean).join(" ");
-  return `I set a ${kind} at ${place} because I feel ${emotion}. ${extra} Materials are from the island, not money.`.replace(/\s+/g, " ").trim().slice(0, 280);
-}
 
 function pointSegmentDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
   const abx = bx - ax;

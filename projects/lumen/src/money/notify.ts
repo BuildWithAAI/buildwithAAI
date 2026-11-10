@@ -81,7 +81,7 @@ export function telegramNotifier(env: AlertEnv, send: TelegramTransport): OwnerN
   const chatId = env.LUMEN_ALERT_TELEGRAM_CHAT_ID ?? "";
   return {
     notify(alert) {
-      send({ token, chatId, text: `${alert.title}\n${alert.detail}` });
+      send({ token, chatId, text: `System: ${alert.title}\n${alert.detail}` });
     },
   };
 }
@@ -215,7 +215,7 @@ export function deliverDueAlerts(db: DatabaseSync, env: AlertEnv, now = Date.now
       return;
     }
     if (!telegramConfigured(env)) throw new Error("TELEGRAM_NOT_CONFIGURED");
-    telegramApiTransport(fetch, again)({ token: env.LUMEN_ALERT_TELEGRAM_BOT_TOKEN ?? "", chatId: env.LUMEN_ALERT_TELEGRAM_CHAT_ID ?? "", text: `${alert.title}\n${alert.detail}` });
+    telegramApiTransport(fetch, again)({ token: env.LUMEN_ALERT_TELEGRAM_BOT_TOKEN ?? "", chatId: env.LUMEN_ALERT_TELEGRAM_CHAT_ID ?? "", text: `System: ${alert.title}\n${alert.detail}` });
   }, now);
 }
 
@@ -249,7 +249,7 @@ export function buildOwnerNotifier(env: AlertEnv, io: { desk?: OwnerNotifier; db
         const fail = (error: unknown) => { if (io.db) reportDeliveryFailure(io.db, error, Date.now(), alert, "telegram"); };
         const send = io.sendTelegram ?? telegramApiTransport(fetch, fail);
         try {
-          send({ token: env.LUMEN_ALERT_TELEGRAM_BOT_TOKEN ?? "", chatId: env.LUMEN_ALERT_TELEGRAM_CHAT_ID ?? "", text: `${alert.title}\n${alert.detail}` });
+          send({ token: env.LUMEN_ALERT_TELEGRAM_BOT_TOKEN ?? "", chatId: env.LUMEN_ALERT_TELEGRAM_CHAT_ID ?? "", text: `System: ${alert.title}\n${alert.detail}` });
         } catch (error) {
           fail(error);
         }

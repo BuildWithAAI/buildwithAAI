@@ -3,8 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { TELEGRAM_TYPES } from "../../integrations/telegramOwner";
-import { artAction, clearAlertAction, controlAction, creativeAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, telegramAction, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, creativeAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
@@ -186,19 +185,12 @@ export default async function AdminPage() {
         </ul>
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
-        <h2>Telegram</h2>
-        <p className="muted">{telegram.mock ? "Mock mode. Messages stay on this desk until the owner bot secrets are set." : "The owner bot is configured. Tokens are not shown here."}</p>
+        <h2>Zoora's messages</h2>
+        <p className="muted">{telegram.mock ? "Mock mode. Zoora's thoughts stay here until the owner bot secrets are set." : "Zoora can write to the owner. Tokens are not shown here."} Alerts stay on email, or on a system channel if one is configured.</p>
         <ul className="feed">
-          {TELEGRAM_TYPES.map((type) => (
-            <li key={type}>
-              {type} · {telegram.toggles[type] ? "on" : "off"}
-              <form action={telegramAction}>
-                <input type="hidden" name="type" value={type} />
-                <input type="hidden" name="on" value={telegram.toggles[type] ? "0" : "1"} />
-                <button type="submit">{telegram.toggles[type] ? "Turn off" : "Turn on"}</button>
-              </form>
-            </li>
-          ))}
+          {telegram.thoughts.length ? telegram.thoughts.map((thought) => (
+            <li key={`${thought.at_ms}-${thought.text.slice(0, 24)}`}>{thought.text}</li>
+          )) : <li>Zoora has not written yet.</li>}
         </ul>
       </section>
     </div>

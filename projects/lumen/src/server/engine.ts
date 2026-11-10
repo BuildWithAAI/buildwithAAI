@@ -21,7 +21,7 @@ import { researchChatReply } from "../research/ideas";
 import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
 import { stripeSalesClient } from "../money/stripe";
-import { maybeDailySummary, maybeResearchNote, queueOwnerMessage, setTelegramToggle, TELEGRAM_TYPES, telegramToggle, type TelegramType } from "../integrations/telegramOwner";
+import { composeThought, offerThought } from "../integrations/telegramOwner";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -83,11 +83,8 @@ export function createEngine(env: Env, file?: string) {
     undoBuild: (id: string) => undoWorldBuild(db, id, Date.now()),
     telegramBoard: () => ({
       mock: !(env.LUMEN_TELEGRAM_BOT_TOKEN && env.LUMEN_TELEGRAM_OWNER_CHAT_ID),
-      toggles: Object.fromEntries(TELEGRAM_TYPES.map((type) => [type, telegramToggle(db, type)])) as Record<TelegramType, boolean>,
+      thoughts: db.prepare("SELECT text, at_ms FROM telegram_outbox WHERE status IN ('mock', 'sent') ORDER BY id DESC LIMIT 8").all() as { text: string; at_ms: number }[],
     }),
-    setTelegram: (type: string, on: boolean) => {
-      if ((TELEGRAM_TYPES as readonly string[]).includes(type)) setTelegramToggle(db, type as TelegramType, on);
-    },
   };
 }
 
@@ -201,9 +198,14 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
   persistTick(db, result, now);
   try {
     const built = considerCreative(db, lived, now);
-    if (built) queueOwnerMessage(db, env, "build", `${built.title}. ${built.why}`, now);
-    maybeResearchNote(db, env, now);
-    maybeDailySummary(db, env, `Zoora's day: ${labelsOf(lived).feeling}`, now);
+    const finding = db.prepare("SELECT question FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { question: string } | undefined;
+    const thought = composeThought({
+      emotions: lived.emotions,
+      memory: lived.longTerm[0]?.text ?? null,
+      buildName: built?.title ?? null,
+      wondering: lived.emotions.curiosity > 0.5 ? finding?.question ?? null : null,
+    });
+    if (thought) offerThought(db, env, thought, now);
   } catch { /* a note home must not stop the tick */ }
   syncZoora(db, lived, now);
   stepMote(db, now);
@@ -582,7 +584,6 @@ function clearAlert(db: DatabaseSync) {
 function externalAlerts(db: DatabaseSync, env: Env) {
   return (alert: OwnerAlert) => {
     buildOwnerNotifier(env, { db }).notifier.notify(alert);
-    try { queueOwnerMessage(db, env, "alert", `${alert.title}\n${alert.detail}`, Date.now()); } catch { /* the desk copy already landed */ }
   };
 }
 

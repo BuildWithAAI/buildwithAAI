@@ -229,7 +229,8 @@ CREATE TABLE IF NOT EXISTS world_builds (
   status TEXT NOT NULL,
   materials INTEGER NOT NULL,
   influenced INTEGER NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  params TEXT NOT NULL DEFAULT '{}'
 );
 CREATE TABLE IF NOT EXISTS world_build_versions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -285,6 +286,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "alert_retries", "started_at", "started_at INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "research_queries", "question", "question TEXT");
   ensureColumn(db, "ideas", "source_key", "source_key TEXT");
+  ensureColumn(db, "world_builds", "params", "params TEXT NOT NULL DEFAULT '{}'");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   return db;
