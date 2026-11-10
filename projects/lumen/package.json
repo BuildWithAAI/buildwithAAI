@@ -10,7 +10,9 @@
     "test": "vitest run",
     "smoke": "node scripts/csp-smoke.mjs",
     "typecheck": "tsc --noEmit",
-    "hash-password": "node scripts/hash-password.mjs"
+    "hash-password": "node scripts/hash-password.mjs",
+    "telegram:poll": "node scripts/telegram-poll.mjs",
+    "telegram:commands": "node scripts/telegram-set-commands.mjs"
   },
   "dependencies": {
     "next": "^15.5.6",

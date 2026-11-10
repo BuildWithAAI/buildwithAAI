@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     logSecurity({ event: "rate_limited", status: 429, route: "/api/telegram/webhook" });
     return Response.json({ error: "RATE_LIMIT" }, { status: 429 });
   }
-  const result = acceptTelegramUpdate(
+  const result = await acceptTelegramUpdate(
     engine.db,
     process.env,
     limited.text,
