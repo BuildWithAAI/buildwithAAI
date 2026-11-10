@@ -26,6 +26,7 @@ import { stripeSalesClient } from "../money/stripe";
 import { composeThought, offerThought } from "../integrations/telegramOwner";
 import { latestThesis } from "../trading/book";
 import { considerShop, hideListing, listShop, listingMaxCents, publishListing, readShop, retireListing, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
+import { considerKeeperList, inventoryLine, listKeeperWishes, markKeeperWish } from "../wishlist/board";
 import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
@@ -112,6 +113,8 @@ export function createEngine(env: Env, file?: string) {
       return editOwnerGoal(db, id, text, now);
     },
     shopCheckout: (id: string, note: string, ip = "unknown") => shopCheckout(db, env, id, note, Date.now(), ip),
+    keeperList: () => listKeeperWishes(db),
+    keeperListAct: (id: string, status: "bought" | "declined") => markKeeperWish(db, id, status, Date.now()),
     telegramBoard: () => ({
       mock: !(env.LUMEN_TELEGRAM_BOT_TOKEN && env.LUMEN_TELEGRAM_OWNER_CHAT_ID),
       thoughts: db.prepare("SELECT text, at_ms FROM telegram_outbox WHERE status IN ('mock', 'sent') ORDER BY id DESC LIMIT 8").all() as { text: string; at_ms: number }[],
@@ -243,9 +246,10 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       : lived;
     const built = considerCreative(db, minded, now);
     const finding = db.prepare("SELECT question FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { question: string } | undefined;
+    const held = inventoryLine(db);
     const thought = composeThought({
       emotions: lived.emotions,
-      memory: goal ?? lived.longTerm[0]?.text ?? null,
+      memory: [goal ?? lived.longTerm[0]?.text ?? null, held].filter(Boolean).join(" ") || null,
       buildName: built?.title ?? null,
       wondering: lived.emotions.curiosity > 0.5 ? finding?.question ?? null : null,
       tradeNote: latestThesis(db),
@@ -258,6 +262,13 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       ideaSourceKey: idea?.source_key ?? null,
       memory: goal ?? lived.longTerm[0]?.text ?? null,
       research: finding?.question ?? null,
+    }, now, env);
+    const ranked = (Object.entries(lived.emotions) as [string, number][]).sort((a, b) => b[1] - a[1]);
+    considerKeeperList(db, {
+      emotion: ranked[0]?.[0] ?? "calm",
+      level: ranked[0]?.[1] ?? 0,
+      memory: goal ?? lived.longTerm[0]?.text ?? null,
+      fromVisitor: Boolean(idea?.source_key),
     }, now, env);
     reflectOnGoals(db, lived.longTerm[0]?.text ? `I still remember ${lived.longTerm[0].text}.` : "The water is quiet.", now);
     expireClaims(db, now);

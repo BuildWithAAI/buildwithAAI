@@ -4,7 +4,7 @@ import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { loadIdentity } from "../../identity/load";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sendChat, shopDesk, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, keeperListAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sendChat, shopDesk, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
@@ -110,6 +110,21 @@ export default async function AdminPage() {
         <ul className="feed">
           {snap.wants.map((want) => (
             <li key={want.id}><strong>{want.text}</strong><div className="muted">{want.need}: {want.reason}</div></li>
+          ))}
+        </ul>
+        <h2>Things for Zoorped to bring</h2>
+        <p className="muted">Zoora asks. The keeper buys outside this app, then marks the row. Marking it bought puts it in her inventory. It does not charge a card.</p>
+        <ul className="feed">
+          {engine.keeperList().filter((item) => item.status === "open").map((item) => (
+            <li key={item.id}>
+              <strong>{item.rank}. {item.name}</strong>
+              <div>{item.why}</div>
+              <div className="muted">{item.estimateCents == null ? "No estimate." : `Guess $${(item.estimateCents / 100).toFixed(2)}`}</div>
+              <div className="row">
+                <form action={keeperListAction}><input type="hidden" name="id" value={item.id} /><input type="hidden" name="op" value="bought" /><button type="submit">Mark bought</button></form>
+                <form action={keeperListAction}><input type="hidden" name="id" value={item.id} /><input type="hidden" name="op" value="declined" /><button type="submit">Mark declined</button></form>
+              </div>
+            </li>
           ))}
         </ul>
         <h2>Wishlist for the keeper</h2>

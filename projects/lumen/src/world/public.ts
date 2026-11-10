@@ -29,6 +29,7 @@ export type PublicWorld = {
   places: { id: PlaceId; label: string; x: number; y: number; z: number }[];
   agents: PublicAgent[];
   feed: string[];
+  wishlist: string[];
   diary: string[];
   log: string[];
   tune: { notes: number[]; title: string } | null;

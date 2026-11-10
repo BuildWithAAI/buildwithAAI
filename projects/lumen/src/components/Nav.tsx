@@ -15,6 +15,7 @@ export function Nav({ showKeeper = false }: { showKeeper?: boolean }) {
       <Link href="/diary">Diary</Link>
       <Link href="/guestbook">Guestbook</Link>
       <Link href="/wants">Wants</Link>
+      <Link href="/wishlist">Wishlist</Link>
       <Link href="/ideas">Ideas</Link>
       {showKeeper ? <Link href="/admin">Keeper</Link> : null}
     </nav>

@@ -7,6 +7,7 @@ import { researching, stationView } from "../research/run";
 import { visibleBuilds } from "./creative";
 import { readShop } from "../shop/store";
 import { tape } from "../trading/book";
+import { publicWishLines } from "../wishlist/board";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
@@ -383,6 +384,7 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
     places: PLACE_IDS.map((id) => ({ id, label: PLACE_LABELS[id], ...ANCHORS[id] })),
     agents: fresh.map((row) => publicAgent(row, now)),
     feed: feed.map((item) => item.text),
+    wishlist: publicWishLines(db),
     diary: diary.map((item) => item.text),
     log: log.map((item) => item.text),
     tune: tuneRaw ? JSON.parse(tuneRaw) as { notes: number[]; title: string } : null,

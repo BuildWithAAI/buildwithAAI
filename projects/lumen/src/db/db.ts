@@ -373,6 +373,24 @@ CREATE TABLE IF NOT EXISTS shop_orders (
   created_at INTEGER NOT NULL,
   buyer_ip TEXT
 );
+CREATE TABLE IF NOT EXISTS keeper_wishlist (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  why TEXT NOT NULL,
+  link TEXT,
+  estimate_cents INTEGER,
+  rank INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS keeper_inventory (
+  id TEXT PRIMARY KEY,
+  wishlist_id TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  note TEXT NOT NULL,
+  at_ms INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS telegram_outbox (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL,

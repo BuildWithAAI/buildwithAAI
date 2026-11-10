@@ -61,6 +61,15 @@ export async function sendChat(form: FormData) {
   await getEngine().ownerChat(String(form.get("text") ?? ""));
 }
 
+export async function keeperListAction(form: FormData) {
+  const header = await headers();
+  if (!loginReachable(header.get("fly-client-ip"))) redirect("/");
+  await gate();
+  const op = form.get("op") === "bought" ? "bought" : form.get("op") === "declined" ? "declined" : null;
+  if (!op) return;
+  await getEngine().keeperListAct(String(form.get("id") ?? ""), op);
+}
+
 export async function wishAction(form: FormData) {
   await gate();
   const action = String(form.get("action") ?? "");

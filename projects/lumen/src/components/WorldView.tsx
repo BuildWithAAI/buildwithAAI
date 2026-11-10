@@ -145,6 +145,11 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     const noticeMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), new THREE.MeshBasicMaterial({ map: notice.texture }));
     noticeMesh.position.set(0, terrainHeight(0, -4.2) + 1.55, -4.2);
     scene.add(noticeMesh);
+    const wishes = boardTexture(["Wishlist", "The board is blank."], "#f6f1e4", "#3b2a16");
+    const wishMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.6), new THREE.MeshBasicMaterial({ map: wishes.texture }));
+    wishMesh.position.set(3.4, terrainHeight(3.4, -3.6) + 1.6, -3.6);
+    wishMesh.rotation.y = 0.35;
+    scene.add(wishMesh);
     const easelBoard = boardTexture(["The easel is waiting."], "#f6e7d4", "#3a2018");
     const easelMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 1.35), new THREE.MeshBasicMaterial({ map: easelBoard.texture }));
     easelMesh.position.set(23.15, terrainHeight(23.15, 1) + 1.35, 1.05);
@@ -239,6 +244,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     const buildPieces = new Map<string, THREE.Group>();
     const shopPiece: { key: string; group: THREE.Group } | { key: "" } = { key: "" };
     let feedKey = "";
+    let wishKey = "";
     let diaryKey = "";
     let logKey = "";
     let svgKey = "";
@@ -293,6 +299,12 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       if (snap.feed.join("|") !== feedKey) {
         feedKey = snap.feed.join("|");
         notice.paint(snap.feed.length ? snap.feed : ["The square is open."]);
+      }
+      const wishLines = snap.wishlist ?? [];
+      const nextWish = wishLines.join("|");
+      if (nextWish !== wishKey) {
+        wishKey = nextWish;
+        wishes.paint(wishLines.length ? ["Wishlist", ...wishLines] : ["Wishlist", "The board is blank."]);
       }
       if (snap.diary.join("|") !== diaryKey) {
         diaryKey = snap.diary.join("|");
