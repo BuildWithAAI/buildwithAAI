@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: e62a7e3
+title: Zoora sets listing prices with no default cap.
+summary: Owner decision of 2026-11-09. There is no $80 self-publish ceiling and no approval step at any price. A price is a positive integer number of cents. Visitor, web, and agent text cannot set it. The ledger records Zoora's reason. LUMEN_LISTING_MAX_USD is optional. The kill switch still pauses sales.
+date: 2026-11-10T04:12:00Z
+image:
+
+---
 sha: 4a79435
 title: The public image boots, and money stays opt-in.
 summary: The Docker image starts from Next standalone output and answers /healthz. Public mode closes the login action without reading Host. Spending needs LUMEN_SPEND_ENABLED and live sales need LUMEN_SALES_ENABLED. Issuer, trading, Chime, and Solana Pay checks fail closed.
