@@ -30,7 +30,7 @@ export default function ShopPage({ searchParams }: { searchParams: Promise<{ sal
               <button type="submit">Pay by card</button>
             </form>
           ) : (
-            <p className="muted">Card checkout is not open. No card payment is taken.</p>
+            <p className="muted">Card checkout is not open. No card payment is taken. This is not live.</p>
           )}
           {sol ? (
             <form action={solQuote}>

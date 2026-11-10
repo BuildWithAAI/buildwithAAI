@@ -44,7 +44,7 @@ export function securityHeaders(_publicMode?: boolean): { key: string; value: st
     { key: "Referrer-Policy", value: "no-referrer" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "X-DNS-Prefetch-Control", value: "off" },
-    { key: "Content-Security-Policy", value: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" },
+    { key: "Content-Security-Policy", value: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://app.kit.com" },
     { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
     { key: "Cross-Origin-Opener-Policy", value: "same-origin" },

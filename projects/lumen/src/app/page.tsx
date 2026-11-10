@@ -1,4 +1,6 @@
+import React from "react";
 import { Scene } from "../components/Scene";
+import { SignupForm } from "../components/SignupForm";
 import { getEngine } from "../server/engine";
 
 export default function HomePage() {
@@ -39,6 +41,11 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+      <section className="card" id="signup" style={{ gridColumn: "1 / -1" }}>
+        <h2>Tools for people and AI agents to work together.</h2>
+        <p>Zoora is building tools for people and AI agents to work together. Sign up for product and build updates.</p>
+        <SignupForm />
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
         <p className="kicker">Live feed</p>

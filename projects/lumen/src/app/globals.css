@@ -93,6 +93,16 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 0.4rem
 .world-hud button, .world-banner span { background: rgba(6, 18, 22, 0.78); border: 1px solid var(--line); border-radius: 999px; padding: 0.35rem 0.7rem; }
 .world-banner span { pointer-events: none; }
 
+.site-footer {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+}
+.site-footer form { max-width: 28rem; margin-bottom: 0.8rem; }
+.privacy { font-size: 0.9rem; }
+
 @media (max-width: 800px) {
   .grid { grid-template-columns: 1fr; }
   canvas.bowl { height: 300px; }

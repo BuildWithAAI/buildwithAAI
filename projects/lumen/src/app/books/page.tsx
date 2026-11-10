@@ -13,7 +13,7 @@ export default function BooksPage() {
       <p className="kicker">Public books</p>
       <h1>Confirmed balance</h1>
       <p className="money">{money(view.confirmedCents)}</p>
-      <p className="muted">Only rows a provider confirmed. Unconfirmed and mock rows are not included.</p>
+      <p className="muted">Only rows a provider confirmed. Unconfirmed and mock rows are not included. This is not a live money product.</p>
       <table>
         <tbody>
           <tr><th>Sales, gross</th><td>{money(view.salesCents)}</td></tr>

@@ -46,6 +46,7 @@ primary_region = "iad"
 [env]
   LUMEN_DATA = "/data/lumen.sqlite"
   LUMEN_PUBLIC_MODE = "true"
+  LUMEN_ORIGIN = "https://zoora.ai"
   # LUMEN_PUBLIC_MODE is the public site and the closed login. It is not a money switch.
   # Live money needs LUMEN_MONEY_LIVE set to true, plus LUMEN_SPEND_ENABLED or LUMEN_SALES_ENABLED.
   # Those secrets are not set in this file. A sales key does not turn spending on.

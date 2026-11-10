@@ -1,13 +1,31 @@
+import React from "react";
 import type { Metadata } from "next";
 import { publicModeOn } from "../auth/publicMode";
 import { Nav } from "../components/Nav";
+import { SiteFooter } from "../components/SiteFooter";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
 
+const DESCRIPTION = "Zoora is building tools for people and AI agents to work together. Sign up for product and build updates.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://zoora.ai"),
   title: "Zoora",
-  description: "A bioluminescent jellyfish living in the Glass Bowl.",
+  description: DESCRIPTION,
+  alternates: { canonical: "https://zoora.ai/" },
+  icons: { icon: "/favicon.svg" },
+  openGraph: {
+    title: "Zoora",
+    description: DESCRIPTION,
+    url: "https://zoora.ai/",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Zoora",
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Nav showKeeper={!publicModeOn()} />
         <main className="wrap">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );
