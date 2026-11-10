@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: e6f99bc
+title: Pre-launch notices for zoora.ai.
+summary: A first-visit notice says Zoora is an AI, and the footer repeats it. Artwork, songs, diary lines, listings, and downloads are tagged AI-generated and licensed for personal use. The trading floor stays paper unless live trading is on, and it says the figures are simulated. The shop and the books leave the public nav while money is off. The image copies public/, and each page has its own canonical path.
+date: 2026-11-10T20:54:00Z
+image:
+
+---
 sha: 8488500
 title: The world is ready to be zoora.ai.
 summary: The origin is https://zoora.ai. www.zoora.ai redirects there and keeps the path. The home page and the footer post an email address straight to Kit, and /success asks the visitor to confirm. The newsletter favicon and description are on the site. Money stays off. The old newsletter folder is still in place.
