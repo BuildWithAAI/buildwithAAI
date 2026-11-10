@@ -3,7 +3,7 @@ node_modules
 data
 *.sqlite
 .env
-.env.local
+.env.*
 tests
 docs/*
 !docs/BUILD_LOG.md

@@ -1,3 +1,5 @@
+import { publicModeOn } from "../auth/publicMode";
+
 /**
  * Money rules, in one place, for review.
  *
@@ -39,7 +41,7 @@
  * LUMEN_TICK_MS                      Tick interval, minimum 4000.
  * LUMEN_DATA                         SQLite path.
  * LUMEN_QUIET_HOURS                  "start-end" UTC hours, default 0-6.
- * LUMEN_PUBLIC_MODE                  "true" locks the desk, hides money, and forces spending off.
+ * LUMEN_PUBLIC_MODE                  "true" locks the desk, hides money, and forces spending off. Case does not matter.
  * LUMEN_TRUSTED_PROXY                none, fly, forwarded, cloudflare (CF-Connecting-IP), or ngrok.
  */
 
@@ -178,7 +180,7 @@ export function killSwitchOn(env: Env, adminFlag: boolean): boolean {
 export type SalesMode = "disabled" | "test" | "live";
 
 export function salesMode(env: Env, rulesOk: boolean, killed: boolean): SalesMode {
-  if (env.LUMEN_PUBLIC_MODE === "true" || killed || !rulesOk) return "disabled";
+  if (publicModeOn(env) || killed || !rulesOk) return "disabled";
   const mode = env.LUMEN_SALES_MODE;
   const key = env.STRIPE_SECRET_KEY ?? "";
   const webhook = env.STRIPE_WEBHOOK_SECRET ?? "";
@@ -191,7 +193,7 @@ export function salesMode(env: Env, rulesOk: boolean, killed: boolean): SalesMod
 }
 
 export function spendAllowed(env: Env, rulesOk: boolean, killed: boolean, adminSpend: boolean): { open: boolean; reason: string } {
-  if (env.LUMEN_PUBLIC_MODE === "true") return { open: false, reason: "PUBLIC_MODE" };
+  if (publicModeOn(env)) return { open: false, reason: "PUBLIC_MODE" };
   if (killed) return { open: false, reason: "KILL_SWITCH" };
   if (!rulesOk) return { open: false, reason: "CONFIG_INVALID" };
   if (env.SPEND_ENABLED !== "true") return { open: false, reason: "SPEND_DISABLED" };

@@ -3,8 +3,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { clientAddress } from "../src/auth/owner";
+import { allowPage, limitedPage, resetPageLimits } from "../src/auth/pageLimit";
 import { allowPublicRequest, PUBLIC_RATE_LIMIT } from "../src/auth/public";
-import { loginReachable, ownerRouteOpen, securityHeaders } from "../src/auth/publicMode";
+import { loginReachable, ownerRouteOpen, publicModeOn, securityHeaders } from "../src/auth/publicMode";
 import { parseBuildLog } from "../src/build/log";
 import { BuildView } from "../src/components/BuildView";
 import { openDatabase } from "../src/db/db";
@@ -21,6 +22,9 @@ image:
 describe("public mode", () => {
   it("blocks owner routes without a session and leaves the island open", () => {
     const env = { LUMEN_PUBLIC_MODE: "true" };
+    expect(publicModeOn({ LUMEN_PUBLIC_MODE: "TRUE" })).toBe(true);
+    expect(publicModeOn({ LUMEN_PUBLIC_MODE: " True " })).toBe(true);
+    expect(publicModeOn({ LUMEN_PUBLIC_MODE: "false" })).toBe(false);
     expect(ownerRouteOpen("/admin", false, env)).toBe(false);
     expect(ownerRouteOpen("/admin/ledger", false, env)).toBe(false);
     expect(ownerRouteOpen("/admin?tab=desk", false, env)).toBe(false);
@@ -34,6 +38,7 @@ describe("public mode", () => {
     expect(ownerRouteOpen("/build", false, env)).toBe(true);
     expect(ownerRouteOpen("/admin", false, {})).toBe(true);
     expect(spendAllowed({ LUMEN_PUBLIC_MODE: "true", SPEND_ENABLED: "true" }, true, false, true)).toEqual({ open: false, reason: "PUBLIC_MODE" });
+    expect(spendAllowed({ LUMEN_PUBLIC_MODE: "TRUE", SPEND_ENABLED: "true" }, true, false, true)).toEqual({ open: false, reason: "PUBLIC_MODE" });
     expect(securityHeaders(true).some((header) => header.key === "Content-Security-Policy")).toBe(true);
     expect(securityHeaders(false).some((header) => header.key === "Strict-Transport-Security")).toBe(true);
     expect(securityHeaders().some((header) => header.key === "Content-Security-Policy")).toBe(true);
@@ -49,6 +54,10 @@ describe("public mode", () => {
     const now = Date.UTC(2026, 10, 10, 18);
     for (let i = 0; i < PUBLIC_RATE_LIMIT; i += 1) expect(allowPublicRequest(db, "203.0.113.9", now + i)).toBe(true);
     expect(allowPublicRequest(db, "203.0.113.9", now + PUBLIC_RATE_LIMIT)).toBe(false);
+    resetPageLimits();
+    for (let i = 0; i < 120; i += 1) expect(allowPage("203.0.113.9", now)).toBe(true);
+    expect(allowPage("203.0.113.9", now)).toBe(false);
+    expect(limitedPage().status).toBe(429);
   });
 
   it("renders the build timeline", () => {
@@ -78,12 +87,14 @@ describe("public mode", () => {
     expect(entry).toContain("gosu node");
     expect(fly).toContain("[[http_service.checks]]");
     expect(fly).toContain("path = \"/api/health\"");
+    expect(fly).toContain("LUMEN_TRUSTED_PROXY = \"fly\"");
     expect(fly).toContain("snapshot_retention = 5");
     expect(fly).toContain("scheduled_snapshots = true");
   });
 
   it("keeps the build log in the image context", () => {
     const ignore = readFileSync(new URL("../.dockerignore", import.meta.url), "utf8");
+    expect(ignore).toContain(".env.*");
     expect(ignore).toContain("!docs/BUILD_LOG.md");
     expect(ignore.split("\n").includes("docs")).toBe(false);
     const text = readFileSync(new URL("../docs/BUILD_LOG.md", import.meta.url), "utf8");

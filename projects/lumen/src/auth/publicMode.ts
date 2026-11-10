@@ -1,7 +1,7 @@
 import type { Env } from "../money/rules";
 
 export function publicModeOn(env: Env = process.env): boolean {
-  return env.LUMEN_PUBLIC_MODE === "true";
+  return (env.LUMEN_PUBLIC_MODE ?? "").trim().toLowerCase() === "true";
 }
 
 /** Owner, desk, and ledger pages stay closed until a session exists. The public login page stays closed too. */

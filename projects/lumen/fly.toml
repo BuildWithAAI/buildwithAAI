@@ -1,5 +1,5 @@
 # Prepared for a later deploy. Do not deploy from this file until the owner runs the steps in docs/HOSTING_FLY.md.
-# Do not put secrets in this file. Set them with `fly secrets set`.
+# Do not put secrets in this file. Set them with `fly secrets import`.
 # Do not allocate a dedicated IPv4. A shared IPv4 and IPv6 are free. A dedicated IPv4 is $2/month.
 app = "lumen-tidepool"
 primary_region = "iad"

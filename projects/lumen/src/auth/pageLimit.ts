@@ -1,0 +1,25 @@
+const WINDOW_MS = 60_000;
+const LIMIT = 120;
+const hits = new Map<string, number[]>();
+
+export function allowPage(ip: string, now: number, limit = LIMIT): boolean {
+  const recent = (hits.get(ip) ?? []).filter((at) => now - at < WINDOW_MS && now >= at);
+  if (recent.length >= limit) {
+    hits.set(ip, recent);
+    return false;
+  }
+  recent.push(now);
+  hits.set(ip, recent);
+  return true;
+}
+
+export function resetPageLimits(): void {
+  hits.clear();
+}
+
+export function limitedPage(): Response {
+  return new Response("Too many requests. Wait a minute and try again.", {
+    status: 429,
+    headers: { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8" },
+  });
+}

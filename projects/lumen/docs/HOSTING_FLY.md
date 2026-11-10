@@ -109,13 +109,13 @@ Set secrets in PowerShell. They are not written to `fly.toml` or git. Set only t
 - `LUMEN_OWNER_NAME` if you want a name other than keeper
 - Stripe keys only if you later turn sales on somewhere else. Leave them unset for this public world. `SPEND_ENABLED` is already `false` in `fly.toml`.
 
-Example shape. Replace the quoted strings yourself:
+Put the values in a file on your machine, not in this repo. `secrets.env` is only an example name:
 
 ```powershell
-fly secrets set OWNER_ACCESS_TOKEN="..." OWNER_SESSION_SECRET="..." -a lumen-tidepool
+fly secrets import -a lumen-tidepool < secrets.env
 ```
 
-`fly secrets set` stages them for the next deploy. Do not paste the values into a file in this repo.
+`fly secrets import` stages them for the next deploy. Do not commit `secrets.env`.
 
 ## Deploy one machine
 
