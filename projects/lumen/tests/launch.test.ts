@@ -19,6 +19,8 @@ describe("launch blockers", () => {
       headers: { host: "zoora.ai", "x-forwarded-host": "localhost:3000", "x-forwarded-proto": "http" },
     }));
     expect(moved.headers.get("location")).toBe("https://zoora.ai/?x=1");
+    const delivery = middleware(new NextRequest("http://127.0.0.1:3000/api/delivery/abc"));
+    expect(delivery.headers.get("content-security-policy")).toBe("sandbox");
   });
 
   it("logs a security event without a body or a token", () => {

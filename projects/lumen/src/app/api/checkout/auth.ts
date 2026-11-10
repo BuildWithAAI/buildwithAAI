@@ -43,6 +43,9 @@ export function checkoutAuth(request: Request, now = Date.now()): { ok: true } |
     noteDistinctBearerMiss(ip, key, now);
     return { ok: false, status: 401, error: "UNAUTHORIZED" };
   }
+  if (publicModeOn() && (request.headers.get("fly-client-ip") ?? "").trim()) {
+    return { ok: false, status: 401, error: "UNAUTHORIZED" };
+  }
   if (sessionValid(engine.db, readCookie(request.headers.get("cookie"), OWNER_COOKIE), now)) return { ok: true };
   return { ok: false, status: 401, error: "UNAUTHORIZED" };
 }

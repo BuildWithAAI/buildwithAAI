@@ -48,6 +48,11 @@ export function middleware(request: NextRequest) {
     request.headers.get("x-forwarded-proto"),
   );
   if (target) return NextResponse.redirect(target, 301);
+  if (request.nextUrl.pathname.startsWith("/api/delivery/")) {
+    const response = NextResponse.next();
+    response.headers.set("Content-Security-Policy", "sandbox");
+    return response;
+  }
   const nonce = pageNonce();
   const policy = contentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);

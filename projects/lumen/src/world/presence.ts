@@ -1,19 +1,56 @@
 const WINDOW_MS = 45_000;
-const beats = new Map<string, number>();
+const PRUNE_MS = 15_000;
+export const PRESENCE_PER_IP = 8;
 
-/** Remember an anonymous slot. The slot is a random browser id, not a name or address. */
-export function notePresence(slot: string, now: number): void {
+const beats = new Map<string, { at: number; ip: string }>();
+const slotsByIp = new Map<string, string[]>();
+let prunedAt = 0;
+
+function drop(ip: string, id: string): void {
+  beats.delete(`${ip}\n${id}`);
+  const slots = slotsByIp.get(ip);
+  if (!slots) return;
+  const next = slots.filter((slot) => slot !== id);
+  if (next.length) slotsByIp.set(ip, next);
+  else slotsByIp.delete(ip);
+}
+
+/** Drop expired beats on a timer. A single note does not walk the whole map. */
+export function prunePresence(now: number): void {
+  for (const [key, beat] of beats) {
+    if (now - beat.at <= WINDOW_MS && now >= beat.at) continue;
+    const id = key.slice(beat.ip.length + 1);
+    drop(beat.ip, id);
+  }
+}
+
+function maybePrune(now: number): void {
+  if (prunedAt !== 0 && now - prunedAt < PRUNE_MS) return;
+  prunedAt = now;
+  prunePresence(now);
+}
+
+/** Remember an anonymous slot. One address can only hold a few slots, so rotating ids cannot inflate the count. */
+export function notePresence(slot: string, now: number, ip = "local"): void {
+  maybePrune(now);
   const id = slot.replace(/[^a-z0-9]/gi, "").slice(0, 16);
   if (id.length < 8) return;
-  beats.set(id, now);
-  for (const [key, at] of beats) {
-    if (now - at > WINDOW_MS) beats.delete(key);
+  const bucket = ip.trim() || "local";
+  const slots = slotsByIp.get(bucket) ?? [];
+  const existing = slots.indexOf(id);
+  if (existing >= 0) slots.splice(existing, 1);
+  slots.push(id);
+  while (slots.length > PRESENCE_PER_IP) {
+    const gone = slots.shift();
+    if (gone) beats.delete(`${bucket}\n${gone}`);
   }
+  slotsByIp.set(bucket, slots);
+  beats.set(`${bucket}\n${id}`, { at: now, ip: bucket });
 }
 
 export function presenceCount(now: number): number {
   let count = 0;
-  for (const at of beats.values()) if (now - at <= WINDOW_MS && now >= at) count += 1;
+  for (const beat of beats.values()) if (now - beat.at <= WINDOW_MS && now >= beat.at) count += 1;
   return count;
 }
 
@@ -21,6 +58,12 @@ export function presenceLevel(now: number): number {
   return Math.min(1, presenceCount(now) / 4);
 }
 
+export function presenceSize(): number {
+  return beats.size;
+}
+
 export function resetPresence(): void {
   beats.clear();
+  slotsByIp.clear();
+  prunedAt = 0;
 }

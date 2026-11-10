@@ -62,6 +62,9 @@ describe("pre-launch compliance", () => {
 
   it("labels generated work and does not promise copyright", () => {
     expect(labelDownload("<svg></svg>")).toContain(DOWNLOAD_LICENSE);
+    const declared = labelDownload(`<?xml version="1.0" encoding="UTF-8"?>\n<svg></svg>`);
+    expect(declared.startsWith("<?xml")).toBe(true);
+    expect(declared.indexOf("<?xml")).toBeLessThan(declared.indexOf(DOWNLOAD_LICENSE));
     expect(labelDownload("<svg></svg>")).not.toMatch(/you own|copyright is yours/i);
     const gallery = readFileSync(new URL("../src/app/gallery/page.tsx", import.meta.url), "utf8");
     const diary = readFileSync(new URL("../src/app/diary/page.tsx", import.meta.url), "utf8");

@@ -4,7 +4,10 @@ export const DOWNLOAD_LICENSE = "AI-generated. Licensed for personal use. This i
 
 export function labelDownload(body: string): string {
   if (body.includes(DOWNLOAD_LICENSE)) return body;
-  return `<!-- ${DOWNLOAD_LICENSE} -->\n${body}`;
+  const comment = `<!-- ${DOWNLOAD_LICENSE} -->`;
+  const xml = body.match(/^\s*<\?xml[^>]*\?>\s*/);
+  if (xml?.[0]) return `${xml[0].trimEnd()}\n${comment}\n${body.slice(xml[0].length)}`;
+  return `${comment}\n${body}`;
 }
 
 /** A paid delivery stays readable until it expires. A kill switch does not hide it. */

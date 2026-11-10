@@ -23,6 +23,6 @@ export async function POST(request: Request) {
   }
   if (!/^[a-z0-9]{8,16}$/i.test(slot)) return Response.json({ error: "SLOT" }, { status: 400 });
   const now = Date.now();
-  notePresence(slot, now);
+  notePresence(slot, now, ip);
   return Response.json({ here: presenceCount(now) });
 }

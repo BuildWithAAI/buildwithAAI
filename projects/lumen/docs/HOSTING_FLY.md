@@ -186,11 +186,18 @@ The first single-hostname certificate is inside the ten free certificates.
 
 ## Apex zoora.ai and www
 
-Verify the domain in GitHub Pages first, while the current site still lives there. Add the TXT or other records GitHub shows for zoora.ai. Wait until GitHub says the domain is verified.
+Verify zoora.ai in GitHub Pages first, while the current site still lives there. Add the TXT or other records GitHub shows. Wait until GitHub says the domain is verified. Leave that verification record in place permanently. After the cutover, remove zoora.ai and www.zoora.ai from the GitHub Pages custom domain list so Pages stops serving the site. Do not delete the verification record.
 
-Then cut DNS over to this app. Keep the existing MX records and the SPF record. Do not delete them when you add Fly.
+Keep the existing MX records and the SPF record. Do not delete them when you add Fly.
 
-In Namecheap, open Domain List, zoora.ai, Advanced DNS. Use the shared IPv4 and the IPv6 from `fly ips list`, not a dedicated IPv4.
+Run the certificate commands immediately before you change DNS:
+
+```powershell
+fly certs add zoora.ai -a lumen-tidepool
+fly certs add www.zoora.ai -a lumen-tidepool
+```
+
+Then, in Namecheap, open Domain List, zoora.ai, Advanced DNS. Use the shared IPv4 and the IPv6 from `fly ips list`, not a dedicated IPv4.
 
 | Type | Host | Value |
 | --- | --- | --- |
@@ -199,13 +206,38 @@ In Namecheap, open Domain List, zoora.ai, Advanced DNS. Use the shared IPv4 and 
 | CNAME | www | lumen-tidepool.fly.dev |
 
 ```powershell
-fly certs add zoora.ai -a lumen-tidepool
-fly certs add www.zoora.ai -a lumen-tidepool
 fly certs check zoora.ai -a lumen-tidepool
 fly certs check www.zoora.ai -a lumen-tidepool
 ```
 
-`www.zoora.ai` answers with a redirect to `https://zoora.ai` and keeps the path. After `https://zoora.ai/` is serving this app, remove zoora.ai and www.zoora.ai from the GitHub Pages custom domain settings.
+`www.zoora.ai` answers with a redirect to `https://zoora.ai` and keeps the path.
+
+After the certificates are issued, add CAA records so only Let's Encrypt can issue for this name:
+
+| Type | Host | Value |
+| --- | --- | --- |
+| CAA | @ | 0 issue "letsencrypt.org" |
+| CAA | @ | 0 issuewild ";" |
+
+Add DMARC at `p=none` first, so mail keeps flowing while you watch reports. A later change can move it to `p=quarantine` and then `p=reject`.
+
+| Type | Host | Value |
+| --- | --- | --- |
+| TXT | _dmarc | v=DMARC1; p=none; rua=mailto:dmarc@zoora.ai |
+
+Add the DKIM CNAMEs that Kit shows for the sending domain. Copy those hosts and values from Kit. Do not invent them.
+
+Wait a week after the DNS switch, then turn on DNSSEC in Namecheap. Turning it on the same day as the record change can fail validation while resolvers still hold the old answers.
+
+After the switch, check each of these before you call it done:
+
+- `https://zoora.ai/healthz` returns ok.
+- `https://www.zoora.ai/` redirects to `https://zoora.ai/` and keeps a path such as `/world`.
+- `fly certs check` is issued for both names.
+- MX and SPF still answer, and the DMARC TXT is `p=none`.
+- The Kit DKIM CNAMEs resolve.
+- The GitHub verification record is still present, and the Pages custom domain is gone.
+- `https://zoora.ai/admin/login` stays closed. The desk is only `fly proxy 3001:3001`.
 
 ## Billing alert and the $3.84 check
 

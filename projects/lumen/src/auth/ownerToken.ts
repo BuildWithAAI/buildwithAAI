@@ -151,7 +151,8 @@ function addPrefix48Miss(bucket: string, key: string, now: number): void {
     prefix48Evict.set(bucket, true);
   }
   while (prefix48Misses.size > OWNER_TOKEN_MAP_CAP) {
-    const oldest = prefix48Evict.keys().next().value;
+    const unblocked = prefix48Evict.keys().next().value;
+    const oldest = unblocked ?? prefix48Misses.keys().next().value;
     if (oldest === undefined) break;
     prefix48Evict.delete(oldest);
     prefix48Misses.delete(oldest);
