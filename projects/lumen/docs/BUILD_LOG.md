@@ -1,5 +1,12 @@
 # Build log
 
+---
+sha: 238c512
+title: Zoora can message the owner on Telegram.
+summary: Notes about builds, research, and the day wait for quiet hours and a 30 minute gap. Alerts do not. Talk-back accepts only the owner chat and cannot spend.
+date: 2026-11-10T02:36:00Z
+image:
+
 When a backlog item ships, append a block here. The public `/build` page reads this file. Dates are UTC instants; the page shows them in America/Chicago.
 
 ---
