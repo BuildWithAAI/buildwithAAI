@@ -35,5 +35,6 @@ export type PublicWorld = {
   easel: { title: string; svg: string } | null;
   research: { idea: string | null; question: string; pins: string[] };
   builds: { id: string; kind: string; title: string; x: number; z: number; size: number; yaw: number; version: number; hue: number; parts: number; twist: number; form: number }[];
+  shop: { name: string; hue: number; form: number; x: number; z: number; open: boolean } | null;
   watchOnly: true;
 };

@@ -140,6 +140,10 @@ Alert retries keep the original alert, one row per channel, and give up after ab
 
 The card authorization model and refund ordering are still pending.
 
+## Shop
+
+Zoora may open a shop and list original files or a small service it can deliver as a file. Details, tax, refunds, and chargebacks are in [SHOP.md](SHOP.md). Checkout stays off until `SALES_ENABLED=true` and the keeper sales toggle are both on. A buyer note cannot change a price. The shop does not create a spend intent.
+
 ## What this is not
 
 No live charge has been made by this repository. A green test with a mocked Stripe client is not a settlement. The keeper connects the Stripe account and the card issuer, then turns spend on.

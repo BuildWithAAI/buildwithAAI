@@ -64,6 +64,24 @@ export async function wishAction(form: FormData) {
   await getEngine().wishlistAct(String(form.get("id") ?? ""), action);
 }
 
+export async function shopBuy(form: FormData) {
+  const result = await getEngine().shopCheckout(String(form.get("id") ?? ""), String(form.get("note") ?? ""));
+  if (!result.ok || result.comingSoon || !result.url || !result.url.startsWith("http")) redirect("/shop?sales=soon");
+  redirect(result.url);
+}
+
+export async function shopDesk(form: FormData) {
+  await gate();
+  const op = String(form.get("op") ?? "");
+  if (op === "cap") {
+    getEngine().setShopCap(Number(form.get("cents") ?? 0));
+    return;
+  }
+  const allowed = op === "publish" || op === "hide" || op === "retire" || op === "kill" || op === "sales" || op === "approve";
+  if (!allowed) return;
+  await getEngine().shopAct(op, String(form.get("id") ?? ""), form.get("on") === "1");
+}
+
 export async function creativeAction(form: FormData) {
   await gate();
   const engine = getEngine();

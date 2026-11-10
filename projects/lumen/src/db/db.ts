@@ -247,6 +247,43 @@ CREATE TABLE IF NOT EXISTS creative_log (
   at_ms INTEGER NOT NULL,
   undone INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS shop (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  story TEXT NOT NULL,
+  hue INTEGER NOT NULL,
+  form INTEGER NOT NULL,
+  x REAL NOT NULL,
+  z REAL NOT NULL,
+  open INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS shop_listings (
+  id TEXT PRIMARY KEY,
+  shop_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  price_cents INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  turnaround_hours INTEGER NOT NULL,
+  file_body TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS shop_orders (
+  id TEXT PRIMARY KEY,
+  listing_id TEXT NOT NULL,
+  buyer_note TEXT NOT NULL,
+  status TEXT NOT NULL,
+  charge_id TEXT,
+  delivery_token TEXT,
+  due_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS telegram_outbox (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL,

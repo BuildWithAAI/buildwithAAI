@@ -5,6 +5,7 @@ import { feelingSentence } from "../brain/emotions";
 import { eventOf } from "../brain/events";
 import { researching, stationView } from "../research/run";
 import { visibleBuilds } from "./creative";
+import { readShop } from "../shop/store";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
@@ -401,6 +402,10 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
       twist: build.params.twist,
       form: build.params.form,
     })),
+    shop: (() => {
+      const shop = readShop(db);
+      return shop ? { name: shop.name, hue: shop.hue, form: shop.form, x: shop.x, z: shop.z, open: shop.open } : null;
+    })(),
     watchOnly: true,
   };
 }

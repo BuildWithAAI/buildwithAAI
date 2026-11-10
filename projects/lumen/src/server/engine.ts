@@ -22,6 +22,7 @@ import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
 import { stripeSalesClient } from "../money/stripe";
 import { composeThought, offerThought } from "../integrations/telegramOwner";
+import { considerShop, hideListing, listShop, ownerPriceCap, publishListing, readShop, retireListing, setPriceCap, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -81,6 +82,24 @@ export function createEngine(env: Env, file?: string) {
     setCreative: (on: boolean) => setCreativeEnabled(db, on),
     hideBuild: (id: string) => hideWorldBuild(db, id, Date.now()),
     undoBuild: (id: string) => undoWorldBuild(db, id, Date.now()),
+    shopBoard: () => ({
+      shop: readShop(db),
+      listings: listShop(db, true),
+      checkout: shopCheckoutOpen(db, env),
+      cap: ownerPriceCap(db),
+      approve: flag(db, "shop_approve", "1") === "1",
+      kill: flag(db, "shop_kill", "0") === "1",
+    }),
+    shopAct: (op: "publish" | "hide" | "retire" | "kill" | "sales" | "approve", id: string, on: boolean) => {
+      const now = Date.now();
+      if (op === "publish") return publishListing(db, id, now);
+      if (op === "hide") return hideListing(db, id, now);
+      if (op === "retire") return retireListing(db, id, now);
+      if (op === "kill" || op === "sales" || op === "approve") setShopFlag(db, op === "kill" ? "shop_kill" : op === "sales" ? "shop_sales" : "shop_approve", on);
+      return { ok: true };
+    },
+    setShopCap: (cents: number) => setPriceCap(db, cents),
+    shopCheckout: (id: string, note: string) => shopCheckout(db, env, id, note, Date.now()),
     telegramBoard: () => ({
       mock: !(env.LUMEN_TELEGRAM_BOT_TOKEN && env.LUMEN_TELEGRAM_OWNER_CHAT_ID),
       thoughts: db.prepare("SELECT text, at_ms FROM telegram_outbox WHERE status IN ('mock', 'sent') ORDER BY id DESC LIMIT 8").all() as { text: string; at_ms: number }[],
@@ -206,6 +225,14 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       wondering: lived.emotions.curiosity > 0.5 ? finding?.question ?? null : null,
     });
     if (thought) offerThought(db, env, thought, now);
+    const idea = db.prepare("SELECT title, source_key FROM ideas ORDER BY updated_at DESC LIMIT 1").get() as { title: string; source_key: string | null } | undefined;
+    considerShop(db, {
+      emotions: lived.emotions,
+      ideaTitle: idea?.title ?? null,
+      ideaSourceKey: idea?.source_key ?? null,
+      memory: lived.longTerm[0]?.text ?? null,
+      research: finding?.question ?? null,
+    }, now);
   } catch { /* a note home must not stop the tick */ }
   syncZoora(db, lived, now);
   stepMote(db, now);

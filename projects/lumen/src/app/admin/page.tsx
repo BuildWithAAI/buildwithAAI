@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, creativeAction, logout, proposalAction, reconcileAction, resolveUnknownAction, sendChat, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, creativeAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sendChat, shopDesk, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
@@ -20,6 +20,7 @@ export default async function AdminPage() {
   const snap = engine.snapshot();
   const creative = engine.creativeBoard();
   const telegram = engine.telegramBoard();
+  const shop = engine.shopBoard();
   return (
     <div className="grid">
       <section className="card" style={{ gridColumn: "1 / -1" }}>
@@ -185,6 +186,30 @@ export default async function AdminPage() {
         </ul>
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
+        <h2>Shop</h2>
+        <p className="muted">{shop.shop ? shop.shop.name : "No shop yet."} Checkout is {shop.checkout ? "open" : "coming soon"}. Approve before publish is {shop.approve ? "on" : "off"}. Price cap {(shop.cap / 100).toFixed(0)} dollars.</p>
+        <div className="row">
+          <form action={shopDesk}><input type="hidden" name="op" value="sales" /><input type="hidden" name="on" value="1" /><button type="submit">Allow checkout</button></form>
+          <form action={shopDesk}><input type="hidden" name="op" value="sales" /><input type="hidden" name="on" value="0" /><button type="submit">Coming soon</button></form>
+          <form action={shopDesk}><input type="hidden" name="op" value="kill" /><input type="hidden" name="on" value={shop.kill ? "0" : "1"} /><button type="submit">{shop.kill ? "Release shop kill switch" : "Shop kill switch"}</button></form>
+          <form action={shopDesk}><input type="hidden" name="op" value="approve" /><input type="hidden" name="on" value={shop.approve ? "0" : "1"} /><button type="submit">{shop.approve ? "Publish without asking" : "Ask before publish"}</button></form>
+        </div>
+        <ul className="feed">
+          {shop.listings.map((item) => (
+            <li key={item.id}>
+              <strong>{item.title}</strong> · {item.kind} · {item.status} · ${(item.priceCents / 100).toFixed(2)}
+              <p>{item.description}</p>
+              {item.status === "draft" ? <form action={shopDesk}><input type="hidden" name="op" value="publish" /><input type="hidden" name="id" value={item.id} /><button type="submit">Approve</button></form> : null}
+              {item.status === "published" ? <form action={shopDesk}><input type="hidden" name="op" value="hide" /><input type="hidden" name="id" value={item.id} /><button type="submit">Hide</button></form> : null}
+              {item.status !== "retired" ? <form action={shopDesk}><input type="hidden" name="op" value="retire" /><input type="hidden" name="id" value={item.id} /><button type="submit">Unpublish</button></form> : null}
+            </li>
+          ))}
+        </ul>
+        <form action={refundAction}>
+          <input name="charge" placeholder="Charge id to refund" />
+          <input name="key" placeholder="Idempotency key" />
+          <button type="submit">Refund</button>
+        </form>
         <h2>Zoora's messages</h2>
         <p className="muted">{telegram.mock ? "Mock mode. Zoora's thoughts stay here until the owner bot secrets are set." : "Zoora can write to the owner. Tokens are not shown here."} Alerts stay on email, or on a system channel if one is configured.</p>
         <ul className="feed">

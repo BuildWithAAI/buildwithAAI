@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { Ledger } from "./ledger";
 import type { OwnerNotifier } from "./notify";
+import { deliverShopSale, refundShopCharge } from "../shop/store";
 import { parseStripeEvent, verifyStripeSignature, type StripeEvent } from "./stripe";
 
 export type WebhookResult = { ok: true; duplicate: boolean } | { ok: false; status: number; error: string };
@@ -31,6 +32,11 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
   if (event.type === "checkout.session.completed") {
     const paid = object.payment_status === "paid";
     const amount = numberField(object.amount_total);
+    const shopListing = String((object.metadata as { shop_listing?: string } | undefined)?.shop_listing ?? "");
+    if (shopListing) {
+      if (paid) deliverShopSale(db, shopListing, idString(object.latest_charge) || idString(object.payment_intent) || String(object.id ?? ""), amount, nowMs);
+      return;
+    }
     const creationId = String((object.metadata as { creation_id?: string } | undefined)?.creation_id ?? "");
     const paymentIntent = idString(object.payment_intent);
     const charge = idString(object.latest_charge) || idString(object.charge);
@@ -57,6 +63,8 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
   }
   if (event.type === "charge.refunded" || event.type === "refund.created") {
     bookRefunds(ledger, event, nowMs);
+    const chargeId = event.type === "refund.created" ? idString(object.charge) ?? "" : String(object.id ?? "");
+    if (chargeId) refundShopCharge(db, chargeId, nowMs);
     return;
   }
   if (event.type === "payout.paid") {

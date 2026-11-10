@@ -231,6 +231,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
 
     let frame = 0;
     const buildPieces = new Map<string, THREE.Group>();
+    const shopPiece: { key: string; group: THREE.Group } | { key: "" } = { key: "" };
     let feedKey = "";
     let diaryKey = "";
     let logKey = "";
@@ -292,6 +293,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         paintSvg(easelBoard, snap.easel.svg);
       }
       syncBuilds(scene, buildPieces, snap.builds ?? []);
+      syncShop(scene, shopPiece, snap.shop ?? null);
       const researchText = `${snap.research?.question ?? ""}|${(snap.research?.pins ?? []).join("|")}`;
       if (researchText !== researchKey) {
         researchKey = researchText;
@@ -443,6 +445,30 @@ function ease(t: number): number {
 
 function fade(edge0: number, edge1: number, value: number): number {
   return ease((value - edge0) / Math.max(0.0001, edge1 - edge0));
+}
+
+function syncShop(scene: THREE.Scene, holder: { key: string; group?: THREE.Group }, shop: { name: string; hue: number; form: number; x: number; z: number; open: boolean } | null): void {
+  if (!shop) return;
+  const key = `${shop.name}:${shop.hue}:${shop.form}:${shop.open}`;
+  if (holder.key === key) return;
+  if (holder.group) scene.remove(holder.group);
+  const group = new THREE.Group();
+  const color = new THREE.Color().setHSL((shop.hue % 360) / 360, 0.45, 0.55);
+  const y = terrainHeight(shop.x, shop.z);
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.5, 1.8), new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
+  wall.position.set(shop.x, y + 0.75, shop.z);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.7, 0.8, 4 + (shop.form % 3)), new THREE.MeshStandardMaterial({ color: 0xf2cc8f, roughness: 0.6 }));
+  roof.position.set(shop.x, y + 1.8, shop.z);
+  roof.rotation.y = shop.form;
+  group.add(wall, roof);
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+  label.position.set(shop.x, y + 2.5, shop.z);
+  label.scale.set(2.2, 0.7, 1);
+  paintLabel(label, shop.name);
+  group.add(label);
+  scene.add(group);
+  holder.key = key;
+  holder.group = group;
 }
 
 function syncBuilds(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds: { id: string; title: string; x: number; z: number; size: number; yaw: number; version?: number; hue?: number; parts?: number; twist?: number; form?: number }[]): void {
