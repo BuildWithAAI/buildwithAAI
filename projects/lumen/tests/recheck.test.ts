@@ -5,7 +5,11 @@ import { createSession, OWNER_COOKIE } from "../src/auth/owner";
 import { DISTINCT_BEARER_LIMIT, OWNER_TOKEN_MAP_CAP, noteDistinctBearerMiss, ownerTokenKey, ownerTokenLoad, resetOwnerTokens } from "../src/auth/ownerToken";
 import { POST as reportCheckoutRoute } from "../src/app/api/checkout/report/route";
 import { getEngine } from "../src/server/engine";
-import { notePresence, presenceCount, presenceSize, PRESENCE_PER_IP, resetPresence } from "../src/world/presence";
+import { notePresence, presenceCount, presenceSize, PRESENCE_GLOBAL_CAP, PRESENCE_PER_IP, resetPresence } from "../src/world/presence";
+import { allowGuestNote, openDatabase } from "../src/db/db";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { FloorView } from "../src/components/FloorView";
 
 describe("security recheck", () => {
   it("starts the desk proxy and answers on ipv6 localhost", async () => {
@@ -76,5 +80,39 @@ describe("security recheck", () => {
       }
     }
     expect(ownerTokenLoad()).toBeLessThanOrEqual(OWNER_TOKEN_MAP_CAP);
+    resetPresence();
+    for (let i = 0; i < PRESENCE_PER_IP; i += 1) notePresence(`aaaaaaa${i}`, 9_000, "2001:db8:1:2::1");
+    notePresence("bbbbbbb1", 9_000, "2001:db8:1:2::99");
+    expect(presenceCount(9_000)).toBe(PRESENCE_PER_IP);
+    for (let i = 0; i < PRESENCE_GLOBAL_CAP + 10; i += 1) notePresence(`cap${i.toString(16).padEnd(6, "b")}`, 9_000, `203.0.113.${i % 200}`);
+    expect(presenceSize()).toBeLessThanOrEqual(PRESENCE_GLOBAL_CAP);
+    const book = openDatabase();
+    const at = 1_800_000_000_000;
+    for (let i = 0; i < 8; i += 1) expect(allowGuestNote(book, "2001:db8:9:9::1", at + i)).toBe(true);
+    expect(allowGuestNote(book, "2001:db8:9:9::2", at + 9)).toBe(false);
+  });
+
+  it("formats a paper result and leaves a live row out of the paper floor", () => {
+    const html = renderToStaticMarkup(createElement(FloorView, {
+      now: 24 * 60 * 60 * 1000 + 100,
+      board: {
+        mode: "PAPER",
+        showLivePnl: false,
+        quotes: [
+          { symbol: "LIVEX", priceUsd: "1", priceSol: "1", quotedAt: 1, pairCreatedAt: 1 },
+          { symbol: "PAPER", priceUsd: "1", priceSol: "1", quotedAt: 1, pairCreatedAt: 1 },
+        ],
+        positions: [],
+        history: [
+          { symbol: "LIVEX", side: "sell", result: "{\"usdCents\":-120,\"solMicro\":-3}", thesis: "a paper note", exitPlan: "leave", quotedAt: 1, mode: "live" },
+          { symbol: "PAPER", side: "sell", result: "{\"usdCents\":40,\"solMicro\":1}", thesis: "the tide", exitPlan: "hold", quotedAt: 1, mode: "paper" },
+        ],
+        pnl: { paperUsdCents: 40, paperSolMicro: 1, liveUsdCents: -120, liveSolMicro: -3 },
+      },
+    }));
+    expect(html).not.toContain("PAPER sell LIVEX");
+    expect(html).not.toContain("usdCents");
+    expect(html).toContain("Closed $0.40");
+    expect(html).toContain("SIMULATED");
   });
 });

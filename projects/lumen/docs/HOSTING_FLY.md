@@ -188,7 +188,9 @@ The first single-hostname certificate is inside the ten free certificates.
 
 Verify zoora.ai in GitHub Pages first, while the current site still lives there. Add the TXT or other records GitHub shows. Wait until GitHub says the domain is verified. Leave that verification record in place permanently. After the cutover, remove zoora.ai and www.zoora.ai from the GitHub Pages custom domain list so Pages stops serving the site. Do not delete the verification record.
 
-Keep the existing MX records and the SPF record. Do not delete them when you add Fly.
+Keep mail on Namecheap Email Forwarding. In Namecheap, open Domain List, zoora.ai, and turn Email Forwarding on. The MX hosts that setting uses are `eforward1.registrar-servers.com`, `eforward2.registrar-servers.com`, `eforward3.registrar-servers.com`, `eforward4.registrar-servers.com`, and `eforward5.registrar-servers.com`. Leave those MX records and the SPF record in place.
+
+Before you add Fly's addresses, delete the four GitHub Pages A records (`185.199.108.153`, `185.199.109.153`, `185.199.110.153`, and `185.199.111.153`) and delete the `www` CNAME that points at GitHub Pages.
 
 Run the certificate commands immediately before you change DNS:
 

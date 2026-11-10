@@ -46,3 +46,16 @@ jobs:
         run: |
           node scripts/csp-smoke.mjs
           test -f "${RUNNER_TEMP}/csp-smoke-ok"
+          test -f "${RUNNER_TEMP}/world-fallback.png"
+      - name: Upload smoke screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lumen-smoke
+          path: |
+            ${{ runner.temp }}/home.png
+            ${{ runner.temp }}/guestbook.png
+            ${{ runner.temp }}/world-tip.png
+            ${{ runner.temp }}/world-fallback.png
+            ${{ runner.temp }}/csp-smoke-ok
+          if-no-files-found: error

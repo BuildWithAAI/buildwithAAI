@@ -92,7 +92,8 @@ describe("pre-launch compliance", () => {
     expect(html).toContain(SIMULATED);
     expect(html).toContain("DexScreener");
     expect(html).toContain("does not subtract slippage or a fee");
-    expect(html).toContain("-250");
+    expect(html).toContain("-$2.50");
+    expect(html).not.toContain("usdCents");
     expect(html).not.toContain("Live P&amp;L");
     expect(html).not.toMatch(/href="https?:/);
     expect(html).not.toMatch(/scam/i);

@@ -68,6 +68,6 @@ export function contentSecurityPolicy(nonce: string): string {
     "connect-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
-    "form-action 'self' https://app.kit.com",
+    "form-action 'self' https://app.kit.com/forms/10168331/subscriptions",
   ].join("; ");
 }

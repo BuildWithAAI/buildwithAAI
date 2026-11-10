@@ -15,6 +15,15 @@ function money(cents: number): string {
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
+function closedLine(result: string | null): string {
+  if (!result) return "Still open.";
+  try {
+    const parsed = JSON.parse(result) as { usdCents?: number; solMicro?: number };
+    if (typeof parsed.usdCents === "number") return `Closed ${money(parsed.usdCents)} · ${sol(parsed.solMicro ?? 0)}. ${SIMULATED}`;
+  } catch { /* a stored result that is not a total stays off the page */ }
+  return `Closed. ${SIMULATED}`;
+}
+
 function sol(micro: number): string {
   const sign = micro < 0 ? "-" : "";
   return `${sign}${(Math.abs(micro) / 1_000_000).toFixed(4)} SOL`;
@@ -22,7 +31,7 @@ function sol(micro: number): string {
 
 export function FloorView({ board, now }: { board: FloorBoard; now: number }) {
   const quotes = publicQuotes(board.quotes, now);
-  const history = publicHistory(board.history, board.quotes, now);
+  const history = publicHistory(board.history, board.quotes, now).filter((row) => board.mode === "LIVE" || row.mode !== "live");
   const label = board.mode === "LIVE" ? "LIVE" : "PAPER";
   return (
     <div>
@@ -51,7 +60,7 @@ export function FloorView({ board, now }: { board: FloorBoard; now: number }) {
         <h2>Results</h2>
         <ul className="feed">
           {history.map((row) => (
-            <li key={`${row.symbol}-${row.quotedAt}`}>{label} {row.side} {row.symbol}. Entered because {row.thesis} Exit plan: {row.exitPlan} {row.result ? `Result ${row.result}.` : "Still open."} {new Date(row.quotedAt).toISOString()}</li>
+            <li key={`${row.symbol}-${row.quotedAt}`}>{row.mode === "live" ? "LIVE" : "PAPER"} {row.side} {row.symbol}. Entered because {row.thesis} Exit plan: {row.exitPlan} {closedLine(row.result)} {new Date(row.quotedAt).toISOString()}</li>
           ))}
         </ul>
       </section>

@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { bearerAddress } from "../auth/ownerToken";
 import { migrateMerchantHashes } from "../money/ledger";
 
 const SCHEMA = `
@@ -487,7 +488,7 @@ const GUESTBOOK_WINDOW_MS = 3_600_000;
 /** Per-address cap plus one shared cap, counted together so a flood cannot fill the book. */
 export function allowGuestNote(db: DatabaseSync, ip: string, now: number, limits = { perIp: GUESTBOOK_IP_LIMIT, global: GUESTBOOK_GLOBAL_LIMIT }): boolean {
   const since = now - GUESTBOOK_WINDOW_MS;
-  const ipBucket = `book:${ip}`;
+  const ipBucket = `book:${bearerAddress(ip)}`;
   db.exec("BEGIN IMMEDIATE");
   try {
     const count = (bucket: string) => Number((db.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = ? AND at_ms >= ?").get(bucket, since) as { n: number }).n);

@@ -68,7 +68,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
       }).catch(() => undefined);
     };
     beat();
-    const timer = window.setInterval(beat, 20_000);
+    const timer = window.setInterval(beat, 30_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -91,7 +91,7 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
         /* keep the last snapshot */
       }
     };
-    const timer = setInterval(() => void pull(), 700);
+    const timer = setInterval(() => void pull(), 30_000);
     return () => {
       stop = true;
       clearInterval(timer);
@@ -124,13 +124,33 @@ export function WorldView({ initial, cam }: { initial: PublicWorld; cam: string 
     const nav = navigator as Navigator & { deviceMemory?: number };
     const low = new URLSearchParams(window.location.search).get("quality") === "low" || window.innerWidth < 780 || (nav.deviceMemory != null && nav.deviceMemory <= 4);
     setLowDetail(low);
+    const probe = document.createElement("canvas");
+    const gl = probe.getContext("webgl") || probe.getContext("experimental-webgl");
+    if (!gl) {
+      host.replaceChildren();
+      const note = document.createElement("p");
+      note.dataset.worldFallback = "1";
+      note.textContent = "This browser can't draw the 3D world. Zoora is still here. Read the diary, the guestbook, or the gallery.";
+      host.appendChild(note);
+      return;
+    }
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 600);
-    const renderer = new THREE.WebGLRenderer({
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
       antialias: !low,
       alpha: false,
       powerPreference: "low-power",
     });
+    } catch {
+      host.replaceChildren();
+      const note = document.createElement("p");
+      note.dataset.worldFallback = "1";
+      note.textContent = "This browser can't draw the 3D world. Zoora is still here. Read the diary, the guestbook, or the gallery.";
+      host.appendChild(note);
+      return;
+    }
     renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;

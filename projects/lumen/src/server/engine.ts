@@ -2,7 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
 import { glowFor } from "../brain/emotions";
-import { crisisMatch, guestbookReply } from "../brain/crisis";
+import { crisisMatch, guestReply } from "../brain/crisis";
+import { scrubInstructions } from "../research/ideas";
 import { giftById, giftDeltas, interactDeltas, moderateNote, ownerTurn, publicWants, reactionToOwnerDecision, sortInbox, artReaction, GIFT_CATALOG } from "../brain/social";
 import { applyNeedDeltas } from "../brain/feel";
 import { blendEmotions } from "../brain/emotions";
@@ -398,11 +399,13 @@ function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) 
     { stress: state.stress, adopted: state.sorterAdopted, cap: 8, alreadyToday: state.inboxToday, regulars: state.visitorSeen },
   );
   const dropped = sorted.droppedIds.includes(id);
-  const reply = dropped ? null : guestbookReply(id);
+  const scrubbed = scrubInstructions(moderated.note);
+  const publicBody = scrubbed || "This note was set aside.";
+  const reply = dropped || !scrubbed ? null : guestReply(id, moderated.note);
   db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'visitor', ?, ?, 1, ?, ?, ?)").run(
     id,
     (author || "visitor").slice(0, 40),
-    moderated.note,
+    publicBody,
     dropped ? "dropped" : "queued",
     reply,
     Date.now(),

@@ -51,7 +51,7 @@ describe("zoora.ai site", () => {
     const csp = contentSecurityPolicy("abc123");
     expect(csp).toContain("script-src 'self' 'nonce-abc123' 'strict-dynamic'");
     expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
-    expect(csp).toContain("form-action 'self' https://app.kit.com");
+    expect(csp).toContain("form-action 'self' https://app.kit.com/forms/10168331/subscriptions");
     expect(securityHeaders().some((header) => header.key === "Content-Security-Policy")).toBe(false);
     const fly = readFileSync(new URL("../fly.toml", import.meta.url), "utf8");
     expect(fly).toContain('LUMEN_ORIGIN = "https://zoora.ai"');

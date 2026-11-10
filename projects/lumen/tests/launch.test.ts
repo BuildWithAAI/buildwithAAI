@@ -13,7 +13,7 @@ describe("launch blockers", () => {
     const response = middleware(new NextRequest("http://127.0.0.1:3000/", { headers: { host: "zoora.ai" } }));
     const policy = response.headers.get("content-security-policy") ?? "";
     expect(policy).toContain("'strict-dynamic'");
-    expect(policy).toContain("form-action 'self' https://app.kit.com");
+    expect(policy).toContain("form-action 'self' https://app.kit.com/forms/10168331/subscriptions");
     expect(policy).not.toMatch(/script-src[^;]*unsafe-inline/);
     const moved = middleware(new NextRequest("http://127.0.0.1:3000/index.html?x=1", {
       headers: { host: "zoora.ai", "x-forwarded-host": "localhost:3000", "x-forwarded-proto": "http" },

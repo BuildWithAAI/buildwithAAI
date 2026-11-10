@@ -59,8 +59,15 @@ function foldIndicDigits(value: string): string {
   });
 }
 
-function cardRun(digits: string): boolean {
-  return digits.length >= 13 && digits.length <= 19 && luhnOk(digits);
+function luhnWindow(digits: string, solid: boolean): boolean {
+  if (digits.length >= 13 && digits.length <= 19 && luhnOk(digits)) return true;
+  if (solid && digits.length >= 20 && digits.length <= 22) return false;
+  for (let length = 13; length <= 19; length += 1) {
+    for (let start = 0; start + length <= digits.length; start += 1) {
+      if (luhnOk(digits.slice(start, start + length))) return true;
+    }
+  }
+  return false;
 }
 
 function looksLikePan(value: string): boolean {
@@ -68,29 +75,24 @@ function looksLikePan(value: string): boolean {
   if (AMAZON_ORDER.test(normalized)) return false;
   const withoutAmazon = normalized.replace(AMAZON_ANYWHERE, " ");
   const chunks = withoutAmazon.split(/\s+/).filter(Boolean);
-  let spaced = "";
+  let groups: string[] = [];
   let found = false;
-  const takeSpaced = () => {
-    if (cardRun(spaced)) found = true;
-    spaced = "";
+  const takeGroups = () => {
+    if (groups.length && luhnWindow(groups.join(""), groups.length === 1)) found = true;
+    groups = [];
   };
   for (const chunk of chunks) {
     const stripped = chunk.replace(CARD_JOIN, "");
     if (/^\d+$/.test(stripped)) {
-      if (spaced.length + stripped.length > 19) {
-        spaced = stripped.length <= 19 ? stripped : "";
-        if (cardRun(stripped)) found = true;
-        continue;
-      }
-      spaced += stripped;
+      groups.push(stripped);
       continue;
     }
-    takeSpaced();
+    takeGroups();
     for (const run of stripped.match(/\d+/g) ?? []) {
-      if (cardRun(run)) found = true;
+      if (luhnWindow(run, true)) found = true;
     }
   }
-  takeSpaced();
+  takeGroups();
   return found;
 }
 

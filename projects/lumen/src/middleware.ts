@@ -58,7 +58,7 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("content-security-policy", policy);
-  if (publicModeOn()) {
+  if (publicModeOn() && request.nextUrl.pathname !== "/api/world/here") {
     const ip = clientAddress((name) => request.headers.get(name), process.env.LUMEN_TRUSTED_PROXY, true);
     if (!allowPage(ip, Date.now())) return limitedPage();
   }
