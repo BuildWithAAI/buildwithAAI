@@ -254,27 +254,54 @@ export function placeCreative(db: DatabaseSync, signals: CreativeSignals, now: n
 }
 
 export function hideBuild(db: DatabaseSync, id: string, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
-  return changeStatus(db, id, "placed", "hidden", now);
+  return withWrite(db, () => {
+    const changed = changeStatus(db, id, "placed", "hidden", now);
+    if (changed.ok) rememberChunkDecor(db, changed.build, "decor-rollback", now);
+    return changed;
+  });
 }
 
 export function undoBuild(db: DatabaseSync, id: string, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
   const current = listBuilds(db).find((build) => build.id === id);
   if (!current || current.status === "undone") return { ok: false, reason: "NOT_PLACED" };
-  const changed = changeStatus(db, id, current.status, "undone", now);
-  if (!changed.ok) return changed;
-  rememberChunkDecor(db, changed.build, "decor-rollback", now);
-  db.prepare("UPDATE creative_log SET undone = 1 WHERE build_id = ?").run(id);
-  if (chicagoDay(current.createdAt) === chicagoDay(now)) {
-    const key = `materials-spent:${chicagoDay(now)}`;
-    const spent = Number(kvGet(db, key) ?? "0");
-    kvSet(db, key, String(Math.max(0, spent - current.materials)));
-  }
-  return changed;
+  return withWrite(db, () => {
+    const changed = changeStatus(db, id, current.status, "undone", now);
+    if (!changed.ok) return changed;
+    rememberChunkDecor(db, changed.build, "decor-rollback", now);
+    db.prepare("UPDATE creative_log SET undone = 1 WHERE build_id = ?").run(id);
+    if (chicagoDay(current.createdAt) === chicagoDay(now)) {
+      const key = `materials-spent:${chicagoDay(now)}`;
+      const spent = Number(kvGet(db, key) ?? "0");
+      kvSet(db, key, String(Math.max(0, spent - current.materials)));
+    }
+    return changed;
+  });
 }
 
 export function buildVersions(db: DatabaseSync, id: string): { version: number; status: string; atMs: number }[] {
   const rows = db.prepare("SELECT version, status, at_ms FROM world_build_versions WHERE build_id = ? ORDER BY version ASC").all(id) as { version: number; status: string; at_ms: number }[];
   return rows.map((row) => ({ version: row.version, status: row.status, atMs: row.at_ms }));
+}
+
+function withWrite<T>(db: DatabaseSync, run: () => T): T {
+  let owns = false;
+  try {
+    db.exec("BEGIN IMMEDIATE");
+    owns = true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/within a transaction/i.test(message)) throw error;
+  }
+  try {
+    const value = run();
+    if (owns) db.exec("COMMIT");
+    return value;
+  } catch (error) {
+    if (owns) {
+      try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    }
+    throw error;
+  }
 }
 
 function changeStatus(db: DatabaseSync, id: string, from: string, to: BuildStatus, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {

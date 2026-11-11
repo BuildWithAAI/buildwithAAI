@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { moderateNote } from "../brain/social";
 import { allowRate } from "../db/db";
 import { logSecurity } from "../http/log";
+import { textHasPan } from "../money/pan";
 import { GUEST_CREATURES, chunkDistance, isChunkCoord, isTileCoord, type GuestCreature, type PublicGuest } from "./chunkMath";
 import { chunkIsPrivate } from "./territory";
 
@@ -280,6 +281,29 @@ function authorize(
   return { ok: true, row: current };
 }
 
+/** A paused or idle visitor comes back with this call. Move and say stay closed until then. */
+export function resumeVisitor(
+  db: DatabaseSync,
+  token: string,
+  ip: string,
+  now: number,
+): { ok: true; guest: PublicGuest } | { ok: false; reason: string; status: number } {
+  const row = rowByToken(db, token, now);
+  if (!row) {
+    logSecurity({ event: "visitor_auth", status: 401, route: "/api/world/visitors/resume" });
+    return { ok: false, reason: "UNAUTHORIZED", status: 401 };
+  }
+  if (!limited(db, `visitor:ip:world:say:${ip}`, VISITOR_SAY_LIMIT, now) || !limited(db, `visitor:token:world:say:${row.token_hash}`, VISITOR_SAY_LIMIT, now)) {
+    logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors/resume" });
+    return { ok: false, reason: "RATE_LIMIT", status: 429 };
+  }
+  if (row.status !== "paused" && now - row.seen_at < VISITOR_IDLE_MS) return { ok: true, guest: toGuest(row) };
+  db.prepare("UPDATE world_visitors SET status = 'active', seen_at = ? WHERE id = ?").run(now, row.id);
+  const next = rowByToken(db, token, now);
+  if (!next) return { ok: false, reason: "UNAUTHORIZED", status: 401 };
+  return { ok: true, guest: toGuest({ ...next, status: "active", seen_at: now }) };
+}
+
 export function moveVisitor(
   db: DatabaseSync,
   token: string,
@@ -315,6 +339,7 @@ export function sayVisitor(
   const moderated = moderateNote(text, VISITOR_SAY_MAX);
   if (!moderated.ok) return { ok: false, reason: moderated.reason, status: 400 };
   if (!moderated.note) return { ok: false, reason: "EMPTY", status: 400 };
+  if (textHasPan(moderated.note)) return { ok: false, reason: "PAN", status: 400 };
   const id = `vq-${randomBytes(6).toString("hex")}`;
   routeVisitorText(moderated.note, (body) => {
     db.prepare(

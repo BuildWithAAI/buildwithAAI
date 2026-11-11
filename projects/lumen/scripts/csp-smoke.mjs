@@ -200,6 +200,7 @@ try {
   await page.screenshot({ path: `${shots}/world-tip.png` });
   await shootNarrow(browser, base, shots, { width: 390, height: 844 }, "home-mobile.png");
   await shootNarrow(browser, base, shots, { width: 768, height: 1024 }, "home-tablet.png");
+  await page.close();
   let deskUp = false;
   for (let i = 0; i < 40; i += 1) {
     try {

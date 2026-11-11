@@ -569,7 +569,8 @@ export function allowGuestNote(db: DatabaseSync, ip: string, now: number, limits
 
 export function allowRate(db: DatabaseSync, bucket: string, limit: number, windowMs: number, now: number): boolean {
   const since = now - windowMs;
-  db.prepare("DELETE FROM rate_limits WHERE at_ms < ?").run(since);
+  db.prepare("DELETE FROM rate_limits WHERE bucket = ? AND at_ms < ?").run(bucket, since);
+  db.prepare("DELETE FROM rate_limits WHERE at_ms < ?").run(now - 3_600_000);
   const row = db.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = ? AND at_ms >= ?").get(bucket, since) as { n: number };
   if (Number(row.n) >= limit) return false;
   db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)").run(bucket, now);

@@ -7,7 +7,7 @@ import type { Emotions } from "../src/brain/types";
 import { HomeFrame } from "../src/components/HomeFrame";
 import { openDatabase } from "../src/db/db";
 import { publicBooks } from "../src/money/publicBooks";
-import { placeCreative, undoBuild, type CreativeSignals } from "../src/world/creative";
+import { hideBuild, placeCreative, undoBuild, type CreativeSignals } from "../src/world/creative";
 import { createChunkCache, generateChunk, worldSeed } from "../src/world/chunkCache";
 import { appendChunkEdit, claimRadius, chunkIsPrivate, guardChunkChain, listChunkEdits, verifyChunkChain } from "../src/world/chunkEdits";
 import { CLAIM_START_RADIUS, claimSpan, plotMayStart } from "../src/world/territoryRules";
@@ -15,6 +15,7 @@ import { considerGrowth, expandClaim, setChunkPrivacy, setTerritoryFrozen, vetoG
 import { neighborhood, publicChunk } from "../src/world/chunks";
 import { CHUNK_TILES, chunkKey, chunksToLoad, unpackTiles, worldToChunk } from "../src/world/chunkMath";
 import {
+  VISITOR_GLOBAL_REGISTER_LIMIT,
   VISITOR_IDLE_MS,
   VISITOR_MOVE_LIMIT,
   createVisitor,
@@ -22,6 +23,7 @@ import {
   nearbyGuests,
   readNearby,
   registerVisitor,
+  resumeVisitor,
   sayVisitor,
   visitorById,
   revokeVisitor,
@@ -259,6 +261,9 @@ describe("visiting agents", () => {
     const paused = moveVisitor(db, idle.visitor.token, { cx: 0, cy: 0, tx: 18, ty: 16 }, "198.51.100.20", 10 + VISITOR_IDLE_MS);
     expect(paused).toMatchObject({ ok: false, reason: "PAUSED" });
     expect(nearbyGuests(db, 0, 0, 1, 10 + VISITOR_IDLE_MS).some((guest) => guest.name === "Io")).toBe(false);
+    const resumed = resumeVisitor(db, idle.visitor.token, "198.51.100.20", 10 + VISITOR_IDLE_MS + 1);
+    expect(resumed.ok).toBe(true);
+    expect(moveVisitor(db, idle.visitor.token, { cx: 0, cy: 0, tx: 18, ty: 16 }, "198.51.100.20", 10 + VISITOR_IDLE_MS + 2).ok).toBe(true);
   });
 
   it("quarantines visitor text so it cannot reach an action", () => {
@@ -298,6 +303,9 @@ describe("visiting agents", () => {
     expect(count(db, "messages")).toBe(before.messages);
     expect(sayVisitor(db, made.visitor.token, "http://evil.example/buy", "203.0.113.40", 90)).toMatchObject({ ok: false, reason: "NOTE_REJECTED" });
     expect(sayVisitor(db, made.visitor.token, "x".repeat(141), "203.0.113.40", 100)).toMatchObject({ ok: false, reason: "NOTE_TOO_LONG" });
+    expect(sayVisitor(db, made.visitor.token, "card 4242 4242 4242 4242", "203.0.113.40", 110)).toMatchObject({ ok: false, reason: "PAN" });
+    expect(JSON.stringify(db.prepare("SELECT speech FROM world_visitors").all())).not.toContain("4242");
+    expect(JSON.stringify(db.prepare("SELECT body FROM visitor_quarantine").all())).not.toContain("4242");
     const visitors = readFileSync(new URL("../src/world/visitors.ts", import.meta.url), "utf8");
     const say = readFileSync(new URL("../src/app/api/world/visitors/say/route.ts", import.meta.url), "utf8");
     expect(visitors).not.toMatch(/chunkEdits|placeCreative|ledger|stripe|solana|mint|checkout/);
@@ -477,6 +485,22 @@ describe("visiting agents", () => {
     const first = listChunkEdits(chain)[0];
     expect(first?.bodyHash).toBeTruthy();
     expect(verifyChunkChain(chain)).toBe(false);
+    const hiddenDb = openDatabase();
+    const day = Date.UTC(2026, 10, 12, 18);
+    const placed = placeCreative(hiddenDb, signals(), day);
+    expect(placed.ok).toBe(true);
+    if (!placed.ok) return;
+    const title = placed.build.title;
+    expect(publicChunk(hiddenDb, 0, 0, seed).decor.some((item) => item.title === title)).toBe(true);
+    expect(hideBuild(hiddenDb, placed.build.id, day + 1).ok).toBe(true);
+    const hiddenChunk = publicChunk(hiddenDb, 0, 0, seed);
+    const hiddenHome = neighborhood(hiddenDb, 0, 0, 0, seed)[0];
+    expect(hiddenChunk.decor.some((item) => item.buildId === placed.build.id || item.title === title)).toBe(false);
+    expect(hiddenHome?.decor.some((item) => item.buildId === placed.build.id || item.title === title)).toBe(false);
+    for (let i = 0; i < VISITOR_GLOBAL_REGISTER_LIMIT; i += 1) {
+      expect(registerVisitor(hiddenDb, { displayName: "Pip", ownerContact: "pip@example.com", ip: `203.0.113.${i + 1}`, now: day }).ok).toBe(true);
+    }
+    expect(registerVisitor(hiddenDb, { displayName: "Pip", ownerContact: "pip@example.com", ip: "203.0.113.200", now: day })).toMatchObject({ ok: false, reason: "RATE_LIMIT" });
   });
 });
 

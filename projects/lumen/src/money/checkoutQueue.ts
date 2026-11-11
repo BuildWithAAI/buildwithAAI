@@ -29,6 +29,10 @@ export function serverTokenValue(value: string): boolean {
   return false;
 }
 
+export function textHasPan(value: string): boolean {
+  return rejectPan({ speech: value });
+}
+
 /** Refuse a body that tries to carry a card number. The queue has no card fields. */
 export function rejectPan(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
