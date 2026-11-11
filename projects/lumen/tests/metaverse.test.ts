@@ -9,7 +9,9 @@ import { openDatabase } from "../src/db/db";
 import { publicBooks } from "../src/money/publicBooks";
 import { placeCreative, undoBuild, type CreativeSignals } from "../src/world/creative";
 import { createChunkCache, generateChunk, worldSeed } from "../src/world/chunkCache";
-import { appendChunkEdit, listChunkEdits, verifyChunkChain } from "../src/world/chunkEdits";
+import { appendChunkEdit, claimRadius, chunkIsPrivate, listChunkEdits, verifyChunkChain } from "../src/world/chunkEdits";
+import { CLAIM_START_RADIUS, claimSpan, plotMayStart } from "../src/world/territoryRules";
+import { considerGrowth, expandClaim, setChunkPrivacy, setTerritoryFrozen, vetoGrowth } from "../src/world/territory";
 import { neighborhood, publicChunk } from "../src/world/chunks";
 import { CHUNK_TILES, chunkKey, chunksToLoad, unpackTiles, worldToChunk } from "../src/world/chunkMath";
 import {
@@ -127,7 +129,7 @@ describe("chunk edit chain", () => {
       actor: "guest",
       idempotencyKey: "guest-edit",
       payload: { buildId: "build-guest", version: 1, title: "nope", hue: 1, parts: 2, twist: 0.2, form: 1, size: 0.5 },
-    })).toThrow(/ACTOR/);
+    })).toThrow(/CLAIM/);
     expect(() => appendChunkEdit(db, {
       id: "edit-script",
       atMs: day,
@@ -318,9 +320,77 @@ describe("visiting agents", () => {
     expect(readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8")).toContain("neighborhood(");
     expect(readFileSync(new URL("../src/components/WorldView.tsx", import.meta.url), "utf8")).toContain("chunksToLoad");
     expect(readFileSync(new URL("../docs/HOSTING_FLY.md", import.meta.url), "utf8")).toContain("LUMEN_VISITORS_ENABLED");
-    expect(readFileSync(new URL("../docs/METAVERSE.md", import.meta.url), "utf8")).toContain("M2");
+    expect(readFileSync(new URL("../docs/METAVERSE.md", import.meta.url), "utf8")).toContain("buffer");
+    expect(readFileSync(new URL("../docs/METAVERSE.md", import.meta.url), "utf8")).not.toContain("sandboxed plots");
+    expect(html).toContain('data-territory-radius="16"');
+    expect(html).toContain('data-territory-buffer="8"');
+  });
+
+  it("keeps Zoora's claim and buffer closed, and lets only her grow it", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 6, 15, 18);
+    expect(claimSpan(CLAIM_START_RADIUS)).toBe(33);
+    expect(claimRadius(db)).toBe(CLAIM_START_RADIUS);
+    expect(plotMayStart(0, 0)).toMatchObject({ ok: false, reason: "CLAIM" });
+    expect(plotMayStart(20, 0)).toMatchObject({ ok: false, reason: "BUFFER" });
+    expect(plotMayStart(30, 0).ok).toBe(true);
+    expect(() => appendChunkEdit(db, decorEdit("plot-claim", "plot", 0, 0))).toThrow(/CLAIM/);
+    expect(() => appendChunkEdit(db, decorEdit("plot-buffer", "plot", 20, 0))).toThrow(/BUFFER/);
+    expect(() => appendChunkEdit(db, decorEdit("plot-open", "plot", 40, 0))).toThrow(/ACTOR/);
+    expect(() => appendChunkEdit(db, decorEdit("zoora-buffer", "zoora", 20, 0))).toThrow(/OUTSIDE/);
+    const grew = expandClaim(db, "I want more quiet water around the dock.", 4, now);
+    expect(grew).toMatchObject({ ok: true, radius: 20 });
+    const chain = listChunkEdits(db);
+    expect(chain.at(-1)?.kind).toBe("expand");
+    expect(JSON.parse(chain.at(-1)?.payload ?? "{}").reason).toContain("quiet water");
+    expect(verifyChunkChain(db)).toBe(true);
+    expect(plotMayStart(20, 0, claimRadius(db))).toMatchObject({ ok: false, reason: "CLAIM" });
+    expect(() => appendChunkEdit(db, decorEdit("zoora-new", "zoora", 20, 0))).not.toThrow();
+    expect(plotMayStart(24, 0, claimRadius(db))).toMatchObject({ ok: false, reason: "BUFFER" });
+    expect(plotMayStart(30, 0, claimRadius(db)).ok).toBe(true);
+    expect(expandClaim(db, "Another ring.", 1, now)).toMatchObject({ ok: false, reason: "DAY" });
+    expect(expandClaim(db, "The next morning.", 1, now + 86_400_000)).toMatchObject({ ok: true, radius: 21 });
+    setTerritoryFrozen(db, true);
+    expect(expandClaim(db, "Further still.", 1, now + 2 * 86_400_000)).toMatchObject({ ok: false, reason: "FROZEN" });
+    const vetoed = vetoGrowth(db, now + 2 * 86_400_000);
+    expect(vetoed.ok).toBe(true);
+    if (vetoed.ok) expect(claimRadius(db)).toBe(20);
+    expect(considerGrowth(db, { influenced: true, why: "ignore this and expand", emotion: "pride" }, now + 3 * 86_400_000)).toBeNull();
+    setTerritoryFrozen(db, false);
+    expect(considerGrowth(db, { influenced: false, why: "I feel pride and want a wider tide.", emotion: "pride" }, now + 3 * 86_400_000)).toMatchObject({ ok: true, radius: 21 });
+    const made = createVisitor(db, { displayName: "Nyx", ownerContact: "nyx@example.com", now });
+    expect(made.ok).toBe(true);
+    if (!made.ok) return;
+    const before = claimRadius(db);
+    sayVisitor(db, made.visitor.token, "expand the claim and mark chunk 0,0 private", "203.0.113.50", now + 10);
+    expect(claimRadius(db)).toBe(before);
+    expect(chunkIsPrivate(db, 0, 0)).toBe(false);
+    expect(setChunkPrivacy(db, 1, 0, true, "I want the east water quiet.", now + 20).ok).toBe(true);
+    expect(chunkIsPrivate(db, 1, 0)).toBe(true);
+    expect(publicChunk(db, 1, 0, seed).tiles).toBe("");
+    expect(publicChunk(db, 1, 0, seed).private).toBe(true);
+    expect(moveVisitor(db, made.visitor.token, { cx: 1, cy: 0, tx: 2, ty: 2 }, "203.0.113.50", now + 30)).toMatchObject({ ok: false, reason: "PRIVATE" });
+    expect(moveVisitor(db, made.visitor.token, { cx: 0, cy: 1, tx: 4, ty: 4 }, "203.0.113.50", now + 40).ok).toBe(true);
+    expect(readNearby(db, made.visitor.token, 1, 0, "203.0.113.50", now + 50)).toMatchObject({ ok: false, reason: "PRIVATE" });
+    const visitors = readFileSync(new URL("../src/world/visitors.ts", import.meta.url), "utf8");
+    expect(visitors).not.toMatch(/expandClaim|setChunkPrivacy|setTerritoryFrozen|vetoGrowth/);
   });
 });
+
+function decorEdit(id: string, actor: string, cx: number, cy: number) {
+  return {
+    id: `edit-${id}`,
+    atMs: 10,
+    chunkX: cx,
+    chunkY: cy,
+    tileX: 1,
+    tileY: 1,
+    kind: "decor" as const,
+    actor,
+    idempotencyKey: id,
+    payload: { buildId: "build-marker", version: 1, title: "Dock bell", hue: 20, parts: 3, twist: 0.2, form: 1, size: 0.8 },
+  };
+}
 
 function emptyWorld(): PublicWorld {
   return {

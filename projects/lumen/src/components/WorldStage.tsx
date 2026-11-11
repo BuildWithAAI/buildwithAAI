@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { PublicWorld } from "../world/public";
 import type { PublicChunk, PublicGuest } from "../world/chunkMath";
+import { CLAIM_BUFFER, CLAIM_START_RADIUS } from "../world/territoryRules";
 
 const WorldView = dynamic(() => import("./WorldView").then((mod) => mod.WorldView), {
   ssr: false,
@@ -35,12 +36,14 @@ export function WorldStage({
   thoughts = [],
   chunks = [],
   guests = [],
+  territory = { radius: CLAIM_START_RADIUS, buffer: CLAIM_BUFFER },
 }: {
   initial: PublicWorld;
   cam: string;
   thoughts?: string[];
   chunks?: PublicChunk[];
   guests?: PublicGuest[];
+  territory?: { radius: number; buffer: number };
 }) {
   const [ready, setReady] = useState<"wait" | "yes" | "no">("wait");
   useEffect(() => {
@@ -48,5 +51,5 @@ export function WorldStage({
   }, []);
   if (ready === "no") return <WorldFallback />;
   if (ready === "wait") return <p className="world-loading">The island is coming into view.</p>;
-  return <WorldView initial={initial} cam={cam} thoughts={thoughts} chunks={chunks} guests={guests} />;
+  return <WorldView initial={initial} cam={cam} thoughts={thoughts} chunks={chunks} guests={guests} territory={territory} />;
 }

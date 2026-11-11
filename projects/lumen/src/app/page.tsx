@@ -9,6 +9,7 @@ import { getEngine } from "../server/engine";
 import { thoughtLines } from "../world/bubble";
 import { neighborhood } from "../world/chunks";
 import { nearbyGuests, visitorsEnabled } from "../world/visitors";
+import { territoryDesk } from "../world/territory";
 import { listKeeperWishes, publicWishLink } from "../wishlist/board";
 
 export const metadata = {
@@ -47,6 +48,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   });
   const chunks = neighborhood(engine.db, 0, 0, 1);
   const guests = visitorsEnabled(engine.env) ? nearbyGuests(engine.db, 0, 0, 1, Date.now()) : [];
+  const claim = territoryDesk(engine.db);
   return (
     <HomeFrame
       world={world}
@@ -59,6 +61,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       showMoney={moneyLive(engine.env)}
       chunks={chunks}
       guests={guests}
+      territory={{ radius: claim.radius, buffer: claim.buffer }}
     />
   );
 }

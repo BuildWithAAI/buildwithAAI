@@ -35,6 +35,7 @@ import { recordProvenance } from "../build/provenance";
 import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
+import { considerGrowth, considerPrivacy, setTerritoryFrozen, vetoGrowth } from "../world/territory";
 import { publishFromTick, rollbackScene, setSceneFrozen } from "../world/scene";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -96,6 +97,8 @@ export function createEngine(env: Env, file?: string) {
     issueWorldToken: (name: string) => issueAgent(db, name, Date.now()),
     creativeBoard: () => creativeBoard(db, Date.now()),
     setCreative: (on: boolean) => setCreativeEnabled(db, on),
+    freezeTerritory: (on: boolean) => setTerritoryFrozen(db, on),
+    vetoTerritory: () => vetoGrowth(db, Date.now()),
     rollbackScene: () => rollbackScene(db),
     freezeScene: (on: boolean) => setSceneFrozen(db, on),
     hideBuild: (id: string) => hideWorldBuild(db, id, Date.now()),
@@ -259,6 +262,8 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       ? { ...lived, longTerm: [{ id: "goal", tier: "long" as const, section: "fact" as const, text: goal, salience: 1, placeId: null, atMinute: 0 }, ...lived.longTerm] }
       : lived;
     const built = considerCreative(db, minded, now);
+    considerGrowth(db, built, now);
+    considerPrivacy(db, built, now);
     publishFromTick(db, lived.emotions, lived.tick, now);
     const finding = db.prepare("SELECT question FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { question: string } | undefined;
     const held = inventoryLine(db);

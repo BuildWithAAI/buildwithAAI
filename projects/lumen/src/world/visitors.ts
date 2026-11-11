@@ -3,14 +3,8 @@ import type { DatabaseSync } from "node:sqlite";
 import { moderateNote } from "../brain/social";
 import { allowRate } from "../db/db";
 import { logSecurity } from "../http/log";
-import {
-  GUEST_CREATURES,
-  chunkDistance,
-  isChunkCoord,
-  isTileCoord,
-  type GuestCreature,
-  type PublicGuest,
-} from "./chunkMath";
+import { GUEST_CREATURES, chunkDistance, isChunkCoord, isTileCoord, type GuestCreature, type PublicGuest } from "./chunkMath";
+import { chunkIsPrivate } from "./territory";
 
 export const VISITOR_SCOPES = ["world:read", "world:move", "world:say"] as const;
 export type VisitorScope = (typeof VISITOR_SCOPES)[number];
@@ -218,6 +212,7 @@ export function moveVisitor(
   }
   const auth = authorize(db, token, "world:move", ip, now, "/api/world/visitors/move", VISITOR_MOVE_LIMIT, VISITOR_MOVE_LIMIT);
   if (!auth.ok) return auth;
+  if (chunkIsPrivate(db, spot.cx, spot.cy)) return { ok: false, reason: "PRIVATE", status: 403 };
   const from = { cx: auth.row.chunk_x, cy: auth.row.chunk_y };
   if (chunkDistance(from, spot) > 1) return { ok: false, reason: "TOO_FAR", status: 400 };
   db.prepare(
@@ -266,6 +261,7 @@ export function readNearby(
   if (!isChunkCoord(cx) || !isChunkCoord(cy)) return { ok: false, reason: "CHUNK", status: 400 };
   const auth = authorize(db, token, "world:read", ip, now, "/api/world/visitors/nearby", VISITOR_READ_LIMIT, VISITOR_READ_LIMIT);
   if (!auth.ok) return auth;
+  if (chunkIsPrivate(db, cx, cy)) return { ok: false, reason: "PRIVATE", status: 403 };
   db.prepare("UPDATE world_visitors SET seen_at = ? WHERE id = ?").run(now, auth.row.id);
   return { ok: true, agents: nearbyGuests(db, cx, cy, radius, now) };
 }

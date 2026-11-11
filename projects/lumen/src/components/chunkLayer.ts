@@ -19,6 +19,10 @@ export function syncChunkLayer(group: THREE.Group, chunks: PublicChunk[]): void 
   group.userData.sig = sig;
   for (const chunk of chunks) {
     if (chunk.cx === 0 && chunk.cy === 0) continue;
+    if (chunk.private) {
+      group.add(veil(chunk.cx, chunk.cy));
+      continue;
+    }
     const mesh = meshFor(chunk);
     if (mesh) group.add(mesh);
     for (const decor of chunk.decor) group.add(decorMesh(chunk.cx, chunk.cy, decor.tx, decor.ty, decor.hue, decor.size));
@@ -147,6 +151,46 @@ function nameSprite(name: string, speech: string): THREE.Sprite {
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(1.6, speech ? 0.6 : 0.4, 1);
   return sprite;
+}
+
+/** A soft reef edge at the real claim boundary, and a fainter ring at the buffer. */
+export function syncTerritoryGlow(group: THREE.Group, radius: number, buffer: number): void {
+  const sig = `${radius}:${buffer}`;
+  if (group.userData.sig === sig) return;
+  disposeChildren(group);
+  group.userData.sig = sig;
+  group.add(reefRing((radius + 0.5) * CHUNK_WORLD, 0xc46b7a, 0.55));
+  group.add(reefRing((radius + buffer + 0.5) * CHUNK_WORLD, 0x8fd0c8, 0.22));
+}
+
+function reefRing(extent: number, color: number, opacity: number): THREE.Group {
+  const ring = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, fog: false, depthWrite: false });
+  const thickness = Math.max(8, extent * 0.012);
+  const length = extent * 2;
+  const y = 1.4;
+  for (const side of [
+    { x: 0, z: extent, w: length, d: thickness },
+    { x: 0, z: -extent, w: length, d: thickness },
+    { x: extent, z: 0, w: thickness, d: length },
+    { x: -extent, z: 0, w: thickness, d: length },
+  ]) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(side.w, 0.35, side.d), material);
+    mesh.position.set(side.x, y, side.z);
+    ring.add(mesh);
+  }
+  return ring;
+}
+
+function veil(cx: number, cy: number): THREE.Mesh {
+  const origin = chunkOrigin(cx, cy);
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(CHUNK_WORLD * 0.96, CHUNK_WORLD * 0.96),
+    new THREE.MeshBasicMaterial({ color: 0x12343c, transparent: true, opacity: 0.45, fog: false, depthWrite: false }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(origin.x + CHUNK_WORLD / 2, 0.4, origin.z + CHUNK_WORLD / 2);
+  return mesh;
 }
 
 function disposeChildren(group: THREE.Group): void {

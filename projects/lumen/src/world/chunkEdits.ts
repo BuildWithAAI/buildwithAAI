@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { flag } from "../db/db";
 import { isChunkCoord, isTileCoord, type PublicDecor } from "./chunkMath";
+import { CLAIM_GROW_PER_DAY, CLAIM_START_RADIUS, zoneAt } from "./territoryRules";
 
-export const CHUNK_EDIT_KINDS = ["decor", "decor-rollback"] as const;
+export const CHUNK_EDIT_KINDS = ["decor", "decor-rollback", "privacy", "expand"] as const;
 export type ChunkEditKind = (typeof CHUNK_EDIT_KINDS)[number];
 
 export type ChunkEditInput = {
@@ -106,11 +108,122 @@ export function chunkEditBodyHash(input: {
 
 function assertInput(input: ChunkEditInput): string {
   if (!CHUNK_EDIT_KINDS.includes(input.kind)) throw new Error("EDIT_KIND");
-  if (input.actor !== "zoora") throw new Error("ACTOR");
   if (!isChunkCoord(input.chunkX) || !isChunkCoord(input.chunkY)) throw new Error("CHUNK");
   if (!isTileCoord(input.tileX) || !isTileCoord(input.tileY)) throw new Error("TILE");
   if (!input.id || !input.idempotencyKey) throw new Error("EDIT_ID");
+  if (input.kind === "expand") return sandboxExpandPayload(input.payload);
+  if (input.kind === "privacy") return sandboxPrivacyPayload(input.payload);
   return sandboxDecorPayload(input.payload);
+}
+
+function cleanReason(value: unknown): string {
+  if (typeof value !== "string") throw new Error("REASON");
+  const reason = value.trim().replace(/\s+/g, " ");
+  if (reason.length < 1 || reason.length > 200) throw new Error("REASON");
+  if (/<\s*script|https?:\/\//i.test(reason)) throw new Error("SANDBOX");
+  return reason;
+}
+
+function sandboxExpandPayload(payload: unknown): string {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("SANDBOX");
+  const raw = payload as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (key !== "from" && key !== "to" && key !== "reason") throw new Error("SANDBOX");
+  }
+  const from = raw.from;
+  const to = raw.to;
+  if (typeof from !== "number" || !Number.isInteger(from) || from < CLAIM_START_RADIUS) throw new Error("RADIUS");
+  if (typeof to !== "number" || !Number.isInteger(to) || to < CLAIM_START_RADIUS || to === from) throw new Error("RADIUS");
+  return canonical({ from, to, reason: cleanReason(raw.reason) });
+}
+
+function sandboxPrivacyPayload(payload: unknown): string {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("SANDBOX");
+  const raw = payload as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (key !== "private" && key !== "reason") throw new Error("SANDBOX");
+  }
+  if (typeof raw.private !== "boolean") throw new Error("PRIVACY");
+  return canonical({ private: raw.private, reason: cleanReason(raw.reason) });
+}
+
+export function territoryDay(ms: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+}
+
+export function claimRadius(db: DatabaseSync): number {
+  const rows = db.prepare("SELECT payload FROM chunk_edits WHERE kind = 'expand' ORDER BY seq ASC").all() as { payload: string }[];
+  let radius = CLAIM_START_RADIUS;
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(row.payload) as { to?: unknown };
+      if (typeof parsed.to === "number" && Number.isInteger(parsed.to) && parsed.to >= CLAIM_START_RADIUS) radius = parsed.to;
+    } catch {
+      /* a bad row does not shrink or grow the claim */
+    }
+  }
+  return radius;
+}
+
+export function grownToday(db: DatabaseSync, now: number): number {
+  const day = territoryDay(now);
+  const rows = db.prepare("SELECT payload, at_ms FROM chunk_edits WHERE kind = 'expand' ORDER BY seq ASC").all() as { payload: string; at_ms: number }[];
+  let sum = 0;
+  for (const row of rows) {
+    if (territoryDay(row.at_ms) !== day) continue;
+    try {
+      const parsed = JSON.parse(row.payload) as { from?: unknown; to?: unknown };
+      const delta = Number(parsed.to) - Number(parsed.from);
+      if (delta > 0) sum += delta;
+    } catch {
+      /* ignore */
+    }
+  }
+  return sum;
+}
+
+export function chunkIsPrivate(db: DatabaseSync, cx: number, cy: number): boolean {
+  const row = db.prepare(
+    "SELECT payload FROM chunk_edits WHERE kind = 'privacy' AND chunk_x = ? AND chunk_y = ? ORDER BY seq DESC LIMIT 1",
+  ).get(cx, cy) as { payload: string } | undefined;
+  if (!row) return false;
+  try {
+    return (JSON.parse(row.payload) as { private?: unknown }).private === true;
+  } catch {
+    return false;
+  }
+}
+
+export function territoryFrozen(db: DatabaseSync): boolean {
+  return flag(db, "territory_frozen", "0") === "1";
+}
+
+/** Server edit gate. Visitors and any future plot are refused inside the claim and the buffer. */
+function enforceTerritory(db: DatabaseSync, input: ChunkEditInput, payload: string): void {
+  const radius = claimRadius(db);
+  const zone = zoneAt(input.chunkX, input.chunkY, radius);
+  const parsed = JSON.parse(payload) as { from?: number; to?: number };
+  const shrinking = input.kind === "expand" && typeof parsed.to === "number" && typeof parsed.from === "number" && parsed.to < parsed.from;
+  if (input.actor === "owner") {
+    if (!shrinking) throw new Error(zone === "claim" ? "CLAIM" : zone === "buffer" ? "BUFFER" : "ACTOR");
+    if (parsed.from !== radius || (parsed.to ?? 0) < CLAIM_START_RADIUS) throw new Error("VETO");
+    return;
+  }
+  if (input.actor !== "zoora") {
+    if (zone === "claim") throw new Error("CLAIM");
+    if (zone === "buffer") throw new Error("BUFFER");
+    throw new Error("ACTOR");
+  }
+  if (input.kind === "expand") {
+    if (shrinking) throw new Error("VETO");
+    if (territoryFrozen(db)) throw new Error("FROZEN");
+    if (parsed.from !== radius) throw new Error("RADIUS");
+    const step = (parsed.to ?? 0) - (parsed.from ?? 0);
+    if (step < 1 || step > CLAIM_GROW_PER_DAY) throw new Error("STEP");
+    if (grownToday(db, input.atMs) + step > CLAIM_GROW_PER_DAY) throw new Error("DAY");
+    return;
+  }
+  if (zone !== "claim") throw new Error("OUTSIDE");
 }
 
 export function appendChunkEdit(db: DatabaseSync, input: ChunkEditInput): ChunkEditRow {
@@ -144,6 +257,7 @@ function appendOnce(db: DatabaseSync, input: ChunkEditInput, payload: string): C
       if (owns) db.exec("COMMIT");
       return mapEdit(existing);
     }
+    enforceTerritory(db, input, payload);
     const prev = db.prepare("SELECT entry_hash FROM chunk_edits ORDER BY seq DESC LIMIT 1").get() as { entry_hash: string } | undefined;
     const prevHash = prev?.entry_hash ?? "GENESIS";
     const entryHash = createHash("sha256").update(prevHash + hash).digest("hex");

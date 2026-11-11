@@ -61,6 +61,7 @@ export type PublicChunk = {
   cy: number;
   tiles: string;
   decor: PublicDecor[];
+  private: boolean;
 };
 
 export const GUEST_CREATURES = ["wisp", "crab", "minnow", "lantern", "pebble"] as const;

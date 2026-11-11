@@ -137,6 +137,9 @@ export async function creativeAction(form: FormData) {
   if (op === "off") engine.setCreative(false);
   if (op === "hide") engine.hideBuild(String(form.get("id") ?? ""));
   if (op === "undo") engine.undoBuild(String(form.get("id") ?? ""));
+  if (op === "freeze-territory") engine.freezeTerritory(true);
+  if (op === "thaw-territory") engine.freezeTerritory(false);
+  if (op === "veto-territory") engine.vetoTerritory();
 }
 
 export async function sceneDesk(form: FormData) {

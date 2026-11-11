@@ -6,7 +6,8 @@ import { scrubInstructions } from "../research/ideas";
 import { recordProvenance } from "../build/provenance";
 import { AREAS, areaById, type AreaId, type BuildSlot } from "./areas";
 import { appendChunkEdit, decorPayload } from "./chunkEdits";
-import { HOME_CHUNK, worldToChunk } from "./chunkMath";
+import { territoryDesk } from "./territory";
+import { worldToChunk } from "./chunkMath";
 import type { BuildEntry } from "../build/log";
 
 export const BUILD_KINDS = ["decoration", "art", "garden", "structure", "sign", "mural", "music", "path", "bench"] as const;
@@ -326,8 +327,8 @@ function toBuild(row: BuildRow): WorldBuild {
   };
 }
 
-export function creativeBoard(db: DatabaseSync, now: number): { on: boolean; left: number; builds: WorldBuild[] } {
-  return { on: creativeEnabled(db), left: materialsLeft(db, now), builds: listBuilds(db).slice(0, 16) };
+export function creativeBoard(db: DatabaseSync, now: number): { on: boolean; left: number; builds: WorldBuild[]; territory: ReturnType<typeof territoryDesk> } {
+  return { on: creativeEnabled(db), left: materialsLeft(db, now), builds: listBuilds(db).slice(0, 16), territory: territoryDesk(db, now) };
 }
 
 export function considerCreative(db: DatabaseSync, state: { emotions: Emotions; placeId: string; longTerm: { text: string }[] }, now: number): WorldBuild | null {
@@ -397,22 +398,26 @@ function reviseBuild(db: DatabaseSync, current: WorldBuild, draft: CreativeDraft
   return { ok: true, build: next };
 }
 
-/** Zoora's decor on her home chunk. Visitors have no caller. No scripts and no new route. */
 function rememberChunkDecor(db: DatabaseSync, build: WorldBuild, action: "decor" | "decor-rollback", now: number): void {
   const spot = worldToChunk(build.x, build.z);
-  if (spot.cx !== HOME_CHUNK.cx || spot.cy !== HOME_CHUNK.cy) return;
-  appendChunkEdit(db, {
-    id: `edit-${build.id}-v${build.version}-${action}`,
-    atMs: now,
-    chunkX: HOME_CHUNK.cx,
-    chunkY: HOME_CHUNK.cy,
-    tileX: spot.tx,
-    tileY: spot.ty,
-    kind: action,
-    payload: decorPayload(build),
-    actor: "zoora",
-    idempotencyKey: `decor:${build.id}:v${build.version}:${action}`,
-  });
+  try {
+    appendChunkEdit(db, {
+      id: `edit-${build.id}-v${build.version}-${action}`,
+      atMs: now,
+      chunkX: spot.cx,
+      chunkY: spot.cy,
+      tileX: spot.tx,
+      tileY: spot.ty,
+      kind: action,
+      payload: decorPayload(build),
+      actor: "zoora",
+      idempotencyKey: `decor:${build.id}:v${build.version}:${action}`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === "OUTSIDE") return;
+    throw error;
+  }
 }
 
 function composeParams(emotion: string, level: number, memory: string, idea: string, research: string, prior: BuildParams | null): BuildParams {

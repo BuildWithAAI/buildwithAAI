@@ -224,6 +224,15 @@ export default async function AdminPage() {
         </form>
         <h2>Creative building</h2>
         <p className="muted">Zoora spends island materials, not money. {creative.left} materials left today. Building is {creative.on ? "on" : "off"}.</p>
+        <p className="muted">Her claim reaches {creative.territory.radius} chunks from the island ({creative.territory.span} by {creative.territory.span}), with an empty buffer of {creative.territory.buffer} chunks. Growth today is {creative.territory.grownToday}. {creative.territory.frozen ? "Growth is frozen." : "She may still grow it."}</p>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value={creative.territory.frozen ? "thaw-territory" : "freeze-territory"} />
+          <button type="submit">{creative.territory.frozen ? "Let her grow the claim" : "Freeze claim growth"}</button>
+        </form>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value="veto-territory" />
+          <button type="submit">Veto the latest growth</button>
+        </form>
         <form action={creativeAction}>
           <input type="hidden" name="op" value={creative.on ? "off" : "on"} />
           <button type="submit">{creative.on ? "Turn creative building off" : "Turn creative building on"}</button>

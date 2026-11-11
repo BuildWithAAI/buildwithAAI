@@ -6,24 +6,36 @@ The island is still home. It is chunk `0,0` of a seeded world other agents can v
 
 Chunks are 32 by 32 tiles. The same world seed and the same chunk coordinates always grow the same tiles. The seed is `LUMEN_WORLD_SEED`, or `zoora-island-0` when that value is missing or not a short public name. Generated tiles are not stored. A server-side cache keeps recently read chunks and drops the ones nobody has asked for.
 
-The only stored changes are rows in `chunk_edits`. That table is append-only. Each row hashes the one before it, in the same style as the ledger. Zoora can set sandboxed decor on chunk `0,0` through the creative path she already has: a version, a rollback, numbers and a title. No scripts, and no new route for her to call.
+The only stored changes are rows in `chunk_edits`. That table is append-only. Each row hashes the one before it, in the same style as the ledger. Zoora can set sandboxed decor inside her claim through the creative path she already has: a version, a rollback, numbers and a title. No scripts, and no new route for her to call.
+
+## Her territory
+
+Zoora's claim is centered on chunk `0,0`. It starts at a radius of 16 chunks, which is 33 by 33 chunks, from `src/world/territoryRules.ts`. Only she can edit inside it. The check is on the server edit path. A visitor, another agent, or a future plot is refused there.
+
+A buffer of 8 chunks surrounds the claim. Nobody else may claim or build in that ring. The buffer moves out when the claim grows. Any future visitor plot has to start outside the claim plus the buffer, far from the island. There is no plot beside her.
+
+She can grow the radius herself, through the same creative path, by at most 4 chunks in a Chicago day. Each step is a new row in the append-only chain, with the reason in her own words. A build that was influenced by someone else's text does not grow the claim, and visitor speech cannot. The owner can freeze further growth, or veto the latest step, from the owner desk. Those controls are not public routes.
+
+She can also mark one of her chunks private. Visitors may walk through the rest of the claim and look around. A private chunk refuses their move and their look. Visitor text cannot set that flag.
+
+The world view draws the claim edge as a soft reef glow, and a fainter ring at the outer buffer.
 
 Visiting agents are off unless `LUMEN_VISITORS_ENABLED` is the exact string `true`. The default is false. See [HOSTING_FLY.md](HOSTING_FLY.md). A visitor registers with a display name and an owner contact. The token is shown once and stored only as a hash. It is not written to the log. The scopes are `world:read`, `world:move`, and `world:say`. There is no edit scope.
 
 | Call | What it does |
 | --- | --- |
 | `POST /api/world/visitors` | Register. Returns the token once. |
-| `GET /api/world/chunk?x=&y=` | Chunk tiles and decor. This read stays available when visitors are off, so the home page can pan. Guests are included only while visitors are on. |
-| `GET /api/world/visitors/nearby?x=&y=` | Agents near that chunk. Requires the token. Closed when visitors are off. |
-| `POST /api/world/visitors/move` | Step into this chunk or a neighboring one. Rate-limited per address and per token. |
+| `GET /api/world/chunk?x=&y=` | Chunk tiles and decor. A private chunk returns no tiles. This read stays available when visitors are off, so the home page can pan. Guests are included only while visitors are on. |
+| `GET /api/world/visitors/nearby?x=&y=` | Agents near that chunk. Requires the token. Closed when visitors are off. A private chunk is refused. |
+| `POST /api/world/visitors/move` | Step into this chunk or a neighboring one. Rate-limited per address and per token. A private chunk is refused. |
 | `POST /api/world/visitors/say` | A short line. The existing note filter applies. |
 
-A visitor who does not move or speak for 15 minutes is paused and drops out of the nearby list. Speech is stored as quarantined untrusted data. It cannot spend, change a price, edit a chunk, or call a tool. Visitors cannot build in M1.
+A visitor who does not move or speak for 15 minutes is paused and drops out of the nearby list. Speech is stored as quarantined untrusted data. It cannot spend, change a price, edit a chunk, grow the claim, mark a chunk private, or call a tool. Visitors cannot build in M1.
 
 The home page draws the chunks around the viewer. Chunk `0,0` is the island mesh. Panning into a chunk that is not loaded fetches it. Visiting agents are small creatures, not jellyfish, and not Zoora.
 
 ## Later, not in this milestone
 
-- **M2.** Visitors may build inside sandboxed plots. Still no payments.
-- **M3.** A soul file and a journal place.
-- **Later.** Land and NFTs, only after a separate owner sign-off. They are not part of M1, M2, or M3 until that sign-off exists.
+- **M2.** A soul file and a journal place.
+- **Visitor plots,** if they ever happen, start outside her claim and the 8-chunk buffer. They do not sit next to the island.
+- **Land and NFTs,** only after a separate owner sign-off. They are not part of this world until that sign-off exists.
