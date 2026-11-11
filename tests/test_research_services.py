@@ -160,6 +160,84 @@ class ServiceTests(unittest.TestCase):
             self.advance(A, "ACCEPT", order_id=order["id"], report_sha256=sha)
         self.assertEqual(self.accounting()["consumed"], 6)
 
+    def _reapply(self, actor, request_id, kind, facts=None, **fields):
+        command = {"request_id": format(request_id, "032x"), "kind": kind, **fields}
+        return s.apply(
+            self.state, actor, command, NOW, {} if facts is None else facts, self.resources.catalog
+        )
+
+    def test_restarted_order_command_does_not_reset_acceptance_or_hide_the_order(self):
+        """A repeated create must not replace the record a later command looks up.
+
+        setUp issues mandate 1 and offer 2; the first order() command is request 3.
+        Reapplying that command is what a restart does when the request index does
+        not short-circuit. The accepted order has to stay accepted and addressable.
+        """
+        order, sha = self.delivered()
+        self.advance(A, "ACCEPT", order_id=order["id"], report_sha256=sha)
+        self.state["mandates"][self.mandate["id"]]["limit"] = 100
+        saved = deepcopy(self.state)
+        with self.assertRaisesRegex(ValueError, "SERVICE_DUPLICATE_RECORD"):
+            self._reapply(
+                A, 3, "ORDER",
+                mandate_id=self.mandate["id"], listing_id=self.listing["id"],
+                terms_sha256=self.listing["terms_sha256"], start_before_ms=NOW + 30000,
+            )
+        self.assertEqual(self.state, saved)
+        self.assertEqual(self.state["orders"][order["id"]]["state"], "ACCEPTED")
+        self.assertEqual(self.accounting()["consumed"], 6)
+        with self.assertRaisesRegex(ValueError, "SERVICE_NOT_FOUND"):
+            self.advance(B, "START", {"job_id": "8" * 32}, order_id="f" * 32)
+        with self.assertRaisesRegex(ValueError, "SERVICE_START_NOT_AUTHORIZED"):
+            self.advance(B, "START", {"job_id": "7" * 32}, order_id=order["id"])
+
+    def test_restarted_order_command_does_not_reserve_a_cancelled_order_again(self):
+        order = self.order()
+        self.advance(A, "CANCEL", order_id=order["id"])
+        self.assertEqual(self.accounting()["available"], 10)
+        saved = deepcopy(self.state)
+        with self.assertRaisesRegex(ValueError, "SERVICE_DUPLICATE_RECORD"):
+            self._reapply(
+                A, 3, "ORDER",
+                mandate_id=self.mandate["id"], listing_id=self.listing["id"],
+                terms_sha256=self.listing["terms_sha256"], start_before_ms=NOW + 30000,
+            )
+        self.assertEqual(self.state, saved)
+        self.assertEqual(self.state["orders"][order["id"]]["state"], "CANCELLED")
+        self.assertEqual(self.accounting()["available"], 10)
+        with self.assertRaisesRegex(ValueError, "SERVICE_NOT_FOUND"):
+            self.advance(A, "CANCEL", order_id="e" * 32)
+        self.assertIn(order["id"], self.state["orders"])
+
+    def test_restarted_offer_command_does_not_replace_a_closed_listing(self):
+        self.advance(B, "CLOSE", listing_id=self.listing["id"])
+        saved = deepcopy(self.state)
+        with self.assertRaisesRegex(ValueError, "SERVICE_DUPLICATE_RECORD"):
+            self._reapply(
+                B, 2, "OFFER",
+                {"provider_id": B["principal_id"], "project_id": "6" * 32},
+                community_offer_id="8" * 32,
+                service=s.KINDS[0],
+                resource_sha256=self.resources.resource_id(s.KINDS[0]),
+                work_units=6,
+                expires_ms=NOW + 60000,
+            )
+        self.assertEqual(self.state, saved)
+        self.assertFalse(self.state["listings"][self.listing["id"]]["active"])
+        self.assertEqual(self.state["listings"][self.listing["id"]]["community_offer_id"], "7" * 32)
+
+    def test_restarted_mandate_command_does_not_clear_revocation(self):
+        self.advance(OP, "REVOKE", mandate_id=self.mandate["id"])
+        saved = deepcopy(self.state)
+        with self.assertRaisesRegex(ValueError, "SERVICE_DUPLICATE_RECORD"):
+            self._reapply(
+                OP, 1, "MANDATE", {"operator_id": OP["principal_id"]},
+                buyer_id=A["principal_id"], limit=10, expires_ms=NOW + 60000,
+                services=sorted(s.KINDS),
+            )
+        self.assertEqual(self.state, saved)
+        self.assertTrue(self.state["mandates"][self.mandate["id"]]["revoked"])
+
     def test_cancel_only_before_start(self):
         order = self.order()
         self.advance(A, "CANCEL", order_id=order["id"])

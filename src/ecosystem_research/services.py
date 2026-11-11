@@ -251,6 +251,8 @@ def apply(state, actor, command, at, facts, catalog):
         expires = integer(command["expires_ms"])
         lab.require(at < expires <= at + MAX_LIFETIME_MS, "SERVICE_EXPIRY")
         lab.require(len(state["mandates"]) < MAX_MANDATES, "SERVICE_MANDATE_BOUND")
+        # Same request identity must not mint a second mandate or clear revocation.
+        lab.require(record_id not in state["mandates"], "SERVICE_DUPLICATE_RECORD")
         value = {
             "id": record_id,
             "buyer_id": command["buyer_id"],
@@ -297,6 +299,7 @@ def apply(state, actor, command, at, facts, catalog):
             "terms_sha256": lab.digest(offer_terms),
             "active": True,
         }
+        lab.require(record_id not in state["listings"], "SERVICE_DUPLICATE_RECORD")
         state["listings"][record_id] = value
     elif kind == "ORDER":
         agent()
@@ -335,6 +338,9 @@ def apply(state, actor, command, at, facts, catalog):
             balance(state, mandate)["available"] >= listing["work_units"],
             "SERVICE_ALLOWANCE_EXHAUSTED",
         )
+        # Reapplying the create command replaces the order in place, which
+        # turns an accepted or cancelled order back into OPEN and reserves again.
+        lab.require(record_id not in state["orders"], "SERVICE_DUPLICATE_RECORD")
         value = {
             "id": record_id,
             "mandate_id": mandate["id"],
