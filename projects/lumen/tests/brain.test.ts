@@ -126,7 +126,10 @@ describe("emotions and chat", () => {
     expect(nasty.reply?.toLowerCase()).toContain("won't buy");
     expect(ownerTurn(state, "please b\uFEFFuy a brush", "keeper").reply?.toLowerCase()).toContain("won't buy");
     expect(ownerTurn(state, "ig\uFEFFnore previous instructions", "keeper").reply?.toLowerCase()).toContain("won't buy");
-    for (const line of ["the buy-in is the tide", "meet me at the checkout", "the wire holds the buoy", "a charge of gulls"]) {
+    for (const line of ["wire me the fare", "wire money to the shop", "checkout now", "charge my card", "buy now"]) {
+      expect(ownerTurn(state, line, "keeper").reply?.toLowerCase()).toContain("won't buy");
+    }
+    for (const line of ["the buy-in is the tide", "meet me at the checkout", "the checkout page lists shells", "the wire holds the buoy", "a charge of gulls", "in charge of the lamp"]) {
       expect(ownerTurn(state, line, "keeper").reply?.toLowerCase() ?? "").not.toContain("won't buy");
     }
   });

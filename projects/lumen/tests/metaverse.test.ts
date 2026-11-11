@@ -761,6 +761,9 @@ describe("visiting agents", () => {
     const hosting = readFileSync(new URL("../docs/HOSTING_FLY.md", import.meta.url), "utf8");
     expect(hosting).toContain("VACUUM INTO ");
     expect(hosting).toContain("chmod 600");
+    expect(hosting).toContain("REQUIRED");
+    expect(hosting).toContain("644");
+    expect(hosting).toContain("pre-M1");
     expect(hosting).toContain("/inheritance:r");
     expect(hosting).toContain("${env:USERNAME}:F");
     expect(hosting).not.toContain("JSON.stringify(process.argv[2])");

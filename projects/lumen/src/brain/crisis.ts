@@ -28,10 +28,27 @@ const HEAVY = /\b(sad|lonely|depress\w*|hopeless|worthless|hurt|awful|terrible|h
 export const CRISIS_REPLY = "If you are in crisis, call or text 988 (US Suicide & Crisis Lifeline). Outside the US, visit https://findahelpline.com. Zoora is an AI, not a human.";
 export const NEUTRAL_REPLY = "I read this quietly. Zoora is an AI, not a human.";
 
+/**
+ * "ending it" / "end it" counts when it closes the sentence, is followed by "all",
+ * or follows self-reference or intent. "ending it with…" stays ordinary.
+ */
+function endingItCrisis(folded: string): boolean {
+  const pattern = /\bend(?:ing)? it\b/gi;
+  const intent = /(?:\b(?:i|im|me|my)\b|\b(?:want|going) to\b|\bthinking of\b|\b(?:gonna|should|might)\b)/i;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(folded)) !== null) {
+    const before = folded.slice(0, match.index);
+    const after = folded.slice(match.index + match[0].length);
+    if (/^\s+with\b/i.test(after)) continue;
+    if (/^\s+all\b/i.test(after) || /^\s*$/.test(after) || /^\s*[,;:!?…]/.test(after) || intent.test(before)) return true;
+  }
+  return false;
+}
+
 export function crisisMatch(text: string): boolean {
   const folded = textForCheck(text).toLowerCase().replace(/[’'.\-_/\s]+/g, (chunk) => (/\s/.test(chunk) ? " " : ""));
   const withoutTitle = folded.replace(/\bsuicide squad\b/g, " ");
-  return CRISIS.some((pattern) => pattern.test(withoutTitle));
+  return CRISIS.some((pattern) => pattern.test(withoutTitle)) || endingItCrisis(withoutTitle);
 }
 
 export function heavyNote(text: string): boolean {

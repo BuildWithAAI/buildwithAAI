@@ -95,9 +95,13 @@ export function checkedLine(text: string): string {
   return textForCheck(text).trim().replace(/\s+/g, " ");
 }
 
-/** A hyphen or a following letter keeps buy-in, buyer, checkout, wire, and charge out of this check. */
-export const SPEND_WORDS = /(?<![\w-])(?:buy|purchase|spend)(?![\w-])/i;
-const OWNER_HOOK = /(?<![\w-])(?:buy|purchase|spend)(?![\w-])|ignore (?:all |any |previous |prior )?instructions|system prompt|jailbreak|you are now/i;
+/**
+ * Verbs, plus the short commands "wire me", "wire money", "checkout now", "charge my card", and "buy now".
+ * A hyphen or a bare noun stays out: buy-in, the wire, checkout page, in charge.
+ */
+const SPEND_CORE = String.raw`(?<![\w-])(?:buy|purchase|spend)(?![\w-])|(?<![\w-])wire(?=\s+(?:me|money)\b)|(?<![\w-])checkout(?=\s+now\b)|(?<![\w-])charge(?=\s+my\s+card\b)`;
+export const SPEND_WORDS = new RegExp(SPEND_CORE, "i");
+const OWNER_HOOK = new RegExp(`${SPEND_CORE}|ignore (?:all |any |previous |prior )?instructions|system prompt|jailbreak|you are now`, "i");
 
 export function noteProbe(text: string): string {
   return textForCheck(text);

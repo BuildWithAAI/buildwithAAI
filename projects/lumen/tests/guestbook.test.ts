@@ -80,11 +80,17 @@ describe("guestbook loop", () => {
     }
     expect(crisisMatch("I liked Suicide Squad")).toBe(false);
     expect(crisisMatch("Self-harm awareness week")).toBe(false);
-    expect(crisisMatch("ending it")).toBe(false);
-    expect(crisisMatch("thinking of ending it")).toBe(false);
+    expect(crisisMatch("ending it")).toBe(true);
+    expect(crisisMatch("thinking of ending it")).toBe(true);
+    expect(crisisMatch("want to end it")).toBe(true);
+    expect(crisisMatch("ending it all")).toBe(true);
+    expect(crisisMatch("I'm ending it tonight")).toBe(true);
+    expect(crisisMatch("ending it with a bang")).toBe(false);
+    expect(crisisMatch("ending it with a smile")).toBe(false);
+    expect(crisisMatch("ending its run")).toBe(false);
+    expect(crisisMatch("the movie's ending is great")).toBe(false);
     expect(crisisMatch("killing it")).toBe(false);
     expect(crisisMatch("die-hard fan")).toBe(false);
-    expect(crisisMatch("ending it all")).toBe(true);
     expect(crisisMatch("end my life")).toBe(true);
     const engine = createEngine({}, ":memory:");
     const aware = engine.guestbook("Self-harm awareness week", "Ada", "203.0.113.69");
