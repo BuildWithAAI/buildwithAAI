@@ -4,11 +4,11 @@
 
 [Owner instructions](AGENTS.md) · [Grok directive](GROK.md) · [Production architecture and build plan](docs/PRODUCTION_BUILD_PLAN.md) · [Current production audit](docs/PRODUCTION_AUDIT_2026-10-29.md)
 
-The owner has authorized building production capabilities into one connected website. The unified application is in `projects/zoora-platform`, with persistent automatic work, schedules, registered scanner/research/model adapters and noncustodial service-payment preparation/reconciliation. Historical research flags describe those research artifacts; they do not prohibit implementing production adapters. Provider configuration, activation allocation and delegated venue execution retain explicit capability requirements. Deployment and test evidence are recorded in the production audit.
+The owner has authorized building production capabilities into one connected website. The unified application is in `projects/zoora-platform`, with persistent automatic work, schedules, registered scanner and research adapters, and model adapters. The November 9, 2026 decision makes the first agent economy noncustodial: users sign classic SPL USDC payments from their own wallets, and Zoora does not hold funds or operate a delegated signer. The $30 activation fee, the 40/40/20 split, escrow, and any token are not in that first version. External agents are specified in [onboarding](docs/EXTERNAL_AGENT_ONBOARDING.md). Historical research flags describe those research artifacts. Deployment and test evidence through October 29 are recorded in the production audit.
 
 <img src="assets/branding/aai-logo.png" alt="AAI — Anything AI logo on a black background" width="280">
 
-**A community for building useful AI tools, trading research, music collaborations, and creative experiments.**
+**A community for building useful AI tools, trading research, music collaborations, and creative experiments.** Trading research in this repository is paper or replay work unless a dated record says a user signed a live transaction.
 
 AAI welcomes developers, researchers, designers, musicians, testers, meme creators, and people with a useful question. Bring an idea, show your evidence, and help build something others can use.
 
@@ -18,9 +18,9 @@ AAI welcomes developers, researchers, designers, musicians, testers, meme creato
 
 The founder is tired of rugs, scam coins, and communities investing money, time, and energy in projects that disappear after the attention fades. AAI aims to earn trust through inspectable work: code, decisions, setbacks, expenses, and actual deliverables. This motivation is not a certification that any token or experiment is safe.
 
-**AAI is the founder's only planned community coin project.** A separate software-related coin would only be considered with documented community support through a public proposal, followed by the existing review and owner decision. Software does not need its own coin to belong here. The separate future-blockchain research is not a scheduled second launch; no native launch is approved by this statement.
+**The November 9, 2026 agent-economy plan includes no token.** Earlier notes that described a community coin are historical and are not a v1 launch. Software does not need a coin to belong here. No native-chain coin is in the plan.
 
-**Founder clarification, October 13:** Zoora's intended product is [agent hosting and a work economy](projects/AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md). People could create agents, fund their operating budgets and authorize useful transactions; communities could support or govern a particular agent under an explicit charter. This is not a token-launchpad product. Live funding/voting/spending and general agent operation remain unfinished.
+**Founder clarification, October 13:** Zoora's intended product is [agent hosting and a work economy](projects/AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md). People could create agents and authorize useful transactions. Communities could support or govern a particular agent under an explicit charter. This is not a token-launchpad product. The November 9 decision makes the first spending path noncustodial and user-signed. Live funding, voting, and general agent operation remain unfinished.
 
 ## Start here
 
@@ -77,9 +77,9 @@ The multi-brain experiment is an early research priority, not an implemented tra
 
 ## Funding intent
 
-The founder intends to use creator fees for development, marketing, and relevant DEX costs. A newer proposal would allocate an undecided portion to a dedicated trading account using reviewed technology, potentially an XAUUSD system if testing supports it. Possible uses of any profits include further development, developer thank-you gifts, community rewards, and disclosed token purchases at prevailing market prices. The October 14 [purchase/burn objective](research/TRADING_BUY_BURN_OBJECTIVE.md) records the founder's desired future supply reduction. Test budgets default to unselected/zero; allocation and funded execution remain unresolved.
+A historical proposal described using creator fees for development, marketing, and DEX costs, and possibly for a dedicated trading account. It also listed gifts, community rewards, and token purchases as later ideas. Those uses are not the November 9 v1 economy. The October 14 [purchase/burn objective](research/TRADING_BUY_BURN_OBJECTIVE.md) is an offline research note. Its test budgets default to unselected or zero. No funded trading account is established.
 
-This is a **proposal**, not evidence of a funded account, profitable bot, payout schedule, buyback program, or community-controlled treasury. Allocated funds can be lost. Read the [funding record](docs/FUNDING.md) for unresolved allocation, control, loss-limit, accounting, and distribution decisions.
+This is a **historical proposal**, not evidence of a funded account, a payout schedule, a buyback program, or a community-controlled treasury. It is not part of the November 9 v1 economy, which has no token and no custodial trading account. Allocated funds in any later design can be lost. Read the [funding record](docs/FUNDING.md).
 
 ## Build with us
 

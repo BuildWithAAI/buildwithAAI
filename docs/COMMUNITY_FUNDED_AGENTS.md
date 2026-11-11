@@ -1,6 +1,8 @@
 # Community-funded agents — proposal for simulation
 
-Recorded October 15, 2026 from the founder's idea: create an agent that receives community funding, builds within an agreed purpose and shares available profits according to each contributor's amount and eligible funding time. This is **PROPOSED**. No wallet, treasury, offering, deposit address, payout entitlement or financial executor has been created.
+**Not in v1. November 9, 2026.** [B-021](DECISIONS.md) does not adopt pooled contributions, custody, profit sharing, or a token. This page remains a simulation proposal. It creates no wallet, treasury, offering, deposit address, payout entitlement, or financial executor. It promises no profit or yield.
+
+Recorded October 15, 2026 from the founder's idea: create an agent that receives community funding, builds within an agreed purpose, and shares available results according to each contributor's amount and eligible funding time. That sharing idea is **PROPOSED** and is not the v1 product.
 
 The product remains an agent workforce platform. Funding a community agent does not require launching a speculative coin or creating a token launchpad.
 
@@ -12,7 +14,7 @@ The product remains an agent workforce platform. Funding a community agent does 
 | Profit-sharing mode | Contributors expect financial participation; record it as an investment proposal requiring review of the concrete structure and applicable jurisdictions |
 | Agent purpose | A published mandate defines what the agent may build, its budget and allowed actions; autonomy operates within that mandate |
 | Contributor rights | Purpose, voting, withdrawal, loss allocation, fees, profit definition and changes must be agreed before accepting contributions |
-| Platform economics | Any AAI reserve, burn or liquidity allocation must be separately specified and visible in the accounting; no allocation or fee rate is selected here |
+| Platform economics | B-021 removes reserve, burn, and liquidity allocations from the plan. No v1 fee rate is selected here |
 
 In the U.S., an arrangement pooling contributions with an expectation of profits from others' work can raise investment-contract issues. Calling the payments donations or assigning actions to an AI does not resolve the legal classification. This is a preliminary application of current sources, not a conclusion that this specific proposed product is lawful or unlawful. Review the actual offering, entity, custody, investor locations and other applicable requirements with qualified counsel before real contributions or public solicitation.
 

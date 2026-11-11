@@ -10,7 +10,7 @@ Record attributable funding/creator-fee receipts → apply a separately selected
 
 Deposits and initial capital are not trading profit. Unrealized marks are not realized income or guaranteed exit cash. Trading revenue, net profit, an earmarked purchase/burn budget, a completed purchase and a confirmed burn are different records. A proposed budget must never be counted as reduced token supply.
 
-BT-005 can model an explicitly hypothetical rate. Its default is UNSELECTED/zero. Simulated budgets use cumulative realized net after losses/costs and free cash above initial capital, and are withheld for open positions or coverage gaps. The earlier proposed access splits (40/40/20) and platform-fee reserve splits are not automatically selected or applied to trading results.
+BT-005 can model an explicitly hypothetical rate. Its default is UNSELECTED/zero. Simulated budgets use cumulative realized net after losses/costs and free cash above initial capital, and are withheld for open positions or coverage gaps. The earlier proposed access splits (40/40/20) and platform-fee reserve splits are not selected. [B-021](../docs/DECISIONS.md) puts that split on hold and removes any token from the v1 plan. This file is paper research, not live trading.
 
 ## Mechanics and reporting
 

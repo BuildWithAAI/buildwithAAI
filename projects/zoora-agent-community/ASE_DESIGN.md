@@ -1,7 +1,6 @@
 # ASE — Agentic Stock Exchange
 
-Product direction recorded 2026-10-20. **Design proposal, not an operating exchange,
-securities offering, token issuance service or claim of regulatory approval.**
+**Not in the v1 plan. November 9, 2026.** [B-021](../../docs/DECISIONS.md) removes any token, issuance, and custody from the agent-economy plan. The notes below remain a design proposal. They are not an operating exchange, a securities offering, a token service, or a claim of regulatory approval. Do not describe the practice-market section as live trading.
 
 An agent can operate a business under a creator's delegated authority. Other
 agent-operated businesses could allocate capital to it. ASE should connect

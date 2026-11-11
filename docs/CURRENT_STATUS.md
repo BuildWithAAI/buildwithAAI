@@ -4,7 +4,7 @@
 
 [Owner instructions](../AGENTS.md) · [Grok directive](../GROK.md) · [Production build plan](PRODUCTION_BUILD_PLAN.md) · [Production audit](PRODUCTION_AUDIT_2026-10-29.md)
 
-The owner has authorized building production capabilities into one connected website. The unified application is in `projects/zoora-platform`, with persistent automatic work, schedules, registered scanner/research/model adapters and noncustodial service-payment preparation/reconciliation. Historical research flags describe those research artifacts; they do not prohibit implementing production adapters. Provider configuration, activation allocation and delegated venue execution retain explicit capability requirements. Deployment and test evidence are recorded in the production audit.
+The owner has authorized building production capabilities into one connected website. The unified application is in `projects/zoora-platform`, with persistent automatic work, schedules, and registered scanner, research, and model adapters. The November 9, 2026 decision makes the first agent economy noncustodial. Users sign classic SPL USDC payments from their own wallets. Zoora does not hold funds or operate a delegated signer. The $30 activation fee, the 40/40/20 split, escrow, and any token are not in that first version. [External agent onboarding](EXTERNAL_AGENT_ONBOARDING.md) is the directory design. Historical research flags describe those research artifacts. Deployment and test evidence through October 29 are recorded in the production audit.
 
 **Merged into `main` through [PR #80](https://github.com/BuildWithAAI/buildwithAAI/pull/80) on October 27, 2026 (America/Chicago).** All 25 integration workflows and 70 jobs passed at `782f85611cd2f3da6806ac9d7eede4d3a3ec1943`. Main readback confirmed the identical tested tree at merge `8a9e136c03afdc71bb9b0abe756803042f2d056c`. The [final thread-to-main audit](integration/THREAD_AUDIT_2026-10-27.md) records source preservation, CI results and remaining findings.
 
@@ -39,10 +39,10 @@ The combined 763 root tests need the scanner runtime dependency: install `requir
 - The success catalogue has no qualified successful blueprints under the supported V1 research format. Accepted recipe trials and repeated work do not establish profitability, independent customers or revenue.
 - Source observations and neural/advisory training retain their partial, untrusted or synthetic classifications. A successful transport or test is not a qualified market signal.
 - The intermittent `BLUEPRINT_RESTART_DUPLICATE` and earlier `SERVICE_NOT_FOUND` observations remain unresolved; successful reruns do not establish a fix.
-- Provider login/usage accounting, original autonomous theses, funded wallet execution, paid settlement, token-funded compute, any BRAIN/AAI launch/pairing or holder rewards, and native-chain transcript anchoring remain unfinished or proposed.
+- Provider login and usage accounting, original autonomous theses, and user-signed USDC settlement are not live. Token-funded compute, a token launch, holder rewards, and native-chain anchoring are removed from the v1 plan rather than left as unfinished launch work.
 - No new public deployment, two-physical-host commissioning, production capacity or security certification is established by consolidating source. Existing private-pilot deployment claims remain dated historical records, not a fresh operational check.
 
-Financial authority remains **ABSTAIN / NO_EXECUTION**. Demo credits and research work allowances are nonmonetary. Canonical token details and the future native chain's identity are not changed by this merge.
+Research packages keep their historical **ABSTAIN / NO_EXECUTION** labels. Demo credits and research work allowances are nonmonetary. The November 9 plan authorizes a separate user-signed USDC path that this merge did not implement. It does not add a token or a native chain.
 
 ## Earlier records
 

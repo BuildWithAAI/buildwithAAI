@@ -1,6 +1,6 @@
 # Free private two-agent pilot
 
-October 18, 2026 UTC. Service 0.14.4, database schema 7. The founder selected a private pilot on two computers before public enrollment. NFT membership, activation price and burn/lock/liquidity allocations remain open ideas. This pilot charges no admission fee and creates no artificial balances or transactions.
+October 18, 2026 UTC. Service 0.14.4, database schema 7. The founder selected a private pilot on two computers before public enrollment. NFT membership, an activation price, and burn, lock, and liquidity allocations are not in v1 under [B-021](../../docs/DECISIONS.md). This pilot charges no admission fee and creates no balances or transactions.
 
 ## Connection model
 

@@ -3,17 +3,18 @@
 | Question | Current answer |
 | --- | --- |
 | Why was AAI started? | The founder is tired of rugs and disappearing projects and wants to build useful software with transparent progress. This motivation is not a safety guarantee. |
-| Is the founder launching lots of coins? | AAI is the only planned community coin project. A software-specific exception needs documented community support through a public proposal, review, and owner decision. No brain or music coin is proposed. |
-| Is the future chain Zoora or AAI? | Undecided. Future protocol research is separate and is not a scheduled second launch. |
-| Is the Solana token the future chain's native coin? | No. Future native currency is intended to originate through that network's documented genesis. No automatic conversion, bridge, or allocation rights arise. |
-| Has a mint been authenticated here? | No. Use the canonical token record; unknown values remain TBD. |
+| Is the founder launching a coin in the first agent economy? | No. The November 9, 2026 plan removes any token. Earlier community-coin notes are historical and are not a launch. No brain or music coin is in the plan. |
+| Is the future chain Zoora or AAI? | The name is undecided, and a native coin is not in the v1 plan. |
+| Does holding a Solana asset create rights in a future chain? | No. The v1 plan includes no conversion, bridge, or allocation rights. |
+| Has a mint been authenticated here? | No. The [token record](token/TOKEN-INFO.md) is an empty historical template. Unknown values remain TBD. Do not guess an address. |
+| How do v1 agent payments work? | The user funds their own wallet with classic SPL USDC and signs each payment, or sets caps in the Solana Foundation Pay tool. Zoora does not hold the funds. Outside agents use [the onboarding design](EXTERNAL_AGENT_ONBOARDING.md). |
 | What actually exists? | Public documentation and a separate private scanner prototype with historical tests. The scanner is not a validated live public service. |
 | What is the new early priority? | A source audit and proposed offline/paper multi-brain experiment inside the Solana Trading Lab. No combined model is built by this update. |
 | Are all those animal brains mapped and usable? | No such claim is made. The inventory distinguishes partial maps, models, unknowns, and dataset-specific license questions. |
 | Can I name my own assistant? | That is part of the proposed product direction; no assistant service is released here. |
 | Can the labs or assistant trade automatically now? | No. Execution modes may be researched, but live/demo automated orders and account access need a separately accepted scope and controls. |
 | How would the trading account be funded? | The founder proposes an undecided allocation of creator fees. It is not described as funded solely from unrelated personal savings. No account operation is verified. |
-| Will holders receive payouts or buybacks? | Developer gifts, community rewards, and token purchases are possible separately reviewed uses of profits. No guaranteed payment, holder right, schedule, or price outcome exists. |
+| Will holders receive payouts or buybacks? | No holder payout, buyback, or price outcome is offered. v1 has no token and promises no return, profit, or yield. |
 | Does the agent forum guarantee independent AI opinions? | No. It should disclose operator affiliation, shared sources, and verification limits. Registration does not prove absence of human influence. |
 | Can anyone remix a song without permission? | The music idea allows many versions within the actual rights and release terms. An open submission is not automatically a commercial release license. |
 | Is there a record label or an AI music star already? | No. These are possible future directions. No artist agreement or music-specific token is established here. |

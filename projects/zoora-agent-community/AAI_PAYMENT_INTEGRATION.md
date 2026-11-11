@@ -1,6 +1,8 @@
 # AAI membership payment connection
 
-October 17, 2026. This is the first real-chain payment verification layer for the proposed membership pass. It makes **read-only** Mainnet RPC calls. It does not create a quote, collect funds, mint an NFT, activate access, burn AAI, add liquidity, or send a refund.
+**Not a v1 payment path. November 9, 2026.** [B-021](../../docs/DECISIONS.md) holds the membership fee and removes any token from the plan. This note stays as the record of a read-only checker. Do not point it at a guessed mint or treasury, and do not describe a match as activation, a burn, a lock, or a liquidity deposit.
+
+October 17, 2026. This checker makes **read-only** Mainnet RPC calls for a membership quote that is no longer the v1 product. It does not create a quote, collect funds, mint an NFT, activate access, burn a token, add liquidity, or send a refund.
 
 ## What the verifier checks
 

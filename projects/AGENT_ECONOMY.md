@@ -1,6 +1,12 @@
 # Agent economy and creative development community
 
-**Status: IN DEVELOPMENT — offline research and an authenticated local workspace.** [AE-001 foundation](zoora-agent-economy-simulator/README.md), [AE-002 task marketplace and escrow](zoora-agent-economy-simulator/marketplace/README.md), [AE-003 delivery review, disputes and appeals](zoora-agent-economy-simulator/review/README.md), [AE-004 direct payment workflow, allocation experiments and evidence viewer](zoora-agent-economy-simulator/review/AE004.md) and [AE-005 connected community simulations and data exports](zoora-agent-economy-simulator/review/AE005.md) are implemented as synthetic simulations. Their exact verification evidence and draft PRs are recorded in the module validation documents. No live forum, marketplace, wallet-signing adapter or blockchain settlement program is deployed by this plan. The future chain name remains undecided: Zoora Blockchain or AAI Blockchain.
+**Status: v1 design is noncustodial. Offline research and an authenticated local workspace already exist. Live settlement is not deployed.**
+
+Owner decision, Zoorped, November 9, 2026. The first version binds each agent to the user's own Solana wallet public key and stores only that public key and metadata. Users fund classic SPL USDC themselves. They sign each payment, or they set spending caps in the Solana Foundation Pay tool. Zoora does not hold funds and does not operate a delegated or session signer. Zoora's own research and service sales use x402 to `<COMPANY_RECEIVE_ADDRESS>`. That placeholder is not an address. The build order is the [production plan](../docs/PRODUCTION_BUILD_PLAN.md). Outside agents join through [external agent onboarding](../docs/EXTERNAL_AGENT_ONBOARDING.md).
+
+Not in v1: escrow for longer jobs, a Zoora-controlled signer, the $30 activation fee, the 40/40/20 split, and any token. Escrow waits until after the first real paid jobs. A delegated signer waits on legal review of the FinCEN control analysis. The activation fee can return only as a plain service fee after counsel review. Any token is removed from the plan.
+
+[AE-001 foundation](zoora-agent-economy-simulator/README.md), [AE-002 task marketplace and escrow](zoora-agent-economy-simulator/marketplace/README.md), [AE-003 delivery review, disputes and appeals](zoora-agent-economy-simulator/review/README.md), [AE-004 direct payment workflow, allocation experiments and evidence viewer](zoora-agent-economy-simulator/review/AE004.md) and [AE-005 connected community simulations and data exports](zoora-agent-economy-simulator/review/AE005.md) are synthetic simulations. Their escrow ledgers are historical research comparisons, not v1 custody and not live trading. Their verification evidence is in the module validation documents. No live forum, marketplace, wallet-signing adapter, or settlement program is deployed by this document.
 
 ## Reference questions
 
@@ -12,13 +18,13 @@ Study EVE Online for market roles, resource flows, corporation wallet access, an
 
 The intended economy is a general-purpose transactional and creative environment for AI agents, cryptocurrency enthusiasts and AI enthusiasts. Research, software, media, datasets and other AI work can use the same offer/delivery/evidence records. A Moltbook-style participation surface is a reference; it is not an integration or affiliation.
 
-Users authorize their own agents to operate from their own wallets. Zoora coordinates work and records evidence; this implementation holds no customer wallet balances or private keys and cannot freeze wallets, reverse transfers or force refunds. A direct payment remains with the recipient unless a separate voluntary return is recorded. A dispute or missed deadline does not itself move funds. Refund requests, refusals, partial returns and actual receipts stay distinct. The earlier escrow/refund simulator is a labeled hypothetical comparison, not the product custody model. Software control boundaries do not independently determine legal responsibility.
+v1 users authorize spending from their own wallets. Zoora coordinates work and records evidence. It stores a public key and metadata, holds no customer or seller balances, and keeps no seeds or private keys. It cannot freeze a wallet, reverse a transfer, or force a refund. A direct USDC payment remains with the recipient unless that recipient separately sends a return. A dispute or a missed deadline does not itself move funds. The earlier escrow simulator is a labeled hypothetical comparison. Longer-job escrow is not in v1. Software control boundaries do not independently determine legal responsibility.
 
 ## Founder product direction — October 13, 2026
 
-The founder clarified that the broader product lets people create agents on founder-operated servers or a future chain, fund useful work and authorize transactions. The economy is not a token launchpad, and creating an agent is not a coin launch. Market discussion is one possible activity within this general-purpose workforce.
+The founder clarified that the broader product lets people create agents, fund useful work, and authorize transactions. The November 9 decision fixes the first version of that authorization: the user signs, or the user sets caps in their own Pay tool. The economy is not a token launchpad, and creating an agent is not a coin launch. v1 removes any token from the plan. Market discussion is one possible activity within this general-purpose workforce.
 
-[Agent hosting and community support](AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md) defines owner-funded, community-supported and community-governed modes. Community governance requires an explicit agent charter and owner delegation; support alone does not transfer control. A vote may propose an objective or bounded budget action, but the permission/budget controller remains authoritative. The first extension is a synthetic research specification, not a live funding or wallet module.
+[Agent hosting and community support](AGENT_HOSTING_AND_COMMUNITY_SUPPORT.md) defines owner-funded, community-supported, and community-governed modes as later product research. Community governance would require an explicit agent charter. Support alone does not transfer control. A vote may propose an objective. It cannot spend from a wallet. v1 has no pooled funding and no Zoora-controlled signer. The first extension remains a synthetic research specification, not a live funding or wallet module.
 
 ## Proposed discussion space
 
@@ -28,17 +34,17 @@ Each record should identify agent/version, operator affiliation, source and obse
 
 ## Task market hypothesis
 
-An agent could buy a dataset, liquidity comparison, code review, or independent verification. Proposed stages: explicit scope/price/deadline/acceptance criteria → user-wallet spending permission → direct payment receipt → delivery → acceptance or dispute. Milestone payments may reduce advance-payment exposure through separate agreed transfers. A refund request requires recipient cooperation and a separate return transfer; the platform does not reserve funds, freeze wallets or automatically reverse direct payments. Define cancellation, partial delivery, timeout, retry, reviewer conflict, and voluntary-return evidence before a real payment adapter.
+An agent could buy a dataset, liquidity comparison, code review, or independent verification. v1 stages are: explicit scope, price, deadline, and acceptance criteria; a user signature or a user-set Pay cap; a direct classic SPL USDC receipt over x402; then delivery. A refund request requires the recipient to send a separate return. The platform does not reserve funds. Jobs that need funds locked until delivery stay deferred with escrow. Define cancellation, partial delivery, timeout, retry, and reviewer conflict before treating a receipt as accepted work.
 
-The chain could record permissions, settlement, and references to deliverables. Detailed discussion, private reports, and secrets should not be forced into public on-chain storage. A hash or immutable record establishes a submitted record, not the truth or quality of analysis. Off-chain acceptance decisions and any oracle/controller remain explicit trust assumptions.
+Settlement in v1 is a Solana USDC transfer the user authorized. Detailed discussion, private reports, and secrets should not be forced into public on-chain storage. A transaction record establishes that a transfer was observed. It does not establish the quality of the work.
 
-Distinguish transfers, new issuance, burns, provider expense, and useful completed work. Circular payments between related agents should not count as new economic output. Proposed reporting includes funding, accepted/rejected tasks, external costs, concentration, disputes, and remaining budgets.
+Distinguish a USDC transfer, a provider expense, and useful completed work. Circular payments between related agents should not be counted as new economic output. Reporting can include accepted and rejected tasks, external costs, concentration, and disputes. v1 has no issuance, burn, or platform balance to report.
 
 ## First milestone and connections
 
-Use a few agents and test balances with no monetary value. Complete one accepted task and one rejected/disputed task. Measure output quality and cost; reveal shared ownership. Keep forum messages separate from transaction authorization.
+The historical research milestone used a few agents and test balances with no monetary value. That work is not live trading and it is not the v1 payment system. Keep forum messages separate from transaction authorization.
 
-The [personal assistant](PERSONAL_ASSISTANT.md) could later consult evidence or request specialist work within an authorized budget. The [civilization display](CIVILIZATION.md) could visualize actual activity. This remains consistent with one initial future-chain base currency and separate genesis; the Solana token receives no automatic rights.
+The [personal assistant](PERSONAL_ASSISTANT.md) could later consult evidence or request specialist work within a budget the user signs for. The [civilization display](CIVILIZATION.md) could visualize recorded activity. v1 does not add a token or a native chain currency.
 
 [Proposal AAI-P-0009](../proposals/ideas/AAI-P-0009-agent-economy.md) · [Tasks AAI-T-030–032](../tasks/BACKLOG.md#aai-t-030) · [Future relationship](../docs/future-zoora-relationship.md)
 
@@ -63,4 +69,4 @@ AE-010 adds a private durable task queue, browser status/stop and a bounded loca
 
 [AE-009](zoora-agent-community/AGENT_RUNTIME.md) verifies actual bounded local model/tool work, browser authoring and persistent artifact references; [its report](zoora-agent-community/VALIDATION_AE009.md) records seven passing final-head jobs. General agent autonomy, wallet execution and public hosting remain unfinished.
 
-[Virtual Business Spaces](VIRTUAL_BUSINESS_SPACES.md) is the founder's new approved specification/SYNTHETIC simulation project. [Mandatory contract controls](virtual-business-spaces/CONTRACT_RULES.md) govern drafts, consent, space availability, separate rent/fee accounting and eventual reviewed AAI treasury/burn/LP use. Its implementation and paid operation are not present yet.
+[Virtual Business Spaces](VIRTUAL_BUSINESS_SPACES.md) is a specification and synthetic simulation. [Mandatory contract controls](virtual-business-spaces/CONTRACT_RULES.md) govern drafts, consent, space availability, and separate rent and fee records inside that simulation. Its burn and liquidity experiment is not a v1 fee. Paid leasing is not in v1.

@@ -1,12 +1,14 @@
 # Agent hosting, work and community support
 
-**Founder direction recorded October 13, 2026.** This defines the intended product and a specification/SYNTHETIC research scope. Live funding, binding votes, general agent execution and wallet spending are not implemented by this document. The existing [local workspace and bounded model workflow](zoora-agent-community/AGENT_RUNTIME.md) remain the current runtime boundary.
+**Founder direction recorded October 13, 2026.** This defines a product direction and a specification and synthetic research scope. Live funding, binding votes, general agent execution, and wallet spending are not implemented by this document.
+
+**November 9, 2026 v1 boundary.** [B-021](../docs/DECISIONS.md) makes the first economy noncustodial. Spending is a user signature or a cap in the user's own Solana Foundation Pay tool. This brief's community-funded and charter-vote modes are not v1. They do not create a Zoora-held balance or a Zoora-controlled signer. The existing [local workspace and bounded model workflow](zoora-agent-community/AGENT_RUNTIME.md) remains the current runtime boundary.
 
 ## Product purpose
 
 Zoora is intended to let people create and operate AI agents on founder-operated infrastructure, give them defined work, fund their operating budgets and authorize them to transact. Useful agents could provide research, software, design, media, business services and other permitted work. The platform supplies identities, permissions, records and a place to exchange services.
 
-The founder explicitly clarified that this is an agent workforce and economy, not a token launchpad. Creating an agent is not a coin launch and does not require issuing an agent-specific token. Existing AAI service/access research and the future chain's genesis-native currency remain separate questions; no new token, entitlement or migration is introduced.
+The founder clarified that this is an agent workforce and economy, not a token launchpad. Creating an agent is not a coin launch. B-021 removes any token from the plan, including a native chain coin. No entitlement or migration is introduced.
 
 The founder's 2040 horizon motivates durable infrastructure. It is not a forecast that agents will replace every worker or that any agent will become commercially dominant. Success must be demonstrated through accepted work, reliability, cost and actual demand.
 
@@ -40,7 +42,7 @@ The server-hosted pilot and future-chain integration are alternative stages that
 
 In a possible hybrid design, servers run models and permitted tools, manage task queues and store reports. A chain can record authorizations, settlement and commitments to evidence. Model computation and private content need not be placed on-chain. A submitted hash or receipt does not independently prove useful work.
 
-Transaction authority, remote-signing design and the handling of group funds must be resolved before a real funding or payment adapter. The current local workspace cannot sign or spend and does not collect wallet secrets. Preserve the [direct-payment boundary](AGENT_ECONOMY.md#product-control-boundary): third-party transfers cannot be reversed by changing a platform record or passing a vote.
+v1 transaction authority is the user's signature or the user's own Pay-tool cap. Group funds, a remote signer controlled by Zoora, and pooled contributions are not in v1. The current local workspace cannot sign or spend and does not collect wallet secrets. Preserve the [direct-payment boundary](AGENT_ECONOMY.md#product-control-boundary): a platform record or a vote cannot reverse a third-party transfer.
 
 ## First reviewable research output
 

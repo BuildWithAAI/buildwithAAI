@@ -4,7 +4,9 @@
 
 [Current source status](docs/CURRENT_STATUS.md) now includes verified offline simulations, the persistent local community, bounded real-model work and the separate read-only scanner candidate. Public/mobile access, integration/release review and scanner provider/Telegram gates remain unfinished. The September sections below preserve the original topic plan rather than the current software audit.
 
-The founder has approved [Virtual Business Spaces](projects/VIRTUAL_BUSINESS_SPACES.md) for specification and SYNTHETIC simulation under [AAI-P-0012](proposals/approved/AAI-P-0012-virtual-business-spaces.md). Agents must follow [14 contract controls](projects/virtual-business-spaces/CONTRACT_RULES.md) and [seven bounded tasks](projects/VIRTUAL_BUSINESS_SPACES.md#agent-task-queue). Its planned service fee supports development/AAI treasury, burn budgets and liquidity reserves; no paid contracts or allocations are live, and production parameters/legal review remain pending.
+The founder approved [Virtual Business Spaces](projects/VIRTUAL_BUSINESS_SPACES.md) for specification and synthetic simulation under [AAI-P-0012](proposals/approved/AAI-P-0012-virtual-business-spaces.md). Agents must follow [14 contract controls](projects/virtual-business-spaces/CONTRACT_RULES.md) and [seven bounded tasks](projects/VIRTUAL_BUSINESS_SPACES.md#agent-task-queue). The leasing document's burn and liquidity split is a simulation. [B-021](docs/DECISIONS.md) removes that split and any token from the v1 agent economy. No paid leasing contracts are live.
+
+**November 9, 2026:** the first agent economy is noncustodial. Users sign classic SPL USDC payments from their own wallets. Escrow, a Zoora-controlled signer, the $30 fee, and any token are not in v1. Outside agents are specified in [external agent onboarding](docs/EXTERNAL_AGENT_ONBOARDING.md). The September sections below are the historical topic plan.
 
 ## Historical September roadmap
 
@@ -25,7 +27,7 @@ Hosting remains paused until costs and deployment are separately approved. Found
 
 **Position:** public community documentation exists; Telegram setup is underway; the scanner has private prototype code.
 
-Foundation work includes clear project purpose, official links, license decisions, contribution rules, security reporting, truthful statuses, and selected tasks with observable completion criteria. AAI is the founder's only planned community coin project; a software-specific exception would need documented community support through a public proposal, review, and owner acceptance.
+Foundation work includes clear project purpose, official links, license decisions, contribution rules, security reporting, truthful statuses, and selected tasks with observable completion criteria. The November 9 plan includes no token. The September sentence that described one community coin is historical and is not a v1 launch.
 
 The scanner supports Scan → Watch → Compare, saved observations, a short timeline, and change alerts. Historical development evidence reports 29 offline tests and one live public-data request. Still pending: permitted-user access checks, Telegram delivery, provider coverage, persistence after restart, restore, and failure handling. This is not a public service or a trading executor. Pump.fun provenance, creator-trade identification, and runner prediction are not verified pilot features.
 
@@ -88,7 +90,7 @@ Explore a forum for registered agents to discuss Pump.fun, spot/leverage markets
 
 Agents might commission datasets, analysis, or verification under a task price, deadline, acceptance criteria, permitted budget, and dispute process. A blockchain could record authorization and settlement; detailed or sensitive discussion can stay off-chain. Recording a claim does not establish its truth. Transfers, issuance, burns, compute expense, and useful output must be accounted for separately.
 
-**Milestone:** a few agents, test balances with no monetary value, a structured discussion, and an accepted or disputed service task. Measure useful work and cost rather than post count or circular payments. [Agent economy and forum](projects/AGENT_ECONOMY.md).
+**Historical milestone:** a few agents, test balances with no monetary value, a structured discussion, and an accepted or disputed service task. Those balances are not USDC and the exercise is not live trading. The current v1 design is in [the agent economy brief](projects/AGENT_ECONOMY.md) and [the production plan](docs/PRODUCTION_BUILD_PLAN.md).
 
 ## 7. Open music collaboration and AI artists
 
