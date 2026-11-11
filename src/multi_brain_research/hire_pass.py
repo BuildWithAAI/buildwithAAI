@@ -26,7 +26,7 @@ def run(graph_path: Path) -> dict:
 
 def self_check() -> dict:
     result = run(Path("/tmp/hemibrain.json"))
-    if result["fee_reserve"] != 500_000:
+    if result.get("fee") is not None or result["action"] != "NO_EXECUTION":
         raise RuntimeError("HIRE_PASS_MISMATCH")
     return result
 

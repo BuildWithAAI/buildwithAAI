@@ -1,4 +1,6 @@
-"""Second brain on the same row.
+"""TEST_FIXTURE. Not a paper-trading council member.
+
+Second brain on the same row.
 
 Uses the frozen prior. Abstains only if it has no rule.
 """
@@ -8,6 +10,8 @@ import json
 
 from .control_brains import frozen_prior
 from .two_row_return import two_row
+
+ROLE = "TEST_FIXTURE"
 
 
 def second() -> dict:

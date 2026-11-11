@@ -7,6 +7,11 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from .model import RawEnvelope
 
 DEFAULT_PUBLIC_RPC = "https://api.mainnet-beta.solana.com"
+# Same public mainnet hosts as multi_brain_research.rpc_allow.ALLOWED.
+PUBLIC_ENDPOINTS = frozenset({
+    "https://api.mainnet-beta.solana.com",
+    "https://api.mainnet.solana.com",
+})
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 READ_ONLY_METHODS = frozenset({"getBlock", "getBlocks"})
 
@@ -21,8 +26,10 @@ def rpc_call(endpoint: str, method: str, params: list[Any], *, timeout: float = 
         raise ValueError("read-only RPC method required")
     origin = urlsplit(endpoint)
     if (origin.scheme != "https" or not origin.hostname or origin.username or origin.password
-            or origin.fragment or origin.port not in (None, 443) or not 0 < timeout <= 30):
+            or origin.fragment or origin.query or origin.port not in (None, 443) or not 0 < timeout <= 30):
         raise ValueError("RPC requires HTTPS and a bounded timeout")
+    if endpoint not in PUBLIC_ENDPOINTS:
+        raise ValueError("RPC requires an allowlisted public endpoint")
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}, allow_nan=False).encode()
     request = Request(endpoint, data=body,
                       headers={"Content-Type": "application/json",

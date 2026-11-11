@@ -35,7 +35,7 @@ def supervised_pilot_evidence(state, folder, credential_file, credential, projec
             "title": "Actual supervised CPU model task", "prompt": prompt,
             "max_steps": 4, "timeout_seconds": 120, "project_id": project["id"]}, credential["token"])[1]["job"]
         session_dir = folder / "supervised-session"
-        env = {**os.environ, "SSL_CERT_FILE": str(ROOT / "tests/fixtures/bridge-localhost-cert.pem")}
+        env = {**os.environ, "SSL_CERT_FILE": str(tls.certificate)}
         common = ["--community-origin", tls.origin, "--expected-instance", instance,
             "--expected-agent", credential["principal_id"], "--credential-file", str(credential_file),
             "--collaboration-project", project["id"]]

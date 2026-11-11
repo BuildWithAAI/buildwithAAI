@@ -33,6 +33,15 @@ Prefer HOLD when evidence or executable output is uncertain. HOLD requires coin_
 min_output=0. A trade needs a positive amount and positive minimum output in the documented units.
 A decision does not change model weights, prove trading skill or authorize real transactions.
 """
+# Proposals the model may emit that the host must reject. They are journaled and
+# never resized, replaced, or submitted as paper orders.
+MODEL_DECISION_REJECTIONS = frozenset({
+    "INVALID_FIELDS", "INVALID_ID", "INVALID_PAPER_DECISION", "INVALID_PAPER_HOLD",
+    "INVALID_PAPER_ORDER", "INVALID_PRACTICE_WORKER_INTEGER", "INVALID_TEXT",
+    "MODEL_EMPTY_OUTPUT", "MODEL_OUTPUT_REJECTED", "PAPER_BUY_LIMIT", "PAPER_CASH_LIMIT",
+    "PAPER_DECISION_REQUIRED", "PAPER_MARKET_UNAVAILABLE", "PAPER_POSITION_LIMIT",
+    "TOOL_NOT_ALLOWED",
+})
 
 
 def load_scope(path):
@@ -100,9 +109,12 @@ def receipts(client, token, scope):
     raise Problem(502, "PRACTICE_RECEIPT_BOUND_EXCEEDED")
 
 
-def outcome(state, tick=None, request_id=None):
-    return {"state": state, "tick": tick, "request_id": request_id,
-            "live_execution_allowed": False, "model_training": "NOT_PERFORMED"}
+def outcome(state, tick=None, request_id=None, *, error=None):
+    result = {"state": state, "tick": tick, "request_id": request_id,
+              "live_execution_allowed": False, "model_training": "NOT_PERFORMED"}
+    if error is not None:
+        result["error"] = error
+    return result
 
 
 def send_order(journal, manifest, tick, record, client, token, scope_file, deadline, stop_file):
@@ -221,11 +233,19 @@ def run_practice(credential_file, scope_file, journal_dir, *, model, port=8765, 
                                             "decision_budget": scope["max_decisions"]},
                             "classification": "SYNTHETIC_PRACTICE_NOT_MODEL_TRAINING"})}]
             guard(scope_file, scope, deadline, stop_file)
-            action, model_evidence = provider.next_action(messages, deadline)
-            fields(action, ("action", "arguments"))
-            if action["action"] != "paper_decision":
-                raise Problem(400, "PAPER_DECISION_REQUIRED")
-            decision_action = validate_decision(action["arguments"], snapshot, scope)
+            try:
+                action, model_evidence = provider.next_action(messages, deadline)
+                fields(action, ("action", "arguments"))
+                if action["action"] != "paper_decision":
+                    raise Problem(400, "PAPER_DECISION_REQUIRED")
+                decision_action = validate_decision(action["arguments"], snapshot, scope)
+            except Problem as error:
+                # Keep the proposal rejected. Do not clamp the size or substitute another trade.
+                if error.code not in MODEL_DECISION_REJECTIONS:
+                    raise
+                journal.save(journal.name(tick, "failure"), {
+                    "snapshot_sha256": observation["snapshot_sha256"], "error": error.code})
+                return outcome("MODEL_DECISION_REJECTED", tick, error=error.code)
             decision = {"snapshot_sha256": digest(snapshot), "action": decision_action,
                         "provider": provider_evidence, "model_evidence": model_evidence,
                         "decided_at_ms": now_ms()}

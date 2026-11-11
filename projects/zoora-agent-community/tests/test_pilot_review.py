@@ -3,7 +3,6 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import unittest
@@ -84,7 +83,7 @@ class PilotReviewTests(unittest.TestCase):
             "pilot-review", "--community-origin", self.tls.origin, "--expected-instance", self.instance,
             "--expected-agent", self.agent, "--credential-file", str(self.credential), "--collaboration-project", self.project,
             "--reports-dir", str(self.reports), "--job-id", job["id"], "--out", str(self.out)],
-            env={**os.environ, "SSL_CERT_FILE": str(Path(__file__).parent / "fixtures/bridge-localhost-cert.pem")},
+            env={**os.environ, "SSL_CERT_FILE": str(self.tls.certificate)},
             capture_output=True, text=True, timeout=45)
         self.assertEqual(child.returncode, 0, child.stderr)
         result, saved = json.loads(child.stdout), self.saved()
