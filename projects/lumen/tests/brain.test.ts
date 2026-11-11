@@ -214,6 +214,21 @@ describe("memory, wants, gifts", () => {
     expect(moderateNote("a\u3164b").ok).toBe(false);
   });
 
+  it("rejects banned phrases split by invisible characters and keeps emoji notes", () => {
+    const rejected = [
+      "visit www\u200d.example.com",
+      "https\u200d://x.y",
+      "seed\u200d phrase",
+      "se\uFE0Fed phrase",
+      "private\u200d key",
+      "s\uFE0Fex with child",
+      "s\u200Dex with child",
+    ];
+    for (const note of rejected) expect(moderateNote(note)).toEqual({ ok: false, reason: "NOTE_REJECTED" });
+    const kept = ["\u2764\uFE0F love this", "\u{1F469}\u200D\u{1F4BB} builder", "\u{1F44D}\u{1F3FD} nice"];
+    for (const note of kept) expect(moderateNote(note)).toEqual({ ok: true, note });
+  });
+
   it("caps wishlist asks per day", () => {
     const state = initialState();
     state.needs.expression = 0.9;

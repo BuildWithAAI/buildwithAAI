@@ -304,6 +304,12 @@ describe("pre-deploy advisory", () => {
     expect(Date.now() - started).toBeLessThan(2000);
   });
 
+  it("rejects a card number written as keycap digits", () => {
+    const keycap = (digits: string) => [...digits].map((digit) => `${digit}\uFE0F\u20E3`).join("");
+    const note = [keycap("4242"), keycap("4242"), keycap("4242"), keycap("4242")].join("");
+    expect(rejectPan({ note })).toBe(true);
+  });
+
   it("labels a refused wishlist link instead of showing the raw address", () => {
     const hidden = publicWishLink("https://127.0.0.1/secret", { LUMEN_WISH_LINK_HOSTS: "127.0.0.1" });
     expect(hidden).toEqual({ href: null, text: "link withheld" });

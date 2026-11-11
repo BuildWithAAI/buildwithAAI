@@ -21,6 +21,7 @@ const BANNED = [
 
 const HARD_INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u180E\u2028\u2029\u3164\uFFF9-\uFFFB]/u;
 const ZWJ = 0x200d;
+const NOTE_PROBE = /[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}]/gu;
 
 function variationSelector(cp: number): boolean {
   return (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0xe0100 && cp <= 0xe01ef);
@@ -74,11 +75,17 @@ function scrubEmojiMarks(text: string): string {
   return out;
 }
 
-/** Joiners removed so a link, a card, or a banned phrase cannot hide inside them. */
-const NOTE_PROBE = /[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}]/gu;
+function stripHiddenForCheck(text: string): string {
+  return text.replace(NOTE_PROBE, "");
+}
+
+/** Copy used by banned, link, and card checks. Stored notes keep real emoji joins. */
+export function textForCheck(text: string): string {
+  return stripHiddenForCheck(stripHiddenForCheck(text).normalize("NFKC"));
+}
 
 export function noteProbe(text: string): string {
-  return text.replace(NOTE_PROBE, "");
+  return textForCheck(text);
 }
 
 export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: string } | { ok: false; reason: string } {
@@ -88,7 +95,7 @@ export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: 
   if (blockedInvisible(input)) return { ok: false, reason: "NOTE_CONTROL" };
   const note = scrubEmojiMarks(input).trim().replace(/\s+/g, " ");
   if (note.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  const probe = noteProbe(note);
+  const probe = textForCheck(note);
   if (BANNED.some((pattern) => pattern.test(probe))) return { ok: false, reason: "NOTE_REJECTED" };
   if (textHasPan(probe)) return { ok: false, reason: "PAN" };
   return { ok: true, note };

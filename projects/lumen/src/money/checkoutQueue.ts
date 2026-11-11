@@ -67,7 +67,7 @@ export function rejectPan(value: unknown): boolean {
     if (SERVER_TOKEN_FIELDS.has(key) && typeof item === "string" && serverTokenValue(item)) continue;
     if (PAN_KEY.test(key)) return true;
     if (typeof item === "number" && Number.isSafeInteger(item) && looksLikePan(String(item))) return true;
-    if (typeof item === "string" && looksLikePan(item)) return true;
+    if (typeof item === "string" && looksLikePan(stripHiddenMarks(item))) return true;
     if (item && typeof item === "object" && rejectPan(item)) return true;
   }
   return false;
@@ -192,6 +192,12 @@ function luhnWindow(digits: string): boolean {
     }
   }
   return false;
+}
+
+const HIDDEN_MARKS = /[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}]/gu;
+
+function stripHiddenMarks(text: string): string {
+  return text.replace(HIDDEN_MARKS, "").normalize("NFKC").replace(HIDDEN_MARKS, "");
 }
 
 function looksLikePan(value: string): boolean {
