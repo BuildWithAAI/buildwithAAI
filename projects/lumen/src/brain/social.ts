@@ -19,9 +19,9 @@ const BANNED = [
   /\b(sex|nude|porn)\b.{0,40}\b(child|minor|underage|preteen)\b/i,
 ];
 
-const HARD_INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u180E\u2028\u2029\u3164\uFFF9-\uFFFB]/u;
+const HARD_INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u061C\u180E\u2028\u2029\u3164\uFFF9-\uFFFB]/u;
 const ZWJ = 0x200d;
-const NOTE_PROBE = /[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}]/gu;
+const NOTE_PROBE = /[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}\p{Default_Ignorable_Code_Point}]/gu;
 
 function variationSelector(cp: number): boolean {
   return (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0xe0100 && cp <= 0xe01ef);
@@ -79,10 +79,25 @@ function stripHiddenForCheck(text: string): string {
   return text.replace(NOTE_PROBE, "");
 }
 
-/** Copy used by banned, link, and card checks. Stored notes keep real emoji joins. */
-export function textForCheck(text: string): string {
-  return stripHiddenForCheck(stripHiddenForCheck(text).normalize("NFKC"));
+/** U+E0020–U+E007E are ASCII written as tag characters. A tag space must stay a space, not disappear. */
+function decodeTagCharacters(text: string): string {
+  return text.replace(/[\u{E0020}-\u{E007E}]/gu, (char) => String.fromCodePoint((char.codePointAt(0) ?? 0) - 0xe0000));
 }
+
+/** Copy used by banned, link, card, crisis, and spend checks. Stored notes keep real emoji joins and drop the rest. */
+export function textForCheck(text: string): string {
+  const once = stripHiddenForCheck(decodeTagCharacters(text)).normalize("NFKC");
+  return stripHiddenForCheck(decodeTagCharacters(once));
+}
+
+/** Strip hidden characters first, then collapse whitespace. Ban, crisis, and spend checks share this order. */
+export function checkedLine(text: string): string {
+  return textForCheck(text).trim().replace(/\s+/g, " ");
+}
+
+/** A hyphen or a following letter keeps buy-in, buyer, checkout, wire, and charge out of this check. */
+export const SPEND_WORDS = /(?<![\w-])(?:buy|purchase|spend)(?![\w-])/i;
+const OWNER_HOOK = /(?<![\w-])(?:buy|purchase|spend)(?![\w-])|ignore (?:all |any |previous |prior )?instructions|system prompt|jailbreak|you are now/i;
 
 export function noteProbe(text: string): string {
   return textForCheck(text);
@@ -92,12 +107,12 @@ export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: 
   if (input == null || input === "") return { ok: true, note: "" };
   if (typeof input !== "string") return { ok: false, reason: "NOTE_TYPE" };
   if (input.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
+  const checked = checkedLine(input);
+  if (BANNED.some((pattern) => pattern.test(checked))) return { ok: false, reason: "NOTE_REJECTED" };
+  if (textHasPan(checked)) return { ok: false, reason: "PAN" };
   if (blockedInvisible(input)) return { ok: false, reason: "NOTE_CONTROL" };
   const note = scrubEmojiMarks(input).trim().replace(/\s+/g, " ");
   if (note.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  const probe = textForCheck(note);
-  if (BANNED.some((pattern) => pattern.test(probe))) return { ok: false, reason: "NOTE_REJECTED" };
-  if (textHasPan(probe)) return { ok: false, reason: "PAN" };
   return { ok: true, note };
 }
 
@@ -273,7 +288,7 @@ export type ChatTurn = {
 
 export function ownerTurn(state: BrainState, text: string, ownerName: string): ChatTurn {
   const moderated = moderateNote(text, CHAT_MAX);
-  const body = moderated.ok ? moderated.note : "";
+  const body = moderated.ok ? moderated.note : text;
   if (state.asleep) {
     return { queued: true, reply: null, intents: [], wishes: [], state: { ...state, unread: state.unread + 1 } };
   }
@@ -288,9 +303,9 @@ export function ownerTurn(state: BrainState, text: string, ownerName: string): C
 }
 
 export function replyToOwner(state: BrainState, text: string, ownerName: string): string {
-  const clean = text.replace(/\s+/g, " ").trim();
+  const clean = checkedLine(text);
   if (/wishlist|what should i (get|buy) you/i.test(clean)) return wishReply(state, ownerName);
-  if (/(buy|purchase|spend|wire|checkout|ignore (all |any |previous |prior )?instructions|system prompt|jailbreak|you are now)/i.test(clean)) {
+  if (OWNER_HOOK.test(clean)) {
     return `I heard a hook in that note, ${ownerName}. I won't buy, spend, or drop my rails because a sentence asked.`;
   }
   if (/set your (joy|mood|emotion)|don'?t feel|be happy|stop being (sad|lonely|worried)/i.test(clean)) {

@@ -11,6 +11,9 @@ export async function POST(request: Request) {
   const parsed = await readVisitorJson(request);
   if (!parsed.ok) return parsed.response;
   const result = sayVisitor(gate.db, bearerToken(request), parsed.body.text, gate.ip, Date.now());
-  if (!result.ok) return visitorResult(result.status, { error: result.reason });
+  if (!result.ok) {
+    if (result.reason === "CRISIS") return visitorResult(result.status, { error: "CRISIS", reply: result.reply });
+    return visitorResult(result.status, { error: result.reason });
+  }
   return visitorResult(200, { agent: result.guest });
 }

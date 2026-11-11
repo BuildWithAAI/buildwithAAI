@@ -4,7 +4,7 @@ import { makeSvg, artTitle } from "../brain/art";
 import { glowFor } from "../brain/emotions";
 import { crisisMatch, guestReply } from "../brain/crisis";
 import { scrubInstructions } from "../research/ideas";
-import { giftById, giftDeltas, interactDeltas, moderateNote, ownerTurn, publicWants, reactionToOwnerDecision, sortInbox, artReaction, GIFT_CATALOG } from "../brain/social";
+import { giftById, giftDeltas, interactDeltas, moderateNote, ownerTurn, publicWants, reactionToOwnerDecision, sortInbox, textForCheck, artReaction, GIFT_CATALOG } from "../brain/social";
 import { applyNeedDeltas } from "../brain/feel";
 import { blendEmotions } from "../brain/emotions";
 import { blankProduct, initialState, labelsOf, tick, type TickResult } from "../brain/tick";
@@ -22,7 +22,7 @@ import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { cardCredentials, issuingKey, listIssuingTransactions, descriptorMap } from "../money/card";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, cardAvailableCents, type Env } from "../money/rules";
-import { expireClaims } from "../money/checkoutQueue";
+import { expireClaims, textHasPan } from "../money/checkoutQueue";
 import { researchChatReply } from "../research/ideas";
 import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
@@ -366,12 +366,14 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
   if (!allowRate(db, `gift:${ip}`, 10, 3600_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
   const gift = giftById(giftId);
   if (!gift) return { ok: false, error: "UNKNOWN_GIFT" };
-  const moderated = moderateNote(note);
-  if (!moderated.ok) return moderated;
-  if (moderated.note && crisisMatch(moderated.note)) {
+  if (typeof note === "string" && crisisMatch(textForCheck(note))) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'gift')").run(Date.now());
     return { ok: false, error: "CRISIS" };
   }
+  const moderated = moderateNote(note);
+  if (!moderated.ok) return moderated;
+  const named = screenedAuthor(author);
+  if (!named.ok) return named;
   const state = loadState(db);
   const prior = state.giftCounts[giftId] ?? 0;
   const deltas = giftDeltas(giftId, prior);
@@ -380,12 +382,12 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
     ...state,
     needs,
     giftCounts: { ...state.giftCounts, [giftId]: prior + 1 },
-    visitorSeen: state.visitorSeen.includes(author) ? state.visitorSeen : [...state.visitorSeen, author].slice(-40),
+    visitorSeen: state.visitorSeen.includes(named.name) ? state.visitorSeen : [...state.visitorSeen, named.name].slice(-40),
   };
   saveState(db, next);
   const id = randomBytes(8).toString("hex");
-  db.prepare("INSERT INTO gifts(id, gift_id, note, untrusted, author, created_at) VALUES(?, ?, ?, 1, ?, ?)").run(id, giftId, moderated.note, author.slice(0, 40) || "visitor", Date.now());
-  db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`${visitorName(author)} left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
+  db.prepare("INSERT INTO gifts(id, gift_id, note, untrusted, author, created_at) VALUES(?, ?, ?, 1, ?, ?)").run(id, giftId, moderated.note, named.name, Date.now());
+  db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`${visitorName(named.name)} left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
   void env;
   return { ok: true, id };
 }
@@ -412,13 +414,13 @@ function interact(db: DatabaseSync, kind: "wave" | "tap", ip: string) {
 
 function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) {
   if (!allowGuestNote(db, ip, Date.now())) return { ok: false, error: "RATE_LIMIT" };
-  const moderated = moderateNote(note, 280);
-  if (!moderated.ok) return moderated;
-  if (!moderated.note) return { ok: false, error: "EMPTY" };
-  if (crisisMatch(moderated.note)) {
+  if (typeof note === "string" && crisisMatch(textForCheck(note))) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'guestbook')").run(Date.now());
     return { ok: false, error: "CRISIS" };
   }
+  const moderated = moderateNote(note, 280);
+  if (!moderated.ok) return moderated;
+  if (!moderated.note) return { ok: false, error: "EMPTY" };
   const state = loadState(db);
   const messages = (db.prepare("SELECT id, channel, author FROM messages WHERE status = 'queued'").all() as { id: string; channel: "owner" | "visitor"; author: string }[]);
   const id = randomBytes(8).toString("hex");
@@ -426,19 +428,21 @@ function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) 
     [...messages, { id, channel: "visitor", author: author || "visitor" }],
     { stress: state.stress, adopted: state.sorterAdopted, cap: 8, alreadyToday: state.inboxToday, regulars: state.visitorSeen },
   );
+  const named = screenedAuthor(author);
+  if (!named.ok) return named;
   const dropped = sorted.droppedIds.includes(id);
   const scrubbed = scrubInstructions(moderated.note);
   const publicBody = scrubbed || "This note was set aside.";
   const reply = dropped || !scrubbed ? null : guestReply(id, moderated.note);
   db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'visitor', ?, ?, 1, ?, ?, ?)").run(
     id,
-    (author || "visitor").slice(0, 40),
+    named.name,
     publicBody,
     dropped ? "dropped" : "queued",
     reply,
     Date.now(),
   );
-  const name = (author || "visitor").slice(0, 40);
+  const name = named.name;
   saveState(db, {
     ...state,
     visitorSeen: state.visitorSeen.includes(name) ? state.visitorSeen : [...state.visitorSeen, name].slice(-40),
@@ -469,6 +473,18 @@ function login(db: DatabaseSync, env: Env, secret: string, ip: string) {
   logSecurity({ event: "login", status: 200, route: "/admin/login" });
   const token = createSession(db, Date.now());
   return { ok: true, token };
+}
+
+function screenedAuthor(author: string): { ok: true; name: string } | { ok: false; reason: string } {
+  const stored = (author || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const forCheck = stored.replace(/\u061C/g, "");
+  if (!forCheck) return { ok: true, name: "visitor" };
+  const checked = textForCheck(forCheck).trim().replace(/\s+/g, " ");
+  if (crisisMatch(checked)) return { ok: false, reason: "CRISIS" };
+  if (textHasPan(checked)) return { ok: false, reason: "PAN" };
+  const moderated = moderateNote(forCheck, Math.max(forCheck.length, 140));
+  if (!moderated.ok) return moderated;
+  return { ok: true, name: stored };
 }
 
 function visitorName(author: string): string {

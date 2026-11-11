@@ -123,10 +123,18 @@ fly secrets import -a lumen-tidepool < secrets.env
 
 Run this on your own machine before `fly deploy` when the volume already has a database. It is not a `release_command`. Nothing here starts on the machine by itself.
 
-Download a copy of `/data/lumen.sqlite` first. Do not point these commands at the live file. Make a second file with SQLite `VACUUM INTO` before you change anything. `sqlite3` is not in the image. Node is.
+Download a copy of `/data/lumen.sqlite` first. Do not point these commands at the live file. Make a second file with SQLite `VACUUM INTO` before you change anything. The destination is a single-quoted SQL string, with `'` written as `''`. `sqlite3` is not in the image. Node is.
 
 ```powershell
-node -e "const {DatabaseSync}=require('node:sqlite'); const db=new DatabaseSync(process.argv[1]); db.exec('VACUUM INTO '+JSON.stringify(process.argv[2])); db.close();" "C:\backups\lumen.sqlite" "C:\backups\lumen-before-deploy.sqlite"
+node -e "const {DatabaseSync}=require('node:sqlite'); const db=new DatabaseSync(process.argv[1]); const dest=String(process.argv[2]).replace(/'/g, ""''""); db.exec(""VACUUM INTO '"" + dest + ""'""); db.close();" "C:\backups\lumen.sqlite" "C:\backups\lumen-before-deploy.sqlite"
+icacls "C:\backups\lumen-before-deploy.sqlite" /inheritance:r /grant:r "${env:USERNAME}:F"
+```
+
+On Linux, the same copy, then only the owner can read it:
+
+```bash
+node -e 'const {DatabaseSync}=require("node:sqlite"); const q=String.fromCharCode(39); const db=new DatabaseSync(process.argv[1]); const dest=String(process.argv[2]).split(q).join(q+q); db.exec("VACUUM INTO "+q+dest+q); db.close();' /var/backups/lumen.sqlite /var/backups/lumen-before-deploy.sqlite
+chmod 600 /var/backups/lumen-before-deploy.sqlite
 ```
 
 The ledger should be one chain. Two rows with the same previous hash are a fork. An empty list is the chain you want:
@@ -143,7 +151,7 @@ $env:LUMEN_DATA = "C:\backups\lumen-before-deploy.sqlite"
 npm run predeploy
 ```
 
-`npm run predeploy` refuses a missing file, does not migrate, and does not write a desk notice. A database from before `chunk_edits` existed exits 0 with a note. A broken chunk chain prints one line and exits non-zero. Another SQL error is reported as `predeploy_error`, not as a broken chain. Fix the copy before you deploy.
+`npm run predeploy` refuses a missing file, a 0-byte file, and a live database that has other Lumen tables but no `chunk_edits`. It does not migrate, and it does not write a desk notice. A brand-new database with no tables exits 0 with a note. A broken chunk chain prints one line and exits non-zero. Another SQL error is reported as `predeploy_error`, not as a broken chain. Fix the copy before you deploy.
 
 ## Deploy one machine
 

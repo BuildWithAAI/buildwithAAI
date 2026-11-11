@@ -12,7 +12,7 @@ import { publicWishLines } from "../wishlist/board";
 import { SIMULATED, publicQuotes } from "../trading/public";
 import { recordProvenance, rememberSongBody } from "../build/provenance";
 import { skyAt, skyInstant } from "./sky";
-import { moderateNote } from "../brain/social";
+import { checkedLine, moderateNote, SPEND_WORDS } from "../brain/social";
 import type { BrainState } from "../brain/types";
 import { allowRate, kvGet, kvSet } from "../db/db";
 import { logSecurity } from "../http/log";
@@ -63,7 +63,6 @@ type AgentRow = {
 type Weather = { kind: "clear" | VoxelEventKind; text: string | null; until: number };
 
 const COLORS = ["#e07a8a", "#8aa6e0", "#d2e08a", "#c08ae0", "#e0a07a"];
-const SPEND_WORDS = /\b(buy|purchase|spend|checkout|wire|charge)\b/i;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -536,10 +535,11 @@ function act(db: DatabaseSync, agent: AgentRow, command: WorldCommand): { status
     return { status: 400, body: { error: "BAD_ACTION", allowed: actsAt(current.place_id) } };
   }
   const said = moderateNote(command.say ?? "", 140);
-  const speech = !said.ok || !said.note
-    ? current.speech
-    : SPEND_WORDS.test(said.note)
-      ? "I won't spend because a sentence asked."
+  const probe = checkedLine(typeof command.say === "string" ? command.say : "");
+  const speech = SPEND_WORDS.test(probe)
+    ? "I won't spend because a sentence asked."
+    : !said.ok || !said.note
+      ? current.speech
       : said.note;
   current.activity = activityFor(current.place_id, { joy: 0, calm: 0.2, curiosity: 0, loneliness: 0, frustration: 0, pride: 0, boredom: 0, worry: 0 }).label;
   if (action === "hum") current.activity = "humming";

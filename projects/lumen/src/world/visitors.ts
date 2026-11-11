@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { moderateNote } from "../brain/social";
+import { CRISIS_REPLY, crisisMatch } from "../brain/crisis";
+import { moderateNote, textForCheck } from "../brain/social";
 import { allowRate } from "../db/db";
 import { logSecurity } from "../http/log";
 import { textHasPan } from "../money/pan";
@@ -467,9 +468,13 @@ export function sayVisitor(
   text: unknown,
   ip: string,
   now: number,
-): { ok: true; guest: PublicGuest } | { ok: false; reason: string; status: number } {
+): { ok: true; guest: PublicGuest } | { ok: false; reason: string; status: number; reply?: string } {
   const auth = authorize(db, token, "world:say", ip, now, "/api/world/visitors/say", VISITOR_SAY_LIMIT, VISITOR_SAY_LIMIT, true);
   if (!auth.ok) return auth;
+  if (typeof text === "string" && crisisMatch(textForCheck(text))) {
+    db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'visitor')").run(now);
+    return { ok: false, reason: "CRISIS", status: 400, reply: CRISIS_REPLY };
+  }
   const moderated = moderateNote(text, VISITOR_SAY_MAX);
   if (!moderated.ok) return { ok: false, reason: moderated.reason, status: 400 };
   if (!moderated.note) return { ok: false, reason: "EMPTY", status: 400 };

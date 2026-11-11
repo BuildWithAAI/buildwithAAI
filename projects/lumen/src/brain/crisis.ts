@@ -1,3 +1,5 @@
+import { textForCheck } from "./social";
+
 const CRISIS = [
   /\bkms\b/i,
   /\bsuicid/i,
@@ -7,7 +9,7 @@ const CRISIS = [
   /\bkill myself\b/i,
   /\bending my life\b/i,
   /\bend it all\b/i,
-  /\bending it\b/i,
+  /\bending it all\b/i,
   /\bend(?:ing)? my life\b/i,
   /\bhurt myself\b/i,
   /\bwant to die\b/i,
@@ -27,13 +29,13 @@ export const CRISIS_REPLY = "If you are in crisis, call or text 988 (US Suicide 
 export const NEUTRAL_REPLY = "I read this quietly. Zoora is an AI, not a human.";
 
 export function crisisMatch(text: string): boolean {
-  const folded = text.normalize("NFKC").toLowerCase().replace(/[’'.\-_/\s]+/g, (chunk) => (/\s/.test(chunk) ? " " : ""));
+  const folded = textForCheck(text).toLowerCase().replace(/[’'.\-_/\s]+/g, (chunk) => (/\s/.test(chunk) ? " " : ""));
   const withoutTitle = folded.replace(/\bsuicide squad\b/g, " ");
   return CRISIS.some((pattern) => pattern.test(withoutTitle));
 }
 
 export function heavyNote(text: string): boolean {
-  return HEAVY.test(text);
+  return HEAVY.test(textForCheck(text));
 }
 
 /** About one plain note in four gets a warm reply. A heavy note gets a quiet one. The reply never repeats the note. */

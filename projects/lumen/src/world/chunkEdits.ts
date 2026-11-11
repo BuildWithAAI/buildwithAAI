@@ -303,8 +303,20 @@ function ownerRecovery(input: ChunkEditInput): boolean {
   return false;
 }
 
+/** Full-chain check spacing. Boot always verifies. A mid-chain edit is caught on this cadence and then frozen. */
+export const CHUNK_CHAIN_FULL_VERIFY_EVERY = 32;
+
+function fullVerifyDue(db: DatabaseSync): boolean {
+  const count = Number((db.prepare("SELECT COUNT(*) AS n FROM chunk_edits").get() as { n: number }).n);
+  return count > 0 && count % CHUNK_CHAIN_FULL_VERIFY_EVERY === 0;
+}
+
 export function appendChunkEdit(db: DatabaseSync, input: ChunkEditInput): ChunkEditRow {
   if (!tailHashOk(db)) {
+    degradeChunkChain(db);
+    throw new Error("CHAIN");
+  }
+  if (fullVerifyDue(db) && !verifyChunkChain(db)) {
     degradeChunkChain(db);
     throw new Error("CHAIN");
   }

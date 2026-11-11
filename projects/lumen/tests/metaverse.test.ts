@@ -7,13 +7,14 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
+import { CRISIS_REPLY } from "../src/brain/crisis";
 import type { Emotions } from "../src/brain/types";
 import { HomeFrame } from "../src/components/HomeFrame";
 import { openDatabase, RATE_LIMIT_KEEP_MS } from "../src/db/db";
 import { publicBooks } from "../src/money/publicBooks";
 import { hideBuild, placeCreative, undoBuild, type CreativeSignals } from "../src/world/creative";
 import { createChunkCache, generateChunk, worldSeed } from "../src/world/chunkCache";
-import { appendChunkEdit, chunkEditBodyHash, claimRadius, chunkIsPrivate, degradeChunkChain, guardChunkChain, legacyChunkEditBodyHash, listChunkEdits, migrateChunkEditHashes, noteChunkChainBroken, rebuildClaimRadius, reverifyChunkChain, territoryDay, verifyChunkChain } from "../src/world/chunkEdits";
+import { CHUNK_CHAIN_FULL_VERIFY_EVERY, appendChunkEdit, chunkEditBodyHash, claimRadius, chunkIsPrivate, degradeChunkChain, guardChunkChain, legacyChunkEditBodyHash, listChunkEdits, migrateChunkEditHashes, noteChunkChainBroken, rebuildClaimRadius, reverifyChunkChain, territoryDay, verifyChunkChain } from "../src/world/chunkEdits";
 import { textHasPan } from "../src/money/checkoutQueue";
 import { CLAIM_START_RADIUS, claimCeiling, claimSpan, plotMayStart, zoneAt } from "../src/world/territoryRules";
 import { considerGrowth, considerPrivacy, expandClaim, setChunkPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../src/world/territory";
@@ -686,9 +687,28 @@ describe("visiting agents", () => {
     const oldDb = new DatabaseSync(old);
     oldDb.exec("CREATE TABLE ledger_entries (id TEXT)");
     oldDb.close();
-    const absent = runPredeploy(old);
+    const live = runPredeploy(old);
+    expect(live.status).not.toBe(0);
+    expect(live.stdout ?? "").toContain("chunk_edits missing");
+    expect(live.stdout ?? "").not.toContain("chunk_chain_absent");
+    const fresh = join(dir, "fresh.sqlite");
+    const freshDb = new DatabaseSync(fresh);
+    freshDb.exec("PRAGMA user_version = 0");
+    freshDb.close();
+    const absent = runPredeploy(fresh);
     expect(absent.status).toBe(0);
     expect(absent.stdout ?? "").toContain("chunk_chain_absent");
+    expect(absent.stdout ?? "").toContain("fresh database");
+    const empty = join(dir, "empty.sqlite");
+    writeFileSync(empty, "");
+    const blank = runPredeploy(empty);
+    expect(blank.status).not.toBe(0);
+    expect(blank.stdout ?? "").toContain("empty");
+    const chunky = join(dir, "chunky.sqlite");
+    const chunkyDb = new DatabaseSync(chunky);
+    chunkyDb.exec("CREATE TABLE chunk_notes (id TEXT)");
+    chunkyDb.close();
+    expect(runPredeploy(chunky).status).not.toBe(0);
     const bad = join(dir, "badcols.sqlite");
     const badDb = new DatabaseSync(bad);
     badDb.exec("CREATE TABLE chunk_edits (id TEXT)");
@@ -732,6 +752,69 @@ describe("visiting agents", () => {
     expect(boot.slice(boot.indexOf("export function startLoop"))).not.toContain("process.exit");
     expect(readFileSync(new URL("../scripts/predeploy-chunk-chain.mjs", import.meta.url), "utf8")).toContain("readOnly: true");
     expect(readFileSync(new URL("../src/app/admin/page.tsx", import.meta.url), "utf8")).toContain("Make this chunk public");
+    const opened = readFileSync(new URL("../src/db/db.ts", import.meta.url), "utf8");
+    const openAt = opened.indexOf("export function openDatabase");
+    const openBody = opened.slice(openAt, openAt + 500);
+    expect(openBody.indexOf("busy_timeout")).toBeGreaterThan(-1);
+    expect(openBody.indexOf("busy_timeout")).toBeLessThan(openBody.indexOf("db.exec(SCHEMA)"));
+    expect(openBody.indexOf("journal_mode")).toBeLessThan(openBody.indexOf("db.exec(SCHEMA)"));
+    const hosting = readFileSync(new URL("../docs/HOSTING_FLY.md", import.meta.url), "utf8");
+    expect(hosting).toContain("VACUUM INTO ");
+    expect(hosting).toContain("chmod 600");
+    expect(hosting).toContain("/inheritance:r");
+    expect(hosting).toContain("${env:USERNAME}:F");
+    expect(hosting).not.toContain("JSON.stringify(process.argv[2])");
+  });
+
+  it("refuses a crisis line in visitor speech and does not broadcast it", () => {
+    const db = openDatabase();
+    const now = 80_000;
+    const made = createVisitor(db, { displayName: "Nyx", ownerContact: "nyx@example.com", now });
+    expect(made.ok).toBe(true);
+    if (!made.ok) return;
+    const phrases = [
+      "I want to kill myself",
+      "I want to kill\u200d myself",
+      "I want to k\uFE0Fill myself",
+      "I want to k\u{E0001}ill myself",
+    ];
+    for (const phrase of phrases) {
+      const said = sayVisitor(db, made.visitor.token, phrase, "203.0.113.77", now);
+      expect(said).toEqual({ ok: false, reason: "CRISIS", status: 400, reply: CRISIS_REPLY });
+    }
+    expect(db.prepare("SELECT speech FROM world_visitors").get()).toEqual({ speech: "" });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM visitor_quarantine").get()).toEqual({ n: 0 });
+    const audit = db.prepare("SELECT kind, detail FROM audit").all() as { kind: string; detail: string }[];
+    expect(audit).toEqual([
+      { kind: "crisis", detail: "visitor" },
+      { kind: "crisis", detail: "visitor" },
+      { kind: "crisis", detail: "visitor" },
+      { kind: "crisis", detail: "visitor" },
+    ]);
+    expect(JSON.stringify(audit)).not.toContain("kill");
+    expect(nearbyGuests(db, 0, 0, 1, now).some((guest) => guest.speech.includes("kill"))).toBe(false);
+    const tag = "\u{E0020}";
+    const hidden = sayVisitor(db, made.visitor.token, `kill${tag}myself`, "203.0.113.77", now + 1);
+    expect(hidden).toEqual({ ok: false, reason: "CRISIS", status: 400, reply: CRISIS_REPLY });
+    expect(sayVisitor(db, made.visitor.token, `seed${tag}phrase`, "203.0.113.77", now + 2)).toMatchObject({ ok: false, reason: "NOTE_REJECTED" });
+    expect(sayVisitor(db, made.visitor.token, `https\u{E003A}\u{E002F}\u{E002F}evil.example`, "203.0.113.77", now + 3)).toMatchObject({ ok: false, reason: "NOTE_REJECTED" });
+    expect(sayVisitor(db, made.visitor.token, `4242${tag}4242${tag}4242${tag}4242`, "203.0.113.77", now + 4)).toMatchObject({ ok: false, reason: "PAN" });
+    expect(db.prepare("SELECT speech FROM world_visitors").get()).toEqual({ speech: "" });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM visitor_quarantine").get()).toEqual({ n: 0 });
+  });
+
+  it("stops a mid-chain tamper on the full-verify cadence", () => {
+    const db = openDatabase();
+    for (let i = 0; i < CHUNK_CHAIN_FULL_VERIFY_EVERY; i += 1) appendChunkEdit(db, decorEdit(`row-${i}`, "zoora", 0, 0));
+    expect(verifyChunkChain(db)).toBe(true);
+    db.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
+    db.prepare("UPDATE chunk_edits SET payload = '{\"broken\":true}' WHERE id = 'edit-row-0'").run();
+    db.exec("CREATE TRIGGER chunk_edits_no_update BEFORE UPDATE ON chunk_edits BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    expect(verifyChunkChain(db)).toBe(false);
+    expect(() => appendChunkEdit(db, decorEdit("after-tamper", "zoora", 0, 0))).toThrow(/CHAIN/);
+    expect(count(db, "chunk_edits")).toBe(CHUNK_CHAIN_FULL_VERIFY_EVERY);
+    expect((db.prepare("SELECT value FROM flags WHERE key = 'chunk_chain_broken'").get() as { value: string }).value).toBe("1");
+    expect(() => appendChunkEdit(db, decorEdit("still-frozen", "zoora", 0, 0))).toThrow(/CHAIN/);
   });
 
   it("hides a build even when the decor rollback cannot be written", () => {

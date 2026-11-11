@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
 const file = process.env.LUMEN_DATA ?? "";
@@ -7,6 +7,22 @@ if (!file || file === ":memory:" || !existsSync(file)) {
   console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_broken", status: 500, route: "predeploy", detail: "missing" }));
   process.exit(1);
 }
+if (statSync(file).size === 0) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_broken", status: 500, route: "predeploy", detail: "empty" }));
+  process.exit(1);
+}
+
+const LUMEN_TABLES = new Set([
+  "kv", "feed", "diary", "creations", "messages", "gifts", "ledger_entries", "flags",
+  "webhook_events", "disputes", "checkouts", "deliveries", "sessions", "rate_limits",
+  "audit", "proposals", "sol_orders", "sol_refund_flags", "checkout_queue", "paper_trades",
+  "price_quotes", "expected_spends", "purchase_claims", "print_orders", "alert_retries",
+  "world_agents", "world_log", "owner_alerts", "ideas", "findings", "research_queries",
+  "research_pending", "world_builds", "world_build_versions", "creative_log", "zoora_goals",
+  "zoora_goal_history", "shop", "shop_listings", "shop_orders", "provenance", "keeper_wishlist",
+  "keeper_inventory", "telegram_outbox", "telegram_drops", "research_briefs", "world_visitors",
+  "visitor_quarantine",
+]);
 
 function sortValue(value) {
   if (Array.isArray(value)) return value.map(sortValue);
@@ -36,9 +52,16 @@ function bodyHash(row) {
 const db = new DatabaseSync(file, { readOnly: true });
 let rows = [];
 try {
-  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'chunk_edits'").get();
-  if (!tables) {
-    console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_absent", status: 200, route: "predeploy", detail: "chunk_edits is not in this database" }));
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all();
+  const names = tables.map((row) => row.name);
+  if (!names.includes("chunk_edits")) {
+    const live = names.some((name) => LUMEN_TABLES.has(name) || /chunk/i.test(name));
+    if (live) {
+      console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_broken", status: 500, route: "predeploy", detail: "chunk_edits missing on a live database" }));
+      db.close();
+      process.exit(1);
+    }
+    console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_absent", status: 200, route: "predeploy", detail: "fresh database" }));
     db.close();
     process.exit(0);
   }
