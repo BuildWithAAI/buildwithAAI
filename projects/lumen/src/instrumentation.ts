@@ -6,6 +6,9 @@ export async function onRequestError(error: unknown, _request: unknown, context:
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.VITEST) return;
-  const { startLoop } = await import("./server/engine");
+  const { getEngine, startLoop } = await import("./server/engine");
+  const { guardChunkChain } = await import("./world/chunkEdits");
+  const engine = getEngine();
+  if (!guardChunkChain(engine.db)) process.exit(1);
   startLoop();
 }

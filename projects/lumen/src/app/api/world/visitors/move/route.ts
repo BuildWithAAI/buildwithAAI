@@ -1,5 +1,5 @@
 import { moveVisitor } from "../../../../../world/visitors";
-import { bearerToken, readVisitorJson, visitorDb, visitorResult } from "../../visitorGate";
+import { bearerToken, readVisitorJson, refuseVisitorPost, visitorDb, visitorResult } from "../../visitorGate";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +8,8 @@ function whole(value: unknown): number | null {
 }
 
 export async function POST(request: Request) {
+  const refused = refuseVisitorPost(request);
+  if (refused) return refused;
   const gate = visitorDb(request);
   if ("closed" in gate) return gate.closed;
   const parsed = await readVisitorJson(request);

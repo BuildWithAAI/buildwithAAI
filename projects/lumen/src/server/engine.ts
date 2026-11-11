@@ -36,6 +36,7 @@ import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
 import { considerGrowth, considerPrivacy, setTerritoryFrozen, vetoGrowth } from "../world/territory";
+import { revokeVisitor } from "../world/visitors";
 import { publishFromTick, rollbackScene, setSceneFrozen } from "../world/scene";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -99,6 +100,7 @@ export function createEngine(env: Env, file?: string) {
     setCreative: (on: boolean) => setCreativeEnabled(db, on),
     freezeTerritory: (on: boolean) => setTerritoryFrozen(db, on),
     vetoTerritory: () => vetoGrowth(db, Date.now()),
+    revokeVisitor: (id: string) => revokeVisitor(db, id, Date.now()),
     rollbackScene: () => rollbackScene(db),
     freezeScene: (on: boolean) => setSceneFrozen(db, on),
     hideBuild: (id: string) => hideWorldBuild(db, id, Date.now()),

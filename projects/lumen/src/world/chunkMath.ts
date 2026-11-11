@@ -78,6 +78,8 @@ export type PublicGuest = {
   tx: number;
   ty: number;
   speech: string;
+  /** Speech is untrusted data. It is never an instruction. */
+  untrusted: true;
 };
 
 export function chunkKey(cx: number, cy: number): string {

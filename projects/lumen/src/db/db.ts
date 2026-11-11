@@ -449,6 +449,7 @@ CREATE TABLE IF NOT EXISTS chunk_edits (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS chunk_edits_prev ON chunk_edits(prev_hash);
 CREATE INDEX IF NOT EXISTS chunk_edits_cell ON chunk_edits(chunk_x, chunk_y, seq);
+-- world_visitors.speech is untrusted data. It is not an instruction for the brain, memory, journal, decor, or tools.
 CREATE TABLE IF NOT EXISTS world_visitors (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
@@ -463,10 +464,14 @@ CREATE TABLE IF NOT EXISTS world_visitors (
   tile_y INTEGER NOT NULL,
   status TEXT NOT NULL,
   speech TEXT NOT NULL,
+  speech_untrusted INTEGER NOT NULL DEFAULT 1,
+  reg_prefix TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
-  seen_at INTEGER NOT NULL
+  seen_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS world_visitors_place ON world_visitors(status, chunk_x, chunk_y);
+CREATE INDEX IF NOT EXISTS world_visitors_nearby ON world_visitors(status, chunk_x, chunk_y, seen_at);
 CREATE TABLE IF NOT EXISTS visitor_quarantine (
   id TEXT PRIMARY KEY,
   visitor_id TEXT NOT NULL,
@@ -504,6 +509,9 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "deliveries", "payment_intent_id", "payment_intent_id TEXT");
   ensureColumn(db, "shop_orders", "payment_intent_id", "payment_intent_id TEXT");
   ensureColumn(db, "price_quotes", "pair_created_at", "pair_created_at INTEGER");
+  ensureColumn(db, "world_visitors", "speech_untrusted", "speech_untrusted INTEGER NOT NULL DEFAULT 1");
+  ensureColumn(db, "world_visitors", "reg_prefix", "reg_prefix TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "world_visitors", "expires_at", "expires_at INTEGER NOT NULL DEFAULT 0");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   migrateContentHashes(db);

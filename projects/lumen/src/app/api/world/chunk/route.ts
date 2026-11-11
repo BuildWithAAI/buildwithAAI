@@ -6,7 +6,6 @@ import { getEngine } from "../../../../server/engine";
 import { parseChunkQuery } from "../../../../world/chunkMath";
 import { publicChunk } from "../../../../world/chunks";
 import { worldSeed } from "../../../../world/chunkCache";
-import { nearbyGuests, visitorsEnabled } from "../../../../world/visitors";
 import { territoryDesk } from "../../../../world/territory";
 
 export const dynamic = "force-dynamic";
@@ -24,11 +23,10 @@ export function GET(request: Request) {
     return Response.json({ error: "RATE_LIMIT" }, { status: 429, headers: { "cache-control": "no-store" } });
   }
   const chunk = publicChunk(engine.db, spot.cx, spot.cy, worldSeed(engine.env));
-  const guests = chunk.private || !visitorsEnabled(process.env) ? [] : nearbyGuests(engine.db, spot.cx, spot.cy, 0, now);
   const territory = territoryDesk(engine.db, now);
   return Response.json({
     ...chunk,
-    guests,
+    guests: [],
     territory: { radius: territory.radius, buffer: territory.buffer },
   }, {
     headers: { "cache-control": "no-store" },

@@ -173,6 +173,13 @@ describe("memory, wants, gifts", () => {
     expect(moderateNote("http://evil.example/steal").ok).toBe(false);
     expect(moderateNote("x".repeat(141)).ok).toBe(false);
     expect(moderateNote("line\u0000break").ok).toBe(false);
+    expect(moderateNote("a\u2028b").ok).toBe(false);
+    expect(moderateNote("a\u2029b").ok).toBe(false);
+    expect(moderateNote("a\u2060b").ok).toBe(false);
+    expect(moderateNote("a\u00ADb").ok).toBe(false);
+    expect(moderateNote("a\uFEFFb").ok).toBe(false);
+    expect(moderateNote("a\u0085b").ok).toBe(false);
+    expect(moderateNote("a\u{E0001}b").ok).toBe(false);
   });
 
   it("caps wishlist asks per day", () => {

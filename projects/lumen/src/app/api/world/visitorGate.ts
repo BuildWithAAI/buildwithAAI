@@ -6,6 +6,38 @@ import { visitorsEnabled } from "../../../world/visitors";
 import type { DatabaseSync } from "node:sqlite";
 
 const QUIET = { "cache-control": "no-store" };
+const PUBLIC_ORIGINS = ["https://zoora.ai", "https://world.zoora.ai"];
+
+/** Visitor writes need JSON and an Origin that matches LUMEN_ORIGIN. A missing Origin is refused. */
+export function visitorWriteAllowed(request: Request, env: Record<string, string | undefined> = process.env): { ok: true } | { ok: false; status: number; error: string } {
+  const type = (request.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
+  if (type !== "application/json") return { ok: false, status: 415, error: "TYPE" };
+  const origin = request.headers.get("origin");
+  if (!origin) return { ok: false, status: 403, error: "ORIGIN" };
+  const configured = (env.LUMEN_ORIGIN ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+  const allowed = [...PUBLIC_ORIGINS, ...configured];
+  let got = "";
+  try {
+    got = new URL(origin).origin;
+  } catch {
+    return { ok: false, status: 403, error: "ORIGIN" };
+  }
+  const match = allowed.some((item) => {
+    try {
+      return new URL(item).origin === got;
+    } catch {
+      return false;
+    }
+  });
+  return match ? { ok: true } : { ok: false, status: 403, error: "ORIGIN" };
+}
+
+export function refuseVisitorPost(request: Request): Response | null {
+  if (!visitorsEnabled(process.env)) return visitorsClosed();
+  const allowed = visitorWriteAllowed(request, process.env);
+  if (!allowed.ok) return visitorResult(allowed.status, { error: allowed.error });
+  return null;
+}
 
 export function visitorsClosed(): Response {
   return Response.json({ error: "VISITORS_OFF" }, { status: 404, headers: QUIET });

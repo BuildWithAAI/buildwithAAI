@@ -4,7 +4,7 @@ import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { loadIdentity } from "../../identity/load";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, keeperListAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sceneDesk, sendChat, shopDesk, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, keeperListAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sceneDesk, sendChat, shopDesk, visitorDesk, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
@@ -232,6 +232,11 @@ export default async function AdminPage() {
         <form action={creativeAction}>
           <input type="hidden" name="op" value="veto-territory" />
           <button type="submit">Veto the latest growth</button>
+        </form>
+        <form action={visitorDesk}>
+          <input type="hidden" name="op" value="revoke" />
+          <input name="id" placeholder="Visitor id" />
+          <button type="submit">Revoke that visitor</button>
         </form>
         <form action={creativeAction}>
           <input type="hidden" name="op" value={creative.on ? "off" : "on"} />

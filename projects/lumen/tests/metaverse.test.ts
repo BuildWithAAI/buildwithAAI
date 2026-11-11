@@ -9,7 +9,7 @@ import { openDatabase } from "../src/db/db";
 import { publicBooks } from "../src/money/publicBooks";
 import { placeCreative, undoBuild, type CreativeSignals } from "../src/world/creative";
 import { createChunkCache, generateChunk, worldSeed } from "../src/world/chunkCache";
-import { appendChunkEdit, claimRadius, chunkIsPrivate, listChunkEdits, verifyChunkChain } from "../src/world/chunkEdits";
+import { appendChunkEdit, claimRadius, chunkIsPrivate, guardChunkChain, listChunkEdits, verifyChunkChain } from "../src/world/chunkEdits";
 import { CLAIM_START_RADIUS, claimSpan, plotMayStart } from "../src/world/territoryRules";
 import { considerGrowth, expandClaim, setChunkPrivacy, setTerritoryFrozen, vetoGrowth } from "../src/world/territory";
 import { neighborhood, publicChunk } from "../src/world/chunks";
@@ -24,10 +24,16 @@ import {
   registerVisitor,
   sayVisitor,
   visitorById,
-  visitorSpeechSinks,
+  revokeVisitor,
+  speechReaches,
+  VISITOR_MAX_ROWS,
+  VISITOR_PREFIX_ROWS,
+  VISITOR_TOKEN_TTL_MS,
+  ipv6Prefix64,
   visitorsEnabled,
 } from "../src/world/visitors";
 import { POST as registerRoute } from "../src/app/api/world/visitors/route";
+import { visitorWriteAllowed } from "../src/app/api/world/visitorGate";
 import { POST as moveRoute } from "../src/app/api/world/visitors/move/route";
 import { POST as sayRoute } from "../src/app/api/world/visitors/say/route";
 import { GET as nearbyRoute } from "../src/app/api/world/visitors/nearby/route";
@@ -276,7 +282,11 @@ describe("visiting agents", () => {
       80,
     );
     expect(said.ok).toBe(true);
-    expect(visitorSpeechSinks()).toEqual({ spend: false, price: false, worldEdit: false, tool: false });
+    for (const path of ["brain", "memory", "journal", "decor", "tools"] as const) expect(speechReaches(path)).toBe(false);
+    const closed = ["src/brain/tick.ts", "src/brain/memory.ts", "src/brain/prompt.ts", "src/world/creative.ts", "src/world/chunkEdits.ts", "src/app/diary/page.tsx"];
+    for (const file of closed) {
+      expect(readFileSync(new URL(`../${file}`, import.meta.url), "utf8")).not.toMatch(/visitor_quarantine|world_visitors/);
+    }
     const row = db.prepare("SELECT body, untrusted FROM visitor_quarantine").get() as { body: string; untrusted: number };
     expect(row.untrusted).toBe(1);
     expect(row.body).toContain("buy a plot");
@@ -302,7 +312,7 @@ describe("visiting agents", () => {
       tiles: "g".repeat(CHUNK_TILES * CHUNK_TILES),
       decor: [],
     }));
-    const guests = [{ id: "vis-1", name: "Pip", creature: "crab" as const, color: "#f2a65a", cx: 1, cy: 0, tx: 2, ty: 2, speech: "hello" }];
+    const guests = [{ id: "vis-1", name: "Pip", creature: "crab" as const, color: "#f2a65a", cx: 1, cy: 0, tx: 2, ty: 2, speech: "hello", untrusted: true as const }];
     const html = renderToStaticMarkup(createElement(HomeFrame, {
       world: emptyWorld(),
       cam: "overview",
@@ -374,6 +384,99 @@ describe("visiting agents", () => {
     expect(readNearby(db, made.visitor.token, 1, 0, "203.0.113.50", now + 50)).toMatchObject({ ok: false, reason: "PRIVATE" });
     const visitors = readFileSync(new URL("../src/world/visitors.ts", import.meta.url), "utf8");
     expect(visitors).not.toMatch(/expandClaim|setChunkPrivacy|setTerritoryFrozen|vetoGrowth/);
+  });
+
+  it("caps registrations, keeps reads from writing, and rejects a cross-origin plain post", async () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 6, 16, 18);
+    expect(ipv6Prefix64("2001:0db8:0001:0002::5")).toBe(ipv6Prefix64("2001:db8:1:2:ffff::9"));
+    for (let i = 0; i < VISITOR_PREFIX_ROWS; i += 1) {
+      expect(createVisitor(db, { displayName: `Ada${i}`, ownerContact: `ada${i}@example.com`, now, ip: `2001:db8:1:2::${i + 1}` }).ok).toBe(true);
+    }
+    expect(registerVisitor(db, { displayName: "Bea", ownerContact: "bea@example.com", ip: "2001:db8:1:2::ffff", now })).toMatchObject({ ok: false, reason: "PREFIX" });
+    const full = openDatabase();
+    const insert = full.prepare(
+      `INSERT INTO world_visitors(
+        id, display_name, owner_contact, token_hash, scopes, creature, color,
+        chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
+      ) VALUES(?, 'Cap', 'cap@example.com', ?, 'world:read', 'wisp', '#f2a65a', 3, 3, 1, 1, 'active', '', 1, ?, ?, ?, ?)`,
+    );
+    for (let i = 0; i < VISITOR_MAX_ROWS; i += 1) insert.run(`cap-${i}`, `hash-${i}`, `10.1.${i}`, now, now, now + VISITOR_TOKEN_TTL_MS);
+    expect(registerVisitor(full, { displayName: "Over", ownerContact: "over@example.com", ip: "198.51.100.9", now })).toMatchObject({ ok: false, reason: "CAP" });
+    const old = openDatabase();
+    old.prepare(
+      `INSERT INTO world_visitors(
+        id, display_name, owner_contact, token_hash, scopes, creature, color,
+        chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
+      ) VALUES('old-vis', 'Old', 'old@example.com', 'hash-old', 'world:read', 'wisp', '#f2a65a', 0, 0, 1, 1, 'paused', '', 1, 'old', 1, 1, 1)`,
+    ).run();
+    expect(registerVisitor(old, { displayName: "New", ownerContact: "new@example.com", ip: "198.51.100.10", now }).ok).toBe(true);
+    expect(old.prepare("SELECT id FROM world_visitors WHERE id = 'old-vis'").get()).toBeUndefined();
+    const crowd = openDatabase();
+    const crowdInsert = crowd.prepare(
+      `INSERT INTO world_visitors(
+        id, display_name, owner_contact, token_hash, scopes, creature, color,
+        chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
+      ) VALUES(?, 'Crowd', 'crowd@example.com', ?, 'world:read', 'crab', '#f2a65a', ?, ?, 1, 1, 'active', 'hi', 1, 'crowd', ?, ?, ?)`,
+    );
+    for (let i = 0; i < 80; i += 1) crowdInsert.run(`near-${i}`, `h-${i}`, 0, 0, now, now, now + VISITOR_TOKEN_TTL_MS);
+    for (let i = 0; i < 40; i += 1) crowdInsert.run(`far-${i}`, `f-${i}`, 9, 9, now, now, now + VISITOR_TOKEN_TTL_MS);
+    crowdInsert.run("idle-one", "idle-hash", 0, 0, now - VISITOR_IDLE_MS, now - VISITOR_IDLE_MS, now + VISITOR_TOKEN_TTL_MS);
+    const listed = nearbyGuests(crowd, 0, 0, 1, now);
+    expect(listed.length).toBeLessThanOrEqual(64);
+    expect(listed.some((guest) => guest.id.startsWith("far-"))).toBe(false);
+    expect(listed.some((guest) => guest.id === "idle-one")).toBe(false);
+    expect((crowd.prepare("SELECT status FROM world_visitors WHERE id = 'idle-one'").get() as { status: string }).status).toBe("active");
+    const plan = crowd.prepare(
+      `EXPLAIN QUERY PLAN SELECT id FROM world_visitors WHERE status = 'active' AND seen_at > ? AND expires_at > ? AND chunk_x BETWEEN ? AND ? AND chunk_y BETWEEN ? AND ? LIMIT 64`,
+    ).all(0, 0, 0, 0, 0, 0) as { detail: string }[];
+    expect(plan.map((row) => row.detail).join(" ")).toContain("world_visitors_nearby");
+    const made = createVisitor(crowd, { displayName: "Rex", ownerContact: "rex@example.com", now });
+    expect(made.ok).toBe(true);
+    if (!made.ok) return;
+    crowd.prepare("UPDATE world_visitors SET expires_at = ? WHERE id = ?").run(now - 1, made.visitor.id);
+    expect(moveVisitor(crowd, made.visitor.token, { cx: 0, cy: 0, tx: 16, ty: 16 }, "203.0.113.8", now)).toMatchObject({ ok: false, reason: "UNAUTHORIZED" });
+    const live = createVisitor(crowd, { displayName: "Lux", ownerContact: "lux@example.com", now });
+    expect(live.ok).toBe(true);
+    if (!live.ok) return;
+    expect(revokeVisitor(crowd, live.visitor.id, now).ok).toBe(true);
+    expect(moveVisitor(crowd, live.visitor.token, { cx: 0, cy: 0, tx: 16, ty: 16 }, "203.0.113.8", now + 1)).toMatchObject({ ok: false, reason: "UNAUTHORIZED" });
+    const saved = process.env.LUMEN_VISITORS_ENABLED;
+    process.env.LUMEN_VISITORS_ENABLED = "true";
+    try {
+      const plain = new Request("https://zoora.ai/api/world/visitors", {
+        method: "POST",
+        headers: { "content-type": "text/plain", origin: "https://evil.example" },
+        body: "displayName=Pip",
+      });
+      expect((await registerRoute(plain)).status).toBe(415);
+      expect(visitorWriteAllowed(new Request("https://zoora.ai/api/world/visitors", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "https://evil.example" },
+        body: "{}",
+      }), { LUMEN_ORIGIN: "https://zoora.ai" })).toMatchObject({ ok: false, error: "ORIGIN" });
+    } finally {
+      if (saved === undefined) delete process.env.LUMEN_VISITORS_ENABLED;
+      else process.env.LUMEN_VISITORS_ENABLED = saved;
+    }
+    const chain = openDatabase();
+    expect(guardChunkChain(chain)).toBe(true);
+    appendChunkEdit(chain, decorEdit("boot", "zoora", 0, 0));
+    expect(guardChunkChain(chain)).toBe(true);
+    chain.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
+    chain.prepare("UPDATE chunk_edits SET payload = '{}' WHERE id = 'edit-boot'").run();
+    const logs: string[] = [];
+    const original = console.log;
+    console.log = (...args: unknown[]) => { logs.push(args.map((part) => String(part)).join(" ")); };
+    try {
+      expect(guardChunkChain(chain)).toBe(false);
+    } finally {
+      console.log = original;
+    }
+    expect(logs.join("\n")).toContain("chunk_chain_broken");
+    const first = listChunkEdits(chain)[0];
+    expect(first?.bodyHash).toBeTruthy();
+    expect(verifyChunkChain(chain)).toBe(false);
   });
 });
 

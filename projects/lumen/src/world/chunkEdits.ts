@@ -87,6 +87,9 @@ export function sandboxDecorPayload(payload: unknown): string {
 }
 
 export function chunkEditBodyHash(input: {
+  id: string;
+  atMs: number;
+  idempotencyKey: string;
   chunkX: number;
   chunkY: number;
   tileX: number;
@@ -96,6 +99,9 @@ export function chunkEditBodyHash(input: {
   actor: string;
 }): string {
   return createHash("sha256").update(canonical({
+    id: input.id,
+    atMs: input.atMs,
+    idempotencyKey: input.idempotencyKey,
     chunkX: input.chunkX,
     chunkY: input.chunkY,
     tileX: input.tileX,
@@ -305,6 +311,13 @@ export function verifyChunkChain(db: DatabaseSync): boolean {
     prev = entry;
   }
   return true;
+}
+
+/** Boot and predeploy. A broken chain is logged as one line. The caller exits. */
+export function guardChunkChain(db: DatabaseSync): boolean {
+  if (verifyChunkChain(db)) return true;
+  console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_broken", status: 500, route: "boot" }));
+  return false;
 }
 
 /** Latest decor on a chunk. A rollback drops that build. Generated tiles are not stored here. */

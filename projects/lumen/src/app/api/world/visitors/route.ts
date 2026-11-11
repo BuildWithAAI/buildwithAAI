@@ -1,9 +1,11 @@
 import { registerVisitor } from "../../../../world/visitors";
-import { readVisitorJson, visitorDb, visitorResult } from "../visitorGate";
+import { readVisitorJson, refuseVisitorPost, visitorDb, visitorResult } from "../visitorGate";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const refused = refuseVisitorPost(request);
+  if (refused) return refused;
   const gate = visitorDb(request);
   if ("closed" in gate) return gate.closed;
   const parsed = await readVisitorJson(request);

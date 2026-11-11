@@ -129,6 +129,12 @@ export async function shopDesk(form: FormData) {
   await getEngine().shopAct(op, String(form.get("id") ?? ""), form.get("on") === "1");
 }
 
+export async function visitorDesk(form: FormData) {
+  await gate();
+  if (String(form.get("op") ?? "") !== "revoke") return;
+  await getEngine().revokeVisitor(String(form.get("id") ?? ""));
+}
+
 export async function creativeAction(form: FormData) {
   await gate();
   const engine = getEngine();
