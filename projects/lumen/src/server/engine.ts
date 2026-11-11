@@ -523,7 +523,7 @@ function ownerChat(db: DatabaseSync, env: Env, text: string, bucket = "owner-cha
     id,
     author === "jarvis" ? "jarvis" : "owner",
     name,
-    text.slice(0, 500),
+    turn.stored.slice(0, 500),
     turn.queued ? "queued" : "replied",
     reply,
     Date.now(),

@@ -28,19 +28,25 @@ const HEAVY = /\b(sad|lonely|depress\w*|hopeless|worthless|hurt|awful|terrible|h
 export const CRISIS_REPLY = "If you are in crisis, call or text 988 (US Suicide & Crisis Lifeline). Outside the US, visit https://findahelpline.com. Zoora is an AI, not a human.";
 export const NEUTRAL_REPLY = "I read this quietly. Zoora is an AI, not a human.";
 
+/** A following ordinary phrase. Anything else, including the end of the sentence, counts. */
+const ENDING_BENIGN = /^\s+(?:with|on|for|early|here|now that|at|by|in a|there)\b/i;
+const ENDING_INTENT = /(?:\b(?:i|im|me|my)\b|\b(?:want|going) to\b|\bthinking of\b|\b(?:gonna|should|might)\b)/i;
+
 /**
- * "ending it" / "end it" counts when it closes the sentence, is followed by "all",
- * or follows self-reference or intent. "ending it with…" stays ordinary.
+ * "ending it" counts unless a benign continuation follows.
+ * "end it" counts in that same shape when self-reference or intent comes before it.
  */
 function endingItCrisis(folded: string): boolean {
-  const pattern = /\bend(?:ing)? it\b/gi;
-  const intent = /(?:\b(?:i|im|me|my)\b|\b(?:want|going) to\b|\bthinking of\b|\b(?:gonna|should|might)\b)/i;
+  const ending = /\bending it\b/gi;
   let match: RegExpExecArray | null;
-  while ((match = pattern.exec(folded)) !== null) {
-    const before = folded.slice(0, match.index);
+  while ((match = ending.exec(folded)) !== null) {
+    if (!ENDING_BENIGN.test(folded.slice(match.index + match[0].length))) return true;
+  }
+  const endIt = /\bend it\b/gi;
+  while ((match = endIt.exec(folded)) !== null) {
     const after = folded.slice(match.index + match[0].length);
-    if (/^\s+with\b/i.test(after)) continue;
-    if (/^\s+all\b/i.test(after) || /^\s*$/.test(after) || /^\s*[,;:!?…]/.test(after) || intent.test(before)) return true;
+    if (ENDING_BENIGN.test(after)) continue;
+    if (ENDING_INTENT.test(folded.slice(0, match.index))) return true;
   }
   return false;
 }

@@ -56,8 +56,21 @@ export function normalizeSpokenCard(value: string): string {
 
 const KEYCAP_MARKS = /[\u20E3\uFE0F]/g;
 
+/**
+ * A note is a card number only when 13–19 digits sit together, or are separated only by spaces or hyphens, and pass Luhn.
+ * ISBN-13 (978/979) and a UPS 1Z tracking number are not card numbers. Dots, commas, and letters break the run.
+ */
 export function textHasPan(value: string): boolean {
-  return rejectPan({ speech: normalizeSpokenCard(value.replace(KEYCAP_MARKS, "")) });
+  const stripped = stripHiddenMarks(value.replace(KEYCAP_MARKS, ""));
+  const spoken = stripped.replace(/\b(zero|oh|one|two|three|four|five|six|seven|eight|nine)\b/gi, (word) => SPOKEN_DIGIT[word.toLowerCase()] ?? word);
+  const softened = spoken.replace(/(?<=\d)\s+(?:(?:then|and|next|plus|followed|by|with|the|a|an|of|to)\s+)+(?=\d)/gi, " ");
+  for (const match of softened.match(/\d(?:[ \t-]*\d)*/g) ?? []) {
+    const digits = match.replace(/[ \t-]/g, "");
+    if (digits.length < 13 || digits.length > 19) continue;
+    if (digits.startsWith("978") || digits.startsWith("979")) continue;
+    if (luhnOk(digits)) return true;
+  }
+  return false;
 }
 
 /** Refuse a body that tries to carry a card number. The queue has no card fields. */

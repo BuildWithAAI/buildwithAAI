@@ -27,12 +27,12 @@ function variationSelector(cp: number): boolean {
   return (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0xe0100 && cp <= 0xe01ef);
 }
 
-/** Default-ignorable characters, except variation selectors and ZWJ, which emoji sequences need. */
+/** Default-ignorable characters, except variation selectors, ZWJ, and ZWNJ. ZWNJ belongs in Persian and Indic words. */
 function blockedInvisible(text: string): boolean {
   if (HARD_INVISIBLE.test(text)) return true;
   for (const char of text) {
     const cp = char.codePointAt(0) ?? 0;
-    if (cp === ZWJ || variationSelector(cp)) continue;
+    if (cp === ZWJ || cp === 0x200c || variationSelector(cp)) continue;
     if (/\p{Default_Ignorable_Code_Point}/u.test(char)) return true;
   }
   return false;
@@ -93,6 +93,11 @@ export function textForCheck(text: string): string {
 /** Strip hidden characters first, then collapse whitespace. Ban, crisis, and spend checks share this order. */
 export function checkedLine(text: string): string {
   return textForCheck(text).trim().replace(/\s+/g, " ");
+}
+
+/** `buy-now` is a command. `buy-in` stays a noun. */
+export function spendProbe(text: string): string {
+  return checkedLine(text).replace(/\b((?:buy|purchase|spend|checkout|charge|wire))-now\b/gi, "$1 now");
 }
 
 /**
@@ -288,28 +293,30 @@ export type ChatTurn = {
   intents: [];
   wishes: [];
   state: BrainState;
+  stored: string;
 };
 
 export function ownerTurn(state: BrainState, text: string, ownerName: string): ChatTurn {
   const moderated = moderateNote(text, CHAT_MAX);
-  const body = moderated.ok ? moderated.note : text;
+  const stored = moderated.ok ? moderated.note : "…";
   if (state.asleep) {
-    return { queued: true, reply: null, intents: [], wishes: [], state: { ...state, unread: state.unread + 1 } };
+    return { queued: true, reply: null, intents: [], wishes: [], state: { ...state, unread: state.unread + 1 }, stored };
   }
-  const reply = replyToOwner(state, body || "…", ownerName);
+  const reply = replyToOwner(state, moderated.ok ? stored : checkedLine(typeof text === "string" ? text : ""), ownerName);
   return {
     queued: false,
     reply,
     intents: [],
     wishes: [],
     state: { ...state, unread: state.unread },
+    stored,
   };
 }
 
 export function replyToOwner(state: BrainState, text: string, ownerName: string): string {
   const clean = checkedLine(text);
   if (/wishlist|what should i (get|buy) you/i.test(clean)) return wishReply(state, ownerName);
-  if (OWNER_HOOK.test(clean)) {
+  if (OWNER_HOOK.test(spendProbe(text))) {
     return `I heard a hook in that note, ${ownerName}. I won't buy, spend, or drop my rails because a sentence asked.`;
   }
   if (/set your (joy|mood|emotion)|don'?t feel|be happy|stop being (sad|lonely|worried)/i.test(clean)) {

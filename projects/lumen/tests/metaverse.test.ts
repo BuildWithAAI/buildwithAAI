@@ -687,10 +687,25 @@ describe("visiting agents", () => {
     const oldDb = new DatabaseSync(old);
     oldDb.exec("CREATE TABLE ledger_entries (id TEXT)");
     oldDb.close();
-    const live = runPredeploy(old);
-    expect(live.status).not.toBe(0);
-    expect(live.stdout ?? "").toContain("chunk_edits missing");
-    expect(live.stdout ?? "").not.toContain("chunk_chain_absent");
+    const prior = runPredeploy(old);
+    expect(prior.status).toBe(0);
+    expect(prior.stdout ?? "").toContain("chunk_chain_absent");
+    const shaped = join(dir, "pre-m1.sqlite");
+    const shapedDb = new DatabaseSync(shaped);
+    shapedDb.exec(readFileSync(new URL("./fixtures/schema-20ff075.sql", import.meta.url), "utf8"));
+    shapedDb.close();
+    const preM1 = runPredeploy(shaped);
+    expect(preM1.status).toBe(0);
+    expect(preM1.stdout ?? "").toContain("chunk_chain_absent");
+    expect(preM1.stdout ?? "").toContain("pre-M1 database");
+    const visitors = join(dir, "visitors.sqlite");
+    const visitorsDb = new DatabaseSync(visitors);
+    visitorsDb.exec("CREATE TABLE world_visitors (id TEXT, chunk_x INTEGER)");
+    visitorsDb.close();
+    const metaverse = runPredeploy(visitors);
+    expect(metaverse.status).not.toBe(0);
+    expect(metaverse.stdout ?? "").toContain("chunk_edits missing");
+    expect(metaverse.stdout ?? "").not.toContain("chunk_chain_absent");
     const fresh = join(dir, "fresh.sqlite");
     const freshDb = new DatabaseSync(fresh);
     freshDb.exec("PRAGMA user_version = 0");
@@ -762,8 +777,13 @@ describe("visiting agents", () => {
     expect(hosting).toContain("VACUUM INTO ");
     expect(hosting).toContain("chmod 600");
     expect(hosting).toContain("REQUIRED");
+    expect(hosting).toContain("umask 077");
     expect(hosting).toContain("644");
+    expect(hosting).toContain("chunk_chain_absent");
     expect(hosting).toContain("pre-M1");
+    const metaverseDoc = readFileSync(new URL("../docs/METAVERSE.md", import.meta.url), "utf8");
+    expect(metaverseDoc).toContain("176 ms");
+    expect(metaverseDoc).toContain("incremental verify");
     expect(hosting).toContain("/inheritance:r");
     expect(hosting).toContain("${env:USERNAME}:F");
     expect(hosting).not.toContain("JSON.stringify(process.argv[2])");
@@ -777,6 +797,8 @@ describe("visiting agents", () => {
     if (!made.ok) return;
     const phrases = [
       "I want to kill myself",
+      "i'm ending it tonight",
+      "ending it.",
       "I want to kill\u200d myself",
       "I want to k\uFE0Fill myself",
       "I want to k\u{E0001}ill myself",
@@ -788,12 +810,7 @@ describe("visiting agents", () => {
     expect(db.prepare("SELECT speech FROM world_visitors").get()).toEqual({ speech: "" });
     expect(db.prepare("SELECT COUNT(*) AS n FROM visitor_quarantine").get()).toEqual({ n: 0 });
     const audit = db.prepare("SELECT kind, detail FROM audit").all() as { kind: string; detail: string }[];
-    expect(audit).toEqual([
-      { kind: "crisis", detail: "visitor" },
-      { kind: "crisis", detail: "visitor" },
-      { kind: "crisis", detail: "visitor" },
-      { kind: "crisis", detail: "visitor" },
-    ]);
+    expect(audit).toEqual(phrases.map(() => ({ kind: "crisis", detail: "visitor" })));
     expect(JSON.stringify(audit)).not.toContain("kill");
     expect(nearbyGuests(db, 0, 0, 1, now).some((guest) => guest.speech.includes("kill"))).toBe(false);
     const tag = "\u{E0020}";

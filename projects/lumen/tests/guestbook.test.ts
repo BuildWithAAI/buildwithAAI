@@ -85,8 +85,10 @@ describe("guestbook loop", () => {
     expect(crisisMatch("want to end it")).toBe(true);
     expect(crisisMatch("ending it all")).toBe(true);
     expect(crisisMatch("I'm ending it tonight")).toBe(true);
+    expect(crisisMatch("ending it.")).toBe(true);
     expect(crisisMatch("ending it with a bang")).toBe(false);
     expect(crisisMatch("ending it with a smile")).toBe(false);
+    expect(crisisMatch("ending it early to catch the bus")).toBe(false);
     expect(crisisMatch("ending its run")).toBe(false);
     expect(crisisMatch("the movie's ending is great")).toBe(false);
     expect(crisisMatch("killing it")).toBe(false);
@@ -118,9 +120,29 @@ describe("guestbook loop", () => {
       expect(engine.guestbook(line, "Ada", `203.0.113.${80 + index}`)).toEqual({ ok: false, error: "CRISIS" });
     });
     expect(engine.leaveGift("sea-glass", "k\uFEFFill myself", "Ada", "203.0.113.83")).toEqual({ ok: false, error: "CRISIS" });
+    for (const [line, ip] of [
+      ["i'm end\u200Cing it tonight", "203.0.113.84"],
+      ["kill\u200B myself", "203.0.113.85"],
+      ["kill\u200F myself", "203.0.113.86"],
+      ["kill\u061C myself", "203.0.113.87"],
+    ] as const) {
+      expect(engine.guestbook(line, "Ada", ip)).toEqual({ ok: false, error: "CRISIS" });
+      expect(engine.leaveGift("sea-glass", line, "Ada", `${ip}0`)).toEqual({ ok: false, error: "CRISIS" });
+    }
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 0 });
+    const audits = engine.db.prepare("SELECT kind, detail FROM audit").all() as { kind: string; detail: string }[];
+    expect(audits.filter((row) => row.kind === "crisis" && row.detail === "guestbook").length).toBeGreaterThan(0);
+    expect(audits.filter((row) => row.kind === "crisis" && row.detail === "gift").length).toBeGreaterThan(0);
+    expect(JSON.stringify(audits)).not.toContain("kill");
     expect(CRISIS_REPLY).toContain("988");
+    const keptName = engine.guestbook("na\u200Cme", "Ada", "203.0.113.88");
+    expect(keptName.ok).toBe(true);
+    expect((engine.db.prepare("SELECT body FROM messages").get() as { body: string }).body).toContain("\u200C");
+    const raw = engine.ownerChat("please b\uFEFFuy a brush");
+    expect(raw.reply?.toLowerCase()).toContain("won't buy");
+    expect((engine.db.prepare("SELECT body FROM messages WHERE channel = 'owner'").get() as { body: string }).body).toBe("…");
+    expect((engine.db.prepare("SELECT body FROM messages WHERE channel = 'owner'").get() as { body: string }).body).not.toContain("\uFEFF");
   });
 
   it("rejects a banned author and still accepts a normal name with an emoji note", () => {

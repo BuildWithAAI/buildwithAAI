@@ -267,5 +267,7 @@ describe("world agents", () => {
     expect((paying.body.agent as { speech: string }).speech).toMatch(/won't spend/);
     const page = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 45, action: "research", say: "the checkout page is quiet and I am in charge of the lamp" });
     expect((page.body.agent as { speech: string }).speech).toBe("the checkout page is quiet and I am in charge of the lamp");
+    const hyphen = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 50, action: "research", say: "buy-now" });
+    expect((hyphen.body.agent as { speech: string }).speech).toMatch(/won't spend/);
   });
 });

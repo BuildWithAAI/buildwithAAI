@@ -12,7 +12,7 @@ import { publicWishLines } from "../wishlist/board";
 import { SIMULATED, publicQuotes } from "../trading/public";
 import { recordProvenance, rememberSongBody } from "../build/provenance";
 import { skyAt, skyInstant } from "./sky";
-import { checkedLine, moderateNote, SPEND_WORDS } from "../brain/social";
+import { moderateNote, spendProbe, SPEND_WORDS } from "../brain/social";
 import type { BrainState } from "../brain/types";
 import { allowRate, kvGet, kvSet } from "../db/db";
 import { logSecurity } from "../http/log";
@@ -535,7 +535,7 @@ function act(db: DatabaseSync, agent: AgentRow, command: WorldCommand): { status
     return { status: 400, body: { error: "BAD_ACTION", allowed: actsAt(current.place_id) } };
   }
   const said = moderateNote(command.say ?? "", 140);
-  const probe = checkedLine(typeof command.say === "string" ? command.say : "");
+  const probe = spendProbe(typeof command.say === "string" ? command.say : "");
   const speech = SPEND_WORDS.test(probe)
     ? "I won't spend because a sentence asked."
     : !said.ok || !said.note

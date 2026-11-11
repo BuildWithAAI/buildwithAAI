@@ -135,9 +135,12 @@ REQUIRED. Run that `icacls` line in the same step. `VACUUM INTO` leaves the back
 On Linux, the same copy. The `chmod` line is REQUIRED for the same reason: the new file is mode 644 until it runs.
 
 ```bash
+umask 077
 node -e 'const {DatabaseSync}=require("node:sqlite"); const q=String.fromCharCode(39); const db=new DatabaseSync(process.argv[1]); const dest=String(process.argv[2]).split(q).join(q+q); db.exec("VACUUM INTO "+q+dest+q); db.close();' /var/backups/lumen.sqlite /var/backups/lumen-before-deploy.sqlite
 chmod 600 /var/backups/lumen-before-deploy.sqlite
 ```
+
+REQUIRED. `umask 077` runs before `VACUUM INTO`. The `chmod 600` line is still required: a new SQLite file can stay mode 644 until it runs.
 
 The ledger should be one chain. Two rows with the same previous hash are a fork. An empty list is the chain you want:
 
@@ -153,9 +156,9 @@ $env:LUMEN_DATA = "C:\backups\lumen-before-deploy.sqlite"
 npm run predeploy
 ```
 
-`npm run predeploy` refuses a missing file, a 0-byte file, and a live database that has other Lumen tables but no `chunk_edits`. It does not migrate, and it does not write a desk notice. A brand-new database with no tables exits 0 with a note. A broken chunk chain prints one line and exits non-zero. Another SQL error is reported as `predeploy_error`, not as a broken chain. Fix the copy before you deploy.
+`npm run predeploy` refuses a missing file and a 0-byte file. It does not migrate, and it does not write a desk notice. A brand-new database with no tables exits 0 with a note. A broken chunk chain prints one line and exits non-zero. Another SQL error is reported as `predeploy_error`, not as a broken chain. Fix the copy before you deploy.
 
-A pre-M1 volume fails this check on purpose until `chunk_edits` exists. The script will not create the table. On the backup copy, boot the app once with `LUMEN_DATA` pointed at that copy so startup creates `chunk_edits`, then run `npm run predeploy` again. An empty new table is a valid chain and the check passes. Leave the live file alone until the copy passes.
+A pre-M1 volume, including a live database from `468dc57`, `afb3876`, or `20ff075`, has no `chunk_edits`. Predeploy reports `chunk_chain_absent` and exits 0. It does not create the table. The check fails when visitor, territory, or chunk state from M1 is present and `chunk_edits` is missing.
 
 ## Deploy one machine
 
