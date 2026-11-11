@@ -5,6 +5,8 @@ import { flag, kvGet, kvSet, setFlag } from "../db/db";
 import { scrubInstructions } from "../research/ideas";
 import { recordProvenance } from "../build/provenance";
 import { AREAS, areaById, type AreaId, type BuildSlot } from "./areas";
+import { appendChunkEdit, decorPayload } from "./chunkEdits";
+import { HOME_CHUNK, worldToChunk } from "./chunkMath";
 import type { BuildEntry } from "../build/log";
 
 export const BUILD_KINDS = ["decoration", "art", "garden", "structure", "sign", "mural", "music", "path", "bench"] as const;
@@ -259,6 +261,7 @@ export function undoBuild(db: DatabaseSync, id: string, now: number): { ok: true
   if (!current || current.status === "undone") return { ok: false, reason: "NOT_PLACED" };
   const changed = changeStatus(db, id, current.status, "undone", now);
   if (!changed.ok) return changed;
+  rememberChunkDecor(db, changed.build, "decor-rollback", now);
   db.prepare("UPDATE creative_log SET undone = 1 WHERE build_id = ?").run(id);
   if (chicagoDay(current.createdAt) === chicagoDay(now)) {
     const key = `materials-spent:${chicagoDay(now)}`;
@@ -295,6 +298,7 @@ function insertBuild(db: DatabaseSync, build: WorldBuild): void {
     atMs: build.createdAt,
     flaggedVisitorText: build.influenced ? build.why : null,
   });
+  rememberChunkDecor(db, build, "decor", build.createdAt);
 }
 
 function recordVersion(db: DatabaseSync, build: WorldBuild, now: number): void {
@@ -389,7 +393,26 @@ function reviseBuild(db: DatabaseSync, current: WorldBuild, draft: CreativeDraft
   kvSet(db, `materials-spent:${day}`, String(DAILY_MATERIALS - materialsLeft(db, now) + 1));
   db.prepare("UPDATE creative_log SET title = ?, summary = ? WHERE build_id = ?").run(next.title, next.why, current.id);
   db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(next.why, now);
+  rememberChunkDecor(db, next, "decor", now);
   return { ok: true, build: next };
+}
+
+/** Zoora's decor on her home chunk. Visitors have no caller. No scripts and no new route. */
+function rememberChunkDecor(db: DatabaseSync, build: WorldBuild, action: "decor" | "decor-rollback", now: number): void {
+  const spot = worldToChunk(build.x, build.z);
+  if (spot.cx !== HOME_CHUNK.cx || spot.cy !== HOME_CHUNK.cy) return;
+  appendChunkEdit(db, {
+    id: `edit-${build.id}-v${build.version}-${action}`,
+    atMs: now,
+    chunkX: HOME_CHUNK.cx,
+    chunkY: HOME_CHUNK.cy,
+    tileX: spot.tx,
+    tileY: spot.ty,
+    kind: action,
+    payload: decorPayload(build),
+    actor: "zoora",
+    idempotencyKey: `decor:${build.id}:v${build.version}:${action}`,
+  });
 }
 
 function composeParams(emotion: string, level: number, memory: string, idea: string, research: string, prior: BuildParams | null): BuildParams {

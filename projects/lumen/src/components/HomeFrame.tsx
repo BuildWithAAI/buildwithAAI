@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import type { PublicWorld } from "../world/public";
+import type { PublicChunk, PublicGuest } from "../world/chunkMath";
 import type { PublicBooks } from "../money/publicBooks";
 import type { WishlistItemView } from "./WishlistView";
 import { WorldStage } from "./WorldStage";
@@ -16,6 +17,8 @@ export function HomeFrame({
   wishes,
   showKeeper,
   showMoney,
+  chunks = [],
+  guests = [],
 }: {
   world: PublicWorld;
   cam: string;
@@ -25,11 +28,13 @@ export function HomeFrame({
   wishes: WishlistItemView[];
   showKeeper: boolean;
   showMoney: boolean;
+  chunks?: PublicChunk[];
+  guests?: PublicGuest[];
 }) {
   const [panel, setPanel] = useState<null | "books" | "wishes">(null);
   return (
-    <div className="home-stage" data-home-world="1">
-      <WorldStage initial={world} cam={cam} thoughts={thoughts} />
+    <div className="home-stage" data-home-world="1" data-world-chunks={chunks.length} data-world-guests={guests.length}>
+      <WorldStage initial={world} cam={cam} thoughts={thoughts} chunks={chunks} guests={guests} />
       <div className="home-tools">
         <button type="button" onClick={() => setPanel(panel === "books" ? null : "books")}>Ledger</button>
         <button type="button" onClick={() => setPanel(panel === "wishes" ? null : "wishes")}>Wishes</button>

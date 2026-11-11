@@ -431,9 +431,56 @@ CREATE TABLE IF NOT EXISTS research_briefs (
   first_test TEXT NOT NULL,
   at_ms INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS chunk_edits (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  at_ms INTEGER NOT NULL,
+  chunk_x INTEGER NOT NULL,
+  chunk_y INTEGER NOT NULL,
+  tile_x INTEGER NOT NULL,
+  tile_y INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  prev_hash TEXT NOT NULL,
+  body_hash TEXT NOT NULL,
+  entry_hash TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS chunk_edits_prev ON chunk_edits(prev_hash);
+CREATE INDEX IF NOT EXISTS chunk_edits_cell ON chunk_edits(chunk_x, chunk_y, seq);
+CREATE TABLE IF NOT EXISTS world_visitors (
+  id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  owner_contact TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  scopes TEXT NOT NULL,
+  creature TEXT NOT NULL,
+  color TEXT NOT NULL,
+  chunk_x INTEGER NOT NULL,
+  chunk_y INTEGER NOT NULL,
+  tile_x INTEGER NOT NULL,
+  tile_y INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  speech TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  seen_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS world_visitors_place ON world_visitors(status, chunk_x, chunk_y);
+CREATE TABLE IF NOT EXISTS visitor_quarantine (
+  id TEXT PRIMARY KEY,
+  visitor_id TEXT NOT NULL,
+  body TEXT NOT NULL,
+  untrusted INTEGER NOT NULL,
+  at_ms INTEGER NOT NULL
+);
 CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries
 BEGIN SELECT RAISE(ABORT, 'append-only'); END;
 CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger_entries
+BEGIN SELECT RAISE(ABORT, 'append-only'); END;
+CREATE TRIGGER IF NOT EXISTS chunk_edits_no_update BEFORE UPDATE ON chunk_edits
+BEGIN SELECT RAISE(ABORT, 'append-only'); END;
+CREATE TRIGGER IF NOT EXISTS chunk_edits_no_delete BEFORE DELETE ON chunk_edits
 BEGIN SELECT RAISE(ABORT, 'append-only'); END;
 `;
 
