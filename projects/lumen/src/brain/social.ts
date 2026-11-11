@@ -22,7 +22,7 @@ export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: 
   if (input == null || input === "") return { ok: true, note: "" };
   if (typeof input !== "string") return { ok: false, reason: "NOTE_TYPE" };
   if (input.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u00AD\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060\u2066-\u2069\uFEFF\u{E0000}-\u{E007F}]/u.test(input)) {
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060\u2066-\u2069\u3164\uFE00-\uFE0F\uFEFF\uFFF9-\uFFFB\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/u.test(input)) {
     return { ok: false, reason: "NOTE_CONTROL" };
   }
   const note = input.trim().replace(/\s+/g, " ");

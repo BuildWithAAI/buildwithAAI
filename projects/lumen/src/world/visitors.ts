@@ -26,9 +26,9 @@ export const VISITOR_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const QUARANTINE_KEEP = 1_000;
 export const QUARANTINE_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
 export const NEARBY_LIMIT = 64;
+export const VISITOR_CAP_ALERT_MS = 60 * 60 * 1000;
 
-const SPEECH_PATHS = ["brain", "memory", "journal", "decor", "tools"] as const;
-export type SpeechPath = (typeof SPEECH_PATHS)[number];
+const CAP_TITLE = "Visitor registration cap";
 
 const NAME_PATTERN = /^[A-Za-z][A-Za-z0-9 .'-]{0,23}$/;
 const CREATURE_COLORS = ["#f2a65a", "#7aa2f7", "#e0a3c2", "#c6d36b", "#d7b48a"] as const;
@@ -41,16 +41,6 @@ type FlagEnv = Record<string, string | undefined>;
  */
 export function visitorsEnabled(env: FlagEnv = process.env): boolean {
   return env.LUMEN_VISITORS_ENABLED === "true";
-}
-
-/** Visitor speech is untrusted data. None of these paths receive it. */
-export function speechReaches(_path: SpeechPath): false {
-  return false;
-}
-
-/** @deprecated Use speechReaches. Kept so a caller cannot treat speech as an action. */
-export function visitorSpeechSinks(): { spend: false; price: false; worldEdit: false; tool: false; brain: false; memory: false; journal: false; decor: false } {
-  return { spend: false, price: false, worldEdit: false, tool: false, brain: false, memory: false, journal: false, decor: false };
 }
 
 /** The only delivery of visitor text. The callback is the quarantine write. */
@@ -154,11 +144,54 @@ export function pruneQuarantine(db: DatabaseSync, now: number): void {
   db.prepare(`DELETE FROM visitor_quarantine WHERE rowid NOT IN (SELECT rowid FROM visitor_quarantine ORDER BY at_ms DESC LIMIT ${QUARANTINE_KEEP})`).run();
 }
 
-/** Drop expired, revoked, and long-idle rows, then enforce the hard row cap. */
+/** Drop revoked, expired, and rows that have been quiet for the retention window. */
 export function pruneVisitors(db: DatabaseSync, now: number): void {
   db.prepare("DELETE FROM world_visitors WHERE status = 'revoked' OR expires_at <= ? OR seen_at < ?").run(now, now - VISITOR_KEEP_MS);
-  db.prepare(`DELETE FROM world_visitors WHERE id NOT IN (SELECT id FROM world_visitors ORDER BY seen_at DESC LIMIT ${VISITOR_MAX_ROWS})`).run();
   pruneQuarantine(db, now);
+}
+
+/**
+ * Idle, paused, or never-active (seen_at still equal to created_at), oldest last activity first.
+ * A visitor who has moved or spoken inside the idle window is not a candidate.
+ */
+function evictIdleVisitor(db: DatabaseSync, now: number): boolean {
+  const row = db.prepare(
+    `SELECT id FROM world_visitors
+     WHERE status = 'paused' OR status = 'revoked' OR seen_at = created_at OR seen_at <= ?
+     ORDER BY seen_at ASC, created_at ASC, id ASC
+     LIMIT 1`,
+  ).get(now - VISITOR_IDLE_MS) as { id: string } | undefined;
+  if (!row) return false;
+  db.prepare("DELETE FROM visitor_quarantine WHERE visitor_id = ?").run(row.id);
+  db.prepare("DELETE FROM world_visitors WHERE id = ?").run(row.id);
+  return true;
+}
+
+function noteVisitorCap(db: DatabaseSync, now: number, evicted: boolean): void {
+  const recent = db.prepare("SELECT created_at FROM owner_alerts WHERE title = ? ORDER BY created_at DESC LIMIT 1").get(CAP_TITLE) as { created_at: number } | undefined;
+  if (recent && now - recent.created_at < VISITOR_CAP_ALERT_MS) return;
+  logSecurity({ event: "visitor_cap", status: evicted ? 200 : 429, route: "/api/world/visitors" });
+  db.prepare("INSERT INTO owner_alerts(id, kind, title, detail, created_at) VALUES(?, 'world', ?, ?, ?)").run(
+    randomBytes(8).toString("hex"),
+    CAP_TITLE,
+    evicted
+      ? "The visitor list was full. The oldest idle or never-active visitor was removed so a new one could register."
+      : "The visitor list is full of active visitors. Registration was refused.",
+    now,
+  );
+}
+
+/** Home first, then the nearest public chunk. A private chunk is never a spawn. */
+function spawnSpot(db: DatabaseSync): { cx: number; cy: number; tx: number; ty: number } {
+  for (let radius = 0; radius <= 32; radius += 1) {
+    for (let cy = -radius; cy <= radius; cy += 1) {
+      for (let cx = -radius; cx <= radius; cx += 1) {
+        if (Math.max(Math.abs(cx), Math.abs(cy)) !== radius) continue;
+        if (!chunkIsPrivate(db, cx, cy)) return { cx, cy, tx: 16, ty: 16 };
+      }
+    }
+  }
+  return { cx: 1, cy: 0, tx: 16, ty: 16 };
 }
 
 function visitorCount(db: DatabaseSync): number {
@@ -181,12 +214,13 @@ export function createVisitor(
   const id = `vis-${randomBytes(6).toString("hex")}`;
   const look = creatureFor(id);
   const prefix = registrationPrefix(input.ip ?? "direct");
+  const spot = spawnSpot(db);
   db.prepare(
     `INSERT INTO world_visitors(
       id, display_name, owner_contact, token_hash, scopes, creature, color,
       chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
-    ) VALUES(?, ?, ?, ?, ?, ?, ?, 0, 0, 16, 16, 'active', '', 1, ?, ?, ?, ?)`,
-  ).run(id, named.note, contact.note, hashToken(token), scopes.join(","), look.creature, look.color, prefix, input.now, input.now, input.now + VISITOR_TOKEN_TTL_MS);
+    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', '', 1, ?, ?, ?, ?)`,
+  ).run(id, named.note, contact.note, hashToken(token), scopes.join(","), look.creature, look.color, spot.cx, spot.cy, spot.tx, spot.ty, prefix, input.now, input.now, input.now + VISITOR_TOKEN_TTL_MS);
   return { ok: true, visitor: { id, displayName: named.note, scopes, token } };
 }
 
@@ -226,8 +260,12 @@ export function registerVisitor(
 ): { ok: true; visitor: VisitorToken } | { ok: false; reason: string; status: number } {
   pruneVisitors(db, input.now);
   if (visitorCount(db) >= VISITOR_MAX_ROWS) {
-    logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
-    return { ok: false, reason: "CAP", status: 429 };
+    const evicted = evictIdleVisitor(db, input.now);
+    noteVisitorCap(db, input.now, evicted);
+    if (!evicted || visitorCount(db) >= VISITOR_MAX_ROWS) {
+      logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
+      return { ok: false, reason: "CAP", status: 429 };
+    }
   }
   const prefix = registrationPrefix(input.ip);
   const prefixRows = Number((db.prepare(
@@ -379,7 +417,18 @@ export function nearbyGuests(db: DatabaseSync, cx: number, cy: number, radius: n
        AND chunk_x BETWEEN ? AND ? AND chunk_y BETWEEN ? AND ?
      LIMIT ${NEARBY_LIMIT}`,
   ).all(now - VISITOR_IDLE_MS, now, cx - span, cx + span, cy - span, cy + span) as VisitorRow[];
-  return rows.filter((row) => chunkDistance({ cx, cy }, { cx: row.chunk_x, cy: row.chunk_y }) <= span).map(toGuest);
+  const privacy = new Map<string, boolean>();
+  const hidden = (x: number, y: number) => {
+    const key = `${x},${y}`;
+    const cached = privacy.get(key);
+    if (cached != null) return cached;
+    const value = chunkIsPrivate(db, x, y);
+    privacy.set(key, value);
+    return value;
+  };
+  return rows
+    .filter((row) => chunkDistance({ cx, cy }, { cx: row.chunk_x, cy: row.chunk_y }) <= span && !hidden(row.chunk_x, row.chunk_y))
+    .map(toGuest);
 }
 
 export function visitorById(db: DatabaseSync, id: string): { ownerContact: string; tokenHash: string; scopes: string } | null {

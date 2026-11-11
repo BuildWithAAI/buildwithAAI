@@ -172,7 +172,7 @@ function reefLine(extent: number, color: number): THREE.LineLoop {
   ];
   return new THREE.LineLoop(
     new THREE.BufferGeometry().setFromPoints(points),
-    new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9, fog: false }),
+    new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9, fog: true }),
   );
 }
 

@@ -180,6 +180,13 @@ describe("memory, wants, gifts", () => {
     expect(moderateNote("a\uFEFFb").ok).toBe(false);
     expect(moderateNote("a\u0085b").ok).toBe(false);
     expect(moderateNote("a\u{E0001}b").ok).toBe(false);
+    expect(moderateNote("a\uFE0Fb").ok).toBe(false);
+    expect(moderateNote("a\u{E0100}b").ok).toBe(false);
+    expect(moderateNote("a\u061Cb").ok).toBe(false);
+    expect(moderateNote("a\u180Eb").ok).toBe(false);
+    expect(moderateNote("a\u034Fb").ok).toBe(false);
+    expect(moderateNote("a\uFFF9b").ok).toBe(false);
+    expect(moderateNote("a\u3164b").ok).toBe(false);
   });
 
   it("caps wishlist asks per day", () => {

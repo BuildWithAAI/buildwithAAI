@@ -256,7 +256,24 @@ export function placeCreative(db: DatabaseSync, signals: CreativeSignals, now: n
 export function hideBuild(db: DatabaseSync, id: string, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
   return withWrite(db, () => {
     const changed = changeStatus(db, id, "placed", "hidden", now);
-    if (changed.ok) rememberChunkDecor(db, changed.build, "decor-rollback", now);
+    if (!changed.ok) return changed;
+    let written = false;
+    for (let attempt = 1; attempt <= 2 && !written; attempt += 1) {
+      try {
+        rememberChunkDecor(db, changed.build, "decor-rollback", now);
+        written = true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.log(JSON.stringify({
+          ts: new Date(now).toISOString(),
+          event: "decor_rollback_failed",
+          status: 500,
+          route: "creative",
+          attempt,
+          detail: message.slice(0, 80),
+        }));
+      }
+    }
     return changed;
   });
 }

@@ -1,9 +1,11 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { isChunkCoord, isTileCoord, type PublicDecor } from "./chunkMath";
-import { CLAIM_GROW_PER_DAY, CLAIM_START_RADIUS, zoneAt } from "./territoryRules";
+import { CLAIM_GROW_PER_DAY, CLAIM_START_RADIUS, claimCeiling, zoneAt } from "./territoryRules";
 
 export const CHUNK_EDIT_KINDS = ["decor", "decor-rollback", "privacy", "expand"] as const;
+/** Rows at this version include id, time, and the idempotency key in the body hash. */
+export const CHUNK_EDIT_HASH_VERSION = 2;
 export type ChunkEditKind = (typeof CHUNK_EDIT_KINDS)[number];
 
 export type ChunkEditInput = {
@@ -129,17 +131,29 @@ function cleanReason(value: unknown): string {
   return reason;
 }
 
+function sandboxGrowthProvenance(value: unknown): { who: "zoora" | "owner"; what: string } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("SANDBOX");
+  const raw = value as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (key !== "who" && key !== "what") throw new Error("SANDBOX");
+  }
+  if (raw.who !== "zoora" && raw.who !== "owner") throw new Error("SANDBOX");
+  if (typeof raw.what !== "string" || !/^[a-z0-9:-]{1,64}$/.test(raw.what)) throw new Error("SANDBOX");
+  return { who: raw.who, what: raw.what };
+}
+
 function sandboxExpandPayload(payload: unknown): string {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("SANDBOX");
   const raw = payload as Record<string, unknown>;
   for (const key of Object.keys(raw)) {
-    if (key !== "from" && key !== "to" && key !== "reason") throw new Error("SANDBOX");
+    if (key !== "from" && key !== "to" && key !== "reason" && key !== "provenance") throw new Error("SANDBOX");
   }
   const from = raw.from;
   const to = raw.to;
   if (typeof from !== "number" || !Number.isInteger(from) || from < CLAIM_START_RADIUS) throw new Error("RADIUS");
   if (typeof to !== "number" || !Number.isInteger(to) || to < CLAIM_START_RADIUS || to === from) throw new Error("RADIUS");
-  return canonical({ from, to, reason: cleanReason(raw.reason) });
+  const provenance = raw.provenance == null ? undefined : sandboxGrowthProvenance(raw.provenance);
+  return canonical({ from, to, reason: cleanReason(raw.reason), ...(provenance ? { provenance } : {}) });
 }
 
 function sandboxPrivacyPayload(payload: unknown): string {
@@ -156,7 +170,9 @@ export function territoryDay(ms: number): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
 
-export function claimRadius(db: DatabaseSync): number {
+const CLAIM_RADIUS_KEY = "claim_radius";
+
+function scanClaimRadius(db: DatabaseSync): number {
   const rows = db.prepare("SELECT payload FROM chunk_edits WHERE kind = 'expand' ORDER BY seq ASC").all() as { payload: string }[];
   let radius = CLAIM_START_RADIUS;
   for (const row of rows) {
@@ -170,14 +186,31 @@ export function claimRadius(db: DatabaseSync): number {
   return radius;
 }
 
-export function grownToday(db: DatabaseSync, now: number): number {
+function writeCachedRadius(db: DatabaseSync, radius: number): void {
+  db.prepare("INSERT INTO kv(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(CLAIM_RADIUS_KEY, String(radius));
+}
+
+/** Cached. Growth and veto refresh it. A miss scans the chain once. */
+export function claimRadius(db: DatabaseSync): number {
+  const row = db.prepare("SELECT value FROM kv WHERE key = ?").get(CLAIM_RADIUS_KEY) as { value: string } | undefined;
+  if (row && /^\d+$/.test(row.value)) {
+    const cached = Number(row.value);
+    if (cached >= CLAIM_START_RADIUS) return cached;
+  }
+  const radius = scanClaimRadius(db);
+  writeCachedRadius(db, radius);
+  return radius;
+}
+
+export function grownToday(db: DatabaseSync, now = Date.now()): number {
   const day = territoryDay(now);
   const rows = db.prepare("SELECT payload, at_ms FROM chunk_edits WHERE kind = 'expand' ORDER BY seq ASC").all() as { payload: string; at_ms: number }[];
   let sum = 0;
   for (const row of rows) {
-    if (territoryDay(row.at_ms) !== day) continue;
     try {
-      const parsed = JSON.parse(row.payload) as { from?: unknown; to?: unknown };
+      const parsed = JSON.parse(row.payload) as { from?: unknown; to?: unknown; day?: unknown };
+      const rowDay = typeof parsed.day === "string" ? parsed.day : territoryDay(row.at_ms);
+      if (rowDay !== day) continue;
       const delta = Number(parsed.to) - Number(parsed.from);
       if (delta > 0) sum += delta;
     } catch {
@@ -208,9 +241,14 @@ export function territoryFrozen(db: DatabaseSync): boolean {
 function enforceTerritory(db: DatabaseSync, input: ChunkEditInput, payload: string): void {
   const radius = claimRadius(db);
   const zone = zoneAt(input.chunkX, input.chunkY, radius);
-  const parsed = JSON.parse(payload) as { from?: number; to?: number };
+  const parsed = JSON.parse(payload) as { from?: number; to?: number; private?: boolean };
   const shrinking = input.kind === "expand" && typeof parsed.to === "number" && typeof parsed.from === "number" && parsed.to < parsed.from;
+  if (input.kind === "privacy" && input.chunkX === 0 && input.chunkY === 0 && parsed.private === true) throw new Error("HOME");
   if (input.actor === "owner") {
+    if (input.kind === "privacy") {
+      if (parsed.private !== false) throw new Error("ACTOR");
+      return;
+    }
     if (!shrinking) throw new Error(zone === "claim" ? "CLAIM" : zone === "buffer" ? "BUFFER" : "ACTOR");
     if (parsed.from !== radius || (parsed.to ?? 0) < CLAIM_START_RADIUS) throw new Error("VETO");
     return;
@@ -226,13 +264,16 @@ function enforceTerritory(db: DatabaseSync, input: ChunkEditInput, payload: stri
     if (parsed.from !== radius) throw new Error("RADIUS");
     const step = (parsed.to ?? 0) - (parsed.from ?? 0);
     if (step < 1 || step > CLAIM_GROW_PER_DAY) throw new Error("STEP");
-    if (grownToday(db, input.atMs) + step > CLAIM_GROW_PER_DAY) throw new Error("DAY");
+    if (grownToday(db, Date.now()) + step > CLAIM_GROW_PER_DAY) throw new Error("DAY");
+    const ceiling = claimCeiling();
+    if (ceiling != null && (parsed.to ?? 0) > ceiling) throw new Error("CEILING");
     return;
   }
   if (zone !== "claim") throw new Error("OUTSIDE");
 }
 
 export function appendChunkEdit(db: DatabaseSync, input: ChunkEditInput): ChunkEditRow {
+  if (chunkWritesFrozen(db)) throw new Error("CHAIN");
   const payload = assertInput(input);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
@@ -256,7 +297,8 @@ function appendOnce(db: DatabaseSync, input: ChunkEditInput, payload: string): C
     if (!/within a transaction/i.test(message)) throw error;
   }
   try {
-    const hash = chunkEditBodyHash({ ...input, payload });
+    const storedPayload = stampGrowthDay(input.kind, payload);
+    const hash = chunkEditBodyHash({ ...input, payload: storedPayload });
     const existing = db.prepare("SELECT * FROM chunk_edits WHERE idempotency_key = ?").get(input.idempotencyKey) as Record<string, unknown> | undefined;
     if (existing) {
       if (existing.body_hash !== hash) throw new Error("IDEMPOTENCY_CONFLICT");
@@ -269,8 +311,8 @@ function appendOnce(db: DatabaseSync, input: ChunkEditInput, payload: string): C
     const entryHash = createHash("sha256").update(prevHash + hash).digest("hex");
     db.prepare(
       `INSERT INTO chunk_edits
-        (id, at_ms, chunk_x, chunk_y, tile_x, tile_y, kind, payload, actor, idempotency_key, prev_hash, body_hash, entry_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, at_ms, chunk_x, chunk_y, tile_x, tile_y, kind, payload, actor, idempotency_key, prev_hash, body_hash, entry_hash, hash_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       input.id,
       input.atMs,
@@ -279,14 +321,19 @@ function appendOnce(db: DatabaseSync, input: ChunkEditInput, payload: string): C
       input.tileX,
       input.tileY,
       input.kind,
-      payload,
+      storedPayload,
       input.actor,
       input.idempotencyKey,
       prevHash,
       hash,
       entryHash,
+      CHUNK_EDIT_HASH_VERSION,
     );
     const row = db.prepare("SELECT * FROM chunk_edits WHERE id = ?").get(input.id) as Record<string, unknown>;
+    if (input.kind === "expand") {
+      const to = (JSON.parse(storedPayload) as { to?: unknown }).to;
+      if (typeof to === "number" && Number.isInteger(to) && to >= CLAIM_START_RADIUS) writeCachedRadius(db, to);
+    }
     if (owns) db.exec("COMMIT");
     return mapEdit(row);
   } catch (error) {
@@ -313,11 +360,138 @@ export function verifyChunkChain(db: DatabaseSync): boolean {
   return true;
 }
 
-/** Boot and predeploy. A broken chain is logged as one line. The caller exits. */
+/** The growth day is the server clock. A caller cannot put their own timestamp in the cap. */
+function stampGrowthDay(kind: string, payload: string): string {
+  if (kind !== "expand") return payload;
+  const parsed = JSON.parse(payload) as Record<string, unknown>;
+  parsed.day = territoryDay(Date.now());
+  return canonical(parsed);
+}
+
+/** Body hash from before id, time, and the idempotency key were covered. */
+export function legacyChunkEditBodyHash(input: {
+  chunkX: number;
+  chunkY: number;
+  tileX: number;
+  tileY: number;
+  kind: string;
+  payload: string;
+  actor: string;
+}): string {
+  return createHash("sha256").update(canonical({
+    chunkX: input.chunkX,
+    chunkY: input.chunkY,
+    tileX: input.tileX,
+    tileY: input.tileY,
+    kind: input.kind,
+    payload: input.payload,
+    actor: input.actor,
+  })).digest("hex");
+}
+
+function verifyLegacyChunkChain(rows: ChunkEditRow[]): boolean {
+  let prev = "GENESIS";
+  for (const row of rows) {
+    const hash = legacyChunkEditBodyHash(row);
+    if (hash !== row.bodyHash || row.prevHash !== prev) return false;
+    const entry = createHash("sha256").update(prev + hash).digest("hex");
+    if (entry !== row.entryHash) return false;
+    prev = entry;
+  }
+  return true;
+}
+
+/**
+ * One-time rewrite of pre-change rows onto the current hash, then a new chain.
+ * A chain that matches neither the old hash nor the new one is left untouched.
+ */
+export function migrateChunkEditHashes(db: DatabaseSync): void {
+  const pending = Number((db.prepare("SELECT COUNT(*) AS n FROM chunk_edits WHERE hash_version < ?").get(CHUNK_EDIT_HASH_VERSION) as { n: number }).n);
+  if (pending === 0) {
+    db.prepare("INSERT INTO kv(key, value) VALUES('chunk_edit_hash_version', '2') ON CONFLICT(key) DO UPDATE SET value = '2'").run();
+    return;
+  }
+  const rows = listChunkEdits(db);
+  if (verifyChunkChain(db)) {
+    restampChunkHashVersion(db);
+    return;
+  }
+  if (!verifyLegacyChunkChain(rows)) return;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
+    db.exec("DROP INDEX IF EXISTS chunk_edits_prev");
+    const update = db.prepare("UPDATE chunk_edits SET body_hash = ?, prev_hash = ?, entry_hash = ?, hash_version = ? WHERE id = ?");
+    let prev = "GENESIS";
+    for (const row of rows) {
+      const hash = chunkEditBodyHash(row);
+      const entry = createHash("sha256").update(prev + hash).digest("hex");
+      update.run(hash, prev, entry, CHUNK_EDIT_HASH_VERSION, row.id);
+      prev = entry;
+    }
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS chunk_edits_prev ON chunk_edits(prev_hash)");
+    db.exec("CREATE TRIGGER IF NOT EXISTS chunk_edits_no_update BEFORE UPDATE ON chunk_edits BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    db.prepare("INSERT INTO kv(key, value) VALUES('chunk_edit_hash_version', '2') ON CONFLICT(key) DO UPDATE SET value = '2'").run();
+    db.exec("COMMIT");
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    throw error;
+  }
+}
+
+function restampChunkHashVersion(db: DatabaseSync): void {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
+    db.prepare("UPDATE chunk_edits SET hash_version = ? WHERE hash_version < ?").run(CHUNK_EDIT_HASH_VERSION, CHUNK_EDIT_HASH_VERSION);
+    db.exec("CREATE TRIGGER IF NOT EXISTS chunk_edits_no_update BEFORE UPDATE ON chunk_edits BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    db.prepare("INSERT INTO kv(key, value) VALUES('chunk_edit_hash_version', '2') ON CONFLICT(key) DO UPDATE SET value = '2'").run();
+    db.exec("COMMIT");
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    throw error;
+  }
+}
+
+/** Boot and predeploy. A broken chain is logged as one line. Boot degrades. Predeploy exits. */
 export function guardChunkChain(db: DatabaseSync): boolean {
   if (verifyChunkChain(db)) return true;
   console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_broken", status: 500, route: "boot" }));
   return false;
+}
+
+export function chunkWritesFrozen(db: DatabaseSync): boolean {
+  const row = db.prepare("SELECT value FROM flags WHERE key = 'chunk_chain_broken'").get() as { value: string } | undefined;
+  return row?.value === "1";
+}
+
+function rememberFlag(db: DatabaseSync, key: string, value: string): void {
+  db.prepare("INSERT INTO flags(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
+}
+
+/**
+ * A broken decor chain stays up. Creative and territory writes freeze, the desk keeps the notice,
+ * and callers serve terrain without decor. Predeploy is the path that exits.
+ */
+export function degradeChunkChain(db: DatabaseSync, now = Date.now()): void {
+  noteChunkChainBroken(db, now);
+  rememberFlag(db, "chunk_chain_broken", "1");
+  rememberFlag(db, "territory_frozen", "1");
+  rememberFlag(db, "creative_building", "0");
+  console.log(JSON.stringify({ ts: new Date(now).toISOString(), event: "chunk_chain_degraded", status: 500, route: "boot" }));
+}
+
+/** Desk notice that stays until the next login. A second failure does not add another row. */
+export function noteChunkChainBroken(db: DatabaseSync, now = Date.now()): void {
+  const title = "Chunk chain broken";
+  const existing = db.prepare("SELECT id FROM owner_alerts WHERE title = ?").get(title);
+  if (existing) return;
+  db.prepare("INSERT INTO owner_alerts(id, kind, title, detail, created_at) VALUES(?, 'ledger', ?, ?, ?)").run(
+    randomBytes(8).toString("hex"),
+    title,
+    "The chunk edit chain failed verification. The site stays up. Creative and territory writes are frozen, and chunks are served without decor. This notice stays on the desk.",
+    now,
+  );
 }
 
 /** Latest decor on a chunk. A rollback drops that build. Generated tiles are not stored here. */
@@ -350,6 +524,8 @@ export function decorOnChunk(db: DatabaseSync, cx: number, cy: number): PublicDe
       size: Number(parsed.size) || 1,
     });
   }
+  const hidden = db.prepare("SELECT id FROM world_builds WHERE status != 'placed'").all() as { id: string }[];
+  for (const row of hidden) live.delete(row.id);
   return [...live.values()];
 }
 

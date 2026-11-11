@@ -35,8 +35,9 @@ import { recordProvenance } from "../build/provenance";
 import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
-import { considerGrowth, considerPrivacy, setTerritoryFrozen, vetoGrowth } from "../world/territory";
-import { guardChunkChain } from "../world/chunkEdits";
+import { remember } from "../brain/memory";
+import { considerGrowth, considerPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../world/territory";
+import { degradeChunkChain, guardChunkChain } from "../world/chunkEdits";
 import { revokeVisitor } from "../world/visitors";
 import { publishFromTick, rollbackScene, setSceneFrozen } from "../world/scene";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
@@ -100,7 +101,8 @@ export function createEngine(env: Env, file?: string) {
     creativeBoard: () => creativeBoard(db, Date.now()),
     setCreative: (on: boolean) => setCreativeEnabled(db, on),
     freezeTerritory: (on: boolean) => setTerritoryFrozen(db, on),
-    vetoTerritory: () => vetoGrowth(db, Date.now()),
+    vetoTerritory: (radius?: number) => vetoGrowth(db, Date.now(), radius),
+    unprivateChunk: (cx: number, cy: number) => unprivateChunk(db, cx, cy, Date.now()),
     revokeVisitor: (id: string) => revokeVisitor(db, id, Date.now()),
     rollbackScene: () => rollbackScene(db),
     freezeScene: (on: boolean) => setSceneFrozen(db, on),
@@ -265,7 +267,20 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       ? { ...lived, longTerm: [{ id: "goal", tier: "long" as const, section: "fact" as const, text: goal, salience: 1, placeId: null, atMinute: 0 }, ...lived.longTerm] }
       : lived;
     const built = considerCreative(db, minded, now);
-    considerGrowth(db, built, now);
+    const grew = considerGrowth(db, built, now);
+    if (grew?.ok) {
+      lived = remember(lived, {
+        id: `claim-${grew.radius}-${now}`,
+        tier: "short",
+        section: "fact",
+        text: grew.memory.text,
+        salience: 0.4,
+        placeId: null,
+        atMinute: lived.worldMinute,
+        provenance: grew.memory.provenance,
+      });
+      saveState(db, lived);
+    }
     considerPrivacy(db, built, now);
     publishFromTick(db, lived.emotions, lived.tick, now);
     const finding = db.prepare("SELECT question FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { question: string } | undefined;
@@ -891,7 +906,7 @@ function inQuietHours(env: Env, now: number): boolean {
 
 export function startLoop(): void {
   const engine = getEngine();
-  if (!guardChunkChain(engine.db)) process.exit(1);
+  if (!guardChunkChain(engine.db)) degradeChunkChain(engine.db);
   const holder = globalThis as GlobalEngine & { loop?: boolean };
   if (holder.loop) return;
   holder.loop = true;

@@ -6,7 +6,8 @@ import { getEngine } from "../../../../server/engine";
 import { parseChunkQuery } from "../../../../world/chunkMath";
 import { publicChunk } from "../../../../world/chunks";
 import { worldSeed } from "../../../../world/chunkCache";
-import { territoryDesk } from "../../../../world/territory";
+import { claimRadius } from "../../../../world/chunkEdits";
+import { CLAIM_BUFFER } from "../../../../world/territoryRules";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +24,10 @@ export function GET(request: Request) {
     return Response.json({ error: "RATE_LIMIT" }, { status: 429, headers: { "cache-control": "no-store" } });
   }
   const chunk = publicChunk(engine.db, spot.cx, spot.cy, worldSeed(engine.env));
-  const territory = territoryDesk(engine.db, now);
   return Response.json({
     ...chunk,
     guests: [],
-    territory: { radius: territory.radius, buffer: territory.buffer },
+    territory: { radius: claimRadius(engine.db), buffer: CLAIM_BUFFER },
   }, {
     headers: { "cache-control": "no-store" },
   });

@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { bearerAddress } from "../auth/ownerToken";
 import { migrateContentHashes, migrateMerchantHashes } from "../money/ledger";
+import { migrateChunkEditHashes } from "../world/chunkEdits";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -445,7 +446,8 @@ CREATE TABLE IF NOT EXISTS chunk_edits (
   idempotency_key TEXT NOT NULL UNIQUE,
   prev_hash TEXT NOT NULL,
   body_hash TEXT NOT NULL,
-  entry_hash TEXT NOT NULL
+  entry_hash TEXT NOT NULL,
+  hash_version INTEGER NOT NULL DEFAULT 2
 );
 CREATE UNIQUE INDEX IF NOT EXISTS chunk_edits_prev ON chunk_edits(prev_hash);
 CREATE INDEX IF NOT EXISTS chunk_edits_cell ON chunk_edits(chunk_x, chunk_y, seq);
@@ -512,9 +514,11 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "world_visitors", "speech_untrusted", "speech_untrusted INTEGER NOT NULL DEFAULT 1");
   ensureColumn(db, "world_visitors", "reg_prefix", "reg_prefix TEXT NOT NULL DEFAULT ''");
   ensureColumn(db, "world_visitors", "expires_at", "expires_at INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "chunk_edits", "hash_version", "hash_version INTEGER NOT NULL DEFAULT 0");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   migrateContentHashes(db);
+  migrateChunkEditHashes(db);
   return db;
 }
 
@@ -567,10 +571,14 @@ export function allowGuestNote(db: DatabaseSync, ip: string, now: number, limits
   }
 }
 
+/** Windows passed to allowRate. The global prune keeps a row until the longest of these. */
+const CONFIGURED_RATE_WINDOWS_MS = [60_000, 3_600_000] as const;
+export const RATE_LIMIT_KEEP_MS = Math.max(...CONFIGURED_RATE_WINDOWS_MS);
+
 export function allowRate(db: DatabaseSync, bucket: string, limit: number, windowMs: number, now: number): boolean {
   const since = now - windowMs;
   db.prepare("DELETE FROM rate_limits WHERE bucket = ? AND at_ms < ?").run(bucket, since);
-  db.prepare("DELETE FROM rate_limits WHERE at_ms < ?").run(now - 3_600_000);
+  db.prepare("DELETE FROM rate_limits WHERE at_ms < ?").run(now - RATE_LIMIT_KEEP_MS);
   const row = db.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = ? AND at_ms >= ?").get(bucket, since) as { n: number };
   if (Number(row.n) >= limit) return false;
   db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)").run(bucket, now);

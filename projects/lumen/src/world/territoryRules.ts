@@ -9,6 +9,18 @@ export const CLAIM_BUFFER = 8;
 /** How many chunks of radius Zoora may add on one Chicago day. */
 export const CLAIM_GROW_PER_DAY = 4;
 
+/**
+ * Optional owner ceiling. Unset means Zoora chooses the size, still within the daily cap.
+ * A missing or invalid value does not invent a maximum.
+ */
+export function claimCeiling(env: Record<string, string | undefined> = process.env): number | null {
+  const raw = env.LUMEN_CLAIM_CEILING?.trim() ?? "";
+  if (!/^\d+$/.test(raw)) return null;
+  const value = Number(raw);
+  if (value < CLAIM_START_RADIUS) return null;
+  return value;
+}
+
 export type Zone = "claim" | "buffer" | "open";
 
 export function homeDistance(cx: number, cy: number): number {

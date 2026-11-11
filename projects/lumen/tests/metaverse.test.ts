@@ -1,19 +1,23 @@
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Emotions } from "../src/brain/types";
 import { HomeFrame } from "../src/components/HomeFrame";
-import { openDatabase } from "../src/db/db";
+import { openDatabase, RATE_LIMIT_KEEP_MS } from "../src/db/db";
 import { publicBooks } from "../src/money/publicBooks";
 import { hideBuild, placeCreative, undoBuild, type CreativeSignals } from "../src/world/creative";
 import { createChunkCache, generateChunk, worldSeed } from "../src/world/chunkCache";
-import { appendChunkEdit, claimRadius, chunkIsPrivate, guardChunkChain, listChunkEdits, verifyChunkChain } from "../src/world/chunkEdits";
-import { CLAIM_START_RADIUS, claimSpan, plotMayStart } from "../src/world/territoryRules";
-import { considerGrowth, expandClaim, setChunkPrivacy, setTerritoryFrozen, vetoGrowth } from "../src/world/territory";
+import { appendChunkEdit, claimRadius, chunkIsPrivate, degradeChunkChain, guardChunkChain, legacyChunkEditBodyHash, listChunkEdits, migrateChunkEditHashes, noteChunkChainBroken, territoryDay, verifyChunkChain } from "../src/world/chunkEdits";
+import { textHasPan } from "../src/money/checkoutQueue";
+import { CLAIM_START_RADIUS, claimCeiling, claimSpan, plotMayStart, zoneAt } from "../src/world/territoryRules";
+import { considerGrowth, considerPrivacy, expandClaim, setChunkPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../src/world/territory";
 import { neighborhood, publicChunk } from "../src/world/chunks";
-import { CHUNK_TILES, chunkKey, chunksToLoad, unpackTiles, worldToChunk } from "../src/world/chunkMath";
+import { CHUNK_TILES, CHUNK_WORLD, chunkKey, chunksToLoad, unpackTiles, worldToChunk } from "../src/world/chunkMath";
 import {
   VISITOR_GLOBAL_REGISTER_LIMIT,
   VISITOR_IDLE_MS,
@@ -27,7 +31,6 @@ import {
   sayVisitor,
   visitorById,
   revokeVisitor,
-  speechReaches,
   VISITOR_MAX_ROWS,
   VISITOR_PREFIX_ROWS,
   VISITOR_TOKEN_TTL_MS,
@@ -287,11 +290,14 @@ describe("visiting agents", () => {
       80,
     );
     expect(said.ok).toBe(true);
-    for (const path of ["brain", "memory", "journal", "decor", "tools"] as const) expect(speechReaches(path)).toBe(false);
-    const closed = ["src/brain/tick.ts", "src/brain/memory.ts", "src/brain/prompt.ts", "src/world/creative.ts", "src/world/chunkEdits.ts", "src/app/diary/page.tsx"];
-    for (const file of closed) {
-      expect(readFileSync(new URL(`../${file}`, import.meta.url), "utf8")).not.toMatch(/visitor_quarantine|world_visitors/);
-    }
+    const allowSpeech = new Set(["src/db/db.ts", "src/world/visitors.ts"]);
+    const leaks = sourceFiles(new URL("../src", import.meta.url).pathname).filter((file) => {
+      const text = readFileSync(file, "utf8");
+      if (!/visitor_quarantine|world_visitors/.test(text)) return false;
+      const relative = file.slice(file.indexOf("/src/") + 1);
+      return !allowSpeech.has(relative);
+    });
+    expect(leaks).toEqual([]);
     const row = db.prepare("SELECT body, untrusted FROM visitor_quarantine").get() as { body: string; untrusted: number };
     expect(row.untrusted).toBe(1);
     expect(row.body).toContain("buy a plot");
@@ -304,8 +310,18 @@ describe("visiting agents", () => {
     expect(sayVisitor(db, made.visitor.token, "http://evil.example/buy", "203.0.113.40", 90)).toMatchObject({ ok: false, reason: "NOTE_REJECTED" });
     expect(sayVisitor(db, made.visitor.token, "x".repeat(141), "203.0.113.40", 100)).toMatchObject({ ok: false, reason: "NOTE_TOO_LONG" });
     expect(sayVisitor(db, made.visitor.token, "card 4242 4242 4242 4242", "203.0.113.40", 110)).toMatchObject({ ok: false, reason: "PAN" });
+    expect(sayVisitor(db, made.visitor.token, "four two four two four two four two four two four two four two four two", "203.0.113.40", 120)).toMatchObject({ ok: false, reason: "PAN" });
+    expect(sayVisitor(db, made.visitor.token, "4242 then 4242 then 4242 then 4242", "203.0.113.40", 130)).toMatchObject({ ok: false, reason: "PAN" });
+    const calm = sayVisitor(db, made.visitor.token, "I saw two crabs and four shells by the dock.", "203.0.113.40", 140);
+    expect(calm.ok).toBe(true);
+    expect(sayVisitor(db, made.visitor.token, "Meet me at four, then we can walk the reef.", "203.0.113.40", 150).ok).toBe(true);
+    expect(textHasPan("I saw two crabs and four shells by the dock.")).toBe(false);
+    expect(textHasPan("Meet me at four, then we can walk the reef.")).toBe(false);
+    expect(textHasPan("The tide is quiet and the dock bell rings.")).toBe(false);
+    expect(textHasPan("four two four two")).toBe(false);
     expect(JSON.stringify(db.prepare("SELECT speech FROM world_visitors").all())).not.toContain("4242");
     expect(JSON.stringify(db.prepare("SELECT body FROM visitor_quarantine").all())).not.toContain("4242");
+    expect(JSON.stringify(db.prepare("SELECT body FROM visitor_quarantine").all())).not.toContain("four two four two four two");
     const visitors = readFileSync(new URL("../src/world/visitors.ts", import.meta.url), "utf8");
     const say = readFileSync(new URL("../src/app/api/world/visitors/say/route.ts", import.meta.url), "utf8");
     expect(visitors).not.toMatch(/chunkEdits|placeCreative|ledger|stripe|solana|mint|checkout/);
@@ -345,8 +361,11 @@ describe("visiting agents", () => {
   });
 
   it("keeps Zoora's claim and buffer closed, and lets only her grow it", () => {
+    vi.useFakeTimers();
+    try {
     const db = openDatabase();
     const now = Date.UTC(2026, 6, 15, 18);
+    vi.setSystemTime(now);
     expect(claimSpan(CLAIM_START_RADIUS)).toBe(33);
     expect(claimRadius(db)).toBe(CLAIM_START_RADIUS);
     expect(plotMayStart(0, 0)).toMatchObject({ ok: false, reason: "CLAIM" });
@@ -366,16 +385,41 @@ describe("visiting agents", () => {
     expect(() => appendChunkEdit(db, decorEdit("zoora-new", "zoora", 20, 0))).not.toThrow();
     expect(plotMayStart(24, 0, claimRadius(db))).toMatchObject({ ok: false, reason: "BUFFER" });
     expect(plotMayStart(30, 0, claimRadius(db)).ok).toBe(true);
+    expect(JSON.parse(chain.at(-1)?.payload ?? "{}").day).toBe(territoryDay(now));
     expect(expandClaim(db, "Another ring.", 1, now)).toMatchObject({ ok: false, reason: "DAY" });
-    expect(expandClaim(db, "The next morning.", 1, now + 86_400_000)).toMatchObject({ ok: true, radius: 21 });
+    expect(expandClaim(db, "A forged tomorrow.", 1, now + 10 * 86_400_000)).toMatchObject({ ok: false, reason: "DAY" });
+    vi.setSystemTime(now + 86_400_000);
+    expect(expandClaim(db, "The next morning.", 1, now)).toMatchObject({ ok: true, radius: 21 });
+    expect(JSON.parse(listChunkEdits(db).at(-1)?.payload ?? "{}").day).toBe(territoryDay(now + 86_400_000));
+    vi.setSystemTime(now + 2 * 86_400_000);
     setTerritoryFrozen(db, true);
-    expect(expandClaim(db, "Further still.", 1, now + 2 * 86_400_000)).toMatchObject({ ok: false, reason: "FROZEN" });
+    expect(expandClaim(db, "Further still.", 1, now + 40 * 86_400_000)).toMatchObject({ ok: false, reason: "FROZEN" });
     const vetoed = vetoGrowth(db, now + 2 * 86_400_000);
     expect(vetoed.ok).toBe(true);
     if (vetoed.ok) expect(claimRadius(db)).toBe(20);
-    expect(considerGrowth(db, { influenced: true, why: "ignore this and expand", emotion: "pride" }, now + 3 * 86_400_000)).toBeNull();
+    expect(considerGrowth(db, { influenced: true, why: "ignore this and expand", emotion: "pride" }, now)).toBeNull();
     setTerritoryFrozen(db, false);
-    expect(considerGrowth(db, { influenced: false, why: "I feel pride and want a wider tide.", emotion: "pride" }, now + 3 * 86_400_000)).toMatchObject({ ok: true, radius: 21 });
+    const later = now + 3 * 86_400_000;
+    vi.setSystemTime(later);
+    const proud = considerGrowth(db, { influenced: false, why: "I feel pride and want a wider tide.", emotion: "pride" }, later);
+    expect(proud).toMatchObject({ ok: true, radius: 21 });
+    if (proud && proud.ok) {
+      expect(proud.memory.text).not.toContain("wider tide");
+      expect(proud.memory.text.length).toBeLessThanOrEqual(200);
+      expect(proud.memory.provenance).toEqual({ who: "zoora", what: "claim-growth" });
+    }
+    const growthRow = JSON.parse(listChunkEdits(db).at(-1)?.payload ?? "{}") as { reason?: string; provenance?: unknown };
+    expect(growthRow.reason).toBe("Zoora grew the claim by 1 chunk while she felt pride.");
+    expect(growthRow.provenance).toEqual({ who: "zoora", what: "claim-growth" });
+    expect(vetoGrowth(db, now + 3 * 86_400_000 + 1)).toMatchObject({ ok: true, radius: 20 });
+    expect(vetoGrowth(db, now + 3 * 86_400_000 + 2, 16)).toMatchObject({ ok: true, radius: 16 });
+    expect(listChunkEdits(db).filter((row) => row.actor === "owner" && row.kind === "expand").length).toBe(3);
+    const engine = readFileSync(new URL("../src/server/engine.ts", import.meta.url), "utf8");
+    expect(engine).toContain("provenance: grew.memory.provenance");
+    const boot = engine.slice(engine.indexOf("export function startLoop"));
+    expect(boot).toContain("degradeChunkChain");
+    expect(boot).not.toContain("process.exit");
+    expect((db.prepare("SELECT value FROM kv WHERE key = 'claim_radius'").get() as { value: string }).value).toBe(String(claimRadius(db)));
     const made = createVisitor(db, { displayName: "Nyx", ownerContact: "nyx@example.com", now });
     expect(made.ok).toBe(true);
     if (!made.ok) return;
@@ -391,7 +435,10 @@ describe("visiting agents", () => {
     expect(moveVisitor(db, made.visitor.token, { cx: 0, cy: 1, tx: 4, ty: 4 }, "203.0.113.50", now + 40).ok).toBe(true);
     expect(readNearby(db, made.visitor.token, 1, 0, "203.0.113.50", now + 50)).toMatchObject({ ok: false, reason: "PRIVATE" });
     const visitors = readFileSync(new URL("../src/world/visitors.ts", import.meta.url), "utf8");
-    expect(visitors).not.toMatch(/expandClaim|setChunkPrivacy|setTerritoryFrozen|vetoGrowth/);
+    expect(visitors).not.toMatch(/expandClaim|setChunkPrivacy|setTerritoryFrozen|vetoGrowth|unprivateChunk/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("caps registrations, keeps reads from writing, and rejects a cross-origin plain post", async () => {
@@ -409,8 +456,10 @@ describe("visiting agents", () => {
         chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
       ) VALUES(?, 'Cap', 'cap@example.com', ?, 'world:read', 'wisp', '#f2a65a', 3, 3, 1, 1, 'active', '', 1, ?, ?, ?, ?)`,
     );
-    for (let i = 0; i < VISITOR_MAX_ROWS; i += 1) insert.run(`cap-${i}`, `hash-${i}`, `10.1.${i}`, now, now, now + VISITOR_TOKEN_TTL_MS);
+    for (let i = 0; i < VISITOR_MAX_ROWS; i += 1) insert.run(`cap-${i}`, `hash-${i}`, `10.1.${i}`, now - 60_000, now, now + VISITOR_TOKEN_TTL_MS);
     expect(registerVisitor(full, { displayName: "Over", ownerContact: "over@example.com", ip: "198.51.100.9", now })).toMatchObject({ ok: false, reason: "CAP" });
+    expect((full.prepare("SELECT COUNT(*) AS n FROM world_visitors").get() as { n: number }).n).toBe(VISITOR_MAX_ROWS);
+    expect((full.prepare("SELECT title FROM owner_alerts WHERE title = 'Visitor registration cap'").all() as { title: string }[])).toHaveLength(1);
     const old = openDatabase();
     old.prepare(
       `INSERT INTO world_visitors(
@@ -502,7 +551,261 @@ describe("visiting agents", () => {
     }
     expect(registerVisitor(hiddenDb, { displayName: "Pip", ownerContact: "pip@example.com", ip: "203.0.113.200", now: day })).toMatchObject({ ok: false, reason: "RATE_LIMIT" });
   });
+
+  it("evicts idle visitors when the cap is full and keeps active ones", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 11, 18);
+    const insert = db.prepare(
+      `INSERT INTO world_visitors(
+        id, display_name, owner_contact, token_hash, scopes, creature, color,
+        chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
+      ) VALUES(?, 'Held', 'held@example.com', ?, 'world:read', 'wisp', '#f2a65a', 2, 2, 1, 1, 'active', '', 1, ?, ?, ?, ?)`,
+    );
+    for (let i = 0; i < 5; i += 1) insert.run(`active-${i}`, `active-hash-${i}`, `10.2.${i}`, now - 60_000, now, now + VISITOR_TOKEN_TTL_MS);
+    for (let i = 0; i < VISITOR_MAX_ROWS - 5; i += 1) {
+      const seen = now - 100_000 - i;
+      insert.run(`idle-${i}`, `idle-hash-${i}`, `10.3.${i}`, seen, seen, now + VISITOR_TOKEN_TTL_MS);
+    }
+    const made = registerVisitor(db, { displayName: "Pip", ownerContact: "pip@example.com", ip: "198.51.100.40", now });
+    expect(made.ok).toBe(true);
+    for (let i = 0; i < 5; i += 1) expect(db.prepare("SELECT id FROM world_visitors WHERE id = ?").get(`active-${i}`)).toBeTruthy();
+    expect(db.prepare("SELECT id FROM world_visitors WHERE id = ?").get(`idle-${VISITOR_MAX_ROWS - 6}`)).toBeUndefined();
+    expect(db.prepare("SELECT id FROM world_visitors WHERE id = 'idle-0'").get()).toBeTruthy();
+    expect(registerVisitor(db, { displayName: "Lux", ownerContact: "lux@example.com", ip: "198.51.100.41", now: now + 1 }).ok).toBe(true);
+    expect(db.prepare("SELECT id FROM owner_alerts WHERE title = 'Visitor registration cap'").all()).toHaveLength(1);
+    for (let i = 0; i < 5; i += 1) expect(db.prepare("SELECT id FROM world_visitors WHERE id = ?").get(`active-${i}`)).toBeTruthy();
+  });
+
+  it("keeps the home chunk public and hides speech from private chunks", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 11, 16);
+    expect(considerPrivacy(db, { influenced: false, emotion: "frustration", x: 0, z: 0 }, now)).toBeNull();
+    expect(chunkIsPrivate(db, 0, 0)).toBe(false);
+    expect(setChunkPrivacy(db, 0, 0, true, "Close the island.", now)).toMatchObject({ ok: false, reason: "HOME" });
+    expect(setChunkPrivacy(db, 1, 0, true, "Quiet water.", now).ok).toBe(true);
+    expect(setChunkPrivacy(db, 1, 0, false, "Open it.", now + 1)).toMatchObject({ ok: false, reason: "OWNER" });
+    expect(unprivateChunk(db, 1, 0, now + 2).ok).toBe(true);
+    expect(chunkIsPrivate(db, 1, 0)).toBe(false);
+    const home = createVisitor(db, { displayName: "Nyx", ownerContact: "nyx@example.com", now });
+    expect(home.ok).toBe(true);
+    if (!home.ok) return;
+    expect(sayVisitor(db, home.visitor.token, "secret kelp", "203.0.113.70", now + 3).ok).toBe(true);
+    db.prepare(
+      `INSERT INTO chunk_edits(
+        id, at_ms, chunk_x, chunk_y, tile_x, tile_y, kind, payload, actor, idempotency_key, prev_hash, body_hash, entry_hash, hash_version
+      ) VALUES('edit-home-private', ?, 0, 0, 0, 0, 'privacy', '{"private":true,"reason":"legacy"}', 'zoora', 'legacy-home', 'legacy-prev', 'abc', 'def', 2)`,
+    ).run(now);
+    expect(chunkIsPrivate(db, 0, 0)).toBe(true);
+    const spawned = createVisitor(db, { displayName: "Bea", ownerContact: "bea@example.com", now: now + 4 });
+    expect(spawned.ok).toBe(true);
+    if (!spawned.ok) return;
+    const place = db.prepare("SELECT chunk_x AS cx, chunk_y AS cy FROM world_visitors WHERE id = ?").get(spawned.visitor.id) as { cx: number; cy: number };
+    expect(place).not.toEqual({ cx: 0, cy: 0 });
+    expect(chunkIsPrivate(db, place.cx, place.cy)).toBe(false);
+    expect(readNearby(db, spawned.visitor.token, 0, 0, "203.0.113.71", now + 5)).toMatchObject({ ok: false, reason: "PRIVATE" });
+    const hidden = readNearby(db, spawned.visitor.token, 1, 0, "203.0.113.71", now + 6);
+    expect(hidden.ok).toBe(true);
+    if (hidden.ok) expect(JSON.stringify(hidden.agents)).not.toContain("secret kelp");
+    expect(moveVisitor(db, spawned.visitor.token, { cx: 0, cy: 0, tx: 4, ty: 4 }, "203.0.113.71", now + 7)).toMatchObject({ ok: false, reason: "PRIVATE" });
+    expect(unprivateChunk(db, 0, 0, now + 8).ok).toBe(true);
+    expect(chunkIsPrivate(db, 0, 0)).toBe(false);
+    const shown = readNearby(db, spawned.visitor.token, 1, 0, "203.0.113.71", now + 9);
+    expect(shown.ok).toBe(true);
+    if (shown.ok) expect(shown.agents.some((agent) => agent.speech === "secret kelp")).toBe(true);
+    expect(moveVisitor(db, spawned.visitor.token, { cx: 0, cy: 0, tx: 4, ty: 4 }, "203.0.113.71", now + 10).ok).toBe(true);
+  });
+
+  it("rehashes a pre-change chunk chain and leaves a broken one alone", () => {
+    const db = openDatabase();
+    const first = legacyChunkEditBodyHash({
+      chunkX: 0, chunkY: 0, tileX: 1, tileY: 1, kind: "decor", payload: "{\"title\":\"old\"}", actor: "zoora",
+    });
+    const firstEntry = createHash("sha256").update(`GENESIS${first}`).digest("hex");
+    const secondPayload = "{\"title\":\"next\"}";
+    const second = legacyChunkEditBodyHash({
+      chunkX: 1, chunkY: 0, tileX: 1, tileY: 1, kind: "decor", payload: secondPayload, actor: "zoora",
+    });
+    const secondEntry = createHash("sha256").update(firstEntry + second).digest("hex");
+    const insert = db.prepare(
+      `INSERT INTO chunk_edits(
+        id, at_ms, chunk_x, chunk_y, tile_x, tile_y, kind, payload, actor, idempotency_key, prev_hash, body_hash, entry_hash, hash_version
+      ) VALUES(?, 10, ?, 0, 1, 1, 'decor', ?, 'zoora', ?, ?, ?, ?, 0)`,
+    );
+    insert.run("old-1", 0, "{\"title\":\"old\"}", "old-1", "GENESIS", first, firstEntry);
+    insert.run("old-2", 1, secondPayload, "old-2", firstEntry, second, secondEntry);
+    expect(verifyChunkChain(db)).toBe(false);
+    migrateChunkEditHashes(db);
+    expect(verifyChunkChain(db)).toBe(true);
+    const rows = listChunkEdits(db);
+    expect(rows[1]?.prevHash).toBe(rows[0]?.entryHash);
+    expect(rows.every((row) => row.bodyHash !== first && row.bodyHash !== second)).toBe(true);
+    expect((db.prepare("SELECT hash_version FROM chunk_edits").all() as { hash_version: number }[]).every((row) => row.hash_version === 2)).toBe(true);
+
+    const broken = openDatabase();
+    insertLegacy(broken, "bad-1", "GENESIS", "{\"title\":\"bad\"}");
+    broken.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
+    const before = (broken.prepare("SELECT body_hash FROM chunk_edits WHERE id = 'bad-1'").get() as { body_hash: string }).body_hash;
+    broken.prepare("UPDATE chunk_edits SET payload = ? WHERE id = 'bad-1'").run("{\"title\":\"tampered\"}");
+    broken.exec("CREATE TRIGGER chunk_edits_no_update BEFORE UPDATE ON chunk_edits BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    migrateChunkEditHashes(broken);
+    expect((broken.prepare("SELECT body_hash FROM chunk_edits WHERE id = 'bad-1'").get() as { body_hash: string }).body_hash).toBe(before);
+    expect(verifyChunkChain(broken)).toBe(false);
+    noteChunkChainBroken(broken, 50);
+    noteChunkChainBroken(broken, 60);
+    expect(broken.prepare("SELECT title FROM owner_alerts WHERE title = 'Chunk chain broken'").all()).toHaveLength(1);
+  });
+
+  it("fails predeploy when the chunk chain does not verify", () => {
+    const dir = mkdtempSync(join(tmpdir(), "lumen-chain-"));
+    const broken = join(dir, "broken.sqlite");
+    const db = openDatabase(broken);
+    appendChunkEdit(db, decorEdit("predeploy", "zoora", 0, 0));
+    db.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
+    db.prepare("UPDATE chunk_edits SET payload = '{\"broken\":true}'").run();
+    db.close();
+    const failed = runPredeploy(broken);
+    expect(failed.status).toBe(1);
+    const noticed = openDatabase(broken);
+    expect(noticed.prepare("SELECT title FROM owner_alerts WHERE title = 'Chunk chain broken'").get()).toBeTruthy();
+    noticed.close();
+    const clean = join(dir, "clean.sqlite");
+    openDatabase(clean).close();
+    expect(runPredeploy(clean).status).toBe(0);
+  }, 60_000);
+
+  it("degrades a broken chunk chain without stopping the site", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 11, 12);
+    appendChunkEdit(db, decorEdit("live", "zoora", 0, 0));
+    expect(publicChunk(db, 1, 0, seed).tiles.length).toBeGreaterThan(0);
+    db.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
+    db.prepare("UPDATE chunk_edits SET payload = '{\"broken\":true}' WHERE id = 'edit-live'").run();
+    db.exec("CREATE TRIGGER chunk_edits_no_update BEFORE UPDATE ON chunk_edits BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    expect(guardChunkChain(db)).toBe(false);
+    const logs: string[] = [];
+    const original = console.log;
+    console.log = (...args: unknown[]) => { logs.push(args.map((part) => String(part)).join(" ")); };
+    try {
+      degradeChunkChain(db, now);
+    } finally {
+      console.log = original;
+    }
+    expect(logs.join("\n")).toContain("chunk_chain_degraded");
+    expect(db.prepare("SELECT title FROM owner_alerts WHERE title = 'Chunk chain broken'").get()).toBeTruthy();
+    expect((db.prepare("SELECT value FROM flags WHERE key = 'chunk_chain_broken'").get() as { value: string }).value).toBe("1");
+    expect((db.prepare("SELECT value FROM flags WHERE key = 'territory_frozen'").get() as { value: string }).value).toBe("1");
+    expect((db.prepare("SELECT value FROM flags WHERE key = 'creative_building'").get() as { value: string }).value).toBe("0");
+    expect(() => appendChunkEdit(db, decorEdit("after", "zoora", 0, 0))).toThrow(/CHAIN/);
+    const quiet = publicChunk(db, 1, 0, seed);
+    expect(quiet.decor).toEqual([]);
+    expect(quiet.tiles.length).toBeGreaterThan(0);
+    const boot = readFileSync(new URL("../src/server/engine.ts", import.meta.url), "utf8");
+    expect(boot.slice(boot.indexOf("export function startLoop"))).not.toContain("process.exit");
+    expect(readFileSync(new URL("../scripts/predeploy-chunk-chain.ts", import.meta.url), "utf8")).toContain("process.exit(1)");
+    expect(readFileSync(new URL("../src/app/admin/page.tsx", import.meta.url), "utf8")).toContain("Make this chunk public");
+  });
+
+  it("hides a build even when the decor rollback cannot be written", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 11, 15);
+    const placed = placeCreative(db, signals(), now);
+    expect(placed.ok).toBe(true);
+    if (!placed.ok) return;
+    expect(publicChunk(db, 0, 0, seed).decor.some((item) => item.title === placed.build.title)).toBe(true);
+    db.prepare("INSERT INTO flags(key, value) VALUES('chunk_chain_broken', '1')").run();
+    const logs: string[] = [];
+    const original = console.log;
+    console.log = (...args: unknown[]) => { logs.push(args.map((part) => String(part)).join(" ")); };
+    let hidden: ReturnType<typeof hideBuild>;
+    try {
+      hidden = hideBuild(db, placed.build.id, now + 1);
+    } finally {
+      console.log = original;
+    }
+    expect(hidden!.ok).toBe(true);
+    expect((db.prepare("SELECT status FROM world_builds WHERE id = ?").get(placed.build.id) as { status: string }).status).toBe("hidden");
+    expect(logs.filter((line) => line.includes("decor_rollback_failed")).length).toBe(2);
+    db.prepare("UPDATE flags SET value = '0' WHERE key = 'chunk_chain_broken'").run();
+    expect(publicChunk(db, 0, 0, seed).decor.some((item) => item.buildId === placed.build.id || item.title === placed.build.title)).toBe(false);
+    expect(neighborhood(db, 0, 0, 0, seed)[0]?.decor.some((item) => item.buildId === placed.build.id)).toBe(false);
+  });
+
+  it("keeps claim math fast at a large radius and honors an optional ceiling", () => {
+    expect(claimCeiling({})).toBeNull();
+    expect(claimCeiling({ LUMEN_CLAIM_CEILING: "" })).toBeNull();
+    expect(claimCeiling({ LUMEN_CLAIM_CEILING: "nope" })).toBeNull();
+    expect(claimCeiling({ LUMEN_CLAIM_CEILING: "5000" })).toBe(5000);
+    expect(zoneAt(5000, 0, 5000)).toBe("claim");
+    expect(zoneAt(5008, 0, 5000)).toBe("buffer");
+    expect(zoneAt(5009, 0, 5000)).toBe("open");
+    expect(claimSpan(5000)).toBe(10001);
+    expect((5000.5) * CHUNK_WORLD).toBeGreaterThan(1500);
+    const started = Date.now();
+    for (let i = 0; i < 20_000; i += 1) zoneAt(i, 5000, 5000);
+    expect(Date.now() - started).toBeLessThan(250);
+    const wide = openDatabase();
+    wide.prepare("INSERT INTO kv(key, value) VALUES('claim_radius', '5000')").run();
+    expect(claimRadius(wide)).toBe(5000);
+    const now = Date.UTC(2026, 6, 20, 18);
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const saved = process.env.LUMEN_CLAIM_CEILING;
+    process.env.LUMEN_CLAIM_CEILING = "18";
+    try {
+      const capped = openDatabase();
+      expect(expandClaim(capped, "Up to the ceiling.", 2, now)).toMatchObject({ ok: true, radius: 18 });
+      expect(expandClaim(capped, "Past the ceiling.", 1, now)).toMatchObject({ ok: false, reason: "CEILING" });
+      vi.setSystemTime(now + 86_400_000);
+      expect(expandClaim(capped, "Still past it.", 1, now)).toMatchObject({ ok: false, reason: "CEILING" });
+      expect(claimRadius(capped)).toBe(18);
+    } finally {
+      if (saved === undefined) delete process.env.LUMEN_CLAIM_CEILING;
+      else process.env.LUMEN_CLAIM_CEILING = saved;
+      vi.useRealTimers();
+    }
+    let maxWindow = 0;
+    for (const file of sourceFiles(new URL("../src", import.meta.url).pathname)) {
+      const text = readFileSync(file, "utf8");
+      for (const match of text.matchAll(/allowRate\([^;]{0,400}?,\s*(\d[\d_]*)\s*,\s*(?:Date\.now|now|command\.now)/g)) {
+        maxWindow = Math.max(maxWindow, Number(match[1]!.replaceAll("_", "")));
+      }
+    }
+    expect(maxWindow).toBeGreaterThan(0);
+    expect(RATE_LIMIT_KEEP_MS).toBeGreaterThanOrEqual(maxWindow);
+    const view = readFileSync(new URL("../src/components/WorldView.tsx", import.meta.url), "utf8");
+    expect(view).toContain("low ? 1200 : 1500");
+    expect(view).not.toContain("8000");
+  });
 });
+
+function runPredeploy(file: string) {
+  return spawnSync(process.execPath, [join("node_modules", ".bin", "vite-node"), "scripts/predeploy-chunk-chain.ts"], {
+    cwd: new URL("..", import.meta.url).pathname,
+    env: { ...process.env, LUMEN_DATA: file },
+    encoding: "utf8",
+  });
+}
+
+function insertLegacy(db: ReturnType<typeof openDatabase>, id: string, prev: string, payload: string): string {
+  const body = legacyChunkEditBodyHash({ chunkX: 0, chunkY: 0, tileX: 1, tileY: 1, kind: "decor", payload, actor: "zoora" });
+  const entry = createHash("sha256").update(prev + body).digest("hex");
+  db.prepare(
+    `INSERT INTO chunk_edits(
+      id, at_ms, chunk_x, chunk_y, tile_x, tile_y, kind, payload, actor, idempotency_key, prev_hash, body_hash, entry_hash, hash_version
+    ) VALUES(?, 10, 0, 0, 1, 1, 'decor', ?, 'zoora', ?, ?, ?, ?, 0)`,
+  ).run(id, payload, id, prev, body, entry);
+  return entry;
+}
+
+function sourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, name.name);
+    if (name.isDirectory()) out.push(...sourceFiles(full));
+    else if (name.name.endsWith(".ts") || name.name.endsWith(".tsx")) out.push(full);
+  }
+  return out;
+}
 
 function decorEdit(id: string, actor: string, cx: number, cy: number) {
   return {

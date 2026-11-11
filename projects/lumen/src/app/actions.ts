@@ -145,7 +145,16 @@ export async function creativeAction(form: FormData) {
   if (op === "undo") engine.undoBuild(String(form.get("id") ?? ""));
   if (op === "freeze-territory") engine.freezeTerritory(true);
   if (op === "thaw-territory") engine.freezeTerritory(false);
-  if (op === "veto-territory") engine.vetoTerritory();
+  if (op === "veto-territory") {
+    const raw = String(form.get("radius") ?? "").trim();
+    if (raw === "") engine.vetoTerritory();
+    else if (/^-?\d+$/.test(raw)) engine.vetoTerritory(Number(raw));
+  }
+  if (op === "make-public" || op === "unprivate") {
+    const cx = Number(form.get("cx"));
+    const cy = Number(form.get("cy"));
+    if (Number.isInteger(cx) && Number.isInteger(cy)) engine.unprivateChunk(cx, cy);
+  }
 }
 
 export async function sceneDesk(form: FormData) {

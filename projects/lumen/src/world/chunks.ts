@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { createChunkCache, worldSeed, type ChunkCache } from "./chunkCache";
-import { chunkIsPrivate, decorOnChunk } from "./chunkEdits";
+import { chunkIsPrivate, chunkWritesFrozen, decorOnChunk } from "./chunkEdits";
 import { packTiles, type PublicChunk } from "./chunkMath";
 
 /** Unvisited chunks stay out of this cache. Edits stay in SQLite, not here. */
@@ -17,7 +17,7 @@ export function publicChunk(db: DatabaseSync, cx: number, cy: number, seed = wor
     cx,
     cy,
     tiles: hidden ? "" : packTiles(generated.slice()),
-    decor: hidden ? [] : decorOnChunk(db, cx, cy),
+    decor: hidden || chunkWritesFrozen(db) ? [] : decorOnChunk(db, cx, cy),
     private: hidden,
   };
 }

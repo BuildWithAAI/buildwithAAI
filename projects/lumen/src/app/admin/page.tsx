@@ -233,6 +233,17 @@ export default async function AdminPage() {
           <input type="hidden" name="op" value="veto-territory" />
           <button type="submit">Veto the latest growth</button>
         </form>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value="veto-territory" />
+          <input name="radius" placeholder="Radius" />
+          <button type="submit">Set the claim back to this radius</button>
+        </form>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value="make-public" />
+          <input name="cx" placeholder="Chunk x" />
+          <input name="cy" placeholder="Chunk y" />
+          <button type="submit">Make this chunk public</button>
+        </form>
         <form action={visitorDesk}>
           <input type="hidden" name="op" value="revoke" />
           <input name="id" placeholder="Visitor id" />

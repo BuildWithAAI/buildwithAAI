@@ -29,8 +29,33 @@ export function serverTokenValue(value: string): boolean {
   return false;
 }
 
+const SPOKEN_DIGIT: Record<string, string> = {
+  zero: "0",
+  oh: "0",
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
+};
+
+/**
+ * Spelled digits become digits, and filler words between digit groups drop out,
+ * so "four two four two" and "4242 then 4242" reach the same card check.
+ * Words that are not sitting between digits stay put.
+ */
+export function normalizeSpokenCard(value: string): string {
+  const softened = value.replace(/[,.;:]+/g, " ");
+  const spoken = softened.replace(/\b(zero|oh|one|two|three|four|five|six|seven|eight|nine)\b/gi, (word) => SPOKEN_DIGIT[word.toLowerCase()] ?? word);
+  return spoken.replace(/(?<=\d)\s+(?:(?:then|and|next|plus|followed|by|with|the|a|an|of|to)\s+)+(?=\d)/gi, " ");
+}
+
 export function textHasPan(value: string): boolean {
-  return rejectPan({ speech: value });
+  return rejectPan({ speech: normalizeSpokenCard(value) });
 }
 
 /** Refuse a body that tries to carry a card number. The queue has no card fields. */

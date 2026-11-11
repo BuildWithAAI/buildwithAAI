@@ -26,6 +26,8 @@ export type Memory = {
   salience: number;
   placeId: string | null;
   atMinute: number;
+  /** Who produced this line, and which path produced it. Absent on older memories. */
+  provenance?: { who: string; what: string };
 };
 
 export type Verdict = { subject: string; stance: "like" | "dislike"; weight: number };

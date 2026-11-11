@@ -10,6 +10,7 @@
     "test": "vitest run",
     "smoke": "node scripts/csp-smoke.mjs",
     "typecheck": "tsc --noEmit",
+    "predeploy": "vite-node scripts/predeploy-chunk-chain.ts",
     "hash-password": "node scripts/hash-password.mjs",
     "telegram:poll": "node scripts/telegram-poll.mjs",
     "telegram:commands": "node scripts/telegram-set-commands.mjs"
