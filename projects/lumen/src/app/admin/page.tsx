@@ -8,7 +8,7 @@ import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, k
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ error?: string; done?: string }> }) {
   const query = await searchParams;
   const header = await headers();
   if (!loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))) notFound();
@@ -225,6 +225,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </form>
         <h2>Creative building</h2>
         {query.error && /^[A-Z0-9_]{1,40}$/.test(query.error) ? <p className="warn">That action was refused: {query.error}.</p> : null}
+        {query.done && /^[a-z0-9-]{1,40}$/.test(query.done) ? <p className="muted">Saved {query.done}.</p> : null}
         <p className="muted">Zoora spends island materials, not money. {creative.left} materials left today. Building is {creative.on ? "on" : "off"}.</p>
         <p className="muted">Her claim reaches {creative.territory.radius} chunks from the island ({creative.territory.span} by {creative.territory.span}), with an empty buffer of {creative.territory.buffer} chunks. Growth today is {creative.territory.grownToday}. {creative.territory.frozen ? "Growth is frozen." : "She may still grow it."}</p>
         <form action={creativeAction}>

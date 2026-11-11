@@ -160,6 +160,7 @@ export async function creativeAction(form: FormData) {
   }
   if (op === "reverify-chain") result = engine.reverifyChain();
   if (result && result.ok === false) redirect(`/admin?error=${encodeURIComponent(result.reason ?? "REFUSED")}`);
+  redirect(`/admin?done=${encodeURIComponent(op)}`);
 }
 
 export async function sceneDesk(form: FormData) {

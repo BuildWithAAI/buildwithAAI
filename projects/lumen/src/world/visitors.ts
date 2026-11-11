@@ -316,11 +316,31 @@ function limited(db: DatabaseSync, bucket: string, limit: number, now: number): 
   return allowRate(db, bucket, limit, VISITOR_WINDOW_MS, now);
 }
 
+function withImmediate<T>(db: DatabaseSync, run: () => T): T {
+  let owns = false;
+  try {
+    db.exec("BEGIN IMMEDIATE");
+    owns = true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/within a transaction/i.test(message)) throw error;
+  }
+  try {
+    const value = run();
+    if (owns) db.exec("COMMIT");
+    return value;
+  } catch (error) {
+    if (owns) {
+      try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    }
+    throw error;
+  }
+}
+
 export function registerVisitor(
   db: DatabaseSync,
   input: { displayName: unknown; ownerContact: unknown; ip: string; now: number },
 ): { ok: true; visitor: VisitorToken } | { ok: false; reason: string; status: number } {
-  pruneVisitors(db, input.now);
   const v6 = ipv6Prefix64(input.ip);
   const v48 = ipv6Prefix48(input.ip);
   if (!limited(db, "visitor:register:global", VISITOR_GLOBAL_REGISTER_LIMIT, input.now)
@@ -330,30 +350,33 @@ export function registerVisitor(
     logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
     return { ok: false, reason: "RATE_LIMIT", status: 429 };
   }
-  const prefix = registrationPrefix(input.ip);
-  const prefixRows = Number((db.prepare(
-    "SELECT COUNT(*) AS n FROM world_visitors WHERE reg_prefix = ? AND status != 'revoked' AND expires_at > ?",
-  ).get(prefix, input.now) as { n: number }).n);
-  if (prefixRows >= VISITOR_PREFIX_ROWS) {
-    logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
-    return { ok: false, reason: "PREFIX", status: 429 };
-  }
-  if (activeCapReached(db, input.ip, input.now)) {
-    logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
-    return { ok: false, reason: "ACTIVE", status: 429 };
-  }
-  if (visitorCount(db) >= VISITOR_MAX_ROWS) {
-    const evicted = evictIdleVisitor(db, input.now) || evictHeaviestPrefix(db);
-    noteVisitorCap(db, input.now, evicted);
-    if (!evicted || visitorCount(db) >= VISITOR_MAX_ROWS) {
+  return withImmediate(db, () => {
+    pruneVisitors(db, input.now);
+    const prefix = registrationPrefix(input.ip);
+    const prefixRows = Number((db.prepare(
+      "SELECT COUNT(*) AS n FROM world_visitors WHERE reg_prefix = ? AND status != 'revoked' AND expires_at > ?",
+    ).get(prefix, input.now) as { n: number }).n);
+    if (prefixRows >= VISITOR_PREFIX_ROWS) {
       logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
-      return { ok: false, reason: "CAP", status: 429 };
+      return { ok: false, reason: "PREFIX", status: 429 };
     }
-  }
-  const created = createVisitor(db, input);
-  if (!created.ok) return { ok: false, reason: created.reason, status: 400 };
-  logSecurity({ event: "visitor_register", status: 201, route: "/api/world/visitors" });
-  return { ok: true, visitor: created.visitor };
+    if (activeCapReached(db, input.ip, input.now)) {
+      logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
+      return { ok: false, reason: "ACTIVE", status: 429 };
+    }
+    if (visitorCount(db) >= VISITOR_MAX_ROWS) {
+      const evicted = evictIdleVisitor(db, input.now) || evictHeaviestPrefix(db);
+      noteVisitorCap(db, input.now, evicted);
+      if (!evicted || visitorCount(db) >= VISITOR_MAX_ROWS) {
+        logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
+        return { ok: false, reason: "CAP", status: 429 };
+      }
+    }
+    const created = createVisitor(db, input);
+    if (!created.ok) return { ok: false, reason: created.reason, status: 400 };
+    logSecurity({ event: "visitor_register", status: 201, route: "/api/world/visitors" });
+    return { ok: true, visitor: created.visitor };
+  });
 }
 
 function authorize(

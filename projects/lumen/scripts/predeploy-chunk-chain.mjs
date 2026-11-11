@@ -36,9 +36,17 @@ function bodyHash(row) {
 const db = new DatabaseSync(file, { readOnly: true });
 let rows = [];
 try {
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'chunk_edits'").get();
+  if (!tables) {
+    console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_absent", status: 200, route: "predeploy", detail: "chunk_edits is not in this database" }));
+    db.close();
+    process.exit(0);
+  }
   rows = db.prepare("SELECT id, at_ms, chunk_x, chunk_y, tile_x, tile_y, kind, payload, actor, idempotency_key, prev_hash, body_hash, entry_hash FROM chunk_edits ORDER BY seq ASC").all();
-} catch {
-  console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_broken", status: 500, route: "predeploy" }));
+} catch (error) {
+  const detail = error instanceof Error ? error.message : String(error);
+  console.log(JSON.stringify({ ts: new Date().toISOString(), event: "predeploy_error", status: 500, route: "predeploy", detail: detail.slice(0, 200) }));
+  try { db.close(); } catch { /* already closed */ }
   process.exit(1);
 }
 let prev = "GENESIS";

@@ -308,7 +308,7 @@ export function appendChunkEdit(db: DatabaseSync, input: ChunkEditInput): ChunkE
     degradeChunkChain(db);
     throw new Error("CHAIN");
   }
-  if (chunkWritesFrozen(db) && !ownerRecovery(input)) throw new Error("CHAIN");
+  if (chunkWritesFrozen(db) && (!ownerRecovery(input) || !verifyChunkChain(db))) throw new Error("CHAIN");
   const payload = assertInput(input);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
@@ -517,7 +517,13 @@ export function degradeChunkChain(db: DatabaseSync, now = Date.now()): void {
 }
 
 export function clearChunkChainBroken(db: DatabaseSync): void {
+  const wasBroken = chunkWritesFrozen(db);
   rememberFlag(db, "chunk_chain_broken", "0");
+  if (wasBroken) {
+    rememberFlag(db, "territory_frozen", "0");
+    rememberFlag(db, "creative_building", "1");
+  }
+  db.prepare("DELETE FROM owner_alerts WHERE title = ?").run("Chunk chain broken");
 }
 
 /** Owner desk. A good chain clears the freeze flag. A bad one stays degraded. */

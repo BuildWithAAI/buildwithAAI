@@ -54,8 +54,10 @@ export function normalizeSpokenCard(value: string): string {
   return spoken.replace(/(?<=\d)\s+(?:(?:then|and|next|plus|followed|by|with|the|a|an|of|to)\s+)+(?=\d)/gi, " ");
 }
 
+const KEYCAP_MARKS = /[\u20E3\uFE0F]/g;
+
 export function textHasPan(value: string): boolean {
-  return rejectPan({ speech: normalizeSpokenCard(value) });
+  return rejectPan({ speech: normalizeSpokenCard(value.replace(KEYCAP_MARKS, "")) });
 }
 
 /** Refuse a body that tries to carry a card number. The queue has no card fields. */

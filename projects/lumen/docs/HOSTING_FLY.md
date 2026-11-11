@@ -121,23 +121,29 @@ fly secrets import -a lumen-tidepool < secrets.env
 
 ## Check the volume before a deploy
 
-Run this on your own machine before `fly deploy` when the volume already has a database. It is not a `release_command`. Nothing here starts on the machine or writes to the volume.
+Run this on your own machine before `fly deploy` when the volume already has a database. It is not a `release_command`. Nothing here starts on the machine by itself.
 
-The ledger should be one chain. Two rows with the same previous hash are a fork:
+Download a copy of `/data/lumen.sqlite` first. Do not point these commands at the live file. Make a second file with SQLite `VACUUM INTO` before you change anything. `sqlite3` is not in the image. Node is.
 
 ```powershell
-fly ssh console -a lumen-tidepool -C "sqlite3 /data/lumen.sqlite \"SELECT prev_hash, COUNT(*) AS n FROM ledger_entries GROUP BY prev_hash HAVING n > 1;\""
+node -e "const {DatabaseSync}=require('node:sqlite'); const db=new DatabaseSync(process.argv[1]); db.exec('VACUUM INTO '+JSON.stringify(process.argv[2])); db.close();" "C:\backups\lumen.sqlite" "C:\backups\lumen-before-deploy.sqlite"
 ```
 
-An empty result is the chain you want. The chunk log is checked the same way, read-only, from this repo:
+The ledger should be one chain. Two rows with the same previous hash are a fork. An empty list is the chain you want:
+
+```powershell
+fly ssh console -a lumen-tidepool -C "node -e ""const {DatabaseSync}=require('node:sqlite'); const db=new DatabaseSync('/data/lumen.sqlite',{readOnly:true}); const rows=db.prepare('SELECT prev_hash, COUNT(*) AS n FROM ledger_entries GROUP BY prev_hash HAVING n > 1').all(); console.log(JSON.stringify(rows)); db.close();"""
+```
+
+The chunk log is checked read-only, from this repo, on the backup copy:
 
 ```powershell
 cd projects\lumen
-$env:LUMEN_DATA = "C:\path\to\a-copy-of-lumen.sqlite"
+$env:LUMEN_DATA = "C:\backups\lumen-before-deploy.sqlite"
 npm run predeploy
 ```
 
-`npm run predeploy` refuses a missing file, does not migrate, and does not write a desk notice. A broken chunk chain prints one line and exits non-zero. Fix the copy before you deploy. Do not point `LUMEN_DATA` at the live volume over SSH for this command.
+`npm run predeploy` refuses a missing file, does not migrate, and does not write a desk notice. A database from before `chunk_edits` existed exits 0 with a note. A broken chunk chain prints one line and exits non-zero. Another SQL error is reported as `predeploy_error`, not as a broken chain. Fix the copy before you deploy.
 
 ## Deploy one machine
 

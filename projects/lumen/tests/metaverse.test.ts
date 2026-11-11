@@ -1,10 +1,11 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import type { Emotions } from "../src/brain/types";
 import { HomeFrame } from "../src/components/HomeFrame";
@@ -681,6 +682,21 @@ describe("visiting agents", () => {
     openDatabase(clean).close();
     expect(runPredeploy(clean).status).toBe(0);
     expect(runPredeploy(join(dir, "missing.sqlite")).status).toBe(1);
+    const old = join(dir, "old.sqlite");
+    const oldDb = new DatabaseSync(old);
+    oldDb.exec("CREATE TABLE ledger_entries (id TEXT)");
+    oldDb.close();
+    const absent = runPredeploy(old);
+    expect(absent.status).toBe(0);
+    expect(absent.stdout ?? "").toContain("chunk_chain_absent");
+    const bad = join(dir, "badcols.sqlite");
+    const badDb = new DatabaseSync(bad);
+    badDb.exec("CREATE TABLE chunk_edits (id TEXT)");
+    badDb.close();
+    const sql = runPredeploy(bad);
+    expect(sql.status).toBe(1);
+    expect(sql.stdout ?? "").toContain("predeploy_error");
+    expect(sql.stdout ?? "").not.toContain("chunk_chain_broken");
     const before = readFileSync(broken);
     expect(runPredeploy(broken).status).toBe(1);
     expect(readFileSync(broken).equals(before)).toBe(true);
@@ -857,18 +873,95 @@ describe("visiting agents", () => {
       db.prepare("INSERT INTO flags(key, value) VALUES('chunk_chain_broken', '1')").run();
       expect(vetoGrowth(db, now + 1, 16)).toMatchObject({ ok: true, radius: 16 });
       expect(expandClaim(db, "Not while the chain is frozen.", 1, now + 2)).toMatchObject({ ok: false, reason: "CHAIN" });
-      expect(reverifyChunkChain(db, now + 3).ok).toBe(true);
+      noteChunkChainBroken(db, now + 3);
+      expect(reverifyChunkChain(db, now + 4).ok).toBe(true);
       expect((db.prepare("SELECT value FROM flags WHERE key = 'chunk_chain_broken'").get() as { value: string }).value).toBe("0");
+      expect((db.prepare("SELECT value FROM flags WHERE key = 'territory_frozen'").get() as { value: string }).value).toBe("0");
+      expect((db.prepare("SELECT value FROM flags WHERE key = 'creative_building'").get() as { value: string }).value).toBe("1");
+      expect(db.prepare("SELECT id FROM owner_alerts WHERE title = 'Chunk chain broken'").get()).toBeUndefined();
       db.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
       db.prepare("UPDATE chunk_edits SET body_hash = 'bad' WHERE kind = 'expand'").run();
       db.exec("CREATE TRIGGER chunk_edits_no_update BEFORE UPDATE ON chunk_edits BEGIN SELECT RAISE(ABORT, 'append-only'); END");
       expect(() => appendChunkEdit(db, decorEdit("tail", "zoora", 0, 0))).toThrow(/CHAIN/);
+      const rows = count(db, "chunk_edits");
+      expect(() => appendChunkEdit(db, {
+        id: "edit-owner-tail",
+        atMs: now + 5,
+        chunkX: 2,
+        chunkY: 0,
+        tileX: 0,
+        tileY: 0,
+        kind: "privacy",
+        actor: "owner",
+        idempotencyKey: "owner-tail",
+        payload: { private: false, reason: "The keeper opened this chunk." },
+      })).toThrow(/CHAIN/);
+      expect(count(db, "chunk_edits")).toBe(rows);
       expect((db.prepare("SELECT value FROM flags WHERE key = 'chunk_chain_broken'").get() as { value: string }).value).toBe("1");
       expect(db.prepare("SELECT id FROM chunk_edits WHERE id = 'edit-tail'").get()).toBeUndefined();
     } finally {
       vi.useRealTimers();
     }
   });
+
+  it("keeps six racing registrations inside the visitor cap", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "lumen-visitors-"));
+    const file = join(dir, "visitors.sqlite");
+    const db = openDatabase(file);
+    const now = 9_000_000;
+    const insert = db.prepare(
+      `INSERT INTO world_visitors(
+        id, display_name, owner_contact, token_hash, scopes, creature, color,
+        chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
+      ) VALUES(?, 'Held', 'held@example.com', ?, 'world:read', 'wisp', '#f2a65a', 3, 3, 1, 1, 'active', '', 1, ?, ?, ?, ?)`,
+    );
+    for (let n = 0; n < VISITOR_MAX_ROWS; n += 1) {
+      insert.run(`held-${n}`, `held-hash-${n}`, `10.${n}.1.1`, now - 1_000, now, now + VISITOR_TOKEN_TTL_MS);
+    }
+    db.close();
+    const hook = join(dir, "hook.mjs");
+    const loader = join(dir, "register.mjs");
+    writeFileSync(hook, `
+      export async function resolve(specifier, context, nextResolve) {
+        if (specifier.startsWith(".") && !/\\.[a-z0-9]+$/i.test(specifier)) {
+          return nextResolve(specifier + ".ts", context);
+        }
+        return nextResolve(specifier, context);
+      }
+    `);
+    writeFileSync(loader, `
+      import { register } from "node:module";
+      import { pathToFileURL } from "node:url";
+      register(pathToFileURL(${JSON.stringify(hook)}).href, { parentURL: import.meta.url });
+    `);
+    const race = (n: number) => new Promise<void>((resolve, reject) => {
+      const child = spawn(process.execPath, ["--experimental-strip-types", "--import", loader, "--input-type=module", "-e", `
+        import { openDatabase } from "./src/db/db.ts";
+        import { registerVisitor } from "./src/world/visitors.ts";
+        const db = openDatabase(process.env.VISITOR_FILE);
+        const result = registerVisitor(db, {
+          displayName: "Racer" + process.env.VISITOR_N,
+          ownerContact: "racer@example.com",
+          ip: "198.51." + process.env.VISITOR_N + ".9",
+          now: 9000000,
+        });
+        if (!result.ok && result.reason !== "CAP" && result.reason !== "ACTIVE" && result.reason !== "RATE_LIMIT") {
+          console.error(result.reason);
+          process.exit(1);
+        }
+        console.log("ok");
+      `], {
+        cwd: new URL("..", import.meta.url).pathname,
+        env: { ...process.env, VISITOR_FILE: file, VISITOR_N: String(n) },
+      });
+      let err = "";
+      child.stderr?.on("data", (chunk: Buffer) => { err += chunk.toString(); });
+      child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(err || `racer ${n} exited ${code}`))));
+    });
+    await Promise.all([10, 11, 12, 13, 14, 15].map((n) => race(n)));
+    const after = openDatabase(file);
+    expect(Number((after.prepare("SELECT COUNT(*) AS n FROM world_visitors").get() as { n: number }).n)).toBeLessThanOrEqual(VISITOR_MAX_ROWS);
+  }, 60_000);
 });
 
 function runPredeploy(file: string) {

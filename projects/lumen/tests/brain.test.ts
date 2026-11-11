@@ -6,6 +6,7 @@ import { eventOf } from "../src/brain/events";
 import { applyOutcome, decayMood, driftNeeds, LOSS_WEIGHT } from "../src/brain/feel";
 import { carryingInView, consolidate, SHORT_CAP, LONG_CAP } from "../src/brain/memory";
 import { giftDeltas, moderateNote, ownerTurn, publicWants, sortInbox, wishlistFromSpeech, maybeWishes } from "../src/brain/social";
+import { textHasPan } from "../src/money/checkoutQueue";
 import { feelOnly, initialState, tick, type TickInput } from "../src/brain/tick";
 import { emptyEmotions, emptyNeeds, type Memory } from "../src/brain/types";
 import { buildPrompt, modelRequestBody, assertPromptHasNoSecret } from "../src/brain/prompt";
@@ -182,16 +183,30 @@ describe("memory, wants, gifts", () => {
     expect(moderateNote("a\u{E0001}b").ok).toBe(false);
     const kept = moderateNote("a\uFE0Fb");
     expect(kept.ok).toBe(true);
-    if (kept.ok) expect(kept.note).toBe("a\uFE0Fb");
+    if (kept.ok) expect(kept.note).toBe("ab");
     const stacked = moderateNote("a\uFE0F\uFE0Fb");
     expect(stacked.ok).toBe(true);
-    if (stacked.ok) expect(stacked.note).toBe("a\uFE0Fb");
+    if (stacked.ok) expect(stacked.note).toBe("ab");
+    const joined = moderateNote("hel\u200dlo");
+    expect(joined.ok).toBe(true);
+    if (joined.ok) expect(joined.note).toBe("hello");
     const lone = moderateNote("\uFE0F");
     expect(lone.ok).toBe(true);
     if (lone.ok) expect(lone.note).not.toContain("\uFE0F");
     const supplement = moderateNote("a\u{E0100}b");
     expect(supplement.ok).toBe(true);
-    if (supplement.ok) expect(supplement.note).toContain("\u{E0100}");
+    if (supplement.ok) expect(supplement.note).toBe("ab");
+    for (const hidden of ["www\u200d.evil.test", "https\u200d://evil.example", "seed\u200d phrase", "private\u200d key", "child\u200d sex"]) {
+      expect(moderateNote(hidden).ok).toBe(false);
+    }
+    for (const emoji of ["reef ❤️", "👩‍💻", "🏳️‍🌈", "👍🏽"]) {
+      const passed = moderateNote(emoji);
+      expect(passed.ok).toBe(true);
+      if (passed.ok) expect(passed.note).toContain(emoji.includes("reef") ? "❤️" : emoji);
+    }
+    const keycaps = "4242424242424242".split("").map((digit) => `${digit}\uFE0F\u20E3`).join("");
+    expect(textHasPan(keycaps)).toBe(true);
+    expect(textHasPan("4\uFE0F\u20E32\uFE0F\u20E3")).toBe(false);
     expect(moderateNote("a\u061Cb").ok).toBe(false);
     expect(moderateNote("a\u180Eb").ok).toBe(false);
     expect(moderateNote("a\u034Fb").ok).toBe(false);

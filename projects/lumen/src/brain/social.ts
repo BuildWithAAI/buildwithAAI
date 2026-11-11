@@ -1,3 +1,4 @@
+import { textHasPan } from "../money/pan";
 import { diminishing, feelingSentence } from "./emotions";
 import type { BrainState, Emotions, Needs, Want, Wish } from "./types";
 import { emptyNeeds } from "./types";
@@ -36,20 +37,24 @@ function blockedInvisible(text: string): boolean {
   return false;
 }
 
+function pictographic(cp: number): boolean {
+  return /\p{Extended_Pictographic}/u.test(String.fromCodePoint(cp));
+}
+
 /**
- * Keep one variation selector after a base character. Drop a lone selector, and drop extras stacked on the same base.
- * Keep a ZWJ only when it joins two bases, as in 👩‍💻.
+ * Keep a variation selector or ZWJ only inside an emoji sequence.
+ * `hel\u200dlo` and `a\uFE0Fb` lose the mark. ❤️, 👩‍💻, and 🏳️‍🌈 keep theirs.
  */
 function scrubEmojiMarks(text: string): string {
   const chars = Array.from(text);
   let out = "";
-  let lastBase = false;
+  let lastPict = false;
   let keptSelector = false;
   for (let i = 0; i < chars.length; i += 1) {
     const char = chars[i] ?? "";
     const cp = char.codePointAt(0) ?? 0;
     if (variationSelector(cp)) {
-      if (lastBase && !keptSelector) {
+      if (lastPict && !keptSelector) {
         out += char;
         keptSelector = true;
       }
@@ -57,17 +62,23 @@ function scrubEmojiMarks(text: string): string {
     }
     if (cp === ZWJ) {
       const next = chars[i + 1]?.codePointAt(0);
-      const nextBase = next != null && next !== ZWJ && !variationSelector(next);
-      if ((lastBase || keptSelector) && nextBase) out += char;
-      lastBase = false;
+      if ((lastPict || keptSelector) && next != null && pictographic(next)) out += char;
+      lastPict = false;
       keptSelector = false;
       continue;
     }
     out += char;
-    lastBase = true;
+    lastPict = pictographic(cp);
     keptSelector = false;
   }
   return out;
+}
+
+/** Joiners removed so a link, a card, or a banned phrase cannot hide inside them. */
+const NOTE_PROBE = /[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}]/gu;
+
+export function noteProbe(text: string): string {
+  return text.replace(NOTE_PROBE, "");
 }
 
 export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: string } | { ok: false; reason: string } {
@@ -77,7 +88,9 @@ export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: 
   if (blockedInvisible(input)) return { ok: false, reason: "NOTE_CONTROL" };
   const note = scrubEmojiMarks(input).trim().replace(/\s+/g, " ");
   if (note.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  if (BANNED.some((pattern) => pattern.test(note))) return { ok: false, reason: "NOTE_REJECTED" };
+  const probe = noteProbe(note);
+  if (BANNED.some((pattern) => pattern.test(probe))) return { ok: false, reason: "NOTE_REJECTED" };
+  if (textHasPan(probe)) return { ok: false, reason: "PAN" };
   return { ok: true, note };
 }
 
