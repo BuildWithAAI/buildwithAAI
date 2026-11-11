@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { flag } from "../db/db";
 import { isChunkCoord, isTileCoord, type PublicDecor } from "./chunkMath";
 import { CLAIM_GROW_PER_DAY, CLAIM_START_RADIUS, zoneAt } from "./territoryRules";
 
@@ -201,7 +200,8 @@ export function chunkIsPrivate(db: DatabaseSync, cx: number, cy: number): boolea
 }
 
 export function territoryFrozen(db: DatabaseSync): boolean {
-  return flag(db, "territory_frozen", "0") === "1";
+  const row = db.prepare("SELECT value FROM flags WHERE key = 'territory_frozen'").get() as { value: string } | undefined;
+  return row?.value === "1";
 }
 
 /** Server edit gate. Visitors and any future plot are refused inside the claim and the buffer. */

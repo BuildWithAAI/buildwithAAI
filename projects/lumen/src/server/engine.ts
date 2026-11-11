@@ -36,6 +36,7 @@ import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
 import { considerGrowth, considerPrivacy, setTerritoryFrozen, vetoGrowth } from "../world/territory";
+import { guardChunkChain } from "../world/chunkEdits";
 import { revokeVisitor } from "../world/visitors";
 import { publishFromTick, rollbackScene, setSceneFrozen } from "../world/scene";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
@@ -890,6 +891,7 @@ function inQuietHours(env: Env, now: number): boolean {
 
 export function startLoop(): void {
   const engine = getEngine();
+  if (!guardChunkChain(engine.db)) process.exit(1);
   const holder = globalThis as GlobalEngine & { loop?: boolean };
   if (holder.loop) return;
   holder.loop = true;
