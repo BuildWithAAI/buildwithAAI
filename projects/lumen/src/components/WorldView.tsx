@@ -173,7 +173,7 @@ export function WorldView({
       return;
     }
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 14000);
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 8000);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({
