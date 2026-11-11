@@ -134,6 +134,14 @@ describe("pre-deploy advisory", () => {
     expect(rejectPan({ note: "4242\u200d4242\u200d4242\u200d4242" })).toBe(true);
     expect(rejectPan({ note: "4242\u00ad4242\u00ad4242\u00ad4242" })).toBe(true);
     expect(rejectPan({ note: "4242a4242a4242a4242" })).toBe(true);
+    expect(rejectPan({ note: "4242abc4242abc4242abc4242" })).toBe(true);
+    expect(rejectPan({ note: "4242a4242b4242c4242" })).toBe(true);
+    expect(rejectPan({ claimToken: "4242a4242b4242c4242" })).toBe(false);
+    expect(rejectPan({ note: "4242+4242+4242+4242" })).toBe(true);
+    expect(rejectPan({ note: "4242*4242*4242*4242" })).toBe(true);
+    expect(rejectPan({ note: "4242#4242#4242#4242" })).toBe(true);
+    expect(rejectPan({ note: "4242~4242~4242~4242" })).toBe(true);
+    expect(rejectPan({ note: "4242\u03014242\u03014242\u03014242" })).toBe(true);
     expect(rejectPan({ note: "9612 3456 7890 123" })).toBe(false);
     const rand = (seed: number) => {
       let state = seed >>> 0;
@@ -148,15 +156,30 @@ describe("pre-deploy advisory", () => {
       return String((10 - (sum % 10)) % 10);
     };
     const usps = rand(11);
+    const safeDigit = () => "01789"[usps() % 5] ?? "0";
     for (let i = 0; i < 1000; i += 1) {
-      let body = i % 2 === 0 ? "94" : "92";
+      let body = i % 2 === 0 ? "90" : "91";
       const width = i % 2 === 0 ? 21 : 19;
+      while (body.length < 8) body += safeDigit();
       while (body.length < width) body += String(usps() % 10);
       const full = body + uspsCheck(body);
       const spaced = full.replace(/(.{4})/g, "$1 ").trim();
       expect(rejectPan({ note: full })).toBe(false);
       expect(rejectPan({ note: spaced })).toBe(false);
     }
+    const tucked = "9" + "4242424242424242" + "1234";
+    const tuckedFull = tucked + uspsCheck(tucked);
+    expect(tuckedFull.slice(1, 17)).toBe("4242424242424242");
+    expect(rejectPan({ note: tuckedFull })).toBe(true);
+    expect(rejectPan({ note: tuckedFull.replace(/(.{4})/g, "$1 ").trim() })).toBe(true);
+    const ended = "97000" + "4242424242424242";
+    const endedFull = ended + uspsCheck(ended);
+    expect(endedFull.slice(5, 21)).toBe("4242424242424242");
+    expect(rejectPan({ note: endedFull })).toBe(true);
+    const amex = "9" + "378282246310005" + "12345";
+    const amexFull = amex + uspsCheck(amex);
+    expect(amexFull.slice(1, 16)).toBe("378282246310005");
+    expect(rejectPan({ note: amexFull })).toBe(true);
     const hidden = rand(97);
     for (let i = 0; i < 1000; i += 1) {
       const total = i % 2 === 0 ? 20 : 22;
@@ -232,6 +255,32 @@ describe("pre-deploy advisory", () => {
       expect(rejectPan({ note: spaced })).toBe(true);
     }
     expect(rejectPan({ note: "123-4567890-1234569 4242424242424242" })).toBe(true);
+    const luhnDigit = (partial: string) => {
+      let sum = 0;
+      let alt = true;
+      for (let i = partial.length - 1; i >= 0; i -= 1) {
+        let n = Number(partial[i]);
+        if (alt) {
+          n *= 2;
+          if (n > 9) n -= 9;
+        }
+        sum += n;
+        alt = !alt;
+      }
+      return String((10 - (sum % 10)) % 10);
+    };
+    const ups = rand(71);
+    for (let i = 0; i < 1000; i += 1) {
+      let tail = "1789"[ups() % 4] ?? "7";
+      while (tail.length < 15) tail += String(ups() % 10);
+      tail += luhnDigit(tail);
+      expect(rejectPan({ note: `1Z${tail}` })).toBe(false);
+    }
+    const started = Date.now();
+    rejectPan({ note: "a".repeat(100000) });
+    rejectPan({ note: `${"4+".repeat(20000)}4242` });
+    rejectPan({ note: "9".repeat(100000) });
+    expect(Date.now() - started).toBeLessThan(2000);
   });
 
   it("labels a refused wishlist link instead of showing the raw address", () => {

@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { PurchaseIntent } from "../src/brain/types";
 import { openDatabase } from "../src/db/db";
@@ -10,6 +12,14 @@ import { Ledger } from "../src/money/ledger";
 import { evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { cardAvailableCents, type MoneyRules } from "../src/money/rules";
 import { fetchFinalized, quoteSolOrder, randomReference, verifySolPayment, type SolTx } from "../src/money/solana";
+
+const isolated = path.join(mkdtempSync(path.join(tmpdir(), "lumen-pay-")), "lumen.sqlite");
+process.env.LUMEN_DATA = isolated;
+
+function payDb() {
+  const file = path.join(mkdtempSync(path.join(tmpdir(), "lumen-pay-")), "lumen.sqlite");
+  return openDatabase(file);
+}
 
 const now = Date.UTC(2026, 10, 9, 16);
 const price = "https://prices.example/sol";
@@ -60,7 +70,7 @@ function tx(input: { recipient: string; reference: string; delta: number }): Sol
 
 describe("Solana Pay", () => {
   it("quotes from a live rate and rejects a bad payment", async () => {
-    const db = openDatabase();
+    const db = payDb();
     const recipient = randomReference();
     const env = { LUMEN_SOL_RECEIVE_ADDRESS: recipient, LUMEN_SOL_PRICE_URL: price };
     const quoted = await quoteSolOrder(db, env, { kind: "nft", itemId: "nft-1", title: "Dock bell", usdCents: 500 }, now, async () => Response.json({ usd: 150 }));
@@ -100,7 +110,7 @@ describe("owner checkout", () => {
     expect(evaluatePolicy(intent(), ctx({ cardAvailableCents: null })).reason).toBe("CARD_BALANCE_UNSET");
     expect(evaluatePolicy(intent(), ctx({ cardAvailableCents: 100 })).reason).toBe("CARD_LIMIT");
     expect(evaluatePolicy(intent(), ctx({ killed: true })).reason).toBe("KILL_SWITCH");
-    const db = openDatabase();
+    const db = payDb();
     const killed = executeIntent(db, intent({ id: "killed" }), ctx({ killed: true }), new OwnerCheckoutIssuer(), now);
     expect(killed.issuerCalled).toBe(false);
     expect(listPending(db, now)).toEqual([]);
