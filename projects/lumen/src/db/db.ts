@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { bearerAddress } from "../auth/ownerToken";
-import { migrateMerchantHashes } from "../money/ledger";
+import { migrateContentHashes, migrateMerchantHashes } from "../money/ledger";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   ref TEXT,
   note TEXT NOT NULL,
   merchant TEXT,
+  content_hash TEXT,
   prev_hash TEXT NOT NULL,
   entry_hash TEXT NOT NULL
 );
@@ -443,6 +444,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "ledger_entries", "charge_id", "charge_id TEXT");
   ensureColumn(db, "ledger_entries", "payment_intent_id", "payment_intent_id TEXT");
   ensureColumn(db, "ledger_entries", "merchant", "merchant TEXT");
+  ensureColumn(db, "ledger_entries", "content_hash", "content_hash TEXT");
   ensureColumn(db, "alert_retries", "channel", "channel TEXT NOT NULL DEFAULT 'email'");
   ensureColumn(db, "alert_retries", "started_at", "started_at INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "research_queries", "question", "question TEXT");
@@ -455,6 +457,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "price_quotes", "pair_created_at", "pair_created_at INTEGER");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
+  migrateContentHashes(db);
   return db;
 }
 

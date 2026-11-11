@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { kvGet } from "../db/db";
+import { kvGet, kvSet } from "../db/db";
 import type { BrainState } from "../brain/types";
+import { Ledger } from "../money/ledger";
 import { scrubInstructions } from "../research/ideas";
 
 export type PieceKind = "art" | "song" | "build";
@@ -51,7 +53,53 @@ export function recordProvenance(db: DatabaseSync, input: { pieceKind: PieceKind
     row.visitorText,
     row.atMs,
   );
+  recordPieceHash(db, row.pieceKind, row.pieceId, row.atMs);
   return row;
+}
+
+export function contentHashOf(body: string): string {
+  return createHash("sha256").update(body).digest("hex");
+}
+
+/** The stored body of a piece. Songs keep their own copy because the stand holds only the latest tune. */
+export function storedPieceBody(db: DatabaseSync, pieceKind: PieceKind, pieceId: string): string | null {
+  if (pieceKind === "art") {
+    const row = db.prepare("SELECT svg FROM creations WHERE id = ?").get(pieceId) as { svg: string } | undefined;
+    return row?.svg ?? null;
+  }
+  if (pieceKind === "song") return kvGet(db, `song-body:${pieceId}`);
+  const row = db.prepare("SELECT kind, title, why, place_id, params FROM world_builds WHERE id = ?").get(pieceId) as {
+    kind: string; title: string; why: string; place_id: string; params: string;
+  } | undefined;
+  if (!row) return null;
+  return JSON.stringify({ kind: row.kind, title: row.title, why: row.why, placeId: row.place_id, params: row.params });
+}
+
+export function rememberSongBody(db: DatabaseSync, pieceId: string, body: string): void {
+  kvSet(db, `song-body:${pieceId}`, body);
+}
+
+export function pieceContentMatches(db: DatabaseSync, pieceKind: PieceKind, pieceId: string): boolean {
+  const body = storedPieceBody(db, pieceKind, pieceId);
+  if (body == null) return false;
+  const row = new Ledger(db).findByIdempotency(`piece:${pieceKind}:${pieceId}`);
+  return row?.contentHash === contentHashOf(body);
+}
+
+function recordPieceHash(db: DatabaseSync, pieceKind: PieceKind, pieceId: string, atMs: number): void {
+  const body = storedPieceBody(db, pieceKind, pieceId);
+  if (body == null) return;
+  new Ledger(db).append({
+    id: `piece-${pieceKind}-${pieceId}`,
+    atMs,
+    kind: "audit",
+    amountCents: 0,
+    status: "confirmed",
+    idempotencyKey: `piece:${pieceKind}:${pieceId}`,
+    ref: `${pieceKind}:${pieceId}`,
+    note: `content ${pieceKind}`,
+    contentHash: contentHashOf(body),
+  });
 }
 
 export function readProvenance(db: DatabaseSync, pieceKind: PieceKind, pieceId: string): ProvenanceRow | null {

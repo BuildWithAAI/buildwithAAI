@@ -19,6 +19,7 @@ export type LedgerInput = {
   ref?: string | null;
   note: string;
   merchant?: string | null;
+  contentHash?: string | null;
 };
 
 export type LedgerRow = LedgerInput & { seq: number; currency: string; prevHash: string; entryHash: string; bodyHash: string };
@@ -39,8 +40,8 @@ function sortValue(value: unknown): unknown {
   return value;
 }
 
-export function bodyHash(input: LedgerInput): string {
-  return createHash("sha256").update(canonical({
+function hashPayload(input: LedgerInput, withContent: boolean): string {
+  const payload: Record<string, unknown> = {
     kind: input.kind,
     amountCents: input.amountCents,
     status: input.status,
@@ -51,7 +52,18 @@ export function bodyHash(input: LedgerInput): string {
     ref: input.ref ?? null,
     note: input.note,
     merchant: input.merchant ?? null,
-  })).digest("hex");
+  };
+  if (withContent) payload.contentHash = input.contentHash ?? null;
+  return createHash("sha256").update(canonical(payload)).digest("hex");
+}
+
+export function bodyHash(input: LedgerInput): string {
+  return hashPayload(input, true);
+}
+
+/** Hash used after merchant joined the chain and before the content hash. */
+export function merchantBodyHash(input: LedgerInput): string {
+  return hashPayload(input, false);
 }
 
 /** Pull a merchant out of a known ledger note. A loose " at " in other text is ignored. */
@@ -119,17 +131,28 @@ const CHAIN_BROKEN = {
   detail: "The pre-upgrade ledger chain did not verify. Merchant hashes were not rewritten.",
 };
 
+const CONTENT_CHAIN_BROKEN = {
+  kind: "ledger" as const,
+  title: "Content hash chain broken",
+  detail: "The pre-upgrade ledger chain did not verify. Content hashes were not rewritten.",
+};
+
 /** Desk, and email or Telegram when those channels are configured. A second call does not send again. */
-export function notifyChainBroken(db: DatabaseSync, env: AlertEnv = process.env, io: { sendMail?: MailTransport; sendTelegram?: TelegramTransport } = {}): void {
-  const existing = db.prepare("SELECT id FROM owner_alerts WHERE title = ?").get(CHAIN_BROKEN.title);
+export function notifyChainBroken(
+  db: DatabaseSync,
+  env: AlertEnv = process.env,
+  io: { sendMail?: MailTransport; sendTelegram?: TelegramTransport } = {},
+  alert: { kind: "ledger"; title: string; detail: string } = CHAIN_BROKEN,
+): void {
+  const existing = db.prepare("SELECT id FROM owner_alerts WHERE title = ?").get(alert.title);
   if (existing) return;
-  buildOwnerNotifier(env, { desk: deskNotifier(db), db, sendMail: io.sendMail, sendTelegram: io.sendTelegram }).notifier.notify(CHAIN_BROKEN);
+  buildOwnerNotifier(env, { desk: deskNotifier(db), db, sendMail: io.sendMail, sendTelegram: io.sendTelegram }).notifier.notify(alert);
 }
 
 /** Recompute the chain so the merchant is inside the tamper hash. A broken old chain is left untouched. */
 export function migrateMerchantHashes(db: DatabaseSync): void {
   const version = db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string } | undefined;
-  if (version?.value === "2") return;
+  if (version?.value === "2" || version?.value === "3") return;
   const rows = new Ledger(db).list();
   if (!verifyLegacyChain(rows)) {
     notifyChainBroken(db, process.env);
@@ -143,13 +166,55 @@ export function migrateMerchantHashes(db: DatabaseSync): void {
     const update = db.prepare("UPDATE ledger_entries SET body_hash = ?, prev_hash = ?, entry_hash = ? WHERE id = ?");
     let prev = "GENESIS";
     for (const row of filled) {
-      const hash = bodyHash(row);
+      const hash = merchantBodyHash(row);
       const entry = createHash("sha256").update(prev + hash).digest("hex");
       if (row.bodyHash !== hash || row.prevHash !== prev || row.entryHash !== entry) update.run(hash, prev, entry, row.id);
       prev = entry;
     }
     db.exec("CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'append-only'); END");
     db.prepare("INSERT INTO kv(key, value) VALUES('ledger_hash_version', '2') ON CONFLICT(key) DO UPDATE SET value = '2'").run();
+    db.exec("COMMIT");
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    throw error;
+  }
+  migrateContentHashes(db);
+}
+
+function verifyMerchantChain(rows: LedgerRow[]): boolean {
+  let prev = "GENESIS";
+  for (const row of rows) {
+    const hash = merchantBodyHash(row);
+    if (row.bodyHash !== hash || row.prevHash !== prev) return false;
+    const entry = createHash("sha256").update(prev + hash).digest("hex");
+    if (row.entryHash !== entry) return false;
+    prev = entry;
+  }
+  return true;
+}
+
+/** Recompute the chain so a piece content hash can sit inside the tamper hash. A broken chain is left untouched. */
+export function migrateContentHashes(db: DatabaseSync): void {
+  const version = db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string } | undefined;
+  if (version?.value === "3" || version?.value !== "2") return;
+  const rows = new Ledger(db).list();
+  if (!verifyMerchantChain(rows)) {
+    notifyChainBroken(db, process.env, {}, CONTENT_CHAIN_BROKEN);
+    return;
+  }
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec("DROP TRIGGER IF EXISTS ledger_no_update");
+    const update = db.prepare("UPDATE ledger_entries SET body_hash = ?, prev_hash = ?, entry_hash = ? WHERE id = ?");
+    let prev = "GENESIS";
+    for (const row of rows) {
+      const hash = bodyHash({ ...row, contentHash: row.contentHash ?? null });
+      const entry = createHash("sha256").update(prev + hash).digest("hex");
+      if (row.bodyHash !== hash || row.prevHash !== prev || row.entryHash !== entry) update.run(hash, prev, entry, row.id);
+      prev = entry;
+    }
+    db.exec("CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    db.prepare("INSERT INTO kv(key, value) VALUES('ledger_hash_version', '3') ON CONFLICT(key) DO UPDATE SET value = '3'").run();
     db.exec("COMMIT");
   } catch (error) {
     try { db.exec("ROLLBACK"); } catch { /* already closed */ }
@@ -187,8 +252,8 @@ export class Ledger {
     const entryHash = createHash("sha256").update(prevHash + hash).digest("hex");
     this.db.prepare(
       `INSERT INTO ledger_entries
-        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, prev_hash, entry_hash)
-       VALUES (?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, content_hash, prev_hash, entry_hash)
+       VALUES (?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       input.id,
       input.atMs,
@@ -204,6 +269,7 @@ export class Ledger {
       input.ref ?? null,
       input.note,
       input.merchant ?? null,
+      input.contentHash ?? null,
       prevHash,
       entryHash,
     );
@@ -237,6 +303,7 @@ function mapRow(row: Record<string, unknown>): LedgerRow {
     ref: (row.ref as string | null) ?? null,
     note: String(row.note),
     merchant: row.merchant == null || row.merchant === "" ? null : String(row.merchant),
+    contentHash: row.content_hash == null || row.content_hash === "" ? null : String(row.content_hash),
     currency: String(row.currency),
     prevHash: String(row.prev_hash),
     entryHash: String(row.entry_hash),

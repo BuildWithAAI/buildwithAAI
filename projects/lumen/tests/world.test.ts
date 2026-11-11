@@ -209,7 +209,9 @@ describe("world agents", () => {
     expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
     const bought = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: agent.arriveAt + 30, action: "buy" });
     expect(bought.status).toBe(400);
-    expect(new Ledger(db).list()).toHaveLength(0);
+    const rows = new Ledger(db).list();
+    expect(rows.some((row) => row.kind === "purchase" || row.kind === "sale" || row.amountCents !== 0)).toBe(false);
+    expect(rows.every((row) => row.kind === "audit" && row.contentHash)).toBe(true);
   });
 
   it("lets an agent show art at the market without spending", () => {

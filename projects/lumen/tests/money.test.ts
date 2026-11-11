@@ -11,7 +11,7 @@ import { createEngine } from "../src/server/engine";
 import { mapDescriptor } from "../src/money/card";
 import { ExpectedIssuer, MockIssuer, PrivacyStub, StripeIssuingStub } from "../src/money/issuers";
 import { mintSwitch, requestMint } from "../src/money/mint";
-import { Ledger, bodyHash, canonical, merchantFromLegacyNote, migrateMerchantHashes, moneyView, notifyChainBroken, verifyLedgerChain } from "../src/money/ledger";
+import { Ledger, bodyHash, canonical, merchantBodyHash, merchantFromLegacyNote, migrateContentHashes, migrateMerchantHashes, moneyView, notifyChainBroken, verifyLedgerChain } from "../src/money/ledger";
 import { emotionApprovalWeight, evaluatePolicy, type PolicyContext } from "../src/money/policy";
 import { compareRecords, normalizeMerchant } from "../src/money/reconcile";
 import { ALERT_GIVE_UP_MS, buildOwnerNotifier, deliverSmtp, deskClock, drainAlertRetries, guardAsyncRetry, reportDeliveryFailure, telegramApiTransport } from "../src/money/notify";
@@ -806,6 +806,56 @@ describe("held execute, disputes, refunds, and alerts", () => {
     expect((db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string }).value).toBe("1");
     expect((db.prepare("SELECT note FROM ledger_entries WHERE id = 'old-2'").get() as { note: string }).note).toBe("Tampered note.");
     expect((db.prepare("SELECT title FROM owner_alerts WHERE title = 'Ledger chain broken'").get() as { title: string }).title).toBe("Ledger chain broken");
+  });
+
+  it("folds a null content hash into the chain and leaves a broken chain alone", () => {
+    const db = openDatabase();
+    const note = "Reserved before issuer. art_supplies at shop.example.com.";
+    const input = {
+      id: "v2-1",
+      atMs: Date.UTC(2026, 10, 3),
+      kind: "approval" as const,
+      amountCents: 100,
+      status: "intent" as const,
+      provider: null,
+      providerTransactionId: null,
+      chargeId: null,
+      paymentIntentId: null,
+      idempotencyKey: "reserve:v2-1",
+      ref: "v2-1",
+      note,
+      merchant: "shop.example.com",
+    };
+    const prior = merchantBodyHash(input);
+    const entry = createHash("sha256").update(`GENESIS${prior}`).digest("hex");
+    db.prepare(
+      `INSERT INTO ledger_entries
+        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, content_hash, prev_hash, entry_hash)
+       VALUES (?, ?, 'approval', 100, 'usd', 'intent', NULL, NULL, NULL, NULL, ?, ?, 'v2-1', ?, 'shop.example.com', NULL, 'GENESIS', ?)`,
+    ).run("v2-1", input.atMs, input.idempotencyKey, prior, note, entry);
+    kvSet(db, "ledger_hash_version", "2");
+    migrateContentHashes(db);
+    const row = new Ledger(db).list().find((item) => item.id === "v2-1");
+    expect(row?.contentHash).toBeNull();
+    expect(row?.bodyHash).toBe(bodyHash(row!));
+    expect(verifyLedgerChain(db)).toBe(true);
+    expect((db.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string }).value).toBe("3");
+    const broken = openDatabase();
+    const bad = merchantBodyHash({ ...input, id: "v2-2", idempotencyKey: "reserve:v2-2", ref: "v2-2" });
+    const badEntry = createHash("sha256").update(`GENESIS${bad}`).digest("hex");
+    broken.prepare(
+      `INSERT INTO ledger_entries
+        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, content_hash, prev_hash, entry_hash)
+       VALUES (?, ?, 'approval', 100, 'usd', 'intent', NULL, NULL, NULL, NULL, ?, ?, 'v2-2', ?, 'shop.example.com', NULL, 'GENESIS', ?)`,
+    ).run("v2-2", input.atMs, "reserve:v2-2", bad, note, badEntry);
+    broken.exec("DROP TRIGGER IF EXISTS ledger_no_update");
+    broken.prepare("UPDATE ledger_entries SET note = ? WHERE id = ?").run("Tampered note.", "v2-2");
+    broken.exec("CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+    kvSet(broken, "ledger_hash_version", "2");
+    migrateContentHashes(broken);
+    expect((broken.prepare("SELECT value FROM kv WHERE key = 'ledger_hash_version'").get() as { value: string }).value).toBe("2");
+    expect((broken.prepare("SELECT note FROM ledger_entries WHERE id = 'v2-2'").get() as { note: string }).note).toBe("Tampered note.");
+    expect((broken.prepare("SELECT title FROM owner_alerts WHERE title = 'Content hash chain broken'").get() as { title: string }).title).toBe("Content hash chain broken");
   });
 
   it("sends a broken ledger chain through email and Telegram", () => {

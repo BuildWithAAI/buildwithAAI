@@ -2,6 +2,13 @@
 
 ---
 sha:
+title: Hash each piece into the append-only ledger.
+summary: Artwork, songs, and world builds now get a content hash on an audit row. The hash matches the stored body, a changed body fails that check, and older ledger rows are migrated so the chain still verifies. Nothing here spends money.
+date: 2026-11-11T00:20:00Z
+image:
+
+---
+sha:
 title: Shorten smoke artifacts and close the padded-card gap.
 summary: Smoke screenshots expire after seven days, and the desk shot is the login form before anyone signs in. A 20 or 22 digit number that starts with 9 is a card when a known prefix passes Luhn, unless the whole number passes the USPS check. 1Z plus a Luhn card is not treated as UPS. Format characters and single letters no longer hide a card. The AI notice sits below the top controls, the camera toast hides while the mobile drawer is open, and a thought ends on a word until it is tapped.
 date: 2026-11-10T23:50:00Z

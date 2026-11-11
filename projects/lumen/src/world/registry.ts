@@ -10,7 +10,7 @@ import { readShop } from "../shop/store";
 import { tape } from "../trading/book";
 import { publicWishLines } from "../wishlist/board";
 import { SIMULATED, publicQuotes } from "../trading/public";
-import { recordProvenance } from "../build/provenance";
+import { recordProvenance, rememberSongBody } from "../build/provenance";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote } from "../brain/social";
 import type { BrainState } from "../brain/types";
@@ -318,7 +318,9 @@ function produce(db: DatabaseSync, row: AgentRow, action: WorldActivity, now: nu
   }
   if (action === "hum" || action === "compose") {
     const songId = `song-${row.id}-${now}`;
-    kvSet(db, "world_tune", JSON.stringify({ ...composeTune(now), id: songId }));
+    const tune = JSON.stringify({ ...composeTune(now), id: songId });
+    kvSet(db, "world_tune", tune);
+    rememberSongBody(db, songId, tune);
     recordProvenance(db, { pieceKind: "song", pieceId: songId, atMs: now, mind: row.id === "zoora" });
     logLine(db, row.id, `${row.name} set a short phrase on the stand. Sound stays off until someone turns it on.`, now);
     return;
