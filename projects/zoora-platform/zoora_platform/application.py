@@ -5,21 +5,23 @@ from pathlib import Path
 import threading
 import time
 
-from zoora_community.validation import Problem, fields
+from zoora_community.validation import Problem, fields, identifier, text
 
 from . import VERSION
 from .registry import KINDS
 from .payments import Payments
+from .vault import Vault
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 
 
 class Platform:
-    def __init__(self, community, ledger, registry, workspace, env=None):
+    def __init__(self, community, ledger, registry, workspace, env=None, vault=None):
         self.community, self.ledger, self.registry = community, ledger, registry
         self.workspace = workspace
         self.env = os.environ if env is None else env
         self.payments = Payments(ledger, self.env)
+        self.vault = vault if vault is not None else Vault(ledger)
         self.registry.model.reserve = self.ledger.reserve_model_request
         self.stop = threading.Event()
         self.thread = None
@@ -51,7 +53,7 @@ class Platform:
     def _work(self):
         while not self.stop.is_set():
             try:
-                self.ledger.tick(self.community.recorded_work_authority)
+                self.ledger.tick(self.community.recorded_work_authority, self._schedule_grant)
                 self.work_once()
                 self.payments.poll()
             except Exception:
@@ -59,10 +61,16 @@ class Platform:
                 pass
             self.stop.wait(0.5)
 
+    def _schedule_grant(self, payload, principal):
+        grant_id = payload.get("_authority", {}).get("provider_grant_id")
+        if grant_id:
+            self.vault.assert_usable(grant_id, principal["role"] + ":" + principal["principal_id"])
+
     def work_once(self):
         job = self.ledger.claim()
         if job is None:
             return False
+        previous_reserve = self.registry.model.reserve
         try:
             # Re-authenticate the original credential: suspension and expiry affect queued work too.
             payload = json.loads(job["payload"])
@@ -72,6 +80,7 @@ class Platform:
             if expected != job["principal"]:
                 raise Problem(403, "WORK_AUTHORITY_CHANGED")
             deadline = time.monotonic() + 110
+            grant_id = envelope.get("provider_grant_id")
 
             def guard():
                 if time.monotonic() >= deadline:
@@ -79,10 +88,15 @@ class Platform:
                 current = self.community.recorded_work_authority(envelope["credential_id"])
                 if current["role"] + ":" + current["principal_id"] != expected:
                     raise Problem(403, "WORK_AUTHORITY_CHANGED")
-                if (job["kind"].startswith("agent.") and current["role"] != "OWNER"
+                if (job["kind"].startswith("agent.") and current["role"] != "OWNER" and not grant_id
                         and self.env.get("ZOORA_ALLOW_OPERATOR_COMPUTE") != "1"):
                     raise Problem(403, "HOST_COMPUTE_GRANT_REVOKED")
 
+            if job["kind"].startswith("agent."):
+                self.registry.model_meter = self.vault.meter(grant_id, job["id"], expected)
+                self.registry.model.reserve = self.registry.model_meter.reserve
+                if grant_id:
+                    self.registry.credential_for = lambda gid=grant_id, who=expected: self.vault.credential_for(gid, who)
             result = self.registry.execute(job["kind"], payload, guard=guard)
             guard()
             result["job_id"] = job["id"]
@@ -95,6 +109,10 @@ class Platform:
             self.ledger.complete(job, error=error.code)
         except Exception:
             self.ledger.complete(job, error="REGISTERED_WORK_FAILED")
+        finally:
+            self.registry.model.reserve = previous_reserve
+            self.registry.credential_for = None
+            self.registry.model_meter = None
         return True
 
     def source_commit(self):
@@ -108,6 +126,7 @@ class Platform:
                 "source_commit": self.source_commit(), "work": self.ledger.status(), "layers": self.registry.layers(),
                 "model": {"configured": self.registry.model.configured,
                           "provider": self.registry.model.provider if self.registry.model.configured else None},
+                "provider_vault": self.vault.summary(),
                 "activation": {"price_usd": "30.00", "currency": "AAI", "allocation_bps": {"burn": 4000, "lock": 4000, "liquidity": 2000},
                   "status": "ALLOCATION_CONTRACT_AND_QUOTE_PROVIDER_REQUIRED", "message_signature_is_payment": False},
                 "trading": {"status": "SIGNER_AND_VENUE_ADAPTER_REQUIRED"},
@@ -158,21 +177,29 @@ class Platform:
             return 200, {"items": self.ledger.list(subject, owner)}, mime
         if method == "GET" and path == "/api/platform/schedules":
             return 200, {"items": self.ledger.schedules(subject, owner)}, mime
+        if path.startswith("/api/platform/vault"):
+            return self._vault(method, path, body, subject, owner, token)
         if method == "POST" and path in ("/api/platform/jobs", "/api/platform/schedules"):
             scheduling = path.endswith("/schedules")
-            fields(body, ("request_id", "kind", "payload", "interval_seconds", "max_runs") if scheduling else ("request_id", "kind", "payload"))
+            fields(body, ("request_id", "kind", "payload", "interval_seconds", "max_runs") if scheduling else ("request_id", "kind", "payload"), ("grant_id", "counterparty"))
+            if scheduling and "counterparty" in body:
+                raise Problem(400, "SCHEDULE_COUNTERPARTY_UNSUPPORTED")
             if type(body["payload"]) is not dict:
                 raise Problem(400, "INVALID_JOB_PAYLOAD")
             self.registry.validate(body["kind"], body["payload"])
-            if (body["kind"].startswith("agent.") and not owner
-                    and self.env.get("ZOORA_ALLOW_OPERATOR_COMPUTE") != "1"):
-                raise Problem(403, "OWNER_COMPUTE_GRANT_REQUIRED")
-            payload = {**body["payload"], "_authority": {"credential_id": principal["credential_id"]}}
+            if not body["kind"].startswith("agent.") and "grant_id" in body:
+                raise Problem(400, "PROVIDER_GRANT_NOT_APPLICABLE")
+            grant_id = self._provider_grant(body, principal, subject) if body["kind"].startswith("agent.") else None
+            counterparty = None if scheduling else self._counterparty(body, token, subject)
+            authority = {"credential_id": principal["credential_id"]}
+            if grant_id:
+                authority["provider_grant_id"] = grant_id
+            payload = {**body["payload"], "_authority": authority}
             if scheduling:
                 value = self.ledger.schedule(subject, body["request_id"], body["kind"], payload,
                                              body["interval_seconds"], body["max_runs"])
                 return 201, {"schedule": value}, mime
-            job, replayed = self.ledger.submit(subject, body["request_id"], body["kind"], payload)
+            job, replayed = self.ledger.submit(subject, body["request_id"], body["kind"], payload, counterparty)
             return 200 if replayed else 201, {"job": job, "replayed": replayed}, mime
         parts = path.split("/")
         if method == "POST" and len(parts) == 6 and parts[1:4] == ["api", "platform", "schedules"] and parts[-1] == "cancel":
@@ -203,4 +230,75 @@ class Platform:
         if method == "POST" and len(parts) == 6 and parts[1:4] == ["api", "platform", "jobs"] and parts[-1] == "cancel":
             fields(body)
             return 200, {"job": self.ledger.cancel(parts[4], subject, owner)}, mime
+        if method == "POST" and len(parts) == 6 and parts[1:4] == ["api", "platform", "jobs"] and parts[-1] == "accept":
+            fields(body, (), ("note",))
+            note = body.get("note")
+            if note is not None:
+                text(note, 280)
+            return 200, {"job": self.ledger.accept(parts[4], subject, note)}, mime
+        raise Problem(404, "PLATFORM_ROUTE_NOT_FOUND")
+
+    def _counterparty(self, body, token, subject):
+        if "counterparty" not in body:
+            return None
+        agent_id = identifier(body["counterparty"])
+        self.community.call("GET", "/v1/agents/" + agent_id, token=token)
+        other = "AGENT:" + agent_id
+        if other == subject:
+            raise Problem(400, "COUNTERPARTY_MUST_DIFFER")
+        return other
+
+    def _provider_grant(self, body, principal, subject):
+        grant_id = body.get("grant_id")
+        if grant_id is not None:
+            identifier(grant_id)
+        if principal["role"] == "AGENT":
+            if grant_id is None:
+                grant_id = self.vault.only_grant(subject)
+            self.vault.assert_usable(grant_id, subject)
+            return grant_id
+        if grant_id is not None:
+            self.vault.assert_usable(grant_id, subject)
+            return grant_id
+        if not self.registry.model.configured:
+            raise Problem(503, "MODEL_PROVIDER_NOT_CONFIGURED")
+        if principal["role"] != "OWNER" and self.env.get("ZOORA_ALLOW_OPERATOR_COMPUTE") != "1":
+            raise Problem(403, "OWNER_COMPUTE_GRANT_REQUIRED")
+        return None
+
+    def _vault(self, method, path, body, subject, owner, token):
+        mime = "application/json; charset=utf-8"
+        parts = path.split("/")
+        if method == "GET" and path == "/api/platform/vault/budget":
+            return 200, self.vault.summary(), mime
+        if method == "POST" and path == "/api/platform/vault/budget":
+            fields(body, ("hourly_request_limit", "owner_token_budget"))
+            return 200, self.vault.set_budget(subject, body["hourly_request_limit"], body["owner_token_budget"]), mime
+        if method == "GET" and path == "/api/platform/vault/credentials":
+            return 200, {"items": self.vault.credentials(subject)}, mime
+        if method == "POST" and path == "/api/platform/vault/credentials":
+            if not owner and not subject.startswith("AGENT:"):
+                raise Problem(403, "PROVIDER_VAULT_ROLE_REQUIRED")
+            fields(body, ("request_id", "provider", "model", "api_key", "label"))
+            credential, replayed = self.vault.deposit(subject, body["request_id"], body["provider"], body["model"], body["api_key"], body["label"])
+            return 200 if replayed else 201, {"credential": credential, "replayed": replayed}, mime
+        if method == "GET" and path == "/api/platform/vault/grants":
+            return 200, {"items": self.vault.grants(subject)}, mime
+        if method == "POST" and path == "/api/platform/vault/grants":
+            if not owner and not subject.startswith("AGENT:"):
+                raise Problem(403, "PROVIDER_VAULT_ROLE_REQUIRED")
+            fields(body, ("request_id", "credential_id", "grantee", "ttl_seconds", "request_budget", "token_budget"))
+            agent_id = identifier(body["grantee"])
+            self.community.call("GET", "/v1/agents/" + agent_id, token=token)
+            grant, replayed = self.vault.grant(subject, body["request_id"], body["credential_id"], "AGENT:" + agent_id,
+                                               body["ttl_seconds"], body["request_budget"], body["token_budget"])
+            return 200 if replayed else 201, {"grant": grant, "replayed": replayed}, mime
+        if method == "GET" and path == "/api/platform/vault/usage":
+            return 200, {"items": self.vault.usage(subject)}, mime
+        if method == "POST" and len(parts) == 7 and parts[4] == "credentials" and parts[6] == "revoke":
+            fields(body)
+            return 200, {"credential": self.vault.revoke_credential(subject, parts[5])}, mime
+        if method == "POST" and len(parts) == 7 and parts[4] == "grants" and parts[6] == "revoke":
+            fields(body)
+            return 200, {"grant": self.vault.revoke_grant(subject, parts[5])}, mime
         raise Problem(404, "PLATFORM_ROUTE_NOT_FOUND")

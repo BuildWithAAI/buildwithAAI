@@ -32,7 +32,7 @@ class Ledger:
             raise ValueError("platform ledger must be private")
         with self.db() as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2, 3):
+            if version not in (0, 1, 2, 3, 4):
                 raise ValueError("unsupported platform schema")
             if version == 0:
                 db.executescript("""
@@ -66,6 +66,39 @@ class Ledger:
                 CREATE TABLE model_requests(id TEXT PRIMARY KEY,at_ms INTEGER NOT NULL);
                 PRAGMA user_version=3;
                 """)
+            if version in (0, 1, 2, 3):
+                db.executescript("""
+                ALTER TABLE jobs ADD COLUMN counterparty TEXT;
+                ALTER TABLE jobs ADD COLUMN acceptance TEXT;
+                CREATE TABLE provider_credentials(
+                  id TEXT PRIMARY KEY, principal TEXT NOT NULL, request_id TEXT NOT NULL,
+                  provider TEXT NOT NULL, model TEXT NOT NULL, label TEXT NOT NULL,
+                  sealed TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('ACTIVE','REVOKED')),
+                  created_ms INTEGER NOT NULL, UNIQUE(principal, request_id));
+                CREATE TABLE provider_grants(
+                  id TEXT PRIMARY KEY, credential_id TEXT NOT NULL, grantor TEXT NOT NULL,
+                  grantee TEXT NOT NULL, request_id TEXT NOT NULL,
+                  request_budget INTEGER NOT NULL, token_budget INTEGER NOT NULL,
+                  initial_request_budget INTEGER NOT NULL, initial_token_budget INTEGER NOT NULL,
+                  ttl_seconds INTEGER NOT NULL, expires_ms INTEGER NOT NULL,
+                  state TEXT NOT NULL CHECK(state IN ('ACTIVE','REVOKED','EXPIRED','EXHAUSTED')),
+                  created_ms INTEGER NOT NULL, updated_ms INTEGER NOT NULL,
+                  UNIQUE(grantor, request_id));
+                CREATE TABLE provider_usage(
+                  id TEXT PRIMARY KEY, grant_id TEXT, job_id TEXT NOT NULL,
+                  attempt TEXT NOT NULL UNIQUE,
+                  state TEXT NOT NULL CHECK(state IN ('RESERVED','RECONCILED','UNKNOWN','RELEASED')),
+                  token_hold INTEGER NOT NULL, observed_tokens INTEGER, host_request_id TEXT,
+                  at_ms INTEGER NOT NULL);
+                CREATE TABLE compute_policy(
+                  id TEXT PRIMARY KEY CHECK(id='host'),
+                  hourly_request_limit INTEGER NOT NULL,
+                  owner_token_remaining INTEGER NOT NULL);
+                INSERT INTO compute_policy VALUES('host', 20, 1000000);
+                CREATE INDEX provider_grants_grantee ON provider_grants(grantee, state);
+                CREATE INDEX provider_usage_job ON provider_usage(job_id, state);
+                PRAGMA user_version=4;
+                """)
 
     @contextmanager
     def db(self, write=False):
@@ -92,11 +125,17 @@ class Ledger:
     @staticmethod
     def view(row):
         value = {k: row[k] for k in ("id", "principal", "request_id", "kind", "state", "created_ms", "updated_ms", "error")}
+        value["counterparty"] = row["counterparty"]
+        value["acceptance"] = json.loads(row["acceptance"]) if row["acceptance"] else None
         value["result"] = json.loads(row["result"]) if row["result"] else None
         value["accounting"] = "NONMONETARY_WORK"
         return value
 
-    def submit(self, principal, request_id, kind, payload):
+    @staticmethod
+    def _visible(row, principal, owner):
+        return owner or row["principal"] == principal or (row["counterparty"] is not None and row["counterparty"] == principal)
+
+    def submit(self, principal, request_id, kind, payload, counterparty=None):
         if (type(request_id) is not str or not 8 <= len(request_id) <= 80
                 or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-" for c in request_id)):
             raise Problem(400, "INVALID_REQUEST_ID")
@@ -108,8 +147,10 @@ class Ledger:
         at = self.clock()
         with self.db(True) as db:
             old = db.execute("SELECT * FROM jobs WHERE principal=? AND request_id=?", (principal, request_id)).fetchone()
+            if counterparty is not None and (type(counterparty) is not str or not counterparty.startswith("AGENT:")):
+                raise Problem(400, "INVALID_COUNTERPARTY")
             if old:
-                if old["fingerprint"] != fingerprint:
+                if old["fingerprint"] != fingerprint or old["counterparty"] != counterparty:
                     raise Problem(409, "IDEMPOTENCY_CONFLICT")
                 return self.view(old), True
             count = db.execute("SELECT count(*) FROM jobs WHERE principal=? AND created_ms>?", (principal, at - 3600000)).fetchone()[0]
@@ -122,13 +163,13 @@ class Ledger:
             if db.execute("SELECT count(*) FROM jobs WHERE state IN ('QUEUED','RUNNING')").fetchone()[0] >= 128:
                 raise Problem(503, "WORK_QUEUE_FULL")
             job = secrets.token_hex(16)
-            db.execute("INSERT INTO jobs(id,principal,request_id,fingerprint,kind,payload,state,created_ms,updated_ms) VALUES(?,?,?,?,?,?,'QUEUED',?,?)", (job, principal, request_id, fingerprint, kind, raw, at, at))
+            db.execute("INSERT INTO jobs(id,principal,request_id,fingerprint,kind,payload,state,created_ms,updated_ms,counterparty) VALUES(?,?,?,?,?,?,'QUEUED',?,?,?)", (job, principal, request_id, fingerprint, kind, raw, at, at, counterparty))
             self.event(db, job, "QUEUED", at)
             return self.view(db.execute("SELECT * FROM jobs WHERE id=?", (job,)).fetchone()), False
 
     def list(self, principal, owner=False):
         with self.db() as db:
-            rows = db.execute("SELECT * FROM jobs " + ("" if owner else "WHERE principal=? ") + "ORDER BY created_ms DESC,id DESC LIMIT 100", () if owner else (principal,)).fetchall()
+            rows = db.execute("SELECT * FROM jobs " + ("" if owner else "WHERE principal=? OR counterparty=? ") + "ORDER BY created_ms DESC,id DESC LIMIT 100", () if owner else (principal, principal)).fetchall()
             values = []
             for row in rows:
                 value = self.view(row)
@@ -140,7 +181,7 @@ class Ledger:
     def get(self, job_id, principal, owner=False):
         with self.db() as db:
             row = db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
-            if row is None or (not owner and row["principal"] != principal):
+            if row is None or not self._visible(row, principal, owner):
                 raise Problem(404, "JOB_NOT_FOUND")
             return self.view(row)
 
@@ -161,6 +202,7 @@ class Ledger:
         with self.db(True) as db:
             for row in db.execute("SELECT id FROM jobs WHERE state='RUNNING' AND lease_until_ms<=?", (at,)).fetchall():
                 db.execute("UPDATE jobs SET state='FAILED',error='WORKER_INTERRUPTED_NO_AUTOMATIC_RETRY',updated_ms=? WHERE id=?", (at, row["id"]))
+                db.execute("UPDATE provider_usage SET state='UNKNOWN' WHERE job_id=? AND state='RESERVED'", (row["id"],))
                 self.event(db, row["id"], "INTERRUPTED", at)
             row = db.execute("SELECT * FROM jobs WHERE state='QUEUED' ORDER BY created_ms,id LIMIT 1").fetchone()
             if row is None:
@@ -188,14 +230,26 @@ class Ledger:
         with self.db(True) as db:
             db.execute("INSERT INTO metadata VALUES('worker_heartbeat',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(self.clock()),))
 
+    def _host_limit(self, db):
+        row = db.execute("SELECT hourly_request_limit FROM compute_policy WHERE id='host'").fetchone()
+        limit = 20 if row is None else row["hourly_request_limit"]
+        if type(limit) is not int or not 1 <= limit <= 20:
+            return 20
+        return limit
+
+    def _insert_host_request(self, db):
+        at = self.clock()
+        if db.execute("SELECT count(*) FROM model_requests WHERE at_ms>?", (at - 3600000,)).fetchone()[0] >= self._host_limit(db):
+            raise Problem(429, "HOST_MODEL_REQUEST_BUDGET_EXHAUSTED")
+        if db.execute("SELECT count(*) FROM model_requests").fetchone()[0] >= 10000:
+            raise Problem(503, "MODEL_METERING_CAPACITY")
+        key = secrets.token_hex(16)
+        db.execute("INSERT INTO model_requests VALUES(?,?)", (key, at))
+        return key
+
     def reserve_model_request(self):
         with self.db(True) as db:
-            at = self.clock()
-            if db.execute("SELECT count(*) FROM model_requests WHERE at_ms>?", (at - 3600000,)).fetchone()[0] >= 20:
-                raise Problem(429, "HOST_MODEL_REQUEST_BUDGET_EXHAUSTED")
-            if db.execute("SELECT count(*) FROM model_requests").fetchone()[0] >= 10000:
-                raise Problem(503, "MODEL_METERING_CAPACITY")
-            db.execute("INSERT INTO model_requests VALUES(?,?)", (secrets.token_hex(16), at))
+            self._insert_host_request(db)
 
     def schedule(self, principal, request_id, kind, payload, interval_seconds, max_runs):
         if type(interval_seconds) is not int or not 60 <= interval_seconds <= 86400:
@@ -236,19 +290,44 @@ class Ledger:
             db.execute("UPDATE schedules SET state='CANCELLED' WHERE id=?", (key,))
             return self.schedule_view(db.execute("SELECT * FROM schedules WHERE id=?", (key,)).fetchone())
 
-    def tick(self, authorize):
+    def accept(self, job_id, principal, note=None):
         at = self.clock()
         with self.db(True) as db:
+            row = db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+            if row is None or row["counterparty"] != principal:
+                raise Problem(404, "JOB_NOT_FOUND")
+            if row["state"] != "SUCCEEDED":
+                raise Problem(409, "ACCEPTANCE_REQUIRES_COMPLETED_WORK")
+            if row["acceptance"]:
+                return self.view(row)
+            record = {"principal": principal, "accepted_at_ms": at, "payment": False}
+            if note is not None:
+                record["note"] = note
+            db.execute("UPDATE jobs SET acceptance=?,updated_ms=? WHERE id=?", (canonical(record), at, job_id))
+            self.event(db, job_id, "ACCEPTED", at)
+            return self.view(db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone())
+
+    def tick(self, authorize, ready=None):
+        at = self.clock()
+        with self.db() as db:
             row = db.execute("SELECT * FROM schedules WHERE state='ACTIVE' AND next_ms<=? ORDER BY next_ms,id LIMIT 1", (at,)).fetchone()
             if row is None:
                 return
-            payload = json.loads(row["payload"])
-            try:
-                principal = authorize(payload["_authority"]["credential_id"])
-                if principal["role"] + ":" + principal["principal_id"] != row["principal"]:
-                    raise Problem(403, "WORK_AUTHORITY_CHANGED")
-            except Problem:
-                db.execute("UPDATE schedules SET state='CANCELLED' WHERE id=?", (row["id"],))
+            chosen = {key: row[key] for key in row.keys()}
+        payload = json.loads(chosen["payload"])
+        try:
+            principal = authorize(payload["_authority"]["credential_id"])
+            if principal["role"] + ":" + principal["principal_id"] != chosen["principal"]:
+                raise Problem(403, "WORK_AUTHORITY_CHANGED")
+            if ready is not None:
+                ready(payload, principal)
+        except Problem:
+            with self.db(True) as db:
+                db.execute("UPDATE schedules SET state='CANCELLED' WHERE id=? AND state='ACTIVE'", (chosen["id"],))
+            return
+        with self.db(True) as db:
+            row = db.execute("SELECT * FROM schedules WHERE id=?", (chosen["id"],)).fetchone()
+            if row is None or row["state"] != "ACTIVE" or row["next_ms"] > at:
                 return
             recent = db.execute("SELECT count(*) FROM jobs WHERE principal=? AND created_ms>?", (row["principal"], at - 3600000)).fetchone()[0]
             queued = db.execute("SELECT count(*) FROM jobs WHERE state IN ('QUEUED','RUNNING')").fetchone()[0]
