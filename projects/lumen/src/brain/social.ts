@@ -18,16 +18,26 @@ const BANNED = [
   /\b(sex|nude|porn)\b.{0,40}\b(child|minor|underage|preteen)\b/i,
 ];
 
+function stripHiddenForCheck(text: string): string {
+  return text.replace(/[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}]/gu, "");
+}
+
+/** Copy used by banned, link, and card checks. Callers still store the original text. */
+export function textForCheck(text: string): string {
+  return stripHiddenForCheck(stripHiddenForCheck(text).normalize("NFKC"));
+}
+
 export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: string } | { ok: false; reason: string } {
   if (input == null || input === "") return { ok: true, note: "" };
   if (typeof input !== "string") return { ok: false, reason: "NOTE_TYPE" };
   if (input.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/.test(input)) {
+  // U+200D stays so an emoji join can be stored. The banned check reads textForCheck.
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u200B\u200C\u200E\u200F\u202A-\u202E\u2066-\u2069]/.test(input)) {
     return { ok: false, reason: "NOTE_CONTROL" };
   }
   const note = input.trim().replace(/\s+/g, " ");
   if (note.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  if (BANNED.some((pattern) => pattern.test(note))) return { ok: false, reason: "NOTE_REJECTED" };
+  if (BANNED.some((pattern) => pattern.test(textForCheck(note)))) return { ok: false, reason: "NOTE_REJECTED" };
   return { ok: true, note };
 }
 

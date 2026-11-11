@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { textForCheck } from "../brain/social";
 import type { PurchaseIntent } from "../brain/types";
 import { deskNotifier } from "./notify";
 import { Ledger } from "./ledger";
@@ -35,8 +36,8 @@ export function rejectPan(value: unknown): boolean {
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (SERVER_TOKEN_FIELDS.has(key) && typeof item === "string" && serverTokenValue(item)) continue;
     if (PAN_KEY.test(key)) return true;
-    if (typeof item === "number" && Number.isSafeInteger(item) && looksLikePan(String(item))) return true;
-    if (typeof item === "string" && looksLikePan(item)) return true;
+    if (typeof item === "number" && Number.isSafeInteger(item) && textHasPan(String(item))) return true;
+    if (typeof item === "string" && textHasPan(textForCheck(item))) return true;
     if (item && typeof item === "object" && rejectPan(item)) return true;
   }
   return false;
@@ -161,6 +162,12 @@ function luhnWindow(digits: string): boolean {
     }
   }
   return false;
+}
+
+/** Card scan. Keycap marks are stripped so 4\uFE0F\u20E3 cannot hide a digit. */
+function textHasPan(value: string): boolean {
+  const scanned = value.replace(/[\uFE0F\u20E3]/g, "");
+  return looksLikePan(scanned);
 }
 
 function looksLikePan(value: string): boolean {
