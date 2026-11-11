@@ -9,7 +9,7 @@ import { flag } from "../db/db";
 export const CLAIM_MS = 30 * 60 * 1000;
 const DAY = 24 * 60 * 60 * 1000;
 const PAN_KEY = /^(pan|cvc|cvv|card_number|cardnumber|full_number|card)$/i;
-const NOT_A_PAN_FIELD = /^(id|claimtoken|claim_token|token|idempotencykey|idempotency_key)$/i;
+const SERVER_TOKEN_FIELDS = new Set(["id", "claimToken", "token", "idempotencyKey"]);
 const AMAZON_ORDER = /^\d{3}-\d{7}-\d{7}$/;
 
 export type CheckoutItem = {
@@ -21,11 +21,19 @@ export type CheckoutItem = {
   expiresAt: number;
 };
 
+/** A uuid, a 16-byte hex claim token, or a 16- or 32-byte base64url token. Anything else is still scanned. */
+export function serverTokenValue(value: string): boolean {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) return true;
+  if (/^[0-9a-f]{32}$/i.test(value) && /[a-f]/i.test(value)) return true;
+  if (/^(?:[A-Za-z0-9_-]{22}|[A-Za-z0-9_-]{43})$/.test(value) && /[A-Za-z_-]/.test(value)) return true;
+  return false;
+}
+
 /** Refuse a body that tries to carry a card number. The queue has no card fields. */
 export function rejectPan(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    if (NOT_A_PAN_FIELD.test(key)) continue;
+    if (SERVER_TOKEN_FIELDS.has(key) && typeof item === "string" && serverTokenValue(item)) continue;
     if (PAN_KEY.test(key)) return true;
     if (typeof item === "number" && Number.isSafeInteger(item) && looksLikePan(String(item))) return true;
     if (typeof item === "string" && looksLikePan(item)) return true;
@@ -111,17 +119,13 @@ function cardWindow(window: string): boolean {
   return window.length >= 13 && window.length <= 19 && knownIin(window) && luhnOk(window);
 }
 
-/** A 9… number of 20 or 22 digits. A USPS check still yields when a 15- or 16-digit card sits on either end. */
+/** A 9… number of 20 or 22 digits. A valid USPS check exempts every window inside it. */
 function nineTrackingCard(digits: string): boolean {
   if (!((digits.length === 20 || digits.length === 22) && digits.startsWith("9"))) return false;
-  const checked = uspsMod10(digits);
+  if (uspsMod10(digits)) return false;
   for (let length = 13; length <= 19; length += 1) {
     for (let start = 0; start + length <= digits.length; start += 1) {
-      if (!cardWindow(digits.slice(start, start + length))) continue;
-      if (!checked) return true;
-      const nearStart = start <= 2;
-      const nearEnd = start + length >= digits.length - 2;
-      if ((length === 15 || length === 16) && (nearStart || nearEnd)) return true;
+      if (cardWindow(digits.slice(start, start + length))) return true;
     }
   }
   return false;

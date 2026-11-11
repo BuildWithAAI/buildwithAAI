@@ -2,7 +2,8 @@ import { createHash, createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { kvSet, openDatabase } from "../src/db/db";
 import net from "node:net";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { allowLogin, clientAddress } from "../src/auth/owner";
@@ -440,6 +441,56 @@ describe("held execute, disputes, refunds, and alerts", () => {
     executeIntent(left, intent({ id: "race-1", amountCents: 400 }), ctx({ ownerConfirmed: true }), overlapping, at);
     expect(overlapping.calls).toEqual(["exec:race-1"]);
     expect(new Ledger(left).list().filter((row) => row.kind === "purchase")).toHaveLength(1);
+  });
+
+  it("keeps one chain when two processes append at once", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "lumen-ledger-"));
+    const file = path.join(dir, "ledger.sqlite");
+    openDatabase(file);
+    const hook = path.join(dir, "hook.mjs");
+    const loader = path.join(dir, "register.mjs");
+    writeFileSync(hook, `
+      export async function resolve(specifier, context, nextResolve) {
+        if (specifier.startsWith(".") && !/\\.[a-z0-9]+$/i.test(specifier)) {
+          return nextResolve(specifier + ".ts", context);
+        }
+        return nextResolve(specifier, context);
+      }
+    `);
+    writeFileSync(loader, `
+      import { register } from "node:module";
+      import { pathToFileURL } from "node:url";
+      register(pathToFileURL(${JSON.stringify(hook)}).href, { parentURL: import.meta.url });
+    `);
+    const write = (id) => new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, ["--experimental-strip-types", "--import", loader, "--input-type=module", "-e", `
+        import { openDatabase } from "./src/db/db.ts";
+        import { Ledger } from "./src/money/ledger.ts";
+        const db = openDatabase(process.env.LEDGER_FILE);
+        new Ledger(db).append({
+          id: process.env.LEDGER_ID,
+          atMs: 10,
+          kind: "audit",
+          amountCents: 0,
+          status: "confirmed",
+          idempotencyKey: process.env.LEDGER_ID,
+          note: "concurrent " + process.env.LEDGER_ID,
+        });
+        console.log("wrote");
+      `], {
+        cwd: new URL("..", import.meta.url),
+        env: { ...process.env, LEDGER_FILE: file, LEDGER_ID: id },
+      });
+      let err = "";
+      child.stderr?.on("data", (chunk) => { err += chunk; });
+      child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(err || `writer ${id} exited ${code}`))));
+    });
+    await Promise.all([write("left"), write("right")]);
+    const db = openDatabase(file);
+    const rows = new Ledger(db).list();
+    expect(rows.map((row) => row.id).sort()).toEqual(["left", "right"]);
+    expect(verifyLedgerChain(db)).toBe(true);
+    expect(new Set(rows.map((row) => row.prevHash)).size).toBe(2);
   });
 
   it("does not let a decline consume the daily cap", () => {

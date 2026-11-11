@@ -2,6 +2,13 @@
 
 ---
 sha:
+title: Stop treating valid USPS numbers as cards.
+summary: A tracking number that passes the USPS check is exempt, including prefixes 91 to 95. Server token fields are skipped only when the value is a uuid, a 32-character hex claim token, or a fixed-length base64url token. Ledger appends take a write lock, and prev_hash is unique, so two writers still leave one chain.
+date: 2026-11-11T00:40:00Z
+image:
+
+---
+sha:
 title: Hash each piece into the append-only ledger.
 summary: Artwork, songs, and world builds now get a content hash on an audit row. The hash matches the stored body, a changed body fails that check, and older ledger rows are migrated so the chain still verifies. Nothing here spends money.
 date: 2026-11-11T00:20:00Z

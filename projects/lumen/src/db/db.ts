@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   prev_hash TEXT NOT NULL,
   entry_hash TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ledger_prev_hash ON ledger_entries(prev_hash);
 CREATE TABLE IF NOT EXISTS flags (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS webhook_events (
   event_id TEXT PRIMARY KEY,
@@ -441,6 +442,7 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   const db = new DatabaseSync(file);
   db.exec(SCHEMA);
   db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA busy_timeout = 5000");
   ensureColumn(db, "ledger_entries", "charge_id", "charge_id TEXT");
   ensureColumn(db, "ledger_entries", "payment_intent_id", "payment_intent_id TEXT");
   ensureColumn(db, "ledger_entries", "merchant", "merchant TEXT");

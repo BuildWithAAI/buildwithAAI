@@ -236,45 +236,79 @@ export function verifyLedgerChain(db: DatabaseSync): boolean {
 }
 
 export class Ledger {
-  constructor(private readonly db: DatabaseSync) {}
+  private readonly db: DatabaseSync;
+
+  constructor(db: DatabaseSync) {
+    this.db = db;
+  }
 
   append(input: LedgerInput): LedgerRow {
     if (!LEDGER_KINDS.includes(input.kind)) throw new Error("LEDGER_KIND");
     if (CARDISH.test(input.note) || CARDISH.test(input.providerTransactionId ?? "")) throw new Error("CARD_DATA_REJECTED");
-    const hash = bodyHash(input);
-    const existing = this.db.prepare("SELECT * FROM ledger_entries WHERE idempotency_key = ?").get(input.idempotencyKey) as Record<string, unknown> | undefined;
-    if (existing) {
-      if (existing.body_hash !== hash) throw new Error("IDEMPOTENCY_CONFLICT");
-      return mapRow(existing);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        return this.appendOnce(input);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (attempt < 4 && /busy|locked|UNIQUE constraint failed: ledger_entries\.prev_hash/i.test(message)) continue;
+        throw error;
+      }
     }
-    const prev = this.db.prepare("SELECT entry_hash FROM ledger_entries ORDER BY seq DESC LIMIT 1").get() as { entry_hash: string } | undefined;
-    const prevHash = prev?.entry_hash ?? "GENESIS";
-    const entryHash = createHash("sha256").update(prevHash + hash).digest("hex");
-    this.db.prepare(
-      `INSERT INTO ledger_entries
-        (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, content_hash, prev_hash, entry_hash)
-       VALUES (?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      input.id,
-      input.atMs,
-      input.kind,
-      input.amountCents,
-      input.status,
-      input.provider ?? null,
-      input.providerTransactionId ?? null,
-      input.chargeId ?? null,
-      input.paymentIntentId ?? null,
-      input.idempotencyKey,
-      hash,
-      input.ref ?? null,
-      input.note,
-      input.merchant ?? null,
-      input.contentHash ?? null,
-      prevHash,
-      entryHash,
-    );
-    const row = this.db.prepare("SELECT * FROM ledger_entries WHERE id = ?").get(input.id) as Record<string, unknown>;
-    return mapRow(row);
+    throw new Error("LEDGER_BUSY");
+  }
+
+  private appendOnce(input: LedgerInput): LedgerRow {
+    let owns = false;
+    try {
+      this.db.exec("BEGIN IMMEDIATE");
+      owns = true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/within a transaction/i.test(message)) throw error;
+    }
+    try {
+      const hash = bodyHash(input);
+      const existing = this.db.prepare("SELECT * FROM ledger_entries WHERE idempotency_key = ?").get(input.idempotencyKey) as Record<string, unknown> | undefined;
+      if (existing) {
+        if (existing.body_hash !== hash) throw new Error("IDEMPOTENCY_CONFLICT");
+        if (owns) this.db.exec("COMMIT");
+        return mapRow(existing);
+      }
+      const prev = this.db.prepare("SELECT entry_hash FROM ledger_entries ORDER BY seq DESC LIMIT 1").get() as { entry_hash: string } | undefined;
+      const prevHash = prev?.entry_hash ?? "GENESIS";
+      const entryHash = createHash("sha256").update(prevHash + hash).digest("hex");
+      this.db.prepare(
+        `INSERT INTO ledger_entries
+          (id, at_ms, kind, amount_cents, currency, status, provider, provider_transaction_id, charge_id, payment_intent_id, idempotency_key, body_hash, ref, note, merchant, content_hash, prev_hash, entry_hash)
+         VALUES (?, ?, ?, ?, 'usd', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        input.id,
+        input.atMs,
+        input.kind,
+        input.amountCents,
+        input.status,
+        input.provider ?? null,
+        input.providerTransactionId ?? null,
+        input.chargeId ?? null,
+        input.paymentIntentId ?? null,
+        input.idempotencyKey,
+        hash,
+        input.ref ?? null,
+        input.note,
+        input.merchant ?? null,
+        input.contentHash ?? null,
+        prevHash,
+        entryHash,
+      );
+      const row = this.db.prepare("SELECT * FROM ledger_entries WHERE id = ?").get(input.id) as Record<string, unknown>;
+      if (owns) this.db.exec("COMMIT");
+      return mapRow(row);
+    } catch (error) {
+      if (owns) {
+        try { this.db.exec("ROLLBACK"); } catch { /* already closed */ }
+      }
+      throw error;
+    }
   }
 
   list(): LedgerRow[] {

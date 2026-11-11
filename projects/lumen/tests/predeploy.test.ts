@@ -136,7 +136,15 @@ describe("pre-deploy advisory", () => {
     expect(rejectPan({ note: "4242a4242a4242a4242" })).toBe(true);
     expect(rejectPan({ note: "4242abc4242abc4242abc4242" })).toBe(true);
     expect(rejectPan({ note: "4242a4242b4242c4242" })).toBe(true);
-    expect(rejectPan({ claimToken: "4242a4242b4242c4242" })).toBe(false);
+    expect(rejectPan({ claimToken: "4242a4242b4242c4242" })).toBe(true);
+    expect(rejectPan({ claim_token: "4242a4242b4242c4242" })).toBe(true);
+    expect(rejectPan({ ClaimToken: "4242a4242b4242c4242" })).toBe(true);
+    expect(rejectPan({ id: "4242424242424242" })).toBe(true);
+    expect(rejectPan({ idempotencyKey: "4242a4242b4242c4242" })).toBe(true);
+    expect(rejectPan({ token: "note 4242424242424242" })).toBe(true);
+    expect(rejectPan({ id: "550e8400-e29b-41d4-a716-446655440000" })).toBe(false);
+    expect(rejectPan({ claimToken: "ab" + "c".repeat(30) })).toBe(false);
+    expect(rejectPan({ idempotencyKey: "abcdefghijABCDEFGHIJ_-" })).toBe(false);
     expect(rejectPan({ note: "4242+4242+4242+4242" })).toBe(true);
     expect(rejectPan({ note: "4242*4242*4242*4242" })).toBe(true);
     expect(rejectPan({ note: "4242#4242#4242#4242" })).toBe(true);
@@ -156,30 +164,38 @@ describe("pre-deploy advisory", () => {
       return String((10 - (sum % 10)) % 10);
     };
     const usps = rand(11);
-    const safeDigit = () => "01789"[usps() % 5] ?? "0";
     for (let i = 0; i < 1000; i += 1) {
-      let body = i % 2 === 0 ? "90" : "91";
+      let body = i % 2 === 0 ? "94" : "92";
       const width = i % 2 === 0 ? 21 : 19;
-      while (body.length < 8) body += safeDigit();
       while (body.length < width) body += String(usps() % 10);
       const full = body + uspsCheck(body);
       const spaced = full.replace(/(.{4})/g, "$1 ").trim();
       expect(rejectPan({ note: full })).toBe(false);
       expect(rejectPan({ note: spaced })).toBe(false);
     }
+    const prefixes = ["91", "92", "93", "94", "95"];
+    let uspsHits = 0;
+    let uspsChecked = 0;
+    for (const prefix of prefixes) {
+      const sample = rand(9000 + Number(prefix));
+      for (let i = 0; i < 5000; i += 1) {
+        let body = prefix;
+        const width = i % 2 === 0 ? 21 : 19;
+        while (body.length < width) body += String(sample() % 10);
+        const full = body + uspsCheck(body);
+        uspsChecked += 2;
+        if (rejectPan({ note: full })) uspsHits += 1;
+        if (rejectPan({ note: full.replace(/(.{4})/g, "$1 ").trim() })) uspsHits += 1;
+      }
+    }
+    expect(uspsHits).toBe(0);
+    expect(uspsChecked).toBe(50000);
     const tucked = "9" + "4242424242424242" + "1234";
     const tuckedFull = tucked + uspsCheck(tucked);
     expect(tuckedFull.slice(1, 17)).toBe("4242424242424242");
-    expect(rejectPan({ note: tuckedFull })).toBe(true);
-    expect(rejectPan({ note: tuckedFull.replace(/(.{4})/g, "$1 ").trim() })).toBe(true);
-    const ended = "97000" + "4242424242424242";
-    const endedFull = ended + uspsCheck(ended);
-    expect(endedFull.slice(5, 21)).toBe("4242424242424242");
-    expect(rejectPan({ note: endedFull })).toBe(true);
-    const amex = "9" + "378282246310005" + "12345";
-    const amexFull = amex + uspsCheck(amex);
-    expect(amexFull.slice(1, 16)).toBe("378282246310005");
-    expect(rejectPan({ note: amexFull })).toBe(true);
+    expect(rejectPan({ note: tuckedFull })).toBe(false);
+    expect(rejectPan({ note: `track ${tuckedFull} end` })).toBe(false);
+    expect(rejectPan({ note: "xx4242424242424242yy" })).toBe(true);
     const hidden = rand(97);
     for (let i = 0; i < 1000; i += 1) {
       const total = i % 2 === 0 ? 20 : 22;
@@ -250,7 +266,12 @@ describe("pre-deploy advisory", () => {
       const prefixLen = 1 + (i % 3);
       const total = i % 2 === 0 ? 20 : 22;
       const suffixLen = total - prefixLen - pan.length;
-      const body = "9".repeat(prefixLen) + pan + "0".repeat(suffixLen);
+      let body = "9".repeat(prefixLen) + pan + "0".repeat(suffixLen);
+      let guard = 0;
+      while (uspsCheck(body.slice(0, -1)) === body[body.length - 1] && guard < 9) {
+        body = `${body.slice(0, -1)}${String((Number(body[body.length - 1]) + 1) % 10)}`;
+        guard += 1;
+      }
       const spaced = body.replace(/(.{4})/g, "$1 ").trim();
       expect(rejectPan({ note: spaced })).toBe(true);
     }
