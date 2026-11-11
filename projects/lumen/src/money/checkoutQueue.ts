@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { textForCheck } from "../brain/social";
 import type { PurchaseIntent } from "../brain/types";
 import { deskNotifier } from "./notify";
 import { Ledger } from "./ledger";
@@ -30,14 +29,58 @@ export function serverTokenValue(value: string): boolean {
   return false;
 }
 
+const SPOKEN_DIGIT: Record<string, string> = {
+  zero: "0",
+  oh: "0",
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
+};
+
+/**
+ * Spelled digits become digits, and filler words between digit groups drop out,
+ * so "four two four two" and "4242 then 4242" reach the same card check.
+ * Words that are not sitting between digits stay put.
+ */
+export function normalizeSpokenCard(value: string): string {
+  const softened = value.replace(/[,.;:]+/g, " ");
+  const spoken = softened.replace(/\b(zero|oh|one|two|three|four|five|six|seven|eight|nine)\b/gi, (word) => SPOKEN_DIGIT[word.toLowerCase()] ?? word);
+  return spoken.replace(/(?<=\d)\s+(?:(?:then|and|next|plus|followed|by|with|the|a|an|of|to)\s+)+(?=\d)/gi, " ");
+}
+
+const KEYCAP_MARKS = /[\u20E3\uFE0F]/g;
+
+/**
+ * A note is a card number only when 13–19 digits sit together, or are separated only by spaces or hyphens, and pass Luhn.
+ * ISBN-13 (978/979) and a UPS 1Z tracking number are not card numbers. Dots, commas, and letters break the run.
+ */
+export function textHasPan(value: string): boolean {
+  const stripped = stripHiddenMarks(value.replace(KEYCAP_MARKS, ""));
+  const spoken = stripped.replace(/\b(zero|oh|one|two|three|four|five|six|seven|eight|nine)\b/gi, (word) => SPOKEN_DIGIT[word.toLowerCase()] ?? word);
+  const softened = spoken.replace(/(?<=\d)\s+(?:(?:then|and|next|plus|followed|by|with|the|a|an|of|to)\s+)+(?=\d)/gi, " ");
+  for (const match of softened.match(/\d(?:[ \t-]*\d)*/g) ?? []) {
+    const digits = match.replace(/[ \t-]/g, "");
+    if (digits.length < 13 || digits.length > 19) continue;
+    if (digits.startsWith("978") || digits.startsWith("979")) continue;
+    if (luhnOk(digits)) return true;
+  }
+  return false;
+}
+
 /** Refuse a body that tries to carry a card number. The queue has no card fields. */
 export function rejectPan(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (SERVER_TOKEN_FIELDS.has(key) && typeof item === "string" && serverTokenValue(item)) continue;
     if (PAN_KEY.test(key)) return true;
-    if (typeof item === "number" && Number.isSafeInteger(item) && textHasPan(String(item))) return true;
-    if (typeof item === "string" && textHasPan(textForCheck(item))) return true;
+    if (typeof item === "number" && Number.isSafeInteger(item) && looksLikePan(String(item))) return true;
+    if (typeof item === "string" && looksLikePan(stripHiddenMarks(item))) return true;
     if (item && typeof item === "object" && rejectPan(item)) return true;
   }
   return false;
@@ -164,10 +207,10 @@ function luhnWindow(digits: string): boolean {
   return false;
 }
 
-/** Card scan. Keycap marks are stripped so 4\uFE0F\u20E3 cannot hide a digit. */
-function textHasPan(value: string): boolean {
-  const scanned = value.replace(/[\uFE0F\u20E3]/g, "");
-  return looksLikePan(scanned);
+const HIDDEN_MARKS = /[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}]/gu;
+
+function stripHiddenMarks(text: string): string {
+  return text.replace(HIDDEN_MARKS, "").normalize("NFKC").replace(HIDDEN_MARKS, "");
 }
 
 function looksLikePan(value: string): boolean {

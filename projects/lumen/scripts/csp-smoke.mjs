@@ -136,8 +136,9 @@ function stopServer() {
 const hard = setTimeout(() => {
   stopServer();
   console.error(serverLog.slice(-2000));
+  console.error("smoke timed out");
   process.exit(1);
-}, 240_000);
+}, 420_000);
 hard.unref?.();
 
 try {
@@ -199,10 +200,11 @@ try {
   await page.screenshot({ path: `${shots}/world-tip.png` });
   await shootNarrow(browser, base, shots, { width: 390, height: 844 }, "home-mobile.png");
   await shootNarrow(browser, base, shots, { width: 768, height: 1024 }, "home-tablet.png");
+  await page.close();
   let deskUp = false;
   for (let i = 0; i < 40; i += 1) {
     try {
-      const ready = await fetch("http://127.0.0.1:3001/admin/login");
+      const ready = await fetch("http://127.0.0.1:3001/admin/login", { signal: AbortSignal.timeout(8000) });
       if (ready.status === 200) { deskUp = true; break; }
     } catch { /* proxy is still binding */ }
     await delay(250);

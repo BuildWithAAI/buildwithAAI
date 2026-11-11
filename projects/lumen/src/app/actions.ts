@@ -129,14 +129,38 @@ export async function shopDesk(form: FormData) {
   await getEngine().shopAct(op, String(form.get("id") ?? ""), form.get("on") === "1");
 }
 
+export async function visitorDesk(form: FormData) {
+  await gate();
+  if (String(form.get("op") ?? "") !== "revoke") return;
+  await getEngine().revokeVisitor(String(form.get("id") ?? ""));
+}
+
 export async function creativeAction(form: FormData) {
   await gate();
   const engine = getEngine();
   const op = String(form.get("op") ?? "");
   if (op === "on") engine.setCreative(true);
   if (op === "off") engine.setCreative(false);
-  if (op === "hide") engine.hideBuild(String(form.get("id") ?? ""));
-  if (op === "undo") engine.undoBuild(String(form.get("id") ?? ""));
+  if (op === "freeze-territory") engine.freezeTerritory(true);
+  if (op === "thaw-territory") engine.freezeTerritory(false);
+  let result: { ok: boolean; reason?: string } | undefined;
+  if (op === "hide") result = engine.hideBuild(String(form.get("id") ?? ""));
+  if (op === "undo") result = engine.undoBuild(String(form.get("id") ?? ""));
+  if (op === "veto-territory") {
+    const raw = String(form.get("radius") ?? "").trim();
+    if (raw === "") result = engine.vetoTerritory();
+    else if (/^-?\d+$/.test(raw)) result = engine.vetoTerritory(Number(raw));
+    else result = { ok: false, reason: "RADIUS" };
+  }
+  if (op === "make-public" || op === "unprivate") {
+    const cx = Number(form.get("cx"));
+    const cy = Number(form.get("cy"));
+    if (Number.isInteger(cx) && Number.isInteger(cy)) result = engine.unprivateChunk(cx, cy);
+    else result = { ok: false, reason: "CHUNK" };
+  }
+  if (op === "reverify-chain") result = engine.reverifyChain();
+  if (result && result.ok === false) redirect(`/admin?error=${encodeURIComponent(result.reason ?? "REFUSED")}`);
+  redirect(`/admin?done=${encodeURIComponent(op)}`);
 }
 
 export async function sceneDesk(form: FormData) {

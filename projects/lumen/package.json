@@ -10,6 +10,7 @@
     "test": "vitest run",
     "smoke": "node scripts/csp-smoke.mjs",
     "typecheck": "tsc --noEmit",
+    "predeploy": "node scripts/predeploy-chunk-chain.mjs",
     "hash-password": "node scripts/hash-password.mjs",
     "telegram:poll": "node scripts/telegram-poll.mjs",
     "telegram:commands": "node scripts/telegram-set-commands.mjs"
@@ -27,9 +28,14 @@
     "@types/react-dom": "^19.1.9",
     "@types/suncalc": "^1.9.2",
     "@types/three": "^0.170.0",
+    "esbuild": "^0.25.12",
     "playwright": "1.55.1",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "esbuild": "^0.25.12",
+    "postcss": "^8.5.32"
   },
   "engines": {
     "node": ">=22.13"

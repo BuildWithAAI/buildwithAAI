@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { addExpandedAreas } from "./islandAreas";
+import { bobGuests, syncChunkLayer, syncGuestLayer, syncTerritoryGlow } from "./chunkLayer";
 import type { PublicAgent, PublicWorld } from "../world/public";
+import type { PublicChunk, PublicGuest } from "../world/chunkMath";
+import { chunkKey, chunksToLoad, worldToChunk } from "../world/chunkMath";
+import { CLAIM_BUFFER, CLAIM_START_RADIUS } from "../world/territoryRules";
 import type { Vec3 } from "../world/places";
 import { directionFromHorizon } from "../world/sky";
 import { clampLabelPoint, clipThought, labelCaption, placeThought, shortSkyLine, type ScreenPoint } from "../world/labels";
@@ -35,13 +39,35 @@ const CAMS: Record<string, { pos: [number, number, number]; look: [number, numbe
 
 type Board = { texture: THREE.CanvasTexture; paint: (lines: string[]) => void };
 
-export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorld; cam: string; thoughts?: string[] }) {
+export function WorldView({
+  initial,
+  cam,
+  thoughts = [],
+  chunks = [],
+  guests = [],
+  territory = { radius: CLAIM_START_RADIUS, buffer: CLAIM_BUFFER },
+}: {
+  initial: PublicWorld;
+  cam: string;
+  thoughts?: string[];
+  chunks?: PublicChunk[];
+  guests?: PublicGuest[];
+  territory?: { radius: number; buffer: number };
+}) {
   const mount = useRef<HTMLDivElement | null>(null);
   const bubbleRef = useRef<HTMLButtonElement | null>(null);
   const [thoughtOpen, setThoughtOpen] = useState(false);
   const [thoughtIndex, setThoughtIndex] = useState(0);
   const world = useRef(initial);
   const [live, setLive] = useState(initial);
+  const [loadedChunks, setLoadedChunks] = useState(chunks);
+  const [guestList, setGuestList] = useState(guests);
+  const chunkRef = useRef(loadedChunks);
+  const guestRef = useRef(guestList);
+  const territoryRef = useRef(territory);
+  chunkRef.current = loadedChunks;
+  guestRef.current = guestList;
+  territoryRef.current = territory;
   const [sound, setSound] = useState(false);
   const [view, setView] = useState(CAMS[cam] ? cam : "overview");
   const [follow, setFollow] = useState(Boolean(CAMS[cam]?.follow));
@@ -147,7 +173,8 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
       return;
     }
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 600);
+    const far = low ? 1200 : 1500;
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, far);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({
@@ -245,6 +272,13 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
 
     const rain = buildRain();
     scene.add(rain);
+    const chunkLayer = new THREE.Group();
+    chunkLayer.name = "endless-chunks";
+    const guestLayer = new THREE.Group();
+    guestLayer.name = "guest-creatures";
+    const territoryLayer = new THREE.Group();
+    territoryLayer.name = "territory-edge";
+    scene.add(chunkLayer, guestLayer, territoryLayer);
     const visitor = buildVisitor();
     scene.add(visitor);
     const gem = new THREE.Mesh(
@@ -386,6 +420,10 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
       }
       syncBuilds(scene, buildPieces, snap.builds ?? []);
       syncShop(scene, shopPiece, snap.shop ?? null);
+      syncChunkLayer(chunkLayer, chunkRef.current);
+      syncGuestLayer(guestLayer, guestRef.current, terrainHeight);
+      syncTerritoryGlow(territoryLayer, territoryRef.current.radius, territoryRef.current.buffer);
+      bobGuests(guestLayer, time);
       const researchText = `${snap.research?.question ?? ""}|${(snap.research?.pins ?? []).join("|")}`;
       if (researchText !== researchKey) {
         researchKey = researchText;
@@ -511,8 +549,49 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
       renderer.render(scene, camera);
     };
     tick();
+    const known = new Set(chunkRef.current.map((chunk) => chunkKey(chunk.cx, chunk.cy)));
+    let flight = false;
+    const pullTerrain = async (force: boolean) => {
+      if (flight) return;
+      const here = worldToChunk(controls.target.x, controls.target.z);
+      const cell = force ? { cx: here.cx, cy: here.cy } : chunksToLoad(known, here.cx, here.cy, 1)[0];
+      if (!cell) return;
+      flight = true;
+      try {
+        const response = await fetch(`/api/world/chunk?x=${cell.cx}&y=${cell.cy}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const body = (await response.json()) as PublicChunk & { guests?: PublicGuest[]; territory?: { radius: number; buffer: number } };
+        if (typeof body.tiles !== "string" || body.cx !== cell.cx || body.cy !== cell.cy) return;
+        known.add(chunkKey(cell.cx, cell.cy));
+        const nextChunks = [
+          ...chunkRef.current.filter((chunk) => chunkKey(chunk.cx, chunk.cy) !== chunkKey(cell.cx, cell.cy)),
+          { cx: body.cx, cy: body.cy, tiles: body.tiles, decor: Array.isArray(body.decor) ? body.decor : [], private: Boolean(body.private) },
+        ];
+        chunkRef.current = nextChunks;
+        setLoadedChunks(nextChunks);
+        if (body.territory && Number.isInteger(body.territory.radius) && Number.isInteger(body.territory.buffer)) {
+          territoryRef.current = body.territory;
+        }
+        if (Array.isArray(body.guests)) {
+          const nextGuests = [
+            ...guestRef.current.filter((guest) => guest.cx !== cell.cx || guest.cy !== cell.cy),
+            ...body.guests,
+          ];
+          guestRef.current = nextGuests;
+          setGuestList(nextGuests);
+        }
+      } catch {
+        /* keep the chunks already on screen */
+      } finally {
+        flight = false;
+      }
+    };
+    const terrainTimer = window.setInterval(() => void pullTerrain(false), 1200);
+    const guestTimer = window.setInterval(() => void pullTerrain(true), 15_000);
     return () => {
       cancelAnimationFrame(frame);
+      window.clearInterval(terrainTimer);
+      window.clearInterval(guestTimer);
       observer.disconnect();
       controls.dispose();
       renderer.dispose();
@@ -529,7 +608,7 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
   const thought = thoughts.length ? thoughts[thoughtIndex % thoughts.length] : "";
   const shownThought = clipThought(thought, thoughtOpen);
   return (
-    <div className="world-stage">
+    <div className="world-stage" data-world-chunks={loadedChunks.length} data-world-guests={guestList.length}>
       <div className="world-canvas" ref={mount} />
       {thought ? (
         <button

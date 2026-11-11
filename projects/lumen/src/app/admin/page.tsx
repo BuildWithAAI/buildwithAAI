@@ -4,11 +4,12 @@ import { OWNER_COOKIE } from "../../auth/owner";
 import { loginReachable, ownerRouteOpen, publicModeOn } from "../../auth/publicMode";
 import { loadIdentity } from "../../identity/load";
 import { IssueWorldToken } from "../../components/IssueWorldToken";
-import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, keeperListAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sceneDesk, sendChat, shopDesk, wishAction } from "../actions";
+import { artAction, clearAlertAction, controlAction, creativeAction, goalDesk, keeperListAction, logout, proposalAction, reconcileAction, refundAction, resolveUnknownAction, sceneDesk, sendChat, shopDesk, visitorDesk, wishAction } from "../actions";
 import { deskClock } from "../../money/notify";
 import { getEngine } from "../../server/engine";
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ error?: string; done?: string }> }) {
+  const query = await searchParams;
   const header = await headers();
   if (!loginReachable(header.get("fly-client-ip"), process.env, header.get("x-lumen-desk"))) notFound();
   const jar = await cookies();
@@ -223,7 +224,38 @@ export default async function AdminPage() {
           <button type="submit">Let her choose again</button>
         </form>
         <h2>Creative building</h2>
+        {query.error && /^[A-Z0-9_]{1,40}$/.test(query.error) ? <p className="warn">That action was refused: {query.error}.</p> : null}
+        {query.done && /^[a-z0-9-]{1,40}$/.test(query.done) ? <p className="muted">Saved {query.done}.</p> : null}
         <p className="muted">Zoora spends island materials, not money. {creative.left} materials left today. Building is {creative.on ? "on" : "off"}.</p>
+        <p className="muted">Her claim reaches {creative.territory.radius} chunks from the island ({creative.territory.span} by {creative.territory.span}), with an empty buffer of {creative.territory.buffer} chunks. Growth today is {creative.territory.grownToday}. {creative.territory.frozen ? "Growth is frozen." : "She may still grow it."}</p>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value={creative.territory.frozen ? "thaw-territory" : "freeze-territory"} />
+          <button type="submit">{creative.territory.frozen ? "Let her grow the claim" : "Freeze claim growth"}</button>
+        </form>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value="veto-territory" />
+          <button type="submit">Veto the latest growth</button>
+        </form>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value="veto-territory" />
+          <input name="radius" placeholder="Radius" />
+          <button type="submit">Set the claim back to this radius</button>
+        </form>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value="reverify-chain" />
+          <button type="submit">Re-verify the chunk chain</button>
+        </form>
+        <form action={creativeAction}>
+          <input type="hidden" name="op" value="make-public" />
+          <input name="cx" placeholder="Chunk x" />
+          <input name="cy" placeholder="Chunk y" />
+          <button type="submit">Make this chunk public</button>
+        </form>
+        <form action={visitorDesk}>
+          <input type="hidden" name="op" value="revoke" />
+          <input name="id" placeholder="Visitor id" />
+          <button type="submit">Revoke that visitor</button>
+        </form>
         <form action={creativeAction}>
           <input type="hidden" name="op" value={creative.on ? "off" : "on"} />
           <button type="submit">{creative.on ? "Turn creative building off" : "Turn creative building on"}</button>

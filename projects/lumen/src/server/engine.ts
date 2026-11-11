@@ -22,7 +22,7 @@ import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { cardCredentials, issuingKey, listIssuingTransactions, descriptorMap } from "../money/card";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, cardAvailableCents, type Env } from "../money/rules";
-import { expireClaims } from "../money/checkoutQueue";
+import { expireClaims, textHasPan } from "../money/checkoutQueue";
 import { researchChatReply } from "../research/ideas";
 import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
@@ -35,6 +35,10 @@ import { recordProvenance } from "../build/provenance";
 import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
+import { remember } from "../brain/memory";
+import { considerGrowth, considerPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../world/territory";
+import { clearChunkChainBroken, degradeChunkChain, guardChunkChain, rebuildClaimRadius, reverifyChunkChain } from "../world/chunkEdits";
+import { revokeVisitor } from "../world/visitors";
 import { publishFromTick, rollbackScene, setSceneFrozen } from "../world/scene";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -96,6 +100,11 @@ export function createEngine(env: Env, file?: string) {
     issueWorldToken: (name: string) => issueAgent(db, name, Date.now()),
     creativeBoard: () => creativeBoard(db, Date.now()),
     setCreative: (on: boolean) => setCreativeEnabled(db, on),
+    freezeTerritory: (on: boolean) => setTerritoryFrozen(db, on),
+    vetoTerritory: (radius?: number) => vetoGrowth(db, Date.now(), radius),
+    unprivateChunk: (cx: number, cy: number) => unprivateChunk(db, cx, cy, Date.now()),
+    reverifyChain: () => reverifyChunkChain(db, Date.now()),
+    revokeVisitor: (id: string) => revokeVisitor(db, id, Date.now()),
     rollbackScene: () => rollbackScene(db),
     freezeScene: (on: boolean) => setSceneFrozen(db, on),
     hideBuild: (id: string) => hideWorldBuild(db, id, Date.now()),
@@ -259,6 +268,21 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       ? { ...lived, longTerm: [{ id: "goal", tier: "long" as const, section: "fact" as const, text: goal, salience: 1, placeId: null, atMinute: 0 }, ...lived.longTerm] }
       : lived;
     const built = considerCreative(db, minded, now);
+    const grew = considerGrowth(db, built, now);
+    if (grew?.ok) {
+      lived = remember(lived, {
+        id: `claim-${grew.radius}-${now}`,
+        tier: "short",
+        section: "fact",
+        text: grew.memory.text,
+        salience: 0.4,
+        placeId: null,
+        atMinute: lived.worldMinute,
+        provenance: grew.memory.provenance,
+      });
+      saveState(db, lived);
+    }
+    considerPrivacy(db, built, now);
     publishFromTick(db, lived.emotions, lived.tick, now);
     const finding = db.prepare("SELECT question FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { question: string } | undefined;
     const held = inventoryLine(db);
@@ -342,12 +366,12 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
   if (!allowRate(db, `gift:${ip}`, 10, 3600_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
   const gift = giftById(giftId);
   if (!gift) return { ok: false, error: "UNKNOWN_GIFT" };
-  const moderated = moderateNote(note);
-  if (!moderated.ok) return moderated;
-  if (typeof note === "string" && moderated.note && crisisMatch(textForCheck(note))) {
+  if (typeof note === "string" && crisisMatch(textForCheck(note))) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'gift')").run(Date.now());
     return { ok: false, error: "CRISIS" };
   }
+  const moderated = moderateNote(note);
+  if (!moderated.ok) return moderated;
   const named = screenedAuthor(author);
   if (!named.ok) return named;
   const state = loadState(db);
@@ -358,12 +382,12 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
     ...state,
     needs,
     giftCounts: { ...state.giftCounts, [giftId]: prior + 1 },
-    visitorSeen: state.visitorSeen.includes(author) ? state.visitorSeen : [...state.visitorSeen, author].slice(-40),
+    visitorSeen: state.visitorSeen.includes(named.name) ? state.visitorSeen : [...state.visitorSeen, named.name].slice(-40),
   };
   saveState(db, next);
   const id = randomBytes(8).toString("hex");
   db.prepare("INSERT INTO gifts(id, gift_id, note, untrusted, author, created_at) VALUES(?, ?, ?, 1, ?, ?)").run(id, giftId, moderated.note, named.name, Date.now());
-  db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`${visitorName(author)} left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
+  db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`${visitorName(named.name)} left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
   void env;
   return { ok: true, id };
 }
@@ -390,13 +414,13 @@ function interact(db: DatabaseSync, kind: "wave" | "tap", ip: string) {
 
 function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) {
   if (!allowGuestNote(db, ip, Date.now())) return { ok: false, error: "RATE_LIMIT" };
-  const moderated = moderateNote(note, 280);
-  if (!moderated.ok) return moderated;
-  if (!moderated.note) return { ok: false, error: "EMPTY" };
   if (typeof note === "string" && crisisMatch(textForCheck(note))) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'guestbook')").run(Date.now());
     return { ok: false, error: "CRISIS" };
   }
+  const moderated = moderateNote(note, 280);
+  if (!moderated.ok) return moderated;
+  if (!moderated.note) return { ok: false, error: "EMPTY" };
   const state = loadState(db);
   const messages = (db.prepare("SELECT id, channel, author FROM messages WHERE status = 'queued'").all() as { id: string; channel: "owner" | "visitor"; author: string }[]);
   const id = randomBytes(8).toString("hex");
@@ -452,9 +476,15 @@ function login(db: DatabaseSync, env: Env, secret: string, ip: string) {
 }
 
 function screenedAuthor(author: string): { ok: true; name: string } | { ok: false; reason: string } {
-  const moderated = moderateNote(author, Math.max(author.length, 140));
+  const stored = (author || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const forCheck = stored.replace(/\u061C/g, "");
+  if (!forCheck) return { ok: true, name: "visitor" };
+  const checked = textForCheck(forCheck).trim().replace(/\s+/g, " ");
+  if (crisisMatch(checked)) return { ok: false, reason: "CRISIS" };
+  if (textHasPan(checked)) return { ok: false, reason: "PAN" };
+  const moderated = moderateNote(forCheck, Math.max(forCheck.length, 140));
   if (!moderated.ok) return moderated;
-  return { ok: true, name: (author || "visitor").slice(0, 40) };
+  return { ok: true, name: stored };
 }
 
 function visitorName(author: string): string {
@@ -493,7 +523,7 @@ function ownerChat(db: DatabaseSync, env: Env, text: string, bucket = "owner-cha
     id,
     author === "jarvis" ? "jarvis" : "owner",
     name,
-    text.slice(0, 500),
+    turn.stored.slice(0, 500),
     turn.queued ? "queued" : "replied",
     reply,
     Date.now(),
@@ -893,6 +923,9 @@ function inQuietHours(env: Env, now: number): boolean {
 
 export function startLoop(): void {
   const engine = getEngine();
+  rebuildClaimRadius(engine.db);
+  if (!guardChunkChain(engine.db)) degradeChunkChain(engine.db);
+  else clearChunkChainBroken(engine.db);
   const holder = globalThis as GlobalEngine & { loop?: boolean };
   if (holder.loop) return;
   holder.loop = true;
