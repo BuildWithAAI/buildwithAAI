@@ -18,14 +18,64 @@ const BANNED = [
   /\b(sex|nude|porn)\b.{0,40}\b(child|minor|underage|preteen)\b/i,
 ];
 
+const HARD_INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u180E\u2028\u2029\u3164\uFFF9-\uFFFB]/u;
+const ZWJ = 0x200d;
+
+function variationSelector(cp: number): boolean {
+  return (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0xe0100 && cp <= 0xe01ef);
+}
+
+/** Default-ignorable characters, except variation selectors and ZWJ, which emoji sequences need. */
+function blockedInvisible(text: string): boolean {
+  if (HARD_INVISIBLE.test(text)) return true;
+  for (const char of text) {
+    const cp = char.codePointAt(0) ?? 0;
+    if (cp === ZWJ || variationSelector(cp)) continue;
+    if (/\p{Default_Ignorable_Code_Point}/u.test(char)) return true;
+  }
+  return false;
+}
+
+/**
+ * Keep one variation selector after a base character. Drop a lone selector, and drop extras stacked on the same base.
+ * Keep a ZWJ only when it joins two bases, as in 👩‍💻.
+ */
+function scrubEmojiMarks(text: string): string {
+  const chars = Array.from(text);
+  let out = "";
+  let lastBase = false;
+  let keptSelector = false;
+  for (let i = 0; i < chars.length; i += 1) {
+    const char = chars[i] ?? "";
+    const cp = char.codePointAt(0) ?? 0;
+    if (variationSelector(cp)) {
+      if (lastBase && !keptSelector) {
+        out += char;
+        keptSelector = true;
+      }
+      continue;
+    }
+    if (cp === ZWJ) {
+      const next = chars[i + 1]?.codePointAt(0);
+      const nextBase = next != null && next !== ZWJ && !variationSelector(next);
+      if ((lastBase || keptSelector) && nextBase) out += char;
+      lastBase = false;
+      keptSelector = false;
+      continue;
+    }
+    out += char;
+    lastBase = true;
+    keptSelector = false;
+  }
+  return out;
+}
+
 export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: string } | { ok: false; reason: string } {
   if (input == null || input === "") return { ok: true, note: "" };
   if (typeof input !== "string") return { ok: false, reason: "NOTE_TYPE" };
   if (input.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060\u2066-\u2069\u3164\uFE00-\uFE0F\uFEFF\uFFF9-\uFFFB\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/u.test(input)) {
-    return { ok: false, reason: "NOTE_CONTROL" };
-  }
-  const note = input.trim().replace(/\s+/g, " ");
+  if (blockedInvisible(input)) return { ok: false, reason: "NOTE_CONTROL" };
+  const note = scrubEmojiMarks(input).trim().replace(/\s+/g, " ");
   if (note.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
   if (BANNED.some((pattern) => pattern.test(note))) return { ok: false, reason: "NOTE_REJECTED" };
   return { ok: true, note };

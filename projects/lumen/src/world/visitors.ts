@@ -21,6 +21,10 @@ export const VISITOR_MAX_ROWS = 200;
 export const VISITOR_PREFIX_ROWS = 32;
 export const VISITOR_GLOBAL_REGISTER_LIMIT = 30;
 export const VISITOR_V6_PREFIX_LIMIT = 8;
+export const VISITOR_V6_48_LIMIT = 8;
+export const VISITOR_ACTIVE_PER_IP = 8;
+export const VISITOR_ACTIVE_PER_V4_24 = 16;
+export const VISITOR_ACTIVE_PER_V6_48 = 16;
 export const VISITOR_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
 export const VISITOR_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const QUARANTINE_KEEP = 1_000;
@@ -139,6 +143,24 @@ export function registrationPrefix(ip: string): string {
   return ipv6Prefix64(ip) ?? ip.slice(0, 64);
 }
 
+/** First 48 bits. Accepts a full address or a stored /64 prefix. */
+export function ipv6Prefix48(ip: string): string | null {
+  const full = ipv6Prefix64(ip);
+  const prefix = full ?? (/^[0-9a-f:]+$/i.test(ip) && ip.includes(":") ? ip : null);
+  if (!prefix) return null;
+  const parts = prefix.split(":").filter(Boolean);
+  if (parts.length < 3) return null;
+  return parts.slice(0, 3).join(":");
+}
+
+export function ipv4Prefix24(ip: string): string | null {
+  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip.trim());
+  if (!match) return null;
+  const octets = match.slice(1).map((part) => Number(part));
+  if (octets.some((part) => part > 255)) return null;
+  return `${octets[0]}.${octets[1]}.${octets[2]}`;
+}
+
 export function pruneQuarantine(db: DatabaseSync, now: number): void {
   db.prepare("DELETE FROM visitor_quarantine WHERE at_ms < ?").run(now - QUARANTINE_KEEP_MS);
   db.prepare(`DELETE FROM visitor_quarantine WHERE rowid NOT IN (SELECT rowid FROM visitor_quarantine ORDER BY at_ms DESC LIMIT ${QUARANTINE_KEEP})`).run();
@@ -154,6 +176,11 @@ export function pruneVisitors(db: DatabaseSync, now: number): void {
  * Idle, paused, or never-active (seen_at still equal to created_at), oldest last activity first.
  * A visitor who has moved or spoken inside the idle window is not a candidate.
  */
+function evictVisitor(db: DatabaseSync, id: string): void {
+  db.prepare("DELETE FROM visitor_quarantine WHERE visitor_id = ?").run(id);
+  db.prepare("DELETE FROM world_visitors WHERE id = ?").run(id);
+}
+
 function evictIdleVisitor(db: DatabaseSync, now: number): boolean {
   const row = db.prepare(
     `SELECT id FROM world_visitors
@@ -162,9 +189,44 @@ function evictIdleVisitor(db: DatabaseSync, now: number): boolean {
      LIMIT 1`,
   ).get(now - VISITOR_IDLE_MS) as { id: string } | undefined;
   if (!row) return false;
-  db.prepare("DELETE FROM visitor_quarantine WHERE visitor_id = ?").run(row.id);
-  db.prepare("DELETE FROM world_visitors WHERE id = ?").run(row.id);
+  evictVisitor(db, row.id);
   return true;
+}
+
+/** Oldest account on the prefix that currently holds the most rows. */
+function evictHeaviestPrefix(db: DatabaseSync): boolean {
+  const row = db.prepare(
+    `SELECT id FROM world_visitors
+     WHERE status != 'revoked' AND reg_prefix = (
+       SELECT reg_prefix FROM world_visitors
+       WHERE status != 'revoked'
+       GROUP BY reg_prefix
+       ORDER BY COUNT(*) DESC, reg_prefix ASC
+       LIMIT 1
+     )
+     ORDER BY created_at ASC, id ASC
+     LIMIT 1`,
+  ).get() as { id: string } | undefined;
+  if (!row) return false;
+  evictVisitor(db, row.id);
+  return true;
+}
+
+function activePrefixes(db: DatabaseSync, now: number): string[] {
+  return (db.prepare(
+    "SELECT reg_prefix FROM world_visitors WHERE status = 'active' AND seen_at > ? AND expires_at > ?",
+  ).all(now - VISITOR_IDLE_MS, now) as { reg_prefix: string }[]).map((row) => row.reg_prefix);
+}
+
+function activeCapReached(db: DatabaseSync, ip: string, now: number): boolean {
+  const rows = activePrefixes(db, now);
+  const exact = registrationPrefix(ip);
+  if (rows.filter((prefix) => prefix === exact).length >= VISITOR_ACTIVE_PER_IP) return true;
+  const v4 = ipv4Prefix24(ip);
+  if (v4 && rows.filter((prefix) => ipv4Prefix24(prefix) === v4).length >= VISITOR_ACTIVE_PER_V4_24) return true;
+  const v6 = ipv6Prefix48(ip);
+  if (v6 && rows.filter((prefix) => ipv6Prefix48(prefix) === v6).length >= VISITOR_ACTIVE_PER_V6_48) return true;
+  return false;
 }
 
 function noteVisitorCap(db: DatabaseSync, now: number, evicted: boolean): void {
@@ -259,13 +321,14 @@ export function registerVisitor(
   input: { displayName: unknown; ownerContact: unknown; ip: string; now: number },
 ): { ok: true; visitor: VisitorToken } | { ok: false; reason: string; status: number } {
   pruneVisitors(db, input.now);
-  if (visitorCount(db) >= VISITOR_MAX_ROWS) {
-    const evicted = evictIdleVisitor(db, input.now);
-    noteVisitorCap(db, input.now, evicted);
-    if (!evicted || visitorCount(db) >= VISITOR_MAX_ROWS) {
-      logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
-      return { ok: false, reason: "CAP", status: 429 };
-    }
+  const v6 = ipv6Prefix64(input.ip);
+  const v48 = ipv6Prefix48(input.ip);
+  if (!limited(db, "visitor:register:global", VISITOR_GLOBAL_REGISTER_LIMIT, input.now)
+    || !limited(db, `visitor:ip:register:${input.ip}`, VISITOR_REGISTER_LIMIT, input.now)
+    || (v6 !== null && !limited(db, `visitor:v6:${v6}`, VISITOR_V6_PREFIX_LIMIT, input.now))
+    || (v48 !== null && !limited(db, `visitor:v6-48:${v48}`, VISITOR_V6_48_LIMIT, input.now))) {
+    logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
+    return { ok: false, reason: "RATE_LIMIT", status: 429 };
   }
   const prefix = registrationPrefix(input.ip);
   const prefixRows = Number((db.prepare(
@@ -275,12 +338,17 @@ export function registerVisitor(
     logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
     return { ok: false, reason: "PREFIX", status: 429 };
   }
-  const v6 = ipv6Prefix64(input.ip);
-  if (!limited(db, "visitor:register:global", VISITOR_GLOBAL_REGISTER_LIMIT, input.now)
-    || !limited(db, `visitor:ip:register:${input.ip}`, VISITOR_REGISTER_LIMIT, input.now)
-    || (v6 !== null && !limited(db, `visitor:v6:${v6}`, VISITOR_V6_PREFIX_LIMIT, input.now))) {
+  if (activeCapReached(db, input.ip, input.now)) {
     logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
-    return { ok: false, reason: "RATE_LIMIT", status: 429 };
+    return { ok: false, reason: "ACTIVE", status: 429 };
+  }
+  if (visitorCount(db) >= VISITOR_MAX_ROWS) {
+    const evicted = evictIdleVisitor(db, input.now) || evictHeaviestPrefix(db);
+    noteVisitorCap(db, input.now, evicted);
+    if (!evicted || visitorCount(db) >= VISITOR_MAX_ROWS) {
+      logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
+      return { ok: false, reason: "CAP", status: 429 };
+    }
   }
   const created = createVisitor(db, input);
   if (!created.ok) return { ok: false, reason: created.reason, status: 400 };
@@ -310,7 +378,12 @@ function authorize(
   }
   const current = pauseIfIdle(db, row, now, write);
   const hash = current.token_hash;
-  if (!limited(db, `visitor:ip:${scope}:${ip}`, ipLimit, now) || !limited(db, `visitor:token:${scope}:${hash}`, tokenLimit, now)) {
+  const v4 = ipv4Prefix24(ip);
+  const v48 = ipv6Prefix48(ip);
+  if (!limited(db, `visitor:ip:${scope}:${ip}`, ipLimit, now)
+    || !limited(db, `visitor:token:${scope}:${hash}`, tokenLimit, now)
+    || (v4 !== null && !limited(db, `visitor:v4:${scope}:${v4}`, ipLimit, now))
+    || (v48 !== null && !limited(db, `visitor:v6-48:${scope}:${v48}`, ipLimit, now))) {
     logSecurity({ event: "rate_limited", status: 429, route });
     return { ok: false, reason: "RATE_LIMIT", status: 429 };
   }
@@ -414,8 +487,7 @@ export function nearbyGuests(db: DatabaseSync, cx: number, cy: number, radius: n
     `SELECT id, display_name, creature, color, chunk_x, chunk_y, tile_x, tile_y, speech, speech_untrusted
      FROM world_visitors
      WHERE status = 'active' AND seen_at > ? AND expires_at > ?
-       AND chunk_x BETWEEN ? AND ? AND chunk_y BETWEEN ? AND ?
-     LIMIT ${NEARBY_LIMIT}`,
+       AND chunk_x BETWEEN ? AND ? AND chunk_y BETWEEN ? AND ?`,
   ).all(now - VISITOR_IDLE_MS, now, cx - span, cx + span, cy - span, cy + span) as VisitorRow[];
   const privacy = new Map<string, boolean>();
   const hidden = (x: number, y: number) => {
@@ -428,6 +500,7 @@ export function nearbyGuests(db: DatabaseSync, cx: number, cy: number, radius: n
   };
   return rows
     .filter((row) => chunkDistance({ cx, cy }, { cx: row.chunk_x, cy: row.chunk_y }) <= span && !hidden(row.chunk_x, row.chunk_y))
+    .slice(0, NEARBY_LIMIT)
     .map(toGuest);
 }
 

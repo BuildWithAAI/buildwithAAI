@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { moderateNote } from "../brain/social";
 import { setFlag } from "../db/db";
-import { worldToChunk } from "./chunkMath";
+import { CHUNK_COORD_LIMIT, worldToChunk } from "./chunkMath";
 import {
   appendChunkEdit,
   claimRadius,
@@ -11,7 +11,7 @@ import {
   territoryDay,
   territoryFrozen,
 } from "./chunkEdits";
-import { CLAIM_BUFFER, CLAIM_GROW_PER_DAY, CLAIM_START_RADIUS, claimSpan } from "./territoryRules";
+import { CLAIM_BUFFER, CLAIM_GROW_PER_DAY, CLAIM_START_RADIUS, claimCeiling, claimSpan } from "./territoryRules";
 
 export { chunkIsPrivate };
 
@@ -52,7 +52,10 @@ export function expandClaim(
   if (!clean.ok || !clean.note) return { ok: false, reason: clean.ok ? "REASON" : clean.reason };
   if (!Number.isInteger(step) || step < 1 || step > CLAIM_GROW_PER_DAY) return { ok: false, reason: "STEP" };
   const from = claimRadius(db);
-  const to = from + step;
+  const ceiling = claimCeiling();
+  const cap = ceiling == null ? CHUNK_COORD_LIMIT : Math.min(CHUNK_COORD_LIMIT, ceiling);
+  const to = Math.min(from + step, cap);
+  if (to <= from) return { ok: false, reason: ceiling != null && from >= ceiling && ceiling < CHUNK_COORD_LIMIT ? "CEILING" : "EDGE" };
   const day = territoryDay(Date.now());
   try {
     appendChunkEdit(db, {

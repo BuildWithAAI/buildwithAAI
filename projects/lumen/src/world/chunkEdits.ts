@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { isChunkCoord, isTileCoord, type PublicDecor } from "./chunkMath";
+import { CHUNK_COORD_LIMIT, isChunkCoord, isTileCoord, type PublicDecor } from "./chunkMath";
 import { CLAIM_GROW_PER_DAY, CLAIM_START_RADIUS, claimCeiling, zoneAt } from "./territoryRules";
 
 export const CHUNK_EDIT_KINDS = ["decor", "decor-rollback", "privacy", "expand"] as const;
@@ -178,7 +178,9 @@ function scanClaimRadius(db: DatabaseSync): number {
   for (const row of rows) {
     try {
       const parsed = JSON.parse(row.payload) as { to?: unknown };
-      if (typeof parsed.to === "number" && Number.isInteger(parsed.to) && parsed.to >= CLAIM_START_RADIUS) radius = parsed.to;
+      if (typeof parsed.to === "number" && Number.isInteger(parsed.to) && parsed.to >= CLAIM_START_RADIUS) {
+        radius = Math.min(parsed.to, CHUNK_COORD_LIMIT);
+      }
     } catch {
       /* a bad row does not shrink or grow the claim */
     }
@@ -190,12 +192,19 @@ function writeCachedRadius(db: DatabaseSync, radius: number): void {
   db.prepare("INSERT INTO kv(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(CLAIM_RADIUS_KEY, String(radius));
 }
 
+/** Boot overwrites kv from the chain, including a stale or oversized cache. */
+export function rebuildClaimRadius(db: DatabaseSync): number {
+  const radius = scanClaimRadius(db);
+  writeCachedRadius(db, radius);
+  return radius;
+}
+
 /** Cached. Growth and veto refresh it. A miss scans the chain once. */
 export function claimRadius(db: DatabaseSync): number {
   const row = db.prepare("SELECT value FROM kv WHERE key = ?").get(CLAIM_RADIUS_KEY) as { value: string } | undefined;
   if (row && /^\d+$/.test(row.value)) {
     const cached = Number(row.value);
-    if (cached >= CLAIM_START_RADIUS) return cached;
+    if (cached >= CLAIM_START_RADIUS && cached <= CHUNK_COORD_LIMIT) return cached;
   }
   const radius = scanClaimRadius(db);
   writeCachedRadius(db, radius);
@@ -265,6 +274,7 @@ function enforceTerritory(db: DatabaseSync, input: ChunkEditInput, payload: stri
     const step = (parsed.to ?? 0) - (parsed.from ?? 0);
     if (step < 1 || step > CLAIM_GROW_PER_DAY) throw new Error("STEP");
     if (grownToday(db, Date.now()) + step > CLAIM_GROW_PER_DAY) throw new Error("DAY");
+    if ((parsed.to ?? 0) > CHUNK_COORD_LIMIT) throw new Error("EDGE");
     const ceiling = claimCeiling();
     if (ceiling != null && (parsed.to ?? 0) > ceiling) throw new Error("CEILING");
     return;
@@ -272,8 +282,33 @@ function enforceTerritory(db: DatabaseSync, input: ChunkEditInput, payload: stri
   if (zone !== "claim") throw new Error("OUTSIDE");
 }
 
+function tailHashOk(db: DatabaseSync): boolean {
+  const tail = db.prepare("SELECT * FROM chunk_edits ORDER BY seq DESC LIMIT 1").get() as Record<string, unknown> | undefined;
+  if (!tail) return true;
+  const row = mapEdit(tail);
+  const hash = chunkEditBodyHash(row);
+  if (hash !== row.bodyHash) return false;
+  const entry = createHash("sha256").update(row.prevHash + hash).digest("hex");
+  return entry === row.entryHash;
+}
+
+/** Veto, a radius reset, and make-public stay available while writes are frozen. */
+function ownerRecovery(input: ChunkEditInput): boolean {
+  if (input.actor !== "owner" || !input.payload || typeof input.payload !== "object" || Array.isArray(input.payload)) return false;
+  const raw = input.payload as Record<string, unknown>;
+  if (input.kind === "privacy") return raw.private === false;
+  if (input.kind === "expand") {
+    return typeof raw.from === "number" && typeof raw.to === "number" && raw.to < raw.from && raw.to >= CLAIM_START_RADIUS;
+  }
+  return false;
+}
+
 export function appendChunkEdit(db: DatabaseSync, input: ChunkEditInput): ChunkEditRow {
-  if (chunkWritesFrozen(db)) throw new Error("CHAIN");
+  if (!tailHashOk(db)) {
+    degradeChunkChain(db);
+    throw new Error("CHAIN");
+  }
+  if (chunkWritesFrozen(db) && !ownerRecovery(input)) throw new Error("CHAIN");
   const payload = assertInput(input);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
@@ -479,6 +514,21 @@ export function degradeChunkChain(db: DatabaseSync, now = Date.now()): void {
   rememberFlag(db, "territory_frozen", "1");
   rememberFlag(db, "creative_building", "0");
   console.log(JSON.stringify({ ts: new Date(now).toISOString(), event: "chunk_chain_degraded", status: 500, route: "boot" }));
+}
+
+export function clearChunkChainBroken(db: DatabaseSync): void {
+  rememberFlag(db, "chunk_chain_broken", "0");
+}
+
+/** Owner desk. A good chain clears the freeze flag. A bad one stays degraded. */
+export function reverifyChunkChain(db: DatabaseSync, now = Date.now()): { ok: true } | { ok: false; reason: string } {
+  rebuildClaimRadius(db);
+  if (!verifyChunkChain(db)) {
+    degradeChunkChain(db, now);
+    return { ok: false, reason: "CHAIN" };
+  }
+  clearChunkChainBroken(db);
+  return { ok: true };
 }
 
 /** Desk notice that stays until the next login. A second failure does not add another row. */

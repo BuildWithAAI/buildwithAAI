@@ -28,6 +28,18 @@ describe("guestbook loop", () => {
     expect(kept.ok).toBe(true);
     const row = engine.db.prepare("SELECT body, reply, untrusted FROM messages").get() as { body: string; reply: string | null; untrusted: number };
     expect(row.untrusted).toBe(1);
+    const heart = engine.guestbook("the reef ❤️", "Ada", "203.0.113.60");
+    expect(heart.ok).toBe(true);
+    const dev = engine.guestbook("the studio 👩‍💻", "Bea", "203.0.113.61");
+    expect(dev.ok).toBe(true);
+    const bodies = (engine.db.prepare("SELECT body FROM messages").all() as { body: string }[]).map((item) => item.body).join("\n");
+    expect(bodies).toContain("❤️");
+    expect(bodies).toContain("👩‍💻");
+    const gifted = engine.leaveGift("sea-glass", "a shell ❤️ for the dock 👩‍💻", "Ada", "203.0.113.62");
+    expect(gifted.ok).toBe(true);
+    const giftNote = engine.db.prepare("SELECT note FROM gifts").get() as { note: string };
+    expect(giftNote.note).toContain("❤️");
+    expect(giftNote.note).toContain("👩‍💻");
     expect(row.body).toBe("the tide is kind");
     if (row.reply) expect(row.reply).not.toContain("the tide is kind");
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM paper_trades").get()).toEqual({ n: 0 });
@@ -35,7 +47,7 @@ describe("guestbook loop", () => {
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM sol_orders").get()).toEqual({ n: 0 });
     const gift = engine.leaveGift("sea-glass", "kill myself", "Ada", "203.0.113.52");
     expect(gift).toEqual({ ok: false, error: "CRISIS" });
-    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 0 });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 1 });
   });
 
   it("rate-limits a flood of notes and shows the safety page", () => {

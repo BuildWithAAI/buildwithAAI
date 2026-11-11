@@ -119,6 +119,26 @@ fly secrets import -a lumen-tidepool < secrets.env
 
 `fly secrets import` stages them for the next deploy. Do not commit `secrets.env`. Delete `secrets.env` from the owner machine after the import succeeds.
 
+## Check the volume before a deploy
+
+Run this on your own machine before `fly deploy` when the volume already has a database. It is not a `release_command`. Nothing here starts on the machine or writes to the volume.
+
+The ledger should be one chain. Two rows with the same previous hash are a fork:
+
+```powershell
+fly ssh console -a lumen-tidepool -C "sqlite3 /data/lumen.sqlite \"SELECT prev_hash, COUNT(*) AS n FROM ledger_entries GROUP BY prev_hash HAVING n > 1;\""
+```
+
+An empty result is the chain you want. The chunk log is checked the same way, read-only, from this repo:
+
+```powershell
+cd projects\lumen
+$env:LUMEN_DATA = "C:\path\to\a-copy-of-lumen.sqlite"
+npm run predeploy
+```
+
+`npm run predeploy` refuses a missing file, does not migrate, and does not write a desk notice. A broken chunk chain prints one line and exits non-zero. Fix the copy before you deploy. Do not point `LUMEN_DATA` at the live volume over SSH for this command.
+
 ## Deploy one machine
 
 ```powershell

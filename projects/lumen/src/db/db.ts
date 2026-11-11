@@ -571,8 +571,8 @@ export function allowGuestNote(db: DatabaseSync, ip: string, now: number, limits
   }
 }
 
-/** Windows passed to allowRate. The global prune keeps a row until the longest of these. */
-const CONFIGURED_RATE_WINDOWS_MS = [60_000, 3_600_000] as const;
+/** Every allowRate and guestbook window. The global prune keeps a row until the longest of these. */
+export const CONFIGURED_RATE_WINDOWS_MS = [60_000, GUESTBOOK_WINDOW_MS] as const;
 export const RATE_LIMIT_KEEP_MS = Math.max(...CONFIGURED_RATE_WINDOWS_MS);
 
 export function allowRate(db: DatabaseSync, bucket: string, limit: number, windowMs: number, now: number): boolean {

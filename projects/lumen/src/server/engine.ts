@@ -37,7 +37,7 @@ import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, 
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
 import { remember } from "../brain/memory";
 import { considerGrowth, considerPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../world/territory";
-import { degradeChunkChain, guardChunkChain } from "../world/chunkEdits";
+import { clearChunkChainBroken, degradeChunkChain, guardChunkChain, rebuildClaimRadius, reverifyChunkChain } from "../world/chunkEdits";
 import { revokeVisitor } from "../world/visitors";
 import { publishFromTick, rollbackScene, setSceneFrozen } from "../world/scene";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
@@ -103,6 +103,7 @@ export function createEngine(env: Env, file?: string) {
     freezeTerritory: (on: boolean) => setTerritoryFrozen(db, on),
     vetoTerritory: (radius?: number) => vetoGrowth(db, Date.now(), radius),
     unprivateChunk: (cx: number, cy: number) => unprivateChunk(db, cx, cy, Date.now()),
+    reverifyChain: () => reverifyChunkChain(db, Date.now()),
     revokeVisitor: (id: string) => revokeVisitor(db, id, Date.now()),
     rollbackScene: () => rollbackScene(db),
     freezeScene: (on: boolean) => setSceneFrozen(db, on),
@@ -906,7 +907,9 @@ function inQuietHours(env: Env, now: number): boolean {
 
 export function startLoop(): void {
   const engine = getEngine();
+  rebuildClaimRadius(engine.db);
   if (!guardChunkChain(engine.db)) degradeChunkChain(engine.db);
+  else clearChunkChainBroken(engine.db);
   const holder = globalThis as GlobalEngine & { loop?: boolean };
   if (holder.loop) return;
   holder.loop = true;

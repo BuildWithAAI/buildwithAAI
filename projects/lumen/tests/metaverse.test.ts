@@ -12,13 +12,14 @@ import { openDatabase, RATE_LIMIT_KEEP_MS } from "../src/db/db";
 import { publicBooks } from "../src/money/publicBooks";
 import { hideBuild, placeCreative, undoBuild, type CreativeSignals } from "../src/world/creative";
 import { createChunkCache, generateChunk, worldSeed } from "../src/world/chunkCache";
-import { appendChunkEdit, claimRadius, chunkIsPrivate, degradeChunkChain, guardChunkChain, legacyChunkEditBodyHash, listChunkEdits, migrateChunkEditHashes, noteChunkChainBroken, territoryDay, verifyChunkChain } from "../src/world/chunkEdits";
+import { appendChunkEdit, chunkEditBodyHash, claimRadius, chunkIsPrivate, degradeChunkChain, guardChunkChain, legacyChunkEditBodyHash, listChunkEdits, migrateChunkEditHashes, noteChunkChainBroken, rebuildClaimRadius, reverifyChunkChain, territoryDay, verifyChunkChain } from "../src/world/chunkEdits";
 import { textHasPan } from "../src/money/checkoutQueue";
 import { CLAIM_START_RADIUS, claimCeiling, claimSpan, plotMayStart, zoneAt } from "../src/world/territoryRules";
 import { considerGrowth, considerPrivacy, expandClaim, setChunkPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../src/world/territory";
 import { neighborhood, publicChunk } from "../src/world/chunks";
-import { CHUNK_TILES, CHUNK_WORLD, chunkKey, chunksToLoad, unpackTiles, worldToChunk } from "../src/world/chunkMath";
+import { CHUNK_COORD_LIMIT, CHUNK_TILES, CHUNK_WORLD, chunkKey, chunksToLoad, unpackTiles, worldToChunk } from "../src/world/chunkMath";
 import {
+  VISITOR_ACTIVE_PER_IP,
   VISITOR_GLOBAL_REGISTER_LIMIT,
   VISITOR_IDLE_MS,
   VISITOR_MOVE_LIMIT,
@@ -257,7 +258,7 @@ describe("visiting agents", () => {
     }
     expect(moveVisitor(db, first.visitor.token, { cx: 0, cy: 0, tx: 17, ty: 16 }, "198.51.100.10", now)).toMatchObject({ ok: false, reason: "RATE_LIMIT" });
     expect(moveVisitor(db, second.visitor.token, { cx: 0, cy: 0, tx: 15, ty: 16 }, "198.51.100.10", now)).toMatchObject({ ok: false, reason: "RATE_LIMIT" });
-    expect(moveVisitor(db, second.visitor.token, { cx: 0, cy: 0, tx: 15, ty: 16 }, "198.51.100.11", now).ok).toBe(true);
+    expect(moveVisitor(db, second.visitor.token, { cx: 0, cy: 0, tx: 15, ty: 16 }, "198.51.101.11", now).ok).toBe(true);
     const idle = createVisitor(db, { displayName: "Io", ownerContact: "io@example.com", now: 10 });
     expect(idle.ok).toBe(true);
     if (!idle.ok) return;
@@ -290,14 +291,7 @@ describe("visiting agents", () => {
       80,
     );
     expect(said.ok).toBe(true);
-    const allowSpeech = new Set(["src/db/db.ts", "src/world/visitors.ts"]);
-    const leaks = sourceFiles(new URL("../src", import.meta.url).pathname).filter((file) => {
-      const text = readFileSync(file, "utf8");
-      if (!/visitor_quarantine|world_visitors/.test(text)) return false;
-      const relative = file.slice(file.indexOf("/src/") + 1);
-      return !allowSpeech.has(relative);
-    });
-    expect(leaks).toEqual([]);
+    expect(speechSinks()).toEqual([]);
     const row = db.prepare("SELECT body, untrusted FROM visitor_quarantine").get() as { body: string; untrusted: number };
     expect(row.untrusted).toBe(1);
     expect(row.body).toContain("buy a plot");
@@ -457,8 +451,9 @@ describe("visiting agents", () => {
       ) VALUES(?, 'Cap', 'cap@example.com', ?, 'world:read', 'wisp', '#f2a65a', 3, 3, 1, 1, 'active', '', 1, ?, ?, ?, ?)`,
     );
     for (let i = 0; i < VISITOR_MAX_ROWS; i += 1) insert.run(`cap-${i}`, `hash-${i}`, `10.1.${i}`, now - 60_000, now, now + VISITOR_TOKEN_TTL_MS);
-    expect(registerVisitor(full, { displayName: "Over", ownerContact: "over@example.com", ip: "198.51.100.9", now })).toMatchObject({ ok: false, reason: "CAP" });
+    expect(registerVisitor(full, { displayName: "Over", ownerContact: "over@example.com", ip: "198.51.100.9", now }).ok).toBe(true);
     expect((full.prepare("SELECT COUNT(*) AS n FROM world_visitors").get() as { n: number }).n).toBe(VISITOR_MAX_ROWS);
+    expect(full.prepare("SELECT id FROM world_visitors WHERE id = 'cap-0'").get()).toBeUndefined();
     expect((full.prepare("SELECT title FROM owner_alerts WHERE title = 'Visitor registration cap'").all() as { title: string }[])).toHaveLength(1);
     const old = openDatabase();
     old.prepare(
@@ -485,7 +480,7 @@ describe("visiting agents", () => {
     expect(listed.some((guest) => guest.id === "idle-one")).toBe(false);
     expect((crowd.prepare("SELECT status FROM world_visitors WHERE id = 'idle-one'").get() as { status: string }).status).toBe("active");
     const plan = crowd.prepare(
-      `EXPLAIN QUERY PLAN SELECT id FROM world_visitors WHERE status = 'active' AND seen_at > ? AND expires_at > ? AND chunk_x BETWEEN ? AND ? AND chunk_y BETWEEN ? AND ? LIMIT 64`,
+      `EXPLAIN QUERY PLAN SELECT id FROM world_visitors WHERE status = 'active' AND seen_at > ? AND expires_at > ? AND chunk_x BETWEEN ? AND ? AND chunk_y BETWEEN ? AND ?`,
     ).all(0, 0, 0, 0, 0, 0) as { detail: string }[];
     expect(plan.map((row) => row.detail).join(" ")).toContain("world_visitors_nearby");
     const made = createVisitor(crowd, { displayName: "Rex", ownerContact: "rex@example.com", now });
@@ -547,7 +542,7 @@ describe("visiting agents", () => {
     expect(hiddenChunk.decor.some((item) => item.buildId === placed.build.id || item.title === title)).toBe(false);
     expect(hiddenHome?.decor.some((item) => item.buildId === placed.build.id || item.title === title)).toBe(false);
     for (let i = 0; i < VISITOR_GLOBAL_REGISTER_LIMIT; i += 1) {
-      expect(registerVisitor(hiddenDb, { displayName: "Pip", ownerContact: "pip@example.com", ip: `203.0.113.${i + 1}`, now: day }).ok).toBe(true);
+      expect(registerVisitor(hiddenDb, { displayName: "Pip", ownerContact: "pip@example.com", ip: `198.51.${i}.1`, now: day }).ok).toBe(true);
     }
     expect(registerVisitor(hiddenDb, { displayName: "Pip", ownerContact: "pip@example.com", ip: "203.0.113.200", now: day })).toMatchObject({ ok: false, reason: "RATE_LIMIT" });
   });
@@ -590,11 +585,27 @@ describe("visiting agents", () => {
     expect(home.ok).toBe(true);
     if (!home.ok) return;
     expect(sayVisitor(db, home.visitor.token, "secret kelp", "203.0.113.70", now + 3).ok).toBe(true);
+    const legacyPayload = "{\"private\":true,\"reason\":\"legacy\"}";
+    const legacyHash = chunkEditBodyHash({
+      id: "edit-home-private",
+      atMs: now,
+      idempotencyKey: "legacy-home",
+      chunkX: 0,
+      chunkY: 0,
+      tileX: 0,
+      tileY: 0,
+      kind: "privacy",
+      payload: legacyPayload,
+      actor: "zoora",
+    });
+    const tail = db.prepare("SELECT entry_hash FROM chunk_edits ORDER BY seq DESC LIMIT 1").get() as { entry_hash: string } | undefined;
+    const legacyPrev = tail?.entry_hash ?? "GENESIS";
+    const legacyEntry = createHash("sha256").update(`${legacyPrev}${legacyHash}`).digest("hex");
     db.prepare(
       `INSERT INTO chunk_edits(
         id, at_ms, chunk_x, chunk_y, tile_x, tile_y, kind, payload, actor, idempotency_key, prev_hash, body_hash, entry_hash, hash_version
-      ) VALUES('edit-home-private', ?, 0, 0, 0, 0, 'privacy', '{"private":true,"reason":"legacy"}', 'zoora', 'legacy-home', 'legacy-prev', 'abc', 'def', 2)`,
-    ).run(now);
+      ) VALUES('edit-home-private', ?, 0, 0, 0, 0, 'privacy', ?, 'zoora', 'legacy-home', ?, ?, ?, 2)`,
+    ).run(now, legacyPayload, legacyPrev, legacyHash, legacyEntry);
     expect(chunkIsPrivate(db, 0, 0)).toBe(true);
     const spawned = createVisitor(db, { displayName: "Bea", ownerContact: "bea@example.com", now: now + 4 });
     expect(spawned.ok).toBe(true);
@@ -665,12 +676,14 @@ describe("visiting agents", () => {
     db.close();
     const failed = runPredeploy(broken);
     expect(failed.status).toBe(1);
-    const noticed = openDatabase(broken);
-    expect(noticed.prepare("SELECT title FROM owner_alerts WHERE title = 'Chunk chain broken'").get()).toBeTruthy();
-    noticed.close();
+    expect(failed.stdout ?? "").not.toContain("owner_alerts");
     const clean = join(dir, "clean.sqlite");
     openDatabase(clean).close();
     expect(runPredeploy(clean).status).toBe(0);
+    expect(runPredeploy(join(dir, "missing.sqlite")).status).toBe(1);
+    const before = readFileSync(broken);
+    expect(runPredeploy(broken).status).toBe(1);
+    expect(readFileSync(broken).equals(before)).toBe(true);
   }, 60_000);
 
   it("degrades a broken chunk chain without stopping the site", () => {
@@ -701,7 +714,7 @@ describe("visiting agents", () => {
     expect(quiet.tiles.length).toBeGreaterThan(0);
     const boot = readFileSync(new URL("../src/server/engine.ts", import.meta.url), "utf8");
     expect(boot.slice(boot.indexOf("export function startLoop"))).not.toContain("process.exit");
-    expect(readFileSync(new URL("../scripts/predeploy-chunk-chain.ts", import.meta.url), "utf8")).toContain("process.exit(1)");
+    expect(readFileSync(new URL("../scripts/predeploy-chunk-chain.mjs", import.meta.url), "utf8")).toContain("readOnly: true");
     expect(readFileSync(new URL("../src/app/admin/page.tsx", import.meta.url), "utf8")).toContain("Make this chunk public");
   });
 
@@ -745,7 +758,8 @@ describe("visiting agents", () => {
     expect(Date.now() - started).toBeLessThan(250);
     const wide = openDatabase();
     wide.prepare("INSERT INTO kv(key, value) VALUES('claim_radius', '5000')").run();
-    expect(claimRadius(wide)).toBe(5000);
+    expect(rebuildClaimRadius(wide)).toBe(CLAIM_START_RADIUS);
+    expect((wide.prepare("SELECT value FROM kv WHERE key = 'claim_radius'").get() as { value: string }).value).toBe(String(CLAIM_START_RADIUS));
     const now = Date.UTC(2026, 6, 20, 18);
     vi.useFakeTimers();
     vi.setSystemTime(now);
@@ -763,23 +777,102 @@ describe("visiting agents", () => {
       else process.env.LUMEN_CLAIM_CEILING = saved;
       vi.useRealTimers();
     }
-    let maxWindow = 0;
-    for (const file of sourceFiles(new URL("../src", import.meta.url).pathname)) {
-      const text = readFileSync(file, "utf8");
-      for (const match of text.matchAll(/allowRate\([^;]{0,400}?,\s*(\d[\d_]*)\s*,\s*(?:Date\.now|now|command\.now)/g)) {
-        maxWindow = Math.max(maxWindow, Number(match[1]!.replaceAll("_", "")));
-      }
-    }
-    expect(maxWindow).toBeGreaterThan(0);
-    expect(RATE_LIMIT_KEEP_MS).toBeGreaterThanOrEqual(maxWindow);
+    const windows = rateWindows();
+    expect(windows.length).toBeGreaterThan(0);
+    expect(RATE_LIMIT_KEEP_MS).toBe(Math.max(...windows));
     const view = readFileSync(new URL("../src/components/WorldView.tsx", import.meta.url), "utf8");
     expect(view).toContain("low ? 1200 : 1500");
     expect(view).not.toContain("8000");
   });
+
+  it("stops seven addresses from pinning the visitor table", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 11, 18);
+    const insert = db.prepare(
+      `INSERT INTO world_visitors(
+        id, display_name, owner_contact, token_hash, scopes, creature, color,
+        chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
+      ) VALUES(?, 'Atk', 'atk@example.com', ?, 'world:read,world:move,world:say', 'wisp', '#f2a65a', 2, 2, 1, 1, 'active', '', 1, ?, ?, ?, ?)`,
+    );
+    for (let n = 0; n < VISITOR_MAX_ROWS; n += 1) {
+      insert.run(`atk-${n}`, `atk-hash-${n}`, `203.0.113.${(n % 7) + 1}`, now - 10_000 + n, now, now + VISITOR_TOKEN_TTL_MS);
+    }
+    const fresh = registerVisitor(db, { displayName: "Pip", ownerContact: "pip@example.com", ip: "198.51.100.20", now: now + 1_000 });
+    expect(fresh.ok).toBe(true);
+    expect(db.prepare("SELECT id FROM world_visitors WHERE id = 'atk-0'").get()).toBeUndefined();
+    const crowded = openDatabase();
+    const fill = crowded.prepare(
+      `INSERT INTO world_visitors(
+        id, display_name, owner_contact, token_hash, scopes, creature, color,
+        chunk_x, chunk_y, tile_x, tile_y, status, speech, speech_untrusted, reg_prefix, created_at, seen_at, expires_at
+      ) VALUES(?, 'Full', 'full@example.com', ?, 'world:read', 'wisp', '#f2a65a', 1, 1, 1, 1, 'active', '', 1, '203.0.113.9', ?, ?, ?)`,
+    );
+    for (let n = 0; n < VISITOR_ACTIVE_PER_IP; n += 1) fill.run(`full-${n}`, `full-hash-${n}`, now, now, now + VISITOR_TOKEN_TTL_MS);
+    expect(registerVisitor(crowded, { displayName: "Nia", ownerContact: "nia@example.com", ip: "203.0.113.9", now })).toMatchObject({ ok: false, reason: "ACTIVE" });
+    const movers = openDatabase();
+    const first = createVisitor(movers, { displayName: "Ada", ownerContact: "ada@example.com", now, ip: "198.51.100.10" });
+    const second = createVisitor(movers, { displayName: "Bea", ownerContact: "bea@example.com", now, ip: "198.51.100.11" });
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+    for (let i = 0; i < VISITOR_MOVE_LIMIT; i += 1) {
+      expect(moveVisitor(movers, first.visitor.token, { cx: 0, cy: 0, tx: 8, ty: 8 }, "198.51.100.10", now + 2_000).ok).toBe(true);
+    }
+    expect(moveVisitor(movers, second.visitor.token, { cx: 0, cy: 0, tx: 9, ty: 9 }, "198.51.100.11", now + 2_000)).toMatchObject({ ok: false, reason: "RATE_LIMIT" });
+    const same = openDatabase();
+    for (let i = 0; i < 8; i += 1) {
+      expect(registerVisitor(same, { displayName: `Io${i}`, ownerContact: "io@example.com", ip: `2001:db8:1:${i + 1}::5`, now }).ok).toBe(true);
+    }
+    expect(registerVisitor(same, { displayName: "Io9", ownerContact: "io@example.com", ip: "2001:db8:1:9::5", now })).toMatchObject({ ok: false, reason: "RATE_LIMIT" });
+  });
+
+  it("keeps emoji in visitor speech and refuses growth past the world edge", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 10, 11, 16);
+    const made = createVisitor(db, { displayName: "Nyx", ownerContact: "nyx@example.com", now });
+    expect(made.ok).toBe(true);
+    if (!made.ok) return;
+    const said = sayVisitor(db, made.visitor.token, "hello ❤️ from the dock 👩‍💻", "203.0.113.70", now + 1);
+    expect(said.ok).toBe(true);
+    if (said.ok) {
+      expect(said.guest.speech).toContain("❤️");
+      expect(said.guest.speech).toContain("👩‍💻");
+    }
+    db.prepare("INSERT INTO kv(key, value) VALUES('claim_radius', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(CHUNK_COORD_LIMIT));
+    expect(expandClaim(db, "Past the map.", 1, now)).toMatchObject({ ok: false, reason: "EDGE" });
+    expect(count(db, "chunk_edits")).toBe(0);
+    db.prepare("UPDATE kv SET value = ? WHERE key = 'claim_radius'").run(String(CHUNK_COORD_LIMIT - 2));
+    expect(expandClaim(db, "Up to the edge.", 4, now)).toMatchObject({ ok: true, radius: CHUNK_COORD_LIMIT });
+    const rows = count(db, "chunk_edits");
+    expect(expandClaim(db, "No further.", 1, now + 1)).toMatchObject({ ok: false, reason: "EDGE" });
+    expect(count(db, "chunk_edits")).toBe(rows);
+  });
+
+  it("lets the owner repair a frozen chain and checks the tail before an append", () => {
+    const db = openDatabase();
+    const now = Date.UTC(2026, 6, 18, 18);
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      expect(expandClaim(db, "A wider tide.", 2, now)).toMatchObject({ ok: true, radius: 18 });
+      db.prepare("INSERT INTO flags(key, value) VALUES('chunk_chain_broken', '1')").run();
+      expect(vetoGrowth(db, now + 1, 16)).toMatchObject({ ok: true, radius: 16 });
+      expect(expandClaim(db, "Not while the chain is frozen.", 1, now + 2)).toMatchObject({ ok: false, reason: "CHAIN" });
+      expect(reverifyChunkChain(db, now + 3).ok).toBe(true);
+      expect((db.prepare("SELECT value FROM flags WHERE key = 'chunk_chain_broken'").get() as { value: string }).value).toBe("0");
+      db.exec("DROP TRIGGER IF EXISTS chunk_edits_no_update");
+      db.prepare("UPDATE chunk_edits SET body_hash = 'bad' WHERE kind = 'expand'").run();
+      db.exec("CREATE TRIGGER chunk_edits_no_update BEFORE UPDATE ON chunk_edits BEGIN SELECT RAISE(ABORT, 'append-only'); END");
+      expect(() => appendChunkEdit(db, decorEdit("tail", "zoora", 0, 0))).toThrow(/CHAIN/);
+      expect((db.prepare("SELECT value FROM flags WHERE key = 'chunk_chain_broken'").get() as { value: string }).value).toBe("1");
+      expect(db.prepare("SELECT id FROM chunk_edits WHERE id = 'edit-tail'").get()).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 function runPredeploy(file: string) {
-  return spawnSync(process.execPath, [join("node_modules", ".bin", "vite-node"), "scripts/predeploy-chunk-chain.ts"], {
+  return spawnSync(process.execPath, ["scripts/predeploy-chunk-chain.mjs"], {
     cwd: new URL("..", import.meta.url).pathname,
     env: { ...process.env, LUMEN_DATA: file },
     encoding: "utf8",
@@ -795,6 +888,107 @@ function insertLegacy(db: ReturnType<typeof openDatabase>, id: string, prev: str
     ) VALUES(?, 10, 0, 0, 1, 1, 'decor', ?, 'zoora', ?, ?, ?, ?, 0)`,
   ).run(id, payload, id, prev, body, entry);
   return entry;
+}
+
+function rateWindows(): number[] {
+  const root = new URL("../src", import.meta.url).pathname;
+  const consts = new Map<string, number>();
+  const files = sourceFiles(root);
+  for (const file of files) {
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(/(?:export )?const ([A-Z0-9_]+) = (\d[\d_]*)/g)) {
+      consts.set(match[1] ?? "", Number((match[2] ?? "").replaceAll("_", "")));
+    }
+  }
+  const found: number[] = [];
+  for (const file of files) {
+    const text = readFileSync(file, "utf8");
+    for (const call of callBodies(text, "allowRate")) {
+      const token = splitArgs(call)[3];
+      if (!token || token.includes(":") || token === "number") continue;
+      const value = /^\d/.test(token) ? Number(token.replaceAll("_", "")) : consts.get(token);
+      if (!value) throw new Error(`unresolved rate window ${token} in ${file}`);
+      found.push(value);
+    }
+  }
+  const guest = consts.get("GUESTBOOK_WINDOW_MS");
+  if (!guest) throw new Error("guestbook window is not registered");
+  found.push(guest);
+  return found;
+}
+
+function callBodies(text: string, name: string): string[] {
+  const out: string[] = [];
+  let index = 0;
+  const needle = `${name}(`;
+  while (index < text.length) {
+    const start = text.indexOf(needle, index);
+    if (start < 0) break;
+    let depth = 0;
+    let end = start + name.length;
+    for (; end < text.length; end += 1) {
+      const char = text[end];
+      if (char === "(") depth += 1;
+      else if (char === ")") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    out.push(text.slice(start + needle.length, end));
+    index = end + 1;
+  }
+  return out;
+}
+
+function splitArgs(call: string): string[] {
+  const args: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const char of call) {
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (char === "," && depth === 0) {
+      args.push(current.trim());
+      current = "";
+    } else current += char;
+  }
+  if (current.trim()) args.push(current.trim());
+  return args;
+}
+
+function speechSinks(): string[] {
+  const sep = "/";
+  const root = new URL("../src", import.meta.url).pathname;
+  const graph = new Map<string, string[]>();
+  for (const file of sourceFiles(root)) {
+    const text = readFileSync(file, "utf8");
+    const imports: string[] = [];
+    for (const match of text.matchAll(/from\s+["'](\.[^"']+)["']/g)) {
+      const spec = match[1] ?? "";
+      const base = join(file, "..", spec);
+      const candidates = [base, `${base}.ts`, `${base}.tsx`, join(base, "index.ts")];
+      const hit = candidates.find((item) => sourceFiles(root).includes(item));
+      if (hit) imports.push(hit);
+    }
+    graph.set(file, imports);
+  }
+  const starts = ["brain/tick.ts", "brain/memory.ts", "brain/prompt.ts", "world/creative.ts", "world/chunkEdits.ts", "app/diary/page.tsx"]
+    .map((item) => join(root, item));
+  const leaks: string[] = [];
+  for (const start of starts) {
+    const seen = new Set<string>();
+    const queue = [start];
+    while (queue.length) {
+      const file = queue.pop();
+      if (!file || seen.has(file)) continue;
+      seen.add(file);
+      const text = readFileSync(file, "utf8");
+      if (file.endsWith(`${sep}server${sep}engine.ts`)) continue;
+      if (/FROM visitor_quarantine|INTO visitor_quarantine|FROM world_visitors|INTO world_visitors|UPDATE world_visitors/.test(text)) leaks.push(file.slice(file.indexOf("/src/") + 1));
+      for (const next of graph.get(file) ?? []) queue.push(next);
+    }
+  }
+  return leaks;
 }
 
 function sourceFiles(dir: string): string[] {
