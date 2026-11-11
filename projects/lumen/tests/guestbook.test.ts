@@ -86,4 +86,27 @@ describe("guestbook loop", () => {
     expect(held.reply).toBeNull();
     expect(guestbookReply("d")).not.toContain("988");
   });
+
+  it("does not publish a crisis phrase split by invisible characters", () => {
+    const engine = createEngine({}, ":memory:");
+    const lines = ["kill\u200d myself", "k\uFE0Fill myself", "k\uFEFFill myself"];
+    lines.forEach((line, index) => {
+      expect(engine.guestbook(line, "Ada", `203.0.113.${80 + index}`)).toEqual({ ok: false, error: "CRISIS" });
+    });
+    expect(engine.leaveGift("sea-glass", "k\uFEFFill myself", "Ada", "203.0.113.83")).toEqual({ ok: false, error: "CRISIS" });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 0 });
+    expect(CRISIS_REPLY).toContain("988");
+  });
+
+  it("rejects a banned author and still accepts a normal name with an emoji note", () => {
+    const engine = createEngine({}, ":memory:");
+    expect(engine.guestbook("the tide is kind", "seed phrase", "203.0.113.90")).toEqual({ ok: false, reason: "NOTE_REJECTED" });
+    expect(engine.leaveGift("sea-glass", "a smooth stone", "https://evil.example", "203.0.113.91")).toEqual({ ok: false, reason: "NOTE_REJECTED" });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 0 });
+    const note = "\u2764\uFE0F love this";
+    expect(engine.guestbook(note, "Ada", "203.0.113.92").ok).toBe(true);
+    expect(engine.db.prepare("SELECT author, body FROM messages").get()).toEqual({ author: "Ada", body: note });
+  });
 });

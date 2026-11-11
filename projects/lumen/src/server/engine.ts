@@ -4,7 +4,7 @@ import { makeSvg, artTitle } from "../brain/art";
 import { glowFor } from "../brain/emotions";
 import { crisisMatch, guestReply } from "../brain/crisis";
 import { scrubInstructions } from "../research/ideas";
-import { giftById, giftDeltas, interactDeltas, moderateNote, ownerTurn, publicWants, reactionToOwnerDecision, sortInbox, artReaction, GIFT_CATALOG } from "../brain/social";
+import { giftById, giftDeltas, interactDeltas, moderateNote, ownerTurn, publicWants, reactionToOwnerDecision, sortInbox, textForCheck, artReaction, GIFT_CATALOG } from "../brain/social";
 import { applyNeedDeltas } from "../brain/feel";
 import { blendEmotions } from "../brain/emotions";
 import { blankProduct, initialState, labelsOf, tick, type TickResult } from "../brain/tick";
@@ -344,10 +344,12 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
   if (!gift) return { ok: false, error: "UNKNOWN_GIFT" };
   const moderated = moderateNote(note);
   if (!moderated.ok) return moderated;
-  if (moderated.note && crisisMatch(moderated.note)) {
+  if (typeof note === "string" && moderated.note && crisisMatch(textForCheck(note))) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'gift')").run(Date.now());
     return { ok: false, error: "CRISIS" };
   }
+  const named = screenedAuthor(author);
+  if (!named.ok) return named;
   const state = loadState(db);
   const prior = state.giftCounts[giftId] ?? 0;
   const deltas = giftDeltas(giftId, prior);
@@ -360,7 +362,7 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
   };
   saveState(db, next);
   const id = randomBytes(8).toString("hex");
-  db.prepare("INSERT INTO gifts(id, gift_id, note, untrusted, author, created_at) VALUES(?, ?, ?, 1, ?, ?)").run(id, giftId, moderated.note, author.slice(0, 40) || "visitor", Date.now());
+  db.prepare("INSERT INTO gifts(id, gift_id, note, untrusted, author, created_at) VALUES(?, ?, ?, 1, ?, ?)").run(id, giftId, moderated.note, named.name, Date.now());
   db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`${visitorName(author)} left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
   void env;
   return { ok: true, id };
@@ -391,7 +393,7 @@ function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) 
   const moderated = moderateNote(note, 280);
   if (!moderated.ok) return moderated;
   if (!moderated.note) return { ok: false, error: "EMPTY" };
-  if (crisisMatch(moderated.note)) {
+  if (typeof note === "string" && crisisMatch(textForCheck(note))) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'guestbook')").run(Date.now());
     return { ok: false, error: "CRISIS" };
   }
@@ -402,19 +404,21 @@ function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) 
     [...messages, { id, channel: "visitor", author: author || "visitor" }],
     { stress: state.stress, adopted: state.sorterAdopted, cap: 8, alreadyToday: state.inboxToday, regulars: state.visitorSeen },
   );
+  const named = screenedAuthor(author);
+  if (!named.ok) return named;
   const dropped = sorted.droppedIds.includes(id);
   const scrubbed = scrubInstructions(moderated.note);
   const publicBody = scrubbed || "This note was set aside.";
   const reply = dropped || !scrubbed ? null : guestReply(id, moderated.note);
   db.prepare("INSERT INTO messages(id, channel, author, body, untrusted, status, reply, created_at) VALUES(?, 'visitor', ?, ?, 1, ?, ?, ?)").run(
     id,
-    (author || "visitor").slice(0, 40),
+    named.name,
     publicBody,
     dropped ? "dropped" : "queued",
     reply,
     Date.now(),
   );
-  const name = (author || "visitor").slice(0, 40);
+  const name = named.name;
   saveState(db, {
     ...state,
     visitorSeen: state.visitorSeen.includes(name) ? state.visitorSeen : [...state.visitorSeen, name].slice(-40),
@@ -445,6 +449,12 @@ function login(db: DatabaseSync, env: Env, secret: string, ip: string) {
   logSecurity({ event: "login", status: 200, route: "/admin/login" });
   const token = createSession(db, Date.now());
   return { ok: true, token };
+}
+
+function screenedAuthor(author: string): { ok: true; name: string } | { ok: false; reason: string } {
+  const moderated = moderateNote(author, Math.max(author.length, 140));
+  if (!moderated.ok) return moderated;
+  return { ok: true, name: (author || "visitor").slice(0, 40) };
 }
 
 function visitorName(author: string): string {

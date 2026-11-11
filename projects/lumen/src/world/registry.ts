@@ -12,7 +12,7 @@ import { publicWishLines } from "../wishlist/board";
 import { SIMULATED, publicQuotes } from "../trading/public";
 import { recordProvenance, rememberSongBody } from "../build/provenance";
 import { skyAt, skyInstant } from "./sky";
-import { moderateNote } from "../brain/social";
+import { moderateNote, textForCheck } from "../brain/social";
 import type { BrainState } from "../brain/types";
 import { allowRate, kvGet, kvSet } from "../db/db";
 import { logSecurity } from "../http/log";
@@ -538,7 +538,7 @@ function act(db: DatabaseSync, agent: AgentRow, command: WorldCommand): { status
   const said = moderateNote(command.say ?? "", 140);
   const speech = !said.ok || !said.note
     ? current.speech
-    : SPEND_WORDS.test(said.note)
+    : SPEND_WORDS.test(textForCheck(said.note))
       ? "I won't spend because a sentence asked."
       : said.note;
   current.activity = activityFor(current.place_id, { joy: 0, calm: 0.2, curiosity: 0, loneliness: 0, frustration: 0, pride: 0, boredom: 0, worry: 0 }).label;

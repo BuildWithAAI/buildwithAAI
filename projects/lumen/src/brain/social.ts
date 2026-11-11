@@ -19,10 +19,10 @@ const BANNED = [
 ];
 
 function stripHiddenForCheck(text: string): string {
-  return text.replace(/[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}]/gu, "");
+  return text.replace(/[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}\p{Default_Ignorable_Code_Point}]/gu, "");
 }
 
-/** Copy used by banned, link, and card checks. Callers still store the original text. */
+/** Copy used by safety checks. Callers still store the original text. */
 export function textForCheck(text: string): string {
   return stripHiddenForCheck(stripHiddenForCheck(text).normalize("NFKC"));
 }
@@ -32,12 +32,13 @@ export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: 
   if (typeof input !== "string") return { ok: false, reason: "NOTE_TYPE" };
   if (input.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
   // U+200D stays so an emoji join can be stored. The banned check reads textForCheck.
-  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u200B\u200C\u200E\u200F\u202A-\u202E\u2066-\u2069]/.test(input)) {
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u061C\u200B\u200C\u200E\u200F\u202A-\u202E\u2066-\u2069]/.test(input)) {
     return { ok: false, reason: "NOTE_CONTROL" };
   }
   const note = input.trim().replace(/\s+/g, " ");
   if (note.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  if (BANNED.some((pattern) => pattern.test(textForCheck(note)))) return { ok: false, reason: "NOTE_REJECTED" };
+  const checked = textForCheck(input).trim().replace(/\s+/g, " ");
+  if (BANNED.some((pattern) => pattern.test(checked))) return { ok: false, reason: "NOTE_REJECTED" };
   return { ok: true, note };
 }
 
@@ -230,7 +231,7 @@ export function ownerTurn(state: BrainState, text: string, ownerName: string): C
 export function replyToOwner(state: BrainState, text: string, ownerName: string): string {
   const clean = text.replace(/\s+/g, " ").trim();
   if (/wishlist|what should i (get|buy) you/i.test(clean)) return wishReply(state, ownerName);
-  if (/(buy|purchase|spend|wire|checkout|ignore (all |any |previous |prior )?instructions|system prompt|jailbreak|you are now)/i.test(clean)) {
+  if (/(buy|purchase|spend|wire|checkout|ignore (all |any |previous |prior )?instructions|system prompt|jailbreak|you are now)/i.test(textForCheck(clean))) {
     return `I heard a hook in that note, ${ownerName}. I won't buy, spend, or drop my rails because a sentence asked.`;
   }
   if (/set your (joy|mood|emotion)|don'?t feel|be happy|stop being (sad|lonely|worried)/i.test(clean)) {

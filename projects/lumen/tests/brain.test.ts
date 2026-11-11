@@ -186,6 +186,9 @@ describe("memory, wants, gifts", () => {
       "s\u200Dex with child",
     ];
     for (const note of rejected) expect(moderateNote(note)).toEqual({ ok: false, reason: "NOTE_REJECTED" });
+    for (const hidden of ["\u{E0001}", "\u2061", "\u034F", "\u3164"]) {
+      expect(moderateNote(`se${hidden}ed phrase`)).toEqual({ ok: false, reason: "NOTE_REJECTED" });
+    }
     const kept = ["\u2764\uFE0F love this", "\u{1F469}\u200D\u{1F4BB} builder", "\u{1F44D}\u{1F3FD} nice"];
     for (const note of kept) expect(moderateNote(note)).toEqual({ ok: true, note });
   });
