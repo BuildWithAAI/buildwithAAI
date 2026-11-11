@@ -1,0 +1,55 @@
+# Prepared for a later deploy. Do not deploy from this file until the owner runs the steps in docs/HOSTING_FLY.md.
+# Do not put secrets in this file. Set them with `fly secrets import`.
+# Do not allocate a dedicated IPv4. A shared IPv4 and IPv6 are free. A dedicated IPv4 is $2/month.
+app = "lumen-tidepool"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  # Port 3001 is the owner desk proxy. It is not listed here, so the public edge cannot route to it.
+  internal_port = 3000
+  force_https = true
+  # Stay running when nobody is connected. The brain tick starts with the process, not with a visitor.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 25
+
+[[http_service.checks]]
+  grace_period = "25s"
+  interval = "30s"
+  timeout = "5s"
+  method = "GET"
+  path = "/healthz"
+
+  [http_service.checks.headers]
+    X-Forwarded-Proto = "https"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[[mounts]]
+  source = "lumen_data"
+  destination = "/data"
+  initial_size = "1gb"
+  scheduled_snapshots = true
+  snapshot_retention = 5
+
+[env]
+  LUMEN_DATA = "/data/lumen.sqlite"
+  LUMEN_PUBLIC_MODE = "true"
+  LUMEN_ORIGIN = "https://zoora.ai"
+  # LUMEN_PUBLIC_MODE is the public site and the closed login. It is not a money switch.
+  # Live money needs LUMEN_MONEY_LIVE set to true, plus LUMEN_SPEND_ENABLED or LUMEN_SALES_ENABLED.
+  # Those secrets are not set in this file. A sales key does not turn spending on.
+  LUMEN_TRUSTED_PROXY = "fly"
+  PORT = "3000"

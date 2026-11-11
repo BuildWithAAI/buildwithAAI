@@ -1,0 +1,10 @@
+node_modules
+.next
+data
+*.sqlite
+*.sqlite-journal
+.env
+.env.local
+.env.*.local
+tsconfig.tsbuildinfo
+npm-debug.log
