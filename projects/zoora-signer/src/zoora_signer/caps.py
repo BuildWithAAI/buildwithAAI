@@ -27,6 +27,8 @@ class CapView:
     intents_this_hour: int
     activity: str
     buy_halt: str | None
+    buys_last_10_min: int = 0
+    unknown_mark: bool = False
 
 
 @dataclass(frozen=True)
@@ -44,14 +46,20 @@ def evaluate_buy(view: CapView, stake_cents: int, slippage_bps: int) -> CapResul
         return CapResult(False, "PAUSED", False, view.buy_halt)
     if view.buy_halt:
         return CapResult(False, "BUY_HALT", False, view.buy_halt)
-    if view.intents_this_hour >= INTENTS_PER_HOUR:
-        return CapResult(False, "RATE_LIMIT", False, view.buy_halt)
-    if view.open_slots > OPEN_TRADE_CAP or view.buys_today > BUYS_PER_DAY:
-        return CapResult(False, "LEDGER_BREACH", True, view.buy_halt)
+    if view.unknown_mark:
+        return CapResult(False, "UNKNOWN_MARK", False, view.buy_halt)
+    if stake_cents <= 0:
+        return CapResult(False, "STAKE", False, view.buy_halt)
     if stake_cents > STAKE_CAP_CENTS:
         return CapResult(False, "STAKE", False, view.buy_halt)
     if slippage_bps > SLIPPAGE_CAP_BPS:
         return CapResult(False, "SLIPPAGE", False, view.buy_halt)
+    if view.buys_last_10_min >= 1:
+        return CapResult(False, "RATE_LIMIT", False, view.buy_halt)
+    if view.intents_this_hour >= INTENTS_PER_HOUR:
+        return CapResult(False, "RATE_LIMIT", False, view.buy_halt)
+    if view.open_slots > OPEN_TRADE_CAP or view.buys_today > BUYS_PER_DAY:
+        return CapResult(False, "LEDGER_BREACH", True, view.buy_halt)
     if view.open_slots + 1 > OPEN_TRADE_CAP:
         return CapResult(False, "OPEN_TRADES", False, view.buy_halt)
     if view.buys_today + 1 > BUYS_PER_DAY:
@@ -75,6 +83,4 @@ def evaluate_sell(view: CapView, *, owner: bool) -> CapResult:
         return CapResult(False, "KILL_HOLD", False, view.buy_halt)
     if view.activity != "ACTIVE" and not owner:
         return CapResult(False, "PAUSED", False, view.buy_halt)
-    if not owner and view.intents_this_hour >= INTENTS_PER_HOUR:
-        return CapResult(False, "RATE_LIMIT", False, view.buy_halt)
     return CapResult(True, "OK", False, view.buy_halt)

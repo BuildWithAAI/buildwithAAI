@@ -10,7 +10,7 @@ from zoora_signer.models import Decision, OracleReading
 from zoora_signer.oracle import judge_oracle
 from zoora_signer.ports import PullBatch
 from zoora_signer.secrets import MemorySecretStore
-from zoora_signer.signer import RefuseBroadcaster, Services, Signer, parse_intent, sign_intent
+from zoora_signer.signer import RefuseBroadcaster, Services, Signer, parse_intent
 from zoora_signer.signing import throwaway_secret
 
 MINT = "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"
@@ -158,7 +158,7 @@ class ScriptedFeed:
 def build(tmp: Path, **overrides: object) -> tuple[Signer, Services]:
     clock = FakeClock()
     secrets = MemorySecretStore()
-    secrets.hmac_key = b"hmac-test-key-0123456789abcdef"
+    secrets.hmac_key = b"k" * 32
     secrets.signing_key = throwaway_secret()
     secrets.rpc_url = "https://example.invalid/rpc?api-key=not-a-real-key"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -193,32 +193,44 @@ def buy(
     mint: str = MINT,
     intent_id: str | None = None,
 ) -> Decision:
-    raw: dict[str, object] = {
+    import json
+
+    from zoora_signer.constants import INTENT_PREFIX
+
+    body = {
         "intent_id": intent_id or str(uuid.uuid4()),
         "issued_at_ms": signer.s.clock.now_ms(),
+        "key_id": "1",
         "max_slippage_bps": slippage,
         "mint": mint,
         "side": "buy",
-        "usd_stake_cents": cents,
+        "usd_stake_micro": cents * 10_000,
     }
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
     key = signer.s.secrets.get_hmac_key()
     assert key is not None
-    return signer.handle_intent(raw, sign_intent(raw, key))
+    signature = __import__("hmac").new(key, INTENT_PREFIX + raw, __import__("hashlib").sha256).hexdigest()
+    return signer.handle_intent(raw, signature)
 
 
 def sell(signer: Signer, mint: str = MINT, tokens: int | None = None) -> Decision:
-    raw: dict[str, object] = {
+    raw_body = {
         "intent_id": str(uuid.uuid4()),
         "issued_at_ms": signer.s.clock.now_ms(),
+        "key_id": "1",
         "max_slippage_bps": 1500,
         "mint": mint,
         "side": "sell",
     }
     if tokens is not None:
-        raw["token_amount"] = tokens
+        raw_body["token_amount"] = tokens
+    raw = json.dumps(raw_body, sort_keys=True, separators=(",", ":")).encode()
     key = signer.s.secrets.get_hmac_key()
     assert key is not None
-    return signer.handle_intent(raw, sign_intent(raw, key))
+    from zoora_signer.constants import INTENT_PREFIX
+
+    signature = __import__("hmac").new(key, INTENT_PREFIX + raw, __import__("hashlib").sha256).hexdigest()
+    return signer.handle_intent(raw, signature)
 
 
 def set_ledger(signer: Signer, lamports: int) -> None:

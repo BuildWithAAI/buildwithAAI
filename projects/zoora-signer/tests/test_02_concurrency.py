@@ -35,14 +35,14 @@ def test_open_trade_concurrency(tmp_path: Path) -> None:
         services.defer_settle = True
         assert activate(signer).ok
         codes = _burst(signer, count)
-        assert codes.count("RESERVED") == min(count, 3)
+        assert codes.count("RESERVED") == 1
         assert len(codes) == count
     for _repeat in range(5):
         signer, services = build(tmp_path / f"rep{_repeat}")
         services.defer_settle = True
         assert activate(signer).ok
         codes = _burst(signer, 20)
-        assert codes.count("RESERVED") == 3
+        assert codes.count("RESERVED") == 1
 
 
 def test_loss_and_rate_concurrency(tmp_path: Path) -> None:
@@ -64,8 +64,12 @@ def test_loss_and_rate_concurrency(tmp_path: Path) -> None:
     now = rate_services.clock.now_ms()
     for index in range(3):
         conn.execute(
-            "INSERT INTO intent_hits (intent_id, seen_ms) VALUES (?, ?)",
-            (f"seed-{index}", now),
+            """
+            INSERT INTO reservations (
+              intent_id, side, mint, stake_cents, status, ct_day, created_ms, reached_signing
+            ) VALUES (?, 'buy', ?, 200, 'released', '2026-11-17', ?, 0)
+            """,
+            (f"seed-{index}", "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf", now - 11 * 60 * 1000),
         )
     conn.commit()
     conn.close()

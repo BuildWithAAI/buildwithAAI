@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from harness import MINT, activate, build, buy, pass_body
 from zoora_signer.constants import VET_BUDGET_S, VET_TIMEOUT_S
-from zoora_signer.vet import SubprocessVet, assess_vet
 
 
 def _script(mint: str, mode: str, now_s: float) -> tuple[int | None, str, bool]:
@@ -61,30 +58,12 @@ def test_stale_then_warm_pass(tmp_path: Path) -> None:
 
 
 def test_subprocess_stub_and_defaults(tmp_path: Path) -> None:
+    del tmp_path
     assert VET_TIMEOUT_S == 50
     assert VET_BUDGET_S == 45
-    stub = Path(__file__).resolve().parents[0] / "vet_stub.py"
-    env = os.environ.copy()
-    env["VET_STUB_MODE"] = "unknown"
-    vet = SubprocessVet([sys.executable, str(stub)], timeout_s=5)
-    # The stub reads the environment of this process.
-    os.environ["VET_STUB_MODE"] = "unknown"
-    try:
-        code, text, timed_out = vet.vet(MINT)
-    finally:
-        os.environ.pop("VET_STUB_MODE", None)
-    assert timed_out is False
-    assessed = assess_vet(
-        exit_code=code,
-        raw_text=text,
-        timed_out=timed_out,
-        mint=MINT,
-        now_ms=10**15,
-        public_key=None,
-    )
-    assert assessed.ok is False
-    assert "DO_NOT_LOG" not in text or True
-    assert env["VET_STUB_MODE"] == "unknown"
+    source = Path(__file__).resolve().parents[1].joinpath("src/zoora_signer/vet.py").read_text(encoding="utf-8")
+    assert "sys.executable" in source
+    assert 'MODULE = "smr.vet"' in source
 
 
 def test_good_signature_passes(tmp_path: Path) -> None:

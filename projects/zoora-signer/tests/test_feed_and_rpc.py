@@ -32,19 +32,26 @@ def test_expired_intent_and_unreachable_feed(tmp_path: Path) -> None:
     assert activate(signer).ok
     issued = services.clock.now_ms()
     services.clock.now = issued + 90_001
-    from zoora_signer.signer import sign_intent
+    import hashlib
+    import hmac
+    import json
 
-    raw: dict[str, object] = {
+    from zoora_signer.constants import INTENT_PREFIX
+
+    body = {
         "intent_id": "expired",
         "issued_at_ms": issued,
+        "key_id": "1",
         "max_slippage_bps": 1500,
         "mint": MINT,
         "side": "buy",
-        "usd_stake_cents": 200,
+        "usd_stake_micro": 2_000_000,
     }
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
     key = services.secrets.get_hmac_key()
     assert key is not None
-    assert signer.handle_intent(raw, sign_intent(raw, key)).code == "EXPIRED"
+    signature = hmac.new(key, INTENT_PREFIX + raw, hashlib.sha256).hexdigest()
+    assert signer.handle_intent(raw, signature).code == "EXPIRED"
     services.clock.now = issued
     services.feed.batch = type(services.feed.batch)(True, [])
     assert signer.pull_once() == []
@@ -66,21 +73,27 @@ def test_expect_deposit_and_hmac_rotation(tmp_path: Path) -> None:
     assert activate(other).ok
     old = other_services.secrets.get_hmac_key()
     assert old is not None
-    assert other.rotate_hmac(b"rotated-hmac-key-0123456789abcd").ok
-    from zoora_signer.signer import sign_intent
+    assert other.rotate_hmac(b"r" * 32).ok
+    import hashlib
+    import hmac
+    import json
 
-    raw = {
+    from zoora_signer.constants import INTENT_PREFIX
+
+    body = {
         "intent_id": "after-rotation",
         "issued_at_ms": other_services.clock.now_ms(),
+        "key_id": "2",
         "max_slippage_bps": 1500,
         "mint": MINT,
         "side": "buy",
-        "usd_stake_cents": 200,
+        "usd_stake_micro": 2_000_000,
     }
-    assert other.handle_intent(raw, sign_intent(raw, old)).code == "BAD_HMAC"
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    assert other.handle_intent(raw, hmac.new(old, INTENT_PREFIX + raw, hashlib.sha256).hexdigest()).code == "BAD_HMAC"
     new_key = other_services.secrets.get_hmac_key()
-    assert new_key is not None
-    assert other.handle_intent(raw, sign_intent(raw, new_key)).ok
+    assert new_key == b"r" * 32
+    assert other.handle_intent(raw, hmac.new(new_key, INTENT_PREFIX + raw, hashlib.sha256).hexdigest()).ok
 
 
 def test_helius_429_is_unknown_and_budget() -> None:

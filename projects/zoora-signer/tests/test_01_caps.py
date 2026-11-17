@@ -30,15 +30,19 @@ def test_stake_boundary(tmp_path: Path) -> None:
 
 
 def test_open_trades_boundary(tmp_path: Path) -> None:
-    signer = ready(tmp_path)
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
     mints = [
         MINT,
         "ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw",
         "So11111111111111111111111111111111111111112",
     ]
-    for mint in mints:
+    for index, mint in enumerate(mints):
+        if index:
+            services.clock.now += 601_000
         assert buy(signer, mint=mint).ok
     assert signer.open_trade_count() == 3
+    services.clock.now += 601_000
     refused = buy(signer, mint="TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
     assert refused.code == "OPEN_TRADES"
 
@@ -52,14 +56,18 @@ def test_buys_per_day_and_rate_boundary(tmp_path: Path) -> None:
         "So11111111111111111111111111111111111111112",
     ]
     for index in range(4):
+        if index:
+            services.clock.now += 601_000
         if signer.open_trade_count() >= 3:
             assert all(item.ok for item in signer.sell_all())
         assert buy(signer, mint=mints[index % 3]).ok
+    services.clock.now += 601_000
     assert buy(signer).code == "RATE_LIMIT"
     services.clock.now += 61 * 60 * 1000
     for index in range(4, 10):
         if signer.open_trade_count() >= 3:
             signer.sell_all()
+        services.clock.now += 601_000
         if index == 8:
             services.clock.now += 61 * 60 * 1000
         assert buy(signer, mint=mints[index % 3]).ok
@@ -84,11 +92,13 @@ def test_daily_loss_boundary(tmp_path: Path) -> None:
 def test_exposure_boundary(tmp_path: Path) -> None:
     at_cap = ready(tmp_path / "at")
     assert buy(at_cap).ok
+    _set(at_cap, "UPDATE reservations SET created_ms = created_ms - 700000")
     _set(at_cap, "UPDATE trades SET cost_cents = 1800")
     _set(at_cap, "UPDATE signer_state SET ledger_sol_lamports = 0")
     assert buy(at_cap, 200, mint="ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw").ok
     over = ready(tmp_path / "over")
     assert buy(over).ok
+    _set(over, "UPDATE reservations SET created_ms = created_ms - 700000")
     _set(over, "UPDATE trades SET cost_cents = 1801")
     _set(over, "UPDATE signer_state SET ledger_sol_lamports = 0")
     assert buy(over, 200, mint="ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw").code == "EXPOSURE"

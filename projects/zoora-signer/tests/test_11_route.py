@@ -31,11 +31,11 @@ def test_live_refused_without_route(tmp_path: Path) -> None:
 
 def test_route_source_is_in_the_chain(tmp_path: Path) -> None:
     signer, _services = build(tmp_path)
-    assert signer.set_route("written permission 2026-11-17", "2026-11-17").ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
     assert signer.route_approved()
     assert signer.set_mode("LIVE").ok
     assert signer.mode() == "LIVE"
     text = " ".join(payload for _row, _kind, payload in signer.read_events(0))
-    assert "written permission 2026-11-17" in text
-    refused = signer.set_route("", "2026-11-17")
+    assert "permission_sha256" in text or "https://example.invalid/permission" in text
+    refused = signer.set_route("http://example.invalid/permission", "2026-11-17", "no")
     assert refused.ok is False

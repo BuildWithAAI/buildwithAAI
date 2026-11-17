@@ -241,4 +241,17 @@ Confirmed: an intent's TTL is 90 seconds, a verdict older than 15 seconds trigge
 
 The signer in `projects/zoora-signer` is Python 3.11 or newer, not Node or TypeScript. It is the package that runs on the owner's Windows PC. There is no parallel TypeScript implementation.
 
-Stack: stdlib `sqlite3` in WAL mode with `BEGIN IMMEDIATE`; `keyring` (Windows Credential Manager) behind an interface, plus a test double; `solders` and `httpx` for transactions, simulation, the outbound intent pull, and Pyth Hermes; pytest and hypothesis; argparse for the owner CLI. Windows probes go through PowerShell or ctypes behind interfaces. The vet gate shells out to `python -m smr.vet`. Lumen is unchanged: A1 stays a spec in this project until a later PR.
+## H3 / L1 / L2 on hold (owner decision)
+
+Real transaction builders are not in this build. Placeholder builders refuse every call. The builder pull request, when the owner asks for it, must:
+
+- Build the 27-account `buy_v2` and the matching `sell_v2`, plus the PumpSwap equivalents, from the pinned IDL.
+- Set `max_sol_cost` from the slippage cap on the instruction itself.
+- Use a real curve or pool quote.
+- Include the on-chain fee: 95 bps protocol plus 30 bps creator, 125 bps total, read from the fee config rather than a fixed example.
+- Include ATA rent of 1,513,840 lamports when a new account is required.
+- Fix priority-fee units so the price is microlamports per compute unit.
+- Keep the $2 all-in cap inclusive of fee and rent, and round the spend down so it cannot exceed $2.000000.
+
+
+Stack: stdlib `sqlite3` in WAL mode with `BEGIN IMMEDIATE`; `keyring` (Windows Credential Manager) behind an interface, plus a test double; `solders` and `httpx` for transactions, simulation, the outbound intent pull, and the on-chain Pyth price account; pytest and hypothesis; argparse for the owner CLI. Windows probes go through PowerShell or ctypes behind interfaces. The vet gate shells out to `sys.executable -m smr.vet`. Lumen is unchanged: A1 stays a spec in this project until a later PR.

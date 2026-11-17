@@ -146,6 +146,11 @@ def screen(payload: Payload, needles: tuple[str, ...]) -> None:
             raise SecretInLog("SECRET_IN_LOG")
 
 
+def event_digest(event_id: int, ts_ms: int, kind: str, prev: str, body: str) -> str:
+    material = f"{event_id}|{ts_ms}|{kind}|{prev}|{body}"
+    return hashlib.sha256(material.encode()).hexdigest()
+
+
 def append_event(
     conn: sqlite3.Connection,
     kind: str,
@@ -155,29 +160,46 @@ def append_event(
 ) -> int:
     screen(payload, needles)
     body = canonical(payload)
-    prev_row = conn.execute("SELECT hash FROM events ORDER BY id DESC LIMIT 1").fetchone()
+    prev_row = conn.execute("SELECT id, hash FROM events ORDER BY id DESC LIMIT 1").fetchone()
     prev = str(prev_row["hash"]) if prev_row is not None else GENESIS
-    digest = hashlib.sha256(f"{prev}\n{body}".encode()).hexdigest()
-    cur = conn.execute(
-        "INSERT INTO events (ts_ms, kind, payload, prev_hash, hash) VALUES (?, ?, ?, ?, ?)",
-        (ts_ms, kind, body, prev, digest),
+    event_id = int(prev_row["id"]) + 1 if prev_row is not None else 1
+    digest = event_digest(event_id, ts_ms, kind, prev, body)
+    conn.execute(
+        "INSERT INTO events (id, ts_ms, kind, payload, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?)",
+        (event_id, ts_ms, kind, body, prev, digest),
     )
-    return int(cur.lastrowid or 0)
+    return event_id
 
 
 def verify_chain(conn: sqlite3.Connection) -> bool:
     prev = GENESIS
     rows = conn.execute(
-        "SELECT payload, prev_hash, hash FROM events ORDER BY id"
+        "SELECT id, ts_ms, kind, payload, prev_hash, hash FROM events ORDER BY id"
     ).fetchall()
     for row in rows:
         if str(row["prev_hash"]) != prev:
             return False
-        expect = hashlib.sha256(f"{prev}\n{row['payload']}".encode()).hexdigest()
+        expect = event_digest(
+            int(row["id"]),
+            int(row["ts_ms"]),
+            str(row["kind"]),
+            prev,
+            str(row["payload"]),
+        )
         if str(row["hash"]) != expect:
             return False
         prev = expect
     return True
+
+
+def query(path: str, fn: Callable[[sqlite3.Connection], T]) -> T:
+    """Read without starting a write transaction."""
+
+    conn = connect(path)
+    try:
+        return fn(conn)
+    finally:
+        conn.close()
 
 
 def read_events(conn: sqlite3.Connection, after: int) -> list[tuple[int, str, str]]:

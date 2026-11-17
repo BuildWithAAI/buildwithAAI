@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from zoora_signer.constants import RPC_PROVIDER_NAME, VET_BUDGET_S
+from zoora_signer.killswitch import AgentGuardKill
 from zoora_signer.models import OracleReading
 from zoora_signer.ports import ChainView, Clock, KillSwitch, MarkSource, Oracle, OsProbe
 from zoora_signer.preflight import FailClosedProbe, WindowsOsProbe
@@ -44,36 +45,37 @@ class _Chain:
         return None
 
 
-class _ClearKill:
-    def poll(self) -> str:
-        return "clear"
-
-
-def _probe(db: Path) -> OsProbe:
+def _probe(db: Path, rpc_url: str | None) -> OsProbe:
+    urls = (rpc_url,) if isinstance(rpc_url, str) and rpc_url.startswith("https://") else ()
     if sys.platform == "win32":
-        return WindowsOsProbe([str(db), str(db.parent)])
+        return WindowsOsProbe([str(db), str(db.parent)], clock_urls=urls)
     return FailClosedProbe()
 
 
-def _services(args: argparse.Namespace) -> Services:
+def _services(args: argparse.Namespace, *, create: bool) -> Services:
     db = Path(args.db)
-    db.parent.mkdir(parents=True, exist_ok=True)
-    command = str(args.vet_command).split()
+    if create:
+        db.parent.mkdir(parents=True, exist_ok=True)
+    secrets = KeyringSecretStore(Path(args.rpc_env_file) if args.rpc_env_file else None)
+    try:
+        rpc_url = secrets.get_rpc_url()
+    except Exception:
+        rpc_url = None
     clock: Clock = _Clock()
     oracle: Oracle = _DownOracle()
     marks: MarkSource = _NoMarks()
     chain: ChainView = _Chain()
-    kill: KillSwitch = _ClearKill()
+    kill: KillSwitch = AgentGuardKill(Path(args.kill_switch) if args.kill_switch else None)
     return Services(
         db_path=db,
-        secrets=KeyringSecretStore(Path(args.rpc_env_file) if args.rpc_env_file else None),
+        secrets=secrets,
         oracle=oracle,
-        vet=SubprocessVet(command, budget_s=VET_BUDGET_S),
+        vet=SubprocessVet(budget_s=VET_BUDGET_S),
         clock=clock,
         chain=chain,
         marks=marks,
         kill=kill,
-        probe=_probe(db),
+        probe=_probe(db, rpc_url),
         broadcaster=RefuseBroadcaster(),
         hud_path=Path(args.hud) if args.hud else db.with_suffix(".events.jsonl"),
         provider_name=RPC_PROVIDER_NAME,
@@ -85,7 +87,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--db", default=str(Path.home() / ".zoora-signer" / "signer.sqlite"))
     parser.add_argument("--hud", default="")
     parser.add_argument("--rpc-env-file", default="")
-    parser.add_argument("--vet-command", default="python -m smr.vet")
+    parser.add_argument("--kill-switch", default="")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("doctor")
     sub.add_parser("status")
@@ -101,6 +103,9 @@ def _parser() -> argparse.ArgumentParser:
     route = sub.add_parser("route-approved")
     route.add_argument("--source", required=True)
     route.add_argument("--date", required=True)
+    route.add_argument("--text", required=True)
+    unhalt = sub.add_parser("unhalt")
+    unhalt.add_argument("--confirm", required=True)
     mode = sub.add_parser("mode")
     mode.add_argument("value", choices=("dry-run", "live"))
     white = sub.add_parser("whitelist-add")
@@ -119,19 +124,21 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         print("refused: key material is set in the environment", file=sys.stderr)
         return 2
-    if args.cmd == "doctor":
-        signer = Signer.open(_services(args))
-        lines = signer.doctor_lines()
-        print("\n".join(lines))
-        return 0 if all(line.endswith("pass") for line in lines) else 1
-    signer = Signer.open(_services(args))
-    if args.cmd == "status":
+    if args.cmd in {"doctor", "status"}:
+        signer = Signer.attach(_services(args, create=False))
+        if args.cmd == "doctor":
+            lines = signer.doctor_lines()
+            print("\n".join(lines))
+            return 0 if all(line.endswith("pass") for line in lines) else 1
         print(f"activity={signer.activity()} mode={signer.mode()} route={signer.route_approved()}")
         return 0
+    signer = Signer.open(_services(args, create=True))
     if args.cmd == "resume":
         decision = signer.resume()
     elif args.cmd == "halt":
         decision = signer.halt("owner")
+    elif args.cmd == "unhalt":
+        decision = signer.unhalt(args.confirm)
     elif args.cmd == "sell":
         amount = args.tokens if args.tokens > 0 else None
         decision = signer.owner_sell(args.mint, amount)
@@ -142,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "expect-deposit":
         decision = signer.expect_deposit(args.lamports, args.ttl)
     elif args.cmd == "route-approved":
-        decision = signer.set_route(args.source, args.date)
+        decision = signer.set_route(args.source, args.date, args.text)
     elif args.cmd == "mode":
         decision = signer.set_mode("LIVE" if args.value == "live" else "DRY_RUN")
     elif args.cmd == "whitelist-add":

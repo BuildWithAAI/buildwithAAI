@@ -1,6 +1,6 @@
 # Nothing here is live
 
-This package does not trade, does not broadcast, and does not hold a key. It boots in `DRY_RUN` and `PAUSED`. `LIVE` stays refused until the owner records `ROUTE_APPROVED` with a written permission source from pump.fun. Even then, an owner `resume` is required, and this build's broadcaster refuses to submit. There is no `sendTransaction` path.
+This is a trading executor design. The current build cannot sign or broadcast. It boots in `DRY_RUN` and `PAUSED`. `LIVE` stays refused until the owner records `ROUTE_APPROVED` with an https permission URL, a date, and a hash of the permission text. Even then, an owner `resume` is required, and this build's broadcaster refuses to submit. Real buy and sell builders are on hold, and the placeholder builders refuse every transaction. There is no `sendTransaction` path.
 
 No private key, seed, or RPC URL belongs in the repo, the logs, CI, or chat. Tests generate throwaway keys in memory.
 
@@ -92,6 +92,8 @@ python -m mypy --strict src/zoora_signer
 ```
 
 The local validator rehearsal is `python scripts/e2e_validator.py`. It builds an unsigned transaction, asks a local `solana-test-validator` to simulate it with `sigVerify` false, and never signs or submits. The required CI jobs do not run it. An optional job installs Solana CLI `v4.4.1` and runs the script. That job is `continue-on-error` because it depends on a public mainnet program dump.
+
+Credential Manager entry ACLs are not readable through the keyring API used here. The owner confirms those ACLs in Windows Credential Manager. The file ACL check covers the database, its directory, and `rpc.env`.
 
 ## Before any live use
 

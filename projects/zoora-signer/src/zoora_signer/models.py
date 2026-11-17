@@ -32,6 +32,7 @@ class Intent:
     token_amount: int | None
     max_slippage_bps: int
     issued_at_ms: int
+    key_id: str
 
 
 @dataclass(frozen=True)

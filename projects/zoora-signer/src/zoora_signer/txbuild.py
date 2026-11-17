@@ -6,14 +6,9 @@ import struct
 from dataclasses import dataclass
 
 from zoora_signer.constants import (
-    BUY_V2_DISCRIMINATOR,
     COMPUTE_BUDGET,
-    INSTRUCTION_ALLOWLIST,
     PUMP_PROGRAM,
-    SELL_V2_DISCRIMINATOR,
-    SYSTEM_PROGRAM,
 )
-from zoora_signer.quote import lamports_for_cents
 
 
 @dataclass(frozen=True)
@@ -27,18 +22,12 @@ class AllowlistError(ValueError):
     pass
 
 
+class PlaceholderBuilder(AllowlistError):
+    """Real buy, sell, and sweep builders are on hold. They refuse every call."""
+
+
 def assert_allowlisted(instructions: list[Instruction], whitelist: set[str]) -> None:
-    for ix in instructions:
-        if ix.program_id not in INSTRUCTION_ALLOWLIST:
-            raise AllowlistError("PROGRAM_NOT_ALLOWLISTED")
-        if ix.program_id == SYSTEM_PROGRAM and _is_system_transfer(ix.data):
-            dest = ix.accounts[1] if len(ix.accounts) > 1 else ""
-            if dest not in whitelist:
-                raise AllowlistError("TRANSFER_NOT_WHITELISTED")
-
-
-def _is_system_transfer(data: bytes) -> bool:
-    return len(data) >= 4 and int.from_bytes(data[:4], "little") == 2
+    raise PlaceholderBuilder("PLACEHOLDER_BUILDER")
 
 
 def build_buy(
@@ -52,21 +41,8 @@ def build_buy(
     fee_lamports: int,
     ata_rent_lamports: int,
 ) -> list[Instruction]:
-    budget = lamports_for_cents(stake_cents, sol_usd_cents)
-    if budget is None:
-        raise AllowlistError("UNPRICEABLE")
-    overhead = fee_lamports + ata_rent_lamports
-    if overhead > budget:
-        raise AllowlistError("FEES_EXCEED_STAKE")
-    max_sol = budget - overhead
-    min_tokens = token_out * (10_000 - slippage_bps) // 10_000
-    if min_tokens < 1:
-        min_tokens = 1
-    data = BUY_V2_DISCRIMINATOR + struct.pack("<QQ", min_tokens, max_sol) + bytes([0])
-    return [
-        *_compute(fee_lamports),
-        Instruction(PUMP_PROGRAM, data, (payer, mint)),
-    ]
+    del payer, mint, stake_cents, sol_usd_cents, slippage_bps, token_out, fee_lamports, ata_rent_lamports
+    raise PlaceholderBuilder("PLACEHOLDER_BUILDER")
 
 
 def build_sell(
@@ -76,17 +52,13 @@ def build_sell(
     token_in: int,
     min_sol: int,
 ) -> list[Instruction]:
-    data = SELL_V2_DISCRIMINATOR + struct.pack("<QQ", token_in, min_sol)
-    return [*_compute(0), Instruction(PUMP_PROGRAM, data, (payer, mint))]
+    del payer, mint, token_in, min_sol
+    raise PlaceholderBuilder("PLACEHOLDER_BUILDER")
 
 
 def build_sweep(*, payer: str, dest: str, lamports: int, whitelist: set[str]) -> list[Instruction]:
-    if dest not in whitelist:
-        raise AllowlistError("TRANSFER_NOT_WHITELISTED")
-    data = struct.pack("<IQ", 2, lamports)
-    ix = Instruction(SYSTEM_PROGRAM, data, (payer, dest))
-    assert_allowlisted([ix], whitelist)
-    return [ix]
+    del payer, dest, lamports, whitelist
+    raise PlaceholderBuilder("PLACEHOLDER_BUILDER")
 
 
 def _compute(priority_lamports: int) -> list[Instruction]:

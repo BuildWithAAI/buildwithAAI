@@ -14,16 +14,21 @@ from zoneinfo import ZoneInfo
 
 from zoora_signer.caps import CapView, evaluate_buy, evaluate_sell
 from zoora_signer.constants import (
+    BUY_MIN_INTERVAL_MS,
     CLOCK_SKEW_MS,
     CT_ZONE,
+    DAILY_LOSS_CAP_CENTS,
+    INTENT_PREFIX,
     INTENT_TTL_MS,
     PREFLIGHT_INTERVAL_MS,
     RPC_PROVIDER_NAME,
     SLEEP_JUMP_MS,
     UNCONFIRMED_MS,
+    VET_CONFIG_VERSION,
+    VET_FRESH_MS,
     WALLET_CAP_CENTS,
 )
-from zoora_signer.db import SecretInLog, append_event, init_db, read_events, transact, verify_chain
+from zoora_signer.db import SecretInLog, append_event, init_db, query, read_events, transact, verify_chain
 from zoora_signer.models import Decision, Intent, OracleReading, Payload, sol_usd_cents
 from zoora_signer.ports import (
     Broadcaster,
@@ -39,13 +44,8 @@ from zoora_signer.ports import (
 )
 from zoora_signer.quote import lamports_for_cents
 from zoora_signer.secrets import reject_key_material_in_env
-from zoora_signer.signing import public_key, sign_message
 from zoora_signer.txbuild import (
-    AllowlistError,
     Instruction,
-    assert_allowlisted,
-    build_buy,
-    build_sweep,
 )
 from zoora_signer.vet import VetAssessment, assess_vet
 
@@ -82,6 +82,7 @@ class Services:
     fee_lamports: int = 0
     ata_rent_lamports: int = 0
     defer_settle: bool = False
+    telegram_allow: set[str] | None = None
     time_stop_ms: int = 6 * 60 * 60 * 1000
     hard_stop_bps: int = 5_000
 
@@ -101,12 +102,19 @@ class Signer:
         self._last_mono = 0
         self._last_preflight = 0
         self._feed_cursor: str | None = None
+        self._hud_after = 0
+        self._pushed_after = 0
 
     @classmethod
     def open(cls, services: Services) -> Signer:
         signer = cls(services)
         signer.boot()
         return signer
+
+    @classmethod
+    def attach(cls, services: Services) -> Signer:
+        """Read-only handle. Does not create the database or write a boot event."""
+        return cls(services)
 
     def boot(self) -> None:
         reject_key_material_in_env()
@@ -121,20 +129,32 @@ class Signer:
             assert isinstance(db, Connection)
             row = db.execute("SELECT * FROM signer_state WHERE id = 1").fetchone()
             assert row is not None
+            halted = str(row["activity"]) == "HALTED"
             mode = "DRY_RUN" if int(row["route_approved"]) != 1 else str(row["execution_mode"])
             ledger = row["ledger_sol_lamports"]
             if ledger is None:
                 ledger = opening
-            db.execute(
-                """
-                UPDATE signer_state
-                SET activity = 'PAUSED', halt_reason = NULL, execution_mode = ?,
-                    boot_id = ?, ledger_sol_lamports = ?, provider_name = ?
-                WHERE id = 1
-                """,
-                (mode, boot_id, int(ledger), self.s.provider_name),
-            )
-            self._event(db, "boot_paused", {"boot_id": boot_id, "mode": mode})
+            if halted:
+                db.execute(
+                    """
+                    UPDATE signer_state
+                    SET execution_mode = ?, boot_id = ?, ledger_sol_lamports = ?, provider_name = ?
+                    WHERE id = 1
+                    """,
+                    (mode, boot_id, int(ledger), self.s.provider_name),
+                )
+                self._event(db, "boot_halt_persisted", {"boot_id": boot_id, "reason": str(row["halt_reason"] or "")})
+            else:
+                db.execute(
+                    """
+                    UPDATE signer_state
+                    SET activity = 'PAUSED', halt_reason = NULL, execution_mode = ?,
+                        boot_id = ?, ledger_sol_lamports = ?, provider_name = ?
+                    WHERE id = 1
+                    """,
+                    (mode, boot_id, int(ledger), self.s.provider_name),
+                )
+                self._event(db, "boot_paused", {"boot_id": boot_id, "mode": mode})
             self._reconcile(db)
             if not verify_chain(db):
                 db.execute(
@@ -181,12 +201,11 @@ class Signer:
         try:
             status = self.s.kill.poll()
         except Exception:
-            status = "unreachable"
-        if status == "clear":
-            return "clear"
-        reason = "agent_guard" if status == "killed" else "agent_guard_unreachable"
-        self._halt(reason)
-        return status
+            status = "killed"
+        if status != "clear":
+            self._halt("killed")
+            return "killed"
+        return "clear"
 
     def doctor_lines(self) -> list[str]:
         skew = self.s.probe.time_skew_ms()
@@ -200,13 +219,21 @@ class Signer:
         )
         return [f"{name}: {'pass' if ok else 'fail'}" for name, ok in checks]
 
-    def handle_intent(self, raw: dict[str, object], signature: str) -> Decision:
+    def handle_intent(self, raw: bytes, signature: str) -> Decision:
         reject_key_material_in_env()
-        if not self._hmac_ok(raw, signature):
-            return self._note("intent_refused", {"code": "BAD_HMAC", "provider": self.s.provider_name})
-        intent = parse_intent(raw)
+        try:
+            if not self._hmac_ok(raw, signature):
+                return self._note("intent_refused", {"code": "BAD_HMAC", "provider": self.s.provider_name})
+            parsed = json.loads(raw.decode("utf-8"), parse_constant=_reject_non_finite)
+        except (UnicodeError, json.JSONDecodeError, ValueError):
+            return self._note("intent_refused", {"code": "BAD_INTENT"})
+        if not isinstance(parsed, dict):
+            return self._note("intent_refused", {"code": "BAD_INTENT"})
+        intent = parse_intent(parsed)
         if intent is None:
             return self._note("intent_refused", {"code": "BAD_INTENT"})
+        if intent.key_id != self._key_id():
+            return self._note("intent_refused", {"code": "BAD_KEY_ID", "intent_id": intent.intent_id})
         stored = self._stored(intent.intent_id)
         if stored is not None:
             return stored
@@ -219,12 +246,7 @@ class Signer:
             return self._refuse(intent, reading.reason or "ORACLE_DOWN", reading, None)
         assessment: VetAssessment | None = None
         if intent.side == "buy":
-            if self._preview_allows(intent, reading):
-                assessment = self._vet_fresh(intent.mint, now)
-                if not assessment.ok:
-                    if assessment.service_error:
-                        self._halt("vetting_service")
-                    return self._refuse(intent, assessment.code, reading, assessment)
+            assessment = self._vet_fresh(intent.mint, now)
             return self._buy(intent, reading, assessment)
         return self._sell_intent(intent, reading)
 
@@ -242,15 +264,18 @@ class Signer:
             self._note("feed_unreachable", {"code": "UNREACHABLE"})
             return []
         decisions: list[Decision] = []
-        for intent, signature in batch.intents:
-            raw = intent_wire(intent)
-            decisions.append(self.handle_intent(raw, signature))
-            self._feed_cursor = intent.intent_id
+        for raw, signature in batch.intents:
+            try:
+                decisions.append(self.handle_intent(raw, signature))
+            except Exception:
+                decisions.append(Decision(False, "BAD_INTENT", True))
         try:
-            rows = self.read_events(0)
-            feed.push_events(
-                [{"id": row_id, "kind": kind, "payload": payload} for row_id, kind, payload in rows]
-            )
+            rows = self.read_events(self._pushed_after)
+            if rows:
+                feed.push_events(
+                    [{"id": row_id, "kind": kind, "payload": payload} for row_id, kind, payload in rows]
+                )
+                self._pushed_after = rows[-1][0]
         except Exception:
             self._note("feed_unreachable", {"code": "PUSH_FAILED"})
         return decisions
@@ -269,10 +294,16 @@ class Signer:
 
         def op(conn: sqlite3.Connection) -> Decision:
             db = _db(conn)
+            if not verify_chain(db):
+                db.execute(
+                    "UPDATE signer_state SET activity = 'HALTED', halt_reason = 'hash_chain' WHERE id = 1"
+                )
+                self._event(db, "halt", {"reason": "hash_chain"})
+                return Decision(False, "HASH_CHAIN", False)
             row = _state(db)
-            if str(row["activity"]) == "HALTED" and str(row["halt_reason"] or "").startswith("agent_guard"):
-                return Decision(False, "KILL_HOLD", False)
-            db.execute("UPDATE signer_state SET activity = 'ACTIVE', halt_reason = NULL WHERE id = 1")
+            if str(row["activity"]) == "HALTED":
+                return Decision(False, "HALT_PERSISTED", False)
+            db.execute("UPDATE signer_state SET activity = 'ACTIVE' WHERE id = 1")
             if reading.ok:
                 self._ensure_snapshot(db, now, sol_usd_cents(reading))
                 self._refresh_buy_halt(db, now, sol_usd_cents(reading))
@@ -284,19 +315,60 @@ class Signer:
         self._sync_hud()
         return decision
 
+    def unhalt(self, confirmation: str) -> Decision:
+        if confirmation != "UNHALT":
+            return Decision(False, "CONFIRMATION_REQUIRED", False)
+
+        def op(conn: sqlite3.Connection) -> Decision:
+            db = _db(conn)
+            if not verify_chain(db):
+                db.execute(
+                    "UPDATE signer_state SET activity = 'HALTED', halt_reason = 'hash_chain' WHERE id = 1"
+                )
+                self._event(db, "halt", {"reason": "hash_chain"})
+                return Decision(False, "HASH_CHAIN", False)
+            row = _state(db)
+            if str(row["activity"]) != "HALTED":
+                return Decision(False, "NOT_HALTED", False)
+            reason = str(row["halt_reason"] or "")
+            sticky = reason in {"unexpected_sol", "reconcile_unknown", "LEDGER_BREACH"}
+            if sticky and not self._reconcile_ready(db, reason):
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            db.execute("UPDATE signer_state SET activity = 'PAUSED', halt_reason = NULL WHERE id = 1")
+            self._event(db, "unhalt", {"previous": reason})
+            return Decision(True, "UNHALTED", True)
+
+        decision = transact(self.path, op)
+        self._sync_hud()
+        return decision
+
     def halt(self, reason: str = "owner") -> Decision:
         self._halt(reason)
         return Decision(True, "HALTED", False)
 
-    def telegram(self, text: str) -> Decision:
-        if text.strip().lower() in {"halt", "/halt", "kill"}:
+    def telegram(self, message: dict[str, object] | str) -> Decision:
+        if isinstance(message, str):
+            self._note("telegram_rejected", {"code": "TELEGRAM_MALFORMED"})
+            return Decision(False, "TELEGRAM_MALFORMED", False)
+        if message.get("forward_date") or message.get("forward_from") or message.get("is_forwarded"):
+            self._note("telegram_rejected", {"code": "TELEGRAM_FORWARDED"})
+            return Decision(False, "TELEGRAM_FORWARDED", False)
+        allowed = self._telegram_allow()
+        chat = str(message.get("chat_id", ""))
+        sender = str(message.get("from_id", ""))
+        if not chat or not sender or chat not in allowed or sender not in allowed:
+            self._note("telegram_rejected", {"code": "TELEGRAM_NOT_ALLOWLISTED"})
+            return Decision(False, "TELEGRAM_NOT_ALLOWLISTED", False)
+        text = str(message.get("text", "")).strip().lower()
+        if text in {"halt", "/halt", "kill"}:
             return self.halt("telegram")
         self._note("telegram_rejected", {"code": "TELEGRAM_HALT_ONLY"})
         return Decision(False, "TELEGRAM_HALT_ONLY", False)
 
-    def set_route(self, source: str, source_date: str) -> Decision:
-        if not source.strip() or not source_date.strip():
+    def set_route(self, source_url: str, source_date: str, permission_text: str) -> Decision:
+        if not source_url.startswith("https://") or len(source_date) != 10 or not permission_text.strip():
             return Decision(False, "ROUTE_SOURCE_REQUIRED", False)
+        digest = hashlib.sha256(permission_text.encode()).hexdigest()
 
         def op(conn: sqlite3.Connection) -> Decision:
             db = _db(conn)
@@ -306,12 +378,17 @@ class Signer:
                 SET route_approved = 1, route_source = ?, route_source_date = ?
                 WHERE id = 1
                 """,
-                (source, source_date),
+                (source_url, source_date),
             )
             event_id = self._event(
                 db,
                 "route_approved",
-                {"source": source, "source_date": source_date, "provider": self.s.provider_name},
+                {
+                    "source_url": source_url,
+                    "source_date": source_date,
+                    "permission_sha256": digest,
+                    "provider": self.s.provider_name,
+                },
             )
             return Decision(True, "ROUTE_APPROVED", False, event_id=event_id)
 
@@ -401,6 +478,14 @@ class Signer:
             if delta == 0:
                 return Decision(True, "NO_DELTA", False)
             if delta > 0:
+                reading = self.s.oracle.quote(now)
+                if not reading.ok:
+                    db.execute(
+                        "UPDATE signer_state SET activity = 'HALTED', halt_reason = ? WHERE id = 1",
+                        (reading.reason or "ORACLE_DOWN",),
+                    )
+                    self._event(db, "halt", {"reason": reading.reason or "ORACLE_DOWN"})
+                    return Decision(False, reading.reason or "ORACLE_DOWN", False)
                 matched = db.execute(
                     """
                     SELECT id, lamports FROM expected_deposits
@@ -445,48 +530,10 @@ class Signer:
         return decision
 
     def sweep(self, dest: str, lamports: int) -> Decision:
-        try:
-            ixs = build_sweep(
-                payer=self._payer(),
-                dest=dest,
-                lamports=lamports,
-                whitelist=self._whitelist(),
-            )
-            assert_allowlisted(ixs, self._whitelist())
-        except AllowlistError as exc:
-            return Decision(False, str(exc), False)
-        if self.activity() == "HALTED" or self.activity() == "PAUSED":
-            pass
-        now = self.s.clock.now_ms()
-
-        def op(conn: sqlite3.Connection) -> Decision:
-            db = _db(conn)
-            current = int(_state(db)["ledger_sol_lamports"] or 0)
-            if lamports <= 0 or lamports > current:
-                return Decision(False, "BAD_SWEEP", False)
-            db.execute(
-                "UPDATE signer_state SET ledger_sol_lamports = ? WHERE id = 1",
-                (current - lamports,),
-            )
-            reading = self.s.oracle.quote(now)
-            cents = 0
-            if reading.ok:
-                cents = lamports * sol_usd_cents(reading) // 1_000_000_000
-            db.execute(
-                """
-                UPDATE equity_day SET withdrawals_cents = withdrawals_cents + ?
-                WHERE ct_day = ?
-                """,
-                (cents, ct_day(now)),
-            )
-            self._event(db, "sweep", {"dest": dest, "lamports": lamports, "dry_run": True})
-            return Decision(True, "SWEEP", True)
-
-        if self.mode() == "LIVE" and self.s.broadcaster.enabled:
-            return Decision(False, "BROADCAST_DISABLED", False)
-        decision = transact(self.path, op)
-        self._sync_hud()
-        return decision
+        del dest, lamports
+        if self.activity() == "HALTED":
+            return Decision(False, "KILL_HOLD", False)
+        return Decision(False, "PLACEHOLDER_BUILDER", False)
 
     def owner_sell(self, mint: str, token_amount: int | None = None) -> Decision:
         return self._sell(mint, token_amount, owner=True, intent_id=None)
@@ -533,28 +580,37 @@ class Signer:
         return [self._sell(mint, amount, owner=False, intent_id=None) for mint, amount in due]
 
     def activity(self) -> str:
+        if not Path(self.path).is_file():
+            return "PAUSED"
+
         def op(conn: sqlite3.Connection) -> str:
             return str(_state(_db(conn))["activity"])
 
-        return transact(self.path, op)
+        return query(self.path, op)
 
     def mode(self) -> str:
+        if not Path(self.path).is_file():
+            return "DRY_RUN"
+
         def op(conn: sqlite3.Connection) -> str:
             return str(_state(_db(conn))["execution_mode"])
 
-        return transact(self.path, op)
+        return query(self.path, op)
 
     def route_approved(self) -> bool:
+        if not Path(self.path).is_file():
+            return False
+
         def op(conn: sqlite3.Connection) -> bool:
             return int(_state(_db(conn))["route_approved"]) == 1
 
-        return transact(self.path, op)
+        return query(self.path, op)
 
     def read_events(self, after: int) -> list[tuple[int, str, str]]:
         def op(conn: sqlite3.Connection) -> list[tuple[int, str, str]]:
             return read_events(_db(conn), after)
 
-        return transact(self.path, op)
+        return query(self.path, op)
 
     def open_trade_count(self) -> int:
         def op(conn: sqlite3.Connection) -> int:
@@ -562,16 +618,30 @@ class Signer:
             assert row is not None
             return int(row["n"])
 
-        return transact(self.path, op)
+        return query(self.path, op)
 
     def _buy(self, intent: Intent, reading: OracleReading, assessment: VetAssessment | None) -> Decision:
-        now = self.s.clock.now_ms()
         price = sol_usd_cents(reading)
         stake = intent.usd_stake_cents or 0
         vet_payload = _vet_payload(assessment)
 
         def op(conn: sqlite3.Connection) -> tuple[Decision, int | None]:
             db = _db(conn)
+            now_tx = self.s.clock.now_ms()
+            if now_tx - intent.issued_at_ms > INTENT_TTL_MS or intent.issued_at_ms - now_tx > 5_000:
+                return self._record_refusal(db, intent, "EXPIRED", reading, assessment), None
+            if (
+                assessment is None
+                or not assessment.ok
+                or assessment.config_version != VET_CONFIG_VERSION
+                or now_tx - assessment.evaluated_ms > VET_FRESH_MS
+            ):
+                code = assessment.code if assessment is not None and assessment.code else "VET"
+                if assessment is not None and assessment.service_error:
+                    db.execute(
+                        "UPDATE signer_state SET activity = 'HALTED', halt_reason = 'vetting_service' WHERE id = 1"
+                    )
+                return self._record_refusal(db, intent, code, reading, assessment), None
             prior = db.execute(
                 "SELECT ok, code, simulated FROM decisions WHERE intent_id = ?",
                 (intent.intent_id,),
@@ -587,14 +657,12 @@ class Signer:
             ).fetchone()
             if existing is not None and str(existing["status"]) != "reserved":
                 return (Decision(True, "REPLAY", True, intent.intent_id), None)
-            self._ensure_snapshot(db, now, price)
-            self._refresh_buy_halt(db, now, price)
-            prior_hits = self._prior_hits(db, now)
-            db.execute(
-                "INSERT INTO intent_hits (intent_id, seen_ms) VALUES (?, ?)",
-                (intent.intent_id, now),
-            )
-            view = self._view(db, now, price, prior_hits)
+            if self._wallet_exposure(db, price)[2]:
+                return self._record_refusal(db, intent, "UNKNOWN_MARK", reading, assessment), None
+            self._ensure_snapshot(db, now_tx, price)
+            self._refresh_buy_halt(db, now_tx, price)
+            hour, recent = self._accepted_buy_counts(db, now_tx)
+            view = self._view(db, now_tx, price, hour, recent)
             result = evaluate_buy(view, stake, intent.max_slippage_bps)
             if result.halt:
                 db.execute(
@@ -628,7 +696,7 @@ class Signer:
                   intent_id, side, mint, stake_cents, status, ct_day, created_ms, reached_signing
                 ) VALUES (?, 'buy', ?, ?, 'reserved', ?, ?, 0)
                 """,
-                (intent.intent_id, intent.mint, stake, ct_day(now), now),
+                (intent.intent_id, intent.mint, stake, ct_day(now_tx), now_tx),
             )
             reservation_id = int(db.execute("SELECT last_insert_rowid() AS id").fetchone()["id"])
             event_id = self._event(db, "reserved", payload)
@@ -639,10 +707,20 @@ class Signer:
         except SecretInLog:
             self._halt("secret_in_log")
             return Decision(False, "SECRET_IN_LOG", False, intent.intent_id)
+        except Exception:
+            self._halt("reservation_error")
+            return Decision(False, "RESERVATION_ERROR", False, intent.intent_id)
         self._sync_hud()
         if reservation_id is None or self.s.defer_settle:
             return decision
-        return self._settle_buy(intent, reading, reservation_id, stake)
+        try:
+            return self._settle_buy(intent, reading, reservation_id, stake)
+        except Exception:
+            try:
+                return self._release(reservation_id, "SETTLE_ERROR", intent.intent_id)
+            except Exception:
+                self._halt("settle_error")
+                return Decision(False, "SETTLE_ERROR", False, intent.intent_id)
 
     def _settle_buy(
         self,
@@ -651,42 +729,18 @@ class Signer:
         reservation_id: int,
         stake: int,
     ) -> Decision:
+        now = self.s.clock.now_ms()
+        if now - intent.issued_at_ms > INTENT_TTL_MS:
+            return self._release(reservation_id, "EXPIRED", intent.intent_id)
+        if self.activity() == "HALTED":
+            return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
+        if self.mode() == "LIVE":
+            return self._release(reservation_id, "PLACEHOLDER_BUILDER", intent.intent_id)
         price = sol_usd_cents(reading)
         lamports = lamports_for_cents(stake, price)
         if lamports is None:
             return self._release(reservation_id, "UNPRICEABLE", intent.intent_id)
-        try:
-            ixs = build_buy(
-                payer=self._payer(),
-                mint=intent.mint,
-                stake_cents=stake,
-                sol_usd_cents=price,
-                slippage_bps=intent.max_slippage_bps,
-                token_out=1_000_000,
-                fee_lamports=self.s.fee_lamports,
-                ata_rent_lamports=self.s.ata_rent_lamports,
-            )
-            assert_allowlisted(ixs, self._whitelist())
-        except AllowlistError as exc:
-            return self._release(reservation_id, str(exc), intent.intent_id)
-        live = self.mode() == "LIVE" and self.route_approved() and self.activity() == "ACTIVE"
-        if live:
-            if not self._preflight_clear() or not self.s.secrets.has_signing_key():
-                return self._release(reservation_id, "LIVE_BLOCKED", intent.intent_id)
-            if not self.s.broadcaster.enabled:
-                return self._release(reservation_id, "BROADCAST_DISABLED", intent.intent_id)
-            secret = self.s.secrets.get_signing_key()
-            if secret is None:
-                return self._release(reservation_id, "NO_KEY", intent.intent_id)
-            message = _message(ixs)
-            signature = sign_message(secret, message).hex()
-            try:
-                self.s.broadcaster.submit(message)
-            except Exception:
-                return self._release(reservation_id, "BROADCAST_DISABLED", intent.intent_id)
-            return self._fill(intent, reservation_id, stake, lamports, signature, simulated=False)
-        digest = hashlib.sha256(_message(ixs)).hexdigest()
-        return self._fill(intent, reservation_id, stake, lamports, f"dry-run:{digest}", simulated=True)
+        return self._fill(intent, reservation_id, stake, lamports, "dry-run:no-tx", simulated=True)
 
     def _fill(
         self,
@@ -777,13 +831,7 @@ class Signer:
                 ).fetchone()
                 if prior is not None:
                     return Decision(bool(prior["ok"]), str(prior["code"]), bool(prior["simulated"]), intent_id)
-            prior_hits = self._prior_hits(db, now)
-            if intent_id is not None:
-                db.execute(
-                    "INSERT INTO intent_hits (intent_id, seen_ms) VALUES (?, ?)",
-                    (intent_id, now),
-                )
-            view = self._view(db, now, price, prior_hits)
+            view = self._view(db, now, price, 0, 0)
             result = evaluate_sell(view, owner=owner)
             if not result.accept:
                 if intent_id is not None:
@@ -811,9 +859,10 @@ class Signer:
             if sold <= 0:
                 return Decision(False, "BAD_SIZE", True, intent_id)
             mark = self.s.marks.mark_cents(mint, tokens, int(trade["cost_cents"]), int(trade["recovered_cents"]))
-            if mark is None:
+            mark_unknown = mark is None
+            if mark_unknown and not owner:
                 return Decision(False, "UNPRICEABLE", True, intent_id)
-            proceeds = mark * sold // tokens
+            proceeds = 0 if mark is None else mark * sold // tokens
             recovered = int(trade["recovered_cents"]) + proceeds
             left = tokens - sold
             if left <= 0:
@@ -848,6 +897,7 @@ class Signer:
                     "status": status,
                     "provider": self.s.provider_name,
                     "simulated": True,
+                    "mark_unknown": mark_unknown,
                 },
             )
             return Decision(True, status.upper(), True, intent_id)
@@ -877,16 +927,59 @@ class Signer:
         self._sync_hud()
         return decision
 
-    def _preview_allows(self, intent: Intent, reading: OracleReading) -> bool:
-        price = sol_usd_cents(reading)
-        now = self.s.clock.now_ms()
+    def _record_refusal(
+        self,
+        db: sqlite3.Connection,
+        intent: Intent,
+        code: str,
+        reading: OracleReading | None,
+        assessment: VetAssessment | None,
+    ) -> Decision:
+        payload: Payload = {
+            "intent_id": intent.intent_id,
+            "mint": intent.mint,
+            "code": code,
+            "provider": self.s.provider_name,
+        }
+        if reading is not None:
+            payload.update(reading.as_payload())
+        payload.update(_vet_payload(assessment))
+        db.execute(
+            "INSERT OR IGNORE INTO decisions (intent_id, ok, code, simulated) VALUES (?, 0, ?, 1)",
+            (intent.intent_id, code),
+        )
+        event_id = self._event(db, "intent_refused", payload)
+        return Decision(False, code, True, intent.intent_id, event_id)
 
-        def op(conn: sqlite3.Connection) -> bool:
-            db = _db(conn)
-            view = self._view(db, now, price, self._prior_hits(db, now))
-            return evaluate_buy(view, intent.usd_stake_cents or 0, intent.max_slippage_bps).accept
+    def _accepted_buy_counts(self, db: sqlite3.Connection, now_ms: int) -> tuple[int, int]:
+        hour = db.execute(
+            "SELECT COUNT(*) AS n FROM reservations WHERE side = 'buy' AND created_ms > ?",
+            (now_ms - 3_600_000,),
+        ).fetchone()
+        recent = db.execute(
+            "SELECT COUNT(*) AS n FROM reservations WHERE side = 'buy' AND created_ms > ?",
+            (now_ms - BUY_MIN_INTERVAL_MS,),
+        ).fetchone()
+        assert hour is not None and recent is not None
+        return int(hour["n"]), int(recent["n"])
 
-        return transact(self.path, op)
+    def _reconcile_ready(self, db: sqlite3.Connection, reason: str) -> bool:
+        if reason == "LEDGER_BREACH":
+            view = self._view(db, self.s.clock.now_ms(), 0, 0, 0)
+            return view.open_slots <= 3 and view.buys_today <= 10
+        if reason == "unexpected_sol":
+            if not self.s.chain.authoritative:
+                return False
+            ledger = int(_state(db)["ledger_sol_lamports"] or 0)
+            return self.s.chain.sol_lamports() == ledger
+        if reason == "reconcile_unknown":
+            if not self.s.chain.authoritative:
+                return False
+            rows = db.execute(
+                "SELECT signature FROM reservations WHERE status = 'signing'"
+            ).fetchall()
+            return all(self.s.chain.signature_status(str(row["signature"] or "")) != "unknown" for row in rows)
+        return True
 
     def _vet_fresh(self, mint: str, now: int) -> VetAssessment:
         exit_code, text, timed_out = self.s.vet.vet(mint)
@@ -910,7 +1003,14 @@ class Signer:
             public_key=self.s.vet_public_key,
         )
 
-    def _view(self, conn: sqlite3.Connection, now_ms: int, sol_cents: int, prior_hits: int) -> CapView:
+    def _view(
+        self,
+        conn: sqlite3.Connection,
+        now_ms: int,
+        sol_cents: int,
+        accepted_hour: int,
+        buys_last_10_min: int,
+    ) -> CapView:
         db = _db(conn)
         state = _state(db)
         day = ct_day(now_ms)
@@ -929,7 +1029,7 @@ class Signer:
             (day,),
         ).fetchone()
         assert open_row is not None and flight is not None and buys is not None
-        wallet, exposure = self._wallet_exposure(db, sol_cents)
+        wallet, exposure, unknown = self._wallet_exposure(db, sol_cents)
         exposure += int(flight["stake"])
         loss = self._loss(db, day, wallet)
         buy_halt = state["buy_halt_reason"]
@@ -940,17 +1040,20 @@ class Signer:
             reserved_loss_cents=int(flight["stake"]),
             exposure_cents=exposure,
             wallet_cents=wallet,
-            intents_this_hour=prior_hits,
+            intents_this_hour=accepted_hour,
             activity=str(state["activity"]),
             buy_halt=str(buy_halt) if buy_halt else None,
+            buys_last_10_min=buys_last_10_min,
+            unknown_mark=unknown,
         )
 
-    def _wallet_exposure(self, db: sqlite3.Connection, sol_cents: int) -> tuple[int, int]:
+    def _wallet_exposure(self, db: sqlite3.Connection, sol_cents: int) -> tuple[int, int, bool]:
         conn = _db(db)
         state = _state(conn)
         lamports = int(state["ledger_sol_lamports"] or 0)
         wallet = lamports * sol_cents // 1_000_000_000 if sol_cents > 0 else 0
         exposure = 0
+        unknown = False
         rows = conn.execute(
             """
             SELECT mint, tokens, cost_cents, recovered_cents, status FROM trades
@@ -962,16 +1065,15 @@ class Signer:
             recovered = int(row["recovered_cents"])
             unrecovered = max(0, cost - recovered)
             mark = self.s.marks.mark_cents(str(row["mint"]), int(row["tokens"]), cost, recovered)
+            if mark is None:
+                unknown = True
+                continue
             if str(row["status"]) == "open":
-                exposure += unrecovered if mark is None else max(unrecovered, mark)
-                if mark is not None:
-                    wallet += mark
-            elif mark is None:
-                exposure += unrecovered
+                exposure += max(unrecovered, mark)
             else:
                 exposure += mark
-                wallet += mark
-        return wallet, exposure
+            wallet += mark
+        return wallet, exposure, unknown
 
     def _loss(self, db: sqlite3.Connection, day: str, wallet: int) -> int:
         conn = _db(db)
@@ -989,7 +1091,7 @@ class Signer:
         row = conn.execute("SELECT ct_day FROM equity_day WHERE ct_day = ?", (day,)).fetchone()
         if row is not None:
             return
-        wallet, _exposure = self._wallet_exposure(conn, sol_cents)
+        wallet, _exposure, _unknown = self._wallet_exposure(conn, sol_cents)
         conn.execute(
             """
             INSERT INTO equity_day (ct_day, start_equity_cents, withdrawals_cents, deposits_cents)
@@ -1000,9 +1102,9 @@ class Signer:
 
     def _refresh_buy_halt(self, db: sqlite3.Connection, now_ms: int, sol_cents: int) -> None:
         conn = _db(db)
-        wallet, _exposure = self._wallet_exposure(conn, sol_cents)
+        wallet, _exposure, _unknown = self._wallet_exposure(conn, sol_cents)
         loss = self._loss(conn, ct_day(now_ms), wallet)
-        if loss >= 600:
+        if loss >= DAILY_LOSS_CAP_CENTS:
             reason: str | None = "daily_loss"
         elif wallet > WALLET_CAP_CENTS:
             reason = "wallet"
@@ -1027,15 +1129,18 @@ class Signer:
             """
         ).fetchall()
         for row in rows:
-            if int(row["reached_signing"]) == 0:
+            if int(row["reached_signing"]) == 0 and str(row["status"]) == "reserved":
                 conn.execute(
                     "UPDATE reservations SET status = 'released', release_reason = 'reboot' WHERE id = ?",
                     (int(row["id"]),),
                 )
                 continue
-            status = "absent"
-            if self.s.chain.authoritative:
-                status = self.s.chain.signature_status(str(row["signature"] or ""))
+            if not self.s.chain.authoritative:
+                conn.execute(
+                    "UPDATE signer_state SET activity = 'HALTED', halt_reason = 'reconcile_unknown' WHERE id = 1"
+                )
+                continue
+            status = self.s.chain.signature_status(str(row["signature"] or ""))
             if status == "confirmed":
                 conn.execute("UPDATE reservations SET status = 'confirmed' WHERE id = ?", (int(row["id"]),))
             elif status == "unknown":
@@ -1170,30 +1275,37 @@ class Signer:
         return append_event(_db(db), kind, payload, self.s.clock.now_ms(), self._needles())
 
     def _needles(self) -> tuple[str, ...]:
+        from zoora_signer.secrets import secret_needles
+
         found: list[str] = []
-        signing = self.s.secrets.get_signing_key()
-        if signing is not None:
-            found.append(signing.hex())
         mac = self.s.secrets.get_hmac_key()
         if mac is not None:
-            found.append(mac.hex())
+            found.extend(secret_needles(mac))
         url = self.s.secrets.get_rpc_url()
-        if url:
+        if url and url.startswith("https://"):
             found.append(url)
         return tuple(item for item in found if len(item) >= 8)
 
-    def _hmac_ok(self, raw: dict[str, object], signature: str) -> bool:
+    def _telegram_allow(self) -> set[str]:
+        return set(self.s.telegram_allow or set())
+
+    def _key_id(self) -> str:
+        def op(conn: sqlite3.Connection) -> str:
+            return str(int(_state(conn)["hmac_version"]))
+
+        return query(self.path, op)
+
+    def _hmac_ok(self, raw: bytes, signature: str) -> bool:
         key = self.s.secrets.get_hmac_key()
         if key is None or not signature:
             return False
-        expected = sign_intent(raw, key)
+        expected = hmac.new(key, INTENT_PREFIX + raw, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
-
-    def _payer(self) -> str:
-        secret = self.s.secrets.get_signing_key()
-        if secret is None:
-            return "11111111111111111111111111111111"
-        return public_key(secret)
+        key = self.s.secrets.get_hmac_key()
+        if key is None or not signature:
+            return False
+        expected = hmac.new(key, INTENT_PREFIX + raw, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, signature)
 
     def _whitelist(self) -> set[str]:
         def op(conn: sqlite3.Connection) -> set[str]:
@@ -1228,37 +1340,68 @@ class Signer:
         path = self.s.hud_path
         if path is None:
             return
-        rows = self.read_events(0)
-        lines = [json.dumps({"id": row_id, "kind": kind, "payload": payload}) for row_id, kind, payload in rows]
-        path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+        rows = self.read_events(self._hud_after)
+        if not rows:
+            return
+        with path.open("a", encoding="utf-8") as handle:
+            for row_id, kind, payload in rows:
+                handle.write(json.dumps({"id": row_id, "kind": kind, "payload": payload}) + "\n")
+        self._hud_after = rows[-1][0]
+
+
+def _reject_non_finite(_value: str) -> None:
+    raise ValueError("non-finite")
+
+
+def _strict_int(value: object) -> int | None:
+    if type(value) is not int:
+        return None
+    return value
 
 
 def parse_intent(raw: dict[str, object]) -> Intent | None:
-    intent_id = raw.get("intent_id")
     side = raw.get("side")
-    mint = raw.get("mint")
-    issued = raw.get("issued_at_ms")
-    slippage = raw.get("max_slippage_bps")
-    if not isinstance(intent_id, str) or not isinstance(side, str) or side not in {"buy", "sell"}:
+    if not isinstance(side, str) or side not in {"buy", "sell"}:
         return None
-    if not isinstance(mint, str) or MINT_OK.fullmatch(mint) is None:
-        return None
-    if isinstance(issued, bool) or not isinstance(issued, int):
-        return None
-    if isinstance(slippage, bool) or not isinstance(slippage, int) or slippage < 0:
-        return None
-    cents: int | None
-    if "usd_stake_cents" in raw and isinstance(raw["usd_stake_cents"], int):
-        cents = raw["usd_stake_cents"]
-    elif "usd_stake" in raw and isinstance(raw["usd_stake"], int | float) and not isinstance(raw["usd_stake"], bool):
-        cents = int(round(float(raw["usd_stake"]) * 100))
+    allowed = {
+        "intent_id",
+        "issued_at_ms",
+        "key_id",
+        "max_slippage_bps",
+        "mint",
+        "side",
+    }
+    if side == "buy":
+        allowed.add("usd_stake_micro")
     else:
-        cents = None
-    token_amount = raw.get("token_amount")
-    tokens = token_amount if isinstance(token_amount, int) else None
-    if side == "buy" and (cents is None or cents < 0):
+        allowed.add("token_amount")
+        if set(raw) != allowed and not (side == "sell" and set(raw) == allowed - {"token_amount"}):
+            required = {"intent_id", "issued_at_ms", "key_id", "max_slippage_bps", "mint", "side"}
+            if not (side == "sell" and set(raw) <= allowed and required <= set(raw)):
+                return None
+    intent_id = raw.get("intent_id")
+    mint = raw.get("mint")
+    issued = _strict_int(raw.get("issued_at_ms"))
+    slippage = _strict_int(raw.get("max_slippage_bps"))
+    key_id = raw.get("key_id")
+    if not isinstance(intent_id, str) or not isinstance(mint, str) or MINT_OK.fullmatch(mint) is None:
         return None
-    return Intent(intent_id, side, mint, cents, tokens, slippage, issued)
+    if not isinstance(key_id, str) or not key_id:
+        return None
+    if issued is None or slippage is None or slippage < 0:
+        return None
+    cents: int | None = None
+    tokens: int | None = None
+    if side == "buy":
+        micro = _strict_int(raw.get("usd_stake_micro"))
+        if micro is None or micro <= 0:
+            return None
+        cents = (micro + 9_999) // 10_000
+    elif "token_amount" in raw:
+        tokens = _strict_int(raw.get("token_amount"))
+        if tokens is None or tokens <= 0:
+            return None
+    return Intent(intent_id, side, mint, cents, tokens, slippage, issued, key_id)
 
 
 def intent_wire(intent: Intent) -> dict[str, object]:

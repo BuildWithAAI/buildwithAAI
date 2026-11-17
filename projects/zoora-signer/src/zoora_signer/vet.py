@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 
 from zoora_signer.constants import (
@@ -29,6 +30,7 @@ class VetAssessment:
     config_version: str
     code_version: str
     reason_codes: tuple[str, ...]
+    evaluated_ms: int = 0
 
 
 def _reasons(data: dict[str, object]) -> tuple[str, ...]:
@@ -89,7 +91,7 @@ def assess_vet(
         return VetAssessment(False, "STALE", False, True, config, code_version, reasons)
     if public_key is not None and not _signature_ok(public_key, data, evaluated):
         return VetAssessment(False, "BAD_SIGNATURE", False, False, config, code_version, reasons)
-    return VetAssessment(True, "PASS", False, False, config, code_version, reasons)
+    return VetAssessment(True, "PASS", False, False, config, code_version, reasons, evaluated_ms)
 
 
 def _signature_ok(public_key: bytes, data: dict[str, object], evaluated: int | float) -> bool:
@@ -112,13 +114,11 @@ def _signature_ok(public_key: bytes, data: dict[str, object], evaluated: int | f
 
 
 class SubprocessVet:
-    def __init__(
-        self,
-        command: list[str],
-        timeout_s: float = VET_TIMEOUT_S,
-        budget_s: int = VET_BUDGET_S,
-    ) -> None:
-        self.command = list(command)
+    """Calls the pinned ``smr.vet`` module with this interpreter. The module path is not configurable."""
+
+    MODULE = "smr.vet"
+
+    def __init__(self, timeout_s: float = VET_TIMEOUT_S, budget_s: int = VET_BUDGET_S) -> None:
         self.timeout_s = timeout_s
         self.budget_s = budget_s
 
@@ -127,7 +127,7 @@ class SubprocessVet:
             return 3, "", False
         try:
             proc = subprocess.run(
-                [*self.command, mint, "--budget-s", str(self.budget_s)],
+                [sys.executable, "-m", self.MODULE, mint, "--budget-s", str(self.budget_s)],
                 capture_output=True,
                 timeout=self.timeout_s,
                 check=False,

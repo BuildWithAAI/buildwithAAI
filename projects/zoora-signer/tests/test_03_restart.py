@@ -61,13 +61,10 @@ def test_kill_mid_reservation_and_confirmation(tmp_path: Path) -> None:
     second, _services = build(tmp_path / "confirm")
     _kill("hold-confirm", Path(second.path), tmp_path / "confirm.ready")
     back, _services = build(tmp_path / "confirm")
-    assert back.activity() == "PAUSED"
+    assert back.activity() == "HALTED"
     conn = connect(back.path)
     row = conn.execute(
         "SELECT status, reached_signing FROM reservations WHERE intent_id = 'hold-confirm'"
     ).fetchone()
     assert row is not None
-    assert str(row["status"]) == "released"
-    assert int(row["reached_signing"]) == 1
-    assert activate(back).ok
-    assert buy(back).ok
+    assert str(row["status"]) == "signing"

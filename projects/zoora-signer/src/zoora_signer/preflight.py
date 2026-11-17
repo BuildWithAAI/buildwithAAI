@@ -5,7 +5,10 @@ from __future__ import annotations
 import subprocess
 import time
 from dataclasses import dataclass
+from email.utils import parsedate_to_datetime
 from typing import Protocol
+
+import httpx
 
 
 class CommandRunner(Protocol):
@@ -60,7 +63,15 @@ def av_active(mp_text: str, security_center_text: str) -> bool:
     return parse_mp_status(mp_text) or parse_security_center(security_center_text)
 
 
+def administrators_sid_present(text: str) -> bool:
+    """True when the Administrators SID is in the token, elevated or not."""
+
+    return "S-1-5-32-544" in text
+
+
 def parse_whoami(text: str) -> bool:
+    if administrators_sid_present(text):
+        return True
     lowered = text.lower()
     if "high mandatory level" in lowered:
         return True
@@ -97,6 +108,22 @@ def parse_http_date_skew_ms(local_ms: int, date_header_ms: int) -> int:
     return abs(local_ms - date_header_ms)
 
 
+def https_date_skew_ms(url: str) -> int | None:
+    """Skew against an HTTPS Date header. A failed read is not a sample."""
+
+    if not url.startswith("https://"):
+        return None
+    try:
+        response = httpx.Client(timeout=3.0).head(url)
+        header = response.headers.get("date")
+        if header is None:
+            return None
+        remote_ms = int(parsedate_to_datetime(header).timestamp() * 1000)
+    except Exception:
+        return None
+    return parse_http_date_skew_ms(time.time_ns() // 1_000_000, remote_ms)
+
+
 class SubprocessRunner:
     def run(self, args: list[str], timeout: float = 20) -> tuple[int, str]:
         proc = subprocess.run(
@@ -118,10 +145,12 @@ class WindowsOsProbe:
         runner: CommandRunner | None = None,
         clock_samples: tuple[int, ...] = (),
         power_text: str = "",
+        clock_urls: tuple[str, ...] = (),
     ) -> None:
         self.paths = paths
         self.runner = runner or SubprocessRunner()
         self._clock_samples = clock_samples
+        self._clock_urls = clock_urls
         self._power_text = power_text
         self._power_consumed = False
 
@@ -129,17 +158,17 @@ class WindowsOsProbe:
         return (time.time_ns() // 1_000_000, time.monotonic_ns() // 1_000_000)
 
     def time_skew_ms(self) -> int | None:
-        if self._clock_samples:
-            if len(self._clock_samples) < 2:
-                return None
-            return max(self._clock_samples)
         samples: list[int] = []
         code, text = self.runner.run(["w32tm", "/query", "/status"])
         offset = parse_w32tm_offset_ms(text) if code == 0 else None
         if offset is not None:
-            samples.append(offset)
+            samples.append(abs(offset))
         for extra in self._clock_samples:
-            samples.append(extra)
+            samples.append(abs(extra))
+        for url in self._clock_urls:
+            skew = https_date_skew_ms(url)
+            if skew is not None:
+                samples.append(skew)
         if len(samples) < 2:
             return None
         return max(samples)

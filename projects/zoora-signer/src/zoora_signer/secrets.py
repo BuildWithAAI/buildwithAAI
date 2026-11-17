@@ -7,12 +7,77 @@ from pathlib import Path
 
 from zoora_signer.constants import (
     FORBIDDEN_ENV,
+    HMAC_MIN_BYTES,
     KEYRING_HMAC,
     KEYRING_RPC,
     KEYRING_SERVICE,
     KEYRING_SIGNING,
     RPC_PROVIDER_NAME,
+    SIGNING_KEY_BYTES,
 )
+
+
+class InvalidSigningKey(ValueError):
+    pass
+
+
+def parse_signing_key(text: str) -> bytes:
+    """Only a 64-byte keypair as 128 hex characters is accepted."""
+
+    raw = text.strip()
+    if raw.startswith("<") or " " in raw or raw.startswith("["):
+        raise InvalidSigningKey("FORMAT")
+    if len(raw) != SIGNING_KEY_BYTES * 2:
+        raise InvalidSigningKey("FORMAT")
+    try:
+        decoded = bytes.fromhex(raw)
+    except ValueError as exc:
+        raise InvalidSigningKey("FORMAT") from exc
+    if decoded.hex() != raw.lower():
+        raise InvalidSigningKey("FORMAT")
+    return decoded
+
+
+def secret_needles(secret: bytes) -> tuple[str, ...]:
+    import base64
+
+    encoded = [
+        secret.hex(),
+        secret.hex().upper(),
+        base64.b64encode(secret).decode(),
+        _b58(secret),
+        "[" + ",".join(str(byte) for byte in secret) + "]",
+        "[" + ", ".join(str(byte) for byte in secret) + "]",
+    ]
+    try:
+        text = secret.decode("utf-8")
+    except UnicodeDecodeError:
+        text = ""
+    if text:
+        encoded.append(text)
+    return tuple(item for item in encoded if len(item) >= 8)
+
+
+def _b58(data: bytes) -> str:
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    value = int.from_bytes(data, "big")
+    chars = []
+    while value:
+        value, rem = divmod(value, 58)
+        chars.append(alphabet[rem])
+    zeros = 0
+    for byte in data:
+        if byte == 0:
+            zeros += 1
+        else:
+            break
+    return "1" * zeros + "".join(reversed(chars))
+
+
+def _hmac_bytes(key: bytes | None) -> bytes | None:
+    if key is None or len(key) < HMAC_MIN_BYTES:
+        return None
+    return key
 
 
 class KeyMaterialInEnv(RuntimeError):
@@ -33,16 +98,23 @@ class MemorySecretStore:
 
     def get_signing_key(self) -> bytes | None:
         reject_key_material_in_env()
-        return self.signing_key
+        if self.signing_key is None:
+            return None
+        return parse_signing_key(self.signing_key.hex())
 
     def has_signing_key(self) -> bool:
-        return self.signing_key is not None
+        try:
+            return self.get_signing_key() is not None
+        except InvalidSigningKey:
+            return False
 
     def get_hmac_key(self) -> bytes | None:
         reject_key_material_in_env()
-        return self.hmac_key
+        return _hmac_bytes(self.hmac_key)
 
     def set_hmac_key(self, key: bytes) -> None:
+        if _hmac_bytes(key) is None:
+            raise InvalidSigningKey("HMAC_SHORT")
         self.hmac_key = key
 
     def get_rpc_url(self) -> str | None:
@@ -61,23 +133,28 @@ class KeyringSecretStore:
         raw = _password(KEYRING_SIGNING)
         if raw is None:
             return None
-        try:
-            return bytes.fromhex(raw.strip())
-        except ValueError:
-            return raw.encode()
+        return parse_signing_key(raw)
 
     def has_signing_key(self) -> bool:
-        reject_key_material_in_env()
-        return _password(KEYRING_SIGNING) is not None
+        try:
+            return self.get_signing_key() is not None
+        except InvalidSigningKey:
+            return False
 
     def get_hmac_key(self) -> bytes | None:
         reject_key_material_in_env()
         raw = _password(KEYRING_HMAC)
         if raw is None:
             return None
-        return raw.encode()
+        try:
+            decoded = bytes.fromhex(raw.strip())
+        except ValueError:
+            return None
+        return _hmac_bytes(decoded)
 
     def set_hmac_key(self, key: bytes) -> None:
+        if _hmac_bytes(key) is None:
+            raise InvalidSigningKey("HMAC_SHORT")
         import keyring
 
         keyring.set_password(KEYRING_SERVICE, KEYRING_HMAC, key.hex())

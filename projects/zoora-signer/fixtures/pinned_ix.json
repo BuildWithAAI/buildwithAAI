@@ -1,0 +1,646 @@
+{
+  "docs_commit": "639b87fb45c3adeffa6f7c4a1bf0cb85e392bf22",
+  "verified_on": "2026-11-17",
+  "pump": {
+    "buy_v2": {
+      "discriminator": [
+        184,
+        23,
+        238,
+        97,
+        103,
+        197,
+        211,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "base_mint",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "quote_mint",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "base_token_program",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "quote_token_program",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_token_program",
+          "writable": false,
+          "signer": false,
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "fee_recipient",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_quote_fee_recipient",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "buyback_fee_recipient",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_quote_buyback_fee_recipient",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "bonding_curve",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_base_bonding_curve",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_quote_bonding_curve",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true,
+          "address": ""
+        },
+        {
+          "name": "associated_base_user",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_quote_user",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "creator_vault",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_creator_vault",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "sharing_config",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "global_volume_accumulator",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user_volume_accumulator",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_user_volume_accumulator",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "fee_config",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "fee_program",
+          "writable": false,
+          "signer": false,
+          "address": "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
+        },
+        {
+          "name": "system_program",
+          "writable": false,
+          "signer": false,
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "program",
+          "writable": false,
+          "signer": false,
+          "address": "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+        }
+      ]
+    },
+    "sell_v2": {
+      "discriminator": [
+        93,
+        246,
+        130,
+        60,
+        231,
+        233,
+        64,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "base_mint",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "quote_mint",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "base_token_program",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "quote_token_program",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_token_program",
+          "writable": false,
+          "signer": false,
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "fee_recipient",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_quote_fee_recipient",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "buyback_fee_recipient",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_quote_buyback_fee_recipient",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "bonding_curve",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_base_bonding_curve",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_quote_bonding_curve",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true,
+          "address": ""
+        },
+        {
+          "name": "associated_base_user",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_quote_user",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "creator_vault",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_creator_vault",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "sharing_config",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user_volume_accumulator",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "associated_user_volume_accumulator",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "fee_config",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "fee_program",
+          "writable": false,
+          "signer": false,
+          "address": "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
+        },
+        {
+          "name": "system_program",
+          "writable": false,
+          "signer": false,
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "program",
+          "writable": false,
+          "signer": false,
+          "address": "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+        }
+      ]
+    }
+  },
+  "pump_swap": {
+    "buy": {
+      "discriminator": [
+        102,
+        6,
+        61,
+        18,
+        1,
+        218,
+        235,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true,
+          "address": ""
+        },
+        {
+          "name": "global_config",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "base_mint",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "quote_mint",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user_base_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user_quote_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "pool_base_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "pool_quote_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "protocol_fee_recipient",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "protocol_fee_recipient_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "base_token_program",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "quote_token_program",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "system_program",
+          "writable": false,
+          "signer": false,
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associated_token_program",
+          "writable": false,
+          "signer": false,
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "event_authority",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "program",
+          "writable": false,
+          "signer": false,
+          "address": "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA"
+        },
+        {
+          "name": "coin_creator_vault_ata",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "coin_creator_vault_authority",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "global_volume_accumulator",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user_volume_accumulator",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "fee_config",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "fee_program",
+          "writable": false,
+          "signer": false,
+          "address": "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
+        }
+      ]
+    },
+    "sell": {
+      "discriminator": [
+        51,
+        230,
+        133,
+        164,
+        1,
+        127,
+        131,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "pool",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true,
+          "address": ""
+        },
+        {
+          "name": "global_config",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "base_mint",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "quote_mint",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user_base_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "user_quote_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "pool_base_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "pool_quote_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "protocol_fee_recipient",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "protocol_fee_recipient_token_account",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "base_token_program",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "quote_token_program",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "system_program",
+          "writable": false,
+          "signer": false,
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associated_token_program",
+          "writable": false,
+          "signer": false,
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "event_authority",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "program",
+          "writable": false,
+          "signer": false,
+          "address": "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA"
+        },
+        {
+          "name": "coin_creator_vault_ata",
+          "writable": true,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "coin_creator_vault_authority",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "fee_config",
+          "writable": false,
+          "signer": false,
+          "address": ""
+        },
+        {
+          "name": "fee_program",
+          "writable": false,
+          "signer": false,
+          "address": "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
+        }
+      ]
+    }
+  }
+}

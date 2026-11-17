@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from zoora_signer.models import Intent, OracleReading
+from zoora_signer.models import OracleReading
 
 
 class Clock(Protocol):
@@ -69,7 +69,7 @@ class Broadcaster(Protocol):
 @dataclass(frozen=True)
 class PullBatch:
     unreachable: bool
-    intents: list[tuple[Intent, str]]
+    intents: list[tuple[bytes, str]]
 
 
 class IntentFeed(Protocol):

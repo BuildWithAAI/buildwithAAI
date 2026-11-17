@@ -151,7 +151,10 @@ def main() -> int:
         return 1
     result = response.get("result")
     err = result.get("value", {}).get("err") if isinstance(result, dict) else response.get("error")
-    print(f"unsigned simulation finished; err={err}")
+    if err is not None:
+        print(f"unsigned simulation failed; err={err}")
+        return 1
+    print("unsigned simulation finished with no error")
     print("no signature was produced and nothing was submitted")
     return 0
 
