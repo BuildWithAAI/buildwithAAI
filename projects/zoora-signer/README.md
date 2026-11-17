@@ -1,0 +1,101 @@
+# Nothing here is live
+
+This package does not trade, does not broadcast, and does not hold a key. It boots in `DRY_RUN` and `PAUSED`. `LIVE` stays refused until the owner records `ROUTE_APPROVED` with a written permission source from pump.fun. Even then, an owner `resume` is required, and this build's broadcaster refuses to submit. There is no `sendTransaction` path.
+
+No private key, seed, or RPC URL belongs in the repo, the logs, CI, or chat. Tests generate throwaway keys in memory.
+
+## What it enforces
+
+Caps, in one SQLite `BEGIN IMMEDIATE`: $2 all-in, 3 open trades, 10 buys per Chicago day, $6 daily loss, $20 exposure, $25 wallet at mark, 1500 bps, 4 intents an hour. A kill holds every position until an owner CLI sell. Telegram can only halt. Buys need a fresh `vetcfg-20261117-v6` PASS from `python -m smr.vet`. The oracle is Pyth Hermes plus Jupiter, and a stale, wide, or disagreeing price halts.
+
+## Windows setup
+
+From PowerShell, in `projects\zoora-signer`:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+```
+
+If activation is blocked, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` for this window only.
+
+Create the data directory and the database path the CLI uses by default:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.zoora-signer" | Out-Null
+```
+
+### Credential Manager
+
+The signing key and the HMAC key are prompted. They are not command-line arguments, so they do not land in shell history. The RPC URL may live in Credential Manager or in an ACL-locked env file. It is never a process environment variable.
+
+```powershell
+python -m keyring set zoora-signer signing-key
+python -m keyring set zoora-signer hmac-key
+python -m keyring set zoora-signer rpc-url
+```
+
+Each command prompts. Paste into the prompt, not into the command. The signing key is hex. Quote nothing around the prompt value.
+
+To lock an RPC env file instead of the RPC credential:
+
+```powershell
+$dir = "$env:USERPROFILE\.zoora-signer"
+New-Item -ItemType Directory -Force $dir | Out-Null
+notepad "$dir\rpc.env"
+icacls "$dir\rpc.env" /inheritance:r /grant:r "${env:USERNAME}:(R)"
+```
+
+`rpc.env` may contain only:
+
+```text
+ZOORA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
+ZOORA_RPC_PROVIDER=helius
+```
+
+A line whose name contains SIGNER, SEED, SECRET, HMAC, PRIVATE, or MNEMONIC is refused. Pass the file with `--rpc-env-file`. In PowerShell, quote paths that contain spaces:
+
+```powershell
+zoora-signer --rpc-env-file "$env:USERPROFILE\.zoora-signer\rpc.env" doctor
+```
+
+### Doctor and the owner commands
+
+```powershell
+zoora-signer doctor
+zoora-signer status
+zoora-signer halt
+zoora-signer route-approved --source "written permission from pump.fun" --date 2026-11-17
+zoora-signer mode dry-run
+zoora-signer resume
+zoora-signer expect-deposit 50000000 --ttl 3600
+zoora-signer whitelist-add "YOUR_OWNER_ADDRESS"
+zoora-signer sweep "YOUR_OWNER_ADDRESS" 1000
+zoora-signer sell "MINT_ADDRESS" --tokens 1000
+zoora-signer sell-all
+zoora-signer rotate-hmac
+```
+
+`rotate-hmac` prompts. `mode live` is refused until `route-approved` has been recorded. Resume runs the preflight again. A failed check leaves the process `PAUSED`.
+
+PowerShell treats `--date 2026-11-17` as a single argument. If a source text contains spaces, keep it in double quotes as shown. Do not put a key in those quotes.
+
+## Tests
+
+```powershell
+python -m pytest
+python -m ruff check src tests scripts
+python -m mypy --strict src/zoora_signer
+```
+
+The local validator rehearsal is `python scripts/e2e_validator.py`. It is not part of CI. It refuses to run without the Solana CLI and it never signs.
+
+## Before any live use
+
+1. Acceptance tests 1 through 13 are green on this commit.
+2. `zoora-signer doctor` is all pass on the owner's PC: clock, Defender or another AV product, standard user, owner-only ACL, signing key present.
+3. The owner has stored the key and the Helius URL in Credential Manager.
+4. `ROUTE_APPROVED` cites a written pump.fun permission, with its date, in the event chain.
+5. Head of Security GO, Head of Systems GO, and Zoorped's final approval in his own words.
+6. The owner runs `resume` himself. This repository build still will not broadcast.

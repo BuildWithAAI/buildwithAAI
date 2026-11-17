@@ -1,0 +1,65 @@
+{
+  "verified_on": "2026-11-17",
+  "method": "getMultipleAccounts",
+  "rpc_provider": "solana-public-mainnet",
+  "source_note": "Public mainnet-beta getMultipleAccounts. No API key. Not the pump.fun website.",
+  "docs_commit": "639b87fb45c3adeffa6f7c4a1bf0cb85e392bf22",
+  "observed_curve_fee_bps": 95,
+  "readme_example_fee_bps": 100,
+  "accounts": [
+    {
+      "pubkey": "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "space": 36
+    },
+    {
+      "pubkey": "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "space": 36
+    },
+    {
+      "pubkey": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "space": 36
+    },
+    {
+      "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "executable": true,
+      "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "space": 36
+    },
+    {
+      "pubkey": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+      "executable": true,
+      "owner": "BPFLoader2111111111111111111111111111111111",
+      "space": 105032
+    },
+    {
+      "pubkey": "11111111111111111111111111111111",
+      "executable": true,
+      "owner": "NativeLoader1111111111111111111111111111111",
+      "space": 21
+    },
+    {
+      "pubkey": "ComputeBudget111111111111111111111111111111",
+      "executable": true,
+      "owner": "NativeLoader1111111111111111111111111111111",
+      "space": 22
+    },
+    {
+      "pubkey": "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf",
+      "executable": false,
+      "owner": "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+      "space": 1096
+    },
+    {
+      "pubkey": "ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw",
+      "executable": false,
+      "owner": "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
+      "space": 949
+    }
+  ]
+}

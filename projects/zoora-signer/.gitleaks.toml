@@ -1,0 +1,16 @@
+title = "Zoora signer"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  '''fixtures/pump_global_prefix.bin''',
+  '''fixtures/program_accounts.json''',
+]
+regexes = [
+  '''6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P''',
+  '''pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA''',
+  '''TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb''',
+  '''TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA''',
+]

@@ -217,3 +217,28 @@ Log the RPC provider by name only, never the URL or key. For every decision, rec
   provider name only.
 - Live gate (unchanged): automated limit tests, a no-money dry run, a §6.1-compliant route (ROUTE_APPROVED), HoSec GO,
   HoS GO, and his final approval in his own words.
+
+---
+## A15. Windows host preflight (Head of Systems, 2026-11-17)
+
+The preflight runs at boot, on resume from sleep or hibernate, and every 10 minutes. Each failed check fails closed: the signer goes to PAUSED and logs an event. No check prints a secret.
+
+1. It always starts PAUSED after a reboot, a process restart, or a resume from sleep. Resume from sleep is a wall-clock versus monotonic jump of more than 30 seconds, or a power-event hook.
+2. Clock sync compares the local clock with at least two independent time sources (for example the HTTPS Date header from the RPC provider and the Lumen feed, plus `w32tm /query /status`). Skew over 2 seconds refuses to sign.
+3. Windows Defender or another AV product is active. The check is `Get-MpComputerStatus` (`AMServiceEnabled`, `RealTimeProtectionEnabled`) or a third-party product via SecurityCenter2. If neither is active, refuse.
+4. The process runs as a standard user. Refuse if the token is elevated or the user is in Administrators.
+5. The ACL on the Credential Manager key and RPC entries, and on the SQLite database and its directory, is owner-only. Everyone, Users, or Authenticated Users access refuses to start.
+
+OS probes sit behind an interface with test doubles. Acceptance tests 13a through 13e cover one check each. `zoora-signer doctor` prints each check as pass or fail and prints no secrets.
+
+Under a kill, hold everything. No automated sells, stops, or time-stops fire during a kill. Only an owner CLI SELL releases a position.
+
+The RPC is the Helius free tier. A client-side limiter and backoff stay under the free tier's documented limits (10 RPC requests/second, 5 `getProgramAccounts`/second, 1,000,000 credits/month; https://www.helius.dev/docs/billing/rate-limits and https://www.helius.dev/docs/billing/plans, read 2026-11-17). This build stays at 8 RPC requests/second and does not submit transactions. A 429 or quota error is UNKNOWN, which means no new buys. The log records the provider name only.
+
+Confirmed: an intent's TTL is 90 seconds, a verdict older than 15 seconds triggers a warm re-vet, and an unreachable intent feed produces no new buys.
+
+## A16. Implementation language (owner decision, 2026-11-17)
+
+The signer in `projects/zoora-signer` is Python 3.11 or newer, not Node or TypeScript. It is the package that runs on the owner's Windows PC. There is no parallel TypeScript implementation.
+
+Stack: stdlib `sqlite3` in WAL mode with `BEGIN IMMEDIATE`; `keyring` (Windows Credential Manager) behind an interface, plus a test double; `solders` and `httpx` for transactions, simulation, the outbound intent pull, and Pyth Hermes; pytest and hypothesis; argparse for the owner CLI. Windows probes go through PowerShell or ctypes behind interfaces. The vet gate shells out to `python -m smr.vet`. Lumen is unchanged: A1 stays a spec in this project until a later PR.
