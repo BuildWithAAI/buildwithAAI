@@ -241,17 +241,22 @@ Confirmed: an intent's TTL is 90 seconds, a verdict older than 15 seconds trigge
 
 The signer in `projects/zoora-signer` is Python 3.11 or newer, not Node or TypeScript. It is the package that runs on the owner's Windows PC. There is no parallel TypeScript implementation.
 
-## H3 / L1 / L2 on hold (owner decision)
+## H3 / L1 / L2 builders (code only, 2026-11-18)
 
-Real transaction builders are not in this build. Placeholder builders refuse every call. The builder pull request, when the owner asks for it, must:
+The unsigned builders are in this build. `RefuseBroadcaster` is still the only broadcaster. Boot stays `DRY_RUN` and `PAUSED`. The sign step is refused before any key is read, and nothing in this process submits a transaction.
 
-- Build the 27-account `buy_v2` and the matching `sell_v2`, plus the PumpSwap equivalents, from the pinned IDL.
-- Set `max_sol_cost` from the slippage cap on the instruction itself.
-- Use a real curve or pool quote.
-- Include the on-chain fee: 95 bps protocol plus 30 bps creator, 125 bps total, read from the fee config rather than a fixed example.
-- Include ATA rent of 1,513,840 lamports when a new account is required.
-- Fix priority-fee units so the price is microlamports per compute unit.
-- Keep the $2 all-in cap inclusive of fee and rent, and round the spend down so it cannot exceed $2.000000.
+The current bonding-curve trades in `idl/pump.json` at docs commit `639b87fb45c3adeffa6f7c4a1bf0cb85e392bf22` are `buy_v3` and `sell_v3` (17 accounts). `TRADE_V3.md` is the current interface; `buy_v2` and `sell_v2` remain in the IDL but are not what the builder emits. v3 keeps protocol and creator fees on the curve, so the creator vault is not an account. The fee config and the user volume accumulator are. PumpSwap's current trades are `buy_v2` and `sell_v2` from `idl/pump_amm.json`, also 17 accounts.
+
+The builder requirements are:
+
+- Account lists follow those IDL instructions, in order, with the signer and writable flags.
+- A buy computes `token_out` from the live curve or pool, and sets `max_sol_cost = quote × (1 + slippage)`. Slippage is capped at 1500 bps.
+- A sell sets `min_sol_output = quote × (1 − slippage)`.
+- Mint decimals come from the mint account. Token-2022 and SPL Token choose the token program.
+- Fees are read from the on-chain fee config. The recorded schedule is 95 bps protocol plus 30 bps creator. A missing or zero schedule fails closed.
+- ATA rent is the live rent-exempt minimum supplied by the caller. The recorded Token-2022 figure is 1,513,840 lamports, included only when the ATA is created.
+- `SetComputeUnitPrice` is micro-lamports per compute unit. That priority fee, the signature fee, and the rent are inside the cost.
+- The $2 all-in cap includes the quote after slippage, both fees, ATA rent when created, and the network and priority fees. The lamport budget rounds down so the USD value cannot exceed $2.000000. A trade that does not fit is refused.
 
 
 Stack: stdlib `sqlite3` in WAL mode with `BEGIN IMMEDIATE`; `keyring` (Windows Credential Manager) behind an interface, plus a test double; `solders` and `httpx` for transactions, simulation, the outbound intent pull, and the on-chain Pyth price account; pytest and hypothesis; argparse for the owner CLI. Windows probes go through PowerShell or ctypes behind interfaces. The vet gate shells out to `sys.executable -m smr.vet`. Lumen is unchanged: A1 stays a spec in this project until a later PR.

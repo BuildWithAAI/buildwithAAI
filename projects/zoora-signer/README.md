@@ -1,6 +1,6 @@
 # Nothing here is live
 
-This is a trading executor design. The current build cannot sign or broadcast. It boots in `DRY_RUN` and `PAUSED`. `LIVE` stays refused until the owner records `ROUTE_APPROVED` with an https permission URL, a date, and a hash of the permission text. Even then, an owner `resume` is required, and this build's broadcaster refuses to submit. Real buy and sell builders are on hold, and the placeholder builders refuse every transaction. There is no `sendTransaction` path.
+This is a trading executor design. The current build cannot sign or broadcast. It boots in `DRY_RUN` and `PAUSED`. `LIVE` stays refused until the owner records `ROUTE_APPROVED` with an https permission URL, a date, and a hash of the permission text. Even then, an owner `resume` is required, and this build's broadcaster refuses to submit. The buy and sell builders assemble unsigned v0 messages. The sign step is refused before a key is read. A sweep still refuses. There is no `sendTransaction` path.
 
 No private key, seed, or RPC URL belongs in the repo, the logs, CI, or chat. Tests generate throwaway keys in memory.
 
@@ -8,7 +8,7 @@ No private key, seed, or RPC URL belongs in the repo, the logs, CI, or chat. Tes
 
 Caps, in one SQLite `BEGIN IMMEDIATE`: $2 all-in, 3 open trades, 10 buys per Chicago day, $6 daily loss, $20 exposure, $25 wallet at mark, 1500 bps, 4 intents an hour. A kill holds every position until an owner CLI sell. Telegram can only halt. Buys need a fresh `vetcfg-20261117-v6` PASS from `python -m smr.vet`. The oracle is Pyth Hermes plus Jupiter, and a stale, wide, or disagreeing price halts.
 
-The bonding-curve fee is read from the on-chain global account. On 2026-11-17 that read returned 95 bps. This signer does not use a fixed example fee. If the account cannot be read, the quote fails closed.
+The trade fee is read from the on-chain fee config. The recorded schedule is 95 bps protocol plus 30 bps creator. A missing or zero schedule fails closed. The global account's 95 bps protocol figure, read on 2026-11-17, is not used as a default.
 
 ## Windows setup
 
@@ -91,7 +91,7 @@ python -m ruff check src tests scripts
 python -m mypy --strict src/zoora_signer
 ```
 
-The local validator rehearsal is `python scripts/e2e_validator.py`. It loads the account snapshot in `fixtures/e2e_curve.json` (public RPC, 2026-11-17), clones the pump and token programs with `--clone-upgradeable-program`, and simulates an unsigned `buy_v3` and `sell_v3` with `sigVerify` false. It never signs or submits. The required CI jobs do not run it. An optional job installs Solana CLI `v4.4.1` and runs the script. That job is `continue-on-error` because the program clone uses the public RPC.
+The local validator rehearsal is `python scripts/e2e_validator.py`. It loads the account snapshot in `fixtures/e2e_curve.json` (public RPC, 2026-11-17), clones the pump and token programs with `--clone-upgradeable-program`, and simulates the real unsigned `buy_v3` and `sell_v3` builders with `sigVerify` false. It never signs or submits. The required CI jobs do not run it. An optional job installs Solana CLI `v4.4.1` and runs the script. That job is `continue-on-error` because the program clone uses the public RPC.
 
 Credential Manager entry ACLs are not readable through the keyring API used here. The owner confirms those ACLs in Windows Credential Manager. The file ACL check covers the database, its directory, and `rpc.env`.
 

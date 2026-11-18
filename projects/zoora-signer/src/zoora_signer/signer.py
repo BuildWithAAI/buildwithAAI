@@ -45,9 +45,6 @@ from zoora_signer.ports import (
 )
 from zoora_signer.quote import lamports_for_cents
 from zoora_signer.secrets import reject_key_material_in_env
-from zoora_signer.txbuild import (
-    Instruction,
-)
 from zoora_signer.vet import VetAssessment, assess_vet
 
 MINT_OK = __import__("re").compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
@@ -736,7 +733,8 @@ class Signer:
         if self.activity() == "HALTED":
             return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
         if self.mode() == "LIVE":
-            return self._release(reservation_id, "PLACEHOLDER_BUILDER", intent.intent_id)
+            # The builder can assemble an unsigned message. This process never signs it.
+            return self._release(reservation_id, "SIGN_REFUSED", intent.intent_id)
         price = sol_usd_cents(reading)
         lamports = lamports_for_cents(stake, price)
         if lamports is None:
@@ -1429,10 +1427,6 @@ def _vet_payload(assessment: VetAssessment | None) -> Payload:
         "code_version": assessment.code_version,
         "reason_codes": ",".join(assessment.reason_codes),
     }
-
-
-def _message(ixs: list[Instruction]) -> bytes:
-    return b"".join(ix.program_id.encode() + ix.data for ix in ixs)
 
 
 def _db(conn: sqlite3.Connection) -> sqlite3.Connection:

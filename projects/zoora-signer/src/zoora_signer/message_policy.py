@@ -1,7 +1,7 @@
 """Decode a real Solana message and enforce the instruction allowlist.
 
-Real buy and sell builders are on hold. This module only accepts or rejects
-an already built message. Placeholder builders refuse to create one.
+The builders emit v0 messages with no address lookup tables. This module
+accepts exactly that shape and rejects anything else.
 """
 
 from __future__ import annotations

@@ -9,8 +9,8 @@ SPL Token programs are copied with --clone-upgradeable-program from the
 public RPC. The script then simulates buy_v3 and sell_v3 with sigVerify
 false. Nothing is signed or submitted.
 
-This rehearsal is not the signer transaction builder. That builder stays a
-fail-closed placeholder.
+The transactions are the real unsigned buy_v3 and sell_v3 builders. The
+signature slot is empty. This process does not sign and does not submit.
 """
 
 from __future__ import annotations
@@ -36,11 +36,8 @@ PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
 TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
 SPL_TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 SYSTEM = "11111111111111111111111111111111"
-BUY_V3 = bytes([7, 5, 29, 196, 245, 23, 101, 80])
-SELL_V3 = bytes([28, 146, 222, 119, 38, 196, 105, 213])
-# Writable indexes in the 17-account v3 trade. The user (index 8) is the signer.
-WRITABLE = {5, 6, 7, 8, 9, 10, 11, 13}
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "e2e_curve.json"
+SKIP_ACCOUNTS = {PUMP, TOKEN_2022, SPL_TOKEN, SYSTEM}
 
 
 def _rpc(url: str, method: str, params: list[object]) -> dict[str, object]:
@@ -117,23 +114,52 @@ def _synthetic_accounts(document: dict[str, object]) -> dict[str, dict[str, obje
     return synthesized
 
 
-def _unsigned(order: list[str], data: bytes) -> str:
-    from solders.hash import Hash
-    from solders.instruction import AccountMeta, Instruction
-    from solders.message import Message
-    from solders.pubkey import Pubkey
-    from solders.transaction import Transaction
+def _builder_transactions(document: dict[str, object]) -> tuple[str, str, tuple[str, ...]]:
+    """Real builder output. Signature.default() leaves the transaction unsigned."""
 
-    metas = []
-    for index, key in enumerate(order):
-        metas.append(AccountMeta(Pubkey.from_string(key), index == 8, index in WRITABLE))
-    payer = Pubkey.from_string(order[8])
-    instruction = Instruction(Pubkey.from_string(PUMP), data, metas)
-    message = Message.new_with_blockhash([instruction], payer, Hash.default())
-    transaction = Transaction.new_unsigned(message)
-    if transaction.is_signed():
-        raise RuntimeError("unsigned transaction was signed")
-    return base64.b64encode(bytes(transaction)).decode()
+    sys.path.insert(0, str(FIXTURE.parents[1] / "src"))
+    from zoora_signer.constants import TOKEN_2022
+    from zoora_signer.txbuild import build_curve_buy, build_curve_sell
+
+    order = document["accounts_in_order"]
+    assert isinstance(order, list)
+    accounts = document["accounts"]
+    assert isinstance(accounts, dict)
+    mint = str(order[1])
+    user = str(order[8])
+    buyback = str(order[13])
+    curve = base64.b64decode(str(accounts[str(order[5])]["data"]))
+    fee = base64.b64decode(str(accounts[str(order[12])]["data"]))
+    mint_data = base64.b64decode(str(accounts[mint]["data"]))
+    buy = build_curve_buy(
+        user=user,
+        mint_address=mint,
+        mint_data=mint_data,
+        mint_owner=TOKEN_2022,
+        curve_data=curve,
+        fee_config_data=fee,
+        buyback_fee_recipient=buyback,
+        sol_usd_cents=100_000,
+        stake_cents=200,
+        slippage_bps=1500,
+        create_base_ata=False,
+    )
+    sell = build_curve_sell(
+        user=user,
+        mint_address=mint,
+        mint_data=mint_data,
+        mint_owner=TOKEN_2022,
+        curve_data=curve,
+        fee_config_data=fee,
+        buyback_fee_recipient=buyback,
+        token_in=10_000_000_000_000,
+        slippage_bps=1500,
+    )
+    return (
+        base64.b64encode(buy.raw).decode(),
+        base64.b64encode(sell.raw).decode(),
+        buy.accounts,
+    )
 
 
 def _wait_for_validator(url: str, proc: subprocess.Popen[str], log_path: Path) -> None:
@@ -190,9 +216,33 @@ def main() -> int:
         print("with sigVerify false. It does not sign and it does not submit.")
         return 2
     document = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    order = [str(item) for item in document["accounts_in_order"]]
+    buy_tx, sell_tx, built_accounts = _builder_transactions(document)
     stored = {str(key): value for key, value in document["accounts"].items()}
     stored.update(_synthetic_accounts(document))
+    curve_ata = stored[str(document["accounts_in_order"][6])]
+    assert isinstance(curve_ata, dict)
+    user_ata = built_accounts[9]
+    if user_ata not in stored:
+        raw = bytearray(base64.b64decode(str(curve_ata["data"])))
+        from solders.pubkey import Pubkey
+
+        raw[32:64] = bytes(Pubkey.from_string(built_accounts[8]))
+        raw[64:72] = (10**15).to_bytes(8, "little")
+        stored[user_ata] = {
+            "lamports": curve_ata["lamports"],
+            "data": base64.b64encode(bytes(raw)).decode(),
+            "owner": curve_ata["owner"],
+            "rentEpoch": curve_ata["rentEpoch"],
+        }
+    for key in built_accounts:
+        if key in stored or key in SKIP_ACCOUNTS:
+            continue
+        stored[key] = {
+            "lamports": 1_000_000,
+            "data": base64.b64encode(b"").decode(),
+            "owner": SYSTEM,
+            "rentEpoch": 0,
+        }
     for account in stored.values():
         if isinstance(account, dict):
             _rent_exempt(account)
@@ -228,10 +278,8 @@ def main() -> int:
         local = "http://127.0.0.1:8899"
         try:
             _wait_for_validator(local, proc, log_path)
-            buy = _unsigned(order, BUY_V3 + (1_000_000).to_bytes(8, "little") + (1_000_000_000).to_bytes(8, "little"))
-            sell = _unsigned(order, SELL_V3 + (1_000_000).to_bytes(8, "little") + (0).to_bytes(8, "little"))
-            buy_err = _simulate(local, buy)
-            sell_err = _simulate(local, sell)
+            buy_err = _simulate(local, buy_tx)
+            sell_err = _simulate(local, sell_tx)
         except Exception as exc:
             print(f"rehearsal failed against {url}: {exc}")
             buy_err = str(exc)
@@ -245,6 +293,9 @@ def main() -> int:
             log_handle.close()
         if buy_err is None and sell_err is None:
             break
+    if buy_err is not None or sell_err is not None:
+        print(f"unsigned simulation failed; buy={buy_err} sell={sell_err}")
+        return 1
     print("unsigned buy_v3 simulation finished with no error")
     print("unsigned sell_v3 simulation finished with no error")
     print("no signature was produced and nothing was submitted")

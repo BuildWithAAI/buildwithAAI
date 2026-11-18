@@ -45,9 +45,26 @@ README_EXAMPLE_FEE_BPS = 100
 OBSERVED_AMM_LP_FEE_BPS = 20
 OBSERVED_AMM_PROTOCOL_FEE_BPS = 5
 
-# IDL buy_v2 / sell_v2 discriminators from pump.json at DOCS_COMMIT.
+# Current trade instructions from idl/pump.json and idl/pump_amm.json at DOCS_COMMIT.
+# buy_v3 / sell_v3 are the current bonding-curve trades (17 accounts). buy_v2 / sell_v2
+# remain in the IDL. PumpSwap's current trades are buy_v2 / sell_v2, also 17 accounts.
+# Docs: docs/instructions/TRADE_V3.md and docs/instructions/PUMP_SWAP_TRADE_V2.md.
 BUY_V2_DISCRIMINATOR = bytes([184, 23, 238, 97, 103, 197, 211, 61])
 SELL_V2_DISCRIMINATOR = bytes([93, 246, 130, 60, 231, 233, 64, 178])
+BUY_V3_DISCRIMINATOR = bytes([7, 5, 29, 196, 245, 23, 101, 80])
+SELL_V3_DISCRIMINATOR = bytes([28, 146, 222, 119, 38, 196, 105, 213])
+# Same byte strings as the curve v2 discriminators, on the PumpSwap program.
+PUMPSWAP_BUY_V2_DISCRIMINATOR = BUY_V2_DISCRIMINATOR
+PUMPSWAP_SELL_V2_DISCRIMINATOR = SELL_V2_DISCRIMINATOR
+FEE_PROGRAM = "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
+# SetComputeUnitLimit units, and SetComputeUnitPrice in micro-lamports per unit.
+CU_LIMIT = 200_000
+PRIORITY_MICRO_LAMPORTS = 1_000
+SIGNATURE_FEE_LAMPORTS = 5_000
+# $2.000000 exactly, in micro-USD. 1 cent = 10_000 micro.
+USD_CAP_MICRO = 2_000_000
+# Recorded rent-exempt minimum for a Token-2022 ATA with extensions.
+TOKEN_2022_ATA_RENT_LAMPORTS = 1_513_840
 
 INSTRUCTION_ALLOWLIST = frozenset(
     {

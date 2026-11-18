@@ -13,9 +13,10 @@ def test_e2e_script_is_unsigned_and_optional() -> None:
     assert "--account" in script
     assert "fixtures/e2e_curve.json" in script
     assert "buy_v3" in script and "sell_v3" in script
+    assert "build_curve_buy" in script and "build_curve_sell" in script
     assert "pump.fun" not in script.lower()
     assert "sendTransaction" not in script or 'method == "sendTransaction"' in script
-    assert "new_unsigned" in script
+    assert "Signature.default" in script
     assert "E2E_IN_CI = False" in script
     assert "continue-on-error: true" in workflow
     assert "scripts/e2e_validator.py" in workflow
