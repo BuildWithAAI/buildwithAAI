@@ -99,7 +99,8 @@ HELIUS_FREE_GPA_PER_S = 5
 HELIUS_CLIENT_RPC_PER_S = 8
 HELIUS_CLIENT_GPA_PER_S = 4
 RPC_PROVIDER_NAME = "helius"
-HELIUS_RPC_HOSTS = frozenset({"mainnet.helius-rpc.com", "devnet.helius-rpc.com"})
+HELIUS_LIVE_HOSTS = frozenset({"mainnet.helius-rpc.com"})
+HELIUS_RPC_HOSTS = HELIUS_LIVE_HOSTS | frozenset({"devnet.helius-rpc.com"})
 BONDING_CURVE_DISCRIMINATOR = bytes.fromhex("17b7f83760d8ac60")
 
 STAKE_CAP_CENTS = 200
@@ -132,6 +133,7 @@ CT_ZONE = "America/Chicago"
 KEYRING_SERVICE = "zoora-signer"
 KEYRING_SIGNING = "signing-key"
 KEYRING_HMAC = "hmac-key"
+KEYRING_EVENT_HMAC = "event-hmac"
 KEYRING_RPC = "rpc-url"
 
 FORBIDDEN_ENV = (
@@ -141,6 +143,8 @@ FORBIDDEN_ENV = (
     "SOLANA_PRIVATE_KEY",
     "HMAC_SECRET",
     "ZOORA_HMAC",
+    "ZOORA_EVENT_HMAC",
+    "EVENT_HMAC",
     "ZOORA_SIGNING_KEY",
     "SEED_PHRASE",
     "MNEMONIC",

@@ -36,6 +36,7 @@ The signing key and the HMAC key are prompted. They are not command-line argumen
 ```powershell
 python -m keyring set zoora-signer signing-key
 python -m keyring set zoora-signer hmac-key
+python -m keyring set zoora-signer event-hmac
 python -m keyring set zoora-signer rpc-url
 ```
 
@@ -77,10 +78,16 @@ zoora-signer whitelist-add "YOUR_OWNER_ADDRESS"
 zoora-signer sweep "YOUR_OWNER_ADDRESS" 1000
 zoora-signer sell "MINT_ADDRESS" --tokens 1000
 zoora-signer sell-all
+zoora-signer reanchor --confirm REANCHOR
+zoora-signer owner-sell-tampered "MINT_ADDRESS" --confirm OWNER_SELL
 zoora-signer rotate-hmac
 ```
 
-`rotate-hmac` prompts. `mode live` is refused until `route-approved` has been recorded. Resume runs the preflight again. A failed check leaves the process `PAUSED`.
+`rotate-hmac` prompts. `mode live` is refused until `route-approved` has been recorded. A devnet Helius host is refused in `LIVE` and remains available for a dry run. Resume runs the preflight again. A failed check leaves the process `PAUSED`.
+
+`reanchor --confirm REANCHOR` records the state only when the kill switch is clear, the event chain verifies with the `event-hmac` key, the ledger matches the authoritative SOL balance, and no reservation is reserved or signing. It does not repair a tampered ledger.
+
+`owner-sell-tampered` is the owner sell after that kind of tamper. It requires `--confirm OWNER_SELL` and a clear kill switch. The size is the owner's token balance on the chain. The sell pays the owner's own wallet. The ledger is not changed, and the event keeps the previous state digest so the halt stays. This build still returns `BROADCAST_REFUSED`.
 
 PowerShell treats `--date 2026-11-17` as a single argument. If a source text contains spaces, keep it in double quotes as shown. Do not put a key in those quotes.
 

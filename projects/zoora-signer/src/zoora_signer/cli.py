@@ -164,13 +164,10 @@ class _RpcMarks:
         return lamports * sol_usd_cents(reading) // 1_000_000_000
 
 
-def _helius_url(url: str) -> bool:
-    from urllib.parse import urlparse
+def _helius_url(url: str, *, live: bool = False) -> bool:
+    from zoora_signer.rpc import rpc_host_allowed
 
-    from zoora_signer.constants import HELIUS_RPC_HOSTS
-
-    parsed = urlparse(url)
-    return parsed.scheme == "https" and parsed.hostname in HELIUS_RPC_HOSTS and parsed.username is None
+    return rpc_host_allowed(url, live=live)
 
 
 def _acl_paths(db: Path, hud: Path, rpc_env: Path | None, kill_dir: Path | None = None) -> list[str]:
@@ -257,7 +254,11 @@ def _parser() -> argparse.ArgumentParser:
     route.add_argument("--source", required=True)
     route.add_argument("--date", required=True)
     route.add_argument("--text", required=True)
-    sub.add_parser("reanchor")
+    reanchor = sub.add_parser("reanchor")
+    reanchor.add_argument("--confirm", required=True)
+    tampered = sub.add_parser("owner-sell-tampered")
+    tampered.add_argument("mint")
+    tampered.add_argument("--confirm", required=True)
     unhalt = sub.add_parser("unhalt")
     unhalt.add_argument("--confirm", required=True)
     mode = sub.add_parser("mode")
@@ -295,7 +296,9 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "halt":
         decision = signer.halt("owner")
     elif args.cmd == "reanchor":
-        decision = signer.reanchor()
+        decision = signer.reanchor(args.confirm)
+    elif args.cmd == "owner-sell-tampered":
+        decision = signer.owner_sell_after_tamper(args.mint, args.confirm)
     elif args.cmd == "unhalt":
         decision = signer.unhalt(args.confirm)
     elif args.cmd == "sell":

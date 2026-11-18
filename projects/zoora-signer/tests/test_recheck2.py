@@ -74,6 +74,7 @@ def _arm(signer: object, services: object, *, volume: bool = True, ata: bool = T
     ata_key = str(_ata(owner, base, mint))
     seen: dict[str, int] = {}
     table = {
+        str(mint): (True, 1_000_000, len(MINT_DATA), TOKEN_2022, MINT_DATA),
         curve: (True, LAMPORTS, len(CURVE), PUMP_PROGRAM, CURVE),
         volume_key: (volume, 0, 137 if volume else 0, PUMP_PROGRAM if volume else "", b""),
         ata_key: (ata, 2_000_000, 182 if ata else 0, TOKEN_2022 if ata else "", b""),
@@ -171,8 +172,10 @@ def test_missing_volume_and_ata_rent_and_curve_topup_are_in_the_cap() -> None:
     assert missing.rent_lamports - present.rent_lamports == rent_exempt_lamports(USER_VOLUME_ACCOUNT_BYTES)
     with pytest.raises(BuildError, match="RENT"):
         _buy(create_base_ata=True, ata_rent_lamports=0)
+    topped = _buy(curve_lamports=0, volume_exists=True)
+    assert topped.rent_lamports - present.rent_lamports == rent_exempt_lamports(len(CURVE))
     with pytest.raises(BuildError, match="CAP"):
-        _buy(curve_lamports=0, volume_exists=True)
+        _buy(create_base_ata=True, ata_rent_lamports=2_000_000, volume_exists=True)
 
 
 def test_non_wsol_quote_mint_is_refused() -> None:
@@ -579,8 +582,9 @@ def test_chain_rent_outside_the_formula_is_refused(tmp_path: Path) -> None:
         return value
 
     quoted(2)
-    assert signer._unsigned_buy(intent, 10_000, 10_000 * 10_000) is None
+    assert signer._rent(USER_VOLUME_ACCOUNT_BYTES) == formula
     quoted(formula * 10)
+    assert signer._rent(USER_VOLUME_ACCOUNT_BYTES) is None
     assert signer._unsigned_buy(intent, 10_000, 10_000 * 10_000) is None
     services.chain.account_info = lambda _address: (False, 5, 0)  # type: ignore[attr-defined]
     quoted(formula)
@@ -755,6 +759,12 @@ def test_helius_rent_method_and_a_lying_volume_account(tmp_path: Path) -> None:
                     "owner": "11111111111111111111111111111111",
                     "data": [base64.b64encode(b"\x00" * 137).decode(), "base64"],
                 }
+            elif address == str(mint_key):
+                value = {
+                    "lamports": 1_000_000,
+                    "owner": TOKEN_2022,
+                    "data": [base64.b64encode(MINT_DATA).decode(), "base64"],
+                }
             elif address == ata:
                 value = {
                     "lamports": 2_000_000,
@@ -839,8 +849,248 @@ def test_anchor_mismatch_needs_reanchor(tmp_path: Path) -> None:
     signer.halt("anchor_mismatch")
     services.chain.authoritative = True
     assert signer.unhalt("UNHALT").code == "RECONCILE_REQUIRED"
-    assert signer.reanchor().ok
+    assert signer.reanchor("REANCHOR").ok
     assert signer.unhalt("UNHALT").ok
+
+
+def test_mainnet_rent_uses_5080_and_budgets_a_low_chain_value() -> None:
+    from zoora_signer.quote import accept_chain_rent
+
+    assert rent_exempt_lamports(170) == 1_513_840
+    assert rent_exempt_lamports(137) == 1_346_200
+    assert rent_exempt_lamports(399) == 2_677_160
+    assert accept_chain_rent(2, 137) == 1_346_200
+    assert accept_chain_rent(1_346_200 * 10, 137) is None
+
+
+def test_reanchor_refuses_a_tampered_ledger(tmp_path: Path) -> None:
+    from zoora_signer.db import connect, verify_chain
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    services.chain.authoritative = True
+    assert signer.reanchor("no").code == "CONFIRMATION_REQUIRED"
+    services.kill.state = "killed"
+    assert signer.reanchor("REANCHOR").code == "KILL_HOLD"
+    services.kill.state = "clear"
+    key = services.secrets.get_event_hmac()
+    assert key is not None and key != services.secrets.get_hmac_key()
+    conn = connect(signer.path)
+    assert verify_chain(conn, key)
+    assert verify_chain(conn, b"z" * 32) is False
+    assert key.hex().encode() not in Path(signer.path).read_bytes()
+    conn.execute("UPDATE signer_state SET ledger_sol_lamports = 1000000000000 WHERE id = 1")
+    conn.commit()
+    conn.close()
+    assert signer.reanchor("REANCHOR").code == "RECONCILE_REQUIRED"
+    row = connect(signer.path).execute("SELECT ledger_sol_lamports FROM signer_state").fetchone()
+    assert row is not None and int(row[0]) == 1_000_000_000_000
+
+
+def test_market_reserves_do_not_change_the_chain_quote(tmp_path: Path) -> None:
+    import struct
+
+    from zoora_signer.signer import parse_intent
+    from zoora_signer.txbuild import build_curve_buy, build_curve_sell
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
+    _arm(signer, services, volume=True, ata=True)
+    scaled = bytearray(CURVE)
+    virtual_token, virtual_quote = struct.unpack_from("<QQ", scaled, 8)
+    struct.pack_into("<QQ", scaled, 8, virtual_token * 3, virtual_quote * 3)
+
+    class Market:
+        def buy_inputs(self, mint: str) -> dict[str, object]:
+            return {
+                "mint_data": bytes(scaled),
+                "mint_owner": TOKEN_2022,
+                "curve_data": bytes(scaled),
+                "fee_config_data": FEE,
+                "buyback": str(ORDER[13]),
+                "volume_exists": True,
+            }
+
+        def sell_inputs(self, mint: str) -> dict[str, object]:
+            body = self.buy_inputs(mint)
+            body["token_in"] = 1_000_000
+            body["slippage_bps"] = 0
+            return body
+
+    services.market = Market()
+    intent = parse_intent(
+        {
+            "intent_id": "chain-bytes",
+            "issued_at_ms": services.clock.now_ms(),
+            "key_id": "1",
+            "max_slippage_bps": 0,
+            "mint": MINT,
+            "side": "buy",
+            "usd_stake_micro": 100_000,
+        }
+    )
+    assert intent is not None
+    built = signer._unsigned_buy(intent, 10_000, 10_000 * 10_000)
+    direct = build_curve_buy(
+        user=str(signer._owner_pubkey()),
+        mint_address=MINT,
+        mint_data=MINT_DATA,
+        mint_owner=TOKEN_2022,
+        curve_data=CURVE,
+        fee_config_data=FEE,
+        buyback_fee_recipient=str(ORDER[13]),
+        sol_usd_cents=10_000,
+        sol_usd_micro=10_000 * 10_000,
+        stake_cents=10,
+        slippage_bps=0,
+        create_base_ata=False,
+        curve_lamports=LAMPORTS,
+        volume_exists=True,
+    )
+    lied = build_curve_buy(
+        user=str(signer._owner_pubkey()),
+        mint_address=MINT,
+        mint_data=MINT_DATA,
+        mint_owner=TOKEN_2022,
+        curve_data=bytes(scaled),
+        fee_config_data=FEE,
+        buyback_fee_recipient=str(ORDER[13]),
+        sol_usd_cents=10_000,
+        sol_usd_micro=10_000 * 10_000,
+        stake_cents=10,
+        slippage_bps=0,
+        create_base_ata=False,
+        curve_lamports=LAMPORTS,
+        volume_exists=True,
+    )
+    assert built is not None
+    assert built.token_amount == direct.token_amount
+    assert built.token_amount != lied.token_amount
+
+    class Grab:
+        enabled = False
+        raw = b""
+
+        def submit(self, payload: bytes) -> None:
+            self.raw = payload
+            raise RuntimeError("BROADCAST_DISABLED")
+
+    grab = Grab()
+    services.broadcaster = grab  # type: ignore[assignment]
+    assert signer.owner_sell(MINT, 1_000_000_000_000).code == "BROADCAST_REFUSED"
+    sold = build_curve_sell(
+        user=str(signer._owner_pubkey()),
+        mint_address=MINT,
+        mint_data=MINT_DATA,
+        mint_owner=TOKEN_2022,
+        curve_data=CURVE,
+        fee_config_data=FEE,
+        buyback_fee_recipient=str(ORDER[13]),
+        token_in=1_000_000_000_000,
+        slippage_bps=0,
+    )
+    lied_sell = build_curve_sell(
+        user=str(signer._owner_pubkey()),
+        mint_address=MINT,
+        mint_data=MINT_DATA,
+        mint_owner=TOKEN_2022,
+        curve_data=bytes(scaled),
+        fee_config_data=FEE,
+        buyback_fee_recipient=str(ORDER[13]),
+        token_in=1_000_000_000_000,
+        slippage_bps=0,
+    )
+    assert grab.raw == sold.raw
+    assert sold.limit_lamports != lied_sell.limit_lamports
+
+
+def test_devnet_cannot_go_live(tmp_path: Path) -> None:
+    from zoora_signer.rpc import rpc_host_allowed
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    services.secrets.rpc_url = "https://devnet.helius-rpc.com/?api-key=test"
+    assert rpc_host_allowed(services.secrets.rpc_url, live=False)
+    assert not rpc_host_allowed(services.secrets.rpc_url, live=True)
+    assert signer.set_mode("LIVE").code == "LIVE_HOST"
+    services.secrets.rpc_url = "https://mainnet.helius-rpc.com/?api-key=test"
+    assert signer.set_mode("LIVE").ok
+
+
+def test_sell_all_refuses_a_tampered_database(tmp_path: Path) -> None:
+    signer, _services = build(tmp_path)
+    assert activate(signer).ok
+    assert buy(signer).ok
+    import sqlite3
+
+    conn = sqlite3.connect(signer.path)
+    conn.execute("UPDATE signer_state SET boot_id = 'edited' WHERE id = 1")
+    conn.commit()
+    conn.close()
+    results = signer.sell_all()
+    assert results and results[0].code == "ANCHOR_MISMATCH"
+
+
+def test_owner_sell_after_tamper_leaves_the_ledger(tmp_path: Path) -> None:
+    from zoora_signer.db import connect
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    _arm(signer, services, volume=True, ata=True)
+    owner = signer._owner_pubkey()
+    assert owner is not None
+    from solders.pubkey import Pubkey
+
+    from zoora_signer.txbuild import _ata
+
+    ata = str(_ata(Pubkey.from_string(owner), Pubkey.from_string(TOKEN_2022), Pubkey.from_string(MINT)))
+    balance = bytearray(182)
+    balance[64:72] = (1_000_000_000_000).to_bytes(8, "little")
+    table = services.chain.account_info  # type: ignore[attr-defined]
+
+    def account_info(address: str) -> tuple[bool, int, int, str, bytes] | None:
+        found = table(address)
+        if address == ata and found is not None:
+            return (True, found[1], len(balance), TOKEN_2022, bytes(balance))
+        return found
+
+    services.chain.account_info = account_info  # type: ignore[attr-defined]
+
+    class Market:
+        def sell_inputs(self, mint: str) -> dict[str, object]:
+            return {
+                "mint_data": b"\x00" * 82,
+                "mint_owner": "11111111111111111111111111111111",
+                "curve_data": b"\x00" * 82,
+                "fee_config_data": FEE,
+                "buyback": str(ORDER[13]),
+                "token_in": 1,
+                "slippage_bps": 0,
+            }
+
+    services.market = Market()
+    conn = connect(signer.path)
+    conn.execute("UPDATE signer_state SET boot_id = 'edited', ledger_sol_lamports = 1000000000000 WHERE id = 1")
+    conn.commit()
+    before = int(conn.execute("SELECT ledger_sol_lamports FROM signer_state").fetchone()[0])
+    conn.close()
+    assert signer.owner_sell_after_tamper(MINT, "no").code == "CONFIRMATION_REQUIRED"
+    services.kill.state = "killed"
+    assert signer.owner_sell_after_tamper(MINT, "OWNER_SELL").code == "KILL_HOLD"
+    services.kill.state = "clear"
+    decision = signer.owner_sell_after_tamper(MINT, "OWNER_SELL")
+    assert decision.code == "BROADCAST_REFUSED"
+    row = connect(signer.path).execute("SELECT ledger_sol_lamports FROM signer_state").fetchone()
+    assert row is not None and int(row[0]) == before
+    kind = connect(signer.path).execute(
+        "SELECT kind FROM events ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    assert kind is not None and str(kind[0]) == "owner_sell_after_tamper"
+    assert signer.unhalt("UNHALT").code == "RECONCILE_REQUIRED"
 
 
 def test_dry_run_intent_polls_the_kill_switch(tmp_path: Path) -> None:

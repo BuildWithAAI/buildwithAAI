@@ -54,7 +54,9 @@ def _rpc(url: str, method: str, params: list[object]) -> dict[str, object]:
 
 def _rent_exempt(account: dict[str, object]) -> None:
     data = base64.b64decode(str(account["data"]))
-    need = (len(data) + 128) * 6960
+    from zoora_signer.quote import rent_exempt_lamports
+
+    need = rent_exempt_lamports(len(data))
     account["lamports"] = max(int(account["lamports"]), need)
 
 

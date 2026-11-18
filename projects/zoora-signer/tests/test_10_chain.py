@@ -11,9 +11,12 @@ def test_chain_detects_tampering_and_logs_have_no_secrets(tmp_path: Path) -> Non
     assert activate(signer).ok
     assert buy(signer).ok
     conn = connect(signer.path)
-    assert verify_chain(conn)
+    event_key = services.secrets.get_event_hmac()
+    assert event_key is not None
+    assert verify_chain(conn, event_key)
     conn.execute("UPDATE events SET payload = '{\"tampered\":true}' WHERE id = 1")
-    assert verify_chain(conn) is False
+    assert verify_chain(conn, event_key) is False
+    assert verify_chain(conn, b"x" * 32) is False
     conn.close()
     hud = (tmp_path / "hud.jsonl").read_text(encoding="utf-8")
     secret = services.secrets.get_signing_key()
@@ -25,6 +28,7 @@ def test_chain_detects_tampering_and_logs_have_no_secrets(tmp_path: Path) -> Non
     assert secret.hex() not in hud
     assert url not in hud
     assert mac.hex() not in hud
+    assert event_key.hex() not in hud
     assert "api-key" not in hud
     assert "helius" in hud
     poisoned = hud + "\n" + "https://example.invalid/rpc?api-key=not-a-real-key"

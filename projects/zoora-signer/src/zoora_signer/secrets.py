@@ -8,6 +8,7 @@ from pathlib import Path
 from zoora_signer.constants import (
     FORBIDDEN_ENV,
     HMAC_MIN_BYTES,
+    KEYRING_EVENT_HMAC,
     KEYRING_HMAC,
     KEYRING_RPC,
     KEYRING_SERVICE,
@@ -94,6 +95,7 @@ class MemorySecretStore:
     def __init__(self) -> None:
         self.signing_key: bytes | None = None
         self.hmac_key: bytes | None = None
+        self.event_hmac: bytes | None = None
         self.rpc_url: str | None = None
 
     def get_signing_key(self) -> bytes | None:
@@ -125,6 +127,15 @@ class MemorySecretStore:
         if _hmac_bytes(key) is None:
             raise InvalidSigningKey("HMAC_SHORT")
         self.hmac_key = key
+
+    def get_event_hmac(self) -> bytes | None:
+        reject_key_material_in_env()
+        return _hmac_bytes(self.event_hmac)
+
+    def set_event_hmac(self, key: bytes) -> None:
+        if _hmac_bytes(key) is None:
+            raise InvalidSigningKey("HMAC_SHORT")
+        self.event_hmac = key
 
     def get_rpc_url(self) -> str | None:
         reject_key_material_in_env()
@@ -182,6 +193,24 @@ class KeyringSecretStore:
         import keyring
 
         keyring.set_password(KEYRING_SERVICE, KEYRING_HMAC, key.hex())
+
+    def get_event_hmac(self) -> bytes | None:
+        reject_key_material_in_env()
+        raw = _password(KEYRING_EVENT_HMAC)
+        if raw is None:
+            return None
+        try:
+            decoded = bytes.fromhex(raw.strip())
+        except ValueError:
+            return None
+        return _hmac_bytes(decoded)
+
+    def set_event_hmac(self, key: bytes) -> None:
+        if _hmac_bytes(key) is None:
+            raise InvalidSigningKey("HMAC_SHORT")
+        import keyring
+
+        keyring.set_password(KEYRING_SERVICE, KEYRING_EVENT_HMAC, key.hex())
 
     def get_rpc_url(self) -> str | None:
         reject_key_material_in_env()

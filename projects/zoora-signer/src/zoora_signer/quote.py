@@ -43,29 +43,29 @@ def decode_global_fee_bps(data: bytes) -> int | None:
     return int(fee)
 
 
-RENT_LAMPORTS_PER_BYTE_YEAR = 3_480
-RENT_EXEMPTION_YEARS = 2
-RENT_PER_BYTE = RENT_LAMPORTS_PER_BYTE_YEAR * RENT_EXEMPTION_YEARS
+# Mainnet lamports per byte, from fixtures/e2e_curve.json at slot 470726647.
+# ATA 170 B = 1,513,840. Volume 137 B = 1,346,200. Mint 399 B = 2,677,160.
+RENT_LAMPORTS_PER_BYTE = 5_080
 RENT_TOLERANCE_BPS = 100
 
 
 def rent_exempt_lamports(data_len: int) -> int:
-    """Local getMinimumBalanceForRentExemption: (data_len + 128) * 6960."""
+    """Local rent exemption: (data_len + 128) * RENT_LAMPORTS_PER_BYTE."""
 
     if data_len < 0:
         return 0
-    return (data_len + 128) * RENT_PER_BYTE
+    return (data_len + 128) * RENT_LAMPORTS_PER_BYTE
 
 
 def accept_chain_rent(chain: int, data_len: int) -> int | None:
-    """Budget max(chain, formula). Refuse a value more than 1% from the formula."""
+    """Budget max(chain, formula). Refuse only a chain value more than 1% above the formula."""
 
     formula = rent_exempt_lamports(data_len)
-    if formula <= 0 or chain < formula:
+    if formula <= 0 or chain < 0:
         return None
-    if (chain - formula) * 10_000 > formula * RENT_TOLERANCE_BPS:
+    if chain > formula and (chain - formula) * 10_000 > formula * RENT_TOLERANCE_BPS:
         return None
-    return chain
+    return max(chain, formula)
 
 
 def lamports_for_cents(cents: int, sol_usd_cents: int) -> int | None:

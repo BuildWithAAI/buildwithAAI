@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import sqlite3
 from collections.abc import Callable
 from typing import TypeVar
@@ -154,9 +155,9 @@ def screen(payload: Payload, needles: tuple[str, ...]) -> None:
             raise SecretInLog("SECRET_IN_LOG")
 
 
-def event_digest(event_id: int, ts_ms: int, kind: str, prev: str, body: str) -> str:
-    material = f"{event_id}|{ts_ms}|{kind}|{prev}|{body}"
-    return hashlib.sha256(material.encode()).hexdigest()
+def event_digest(event_id: int, ts_ms: int, kind: str, prev: str, body: str, key: bytes) -> str:
+    material = f"{event_id}|{ts_ms}|{kind}|{prev}|{body}".encode()
+    return hmac.new(key, material, hashlib.sha256).hexdigest()
 
 
 def append_event(
@@ -165,13 +166,16 @@ def append_event(
     payload: Payload,
     ts_ms: int,
     needles: tuple[str, ...],
+    key: bytes,
 ) -> int:
+    if len(key) < 32:
+        raise ValueError("EVENT_HMAC")
     screen(payload, needles)
     body = canonical(payload)
     prev_row = conn.execute("SELECT id, hash FROM events ORDER BY id DESC LIMIT 1").fetchone()
     prev = str(prev_row["hash"]) if prev_row is not None else GENESIS
     event_id = int(prev_row["id"]) + 1 if prev_row is not None else 1
-    digest = event_digest(event_id, ts_ms, kind, prev, body)
+    digest = event_digest(event_id, ts_ms, kind, prev, body, key)
     conn.execute(
         "INSERT INTO events (id, ts_ms, kind, payload, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?)",
         (event_id, ts_ms, kind, body, prev, digest),
@@ -179,7 +183,9 @@ def append_event(
     return event_id
 
 
-def verify_chain(conn: sqlite3.Connection) -> bool:
+def verify_chain(conn: sqlite3.Connection, key: bytes) -> bool:
+    if len(key) < 32:
+        return False
     prev = GENESIS
     rows = conn.execute(
         "SELECT id, ts_ms, kind, payload, prev_hash, hash FROM events ORDER BY id"
@@ -193,6 +199,7 @@ def verify_chain(conn: sqlite3.Connection) -> bool:
             str(row["kind"]),
             prev,
             str(row["payload"]),
+            key,
         )
         if str(row["hash"]) != expect:
             return False

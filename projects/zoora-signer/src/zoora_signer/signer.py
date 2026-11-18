@@ -154,6 +154,31 @@ class AnchorMismatch(Exception):
 _MISMATCH = object()
 
 
+def _state_snapshot(row: sqlite3.Row) -> dict[str, str | int | bool | None]:
+    snap: dict[str, str | int | bool | None] = {}
+    for key in row.keys():
+        value = row[key]
+        if value is None or isinstance(value, str | int | bool):
+            snap[str(key)] = value
+        else:
+            snap[str(key)] = str(value)
+    return snap
+
+
+def _reanchor_payload(
+    previous: dict[str, str | int | bool | None],
+    new: dict[str, str | int | bool | None],
+    chain_sol: int,
+    provider: str,
+) -> Payload:
+    payload: Payload = {"provider": provider, "chain_sol": chain_sol}
+    for key, value in previous.items():
+        payload[f"previous_{key}"] = value
+    for key, value in new.items():
+        payload[f"new_{key}"] = value
+    return payload
+
+
 class RefuseBroadcaster:
     enabled = False
 
@@ -225,7 +250,7 @@ class Signer:
                 )
                 self._event(db, "boot_paused", {"boot_id": boot_id, "mode": mode})
             self._reconcile(db)
-            if not verify_chain(db):
+            if not self._verify(db):
                 _add_halt(db, "hash_chain")
                 self._event(db, "halt", {"reason": "hash_chain"})
 
@@ -370,7 +395,7 @@ class Signer:
 
         def op(conn: sqlite3.Connection) -> Decision:
             db = _db(conn)
-            if not verify_chain(db):
+            if not self._verify(db):
                 _add_halt(db, "hash_chain")
                 self._event(db, "halt", {"reason": "hash_chain"})
                 return Decision(False, "HASH_CHAIN", False)
@@ -403,7 +428,7 @@ class Signer:
 
         def op(conn: sqlite3.Connection) -> Decision:
             db = _db(conn)
-            if not verify_chain(db):
+            if not self._verify(db):
                 _add_halt(db, "hash_chain")
                 self._event(db, "halt", {"reason": "hash_chain"})
                 return Decision(False, "HASH_CHAIN", False)
@@ -493,6 +518,9 @@ class Signer:
             ):
                 self._event(db, "live_refused", {"code": "LIVE_STUB"})
                 return Decision(False, "LIVE_STUB", True)
+            if mode == "LIVE" and self._devnet_in_live():
+                self._event(db, "live_refused", {"code": "LIVE_HOST"})
+                return Decision(False, "LIVE_HOST", True)
             db.execute("UPDATE signer_state SET execution_mode = ? WHERE id = 1", (mode,))
             self._event(db, "mode", {"mode": mode})
             return Decision(True, "MODE", mode != "LIVE")
@@ -536,14 +564,45 @@ class Signer:
         self._sync_hud()
         return decision
 
-    def reanchor(self) -> Decision:
-        """Record the current state and chain head. Plain UNHALT does not do this."""
+    def reanchor(self, confirmation: str) -> Decision:
+        """Anchor the current head only when the chain and the ledger agree.
+
+        A typed REANCHOR is required. A kill, a broken event chain, a ledger that
+        does not match the authoritative SOL balance, or an open reservation refuses.
+        """
+
+        if confirmation != "REANCHOR":
+            return Decision(False, "CONFIRMATION_REQUIRED", False)
+        if self.poll_kill() != "clear":
+            return Decision(False, "KILL_HOLD", False)
 
         def op(conn: sqlite3.Connection) -> Decision:
             db = _db(conn)
-            if not verify_chain(db):
+            if not self._verify(db):
                 return Decision(False, "HASH_CHAIN", False)
-            event_id = self._event(db, "reanchor", {"provider": self.s.provider_name})
+            if not self.s.chain.authoritative:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            try:
+                chain_sol = self.s.chain.sol_lamports()
+            except Exception:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            if type(chain_sol) is not int or chain_sol < 0:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            row = _state(db)
+            ledger = int(row["ledger_sol_lamports"] or 0)
+            if ledger != chain_sol:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            pending = db.execute(
+                "SELECT COUNT(*) AS n FROM reservations WHERE status IN ('reserved', 'signing')"
+            ).fetchone()
+            if pending is not None and int(pending["n"]) != 0:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            previous = _state_snapshot(row)
+            event_id = self._event(
+                db,
+                "reanchor",
+                _reanchor_payload(previous, _state_snapshot(_state(db)), chain_sol, self.s.provider_name),
+            )
             return Decision(True, "REANCHORED", False, event_id=event_id)
 
         decision = transact(self.path, op)
@@ -636,6 +695,87 @@ class Signer:
     def owner_sell(self, mint: str, token_amount: int | None = None) -> Decision:
         return self._sell(mint, token_amount, owner=True, intent_id=None)
 
+    def owner_sell_after_tamper(self, mint: str, confirmation: str) -> Decision:
+        """Build a sell of the owner's own tokens after a database tamper.
+
+        The kill switch must be clear and the owner must type OWNER_SELL. The size
+        is the chain token balance. The ledger is not changed. The event keeps the
+        previous state digest, so the halt stays. This build still cannot broadcast.
+        """
+
+        if confirmation != "OWNER_SELL":
+            return Decision(False, "CONFIRMATION_REQUIRED", False)
+        if self.poll_kill() != "clear":
+            return Decision(False, "KILL_HOLD", False)
+        owner = self._owner_pubkey()
+        market = self.s.market
+        reader = getattr(market, "sell_inputs", None)
+        inputs = reader(mint) if callable(reader) else None
+        if owner is None or not isinstance(inputs, dict):
+            return Decision(False, "BROADCAST_REFUSED", False)
+        chain = self._chain_trade_facts(owner, mint, False)
+        if chain is None or chain[8] <= 0:
+            return Decision(False, "BROADCAST_REFUSED", False)
+        from zoora_signer.message_policy import PolicyError, validate_transaction
+        from zoora_signer.txbuild import BuildError, build_curve_sell
+
+        try:
+            built = build_curve_sell(
+                user=owner,
+                mint_address=mint,
+                mint_data=chain[6],
+                mint_owner=chain[7],
+                curve_data=chain[5],
+                fee_config_data=bytes(inputs["fee_config_data"]),
+                buyback_fee_recipient=str(inputs["buyback"]),
+                token_in=chain[8],
+                slippage_bps=int(inputs.get("slippage_bps", 1500)),
+            )
+            validate_transaction(
+                built.raw,
+                owner=owner,
+                mint=mint,
+                max_all_in_lamports=built.all_in_lamports or None,
+                expected_token_amount=built.token_amount,
+                expected_limit_lamports=built.limit_lamports,
+                rent_lamports=built.rent_lamports,
+            )
+        except (BuildError, PolicyError, KeyError, TypeError, ValueError):
+            return Decision(False, "BROADCAST_REFUSED", False)
+
+        def op(conn: sqlite3.Connection) -> Decision:
+            db = _db(conn)
+            ledger_before = int(_state(db)["ledger_sol_lamports"] or 0)
+            last = db.execute("SELECT payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
+            previous_digest: str | None = None
+            if last is not None:
+                try:
+                    body = json.loads(str(last["payload"]))
+                except json.JSONDecodeError:
+                    body = None
+                if isinstance(body, dict) and isinstance(body.get("state_sha256"), str):
+                    previous_digest = str(body["state_sha256"])
+            payload: Payload = {
+                "mint": mint,
+                "token_amount": chain[8],
+                "owner": owner,
+                "code": "BROADCAST_REFUSED",
+                "ledger_sol_lamports": ledger_before,
+            }
+            if previous_digest is not None:
+                payload["state_sha256"] = previous_digest
+            event_id = self._event(db, "owner_sell_after_tamper", payload)
+            if int(_state(db)["ledger_sol_lamports"] or 0) != ledger_before:
+                return Decision(False, "LEDGER_BREACH", False, event_id=event_id)
+            return Decision(False, "BROADCAST_REFUSED", False, event_id=event_id)
+
+        decision = transact(self.path, op)
+        try:
+            self.s.broadcaster.submit(built.raw)
+        except Exception:
+            return decision
+        return decision
+
     def _owner_pubkey(self) -> str | None:
         pub = getattr(self.s.secrets, "wallet_pubkey", None)
         if not callable(pub):
@@ -652,18 +792,20 @@ class Signer:
         inputs = reader(intent.mint)
         if not isinstance(inputs, dict):
             return None
+        if self.mode() == "LIVE" and self._devnet_in_live():
+            return None
         from zoora_signer.txbuild import BuildError, build_curve_buy
 
-        chain = self._chain_trade_facts(owner, intent.mint, str(inputs["mint_owner"]), inputs.get("volume_exists"))
+        chain = self._chain_trade_facts(owner, intent.mint, inputs.get("volume_exists"))
         if chain is None:
             return None
         try:
             return build_curve_buy(
                 user=owner,
                 mint_address=intent.mint,
-                mint_data=bytes(inputs["mint_data"]),
-                mint_owner=str(inputs["mint_owner"]),
-                curve_data=bytes(inputs["curve_data"]),
+                mint_data=chain[6],
+                mint_owner=chain[7],
+                curve_data=chain[5],
                 fee_config_data=bytes(inputs["fee_config_data"]),
                 buyback_fee_recipient=str(inputs["buyback"]),
                 sol_usd_cents=price,
@@ -683,10 +825,9 @@ class Signer:
         self,
         owner: str,
         mint: str,
-        mint_owner: str,
         claimed_volume: object,
-    ) -> tuple[int, bool, int | None, int, bool] | None:
-        """Rent, volume, and curve lamports from the chain. Market claims are not used."""
+    ) -> tuple[int, bool, int | None, int, bool, bytes, bytes, str, int] | None:
+        """Curve bytes, mint bytes, rent, and the ATA balance from the chain."""
 
         from solders.pubkey import Pubkey
 
@@ -696,8 +837,16 @@ class Signer:
             SPL_TOKEN,
             USER_VOLUME_ACCOUNT_BYTES,
         )
+        from zoora_signer.quote import parse_mint
         from zoora_signer.txbuild import _ata, _pda
 
+        mint_info = self._account(mint)
+        if mint_info is None or not mint_info[0]:
+            return None
+        mint_owner = mint_info[3]
+        mint_data = mint_info[4]
+        if parse_mint(mint_data, mint_owner) is None:
+            return None
         pump = Pubkey.from_string(PUMP_PROGRAM)
         owner_key = Pubkey.from_string(owner)
         mint_key = Pubkey.from_string(mint)
@@ -741,7 +890,20 @@ class Signer:
                 return None
             ata_rent = rented
             create = True
-        return (curve_info[1], volume_exists, volume_rent, ata_rent, create)
+        ata_amount = 0
+        if ata_info[0] and len(ata_info[4]) >= 72:
+            ata_amount = int.from_bytes(ata_info[4][64:72], "little")
+        return (
+            curve_info[1],
+            volume_exists,
+            volume_rent,
+            ata_rent,
+            create,
+            curve_info[4],
+            mint_data,
+            mint_owner,
+            ata_amount,
+        )
 
     def _account(self, address: str) -> tuple[bool, int, int, str, bytes] | None:
         ask = getattr(self.s.chain, "account_info", None)
@@ -791,17 +953,22 @@ class Signer:
         inputs = reader(mint) if callable(reader) else None
         if owner is None or not isinstance(inputs, dict):
             return self._note("sell_refused", {"code": "BROADCAST_REFUSED", "mint": mint})
+        if self._devnet_in_live():
+            return self._note("sell_refused", {"code": "LIVE_HOST", "mint": mint})
         from zoora_signer.message_policy import PolicyError, validate_transaction
         from zoora_signer.txbuild import BuildError, build_curve_sell
 
+        chain = self._chain_trade_facts(owner, mint, False)
+        if chain is None:
+            return self._note("sell_refused", {"code": "BROADCAST_REFUSED", "mint": mint})
         try:
-            amount = int(token_amount or inputs["token_in"])
+            amount = int(token_amount if token_amount is not None else inputs.get("token_in") or chain[8])
             built = build_curve_sell(
                 user=owner,
                 mint_address=mint,
-                mint_data=bytes(inputs["mint_data"]),
-                mint_owner=str(inputs["mint_owner"]),
-                curve_data=bytes(inputs["curve_data"]),
+                mint_data=chain[6],
+                mint_owner=chain[7],
+                curve_data=chain[5],
                 fee_config_data=bytes(inputs["fee_config_data"]),
                 buyback_fee_recipient=str(inputs["buyback"]),
                 token_in=amount,
@@ -837,7 +1004,11 @@ class Signer:
             ).fetchall()
             return [str(row["mint"]) for row in rows]
 
-        return [self.owner_sell(mint) for mint in self._transact(op)]
+        try:
+            mints = self._transact(op)
+        except AnchorMismatch:
+            return [Decision(False, "ANCHOR_MISMATCH", self.mode() != "LIVE")]
+        return [self.owner_sell(mint) for mint in mints]
 
     def run_scheduled_exits(self) -> list[Decision]:
         if self.activity() == "HALTED":
@@ -1296,17 +1467,17 @@ class Signer:
             except Exception:
                 return False
         if reason == "anchor_mismatch":
-            if not verify_chain(db) or not self._anchor_matches(db) or not self._state_event_matches(db):
+            if not self._verify(db) or not self._anchor_matches(db) or not self._state_event_matches(db):
                 return False
             last = db.execute("SELECT kind FROM events ORDER BY id DESC LIMIT 1").fetchone()
             return last is not None and str(last["kind"]) == "reanchor"
         if reason == "hash_chain":
-            return verify_chain(db)
+            return self._verify(db)
         if reason == "settle_error":
             if not self._chain_reconciled(db):
                 return False
             pending = db.execute("SELECT COUNT(*) AS n FROM reservations WHERE status = 'reserved'").fetchone()
-            return pending is not None and int(pending["n"]) == 0 and verify_chain(db)
+            return pending is not None and int(pending["n"]) == 0 and self._verify(db)
         if reason == "unconfirmed":
             if not self._chain_reconciled(db):
                 return False
@@ -1651,7 +1822,32 @@ class Signer:
                 _add_halt(db, "anchor_mismatch")
         else:
             recorded["state_sha256"] = current
-        return append_event(_db(db), kind, recorded, self.s.clock.now_ms(), self._needles())
+        key = self._event_key()
+        if key is None:
+            _add_halt(db, "hash_chain")
+            return 0
+        return append_event(_db(db), kind, recorded, self.s.clock.now_ms(), self._needles(), key)
+
+    def _event_key(self) -> bytes | None:
+        getter = getattr(self.s.secrets, "get_event_hmac", None)
+        if not callable(getter):
+            return None
+        found = getter()
+        if isinstance(found, bytes) and len(found) >= HMAC_MIN_BYTES:
+            return found
+        return None
+
+    def _verify(self, db: sqlite3.Connection) -> bool:
+        key = self._event_key()
+        if key is None:
+            return False
+        return verify_chain(db, key)
+
+    def _devnet_in_live(self) -> bool:
+        from urllib.parse import urlparse
+
+        url = self.s.secrets.get_rpc_url()
+        return isinstance(url, str) and urlparse(url).hostname == "devnet.helius-rpc.com"
 
     def _needles(self) -> tuple[str, ...]:
         from zoora_signer.secrets import secret_needles
@@ -1660,6 +1856,9 @@ class Signer:
         mac = self.s.secrets.get_hmac_key()
         if mac is not None:
             found.extend(secret_needles(mac))
+        event_key = self._event_key()
+        if event_key is not None:
+            found.extend(secret_needles(event_key))
         url = self.s.secrets.get_rpc_url()
         if url and url.startswith("https://"):
             found.append(url)

@@ -96,7 +96,9 @@ def test_d3_hash_covers_kind_ts_and_id(tmp_path: Path) -> None:
         assert buy(fresh).ok
         conn = connect(fresh.path)
         conn.execute(f"UPDATE events SET {column} = ? WHERE id = 1", (value,))
-        assert verify_chain(conn) is False
+        event_key = fresh.s.secrets.get_event_hmac()
+        assert event_key is not None
+        assert verify_chain(conn, event_key) is False
         conn.close()
 
 

@@ -31,6 +31,18 @@ ALLOWED_METHODS = frozenset(
 GPA = "getProgramAccounts"
 
 
+def rpc_host_allowed(url: str, *, live: bool) -> bool:
+    """Exact Helius host. Devnet is refused once the signer is live."""
+
+    from urllib.parse import urlparse
+
+    from zoora_signer.constants import HELIUS_LIVE_HOSTS, HELIUS_RPC_HOSTS
+
+    parsed = urlparse(url)
+    hosts = HELIUS_LIVE_HOSTS if live else HELIUS_RPC_HOSTS
+    return parsed.scheme == "https" and parsed.hostname in hosts and parsed.username is None
+
+
 def redact(text: str) -> str:
     return _URL.sub("[url]", text)
 

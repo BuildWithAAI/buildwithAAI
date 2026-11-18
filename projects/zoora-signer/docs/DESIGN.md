@@ -261,4 +261,12 @@ The builder requirements are:
 
 The on-chain Pyth SOL/USD account must be a `PriceUpdateV2` with verification level Full. A publish time older than 30 seconds fails closed. On 2026-11-17 that account was older than 30 seconds in 12 of 30 samples, and the oldest sample was 54.7 seconds. The threshold stays 30 seconds. A Pyth pull update or a sponsored feed is what keeps the account fresh enough to use.
 
+### Owner sell after a tampered database
+
+A database edit that breaks the state digest halts the signer. `reanchor` does not repair it: the command requires `--confirm REANCHOR`, a clear kill switch, a valid event chain, a ledger that matches the authoritative chain SOL balance, and no reserved or signing reservation. The event records the previous and new state fields. The event chain is HMAC-SHA256 with `event-hmac` from Credential Manager, so write access to the database is not enough to forge a matching event.
+
+The owner can still build one sell with `owner-sell-tampered --confirm OWNER_SELL`. It runs only while the kill switch is clear. The size is the token balance of the owner's own account on the chain, and the proceeds go to that same wallet. The ledger is not changed. The event keeps the previous state digest, so the halt stays in place. This build hands the unsigned transaction to `RefuseBroadcaster` and returns `BROADCAST_REFUSED`.
+
+The local rent exemption is `(data_len + 128) * 5080`, from `fixtures/e2e_curve.json` at slot 470726647. A chain quote below that formula is budgeted at the formula. A chain quote more than 1% above it is refused.
+
 Stack: stdlib `sqlite3` in WAL mode with `BEGIN IMMEDIATE`; `keyring` (Windows Credential Manager) behind an interface, plus a test double; `solders` and `httpx` for transactions, simulation, the outbound intent pull, and the on-chain Pyth price account; pytest and hypothesis; argparse for the owner CLI. Windows probes go through PowerShell or ctypes behind interfaces. The vet gate shells out to `sys.executable -I -m smr.vet`. Lumen is unchanged: A1 stays a spec in this project until a later PR.
