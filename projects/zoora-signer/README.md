@@ -83,6 +83,8 @@ zoora-signer owner-sell-tampered "MINT_ADDRESS" --confirm OWNER_SELL
 zoora-signer rotate-hmac
 ```
 
+`init-event-key` generates a 32-byte event HMAC with `secrets.token_bytes` and stores it in Credential Manager as `event-hmac`. It prints `event key stored` and never prints the key. A key that matches `hmac-key`, is all one byte, or has fewer than 8 distinct bytes is refused. The public key id is the first 16 hex characters of the key's sha256 and is written on each event. A database whose events are still the old unkeyed sha256 chain is migrated with `rekey --confirm REKEY` after the owner has stored the key: the command reconciles the SOL balance, then appends an `event_key_genesis` event. Events before that event stay on the unkeyed hash. Events from that event onward use the keyring HMAC. This build does not keep a previous HMAC key, so `init-event-key` refuses when a key is already stored.
+
 `rotate-hmac` prompts. `mode live` is refused until `route-approved` has been recorded. A devnet Helius host is refused in `LIVE` and remains available for a dry run. Resume runs the preflight again. A failed check leaves the process `PAUSED`.
 
 `reanchor --confirm REANCHOR` records the state only when the kill switch is clear, the event chain verifies with the `event-hmac` key, the ledger matches the authoritative SOL balance, and no reservation is reserved or signing. It does not repair a tampered ledger.

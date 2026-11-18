@@ -25,6 +25,8 @@ The Pump README example still shows ``fee_basis_points`` 100. The global account
 
 from __future__ import annotations
 
+import hashlib
+
 VERIFIED_ON = "2026-11-17"
 DOCS_COMMIT = "639b87fb45c3adeffa6f7c4a1bf0cb85e392bf22"
 
@@ -57,6 +59,10 @@ SELL_V3_DISCRIMINATOR = bytes([28, 146, 222, 119, 38, 196, 105, 213])
 PUMPSWAP_BUY_V2_DISCRIMINATOR = BUY_V2_DISCRIMINATOR
 PUMPSWAP_SELL_V2_DISCRIMINATOR = SELL_V2_DISCRIMINATOR
 FEE_PROGRAM = "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
+FEE_CONFIG_DISCRIMINATOR = hashlib.sha256(b"account:FeeConfig").digest()[:8]
+# Recorded pump fee is 95 protocol + 30 creator. The cap can be lowered, not raised.
+MAX_TOTAL_FEE_BPS = 125
+FEE_BPS_MARGIN = 10
 # SetComputeUnitLimit units, and SetComputeUnitPrice in micro-lamports per unit.
 CU_LIMIT = 200_000
 MAX_CU_LIMIT = 400_000

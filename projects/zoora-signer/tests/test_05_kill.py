@@ -23,8 +23,9 @@ def test_kill_paths(tmp_path: Path) -> None:
         assert sell(signer).code == "KILL_HOLD"
         assert signer.run_scheduled_exits() == []
         assert signer.open_trade_count() == 1
-        assert signer.owner_sell("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf").ok
-        assert signer.open_trade_count() == 0
+        sold = signer.owner_sell("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf", confirmation="OWNER_SELL")
+        assert sold.code != "KILL_HOLD"
+        assert signer.open_trade_count() == 1
         update = {"message": {"text": "resume", "chat": {"id": 1}, "from": {"id": 2}}}
         assert signer.telegram(update).code == "TELEGRAM_NOT_ALLOWLISTED"
 

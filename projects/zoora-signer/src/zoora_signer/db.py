@@ -155,9 +155,18 @@ def screen(payload: Payload, needles: tuple[str, ...]) -> None:
             raise SecretInLog("SECRET_IN_LOG")
 
 
+def _event_material(event_id: int, ts_ms: int, kind: str, prev: str, body: str) -> bytes:
+    return f"{event_id}|{ts_ms}|{kind}|{prev}|{body}".encode()
+
+
+def legacy_event_digest(event_id: int, ts_ms: int, kind: str, prev: str, body: str) -> str:
+    """Unkeyed sha256 chain used by databases from before the event HMAC."""
+
+    return hashlib.sha256(_event_material(event_id, ts_ms, kind, prev, body)).hexdigest()
+
+
 def event_digest(event_id: int, ts_ms: int, kind: str, prev: str, body: str, key: bytes) -> str:
-    material = f"{event_id}|{ts_ms}|{kind}|{prev}|{body}".encode()
-    return hmac.new(key, material, hashlib.sha256).hexdigest()
+    return hmac.new(key, _event_material(event_id, ts_ms, kind, prev, body), hashlib.sha256).hexdigest()
 
 
 def append_event(
@@ -183,24 +192,54 @@ def append_event(
     return event_id
 
 
+def verify_legacy_chain(conn: sqlite3.Connection) -> bool:
+    """True when every event still matches the unkeyed sha256 chain."""
+
+    return _verify_rows(conn, key=None, genesis_at=None, force_legacy=True)
+
+
 def verify_chain(conn: sqlite3.Connection, key: bytes) -> bool:
     if len(key) < 32:
         return False
+    rows = conn.execute("SELECT kind FROM events ORDER BY id").fetchall()
+    genesis_at = next((index for index, row in enumerate(rows) if str(row["kind"]) == "event_key_genesis"), None)
+    return _verify_rows(conn, key=key, genesis_at=genesis_at, force_legacy=False)
+
+
+def _verify_rows(
+    conn: sqlite3.Connection,
+    *,
+    key: bytes | None,
+    genesis_at: int | None,
+    force_legacy: bool,
+) -> bool:
     prev = GENESIS
     rows = conn.execute(
         "SELECT id, ts_ms, kind, payload, prev_hash, hash FROM events ORDER BY id"
     ).fetchall()
-    for row in rows:
+    for index, row in enumerate(rows):
         if str(row["prev_hash"]) != prev:
             return False
-        expect = event_digest(
-            int(row["id"]),
-            int(row["ts_ms"]),
-            str(row["kind"]),
-            prev,
-            str(row["payload"]),
-            key,
-        )
+        legacy = force_legacy or (genesis_at is not None and index < genesis_at)
+        if legacy:
+            expect = legacy_event_digest(
+                int(row["id"]),
+                int(row["ts_ms"]),
+                str(row["kind"]),
+                prev,
+                str(row["payload"]),
+            )
+        else:
+            if key is None:
+                return False
+            expect = event_digest(
+                int(row["id"]),
+                int(row["ts_ms"]),
+                str(row["kind"]),
+                prev,
+                str(row["payload"]),
+                key,
+            )
         if str(row["hash"]) != expect:
             return False
         prev = expect

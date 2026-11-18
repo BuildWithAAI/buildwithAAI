@@ -50,7 +50,7 @@ class _Chain:
         return None
 
 
-def _live_readers(rpc_url: str, clock: Clock) -> tuple[Oracle, MarkSource, ChainView]:
+def _live_readers(rpc_url: str, clock: Clock, owner: str | None) -> tuple[Oracle, MarkSource, ChainView]:
     import httpx
 
     from zoora_signer.oracle import ChainJupiterOracle, JupiterPrice, OnchainPyth
@@ -58,18 +58,29 @@ def _live_readers(rpc_url: str, clock: Clock) -> tuple[Oracle, MarkSource, Chain
 
     rpc = HeliusRpc(lambda: rpc_url, clock)
     oracle: Oracle = ChainJupiterOracle(OnchainPyth(rpc), JupiterPrice(httpx.Client()))
-    return oracle, _RpcMarks(rpc, oracle, clock), _RpcChain(rpc)
+    return oracle, _RpcMarks(rpc, oracle, clock), _RpcChain(rpc, owner)
 
 
 class _RpcChain:
     is_stub = False
     authoritative = True
 
-    def __init__(self, rpc: object) -> None:
+    def __init__(self, rpc: object, owner: str | None) -> None:
         self._rpc = rpc
+        self._owner = owner
 
     def sol_lamports(self) -> int:
-        return 0
+        """Finalized SOL balance of the owner. Raises when the RPC result is unusable."""
+
+        if not isinstance(self._owner, str) or not self._owner:
+            raise RuntimeError("BALANCE_UNAVAILABLE")
+        result = self._rpc.call("getBalance", [self._owner, {"commitment": "finalized"}])  # type: ignore[attr-defined]
+        if not result.ok or not isinstance(result.value, dict):
+            raise RuntimeError("BALANCE_UNAVAILABLE")
+        value = result.value.get("value")
+        if type(value) is not int or value < 0:
+            raise RuntimeError("BALANCE_UNAVAILABLE")
+        return value
 
     def signature_status(self, signature: str) -> str:
         result = self._rpc.call("getSignatureStatuses", [[signature]])  # type: ignore[attr-defined]
@@ -197,12 +208,16 @@ def _services(args: argparse.Namespace, *, create: bool) -> Services:
         rpc_url = secrets.get_rpc_url()
     except Exception:
         rpc_url = None
+    try:
+        owner_pubkey = secrets.wallet_pubkey()
+    except Exception:
+        owner_pubkey = None
     clock: Clock = _Clock()
     oracle: Oracle
     marks: MarkSource
     chain: ChainView
     if isinstance(rpc_url, str) and _helius_url(rpc_url):
-        oracle, marks, chain = _live_readers(rpc_url, clock)
+        oracle, marks, chain = _live_readers(rpc_url, clock, owner_pubkey)
     else:
         oracle = _DownOracle()
         marks = _NoMarks()
@@ -246,6 +261,10 @@ def _parser() -> argparse.ArgumentParser:
     sell = sub.add_parser("sell")
     sell.add_argument("mint")
     sell.add_argument("--tokens", type=int, default=0)
+    sell.add_argument("--confirm", default="")
+    sub.add_parser("init-event-key")
+    rekey = sub.add_parser("rekey")
+    rekey.add_argument("--confirm", required=True)
     sub.add_parser("sell-all")
     deposit = sub.add_parser("expect-deposit")
     deposit.add_argument("lamports", type=int)
@@ -303,7 +322,13 @@ def main(argv: list[str] | None = None) -> int:
         decision = signer.unhalt(args.confirm)
     elif args.cmd == "sell":
         amount = args.tokens if args.tokens > 0 else None
-        decision = signer.owner_sell(args.mint, amount)
+        decision = signer.owner_sell(args.mint, amount, args.confirm)
+    elif args.cmd == "init-event-key":
+        decision = signer.init_event_key()
+        if decision.ok:
+            print("event key stored")
+    elif args.cmd == "rekey":
+        decision = signer.rekey(args.confirm)
     elif args.cmd == "sell-all":
         results = signer.sell_all()
         print(f"sells={len(results)}")

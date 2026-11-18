@@ -81,6 +81,27 @@ def _hmac_bytes(key: bytes | None) -> bytes | None:
     return key
 
 
+def event_key_id(key: bytes) -> str:
+    """Public id of an event HMAC key. Not the key."""
+
+    import hashlib
+
+    return hashlib.sha256(key).hexdigest()[:16]
+
+
+def event_key_acceptable(key: bytes, hmac_key: bytes | None) -> bool:
+    """Reject a short, repeated, low-entropy, or intent-HMAC-identical event key."""
+
+    if _hmac_bytes(key) is None or len(set(key)) < 8:
+        return False
+    if hmac_key is not None and len(hmac_key) == len(key):
+        import hmac
+
+        if hmac.compare_digest(key, hmac_key):
+            return False
+    return True
+
+
 class KeyMaterialInEnv(RuntimeError):
     pass
 
@@ -133,8 +154,8 @@ class MemorySecretStore:
         return _hmac_bytes(self.event_hmac)
 
     def set_event_hmac(self, key: bytes) -> None:
-        if _hmac_bytes(key) is None:
-            raise InvalidSigningKey("HMAC_SHORT")
+        if not event_key_acceptable(key, self.get_hmac_key()):
+            raise InvalidSigningKey("EVENT_KEY")
         self.event_hmac = key
 
     def get_rpc_url(self) -> str | None:
@@ -206,8 +227,8 @@ class KeyringSecretStore:
         return _hmac_bytes(decoded)
 
     def set_event_hmac(self, key: bytes) -> None:
-        if _hmac_bytes(key) is None:
-            raise InvalidSigningKey("HMAC_SHORT")
+        if not event_key_acceptable(key, self.get_hmac_key()):
+            raise InvalidSigningKey("EVENT_KEY")
         import keyring
 
         keyring.set_password(KEYRING_SERVICE, KEYRING_EVENT_HMAC, key.hex())

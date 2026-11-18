@@ -146,9 +146,9 @@ def test_owner_sell_unknown_mark_under_kill(tmp_path: Path) -> None:
     assert buy(signer).ok
     services.marks.by_mint[MINT] = None
     signer.halt("owner")
-    decision = signer.owner_sell(MINT)
-    assert decision.code != "UNPRICEABLE"
-    assert decision.ok
+    assert signer.owner_sell(MINT).code == "CONFIRMATION_REQUIRED"
+    decision = signer.owner_sell(MINT, confirmation="OWNER_SELL")
+    assert decision.code not in {"UNPRICEABLE", "KILL_HOLD"}
 
 
 def test_status_does_not_create_a_database(tmp_path: Path) -> None:

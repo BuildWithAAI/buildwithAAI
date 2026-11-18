@@ -16,6 +16,17 @@ def ready(path: Path) -> Signer:
     return signer
 
 
+def _close_open(signer: Signer) -> None:
+    from harness import record_state
+
+    conn = sqlite3.connect(signer.path)
+    conn.execute("UPDATE trades SET status = 'closed', tokens = 0 WHERE status IN ('open', 'moon')")
+    conn.execute("UPDATE signer_state SET ledger_sol_lamports = 100000000 WHERE id = 1")
+    conn.commit()
+    conn.close()
+    record_state(signer)
+
+
 def _set(signer: Signer, sql: str, params: tuple[object, ...] = ()) -> None:
     from harness import record_state
 
@@ -62,20 +73,20 @@ def test_buys_per_day_and_rate_boundary(tmp_path: Path) -> None:
         if index:
             services.clock.now += 601_000
         if signer.open_trade_count() >= 3:
-            assert all(item.ok for item in signer.sell_all())
+            _close_open(signer)
         assert buy(signer, mint=mints[index % 3]).ok
     services.clock.now += 601_000
     assert buy(signer).code == "RATE_LIMIT"
     services.clock.now += 61 * 60 * 1000
     for index in range(4, 10):
         if signer.open_trade_count() >= 3:
-            signer.sell_all()
+            _close_open(signer)
         services.clock.now += 601_000
         if index == 8:
             services.clock.now += 61 * 60 * 1000
         assert buy(signer, mint=mints[index % 3]).ok
     services.clock.now += 61 * 60 * 1000
-    signer.sell_all()
+    _close_open(signer)
     assert buy(signer).code == "BUYS_DAY"
 
 

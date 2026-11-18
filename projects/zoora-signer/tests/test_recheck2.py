@@ -62,7 +62,7 @@ def _buy(**overrides: object):
 def _arm(signer: object, services: object, *, volume: bool = True, ata: bool = True) -> dict[str, int]:
     from solders.pubkey import Pubkey
 
-    from zoora_signer.constants import PUMP_PROGRAM
+    from zoora_signer.constants import FEE_PROGRAM, PUMP_PROGRAM
     from zoora_signer.txbuild import _ata, _pda
 
     owner = Pubkey.from_string(str(signer._owner_pubkey()))  # type: ignore[attr-defined]
@@ -72,12 +72,22 @@ def _arm(signer: object, services: object, *, volume: bool = True, ata: bool = T
     curve = str(_pda([b"bonding-curve", bytes(mint)], pump))
     volume_key = str(_pda([b"user_volume_accumulator", bytes(owner)], pump))
     ata_key = str(_ata(owner, base, mint))
+    fee_key = str(_pda([b"fee_config", bytes(pump)], Pubkey.from_string(FEE_PROGRAM)))
+    ata_data = bytearray(182)
+    ata_data[64:72] = (1_000_000_000_000).to_bytes(8, "little")
     seen: dict[str, int] = {}
     table = {
         str(mint): (True, 1_000_000, len(MINT_DATA), TOKEN_2022, MINT_DATA),
         curve: (True, LAMPORTS, len(CURVE), PUMP_PROGRAM, CURVE),
         volume_key: (volume, 0, 137 if volume else 0, PUMP_PROGRAM if volume else "", b""),
-        ata_key: (ata, 2_000_000, 182 if ata else 0, TOKEN_2022 if ata else "", b""),
+        ata_key: (
+            ata,
+            2_000_000,
+            len(ata_data) if ata else 0,
+            TOKEN_2022 if ata else "",
+            bytes(ata_data) if ata else b"",
+        ),
+        fee_key: (True, 1, len(FEE), FEE_PROGRAM, FEE),
     }
 
     def account_info(address: str) -> tuple[bool, int, int, str, bytes] | None:
@@ -723,7 +733,7 @@ def test_helius_rent_method_and_a_lying_volume_account(tmp_path: Path) -> None:
     import httpx
 
     from zoora_signer.cli import _RpcChain
-    from zoora_signer.constants import PUMP_PROGRAM, USER_VOLUME_ACCOUNT_BYTES
+    from zoora_signer.constants import FEE_PROGRAM, PUMP_PROGRAM, USER_VOLUME_ACCOUNT_BYTES
     from zoora_signer.quote import rent_exempt_lamports
     from zoora_signer.rpc import HeliusRpc
     from zoora_signer.signer import parse_intent
@@ -743,6 +753,7 @@ def test_helius_rent_method_and_a_lying_volume_account(tmp_path: Path) -> None:
     curve = str(_pda([b"bonding-curve", bytes(mint_key)], pump))
     volume = str(_pda([b"user_volume_accumulator", bytes(owner_key)], pump))
     ata = str(_ata(owner_key, Pubkey.from_string(TOKEN_2022), mint_key))
+    fee_key = str(_pda([b"fee_config", bytes(pump)], Pubkey.from_string(FEE_PROGRAM)))
 
     def handler(request: httpx.Request) -> httpx.Response:
         body = js.loads(request.content.decode())
@@ -770,6 +781,12 @@ def test_helius_rent_method_and_a_lying_volume_account(tmp_path: Path) -> None:
                     "owner": TOKEN_2022,
                     "data": [base64.b64encode(MINT_DATA).decode(), "base64"],
                 }
+            elif address == fee_key:
+                value = {
+                    "lamports": 1,
+                    "owner": FEE_PROGRAM,
+                    "data": [base64.b64encode(FEE).decode(), "base64"],
+                }
             elif address == ata:
                 value = {
                     "lamports": 2_000_000,
@@ -787,7 +804,7 @@ def test_helius_rent_method_and_a_lying_volume_account(tmp_path: Path) -> None:
         clock,
         client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
-    services.chain = _RpcChain(rpc)  # type: ignore[assignment]
+    services.chain = _RpcChain(rpc, str(signer._owner_pubkey()))  # type: ignore[assignment]
 
     class Market:
         def buy_inputs(self, mint: str) -> dict[str, object]:
@@ -999,7 +1016,7 @@ def test_market_reserves_do_not_change_the_chain_quote(tmp_path: Path) -> None:
 
     grab = Grab()
     services.broadcaster = grab  # type: ignore[assignment]
-    assert signer.owner_sell(MINT, 1_000_000_000_000).code == "BROADCAST_REFUSED"
+    assert signer._broadcast_sell(MINT, 1_000_000_000_000).code == "BROADCAST_REFUSED"
     sold = build_curve_sell(
         user=str(signer._owner_pubkey()),
         mint_address=MINT,
@@ -1100,17 +1117,189 @@ def test_owner_sell_after_tamper_leaves_the_ledger(tmp_path: Path) -> None:
     conn.close()
     assert signer.owner_sell_after_tamper(MINT, "no").code == "CONFIRMATION_REQUIRED"
     services.kill.state = "killed"
-    assert signer.owner_sell_after_tamper(MINT, "OWNER_SELL").code == "KILL_HOLD"
-    services.kill.state = "clear"
     decision = signer.owner_sell_after_tamper(MINT, "OWNER_SELL")
-    assert decision.code == "BROADCAST_REFUSED"
-    row = connect(signer.path).execute("SELECT ledger_sol_lamports FROM signer_state").fetchone()
+    assert decision.code == "OWNER_SELL_SIMULATED"
+    row = connect(signer.path).execute("SELECT ledger_sol_lamports, halt_reason FROM signer_state").fetchone()
     assert row is not None and int(row[0]) == before
-    kind = connect(signer.path).execute(
-        "SELECT kind FROM events ORDER BY id DESC LIMIT 1"
-    ).fetchone()
-    assert kind is not None and str(kind[0]) == "owner_sell_after_tamper"
-    assert signer.unhalt("UNHALT").code == "RECONCILE_REQUIRED"
+    assert "anchor_mismatch" in str(row[1] or "")
+    kind = connect(signer.path).execute("SELECT kind, payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
+    assert kind is not None and str(kind[0]) == "owner_sell"
+    assert '"kill_logged":true' in str(kind[1])
+    refused = signer.unhalt("UNHALT")
+    assert not refused.ok
+    assert signer.activity() == "HALTED"
+
+
+def test_rpc_balance_and_a_zero_ledger_cannot_reanchor(tmp_path: Path) -> None:
+    import json as js
+
+    import httpx
+
+    from zoora_signer.cli import _RpcChain
+    from zoora_signer.rpc import HeliusRpc
+
+    owner = "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = js.loads(request.content.decode())
+        assert body["method"] == "getBalance"
+        assert body["params"][1]["commitment"] == "finalized"
+        seen["owner"] = body["params"][0]
+        if seen.get("fail"):
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": {"value": "no"}})
+        result = {"context": {"slot": 1}, "value": 5_000_000}
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": result})
+
+    clock = type("Clock", (), {"now_ms": lambda self: 1_763_400_000_000})()
+    rpc = HeliusRpc(
+        lambda: "https://mainnet.helius-rpc.com/?api-key=test",
+        clock,
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    chain = _RpcChain(rpc, owner)
+    assert chain.sol_lamports() == 5_000_000
+    seen["fail"] = True
+    with pytest.raises(RuntimeError, match="BALANCE_UNAVAILABLE"):
+        chain.sol_lamports()
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert buy(signer).ok
+    seen["fail"] = False
+    services.chain = _RpcChain(rpc, str(signer._owner_pubkey()))  # type: ignore[assignment]
+    import sqlite3
+
+    conn = sqlite3.connect(signer.path)
+    conn.execute("DELETE FROM trades")
+    conn.execute("DELETE FROM reservations")
+    conn.execute("UPDATE signer_state SET ledger_sol_lamports = 0 WHERE id = 1")
+    conn.commit()
+    conn.close()
+    assert signer.reanchor("REANCHOR").code == "RECONCILE_REQUIRED"
+
+
+def test_forged_fee_does_not_change_min_out(tmp_path: Path) -> None:
+    import struct
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
+    _arm(signer, services)
+    forged = bytearray(FEE)
+    struct.pack_into("<QQQ", forged, 8 + 1 + 32, 0, 9_900, 0)
+    struct.pack_into("<I", forged, 8 + 1 + 32 + 24, 0)
+
+    class Market:
+        def sell_inputs(self, mint: str) -> dict[str, object]:
+            return {
+                "fee_config_data": bytes(forged),
+                "buyback": str(ORDER[13]),
+                "token_in": 9_900,
+                "slippage_bps": 0,
+            }
+
+    services.market = Market()
+
+    class Grab:
+        enabled = False
+        raw = b""
+
+        def submit(self, payload: bytes) -> None:
+            self.raw = payload
+            raise RuntimeError("BROADCAST_DISABLED")
+
+    grab = Grab()
+    services.broadcaster = grab  # type: ignore[assignment]
+    assert signer._broadcast_sell(MINT, None).code == "BROADCAST_REFUSED"
+    from zoora_signer.txbuild import build_curve_sell
+
+    honest = build_curve_sell(
+        user=str(signer._owner_pubkey()),
+        mint_address=MINT,
+        mint_data=MINT_DATA,
+        mint_owner=TOKEN_2022,
+        curve_data=CURVE,
+        fee_config_data=FEE,
+        buyback_fee_recipient=str(ORDER[13]),
+        token_in=1_000_000_000_000,
+        slippage_bps=0,
+    )
+    lied = build_curve_sell(
+        user=str(signer._owner_pubkey()),
+        mint_address=MINT,
+        mint_data=MINT_DATA,
+        mint_owner=TOKEN_2022,
+        curve_data=CURVE,
+        fee_config_data=bytes(forged),
+        buyback_fee_recipient=str(ORDER[13]),
+        token_in=1_000_000_000_000,
+        slippage_bps=0,
+    )
+    assert grab.raw == honest.raw
+    assert honest.limit_lamports != lied.limit_lamports
+    services.max_fee_bps = 10_000
+    assert signer._max_total_fee() == 135
+    services.max_fee_bps = 40
+    assert signer._max_total_fee() == 50
+
+
+def test_route_flip_and_token_shrinkage_block_reanchor(tmp_path: Path) -> None:
+    import sqlite3
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    services.chain.authoritative = True
+    conn = sqlite3.connect(signer.path)
+    conn.execute("UPDATE signer_state SET route_approved = 0 WHERE id = 1")
+    conn.commit()
+    conn.close()
+    assert signer.reanchor("REANCHOR").code == "RECONCILE_REQUIRED"
+
+
+def test_event_key_refuses_weak_keys_and_migrates_an_unkeyed_chain(tmp_path: Path) -> None:
+    from zoora_signer.db import connect, legacy_event_digest, verify_chain, verify_legacy_chain
+    from zoora_signer.secrets import InvalidSigningKey
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    services.chain.authoritative = True
+    with pytest.raises(InvalidSigningKey):
+        services.secrets.set_event_hmac(b"\x00" * 32)
+    with pytest.raises(InvalidSigningKey):
+        services.secrets.set_event_hmac(b"e" * 32)
+    hmac_key = services.secrets.get_hmac_key()
+    assert hmac_key is not None
+    with pytest.raises(InvalidSigningKey):
+        services.secrets.set_event_hmac(hmac_key)
+    stored = services.secrets.get_event_hmac()
+    assert stored is not None
+    services.secrets.event_hmac = None
+    decision = signer.init_event_key()
+    assert decision.ok
+    fresh = services.secrets.get_event_hmac()
+    assert fresh is not None and fresh.hex() not in decision.code and decision.intent_id != fresh.hex()
+    conn = connect(signer.path)
+    prev = "0" * 64
+    rows = conn.execute("SELECT id, ts_ms, kind, payload FROM events ORDER BY id").fetchall()
+    for row in rows:
+        digest = legacy_event_digest(int(row["id"]), int(row["ts_ms"]), str(row["kind"]), prev, str(row["payload"]))
+        conn.execute(
+            "UPDATE events SET prev_hash = ?, hash = ? WHERE id = ?",
+            (prev, digest, int(row["id"])),
+        )
+        prev = digest
+    conn.commit()
+    assert verify_legacy_chain(conn)
+    assert verify_chain(conn, fresh) is False
+    conn.close()
+    assert signer.rekey("no").code == "CONFIRMATION_REQUIRED"
+    assert signer.rekey("REKEY").ok
+    conn = connect(signer.path)
+    assert verify_chain(conn, fresh)
+    conn.close()
 
 
 def test_deleting_a_trade_or_reservation_halts_the_next_buy(tmp_path: Path) -> None:

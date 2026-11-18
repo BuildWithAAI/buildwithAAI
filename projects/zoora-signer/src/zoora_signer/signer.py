@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import sqlite3
 import uuid
 from collections.abc import Callable
@@ -50,6 +51,8 @@ from zoora_signer.quote import lamports_for_cents
 from zoora_signer.secrets import reject_key_material_in_env
 from zoora_signer.txbuild import BuiltTx
 from zoora_signer.vet import VetAssessment, assess_vet
+
+_owner_log = logging.getLogger("zoora_signer.owner_sell")
 
 MINT_OK = __import__("re").compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 STICKY_HALTS = frozenset(
@@ -155,6 +158,7 @@ class Services:
     market: object | None = None
     time_stop_ms: int = 6 * 60 * 60 * 1000
     hard_stop_bps: int = 5_000
+    max_fee_bps: int = 125
 
 
 T = TypeVar("T")
@@ -610,11 +614,19 @@ class Signer:
             ).fetchone()
             if pending is not None and int(pending["n"]) != 0:
                 return Decision(False, "RECONCILE_REQUIRED", False)
-            previous = _state_snapshot(row)
+            current = self._book_snapshot(db)
+            previous = self._last_snapshot(db)
+            if not self._snapshot_reconciles(db, previous, current):
+                return Decision(False, "RECONCILE_REQUIRED", False)
             event_id = self._event(
                 db,
                 "reanchor",
-                _reanchor_payload(previous, _state_snapshot(_state(db)), chain_sol, self.s.provider_name),
+                _reanchor_payload(
+                    {**_state_snapshot(row), **previous},
+                    {**_state_snapshot(_state(db)), **current},
+                    chain_sol,
+                    self.s.provider_name,
+                ),
             )
             return Decision(True, "REANCHORED", False, event_id=event_id)
 
@@ -705,33 +717,38 @@ class Signer:
             return Decision(False, "KILL_HOLD", False)
         return Decision(False, "PLACEHOLDER_BUILDER", False)
 
-    def owner_sell(self, mint: str, token_amount: int | None = None) -> Decision:
-        return self._sell(mint, token_amount, owner=True, intent_id=None)
+    def owner_sell(self, mint: str, token_amount: int | None = None, confirmation: str = "") -> Decision:
+        """One owner exit. The kill switch does not block it. This build does not broadcast."""
+
+        return self._owner_exit(mint, token_amount, confirmation)
 
     def owner_sell_after_tamper(self, mint: str, confirmation: str) -> Decision:
-        """Build a sell of the owner's own tokens after a database tamper.
+        return self._owner_exit(mint, None, confirmation)
 
-        The kill switch must be clear and the owner must type OWNER_SELL. The size
-        is the chain token balance. The ledger is not changed. The event keeps the
-        previous state digest, so the halt stays. This build still cannot broadcast.
-        """
-
+    def _owner_exit(self, mint: str, token_amount: int | None, confirmation: str) -> Decision:
         if confirmation != "OWNER_SELL":
             return Decision(False, "CONFIRMATION_REQUIRED", False)
-        if self.poll_kill() != "clear":
-            return Decision(False, "KILL_HOLD", False)
+        killed = self._kill_observed() != "clear"
+        if killed:
+            _owner_log.warning("owner sell while the kill switch is not clear")
+        if self.mode() == "LIVE" and self._devnet_in_live():
+            return Decision(False, "LIVE_HOST", False)
         owner = self._owner_pubkey()
-        market = self.s.market
-        reader = getattr(market, "sell_inputs", None)
-        inputs = reader(mint) if callable(reader) else None
-        if owner is None or not isinstance(inputs, dict):
+        if owner is None:
             return Decision(False, "BROADCAST_REFUSED", False)
         chain = self._chain_trade_facts(owner, mint, False)
-        if chain is None or chain[8] <= 0:
+        if chain is None or chain[8] <= 0 or chain[9] is None:
             return Decision(False, "BROADCAST_REFUSED", False)
+        amount = chain[8] if token_amount is None else min(int(token_amount), chain[8])
+        if amount <= 0:
+            return Decision(False, "BAD_SIZE", False)
+        from zoora_signer.constants import SLIPPAGE_CAP_BPS
         from zoora_signer.message_policy import PolicyError, validate_transaction
         from zoora_signer.txbuild import BuildError, build_curve_sell
 
+        buyback = self._owner_buyback(mint)
+        if buyback is None:
+            return Decision(False, "BROADCAST_REFUSED", False)
         try:
             built = build_curve_sell(
                 user=owner,
@@ -739,10 +756,10 @@ class Signer:
                 mint_data=chain[6],
                 mint_owner=chain[7],
                 curve_data=chain[5],
-                fee_config_data=bytes(inputs["fee_config_data"]),
-                buyback_fee_recipient=str(inputs["buyback"]),
-                token_in=chain[8],
-                slippage_bps=int(inputs.get("slippage_bps", 1500)),
+                fee_config_data=chain[9],
+                buyback_fee_recipient=buyback,
+                token_in=amount,
+                slippage_bps=SLIPPAGE_CAP_BPS,
             )
             validate_transaction(
                 built.raw,
@@ -755,39 +772,65 @@ class Signer:
             )
         except (BuildError, PolicyError, KeyError, TypeError, ValueError):
             return Decision(False, "BROADCAST_REFUSED", False)
+        del built
 
         def op(conn: sqlite3.Connection) -> Decision:
             db = _db(conn)
             ledger_before = int(_state(db)["ledger_sol_lamports"] or 0)
-            last = db.execute("SELECT payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
-            previous_digest: str | None = None
-            if last is not None:
-                try:
-                    body = json.loads(str(last["payload"]))
-                except json.JSONDecodeError:
-                    body = None
-                if isinstance(body, dict) and isinstance(body.get("state_sha256"), str):
-                    previous_digest = str(body["state_sha256"])
+            reasons = _parse_reasons(str(_state(db)["halt_reason"] or ""))
+            tamper = (not self._state_event_matches(db)) or bool(reasons & {"anchor_mismatch", "hash_chain"})
+            code = "BROADCASTER_NOT_ENABLED" if self.mode() == "LIVE" else "OWNER_SELL_SIMULATED"
             payload: Payload = {
                 "mint": mint,
-                "token_amount": chain[8],
+                "token_amount": amount,
                 "owner": owner,
-                "code": "BROADCAST_REFUSED",
-                "ledger_sol_lamports": ledger_before,
+                "kill_logged": killed,
+                "tamper": tamper,
+                "code": code,
             }
-            if previous_digest is not None:
-                payload["state_sha256"] = previous_digest
-            event_id = self._event(db, "owner_sell_after_tamper", payload)
+            if tamper:
+                previous_digest = self._previous_digest(db)
+                if previous_digest is not None:
+                    payload["state_sha256"] = previous_digest
+            event_id = self._event(db, "owner_sell", payload)
             if int(_state(db)["ledger_sol_lamports"] or 0) != ledger_before:
                 return Decision(False, "LEDGER_BREACH", False, event_id=event_id)
-            return Decision(False, "BROADCAST_REFUSED", False, event_id=event_id)
+            if self.mode() == "LIVE":
+                return Decision(False, "BROADCASTER_NOT_ENABLED", False, event_id=event_id)
+            return Decision(True, "OWNER_SELL_SIMULATED", True, event_id=event_id)
 
-        decision = transact(self.path, op)
+        return transact(self.path, op)
+
+    def _kill_observed(self) -> str:
         try:
-            self.s.broadcaster.submit(built.raw)
+            status = self.s.kill.poll()
         except Exception:
-            return decision
-        return decision
+            return "killed"
+        return status if isinstance(status, str) else "killed"
+
+    def _owner_buyback(self, mint: str) -> str | None:
+        market = self.s.market
+        reader = getattr(market, "sell_inputs", None)
+        inputs = reader(mint) if callable(reader) else None
+        if isinstance(inputs, dict) and isinstance(inputs.get("buyback"), str):
+            return str(inputs["buyback"])
+        from zoora_signer.message_policy import _BUYBACKS
+
+        if not _BUYBACKS:
+            return None
+        return sorted(_BUYBACKS)[0]
+
+    def _previous_digest(self, db: sqlite3.Connection) -> str | None:
+        last = db.execute("SELECT payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
+        if last is None:
+            return None
+        try:
+            body = json.loads(str(last["payload"]))
+        except json.JSONDecodeError:
+            return None
+        if isinstance(body, dict) and isinstance(body.get("state_sha256"), str):
+            return str(body["state_sha256"])
+        return None
 
     def _owner_pubkey(self) -> str | None:
         pub = getattr(self.s.secrets, "wallet_pubkey", None)
@@ -819,7 +862,7 @@ class Signer:
                 mint_data=chain[6],
                 mint_owner=chain[7],
                 curve_data=chain[5],
-                fee_config_data=bytes(inputs["fee_config_data"]),
+                fee_config_data=chain[9],
                 buyback_fee_recipient=str(inputs["buyback"]),
                 sol_usd_cents=price,
                 sol_usd_micro=micro_per_sol,
@@ -839,18 +882,20 @@ class Signer:
         owner: str,
         mint: str,
         claimed_volume: object,
-    ) -> tuple[int, bool, int | None, int, bool, bytes, bytes, str, int] | None:
+    ) -> tuple[int, bool, int | None, int, bool, bytes, bytes, str, int, bytes] | None:
         """Curve bytes, mint bytes, rent, and the ATA balance from the chain."""
 
         from solders.pubkey import Pubkey
 
         from zoora_signer.constants import (
             BONDING_CURVE_DISCRIMINATOR,
+            FEE_CONFIG_DISCRIMINATOR,
+            FEE_PROGRAM,
             PUMP_PROGRAM,
             SPL_TOKEN,
             USER_VOLUME_ACCOUNT_BYTES,
         )
-        from zoora_signer.quote import parse_mint
+        from zoora_signer.quote import decode_bonding_curve, parse_fee_bps, parse_mint
         from zoora_signer.txbuild import _ata, _pda
 
         mint_info = self._account(mint)
@@ -867,12 +912,30 @@ class Signer:
         curve = str(_pda([b"bonding-curve", bytes(mint_key)], pump))
         volume = str(_pda([b"user_volume_accumulator", bytes(owner_key)], pump))
         user_ata = str(_ata(owner_key, base_program, mint_key))
+        fee_pda = str(_pda([b"fee_config", bytes(pump)], Pubkey.from_string(FEE_PROGRAM)))
         curve_info = self._account(curve)
         volume_info = self._account(volume)
         ata_info = self._account(user_ata)
-        if curve_info is None or volume_info is None or ata_info is None or not curve_info[0]:
+        fee_info = self._account(fee_pda)
+        if (
+            curve_info is None
+            or volume_info is None
+            or ata_info is None
+            or fee_info is None
+            or not curve_info[0]
+            or not fee_info[0]
+        ):
             return None
         if curve_info[3] != PUMP_PROGRAM or not curve_info[4].startswith(BONDING_CURVE_DISCRIMINATOR):
+            return None
+        if fee_info[3] != FEE_PROGRAM or not fee_info[4].startswith(FEE_CONFIG_DISCRIMINATOR):
+            return None
+        decoded = decode_bonding_curve(curve_info[4])
+        if decoded is None or int(decoded["virtual_token"]) <= 0:
+            return None
+        market_cap = int(decoded["virtual_quote"]) * int(decoded["supply"]) // int(decoded["virtual_token"])
+        fees = parse_fee_bps(fee_info[4], market_cap)
+        if fees is None or fees[0] + fees[1] > self._max_total_fee():
             return None
         if ata_info[0] and ata_info[3] != mint_owner:
             return None
@@ -914,6 +977,7 @@ class Signer:
             mint_data,
             mint_owner,
             ata_amount,
+            fee_info[4],
         )
 
     def _account(self, address: str) -> tuple[bool, int, int, str, bytes] | None:
@@ -976,14 +1040,17 @@ class Signer:
         if chain is None:
             return self._note("sell_refused", {"code": "BROADCAST_REFUSED", "mint": mint})
         try:
-            amount = int(token_amount if token_amount is not None else inputs.get("token_in") or chain[8])
+            balance = chain[8]
+            amount = balance if token_amount is None else min(int(token_amount), balance)
+            if amount <= 0:
+                return self._note("sell_refused", {"code": "BAD_SIZE", "mint": mint})
             built = build_curve_sell(
                 user=owner,
                 mint_address=mint,
                 mint_data=chain[6],
                 mint_owner=chain[7],
                 curve_data=chain[5],
-                fee_config_data=bytes(inputs["fee_config_data"]),
+                fee_config_data=chain[9],
                 buyback_fee_recipient=str(inputs["buyback"]),
                 token_in=amount,
                 slippage_bps=int(inputs.get("slippage_bps", 1500)),
@@ -1022,7 +1089,7 @@ class Signer:
             mints = self._transact(op)
         except AnchorMismatch:
             return [Decision(False, "ANCHOR_MISMATCH", self.mode() != "LIVE")]
-        return [self.owner_sell(mint) for mint in mints]
+        return [self.owner_sell(mint, confirmation="OWNER_SELL") for mint in mints]
 
     def run_scheduled_exits(self) -> list[Decision]:
         if self.activity() == "HALTED":
@@ -1480,7 +1547,10 @@ class Signer:
             if not self.s.chain.authoritative:
                 return False
             ledger = int(_state(db)["ledger_sol_lamports"] or 0)
-            return self.s.chain.sol_lamports() == ledger
+            try:
+                return self.s.chain.sol_lamports() == ledger
+            except Exception:
+                return False
         if reason == "agent_guard":
             if not self._chain_reconciled(db):
                 return False
@@ -1844,11 +1914,166 @@ class Signer:
                 _add_halt(db, "anchor_mismatch")
         else:
             recorded["state_sha256"] = current
+        for field, value in self._book_snapshot(db).items():
+            if field not in recorded:
+                recorded[field] = value
         key = self._event_key()
         if key is None:
             _add_halt(db, "hash_chain")
             return 0
+        from zoora_signer.secrets import event_key_id
+
+        if "event_key_id" not in recorded:
+            recorded["event_key_id"] = event_key_id(key)
         return append_event(_db(db), kind, recorded, self.s.clock.now_ms(), self._needles(), key)
+
+    def _max_total_fee(self) -> int:
+        from zoora_signer.constants import FEE_BPS_MARGIN, MAX_TOTAL_FEE_BPS
+
+        configured = self.s.max_fee_bps
+        if type(configured) is not int or configured < 0:
+            configured = 0
+        return min(configured, MAX_TOTAL_FEE_BPS) + FEE_BPS_MARGIN
+
+    def _book_snapshot(self, db: sqlite3.Connection) -> dict[str, str | int | bool | None]:
+        trade = db.execute("SELECT COUNT(*) AS n FROM trades").fetchone()
+        opened = db.execute(
+            "SELECT COALESCE(SUM(tokens), 0) AS tokens FROM trades WHERE status IN ('open', 'moon')"
+        ).fetchone()
+        reservations = db.execute("SELECT COUNT(*) AS n FROM reservations").fetchone()
+        row = _state(db)
+        return {
+            "trade_count": int(trade["n"] if trade is not None else 0),
+            "open_tokens": int(opened["tokens"] if opened is not None else 0),
+            "reservation_count": int(reservations["n"] if reservations is not None else 0),
+            "route_approved": int(row["route_approved"]),
+            "execution_mode": str(row["execution_mode"]),
+            "ledger_sol_lamports": int(row["ledger_sol_lamports"] or 0),
+        }
+
+    def _last_snapshot(self, db: sqlite3.Connection) -> dict[str, str | int | bool | None]:
+        last = db.execute("SELECT payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
+        if last is None:
+            return self._book_snapshot(db)
+        try:
+            body = json.loads(str(last["payload"]))
+        except json.JSONDecodeError:
+            return {}
+        if not isinstance(body, dict):
+            return {}
+        snap: dict[str, str | int | bool | None] = {}
+        for key in ("trade_count", "open_tokens", "reservation_count", "route_approved", "ledger_sol_lamports"):
+            if type(body.get(key)) is int:
+                snap[key] = int(body[key])
+        if isinstance(body.get("execution_mode"), str):
+            snap["execution_mode"] = str(body["execution_mode"])
+        return snap
+
+    def _snapshot_reconciles(
+        self,
+        db: sqlite3.Connection,
+        previous: dict[str, str | int | bool | None],
+        current: dict[str, str | int | bool | None],
+    ) -> bool:
+        for key in ("route_approved", "execution_mode"):
+            if key in previous and previous[key] != current.get(key):
+                return False
+        previous_tokens = previous.get("open_tokens")
+        current_tokens = current.get("open_tokens")
+        if type(previous_tokens) is int and type(current_tokens) is int and previous_tokens > current_tokens:
+            return False
+        previous_trades = previous.get("trade_count")
+        current_trades = current.get("trade_count")
+        if type(previous_trades) is int and type(current_trades) is int and previous_trades > current_trades:
+            return False
+        owner = self._owner_pubkey()
+        rows = db.execute("SELECT mint, tokens FROM trades WHERE status IN ('open', 'moon')").fetchall()
+        for row in rows:
+            if owner is None:
+                return False
+            balance = self._ata_token_balance(owner, str(row["mint"]))
+            if balance is None or balance != int(row["tokens"]):
+                return False
+        return True
+
+    def _ata_token_balance(self, owner: str, mint: str) -> int | None:
+        mint_info = self._account(mint)
+        if mint_info is None or not mint_info[0]:
+            return None
+        from solders.pubkey import Pubkey
+
+        from zoora_signer.txbuild import _ata
+
+        ata = str(_ata(Pubkey.from_string(owner), Pubkey.from_string(mint_info[3]), Pubkey.from_string(mint)))
+        info = self._account(ata)
+        if info is None:
+            return None
+        if not info[0] or len(info[4]) < 72:
+            return 0
+        return int.from_bytes(info[4][64:72], "little")
+
+    def init_event_key(self) -> Decision:
+        """Generate an event HMAC key, store it in the keyring, and do not return the key."""
+
+        import secrets as pysecrets
+
+        from zoora_signer.secrets import event_key_id
+
+        if self._event_key() is not None:
+            return Decision(False, "EVENT_KEY_EXISTS", False)
+        key = pysecrets.token_bytes(32)
+        try:
+            self.s.secrets.set_event_hmac(key)
+        except Exception:
+            return Decision(False, "EVENT_KEY", False)
+        key_id = event_key_id(key)
+
+        def op(conn: sqlite3.Connection) -> Decision:
+            event_id = self._event(_db(conn), "event_key_init", {"event_key_id": key_id})
+            return Decision(True, "EVENT_KEY_STORED", False, intent_id=key_id, event_id=event_id)
+
+        return self._run(op)
+
+    def rekey(self, confirmation: str) -> Decision:
+        """Owner-confirmed genesis for a database whose events are still unkeyed sha256."""
+
+        if confirmation != "REKEY":
+            return Decision(False, "CONFIRMATION_REQUIRED", False)
+        key = self._event_key()
+        if key is None:
+            return Decision(False, "EVENT_KEY_REQUIRED", False)
+        from zoora_signer.db import verify_legacy_chain
+        from zoora_signer.secrets import event_key_id
+
+        def op(conn: sqlite3.Connection) -> Decision:
+            db = _db(conn)
+            if self._verify(db):
+                return Decision(True, "EVENT_KEY_CURRENT", False)
+            if not verify_legacy_chain(db):
+                return Decision(False, "HASH_CHAIN", False)
+            if not self.s.chain.authoritative:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            try:
+                chain_sol = self.s.chain.sol_lamports()
+            except Exception:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            if type(chain_sol) is not int or int(_state(db)["ledger_sol_lamports"] or 0) != chain_sol:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            pending = db.execute(
+                "SELECT COUNT(*) AS n FROM reservations WHERE status IN ('reserved', 'signing')"
+            ).fetchone()
+            if pending is not None and int(pending["n"]) != 0:
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            event_id = self._event(
+                db,
+                "event_key_genesis",
+                {"event_key_id": event_key_id(key), "provider": self.s.provider_name},
+            )
+            return Decision(True, "EVENT_KEY_GENESIS", False, event_id=event_id)
+
+        decision = self._run(op)
+        self._sync_hud()
+        return decision
 
     def _event_key(self) -> bytes | None:
         getter = getattr(self.s.secrets, "get_event_hmac", None)
