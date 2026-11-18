@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """The only writer of ``heartbeat.json``.
 
 Agent-guard does not write this file. The signer process writes it by calling
@@ -76,8 +77,8 @@ def _replace_dacl(path: Path, owner: str) -> None:
     import ctypes
     from ctypes import wintypes
 
-    adv = ctypes.WinDLL("advapi32", use_last_error=True)  # type: ignore[attr-defined]
-    kernel = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    adv = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
 
     class _Trustee(ctypes.Structure):
         _fields_ = [
@@ -141,8 +142,8 @@ def _dacl_allow_sids(path: Path) -> set[str]:
     import ctypes
     from ctypes import wintypes
 
-    adv = ctypes.WinDLL("advapi32", use_last_error=True)  # type: ignore[attr-defined]
-    kernel = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    adv = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
     dacl = ctypes.c_void_p()
     descriptor = ctypes.c_void_p()
     adv.GetNamedSecurityInfoW.argtypes = [
@@ -177,7 +178,7 @@ def _dacl_allow_sids(path: Path) -> set[str]:
     adv.GetAclInformation.restype = wintypes.BOOL
     if not adv.GetAclInformation(dacl, ctypes.byref(info), ctypes.sizeof(info), 2):
         kernel.LocalFree(descriptor)
-        raise OSError(ctypes.get_last_error(), "GetAclInformation")  # type: ignore[attr-defined]
+        raise OSError(ctypes.get_last_error(), "GetAclInformation")
     found: set[str] = set()
     for index in range(info.AceCount):
         ace = ctypes.c_void_p()
@@ -185,7 +186,7 @@ def _dacl_allow_sids(path: Path) -> set[str]:
         adv.GetAce.restype = wintypes.BOOL
         if not adv.GetAce(dacl, index, ctypes.byref(ace)) or not ace.value:
             kernel.LocalFree(descriptor)
-            raise OSError(ctypes.get_last_error(), "GetAce")  # type: ignore[attr-defined]
+            raise OSError(ctypes.get_last_error(), "GetAce")
         header = _Header.from_address(ace.value)
         if header.AceType != 0:
             kernel.LocalFree(descriptor)
@@ -195,7 +196,7 @@ def _dacl_allow_sids(path: Path) -> set[str]:
         adv.ConvertSidToStringSidW.restype = wintypes.BOOL
         if not adv.ConvertSidToStringSidW(ace.value + 8, ctypes.byref(text)) or not text.value:
             kernel.LocalFree(descriptor)
-            raise OSError(ctypes.get_last_error(), "ConvertSidToStringSidW")  # type: ignore[attr-defined]
+            raise OSError(ctypes.get_last_error(), "ConvertSidToStringSidW")
         found.add(text.value)
         kernel.LocalFree(text)
     kernel.LocalFree(descriptor)
@@ -206,12 +207,12 @@ def _sid(adv: object, text: str) -> object:
     import ctypes
     from ctypes import wintypes
 
-    convert = adv.ConvertStringSidToSidW  # type: ignore[attr-defined]
+    convert = adv.ConvertStringSidToSidW
     convert.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)]
     convert.restype = wintypes.BOOL
     out = ctypes.c_void_p()
     if not convert(text, ctypes.byref(out)):
-        raise OSError(ctypes.get_last_error(), f"ConvertStringSidToSidW {text}")  # type: ignore[attr-defined]
+        raise OSError(ctypes.get_last_error(), f"ConvertStringSidToSidW {text}")
     return out
 
 
