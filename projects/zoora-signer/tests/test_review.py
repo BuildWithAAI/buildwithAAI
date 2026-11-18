@@ -175,25 +175,27 @@ def test_message_policy_rejects_forbidden_instructions(program: str, data: bytes
     from solders.hash import Hash
     from solders.instruction import Instruction
     from solders.keypair import Keypair
-    from solders.message import Message
+    from solders.message import MessageV0
     from solders.pubkey import Pubkey
-    from solders.transaction import Transaction
+    from solders.signature import Signature
+    from solders.transaction import VersionedTransaction
 
     payer = Keypair()
     ix = Instruction(Pubkey.from_string(program), data, [])
-    message = Message.new_with_blockhash([ix], payer.pubkey(), Hash.default())
-    raw = bytes(Transaction.new_unsigned(message))
+    message = MessageV0.try_compile(payer.pubkey(), [ix], [], Hash.default())
+    raw = bytes(VersionedTransaction.populate(message, [Signature.default()]))
     with pytest.raises(PolicyError, match=code):
-        validate_transaction(raw)
+        validate_transaction(raw, owner=str(payer.pubkey()))
 
 
 def test_message_policy_rejects_token_transfer() -> None:
     from solders.hash import Hash
     from solders.instruction import AccountMeta, Instruction
     from solders.keypair import Keypair
-    from solders.message import Message
+    from solders.message import MessageV0
     from solders.pubkey import Pubkey
-    from solders.transaction import Transaction
+    from solders.signature import Signature
+    from solders.transaction import VersionedTransaction
 
     payer = Keypair()
     dest = Pubkey.new_unique()
@@ -203,7 +205,7 @@ def test_message_policy_rejects_token_transfer() -> None:
         data,
         [AccountMeta(payer.pubkey(), True, True), AccountMeta(dest, False, True)],
     )
-    message = Message.new_with_blockhash([ix], payer.pubkey(), Hash.default())
-    raw = bytes(Transaction.new_unsigned(message))
+    message = MessageV0.try_compile(payer.pubkey(), [ix], [], Hash.default())
+    raw = bytes(VersionedTransaction.populate(message, [Signature.default()]))
     with pytest.raises(PolicyError, match="TOKEN_TRANSFER"):
-        validate_transaction(raw)
+        validate_transaction(raw, owner=str(payer.pubkey()))

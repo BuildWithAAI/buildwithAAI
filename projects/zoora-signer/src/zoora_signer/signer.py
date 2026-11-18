@@ -25,6 +25,7 @@ from zoora_signer.constants import (
     RPC_PROVIDER_NAME,
     SLEEP_JUMP_MS,
     UNCONFIRMED_MS,
+    USD_CAP_MICRO,
     VET_CONFIG_VERSION,
     VET_FRESH_MS,
     WALLET_CAP_CENTS,
@@ -45,10 +46,22 @@ from zoora_signer.ports import (
 )
 from zoora_signer.quote import lamports_for_cents
 from zoora_signer.secrets import reject_key_material_in_env
+from zoora_signer.txbuild import BuiltTx
 from zoora_signer.vet import VetAssessment, assess_vet
 
 MINT_OK = __import__("re").compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
-STICKY_HALTS = frozenset({"unexpected_sol", "reconcile_unknown", "LEDGER_BREACH", "agent_guard"})
+STICKY_HALTS = frozenset(
+    {
+        "unexpected_sol",
+        "reconcile_unknown",
+        "LEDGER_BREACH",
+        "agent_guard",
+        "anchor_mismatch",
+        "hash_chain",
+        "settle_error",
+        "unconfirmed",
+    }
+)
 
 
 def _parse_reasons(text: str) -> set[str]:
@@ -590,16 +603,17 @@ class Signer:
         return self._sell(mint, token_amount, owner=True, intent_id=None)
 
     def _owner_pubkey(self) -> str | None:
-        pub = getattr(self.s.secrets, "signing_pubkey", None)
-        if callable(pub):
-            found = pub()
-            return found if isinstance(found, str) and found else None
-        return None
+        pub = getattr(self.s.secrets, "wallet_pubkey", None)
+        if not callable(pub):
+            return None
+        found = pub()
+        return found if isinstance(found, str) and found else None
 
-    def _unsigned_buy(self, intent: Intent) -> bytes | None:
+    def _unsigned_buy(self, intent: Intent, price: int) -> BuiltTx | None:
+        owner = self._owner_pubkey()
         market = self.s.market
         reader = getattr(market, "buy_inputs", None)
-        if not callable(reader):
+        if owner is None or price <= 0 or not callable(reader):
             return None
         inputs = reader(intent.mint)
         if not isinstance(inputs, dict):
@@ -607,46 +621,63 @@ class Signer:
         from zoora_signer.txbuild import BuildError, build_curve_buy
 
         try:
-            built = build_curve_buy(
-                user=str(inputs["user"]),
+            return build_curve_buy(
+                user=owner,
                 mint_address=intent.mint,
                 mint_data=bytes(inputs["mint_data"]),
                 mint_owner=str(inputs["mint_owner"]),
                 curve_data=bytes(inputs["curve_data"]),
                 fee_config_data=bytes(inputs["fee_config_data"]),
                 buyback_fee_recipient=str(inputs["buyback"]),
-                sol_usd_cents=int(inputs["sol_usd_cents"]),
+                sol_usd_cents=price,
                 stake_cents=intent.usd_stake_cents or 0,
                 slippage_bps=intent.max_slippage_bps,
                 ata_rent_lamports=int(inputs.get("ata_rent_lamports", 0)),
                 create_base_ata=bool(inputs.get("create_base_ata", False)),
+                curve_lamports=inputs["curve_lamports"] if isinstance(inputs.get("curve_lamports"), int) else None,
+                volume_exists=bool(inputs.get("volume_exists", False)),
             )
         except (BuildError, KeyError, TypeError):
             return None
-        return built.raw
 
     def _broadcast_sell(self, mint: str, token_amount: int | None) -> Decision:
+        if self.poll_kill() != "clear":
+            return self._note("sell_refused", {"code": "KILL_HOLD", "mint": mint})
+        owner = self._owner_pubkey()
         market = self.s.market
         reader = getattr(market, "sell_inputs", None)
         inputs = reader(mint) if callable(reader) else None
-        if not isinstance(inputs, dict):
+        if owner is None or not isinstance(inputs, dict):
             return self._note("sell_refused", {"code": "BROADCAST_REFUSED", "mint": mint})
         from zoora_signer.message_policy import PolicyError, validate_transaction
         from zoora_signer.txbuild import BuildError, build_curve_sell
 
         try:
+            amount = int(token_amount or inputs["token_in"])
             built = build_curve_sell(
-                user=str(inputs["user"]),
+                user=owner,
                 mint_address=mint,
                 mint_data=bytes(inputs["mint_data"]),
                 mint_owner=str(inputs["mint_owner"]),
                 curve_data=bytes(inputs["curve_data"]),
                 fee_config_data=bytes(inputs["fee_config_data"]),
                 buyback_fee_recipient=str(inputs["buyback"]),
-                token_in=int(token_amount or inputs["token_in"]),
+                token_in=amount,
                 slippage_bps=int(inputs.get("slippage_bps", 1500)),
             )
-            validate_transaction(built.raw, owner=str(inputs["user"]), mint=mint)
+            if self.poll_kill() != "clear":
+                return self._note("sell_refused", {"code": "KILL_HOLD", "mint": mint})
+            validate_transaction(
+                built.raw,
+                owner=owner,
+                mint=mint,
+                max_all_in_lamports=built.all_in_lamports or None,
+                expected_token_amount=amount,
+                expected_limit_lamports=built.limit_lamports,
+                rent_lamports=built.rent_lamports,
+            )
+            if self.poll_kill() != "clear":
+                return self._note("sell_refused", {"code": "KILL_HOLD", "mint": mint})
             self.s.broadcaster.submit(built.raw)
         except PolicyError:
             return self._note("sell_refused", {"code": "POLICY_REJECTED", "mint": mint})
@@ -848,14 +879,31 @@ class Signer:
         if self.activity() == "HALTED":
             return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
         if self.mode() == "LIVE":
-            raw = self._unsigned_buy(intent)
-            if raw is not None:
-                from zoora_signer.message_policy import PolicyError, validate_transaction
+            if self.poll_kill() != "clear":
+                return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
+            price = sol_usd_cents(reading)
+            built = self._unsigned_buy(intent, price)
+            owner = self._owner_pubkey()
+            if built is None or owner is None:
+                return self._release(reservation_id, "SIGN_REFUSED", intent.intent_id)
+            from zoora_signer.message_policy import PolicyError, validate_transaction
+            from zoora_signer.quote import lamports_for_micro
 
-                try:
-                    validate_transaction(raw, owner=self._owner_pubkey(), mint=intent.mint)
-                except PolicyError:
-                    return self._release(reservation_id, "POLICY_REJECTED", intent.intent_id)
+            try:
+                if self.poll_kill() != "clear":
+                    return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
+                budget = lamports_for_micro(min((intent.usd_stake_cents or 0) * 10_000, USD_CAP_MICRO), price)
+                validate_transaction(
+                    built.raw,
+                    owner=owner,
+                    mint=intent.mint,
+                    max_all_in_lamports=budget,
+                    expected_token_amount=built.token_amount,
+                    expected_limit_lamports=built.limit_lamports,
+                    rent_lamports=built.rent_lamports,
+                )
+            except PolicyError:
+                return self._release(reservation_id, "POLICY_REJECTED", intent.intent_id)
             return self._release(reservation_id, "SIGN_REFUSED", intent.intent_id)
         price = sol_usd_cents(reading)
         lamports = lamports_for_cents(stake, price)
@@ -1100,6 +1148,16 @@ class Signer:
                 return self.s.kill.poll() == "clear"
             except Exception:
                 return False
+        if reason == "anchor_mismatch":
+            return self._anchor_matches(db)
+        if reason == "hash_chain":
+            return verify_chain(db)
+        if reason == "settle_error":
+            pending = db.execute("SELECT COUNT(*) AS n FROM reservations WHERE status = 'reserved'").fetchone()
+            return pending is not None and int(pending["n"]) == 0 and verify_chain(db)
+        if reason == "unconfirmed":
+            signing = db.execute("SELECT COUNT(*) AS n FROM reservations WHERE status = 'signing'").fetchone()
+            return signing is not None and int(signing["n"]) == 0
         if reason == "reconcile_unknown":
             if not self.s.chain.authoritative:
                 return False
@@ -1470,8 +1528,15 @@ class Signer:
 
     def _anchor_matches(self, db: sqlite3.Connection) -> bool:
         path = self._anchor_path()
+        written = 0
+        try:
+            row = db.execute("SELECT written FROM anchor_meta WHERE id = 1").fetchone()
+        except sqlite3.OperationalError:
+            row = None
+        if row is not None:
+            written = int(row["written"] or 0)
         if not path.is_file():
-            return True
+            return written == 0
         lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line]
         if not lines:
             return True
@@ -1505,6 +1570,11 @@ class Signer:
             return
         with path.open("a", encoding="utf-8") as handle:
             handle.write(line + "\n")
+
+        def mark(conn: sqlite3.Connection) -> None:
+            _db(conn).execute("UPDATE anchor_meta SET written = 1 WHERE id = 1")
+
+        transact(self.path, mark)
         if self.s.hud_path is not None:
             with self.s.hud_path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"anchor": line}) + "\n")
@@ -1558,7 +1628,13 @@ def _telegram_update(
     inner = message.get("message")
     if not isinstance(inner, dict):
         return None
-    if inner.get("forward_origin") or inner.get("forward_date") or inner.get("sender_chat") or inner.get("via_bot"):
+    if (
+        "forward_origin" in inner
+        or inner.get("is_automatic_forward")
+        or inner.get("forward_date")
+        or inner.get("sender_chat")
+        or inner.get("via_bot")
+    ):
         return ("TELEGRAM_FORWARDED", "", "", "")
     chat = inner.get("chat")
     sender = inner.get("from")

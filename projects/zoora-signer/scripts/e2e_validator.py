@@ -143,6 +143,8 @@ def _builder_transactions(document: dict[str, object]) -> tuple[str, str, tuple[
         stake_cents=200,
         slippage_bps=1500,
         create_base_ata=False,
+        curve_lamports=int(accounts[str(order[5])]["lamports"]),
+        volume_exists=False,
     )
     sell = build_curve_sell(
         user=user,

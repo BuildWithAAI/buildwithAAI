@@ -135,16 +135,21 @@ class _RpcMarks:
         return lamports * sol_usd_cents(reading) // 1_000_000_000
 
 
-def _acl_paths(db: Path, hud: Path, rpc_env: Path | None) -> list[str]:
+def _acl_paths(db: Path, hud: Path, rpc_env: Path | None, kill_dir: Path | None = None) -> list[str]:
     paths = [db, db.parent, Path(str(db) + "-wal"), Path(str(db) + "-shm"), hud, hud.parent]
     if rpc_env is not None:
         paths.extend((rpc_env, rpc_env.parent))
-    return [str(path) for path in paths if path.exists() or path in {db, db.parent, hud.parent}]
+    if kill_dir is not None:
+        paths.append(kill_dir)
+    kept = {db, db.parent, hud.parent}
+    if kill_dir is not None:
+        kept.add(kill_dir)
+    return [str(path) for path in paths if path.exists() or path in kept]
 
 
-def _probe(db: Path, hud: Path, rpc_env: Path | None) -> OsProbe:
+def _probe(db: Path, hud: Path, rpc_env: Path | None, kill_dir: Path | None = None) -> OsProbe:
     if sys.platform == "win32":
-        return WindowsOsProbe(_acl_paths(db, hud, rpc_env))
+        return WindowsOsProbe(_acl_paths(db, hud, rpc_env, kill_dir))
     return FailClosedProbe()
 
 
@@ -179,7 +184,7 @@ def _services(args: argparse.Namespace, *, create: bool) -> Services:
         chain=chain,
         marks=marks,
         kill=kill,
-        probe=_probe(db, hud, rpc_env),
+        probe=_probe(db, hud, rpc_env, Path(args.kill_switch) if args.kill_switch else None),
         broadcaster=RefuseBroadcaster(),
         hud_path=hud,
         provider_name=RPC_PROVIDER_NAME,

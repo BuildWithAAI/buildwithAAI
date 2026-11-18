@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS signer_state (
   boot_id TEXT NOT NULL,
   ledger_sol_lamports INTEGER
 );
+CREATE TABLE IF NOT EXISTS anchor_meta (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  written INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ts_ms INTEGER NOT NULL,
@@ -106,6 +110,9 @@ def init_db(path: str, provider: str) -> None:
     conn = connect(path)
     try:
         conn.executescript(SCHEMA)
+        meta = conn.execute("SELECT id FROM anchor_meta WHERE id = 1").fetchone()
+        if meta is None:
+            conn.execute("INSERT INTO anchor_meta (id, written) VALUES (1, 0)")
         row = conn.execute("SELECT id FROM signer_state WHERE id = 1").fetchone()
         if row is None:
             conn.execute(

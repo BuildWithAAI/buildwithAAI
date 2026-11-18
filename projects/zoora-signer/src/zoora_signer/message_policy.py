@@ -12,10 +12,17 @@ from pathlib import Path
 
 from zoora_signer.constants import (
     ASSOCIATED_TOKEN,
+    BUY_V3_DISCRIMINATOR,
     COMPUTE_BUDGET,
     FEE_PROGRAM,
+    MAX_CU_LIMIT,
+    MAX_CU_PRICE_MICRO_LAMPORTS,
     PUMP_PROGRAM,
     PUMP_SWAP,
+    PUMPSWAP_BUY_V2_DISCRIMINATOR,
+    PUMPSWAP_SELL_V2_DISCRIMINATOR,
+    SELL_V3_DISCRIMINATOR,
+    SIGNATURE_FEE_LAMPORTS,
     SPL_TOKEN,
     TOKEN_2022,
 )
@@ -84,27 +91,37 @@ def validate_transaction(
     max_all_in_lamports: int | None = None,
     expected_token_amount: int | None = None,
     expected_limit_lamports: int | None = None,
+    rent_lamports: int = 0,
+    allow_pumpswap: bool = False,
 ) -> None:
-    """Reject anything that is not the pinned v3 (or PumpSwap v2) shape."""
+    """Reject anything that is not the pinned curve v3 shape.
 
-    message, lookups = _decode(raw)
+    PumpSwap is not on the live allowlist. A dry-run builder may pass
+    allow_pumpswap so its own derived accounts can still be checked.
+    """
+
+    if owner is None:
+        raise PolicyError("OWNER_REQUIRED")
+    message, lookups, legacy = _decode(raw)
+    if legacy:
+        raise PolicyError("LEGACY")
     if lookups:
         raise PolicyError("ADDRESS_LOOKUP_TABLE")
     header = message.header  # type: ignore[attr-defined]
     if int(header.num_required_signatures) != 1:
         raise PolicyError("SIGNER_COUNT")
     instructions = _instructions(message)
-    if owner is not None:
-        payer = _fee_payer(message)
-        if payer != owner:
-            raise PolicyError("FEE_PAYER")
+    payer = _fee_payer(message)
+    if payer != owner:
+        raise PolicyError("FEE_PAYER")
     if len(instructions) > 4:
         raise PolicyError("TOO_MANY_INSTRUCTIONS")
     swaps = 0
-    budgets = 0
     atas = 0
     seen_limit = False
     seen_price = False
+    buy = False
+    swap_limit = 0
     for program, data, metas in instructions:
         forbidden = _forbidden(program, data)
         if forbidden:
@@ -121,15 +138,15 @@ def validate_transaction(
                 seen_price = True
             else:
                 raise PolicyError("COMPUTE_BUDGET")
-            budgets += 1
             continue
         if program == ASSOCIATED_TOKEN:
             if data != bytes([ATA_CREATE_IDEMPOTENT]):
                 raise PolicyError("ATA_DATA")
-            if owner is not None and (len(metas) < 3 or metas[2][0] != owner):
-                raise PolicyError("ATA_OWNER")
+            _check_ata(metas, owner, mint)
             atas += 1
             continue
+        if program == PUMP_SWAP and not allow_pumpswap:
+            raise PolicyError("PUMPSWAP_DISABLED")
         roles = _SPECS.get((program, data[:8]))
         if roles is None:
             if _retired(program, data[:8]):
@@ -137,16 +154,19 @@ def validate_transaction(
             raise PolicyError("SWAP_DISCRIMINATOR")
         _check_roles(metas, roles)
         _check_derived(program, data, metas, owner, mint)
-        _check_amounts(
+        swap_limit = _check_amounts(
             data,
             max_all_in_lamports=max_all_in_lamports,
             expected_token_amount=expected_token_amount,
             expected_limit_lamports=expected_limit_lamports,
         )
+        buy = data[:8] in {BUY_V3_DISCRIMINATOR, PUMPSWAP_BUY_V2_DISCRIMINATOR}
         swaps += 1
-    _check_budget(instructions, max_all_in_lamports)
-    if budgets > 2 or atas > 1 or swaps != 1:
-        raise PolicyError("INSTRUCTION_SHAPE")
+    _check_budget(instructions, max_all_in_lamports, swap_limit, buy, rent_lamports)
+    if not seen_limit or not seen_price or atas > 1 or swaps != 1:
+        raise PolicyError("COMPUTE_BUDGET" if not seen_limit or not seen_price else "INSTRUCTION_SHAPE")
+    if atas and rent_lamports <= 0:
+        raise PolicyError("RENT")
 
 
 _BUYBACKS = frozenset(
@@ -161,10 +181,6 @@ _BUYBACKS = frozenset(
         "A7hAgCzFw14fejgCp387JUJRMNyz4j89JKnhtKU8piqW",
     }
 )
-_MAX_PRIORITY_LAMPORTS = 50_000_000
-_MAX_SOL_LAMPORTS = 50_000_000_000
-
-
 def _retired(program: str, disc: bytes) -> bool:
     return (program, disc) in _RETIRED
 
@@ -204,10 +220,12 @@ def _check_derived(
 ) -> None:
     del data
     if owner is None or mint is None or len(metas) < 17:
-        return
+        raise PolicyError("DERIVED")
     if program == PUMP_PROGRAM:
         token_program = metas[3][0]
         curve = _pda([b"bonding-curve", _key_bytes(mint)], PUMP_PROGRAM)
+        if metas[1][0] != mint:
+            raise PolicyError("MINT")
         if metas[0][0] != _pda([b"global"], PUMP_PROGRAM):
             raise PolicyError("GLOBAL")
         if metas[5][0] != curve:
@@ -228,12 +246,43 @@ def _check_derived(
             raise PolicyError("FEE_RECIPIENT")
         return
     if program == PUMP_SWAP:
+        quote_mint = metas[4][0]
+        base_mint = metas[3][0]
+        base_program = metas[9][0]
+        quote_program = metas[10][0]
+        if metas[3][0] != mint:
+            raise PolicyError("MINT")
         if metas[1][0] != owner:
             raise PolicyError("FEE_PAYER")
         if metas[2][0] != _pda([b"global_config"], PUMP_SWAP):
             raise PolicyError("GLOBAL")
-        if metas[14][0] not in _BUYBACKS:
+        if metas[5][0] != _ata(owner, base_program, base_mint):
+            raise PolicyError("ASSOCIATED_USER")
+        quote_ata = _ata(owner, quote_program, quote_mint)
+        if metas[6][0] != quote_ata:
+            raise PolicyError("ASSOCIATED_USER")
+        pool = metas[0][0]
+        if metas[7][0] != _ata(pool, base_program, base_mint):
+            raise PolicyError("POOL_VAULT")
+        if metas[8][0] != _ata(pool, quote_program, quote_mint):
+            raise PolicyError("POOL_VAULT")
+        if metas[12][0] != _pda([b"user_volume_accumulator", _key_bytes(owner)], PUMP_SWAP):
+            raise PolicyError("VOLUME")
+        if metas[13][0] != _pda([b"fee_config", _key_bytes(PUMP_SWAP)], FEE_PROGRAM):
+            raise PolicyError("FEE_CONFIG")
+        if metas[14][0] != quote_ata:
             raise PolicyError("FEE_RECIPIENT")
+
+
+def _check_ata(
+    metas: list[tuple[str, bool, bool]],
+    owner: str,
+    mint: str | None,
+) -> None:
+    if mint is None or len(metas) < 6 or metas[2][0] != owner or metas[3][0] != mint:
+        raise PolicyError("ATA_MINT")
+    if metas[1][0] != _ata(owner, metas[5][0], mint):
+        raise PolicyError("ATA_ADDRESS")
 
 
 def _check_amounts(
@@ -242,37 +291,70 @@ def _check_amounts(
     max_all_in_lamports: int | None,
     expected_token_amount: int | None,
     expected_limit_lamports: int | None,
-) -> None:
+) -> int:
     import struct
 
-    if len(data) < 24:
-        raise PolicyError("SWAP_DATA")
-    amount, limit = struct.unpack_from("<QQ", data, 8)
-    ceiling = max_all_in_lamports if max_all_in_lamports is not None else _MAX_SOL_LAMPORTS
-    if amount == 0 or limit > ceiling:
+    extra = len(data) - 24
+    if extra not in (0, 1):
+        raise PolicyError("TRAILING")
+    unpacked = struct.unpack_from("<QQ", data, 8)
+    amount = int(unpacked[0])
+    limit = int(unpacked[1])
+    sell = data[:8] in {SELL_V3_DISCRIMINATOR, PUMPSWAP_SELL_V2_DISCRIMINATOR}
+    if amount == 0:
         raise PolicyError("MAX_SOL")
+    if sell:
+        if limit <= 1:
+            raise PolicyError("MIN_OUT")
+        if expected_limit_lamports is not None and limit < expected_limit_lamports:
+            raise PolicyError("MIN_OUT")
+    else:
+        if max_all_in_lamports is None:
+            raise PolicyError("MAX_SOL")
+        if expected_limit_lamports is not None and limit != expected_limit_lamports:
+            raise PolicyError("LIMIT_LAMPORTS")
     if expected_token_amount is not None and amount != expected_token_amount:
         raise PolicyError("TOKEN_AMOUNT")
-    if expected_limit_lamports is not None and limit != expected_limit_lamports:
-        raise PolicyError("LIMIT_LAMPORTS")
+    return limit
 
 
-def _check_budget(instructions: list[tuple[str, bytes, list[tuple[str, bool, bool]]]], max_all_in: int | None) -> None:
+def _check_budget(
+    instructions: list[tuple[str, bytes, list[tuple[str, bool, bool]]]],
+    max_all_in: int | None,
+    swap_limit: int,
+    buy: bool,
+    rent_lamports: int,
+) -> None:
     limit = 0
     price = 0
+    saw_limit = False
+    saw_price = False
     for program, data, _metas in instructions:
         if program != COMPUTE_BUDGET:
             continue
         if data[:1] == b"\x02" and len(data) == 5:
             limit = int.from_bytes(data[1:], "little")
+            saw_limit = True
         elif data[:1] == b"\x03" and len(data) == 9:
             price = int.from_bytes(data[1:], "little")
-    if limit == 0 and price == 0:
-        return
-    fee = (limit * price + 999_999) // 1_000_000 if limit and price else 0
-    cap = max_all_in if max_all_in is not None else _MAX_PRIORITY_LAMPORTS
-    if price > 2**32 or fee > cap:
+            saw_price = True
+    if saw_price and (price <= 0 or price > MAX_CU_PRICE_MICRO_LAMPORTS):
         raise PolicyError("CU_PRICE")
+    if not saw_limit or not saw_price or limit <= 0 or limit > MAX_CU_LIMIT:
+        raise PolicyError("CU_PRICE")
+    if price <= 0 or price > MAX_CU_PRICE_MICRO_LAMPORTS:
+        raise PolicyError("CU_PRICE")
+    fee = (limit * price + 999_999) // 1_000_000
+    if fee <= 0:
+        raise PolicyError("CU_PRICE")
+    if rent_lamports < 0:
+        raise PolicyError("RENT")
+    spend = fee + SIGNATURE_FEE_LAMPORTS + rent_lamports
+    if buy:
+        spend += swap_limit
+    if max_all_in is None or spend > max_all_in:
+        if buy or max_all_in is not None:
+            raise PolicyError("MAX_SOL")
 
 
 def _budget_kind(data: bytes) -> str:
@@ -317,22 +399,17 @@ def _check_roles(metas: list[tuple[str, bool, bool]], roles: tuple[_Role, ...]) 
             raise PolicyError("ACCOUNT_ADDRESS")
 
 
-def _decode(raw: bytes) -> tuple[object, bool]:
-    from solders.transaction import Transaction, VersionedTransaction
+def _decode(raw: bytes) -> tuple[object, bool, bool]:
+    from solders.transaction import VersionedTransaction
 
     try:
         versioned = VersionedTransaction.from_bytes(raw)
-    except Exception:
-        versioned = None
-    if versioned is not None:
-        message = versioned.message
-        lookups = bool(getattr(message, "address_table_lookups", []))
-        return message, lookups
-    try:
-        legacy = Transaction.from_bytes(raw)
     except Exception as exc:
-        raise PolicyError("UNDECODABLE") from exc
-    return legacy.message, False
+        raise PolicyError("LEGACY") from exc
+    message = versioned.message
+    lookups = bool(getattr(message, "address_table_lookups", []))
+    legacy = type(message).__name__ != "MessageV0"
+    return message, lookups, legacy
 
 
 def _instructions(message: object) -> list[tuple[str, bytes, list[tuple[str, bool, bool]]]]:

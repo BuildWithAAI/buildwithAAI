@@ -18,7 +18,7 @@ From PowerShell, in `projects\zoora-signer`:
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --require-hashes -r requirements.lock.txt
-python -m pip install -e ".[dev]"
+python -m pip install --no-deps --no-build-isolation -e ".[dev]"
 ```
 
 If activation is blocked, run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` for this window only.

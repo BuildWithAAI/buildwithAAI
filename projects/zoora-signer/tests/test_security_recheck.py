@@ -141,8 +141,17 @@ def test_policy_rejects_foreign_accounts_and_absurd_fees() -> None:
         stake_cents=200,
         slippage_bps=0,
         create_base_ata=False,
+        curve_lamports=10**12,
     )
-    validate_transaction(built.raw, owner=USER, mint=ORDER[1])
+    validate_transaction(
+        built.raw,
+        owner=USER,
+        mint=ORDER[1],
+        max_all_in_lamports=built.all_in_lamports,
+        expected_token_amount=built.token_amount,
+        expected_limit_lamports=built.limit_lamports,
+        rent_lamports=built.rent_lamports,
+    )
     huge = SoldersInstruction(
         Pubkey.from_string(COMPUTE_BUDGET),
         bytes([3]) + (2**64 - 1).to_bytes(8, "little"),
@@ -152,7 +161,7 @@ def test_policy_rejects_foreign_accounts_and_absurd_fees() -> None:
     message = MessageV0.try_compile(payer, [huge, _swap_ix(built, built.data)], [], Hash.default())
     raw = bytes(VersionedTransaction.populate(message, [Signature.default()]))
     with pytest.raises(PolicyError, match="CU_PRICE"):
-        validate_transaction(raw, owner=USER, mint=ORDER[1])
+        validate_transaction(raw, owner=USER, mint=ORDER[1], max_all_in_lamports=10**18)
     blown = built.data[:16] + (2**64 - 1).to_bytes(8, "little")
     message = MessageV0.try_compile(payer, [_swap_ix(built, blown)], [], Hash.default())
     raw = bytes(VersionedTransaction.populate(message, [Signature.default()]))
@@ -212,8 +221,8 @@ def test_intent_keys_and_duplicates(tmp_path: Path) -> None:
 
 def test_acl_allowlist_and_high_integrity_sid() -> None:
     owner = "S-1-5-21-1-2-3-1001"
-    assert parse_icacls(f"{owner}:(F)\nS-1-5-18:(F)\n", owner)
-    assert not parse_icacls(f"{owner}:(F)\nS-1-5-18:(F)\nS-1-5-32-544:(F)\n", owner)
+    assert parse_icacls(f"D:P(A;;FA;;;{owner})(A;;FR;;;S-1-5-18)", owner)
+    assert not parse_icacls(f"D:P(A;;FA;;;{owner})(A;;FR;;;S-1-5-18)(A;;FA;;;S-1-5-32-544)", owner)
     assert parse_whoami(f"Group {HIGH_INTEGRITY_SID}\n")
     assert not parse_whoami("High Mandatory Level")
 

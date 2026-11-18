@@ -83,20 +83,38 @@ def parse_whoami(text: str) -> bool:
 
 
 def parse_icacls(text: str, owner_sid: str) -> bool:
-    """Allow only the owner SID and SYSTEM. Any other SID fails closed."""
+    """Read an SDDL DACL. Only the owner SID and SYSTEM may have an ACE.
+
+    A name-based icacls listing is not accepted: real output uses account
+    names, and splitting on ':' drops the first ACE when the path contains
+    'C:'.
+    """
 
     if not text.strip() or not owner_sid.startswith("S-1-"):
         return False
     import re
 
-    found = re.findall(r"S-1-[0-9-]+", text)
-    if not found:
+    dacl = re.search(r"D:[A-Z]*(\([^)]*\))+", text)
+    if dacl is None:
         return False
-    allowed = {owner_sid, SYSTEM_SID}
-    return set(found) <= allowed and owner_sid in found and SYSTEM_SID in found
+    found: set[str] = set()
+    for ace in re.findall(r"\(([^)]*)\)", dacl.group(0)):
+        parts = ace.split(";")
+        if len(parts) < 6 or not parts[5]:
+            return False
+        account = parts[5]
+        if account in {"SY", "LS"}:
+            account = SYSTEM_SID
+        found.add(account)
+    return found == {owner_sid, SYSTEM_SID}
 
 
-def judge_clock(local_ms: int, https_ms: list[int], rpc_ms: int | None = None) -> int | None:
+def judge_clock(
+    local_ms: int,
+    https_ms: list[int],
+    rpc_ms: int | None = None,
+    hosts: list[str] | None = None,
+) -> int | None:
     """Two HTTPS dates must agree with each other and with the local clock.
 
     An RPC Date is not one of those two sources. A forged RPC timestamp that
@@ -105,6 +123,10 @@ def judge_clock(local_ms: int, https_ms: list[int], rpc_ms: int | None = None) -
 
     if len(https_ms) < 2:
         return None
+    if hosts is not None:
+        names = [host.lower() for host in hosts if host]
+        if len(hosts) != len(https_ms) or len(set(names)) < 2:
+            return None
     if max(https_ms) - min(https_ms) > 2_000:
         return None
     skews = [abs(local_ms - stamp) for stamp in https_ms]
@@ -142,6 +164,12 @@ def _https_date_ms(url: str) -> int | None:
         return int(parsedate_to_datetime(header).timestamp() * 1000)
     except Exception:
         return None
+
+
+def _host(url: str) -> str:
+    from urllib.parse import urlparse
+
+    return urlparse(url).hostname or ""
 
 
 def _sid_in(text: str) -> str:
@@ -201,17 +229,22 @@ class WindowsOsProbe:
 
     def time_skew_ms(self) -> int | None:
         local = time.time_ns() // 1_000_000
+        hosts = [_host(url) for url in self._clock_urls]
         if self._https_times:
             https = list(self._https_times)
         else:
             https = []
+            hosts = []
             for url in self._clock_urls:
                 stamp = _https_date_ms(url)
                 if stamp is not None:
                     https.append(stamp)
+                    hosts.append(_host(url))
         if self._clock_samples and not https:
             return None
-        return judge_clock(local, https, self._rpc_time_ms)
+        if len(hosts) != len(https):
+            hosts = [_host(url) for url in self._clock_urls]
+        return judge_clock(local, https, self._rpc_time_ms, hosts if len(hosts) == len(https) else None)
 
     def defender_active(self) -> bool:
         script = (
@@ -244,7 +277,15 @@ class WindowsOsProbe:
         if not owner:
             return False
         for path in self.paths:
-            code, text = self.runner.run(["icacls", path])
+            code, text = self.runner.run(
+                [
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    f"(Get-Acl -LiteralPath '{path}').Sddl",
+                ]
+            )
             if code != 0 or not parse_icacls(text, owner):
                 return False
         return True

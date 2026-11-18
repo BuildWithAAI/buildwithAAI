@@ -140,6 +140,6 @@ def test_windows_parsers() -> None:
     assert not parse_whoami("BUILTIN\\Administrators  Enabled group\n")
     assert not parse_whoami("BUILTIN\\Users  Enabled group\n")
     owner = "S-1-5-21-1"
-    assert parse_icacls(f"{owner}:(F)\nS-1-5-18:(F)\n", owner)
-    assert not parse_icacls(f"{owner}:(F)\nEveryone:(F)\n", owner)
+    assert parse_icacls(f"D:P(A;;FA;;;{owner})(A;;FR;;;S-1-5-18)", owner)
+    assert not parse_icacls(f"D:P(A;;FA;;;{owner})(A;;FA;;;WD)", owner)
     assert parse_w32tm_offset_ms("Phase Offset: 0.001s\n") == 1

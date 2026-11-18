@@ -22,7 +22,7 @@ from zoora_signer.constants import (
     TOKEN_2022,
     TOKEN_2022_ATA_RENT_LAMPORTS,
 )
-from zoora_signer.message_policy import validate_transaction
+from zoora_signer.message_policy import PolicyError, validate_transaction
 from zoora_signer.quote import lamports_for_micro, micro_for_lamports
 from zoora_signer.txbuild import (
     BuildError,
@@ -61,6 +61,8 @@ def _buy(**overrides: object) -> BuiltTx:
         "slippage_bps": 0,
         "ata_rent_lamports": 0,
         "create_base_ata": False,
+        "curve_lamports": int(FIXTURE["accounts"][ORDER[5]]["lamports"]),
+        "volume_exists": False,
     }
     args.update(overrides)
     return build_curve_buy(**args)  # type: ignore[arg-type]
@@ -93,14 +95,27 @@ def test_curve_buy_accounts_data_and_cap() -> None:
     assert micro_for_lamports(built.all_in_lamports + 1, PRICE) == 2_000_001
     message = VersionedTransaction.from_bytes(built.raw).message
     assert list(message.address_table_lookups) == []
-    validate_transaction(built.raw)
+    validate_transaction(
+        built.raw,
+        owner=str(USER),
+        mint=str(MINT),
+        max_all_in_lamports=built.all_in_lamports,
+        expected_token_amount=built.token_amount,
+        expected_limit_lamports=built.limit_lamports,
+        rent_lamports=built.rent_lamports,
+    )
     # SetComputeUnitPrice is micro-lamports per CU, not a lamport total.
     assert PRIORITY_MICRO_LAMPORTS == 1_000
     assert CU_LIMIT == 200_000
 
 
 def test_slippage_and_rent_round_down() -> None:
-    built = _buy(slippage_bps=1500, create_base_ata=True, ata_rent_lamports=TOKEN_2022_ATA_RENT_LAMPORTS)
+    built = _buy(
+        slippage_bps=1500,
+        create_base_ata=True,
+        ata_rent_lamports=TOKEN_2022_ATA_RENT_LAMPORTS,
+        volume_exists=True,
+    )
     assert built.limit_lamports == built.quote_lamports * 11_500 // 10_000
     assert built.all_in_lamports <= lamports_for_micro(2_000_000, PRICE)
     assert micro_for_lamports(built.all_in_lamports, PRICE) <= 2_000_000
@@ -124,7 +139,13 @@ def test_sell_min_sol_and_decimals() -> None:
     _tokens, minimum = struct.unpack_from("<QQ", sold.data, 8)
     assert minimum == sold.quote_lamports * 8_500 // 10_000
     assert sold.limit_lamports == minimum
-    validate_transaction(sold.raw)
+    validate_transaction(
+        sold.raw,
+        owner=str(USER),
+        mint=str(MINT),
+        expected_token_amount=sold.token_amount,
+        expected_limit_lamports=sold.limit_lamports,
+    )
     spl = bytearray(82)
     spl[44] = 9
     spl[45] = 1
@@ -148,11 +169,20 @@ def test_missing_fee_and_slippage_fail_closed() -> None:
 def test_pumpswap_builder_matches_the_v2_idl() -> None:
     from solders.pubkey import Pubkey
 
-    pool = str(Pubkey.new_unique())
-    pool_base = str(Pubkey.new_unique())
-    pool_quote = str(Pubkey.new_unique())
-    user_base = str(Pubkey.new_unique())
-    user_quote = str(Pubkey.new_unique())
+    from zoora_signer.constants import SPL_TOKEN, WSOL_MINT
+    from zoora_signer.txbuild import _ata
+
+    pool_key = Pubkey.new_unique()
+    pool = str(pool_key)
+    user_key = Pubkey.from_string(str(USER))
+    base = Pubkey.from_string(str(MINT))
+    quote = Pubkey.from_string(WSOL_MINT)
+    base_program = Pubkey.from_string(TOKEN_2022)
+    quote_program = Pubkey.from_string(SPL_TOKEN)
+    user_base = str(_ata(user_key, base_program, base))
+    user_quote = str(_ata(user_key, quote_program, quote))
+    pool_base = str(_ata(pool_key, base_program, base))
+    pool_quote = str(_ata(pool_key, quote_program, quote))
     built = build_pumpswap_buy(
         user=USER,
         pool=pool,
@@ -168,7 +198,7 @@ def test_pumpswap_builder_matches_the_v2_idl() -> None:
         pool_quote_token_account=pool_quote,
         user_base_token_account=user_base,
         user_quote_token_account=user_quote,
-        buyback_fee_recipient=BUYBACK,
+        buyback_fee_recipient=user_quote,
         sol_usd_cents=PRICE,
         stake_cents=200,
         slippage_bps=0,
@@ -179,7 +209,26 @@ def test_pumpswap_builder_matches_the_v2_idl() -> None:
     assert built.accounts[16] == PUMP_SWAP
     assert len(built.accounts) == 17
     assert built.protocol_fee_bps == 95 and built.creator_fee_bps == 30
-    validate_transaction(built.raw)
+    with pytest.raises(PolicyError, match="PUMPSWAP_DISABLED"):
+        validate_transaction(
+            built.raw,
+            owner=str(USER),
+            mint=str(MINT),
+            max_all_in_lamports=built.all_in_lamports,
+            expected_token_amount=built.token_amount,
+            expected_limit_lamports=built.limit_lamports,
+            rent_lamports=built.rent_lamports,
+        )
+    validate_transaction(
+        built.raw,
+        owner=str(USER),
+        mint=str(MINT),
+        max_all_in_lamports=built.all_in_lamports,
+        expected_token_amount=built.token_amount,
+        expected_limit_lamports=built.limit_lamports,
+        rent_lamports=built.rent_lamports,
+        allow_pumpswap=True,
+    )
     sold = build_pumpswap_sell(
         user=USER,
         pool=pool,
@@ -195,11 +244,18 @@ def test_pumpswap_builder_matches_the_v2_idl() -> None:
         pool_quote_token_account=pool_quote,
         user_base_token_account=user_base,
         user_quote_token_account=user_quote,
-        buyback_fee_recipient=BUYBACK,
+        buyback_fee_recipient=user_quote,
         token_in=1_000_000,
         slippage_bps=1500,
     )
-    validate_transaction(sold.raw)
+    validate_transaction(
+        sold.raw,
+        owner=str(USER),
+        mint=str(MINT),
+        expected_token_amount=sold.token_amount,
+        expected_limit_lamports=sold.limit_lamports,
+        allow_pumpswap=True,
+    )
 
 
 def test_live_settle_does_not_fetch_the_signing_key(tmp_path: Path) -> None:

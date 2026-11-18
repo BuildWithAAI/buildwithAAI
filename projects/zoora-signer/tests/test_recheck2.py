@@ -1,0 +1,312 @@
+"""HoSec re-check 2. Validation only: the broadcaster still refuses."""
+
+from __future__ import annotations
+
+import base64
+import json
+from pathlib import Path
+
+import pytest
+from solders.hash import Hash
+from solders.keypair import Keypair
+from solders.message import Message
+from solders.pubkey import Pubkey
+from solders.transaction import Transaction
+
+from harness import activate, build, buy
+from zoora_signer.cli import _acl_paths
+from zoora_signer.constants import (
+    SELL_V3_DISCRIMINATOR,
+    TOKEN_2022,
+    USER_VOLUME_ACCOUNT_BYTES,
+    WSOL_MINT,
+)
+from zoora_signer.message_policy import PolicyError, _check_amounts, _check_ata, _check_derived, validate_transaction
+from zoora_signer.preflight import judge_clock, parse_icacls
+from zoora_signer.quote import rent_exempt_lamports
+from zoora_signer.signer import STICKY_HALTS, _telegram_update
+from zoora_signer.txbuild import BuildError, build_curve_buy
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE = json.loads((ROOT / "fixtures" / "e2e_curve.json").read_text(encoding="utf-8"))
+ORDER = FIXTURE["accounts_in_order"]
+MINT = str(ORDER[1])
+USER = str(ORDER[8])
+CURVE = base64.b64decode(FIXTURE["accounts"][ORDER[5]]["data"])
+FEE = base64.b64decode(FIXTURE["accounts"][ORDER[12]]["data"])
+MINT_DATA = base64.b64decode(FIXTURE["accounts"][MINT]["data"])
+LAMPORTS = int(FIXTURE["accounts"][ORDER[5]]["lamports"])
+
+
+def _buy(**overrides: object):
+    args: dict[str, object] = {
+        "user": USER,
+        "mint_address": MINT,
+        "mint_data": MINT_DATA,
+        "mint_owner": TOKEN_2022,
+        "curve_data": CURVE,
+        "fee_config_data": FEE,
+        "buyback_fee_recipient": str(ORDER[13]),
+        "sol_usd_cents": 100_000,
+        "stake_cents": 200,
+        "slippage_bps": 0,
+        "create_base_ata": False,
+        "curve_lamports": LAMPORTS,
+        "volume_exists": True,
+    }
+    args.update(overrides)
+    return build_curve_buy(**args)  # type: ignore[arg-type]
+
+
+def test_owner_is_required_and_comes_from_the_public_half(tmp_path: Path) -> None:
+    built = _buy()
+    with pytest.raises(PolicyError, match="OWNER_REQUIRED"):
+        validate_transaction(built.raw, owner=None, mint=MINT, max_all_in_lamports=built.all_in_lamports)
+    signer, services = build(tmp_path)
+    secret = services.secrets.signing_key
+    assert secret is not None
+    assert signer._owner_pubkey() == str(Pubkey.from_bytes(secret[32:]))
+
+
+def test_compute_budget_is_capped_with_the_rest_of_the_all_in() -> None:
+    built = _buy()
+    limit = 49_000_000_000
+    data = built.data[:8] + built.data[8:16] + limit.to_bytes(8, "little")
+    from solders.instruction import AccountMeta, Instruction
+    from solders.message import MessageV0
+    from solders.signature import Signature
+    from solders.transaction import VersionedTransaction
+
+    from zoora_signer.constants import COMPUTE_BUDGET, CU_LIMIT, PRIORITY_MICRO_LAMPORTS, PUMP_PROGRAM
+
+    payer = Pubkey.from_string(USER)
+    from zoora_signer.txbuild import _CURVE_FLAGS
+
+    metas = [
+        AccountMeta(Pubkey.from_string(key), is_signer, is_writable)
+        for key, (is_writable, is_signer) in zip(built.accounts, _CURVE_FLAGS, strict=True)
+    ]
+    ixs = [
+        Instruction(Pubkey.from_string(COMPUTE_BUDGET), bytes([2]) + CU_LIMIT.to_bytes(4, "little"), []),
+        Instruction(
+            Pubkey.from_string(COMPUTE_BUDGET),
+            bytes([3]) + PRIORITY_MICRO_LAMPORTS.to_bytes(8, "little"),
+            [],
+        ),
+        Instruction(Pubkey.from_string(PUMP_PROGRAM), data, metas),
+    ]
+    message = MessageV0.try_compile(payer, ixs, [], Hash.default())
+    raw = bytes(VersionedTransaction.populate(message, [Signature.default()]))
+    with pytest.raises(PolicyError, match="MAX_SOL"):
+        validate_transaction(
+            raw,
+            owner=USER,
+            mint=MINT,
+            max_all_in_lamports=2_000_000,
+            rent_lamports=0,
+        )
+    price = (2**32).to_bytes(8, "little")
+    ixs[1] = Instruction(Pubkey.from_string(COMPUTE_BUDGET), bytes([3]) + price, [])
+    message = MessageV0.try_compile(payer, ixs, [], Hash.default())
+    raw = bytes(VersionedTransaction.populate(message, [Signature.default()]))
+    with pytest.raises(PolicyError, match="CU_PRICE"):
+        validate_transaction(raw, owner=USER, mint=MINT, max_all_in_lamports=10**18, rent_lamports=0)
+
+
+def test_sell_minimum_trailing_bytes_and_legacy_transactions() -> None:
+    data = SELL_V3_DISCRIMINATOR + (5).to_bytes(8, "little") + (1).to_bytes(8, "little")
+    with pytest.raises(PolicyError, match="MIN_OUT"):
+        _check_amounts(data, max_all_in_lamports=None, expected_token_amount=None, expected_limit_lamports=None)
+    with pytest.raises(PolicyError, match="TRAILING"):
+        _check_amounts(
+            data + b"\x00\x01",
+            max_all_in_lamports=None,
+            expected_token_amount=None,
+            expected_limit_lamports=None,
+        )
+    payer = Keypair()
+    message = Message.new_with_blockhash([], payer.pubkey(), Hash.default())
+    with pytest.raises(PolicyError, match="LEGACY"):
+        validate_transaction(bytes(Transaction.new_unsigned(message)), owner=str(payer.pubkey()))
+
+
+def test_missing_volume_and_ata_rent_and_curve_topup_are_in_the_cap() -> None:
+    present = _buy(volume_exists=True)
+    missing = _buy(volume_exists=False)
+    assert missing.rent_lamports - present.rent_lamports == rent_exempt_lamports(USER_VOLUME_ACCOUNT_BYTES)
+    with pytest.raises(BuildError, match="RENT"):
+        _buy(create_base_ata=True, ata_rent_lamports=0)
+    with pytest.raises(BuildError, match="CAP"):
+        _buy(curve_lamports=0, volume_exists=True)
+
+
+def test_non_wsol_quote_mint_is_refused() -> None:
+    mutated = bytearray(CURVE)
+    mutated[83:115] = b"\x01" * 32
+    with pytest.raises(BuildError, match="QUOTE_MINT"):
+        _buy(curve_data=bytes(mutated))
+    assert WSOL_MINT
+
+
+def test_buy_uses_the_vetted_price_not_the_market_input(tmp_path: Path) -> None:
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
+
+    class Market:
+        def buy_inputs(self, mint: str) -> dict[str, object]:
+            return {
+                "mint_data": MINT_DATA,
+                "mint_owner": TOKEN_2022,
+                "curve_data": CURVE,
+                "fee_config_data": FEE,
+                "buyback": str(ORDER[13]),
+                "sol_usd_cents": 1,
+                "curve_lamports": LAMPORTS,
+                "volume_exists": True,
+                "create_base_ata": False,
+            }
+
+    services.market = Market()
+    from zoora_signer.signer import parse_intent
+
+    intent = parse_intent(
+        {
+            "intent_id": "price",
+            "issued_at_ms": services.clock.now_ms(),
+            "key_id": "1",
+            "max_slippage_bps": 0,
+            "mint": MINT,
+            "side": "buy",
+            "usd_stake_micro": 2_000_000,
+        }
+    )
+    assert intent is not None
+    vetted = signer._unsigned_buy(intent, 100_000)
+    lied = signer._unsigned_buy(intent, 10_000)
+    assert vetted is not None and lied is not None
+    assert vetted.limit_lamports != lied.limit_lamports
+    assert vetted.accounts[8] == signer._owner_pubkey()
+
+
+def test_pumpswap_is_off_the_live_allowlist_and_ata_mint_is_checked() -> None:
+    with pytest.raises(PolicyError, match="ATA_MINT"):
+        _check_ata(
+            [
+                ("a", True, True),
+                ("b", False, True),
+                ("a", False, False),
+                ("nope", False, False),
+                ("s", False, False),
+                ("t", False, False),
+            ],
+            "a",
+            "mint",
+        )
+    metas = [(USER, False, False)] * 17
+    metas[14] = ("11111111111111111111111111111111", False, True)
+    with pytest.raises(PolicyError):
+        _check_derived("pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA", b"\x00" * 8, metas, USER, MINT)
+
+
+def test_sddl_rejects_a_real_icacls_listing_and_an_extra_ace() -> None:
+    owner = "S-1-5-21-100"
+    captured = (
+        "C:\\Users\\runner\\signer.sqlite BUILTIN\\Users:(I)(F)\n"
+        "                        NT AUTHORITY\\SYSTEM:(I)(F)\n"
+    )
+    assert not parse_icacls(captured, owner)
+    assert parse_icacls(f"O:{owner}G:S-1-5-18D:P(A;;FA;;;{owner})(A;;FR;;;SY)", owner)
+    assert not parse_icacls(f"D:P(A;;FA;;;S-1-5-32-544)(A;;FA;;;{owner})(A;;FR;;;S-1-5-18)", owner)
+
+
+def test_kill_status_acl_path_and_sticky_halts(tmp_path: Path) -> None:
+    from zoora_signer.heartbeat import write_heartbeat
+    from zoora_signer.killswitch import AgentGuardKill
+
+    now = 1_000_000
+    guard = AgentGuardKill(tmp_path, now_ms=lambda: now)
+    path = write_heartbeat(tmp_path, now)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["status"] = "killed"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    if __import__("os").name != "nt":
+        path.chmod(0o600)
+    assert guard.poll() == "killed"
+    kill = tmp_path / "guard"
+    kill.mkdir()
+    assert str(kill) in _acl_paths(tmp_path / "signer.sqlite", tmp_path / "hud.jsonl", None, kill)
+    assert {"anchor_mismatch", "hash_chain", "settle_error", "unconfirmed"} <= STICKY_HALTS
+
+
+def test_kill_is_polled_again_before_the_refused_sign(tmp_path: Path) -> None:
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
+
+    class Market:
+        def buy_inputs(self, mint: str) -> dict[str, object]:
+            services.kill.state = "killed"
+            return {
+                "mint_data": MINT_DATA,
+                "mint_owner": TOKEN_2022,
+                "curve_data": CURVE,
+                "fee_config_data": FEE,
+                "buyback": str(ORDER[13]),
+                "sol_usd_cents": 1,
+                "curve_lamports": LAMPORTS,
+                "volume_exists": True,
+                "create_base_ata": False,
+            }
+
+    services.market = Market()
+    assert buy(signer, mint=MINT).code == "KILL_HOLD"
+
+
+def test_two_clock_hosts_are_required() -> None:
+    assert judge_clock(1_000, [1_000, 1_100], None, ["clock.example", "clock.example"]) is None
+    assert judge_clock(1_000, [1_000, 1_100], None, ["a.example", "b.example"]) == 100
+
+
+def test_a_missing_anchor_halts_once_one_was_written(tmp_path: Path) -> None:
+    signer, _services = build(tmp_path / "signer.sqlite")
+    anchor = Path(str(signer.path) + ".anchor")
+    if not anchor.is_file():
+        anchor = Path(signer.path).with_suffix(".anchor")
+    anchor.unlink()
+    again, _services = build(tmp_path / "signer.sqlite")
+    assert again.activity() == "HALTED"
+    from zoora_signer.db import connect
+
+    row = connect(again.path).execute("SELECT halt_reason FROM signer_state WHERE id = 1").fetchone()
+    assert row is not None and "anchor_mismatch" in str(row["halt_reason"])
+
+
+def test_readme_telegram_and_status(tmp_path: Path) -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert 'pip install --no-deps --no-build-isolation -e ".[dev]"' in readme
+    forwarded = {
+        "message": {
+            "forward_origin": None,
+            "text": "halt",
+            "chat": {"id": 1},
+            "from": {"id": 1},
+        }
+    }
+    assert _telegram_update(forwarded)[0] == "TELEGRAM_FORWARDED"
+    automatic = {
+        "message": {
+            "is_automatic_forward": True,
+            "text": "halt",
+            "chat": {"id": 1},
+            "from": {"id": 1},
+        }
+    }
+    assert _telegram_update(automatic)[0] == "TELEGRAM_FORWARDED"
+    from zoora_signer.cli import main
+
+    assert main(["--db", str(tmp_path / "missing.sqlite"), "status"]) == 1
+    workflow = (ROOT.parents[1] / ".github" / "workflows" / "zoora-signer.yml").read_text(encoding="utf-8")
+    assert "continue-on-error" not in workflow

@@ -85,9 +85,8 @@ jobs:
       - run: zoora-signer --help
 
   validator:
-    name: validator (optional)
+    name: validator
     runs-on: ubuntu-latest
-    continue-on-error: true
     timeout-minutes: 20
     defaults:
       run:

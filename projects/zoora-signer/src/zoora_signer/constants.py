@@ -59,8 +59,13 @@ PUMPSWAP_SELL_V2_DISCRIMINATOR = SELL_V2_DISCRIMINATOR
 FEE_PROGRAM = "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
 # SetComputeUnitLimit units, and SetComputeUnitPrice in micro-lamports per unit.
 CU_LIMIT = 200_000
+MAX_CU_LIMIT = 400_000
 PRIORITY_MICRO_LAMPORTS = 1_000
+# A price at or above 2**32 is not a zero fee. This cap is well under that.
+MAX_CU_PRICE_MICRO_LAMPORTS = 1_000_000
 SIGNATURE_FEE_LAMPORTS = 5_000
+# idl/pump.json UserVolumeAccumulator at DOCS_COMMIT: 98-byte body plus the 8-byte discriminator.
+USER_VOLUME_ACCOUNT_BYTES = 106
 # $2.000000 exactly, in micro-USD. 1 cent = 10_000 micro.
 USD_CAP_MICRO = 2_000_000
 # Recorded rent-exempt minimum for a Token-2022 ATA with extensions.

@@ -44,6 +44,8 @@ class AgentGuardKill:
             return "killed"
         if not isinstance(payload, dict) or type(payload.get("ts_ms")) is not int:
             return "killed"
+        if payload.get("status", "clear") != "clear":
+            return "killed"
         age = self._now() - int(payload["ts_ms"])
         if age < -_FUTURE_MS or age > HEARTBEAT_MAX_MS:
             return "killed"

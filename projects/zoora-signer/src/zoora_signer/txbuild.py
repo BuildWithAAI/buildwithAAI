@@ -43,6 +43,7 @@ from zoora_signer.constants import (
     SYSTEM_PROGRAM,
     TOKEN_2022_ATA_RENT_LAMPORTS,
     USD_CAP_MICRO,
+    USER_VOLUME_ACCOUNT_BYTES,
     WSOL_MINT,
 )
 from zoora_signer.quote import (
@@ -54,6 +55,7 @@ from zoora_signer.quote import (
     parse_fee_bps,
     parse_mint,
     priority_fee_lamports,
+    rent_exempt_lamports,
     sol_for_tokens,
     tokens_for_net_sol,
 )
@@ -87,12 +89,16 @@ class BuiltTx:
     protocol_fee_bps: int
     creator_fee_bps: int
     priority_micro_lamports: int
+    rent_lamports: int = 0
 
 
-def assert_allowlisted(raw: bytes) -> None:
-    from zoora_signer.message_policy import validate_transaction
+def assert_allowlisted(raw: bytes, **checks: object) -> None:
+    from zoora_signer.message_policy import PolicyError, validate_transaction
 
-    validate_transaction(raw)
+    try:
+        validate_transaction(raw, **checks)  # type: ignore[arg-type]
+    except PolicyError as exc:
+        raise BuildError(str(exc)) from exc
 
 
 def build_sweep(*, payer: str, dest: str, lamports: int, whitelist: set[str]) -> BuiltTx:
@@ -114,13 +120,21 @@ def build_curve_buy(
     slippage_bps: int,
     ata_rent_lamports: int = TOKEN_2022_ATA_RENT_LAMPORTS,
     create_base_ata: bool = True,
+    curve_lamports: int | None = None,
+    volume_exists: bool = False,
 ) -> BuiltTx:
     curve = _curve(curve_data)
     decimals, token_program = _mint(mint_data, mint_owner)
     market_cap = _market_cap(int(curve["virtual_quote"]), int(curve["supply"]), int(curve["virtual_token"]))
     protocol, creator = _fees(fee_config_data, market_cap)
     budget = _budget(stake_cents, sol_usd_cents, slippage_bps)
-    fixed = _fixed_costs(ata_rent_lamports if create_base_ata else 0)
+    rent, fixed = _fixed_costs(
+        ata_rent_lamports,
+        create_base_ata=create_base_ata,
+        volume_exists=volume_exists,
+        curve_data=curve_data,
+        curve_lamports=curve_lamports,
+    )
     quote = _quote_before_slippage(budget, fixed, slippage_bps)
     net = net_sol_from_inclusive(quote, protocol, creator)
     tokens = tokens_for_net_sol(net, int(curve["virtual_quote"]), int(curve["virtual_token"]))
@@ -132,8 +146,13 @@ def build_curve_buy(
     _reject_if_over_cap(limit + fixed, sol_usd_cents, stake_cents)
     accounts = _curve_accounts(user, mint_address, token_program, str(curve_quote(curve)), buyback_fee_recipient)
     data = BUY_V3_DISCRIMINATOR + struct.pack("<QQ", tokens, limit)
-    raw = _compile(user, accounts, data, PUMP_PROGRAM, token_program, mint_address, create_base_ata)
-    return _result(raw, accounts, data, tokens, quote, limit, limit + fixed, decimals, token_program, protocol, creator)
+    raw = _compile(
+        user, accounts, data, PUMP_PROGRAM, token_program, mint_address, create_base_ata,
+        max_all_in=budget, expected_token=tokens, expected_limit=limit, rent_lamports=rent,
+    )
+    return _result(
+        raw, accounts, data, tokens, quote, limit, limit + fixed, decimals, token_program, protocol, creator, rent,
+    )
 
 
 def build_curve_sell(
@@ -165,8 +184,11 @@ def build_curve_sell(
         raise BuildError("QUOTE")
     accounts = _curve_accounts(user, mint_address, token_program, str(curve_quote(curve)), buyback_fee_recipient)
     data = SELL_V3_DISCRIMINATOR + struct.pack("<QQ", token_in, minimum)
-    raw = _compile(user, accounts, data, PUMP_PROGRAM, token_program, mint_address, False)
-    return _result(raw, accounts, data, token_in, net, minimum, 0, decimals, token_program, protocol, creator)
+    raw = _compile(
+        user, accounts, data, PUMP_PROGRAM, token_program, mint_address, False,
+        max_all_in=None, expected_token=token_in, expected_limit=minimum, rent_lamports=0,
+    )
+    return _result(raw, accounts, data, token_in, net, minimum, 0, decimals, token_program, protocol, creator, 0)
 
 
 def build_pumpswap_buy(
@@ -197,7 +219,13 @@ def build_pumpswap_buy(
     market_cap = _market_cap(quote_reserve, mint_supply, base_reserve)
     protocol, creator = _fees(fee_config_data, market_cap, flat=not is_pump_pool)
     budget = _budget(stake_cents, sol_usd_cents, slippage_bps)
-    fixed = _fixed_costs(ata_rent_lamports if create_base_ata else 0)
+    rent, fixed = _fixed_costs(
+        ata_rent_lamports,
+        create_base_ata=create_base_ata,
+        volume_exists=True,
+        curve_data=b"",
+        curve_lamports=0,
+    )
     quote = _quote_before_slippage(budget, fixed, slippage_bps)
     net = net_sol_from_inclusive(quote, protocol, creator)
     tokens = tokens_for_net_sol(net, quote_reserve, base_reserve)
@@ -212,8 +240,14 @@ def build_pumpswap_buy(
         pool_quote_token_account, user_base_token_account, user_quote_token_account, buyback_fee_recipient,
     )
     data = PUMPSWAP_BUY_V2_DISCRIMINATOR + struct.pack("<QQ", tokens, limit)
-    raw = _compile(user, accounts, data, PUMP_SWAP, token_program, base_mint, create_base_ata)
-    return _result(raw, accounts, data, tokens, quote, limit, limit + fixed, decimals, token_program, protocol, creator)
+    raw = _compile(
+        user, accounts, data, PUMP_SWAP, token_program, base_mint, create_base_ata,
+        max_all_in=budget, expected_token=tokens, expected_limit=limit, rent_lamports=rent,
+        allow_pumpswap=True,
+    )
+    return _result(
+        raw, accounts, data, tokens, quote, limit, limit + fixed, decimals, token_program, protocol, creator, rent,
+    )
 
 
 def build_pumpswap_sell(
@@ -254,16 +288,21 @@ def build_pumpswap_sell(
         pool_quote_token_account, user_base_token_account, user_quote_token_account, buyback_fee_recipient,
     )
     data = PUMPSWAP_SELL_V2_DISCRIMINATOR + struct.pack("<QQ", token_in, minimum)
-    raw = _compile(user, accounts, data, PUMP_SWAP, token_program, base_mint, False)
-    return _result(raw, accounts, data, token_in, net, minimum, 0, decimals, token_program, protocol, creator)
+    raw = _compile(
+        user, accounts, data, PUMP_SWAP, token_program, base_mint, False,
+        max_all_in=None, expected_token=token_in, expected_limit=minimum, rent_lamports=0,
+        allow_pumpswap=True,
+    )
+    return _result(raw, accounts, data, token_in, net, minimum, 0, decimals, token_program, protocol, creator, 0)
 
 
 def curve_quote(curve: dict[str, int | bool | bytes]) -> Pubkey:
     raw = curve["quote_mint"]
     assert isinstance(raw, bytes)
-    if raw == _ZERO:
+    wsol = bytes(Pubkey.from_string(WSOL_MINT))
+    if raw == _ZERO or raw == wsol:
         return Pubkey.from_string(WSOL_MINT)
-    return Pubkey.from_bytes(raw)
+    raise BuildError("QUOTE_MINT")
 
 
 def _curve(data: bytes) -> dict[str, int | bool | bytes]:
@@ -309,10 +348,38 @@ def _budget(stake_cents: int, sol_usd_cents: int, slippage_bps: int) -> int:
     return lamports
 
 
-def _fixed_costs(ata_rent: int) -> int:
+def _fixed_costs(
+    ata_rent: int,
+    *,
+    create_base_ata: bool,
+    volume_exists: bool,
+    curve_data: bytes,
+    curve_lamports: int | None,
+) -> tuple[int, int]:
+    if create_base_ata and ata_rent <= 0:
+        raise BuildError("RENT")
     if ata_rent < 0:
         raise BuildError("RENT")
-    return ata_rent + SIGNATURE_FEE_LAMPORTS + priority_fee_lamports(CU_LIMIT, PRIORITY_MICRO_LAMPORTS)
+    rent = (ata_rent if create_base_ata else 0) + _volume_rent(volume_exists)
+    rent += _curve_topup(curve_data, curve_lamports)
+    return rent, rent + SIGNATURE_FEE_LAMPORTS + priority_fee_lamports(CU_LIMIT, PRIORITY_MICRO_LAMPORTS)
+
+
+def _volume_rent(exists: bool) -> int:
+    if exists:
+        return 0
+    return rent_exempt_lamports(USER_VOLUME_ACCOUNT_BYTES)
+
+
+def _curve_topup(curve_data: bytes, curve_lamports: int | None) -> int:
+    if not curve_data:
+        return 0
+    need = rent_exempt_lamports(len(curve_data))
+    if curve_lamports is None:
+        return need
+    if curve_lamports < 0:
+        raise BuildError("RENT")
+    return max(0, need - curve_lamports)
 
 
 def _quote_before_slippage(budget: int, fixed: int, slippage_bps: int) -> int:
@@ -396,6 +463,17 @@ def _swap_accounts(
     quote_program = (
         "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" if quote_mint == WSOL_MINT else token_program
     )
+    derived_user_base = str(_ata(user_key, Pubkey.from_string(token_program), Pubkey.from_string(base_mint)))
+    derived_user_quote = str(_ata(user_key, Pubkey.from_string(quote_program), Pubkey.from_string(quote_mint)))
+    pool_key = Pubkey.from_string(pool)
+    derived_pool_base = str(_ata(pool_key, Pubkey.from_string(token_program), Pubkey.from_string(base_mint)))
+    derived_pool_quote = str(_ata(pool_key, Pubkey.from_string(quote_program), Pubkey.from_string(quote_mint)))
+    if user_base != derived_user_base or user_quote != derived_user_quote:
+        raise BuildError("DERIVED")
+    if pool_base != derived_pool_base or pool_quote != derived_pool_quote:
+        raise BuildError("DERIVED")
+    if buyback != derived_user_quote:
+        raise BuildError("DERIVED")
     return (
         pool,
         user,
@@ -439,6 +517,12 @@ def _compile(
     token_program: str,
     mint_address: str,
     create_base_ata: bool,
+    *,
+    max_all_in: int | None,
+    expected_token: int,
+    expected_limit: int,
+    rent_lamports: int,
+    allow_pumpswap: bool = False,
 ) -> bytes:
     flags = _CURVE_FLAGS if program == PUMP_PROGRAM else _SWAP_FLAGS
     if len(accounts) != len(flags):
@@ -465,7 +549,16 @@ def _compile(
         raise BuildError("ADDRESS_LOOKUP_TABLE")
     transaction = VersionedTransaction.populate(message, [Signature.default()])
     raw = bytes(transaction)
-    assert_allowlisted(raw)
+    assert_allowlisted(
+        raw,
+        owner=user,
+        mint=mint_address,
+        max_all_in_lamports=max_all_in,
+        expected_token_amount=expected_token,
+        expected_limit_lamports=expected_limit,
+        rent_lamports=rent_lamports,
+        allow_pumpswap=allow_pumpswap,
+    )
     return raw
 
 
@@ -510,6 +603,7 @@ def _result(
     token_program: str,
     protocol: int,
     creator: int,
+    rent_lamports: int,
 ) -> BuiltTx:
     return BuiltTx(
         raw=raw,
@@ -524,4 +618,5 @@ def _result(
         protocol_fee_bps=protocol,
         creator_fee_bps=creator,
         priority_micro_lamports=PRIORITY_MICRO_LAMPORTS,
+        rent_lamports=rent_lamports,
     )

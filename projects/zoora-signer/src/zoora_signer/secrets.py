@@ -102,6 +102,15 @@ class MemorySecretStore:
             return None
         return parse_signing_key(self.signing_key.hex())
 
+    def wallet_pubkey(self) -> str | None:
+        """Public half of the stored keypair. Does not return or request the seed."""
+
+        if self.signing_key is None or len(self.signing_key) != SIGNING_KEY_BYTES:
+            return None
+        from solders.pubkey import Pubkey
+
+        return str(Pubkey.from_bytes(self.signing_key[32:]))
+
     def has_signing_key(self) -> bool:
         try:
             return self.get_signing_key() is not None
@@ -134,6 +143,21 @@ class KeyringSecretStore:
         if raw is None:
             return None
         return parse_signing_key(raw)
+
+    def wallet_pubkey(self) -> str | None:
+        """Public half of the stored keypair. The seed is not returned."""
+
+        reject_key_material_in_env()
+        raw = _password(KEYRING_SIGNING)
+        if raw is None:
+            return None
+        try:
+            decoded = parse_signing_key(raw)
+        except InvalidSigningKey:
+            return None
+        from solders.pubkey import Pubkey
+
+        return str(Pubkey.from_bytes(decoded[32:]))
 
     def has_signing_key(self) -> bool:
         try:

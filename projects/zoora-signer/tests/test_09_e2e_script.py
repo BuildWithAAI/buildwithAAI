@@ -1,4 +1,4 @@
-"""Acceptance 9: unsigned validator rehearsal stays out of the required CI jobs."""
+"""Acceptance 9: the unsigned validator rehearsal is a required CI job."""
 
 from pathlib import Path
 
@@ -18,6 +18,6 @@ def test_e2e_script_is_unsigned_and_optional() -> None:
     assert "sendTransaction" not in script or 'method == "sendTransaction"' in script
     assert "Signature.default" in script
     assert "E2E_IN_CI = False" in script
-    assert "continue-on-error: true" in workflow
+    assert "continue-on-error" not in workflow
     assert "scripts/e2e_validator.py" in workflow
     assert "v4.4.1" in workflow
