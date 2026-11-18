@@ -91,7 +91,7 @@ python -m ruff check src tests scripts
 python -m mypy --strict src/zoora_signer
 ```
 
-The local validator rehearsal is `python scripts/e2e_validator.py`. It builds an unsigned transaction, asks a local `solana-test-validator` to simulate it with `sigVerify` false, and never signs or submits. The required CI jobs do not run it. An optional job installs Solana CLI `v4.4.1` and runs the script. That job is `continue-on-error` because it depends on a public mainnet program dump.
+The local validator rehearsal is `python scripts/e2e_validator.py`. It loads the account snapshot in `fixtures/e2e_curve.json` (public RPC, 2026-11-17), clones the pump and token programs with `--clone-upgradeable-program`, and simulates an unsigned `buy_v3` and `sell_v3` with `sigVerify` false. It never signs or submits. The required CI jobs do not run it. An optional job installs Solana CLI `v4.4.1` and runs the script. That job is `continue-on-error` because the program clone uses the public RPC.
 
 Credential Manager entry ACLs are not readable through the keyring API used here. The owner confirms those ACLs in Windows Credential Manager. The file ACL check covers the database, its directory, and `rpc.env`.
 

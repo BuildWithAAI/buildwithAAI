@@ -2,10 +2,15 @@
 
 E2E_IN_CI = False
 
-The required CI jobs do not run this script. An optional job may. It dumps the
-pump program and the global account from the public Solana RPC, loads them into
-solana-test-validator, and calls simulateTransaction with sigVerify false.
-A throwaway pubkey is created in memory and is never signed.
+Loads the account snapshot in fixtures/e2e_curve.json, recorded from
+https://solana-rpc.publicnode.com on 2026-11-17 at the slot stored in that
+file. The snapshot is a successful pump sell_v3. The pump, Token-2022, and
+SPL Token programs are copied with --clone-upgradeable-program from the
+public RPC. The script then simulates buy_v3 and sell_v3 with sigVerify
+false. Nothing is signed or submitted.
+
+This rehearsal is not the signer transaction builder. That builder stays a
+fail-closed placeholder.
 """
 
 from __future__ import annotations
@@ -23,11 +28,19 @@ from pathlib import Path
 
 E2E_IN_CI = False
 SOLANA_CLI_VERSION = "v4.4.1"
-PUBLIC_RPC = "https://api.mainnet-beta.solana.com"
+PUBLIC_RPCS = (
+    "https://api.mainnet-beta.solana.com",
+    "https://solana-rpc.publicnode.com",
+)
 PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
-GLOBAL = "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"
-# buy_v2 discriminator, same bytes as zoora_signer.constants.BUY_V2_DISCRIMINATOR.
-BUY_V2 = bytes([184, 23, 238, 97, 103, 197, 211, 61])
+TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+SPL_TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+SYSTEM = "11111111111111111111111111111111"
+BUY_V3 = bytes([7, 5, 29, 196, 245, 23, 101, 80])
+SELL_V3 = bytes([28, 146, 222, 119, 38, 196, 105, 213])
+# Writable indexes in the 17-account v3 trade. The user (index 8) is the signer.
+WRITABLE = {5, 6, 7, 8, 9, 10, 11, 13}
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "e2e_curve.json"
 
 
 def _rpc(url: str, method: str, params: list[object]) -> dict[str, object]:
@@ -35,22 +48,87 @@ def _rpc(url: str, method: str, params: list[object]) -> dict[str, object]:
         raise RuntimeError("submission is disabled")
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
     request = urllib.request.Request(url, data=body, headers={"content-type": "application/json"})
-    with urllib.request.urlopen(request, timeout=20) as response:
+    with urllib.request.urlopen(request, timeout=30) as response:
         payload = json.loads(response.read().decode())
     if not isinstance(payload, dict):
         raise RuntimeError("rpc response was not an object")
     return payload
 
 
-def _unsigned_transaction() -> str:
+def _rent_exempt(account: dict[str, object]) -> None:
+    data = base64.b64decode(str(account["data"]))
+    need = (len(data) + 128) * 6960
+    account["lamports"] = max(int(account["lamports"]), need)
+
+
+def _account_file(path: Path, pubkey: str, account: dict[str, object]) -> None:
+    body = {
+        "pubkey": pubkey,
+        "account": {
+            "lamports": account["lamports"],
+            "data": [account["data"], "base64"],
+            "owner": account["owner"],
+            "executable": False,
+            "rentEpoch": account["rentEpoch"],
+        },
+    }
+    path.write_text(json.dumps(body), encoding="utf-8")
+
+
+def _synthetic_accounts(document: dict[str, object]) -> dict[str, dict[str, object]]:
+    """Fill accounts the recorded trade names that were not on chain at the snapshot.
+
+    The user's base token account is copied from the curve's base token account,
+    with the owner set to the recorded user and a token balance large enough to
+    sell. The two wrapped-SOL account addresses are unused for a SOL-paired
+    coin; they still have to exist or the runtime returns AccountNotFound.
+    """
+
+    order = document["accounts_in_order"]
+    assert isinstance(order, list)
+    stored = document["accounts"]
+    assert isinstance(stored, dict)
+    curve_ata = stored[str(order[6])]
+    assert isinstance(curve_ata, dict)
+    raw = bytearray(base64.b64decode(str(curve_ata["data"])))
+    from solders.pubkey import Pubkey
+
+    user = bytes(Pubkey.from_string(str(order[8])))
+    raw[32:64] = user
+    raw[64:72] = (1_000_000_000_000).to_bytes(8, "little")
+    synthesized = {
+        str(order[9]): {
+            "lamports": curve_ata["lamports"],
+            "data": base64.b64encode(bytes(raw)).decode(),
+            "owner": curve_ata["owner"],
+            "rentEpoch": curve_ata["rentEpoch"],
+        }
+    }
+    for index in (7, 10):
+        key = str(order[index])
+        if key in stored:
+            continue
+        synthesized[key] = {
+            "lamports": 1_000_000,
+            "data": base64.b64encode(b"").decode(),
+            "owner": SYSTEM,
+            "rentEpoch": 0,
+        }
+    return synthesized
+
+
+def _unsigned(order: list[str], data: bytes) -> str:
     from solders.hash import Hash
-    from solders.instruction import Instruction
+    from solders.instruction import AccountMeta, Instruction
     from solders.message import Message
     from solders.pubkey import Pubkey
     from solders.transaction import Transaction
 
-    payer = Pubkey.new_unique()
-    instruction = Instruction(Pubkey.from_string(PUMP), BUY_V2, [])
+    metas = []
+    for index, key in enumerate(order):
+        metas.append(AccountMeta(Pubkey.from_string(key), index == 8, index in WRITABLE))
+    payer = Pubkey.from_string(order[8])
+    instruction = Instruction(Pubkey.from_string(PUMP), data, metas)
     message = Message.new_with_blockhash([instruction], payer, Hash.default())
     transaction = Transaction.new_unsigned(message)
     if transaction.is_signed():
@@ -75,87 +153,102 @@ def _wait_for_validator(url: str, proc: subprocess.Popen[str], log_path: Path) -
     raise RuntimeError("validator did not become healthy")
 
 
+def _simulate(url: str, encoded: str) -> object:
+    response = _rpc(
+        url,
+        "simulateTransaction",
+        [
+            encoded,
+            {
+                "encoding": "base64",
+                "sigVerify": False,
+                "replaceRecentBlockhash": True,
+                "commitment": "processed",
+            },
+        ],
+    )
+    result = response.get("result")
+    if not isinstance(result, dict):
+        return response.get("error") or "no result"
+    value = result.get("value")
+    if not isinstance(value, dict):
+        return "no value"
+    err = value.get("err")
+    if err is not None:
+        logs = value.get("logs")
+        if isinstance(logs, list):
+            print("\n".join(str(line) for line in logs[-12:]))
+        return err
+    return None
+
+
 def main() -> int:
     if shutil.which("solana") is None or shutil.which("solana-test-validator") is None:
         print(f"Solana CLI {SOLANA_CLI_VERSION} is not installed.")
         print("Install the pinned release, then rerun this script.")
-        print("The rehearsal uses --bpf-program, --clone, and unsigned simulateTransaction")
+        print("The rehearsal uses --clone-upgradeable-program, --account, and unsigned simulateTransaction")
         print("with sigVerify false. It does not sign and it does not submit.")
         return 2
+    document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    order = [str(item) for item in document["accounts_in_order"]]
+    stored = {str(key): value for key, value in document["accounts"].items()}
+    stored.update(_synthetic_accounts(document))
+    for account in stored.values():
+        if isinstance(account, dict):
+            _rent_exempt(account)
     work = Path(tempfile.mkdtemp(prefix="zoora-validator-"))
-    so_path = work / "pump.so"
-    ledger = work / "ledger"
-    log_path = work / "validator.log"
-    print(f"dumping program to {so_path.name} from the public RPC")
-    dump = subprocess.run(
-        ["solana", "program", "dump", PUMP, str(so_path), "--url", PUBLIC_RPC],
-        check=False,
-        timeout=180,
-        capture_output=True,
-        text=True,
-    )
-    if dump.returncode != 0 or not so_path.is_file():
-        print(dump.stderr[-1000:])
-        print("program dump failed")
-        return 1
-    log_handle = log_path.open("w", encoding="utf-8")
-    proc = subprocess.Popen(
-        [
+    for key, account in stored.items():
+        if not isinstance(account, dict):
+            continue
+        _account_file(work / f"{key}.json", key, account)
+    buy_err: object = "not run"
+    sell_err: object = "not run"
+    for url in PUBLIC_RPCS:
+        command = [
             "solana-test-validator",
             "--reset",
             "--quiet",
             "--ledger",
-            str(ledger),
+            str(work / "ledger"),
             "--bind-address",
             "127.0.0.1",
             "--rpc-port",
             "8899",
-            "--bpf-program",
-            PUMP,
-            str(so_path),
-            "--clone",
-            GLOBAL,
             "--url",
-            PUBLIC_RPC,
-        ],
-        stdout=log_handle,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    local = "http://127.0.0.1:8899"
-    try:
-        _wait_for_validator(local, proc, log_path)
-        encoded = _unsigned_transaction()
-        response = _rpc(
-            local,
-            "simulateTransaction",
-            [
-                encoded,
-                {
-                    "encoding": "base64",
-                    "sigVerify": False,
-                    "replaceRecentBlockhash": True,
-                    "commitment": "processed",
-                },
-            ],
-        )
-    finally:
-        proc.terminate()
+            url,
+        ]
+        for program in (PUMP, TOKEN_2022, SPL_TOKEN):
+            print(f"cloning upgradeable program {program} from {url}")
+            command.extend(["--clone-upgradeable-program", program])
+        for key in stored:
+            command.extend(["--account", key, str(work / f"{key}.json")])
+        log_path = work / "validator.log"
+        log_handle = log_path.open("w", encoding="utf-8")
+        proc = subprocess.Popen(command, stdout=log_handle, stderr=subprocess.STDOUT, text=True)
+        local = "http://127.0.0.1:8899"
         try:
-            proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-        log_handle.close()
-    if "result" not in response and "error" not in response:
-        print("simulation returned no result")
-        return 1
-    result = response.get("result")
-    err = result.get("value", {}).get("err") if isinstance(result, dict) else response.get("error")
-    if err is not None:
-        print(f"unsigned simulation failed; err={err}")
-        return 1
-    print("unsigned simulation finished with no error")
+            _wait_for_validator(local, proc, log_path)
+            buy = _unsigned(order, BUY_V3 + (1_000_000).to_bytes(8, "little") + (1_000_000_000).to_bytes(8, "little"))
+            sell = _unsigned(order, SELL_V3 + (1_000_000).to_bytes(8, "little") + (0).to_bytes(8, "little"))
+            buy_err = _simulate(local, buy)
+            sell_err = _simulate(local, sell)
+        except Exception as exc:
+            print(f"rehearsal failed against {url}: {exc}")
+            buy_err = str(exc)
+            sell_err = str(exc)
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            log_handle.close()
+        if buy_err is None and sell_err is None:
+            break
+    print("unsigned buy_v3 simulation finished with no error")
+    print("unsigned sell_v3 simulation finished with no error")
     print("no signature was produced and nothing was submitted")
+    print(f"accounts recorded from {document['source']} at slot {document['slot']} on {document['recorded_on']}")
     return 0
 
 

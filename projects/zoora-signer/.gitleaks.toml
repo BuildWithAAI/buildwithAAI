@@ -7,6 +7,8 @@ useDefault = true
 paths = [
   '''fixtures/pump_global_prefix.bin''',
   '''fixtures/program_accounts.json''',
+  '''fixtures/e2e_curve.json''',
+  '''projects/zoora-signer/fixtures/e2e_curve.json''',
 ]
 regexes = [
   '''6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P''',

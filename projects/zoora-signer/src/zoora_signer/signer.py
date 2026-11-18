@@ -18,6 +18,7 @@ from zoora_signer.constants import (
     CLOCK_SKEW_MS,
     CT_ZONE,
     DAILY_LOSS_CAP_CENTS,
+    HMAC_MIN_BYTES,
     INTENT_PREFIX,
     INTENT_TTL_MS,
     PREFLIGHT_INTERVAL_MS,
@@ -415,7 +416,7 @@ class Signer:
         return decision
 
     def rotate_hmac(self, new_key: bytes) -> Decision:
-        if len(new_key) < 16:
+        if len(new_key) < HMAC_MIN_BYTES:
             return Decision(False, "HMAC_TOO_SHORT", False)
         self.s.secrets.set_hmac_key(new_key)
 
@@ -1091,7 +1092,9 @@ class Signer:
         row = conn.execute("SELECT ct_day FROM equity_day WHERE ct_day = ?", (day,)).fetchone()
         if row is not None:
             return
-        wallet, _exposure, _unknown = self._wallet_exposure(conn, sol_cents)
+        wallet, _exposure, unknown = self._wallet_exposure(conn, sol_cents)
+        if unknown or sol_cents <= 0:
+            return
         conn.execute(
             """
             INSERT INTO equity_day (ct_day, start_equity_cents, withdrawals_cents, deposits_cents)
@@ -1102,7 +1105,10 @@ class Signer:
 
     def _refresh_buy_halt(self, db: sqlite3.Connection, now_ms: int, sol_cents: int) -> None:
         conn = _db(db)
-        wallet, _exposure, _unknown = self._wallet_exposure(conn, sol_cents)
+        wallet, _exposure, unknown = self._wallet_exposure(conn, sol_cents)
+        if unknown or sol_cents <= 0:
+            conn.execute("UPDATE signer_state SET buy_halt_reason = 'unknown_mark' WHERE id = 1")
+            return
         loss = self._loss(conn, ct_day(now_ms), wallet)
         if loss >= DAILY_LOSS_CAP_CENTS:
             reason: str | None = "daily_loss"
@@ -1296,11 +1302,6 @@ class Signer:
         return query(self.path, op)
 
     def _hmac_ok(self, raw: bytes, signature: str) -> bool:
-        key = self.s.secrets.get_hmac_key()
-        if key is None or not signature:
-            return False
-        expected = hmac.new(key, INTENT_PREFIX + raw, hashlib.sha256).hexdigest()
-        return hmac.compare_digest(expected, signature)
         key = self.s.secrets.get_hmac_key()
         if key is None or not signature:
             return False

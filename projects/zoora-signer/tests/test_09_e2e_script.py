@@ -9,7 +9,10 @@ def test_e2e_script_is_unsigned_and_optional() -> None:
     workflow = (root.parents[1] / ".github" / "workflows" / "zoora-signer.yml").read_text(encoding="utf-8")
     assert "solana-test-validator" in script
     assert "sigVerify" in script
-    assert "--clone" in script
+    assert "--clone-upgradeable-program" in script
+    assert "--account" in script
+    assert "fixtures/e2e_curve.json" in script
+    assert "buy_v3" in script and "sell_v3" in script
     assert "pump.fun" not in script.lower()
     assert "sendTransaction" not in script or 'method == "sendTransaction"' in script
     assert "new_unsigned" in script
