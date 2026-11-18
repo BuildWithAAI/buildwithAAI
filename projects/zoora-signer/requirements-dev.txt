@@ -1,0 +1,7 @@
+-r requirements.txt
+hypothesis==6.131.4
+mypy==1.15.0
+pip-audit==2.9.0
+pytest==9.0.3
+ruff==0.11.2
+build==1.2.2

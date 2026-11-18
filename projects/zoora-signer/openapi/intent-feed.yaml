@@ -1,0 +1,67 @@
+openapi: 3.0.3
+info:
+  title: Zoora signer intent feed
+  version: "1.0.0"
+  description: |
+    Lumen is not on main. This is the contract the signer pulls. The signer opens
+    no inbound port. It GETs intents and POSTs events. The HUD may GET events from
+    the feed. A1, the decision engine, is specified in docs/A1_DECISION_ENGINE.md
+    and is not implemented in Lumen in this change.
+servers:
+  - url: https://lumen.example.invalid
+paths:
+  /v1/intents:
+    get:
+      summary: Signer pulls HMAC-signed intents
+      parameters:
+        - in: query
+          name: after
+          schema: {type: string}
+      responses:
+        "200":
+          description: Intent batch
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [intents]
+                properties:
+                  intents:
+                    type: array
+                    items:
+                      type: object
+                      required: [payload, sig]
+                      properties:
+                        payload:
+                          type: object
+                          required: [intent_id, side, mint, max_slippage_bps, issued_at_ms]
+                          properties:
+                            intent_id: {type: string}
+                            side: {type: string, enum: [buy, sell]}
+                            mint: {type: string}
+                            usd_stake_cents: {type: integer}
+                            token_amount: {type: integer}
+                            max_slippage_bps: {type: integer, maximum: 1500}
+                            issued_at_ms: {type: integer}
+                        sig: {type: string, description: HMAC-SHA256 hex of the canonical payload}
+  /v1/events:
+    get:
+      summary: Read-only event feed for the HUD
+      parameters:
+        - in: query
+          name: after
+          schema: {type: integer}
+      responses:
+        "200":
+          description: Events after the given id
+    post:
+      summary: Signer pushes new events
+      responses:
+        "204":
+          description: Stored
+  /v1/status:
+    post:
+      summary: Signer posts a status snapshot
+      responses:
+        "204":
+          description: Stored
