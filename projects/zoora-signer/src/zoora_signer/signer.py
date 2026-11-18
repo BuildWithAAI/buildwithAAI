@@ -111,6 +111,38 @@ def _ata_amount(data: bytes, owner: str, mint: str) -> int | None:
     return int.from_bytes(data[64:72], "little")
 
 
+_BOOK_SKIP = frozenset(
+    {
+        "activity",
+        "halt_reason",
+        "buy_halt_reason",
+        "boot_id",
+        "opened_ms",
+        "created_ms",
+        "added_ms",
+        "seen_ms",
+    }
+)
+_DERIVED_BUY_HALTS = frozenset({"unknown_mark", "daily_loss", "wallet"})
+
+
+def _book_line(row: sqlite3.Row) -> str:
+    return "|".join(f"{key}={row[key]}" for key in row.keys() if key not in _BOOK_SKIP)
+
+
+def _digest_tables(db: sqlite3.Connection) -> list[tuple[str, list[sqlite3.Row]]]:
+    return [
+        ("reservations", list(db.execute("SELECT * FROM reservations ORDER BY id").fetchall())),
+        ("trades", list(db.execute("SELECT * FROM trades ORDER BY id").fetchall())),
+        ("equity_day", list(db.execute("SELECT * FROM equity_day ORDER BY ct_day").fetchall())),
+        ("intent_hits", list(db.execute("SELECT * FROM intent_hits ORDER BY id").fetchall())),
+        ("expected_deposits", list(db.execute("SELECT * FROM expected_deposits ORDER BY id").fetchall())),
+        ("whitelist", list(db.execute("SELECT * FROM whitelist ORDER BY address").fetchall())),
+        ("decisions", list(db.execute("SELECT * FROM decisions ORDER BY intent_id").fetchall())),
+        ("anchor_meta", list(db.execute("SELECT * FROM anchor_meta ORDER BY id").fetchall())),
+    ]
+
+
 def _state_digest(db: sqlite3.Connection) -> str:
     """Digest of the tables that feed caps, loss, and the anchor.
 
@@ -120,31 +152,39 @@ def _state_digest(db: sqlite3.Connection) -> str:
     chunks: list[str] = []
     state = db.execute("SELECT * FROM signer_state WHERE id = 1").fetchone()
     chunks.append("state:" + (_row_line(state) if state is not None else ""))
-    tables = (
-        ("reservations", db.execute("SELECT * FROM reservations ORDER BY id").fetchall()),
-        ("trades", db.execute("SELECT * FROM trades ORDER BY id").fetchall()),
-        ("equity_day", db.execute("SELECT * FROM equity_day ORDER BY ct_day").fetchall()),
-        ("intent_hits", db.execute("SELECT * FROM intent_hits ORDER BY id").fetchall()),
-        ("expected_deposits", db.execute("SELECT * FROM expected_deposits ORDER BY id").fetchall()),
-        ("whitelist", db.execute("SELECT * FROM whitelist ORDER BY address").fetchall()),
-        ("decisions", db.execute("SELECT * FROM decisions ORDER BY intent_id").fetchall()),
-        ("anchor_meta", db.execute("SELECT * FROM anchor_meta ORDER BY id").fetchall()),
-    )
-    for name, rows in tables:
+    for name, rows in _digest_tables(db):
         chunks.extend(f"{name}:{_row_line(row)}" for row in rows)
     return hashlib.sha256("\n".join(chunks).encode()).hexdigest()
 
 
-def _add_halt(db: sqlite3.Connection, reason: str) -> None:
-    """Append a halt reason. Sticky reasons are never replaced."""
+def _book_digest(db: sqlite3.Connection) -> str:
+    """Book digest for reanchor. Omits activity, halt reasons, boot id, and timestamps."""
 
-    row = db.execute("SELECT halt_reason FROM signer_state WHERE id = 1").fetchone()
+    chunks: list[str] = []
+    state = db.execute("SELECT * FROM signer_state WHERE id = 1").fetchone()
+    chunks.append("state:" + (_book_line(state) if state is not None else ""))
+    for name, rows in _digest_tables(db):
+        chunks.extend(f"{name}:{_book_line(row)}" for row in rows)
+    return hashlib.sha256("\n".join(chunks).encode()).hexdigest()
+
+
+def _add_halt(db: sqlite3.Connection, reason: str) -> bool:
+    """Append a halt reason. Sticky reasons are never replaced.
+
+    Returns True only when the halt set or the halted activity changed, so a
+    repeated boot does not log the same halt again.
+    """
+
+    row = db.execute("SELECT activity, halt_reason FROM signer_state WHERE id = 1").fetchone()
     current = _parse_reasons(str(row["halt_reason"] or "") if row is not None else "")
+    if reason in current and row is not None and str(row["activity"]) == "HALTED":
+        return False
     current.add(reason)
     db.execute(
         "UPDATE signer_state SET activity = 'HALTED', halt_reason = ? WHERE id = 1",
         (_format_reasons(current),),
     )
+    return True
 
 
 def ct_day(now_ms: int) -> str:
@@ -283,12 +323,20 @@ class Signer:
                 ledger = opening
             elif ledger is None:
                 ledger = 0
+            live = str(row["execution_mode"]) == "LIVE"
             if opening is None:
                 db.execute(
                     "UPDATE signer_state SET buy_halt_reason = 'reconcile_unknown' WHERE id = 1"
                 )
-            elif str(row["buy_halt_reason"] or "") == "reconcile_unknown":
+            elif live and int(ledger) != int(opening):
+                self._observe_sol_db(db, int(opening), None)
+            elif live and str(row["buy_halt_reason"] or "") == "reconcile_unknown" and int(ledger) == int(opening):
                 db.execute("UPDATE signer_state SET buy_halt_reason = NULL WHERE id = 1")
+            row = db.execute("SELECT * FROM signer_state WHERE id = 1").fetchone()
+            assert row is not None
+            halted = str(row["activity"]) == "HALTED"
+            if row["ledger_sol_lamports"] is not None:
+                ledger = row["ledger_sol_lamports"]
             if halted:
                 db.execute(
                     """
@@ -316,8 +364,7 @@ class Signer:
                 )
                 self._event(db, "boot_paused", {"boot_id": boot_id, "mode": mode}, carry=not trusted)
             self._reconcile(db)
-            if not self._verify(db):
-                _add_halt(db, "hash_chain")
+            if not self._verify(db) and _add_halt(db, "hash_chain"):
                 self._event(db, "halt", {"reason": "hash_chain"})
 
         transact(self.path, op)
@@ -354,6 +401,8 @@ class Signer:
             self.run_preflight("interval")
         self.poll_kill()
         self._expire_unconfirmed()
+        if self.mode() == "LIVE":
+            self._guard_live_balance(None)
 
     def poll_kill(self) -> str:
         try:
@@ -574,6 +623,7 @@ class Signer:
     def set_mode(self, mode: str) -> Decision:
         if mode not in {"DRY_RUN", "LIVE"}:
             return Decision(False, "BAD_MODE", False)
+        live_balance = self._read_balance() if mode == "LIVE" else None
 
         def op(conn: sqlite3.Connection) -> Decision:
             db = _db(conn)
@@ -595,8 +645,21 @@ class Signer:
             if mode == "LIVE" and self._open_simulated(db):
                 self._event(db, "live_refused", {"code": "SIMULATED_FILL"})
                 return Decision(False, "SIMULATED_FILL", True)
+            if mode == "LIVE" and live_balance is None:
+                self._mark_reconcile_unknown(db)
+                self._event(db, "live_refused", {"code": "RECONCILE_UNKNOWN"})
+                return Decision(False, "RECONCILE_UNKNOWN", True)
+            paper: int | None = None
+            adopted: int | None = None
+            if mode == "LIVE" and live_balance is not None:
+                paper = self._adopt_chain_ledger(db, live_balance)
+                adopted = live_balance
             db.execute("UPDATE signer_state SET execution_mode = ? WHERE id = 1", (mode,))
-            self._event(db, "mode", {"mode": mode})
+            payload: Payload = {"mode": mode}
+            if paper is not None and adopted is not None:
+                payload["paper_pnl_cents"] = paper
+                payload["ledger_sol_lamports"] = adopted
+            self._event(db, "mode", payload)
             return Decision(True, "MODE", mode != "LIVE")
 
         decision = self._run(op)
@@ -654,8 +717,6 @@ class Signer:
             db = _db(conn)
             if not self._verify(db):
                 return Decision(False, "HASH_CHAIN", False)
-            if not self._anchor_prefix_ok(db):
-                return Decision(False, "RECONCILE_REQUIRED", False)
             if not self.s.chain.authoritative:
                 return Decision(False, "RECONCILE_REQUIRED", False)
             try:
@@ -673,11 +734,16 @@ class Signer:
             ).fetchone()
             if pending is not None and int(pending["n"]) != 0:
                 return Decision(False, "RECONCILE_REQUIRED", False)
+            anchor_missing = self._anchor_line() in (None, "")
+            if not self._anchor_prefix_ok(db) and not (anchor_missing and self._book_matches_trusted(db)):
+                return Decision(False, "RECONCILE_REQUIRED", False)
             current = self._book_snapshot(db)
-            current["state_sha256"] = _state_digest(db)
+            current["book_sha256"] = _book_digest(db)
             previous = self._trusted_snapshot(db)
             diff: dict[str, tuple[object, object]] = {}
             for key in sorted(set(previous) | set(current)):
+                if key == "state_sha256":
+                    continue
                 if previous.get(key) != current.get(key):
                     diff[key] = (previous.get(key), current.get(key))
             self.last_reanchor_diff = diff
@@ -726,60 +792,147 @@ class Signer:
         return decision
 
     def observe_sol(self, new_lamports: int, source: str | None) -> Decision:
-        now = self.s.clock.now_ms()
-
         def op(conn: sqlite3.Connection) -> Decision:
-            db = _db(conn)
-            current = int(_state(db)["ledger_sol_lamports"] or 0)
-            delta = new_lamports - current
-            if delta == 0:
-                return Decision(True, "NO_DELTA", False)
-            if delta > 0:
-                reading = self.s.oracle.quote(now)
-                if not reading.ok:
-                    _add_halt(db, reading.reason or "ORACLE_DOWN")
-                    self._event(db, "halt", {"reason": reading.reason or "ORACLE_DOWN"})
-                    return Decision(False, reading.reason or "ORACLE_DOWN", False)
-                matched = db.execute(
-                    """
-                    SELECT id, lamports FROM expected_deposits
-                    WHERE consumed = 0 AND lamports = ? AND created_ms + ttl_ms >= ?
-                    ORDER BY id LIMIT 1
-                    """,
-                    (delta, now),
-                ).fetchone()
-                allowed = source is not None and self._whitelisted(db, source)
-                if matched is not None and allowed:
-                    db.execute(
-                        "UPDATE expected_deposits SET consumed = 1 WHERE id = ?",
-                        (int(matched["id"]),),
-                    )
-                    db.execute(
-                        "UPDATE signer_state SET ledger_sol_lamports = ? WHERE id = 1",
-                        (new_lamports,),
-                    )
-                    day = ct_day(now)
-                    reading = self.s.oracle.quote(now)
-                    cents = 0
-                    if reading.ok:
-                        price = sol_usd_cents(reading)
-                        cents = delta * price // 1_000_000_000
-                    db.execute(
-                        """
-                        UPDATE equity_day SET deposits_cents = deposits_cents + ?
-                        WHERE ct_day = ?
-                        """,
-                        (cents, day),
-                    )
-                    self._event(db, "deposit", {"lamports": delta, "source": source or ""})
-                    return Decision(True, "DEPOSIT", False)
-            _add_halt(db, "unexpected_sol")
-            self._event(db, "halt", {"reason": "unexpected_sol"})
-            return Decision(False, "UNEXPECTED_SOL", False)
+            return self._observe_sol_db(_db(conn), new_lamports, source)
 
         decision = self._run(op)
         self._sync_hud()
         return decision
+
+    def _read_balance(self) -> int | None:
+        try:
+            value = self.s.chain.sol_lamports()
+        except Exception:
+            return None
+        if type(value) is not int or value < 0 or value > 2**64 - 1:
+            return None
+        return value
+
+    def _mark_reconcile_unknown(self, db: sqlite3.Connection) -> None:
+        current = str(_state(db)["buy_halt_reason"] or "")
+        if current == "reconcile_unknown" or (current and current not in _DERIVED_BUY_HALTS):
+            return
+        db.execute("UPDATE signer_state SET buy_halt_reason = 'reconcile_unknown' WHERE id = 1")
+
+    def _observe_sol_db(self, db: sqlite3.Connection, new_lamports: int, source: str | None) -> Decision:
+        now = self.s.clock.now_ms()
+        current = int(_state(db)["ledger_sol_lamports"] or 0)
+        delta = new_lamports - current
+        if delta == 0:
+            if str(_state(db)["buy_halt_reason"] or "") == "reconcile_unknown":
+                db.execute("UPDATE signer_state SET buy_halt_reason = NULL WHERE id = 1")
+            return Decision(True, "NO_DELTA", False)
+        if delta > 0:
+            reading = self.s.oracle.quote(now)
+            if not reading.ok:
+                if _add_halt(db, reading.reason or "ORACLE_DOWN"):
+                    self._event(db, "halt", {"reason": reading.reason or "ORACLE_DOWN"})
+                return Decision(False, reading.reason or "ORACLE_DOWN", False)
+            matched = db.execute(
+                """
+                SELECT id, lamports FROM expected_deposits
+                WHERE consumed = 0 AND lamports = ? AND created_ms + ttl_ms >= ?
+                ORDER BY id LIMIT 1
+                """,
+                (delta, now),
+            ).fetchone()
+            allowed = source is not None and self._whitelisted(db, source)
+            if matched is not None and allowed:
+                db.execute(
+                    "UPDATE expected_deposits SET consumed = 1 WHERE id = ?",
+                    (int(matched["id"]),),
+                )
+                db.execute(
+                    "UPDATE signer_state SET ledger_sol_lamports = ? WHERE id = 1",
+                    (new_lamports,),
+                )
+                day = ct_day(now)
+                cents = 0
+                price = sol_usd_cents(reading)
+                cents = delta * price // 1_000_000_000
+                db.execute(
+                    """
+                    UPDATE equity_day SET deposits_cents = deposits_cents + ?
+                    WHERE ct_day = ?
+                    """,
+                    (cents, day),
+                )
+                self._event(db, "deposit", {"lamports": delta, "source": source or ""})
+                return Decision(True, "DEPOSIT", False)
+        if _add_halt(db, "unexpected_sol"):
+            self._event(db, "halt", {"reason": "unexpected_sol"})
+        return Decision(False, "UNEXPECTED_SOL", False)
+
+    def _adopt_chain_ledger(self, db: sqlite3.Connection, chain_lamports: int) -> int:
+        """Park the paper P&L and start live equity from the chain balance."""
+
+        now = self.s.clock.now_ms()
+        reading = self.s.oracle.quote(now)
+        price = sol_usd_cents(reading) if reading.ok else 0
+        _wallet, loss_wallet, _exposure, _unknown = self._wallet_exposure(db, price)
+        day = ct_day(now)
+        row = db.execute("SELECT * FROM equity_day WHERE ct_day = ?", (day,)).fetchone()
+        paper = 0
+        if row is not None:
+            paper = int(row["start_equity_cents"]) - (
+                loss_wallet + int(row["withdrawals_cents"]) - int(row["deposits_cents"])
+            )
+        stored = int(_state(db)["paper_pnl_cents"] or 0)
+        db.execute(
+            "UPDATE signer_state SET ledger_sol_lamports = ?, paper_pnl_cents = ? WHERE id = 1",
+            (chain_lamports, stored + paper),
+        )
+        if price > 0:
+            new_wallet = self._wallet_exposure(db, price)[1]
+            if row is None:
+                db.execute(
+                    """
+                    INSERT INTO equity_day (ct_day, start_equity_cents, withdrawals_cents, deposits_cents)
+                    VALUES (?, ?, 0, 0)
+                    """,
+                    (day, new_wallet),
+                )
+            else:
+                db.execute(
+                    """
+                    UPDATE equity_day
+                    SET start_equity_cents = ?, withdrawals_cents = 0, deposits_cents = 0
+                    WHERE ct_day = ?
+                    """,
+                    (new_wallet, day),
+                )
+        return paper
+
+    def _guard_live_balance(self, db: sqlite3.Connection | None = None) -> str | None:
+        """Compare a finalized balance with the ledger. None means the buy may continue."""
+
+        balance = self._read_balance()
+        if db is not None:
+            return self._apply_live_balance(db, balance)
+
+        def op(conn: sqlite3.Connection) -> str | None:
+            return self._apply_live_balance(_db(conn), balance)
+
+        try:
+            return self._transact(op)
+        except AnchorMismatch:
+            return "ANCHOR_MISMATCH"
+
+    def _apply_live_balance(self, db: sqlite3.Connection, balance: int | None) -> str | None:
+        if balance is None:
+            before = str(_state(db)["buy_halt_reason"] or "")
+            self._mark_reconcile_unknown(db)
+            if str(_state(db)["buy_halt_reason"] or "") != before:
+                self._event(db, "balance_unreadable", {})
+            return "RECONCILE_UNKNOWN"
+        ledger = int(_state(db)["ledger_sol_lamports"] or 0)
+        if balance != ledger:
+            decision = self._observe_sol_db(db, balance, None)
+            return None if decision.ok else decision.code
+        if str(_state(db)["buy_halt_reason"] or "") == "reconcile_unknown":
+            db.execute("UPDATE signer_state SET buy_halt_reason = NULL WHERE id = 1")
+            self._event(db, "balance_matched", {})
+        return None
 
     def sweep(self, dest: str, lamports: int) -> Decision:
         del dest, lamports
@@ -802,10 +955,8 @@ class Signer:
         killed = self._kill_observed() != "clear"
         if killed:
             _owner_log.warning("owner sell while the kill switch is not clear")
-        if self._book_tampered():
-            return self._record_owner_exit(mint, token_amount or 0, killed, tamper=True)
-        if self.mode() == "LIVE":
-            return self._live_owner_exit(mint, token_amount, high_fee, killed)
+        if self._book_tampered() or self.mode() == "LIVE":
+            return self._live_owner_exit(mint, token_amount, high_fee, killed, tamper=self._book_tampered())
         return self._sell(mint, token_amount, owner=True, intent_id=None)
 
     def _book_tampered(self) -> bool:
@@ -852,7 +1003,15 @@ class Signer:
 
         return transact(self.path, op)
 
-    def _live_owner_exit(self, mint: str, token_amount: int | None, high_fee: bool, killed: bool) -> Decision:
+    def _live_owner_exit(
+        self,
+        mint: str,
+        token_amount: int | None,
+        high_fee: bool,
+        killed: bool,
+        *,
+        tamper: bool = False,
+    ) -> Decision:
         if self._devnet_in_live():
             return Decision(False, "LIVE_HOST", False)
         owner = self._owner_pubkey()
@@ -901,8 +1060,9 @@ class Signer:
             )
         except (BuildError, PolicyError, KeyError, TypeError, ValueError):
             return Decision(False, "BROADCAST_REFUSED", False)
+        self.last_unsigned = built.raw
         del built
-        return self._record_owner_exit(mint, amount, killed, tamper=False)
+        return self._record_owner_exit(mint, amount, killed, tamper=tamper)
 
     def _kill_observed(self) -> str:
         try:
@@ -1201,7 +1361,9 @@ class Signer:
             return self._note("sell_refused", {"code": "BROADCAST_REFUSED", "mint": mint})
         return self._note("sell_refused", {"code": "BROADCAST_REFUSED", "mint": mint})
 
-    def sell_all(self) -> list[Decision]:
+    def sell_all(self, confirmation: str = "") -> list[Decision]:
+        if confirmation != "OWNER_SELL":
+            return [Decision(False, "CONFIRMATION_REQUIRED", self.mode() != "LIVE")]
         def op(conn: sqlite3.Connection) -> list[str]:
             db = _db(conn)
             rows = db.execute(
@@ -1324,6 +1486,10 @@ class Signer:
                 return (Decision(True, "REPLAY", True, intent.intent_id), None)
             if self._wallet_exposure(db, price)[3]:
                 return self._record_refusal(db, intent, "UNKNOWN_MARK", reading, assessment), None
+            if str(_state(db)["execution_mode"]) == "LIVE":
+                gate = self._guard_live_balance(db)
+                if gate is not None:
+                    return self._record_refusal(db, intent, gate, reading, assessment), None
             self._ensure_snapshot(db, now_tx, price)
             self._refresh_buy_halt(db, now_tx, price)
             hour, recent = self._accepted_buy_counts(db, now_tx)
@@ -1838,6 +2004,9 @@ class Signer:
 
     def _refresh_buy_halt(self, db: sqlite3.Connection, now_ms: int, sol_cents: int) -> None:
         conn = _db(db)
+        current = str(_state(conn)["buy_halt_reason"] or "")
+        if current and current not in _DERIVED_BUY_HALTS:
+            return
         wallet, loss_wallet, _exposure, unknown = self._wallet_exposure(conn, sol_cents)
         if unknown or sol_cents <= 0:
             conn.execute("UPDATE signer_state SET buy_halt_reason = 'unknown_mark' WHERE id = 1")
@@ -2030,7 +2199,7 @@ class Signer:
 
     def _event(self, db: sqlite3.Connection, kind: str, payload: Payload, *, carry: bool = False) -> int:
         recorded = dict(payload)
-        if not carry:
+        if not carry and kind != "reanchor":
             previous = self._last_payload(db)
             if isinstance(previous, dict) and previous.get("snapshot_carried") is True:
                 carry = True
@@ -2059,6 +2228,7 @@ class Signer:
             else:
                 recorded["state_sha256"] = current
             if recorded.get("snapshot_carried") is not True:
+                recorded["book_sha256"] = _book_digest(db)
                 for field, value in self._book_snapshot(db).items():
                     if field not in recorded:
                         recorded[field] = value
@@ -2177,6 +2347,7 @@ class Signer:
             "decisions_sha256",
             "route_source",
             "state_sha256",
+            "book_sha256",
         )
         trusted: dict[str, str | int | bool | None] = {}
         rows = db.execute("SELECT payload FROM events ORDER BY id").fetchall()
@@ -2451,6 +2622,36 @@ class Signer:
         row = db.execute("SELECT hash FROM events ORDER BY id LIMIT 1 OFFSET ?", (count - 1,)).fetchone()
         return row is not None and str(row["hash"]) == head
 
+    def _book_matches_trusted(self, db: sqlite3.Connection) -> bool:
+        previous = self._trusted_snapshot(db)
+        if previous.get("book_sha256") != _book_digest(db):
+            return False
+        current = self._book_snapshot(db)
+        for key, value in previous.items():
+            if key in {"state_sha256", "book_sha256"}:
+                continue
+            if key in current and current.get(key) != value:
+                return False
+        return True
+
+    def _restore_anchor_line(self, db: sqlite3.Connection) -> str | None:
+        if self._anchor_line() not in (None, ""):
+            return None
+        row = db.execute("SELECT written FROM anchor_meta WHERE id = 1").fetchone()
+        if row is None or int(row["written"] or 0) != 1:
+            return None
+        last = db.execute("SELECT kind, payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
+        if last is None or str(last["kind"]) != "reanchor" or not self._verify(db):
+            return None
+        try:
+            body = json.loads(str(last["payload"]))
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(body, dict) or body.get("book_sha256") != _book_digest(db):
+            return None
+        count, head = self._chain_head(db)
+        return f"{count}|{head}"
+
     def _halt_for_anchor_prefix(self) -> None:
         if self._in_anchor_halt:
             return
@@ -2477,11 +2678,13 @@ class Signer:
         if row is None:
             return False
         written = int(row["written"] or 0)
-        # The off-PC monotonic anchor (P6) is the broadcaster PR's job. This file
-        # is the on-PC copy: once any event exists, a missing or empty file is a mismatch.
+        # The off-PC monotonic anchor (P6) is the broadcaster PR's job. Rolling the
+        # database and this file back together is not detectable here. A missing
+        # file is a mismatch once an anchor has been written. An empty file is a
+        # mismatch once any event exists. reanchor can restore a deleted file.
         have_events = db.execute("SELECT 1 FROM events LIMIT 1").fetchone() is not None
         if not path.is_file():
-            return written == 0 and not have_events
+            return written == 0
         lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line]
         if not lines:
             return not have_events and written == 0
@@ -2529,7 +2732,15 @@ class Signer:
 
         line = query(self.path, op)
         if line is None:
-            self._halt_for_anchor_prefix()
+            def restore(conn: sqlite3.Connection) -> str | None:
+                return self._restore_anchor_line(_db(conn))
+
+            restored = query(self.path, restore)
+            if restored is None:
+                self._halt_for_anchor_prefix()
+                return
+            path = self._anchor_path()
+            path.write_text(restored + "\n", encoding="utf-8")
             return
         path = self._anchor_path()
         previous = ""

@@ -77,13 +77,13 @@ zoora-signer expect-deposit 50000000 --ttl 3600
 zoora-signer whitelist-add "YOUR_OWNER_ADDRESS"
 zoora-signer sweep "YOUR_OWNER_ADDRESS" 1000
 zoora-signer sell "MINT_ADDRESS" --tokens 1000
-zoora-signer sell-all
+zoora-signer sell-all --confirm OWNER_SELL
 zoora-signer reanchor --confirm REANCHOR
 zoora-signer owner-sell-tampered "MINT_ADDRESS" --confirm OWNER_SELL
 zoora-signer rotate-hmac
 ```
 
-`init-event-key` generates a 32-byte event HMAC with `secrets.token_bytes` and stores it in Credential Manager as `event-hmac`. It prints `event key stored` and never prints the key. A key that matches `hmac-key`, is all one byte, or has fewer than 8 distinct bytes is refused. The public key id is the first 16 hex characters of the key's sha256 and is written on each event. Run it on a fresh database before the first event. A database whose events lack `event_key_id` or the HMAC is refused: there is no rekey and no unkeyed prefix. Start a new database and run `init-event-key` again. This build does not keep a previous HMAC key, so `init-event-key` refuses when a key is already stored. `reboot` boots the signer again and prints the activity. While `anchor_mismatch` or `hash_chain` is set, boot keeps the last trusted digest instead of stamping the current book.
+`init-event-key` generates a 32-byte event HMAC with `secrets.token_bytes` and stores it in Credential Manager as `event-hmac`. It does not boot. It prints `event key stored` and never prints the key. A key that matches `hmac-key`, is all one byte, or has fewer than 8 distinct bytes is refused. The public key id is the first 16 hex characters of the key's sha256 and is written on each event. Run it on a fresh database before the first event. A database whose events lack `event_key_id` or the HMAC is refused: there is no rekey and no unkeyed prefix. Start a new database and run `init-event-key` again. This build does not keep a previous HMAC key, so `init-event-key` refuses when a key is already stored. `reboot` boots the signer again and prints the activity. While `anchor_mismatch` or `hash_chain` is set, boot keeps the last trusted digest instead of stamping the current book.
 
 `rotate-hmac` prompts. `mode live` is refused until `route-approved` has been recorded. A devnet Helius host is refused in `LIVE` and remains available for a dry run. Resume runs the preflight again. A failed check leaves the process `PAUSED`.
 

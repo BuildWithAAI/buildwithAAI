@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS signer_state (
   hmac_version INTEGER NOT NULL,
   provider_name TEXT NOT NULL,
   boot_id TEXT NOT NULL,
-  ledger_sol_lamports INTEGER
+  ledger_sol_lamports INTEGER,
+  paper_pnl_cents INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS anchor_meta (
   id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -116,6 +117,9 @@ def init_db(path: str, provider: str) -> None:
         columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(trades)").fetchall()}
         if "simulated" not in columns:
             conn.execute("ALTER TABLE trades ADD COLUMN simulated INTEGER NOT NULL DEFAULT 0")
+        state_columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(signer_state)").fetchall()}
+        if "paper_pnl_cents" not in state_columns:
+            conn.execute("ALTER TABLE signer_state ADD COLUMN paper_pnl_cents INTEGER NOT NULL DEFAULT 0")
         meta = conn.execute("SELECT id FROM anchor_meta WHERE id = 1").fetchone()
         events = conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()
         if meta is None and (events is None or int(events["n"]) == 0):

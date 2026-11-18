@@ -32,7 +32,7 @@ def _refuse_after_reboot(monkeypatch: pytest.MonkeyPatch, signer: Signer, servic
     decision = again.reanchor("REANCHOR")
     assert decision.code == "RECONCILE_REQUIRED"
     assert again.last_reanchor_diff
-    assert "state_sha256" in again.last_reanchor_diff
+    assert "book_sha256" in again.last_reanchor_diff
     assert not again.unhalt("UNHALT").ok
     assert buy(again).code != "FILLED"
 
@@ -190,7 +190,10 @@ def test_balance_outage_and_a_missing_wallet_keep_halt_and_the_owner_exit(
     services.chain.sol_lamports = lambda: before  # type: ignore[method-assign]
     recovered = Signer.open(services)
     reason = sqlite3.connect(recovered.path).execute("SELECT buy_halt_reason FROM signer_state").fetchone()
-    assert reason is not None and reason[0] is None
+    assert reason is not None and reason[0] == "reconcile_unknown"
+    assert recovered.resume().code == "HALT_PERSISTED"
+    still = sqlite3.connect(recovered.path).execute("SELECT buy_halt_reason FROM signer_state").fetchone()
+    assert still is not None and still[0] == "reconcile_unknown"
 
 
 def test_getbalance_rejects_a_value_above_u64() -> None:

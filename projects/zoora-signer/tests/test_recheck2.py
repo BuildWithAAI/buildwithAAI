@@ -1073,7 +1073,7 @@ def test_sell_all_refuses_a_tampered_database(tmp_path: Path) -> None:
     conn.execute("UPDATE signer_state SET boot_id = 'edited' WHERE id = 1")
     conn.commit()
     conn.close()
-    results = signer.sell_all()
+    results = signer.sell_all("OWNER_SELL")
     assert results and results[0].code == "ANCHOR_MISMATCH"
 
 
@@ -1092,6 +1092,8 @@ def test_owner_sell_after_tamper_leaves_the_ledger(tmp_path: Path) -> None:
 
     ata = str(_ata(Pubkey.from_string(owner), Pubkey.from_string(TOKEN_2022), Pubkey.from_string(MINT)))
     balance = bytearray(182)
+    balance[0:32] = bytes(Pubkey.from_string(MINT))
+    balance[32:64] = bytes(Pubkey.from_string(owner))
     balance[64:72] = (1_000_000_000_000).to_bytes(8, "little")
     table = services.chain.account_info  # type: ignore[attr-defined]
 
@@ -1125,6 +1127,7 @@ def test_owner_sell_after_tamper_leaves_the_ledger(tmp_path: Path) -> None:
     services.kill.state = "killed"
     decision = signer.owner_sell_after_tamper(MINT, "OWNER_SELL")
     assert decision.code == "OWNER_SELL_SIMULATED"
+    assert signer.last_unsigned is not None
     row = connect(signer.path).execute("SELECT ledger_sol_lamports, halt_reason FROM signer_state").fetchone()
     assert row is not None and int(row[0]) == before
     assert "anchor_mismatch" in str(row[1] or "")

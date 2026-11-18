@@ -17,7 +17,7 @@ def ready(path: Path) -> Signer:
 
 
 def _close_open(signer: Signer) -> None:
-    closed = signer.sell_all()
+    closed = signer.sell_all("OWNER_SELL")
     assert closed
     assert all(item.ok and item.code == "CLOSED" for item in closed)
 

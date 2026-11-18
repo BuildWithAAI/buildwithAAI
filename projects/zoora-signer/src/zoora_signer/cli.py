@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from zoora_signer.constants import RPC_PROVIDER_NAME, VET_BUDGET_S
+from zoora_signer.db import init_db
 from zoora_signer.killswitch import AgentGuardKill, kill_root
 from zoora_signer.models import OracleReading
 from zoora_signer.ports import ChainView, Clock, KillSwitch, MarkSource, Oracle, OsProbe
@@ -265,7 +266,8 @@ def _parser() -> argparse.ArgumentParser:
     sell.add_argument("--confirm", default="")
     sub.add_parser("init-event-key")
     sub.add_parser("reboot")
-    sub.add_parser("sell-all")
+    sell_all = sub.add_parser("sell-all")
+    sell_all.add_argument("--confirm", default="")
     deposit = sub.add_parser("expect-deposit")
     deposit.add_argument("lamports", type=int)
     deposit.add_argument("--ttl", type=int, default=3600)
@@ -309,6 +311,15 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(f"activity={signer.activity()} mode={signer.mode()} route={signer.route_approved()}")
         return 0
+    if args.cmd == "init-event-key":
+        services = _services(args, create=True)
+        init_db(str(services.db_path), services.provider_name)
+        signer = Signer.attach(services)
+        decision = signer.init_event_key()
+        if decision.ok:
+            print("event key stored")
+        print(decision.code)
+        return 0 if decision.ok else 1
     signer = Signer.open(_services(args, create=True))
     if args.cmd == "resume":
         decision = signer.resume()
@@ -328,14 +339,10 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "sell":
         amount = args.tokens if args.tokens > 0 else None
         decision = signer.owner_sell(args.mint, amount, args.confirm)
-    elif args.cmd == "init-event-key":
-        decision = signer.init_event_key()
-        if decision.ok:
-            print("event key stored")
     elif args.cmd == "sell-all":
-        results = signer.sell_all()
+        results = signer.sell_all(args.confirm)
         print(f"sells={len(results)}")
-        return 0
+        return 0 if results and all(item.ok for item in results) else 1
     elif args.cmd == "expect-deposit":
         decision = signer.expect_deposit(args.lamports, args.ttl)
     elif args.cmd == "route-approved":
