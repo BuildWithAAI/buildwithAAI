@@ -38,12 +38,13 @@ def _swap(family: str, name: str) -> bytes:
         metas.append(AccountMeta(Pubkey.from_string(address), bool(item["signer"]), bool(item["writable"])))
     if not any(meta.is_signer for meta in metas):
         metas[0] = AccountMeta(metas[0].pubkey, True, True)
-    return _raw(program, bytes(spec["discriminator"]), metas)
+    data = bytes(spec["discriminator"]) + (1).to_bytes(8, "little") + (1).to_bytes(8, "little")
+    return _raw(program, data, metas)
 
 
 @pytest.mark.parametrize(
     ("family", "name"),
-    [("pump", "buy_v2"), ("pump", "sell_v2"), ("pump_swap", "buy"), ("pump_swap", "sell")],
+    [("pump", "buy_v3"), ("pump", "sell_v3"), ("pump_swap", "buy_v2"), ("pump_swap", "sell_v2")],
 )
 def test_pinned_swap_is_accepted(family: str, name: str) -> None:
     validate_transaction(_swap(family, name))

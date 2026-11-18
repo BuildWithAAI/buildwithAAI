@@ -127,7 +127,7 @@ class SubprocessVet:
             return 3, "", False
         try:
             proc = subprocess.run(
-                [sys.executable, "-m", self.MODULE, mint, "--budget-s", str(self.budget_s)],
+                [sys.executable, "-I", "-m", self.MODULE, mint, "--budget-s", str(self.budget_s)],
                 capture_output=True,
                 timeout=self.timeout_s,
                 check=False,

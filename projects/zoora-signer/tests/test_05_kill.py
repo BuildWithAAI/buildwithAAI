@@ -25,7 +25,8 @@ def test_kill_paths(tmp_path: Path) -> None:
         assert signer.open_trade_count() == 1
         assert signer.owner_sell("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf").ok
         assert signer.open_trade_count() == 0
-        assert signer.telegram({"text": "resume", "chat_id": "1", "from_id": "2"}).code == "TELEGRAM_NOT_ALLOWLISTED"
+        update = {"message": {"text": "resume", "chat": {"id": 1}, "from": {"id": 2}}}
+        assert signer.telegram(update).code == "TELEGRAM_NOT_ALLOWLISTED"
 
 
 def test_daily_loss_still_allows_zoora_sells(tmp_path: Path) -> None:

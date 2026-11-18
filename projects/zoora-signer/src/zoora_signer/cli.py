@@ -23,16 +23,21 @@ class _Clock:
 
 
 class _DownOracle:
+    is_stub = True
+
     def quote(self, now_ms: int) -> OracleReading:
         return OracleReading(False, "ORACLE_DOWN", 0, 0, 0, 0)
 
 
 class _NoMarks:
+    is_stub = True
+
     def mark_cents(self, mint: str, tokens: int, cost_cents: int, recovered_cents: int) -> int | None:
         return None
 
 
 class _Chain:
+    is_stub = True
     authoritative = False
 
     def sol_lamports(self) -> int:
@@ -45,10 +50,101 @@ class _Chain:
         return None
 
 
-def _probe(db: Path, rpc_url: str | None) -> OsProbe:
-    urls = (rpc_url,) if isinstance(rpc_url, str) and rpc_url.startswith("https://") else ()
+def _live_readers(rpc_url: str, clock: Clock) -> tuple[Oracle, MarkSource, ChainView]:
+    import httpx
+
+    from zoora_signer.oracle import ChainJupiterOracle, JupiterPrice, OnchainPyth
+    from zoora_signer.rpc import HeliusRpc
+
+    rpc = HeliusRpc(lambda: rpc_url, clock)
+    oracle: Oracle = ChainJupiterOracle(OnchainPyth(rpc), JupiterPrice(httpx.Client()))
+    return oracle, _RpcMarks(rpc, oracle, clock), _RpcChain(rpc)
+
+
+class _RpcChain:
+    is_stub = False
+    authoritative = True
+
+    def __init__(self, rpc: object) -> None:
+        self._rpc = rpc
+
+    def sol_lamports(self) -> int:
+        return 0
+
+    def signature_status(self, signature: str) -> str:
+        result = self._rpc.call("getSignatureStatuses", [[signature]])  # type: ignore[attr-defined]
+        if not result.ok or not isinstance(result.value, dict):
+            return "unknown"
+        value = result.value.get("value")
+        if not isinstance(value, list) or not value or value[0] is None:
+            return "absent"
+        status = value[0]
+        if isinstance(status, dict) and status.get("err") is None and status.get("confirmationStatus") in {
+            "confirmed",
+            "finalized",
+        }:
+            return "confirmed"
+        return "unknown"
+
+    def fee_bps(self) -> int | None:
+        return None
+
+
+class _RpcMarks:
+    is_stub = False
+
+    def __init__(self, rpc: object, oracle: Oracle, clock: Clock) -> None:
+        self._rpc = rpc
+        self._oracle = oracle
+        self._clock = clock
+
+    def mark_cents(self, mint: str, tokens: int, cost_cents: int, recovered_cents: int) -> int | None:
+        del cost_cents, recovered_cents
+        import base64
+
+        from solders.pubkey import Pubkey
+
+        from zoora_signer.constants import PUMP_PROGRAM
+        from zoora_signer.models import sol_usd_cents
+        from zoora_signer.quote import decode_bonding_curve, sol_for_tokens
+        from zoora_signer.txbuild import _pda
+
+        reading = self._oracle.quote(self._clock.now_ms())
+        if not reading.ok:
+            return None
+        curve = _pda([b"bonding-curve", bytes(Pubkey.from_string(mint))], Pubkey.from_string(PUMP_PROGRAM))
+        fetched = self._rpc.call("getAccountInfo", [str(curve), {"encoding": "base64"}])  # type: ignore[attr-defined]
+        if not fetched.ok or not isinstance(fetched.value, dict):
+            return None
+        value = fetched.value.get("value")
+        if not isinstance(value, dict):
+            return None
+        data = value.get("data")
+        if not isinstance(data, list) or not data:
+            return None
+        try:
+            raw = base64.b64decode(str(data[0]))
+        except ValueError:
+            return None
+        parsed = decode_bonding_curve(raw)
+        if parsed is None:
+            return None
+        lamports = sol_for_tokens(tokens, int(parsed["virtual_quote"]), int(parsed["virtual_token"]))
+        if lamports <= 0:
+            return None
+        return lamports * sol_usd_cents(reading) // 1_000_000_000
+
+
+def _acl_paths(db: Path, hud: Path, rpc_env: Path | None) -> list[str]:
+    paths = [db, db.parent, Path(str(db) + "-wal"), Path(str(db) + "-shm"), hud, hud.parent]
+    if rpc_env is not None:
+        paths.extend((rpc_env, rpc_env.parent))
+    return [str(path) for path in paths if path.exists() or path in {db, db.parent, hud.parent}]
+
+
+def _probe(db: Path, hud: Path, rpc_env: Path | None) -> OsProbe:
     if sys.platform == "win32":
-        return WindowsOsProbe([str(db), str(db.parent)], clock_urls=urls)
+        return WindowsOsProbe(_acl_paths(db, hud, rpc_env))
     return FailClosedProbe()
 
 
@@ -62,10 +158,18 @@ def _services(args: argparse.Namespace, *, create: bool) -> Services:
     except Exception:
         rpc_url = None
     clock: Clock = _Clock()
-    oracle: Oracle = _DownOracle()
-    marks: MarkSource = _NoMarks()
-    chain: ChainView = _Chain()
+    oracle: Oracle
+    marks: MarkSource
+    chain: ChainView
+    if isinstance(rpc_url, str) and rpc_url.startswith("https://"):
+        oracle, marks, chain = _live_readers(rpc_url, clock)
+    else:
+        oracle = _DownOracle()
+        marks = _NoMarks()
+        chain = _Chain()
     kill: KillSwitch = AgentGuardKill(Path(args.kill_switch) if args.kill_switch else None)
+    hud = Path(args.hud) if args.hud else db.with_suffix(".events.jsonl")
+    rpc_env = Path(args.rpc_env_file) if args.rpc_env_file else None
     return Services(
         db_path=db,
         secrets=secrets,
@@ -75,9 +179,9 @@ def _services(args: argparse.Namespace, *, create: bool) -> Services:
         chain=chain,
         marks=marks,
         kill=kill,
-        probe=_probe(db, rpc_url),
+        probe=_probe(db, hud, rpc_env),
         broadcaster=RefuseBroadcaster(),
-        hud_path=Path(args.hud) if args.hud else db.with_suffix(".events.jsonl"),
+        hud_path=hud,
         provider_name=RPC_PROVIDER_NAME,
     )
 
@@ -130,6 +234,9 @@ def main(argv: list[str] | None = None) -> int:
             lines = signer.doctor_lines()
             print("\n".join(lines))
             return 0 if all(line.endswith("pass") for line in lines) else 1
+        if not Path(args.db).is_file():
+            print("status: no database", file=sys.stderr)
+            return 1
         print(f"activity={signer.activity()} mode={signer.mode()} route={signer.route_approved()}")
         return 0
     signer = Signer.open(_services(args, create=True))

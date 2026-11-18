@@ -17,6 +17,7 @@ From PowerShell, in `projects\zoora-signer`:
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
+python -m pip install --require-hashes -r requirements.lock.txt
 python -m pip install -e ".[dev]"
 ```
 

@@ -62,7 +62,7 @@ def test_subprocess_stub_and_defaults(tmp_path: Path) -> None:
     assert VET_TIMEOUT_S == 50
     assert VET_BUDGET_S == 45
     source = Path(__file__).resolve().parents[1].joinpath("src/zoora_signer/vet.py").read_text(encoding="utf-8")
-    assert "sys.executable" in source
+    assert 'sys.executable, "-I", "-m"' in source or "[sys.executable, \"-I\", \"-m\"" in source
     assert 'MODULE = "smr.vet"' in source
 
 

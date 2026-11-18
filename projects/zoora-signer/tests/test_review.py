@@ -150,7 +150,7 @@ def test_status_does_not_create_a_database(tmp_path: Path) -> None:
     from zoora_signer.cli import main
 
     db = tmp_path / "missing.sqlite"
-    assert main(["--db", str(db), "status"]) == 0
+    assert main(["--db", str(db), "status"]) == 1
     assert not db.exists()
     raw = Path(__file__).resolve().parents[1].joinpath("fixtures/pyth_sol_usd_price.bin").read_bytes()
     parsed = parse_pyth_price_account(raw, PYTH_RECEIVER_PROGRAM)

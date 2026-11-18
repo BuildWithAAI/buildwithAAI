@@ -162,6 +162,26 @@ def _builder_transactions(document: dict[str, object]) -> tuple[str, str, tuple[
     )
 
 
+def _wait_one_slot(url: str) -> None:
+    """Give the local validator one slot so a just-cloned program is deployed."""
+
+    def slot() -> int | None:
+        try:
+            payload = _rpc(url, "getSlot", [])
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+            return None
+        found = payload.get("result")
+        return int(found) if isinstance(found, int) else None
+
+    start = slot()
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        current = slot()
+        if start is not None and current is not None and current > start:
+            return
+        time.sleep(0.2)
+
+
 def _wait_for_validator(url: str, proc: subprocess.Popen[str], log_path: Path) -> None:
     deadline = time.time() + 90
     while time.time() < deadline:
@@ -206,6 +226,30 @@ def _simulate(url: str, encoded: str) -> object:
             print("\n".join(str(line) for line in logs[-12:]))
         return err
     return None
+
+
+def rehearsal_result(buy_err: object, sell_err: object) -> int:
+    if buy_err is None and sell_err is None:
+        return 0
+    return 1
+
+
+def _not_deployed(err: object) -> bool:
+    return err is not None and "not deployed" in str(err).lower()
+
+
+def run_pair(simulate: object, buy: str, sell: str) -> tuple[object, object]:
+    """Simulate both trades, retrying once when the program is not deployed yet."""
+
+    caller = simulate
+    assert callable(caller)
+    buy_err = caller(buy)
+    if _not_deployed(buy_err):
+        buy_err = caller(buy)
+    sell_err = caller(sell)
+    if _not_deployed(sell_err):
+        sell_err = caller(sell)
+    return buy_err, sell_err
 
 
 def main() -> int:
@@ -278,8 +322,8 @@ def main() -> int:
         local = "http://127.0.0.1:8899"
         try:
             _wait_for_validator(local, proc, log_path)
-            buy_err = _simulate(local, buy_tx)
-            sell_err = _simulate(local, sell_tx)
+            _wait_one_slot(local)
+            buy_err, sell_err = run_pair(lambda raw, endpoint=local: _simulate(endpoint, raw), buy_tx, sell_tx)
         except Exception as exc:
             print(f"rehearsal failed against {url}: {exc}")
             buy_err = str(exc)
@@ -293,7 +337,7 @@ def main() -> int:
             log_handle.close()
         if buy_err is None and sell_err is None:
             break
-    if buy_err is not None or sell_err is not None:
+    if rehearsal_result(buy_err, sell_err) != 0:
         print(f"unsigned simulation failed; buy={buy_err} sell={sell_err}")
         return 1
     print("unsigned buy_v3 simulation finished with no error")

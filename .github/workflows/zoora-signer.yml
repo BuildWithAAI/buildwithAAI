@@ -64,7 +64,7 @@ jobs:
           if [ -z "$BASE" ]; then BASE="$(git rev-parse origin/main)"; fi
           "$BIN" detect --redact --config projects/zoora-signer/.gitleaks.toml --log-opts="${BASE}..HEAD"
       - name: pip-audit
-        run: python -m pip_audit -r requirements.txt
+        run: python -m pip_audit -r requirements.lock.txt
 
   package:
     runs-on: ubuntu-latest

@@ -69,27 +69,52 @@ def administrators_sid_present(text: str) -> bool:
     return "S-1-5-32-544" in text
 
 
+HIGH_INTEGRITY_SID = "S-1-16-12288"
+SYSTEM_SID = "S-1-5-18"
+HTTPS_TIME_URLS = ("https://www.cloudflare.com", "https://www.google.com")
+
+
 def parse_whoami(text: str) -> bool:
+    """True when the token is an administrator or at high integrity."""
+
     if administrators_sid_present(text):
         return True
-    lowered = text.lower()
-    if "high mandatory level" in lowered:
-        return True
-    return "builtin\\administrators" in lowered and "enabled group" in lowered
+    return HIGH_INTEGRITY_SID in text
 
 
-def parse_icacls(text: str) -> bool:
-    if not text.strip():
+def parse_icacls(text: str, owner_sid: str) -> bool:
+    """Allow only the owner SID and SYSTEM. Any other SID fails closed."""
+
+    if not text.strip() or not owner_sid.startswith("S-1-"):
         return False
-    lowered = text.lower()
-    banned = (
-        "everyone:",
-        "authenticated users",
-        "builtin\\users",
-        "\\users:",
-        "users:(",
-    )
-    return not any(item in lowered for item in banned)
+    found: list[str] = []
+    for line in text.splitlines():
+        piece = line.strip().split(":")[0].strip()
+        if piece.startswith("S-1-"):
+            found.append(piece.split()[-1])
+    if not found:
+        return False
+    allowed = {owner_sid, SYSTEM_SID}
+    return set(found) <= allowed and owner_sid in found and SYSTEM_SID in found
+
+
+def judge_clock(local_ms: int, https_ms: list[int], rpc_ms: int | None = None) -> int | None:
+    """Two HTTPS dates must agree with each other and with the local clock.
+
+    An RPC Date is not one of those two sources. A forged RPC timestamp that
+    matches a wrong local clock still fails when the HTTPS dates disagree.
+    """
+
+    if len(https_ms) < 2:
+        return None
+    if max(https_ms) - min(https_ms) > 2_000:
+        return None
+    skews = [abs(local_ms - stamp) for stamp in https_ms]
+    if max(skews) > 2_000:
+        return None
+    if rpc_ms is not None and min(abs(rpc_ms - stamp) for stamp in https_ms) > 2_000:
+        return None
+    return max(skews)
 
 
 def parse_w32tm_offset_ms(text: str) -> int | None:
@@ -108,9 +133,7 @@ def parse_http_date_skew_ms(local_ms: int, date_header_ms: int) -> int:
     return abs(local_ms - date_header_ms)
 
 
-def https_date_skew_ms(url: str) -> int | None:
-    """Skew against an HTTPS Date header. A failed read is not a sample."""
-
+def _https_date_ms(url: str) -> int | None:
     if not url.startswith("https://"):
         return None
     try:
@@ -118,8 +141,23 @@ def https_date_skew_ms(url: str) -> int | None:
         header = response.headers.get("date")
         if header is None:
             return None
-        remote_ms = int(parsedate_to_datetime(header).timestamp() * 1000)
+        return int(parsedate_to_datetime(header).timestamp() * 1000)
     except Exception:
+        return None
+
+
+def _sid_in(text: str) -> str:
+    import re
+
+    found = re.findall(r"S-1-[0-9-]+", text)
+    return found[-1] if found else ""
+
+
+def https_date_skew_ms(url: str) -> int | None:
+    """Skew against an HTTPS Date header. A failed read is not a sample."""
+
+    remote_ms = _https_date_ms(url)
+    if remote_ms is None:
         return None
     return parse_http_date_skew_ms(time.time_ns() // 1_000_000, remote_ms)
 
@@ -146,11 +184,17 @@ class WindowsOsProbe:
         clock_samples: tuple[int, ...] = (),
         power_text: str = "",
         clock_urls: tuple[str, ...] = (),
+        https_times: tuple[int, ...] = (),
+        rpc_time_ms: int | None = None,
+        owner_sid: str = "",
     ) -> None:
         self.paths = paths
         self.runner = runner or SubprocessRunner()
         self._clock_samples = clock_samples
-        self._clock_urls = clock_urls
+        self._clock_urls = clock_urls or HTTPS_TIME_URLS
+        self._https_times = https_times
+        self._rpc_time_ms = rpc_time_ms
+        self._owner_sid = owner_sid
         self._power_text = power_text
         self._power_consumed = False
 
@@ -158,20 +202,18 @@ class WindowsOsProbe:
         return (time.time_ns() // 1_000_000, time.monotonic_ns() // 1_000_000)
 
     def time_skew_ms(self) -> int | None:
-        samples: list[int] = []
-        code, text = self.runner.run(["w32tm", "/query", "/status"])
-        offset = parse_w32tm_offset_ms(text) if code == 0 else None
-        if offset is not None:
-            samples.append(abs(offset))
-        for extra in self._clock_samples:
-            samples.append(abs(extra))
-        for url in self._clock_urls:
-            skew = https_date_skew_ms(url)
-            if skew is not None:
-                samples.append(skew)
-        if len(samples) < 2:
+        local = time.time_ns() // 1_000_000
+        if self._https_times:
+            https = list(self._https_times)
+        else:
+            https = []
+            for url in self._clock_urls:
+                stamp = _https_date_ms(url)
+                if stamp is not None:
+                    https.append(stamp)
+        if self._clock_samples and not https:
             return None
-        return max(samples)
+        return judge_clock(local, https, self._rpc_time_ms)
 
     def defender_active(self) -> bool:
         script = (
@@ -199,9 +241,13 @@ class WindowsOsProbe:
     def acl_owner_only(self) -> bool:
         if not self.paths:
             return False
+        code, who = self.runner.run(["whoami", "/user"])
+        owner = self._owner_sid or _sid_in(who)
+        if not owner:
+            return False
         for path in self.paths:
             code, text = self.runner.run(["icacls", path])
-            if code != 0 or not parse_icacls(text):
+            if code != 0 or not parse_icacls(text, owner):
                 return False
         return True
 

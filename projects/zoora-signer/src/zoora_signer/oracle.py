@@ -66,6 +66,9 @@ def parse_pyth_price_account(data: bytes, owner: str) -> tuple[int, int, int] | 
 
     if owner != PYTH_RECEIVER_PROGRAM or len(data) < 101:
         return None
+    # PriceUpdateV2 discriminator and VerificationLevel::Full (byte 1). Partial is not accepted.
+    if data[:8] != bytes.fromhex("22f123639d7ef4cd") or data[40] != 1:
+        return None
     if data[41:73].hex() != PYTH_SOL_USD_FEED:
         return None
     price, conf, expo, publish = struct.unpack_from("<qQiq", data, 73)
