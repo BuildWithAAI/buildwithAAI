@@ -57,6 +57,7 @@ def _buy(**overrides: object) -> BuiltTx:
         "fee_config_data": FEE,
         "buyback_fee_recipient": BUYBACK,
         "sol_usd_cents": PRICE,
+        "sol_usd_micro": PRICE * 10_000,
         "stake_cents": 200,
         "slippage_bps": 0,
         "ata_rent_lamports": 0,

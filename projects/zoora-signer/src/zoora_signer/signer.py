@@ -712,6 +712,8 @@ class Signer:
             return None
         if lamports < 0 or size < 0:
             return None
+        if not exists and (lamports != 0 or size != 0):
+            return None
         return exists, lamports, size
 
     def _rent(self, size: int) -> int | None:
@@ -722,9 +724,11 @@ class Signer:
             value = ask(size)
         except Exception:
             return None
-        if type(value) is not int or value <= 1:
+        if type(value) is not int:
             return None
-        return value
+        from zoora_signer.quote import accept_chain_rent
+
+        return accept_chain_rent(value, size)
 
     def _broadcast_sell(self, mint: str, token_amount: int | None) -> Decision:
         if self.poll_kill() != "clear":

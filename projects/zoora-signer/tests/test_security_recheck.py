@@ -139,6 +139,7 @@ def test_policy_rejects_foreign_accounts_and_absurd_fees() -> None:
         fee_config_data=FEE,
         buyback_fee_recipient=ORDER[13],
         sol_usd_cents=100_000,
+        sol_usd_micro=100_000 * 10_000,
         stake_cents=200,
         slippage_bps=0,
         create_base_ata=False,

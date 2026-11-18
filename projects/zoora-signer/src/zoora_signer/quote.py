@@ -43,15 +43,29 @@ def decode_global_fee_bps(data: bytes) -> int | None:
     return int(fee)
 
 
-def rent_exempt_lamports(data_len: int) -> int:
-    """getMinimumBalanceForRentExemption for this account size.
+RENT_LAMPORTS_PER_BYTE_YEAR = 3_480
+RENT_EXEMPTION_YEARS = 2
+RENT_PER_BYTE = RENT_LAMPORTS_PER_BYTE_YEAR * RENT_EXEMPTION_YEARS
+RENT_TOLERANCE_BPS = 100
 
-    Solana's default rent is (data_len + 128) * 3_480 * 2 lamports.
-    """
+
+def rent_exempt_lamports(data_len: int) -> int:
+    """Local getMinimumBalanceForRentExemption: (data_len + 128) * 6960."""
 
     if data_len < 0:
         return 0
-    return (data_len + 128) * 6_960
+    return (data_len + 128) * RENT_PER_BYTE
+
+
+def accept_chain_rent(chain: int, data_len: int) -> int | None:
+    """Budget max(chain, formula). Refuse a value more than 1% from the formula."""
+
+    formula = rent_exempt_lamports(data_len)
+    if formula <= 0 or chain <= 1:
+        return None
+    if abs(chain - formula) * 10_000 > formula * RENT_TOLERANCE_BPS:
+        return None
+    return max(chain, formula)
 
 
 def lamports_for_cents(cents: int, sol_usd_cents: int) -> int | None:

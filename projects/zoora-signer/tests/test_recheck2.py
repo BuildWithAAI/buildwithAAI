@@ -48,6 +48,7 @@ def _buy(**overrides: object):
         "fee_config_data": FEE,
         "buyback_fee_recipient": str(ORDER[13]),
         "sol_usd_cents": 100_000,
+        "sol_usd_micro": 100_000 * 10_000,
         "stake_cents": 200,
         "slippage_bps": 0,
         "create_base_ata": False,
@@ -83,7 +84,9 @@ def _arm(signer: object, services: object, *, volume: bool = True, ata: bool = T
 
     def rent_exemption(size: int) -> int:
         seen["size"] = size
-        return 1 if size == 1 else 1_900_000
+        from zoora_signer.quote import rent_exempt_lamports
+
+        return 1 if size == 1 else rent_exempt_lamports(size)
 
     services.chain.account_info = account_info  # type: ignore[attr-defined]
     services.chain.rent_exemption = rent_exemption  # type: ignore[attr-defined]
@@ -477,7 +480,9 @@ def test_live_volume_rent_comes_from_rpc(tmp_path: Path) -> None:
     built = signer._unsigned_buy(intent, 10_000, micro)
     assert built is not None
     assert seen["size"] == USER_VOLUME_ACCOUNT_BYTES == 137
-    assert built.rent_lamports == 1_900_000
+    from zoora_signer.quote import rent_exempt_lamports
+
+    assert built.rent_lamports == rent_exempt_lamports(USER_VOLUME_ACCOUNT_BYTES)
     services.chain.rent_exemption = None  # type: ignore[attr-defined]
     assert signer._unsigned_buy(intent, 10_000, micro) is None
 
@@ -525,7 +530,90 @@ def test_market_rent_claims_are_not_trusted(tmp_path: Path) -> None:
     assert signer._unsigned_buy(intent, 10_000, 10_000 * 10_000) is None
     services.market = Market(ata_rent_lamports=0, volume_exists=False)
     built = signer._unsigned_buy(intent, 10_000, 10_000 * 10_000)
-    assert built is not None and built.rent_lamports == 1_900_000
+    from zoora_signer.quote import rent_exempt_lamports
+
+    assert built is not None and built.rent_lamports == rent_exempt_lamports(USER_VOLUME_ACCOUNT_BYTES)
+
+
+def test_chain_rent_outside_the_formula_is_refused(tmp_path: Path) -> None:
+    from zoora_signer.quote import rent_exempt_lamports
+    from zoora_signer.signer import parse_intent
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
+    _arm(signer, services, volume=False)
+    formula = rent_exempt_lamports(USER_VOLUME_ACCOUNT_BYTES)
+
+    class Market:
+        def buy_inputs(self, mint: str) -> dict[str, object]:
+            return {
+                "mint_data": MINT_DATA,
+                "mint_owner": TOKEN_2022,
+                "curve_data": CURVE,
+                "fee_config_data": FEE,
+                "buyback": str(ORDER[13]),
+                "volume_exists": False,
+            }
+
+    services.market = Market()
+    intent = parse_intent(
+        {
+            "intent_id": "rent-band",
+            "issued_at_ms": services.clock.now_ms(),
+            "key_id": "1",
+            "max_slippage_bps": 0,
+            "mint": MINT,
+            "side": "buy",
+            "usd_stake_micro": 2_000_000,
+        }
+    )
+    assert intent is not None
+
+    def quoted(value: int) -> int:
+        def rent_exemption(size: int) -> int:
+            return value
+
+        services.chain.rent_exemption = rent_exemption  # type: ignore[attr-defined]
+        return value
+
+    quoted(2)
+    assert signer._unsigned_buy(intent, 10_000, 10_000 * 10_000) is None
+    quoted(formula * 10)
+    assert signer._unsigned_buy(intent, 10_000, 10_000 * 10_000) is None
+    services.chain.account_info = lambda _address: (False, 5, 0)  # type: ignore[attr-defined]
+    quoted(formula)
+    assert signer._unsigned_buy(intent, 10_000, 10_000 * 10_000) is None
+
+
+def test_curve_buy_requires_the_micro_price() -> None:
+    from zoora_signer.models import OracleReading, sol_usd_cents, sol_usd_micro
+    from zoora_signer.quote import lamports_for_micro_price, micro_cost_ceil
+
+    kwargs = {
+        "user": USER,
+        "mint_address": MINT,
+        "mint_data": MINT_DATA,
+        "mint_owner": TOKEN_2022,
+        "curve_data": CURVE,
+        "fee_config_data": FEE,
+        "buyback_fee_recipient": str(ORDER[13]),
+        "sol_usd_cents": 10_000,
+        "stake_cents": 200,
+        "slippage_bps": 0,
+        "create_base_ata": False,
+        "curve_lamports": LAMPORTS,
+        "volume_exists": True,
+    }
+    with pytest.raises(TypeError):
+        build_curve_buy(**kwargs)  # type: ignore[arg-type]
+    reading = OracleReading(True, None, 10_000_000_050, 0, 0, 10_000_000_050)
+    built = build_curve_buy(**kwargs, sol_usd_micro=sol_usd_micro(reading))  # type: ignore[arg-type]
+    assert (micro_cost_ceil(built.all_in_lamports, sol_usd_micro(reading)) or 0) <= 2_000_000
+    floored = lamports_for_micro_price(2_000_000, sol_usd_cents(reading) * 10_000)
+    assert floored is not None
+    assert (micro_cost_ceil(floored, sol_usd_micro(reading)) or 0) > 2_000_000
 
 
 def test_aliases_ls_ow_and_ba_are_refused() -> None:

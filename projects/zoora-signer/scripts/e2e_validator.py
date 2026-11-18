@@ -140,6 +140,7 @@ def _builder_transactions(document: dict[str, object]) -> tuple[str, str, tuple[
         fee_config_data=fee,
         buyback_fee_recipient=buyback,
         sol_usd_cents=100_000,
+        sol_usd_micro=100_000 * 10_000,
         stake_cents=200,
         slippage_bps=1500,
         create_base_ata=False,
