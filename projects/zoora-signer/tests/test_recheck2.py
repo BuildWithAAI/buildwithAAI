@@ -851,7 +851,9 @@ def test_dry_run_intent_polls_the_kill_switch(tmp_path: Path) -> None:
     assert buy(signer).code == "KILL_HOLD"
 
 
-def test_unreadable_state_dir_is_killed(tmp_path: Path) -> None:
+def test_unreadable_state_dir_is_killed(tmp_path: Path, monkeypatch: object) -> None:
+    import os
+
     from zoora_signer.heartbeat import write_heartbeat
     from zoora_signer.killswitch import AgentGuardKill
 
@@ -859,11 +861,22 @@ def test_unreadable_state_dir_is_killed(tmp_path: Path) -> None:
     state = root / "state"
     state.mkdir(parents=True)
     write_heartbeat(root, 5_000)
-    state.chmod(0)
+    if os.name == "nt":
+        real = os.lstat
+
+        def denied(path: object) -> object:
+            if Path(str(path)).name == "KILL_SWITCH":
+                raise PermissionError(path)
+            return real(path)  # type: ignore[arg-type]
+
+        monkeypatch.setattr("zoora_signer.killswitch.os.lstat", denied)  # type: ignore[attr-defined]
+    else:
+        state.chmod(0)
     try:
         assert AgentGuardKill(root, now_ms=lambda: 5_000).poll() == "killed"
     finally:
-        state.chmod(0o700)
+        if os.name != "nt":
+            state.chmod(0o700)
 
 
 def test_forward_keys_and_bots_are_rejected() -> None:

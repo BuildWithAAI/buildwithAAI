@@ -92,7 +92,8 @@ jobs:
           set -euo pipefail
           whl="$(ls dist/*.whl)"
           hash="$(sha256sum "$whl" | awk '{print $1}')"
-          python -m pip install --no-deps --require-hashes "$whl" --hash="sha256:${hash}"
+          printf '%s --hash=sha256:%s\n' "$whl" "$hash" > wheel-requirements.txt
+          python -m pip install --require-hashes --no-deps -r wheel-requirements.txt
       - run: zoora-signer --help
 
   validator:
