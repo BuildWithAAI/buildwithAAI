@@ -87,11 +87,9 @@ def parse_icacls(text: str, owner_sid: str) -> bool:
 
     if not text.strip() or not owner_sid.startswith("S-1-"):
         return False
-    found: list[str] = []
-    for line in text.splitlines():
-        piece = line.strip().split(":")[0].strip()
-        if piece.startswith("S-1-"):
-            found.append(piece.split()[-1])
+    import re
+
+    found = re.findall(r"S-1-[0-9-]+", text)
     if not found:
         return False
     allowed = {owner_sid, SYSTEM_SID}

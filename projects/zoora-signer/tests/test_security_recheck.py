@@ -91,16 +91,39 @@ def test_clock_rejects_a_forged_rpc_date() -> None:
     assert judge_clock(local, [local + 100, local + 400], local + 200) == 400
 
 
-def test_agent_guard_clear_requires_a_fresh_heartbeat(tmp_path: Path) -> None:
+def _engage(root: Path) -> Path:
+    """agent-guard engage() is not in this repo. It writes state/KILL_SWITCH and no heartbeat."""
+
+    path = root / "state" / "KILL_SWITCH"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"")
+    return path
+
+
+def test_agent_guard_clear_requires_a_fresh_heartbeat(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from zoora_signer.heartbeat import write_heartbeat
+
     now = {"ms": 1_000_000}
     guard = AgentGuardKill(tmp_path, now_ms=lambda: now["ms"])
     assert guard.poll() == "killed"
-    (tmp_path / "heartbeat.json").write_text(json.dumps({"ts_ms": now["ms"]}), encoding="utf-8")
+    write_heartbeat(tmp_path, now["ms"])
     assert guard.poll() == "clear"
-    (tmp_path / "killed").write_text("1", encoding="utf-8")
+    _engage(tmp_path)
     assert guard.poll() == "killed"
-    (tmp_path / "killed").unlink()
+    (tmp_path / "state" / "KILL_SWITCH").unlink()
     assert guard.poll() == "clear"
+    kill_file = tmp_path / "external-kill"
+    kill_file.write_bytes(b"")
+    monkeypatch.setenv("AGENT_GUARD_KILL_FILE", str(kill_file))
+    assert guard.poll() == "killed"
+    monkeypatch.delenv("AGENT_GUARD_KILL_FILE")
+    assert guard.poll() == "clear"
+    if __import__("os").name != "nt":
+        heartbeat = tmp_path / "heartbeat.json"
+        heartbeat.chmod(0o644)
+        assert guard.poll() == "killed"
+        heartbeat.chmod(0o600)
+        assert guard.poll() == "clear"
     now["ms"] += 20_000
     assert guard.poll() == "killed"
 

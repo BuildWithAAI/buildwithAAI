@@ -48,7 +48,7 @@ from zoora_signer.secrets import reject_key_material_in_env
 from zoora_signer.vet import VetAssessment, assess_vet
 
 MINT_OK = __import__("re").compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
-STICKY_HALTS = frozenset({"unexpected_sol", "reconcile_unknown", "LEDGER_BREACH"})
+STICKY_HALTS = frozenset({"unexpected_sol", "reconcile_unknown", "LEDGER_BREACH", "agent_guard"})
 
 
 def _parse_reasons(text: str) -> set[str]:
@@ -245,7 +245,7 @@ class Signer:
         except Exception:
             status = "killed"
         if status != "clear":
-            self._halt("killed")
+            self._halt("agent_guard")
             return "killed"
         return "clear"
 
@@ -1095,6 +1095,11 @@ class Signer:
                 return False
             ledger = int(_state(db)["ledger_sol_lamports"] or 0)
             return self.s.chain.sol_lamports() == ledger
+        if reason == "agent_guard":
+            try:
+                return self.s.kill.poll() == "clear"
+            except Exception:
+                return False
         if reason == "reconcile_unknown":
             if not self.s.chain.authoritative:
                 return False

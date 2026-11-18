@@ -59,7 +59,7 @@ buys halt until the next CT day. Sells are still allowed.
 - State machine: `PAUSED | ACTIVE | HALTED(reason)`. **Every boot starts PAUSED.** Only an owner resume reaches ACTIVE.
 - Owner kill: a signed owner command (CLI on his PC, or the existing Telegram owner chat as a second channel)
   that sets HALTED.
-- The global agent-guard killswitch is polled every 5 s, and an unreachable killswitch counts as killed.
+- The global agent-guard killswitch is polled every 5 s, and an unreachable killswitch counts as killed. Agent-guard's `engage()` is not in this repository. It writes `state/KILL_SWITCH` and does not write a heartbeat. The signer also treats `killed` and the file named by `AGENT_GUARD_KILL_FILE` as killed. The only heartbeat writer is `zoora_signer.heartbeat.write_heartbeat` in the signer process. That file is mode `0600`, and on Windows its ACL is the owner SID plus SYSTEM. A broader ACL makes the heartbeat invalid. This build does not start that writer.
 - Under either kill, new buys stop and open trades are held. Only an owner "sell all" or "sell X" closes them.
   Question for HoS and Zoorped: may Zoora's own sells still go through during a kill? The default proposal is no.
 - Auto-halt triggers: any cap breach or attempted breach, a stale or disagreeing oracle, the wallet over $25,
