@@ -25,6 +25,7 @@ from zoora_signer.constants import (
     SIGNATURE_FEE_LAMPORTS,
     SPL_TOKEN,
     TOKEN_2022,
+    WSOL_MINT,
 )
 
 # SPL Token instruction tags from the program interface (first byte).
@@ -226,12 +227,20 @@ def _check_derived(
         curve = _pda([b"bonding-curve", _key_bytes(mint)], PUMP_PROGRAM)
         if metas[1][0] != mint:
             raise PolicyError("MINT")
+        if metas[2][0] != WSOL_MINT:
+            raise PolicyError("QUOTE_MINT")
+        if metas[4][0] != SPL_TOKEN:
+            raise PolicyError("QUOTE_PROGRAM")
         if metas[0][0] != _pda([b"global"], PUMP_PROGRAM):
             raise PolicyError("GLOBAL")
         if metas[5][0] != curve:
             raise PolicyError("BONDING_CURVE")
         if metas[6][0] != _ata(curve, token_program, mint):
             raise PolicyError("ASSOCIATED_BONDING_CURVE")
+        if metas[7][0] != _ata(curve, SPL_TOKEN, WSOL_MINT):
+            raise PolicyError("QUOTE_ATA")
+        if metas[10][0] != _ata(owner, SPL_TOKEN, WSOL_MINT):
+            raise PolicyError("QUOTE_ATA")
         if metas[8][0] != owner:
             raise PolicyError("FEE_PAYER")
         if metas[9][0] != _ata(owner, token_program, mint):
@@ -304,9 +313,7 @@ def _check_amounts(
     if amount == 0:
         raise PolicyError("MAX_SOL")
     if sell:
-        if limit <= 1:
-            raise PolicyError("MIN_OUT")
-        if expected_limit_lamports is not None and limit < expected_limit_lamports:
+        if expected_limit_lamports is None or limit <= 1 or limit < expected_limit_lamports:
             raise PolicyError("MIN_OUT")
     else:
         if max_all_in_lamports is None:

@@ -64,8 +64,9 @@ PRIORITY_MICRO_LAMPORTS = 1_000
 # A price at or above 2**32 is not a zero fee. This cap is well under that.
 MAX_CU_PRICE_MICRO_LAMPORTS = 1_000_000
 SIGNATURE_FEE_LAMPORTS = 5_000
-# idl/pump.json UserVolumeAccumulator at DOCS_COMMIT: 98-byte body plus the 8-byte discriminator.
-USER_VOLUME_ACCOUNT_BYTES = 106
+# On-chain UserVolumeAccumulator size, including the discriminator. Dry-run rent
+# uses this length. A live buy asks getMinimumBalanceForRentExemption instead.
+USER_VOLUME_ACCOUNT_BYTES = 137
 # $2.000000 exactly, in micro-USD. 1 cent = 10_000 micro.
 USD_CAP_MICRO = 2_000_000
 # Recorded rent-exempt minimum for a Token-2022 ATA with extensions.

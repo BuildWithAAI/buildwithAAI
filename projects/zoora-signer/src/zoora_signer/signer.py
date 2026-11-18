@@ -31,7 +31,7 @@ from zoora_signer.constants import (
     WALLET_CAP_CENTS,
 )
 from zoora_signer.db import SecretInLog, append_event, init_db, query, read_events, transact, verify_chain
-from zoora_signer.models import Decision, Intent, OracleReading, Payload, sol_usd_cents
+from zoora_signer.models import Decision, Intent, OracleReading, Payload, sol_usd_cents, sol_usd_micro
 from zoora_signer.ports import (
     Broadcaster,
     ChainView,
@@ -609,17 +609,22 @@ class Signer:
         found = pub()
         return found if isinstance(found, str) and found else None
 
-    def _unsigned_buy(self, intent: Intent, price: int) -> BuiltTx | None:
+    def _unsigned_buy(self, intent: Intent, price: int, micro_per_sol: int) -> BuiltTx | None:
         owner = self._owner_pubkey()
         market = self.s.market
         reader = getattr(market, "buy_inputs", None)
-        if owner is None or price <= 0 or not callable(reader):
+        if owner is None or price <= 0 or micro_per_sol <= 0 or not callable(reader):
             return None
         inputs = reader(intent.mint)
         if not isinstance(inputs, dict):
             return None
+        from zoora_signer.constants import USER_VOLUME_ACCOUNT_BYTES
         from zoora_signer.txbuild import BuildError, build_curve_buy
 
+        volume_exists = bool(inputs.get("volume_exists", False))
+        volume_rent = self._live_volume_rent(volume_exists, USER_VOLUME_ACCOUNT_BYTES)
+        if volume_rent == -1:
+            return None
         try:
             return build_curve_buy(
                 user=owner,
@@ -630,15 +635,33 @@ class Signer:
                 fee_config_data=bytes(inputs["fee_config_data"]),
                 buyback_fee_recipient=str(inputs["buyback"]),
                 sol_usd_cents=price,
+                sol_usd_micro=micro_per_sol,
                 stake_cents=intent.usd_stake_cents or 0,
                 slippage_bps=intent.max_slippage_bps,
                 ata_rent_lamports=int(inputs.get("ata_rent_lamports", 0)),
                 create_base_ata=bool(inputs.get("create_base_ata", False)),
                 curve_lamports=inputs["curve_lamports"] if isinstance(inputs.get("curve_lamports"), int) else None,
-                volume_exists=bool(inputs.get("volume_exists", False)),
+                volume_exists=volume_exists,
+                volume_rent_lamports=None if volume_rent == 0 else volume_rent,
             )
         except (BuildError, KeyError, TypeError):
             return None
+
+    def _live_volume_rent(self, exists: bool, size: int) -> int:
+        """Lamports from RPC on a live buy. Zero means use the dry-run formula. -1 refuses."""
+
+        if exists or self.mode() != "LIVE":
+            return 0
+        ask = getattr(self.s.chain, "rent_exemption", None)
+        if not callable(ask):
+            return -1
+        try:
+            value = ask(size)
+        except Exception:
+            return -1
+        if type(value) is not int or value <= 0:
+            return -1
+        return value
 
     def _broadcast_sell(self, mint: str, token_amount: int | None) -> Decision:
         if self.poll_kill() != "clear":
@@ -882,17 +905,18 @@ class Signer:
             if self.poll_kill() != "clear":
                 return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
             price = sol_usd_cents(reading)
-            built = self._unsigned_buy(intent, price)
+            micro = sol_usd_micro(reading)
+            built = self._unsigned_buy(intent, price, micro)
             owner = self._owner_pubkey()
             if built is None or owner is None:
                 return self._release(reservation_id, "SIGN_REFUSED", intent.intent_id)
             from zoora_signer.message_policy import PolicyError, validate_transaction
-            from zoora_signer.quote import lamports_for_micro
+            from zoora_signer.quote import lamports_for_micro_price
 
             try:
                 if self.poll_kill() != "clear":
                     return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
-                budget = lamports_for_micro(min((intent.usd_stake_cents or 0) * 10_000, USD_CAP_MICRO), price)
+                budget = lamports_for_micro_price(min((intent.usd_stake_cents or 0) * 10_000, USD_CAP_MICRO), micro)
                 validate_transaction(
                     built.raw,
                     owner=owner,

@@ -65,3 +65,18 @@ def sol_usd_cents(reading: OracleReading) -> int:
     if not reading.ok or reading.mid_1e8 <= 0:
         return 0
     return reading.mid_1e8 * 100 // 10**8
+
+
+def sol_usd_micro(reading: OracleReading) -> int:
+    """Micro-USD per SOL, rounded up.
+
+    A buy spends the largest lamport amount whose cost at this price is still
+    inside the cap, so the true price cannot push the trade over $2.
+    """
+
+    if not reading.ok or reading.mid_1e8 <= 0:
+        return 0
+    micro = reading.mid_1e8 // 100
+    if reading.mid_1e8 % 100:
+        micro += 1
+    return micro

@@ -65,8 +65,27 @@ def lamports_for_micro(micro_usd: int, sol_usd_cents: int) -> int | None:
 
     if micro_usd <= 0 or sol_usd_cents <= 0:
         return None
-    micro_per_sol = sol_usd_cents * 10_000
+    return lamports_for_micro_price(micro_usd, sol_usd_cents * 10_000)
+
+
+def lamports_for_micro_price(micro_usd: int, micro_per_sol: int) -> int | None:
+    """Lamports a buy may spend. The price is already rounded up."""
+
+    if micro_usd <= 0 or micro_per_sol <= 0:
+        return None
     return micro_usd * 1_000_000_000 // micro_per_sol
+
+
+def micro_cost_ceil(lamports: int, micro_per_sol: int) -> int | None:
+    """USD cost of a lamport amount, rounded up."""
+
+    if lamports < 0 or micro_per_sol <= 0:
+        return None
+    num = lamports * micro_per_sol
+    micro = num // 1_000_000_000
+    if num % 1_000_000_000:
+        micro += 1
+    return micro
 
 
 def micro_for_lamports(lamports: int, sol_usd_cents: int) -> int | None:

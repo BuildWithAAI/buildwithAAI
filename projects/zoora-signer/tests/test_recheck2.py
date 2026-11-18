@@ -183,8 +183,8 @@ def test_buy_uses_the_vetted_price_not_the_market_input(tmp_path: Path) -> None:
         }
     )
     assert intent is not None
-    vetted = signer._unsigned_buy(intent, 100_000)
-    lied = signer._unsigned_buy(intent, 10_000)
+    vetted = signer._unsigned_buy(intent, 100_000, 100_000 * 10_000)
+    lied = signer._unsigned_buy(intent, 10_000, 10_000 * 10_000)
     assert vetted is not None and lied is not None
     assert vetted.limit_lamports != lied.limit_lamports
     assert vetted.accounts[8] == signer._owner_pubkey()
@@ -310,3 +310,145 @@ def test_readme_telegram_and_status(tmp_path: Path) -> None:
     assert main(["--db", str(tmp_path / "missing.sqlite"), "status"]) == 1
     workflow = (ROOT.parents[1] / ".github" / "workflows" / "zoora-signer.yml").read_text(encoding="utf-8")
     assert "continue-on-error" not in workflow
+
+
+def test_state_dir_and_exists_kill_switch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from zoora_signer.heartbeat import write_heartbeat
+    from zoora_signer.killswitch import AgentGuardKill, kill_root
+
+    now = 1_000_000
+    home = tmp_path / "home"
+    home.mkdir()
+    write_heartbeat(home, now)
+    guard = AgentGuardKill(home, now_ms=lambda: now)
+    assert guard.poll() == "killed"
+    (home / "state").mkdir()
+    assert guard.poll() == "clear"
+    (home / "state").rmdir()
+    (home / "state").write_text("not-a-dir", encoding="utf-8")
+    assert guard.poll() == "killed"
+
+    state = tmp_path / "state"
+    state.mkdir()
+    write_heartbeat(state, now)
+    pointed = AgentGuardKill(state, now_ms=lambda: now)
+    assert pointed.poll() == "clear"
+    (state / "KILL_SWITCH").mkdir()
+    assert pointed.poll() == "killed"
+
+    monkeypatch.setenv("AGENT_GUARD_HOME", str(home))
+    assert kill_root("") == home
+    assert kill_root(str(state)) == state
+
+
+def test_usdc_quote_buy_is_refused() -> None:
+    from solders.instruction import AccountMeta, Instruction
+    from solders.message import MessageV0
+    from solders.pubkey import Pubkey
+    from solders.signature import Signature
+    from solders.transaction import VersionedTransaction
+
+    from zoora_signer.constants import COMPUTE_BUDGET, CU_LIMIT, PRIORITY_MICRO_LAMPORTS, PUMP_PROGRAM
+    from zoora_signer.txbuild import _CURVE_FLAGS
+
+    built = _buy()
+    usdc = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    accounts = list(built.accounts)
+    accounts[2] = usdc
+    metas = [
+        AccountMeta(Pubkey.from_string(key), is_signer, is_writable)
+        for key, (is_writable, is_signer) in zip(accounts, _CURVE_FLAGS, strict=True)
+    ]
+    payer = Pubkey.from_string(USER)
+    budget = Pubkey.from_string(COMPUTE_BUDGET)
+    ixs = [
+        Instruction(budget, bytes([2]) + CU_LIMIT.to_bytes(4, "little"), []),
+        Instruction(budget, bytes([3]) + PRIORITY_MICRO_LAMPORTS.to_bytes(8, "little"), []),
+        Instruction(Pubkey.from_string(PUMP_PROGRAM), built.data, metas),
+    ]
+    message = MessageV0.try_compile(payer, ixs, [], Hash.default())
+    raw = bytes(VersionedTransaction.populate(message, [Signature.default()]))
+    with pytest.raises(PolicyError, match="QUOTE_MINT"):
+        validate_transaction(
+            raw,
+            owner=USER,
+            mint=MINT,
+            max_all_in_lamports=built.all_in_lamports,
+            expected_token_amount=built.token_amount,
+            expected_limit_lamports=built.limit_lamports,
+            rent_lamports=built.rent_lamports,
+        )
+
+
+def test_buy_price_rounds_up_in_micro_usd() -> None:
+    from zoora_signer.models import OracleReading, sol_usd_cents, sol_usd_micro
+    from zoora_signer.quote import lamports_for_micro_price, micro_cost_ceil
+
+    reading = OracleReading(True, None, 10_000_000_050, 0, 0, 10_000_000_050)
+    assert sol_usd_cents(reading) == 10_000
+    assert sol_usd_micro(reading) == 100_000_001
+    floored = lamports_for_micro_price(2_000_000, sol_usd_cents(reading) * 10_000)
+    ceiled = lamports_for_micro_price(2_000_000, sol_usd_micro(reading))
+    assert floored is not None and ceiled is not None and ceiled < floored
+    assert (micro_cost_ceil(floored, sol_usd_micro(reading)) or 0) > 2_000_000
+    assert (micro_cost_ceil(ceiled, sol_usd_micro(reading)) or 0) <= 2_000_000
+
+
+def test_sell_requires_an_expected_minimum() -> None:
+    data = SELL_V3_DISCRIMINATOR + (5).to_bytes(8, "little") + (1_000).to_bytes(8, "little")
+    with pytest.raises(PolicyError, match="MIN_OUT"):
+        _check_amounts(data, max_all_in_lamports=None, expected_token_amount=5, expected_limit_lamports=None)
+    assert (
+        _check_amounts(data, max_all_in_lamports=None, expected_token_amount=5, expected_limit_lamports=1_000)
+        == 1_000
+    )
+
+
+def test_live_volume_rent_comes_from_rpc(tmp_path: Path) -> None:
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
+    seen: dict[str, int] = {}
+
+    def rent_exemption(size: int) -> int:
+        seen["size"] = size
+        return 1_900_000
+
+    services.chain.rent_exemption = rent_exemption  # type: ignore[attr-defined]
+
+    class Market:
+        def buy_inputs(self, mint: str) -> dict[str, object]:
+            return {
+                "mint_data": MINT_DATA,
+                "mint_owner": TOKEN_2022,
+                "curve_data": CURVE,
+                "fee_config_data": FEE,
+                "buyback": str(ORDER[13]),
+                "curve_lamports": LAMPORTS,
+                "volume_exists": False,
+                "create_base_ata": False,
+            }
+
+    services.market = Market()
+    from zoora_signer.signer import parse_intent
+
+    intent = parse_intent(
+        {
+            "intent_id": "rent",
+            "issued_at_ms": services.clock.now_ms(),
+            "key_id": "1",
+            "max_slippage_bps": 0,
+            "mint": MINT,
+            "side": "buy",
+            "usd_stake_micro": 2_000_000,
+        }
+    )
+    assert intent is not None
+    micro = 10_000 * 10_000
+    built = signer._unsigned_buy(intent, 10_000, micro)
+    assert built is not None
+    assert seen["size"] == USER_VOLUME_ACCOUNT_BYTES == 137
+    assert built.rent_lamports == 1_900_000
+    services.chain.rent_exemption = None  # type: ignore[attr-defined]
+    assert signer._unsigned_buy(intent, 10_000, micro) is None

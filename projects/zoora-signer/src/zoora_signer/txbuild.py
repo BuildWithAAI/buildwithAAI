@@ -50,6 +50,8 @@ from zoora_signer.quote import (
     decode_bonding_curve,
     fee_lamports,
     lamports_for_micro,
+    lamports_for_micro_price,
+    micro_cost_ceil,
     micro_for_lamports,
     net_sol_from_inclusive,
     parse_fee_bps,
@@ -122,18 +124,21 @@ def build_curve_buy(
     create_base_ata: bool = True,
     curve_lamports: int | None = None,
     volume_exists: bool = False,
+    sol_usd_micro: int | None = None,
+    volume_rent_lamports: int | None = None,
 ) -> BuiltTx:
     curve = _curve(curve_data)
     decimals, token_program = _mint(mint_data, mint_owner)
     market_cap = _market_cap(int(curve["virtual_quote"]), int(curve["supply"]), int(curve["virtual_token"]))
     protocol, creator = _fees(fee_config_data, market_cap)
-    budget = _budget(stake_cents, sol_usd_cents, slippage_bps)
+    budget = _budget(stake_cents, sol_usd_cents, slippage_bps, sol_usd_micro)
     rent, fixed = _fixed_costs(
         ata_rent_lamports,
         create_base_ata=create_base_ata,
         volume_exists=volume_exists,
         curve_data=curve_data,
         curve_lamports=curve_lamports,
+        volume_rent_lamports=volume_rent_lamports,
     )
     quote = _quote_before_slippage(budget, fixed, slippage_bps)
     net = net_sol_from_inclusive(quote, protocol, creator)
@@ -143,7 +148,7 @@ def build_curve_buy(
     limit = _with_slippage(quote, slippage_bps, up=True)
     if limit + fixed > budget:
         raise BuildError("CAP")
-    _reject_if_over_cap(limit + fixed, sol_usd_cents, stake_cents)
+    _reject_if_over_cap(limit + fixed, sol_usd_cents, stake_cents, sol_usd_micro)
     accounts = _curve_accounts(user, mint_address, token_program, str(curve_quote(curve)), buyback_fee_recipient)
     data = BUY_V3_DISCRIMINATOR + struct.pack("<QQ", tokens, limit)
     raw = _compile(
@@ -336,13 +341,16 @@ def _market_cap(quote_reserve: int, supply: int, base_reserve: int) -> int:
     return quote_reserve * supply // base_reserve
 
 
-def _budget(stake_cents: int, sol_usd_cents: int, slippage_bps: int) -> int:
+def _budget(stake_cents: int, sol_usd_cents: int, slippage_bps: int, micro_per_sol: int | None = None) -> int:
     if stake_cents <= 0 or stake_cents > STAKE_CAP_CENTS:
         raise BuildError("CAP")
     if slippage_bps < 0 or slippage_bps > SLIPPAGE_CAP_BPS:
         raise BuildError("SLIPPAGE")
     micro = min(stake_cents * 10_000, USD_CAP_MICRO)
-    lamports = lamports_for_micro(micro, sol_usd_cents)
+    if micro_per_sol is None:
+        lamports = lamports_for_micro(micro, sol_usd_cents)
+    else:
+        lamports = lamports_for_micro_price(micro, micro_per_sol)
     if lamports is None or lamports <= 0:
         raise BuildError("CAP")
     return lamports
@@ -355,20 +363,25 @@ def _fixed_costs(
     volume_exists: bool,
     curve_data: bytes,
     curve_lamports: int | None,
+    volume_rent_lamports: int | None = None,
 ) -> tuple[int, int]:
     if create_base_ata and ata_rent <= 0:
         raise BuildError("RENT")
     if ata_rent < 0:
         raise BuildError("RENT")
-    rent = (ata_rent if create_base_ata else 0) + _volume_rent(volume_exists)
+    rent = (ata_rent if create_base_ata else 0) + _volume_rent(volume_exists, volume_rent_lamports)
     rent += _curve_topup(curve_data, curve_lamports)
     return rent, rent + SIGNATURE_FEE_LAMPORTS + priority_fee_lamports(CU_LIMIT, PRIORITY_MICRO_LAMPORTS)
 
 
-def _volume_rent(exists: bool) -> int:
+def _volume_rent(exists: bool, override: int | None) -> int:
     if exists:
         return 0
-    return rent_exempt_lamports(USER_VOLUME_ACCOUNT_BYTES)
+    if override is None:
+        return rent_exempt_lamports(USER_VOLUME_ACCOUNT_BYTES)
+    if override <= 0:
+        raise BuildError("RENT")
+    return override
 
 
 def _curve_topup(curve_data: bytes, curve_lamports: int | None) -> int:
@@ -398,8 +411,16 @@ def _with_slippage(amount: int, slippage_bps: int, *, up: bool) -> int:
     return amount * (10_000 - slippage_bps) // 10_000
 
 
-def _reject_if_over_cap(all_in: int, sol_usd_cents: int, stake_cents: int) -> None:
-    spent = micro_for_lamports(all_in, sol_usd_cents)
+def _reject_if_over_cap(
+    all_in: int,
+    sol_usd_cents: int,
+    stake_cents: int,
+    micro_per_sol: int | None = None,
+) -> None:
+    if micro_per_sol is None:
+        spent = micro_for_lamports(all_in, sol_usd_cents)
+    else:
+        spent = micro_cost_ceil(all_in, micro_per_sol)
     allowed = min(stake_cents * 10_000, USD_CAP_MICRO)
     if spent is None or spent > allowed:
         raise BuildError("CAP")

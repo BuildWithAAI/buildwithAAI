@@ -21,6 +21,7 @@ from zoora_signer.heartbeat import HEARTBEAT_NAME, permissions_ok
 HEARTBEAT_MAX_MS = 15_000
 _FUTURE_MS = 2_000
 ENV_KILL_FILE = "AGENT_GUARD_KILL_FILE"
+ENV_HOME = "AGENT_GUARD_HOME"
 
 
 class AgentGuardKill:
@@ -30,6 +31,8 @@ class AgentGuardKill:
 
     def poll(self) -> str:
         if self.root is None or not self.root.is_dir():
+            return "killed"
+        if self._home_layout() and not _is_dir(self.root / "state"):
             return "killed"
         for path in self._kill_files():
             present = _file_present(path)
@@ -51,19 +54,48 @@ class AgentGuardKill:
             return "killed"
         return "clear"
 
+    def _home_layout(self) -> bool:
+        """True when root is the agent-guard home, not the state directory itself."""
+
+        assert self.root is not None
+        return self.root.name != "state"
+
     def _kill_files(self) -> list[Path]:
         assert self.root is not None
-        paths = [self.root / "killed", self.root / "state" / "KILL_SWITCH"]
+        paths = [
+            self.root / "killed",
+            self.root / "KILL_SWITCH",
+            self.root / "state" / "KILL_SWITCH",
+        ]
         named = os.environ.get(ENV_KILL_FILE)
         if named:
             paths.append(Path(named))
         return paths
 
 
+def kill_root(flag: str | None) -> Path | None:
+    """The kill-switch directory. An empty flag uses AGENT_GUARD_HOME when set."""
+
+    chosen = flag or os.environ.get(ENV_HOME, "")
+    if not chosen:
+        return None
+    return Path(chosen)
+
+
+def _is_dir(path: Path) -> bool:
+    try:
+        return path.is_dir()
+    except OSError:
+        return False
+
+
 def _file_present(path: Path) -> bool | None:
-    """True when the kill file exists, False when it does not, None if unreadable."""
+    """True when the path exists, matching agent-guard. Unreadable is ambiguous."""
 
     try:
-        return path.is_file()
+        path.stat()
+    except FileNotFoundError:
+        return False
     except OSError:
         return None
+    return True

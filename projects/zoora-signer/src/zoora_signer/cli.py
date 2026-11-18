@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from zoora_signer.constants import RPC_PROVIDER_NAME, VET_BUDGET_S
-from zoora_signer.killswitch import AgentGuardKill
+from zoora_signer.killswitch import AgentGuardKill, kill_root
 from zoora_signer.models import OracleReading
 from zoora_signer.ports import ChainView, Clock, KillSwitch, MarkSource, Oracle, OsProbe
 from zoora_signer.preflight import FailClosedProbe, WindowsOsProbe
@@ -88,6 +88,12 @@ class _RpcChain:
 
     def fee_bps(self) -> int | None:
         return None
+
+    def rent_exemption(self, data_len: int) -> int | None:
+        result = self._rpc.call("getMinimumBalanceForRentExemption", [data_len])  # type: ignore[attr-defined]
+        if not result.ok or type(result.value) is not int or result.value <= 0:
+            return None
+        return int(result.value)
 
 
 class _RpcMarks:
@@ -172,7 +178,8 @@ def _services(args: argparse.Namespace, *, create: bool) -> Services:
         oracle = _DownOracle()
         marks = _NoMarks()
         chain = _Chain()
-    kill: KillSwitch = AgentGuardKill(Path(args.kill_switch) if args.kill_switch else None)
+    root = kill_root(str(args.kill_switch))
+    kill: KillSwitch = AgentGuardKill(root)
     hud = Path(args.hud) if args.hud else db.with_suffix(".events.jsonl")
     rpc_env = Path(args.rpc_env_file) if args.rpc_env_file else None
     return Services(
@@ -184,7 +191,7 @@ def _services(args: argparse.Namespace, *, create: bool) -> Services:
         chain=chain,
         marks=marks,
         kill=kill,
-        probe=_probe(db, hud, rpc_env, Path(args.kill_switch) if args.kill_switch else None),
+        probe=_probe(db, hud, rpc_env, root),
         broadcaster=RefuseBroadcaster(),
         hud_path=hud,
         provider_name=RPC_PROVIDER_NAME,
@@ -196,7 +203,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--db", default=str(Path.home() / ".zoora-signer" / "signer.sqlite"))
     parser.add_argument("--hud", default="")
     parser.add_argument("--rpc-env-file", default="")
-    parser.add_argument("--kill-switch", default="")
+    parser.add_argument(
+        "--kill-switch",
+        default="",
+        help="Agent-guard home. Defaults to AGENT_GUARD_HOME when that variable is set. "
+        "The kill file is <home>/state/KILL_SWITCH. A path that is the state directory also checks <path>/KILL_SWITCH.",
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("doctor")
     sub.add_parser("status")

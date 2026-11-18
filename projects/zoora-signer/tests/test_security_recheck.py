@@ -107,6 +107,7 @@ def test_agent_guard_clear_requires_a_fresh_heartbeat(tmp_path: Path, monkeypatc
     guard = AgentGuardKill(tmp_path, now_ms=lambda: now["ms"])
     assert guard.poll() == "killed"
     write_heartbeat(tmp_path, now["ms"])
+    (tmp_path / "state").mkdir()
     assert guard.poll() == "clear"
     _engage(tmp_path)
     assert guard.poll() == "killed"
