@@ -56,71 +56,163 @@ def _restrict_windows_acl(path: Path) -> None:
     owner = _owner_sid()
     if not owner:
         raise OSError("owner sid unavailable")
-    completed = _powershell(_SET_ACL, path, owner)
-    if completed.returncode != 0 or not _windows_acl_ok(path):
-        detail = (completed.stderr or completed.stdout).strip()
-        raise OSError(f"heartbeat ACL was not restricted: {detail}")
+    _replace_dacl(path, owner)
+    found = _dacl_allow_sids(path)
+    if found != {owner, "S-1-5-18"}:
+        raise OSError(f"heartbeat ACL was not restricted: {sorted(found)}")
 
 
 def _windows_acl_ok(path: Path) -> bool:
     owner = _owner_sid()
     if not owner:
         return False
-    completed = _powershell(_READ_ACL, path, owner)
-    if completed.returncode != 0:
+    try:
+        return _dacl_allow_sids(path) == {owner, "S-1-5-18"}
+    except OSError:
         return False
-    found: set[str] = set()
-    for line in completed.stdout.splitlines():
-        parts = line.split()
-        if not parts or not parts[0].startswith("S-1-"):
-            continue
-        if len(parts) < 2 or parts[1] != "Allow":
-            return False
-        found.add(parts[0])
-    return found == {owner, "S-1-5-18"}
 
 
-def _powershell(script: str, path: Path, owner: str) -> subprocess.CompletedProcess[str]:
-    env = os.environ.copy()
-    env["HEARTBEAT_PATH"] = str(path)
-    env["HEARTBEAT_OWNER_SID"] = owner
-    return subprocess.run(
-        [_windows_powershell(), "-NoProfile", "-NonInteractive", "-Command", script],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=env,
+def _replace_dacl(path: Path, owner: str) -> None:
+    import ctypes
+    from ctypes import wintypes
+
+    adv = ctypes.WinDLL("advapi32", use_last_error=True)  # type: ignore[attr-defined]
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+
+    class _Trustee(ctypes.Structure):
+        _fields_ = [
+            ("pMultipleTrustee", ctypes.c_void_p),
+            ("MultipleTrusteeOperation", wintypes.DWORD),
+            ("TrusteeForm", wintypes.DWORD),
+            ("TrusteeType", wintypes.DWORD),
+            ("ptstrName", ctypes.c_void_p),
+        ]
+
+    class _Explicit(ctypes.Structure):
+        _fields_ = [
+            ("grfAccessPermissions", wintypes.DWORD),
+            ("grfAccessMode", wintypes.DWORD),
+            ("grfInheritance", wintypes.DWORD),
+            ("Trustee", _Trustee),
+        ]
+
+    owner_sid = _sid(adv, owner)
+    system_sid = _sid(adv, "S-1-5-18")
+    entries = (_Explicit * 2)()
+    entries[0].grfAccessPermissions = 0x1F01FF
+    entries[0].grfAccessMode = 1
+    entries[0].Trustee.TrusteeForm = 0
+    entries[0].Trustee.ptstrName = owner_sid
+    entries[1].grfAccessPermissions = 0x120089
+    entries[1].grfAccessMode = 1
+    entries[1].Trustee.TrusteeForm = 0
+    entries[1].Trustee.ptstrName = system_sid
+    acl = ctypes.c_void_p()
+    adv.SetEntriesInAclW.argtypes = [
+        wintypes.ULONG,
+        ctypes.POINTER(_Explicit),
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    adv.SetEntriesInAclW.restype = wintypes.DWORD
+    error = adv.SetEntriesInAclW(2, entries, None, ctypes.byref(acl))
+    if error:
+        raise OSError(error, "SetEntriesInAclW")
+    adv.SetNamedSecurityInfoW.argtypes = [
+        wintypes.LPWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+    ]
+    adv.SetNamedSecurityInfoW.restype = wintypes.DWORD
+    protected = 0x4 | 0x80000000
+    error = adv.SetNamedSecurityInfoW(str(path), 1, protected, None, None, acl, None)
+    kernel.LocalFree(acl)
+    kernel.LocalFree(owner_sid)
+    kernel.LocalFree(system_sid)
+    if error:
+        raise OSError(error, "SetNamedSecurityInfoW")
+
+
+def _dacl_allow_sids(path: Path) -> set[str]:
+    import ctypes
+    from ctypes import wintypes
+
+    adv = ctypes.WinDLL("advapi32", use_last_error=True)  # type: ignore[attr-defined]
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    dacl = ctypes.c_void_p()
+    descriptor = ctypes.c_void_p()
+    adv.GetNamedSecurityInfoW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    adv.GetNamedSecurityInfoW.restype = wintypes.DWORD
+    error = adv.GetNamedSecurityInfoW(
+        str(path), 1, 0x4, None, None, ctypes.byref(dacl), None, ctypes.byref(descriptor)
     )
+    if error:
+        raise OSError(error, "GetNamedSecurityInfoW")
+
+    class _AclInfo(ctypes.Structure):
+        _fields_ = [
+            ("AceCount", wintypes.DWORD),
+            ("AclBytesInUse", wintypes.DWORD),
+            ("AclBytesFree", wintypes.DWORD),
+        ]
+
+    class _Header(ctypes.Structure):
+        _fields_ = [("AceType", ctypes.c_ubyte), ("AceFlags", ctypes.c_ubyte), ("AceSize", wintypes.WORD)]
+
+    info = _AclInfo()
+    adv.GetAclInformation.argtypes = [ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD]
+    adv.GetAclInformation.restype = wintypes.BOOL
+    if not adv.GetAclInformation(dacl, ctypes.byref(info), ctypes.sizeof(info), 2):
+        kernel.LocalFree(descriptor)
+        raise OSError(ctypes.get_last_error(), "GetAclInformation")  # type: ignore[attr-defined]
+    found: set[str] = set()
+    for index in range(info.AceCount):
+        ace = ctypes.c_void_p()
+        adv.GetAce.argtypes = [ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p)]
+        adv.GetAce.restype = wintypes.BOOL
+        if not adv.GetAce(dacl, index, ctypes.byref(ace)) or not ace.value:
+            kernel.LocalFree(descriptor)
+            raise OSError(ctypes.get_last_error(), "GetAce")  # type: ignore[attr-defined]
+        header = _Header.from_address(ace.value)
+        if header.AceType != 0:
+            kernel.LocalFree(descriptor)
+            return set()
+        text = ctypes.c_wchar_p()
+        adv.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_wchar_p)]
+        adv.ConvertSidToStringSidW.restype = wintypes.BOOL
+        if not adv.ConvertSidToStringSidW(ace.value + 8, ctypes.byref(text)) or not text.value:
+            kernel.LocalFree(descriptor)
+            raise OSError(ctypes.get_last_error(), "ConvertSidToStringSidW")  # type: ignore[attr-defined]
+        found.add(text.value)
+        kernel.LocalFree(text)
+    kernel.LocalFree(descriptor)
+    return found
 
 
-def _windows_powershell() -> str:
-    system = Path(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
-    if system.is_file():
-        return str(system)
-    return "powershell"
+def _sid(adv: object, text: str) -> object:
+    import ctypes
+    from ctypes import wintypes
 
-
-_SET_ACL = r"""
-$ErrorActionPreference = 'Stop'
-$path = $env:HEARTBEAT_PATH
-$acl = Get-Acl -LiteralPath $path
-$acl.SetAccessRuleProtection($true, $false)
-foreach ($rule in @($acl.Access)) { [void]$acl.RemoveAccessRuleAll($rule.IdentityReference) }
-$ownerSid = New-Object System.Security.Principal.SecurityIdentifier($env:HEARTBEAT_OWNER_SID)
-$system = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')
-$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($ownerSid, 'FullControl', 'Allow')))
-$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($system, 'Read', 'Allow')))
-Set-Acl -LiteralPath $path -AclObject $acl
-"""
-
-_READ_ACL = r"""
-$ErrorActionPreference = 'Stop'
-$acl = Get-Acl -LiteralPath $env:HEARTBEAT_PATH
-foreach ($rule in $acl.Access) {
-  $sid = $rule.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value
-  Write-Output ($sid + ' ' + $rule.AccessControlType)
-}
-"""
+    convert = adv.ConvertStringSidToSidW  # type: ignore[attr-defined]
+    convert.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)]
+    convert.restype = wintypes.BOOL
+    out = ctypes.c_void_p()
+    if not convert(text, ctypes.byref(out)):
+        raise OSError(ctypes.get_last_error(), f"ConvertStringSidToSidW {text}")  # type: ignore[attr-defined]
+    return out
 
 
 def _owner_sid() -> str:
