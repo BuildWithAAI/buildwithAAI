@@ -145,6 +145,7 @@ def test_sell_min_sol_and_decimals() -> None:
         mint=str(MINT),
         expected_token_amount=sold.token_amount,
         expected_limit_lamports=sold.limit_lamports,
+        max_all_in_lamports=sold.all_in_lamports,
     )
     spl = bytearray(82)
     spl[44] = 9
@@ -198,7 +199,7 @@ def test_pumpswap_builder_matches_the_v2_idl() -> None:
         pool_quote_token_account=pool_quote,
         user_base_token_account=user_base,
         user_quote_token_account=user_quote,
-        buyback_fee_recipient=user_quote,
+        buyback_fee_recipient="5YxQFdt3Tr9zJLvkFccqXVUwhdTWJQc1fFg2YPbxvxeD",
         sol_usd_cents=PRICE,
         stake_cents=200,
         slippage_bps=0,
@@ -244,7 +245,7 @@ def test_pumpswap_builder_matches_the_v2_idl() -> None:
         pool_quote_token_account=pool_quote,
         user_base_token_account=user_base,
         user_quote_token_account=user_quote,
-        buyback_fee_recipient=user_quote,
+        buyback_fee_recipient="5YxQFdt3Tr9zJLvkFccqXVUwhdTWJQc1fFg2YPbxvxeD",
         token_in=1_000_000,
         slippage_bps=1500,
     )
@@ -254,6 +255,7 @@ def test_pumpswap_builder_matches_the_v2_idl() -> None:
         mint=str(MINT),
         expected_token_amount=sold.token_amount,
         expected_limit_lamports=sold.limit_lamports,
+        max_all_in_lamports=sold.all_in_lamports,
         allow_pumpswap=True,
     )
 

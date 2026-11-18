@@ -25,7 +25,7 @@ dev = [
 zoora-signer = "zoora_signer.cli:main"
 
 [build-system]
-requires = ["setuptools==75.8.2"]
+requires = ["setuptools==84.1.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]

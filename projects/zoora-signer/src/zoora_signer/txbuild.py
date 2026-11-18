@@ -189,11 +189,12 @@ def build_curve_sell(
         raise BuildError("QUOTE")
     accounts = _curve_accounts(user, mint_address, token_program, str(curve_quote(curve)), buyback_fee_recipient)
     data = SELL_V3_DISCRIMINATOR + struct.pack("<QQ", token_in, minimum)
+    fee_cap = _network_fee()
     raw = _compile(
         user, accounts, data, PUMP_PROGRAM, token_program, mint_address, False,
-        max_all_in=None, expected_token=token_in, expected_limit=minimum, rent_lamports=0,
+        max_all_in=fee_cap, expected_token=token_in, expected_limit=minimum, rent_lamports=0,
     )
-    return _result(raw, accounts, data, token_in, net, minimum, 0, decimals, token_program, protocol, creator, 0)
+    return _result(raw, accounts, data, token_in, net, minimum, fee_cap, decimals, token_program, protocol, creator, 0)
 
 
 def build_pumpswap_buy(
@@ -293,12 +294,15 @@ def build_pumpswap_sell(
         pool_quote_token_account, user_base_token_account, user_quote_token_account, buyback_fee_recipient,
     )
     data = PUMPSWAP_SELL_V2_DISCRIMINATOR + struct.pack("<QQ", token_in, minimum)
+    fee_cap = _network_fee()
     raw = _compile(
         user, accounts, data, PUMP_SWAP, token_program, base_mint, False,
-        max_all_in=None, expected_token=token_in, expected_limit=minimum, rent_lamports=0,
+        max_all_in=fee_cap, expected_token=token_in, expected_limit=minimum, rent_lamports=0,
         allow_pumpswap=True,
     )
-    return _result(raw, accounts, data, token_in, net, minimum, 0, decimals, token_program, protocol, creator, 0)
+    return _result(
+        raw, accounts, data, token_in, net, minimum, fee_cap, decimals, token_program, protocol, creator, 0,
+    )
 
 
 def curve_quote(curve: dict[str, int | bool | bytes]) -> Pubkey:
@@ -372,6 +376,10 @@ def _fixed_costs(
     rent = (ata_rent if create_base_ata else 0) + _volume_rent(volume_exists, volume_rent_lamports)
     rent += _curve_topup(curve_data, curve_lamports)
     return rent, rent + SIGNATURE_FEE_LAMPORTS + priority_fee_lamports(CU_LIMIT, PRIORITY_MICRO_LAMPORTS)
+
+
+def _network_fee() -> int:
+    return SIGNATURE_FEE_LAMPORTS + priority_fee_lamports(CU_LIMIT, PRIORITY_MICRO_LAMPORTS)
 
 
 def _volume_rent(exists: bool, override: int | None) -> int:
@@ -489,12 +497,17 @@ def _swap_accounts(
     pool_key = Pubkey.from_string(pool)
     derived_pool_base = str(_ata(pool_key, Pubkey.from_string(token_program), Pubkey.from_string(base_mint)))
     derived_pool_quote = str(_ata(pool_key, Pubkey.from_string(quote_program), Pubkey.from_string(quote_mint)))
+    from zoora_signer.message_policy import _BUYBACKS
+
     if user_base != derived_user_base or user_quote != derived_user_quote:
         raise BuildError("DERIVED")
     if pool_base != derived_pool_base or pool_quote != derived_pool_quote:
         raise BuildError("DERIVED")
-    if buyback != derived_user_quote:
-        raise BuildError("DERIVED")
+    if buyback not in _BUYBACKS:
+        raise BuildError("FEE_RECIPIENT")
+    buyback_ata = str(
+        _ata(Pubkey.from_string(buyback), Pubkey.from_string(quote_program), Pubkey.from_string(quote_mint))
+    )
     return (
         pool,
         user,
@@ -510,7 +523,7 @@ def _swap_accounts(
         SYSTEM_PROGRAM,
         str(_pda([b"user_volume_accumulator", bytes(user_key)], program)),
         str(_pda([b"fee_config", bytes(program)], fee_program)),
-        buyback,
+        buyback_ata,
         str(_pda([b"__event_authority"], program)),
         PUMP_SWAP,
     )

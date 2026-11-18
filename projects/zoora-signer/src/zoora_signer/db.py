@@ -111,7 +111,8 @@ def init_db(path: str, provider: str) -> None:
     try:
         conn.executescript(SCHEMA)
         meta = conn.execute("SELECT id FROM anchor_meta WHERE id = 1").fetchone()
-        if meta is None:
+        events = conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()
+        if meta is None and (events is None or int(events["n"]) == 0):
             conn.execute("INSERT INTO anchor_meta (id, written) VALUES (1, 0)")
         row = conn.execute("SELECT id FROM signer_state WHERE id = 1").fetchone()
         if row is None:

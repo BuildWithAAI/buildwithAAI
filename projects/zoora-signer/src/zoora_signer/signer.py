@@ -618,12 +618,12 @@ class Signer:
         inputs = reader(intent.mint)
         if not isinstance(inputs, dict):
             return None
-        from zoora_signer.constants import USER_VOLUME_ACCOUNT_BYTES
         from zoora_signer.txbuild import BuildError, build_curve_buy
 
-        volume_exists = bool(inputs.get("volume_exists", False))
-        volume_rent = self._live_volume_rent(volume_exists, USER_VOLUME_ACCOUNT_BYTES)
-        if volume_rent == -1:
+        if inputs.get("ata_rent_lamports") == 1:
+            return None
+        chain = self._chain_trade_facts(owner, intent.mint, str(inputs["mint_owner"]), inputs.get("volume_exists"))
+        if chain is None:
             return None
         try:
             return build_curve_buy(
@@ -638,29 +638,92 @@ class Signer:
                 sol_usd_micro=micro_per_sol,
                 stake_cents=intent.usd_stake_cents or 0,
                 slippage_bps=intent.max_slippage_bps,
-                ata_rent_lamports=int(inputs.get("ata_rent_lamports", 0)),
-                create_base_ata=bool(inputs.get("create_base_ata", False)),
-                curve_lamports=inputs["curve_lamports"] if isinstance(inputs.get("curve_lamports"), int) else None,
-                volume_exists=volume_exists,
-                volume_rent_lamports=None if volume_rent == 0 else volume_rent,
+                ata_rent_lamports=chain[3],
+                create_base_ata=chain[4],
+                curve_lamports=chain[0],
+                volume_exists=chain[1],
+                volume_rent_lamports=chain[2],
             )
         except (BuildError, KeyError, TypeError):
             return None
 
-    def _live_volume_rent(self, exists: bool, size: int) -> int:
-        """Lamports from RPC on a live buy. Zero means use the dry-run formula. -1 refuses."""
+    def _chain_trade_facts(
+        self,
+        owner: str,
+        mint: str,
+        mint_owner: str,
+        claimed_volume: object,
+    ) -> tuple[int, bool, int | None, int, bool] | None:
+        """Rent, volume, and curve lamports from the chain. Market claims are not used."""
 
-        if exists or self.mode() != "LIVE":
-            return 0
+        from solders.pubkey import Pubkey
+
+        from zoora_signer.constants import PUMP_PROGRAM, SPL_TOKEN, USER_VOLUME_ACCOUNT_BYTES
+        from zoora_signer.txbuild import _ata, _pda
+
+        pump = Pubkey.from_string(PUMP_PROGRAM)
+        owner_key = Pubkey.from_string(owner)
+        mint_key = Pubkey.from_string(mint)
+        base_program = Pubkey.from_string(mint_owner)
+        curve = str(_pda([b"bonding-curve", bytes(mint_key)], pump))
+        volume = str(_pda([b"user_volume_accumulator", bytes(owner_key)], pump))
+        user_ata = str(_ata(owner_key, base_program, mint_key))
+        curve_info = self._account(curve)
+        volume_info = self._account(volume)
+        ata_info = self._account(user_ata)
+        if curve_info is None or volume_info is None or ata_info is None or not curve_info[0]:
+            return None
+        if claimed_volume is True and not volume_info[0]:
+            return None
+        if volume_info[0]:
+            if volume_info[2] <= 0:
+                return None
+            volume_rent: int | None = None
+            volume_exists = True
+        else:
+            volume_rent = self._rent(USER_VOLUME_ACCOUNT_BYTES)
+            if volume_rent is None:
+                return None
+            volume_exists = False
+        if ata_info[0]:
+            ata_rent = 0
+            create = False
+        else:
+            ata_size = 165 if mint_owner == SPL_TOKEN else 182
+            rented = self._rent(ata_size)
+            if rented is None:
+                return None
+            ata_rent = rented
+            create = True
+        return (curve_info[1], volume_exists, volume_rent, ata_rent, create)
+
+    def _account(self, address: str) -> tuple[bool, int, int] | None:
+        ask = getattr(self.s.chain, "account_info", None)
+        if not callable(ask):
+            return None
+        try:
+            value = ask(address)
+        except Exception:
+            return None
+        if not isinstance(value, tuple) or len(value) != 3:
+            return None
+        exists, lamports, size = value
+        if type(exists) is not bool or type(lamports) is not int or type(size) is not int:
+            return None
+        if lamports < 0 or size < 0:
+            return None
+        return exists, lamports, size
+
+    def _rent(self, size: int) -> int | None:
         ask = getattr(self.s.chain, "rent_exemption", None)
         if not callable(ask):
-            return -1
+            return None
         try:
             value = ask(size)
         except Exception:
-            return -1
-        if type(value) is not int or value <= 0:
-            return -1
+            return None
+        if type(value) is not int or value <= 1:
+            return None
         return value
 
     def _broadcast_sell(self, mint: str, token_amount: int | None) -> Decision:
@@ -1168,6 +1231,8 @@ class Signer:
             ledger = int(_state(db)["ledger_sol_lamports"] or 0)
             return self.s.chain.sol_lamports() == ledger
         if reason == "agent_guard":
+            if not self._chain_reconciled(db):
+                return False
             try:
                 return self.s.kill.poll() == "clear"
             except Exception:
@@ -1177,9 +1242,13 @@ class Signer:
         if reason == "hash_chain":
             return verify_chain(db)
         if reason == "settle_error":
+            if not self._chain_reconciled(db):
+                return False
             pending = db.execute("SELECT COUNT(*) AS n FROM reservations WHERE status = 'reserved'").fetchone()
             return pending is not None and int(pending["n"]) == 0 and verify_chain(db)
         if reason == "unconfirmed":
+            if not self._chain_reconciled(db):
+                return False
             signing = db.execute("SELECT COUNT(*) AS n FROM reservations WHERE status = 'signing'").fetchone()
             return signing is not None and int(signing["n"]) == 0
         if reason == "reconcile_unknown":
@@ -1190,6 +1259,12 @@ class Signer:
             ).fetchall()
             return all(self.s.chain.signature_status(str(row["signature"] or "")) != "unknown" for row in rows)
         return True
+
+    def _chain_reconciled(self, db: sqlite3.Connection) -> bool:
+        if not self.s.chain.authoritative:
+            return False
+        rows = db.execute("SELECT signature FROM reservations WHERE status = 'signing'").fetchall()
+        return all(self.s.chain.signature_status(str(row["signature"] or "")) != "unknown" for row in rows)
 
     def _vet_fresh(self, mint: str, now: int) -> VetAssessment:
         exit_code, text, timed_out = self.s.vet.vet(mint)
@@ -1448,6 +1523,7 @@ class Signer:
                 (intent.intent_id,),
             ).fetchone()
             if prior is None:
+                before = _state_digest(conn)
                 conn.execute(
                     "INSERT INTO intent_hits (intent_id, seen_ms) VALUES (?, ?)",
                     (intent.intent_id, now),
@@ -1456,7 +1532,14 @@ class Signer:
                     "INSERT INTO decisions (intent_id, ok, code, simulated) VALUES (?, 0, ?, 1)",
                     (intent.intent_id, code),
                 )
-            event_id = self._event(conn, "intent_refused", payload)
+                stamped = dict(payload)
+                stamped["state_sha256"] = before
+                if _state_digest(conn) != before:
+                    _add_halt(conn, "anchor_mismatch")
+                event_payload = stamped
+            else:
+                event_payload = payload
+            event_id = self._event(conn, "intent_refused", event_payload)
             return Decision(False, code, True, intent.intent_id, event_id)
 
         try:
@@ -1480,7 +1563,13 @@ class Signer:
 
     def _event(self, db: sqlite3.Connection, kind: str, payload: Payload) -> int:
         recorded = dict(payload)
-        recorded["state_sha256"] = _state_digest(db)
+        current = _state_digest(db)
+        supplied = recorded.get("state_sha256")
+        if isinstance(supplied, str):
+            if supplied != current:
+                _add_halt(db, "anchor_mismatch")
+        else:
+            recorded["state_sha256"] = current
         return append_event(_db(db), kind, recorded, self.s.clock.now_ms(), self._needles())
 
     def _needles(self) -> tuple[str, ...]:
@@ -1552,13 +1641,13 @@ class Signer:
 
     def _anchor_matches(self, db: sqlite3.Connection) -> bool:
         path = self._anchor_path()
-        written = 0
         try:
             row = db.execute("SELECT written FROM anchor_meta WHERE id = 1").fetchone()
         except sqlite3.OperationalError:
             row = None
-        if row is not None:
-            written = int(row["written"] or 0)
+        if row is None:
+            return False
+        written = int(row["written"] or 0)
         if not path.is_file():
             return written == 0
         lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line]
@@ -1654,16 +1743,20 @@ def _telegram_update(
         return None
     if (
         "forward_origin" in inner
-        or inner.get("is_automatic_forward")
-        or inner.get("forward_date")
-        or inner.get("sender_chat")
-        or inner.get("via_bot")
+        or "is_automatic_forward" in inner
+        or "forward_date" in inner
+        or "sender_chat" in inner
+        or "via_bot" in inner
+        or "forward_from" in inner
+        or "forward_from_chat" in inner
     ):
         return ("TELEGRAM_FORWARDED", "", "", "")
     chat = inner.get("chat")
     sender = inner.get("from")
     if not isinstance(chat, dict) or not isinstance(sender, dict):
         return None
+    if sender.get("is_bot") is True:
+        return ("TELEGRAM_REJECTED", "", "", "")
     chat_id = chat.get("id")
     sender_id = sender.get("id")
     if type(chat_id) is not int or type(sender_id) is not int:

@@ -90,12 +90,9 @@ def _is_dir(path: Path) -> bool:
 
 
 def _file_present(path: Path) -> bool | None:
-    """True when the path exists, matching agent-guard. Unreadable is ambiguous."""
+    """True for a file, directory, or dangling symlink. Unreadable is ambiguous."""
 
     try:
-        path.stat()
-    except FileNotFoundError:
-        return False
+        return os.path.lexists(path)
     except OSError:
         return None
-    return True

@@ -95,6 +95,26 @@ class _RpcChain:
             return None
         return int(result.value)
 
+    def account_info(self, address: str) -> tuple[bool, int, int] | None:
+        result = self._rpc.call("getAccountInfo", [address, {"encoding": "base64"}])  # type: ignore[attr-defined]
+        if not result.ok or not isinstance(result.value, dict):
+            return None
+        value = result.value.get("value")
+        if value is None:
+            return (False, 0, 0)
+        if not isinstance(value, dict) or type(value.get("lamports")) is not int:
+            return None
+        import base64
+
+        data = value.get("data")
+        size = 0
+        if isinstance(data, list) and data:
+            try:
+                size = len(base64.b64decode(str(data[0])))
+            except ValueError:
+                return None
+        return (True, int(value["lamports"]), size)
+
 
 class _RpcMarks:
     is_stub = False

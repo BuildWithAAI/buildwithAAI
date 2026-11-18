@@ -103,7 +103,7 @@ def parse_icacls(text: str, owner_sid: str) -> bool:
         if len(parts) < 6 or not parts[5]:
             return False
         account = parts[5]
-        if account in {"SY", "LS"}:
+        if account == "SY":
             account = SYSTEM_SID
         found.add(account)
     return found == {owner_sid, SYSTEM_SID}

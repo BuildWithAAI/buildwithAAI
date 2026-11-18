@@ -58,6 +58,38 @@ def _buy(**overrides: object):
     return build_curve_buy(**args)  # type: ignore[arg-type]
 
 
+def _arm(signer: object, services: object, *, volume: bool = True, ata: bool = True) -> dict[str, int]:
+    from solders.pubkey import Pubkey
+
+    from zoora_signer.constants import PUMP_PROGRAM
+    from zoora_signer.txbuild import _ata, _pda
+
+    owner = Pubkey.from_string(str(signer._owner_pubkey()))  # type: ignore[attr-defined]
+    mint = Pubkey.from_string(MINT)
+    pump = Pubkey.from_string(PUMP_PROGRAM)
+    base = Pubkey.from_string(TOKEN_2022)
+    curve = str(_pda([b"bonding-curve", bytes(mint)], pump))
+    volume_key = str(_pda([b"user_volume_accumulator", bytes(owner)], pump))
+    ata_key = str(_ata(owner, base, mint))
+    seen: dict[str, int] = {}
+    table = {
+        curve: (True, LAMPORTS, len(CURVE)),
+        volume_key: (volume, 0, 137 if volume else 0),
+        ata_key: (ata, 2_000_000, 182 if ata else 0),
+    }
+
+    def account_info(address: str) -> tuple[bool, int, int] | None:
+        return table.get(address)  # type: ignore[return-value]
+
+    def rent_exemption(size: int) -> int:
+        seen["size"] = size
+        return 1 if size == 1 else 1_900_000
+
+    services.chain.account_info = account_info  # type: ignore[attr-defined]
+    services.chain.rent_exemption = rent_exemption  # type: ignore[attr-defined]
+    return seen
+
+
 def test_owner_is_required_and_comes_from_the_public_half(tmp_path: Path) -> None:
     built = _buy()
     with pytest.raises(PolicyError, match="OWNER_REQUIRED"):
@@ -153,6 +185,7 @@ def test_buy_uses_the_vetted_price_not_the_market_input(tmp_path: Path) -> None:
     assert activate(signer).ok
     assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
     assert signer.set_mode("LIVE").ok
+    _arm(signer, services)
 
     class Market:
         def buy_inputs(self, mint: str) -> dict[str, object]:
@@ -163,8 +196,8 @@ def test_buy_uses_the_vetted_price_not_the_market_input(tmp_path: Path) -> None:
                 "fee_config_data": FEE,
                 "buyback": str(ORDER[13]),
                 "sol_usd_cents": 1,
-                "curve_lamports": LAMPORTS,
-                "volume_exists": True,
+                "curve_lamports": 1,
+                "volume_exists": False,
                 "create_base_ata": False,
             }
 
@@ -245,6 +278,7 @@ def test_kill_is_polled_again_before_the_refused_sign(tmp_path: Path) -> None:
     assert activate(signer).ok
     assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
     assert signer.set_mode("LIVE").ok
+    _arm(signer, services, volume=True)
 
     class Market:
         def buy_inputs(self, mint: str) -> dict[str, object]:
@@ -409,13 +443,7 @@ def test_live_volume_rent_comes_from_rpc(tmp_path: Path) -> None:
     assert activate(signer).ok
     assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
     assert signer.set_mode("LIVE").ok
-    seen: dict[str, int] = {}
-
-    def rent_exemption(size: int) -> int:
-        seen["size"] = size
-        return 1_900_000
-
-    services.chain.rent_exemption = rent_exemption  # type: ignore[attr-defined]
+    seen = _arm(signer, services, volume=False)
 
     class Market:
         def buy_inputs(self, mint: str) -> dict[str, object]:
@@ -452,3 +480,149 @@ def test_live_volume_rent_comes_from_rpc(tmp_path: Path) -> None:
     assert built.rent_lamports == 1_900_000
     services.chain.rent_exemption = None  # type: ignore[attr-defined]
     assert signer._unsigned_buy(intent, 10_000, micro) is None
+
+
+def test_market_rent_claims_are_not_trusted(tmp_path: Path) -> None:
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
+    _arm(signer, services, volume=False)
+    from zoora_signer.signer import parse_intent
+
+    intent = parse_intent(
+        {
+            "intent_id": "chain",
+            "issued_at_ms": services.clock.now_ms(),
+            "key_id": "1",
+            "max_slippage_bps": 0,
+            "mint": MINT,
+            "side": "buy",
+            "usd_stake_micro": 2_000_000,
+        }
+    )
+    assert intent is not None
+
+    class Market:
+        def __init__(self, **extra: object) -> None:
+            self.extra = extra
+
+        def buy_inputs(self, mint: str) -> dict[str, object]:
+            body: dict[str, object] = {
+                "mint_data": MINT_DATA,
+                "mint_owner": TOKEN_2022,
+                "curve_data": CURVE,
+                "fee_config_data": FEE,
+                "buyback": str(ORDER[13]),
+                "curve_lamports": 1,
+                "volume_exists": True,
+                "ata_rent_lamports": 1,
+            }
+            body.update(self.extra)
+            return body
+
+    services.market = Market()
+    assert signer._unsigned_buy(intent, 10_000, 10_000 * 10_000) is None
+    services.market = Market(ata_rent_lamports=0, volume_exists=False)
+    built = signer._unsigned_buy(intent, 10_000, 10_000 * 10_000)
+    assert built is not None and built.rent_lamports == 1_900_000
+
+
+def test_aliases_ls_ow_and_ba_are_refused() -> None:
+    owner = "S-1-5-21-9"
+    base = f"(A;;FA;;;{owner})(A;;FR;;;S-1-5-18)"
+    assert parse_icacls(f"D:P{base}", owner)
+    for alias in ("LS", "OW", "BA"):
+        assert not parse_icacls(f"D:P{base}(A;;FA;;;{alias})", owner)
+
+
+def test_dangling_symlink_is_a_kill(tmp_path: Path) -> None:
+    from zoora_signer.heartbeat import write_heartbeat
+    from zoora_signer.killswitch import AgentGuardKill
+
+    root = tmp_path / "home"
+    root.mkdir()
+    (root / "state").mkdir()
+    write_heartbeat(root, 1_000)
+    link = root / "state" / "KILL_SWITCH"
+    link.symlink_to(root / "missing")
+    assert AgentGuardKill(root, now_ms=lambda: 1_000).poll() == "killed"
+
+
+def test_tail_byte_must_match_exactly() -> None:
+    data = SELL_V3_DISCRIMINATOR + (5).to_bytes(8, "little") + (1_000).to_bytes(8, "little") + b"\x02"
+    with pytest.raises(PolicyError, match="TRAILING"):
+        _check_amounts(
+            data,
+            max_all_in_lamports=None,
+            expected_token_amount=5,
+            expected_limit_lamports=1_000,
+            expected_tail=1,
+        )
+    assert (
+        _check_amounts(
+            data,
+            max_all_in_lamports=None,
+            expected_token_amount=5,
+            expected_limit_lamports=1_000,
+            expected_tail=2,
+        )
+        == 1_000
+    )
+
+
+def test_sticky_halts_need_a_chain_reconcile(tmp_path: Path) -> None:
+    signer, services = build(tmp_path)
+    signer.halt("settle_error")
+    assert signer.unhalt("UNHALT").code == "RECONCILE_REQUIRED"
+    services.chain.authoritative = True
+    assert signer.unhalt("UNHALT").ok
+
+
+def test_event_keeps_the_digest_from_before_the_edit(tmp_path: Path) -> None:
+    from zoora_signer.db import transact
+    from zoora_signer.signer import _state_digest
+
+    signer, _services = build(tmp_path / "signer.sqlite")
+
+    def op(conn: object) -> None:
+        from sqlite3 import Connection
+
+        db = conn if isinstance(conn, Connection) else None
+        assert db is not None
+        before = _state_digest(db)
+        db.execute("UPDATE signer_state SET boot_id = 'edited' WHERE id = 1")
+        signer._event(db, "note", {"state_sha256": before})
+
+    transact(signer.path, op)
+    assert signer.activity() == "HALTED"
+
+
+def test_deleted_anchor_meta_halts_before_the_first_anchor(tmp_path: Path) -> None:
+    from zoora_signer.db import connect
+
+    signer, _services = build(tmp_path / "signer.sqlite")
+    anchor = Path(signer.path).with_suffix(".anchor")
+    anchor.unlink()
+    conn = connect(signer.path)
+    conn.execute("DELETE FROM anchor_meta")
+    conn.close()
+    again, _services = build(tmp_path / "signer.sqlite")
+    assert again.activity() == "HALTED"
+
+
+def test_foreign_event_authority_is_refused() -> None:
+    built = _buy()
+    metas = [(key, False, False) for key in built.accounts]
+    metas[8] = (built.accounts[8], True, True)
+    metas[15] = ("11111111111111111111111111111111", False, False)
+    with pytest.raises(PolicyError, match="EVENT_AUTHORITY"):
+        _check_derived("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", built.data, metas, USER, MINT)
+
+
+def test_forward_keys_and_bots_are_rejected() -> None:
+    base = {"text": "halt", "chat": {"id": 1}, "from": {"id": 1, "is_bot": False}}
+    assert _telegram_update({"message": {**base, "forward_from": None}})[0] == "TELEGRAM_FORWARDED"
+    assert _telegram_update({"message": {**base, "forward_from_chat": None}})[0] == "TELEGRAM_FORWARDED"
+    bot = {"text": "halt", "chat": {"id": 1}, "from": {"id": 1, "is_bot": True}}
+    assert _telegram_update({"message": bot})[0] == "TELEGRAM_REJECTED"

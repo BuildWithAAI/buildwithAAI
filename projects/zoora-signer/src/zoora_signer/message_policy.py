@@ -92,6 +92,7 @@ def validate_transaction(
     max_all_in_lamports: int | None = None,
     expected_token_amount: int | None = None,
     expected_limit_lamports: int | None = None,
+    expected_tail: int | None = None,
     rent_lamports: int = 0,
     allow_pumpswap: bool = False,
 ) -> None:
@@ -160,6 +161,7 @@ def validate_transaction(
             max_all_in_lamports=max_all_in_lamports,
             expected_token_amount=expected_token_amount,
             expected_limit_lamports=expected_limit_lamports,
+            expected_tail=expected_tail,
         )
         buy = data[:8] in {BUY_V3_DISCRIMINATOR, PUMPSWAP_BUY_V2_DISCRIMINATOR}
         swaps += 1
@@ -253,6 +255,8 @@ def _check_derived(
             raise PolicyError("FEE_CONFIG")
         if metas[13][0] not in _BUYBACKS:
             raise PolicyError("FEE_RECIPIENT")
+        if metas[15][0] != _pda([b"__event_authority"], PUMP_PROGRAM):
+            raise PolicyError("EVENT_AUTHORITY")
         return
     if program == PUMP_SWAP:
         quote_mint = metas[4][0]
@@ -279,7 +283,8 @@ def _check_derived(
             raise PolicyError("VOLUME")
         if metas[13][0] != _pda([b"fee_config", _key_bytes(PUMP_SWAP)], FEE_PROGRAM):
             raise PolicyError("FEE_CONFIG")
-        if metas[14][0] != quote_ata:
+        buyback_atas = {_ata(wallet, quote_program, quote_mint) for wallet in _BUYBACKS}
+        if metas[14][0] not in buyback_atas:
             raise PolicyError("FEE_RECIPIENT")
 
 
@@ -300,11 +305,16 @@ def _check_amounts(
     max_all_in_lamports: int | None,
     expected_token_amount: int | None,
     expected_limit_lamports: int | None,
+    expected_tail: int | None = None,
 ) -> int:
     import struct
 
     extra = len(data) - 24
     if extra not in (0, 1):
+        raise PolicyError("TRAILING")
+    if extra == 1 and (expected_tail is None or data[-1] != expected_tail):
+        raise PolicyError("TRAILING")
+    if extra == 0 and expected_tail is not None:
         raise PolicyError("TRAILING")
     unpacked = struct.unpack_from("<QQ", data, 8)
     amount = int(unpacked[0])
@@ -360,8 +370,7 @@ def _check_budget(
     if buy:
         spend += swap_limit
     if max_all_in is None or spend > max_all_in:
-        if buy or max_all_in is not None:
-            raise PolicyError("MAX_SOL")
+        raise PolicyError("MAX_SOL")
 
 
 def _budget_kind(data: bytes) -> str:
