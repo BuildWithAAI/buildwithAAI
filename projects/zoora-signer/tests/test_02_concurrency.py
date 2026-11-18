@@ -76,6 +76,9 @@ def test_loss_and_rate_concurrency(tmp_path: Path) -> None:
         )
     conn.commit()
     conn.close()
+    from harness import record_state
+
+    record_state(rate)
     codes = _burst(rate, 12)
     assert codes.count("RESERVED") == 1
     assert codes.count("RATE_LIMIT") == 11

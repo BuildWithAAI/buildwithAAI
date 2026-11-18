@@ -175,7 +175,12 @@ def test_missing_volume_and_ata_rent_and_curve_topup_are_in_the_cap() -> None:
     topped = _buy(curve_lamports=0, volume_exists=True)
     assert topped.rent_lamports - present.rent_lamports == rent_exempt_lamports(len(CURVE))
     with pytest.raises(BuildError, match="CAP"):
-        _buy(create_base_ata=True, ata_rent_lamports=2_000_000, volume_exists=True)
+        _buy(
+            create_base_ata=True,
+            ata_rent_lamports=rent_exempt_lamports(182),
+            volume_exists=False,
+            curve_lamports=0,
+        )
 
 
 def test_non_wsol_quote_mint_is_refused() -> None:
@@ -853,14 +858,29 @@ def test_anchor_mismatch_needs_reanchor(tmp_path: Path) -> None:
     assert signer.unhalt("UNHALT").ok
 
 
-def test_mainnet_rent_uses_5080_and_budgets_a_low_chain_value() -> None:
-    from zoora_signer.quote import accept_chain_rent
+def test_mainnet_rent_uses_5080_and_budgets_a_low_chain_value(caplog: pytest.LogCaptureFixture) -> None:
+    import logging
 
-    assert rent_exempt_lamports(170) == 1_513_840
+    from zoora_signer.quote import accept_chain_rent, note_low_rent
+
+    # Mainnet fixture slot 470726647. The local validator still exempts at 6960.
     assert rent_exempt_lamports(137) == 1_346_200
+    assert rent_exempt_lamports(165) == 1_488_440
+    assert rent_exempt_lamports(170) == 1_513_840
+    assert rent_exempt_lamports(182) == 1_574_800
     assert rent_exempt_lamports(399) == 2_677_160
+    assert rent_exempt_lamports(137) != (137 + 128) * 6_960
     assert accept_chain_rent(2, 137) == 1_346_200
     assert accept_chain_rent(1_346_200 * 10, 137) is None
+    built = _buy(volume_exists=False, volume_rent_lamports=1_346_200, create_base_ata=False)
+    assert built.rent_lamports >= 1_346_200
+    low = _buy(volume_exists=False, volume_rent_lamports=2, create_base_ata=False)
+    assert low.rent_lamports >= 1_346_200
+    created = _buy(create_base_ata=True, ata_rent_lamports=2, volume_exists=True)
+    assert created.rent_lamports >= 1_574_800
+    with caplog.at_level(logging.WARNING, logger="zoora_signer.rent"):
+        note_low_rent(2, 137, 1_346_200)
+    assert "below the formula" in caplog.text
 
 
 def test_reanchor_refuses_a_tampered_ledger(tmp_path: Path) -> None:
@@ -1091,6 +1111,35 @@ def test_owner_sell_after_tamper_leaves_the_ledger(tmp_path: Path) -> None:
     ).fetchone()
     assert kind is not None and str(kind[0]) == "owner_sell_after_tamper"
     assert signer.unhalt("UNHALT").code == "RECONCILE_REQUIRED"
+
+
+def test_deleting_a_trade_or_reservation_halts_the_next_buy(tmp_path: Path) -> None:
+    import sqlite3
+
+    signer, _services = build(tmp_path)
+    assert activate(signer).ok
+    assert buy(signer).ok
+    conn = sqlite3.connect(signer.path)
+    conn.execute("DELETE FROM trades")
+    conn.execute("DELETE FROM reservations")
+    conn.commit()
+    conn.close()
+    assert buy(signer).code != "FILLED"
+    assert signer.activity() == "HALTED"
+
+
+def test_dry_run_repolls_before_the_fill(tmp_path: Path) -> None:
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    seen = {"n": 0}
+
+    def poll() -> str:
+        seen["n"] += 1
+        return "clear" if seen["n"] == 1 else "killed"
+
+    services.kill.poll = poll  # type: ignore[method-assign]
+    assert buy(signer).code == "KILL_HOLD"
+    assert signer.open_trade_count() == 0
 
 
 def test_dry_run_intent_polls_the_kill_switch(tmp_path: Path) -> None:

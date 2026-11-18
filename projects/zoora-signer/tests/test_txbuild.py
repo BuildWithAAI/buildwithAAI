@@ -120,8 +120,8 @@ def test_slippage_and_rent_round_down() -> None:
     assert built.limit_lamports == built.quote_lamports * 11_500 // 10_000
     assert built.all_in_lamports <= lamports_for_micro(2_000_000, PRICE)
     assert micro_for_lamports(built.all_in_lamports, PRICE) <= 2_000_000
-    with pytest.raises(BuildError, match="CAP"):
-        _buy(create_base_ata=True, ata_rent_lamports=lamports_for_micro(2_000_000, PRICE))
+    with pytest.raises(BuildError, match="RENT"):
+        _buy(create_base_ata=True, ata_rent_lamports=lamports_for_micro(2_000_000, PRICE) or 0)
 
 
 def test_sell_min_sol_and_decimals() -> None:

@@ -40,6 +40,9 @@ def test_d1_midnight_rollover_still_vets(tmp_path: Path) -> None:
         )
     conn.commit()
     conn.close()
+    from harness import record_state
+
+    record_state(signer)
 
     class FailVet:
         def __init__(self) -> None:

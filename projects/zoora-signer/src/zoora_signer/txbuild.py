@@ -39,6 +39,7 @@ from zoora_signer.constants import (
     SELL_V3_DISCRIMINATOR,
     SIGNATURE_FEE_LAMPORTS,
     SLIPPAGE_CAP_BPS,
+    SPL_TOKEN,
     STAKE_CAP_CENTS,
     SYSTEM_PROGRAM,
     TOKEN_2022_ATA_RENT_LAMPORTS,
@@ -53,6 +54,7 @@ from zoora_signer.quote import (
     lamports_for_micro_price,
     micro_cost_ceil,
     net_sol_from_inclusive,
+    note_low_rent,
     parse_fee_bps,
     parse_mint,
     priority_fee_lamports,
@@ -138,6 +140,7 @@ def build_curve_buy(
         curve_data=curve_data,
         curve_lamports=curve_lamports,
         volume_rent_lamports=volume_rent_lamports,
+        ata_data_len=_ata_data_len(mint_owner),
     )
     quote = _quote_before_slippage(budget, fixed, slippage_bps)
     net = net_sol_from_inclusive(quote, protocol, creator)
@@ -230,6 +233,7 @@ def build_pumpswap_buy(
         volume_exists=True,
         curve_data=b"",
         curve_lamports=0,
+        ata_data_len=_ata_data_len(mint_owner),
     )
     quote = _quote_before_slippage(budget, fixed, slippage_bps)
     net = net_sol_from_inclusive(quote, protocol, creator)
@@ -359,6 +363,10 @@ def _budget(stake_cents: int, sol_usd_cents: int, slippage_bps: int, micro_per_s
     return lamports
 
 
+def _ata_data_len(mint_owner: str) -> int:
+    return 165 if mint_owner == SPL_TOKEN else 182
+
+
 def _fixed_costs(
     ata_rent: int,
     *,
@@ -367,11 +375,16 @@ def _fixed_costs(
     curve_data: bytes,
     curve_lamports: int | None,
     volume_rent_lamports: int | None = None,
+    ata_data_len: int = 182,
 ) -> tuple[int, int]:
-    if create_base_ata and ata_rent <= 0:
+    if ata_rent < 0 or (create_base_ata and ata_rent <= 0):
         raise BuildError("RENT")
-    if ata_rent < 0:
-        raise BuildError("RENT")
+    if create_base_ata:
+        accepted = accept_chain_rent(ata_rent, ata_data_len)
+        if accepted is None:
+            raise BuildError("RENT")
+        note_low_rent(ata_rent, ata_data_len, accepted)
+        ata_rent = accepted
     rent = (ata_rent if create_base_ata else 0) + _volume_rent(volume_exists, volume_rent_lamports)
     rent += _curve_topup(curve_data, curve_lamports)
     return rent, rent + SIGNATURE_FEE_LAMPORTS + priority_fee_lamports(CU_LIMIT, PRIORITY_MICRO_LAMPORTS)
@@ -389,6 +402,7 @@ def _volume_rent(exists: bool, override: int | None) -> int:
     accepted = accept_chain_rent(override, USER_VOLUME_ACCOUNT_BYTES)
     if accepted is None:
         raise BuildError("RENT")
+    note_low_rent(override, USER_VOLUME_ACCOUNT_BYTES, accepted)
     return accepted
 
 

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import struct
+
+_rent_log = logging.getLogger("zoora_signer.rent")
 
 
 def tokens_out(sol_in: int, virtual_sol: int, virtual_tokens: int, fee_bps: int | None) -> int | None:
@@ -66,6 +69,27 @@ def accept_chain_rent(chain: int, data_len: int) -> int | None:
     if chain > formula and (chain - formula) * 10_000 > formula * RENT_TOLERANCE_BPS:
         return None
     return max(chain, formula)
+
+
+def rent_is_low(chain: int, data_len: int) -> bool:
+    """True when a chain quote is more than 1% under the local formula."""
+
+    formula = rent_exempt_lamports(data_len)
+    if formula <= 0 or chain < 0 or chain >= formula:
+        return False
+    return (formula - chain) * 10_000 > formula * RENT_TOLERANCE_BPS
+
+
+def note_low_rent(chain: int, data_len: int, budget: int) -> None:
+    """Budget stays at the formula. A much lower chain quote is a bad RPC sign."""
+
+    if rent_is_low(chain, data_len):
+        _rent_log.warning(
+            "chain rent %s for %s bytes is below the formula %s; budgeting the formula",
+            chain,
+            data_len,
+            budget,
+        )
 
 
 def lamports_for_cents(cents: int, sol_usd_cents: int) -> int | None:

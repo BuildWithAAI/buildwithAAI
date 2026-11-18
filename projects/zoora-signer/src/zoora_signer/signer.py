@@ -88,12 +88,25 @@ def _lamport_cents(lamports: int, sol_cents: int) -> tuple[int, int]:
     return ceil_cents, floor_cents
 
 
+def _row_line(row: sqlite3.Row) -> str:
+    return "|".join(f"{key}={row[key]}" for key in row.keys())
+
+
 def _state_digest(db: sqlite3.Connection) -> str:
-    row = db.execute("SELECT * FROM signer_state WHERE id = 1").fetchone()
-    if row is None:
-        return ""
-    body = "|".join(f"{key}={row[key]}" for key in row.keys())
-    return hashlib.sha256(body.encode()).hexdigest()
+    """Digest of signer_state plus reservations and trades.
+
+    Deleting a reservation or a trade changes the open-trade and buy counters.
+    Those rows are part of the digest so that edit halts the next write.
+    """
+
+    chunks: list[str] = []
+    state = db.execute("SELECT * FROM signer_state WHERE id = 1").fetchone()
+    chunks.append("state:" + (_row_line(state) if state is not None else ""))
+    reservations = db.execute("SELECT * FROM reservations ORDER BY id").fetchall()
+    chunks.extend(f"reservation:{_row_line(row)}" for row in reservations)
+    trades = db.execute("SELECT * FROM trades ORDER BY id").fetchall()
+    chunks.extend(f"trade:{_row_line(row)}" for row in trades)
+    return hashlib.sha256("\n".join(chunks).encode()).hexdigest()
 
 
 def _add_halt(db: sqlite3.Connection, reason: str) -> None:
@@ -870,8 +883,6 @@ class Signer:
             and volume_info[3] == PUMP_PROGRAM
             and volume_info[2] == USER_VOLUME_ACCOUNT_BYTES
         )
-        if claimed_volume is True and not volume_verified:
-            volume_verified = False
         if volume_verified:
             volume_rent: int | None = None
             volume_exists = True
@@ -940,9 +951,12 @@ class Signer:
             return None
         if type(value) is not int:
             return None
-        from zoora_signer.quote import accept_chain_rent
+        from zoora_signer.quote import accept_chain_rent, note_low_rent
 
-        return accept_chain_rent(value, size)
+        accepted = accept_chain_rent(value, size)
+        if accepted is not None:
+            note_low_rent(value, size, accepted)
+        return accepted
 
     def _broadcast_sell(self, mint: str, token_amount: int | None) -> Decision:
         if self.poll_kill() != "clear":
@@ -1221,10 +1235,14 @@ class Signer:
             except PolicyError:
                 return self._release(reservation_id, "POLICY_REJECTED", intent.intent_id)
             return self._release(reservation_id, "SIGN_REFUSED", intent.intent_id)
+        if self.poll_kill() != "clear":
+            return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
         price = sol_usd_cents(reading)
         lamports = lamports_for_cents(stake, price)
         if lamports is None:
             return self._release(reservation_id, "UNPRICEABLE", intent.intent_id)
+        if self.poll_kill() != "clear":
+            return self._release(reservation_id, "KILL_HOLD", intent.intent_id)
         return self._fill(intent, reservation_id, stake, lamports, "dry-run:no-tx", simulated=True)
 
     def _fill(
@@ -1304,10 +1322,14 @@ class Signer:
     ) -> Decision:
         if self.mode() == "LIVE":
             return self._broadcast_sell(mint, token_amount)
+        if not owner and self.poll_kill() != "clear":
+            return Decision(False, "KILL_HOLD", True, intent_id)
         now = self.s.clock.now_ms()
         if reading is None:
             reading = self.s.oracle.quote(now)
         price = sol_usd_cents(reading) if reading.ok else 0
+        if not owner and self.poll_kill() != "clear":
+            return Decision(False, "KILL_HOLD", True, intent_id)
 
         def op(conn: sqlite3.Connection) -> Decision:
             db = _db(conn)
