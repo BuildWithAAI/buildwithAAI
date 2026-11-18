@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import sqlite3
 from collections.abc import Callable
 from typing import TypeVar
@@ -192,54 +193,32 @@ def append_event(
     return event_id
 
 
-def verify_legacy_chain(conn: sqlite3.Connection) -> bool:
-    """True when every event still matches the unkeyed sha256 chain."""
-
-    return _verify_rows(conn, key=None, genesis_at=None, force_legacy=True)
-
-
 def verify_chain(conn: sqlite3.Connection, key: bytes) -> bool:
+    """Every event must be HMAC'd with the event key and carry event_key_id.
+
+    There is no unkeyed prefix. An old database is refused; start a fresh one
+    and run init-event-key before the first event.
+    """
+
     if len(key) < 32:
         return False
-    rows = conn.execute("SELECT kind FROM events ORDER BY id").fetchall()
-    genesis_at = next((index for index, row in enumerate(rows) if str(row["kind"]) == "event_key_genesis"), None)
-    return _verify_rows(conn, key=key, genesis_at=genesis_at, force_legacy=False)
-
-
-def _verify_rows(
-    conn: sqlite3.Connection,
-    *,
-    key: bytes | None,
-    genesis_at: int | None,
-    force_legacy: bool,
-) -> bool:
     prev = GENESIS
     rows = conn.execute(
         "SELECT id, ts_ms, kind, payload, prev_hash, hash FROM events ORDER BY id"
     ).fetchall()
-    for index, row in enumerate(rows):
+    for row in rows:
         if str(row["prev_hash"]) != prev:
             return False
-        legacy = force_legacy or (genesis_at is not None and index < genesis_at)
-        if legacy:
-            expect = legacy_event_digest(
-                int(row["id"]),
-                int(row["ts_ms"]),
-                str(row["kind"]),
-                prev,
-                str(row["payload"]),
-            )
-        else:
-            if key is None:
-                return False
-            expect = event_digest(
-                int(row["id"]),
-                int(row["ts_ms"]),
-                str(row["kind"]),
-                prev,
-                str(row["payload"]),
-                key,
-            )
+        body = str(row["payload"])
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(payload, dict) or not isinstance(payload.get("event_key_id"), str):
+            return False
+        if not payload["event_key_id"]:
+            return False
+        expect = event_digest(int(row["id"]), int(row["ts_ms"]), str(row["kind"]), prev, body, key)
         if str(row["hash"]) != expect:
             return False
         prev = expect

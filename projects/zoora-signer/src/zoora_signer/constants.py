@@ -63,6 +63,8 @@ FEE_CONFIG_DISCRIMINATOR = hashlib.sha256(b"account:FeeConfig").digest()[:8]
 # Recorded pump fee is 95 protocol + 30 creator. The cap can be lowered, not raised.
 MAX_TOTAL_FEE_BPS = 125
 FEE_BPS_MARGIN = 10
+# Owner exit only, and only after the owner types OWNER_SELL_HIGH_FEE.
+OWNER_EXIT_FEE_CEILING = 500
 # SetComputeUnitLimit units, and SetComputeUnitPrice in micro-lamports per unit.
 CU_LIMIT = 200_000
 MAX_CU_LIMIT = 400_000

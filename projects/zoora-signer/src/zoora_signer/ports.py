@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Protocol
 
 from zoora_signer.models import OracleReading
+
+
+class BroadcasterKind(Enum):
+    """REFUSE is the only kind in this build. LIVE belongs to the broadcaster PR."""
+
+    REFUSE = "refuse"
+    LIVE = "live"
 
 
 class Clock(Protocol):
@@ -67,6 +75,7 @@ class SecretStore(Protocol):
 
 
 class Broadcaster(Protocol):
+    kind: BroadcasterKind
     enabled: bool
 
     def submit(self, payload: bytes) -> None: ...

@@ -37,6 +37,7 @@ from zoora_signer.db import SecretInLog, append_event, init_db, query, read_even
 from zoora_signer.models import Decision, Intent, OracleReading, Payload, sol_usd_cents, sol_usd_micro
 from zoora_signer.ports import (
     Broadcaster,
+    BroadcasterKind,
     ChainView,
     Clock,
     IntentFeed,
@@ -53,6 +54,7 @@ from zoora_signer.txbuild import BuiltTx
 from zoora_signer.vet import VetAssessment, assess_vet
 
 _owner_log = logging.getLogger("zoora_signer.owner_sell")
+_reanchor_log = logging.getLogger("zoora_signer.reanchor")
 
 MINT_OK = __import__("re").compile(r"^[1-9A-HJ-NP-Za-km-z]{32,44}$")
 STICKY_HALTS = frozenset(
@@ -204,6 +206,9 @@ def _reanchor_payload(
 
 
 class RefuseBroadcaster:
+    """The only broadcaster in this build. submit is never called."""
+
+    kind = BroadcasterKind.REFUSE
     enabled = False
 
     def submit(self, payload: bytes) -> None:
@@ -220,6 +225,9 @@ class Signer:
         self._feed_cursor: str | None = None
         self._hud_after = 0
         self._pushed_after = 0
+        self._chain_fee_bps: int | None = None
+        self.last_reanchor_diff: dict[str, tuple[object, object]] = {}
+        self.last_unsigned: bytes | None = None
 
     @classmethod
     def open(cls, services: Services) -> Signer:
@@ -236,13 +244,17 @@ class Signer:
         reject_key_material_in_env()
         init_db(self.path, self.s.provider_name)
         boot_id = uuid.uuid4().hex
-        opening = self.s.chain.sol_lamports()
+        try:
+            opening: int | None = self.s.chain.sol_lamports()
+        except Exception:
+            opening = None
 
         def op(conn: sqlite3.Connection) -> None:
             from sqlite3 import Connection
 
             db = conn if isinstance(conn, Connection) else None
             assert isinstance(db, Connection)
+            trusted = self._verify(db) and self._anchor_matches(db) and self._state_event_matches(db)
             if not self._verify(db):
                 _add_halt(db, "hash_chain")
             if not self._anchor_matches(db) or not self._state_event_matches(db):
@@ -252,8 +264,16 @@ class Signer:
             halted = str(row["activity"]) == "HALTED"
             mode = "DRY_RUN" if int(row["route_approved"]) != 1 else str(row["execution_mode"])
             ledger = row["ledger_sol_lamports"]
-            if ledger is None:
+            if ledger is None and opening is not None:
                 ledger = opening
+            elif ledger is None:
+                ledger = 0
+            if opening is None:
+                db.execute(
+                    "UPDATE signer_state SET buy_halt_reason = 'reconcile_unknown' WHERE id = 1"
+                )
+            elif str(row["buy_halt_reason"] or "") == "reconcile_unknown":
+                db.execute("UPDATE signer_state SET buy_halt_reason = NULL WHERE id = 1")
             if halted:
                 db.execute(
                     """
@@ -263,7 +283,12 @@ class Signer:
                     """,
                     (mode, boot_id, int(ledger), self.s.provider_name),
                 )
-                self._event(db, "boot_halt_persisted", {"boot_id": boot_id, "reason": str(row["halt_reason"] or "")})
+                self._event(
+                    db,
+                    "boot_halt_persisted",
+                    {"boot_id": boot_id, "reason": str(row["halt_reason"] or "")},
+                    carry=not trusted,
+                )
             else:
                 db.execute(
                     """
@@ -274,7 +299,7 @@ class Signer:
                     """,
                     (mode, boot_id, int(ledger), self.s.provider_name),
                 )
-                self._event(db, "boot_paused", {"boot_id": boot_id, "mode": mode})
+                self._event(db, "boot_paused", {"boot_id": boot_id, "mode": mode}, carry=not trusted)
             self._reconcile(db)
             if not self._verify(db):
                 _add_halt(db, "hash_chain")
@@ -335,7 +360,12 @@ class Signer:
             ("acl", self.s.probe.acl_owner_only()),
             ("signing_key", self.s.secrets.has_signing_key()),
         )
-        return [f"{name}: {'pass' if ok else 'fail'}" for name, ok in checks]
+        lines = [f"{name}: {'pass' if ok else 'fail'}" for name, ok in checks]
+        fee = self._observed_chain_fee_bps()
+        ceiling = self._max_total_fee()
+        if fee is not None and fee > ceiling:
+            lines.append(f"chain_fee: warn {fee} bps is above {ceiling}")
+        return lines
 
     def handle_intent(self, raw: bytes, signature: str) -> Decision:
         if self.poll_kill() != "clear":
@@ -624,7 +654,16 @@ class Signer:
             if pending is not None and int(pending["n"]) != 0:
                 return Decision(False, "RECONCILE_REQUIRED", False)
             current = self._book_snapshot(db)
-            previous = self._last_snapshot(db)
+            current["state_sha256"] = _state_digest(db)
+            previous = self._trusted_snapshot(db)
+            diff: dict[str, tuple[object, object]] = {}
+            for key in sorted(set(previous) | set(current)):
+                if previous.get(key) != current.get(key):
+                    diff[key] = (previous.get(key), current.get(key))
+            self.last_reanchor_diff = diff
+            if diff:
+                _reanchor_log.warning("reanchor refused %s", diff)
+                return Decision(False, "RECONCILE_REQUIRED", False)
             if not self._snapshot_reconciles(db, previous, current):
                 return Decision(False, "RECONCILE_REQUIRED", False)
             if not self._counters_match_log(db):
@@ -737,7 +776,8 @@ class Signer:
         return self._owner_exit(mint, None, confirmation)
 
     def _owner_exit(self, mint: str, token_amount: int | None, confirmation: str) -> Decision:
-        if confirmation != "OWNER_SELL":
+        high_fee = confirmation == "OWNER_SELL_HIGH_FEE"
+        if confirmation not in {"OWNER_SELL", "OWNER_SELL_HIGH_FEE"}:
             return Decision(False, "CONFIRMATION_REQUIRED", False)
         killed = self._kill_observed() != "clear"
         if killed:
@@ -747,7 +787,14 @@ class Signer:
         owner = self._owner_pubkey()
         if owner is None:
             return Decision(False, "BROADCAST_REFUSED", False)
-        chain = self._chain_trade_facts(owner, mint, False)
+        from zoora_signer.constants import OWNER_EXIT_FEE_CEILING
+
+        chain = self._chain_trade_facts(
+            owner,
+            mint,
+            False,
+            fee_cap=OWNER_EXIT_FEE_CEILING if high_fee else None,
+        )
         if chain is None or chain[8] <= 0 or chain[9] is None:
             return Decision(False, "BROADCAST_REFUSED", False)
         amount = chain[8] if token_amount is None else min(int(token_amount), chain[8])
@@ -803,7 +850,7 @@ class Signer:
                 previous_digest = self._previous_digest(db)
                 if previous_digest is not None:
                     payload["state_sha256"] = previous_digest
-            event_id = self._event(db, "owner_sell", payload)
+            event_id = self._event(db, "owner_sell", payload, carry=tamper)
             if int(_state(db)["ledger_sol_lamports"] or 0) != ledger_before:
                 return Decision(False, "LEDGER_BREACH", False, event_id=event_id)
             if self.mode() == "LIVE":
@@ -893,6 +940,8 @@ class Signer:
         owner: str,
         mint: str,
         claimed_volume: object,
+        *,
+        fee_cap: int | None = None,
     ) -> tuple[int, bool, int | None, int, bool, bytes, bytes, str, int, bytes] | None:
         """Curve bytes, mint bytes, rent, and the ATA balance from the chain."""
 
@@ -946,7 +995,12 @@ class Signer:
             return None
         market_cap = int(decoded["virtual_quote"]) * int(decoded["supply"]) // int(decoded["virtual_token"])
         fees = parse_fee_bps(fee_info[4], market_cap)
-        if fees is None or fees[0] + fees[1] > self._max_total_fee():
+        if fees is None:
+            return None
+        total_fee = fees[0] + fees[1]
+        self._chain_fee_bps = total_fee
+        cap = self._max_total_fee() if fee_cap is None else fee_cap
+        if total_fee > cap:
             return None
         if ata_info[0] and ata_info[3] != mint_owner:
             return None
@@ -1079,15 +1133,18 @@ class Signer:
             )
             if self.poll_kill() != "clear":
                 return self._note("sell_refused", {"code": "KILL_HOLD", "mint": mint})
-            if not getattr(self.s.broadcaster, "enabled", False):
+            self.last_unsigned = built.raw
+            raw = built.raw
+            del built
+            if getattr(self.s.broadcaster, "kind", None) is not BroadcasterKind.LIVE:
                 return self._note("sell_refused", {"code": "BROADCASTER_NOT_ENABLED", "mint": mint})
             try:
-                self.s.broadcaster.submit(built.raw)
+                self.s.broadcaster.submit(raw)
             except Exception as exc:
                 text = str(exc)
-                code = "BROADCAST_REFUSED" if text in {"", "BROADCAST_DISABLED"} else text
-                return self._note("sell_refused", {"code": code, "mint": mint})
-            return self._note("sell_refused", {"code": "BROADCAST_ACCEPTED", "mint": mint})
+                code = "BROADCAST_FAILED" if text in {"", "BROADCAST_DISABLED"} else text
+                return self._note("broadcast_result", {"code": code, "mint": mint, "trade": "open"})
+            return self._note("broadcast_result", {"code": "BROADCAST_ACCEPTED", "mint": mint, "trade": "open"})
         except PolicyError:
             return self._note("sell_refused", {"code": "POLICY_REJECTED", "mint": mint})
         except BuildError as exc:
@@ -1822,8 +1879,9 @@ class Signer:
     def _halt(self, reason: str) -> None:
         def op(conn: sqlite3.Connection) -> None:
             db = _db(conn)
+            matched = self._state_event_matches(db)
             _add_halt(db, reason)
-            self._event(db, "halt", {"reason": reason, "provider": self.s.provider_name})
+            self._event(db, "halt", {"reason": reason, "provider": self.s.provider_name}, carry=not matched)
 
         transact(self.path, op)
         self._sync_hud()
@@ -1901,7 +1959,7 @@ class Signer:
             db = _db(conn)
             if not self._state_event_matches(db):
                 _add_halt(db, "anchor_mismatch")
-                self._event(db, "halt", {"reason": "anchor_mismatch"})
+                self._event(db, "halt", {"reason": "anchor_mismatch"}, carry=True)
                 return _MISMATCH
             return fn(conn)
 
@@ -1916,18 +1974,40 @@ class Signer:
         except AnchorMismatch:
             return Decision(False, "ANCHOR_MISMATCH", False)
 
-    def _event(self, db: sqlite3.Connection, kind: str, payload: Payload) -> int:
+    def _event(self, db: sqlite3.Connection, kind: str, payload: Payload, *, carry: bool = False) -> int:
         recorded = dict(payload)
-        current = _state_digest(db)
-        supplied = recorded.get("state_sha256")
-        if isinstance(supplied, str):
-            if supplied != current:
+        if not carry:
+            previous = self._last_payload(db)
+            if isinstance(previous, dict) and previous.get("snapshot_carried") is True:
+                carry = True
+        if carry:
+            reasons = _parse_reasons(str(_state(db)["halt_reason"] or ""))
+            if not (reasons & {"anchor_mismatch", "hash_chain"}):
                 _add_halt(db, "anchor_mismatch")
+            trusted = self._trusted_snapshot(db)
+            if isinstance(trusted.get("state_sha256"), str):
+                recorded["state_sha256"] = str(trusted["state_sha256"])
+            recorded["snapshot_carried"] = True
+            for field, value in trusted.items():
+                if field != "state_sha256" and field not in recorded:
+                    recorded[field] = value
         else:
-            recorded["state_sha256"] = current
-        for field, value in self._book_snapshot(db).items():
-            if field not in recorded:
-                recorded[field] = value
+            current = _state_digest(db)
+            supplied = recorded.get("state_sha256")
+            if isinstance(supplied, str):
+                if supplied != current:
+                    _add_halt(db, "anchor_mismatch")
+                    recorded["snapshot_carried"] = True
+                    trusted = self._trusted_snapshot(db)
+                    for field, value in trusted.items():
+                        if field != "state_sha256" and field not in recorded:
+                            recorded[field] = value
+            else:
+                recorded["state_sha256"] = current
+            if recorded.get("snapshot_carried") is not True:
+                for field, value in self._book_snapshot(db).items():
+                    if field not in recorded:
+                        recorded[field] = value
         key = self._event_key()
         if key is None:
             _add_halt(db, "hash_chain")
@@ -1946,12 +2026,47 @@ class Signer:
             configured = 0
         return min(configured, MAX_TOTAL_FEE_BPS) + FEE_BPS_MARGIN
 
+    def _observed_chain_fee_bps(self) -> int | None:
+        if self._chain_fee_bps is not None:
+            return self._chain_fee_bps
+        try:
+            from solders.pubkey import Pubkey
+
+            from zoora_signer.constants import FEE_PROGRAM, PUMP_PROGRAM
+            from zoora_signer.quote import parse_fee_bps
+            from zoora_signer.txbuild import _pda
+
+            pump = Pubkey.from_string(PUMP_PROGRAM)
+            fee_pda = str(_pda([b"fee_config", bytes(pump)], Pubkey.from_string(FEE_PROGRAM)))
+            info = self._account(fee_pda)
+        except Exception:
+            return None
+        if info is None or not info[0] or info[3] != FEE_PROGRAM:
+            return None
+        fees = parse_fee_bps(info[4], 0)
+        if fees is None:
+            return None
+        self._chain_fee_bps = fees[0] + fees[1]
+        return self._chain_fee_bps
+
+    def _sha_rows(self, db: sqlite3.Connection, sql: str) -> str:
+        rows = [{key: row[key] for key in row.keys()} for row in db.execute(sql)]
+        blob = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(blob).hexdigest()
+
     def _book_snapshot(self, db: sqlite3.Connection) -> dict[str, str | int | bool | None]:
         trade = db.execute("SELECT COUNT(*) AS n FROM trades").fetchone()
         opened = db.execute(
             "SELECT COALESCE(SUM(tokens), 0) AS tokens FROM trades WHERE status IN ('open', 'moon')"
         ).fetchone()
         reservations = db.execute("SELECT COUNT(*) AS n FROM reservations").fetchone()
+        closed = db.execute(
+            "SELECT COALESCE(SUM(recovered_cents - cost_cents), 0) AS pnl FROM trades WHERE status = 'closed'"
+        ).fetchone()
+        hits = db.execute("SELECT COUNT(*) AS n FROM intent_hits").fetchone()
+        expected = db.execute(
+            "SELECT COALESCE(SUM(lamports), 0) AS n FROM expected_deposits WHERE consumed = 0"
+        ).fetchone()
         row = _state(db)
         return {
             "trade_count": int(trade["n"] if trade is not None else 0),
@@ -1960,25 +2075,78 @@ class Signer:
             "route_approved": int(row["route_approved"]),
             "execution_mode": str(row["execution_mode"]),
             "ledger_sol_lamports": int(row["ledger_sol_lamports"] or 0),
+            "whitelist_sha256": self._sha_rows(db, "SELECT address, added_ms FROM whitelist ORDER BY address"),
+            "equity_sha256": self._sha_rows(
+                db,
+                "SELECT ct_day, start_equity_cents, deposits_cents, withdrawals_cents FROM equity_day ORDER BY ct_day",
+            ),
+            "closed_pnl_cents": int(closed["pnl"] if closed is not None else 0),
+            "decisions_sha256": self._sha_rows(
+                db, "SELECT intent_id, ok, code, simulated FROM decisions ORDER BY intent_id"
+            ),
+            "intent_hit_count": int(hits["n"] if hits is not None else 0),
+            "expected_deposit_lamports": int(expected["n"] if expected is not None else 0),
+            "hmac_version": int(row["hmac_version"]),
+            "route_source": str(row["route_source"] or ""),
         }
 
-    def _last_snapshot(self, db: sqlite3.Connection) -> dict[str, str | int | bool | None]:
+    def _last_payload(self, db: sqlite3.Connection) -> dict[str, object] | None:
         last = db.execute("SELECT payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
         if last is None:
-            return self._book_snapshot(db)
+            return None
         try:
             body = json.loads(str(last["payload"]))
         except json.JSONDecodeError:
-            return {}
-        if not isinstance(body, dict):
-            return {}
-        snap: dict[str, str | int | bool | None] = {}
-        for key in ("trade_count", "open_tokens", "reservation_count", "route_approved", "ledger_sol_lamports"):
-            if type(body.get(key)) is int:
-                snap[key] = int(body[key])
-        if isinstance(body.get("execution_mode"), str):
-            snap["execution_mode"] = str(body["execution_mode"])
-        return snap
+            return None
+        return body if isinstance(body, dict) else None
+
+    def _trusted_snapshot(self, db: sqlite3.Connection) -> dict[str, str | int | bool | None]:
+        """Last event that stamped a digest. Carried boot events are not trusted."""
+
+        keys = (
+            "trade_count",
+            "open_tokens",
+            "reservation_count",
+            "route_approved",
+            "ledger_sol_lamports",
+            "closed_pnl_cents",
+            "intent_hit_count",
+            "expected_deposit_lamports",
+            "hmac_version",
+        )
+        texts = (
+            "execution_mode",
+            "whitelist_sha256",
+            "equity_sha256",
+            "decisions_sha256",
+            "route_source",
+            "state_sha256",
+        )
+        trusted: dict[str, str | int | bool | None] = {}
+        rows = db.execute("SELECT payload FROM events ORDER BY id").fetchall()
+        for row in rows:
+            try:
+                body = json.loads(str(row["payload"]))
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(body, dict) or body.get("snapshot_carried") is True:
+                continue
+            if not isinstance(body.get("state_sha256"), str):
+                continue
+            trusted = {}
+            for key in keys:
+                if type(body.get(key)) is int:
+                    trusted[key] = int(body[key])
+            for key in texts:
+                if isinstance(body.get(key), str):
+                    trusted[key] = str(body[key])
+        return trusted
+
+    def _last_snapshot(self, db: sqlite3.Connection) -> dict[str, str | int | bool | None]:
+        found = self._trusted_snapshot(db)
+        if found:
+            return found
+        return self._book_snapshot(db)
 
     def _counters_match_log(self, db: sqlite3.Connection) -> bool:
         """Daily buys, open trades, and their cost must match the HMAC'd fill and sell events."""
@@ -2091,47 +2259,6 @@ class Signer:
 
         return transact(self.path, op)
 
-    def rekey(self, confirmation: str) -> Decision:
-        """Owner-confirmed genesis for a database whose events are still unkeyed sha256."""
-
-        if confirmation != "REKEY":
-            return Decision(False, "CONFIRMATION_REQUIRED", False)
-        key = self._event_key()
-        if key is None:
-            return Decision(False, "EVENT_KEY_REQUIRED", False)
-        from zoora_signer.db import verify_legacy_chain
-        from zoora_signer.secrets import event_key_id
-
-        def op(conn: sqlite3.Connection) -> Decision:
-            db = _db(conn)
-            if self._verify(db):
-                return Decision(True, "EVENT_KEY_CURRENT", False)
-            if not verify_legacy_chain(db):
-                return Decision(False, "HASH_CHAIN", False)
-            if not self.s.chain.authoritative:
-                return Decision(False, "RECONCILE_REQUIRED", False)
-            try:
-                chain_sol = self.s.chain.sol_lamports()
-            except Exception:
-                return Decision(False, "RECONCILE_REQUIRED", False)
-            if type(chain_sol) is not int or int(_state(db)["ledger_sol_lamports"] or 0) != chain_sol:
-                return Decision(False, "RECONCILE_REQUIRED", False)
-            pending = db.execute(
-                "SELECT COUNT(*) AS n FROM reservations WHERE status IN ('reserved', 'signing')"
-            ).fetchone()
-            if pending is not None and int(pending["n"]) != 0:
-                return Decision(False, "RECONCILE_REQUIRED", False)
-            event_id = self._event(
-                db,
-                "event_key_genesis",
-                {"event_key_id": event_key_id(key), "provider": self.s.provider_name},
-            )
-            return Decision(True, "EVENT_KEY_GENESIS", False, event_id=event_id)
-
-        decision = transact(self.path, op)
-        self._sync_hud()
-        return decision
-
     def _event_key(self) -> bytes | None:
         getter = getattr(self.s.secrets, "get_event_hmac", None)
         if not callable(getter):
@@ -2238,11 +2365,14 @@ class Signer:
         if row is None:
             return False
         written = int(row["written"] or 0)
+        # The off-PC monotonic anchor (P6) is the broadcaster PR's job. This file
+        # is the on-PC copy: once any event exists, a missing or empty file is a mismatch.
+        have_events = db.execute("SELECT 1 FROM events LIMIT 1").fetchone() is not None
         if not path.is_file():
-            return written == 0
+            return written == 0 and not have_events
         lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line]
         if not lines:
-            return True
+            return not have_events and written == 0
         count, head = self._chain_head(db)
         return lines[-1] == f"{count}|{head}"
 
@@ -2301,7 +2431,10 @@ class Signer:
             db.execute("UPDATE anchor_meta SET written = 1 WHERE id = 1")
             self._event(db, "anchor_written", {})
 
-        self._transact(mark)
+        try:
+            self._transact(mark)
+        except AnchorMismatch:
+            return
         if self.s.hud_path is not None:
             with self.s.hud_path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"anchor": line}) + "\n")

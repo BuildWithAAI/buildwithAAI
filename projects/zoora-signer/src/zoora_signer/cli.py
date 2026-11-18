@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from pathlib import Path
@@ -78,7 +79,7 @@ class _RpcChain:
         if not result.ok or not isinstance(result.value, dict):
             raise RuntimeError("BALANCE_UNAVAILABLE")
         value = result.value.get("value")
-        if type(value) is not int or value < 0:
+        if type(value) is not int or value < 0 or value > 2**64 - 1:
             raise RuntimeError("BALANCE_UNAVAILABLE")
         return value
 
@@ -263,8 +264,7 @@ def _parser() -> argparse.ArgumentParser:
     sell.add_argument("--tokens", type=int, default=0)
     sell.add_argument("--confirm", default="")
     sub.add_parser("init-event-key")
-    rekey = sub.add_parser("rekey")
-    rekey.add_argument("--confirm", required=True)
+    sub.add_parser("reboot")
     sub.add_parser("sell-all")
     deposit = sub.add_parser("expect-deposit")
     deposit.add_argument("lamports", type=int)
@@ -314,8 +314,13 @@ def main(argv: list[str] | None = None) -> int:
         decision = signer.resume()
     elif args.cmd == "halt":
         decision = signer.halt("owner")
+    elif args.cmd == "reboot":
+        print(f"activity={signer.activity()} mode={signer.mode()}")
+        return 0
     elif args.cmd == "reanchor":
         decision = signer.reanchor(args.confirm)
+        if signer.last_reanchor_diff:
+            print(json.dumps({key: list(pair) for key, pair in signer.last_reanchor_diff.items()}, sort_keys=True))
     elif args.cmd == "owner-sell-tampered":
         decision = signer.owner_sell_after_tamper(args.mint, args.confirm)
     elif args.cmd == "unhalt":
@@ -327,8 +332,6 @@ def main(argv: list[str] | None = None) -> int:
         decision = signer.init_event_key()
         if decision.ok:
             print("event key stored")
-    elif args.cmd == "rekey":
-        decision = signer.rekey(args.confirm)
     elif args.cmd == "sell-all":
         results = signer.sell_all()
         print(f"sells={len(results)}")

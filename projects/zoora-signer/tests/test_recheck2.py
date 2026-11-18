@@ -1016,7 +1016,7 @@ def test_market_reserves_do_not_change_the_chain_quote(tmp_path: Path) -> None:
 
     grab = Grab()
     services.broadcaster = grab  # type: ignore[assignment]
-    assert signer._broadcast_sell(MINT, 1_000_000_000_000).code == "BROADCAST_REFUSED"
+    assert signer._broadcast_sell(MINT, 1_000_000_000_000).code == "BROADCASTER_NOT_ENABLED"
     sold = build_curve_sell(
         user=str(signer._owner_pubkey()),
         mint_address=MINT,
@@ -1039,7 +1039,8 @@ def test_market_reserves_do_not_change_the_chain_quote(tmp_path: Path) -> None:
         token_in=1_000_000_000_000,
         slippage_bps=0,
     )
-    assert grab.raw == sold.raw
+    assert grab.raw == b""
+    assert signer.last_unsigned == sold.raw
     assert sold.limit_lamports != lied_sell.limit_lamports
 
 
@@ -1212,7 +1213,7 @@ def test_forged_fee_does_not_change_min_out(tmp_path: Path) -> None:
 
     grab = Grab()
     services.broadcaster = grab  # type: ignore[assignment]
-    assert signer._broadcast_sell(MINT, None).code == "BROADCAST_REFUSED"
+    assert signer._broadcast_sell(MINT, None).code == "BROADCASTER_NOT_ENABLED"
     from zoora_signer.txbuild import build_curve_sell
 
     honest = build_curve_sell(
@@ -1237,7 +1238,8 @@ def test_forged_fee_does_not_change_min_out(tmp_path: Path) -> None:
         token_in=1_000_000_000_000,
         slippage_bps=0,
     )
-    assert grab.raw == honest.raw
+    assert grab.raw == b""
+    assert signer.last_unsigned == honest.raw
     assert honest.limit_lamports != lied.limit_lamports
     services.max_fee_bps = 10_000
     assert signer._max_total_fee() == 135
@@ -1259,8 +1261,8 @@ def test_route_flip_and_token_shrinkage_block_reanchor(tmp_path: Path) -> None:
     assert signer.reanchor("REANCHOR").code == "RECONCILE_REQUIRED"
 
 
-def test_event_key_refuses_weak_keys_and_migrates_an_unkeyed_chain(tmp_path: Path) -> None:
-    from zoora_signer.db import connect, legacy_event_digest, verify_chain, verify_legacy_chain
+def test_event_key_refuses_weak_keys_and_an_unkeyed_chain_does_not_fill(tmp_path: Path) -> None:
+    from zoora_signer.db import connect, legacy_event_digest, verify_chain
     from zoora_signer.secrets import InvalidSigningKey
 
     signer, services = build(tmp_path)
@@ -1281,6 +1283,7 @@ def test_event_key_refuses_weak_keys_and_migrates_an_unkeyed_chain(tmp_path: Pat
     assert decision.ok
     fresh = services.secrets.get_event_hmac()
     assert fresh is not None and fresh.hex() not in decision.code and decision.intent_id != fresh.hex()
+    assert not hasattr(signer, "rekey")
     conn = connect(signer.path)
     prev = "0" * 64
     rows = conn.execute("SELECT id, ts_ms, kind, payload FROM events ORDER BY id").fetchall()
@@ -1292,14 +1295,10 @@ def test_event_key_refuses_weak_keys_and_migrates_an_unkeyed_chain(tmp_path: Pat
         )
         prev = digest
     conn.commit()
-    assert verify_legacy_chain(conn)
     assert verify_chain(conn, fresh) is False
     conn.close()
-    assert signer.rekey("no").code == "CONFIRMATION_REQUIRED"
-    assert signer.rekey("REKEY").ok
-    conn = connect(signer.path)
-    assert verify_chain(conn, fresh)
-    conn.close()
+    assert buy(signer).code != "FILLED"
+    assert signer.activity() == "HALTED"
 
 
 def test_sha256_event_and_a_missing_digest_do_not_fill(tmp_path: Path) -> None:
