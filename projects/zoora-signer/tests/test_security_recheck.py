@@ -74,9 +74,8 @@ def test_live_sell_stays_open_when_broadcast_is_refused(tmp_path: Path) -> None:
     assert buy(signer).ok
     services.market = type("Market", (), {"sell_inputs": lambda self, mint: _inputs()})()
     assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
-    assert signer.set_mode("LIVE").ok
-    decision = signer.owner_sell(MINT, 10_000_000_000_000, "OWNER_SELL")
-    assert decision.code == "BROADCAST_REFUSED"
+    assert signer.set_mode("LIVE").code == "SIMULATED_FILL"
+    assert signer.mode() == "DRY_RUN"
     conn = sqlite3.connect(signer.path)
     status = conn.execute("SELECT status FROM trades").fetchone()
     conn.close()

@@ -17,14 +17,9 @@ def ready(path: Path) -> Signer:
 
 
 def _close_open(signer: Signer) -> None:
-    from harness import record_state
-
-    conn = sqlite3.connect(signer.path)
-    conn.execute("UPDATE trades SET status = 'closed', tokens = 0 WHERE status IN ('open', 'moon')")
-    conn.execute("UPDATE signer_state SET ledger_sol_lamports = 100000000 WHERE id = 1")
-    conn.commit()
-    conn.close()
-    record_state(signer)
+    closed = signer.sell_all()
+    assert closed
+    assert all(item.ok and item.code == "CLOSED" for item in closed)
 
 
 def _set(signer: Signer, sql: str, params: tuple[object, ...] = ()) -> None:

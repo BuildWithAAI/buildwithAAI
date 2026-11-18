@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS trades (
   recovered_cents INTEGER NOT NULL,
   tokens INTEGER NOT NULL,
   status TEXT NOT NULL,
-  opened_ms INTEGER NOT NULL
+  opened_ms INTEGER NOT NULL,
+  simulated INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS decisions (
   intent_id TEXT PRIMARY KEY,
@@ -112,6 +113,9 @@ def init_db(path: str, provider: str) -> None:
     conn = connect(path)
     try:
         conn.executescript(SCHEMA)
+        columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(trades)").fetchall()}
+        if "simulated" not in columns:
+            conn.execute("ALTER TABLE trades ADD COLUMN simulated INTEGER NOT NULL DEFAULT 0")
         meta = conn.execute("SELECT id FROM anchor_meta WHERE id = 1").fetchone()
         events = conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()
         if meta is None and (events is None or int(events["n"]) == 0):

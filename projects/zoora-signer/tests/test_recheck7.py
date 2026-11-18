@@ -235,8 +235,10 @@ def test_owner_exit_high_fee_needs_its_own_confirm_and_doctor_warns(tmp_path: Pa
     assert owner is not None
     assert signer._chain_trade_facts(owner, CHAIN_MINT, False) is None
     assert signer._chain_trade_facts(owner, CHAIN_MINT, False, fee_cap=500) is not None
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
     assert signer.owner_sell(CHAIN_MINT, confirmation="OWNER_SELL").code == "BROADCAST_REFUSED"
-    assert signer.owner_sell(CHAIN_MINT, confirmation="OWNER_SELL_HIGH_FEE").code == "OWNER_SELL_SIMULATED"
+    assert signer.owner_sell(CHAIN_MINT, confirmation="OWNER_SELL_HIGH_FEE").code == "BROADCASTER_NOT_ENABLED"
     assert any(line.startswith("chain_fee: warn") for line in signer.doctor_lines())
     struct.pack_into("<QQQ", forged, 8 + 1 + 32, 0, 600, 0)
     signer._chain_fee_bps = None
@@ -290,6 +292,101 @@ def test_only_a_live_broadcaster_kind_may_submit(tmp_path: Path) -> None:
 
     services.broadcaster = Boom()  # type: ignore[assignment]
     failed = signer._broadcast_sell(CHAIN_MINT, 1_000_000_000_000)
-    assert failed.code == "BROADCAST_FAILED"
+    assert failed.code == "BROADCAST_REFUSED"
+
+    class Raw(Live):
+        def submit(self, payload: bytes) -> None:
+            raise RuntimeError("raw boom text")
+
+    services.broadcaster = Raw()  # type: ignore[assignment]
+    raw_result = signer._broadcast_sell(CHAIN_MINT, 1_000_000_000_000)
+    assert raw_result.code == "BROADCAST_FAILED"
+    stored = sqlite3.connect(signer.path).execute("SELECT payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
+    assert stored is not None and "raw boom text" not in str(stored[0])
     services.broadcaster = RefuseBroadcaster()
     assert signer._broadcast_sell(CHAIN_MINT, 1_000_000_000_000).code == "BROADCASTER_NOT_ENABLED"
+
+
+def test_dry_run_owner_exit_closes_and_a_simulated_fill_can_reanchor(tmp_path: Path) -> None:
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert buy(signer).ok
+    row = sqlite3.connect(signer.path).execute("SELECT simulated, status FROM trades").fetchone()
+    assert row is not None and int(row[0]) == 1 and row[1] == "open"
+    services.chain.authoritative = True
+    services.chain.sol = int(
+        sqlite3.connect(signer.path).execute("SELECT ledger_sol_lamports FROM signer_state").fetchone()[0]
+    )
+    assert signer.reanchor("REANCHOR").code == "REANCHORED"
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").code == "SIMULATED_FILL"
+    conn = sqlite3.connect(signer.path)
+    conn.execute("UPDATE trades SET simulated = 0 WHERE status = 'open'")
+    conn.commit()
+    conn.close()
+    assert signer.reanchor("REANCHOR").code == "RECONCILE_REQUIRED"
+    assert signer.owner_sell(MINT, confirmation="OWNER_SELL").code != "CLOSED"
+
+
+def test_a_restored_database_does_not_fill_or_rewrite_the_anchor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert buy(signer, intent_id="first").code != "ANCHOR_MISMATCH"
+    held = sqlite3.connect(signer.path)
+    held.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    held.close()
+    db = Path(signer.path)
+    anchor = db.with_suffix(".anchor")
+    shutil.copy(db, tmp_path / "older.sqlite")
+    services.clock.now += BUY_MIN_INTERVAL_MS  # type: ignore[attr-defined]
+    assert buy(signer, intent_id="second").code != "ANCHOR_MISMATCH"
+    held = sqlite3.connect(signer.path)
+    held.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    held.close()
+    anchored = anchor.read_text(encoding="utf-8")
+    shutil.copy(tmp_path / "older.sqlite", db)
+    for suffix in ("-wal", "-shm"):
+        extra = Path(str(db) + suffix)
+        if extra.exists():
+            extra.unlink()
+    assert buy(signer, intent_id="after-restore").code != "FILLED"
+    assert signer.activity() == "HALTED"
+    assert anchor.read_text(encoding="utf-8") == anchored
+    _reboot(monkeypatch, services, db)
+    assert Signer.open(services).activity() == "HALTED"
+
+
+def test_rekey_is_not_a_command(tmp_path: Path) -> None:
+    from zoora_signer.cli import _parser
+
+    signer, _services = build(tmp_path)
+    assert not hasattr(signer, "rekey")
+    with pytest.raises(SystemExit):
+        _parser().parse_args(["--db", str(signer.path), "rekey"])
+
+
+def test_chain_facts_use_the_ata_mint_and_owner(tmp_path: Path) -> None:
+    from test_recheck2 import MINT as CHAIN_MINT
+    from test_recheck2 import _arm
+
+    signer, services = build(tmp_path)
+    _arm(signer, services)
+    owner = signer._owner_pubkey()
+    assert owner is not None
+    assert signer._chain_trade_facts(owner, CHAIN_MINT, False) is not None
+    assert signer._ata_token_balance(owner, CHAIN_MINT) == 1_000_000_000_000
+    original = services.chain.account_info
+
+    def account_info(address: str) -> object:
+        found = original(address)
+        if isinstance(found, tuple) and len(found) == 5 and len(found[4]) >= 72 and found[4][64:72] != b"\x00" * 8:
+            data = bytearray(found[4])
+            data[0] ^= 0xFF
+            return (found[0], found[1], found[2], found[3], bytes(data))
+        return found
+
+    services.chain.account_info = account_info  # type: ignore[method-assign]
+    assert signer._chain_trade_facts(owner, CHAIN_MINT, False) is None
+    assert signer._ata_token_balance(owner, CHAIN_MINT) is None

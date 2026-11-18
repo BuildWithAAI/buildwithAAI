@@ -97,6 +97,20 @@ def _row_line(row: sqlite3.Row) -> str:
     return "|".join(f"{key}={row[key]}" for key in row.keys())
 
 
+def _ata_amount(data: bytes, owner: str, mint: str) -> int | None:
+    """Token amount when the account's mint and owner fields match. Otherwise None."""
+
+    from solders.pubkey import Pubkey
+
+    if len(data) < 72:
+        return None
+    if data[0:32] != bytes(Pubkey.from_string(mint)):
+        return None
+    if data[32:64] != bytes(Pubkey.from_string(owner)):
+        return None
+    return int.from_bytes(data[64:72], "little")
+
+
 def _state_digest(db: sqlite3.Connection) -> str:
     """Digest of the tables that feed caps, loss, and the anchor.
 
@@ -228,6 +242,7 @@ class Signer:
         self._chain_fee_bps: int | None = None
         self.last_reanchor_diff: dict[str, tuple[object, object]] = {}
         self.last_unsigned: bytes | None = None
+        self._in_anchor_halt = False
 
     @classmethod
     def open(cls, services: Services) -> Signer:
@@ -577,6 +592,9 @@ class Signer:
             if mode == "LIVE" and self._devnet_in_live():
                 self._event(db, "live_refused", {"code": "LIVE_HOST"})
                 return Decision(False, "LIVE_HOST", True)
+            if mode == "LIVE" and self._open_simulated(db):
+                self._event(db, "live_refused", {"code": "SIMULATED_FILL"})
+                return Decision(False, "SIMULATED_FILL", True)
             db.execute("UPDATE signer_state SET execution_mode = ? WHERE id = 1", (mode,))
             self._event(db, "mode", {"mode": mode})
             return Decision(True, "MODE", mode != "LIVE")
@@ -636,6 +654,8 @@ class Signer:
             db = _db(conn)
             if not self._verify(db):
                 return Decision(False, "HASH_CHAIN", False)
+            if not self._anchor_prefix_ok(db):
+                return Decision(False, "RECONCILE_REQUIRED", False)
             if not self.s.chain.authoritative:
                 return Decision(False, "RECONCILE_REQUIRED", False)
             try:
@@ -782,7 +802,58 @@ class Signer:
         killed = self._kill_observed() != "clear"
         if killed:
             _owner_log.warning("owner sell while the kill switch is not clear")
-        if self.mode() == "LIVE" and self._devnet_in_live():
+        if self._book_tampered():
+            return self._record_owner_exit(mint, token_amount or 0, killed, tamper=True)
+        if self.mode() == "LIVE":
+            return self._live_owner_exit(mint, token_amount, high_fee, killed)
+        return self._sell(mint, token_amount, owner=True, intent_id=None)
+
+    def _book_tampered(self) -> bool:
+        def op(conn: sqlite3.Connection) -> bool:
+            db = _db(conn)
+            reasons = _parse_reasons(str(_state(db)["halt_reason"] or ""))
+            return (not self._state_event_matches(db)) or bool(reasons & {"anchor_mismatch", "hash_chain"})
+
+        return query(self.path, op)
+
+    def _open_simulated(self, db: sqlite3.Connection) -> bool:
+        row = db.execute(
+            "SELECT 1 FROM trades WHERE simulated = 1 AND status IN ('open', 'moon') LIMIT 1"
+        ).fetchone()
+        return row is not None
+
+    def _record_owner_exit(self, mint: str, amount: int, killed: bool, *, tamper: bool) -> Decision:
+        """Record an owner exit that must not change the ledger. Used after a tamper and in LIVE."""
+
+        owner = self._owner_pubkey()
+        code = "BROADCASTER_NOT_ENABLED" if self.mode() == "LIVE" else "OWNER_SELL_SIMULATED"
+
+        def op(conn: sqlite3.Connection) -> Decision:
+            db = _db(conn)
+            ledger_before = int(_state(db)["ledger_sol_lamports"] or 0)
+            payload: Payload = {
+                "mint": mint,
+                "token_amount": amount,
+                "owner": owner or "",
+                "kill_logged": killed,
+                "tamper": tamper,
+                "code": code,
+            }
+            if tamper:
+                previous_digest = self._previous_digest(db)
+                if previous_digest is not None:
+                    payload["state_sha256"] = previous_digest
+            event_id = self._event(db, "owner_sell", payload, carry=tamper)
+            if int(_state(db)["ledger_sol_lamports"] or 0) != ledger_before:
+                return Decision(False, "LEDGER_BREACH", False, event_id=event_id)
+            if self.mode() == "LIVE":
+                return Decision(False, "BROADCASTER_NOT_ENABLED", False, event_id=event_id)
+            return Decision(True, "OWNER_SELL_SIMULATED", True, event_id=event_id)
+
+        return transact(self.path, op)
+
+    def _live_owner_exit(self, mint: str, token_amount: int | None, high_fee: bool, killed: bool) -> Decision:
+        if self._devnet_in_live():
             return Decision(False, "LIVE_HOST", False)
         owner = self._owner_pubkey()
         if owner is None:
@@ -831,33 +902,7 @@ class Signer:
         except (BuildError, PolicyError, KeyError, TypeError, ValueError):
             return Decision(False, "BROADCAST_REFUSED", False)
         del built
-
-        def op(conn: sqlite3.Connection) -> Decision:
-            db = _db(conn)
-            ledger_before = int(_state(db)["ledger_sol_lamports"] or 0)
-            reasons = _parse_reasons(str(_state(db)["halt_reason"] or ""))
-            tamper = (not self._state_event_matches(db)) or bool(reasons & {"anchor_mismatch", "hash_chain"})
-            code = "BROADCASTER_NOT_ENABLED" if self.mode() == "LIVE" else "OWNER_SELL_SIMULATED"
-            payload: Payload = {
-                "mint": mint,
-                "token_amount": amount,
-                "owner": owner,
-                "kill_logged": killed,
-                "tamper": tamper,
-                "code": code,
-            }
-            if tamper:
-                previous_digest = self._previous_digest(db)
-                if previous_digest is not None:
-                    payload["state_sha256"] = previous_digest
-            event_id = self._event(db, "owner_sell", payload, carry=tamper)
-            if int(_state(db)["ledger_sol_lamports"] or 0) != ledger_before:
-                return Decision(False, "LEDGER_BREACH", False, event_id=event_id)
-            if self.mode() == "LIVE":
-                return Decision(False, "BROADCASTER_NOT_ENABLED", False, event_id=event_id)
-            return Decision(True, "OWNER_SELL_SIMULATED", True, event_id=event_id)
-
-        return transact(self.path, op)
+        return self._record_owner_exit(mint, amount, killed, tamper=False)
 
     def _kill_observed(self) -> str:
         try:
@@ -1031,7 +1076,10 @@ class Signer:
             create = True
         ata_amount = 0
         if ata_info[0] and len(ata_info[4]) >= 72:
-            ata_amount = int.from_bytes(ata_info[4][64:72], "little")
+            parsed_amount = _ata_amount(ata_info[4], owner, mint)
+            if parsed_amount is None:
+                return None
+            ata_amount = parsed_amount
         return (
             curve_info[1],
             volume_exists,
@@ -1142,7 +1190,7 @@ class Signer:
                 self.s.broadcaster.submit(raw)
             except Exception as exc:
                 text = str(exc)
-                code = "BROADCAST_FAILED" if text in {"", "BROADCAST_DISABLED"} else text
+                code = "BROADCAST_REFUSED" if text in {"", "BROADCAST_DISABLED"} else "BROADCAST_FAILED"
                 return self._note("broadcast_result", {"code": code, "mint": mint, "trade": "open"})
             return self._note("broadcast_result", {"code": "BROADCAST_ACCEPTED", "mint": mint, "trade": "open"})
         except PolicyError:
@@ -1409,10 +1457,10 @@ class Signer:
             )
             db.execute(
                 """
-                INSERT INTO trades (mint, cost_cents, recovered_cents, tokens, status, opened_ms)
-                VALUES (?, ?, 0, ?, 'open', ?)
+                INSERT INTO trades (mint, cost_cents, recovered_cents, tokens, status, opened_ms, simulated)
+                VALUES (?, ?, 0, ?, 'open', ?, ?)
                 """,
-                (intent.mint, stake, 1_000_000, now),
+                (intent.mint, stake, 1_000_000, now, 1 if simulated else 0),
             )
             trade_id = int(db.execute("SELECT last_insert_rowid() AS id").fetchone()["id"])
             db.execute(
@@ -1957,6 +2005,12 @@ class Signer:
     def _transact(self, fn: Callable[[sqlite3.Connection], T]) -> T:
         def op(conn: sqlite3.Connection) -> T | object:
             db = _db(conn)
+            if not self._anchor_prefix_ok(db):
+                reasons = _parse_reasons(str(_state(db)["halt_reason"] or ""))
+                if "anchor_mismatch" not in reasons:
+                    _add_halt(db, "anchor_mismatch")
+                    self._event(db, "halt", {"reason": "anchor_mismatch"}, carry=True)
+                return _MISMATCH
             if not self._state_event_matches(db):
                 _add_halt(db, "anchor_mismatch")
                 self._event(db, "halt", {"reason": "anchor_mismatch"}, carry=True)
@@ -2086,6 +2140,7 @@ class Signer:
             ),
             "intent_hit_count": int(hits["n"] if hits is not None else 0),
             "expected_deposit_lamports": int(expected["n"] if expected is not None else 0),
+            "simulated_open": self._simulated_open_count(db),
             "hmac_version": int(row["hmac_version"]),
             "route_source": str(row["route_source"] or ""),
         }
@@ -2112,6 +2167,7 @@ class Signer:
             "closed_pnl_cents",
             "intent_hit_count",
             "expected_deposit_lamports",
+            "simulated_open",
             "hmac_version",
         )
         texts = (
@@ -2207,8 +2263,15 @@ class Signer:
         if type(previous_trades) is int and type(current_trades) is int and previous_trades > current_trades:
             return False
         owner = self._owner_pubkey()
-        rows = db.execute("SELECT mint, tokens FROM trades WHERE status IN ('open', 'moon')").fetchall()
+        rows = db.execute(
+            "SELECT mint, tokens, simulated FROM trades WHERE status IN ('open', 'moon')"
+        ).fetchall()
         for row in rows:
+            simulated = int(row["simulated"] or 0) == 1
+            if simulated and self.mode() == "LIVE":
+                return False
+            if simulated:
+                continue
             if owner is None:
                 return False
             balance = self._ata_token_balance(owner, str(row["mint"]))
@@ -2230,12 +2293,7 @@ class Signer:
             return None
         if not info[0] or len(info[4]) < 72:
             return 0
-        data = info[4]
-        if data[0:32] != bytes(Pubkey.from_string(mint)):
-            return None
-        if data[32:64] != bytes(Pubkey.from_string(owner)):
-            return None
-        return int.from_bytes(data[64:72], "little")
+        return _ata_amount(info[4], owner, mint)
 
     def init_event_key(self) -> Decision:
         """Generate an event HMAC key, store it in the keyring, and do not return the key."""
@@ -2356,6 +2414,60 @@ class Signer:
         head = str(last["hash"]) if last is not None else "0" * 64
         return count, head
 
+    def _simulated_open_count(self, db: sqlite3.Connection) -> int:
+        row = db.execute(
+            "SELECT COUNT(*) AS n FROM trades WHERE simulated = 1 AND status IN ('open', 'moon')"
+        ).fetchone()
+        return int(row["n"]) if row is not None else 0
+
+    def _anchor_line(self) -> str | None:
+        path = self._anchor_path()
+        if not path.is_file():
+            return None
+        lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line]
+        if not lines:
+            return ""
+        return lines[-1]
+
+    def _anchor_prefix_ok(self, db: sqlite3.Connection) -> bool:
+        """The last anchored (count, head) must still be a prefix of this chain."""
+
+        line = self._anchor_line()
+        if line is None:
+            row = db.execute("SELECT written FROM anchor_meta WHERE id = 1").fetchone()
+            return row is not None and int(row["written"] or 0) == 0
+        if line == "":
+            return self._anchor_matches(db)
+        count_text, separator, head = line.partition("|")
+        if separator != "|" or not count_text.isdigit() or len(head) != 64:
+            return False
+        count = int(count_text)
+        total_row = db.execute("SELECT COUNT(*) AS n FROM events").fetchone()
+        total = int(total_row["n"]) if total_row is not None else 0
+        if count > total:
+            return False
+        if count == 0:
+            return head == "0" * 64
+        row = db.execute("SELECT hash FROM events ORDER BY id LIMIT 1 OFFSET ?", (count - 1,)).fetchone()
+        return row is not None and str(row["hash"]) == head
+
+    def _halt_for_anchor_prefix(self) -> None:
+        if self._in_anchor_halt:
+            return
+        self._in_anchor_halt = True
+        try:
+            def op(conn: sqlite3.Connection) -> None:
+                db = _db(conn)
+                reasons = _parse_reasons(str(_state(db)["halt_reason"] or ""))
+                if "anchor_mismatch" in reasons or self._anchor_prefix_ok(db):
+                    return
+                _add_halt(db, "anchor_mismatch")
+                self._event(db, "halt", {"reason": "anchor_mismatch"}, carry=True)
+
+            transact(self.path, op)
+        finally:
+            self._in_anchor_halt = False
+
     def _anchor_matches(self, db: sqlite3.Connection) -> bool:
         path = self._anchor_path()
         try:
@@ -2408,11 +2520,17 @@ class Signer:
         return str(payload["state_sha256"]) == _state_digest(db)
 
     def _write_anchor(self) -> None:
-        def op(conn: sqlite3.Connection) -> str:
-            count, head = self._chain_head(_db(conn))
+        def op(conn: sqlite3.Connection) -> str | None:
+            db = _db(conn)
+            if not self._anchor_prefix_ok(db):
+                return None
+            count, head = self._chain_head(db)
             return f"{count}|{head}"
 
         line = query(self.path, op)
+        if line is None:
+            self._halt_for_anchor_prefix()
+            return
         path = self._anchor_path()
         previous = ""
         if path.is_file():

@@ -74,6 +74,8 @@ def _arm(signer: object, services: object, *, volume: bool = True, ata: bool = T
     ata_key = str(_ata(owner, base, mint))
     fee_key = str(_pda([b"fee_config", bytes(pump)], Pubkey.from_string(FEE_PROGRAM)))
     ata_data = bytearray(182)
+    ata_data[0:32] = bytes(mint)
+    ata_data[32:64] = bytes(owner)
     ata_data[64:72] = (1_000_000_000_000).to_bytes(8, "little")
     seen: dict[str, int] = {}
     table = {
@@ -788,10 +790,13 @@ def test_helius_rent_method_and_a_lying_volume_account(tmp_path: Path) -> None:
                     "data": [base64.b64encode(FEE).decode(), "base64"],
                 }
             elif address == ata:
+                ata_data = bytearray(182)
+                ata_data[0:32] = bytes(mint_key)
+                ata_data[32:64] = bytes(owner_key)
                 value = {
                     "lamports": 2_000_000,
                     "owner": TOKEN_2022,
-                    "data": [base64.b64encode(b"\x00" * 182).decode(), "base64"],
+                    "data": [base64.b64encode(bytes(ata_data)).decode(), "base64"],
                 }
             else:
                 value = None
@@ -1431,8 +1436,10 @@ def test_dry_run_owner_sell_does_not_call_the_broadcaster(tmp_path: Path) -> Non
 
     recorder = Recorder()
     services.broadcaster = recorder  # type: ignore[assignment]
+    assert buy(signer, mint=MINT).ok
     decision = signer.owner_sell(MINT, confirmation="OWNER_SELL")
-    assert decision.code == "OWNER_SELL_SIMULATED"
+    assert decision.code == "CLOSED"
+    assert signer.open_trade_count() == 0
     assert recorder.calls == 0
     assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
     assert signer.set_mode("LIVE").ok
