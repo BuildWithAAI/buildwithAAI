@@ -17,10 +17,13 @@ def ready(path: Path) -> Signer:
 
 
 def _set(signer: Signer, sql: str, params: tuple[object, ...] = ()) -> None:
+    from harness import record_state
+
     conn = sqlite3.connect(signer.path)
     conn.execute(sql, params)
     conn.commit()
     conn.close()
+    record_state(signer)
 
 
 def test_stake_boundary(tmp_path: Path) -> None:

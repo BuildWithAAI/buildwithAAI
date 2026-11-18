@@ -40,4 +40,7 @@ def test_daily_loss_still_allows_zoora_sells(tmp_path: Path) -> None:
     conn.execute("UPDATE equity_day SET start_equity_cents = 100000")
     conn.commit()
     conn.close()
+    from harness import record_state
+
+    record_state(signer)
     assert sell(signer).ok

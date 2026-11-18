@@ -7,9 +7,11 @@ import hmac
 import json
 import sqlite3
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import TypeVar
 from zoneinfo import ZoneInfo
 
 from zoora_signer.caps import CapView, evaluate_buy, evaluate_sell
@@ -140,6 +142,16 @@ class Services:
     market: object | None = None
     time_stop_ms: int = 6 * 60 * 60 * 1000
     hard_stop_bps: int = 5_000
+
+
+T = TypeVar("T")
+
+
+class AnchorMismatch(Exception):
+    """A write found signer_state different from the last recorded digest."""
+
+
+_MISMATCH = object()
 
 
 class RefuseBroadcaster:
@@ -275,6 +287,8 @@ class Signer:
         return [f"{name}: {'pass' if ok else 'fail'}" for name, ok in checks]
 
     def handle_intent(self, raw: bytes, signature: str) -> Decision:
+        if self.poll_kill() != "clear":
+            return Decision(False, "KILL_HOLD", self.mode() != "LIVE")
         reject_key_material_in_env()
         try:
             if not self._hmac_ok(raw, signature):
@@ -293,7 +307,10 @@ class Signer:
             return self._note("intent_refused", {"code": "BAD_INTENT"})
         if intent.key_id != self._key_id():
             return self._note("intent_refused", {"code": "BAD_KEY_ID", "intent_id": intent.intent_id})
-        stored = self._stored(intent.intent_id)
+        try:
+            stored = self._stored(intent.intent_id)
+        except AnchorMismatch:
+            return Decision(False, "ANCHOR_MISMATCH", self.mode() != "LIVE")
         if stored is not None:
             return stored
         now = self.s.clock.now_ms()
@@ -366,6 +383,7 @@ class Signer:
                         "UPDATE signer_state SET halt_reason = ? WHERE id = 1",
                         (_format_reasons(kept) if kept else None,),
                     )
+                    self._event(db, "halt_retained", {"reason": _format_reasons(kept)})
                 return Decision(False, "HALT_PERSISTED", False)
             db.execute("UPDATE signer_state SET activity = 'ACTIVE' WHERE id = 1")
             if reading.ok:
@@ -375,7 +393,7 @@ class Signer:
             simulated = str(row["execution_mode"]) != "LIVE"
             return Decision(True, "RESUMED", simulated, event_id=event_id)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -400,7 +418,7 @@ class Signer:
             self._event(db, "unhalt", {"previous": _format_reasons(reasons)})
             return Decision(True, "UNHALTED", True)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -453,7 +471,7 @@ class Signer:
             )
             return Decision(True, "ROUTE_APPROVED", False, event_id=event_id)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -479,7 +497,7 @@ class Signer:
             self._event(db, "mode", {"mode": mode})
             return Decision(True, "MODE", mode != "LIVE")
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -497,7 +515,7 @@ class Signer:
             self._event(db, "hmac_rotated", {"version": version})
             return Decision(True, "HMAC_ROTATED", False)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -514,7 +532,23 @@ class Signer:
             self._event(db, "whitelist_add", {"address": address})
             return Decision(True, "WHITELISTED", False)
 
-        return transact(self.path, op)
+        decision = self._run(op)
+        self._sync_hud()
+        return decision
+
+    def reanchor(self) -> Decision:
+        """Record the current state and chain head. Plain UNHALT does not do this."""
+
+        def op(conn: sqlite3.Connection) -> Decision:
+            db = _db(conn)
+            if not verify_chain(db):
+                return Decision(False, "HASH_CHAIN", False)
+            event_id = self._event(db, "reanchor", {"provider": self.s.provider_name})
+            return Decision(True, "REANCHORED", False, event_id=event_id)
+
+        decision = transact(self.path, op)
+        self._sync_hud()
+        return decision
 
     def expect_deposit(self, lamports: int, ttl_s: int = 3600) -> Decision:
         if lamports <= 0 or ttl_s <= 0:
@@ -533,7 +567,7 @@ class Signer:
             self._event(db, "expect_deposit", {"lamports": lamports, "ttl_s": ttl_s})
             return Decision(True, "EXPECT_DEPOSIT", False)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -589,7 +623,7 @@ class Signer:
             self._event(db, "halt", {"reason": "unexpected_sol"})
             return Decision(False, "UNEXPECTED_SOL", False)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -620,8 +654,6 @@ class Signer:
             return None
         from zoora_signer.txbuild import BuildError, build_curve_buy
 
-        if inputs.get("ata_rent_lamports") == 1:
-            return None
         chain = self._chain_trade_facts(owner, intent.mint, str(inputs["mint_owner"]), inputs.get("volume_exists"))
         if chain is None:
             return None
@@ -658,7 +690,12 @@ class Signer:
 
         from solders.pubkey import Pubkey
 
-        from zoora_signer.constants import PUMP_PROGRAM, SPL_TOKEN, USER_VOLUME_ACCOUNT_BYTES
+        from zoora_signer.constants import (
+            BONDING_CURVE_DISCRIMINATOR,
+            PUMP_PROGRAM,
+            SPL_TOKEN,
+            USER_VOLUME_ACCOUNT_BYTES,
+        )
         from zoora_signer.txbuild import _ata, _pda
 
         pump = Pubkey.from_string(PUMP_PROGRAM)
@@ -673,11 +710,20 @@ class Signer:
         ata_info = self._account(user_ata)
         if curve_info is None or volume_info is None or ata_info is None or not curve_info[0]:
             return None
+        if curve_info[3] != PUMP_PROGRAM or not curve_info[4].startswith(BONDING_CURVE_DISCRIMINATOR):
+            return None
+        if ata_info[0] and ata_info[3] != mint_owner:
+            return None
         if claimed_volume is True and not volume_info[0]:
             return None
-        if volume_info[0]:
-            if volume_info[2] <= 0:
-                return None
+        volume_verified = (
+            volume_info[0]
+            and volume_info[3] == PUMP_PROGRAM
+            and volume_info[2] == USER_VOLUME_ACCOUNT_BYTES
+        )
+        if claimed_volume is True and not volume_verified:
+            volume_verified = False
+        if volume_verified:
             volume_rent: int | None = None
             volume_exists = True
         else:
@@ -697,7 +743,7 @@ class Signer:
             create = True
         return (curve_info[1], volume_exists, volume_rent, ata_rent, create)
 
-    def _account(self, address: str) -> tuple[bool, int, int] | None:
+    def _account(self, address: str) -> tuple[bool, int, int, str, bytes] | None:
         ask = getattr(self.s.chain, "account_info", None)
         if not callable(ask):
             return None
@@ -705,16 +751,22 @@ class Signer:
             value = ask(address)
         except Exception:
             return None
-        if not isinstance(value, tuple) or len(value) != 3:
+        if not isinstance(value, tuple) or len(value) != 5:
             return None
-        exists, lamports, size = value
-        if type(exists) is not bool or type(lamports) is not int or type(size) is not int:
+        exists, lamports, size, owner, data = value
+        if (
+            type(exists) is not bool
+            or type(lamports) is not int
+            or type(size) is not int
+            or not isinstance(owner, str)
+            or not isinstance(data, bytes)
+        ):
             return None
         if lamports < 0 or size < 0:
             return None
         if not exists and (lamports != 0 or size != 0):
             return None
-        return exists, lamports, size
+        return exists, lamports, size, owner, data
 
     def _rent(self, size: int) -> int | None:
         ask = getattr(self.s.chain, "rent_exemption", None)
@@ -785,7 +837,7 @@ class Signer:
             ).fetchall()
             return [str(row["mint"]) for row in rows]
 
-        return [self.owner_sell(mint) for mint in transact(self.path, op)]
+        return [self.owner_sell(mint) for mint in self._transact(op)]
 
     def run_scheduled_exits(self) -> list[Decision]:
         if self.activity() == "HALTED":
@@ -815,7 +867,7 @@ class Signer:
                     due.append((str(row["mint"]), int(row["tokens"])))
             return due
 
-        due = transact(self.path, op)
+        due = self._transact(op)
         return [self._sell(mint, amount, owner=False, intent_id=None) for mint, amount in due]
 
     def activity(self) -> str:
@@ -937,7 +989,9 @@ class Signer:
             return (Decision(True, "RESERVED", True, intent.intent_id, event_id), reservation_id)
 
         try:
-            decision, reservation_id = transact(self.path, op)
+            decision, reservation_id = self._transact(op)
+        except AnchorMismatch:
+            return Decision(False, "ANCHOR_MISMATCH", True, intent.intent_id)
         except SecretInLog:
             self._halt("secret_in_log")
             return Decision(False, "SECRET_IN_LOG", False, intent.intent_id)
@@ -1055,7 +1109,7 @@ class Signer:
             )
             return Decision(True, "FILLED", simulated, intent.intent_id, event_id)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -1164,7 +1218,7 @@ class Signer:
             )
             return Decision(True, status.upper(), True, intent_id)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -1185,7 +1239,7 @@ class Signer:
             self._event(db, "released", {"reason": reason, "intent_id": intent_id or ""})
             return Decision(False, reason, True, intent_id)
 
-        decision = transact(self.path, op)
+        decision = self._run(op)
         self._sync_hud()
         return decision
 
@@ -1242,7 +1296,10 @@ class Signer:
             except Exception:
                 return False
         if reason == "anchor_mismatch":
-            return self._anchor_matches(db)
+            if not verify_chain(db) or not self._anchor_matches(db) or not self._state_event_matches(db):
+                return False
+            last = db.execute("SELECT kind FROM events ORDER BY id DESC LIMIT 1").fetchone()
+            return last is not None and str(last["kind"]) == "reanchor"
         if reason == "hash_chain":
             return verify_chain(db)
         if reason == "settle_error":
@@ -1467,7 +1524,7 @@ class Signer:
             self._event(db, "halt", {"reason": "unconfirmed"})
             return True
 
-        if transact(self.path, op):
+        if self._transact(op):
             self._sync_hud()
 
     def _pause(self, reason: str, failures: list[str]) -> None:
@@ -1477,7 +1534,7 @@ class Signer:
                 db.execute("UPDATE signer_state SET activity = 'PAUSED' WHERE id = 1")
             self._event(db, "preflight_failed", {"reason": reason, "checks": ",".join(failures)})
 
-        transact(self.path, op)
+        self._transact(op)
         self._sync_hud()
 
     def _halt(self, reason: str) -> None:
@@ -1497,7 +1554,7 @@ class Signer:
             return Decision(False, code, True, event_id=event_id)
 
         try:
-            decision = transact(self.path, op)
+            decision = self._run(op)
         except SecretInLog:
             return Decision(False, "SECRET_IN_LOG", False)
         self._sync_hud()
@@ -1547,7 +1604,7 @@ class Signer:
             return Decision(False, code, True, intent.intent_id, event_id)
 
         try:
-            decision = transact(self.path, op)
+            decision = self._run(op)
         except SecretInLog:
             return Decision(False, "SECRET_IN_LOG", False, intent.intent_id)
         self._sync_hud()
@@ -1563,7 +1620,27 @@ class Signer:
                 return None
             return Decision(bool(row["ok"]), str(row["code"]), bool(row["simulated"]), intent_id)
 
-        return transact(self.path, op)
+        return self._transact(op)
+
+    def _transact(self, fn: Callable[[sqlite3.Connection], T]) -> T:
+        def op(conn: sqlite3.Connection) -> T | object:
+            db = _db(conn)
+            if not self._state_event_matches(db):
+                _add_halt(db, "anchor_mismatch")
+                self._event(db, "halt", {"reason": "anchor_mismatch"})
+                return _MISMATCH
+            return fn(conn)
+
+        result = transact(self.path, op)
+        if result is _MISMATCH:
+            raise AnchorMismatch()
+        return result  # type: ignore[return-value]
+
+    def _run(self, fn: Callable[[sqlite3.Connection], Decision]) -> Decision:
+        try:
+            return self._transact(fn)
+        except AnchorMismatch:
+            return Decision(False, "ANCHOR_MISMATCH", False)
 
     def _event(self, db: sqlite3.Connection, kind: str, payload: Payload) -> int:
         recorded = dict(payload)
@@ -1609,7 +1686,7 @@ class Signer:
             rows = _db(conn).execute("SELECT address FROM whitelist").fetchall()
             return {str(row["address"]) for row in rows}
 
-        return transact(self.path, op)
+        return self._transact(op)
 
     def _whitelisted(self, db: sqlite3.Connection, address: str) -> bool:
         row = _db(db).execute("SELECT 1 FROM whitelist WHERE address = ?", (address,)).fetchone()
@@ -1691,7 +1768,7 @@ class Signer:
         def mark(conn: sqlite3.Connection) -> None:
             _db(conn).execute("UPDATE anchor_meta SET written = 1 WHERE id = 1")
 
-        transact(self.path, mark)
+        self._transact(mark)
         if self.s.hud_path is not None:
             with self.s.hud_path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"anchor": line}) + "\n")

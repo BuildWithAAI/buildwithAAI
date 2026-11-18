@@ -99,6 +99,8 @@ HELIUS_FREE_GPA_PER_S = 5
 HELIUS_CLIENT_RPC_PER_S = 8
 HELIUS_CLIENT_GPA_PER_S = 4
 RPC_PROVIDER_NAME = "helius"
+HELIUS_RPC_HOSTS = frozenset({"mainnet.helius-rpc.com", "devnet.helius-rpc.com"})
+BONDING_CURVE_DISCRIMINATOR = bytes.fromhex("17b7f83760d8ac60")
 
 STAKE_CAP_CENTS = 200
 OPEN_TRADE_CAP = 3

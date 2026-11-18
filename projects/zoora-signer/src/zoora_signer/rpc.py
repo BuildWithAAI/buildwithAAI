@@ -23,6 +23,7 @@ ALLOWED_METHODS = frozenset(
         "getMultipleAccounts",
         "getBalance",
         "getLatestBlockhash",
+        "getMinimumBalanceForRentExemption",
         "getSignatureStatuses",
         "simulateTransaction",
     }

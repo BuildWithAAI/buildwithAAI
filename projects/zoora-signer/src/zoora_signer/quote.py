@@ -61,11 +61,11 @@ def accept_chain_rent(chain: int, data_len: int) -> int | None:
     """Budget max(chain, formula). Refuse a value more than 1% from the formula."""
 
     formula = rent_exempt_lamports(data_len)
-    if formula <= 0 or chain <= 1:
+    if formula <= 0 or chain < formula:
         return None
-    if abs(chain - formula) * 10_000 > formula * RENT_TOLERANCE_BPS:
+    if (chain - formula) * 10_000 > formula * RENT_TOLERANCE_BPS:
         return None
-    return max(chain, formula)
+    return chain
 
 
 def lamports_for_cents(cents: int, sol_usd_cents: int) -> int | None:

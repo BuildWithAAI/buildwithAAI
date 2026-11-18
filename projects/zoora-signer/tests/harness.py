@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import uuid
 from pathlib import Path
 
@@ -240,6 +241,18 @@ def set_ledger(signer: Signer, lamports: int) -> None:
     conn.execute("UPDATE signer_state SET ledger_sol_lamports = ?", (lamports,))
     conn.commit()
     conn.close()
+    record_state(signer)
+
+
+def record_state(signer: Signer) -> None:
+    """Record a fixture edit so the next intent sees a matching state digest."""
+    from zoora_signer.db import transact
+    from zoora_signer.signer import _state_digest
+
+    def op(conn: sqlite3.Connection) -> None:
+        signer._event(conn, "fixture_state", {"state_sha256": _state_digest(conn)})
+
+    transact(signer.path, op)
 
 
 def pass_body(mint: str, evaluated_s: float, **extra: object) -> str:

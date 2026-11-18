@@ -95,25 +95,28 @@ class _RpcChain:
             return None
         return int(result.value)
 
-    def account_info(self, address: str) -> tuple[bool, int, int] | None:
+    def account_info(self, address: str) -> tuple[bool, int, int, str, bytes] | None:
         result = self._rpc.call("getAccountInfo", [address, {"encoding": "base64"}])  # type: ignore[attr-defined]
         if not result.ok or not isinstance(result.value, dict):
             return None
         value = result.value.get("value")
         if value is None:
-            return (False, 0, 0)
+            return (False, 0, 0, "", b"")
         if not isinstance(value, dict) or type(value.get("lamports")) is not int:
             return None
         import base64
 
         data = value.get("data")
-        size = 0
-        if isinstance(data, list) and data:
-            try:
-                size = len(base64.b64decode(str(data[0])))
-            except ValueError:
-                return None
-        return (True, int(value["lamports"]), size)
+        owner = value.get("owner")
+        if not isinstance(owner, str):
+            return None
+        if not isinstance(data, list) or len(data) < 2 or data[1] != "base64":
+            return None
+        try:
+            raw = base64.b64decode(str(data[0]), validate=True)
+        except ValueError:
+            return None
+        return (True, int(value["lamports"]), len(raw), owner, raw)
 
 
 class _RpcMarks:
@@ -161,6 +164,15 @@ class _RpcMarks:
         return lamports * sol_usd_cents(reading) // 1_000_000_000
 
 
+def _helius_url(url: str) -> bool:
+    from urllib.parse import urlparse
+
+    from zoora_signer.constants import HELIUS_RPC_HOSTS
+
+    parsed = urlparse(url)
+    return parsed.scheme == "https" and parsed.hostname in HELIUS_RPC_HOSTS and parsed.username is None
+
+
 def _acl_paths(db: Path, hud: Path, rpc_env: Path | None, kill_dir: Path | None = None) -> list[str]:
     paths = [db, db.parent, Path(str(db) + "-wal"), Path(str(db) + "-shm"), hud, hud.parent]
     if rpc_env is not None:
@@ -192,7 +204,7 @@ def _services(args: argparse.Namespace, *, create: bool) -> Services:
     oracle: Oracle
     marks: MarkSource
     chain: ChainView
-    if isinstance(rpc_url, str) and rpc_url.startswith("https://"):
+    if isinstance(rpc_url, str) and _helius_url(rpc_url):
         oracle, marks, chain = _live_readers(rpc_url, clock)
     else:
         oracle = _DownOracle()
@@ -245,6 +257,7 @@ def _parser() -> argparse.ArgumentParser:
     route.add_argument("--source", required=True)
     route.add_argument("--date", required=True)
     route.add_argument("--text", required=True)
+    sub.add_parser("reanchor")
     unhalt = sub.add_parser("unhalt")
     unhalt.add_argument("--confirm", required=True)
     mode = sub.add_parser("mode")
@@ -281,6 +294,8 @@ def main(argv: list[str] | None = None) -> int:
         decision = signer.resume()
     elif args.cmd == "halt":
         decision = signer.halt("owner")
+    elif args.cmd == "reanchor":
+        decision = signer.reanchor()
     elif args.cmd == "unhalt":
         decision = signer.unhalt(args.confirm)
     elif args.cmd == "sell":

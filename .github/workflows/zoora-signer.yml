@@ -86,9 +86,13 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
-      - run: python -m pip install build==1.2.2
+      - run: python -m pip install --require-hashes -r requirements.lock.txt
       - run: python -m build
-      - run: python -m pip install dist/*.whl
+      - run: |
+          set -euo pipefail
+          whl="$(ls dist/*.whl)"
+          hash="$(sha256sum "$whl" | awk '{print $1}')"
+          python -m pip install --no-deps --require-hashes "$whl" --hash="sha256:${hash}"
       - run: zoora-signer --help
 
   validator:

@@ -55,6 +55,9 @@ def test_loss_and_rate_concurrency(tmp_path: Path) -> None:
     conn.execute("UPDATE signer_state SET ledger_sol_lamports = ?", (60_000_000,))
     conn.commit()
     conn.close()
+    from harness import record_state
+
+    record_state(signer)
     codes = _burst(signer, 8)
     assert codes.count("RESERVED") == 1
     rate, rate_services = build(tmp_path / "rate")
