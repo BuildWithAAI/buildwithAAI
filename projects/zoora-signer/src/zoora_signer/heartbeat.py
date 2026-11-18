@@ -85,12 +85,19 @@ def _powershell(script: str, path: Path, owner: str) -> subprocess.CompletedProc
     env["HEARTBEAT_PATH"] = str(path)
     env["HEARTBEAT_OWNER_SID"] = owner
     return subprocess.run(
-        ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+        [_windows_powershell(), "-NoProfile", "-NonInteractive", "-Command", script],
         check=False,
         capture_output=True,
         text=True,
         env=env,
     )
+
+
+def _windows_powershell() -> str:
+    system = Path(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
+    if system.is_file():
+        return str(system)
+    return "powershell"
 
 
 _SET_ACL = r"""
