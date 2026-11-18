@@ -56,39 +56,64 @@ def _restrict_windows_acl(path: Path) -> None:
     owner = _owner_sid()
     if not owner:
         raise OSError("owner sid unavailable")
-    completed = subprocess.run(
-        [
-            "icacls",
-            str(path),
-            "/inheritance:r",
-            "/grant:r",
-            f"*{owner}:(F)",
-            "/grant:r",
-            "*S-1-5-18:(R)",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    completed = _powershell(_SET_ACL, path, owner)
     if completed.returncode != 0 or not _windows_acl_ok(path):
-        raise OSError("heartbeat ACL was not restricted")
+        detail = (completed.stderr or completed.stdout).strip()
+        raise OSError(f"heartbeat ACL was not restricted: {detail}")
 
 
 def _windows_acl_ok(path: Path) -> bool:
     owner = _owner_sid()
     if not owner:
         return False
-    completed = subprocess.run(
-        ["icacls", str(path)],
+    completed = _powershell(_READ_ACL, path, owner)
+    if completed.returncode != 0:
+        return False
+    found: set[str] = set()
+    for line in completed.stdout.splitlines():
+        parts = line.split()
+        if not parts or not parts[0].startswith("S-1-"):
+            continue
+        if len(parts) < 2 or parts[1] != "Allow":
+            return False
+        found.add(parts[0])
+    return found == {owner, "S-1-5-18"}
+
+
+def _powershell(script: str, path: Path, owner: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["HEARTBEAT_PATH"] = str(path)
+    env["HEARTBEAT_OWNER_SID"] = owner
+    return subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
         check=False,
         capture_output=True,
         text=True,
+        env=env,
     )
-    if completed.returncode != 0:
-        return False
-    from zoora_signer.preflight import parse_icacls
 
-    return parse_icacls(completed.stdout, owner)
+
+_SET_ACL = r"""
+$ErrorActionPreference = 'Stop'
+$path = $env:HEARTBEAT_PATH
+$acl = Get-Acl -LiteralPath $path
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($rule in @($acl.Access)) { [void]$acl.RemoveAccessRuleAll($rule.IdentityReference) }
+$ownerSid = New-Object System.Security.Principal.SecurityIdentifier($env:HEARTBEAT_OWNER_SID)
+$system = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')
+$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($ownerSid, 'FullControl', 'Allow')))
+$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($system, 'Read', 'Allow')))
+Set-Acl -LiteralPath $path -AclObject $acl
+"""
+
+_READ_ACL = r"""
+$ErrorActionPreference = 'Stop'
+$acl = Get-Acl -LiteralPath $env:HEARTBEAT_PATH
+foreach ($rule in $acl.Access) {
+  $sid = $rule.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value
+  Write-Output ($sid + ' ' + $rule.AccessControlType)
+}
+"""
 
 
 def _owner_sid() -> str:
