@@ -96,19 +96,26 @@ def _row_line(row: sqlite3.Row) -> str:
 
 
 def _state_digest(db: sqlite3.Connection) -> str:
-    """Digest of signer_state plus reservations and trades.
+    """Digest of the tables that feed caps, loss, and the anchor.
 
-    Deleting a reservation or a trade changes the open-trade and buy counters.
-    Those rows are part of the digest so that edit halts the next write.
+    A change to any of them without a new HMAC'd event halts the next write.
     """
 
     chunks: list[str] = []
     state = db.execute("SELECT * FROM signer_state WHERE id = 1").fetchone()
     chunks.append("state:" + (_row_line(state) if state is not None else ""))
-    reservations = db.execute("SELECT * FROM reservations ORDER BY id").fetchall()
-    chunks.extend(f"reservation:{_row_line(row)}" for row in reservations)
-    trades = db.execute("SELECT * FROM trades ORDER BY id").fetchall()
-    chunks.extend(f"trade:{_row_line(row)}" for row in trades)
+    tables = (
+        ("reservations", db.execute("SELECT * FROM reservations ORDER BY id").fetchall()),
+        ("trades", db.execute("SELECT * FROM trades ORDER BY id").fetchall()),
+        ("equity_day", db.execute("SELECT * FROM equity_day ORDER BY ct_day").fetchall()),
+        ("intent_hits", db.execute("SELECT * FROM intent_hits ORDER BY id").fetchall()),
+        ("expected_deposits", db.execute("SELECT * FROM expected_deposits ORDER BY id").fetchall()),
+        ("whitelist", db.execute("SELECT * FROM whitelist ORDER BY address").fetchall()),
+        ("decisions", db.execute("SELECT * FROM decisions ORDER BY intent_id").fetchall()),
+        ("anchor_meta", db.execute("SELECT * FROM anchor_meta ORDER BY id").fetchall()),
+    )
+    for name, rows in tables:
+        chunks.extend(f"{name}:{_row_line(row)}" for row in rows)
     return hashlib.sha256("\n".join(chunks).encode()).hexdigest()
 
 
@@ -236,6 +243,8 @@ class Signer:
 
             db = conn if isinstance(conn, Connection) else None
             assert isinstance(db, Connection)
+            if not self._verify(db):
+                _add_halt(db, "hash_chain")
             if not self._anchor_matches(db) or not self._state_event_matches(db):
                 _add_halt(db, "anchor_mismatch")
             row = db.execute("SELECT * FROM signer_state WHERE id = 1").fetchone()
@@ -617,6 +626,8 @@ class Signer:
             current = self._book_snapshot(db)
             previous = self._last_snapshot(db)
             if not self._snapshot_reconciles(db, previous, current):
+                return Decision(False, "RECONCILE_REQUIRED", False)
+            if not self._counters_match_log(db):
                 return Decision(False, "RECONCILE_REQUIRED", False)
             event_id = self._event(
                 db,
@@ -1068,7 +1079,15 @@ class Signer:
             )
             if self.poll_kill() != "clear":
                 return self._note("sell_refused", {"code": "KILL_HOLD", "mint": mint})
-            self.s.broadcaster.submit(built.raw)
+            if not getattr(self.s.broadcaster, "enabled", False):
+                return self._note("sell_refused", {"code": "BROADCASTER_NOT_ENABLED", "mint": mint})
+            try:
+                self.s.broadcaster.submit(built.raw)
+            except Exception as exc:
+                text = str(exc)
+                code = "BROADCAST_REFUSED" if text in {"", "BROADCAST_DISABLED"} else text
+                return self._note("sell_refused", {"code": code, "mint": mint})
+            return self._note("sell_refused", {"code": "BROADCAST_ACCEPTED", "mint": mint})
         except PolicyError:
             return self._note("sell_refused", {"code": "POLICY_REJECTED", "mint": mint})
         except BuildError as exc:
@@ -1847,7 +1866,6 @@ class Signer:
                 (intent.intent_id,),
             ).fetchone()
             if prior is None:
-                before = _state_digest(conn)
                 conn.execute(
                     "INSERT INTO intent_hits (intent_id, seen_ms) VALUES (?, ?)",
                     (intent.intent_id, now),
@@ -1856,14 +1874,7 @@ class Signer:
                     "INSERT INTO decisions (intent_id, ok, code, simulated) VALUES (?, 0, ?, 1)",
                     (intent.intent_id, code),
                 )
-                stamped = dict(payload)
-                stamped["state_sha256"] = before
-                if _state_digest(conn) != before:
-                    _add_halt(conn, "anchor_mismatch")
-                event_payload = stamped
-            else:
-                event_payload = payload
-            event_id = self._event(conn, "intent_refused", event_payload)
+            event_id = self._event(conn, "intent_refused", payload)
             return Decision(False, code, True, intent.intent_id, event_id)
 
         try:
@@ -1969,6 +1980,47 @@ class Signer:
             snap["execution_mode"] = str(body["execution_mode"])
         return snap
 
+    def _counters_match_log(self, db: sqlite3.Connection) -> bool:
+        """Daily buys, open trades, and their cost must match the HMAC'd fill and sell events."""
+
+        open_stakes: list[tuple[str, int]] = []
+        fills_today = 0
+        day = ct_day(self.s.clock.now_ms())
+        rows = db.execute("SELECT ts_ms, kind, payload FROM events ORDER BY id").fetchall()
+        for row in rows:
+            try:
+                payload = json.loads(str(row["payload"]))
+            except json.JSONDecodeError:
+                return False
+            if not isinstance(payload, dict):
+                return False
+            kind = str(row["kind"])
+            if kind == "fill":
+                stake = payload.get("stake_cents")
+                if type(stake) is not int:
+                    return False
+                open_stakes.append((str(payload.get("mint") or ""), stake))
+                if ct_day(int(row["ts_ms"])) == day:
+                    fills_today += 1
+            elif kind == "sell" and payload.get("status") == "closed":
+                mint = str(payload.get("mint") or "")
+                for index, (held, _stake) in enumerate(open_stakes):
+                    if held == mint:
+                        del open_stakes[index]
+                        break
+        db_open = db.execute(
+            "SELECT cost_cents FROM trades WHERE status IN ('open', 'moon') ORDER BY id"
+        ).fetchall()
+        if len(db_open) != len(open_stakes):
+            return False
+        if sum(int(item["cost_cents"]) for item in db_open) != sum(stake for _mint, stake in open_stakes):
+            return False
+        buys = db.execute(
+            "SELECT COUNT(*) AS n FROM reservations WHERE side = 'buy' AND reached_signing = 1 AND ct_day = ?",
+            (day,),
+        ).fetchone()
+        return buys is not None and int(buys["n"]) == fills_today
+
     def _snapshot_reconciles(
         self,
         db: sqlite3.Connection,
@@ -2010,7 +2062,12 @@ class Signer:
             return None
         if not info[0] or len(info[4]) < 72:
             return 0
-        return int.from_bytes(info[4][64:72], "little")
+        data = info[4]
+        if data[0:32] != bytes(Pubkey.from_string(mint)):
+            return None
+        if data[32:64] != bytes(Pubkey.from_string(owner)):
+            return None
+        return int.from_bytes(data[64:72], "little")
 
     def init_event_key(self) -> Decision:
         """Generate an event HMAC key, store it in the keyring, and do not return the key."""
@@ -2032,7 +2089,7 @@ class Signer:
             event_id = self._event(_db(conn), "event_key_init", {"event_key_id": key_id})
             return Decision(True, "EVENT_KEY_STORED", False, intent_id=key_id, event_id=event_id)
 
-        return self._run(op)
+        return transact(self.path, op)
 
     def rekey(self, confirmation: str) -> Decision:
         """Owner-confirmed genesis for a database whose events are still unkeyed sha256."""
@@ -2071,7 +2128,7 @@ class Signer:
             )
             return Decision(True, "EVENT_KEY_GENESIS", False, event_id=event_id)
 
-        decision = self._run(op)
+        decision = transact(self.path, op)
         self._sync_hud()
         return decision
 
@@ -2091,10 +2148,16 @@ class Signer:
         return verify_chain(db, key)
 
     def _devnet_in_live(self) -> bool:
+        """True when the configured host is not an allowed live Helius host."""
+
         from urllib.parse import urlparse
 
+        from zoora_signer.constants import HELIUS_LIVE_HOSTS
+
         url = self.s.secrets.get_rpc_url()
-        return isinstance(url, str) and urlparse(url).hostname == "devnet.helius-rpc.com"
+        if not isinstance(url, str) or not url:
+            return True
+        return urlparse(url).hostname not in HELIUS_LIVE_HOSTS
 
     def _needles(self) -> tuple[str, ...]:
         from zoora_signer.secrets import secret_needles
@@ -2184,15 +2247,34 @@ class Signer:
         return lines[-1] == f"{count}|{head}"
 
     def _state_event_matches(self, db: sqlite3.Connection) -> bool:
-        row = db.execute("SELECT payload FROM events ORDER BY id DESC LIMIT 1").fetchone()
+        """The last event's HMAC, previous-link, and state digest must all hold."""
+
+        from zoora_signer.db import GENESIS, event_digest
+
+        key = self._event_key()
+        row = db.execute(
+            "SELECT id, ts_ms, kind, payload, prev_hash, hash FROM events ORDER BY id DESC LIMIT 1"
+        ).fetchone()
         if row is None:
             return True
+        if key is None:
+            return False
+        prior = db.execute(
+            "SELECT hash FROM events WHERE id < ? ORDER BY id DESC LIMIT 1",
+            (int(row["id"]),),
+        ).fetchone()
+        prev = str(prior["hash"]) if prior is not None else GENESIS
+        if str(row["prev_hash"]) != prev:
+            return False
+        expect = event_digest(int(row["id"]), int(row["ts_ms"]), str(row["kind"]), prev, str(row["payload"]), key)
+        if str(row["hash"]) != expect:
+            return False
         try:
             payload = json.loads(str(row["payload"]))
         except json.JSONDecodeError:
             return False
-        if not isinstance(payload, dict) or "state_sha256" not in payload:
-            return True
+        if not isinstance(payload, dict) or not isinstance(payload.get("state_sha256"), str):
+            return False
         return str(payload["state_sha256"]) == _state_digest(db)
 
     def _write_anchor(self) -> None:
@@ -2212,7 +2294,12 @@ class Signer:
             handle.write(line + "\n")
 
         def mark(conn: sqlite3.Connection) -> None:
-            _db(conn).execute("UPDATE anchor_meta SET written = 1 WHERE id = 1")
+            db = _db(conn)
+            row = db.execute("SELECT written FROM anchor_meta WHERE id = 1").fetchone()
+            if row is not None and int(row["written"] or 0) == 1:
+                return
+            db.execute("UPDATE anchor_meta SET written = 1 WHERE id = 1")
+            self._event(db, "anchor_written", {})
 
         self._transact(mark)
         if self.s.hud_path is not None:

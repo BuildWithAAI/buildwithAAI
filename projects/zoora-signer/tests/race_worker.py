@@ -22,7 +22,7 @@ def child(db: str) -> str:
     secrets.hmac_key = b"k" * 32
     secrets.event_hmac = b"e" * 32
     secrets.signing_key = throwaway_secret()
-    secrets.rpc_url = "https://example.invalid/rpc?api-key=not-a-real-key"
+    secrets.rpc_url = "https://mainnet.helius-rpc.com/?api-key=not-a-real-key"
     services = Services(
         db_path=path,
         secrets=secrets,

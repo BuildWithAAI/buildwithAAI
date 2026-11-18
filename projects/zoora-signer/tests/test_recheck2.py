@@ -1007,7 +1007,7 @@ def test_market_reserves_do_not_change_the_chain_quote(tmp_path: Path) -> None:
     assert built.token_amount != lied.token_amount
 
     class Grab:
-        enabled = False
+        enabled = True
         raw = b""
 
         def submit(self, payload: bytes) -> None:
@@ -1203,7 +1203,7 @@ def test_forged_fee_does_not_change_min_out(tmp_path: Path) -> None:
     services.market = Market()
 
     class Grab:
-        enabled = False
+        enabled = True
         raw = b""
 
         def submit(self, payload: bytes) -> None:
@@ -1300,6 +1300,146 @@ def test_event_key_refuses_weak_keys_and_migrates_an_unkeyed_chain(tmp_path: Pat
     conn = connect(signer.path)
     assert verify_chain(conn, fresh)
     conn.close()
+
+
+def test_sha256_event_and_a_missing_digest_do_not_fill(tmp_path: Path) -> None:
+    from zoora_signer.db import connect, event_digest, legacy_event_digest
+    from zoora_signer.models import canonical
+    from zoora_signer.signer import _state_digest
+
+    signer, services = build(tmp_path / "sha")
+    assert activate(signer).ok
+    assert buy(signer).ok
+    conn = connect(signer.path)
+    conn.execute("DELETE FROM reservations")
+    digest = _state_digest(conn)
+    last = conn.execute("SELECT id, hash FROM events ORDER BY id DESC LIMIT 1").fetchone()
+    assert last is not None
+    body = canonical({"note": "forged", "state_sha256": digest})
+    new_id = int(last["id"]) + 1
+    prev = str(last["hash"])
+    conn.execute(
+        "INSERT INTO events (id, ts_ms, kind, payload, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?)",
+        (new_id, 1, "forged", body, prev, legacy_event_digest(new_id, 1, "forged", prev, body)),
+    )
+    conn.commit()
+    conn.close()
+    assert buy(signer).code != "FILLED"
+    assert buy(signer).code != "FILLED"
+    assert signer.activity() == "HALTED"
+
+    bare, services = build(tmp_path / "bare")
+    assert activate(bare).ok
+    assert buy(bare).ok
+    key = services.secrets.get_event_hmac()
+    assert key is not None
+    conn = connect(bare.path)
+    row = conn.execute(
+        "SELECT id, ts_ms, kind, payload, prev_hash FROM events ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    assert row is not None
+    payload = json.loads(str(row["payload"]))
+    assert isinstance(payload, dict)
+    del payload["state_sha256"]
+    body = canonical(payload)
+    prev = str(row["prev_hash"])
+    conn.execute(
+        "UPDATE events SET payload = ?, hash = ? WHERE id = ?",
+        (body, event_digest(int(row["id"]), int(row["ts_ms"]), str(row["kind"]), prev, body, key), int(row["id"])),
+    )
+    conn.commit()
+    conn.close()
+    assert buy(bare).code != "FILLED"
+    assert bare.activity() == "HALTED"
+
+
+def test_resetting_start_equity_after_a_loss_halts(tmp_path: Path) -> None:
+    import sqlite3
+
+    from harness import record_state
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    conn = sqlite3.connect(signer.path)
+    row = conn.execute("SELECT start_equity_cents FROM equity_day").fetchone()
+    assert row is not None
+    start = int(row[0])
+    conn.execute("UPDATE equity_day SET start_equity_cents = ?", (start + 401,))
+    conn.commit()
+    conn.close()
+    record_state(signer)
+    services.clock.now += 601_000
+    assert buy(signer).code == "DAILY_LOSS"
+    conn = sqlite3.connect(signer.path)
+    conn.execute("UPDATE equity_day SET start_equity_cents = ?", (start,))
+    conn.commit()
+    conn.close()
+    services.clock.now += 601_000
+    assert buy(signer).code != "FILLED"
+    assert signer.activity() == "HALTED"
+
+
+def test_reanchor_checks_counters_against_the_event_log(tmp_path: Path) -> None:
+    import sqlite3
+
+    from solders.pubkey import Pubkey
+
+    from harness import MINT
+    from zoora_signer.constants import TOKEN_2022
+    from zoora_signer.txbuild import _ata
+
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    assert buy(signer).ok
+    owner = str(signer._owner_pubkey())
+    ata_data = bytearray(72)
+    ata_data[0:32] = bytes(Pubkey.from_string(MINT))
+    ata_data[32:64] = bytes(Pubkey.from_string(owner))
+    ata_data[64:72] = (1_000_000).to_bytes(8, "little")
+    ata = str(_ata(Pubkey.from_string(owner), Pubkey.from_string(TOKEN_2022), Pubkey.from_string(MINT)))
+
+    def account_info(address: str) -> tuple[bool, int, int, str, bytes]:
+        if address == MINT:
+            return (True, 1, 82, TOKEN_2022, b"\x00" * 82)
+        if address == ata:
+            return (True, 1, len(ata_data), TOKEN_2022, bytes(ata_data))
+        return (False, 0, 0, "", b"")
+
+    services.chain.account_info = account_info  # type: ignore[attr-defined]
+    services.chain.authoritative = True
+    services.chain.sol = int(
+        sqlite3.connect(signer.path).execute("SELECT ledger_sol_lamports FROM signer_state").fetchone()[0]
+    )
+    assert signer.reanchor("REANCHOR").ok
+    conn = sqlite3.connect(signer.path)
+    conn.execute("UPDATE trades SET cost_cents = 0 WHERE status = 'open'")
+    conn.commit()
+    conn.close()
+    assert signer.reanchor("REANCHOR").code == "RECONCILE_REQUIRED"
+
+
+def test_dry_run_owner_sell_does_not_call_the_broadcaster(tmp_path: Path) -> None:
+    signer, services = build(tmp_path)
+    assert activate(signer).ok
+    _arm(signer, services)
+
+    class Recorder:
+        enabled = True
+        calls = 0
+
+        def submit(self, payload: bytes) -> None:
+            self.calls += 1
+
+    recorder = Recorder()
+    services.broadcaster = recorder  # type: ignore[assignment]
+    decision = signer.owner_sell(MINT, confirmation="OWNER_SELL")
+    assert decision.code == "OWNER_SELL_SIMULATED"
+    assert recorder.calls == 0
+    assert signer.set_route("https://example.invalid/permission", "2026-11-17", "written permission").ok
+    assert signer.set_mode("LIVE").ok
+    live = signer.owner_sell(MINT, confirmation="OWNER_SELL")
+    assert live.code == "BROADCASTER_NOT_ENABLED"
+    assert recorder.calls == 0
 
 
 def test_deleting_a_trade_or_reservation_halts_the_next_buy(tmp_path: Path) -> None:
