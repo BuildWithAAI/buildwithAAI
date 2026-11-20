@@ -64,7 +64,7 @@ export function createEngine(env: Env, file?: string) {
     issuer,
     now: () => Date.now(),
     snapshot: () => snapshot(db, env),
-    tickOnce: () => runTick(db, env, issuer, Date.now()),
+    tickOnce: () => tickGuarded(db, env, issuer),
     leaveGift: (giftId: string, note: unknown, author: string, ip: string) => leaveGift(db, env, giftId, note, author, ip),
     interact: (kind: "wave" | "tap", ip: string) => interact(db, kind, ip),
     guestbook: (note: unknown, author: string, ip: string) => guestbook(db, note, author, ip),
@@ -218,6 +218,22 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
     cardAvailableCents: env.LUMEN_CARD_ISSUER === "owner_checkout" ? cardAvailableCents(env) : undefined,
   };
 }
+
+const ticking = new WeakMap<DatabaseSync, Promise<TickResult>>();
+
+/**
+ * One tick at a time per database. A tick loads the state, may wait on the model, and saves.
+ * A second tick started in that wait would save first and then be overwritten by the older state.
+ */
+function tickGuarded(db: DatabaseSync, env: Env, issuer: CardIssuer): Promise<TickResult> {
+  const running = ticking.get(db);
+  if (running) return running;
+  const next = runTick(db, env, issuer, Date.now()).finally(() => ticking.delete(db));
+  ticking.set(db, next);
+  return next;
+}
+
+export const MODEL_TIMEOUT_MS = 20_000;
 
 async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: number): Promise<TickResult> {
   sweepStuckPurchases(db, now);
@@ -896,11 +912,18 @@ async function callModel(env: Env, body: string): Promise<unknown | null> {
   const model = env.LUMEN_LLM_MODEL ?? "";
   if (!key || !base || !model || body.includes(key)) return null;
   const payload = JSON.parse(body) as { messages: unknown };
-  const response = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, temperature: 0.7, messages: payload.messages, response_format: { type: "json_object" } }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, temperature: 0.7, messages: payload.messages, response_format: { type: "json_object" } }),
+      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+    });
+  } catch {
+    // A slow or unreachable model is not a reason to lose the tick. Zoora continues on rules.
+    return null;
+  }
   if (!response.ok) return null;
   const json = (await response.json()) as { choices?: { message?: { content?: string } }[] };
   const content = json.choices?.[0]?.message?.content;
