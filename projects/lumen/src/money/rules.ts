@@ -12,7 +12,7 @@ import { cardCredentials } from "./card";
  * LUMEN_SALES_ENABLED                Exact "true" plus sk_live_ and the webhook secret. Keys alone do not open live sales.
  * SPEND_ENABLED                      Legacy parse only. "true" or "false". Anything else is invalid. It does not open spending.
  * SALES_ENABLED                      Legacy parse only. It does not open live sales.
- * MINT_ENABLED                       "true" or "false". Missing is on when MINT_SIGNER_URL is set. This process never holds the mint key.
+ * MINT_ENABLED                       Exact "true" plus MINT_SIGNER_URL and the signer secret. A URL alone does not open minting. This process never holds the mint key.
  * LUMEN_KILL_SWITCH                  "true" stops LLM, purchases, and the storefront. Missing or "false" leaves it to the admin flag. Anything else kills.
  * LUMEN_SALES_MODE                   "disabled", "test", or "live". Missing means disabled.
  * STRIPE_SECRET_KEY                  Stripe secret. Test mode requires sk_test_. Live mode requires sk_live_.

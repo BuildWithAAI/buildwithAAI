@@ -272,7 +272,7 @@ describe("re-review 10", () => {
     expect(mintNetwork({ LUMEN_MINT_NETWORK: "true" })).toBe("mainnet");
     expect(mintNetwork({ LUMEN_MINT_NETWORK: "devnet" })).toBe("devnet");
     let body = "";
-    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret", LUMEN_MINT_NETWORK: "devnet" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
+    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret", LUMEN_MINT_NETWORK: "devnet", MINT_ENABLED: "true" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
       body = String(init?.body ?? "");
       return Response.json({ signature: "dev-sig" });
     });

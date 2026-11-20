@@ -1,9 +1,11 @@
 import { publicMoneyClosed, type Env } from "./rules";
-import { signerHeaders } from "./signerAuth";
+import { signerFreshness, signerHeaders } from "./signerAuth";
 
 /**
  * Minting talks to a signer the owner runs. This process never reads a private key.
  * Mainnet is the default. `LUMEN_MINT_NETWORK=devnet` is the owner's own test network and stays off unless set to that exact value.
+ * A set value that is neither `mainnet` nor `devnet` closes minting, so a typo cannot fall through to mainnet.
+ * A signer URL and secret do not open minting. `MINT_ENABLED` must be the exact string `true`.
  */
 export function mintNetwork(env: Env): "mainnet" | "devnet" {
   return env.LUMEN_MINT_NETWORK === "devnet" ? "devnet" : "mainnet";
@@ -18,6 +20,9 @@ export function mintSwitch(env: Env, killed = false): { open: boolean; reason: s
   const url = env.MINT_SIGNER_URL ?? "";
   if (!url.startsWith("https://")) return { open: false, reason: "MINT_SIGNER_MISSING" };
   if (!env.LUMEN_MINT_SIGNER_SECRET) return { open: false, reason: "SIGNER_AUTH" };
+  const network = env.LUMEN_MINT_NETWORK;
+  if (network !== undefined && network !== "" && network !== "mainnet" && network !== "devnet") return { open: false, reason: "CONFIG_INVALID" };
+  if (env.MINT_ENABLED !== "true") return { open: false, reason: "MINT_OFF" };
   return { open: true, reason: "OPEN" };
 }
 
@@ -27,7 +32,7 @@ export type MintRequest = { name: string; uri: string };
 export async function requestMint(env: Env, input: MintRequest, fetchImpl: typeof fetch = fetch): Promise<{ ok: true; signature: string } | { ok: false; reason: string }> {
   const gate = mintSwitch(env);
   if (!gate.open) return { ok: false, reason: gate.reason };
-  const body = JSON.stringify({ instruction: "mint_one", network: mintNetwork(env), name: input.name.slice(0, 80), uri: input.uri.slice(0, 200) });
+  const body = JSON.stringify({ instruction: "mint_one", network: mintNetwork(env), name: input.name.slice(0, 80), uri: input.uri.slice(0, 200), ...signerFreshness() });
   const headers = signerHeaders(env.LUMEN_MINT_SIGNER_SECRET, body);
   if (!headers) return { ok: false, reason: "SIGNER_AUTH" };
   const response = await fetchImpl(env.MINT_SIGNER_URL ?? "", {

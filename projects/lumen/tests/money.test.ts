@@ -1001,10 +1001,12 @@ describe("live money", () => {
     expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", MINT_PRIVATE_KEY: "secret" }).reason).toBe("KEY_MUST_STAY_IN_SIGNER");
     expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", MINT_ENABLED: "false" }).open).toBe(false);
     expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example" }).reason).toBe("SIGNER_AUTH");
-    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret" }).open).toBe(true);
+    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret" }).reason).toBe("MINT_OFF");
+    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret", MINT_ENABLED: "true", LUMEN_MINT_NETWORK: "devnt" }).reason).toBe("CONFIG_INVALID");
+    expect(mintSwitch({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret", MINT_ENABLED: "true" }).open).toBe(true);
     let body = "";
     let signature = "";
-    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
+    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret", MINT_ENABLED: "true" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
       body = String(init?.body ?? "");
       signature = new Headers(init?.headers).get("x-lumen-signature") ?? "";
       return new Response(JSON.stringify({ signature: "mainnet-sig" }), { status: 200 });
