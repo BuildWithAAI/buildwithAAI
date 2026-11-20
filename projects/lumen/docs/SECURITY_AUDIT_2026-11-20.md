@@ -21,6 +21,7 @@ One flaw rated high was found and fixed (finding 11). It was not proven end to e
 | 11 | High | The art checkout took Stripe's return address from the request's `Origin` header, and the form key is the same for every buyer of a piece (`buy-<id>-<price>`). The first session made for a piece was handed to every later buyer. One request with a forged `Origin` set where every real buyer of that piece landed after paying. Not proven end to end: Next accepts the action only if the caller's `Origin` matches the host it sees, which needs the front proxy to pass a caller-set `X-Forwarded-Host`. That was not tested against Fly | The return address is this site's own origin unless the header matches a configured origin (`checkoutReturnOrigin` in `src/app/api/checkout/auth.ts`) |
 | 12 | Medium | The same stored session was reused with no time limit. Stripe sessions end after 24 hours, so one abandoned checkout left a piece unbuyable | A stored session is reused only inside a 23 hour window (`src/server/engine.ts`) |
 | 13 | Low | The public shop buy action had no limit of its own once sales are open. Each call asked Stripe for a session and stored an order row | Per-address and overall limits (`src/app/actions.ts`) |
+| 23 | Low | Alert mail wrote the From, To and Subject values into the message as given. No alert title carries outside text today, so this was not reachable, but a line break in any of them would have added a header | Line breaks are removed from header values, and an address with a space, bracket or line break is refused (`src/money/notify.ts`) |
 
 Tests: `tests/audit20261120.test.ts`, plus three updated assertions in `tests/money.test.ts` and `tests/rereview10.test.ts`.
 
@@ -29,7 +30,7 @@ Tests: `tests/audit20261120.test.ts`, plus three updated assertions in `tests/mo
 | # | Severity | Finding | Recommended action |
 | --- | --- | --- | --- |
 | 14 | Medium | In public mode with `LUMEN_TRUSTED_PROXY` unset, the client address is taken from `CF-Connecting-IP` or the first `X-Forwarded-For` hop. A caller who reaches the app without Cloudflare in front can send either header and choose its own address, which defeats every per-address limit, including the new ones in findings 6 and 13. `fly.toml` sets `fly`. The Dockerfile sets public mode and no proxy. Whether ngrok overwrites a client-sent `X-Forwarded-For` was not confirmed | Always set `LUMEN_TRUSTED_PROXY` to the real front door. Consider refusing to start in public mode without it |
-| 15 | Medium | `desk-proxy.mjs` listens on every interface on port 3001 and adds the desk secret to each request. On Fly the port is private. In a local `docker run -p 3001:3001`, anyone on the same network reaches the owner login page. The login still needs the password or token | On the owner's computer publish it as `127.0.0.1:3001:3001` only |
+| 15 | Medium | `desk-proxy.mjs` listens on every interface on port 3001 and adds the desk secret to each request. On Fly the port is private. In a local `docker run -p 3001:3001`, anyone on the same network reaches the owner login page. The login still needs the password or token | On the owner's computer publish it as `127.0.0.1:3001:3001` only. On a VPS with a public address this matters more: without a firewall rule or a loopback-only publish, port 3001 puts the owner login on the internet. Reach it through an SSH tunnel |
 | 16 | Medium | `REQUIRE_HARD_CAPS_WHEN_SPENDING` is `false`. With caps unset, an owner-confirmed purchase has no ceiling in code | Set it to `true` before live spending |
 | 17 | Low | No minimum length is enforced for `OWNER_ACCESS_TOKEN` or `LUMEN_JARVIS_TOKEN`. The owner token is accepted from the public edge on the checkout routes | Use 32 random bytes or more. Consider a boot check |
 | 18 | Low | `LUMEN_LLM_BASE_URL` is not required to be https. A plain http value sends the model key in the clear | Use https. Consider a boot check |
@@ -52,12 +53,23 @@ Read: `secrets.py`, `signing.py`, `killswitch.py`, `caps.py`, `message_policy.py
 
 Signer tests: 163 of 164 pass in the review sandbox. `test_unreadable_state_dir_is_killed` fails because the sandbox runs as root, and root ignores the file permissions the test sets.
 
+## The Python projects on `main`
+
+Automated pass only. These were not read.
+
+- No live key, token or private key was found by pattern on `main`, `cursor/metaverse-m1` or `cursor/zoora-signer`. The one private key in the tree is `projects/zoora-agent-community/tests/fixtures/bridge-localhost-public-test-key.pem`, a named public test key. `scripts/scanner_feed_worker.py` also loads it for a local TLS proxy. It must never front anything beyond localhost.
+- No `shell=True`, `os.system`, unsafe pickle or YAML load, or disabled TLS check in non-test code. The `eval` and `verify=False` strings in `src/ecosystem_research` are text inside generated practice tasks, not calls.
+- SQL built with a table name checks that name against a fixed set first.
+- The `main` test suite was not run here.
+
 ## Scope
 
 Read: `src/auth/*`, `src/middleware.ts`, `src/http/*`, `src/money/rules.ts`, `policy.ts`, `mint.ts`, `signerAuth.ts`, `webhook.ts`, `solana.ts`, `execute.ts`, the signature check and checkout call in `stripe.ts`, the authorization half of `card.ts`, the claim and report half of `checkoutQueue.ts`, the append path in `ledger.ts`, mail composition in `notify.ts`, `src/research/ssrf.ts`, the query path in `src/research/run.ts`, the scrubber in `src/research/ideas.ts`, `src/integrations/jarvis.ts`, `telegramPoll.ts`, the owner checks in `telegramOwner.ts`, the trade gate and signer call in `src/trading/book.ts`, `src/app/actions.ts`, the tick runner, guestbook path, art checkout and model call in `src/server/engine.ts`, the fence in `src/brain/prompt.ts`, model output handling in `src/brain/decide.ts`, artwork construction in `src/brain/art.ts`, world command auth in `src/world/registry.ts`, the visitor gate, registration, authorization and resume in `src/world/visitors.ts`, checkout and delivery in `src/shop/store.ts`, every API route, `desk-proxy.mjs`, `Dockerfile`, `docker-entrypoint.sh`, `fly.toml`.
 
 Read and found sound, no change: the URL guard for web reading (pins the resolved address, re-checks every redirect, refuses private and mapped ranges), purchase execution (claims before it charges, pauses on an unknown outcome), visiting agents (off by default, hashed tokens, quarantined text), and artwork SVG (numbers only, no text from outside).
 
-Not read line by line: `src/money/reconcile.ts`, the SMTP dialogue in `notify.ts`, the PAN matcher in `checkoutQueue.ts`, the migration half of `ledger.ts`, `src/world/chunkEdits.ts`, `territory.ts` and the rest of `src/world`, the React pages, and `txbuild.py`, `preflight.py`, `oracle.py`, `quote.py` and most of `signer.py` in the signer. The Python projects on `main` were not reviewed.
+Also read in the last pass: `src/money/reconcile.ts`, the SMTP dialogue in `notify.ts`, the world chunk route and agent action handler, link handling in the ideas, wishlist and SOL pages, and in the signer `rpc.py` (read-only method allowlist, no send method), `feed.py` (https only, outbound pull, the signer does not listen), and every subprocess call (fixed arguments, no shell). `ruff` and `mypy` pass on the signer.
+
+Not read line by line: the PAN matcher in `checkoutQueue.ts`, the migration half of `ledger.ts`, `src/world/chunkEdits.ts`, `territory.ts`, `scene.ts` and the terrain code, the three.js components, and `txbuild.py`, `preflight.py`, `oracle.py`, `quote.py`, `heartbeat.py` and the sell, reanchor and reconcile paths of `signer.py`. These build or check things the message policy and caps already constrain, but they were not verified.
 
 One test fails in the review sandbox, `starts the desk proxy and answers on ipv6 localhost`. The sandbox has no IPv6 loopback address. It failed the same way before this change. All other tests pass (243 of 244).
