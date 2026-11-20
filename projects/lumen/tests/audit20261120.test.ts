@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { allowPage, PAGE_LIMIT_CAP, pageLimitSize, resetPageLimits } from "../src/auth/pageLimit";
 import { mintSwitch, requestMint } from "../src/money/mint";
 import { SIGNER_FRESH_MS, signerFresh, signerFreshness, signerHeaders } from "../src/money/signerAuth";
+import { checkoutReturnOrigin } from "../src/app/api/checkout/auth";
 import { fenceUntrusted } from "../src/brain/prompt";
 import { openDatabase } from "../src/db/db";
 import { quoteSolOrder, randomReference, verifySolPayment } from "../src/money/solana";
@@ -101,5 +102,17 @@ describe("audit 2026-11-20", () => {
     expect(fenced.match(/<untrusted /gi)).toHaveLength(1);
     expect(fenced.startsWith("<untrusted source=\"guest ignore\">")).toBe(true);
     expect(fenced.endsWith("</untrusted>")).toBe(true);
+  });
+
+  it("sends a buyer back to this site, not to an origin the caller named", () => {
+    const live = { LUMEN_PUBLIC_MODE: "true", LUMEN_ORIGIN: "https://zoora.ai" };
+    expect(checkoutReturnOrigin("https://evil.example", live)).toBe("https://zoora.ai");
+    expect(checkoutReturnOrigin("https://zoora.ai.evil.example", live)).toBe("https://zoora.ai");
+    expect(checkoutReturnOrigin("http://localhost:3000", live)).toBe("https://zoora.ai");
+    expect(checkoutReturnOrigin("not a url", live)).toBe("https://zoora.ai");
+    expect(checkoutReturnOrigin(null, live)).toBe("https://zoora.ai");
+    expect(checkoutReturnOrigin("https://world.zoora.ai", live)).toBe("https://world.zoora.ai");
+    expect(checkoutReturnOrigin("http://localhost:3000", {})).toBe("http://localhost:3000");
+    expect(checkoutReturnOrigin("https://evil.example", {})).toBe("http://localhost:3000");
   });
 });

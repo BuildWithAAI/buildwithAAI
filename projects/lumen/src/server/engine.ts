@@ -234,6 +234,7 @@ function tickGuarded(db: DatabaseSync, env: Env, issuer: CardIssuer): Promise<Ti
 }
 
 export const MODEL_TIMEOUT_MS = 20_000;
+export const CHECKOUT_REUSE_MS = 23 * 60 * 60 * 1000;
 
 async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: number): Promise<TickResult> {
   sweepStuckPurchases(db, now);
@@ -664,17 +665,20 @@ async function checkout(db: DatabaseSync, env: Env, creationId: string, idempote
   const mode = salesMode(env, parsed.ok, killed(db, env));
   if (mode === "disabled") return { ok: false, error: "SALES_DISABLED" };
   if (!idempotencyKey || idempotencyKey.length < 8 || idempotencyKey.length > 80) return { ok: false, error: "IDEMPOTENCY" };
-  const existing = db.prepare("SELECT url, status FROM checkouts WHERE idempotency_key = ?").get(idempotencyKey) as { url: string; status: string } | undefined;
+  // The form key is the same for every buyer of a piece. A Stripe session lasts 24 hours, so a stored one
+  // is handed out again only inside a 23 hour window. After that an abandoned session no longer blocks the piece.
+  const sessionKey = `${idempotencyKey}:${Math.floor(Date.now() / CHECKOUT_REUSE_MS)}`;
+  const existing = db.prepare("SELECT url, status FROM checkouts WHERE idempotency_key = ?").get(sessionKey) as { url: string; status: string } | undefined;
   if (existing?.url) return { ok: true, url: existing.url, duplicate: true };
   const art = db.prepare("SELECT id, title, listed, price_cents FROM creations WHERE id = ?").get(creationId) as { id: string; title: string; listed: number; price_cents: number | null } | undefined;
   if (!art || !art.listed || art.price_cents == null) return { ok: false, error: "NOT_LISTED" };
   const secret = env.STRIPE_SECRET_KEY ?? "";
   const client = stripeSalesClient(secret);
-  const session = await client.createCheckout({ creationId, title: art.title, priceCents: art.price_cents, origin, idempotencyKey });
+  const session = await client.createCheckout({ creationId, title: art.title, priceCents: art.price_cents, origin, idempotencyKey: sessionKey });
   db.prepare("INSERT INTO checkouts(id, creation_id, idempotency_key, session_id, url, status, created_at) VALUES(?, ?, ?, ?, ?, 'open', ?)").run(
     randomBytes(8).toString("hex"),
     creationId,
-    idempotencyKey,
+    sessionKey,
     session.id,
     session.url,
     Date.now(),

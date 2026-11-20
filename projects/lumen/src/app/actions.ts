@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { clientAddress, OWNER_COOKIE, ownerCookie } from "../auth/owner";
 import { loginReachable, publicModeOn } from "../auth/publicMode";
 import { chainTimeMs, fetchFinalized, quoteSolOrder, verifySolPayment } from "../money/solana";
+import { checkoutReturnOrigin } from "./api/checkout/auth";
 import { allowRate } from "../db/db";
 import { listShop } from "../shop/store";
 import { getEngine } from "../server/engine";
@@ -89,7 +90,12 @@ export async function wishAction(form: FormData) {
 }
 
 export async function shopBuy(form: FormData) {
-  const result = await getEngine().shopCheckout(String(form.get("id") ?? ""), String(form.get("note") ?? ""), await ip());
+  const engine = getEngine();
+  const address = await ip();
+  // Each open checkout asks Stripe for a session and stores an order row. Both are bounded per address and overall.
+  const buyAt = Date.now();
+  if (!allowRate(engine.db, `shop-buy:${address}`, 6, 60_000, buyAt) || !allowRate(engine.db, "shop-buy:all", 60, 60_000, buyAt)) redirect("/shop?sales=soon");
+  const result = await engine.shopCheckout(String(form.get("id") ?? ""), String(form.get("note") ?? ""), address);
   if (!result.ok || result.comingSoon || !result.url || !result.url.startsWith("http")) redirect("/shop?sales=soon");
   redirect(result.url);
 }
@@ -193,7 +199,7 @@ export async function artAction(form: FormData) {
 }
 
 export async function buyArt(form: FormData) {
-  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
+  const origin = checkoutReturnOrigin((await headers()).get("origin"));
   const result = await getEngine().checkout(String(form.get("id") ?? ""), String(form.get("key") ?? ""), origin, await ip());
   if (result.ok && "url" in result && result.url) redirect(result.url);
   redirect("/gallery?sales=closed");
