@@ -33,6 +33,9 @@ export function actionWeight(name: string, state: BrainState): number {
   const dom = dominantEmotion(state.emotions);
   if ((EMOTION_TAGS[dom] ?? []).includes(name)) weight += 0.9 + state.emotions[dom];
   if (state.energy > 0.85 && action.tags.includes("expression")) weight += 0.45;
+  // What she remembers of a place leans the choice toward it or away from it. It does not make the choice.
+  const pull = action.place ? state.tide?.pull[action.place] ?? 0 : 0;
+  if (pull !== 0) weight *= 1 + pull;
   const streak = state.recentActions.slice(-4);
   if (streak.length === 4 && streak.every((item) => item === name)) weight *= 0.08;
   const repeats = state.actionCounts[name] ?? 0;

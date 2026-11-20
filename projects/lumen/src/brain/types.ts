@@ -55,6 +55,8 @@ export type Wish = {
   influencedByWeb?: boolean;
 };
 
+import type { TideState } from "./tide";
+
 export type BrainState = {
   placeId: string;
   mood: number;
@@ -101,6 +103,8 @@ export type BrainState = {
   observationHash: string;
   ownerDecisions: { approved: number; declined: number };
   thoughtLog: string[];
+  /** Tidal memory. Absent on a state saved before it existed, and created on the next tick. */
+  tide?: TideState;
 };
 
 export type Sensors = {

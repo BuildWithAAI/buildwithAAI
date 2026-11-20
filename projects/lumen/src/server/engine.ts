@@ -1,3 +1,4 @@
+import { pruneHistory } from "../db/prune";
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
@@ -961,6 +962,14 @@ export function startLoop(): void {
     void engine.tickOnce().catch(() => undefined);
     const day = new Date().toISOString().slice(0, 10);
     if (flag(engine.db, "last_reconcile_day", "") !== day) void engine.reconcileNow().catch(() => undefined);
+    if (flag(engine.db, "last_prune_day", "") !== day) {
+      setFlag(engine.db, "last_prune_day", day);
+      try {
+        pruneHistory(engine.db);
+      } catch {
+        /* a failed prune must not stop the tick. It runs again tomorrow */
+      }
+    }
   };
   beat();
   setInterval(beat, interval);
