@@ -1,4 +1,5 @@
 import { pruneHistory } from "../db/prune";
+import { detectMilestones } from "../economy/economy";
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
@@ -964,6 +965,11 @@ export function startLoop(): void {
     if (flag(engine.db, "last_reconcile_day", "") !== day) void engine.reconcileNow().catch(() => undefined);
     if (flag(engine.db, "last_prune_day", "") !== day) {
       setFlag(engine.db, "last_prune_day", day);
+      try {
+        detectMilestones(engine.db, Date.now());
+      } catch {
+        /* the books are checked again tomorrow, and on every desk entry */
+      }
       try {
         pruneHistory(engine.db);
       } catch {

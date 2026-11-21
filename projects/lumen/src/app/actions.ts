@@ -1,12 +1,15 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
+import { revalidatePath } from "next/cache";
+import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { clientAddress, OWNER_COOKIE, ownerCookie } from "../auth/owner";
 import { loginReachable, publicModeOn } from "../auth/publicMode";
 import { chainTimeMs, fetchFinalized, quoteSolOrder, verifySolPayment } from "../money/solana";
 import { checkoutReturnOrigin } from "./api/checkout/auth";
 import { allowRate } from "../db/db";
+import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../economy/economy";
 import { listShop } from "../shop/store";
 import { getEngine } from "../server/engine";
 
@@ -247,4 +250,62 @@ export async function resolveUnknownAction(form: FormData) {
 export async function executeAction(form: FormData) {
   await gate();
   await getEngine().executeQueued(String(form.get("id") ?? ""));
+}
+
+/** Dollars typed by the owner, as whole cents. Anything that is not a plain amount is refused. */
+function dollarsToCents(raw: FormDataEntryValue | null): number {
+  const text = String(raw ?? "").trim();
+  if (!/^[0-9]{1,10}(\.[0-9]{1,2})?$/.test(text)) throw new Error("ECON_AMOUNT");
+  const [whole, part = ""] = text.split(".");
+  return Number(whole) * 100 + Number(part.padEnd(2, "0"));
+}
+
+async function economyStep(run: (now: number) => void): Promise<void> {
+  await gate();
+  let failed: string | null = null;
+  try {
+    const now = Date.now();
+    run(now);
+    detectMilestones(getEngine().db, now);
+  } catch (error) {
+    failed = error instanceof Error && /^ECON_[A-Z_]+$/.test(error.message) ? error.message : "ECON_FAILED";
+  }
+  revalidatePath("/admin/economy");
+  revalidatePath("/floor");
+  if (failed) redirect(`/admin/economy?error=${failed}`);
+}
+
+export async function economyVenueAction(form: FormData) {
+  await economyStep((now) => addVenue(getEngine().db, { id: String(form.get("id") ?? ""), bookId: String(form.get("bookId") ?? ""), name: String(form.get("name") ?? ""), kind: String(form.get("kind") ?? "") }, now));
+}
+
+/** A balance the owner read and typed in. Code that reads a venue itself records its own, marked "reader". */
+export async function economyReadingAction(form: FormData) {
+  await economyStep((now) => recordReading(getEngine().db, { venueId: String(form.get("venueId") ?? ""), valueCents: dollarsToCents(form.get("dollars")), source: "owner", note: String(form.get("note") ?? "") }, now));
+}
+
+export async function economyEntryAction(form: FormData) {
+  await economyStep((now) =>
+    addEntry(
+      getEngine().db,
+      {
+        bookId: String(form.get("bookId") ?? ""),
+        kind: String(form.get("kind") ?? ""),
+        cents: dollarsToCents(form.get("dollars")),
+        category: String(form.get("category") ?? ""),
+        memo: String(form.get("memo") ?? ""),
+        paidFrom: String(form.get("paidFrom") ?? "treasury"),
+        bucket: String(form.get("bucket") ?? "operations"),
+        idem: `desk:${now}:${randomBytes(6).toString("hex")}`,
+      },
+      now,
+    ),
+  );
+}
+
+export async function economyMilestoneAction(form: FormData) {
+  await economyStep((now) => {
+    const decision = form.get("decision") === "approved" ? "approved" : "declined";
+    decideMilestone(getEngine().db, Number(form.get("threshold")), decision, now, String(form.get("unlock") ?? ""));
+  });
 }
