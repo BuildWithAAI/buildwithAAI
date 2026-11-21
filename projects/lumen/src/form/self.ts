@@ -2,6 +2,8 @@ import type { DatabaseSync } from "node:sqlite";
 import { readIdentityFile } from "../identity/load";
 import { genomeFromSoul, type Genome } from "./genome";
 import { portraitPng } from "./portrait";
+import { feelingColor, houseStyle, regionStyle, type Style } from "./style";
+import { AREAS } from "../world/areas";
 
 /**
  * Her self-image. The first time the engine runs with a soul file, it reads the file, works out her
@@ -57,4 +59,31 @@ export function selfPng(name: SelfPicture, read?: () => string): Buffer {
     drawn.set(key, png);
   }
   return png;
+}
+
+/** Used only if her soul file cannot be read, so the engine still draws in one consistent style. */
+const FALLBACK_SOUL = "tide water light quiet make keeper";
+
+function genomeOrFallback(read?: () => string): Genome {
+  try {
+    return selfGenome(read);
+  } catch {
+    return genomeFromSoul(FALLBACK_SOUL);
+  }
+}
+
+/** The one style everything is drawn in. */
+export function currentStyle(read?: () => string): Style {
+  return houseStyle(genomeOrFallback(read));
+}
+
+/** The style of each part of her land: the house style, turned a little for that place. */
+export function landStyles(read?: () => string): { id: string; label: string; style: Style }[] {
+  const genome = genomeOrFallback(read);
+  return AREAS.map((area) => ({ id: area.id, label: area.label, style: regionStyle(genome, area.id) }));
+}
+
+/** The colour of her glow for a feeling, as a shade of her own colours. */
+export function glowColor(feeling: string, read?: () => string): string {
+  return feelingColor(currentStyle(read), feeling);
 }

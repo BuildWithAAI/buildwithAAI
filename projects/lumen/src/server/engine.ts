@@ -3,14 +3,14 @@ import { soulIntact } from "../security/soul";
 import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
-import { noteSelf } from "../form/self";
+import { glowColor, noteSelf } from "../form/self";
 import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
 import { printfulConfigured } from "../fulfillment/printful";
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
-import { glowFor } from "../brain/emotions";
+import { dominantEmotion, glowFor } from "../brain/emotions";
 import { crisisMatch, guestReply } from "../brain/crisis";
 import { scrubInstructions } from "../research/ideas";
 import { giftById, giftDeltas, interactDeltas, moderateNote, ownerTurn, publicWants, reactionToOwnerDecision, sortInbox, textForCheck, artReaction, GIFT_CATALOG } from "../brain/social";
@@ -180,7 +180,7 @@ function ensureSeed(db: DatabaseSync): void {
       db.prepare("INSERT INTO creations(id, title, svg, listed, price_cents, likes, favorites, created_at) VALUES(?, ?, ?, 0, NULL, 0, 0, ?)").run(
         `seed-${i}`,
         artTitle(seed),
-        makeSvg(seed, i === 2 ? "#ffd27a" : "#8ef0d8"),
+        makeSvg(seed, glowColor(i === 2 ? "joy" : "calm")),
         seededAt,
       );
       recordProvenance(db, { pieceKind: "art", pieceId: `seed-${i}`, atMs: seededAt });
@@ -852,7 +852,8 @@ function approveProposal(db: DatabaseSync, id: string) {
 function snapshot(db: DatabaseSync, env: Env) {
   const state = loadState(db);
   const labels = labelsOf(state);
-  const glow = glowFor(state.emotions, state.mood);
+  // Her glow keeps its beat from her feelings and takes its colour from the one style.
+  const glow = { ...glowFor(state.emotions, state.mood), color: glowColor(dominantEmotion(state.emotions)) };
   const parsed = rulesOf(env);
   const kill = killed(db, env);
   const sales = salesMode(env, parsed.ok, kill);

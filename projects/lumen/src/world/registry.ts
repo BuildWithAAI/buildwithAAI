@@ -1,3 +1,4 @@
+import { glowColor } from "../form/self";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
@@ -298,7 +299,7 @@ function produce(db: DatabaseSync, row: AgentRow, action: WorldActivity, now: nu
     db.prepare("INSERT INTO creations(id, title, svg, listed, price_cents, likes, favorites, created_at) VALUES(?, ?, ?, 0, NULL, 0, 0, ?)").run(
       artId,
       artTitle(seed),
-      makeSvg(seed, emotion === "joy" ? "#e7b15a" : "#7ee0c8"),
+      makeSvg(seed, glowColor(emotion)),
       now,
     );
     recordProvenance(db, { pieceKind: "art", pieceId: artId, atMs: now, mind: row.id === "zoora" });
