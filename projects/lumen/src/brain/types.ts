@@ -103,6 +103,8 @@ export type BrainState = {
   observationHash: string;
   ownerDecisions: { approved: number; declined: number };
   thoughtLog: string[];
+  /** World minutes left in the act she is doing. Absent on an older state, which chooses on its next tick. */
+  actLeft?: number;
   /** Tidal memory. Absent on a state saved before it existed, and created on the next tick. */
   tide?: TideState;
 };

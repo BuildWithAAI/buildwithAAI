@@ -29,6 +29,6 @@ The two older lists (`shortTerm`, `longTerm`) are still written, because the Tel
 3. **The world pressed by the tick, not by the minute.** A faster clock made a louder bowl. It presses by the minute now.
 4. **Feed, diary and audit rows were never removed.** `src/db/prune.ts` keeps the latest 20,000 of each, once a day, and counts the rest into `history_days`.
 
-## Not solved here
+## Balance
 
-Her needs are not balanced yet. In a 30 day run four needs sit near zero, quiet sits near its ceiling, and boredom or calm leads most ticks. The cause is in how an act relieves a need: relief is counted per tick while needs rise per minute, and repeating an act costs the same however often she chooses it, so choosing well changes little. Until that is rebuilt her pearls will be made under one or two feelings. That is the next update.
+The need economy was rebuilt after this. See `docs/BALANCE.md`.
