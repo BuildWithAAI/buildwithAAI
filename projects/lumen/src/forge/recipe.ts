@@ -1,6 +1,7 @@
 import { rng } from "../form/genome";
 import type { Hand } from "./hand";
 import { append, bounds, emptyMesh, MATERIALS, soundMesh, triangleCount, type MaterialName, type Mesh, type Placement, type Vec3 } from "./mesh";
+import { roadMesh, ROADS, ROAD_TYPES, type RoadSpec } from "./roads";
 import { ground, islet, loft, spin, type GroundSpec, type LoftSpec, type Point2, type ProfileSpec, type SpinSpec } from "./shape";
 
 /**
@@ -31,7 +32,7 @@ type Arrange = {
   scatter?: { count: number; spread: [number, number]; size?: [number, number] };
 };
 
-export type Part = Arrange & (({ op: "loft" } & LoftSpec) | ({ op: "spin" } & SpinSpec) | ({ op: "ground" } & GroundSpec) | { op: "group"; parts: Part[] });
+export type Part = Arrange & (({ op: "loft" } & LoftSpec) | ({ op: "spin" } & SpinSpec) | ({ op: "ground" } & GroundSpec) | ({ op: "road" } & RoadSpec) | { op: "group"; parts: Part[] });
 /**
  * The feel of a piece of her world. She sets it on land she lays, and what stands on that land takes it,
  * so a part of her world can have its own mood. It turns her body colour and deepens or lightens it.
@@ -125,6 +126,15 @@ function cleanPart(value: unknown, depth: number): Part {
   if (v.op === "ground") {
     return { ...arrange, op: "ground", width: num(v.width, 0.5, LIMITS.radius * 2), depth: optional(v.depth, 0.5, LIMITS.radius * 2), kind: pick(v.kind, ["flat", "dunes", "rows", "crater", "pool", "terraces"] as const), relief: optional(v.relief, 0, 12), cells: optional(v.cells, 2, 96), seed: optional(v.seed, 0, 4294967295), rows: optional(v.rows, 1, 60), round: v.round === true, slab: optional(v.slab, 0, 20) };
   }
+  if (v.op === "road") {
+    // A road is a line on the ground and nothing else: it is not arranged, repeated or tucked inside a group, so its line is exactly where its surface is.
+    if (depth > 0) fail("FORGE_ROAD_NESTED");
+    const type = pick(v.type, ROAD_TYPES) ?? fail("FORGE_ROAD_TYPE");
+    if (!Array.isArray(v.through) || v.through.length < 2 || v.through.length > 24) fail("FORGE_ROAD_LINE");
+    const through = (v.through as unknown[]).map((p) => (Array.isArray(p) && p.length === 2 ? ([num(p[0], -LIMITS.radius, LIMITS.radius), num(p[1], -LIMITS.radius, LIMITS.radius)] as [number, number]) : fail("FORGE_ROAD_LINE")));
+    for (let i = 1; i < through.length; i += 1) if (Math.hypot(through[i]![0] - through[i - 1]![0], through[i]![1] - through[i - 1]![1]) < ROADS.step) fail("FORGE_ROAD_LINE");
+    return { op: "road", type, through, width: optional(v.width, ROADS.width[type][0], ROADS.width[type][1]), curve: v.curve === true };
+  }
   if (v.op === "group") {
     if (depth >= LIMITS.depth) fail("FORGE_TOO_DEEP");
     if (!Array.isArray(v.parts) || v.parts.length < 1 || v.parts.length > LIMITS.parts) fail("FORGE_PARTS");
@@ -146,7 +156,16 @@ export function cleanRecipe(input: unknown): Recipe {
   const vibe = mood && typeof mood === "object" ? { tint: num(mood.tint, -60, 60, 0), shade: num(mood.shade, -0.12, 0.12, 0), glow: num(mood.glow, 0.2, 1.6, 1) } : undefined;
   const rooms = v.units as Record<string, unknown> | undefined;
   const units = rooms && typeof rooms === "object" ? { homes: Math.round(num(rooms.homes, 0, 600, 0)), shops: Math.round(num(rooms.shops, 0, 60, 0)) } : undefined;
-  return { name, seed: Math.round(num(v.seed, 0, 4294967295, 1)), islet: v.islet === true, layer: pick(v.layer, ["ground", "structure"] as const), vibe, units, parts: (v.parts as unknown[]).map((part) => cleanPart(part, 0)) };
+  const parts = (v.parts as unknown[]).map((part) => cleanPart(part, 0));
+  const layer = pick(v.layer, ["ground", "structure"] as const);
+  // A road is something that lies on land. It is never land itself.
+  if (layer === "ground" && parts.some((part) => part.op === "road")) fail("FORGE_ROAD_LAYER");
+  return { name, seed: Math.round(num(v.seed, 0, 4294967295, 1)), islet: v.islet === true, layer, vibe, units, parts };
+}
+
+/** The roads in a recipe: the lines she drew. A build with any of these is a road. */
+export function roadsIn(recipe: Recipe): RoadSpec[] {
+  return recipe.parts.filter((part): part is Part & { op: "road" } & RoadSpec => part.op === "road");
 }
 
 type Run = { hand: Hand; next: () => number; instances: number; triangles: number };
@@ -156,6 +175,7 @@ function make(part: Part, run: Run): Mesh {
   let shape: Mesh;
   if (part.op === "loft") shape = loft(part, material, run.hand);
   else if (part.op === "spin") shape = spin(part, material, run.hand);
+  else if (part.op === "road") shape = roadMesh(part, run.hand);
   else if (part.op === "ground") shape = ground({ ...part, seed: part.seed ?? Math.floor(run.next() * 4294967295) }, MATERIALS.indexOf(part.material ?? "ground"));
   else {
     shape = emptyMesh();

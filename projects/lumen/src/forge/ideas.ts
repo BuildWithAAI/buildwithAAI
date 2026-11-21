@@ -1,6 +1,7 @@
 import { rng } from "../form/genome";
 import type { Vec3 } from "./mesh";
 import type { Part, Recipe } from "./recipe";
+import type { RoadType } from "./roads";
 
 /**
  * Things she already knows how to make. None of them says where anything goes: that is hers to choose.
@@ -32,15 +33,12 @@ const NAMES: Record<IdeaKind, [string[], string[]]> = {
   road: [["Long", "Shore", "Lamp", "Middle", "Quiet"], ["Road", "Street", "Way", "Lane"]],
 };
 
-/** A street as long as she wants it: a dark bed, a pale kerb each side and a line of her light down the middle. It is low, so it blocks nothing. */
-export function roadParts(reach: number): Part[] {
-  const half = Math.min(31, reach / 2);
-  const line = (y: number): Vec3[] => [[-half, y, 0], [half, y, 0]];
-  return [
-    { op: "loft", material: "dark", through: line(0.08), smooth: false, from: { shape: "block", width: 7.5, depth: 0.16, soft: 0.2 }, segments: 8 },
-    { op: "loft", material: "glow", through: line(0.18), smooth: false, from: { shape: "block", width: 0.22, depth: 0.05 }, segments: 6 },
-    { op: "loft", material: "stone", at: [0, 0, 4.1], through: line(0.14), smooth: false, from: { shape: "block", width: 0.7, depth: 0.28, soft: 0.4 }, segments: 8, mirror: "z" },
-  ];
+const ROAD_NAMES: Record<RoadType, string[]> = { avenue: ["Avenue", "Parade", "Promenade"], street: ["Street", "Road", "Way"], alley: ["Alley", "Lane", "Passage", "Cut"] };
+
+/** A name for a road of some kind. */
+export function roadName(type: RoadType, next: () => number): string {
+  const first = NAMES.road[0];
+  return `${first[Math.floor(next() * first.length)]} ${ROAD_NAMES[type][Math.floor(next() * ROAD_NAMES[type].length)]}`;
 }
 
 export function compose(kind: IdeaKind, seed: number): Recipe {
@@ -48,7 +46,7 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
   const between = (low: number, high: number) => low + (high - low) * next();
   const whole = (low: number, high: number) => Math.round(between(low, high));
   const [first, second] = NAMES[kind];
-  const name = `${first[Math.floor(next() * first.length)]} ${second[Math.floor(next() * second.length)]}`;
+  let name = `${first[Math.floor(next() * first.length)]} ${second[Math.floor(next() * second.length)]}`;
   const parts: Part[] = [];
 
   if (kind === "spire") {
@@ -179,7 +177,14 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
     parts.push({ op: "spin", material: "glow", at: [0, 4.6, 0], outline: [[0.05, 0.9], [0.45, 0.55], [0.5, 0], [0.2, -0.15]], segments: 12 });
   }
 
-  if (kind === "road") parts.push(...roadParts(between(40, 60)));
+  if (kind === "road") {
+    // A straight road of a kind and length drawn by chance. Where it goes is still hers to choose, and it must join her other roads.
+    const draw = next();
+    const type: RoadType = draw < 0.3 ? "alley" : draw < 0.85 ? "street" : "avenue";
+    const half = between(20, 30);
+    name = roadName(type, next);
+    parts.push({ op: "road", type, through: [[-half, 0], [half, 0]] });
+  }
 
 
   // Buildings people could live or trade in declare homes and shops. The forge keeps only as many as really fit.

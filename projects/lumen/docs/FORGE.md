@@ -11,13 +11,14 @@ There are two kinds of thing:
 - **Land** is ground she lays to make her world bigger.
 - **Everything else** stands on land she has laid: buildings, rides, roads, squares, machines.
 
-Three rules hold. They are the ones agreed with the owner, and nothing else limits where she builds:
+Four rules hold. They are the ones agreed with the owner, and nothing else limits where she builds:
 
 1. Land must touch her island or land she already laid, so her world grows in one piece.
 2. Land must be on chunks she holds, and may not cover the middle of her island.
 3. A thing must stand on land. Two things with height may not share a spot. Things under 1.2 metres, like roads, block nothing.
+4. Her roads are one network. Every road after her first must touch a road she already has. See "Her roads" below.
 
-Land is not taken away from under a thing, or from between her island and other land.
+Land is not taken away from under a thing, or from between her island and other land. A road is not taken away if her network would be cut in two.
 
 ## Vibes
 
@@ -46,6 +47,40 @@ Outlines are `round`, `sided` or `block`, with soft corners and scalloped edges.
 
 Every part can be placed, turned, tipped, rolled and sized, then: `repeat` (a row), `around` (a circle), `mirror`, `scatter` (strewn by chance from the recipe's seed), or `group` (several parts arranged as one).
 
+## Her roads
+
+The owner's rule, 2026-11-21: all her roads connect, because she travels them to reach what she builds. She decides where every road goes. The forge lays none for her.
+
+A road is a line she draws: `{"op": "road", "type": "avenue" | "street" | "alley", "through": [[x, z], ...]}`, with an optional `width` and `curve`. The forge lays the surface along that line: a dark bed, her light down the middle, and a pale kerb each side of an avenue or a street. The line her network uses is the line the surface is laid on, so what is joined in the network is joined on the ground.
+
+| Kind | Bed width | What she gets if she does not say |
+| --- | --- | --- |
+| Alley | 2.5 to 6 m | 4 m, no kerb |
+| Street | 6 to 10 m | 7.5 m |
+| Avenue | 11 to 24 m | 14 m, two lines of light |
+
+- A line has 2 to 24 points, each at least 3 m from the last. A turn is rounded. `curve` bends smoothly through every point.
+- A build with a road in it lies flat, under 1.2 m. Lamps, trees and buildings are builds of their own. A road is not land, cannot be put in a group, and takes no arrangement, so its line is exactly where its surface is.
+- One build reaches 32 m from its centre, so a long road is several builds end to end.
+
+The rule, checked whenever a road is raised, changed, undone or taken down:
+
+- **Her first road** may go anywhere on her land.
+- **Every road after it** must touch a road she already has: the two surfaces overlap or come within half a metre. Otherwise it is refused (`FORGE_ROAD_ALONE`).
+- **One build is one piece.** If it holds several lines they must reach each other (`FORGE_ROAD_BROKEN`).
+- **Nothing cuts the network.** A road is not taken down, cut short or turned into something that is not a road if the roads it joined would no longer reach each other (`FORGE_ROAD_CUTS`). A road in a ring can go, because the others still meet the long way round.
+
+To answer the last one, the forge walks outward along her roads from the ones the change touches. It stops at 4,000 roads and refuses. So a change is never allowed wrongly, and a ring of more than about 8,000 roads may be refused a change that was safe.
+
+Measured with stand-in rows on the real functions, in a city where every road is joined:
+
+| Builds standing | Roads | Find and lay a road that joins | Take a road out | Find room beside a road |
+| --- | --- | --- | --- | --- |
+| 100,050 | 50,018 | 4.7 ms, slowest 8.7 | 3.3 ms, slowest 16.2 | 4.2 ms |
+| 1,000,040 | 499,989 | 5.8 ms, slowest 13.3 | 3.8 ms, slowest 5.8 | 6.1 ms |
+
+A world made before this rule keeps its streets, and they become roads of the street kind when it is opened. They were never joined to each other, and nothing joins them for her. The rule holds for every road laid after.
+
 ## Recipes
 
 A recipe is a name, a seed and a list of parts. It is plain data. The same recipe always makes the same mesh, so every build is kept by version and can be undone.
@@ -71,12 +106,20 @@ What does not vary is the art direction: eight materials and no others (stone, m
 
 About every thirty minutes, at most 24 times a day, up to 400 standing. The world's creative switch stops it.
 
-- **With a model connected**, she is told the tools, the three rules and what she has made so far (names, places, sizes), and writes one design with its place and vibe. Nothing from outside is in that prompt. If it passes the checks it is raised exactly where she said.
+- **With a model connected**, she is told the tools, the four rules, what she has made so far (names, places, sizes) and where her roads run, and writes one design with its place and vibe. Nothing from outside is in that prompt. If it passes the checks it is raised exactly where she said. If it is refused, she is told why the next time, in one fixed sentence chosen by the refusal's code. No text she or anyone else wrote is carried into that sentence.
 - **With no model**, or if her design or its place is refused, she makes something she knows and finds room for it by trying places around what she already built. When her land is full she lays more, in the mood she is in. This is chance, not a layout.
 
 What she knows how to make: spire, block, exchange, arch, coaster, tank, tree, lamp, road (things), and plain, fields, ruin (land).
 
-Left to herself she draws a street down any open land before she builds on it, and keeps tall things off her streets. That is her habit, not a rule.
+Left to herself she has these habits. They are habits, not rules, and a model is bound by none of them:
+
+- She brings a road onto new open land before she builds there. Her first road crosses open land at a place drawn by chance. Every road after it starts on a road she has, at a point drawn by chance, and runs on or turns off by chance, as an alley, a street or an avenue.
+- She keeps two roads that run the same way at least 14 m apart, keeps roads on level open ground, and does not drive a road through something tall she built.
+- What she raises stands beside a road and faces it, and never on one.
+- She most often lays new land where one of her roads is heading, and not over the middle of land she already has.
+- When there is no room left beside her roads, she most often adds a road before she lays more land.
+
+Grown this way for 400 builds she had 101 roads, 3.6 km of them, in one network: 52 alleys, 43 streets and 6 avenues.
 
 ## Limits
 
@@ -92,7 +135,9 @@ One build: 120,000 triangles, 32 metres from its centre, 140 metres tall. A buil
 
 - Openings are cut in lofts only. One shape cannot yet be cut out of another of a different kind.
 - Nothing moves. There are no people or vehicles, and a coaster has no cars.
-- Her streets do not join up across pieces of land unless she lines the land up.
+- She does not travel yet. Her roads are one network, and nothing walks or drives on it. A build has no address.
+- Roads lie level. There are no bridges, slopes or tunnels, and left to herself she keeps roads off land with relief, so fields and ruins can cut part of her land off from her roads.
+- She has no land kinds for a beach or mountains yet. A model can shape land with the ground tool; her own ideas are plain, fields and ruin.
 - Builds are loaded by distance from the eye, but far-off builds are not yet swapped for simpler shapes.
 - She cannot yet change or take down her own builds. Only the owner's desk can.
 - Agents cannot yet rent or own anything in a building. See `docs/LAND.md`.
