@@ -10,6 +10,7 @@ import { chainTimeMs, fetchFinalized, quoteSolOrder, verifySolPayment } from "..
 import { checkoutReturnOrigin } from "./api/checkout/auth";
 import { allowRate } from "../db/db";
 import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../economy/economy";
+import { checkBrakes, clearBrake } from "../economy/ladder";
 import { listShop } from "../shop/store";
 import { getEngine } from "../server/engine";
 
@@ -267,6 +268,7 @@ async function economyStep(run: (now: number) => void): Promise<void> {
     const now = Date.now();
     run(now);
     detectMilestones(getEngine().db, now);
+    checkBrakes(getEngine().db, now);
   } catch (error) {
     failed = error instanceof Error && /^ECON_[A-Z_]+$/.test(error.message) ? error.message : "ECON_FAILED";
   }
@@ -307,5 +309,14 @@ export async function economyMilestoneAction(form: FormData) {
   await economyStep((now) => {
     const decision = form.get("decision") === "approved" ? "approved" : "declined";
     decideMilestone(getEngine().db, Number(form.get("threshold")), decision, now, String(form.get("unlock") ?? ""));
+  });
+}
+
+/** The owner releases a brake after looking at why it tripped. */
+export async function economyBrakeAction(form: FormData) {
+  await economyStep((now) => {
+    const scope = String(form.get("scope") ?? "");
+    if (!/^(venue:[a-z0-9-]{2,40}|book:company)$/.test(scope)) throw new Error("ECON_SCOPE");
+    clearBrake(getEngine().db, scope, now);
   });
 }

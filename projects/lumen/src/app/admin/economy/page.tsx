@@ -4,7 +4,8 @@ import { OWNER_COOKIE } from "../../../auth/owner";
 import { loginReachable, ownerRouteOpen } from "../../../auth/publicMode";
 import { bookSummary, BOOKS, ENTRY_KINDS, listVenues, milestones, VENUE_KINDS } from "../../../economy/economy";
 import { getEngine } from "../../../server/engine";
-import { economyEntryAction, economyMilestoneAction, economyReadingAction, economyVenueAction } from "../../actions";
+import { brakes, currentCaps } from "../../../economy/ladder";
+import { economyBrakeAction, economyEntryAction, economyMilestoneAction, economyReadingAction, economyVenueAction } from "../../actions";
 
 function money(cents: number): string {
   return `${cents < 0 ? "-" : ""}$${(Math.abs(cents) / 100).toFixed(2)}`;
@@ -22,6 +23,8 @@ export default async function EconomyDesk({ searchParams }: { searchParams: Prom
   const now = Date.now();
   const venues = listVenues(engine.db);
   const ladder = milestones(engine.db);
+  const caps = currentCaps(engine.db);
+  const tripped = brakes(engine.db);
   return (
     <div className="grid">
       <section className="card" style={{ gridColumn: "1 / -1" }}>
@@ -29,6 +32,30 @@ export default async function EconomyDesk({ searchParams }: { searchParams: Prom
         <h1>Economy</h1>
         <p className="muted">Amounts are US dollars. Do not type account numbers, keys or card numbers here. A name or memo with a long run of digits is refused.</p>
         {query.error ? <p className="muted">Not saved: {String(query.error).slice(0, 40)}</p> : null}
+      </section>
+      <section className="card">
+        <p className="kicker">What she may do now</p>
+        <table>
+          <tbody>
+            <tr><th>Spend without asking</th><td>{caps.selfSpendCents > 0 ? `up to ${money(caps.selfSpendCents)}, and only if the spend settings allow it` : "nothing"}</td></tr>
+            <tr><th>Trading</th><td>{caps.trading}</td></tr>
+            <tr><th>Largest live trade</th><td>{money(caps.tradeCents)}</td></tr>
+            <tr><th>Trading agents</th><td>{caps.traders}</td></tr>
+            <tr><th>Land registry</th><td>{caps.landRegistry ? "open" : "closed"}</td></tr>
+            <tr><th>Land sales</th><td>{caps.landSales ? "open" : "closed"}</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section className="card">
+        <p className="kicker">Brakes</p>
+        {tripped.length === 0 ? <p className="muted">None tripped. A trading venue 20% below its high, or the company book 30% below its high, stops live trading.</p> : null}
+        {tripped.map((brake) => (
+          <form action={economyBrakeAction} key={brake.scope}>
+            <p>{brake.scope}: {money(brake.valueCents)} against a high of {money(brake.peakCents)}. Live trading is stopped.</p>
+            <input type="hidden" name="scope" value={brake.scope} />
+            <button type="submit">Release this brake</button>
+          </form>
+        ))}
       </section>
       {BOOKS.map((bookId) => {
         const book = bookSummary(engine.db, bookId, now);

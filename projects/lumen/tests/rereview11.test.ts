@@ -1,3 +1,4 @@
+import { grantLiveTrading } from "./helpers/ladder";
 import { createHmac } from "node:crypto";
 import { readFileSync as readText } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -98,7 +99,7 @@ describe("re-review 11", () => {
   });
 
   it("keeps live trading off in public mode until money is explicitly live", () => {
-    const db = openDatabase();
+    const db = grantLiveTrading(openDatabase());
     expect(evaluateTrade(proposal(), { ...tradeEnv, LUMEN_PUBLIC_MODE: "true" }, db, "ok")).toEqual({ ok: false, reason: "PUBLIC_MODE" });
     expect(evaluateTrade(proposal(), { ...tradeEnv, LUMEN_PUBLIC_MODE: "true", LUMEN_MONEY_LIVE: "true" }, db, "ok")).toEqual({ ok: true, mode: "live" });
     expect(loginReachable("203.0.113.8", { LUMEN_PUBLIC_MODE: "true", LUMEN_MONEY_LIVE: "true" })).toBe(false);

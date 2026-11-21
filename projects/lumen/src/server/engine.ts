@@ -1,5 +1,6 @@
 import { pruneHistory } from "../db/prune";
 import { detectMilestones } from "../economy/economy";
+import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
@@ -210,7 +211,7 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
   const recent = rows.filter((row) => row.atMs >= hourAgo && (row.kind === "purchase" || row.kind === "decline" || row.kind === "approval")).length;
   const unknown = db.prepare("SELECT COUNT(*) AS n FROM purchase_claims WHERE state = 'unknown'").get() as { n: number };
   return {
-    rules: parsed.rules,
+    rules: { ...parsed.rules, autoApproveCapCents: ladderAutoCap(db, parsed.rules.autoApproveCapCents) },
     spendOpen: spend.open,
     killed: killed(db, env),
     reconciliationAlert: flag(db, "reconciliation_alert") === "1",
@@ -969,7 +970,10 @@ export function startLoop(): void {
     if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
       setFlag(engine.db, "last_econ_read_hour", hour);
       void runReaders(engine.db, engine.env, Date.now())
-        .then(() => detectMilestones(engine.db, Date.now()))
+        .then(() => {
+          detectMilestones(engine.db, Date.now());
+          checkBrakes(engine.db, Date.now());
+        })
         .catch(() => undefined);
     }
     if (flag(engine.db, "last_prune_day", "") !== day) {
