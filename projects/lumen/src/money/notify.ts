@@ -289,6 +289,7 @@ function smtpDialogue(socket: net.Socket, env: AlertEnv, message: MailMessage, e
   const commands = ["EHLO zoora"];
   if (!encrypted) commands.push("STARTTLS");
   else if (user) commands.push("AUTH LOGIN", Buffer.from(user).toString("base64"), Buffer.from(password).toString("base64"));
+  if (/[\r\n<>\s]/.test(message.from) || /[\r\n<>\s]/.test(message.to)) return Promise.reject(new Error("SMTP_ADDRESS_REFUSED"));
   if (encrypted) commands.push(`MAIL FROM:<${message.from}>`, `RCPT TO:<${message.to}>`, "DATA", "BODY", "QUIT");
   return new Promise((resolve, reject) => {
     let buffer = "";
@@ -300,7 +301,9 @@ function smtpDialogue(socket: net.Socket, env: AlertEnv, message: MailMessage, e
       index += 1;
       if (!command || command === "QUIT") { socket.end("QUIT\r\n"); resolve(); return; }
       if (command === "BODY") {
-        socket.write(`From: ${message.from}\r\nTo: ${message.to}\r\nSubject: ${message.subject}\r\n\r\n${message.text.replace(/^\./gm, "..")}\r\n.\r\n`);
+        // A header value never carries a line break. A break in one would start a new header or end the headers early.
+        const line = (value: string) => value.replace(/[\r\n]+/g, " ");
+        socket.write(`From: ${line(message.from)}\r\nTo: ${line(message.to)}\r\nSubject: ${line(message.subject)}\r\n\r\n${message.text.replace(/\r?\n/g, "\r\n").replace(/^\./gm, "..")}\r\n.\r\n`);
         return;
       }
       if (command === "STARTTLS") sentStartTls = true;

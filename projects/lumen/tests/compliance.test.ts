@@ -1,3 +1,4 @@
+import { grantLiveTrading } from "./helpers/ladder";
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -76,7 +77,7 @@ describe("pre-launch compliance", () => {
   });
 
   it("keeps the public tape on paper and hides live P&L while trading is off", async () => {
-    const db = openDatabase();
+    const db = grantLiveTrading(openDatabase());
     await proposeTrade(db, { ...caps, LUMEN_TRADING_LIVE: "true", LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade", LUMEN_TRADE_SIGNER_SECRET: "s" }, proposal(), {
       symbol: "SOL", priceUsd: "150", priceSol: "1", liquidityUsd: 50_000, labels: [], pairCreatedAt: now - 3 * 24 * 60 * 60 * 1000,
     }, now, async () => Response.json({ signature: "live-sig" }));

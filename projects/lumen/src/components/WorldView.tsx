@@ -342,6 +342,7 @@ export function WorldView({
     const head = new THREE.Vector3();
     let frame = 0;
     const buildPieces = new Map<string, THREE.Group>();
+    const forgePieces = new Map<string, THREE.Group>();
     const shopPiece: { key: string; group: THREE.Group } | { key: "" } = { key: "" };
     let feedKey = "";
     let wishKey = "";
@@ -419,6 +420,7 @@ export function WorldView({
         paintSvg(easelBoard, snap.easel.svg);
       }
       syncBuilds(scene, buildPieces, snap.builds ?? []);
+      syncForge(scene, forgePieces, snap.forge ?? [], snap.looks ?? [], camera.position);
       syncShop(scene, shopPiece, snap.shop ?? null);
       syncChunkLayer(chunkLayer, chunkRef.current);
       syncGuestLayer(guestLayer, guestRef.current, terrainHeight);
@@ -758,6 +760,94 @@ function syncBuilds(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds
     if (seen.has(id)) continue;
     scene.remove(group);
     pieces.delete(id);
+  }
+}
+
+/**
+ * What she raised with the forge. Each build's mesh is fetched once per version and drawn with the
+ * materials the engine sends, so nothing here chooses a colour or a shape.
+ */
+/** Builds further than this from the eye are not loaded, and ones that fall behind it are let go. The gap between the two stops a build at the edge from flickering in and out. */
+const FORGE_NEAR = 520;
+const FORGE_FAR = 640;
+
+function dropForge(scene: THREE.Scene, group: THREE.Group): void {
+  scene.remove(group);
+  group.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
+    for (const item of Array.isArray(material) ? material : material ? [material] : []) item.dispose();
+  });
+}
+
+function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds: PublicWorld["forge"], looks: PublicWorld["looks"], eye: THREE.Vector3): void {
+  const seen = new Set<string>();
+  for (const build of builds) {
+    const look = looks[build.look] ?? looks[0];
+    if (!look) continue;
+    // Her world can be far bigger than what is in view. Only what is near enough to see is loaded.
+    const away = Math.hypot(build.x - eye.x, build.z - eye.z);
+    if (away > (pieces.has(build.id) ? FORGE_FAR : FORGE_NEAR)) continue;
+    seen.add(build.id);
+    const key = `${build.version}:${look.map((item) => item.color).join("")}`;
+    let group = pieces.get(build.id);
+    if (!group || group.userData.key !== key) {
+      if (group) dropForge(scene, group);
+      group = new THREE.Group();
+      group.userData.key = key;
+      pieces.set(build.id, group);
+      scene.add(group);
+      void loadForgeMesh(group, build, look, key);
+    }
+    group.position.set(build.x, build.y, build.z);
+    group.rotation.y = build.yaw;
+  }
+  for (const [id, group] of pieces) {
+    if (seen.has(id)) continue;
+    dropForge(scene, group);
+    pieces.delete(id);
+  }
+}
+
+async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][number], look: PublicWorld["looks"][number], key: string): Promise<void> {
+  try {
+    const response = await fetch(`/api/forge/${build.id}?v=${build.version}`);
+    if (!response.ok) return;
+    const bytes = await response.arrayBuffer();
+    const head = new DataView(bytes);
+    if (bytes.byteLength < 12 || head.getUint32(0, true) !== 0x48534d5a) return;
+    const points = head.getUint32(4, true);
+    const triangles = head.getUint32(8, true);
+    const table = 12 + look.length * 4;
+    if (bytes.byteLength !== table + points * 12 + triangles * 12) return;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(bytes, table, points * 3), 3));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(bytes, table + points * 12, triangles * 3), 1));
+    let start = 0;
+    look.forEach((_, index) => {
+      const count = head.getUint32(12 + index * 4, true) * 3;
+      if (count) geometry.addGroup(start, count, index);
+      start += count;
+    });
+    geometry.computeVertexNormals();
+    const materials = look.map((item) => {
+      const color = new THREE.Color(item.color);
+      return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: item.emissive * 1.1, roughness: item.name === "metal" ? 0.3 : 0.55, metalness: item.name === "metal" ? 0.45 : 0.04, transparent: item.alpha < 1, opacity: item.alpha, depthWrite: item.alpha >= 1, side: THREE.DoubleSide });
+    });
+    // The build may have changed while its mesh was on the way.
+    if (group.userData.key !== key) return;
+    group.add(new THREE.Mesh(geometry, materials));
+    // Land and low things carry no name board.
+    if (build.layer !== "structure" || build.tall < 6) return;
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+    geometry.computeBoundingBox();
+    label.position.y = (geometry.boundingBox?.max.y ?? 10) + 3;
+    label.scale.set(14, 4.6, 1);
+    paintLabel(label, build.name);
+    group.add(label);
+  } catch {
+    // A build that cannot be fetched is left out. The next snapshot tries again when its version changes.
   }
 }
 

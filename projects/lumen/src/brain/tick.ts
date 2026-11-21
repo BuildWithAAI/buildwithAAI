@@ -13,9 +13,10 @@ import {
 } from "./decide";
 import { eventOf, impulseFor, rollAmbient, clockEvent, type EventKind, type WorldEvent } from "./events";
 import { applyForces, applyNeedDeltas, applyOutcome, decayMood, driftNeeds, energyLabel, inboxStress, moodLabel } from "./feel";
-import { blendEmotions, decayEmotions, diminishing, dominantEmotion, loopDamp, signalsFromNeeds } from "./emotions";
+import { actImpulse, blendEmotions, decayEmotions, diminishing, dominantEmotion, loopDamp, restless, settleEmotions, signalsFromNeeds } from "./emotions";
 import { carryingInView, consolidate, observationHash, remember } from "./memory";
 import { feelingForPrompt, modelRequestBody } from "./prompt";
+import { churn, emptyTide, fadeCounts, glow, importanceOf, LAYER_NAMES, lay, sinkDays, tideLevel } from "./tide";
 import { acceptSpeech, describeFeeling, diaryLine, hottestFixation, noteFixations, pushPhrase, speechFor, toneOf } from "./speak";
 import { maybeWishes, openWantsFromNeeds } from "./social";
 import {
@@ -55,6 +56,17 @@ export type TickInput = {
   quietHours?: boolean;
   visitorPresence?: number;
 };
+
+/** World minutes one act lasts. Set so that keeping all five needs met takes most of her time, and not all of it. */
+export const ACT_MINUTES = 3.5;
+/** Energy lost per waking world minute. Lower than it was, because an act now takes minutes and its energy is paid once. */
+export const ENERGY_DRAIN = 0.002;
+/** World minutes between rolls for an ambient event. About five events a day, and a storm every day or two. */
+export const EVENT_MINUTES = 30;
+/** World minutes after which half of a habit is forgotten. */
+export const HABIT_MINUTES = 45;
+/** Closed wants kept for the record. Open ones are always kept. */
+export const CLOSED_WANTS_KEPT = 24;
 
 export type ArtMade = { seed: number; title: string; svg: string; emotion: string };
 
@@ -178,14 +190,19 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
   const prevMinute = state.worldMinute;
   const worldMinute = state.worldMinute + minutes;
   const sensors = sensorsFromClock(worldMinute, input.visitorPresence ?? Math.min(1, state.unread * 0.1));
-  let needs = applyForces(driftNeeds(state.needs, minutes || 0.01), sensors);
+  // The world presses by the minute, like the drift beside it. Pressing by the tick made a faster clock a louder bowl.
+  const press = Math.min(1, minutes);
+  let needs = applyForces(driftNeeds(state.needs, minutes || 0.01), { noise: sensors.noise * press, brightness: 0.6 + (sensors.brightness - 0.6) * press, visitorPresence: sensors.visitorPresence * press });
   let mood = decayMood(state.mood);
-  let energy = state.asleep ? clamp01(state.energy + 0.02 * Math.max(minutes, 0.1)) : clamp01(state.energy - 0.006 * Math.max(minutes, 0.1));
+  let energy = state.asleep ? clamp01(state.energy + 0.02 * Math.max(minutes, 0.1)) : clamp01(state.energy - ENERGY_DRAIN * Math.max(minutes, 0.1));
   let stormMemory = clamp01(state.stormMemory * 0.995);
   const stress = inboxStress(state.unread, needs.quiet);
   const scheduled = (state.scheduledKind as EventKind | null) ?? null;
   const clocked = clockEvent(prevMinute, worldMinute);
-  const rolled = input.forcedEvent ? eventOf(input.forcedEvent, state.eventCounts[input.forcedEvent] ?? 0) : clocked ?? rollAmbient(input.rng, scheduled, state.eventCounts);
+  // The sea is rolled for once per EVENT_MINUTES of world time. It used to be rolled on every tick, which at an
+  // 8 second tick meant an event every minute and a half and a storm every eleven minutes.
+  const rollDue = Boolean(scheduled) || Math.floor(worldMinute / EVENT_MINUTES) !== Math.floor(prevMinute / EVENT_MINUTES);
+  const rolled = input.forcedEvent ? eventOf(input.forcedEvent, state.eventCounts[input.forcedEvent] ?? 0) : clocked ?? (rollDue ? rollAmbient(input.rng, scheduled, state.eventCounts) : null);
   let active = state.activeEvent;
   const eventCounts = { ...state.eventCounts };
   let impulse = {};
@@ -199,8 +216,12 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
     feed.push({ kind: "event", text: rolled.text, source: "world" });
   } else if (active && active.untilMinute < worldMinute) active = null;
 
-  let emotions = blendEmotions(decayEmotions(state.emotions), signalsFromNeeds(needs, stress, stormMemory, sensors.pressure), impulse);
-  emotions = loopDamp(emotions, state.recentActions, state.recentDominant);
+  // An act takes time. She chooses when the last act is done, or when the world interrupts: an event,
+  // a new message, or the keeper speaking. Between choices the clock, her needs and her feelings still move.
+  // Choosing on every tick made an act as long as the tick, so a faster clock meant more relief per minute.
+  const actLeft = (state.actLeft ?? 0) - minutes;
+  const deciding = actLeft <= 0 || Boolean(rolled) || input.hasNewMessage || input.chatTriggered;
+  let emotions = settleEmotions(state.emotions, signalsFromNeeds(needs, stress, stormMemory, sensors.pressure), impulse, Math.max(minutes, 0.01));
   let next: BrainState = {
     ...state,
     needs,
@@ -213,8 +234,20 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
     activeEvent: active,
     eventCounts,
     tick: state.tick + 1,
-    sleepOwed: clamp01(state.sleepOwed + (state.asleep ? -0.01 : 0.004)),
+    // Per minute, at the rate the 8 second tick used to give.
+    sleepOwed: clamp01(state.sleepOwed + (state.asleep ? -0.075 : 0.03) * Math.max(minutes, 0.01)),
   };
+
+  // Checked on every tick, whether or not she chooses on it, so the moment the clock crosses the mark is never missed.
+  if (Math.floor(worldMinute / HABIT_MINUTES) !== Math.floor(prevMinute / HABIT_MINUTES)) {
+    next = { ...next, actionCounts: fadeCounts(next.actionCounts) };
+  }
+
+  if (!deciding) {
+    const day = Math.floor(input.nowMs / 86_400_000);
+    const tide = next.tide && day > next.tide.lastSinkDay ? sinkDays(next.tide, day) : next.tide;
+    return { state: { ...next, tide, actLeft }, feed, diary, art: null, intents: [], listings: [], audits, modelCalled: false, webNote };
+  }
 
   if (state.asleep || next.sleepOwed > 0.85 || (input.quietHours && sensors.night && next.energy < 0.25)) {
     next = { ...consolidate(next), asleep: false };
@@ -257,6 +290,9 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
   }
 
   const action = actionByName(decision.action) ?? actionByName("rest")!;
+  // Habituation recovers. The counts used to grow for her whole life, so within hours every act did
+  // almost nothing, every need sat at its ceiling, and one feeling led forever. Half is forgotten every
+  // HABIT_MINUTES of world time. Doing a thing over and over still does less. Leaving it alone restores it.
   const repeats = next.actionCounts[action.name] ?? 0;
   const hab = repeats > 2 ? 1 / (1 + (repeats - 2) * 0.5) : 1;
   needs = applyNeedDeltas(next.needs, action.feels, hab);
@@ -275,8 +311,11 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
   const recentActions = [...next.recentActions, action.name].slice(-8);
   const recentPhrases = pushPhrase(next.recentPhrases, speech);
   const thoughtLog = [...next.thoughtLog, speech].slice(-40);
-  const fixations = noteFixations(next.fixations, speech);
-  emotions = loopDamp(blendEmotions(emotions, {}, {}), recentActions, next.recentDominant);
+  // A line shaped by a visitor or a page does not feed her fixations. A word repeated at her until she
+  // repeats it would otherwise become a want of her own, and a want can become a purchase.
+  const outsideShaped = decision.source === "model" && (input.chatTriggered || input.webTextPresent);
+  const fixations = outsideShaped ? next.fixations : noteFixations(next.fixations, speech);
+  emotions = restless(settleEmotions(emotions, emotions, actImpulse(action.name, hab), 0), recentActions, next.recentDominant);
   const recentDominant = [...next.recentDominant, dominantEmotion(emotions)].slice(-8);
 
   let art: ArtMade | null = null;
@@ -304,6 +343,7 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
       thoughtLog,
       observationHash: hash,
       asleep: action.name === "sleep" ? true : next.asleep,
+      actLeft: ACT_MINUTES,
     },
     {
       id: `mem-${next.tick}-${action.name}`,
@@ -317,6 +357,43 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
   );
 
   if (action.name === "sleep") next = { ...next, asleep: true };
+
+  // Tidal memory. The day comes from the clock, because the world minute wraps at midnight when she runs live.
+  const day = Math.floor(input.nowMs / 86_400_000);
+  let tide = next.tide ?? emptyTide(day);
+  if (day > tide.lastSinkDay) {
+    tide = sinkDays(tide, day);
+    // An event that came every day used to matter less each time for good. Half of that wears off each day.
+    next = { ...next, eventCounts: fadeCounts(next.eventCounts) };
+  }
+  const feeling = dominantEmotion(emotions);
+  const cue = { feeling, placeId, season: sensors.season, tide: tideLevel(sensors.tide) };
+  const laid = rolled ? `${rolled.text} ${speech}` : speech;
+  tide = lay(tide, {
+    id: `tide-${next.tick}-${action.name}`,
+    text: laid,
+    feeling,
+    importance: importanceOf(tide, emotions, feeling, laid, Boolean(rolled) || action.makes),
+    placeId,
+    season: cue.season,
+    tide: cue.tide,
+    laidDay: day,
+    foreign: decision.source === "model" && (input.chatTriggered || input.webTextPresent),
+  });
+  if (rolled?.kind === "storm") {
+    // Its own stream, so a storm does not shift the choices the shared one makes afterwards.
+    const churned = churn(tide, mulberry32((next.tick * 2654435761 + day) >>> 0));
+    tide = churned.tide;
+    if (churned.dream) diary.push({ text: `Dream. ${churned.dream}`, tone: "steady", private: true });
+  }
+  const lit = glow(tide, cue, day);
+  tide = lit.tide;
+  for (const memory of lit.risen) {
+    feed.push({ kind: "moment", text: `Something rose from the ${LAYER_NAMES[Math.min(2, memory.layer + 1)]}: ${memory.text}`, source: "fallback" });
+  }
+  if (lit.formed) feed.push({ kind: "moment", text: `A pearl formed around this: ${lit.formed.text}`, source: "fallback" });
+  if (lit.dissolved) feed.push({ kind: "moment", text: `I let a pearl dissolve to make room: ${lit.dissolved.text}`, source: "fallback" });
+  next = { ...next, tide };
 
   const hot = hottestFixation(next.fixations, 8);
   let wants = [...next.wants];
@@ -360,7 +437,11 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
     }
   }
 
-  next = { ...next, fixationWantId, scheduledKind, wants: next.wants };
+  // Closed wants were kept for good and the saved state grew by megabytes. The open ones and the latest closed ones stay.
+  const openWants = next.wants.filter((want) => want.status === "open");
+  const closedWants = next.wants.filter((want) => want.status !== "open").slice(-CLOSED_WANTS_KEPT);
+  const keptWants = new Set([...openWants, ...closedWants]);
+  next = { ...next, fixationWantId, scheduledKind, wants: next.wants.filter((want) => keptWants.has(want)) };
 
   if (rolled?.kind === "storm") {
     next = remember(next, {

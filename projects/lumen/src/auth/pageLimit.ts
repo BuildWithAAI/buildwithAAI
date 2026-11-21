@@ -3,6 +3,8 @@ import { logSecurity } from "../http/log";
 const WINDOW_MS = 60_000;
 const LIMIT = 120;
 export const PAGE_PRUNE_MS = 5 * 60_000;
+/** The most addresses kept at once. Past it the oldest entry is dropped, so invented addresses cannot grow the map without end. */
+export const PAGE_LIMIT_CAP = 20_000;
 const hits = new Map<string, number[]>();
 let lastPrune = 0;
 
@@ -17,7 +19,13 @@ export function allowPage(ip: string, now: number, limit = LIMIT): boolean {
     return false;
   }
   recent.push(now);
+  hits.delete(ip);
   hits.set(ip, recent);
+  while (hits.size > PAGE_LIMIT_CAP) {
+    const oldest = hits.keys().next().value;
+    if (oldest === undefined) break;
+    hits.delete(oldest);
+  }
   return true;
 }
 

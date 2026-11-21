@@ -1,3 +1,4 @@
+import { grantLiveTrading } from "./helpers/ladder";
 import { readFileSync } from "node:fs";
 import { createHmac as hmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
@@ -220,7 +221,7 @@ describe("re-review 10", () => {
   });
 
   it("pauses on a signer network error, signs the body, and keeps live P&L apart from paper", async () => {
-    const db = openDatabase();
+    const db = grantLiveTrading(openDatabase());
     const paper = await proposeTrade(db, tradeEnv, proposal(), quote("150", "1"), now);
     expect(paper).toMatchObject({ ok: true, mode: "paper" });
     await proposeTrade(db, tradeEnv, proposal({ side: "sell", usdCents: 600 }), quote("180", "1.2"), now + 1);
@@ -240,7 +241,7 @@ describe("re-review 10", () => {
     expect(board.pnl.liveUsdCents).toBe(0);
     expect(latestThesis(db)).toContain("Live, I");
     expect(latestThesis(db)).not.toContain("On paper");
-    const paused = openDatabase();
+    const paused = grantLiveTrading(openDatabase());
     const failed = await proposeTrade(paused, liveEnv, proposal(), quote("150", "1"), now, async () => {
       calls += 1;
       throw new Error("socket hang up");
@@ -272,7 +273,7 @@ describe("re-review 10", () => {
     expect(mintNetwork({ LUMEN_MINT_NETWORK: "true" })).toBe("mainnet");
     expect(mintNetwork({ LUMEN_MINT_NETWORK: "devnet" })).toBe("devnet");
     let body = "";
-    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret", LUMEN_MINT_NETWORK: "devnet" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
+    const minted = await requestMint({ MINT_SIGNER_URL: "https://signer.example", LUMEN_MINT_SIGNER_SECRET: "mint-secret", LUMEN_MINT_NETWORK: "devnet", MINT_ENABLED: "true" }, { name: "Dock bell", uri: "https://zoora.ai/piece/1" }, async (_url, init) => {
       body = String(init?.body ?? "");
       return Response.json({ signature: "dev-sig" });
     });

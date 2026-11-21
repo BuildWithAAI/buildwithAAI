@@ -49,11 +49,11 @@ Copy `.env.example` to `.env.local`. Amounts are cents, integers, and unset unti
 
 | Variable | Role |
 | --- | --- |
-| `SPEND_ENABLED` | Unset is on when the card issuer and its key exist. `false` stops spending |
-| `SALES_ENABLED` | Unset is on when `sk_live_` and the webhook secret exist. `false` stops checkout |
-| `MINT_ENABLED` | Unset is on when `MINT_SIGNER_URL` is set. `false` stops minting. Never put the mint key here |
+| `LUMEN_SPEND_ENABLED` | Spending opens only on the exact string `true`, plus an issuing key that is not the sales key. Keys alone open nothing. Legacy `SPEND_ENABLED` is parsed for errors and opens nothing |
+| `LUMEN_SALES_ENABLED` | Live checkout opens only on the exact string `true`, plus `sk_live_` and the webhook secret. Keys alone open nothing. Legacy `SALES_ENABLED` opens nothing |
+| `MINT_ENABLED` | Minting opens only on the exact string `true`, plus `MINT_SIGNER_URL` on https and the signer secret. A URL alone opens nothing. Never put the mint key here |
 | `LUMEN_KILL_SWITCH` | `true` or any unexpected value stops the model, purchases, and the shop |
-| `LUMEN_SALES_MODE` | Unset with an `sk_live_` key is live. `disabled` stops sales. `test` is only for an explicit test key |
+| `LUMEN_SALES_MODE` | `disabled` stops sales. `test` is only for an explicit `sk_test_` key. Live also needs `LUMEN_SALES_ENABLED=true` |
 | `STRIPE_SECRET_KEY` | `sk_live_` for live checkout and issuing. The key is not logged |
 | `STRIPE_WEBHOOK_SECRET` | Webhook HMAC secret |
 | `LUMEN_SALES_CHANNELS` | Empty allows `stripe_checkout` once the live key is set |
@@ -119,7 +119,7 @@ Chat, guestbook notes, and fetched pages cannot start the purchase path. The iss
 Owner accepted live-money risk without a test stage on 2026-11-09.
 
 1. Run `npm test` on the revision you will deploy. The tests stay. They are not a payment stage.
-2. Put `STRIPE_SECRET_KEY` (`sk_live_`) and `STRIPE_WEBHOOK_SECRET` in the host env or fly secrets. Checkout turns on. Do not commit them.
+2. Put `STRIPE_SECRET_KEY` (`sk_live_`) and `STRIPE_WEBHOOK_SECRET` in the host env or fly secrets, then set `LUMEN_SALES_ENABLED=true`. Keys alone do not turn checkout on. Do not commit them.
 3. Point Stripe's webhook at `/api/stripe/webhook`.
 4. For card spending, set `LUMEN_CARD_ISSUER` to `stripe_issuing` or `privacy` and provide that issuer's key. The card limit is the cap. An approved intent is an expected spend until the issuer reports the charge.
 5. For minting, set `MINT_SIGNER_URL` to the signer you run. Do not put the mint private key in this app.
