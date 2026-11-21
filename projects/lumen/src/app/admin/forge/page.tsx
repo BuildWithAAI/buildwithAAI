@@ -9,7 +9,8 @@ import { FORGE, RECIPE_GUIDE, standing } from "../../../forge/store";
 import { getEngine } from "../../../server/engine";
 import { landDesk } from "../../../world/land";
 import { CLAIM_BUFFER } from "../../../world/territoryRules";
-import { forgeIdeaAction, forgeModelAction, forgeRecipeAction, forgeRemoveAction, forgeUndoAction, landGrantAction } from "../../actions";
+import { unitsOf } from "../../../world/units";
+import { forgeIdeaAction, forgeModelAction, forgeRecipeAction, forgeRemoveAction, forgeUndoAction, landGrantAction, unitTakeAction } from "../../actions";
 
 export default async function ForgeDesk({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const query = await searchParams;
@@ -53,6 +54,17 @@ export default async function ForgeDesk({ searchParams }: { searchParams: Promis
           ) : null}
         </section>
       ))}
+      <section className="card">
+        <p className="kicker">Homes and shops</p>
+        <p className="muted">Zoora sets every rent and price. Here you only record that an agent has taken a unit, or that a rented one was given back. No payment is taken and no income is written.</p>
+        <form action={unitTakeAction}>
+          <label>Unit <select name="unit">{builds.flatMap((build) => unitsOf(engine.db, build.id)).slice(0, 400).map((unit) => <option key={unit.id} value={unit.id}>{unit.address} ({unit.status}{unit.holder ? `, ${unit.holder}` : ""})</option>)}</select></label>
+          <label>Agent <input name="holder" pattern="[a-z0-9][a-z0-9-]{1,39}" placeholder="agent-name" /></label>
+          <button type="submit" name="how" value="let">Record as rented</button>
+          <button type="submit" name="how" value="sold">Record as sold</button>
+          <button type="submit" name="how" value="vacate">Rented unit given back</button>
+        </form>
+      </section>
       <section className="card">
         <p className="kicker">Her land</p>
         <table>

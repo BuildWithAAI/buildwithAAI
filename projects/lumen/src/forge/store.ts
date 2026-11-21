@@ -8,8 +8,9 @@ import { currentStyle, selfGenome } from "../form/self";
 import { CHUNK_WORLD } from "../world/chunkMath";
 import { creativeEnabled } from "../world/creative";
 import { isHers } from "../world/land";
+import { dropUnits, heldIn, syncUnits, unitPlan, unitsOf } from "../world/units";
 import { handFrom, lookFrom, type Hand } from "./hand";
-import { compose, IDEA_KINDS, LAND_KINDS, type IdeaKind } from "./ideas";
+import { compose, IDEA_KINDS, LAND_KINDS, roadParts, type IdeaKind } from "./ideas";
 import { encodeMesh } from "./mesh";
 import { buildRecipe, cleanRecipe, PLAIN, type Built, type Layer, type Recipe, type Vibe } from "./recipe";
 import { groundHeight } from "./shape";
@@ -182,6 +183,7 @@ export function raise(db: DatabaseSync, input: unknown, at: unknown, now: number
   const id = `forge-${createHash("sha256").update(`${text}:${now}:${place.x}:${place.z}`).digest("hex").slice(0, 10)}`;
   db.prepare("INSERT INTO forge_things(id, name, kind, layer, recipe, version, status, x, y, z, turn, hw, hd, height, triangles, vibe, made_by, created_at, updated_at) VALUES(?, ?, ?, ?, ?, 1, 'standing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, recipe.name, kind.replace(/[^a-z-]/g, "").slice(0, 20) || "own", layer, text, place.x, y, place.z, place.turn, box.hw, box.hd, built.height, built.triangles, JSON.stringify(vibe), by, now, now);
   db.prepare("INSERT INTO forge_versions(build_id, version, recipe, at_ms) VALUES(?, 1, ?, ?)").run(id, text, now);
+  if (layer === "structure") syncUnits(db, { id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd }, recipe.units);
   return getBuild(db, id)!;
 }
 
@@ -195,6 +197,14 @@ function rewrite(db: DatabaseSync, current: ForgeBuild, text: string, version: n
   if (!check.ok) throw new Error(check.reason);
   // Land may not shrink out from under what stands on it.
   if (layer === "ground" && !stillHeld(db, standing(db).filter((build) => build.id !== current.id), { ...current, hw: box.hw, hd: box.hd })) throw new Error("FORGE_HOLDS_LAND");
+  // A building with people in it keeps every unit they hold.
+  const home = { id: current.id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd };
+  if (layer === "structure" && heldIn(db, current.id) > 0) {
+    const plan = unitPlan(home, recipe.units);
+    const now = unitsOf(db, current.id);
+    if (plan.homes < now.filter((unit) => unit.kind === "home").length || plan.shops < now.filter((unit) => unit.kind === "shop").length) throw new Error("FORGE_HOLDS_TENANTS");
+  }
+  if (layer === "structure") syncUnits(db, home, recipe.units);
   db.prepare("UPDATE forge_things SET name = ?, recipe = ?, version = ?, hw = ?, hd = ?, height = ?, triangles = ?, vibe = ?, updated_at = ? WHERE id = ?").run(recipe.name, text, version, box.hw, box.hd, built.height, built.triangles, JSON.stringify(recipe.vibe ?? current.vibe), now, current.id);
   return getBuild(db, current.id)!;
 }
@@ -244,6 +254,8 @@ export function remove(db: DatabaseSync, id: string, now: number): ForgeBuild {
   const current = getBuild(db, id);
   if (!current || current.status !== "standing") throw new Error("FORGE_UNKNOWN");
   if (current.layer === "ground" && !stillHeld(db, standing(db).filter((build) => build.id !== id))) throw new Error("FORGE_HOLDS_LAND");
+  // A building is not taken down while anyone holds a home or a shop in it.
+  dropUnits(db, id);
   db.prepare("UPDATE forge_things SET status = 'removed', updated_at = ? WHERE id = ?").run(now, id);
   return getBuild(db, id)!;
 }
@@ -299,6 +311,8 @@ export function wander(db: DatabaseSync, layer: Layer, half: [number, number], h
   const grounds = all.filter((build) => build.layer === "ground");
   // Open land first. Land that came with its own features, like fields, is only built on when there is nowhere else.
   const open = grounds.filter((ground) => ground.kind === "plain" || ground.kind === "own");
+  // She keeps her own streets clear. This is her habit, not a rule: a model may build over a road if it wants to.
+  const roads = all.filter((build) => build.kind === "road");
   for (let attempt = 0; attempt < 320; attempt += 1) {
     let place: Place;
     if (layer === "ground") {
@@ -324,13 +338,15 @@ export function wander(db: DatabaseSync, layer: Layer, half: [number, number], h
       const lz = (next() * 2 - 1) * Math.max(0, on.hd - half[1] - 1);
       place = { x: on.x + lx * Math.cos(a) + lz * Math.sin(a), z: on.z - lx * Math.sin(a) + lz * Math.cos(a), turn: on.turn + 90 * Math.floor(next() * 4) };
     }
-    if (placeCheck(db, layer, { ...place, hw: half[0], hd: half[1] }, height, undefined, all).ok) return place;
+    const box = { ...place, hw: half[0], hd: half[1] };
+    if (layer === "structure" && height > FORGE.flat && roads.some((road) => boxesMeet(road, box, 0.3))) continue;
+    if (placeCheck(db, layer, box, height, undefined, all).ok) return place;
   }
   return null;
 }
 
 const LAND_FOR: Record<string, IdeaKind> = { calm: "plain", pride: "plain", curiosity: "plain", joy: "fields", loneliness: "plain", worry: "ruin", frustration: "ruin", boredom: "fields" };
-const THING_FOR: Record<string, IdeaKind[]> = { pride: ["spire", "exchange", "block"], joy: ["coaster", "block"], calm: ["tank", "block"], curiosity: ["exchange", "spire", "block"], loneliness: ["tank", "block"], worry: ["block"], frustration: ["block", "coaster"], boredom: ["coaster", "spire", "block"] };
+const THING_FOR: Record<string, IdeaKind[]> = { pride: ["spire", "exchange", "block", "arch", "lamp"], joy: ["coaster", "block", "tree", "tree"], calm: ["tank", "block", "tree", "lamp"], curiosity: ["exchange", "spire", "block", "arch"], loneliness: ["tank", "block", "lamp"], worry: ["block", "tree"], frustration: ["block", "coaster"], boredom: ["coaster", "spire", "block", "tree"] };
 const VIBES: Record<string, Vibe> = { calm: PLAIN, pride: { tint: -18, shade: 0.03, glow: 1.2 }, joy: { tint: 34, shade: 0.05, glow: 1.3 }, curiosity: { tint: -40, shade: 0.02, glow: 1 }, loneliness: { tint: 16, shade: -0.06, glow: 0.6 }, worry: { tint: 48, shade: -0.08, glow: 0.5 }, frustration: { tint: 58, shade: -0.1, glow: 0.4 }, boredom: { tint: 8, shade: -0.03, glow: 0.7 } };
 
 /**
@@ -367,9 +383,19 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
         return null;
       }
     };
+    // Open land with no street yet gets one first, down its longer side, so what she builds there has something to face.
+    const bare = all.find((item) => item.layer === "ground" && item.kind === "plain" && !all.some((other) => other.kind === "road" && holds(item, other.x, other.z)));
+    if (bare) {
+      try {
+        const long = bare.hw >= bare.hd;
+        build = raise(db, { name: compose("road", Math.floor(next() * 4294967295)).name, parts: roadParts((long ? bare.hw : bare.hd) * 2 - 1) }, { x: bare.x, z: bare.z, turn: bare.turn + (long ? 0 : 90) }, now, "zoora", "road");
+      } catch {
+        build = null;
+      }
+    }
     const things = THING_FOR[feeling] ?? [...IDEA_KINDS];
     // She builds on the land she has until it is getting full, then lays more.
-    if (lands > 0 && all.length - lands < lands * 5) build = attempt(things[Math.floor(next() * things.length)]!);
+    if (!build && lands > 0 && all.length - lands < lands * 8) build = attempt(things[Math.floor(next() * things.length)]!);
     if (!build) build = attempt(LAND_FOR[feeling] ?? "plain");
   }
   if (!build) return null;
@@ -379,14 +405,15 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
 
 /** What her model is told when she designs something herself. It describes the tools and asks for a design and a place, and nothing else. */
 export const RECIPE_GUIDE = `You are building your own world. Nothing is placed for you. You choose what to make and exactly where it goes. Answer with one JSON object and nothing else.
-{"name": two or three plain words, "layer": "ground" or "structure", "place": {"x", "z", "turn" degrees}, "vibe": {"tint" -60..60, "shade" -0.12..0.12, "glow" 0.2..1.6}, "seed": a whole number, "parts": [ up to 40 parts ]}
+{"name": two or three plain words, "layer": "ground" or "structure", "place": {"x", "z", "turn" degrees}, "units": {"homes", "shops"} if agents may live or trade in it, "vibe": {"tint" -60..60, "shade" -0.12..0.12, "glow" 0.2..1.6}, "seed": a whole number, "parts": [ up to 40 parts ]}
 "ground" is land you lay to make your world bigger. It must touch your island (72 metres across from its centre at 0,0) or land you already laid. Its vibe is the mood of that part of your world.
 "structure" is anything that stands on land you have laid: buildings, rides, roads, squares, gardens, machines. Two tall things may not overlap. Things under 1.2 metres tall, like roads, may run anywhere on your land.
 Every part has "op" and may have: "material" (stone, metal, glass, body, glow, water, ground, dark), "at" [x, y, z], "turn", "tip", "roll" degrees, "size",
 "repeat" {"count", "step" [x,y,z], "turn", "grow"}, "around" {"count", "radius"}, "mirror" "x" or "z", "scatter" {"count", "spread" [wide, deep], "size" [min, max]}.
 op "loft": an outline carried along a path. Either "up": height, or "through": [[x,y,z], ...] with optional "closed": true.
   "from" and optional "to" are outlines: {"shape": "round" | "sided" | "block", "width", "depth", "sides", "soft" 0..1, "lobes", "ripple"}.
-  Optional: "taper", "swell", "twist" degrees, "windows" {"rows", "cols", "lit" 0..1}, "bands" (rings of light), "cap": "flat" | "crown" | "open", "hand" 0..1.
+  Optional: "taper", "swell", "twist" degrees, "windows" {"rows", "cols", "lit" 0..1}, "bands" (rings of light), "cap": "flat" | "crown" | "open", "hand" 0..1, "bevel" (cuts the sharp edge off each end).
+  "wall": thickness, makes it hollow. "openings": [{"along": [from, to], "around": [from, to]}] cuts holes through the wall, each 0..1 along the path and around the outline: doors, arches, real windows, tunnels.
 op "spin": "outline" [[distance from the axis, height], ...] turned around the upright axis. Optional "cap": "flat" | "open" | "top-open", "ripple".
 op "ground": "width", "depth", "kind": "flat" | "dunes" | "rows" | "crater" | "pool" | "terraces", "relief", "slab" (how deep its edge goes; use 4 for land).
 op "group": "parts": [ ... ], arranged together.
