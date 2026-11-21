@@ -1,6 +1,6 @@
 import { rng } from "../form/genome";
 import type { Hand } from "./hand";
-import { add, cross, dot, emptyMesh, MATERIALS, scale, sub, triangle, turnAbout, unit, vertex, type Mesh, type Vec3 } from "./mesh";
+import { add, cross, dot, emptyMesh, length, MATERIALS, scale, sub, triangle, turnAbout, unit, vertex, type Mesh, type Vec3 } from "./mesh";
 
 /**
  * The shaping tools. There are three, and between them they make almost anything:
@@ -150,6 +150,60 @@ export function skin(mesh: Mesh, rings: Vec3[][], material: number, options: { c
   if (!options.closed && options.capEnd) cap(rings[rings.length - 1]!, true);
 }
 
+/**
+ * A skin with thickness: an outer face, an inner face, and wherever a hole is cut, the sides of the
+ * hole. This is how she cuts a door, an arch, a window or a tunnel mouth out of a wall.
+ */
+function hollow(mesh: Mesh, outer: Vec3[][], inner: Vec3[][], material: number, closed: boolean, capStart: boolean, capEnd: boolean, openings: { along: [number, number]; around: [number, number] }[]): void {
+  const n = outer[0]!.length;
+  const rows = closed ? outer.length : outer.length - 1;
+  const cut = (r: number, i: number): boolean => {
+    const t = (r + 0.5) / rows;
+    const a = (i + 0.5) / n;
+    return openings.some(({ along, around }) => t >= along[0] && t <= along[1] && (around[0] <= around[1] ? a >= around[0] && a <= around[1] : a >= around[0] || a <= around[1]));
+  };
+  const lay = (rings: Vec3[][]) => rings.map((ring) => {
+    const first = mesh.positions.length / 3;
+    for (const p of ring) vertex(mesh, p);
+    return first;
+  });
+  const [bo, bi] = [lay(outer), lay(inner)];
+  const quad = (a: Vec3, b: Vec3, c: Vec3, d: Vec3) => {
+    const [ia, ib, ic, idd] = [a, b, c, d].map((p) => vertex(mesh, p)) as [number, number, number, number];
+    triangle(mesh, ia, ib, ic, material);
+    triangle(mesh, ia, ic, idd, material);
+  };
+  for (let r = 0; r < rows; r += 1) {
+    const up = (r + 1) % outer.length;
+    for (let i = 0; i < n; i += 1) {
+      const j = (i + 1) % n;
+      if (!cut(r, i)) {
+        triangle(mesh, bo[r]! + i, bo[up]! + j, bo[r]! + j, material);
+        triangle(mesh, bo[r]! + i, bo[up]! + i, bo[up]! + j, material);
+        triangle(mesh, bi[r]! + i, bi[r]! + j, bi[up]! + j, material);
+        triangle(mesh, bi[r]! + i, bi[up]! + j, bi[up]! + i, material);
+        continue;
+      }
+      // The sides of the hole, wherever it meets wall that is still there.
+      const before = (i + n - 1) % n;
+      if (!cut(r, before)) quad(outer[r]![i]!, outer[up]![i]!, inner[up]![i]!, inner[r]![i]!);
+      if (!cut(r, j)) quad(outer[r]![j]!, inner[r]![j]!, inner[up]![j]!, outer[up]![j]!);
+      if ((closed || r > 0) && !cut((r + rows - 1) % rows, i)) quad(outer[r]![i]!, inner[r]![i]!, inner[r]![j]!, outer[r]![j]!);
+      if ((closed || r < rows - 1) && !cut((r + 1) % rows, i)) quad(outer[up]![i]!, outer[up]![j]!, inner[up]![j]!, inner[up]![i]!);
+    }
+  }
+  if (closed) return;
+  // The ends of the wall: a flat band between the outer and inner edge.
+  for (const [r, end, on] of [[0, false, capStart], [outer.length - 1, true, capEnd]] as const) {
+    if (!on) continue;
+    for (let i = 0; i < n; i += 1) {
+      const j = (i + 1) % n;
+      if (end) quad(inner[r]![i]!, inner[r]![j]!, outer[r]![j]!, outer[r]![i]!);
+      else quad(inner[r]![i]!, outer[r]![i]!, outer[r]![j]!, inner[r]![j]!);
+    }
+  }
+}
+
 /** A small eight-sided light. */
 function light(mesh: Mesh, at: Vec3, size: number): void {
   const m = id("glow");
@@ -177,15 +231,23 @@ export type LoftSpec = {
   cap?: "flat" | "crown" | "open";
   /** Rings of light around an upright shaft. */
   bands?: number;
-  /** 0 to 1: how much of her hand this part takes. Default 1. */
+  /** Makes the shape hollow, with walls this thick. */
+  wall?: number;
+  /** Holes cut right through the wall: doors, arches, real windows, the mouth of a tunnel. Each is a stretch `along` the path and `around` the outline, both from 0 to 1. */
+  openings?: { along: [number, number]; around: [number, number] }[];
+  /** Cuts the sharp edge off each flat end, by this much. */
+  bevel?: number;
+  /** Rows of windows around an upright shaft. `lit` is the share that are lit. */
+  windows?: { rows: number; cols?: number; lit?: number };
+  /** 0 to 1: how much of her hand this part takes. A crown takes all of it unless told otherwise; anything else takes none. */
   hand?: number;
 };
 
 export function loft(spec: LoftSpec, material: number, hand: Hand): Mesh {
   const mesh = emptyMesh();
-  const strength = clamp(spec.hand ?? 1, 0, 1);
   const upright = !spec.through;
-  const cap = spec.cap ?? (upright ? "crown" : "flat");
+  const cap = spec.cap ?? "flat";
+  const strength = clamp(spec.hand ?? (cap === "crown" ? 1 : 0), 0, 1);
   const segments = clamp(Math.round(spec.segments ?? (cap === "crown" ? 64 : 32)), 6, 96);
   const closed = Boolean(spec.through && spec.closed);
   let centres: Vec3[];
@@ -218,7 +280,33 @@ export function loft(spec: LoftSpec, material: number, hand: Hand): Mesh {
   };
   const count = stations.length;
   const rings = stations.map((frame, i) => ringAt(frame, closed ? i / count : i / (count - 1)));
-  skin(mesh, rings, material, { closed, capStart: cap !== "open", capEnd: cap === "flat" });
+  const shrink = (ring: Vec3[], by: number): Vec3[] => {
+    const centre = scale(ring.reduce((sum, p) => add(sum, p), [0, 0, 0] as Vec3), 1 / ring.length);
+    return ring.map((p) => {
+      const out = sub(p, centre);
+      const far = length(out) || 1;
+      return add(centre, scale(out, Math.max(0.05, (far - by) / far)));
+    });
+  };
+  if (spec.bevel && !closed && count > 1) {
+    // The end ring steps back along the path, and a smaller ring takes its place: a cut corner instead of a sharp one.
+    const room = (a: number, b: number) => Math.min(spec.bevel!, length(sub(stations[a]!.p, stations[b]!.p)) * 0.45);
+    if (cap === "flat") {
+      const by = room(count - 1, count - 2);
+      const top = rings[rings.length - 1]!;
+      rings[rings.length - 1] = top.map((p) => sub(p, scale(stations[count - 1]!.t, by)));
+      rings.push(shrink(top, by));
+    }
+    if (cap !== "open") {
+      const by = room(0, 1);
+      const bottom = rings[0]!;
+      rings[0] = bottom.map((p) => add(p, scale(stations[0]!.t, by)));
+      rings.unshift(shrink(bottom, by));
+    }
+  }
+  const wall = spec.wall ?? (spec.openings?.length ? 0.4 : 0);
+  if (wall > 0) hollow(mesh, rings, rings.map((ring) => shrink(ring, wall)), material, closed, cap !== "open", cap === "flat", spec.openings ?? []);
+  else skin(mesh, rings, material, { closed, capStart: cap !== "open", capEnd: cap === "flat" });
 
   if (upright && spec.bands) {
     // Her bands of light: thin belts just proud of the shaft.
@@ -230,6 +318,35 @@ export function loft(spec: LoftSpec, material: number, hand: Hand): Mesh {
       const low: Frame = { ...stations[0]!, p: [0, height * t - belt / 2, 0] };
       const high: Frame = { ...stations[0]!, p: [0, height * t + belt / 2, 0] };
       skin(mesh, [ringAt(low, t, 1.015), ringAt(high, t, 1.015)], id("glow"));
+    }
+  }
+
+  if (upright && spec.windows) {
+    // Windows follow the wall wherever it goes: tapered, twisted or changing shape. Each is lit or dark by a fixed chance.
+    const height = spec.up ?? 1;
+    const rows = clamp(Math.round(spec.windows.rows), 1, 80);
+    const cols = clamp(Math.round(spec.windows.cols ?? 12), 3, 48);
+    const lit = clamp(spec.windows.lit ?? 0.6, 0, 1);
+    for (let r = 0; r < rows; r += 1) {
+      const t0 = (r + 0.28) / rows;
+      const t1 = (r + 0.74) / rows;
+      const low = ringAt({ ...stations[0]!, p: [0, height * t0, 0] }, t0, 1.012);
+      const high = ringAt({ ...stations[0]!, p: [0, height * t1, 0] }, t1, 1.012);
+      for (let c = 0; c < cols; c += 1) {
+        const first = Math.floor(((c + 0.18) / cols) * segments);
+        const last = Math.max(first + 1, Math.floor(((c + 0.82) / cols) * segments));
+        const on = hashCell(r, c, rows * 131 + cols) < lit;
+        const base = mesh.positions.length / 3;
+        for (let i = first; i <= last; i += 1) {
+          vertex(mesh, low[i % segments]!);
+          vertex(mesh, high[i % segments]!);
+        }
+        for (let k = 0; k < last - first; k += 1) {
+          const a = base + k * 2;
+          triangle(mesh, a, a + 3, a + 2, id(on ? "glow" : "dark"));
+          triangle(mesh, a, a + 1, a + 3, id(on ? "glow" : "dark"));
+        }
+      }
     }
   }
 
@@ -315,7 +432,7 @@ export function noise(x: number, z: number, seed: number): number {
   return (total / 0.875) * 2 - 1;
 }
 
-export type GroundSpec = { width: number; depth?: number; kind?: "flat" | "dunes" | "rows" | "crater" | "pool" | "terraces"; relief?: number; cells?: number; seed?: number; rows?: number; round?: boolean };
+export type GroundSpec = { width: number; depth?: number; kind?: "flat" | "dunes" | "rows" | "crater" | "pool" | "terraces"; relief?: number; cells?: number; seed?: number; rows?: number; round?: boolean; /** How far its edge goes down. Land needs one so it is not a floating sheet. */ slab?: number };
 
 export function groundHeight(spec: GroundSpec, x: number, z: number): number {
   const half = spec.width / 2;
@@ -357,6 +474,21 @@ export function ground(spec: GroundSpec, material: number): Mesh {
       const d = c + 1;
       triangle(mesh, a, c, b, material);
       triangle(mesh, b, c, d, material);
+    }
+  }
+  const slab = spec.slab ?? 0;
+  if (slab > 0) {
+    // The edge of the land, walked once around and dropped straight down.
+    const rim: number[] = [];
+    for (let i = 0; i < cells; i += 1) rim.push(i);
+    for (let j = 0; j < cells; j += 1) rim.push(j * (cells + 1) + cells);
+    for (let i = cells; i > 0; i -= 1) rim.push(cells * (cells + 1) + i);
+    for (let j = cells; j > 0; j -= 1) rim.push(j * (cells + 1));
+    const under = rim.map((index) => vertex(mesh, [mesh.positions[index * 3]!, -slab, mesh.positions[index * 3 + 2]!]));
+    for (let k = 0; k < rim.length; k += 1) {
+      const n = (k + 1) % rim.length;
+      triangle(mesh, rim[k]!, under[k]!, rim[n]!, material);
+      triangle(mesh, rim[n]!, under[k]!, under[n]!, material);
     }
   }
   return mesh;
@@ -402,3 +534,4 @@ export function islet(radius: number, hand: Hand, seed: number): Mesh {
   }
   return mesh;
 }
+

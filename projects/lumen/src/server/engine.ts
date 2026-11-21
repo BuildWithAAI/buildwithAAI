@@ -4,7 +4,9 @@ import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
 import { glowColor, noteSelf } from "../form/self";
-import { considerForge, designRequest, forgeDue, standing } from "../forge/store";
+import { considerForge, designRequest, forgeDue, standing as standingBuilds } from "../forge/store";
+import { considerTerms } from "../world/units";
+import { growAround } from "../world/land";
 import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
 import { printfulConfigured } from "../fulfillment/printful";
@@ -304,6 +306,8 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       : lived;
     const built = considerCreative(db, minded, now);
     const grew = considerGrowth(db, built, now);
+    // The whole ring is not free because someone holds land in it. She still grows: one free chunk that touches hers.
+    if (grew && !grew.ok && grew.reason === "HELD") growAround(db, now);
     if (grew?.ok) {
       lived = remember(lived, {
         id: `claim-${grew.radius}-${now}`,
@@ -343,7 +347,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       const canAsk = Boolean(env.LUMEN_LLM_API_KEY && env.LUMEN_LLM_MODEL && env.LUMEN_LLM_BASE_URL) && !killed(db, env) && flag(db, "forge_model", "1") === "1";
       if (canAsk) {
         forging = true;
-        void callModel(env, designRequest(dominantEmotion(lived.emotions), lived.placeId, standing(db).map((build) => build.name)))
+        void callModel(env, designRequest(db, dominantEmotion(lived.emotions)))
           .then((own) => considerForge(db, lived.emotions, Date.now(), own))
           .catch(() => undefined)
           .finally(() => {
@@ -1016,6 +1020,8 @@ export function startLoop(): void {
     if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
       setFlag(engine.db, "last_econ_read_hour", hour);
       try {
+        // She sets the rent and price of any building that has none, and resets one whose occupancy has moved.
+        considerTerms(engine.db, standingBuilds(engine.db), Date.now());
         // On the first beat she sees her own form. After that this does nothing unless her soul file changes.
         noteSelf(engine.db, Date.now());
         expireVentures(engine.db, Date.now());

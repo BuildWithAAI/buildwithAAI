@@ -19,7 +19,11 @@ function rgb(hex: string): Rgb {
 }
 const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-export function renderMesh(mesh: Mesh, look: Look, style: Style, options: ViewOptions): Surface {
+/** `looks` may be one look, or several: a triangle's material number then counts on past the first eight into the next look. */
+export function renderMesh(mesh: Mesh, looks: Look | Look[], style: Style, options: ViewOptions): Surface {
+  const all = Array.isArray(looks) ? looks : [looks];
+  const look = all[0]!;
+  const surfaceOf = (material: number) => (all[Math.floor(material / MATERIALS.length)] ?? look)[MATERIALS[material % MATERIALS.length]!];
   const W = options.width;
   const H = options.height ?? Math.round(W * 1.25);
   const SS = 2;
@@ -99,7 +103,7 @@ export function renderMesh(mesh: Mesh, look: Look, style: Style, options: ViewOp
   // Lit sides take a little of her gold. Shaded sides fall toward her deep colour. Two tones, everywhere.
   const warm = mix([1, 1, 1], accent, 0.3);
   const lit = (index: number, material: number): Rgb => {
-    const surface = look[MATERIALS[material]!];
+    const surface = surfaceOf(material);
     const base = rgb(surface.color);
     let n: Vec3 = [normals[index * 3]!, normals[index * 3 + 1]!, normals[index * 3 + 2]!];
     const toEye = unit(sub(eye, world[index]!));
@@ -152,13 +156,13 @@ export function renderMesh(mesh: Mesh, look: Look, style: Style, options: ViewOp
   };
   const clear: number[] = [];
   for (let t = 0; t < triangles; t += 1) {
-    if (look[MATERIALS[mesh.materials[t]!]!].alpha >= 1) fill(t, 1, true);
+    if (surfaceOf(mesh.materials[t]!).alpha >= 1) fill(t, 1, true);
     else clear.push(t);
   }
   // See-through surfaces go on last, far ones first.
   const far = (t: number) => sz[mesh.indices[t * 3]!]! + sz[mesh.indices[t * 3 + 1]!]! + sz[mesh.indices[t * 3 + 2]!]!;
   clear.sort((a, b) => far(b) - far(a));
-  for (const t of clear) fill(t, look[MATERIALS[mesh.materials[t]!]!].alpha, false);
+  for (const t of clear) fill(t, surfaceOf(mesh.materials[t]!).alpha, false);
 
   const surface = new Surface(W, H);
   for (let y = 0; y < H; y += 1) {
@@ -179,7 +183,7 @@ export function renderMesh(mesh: Mesh, look: Look, style: Style, options: ViewOp
   const glow = MATERIALS.indexOf("glow");
   const seen = new Set<number>();
   for (let t = 0; t < triangles; t += 1) {
-    if (mesh.materials[t] !== glow) continue;
+    if (mesh.materials[t]! % MATERIALS.length !== glow) continue;
     const i = mesh.indices[t * 3]!;
     if (sz[i]! < near) continue;
     const x = sx[i]! / SS;

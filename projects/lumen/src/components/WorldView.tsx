@@ -420,7 +420,7 @@ export function WorldView({
         paintSvg(easelBoard, snap.easel.svg);
       }
       syncBuilds(scene, buildPieces, snap.builds ?? []);
-      syncForge(scene, forgePieces, snap.forge ?? [], snap.look ?? []);
+      syncForge(scene, forgePieces, snap.forge ?? [], snap.looks ?? [], camera.position);
       syncShop(scene, shopPiece, snap.shop ?? null);
       syncChunkLayer(chunkLayer, chunkRef.current);
       syncGuestLayer(guestLayer, guestRef.current, terrainHeight);
@@ -767,31 +767,50 @@ function syncBuilds(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds
  * What she raised with the forge. Each build's mesh is fetched once per version and drawn with the
  * materials the engine sends, so nothing here chooses a colour or a shape.
  */
-function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds: PublicWorld["forge"], look: PublicWorld["look"]): void {
+/** Builds further than this from the eye are not loaded, and ones that fall behind it are let go. The gap between the two stops a build at the edge from flickering in and out. */
+const FORGE_NEAR = 520;
+const FORGE_FAR = 640;
+
+function dropForge(scene: THREE.Scene, group: THREE.Group): void {
+  scene.remove(group);
+  group.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
+    for (const item of Array.isArray(material) ? material : material ? [material] : []) item.dispose();
+  });
+}
+
+function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds: PublicWorld["forge"], looks: PublicWorld["looks"], eye: THREE.Vector3): void {
   const seen = new Set<string>();
   for (const build of builds) {
+    const look = looks[build.look] ?? looks[0];
+    if (!look) continue;
+    // Her world can be far bigger than what is in view. Only what is near enough to see is loaded.
+    const away = Math.hypot(build.x - eye.x, build.z - eye.z);
+    if (away > (pieces.has(build.id) ? FORGE_FAR : FORGE_NEAR)) continue;
     seen.add(build.id);
     const key = `${build.version}:${look.map((item) => item.color).join("")}`;
     let group = pieces.get(build.id);
     if (!group || group.userData.key !== key) {
-      if (group) scene.remove(group);
+      if (group) dropForge(scene, group);
       group = new THREE.Group();
       group.userData.key = key;
       pieces.set(build.id, group);
       scene.add(group);
       void loadForgeMesh(group, build, look, key);
     }
-    group.position.set(build.x, build.lift, build.z);
+    group.position.set(build.x, build.y, build.z);
     group.rotation.y = build.yaw;
   }
   for (const [id, group] of pieces) {
     if (seen.has(id)) continue;
-    scene.remove(group);
+    dropForge(scene, group);
     pieces.delete(id);
   }
 }
 
-async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][number], look: PublicWorld["look"], key: string): Promise<void> {
+async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][number], look: PublicWorld["looks"][number], key: string): Promise<void> {
   try {
     const response = await fetch(`/api/forge/${build.id}?v=${build.version}`);
     if (!response.ok) return;
@@ -819,6 +838,8 @@ async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][num
     // The build may have changed while its mesh was on the way.
     if (group.userData.key !== key) return;
     group.add(new THREE.Mesh(geometry, materials));
+    // Land and low things carry no name board.
+    if (build.layer !== "structure" || build.tall < 6) return;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
     geometry.computeBoundingBox();
     label.position.y = (geometry.boundingBox?.max.y ?? 10) + 3;
