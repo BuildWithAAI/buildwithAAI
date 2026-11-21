@@ -434,7 +434,7 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
         const look = lookFrom(style, JSON.parse(key) as { tint: number; shade: number; glow: number });
         return MATERIALS.map((name) => ({ name, color: look[name].color, emissive: look[name].emissive, alpha: look[name].alpha }));
       });
-      return { forge, looks };
+      return { forge, looks, light: { deep: style.palette.deep, pale: style.palette.pale } };
     })(),
     shop: (() => {
       const shop = readShop(db);

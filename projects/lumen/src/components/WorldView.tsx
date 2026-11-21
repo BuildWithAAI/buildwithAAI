@@ -14,6 +14,7 @@ import { directionFromHorizon } from "../world/sky";
 import { clampLabelPoint, clipThought, labelCaption, placeThought, shortSkyLine, type ScreenPoint } from "../world/labels";
 import { AREAS } from "../world/areas";
 import { WORLD_TIP, WORLD_TIP_KEY, worldTipOpen } from "./visit";
+import { forgeMaterials, HAZE_FAR, HAZE_NEAR, setHerLight } from "./herLight";
 
 const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number]; follow?: boolean }> = {
   overview: { pos: [78, 48, 78], look: [0, 1, 4] },
@@ -292,7 +293,8 @@ export function WorldView({
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI * 0.49;
     controls.minDistance = 2.2;
-    controls.maxDistance = 240;
+    // Far enough back to take in her whole city. Everything she has built is loaded within FORGE_NEAR of the eye.
+    controls.maxDistance = 560;
     const anim = {
       fromPos: new THREE.Vector3(),
       toPos: new THREE.Vector3(),
@@ -363,13 +365,15 @@ export function WorldView({
       scene.background = new THREE.Color(colors.sky);
       scene.fog = viewRef.current === "island"
         ? new THREE.Fog(colors.fog, 220, 520)
-        : new THREE.FogExp2(colors.fog, night ? 0.012 : 0.01);
+        : new THREE.Fog(colors.fog, HAZE_NEAR, HAZE_FAR);
       ambient.intensity = colors.ambient;
       ambient.color.set(colors.hemi);
       const sunDir = directionFromHorizon(altitude, skyState?.sunAzimuth ?? 0.4);
       sun.position.set(sunDir.x * 80, Math.max(4, sunDir.y * 80), sunDir.z * 80);
       sun.intensity = colors.sun;
       sun.color.set(colors.sunColor);
+      // What she built is lit by her own light, from her own side, and dimmed with this sky's sun.
+      setHerLight({ sun: colors.sun / 1.25, sky: colors.ambient / 0.7, haze: colors.fog, deep: snap.light?.deep, pale: snap.light?.pale });
       sunDisc.position.copy(sun.position).setLength(95);
       sunDisc.material.color.set(colors.sunColor);
       const moonDir = directionFromHorizon(skyState?.moonAltitude ?? 0.4, skyState?.moonAzimuth ?? -1);
@@ -768,8 +772,8 @@ function syncBuilds(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds
  * materials the engine sends, so nothing here chooses a colour or a shape.
  */
 /** Builds further than this from the eye are not loaded, and ones that fall behind it are let go. The gap between the two stops a build at the edge from flickering in and out. */
-const FORGE_NEAR = 520;
-const FORGE_FAR = 640;
+const FORGE_NEAR = 900;
+const FORGE_FAR = 1050;
 
 function dropForge(scene: THREE.Scene, group: THREE.Group): void {
   scene.remove(group);
@@ -777,7 +781,7 @@ function dropForge(scene: THREE.Scene, group: THREE.Group): void {
     const mesh = child as THREE.Mesh;
     mesh.geometry?.dispose();
     const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
-    for (const item of Array.isArray(material) ? material : material ? [material] : []) item.dispose();
+    for (const item of Array.isArray(material) ? material : material ? [material] : []) if (!item.userData.shared) item.dispose();
   });
 }
 
@@ -831,10 +835,8 @@ async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][num
       start += count;
     });
     geometry.computeVertexNormals();
-    const materials = look.map((item) => {
-      const color = new THREE.Color(item.color);
-      return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: item.emissive * 1.1, roughness: item.name === "metal" ? 0.3 : 0.55, metalness: item.name === "metal" ? 0.45 : 0.04, transparent: item.alpha < 1, opacity: item.alpha, depthWrite: item.alpha >= 1, side: THREE.DoubleSide });
-    });
+    // Her own light, shared by every build that wears this look.
+    const materials = forgeMaterials(look);
     // The build may have changed while its mesh was on the way.
     if (group.userData.key !== key) return;
     group.add(new THREE.Mesh(geometry, materials));

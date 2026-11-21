@@ -23,7 +23,7 @@ These come before the six below. `docs/AUDIT_2026-11-21.md` has the evidence beh
 - [ ] 0d. A spatial index for placement. Acceptance: one placement takes 50 ms or less with 1,000,000 builds standing.
 - [ ] 0e. Her balance is the hard spend ceiling. Acceptance: no spend, trade or venture budget can pass her balance plus her profits, and every paid model call is written to her books.
 - [ ] 0f. Buildings that make sense. She designs site, floors, structure, skin and rooms, and the forge builds from that. Acceptance: every home and shop is a real room reachable from the entrance, and a plan set is drawn by her own renderer.
-- [ ] 0g. The live view matches her own renderer. Acceptance: the same building reads the same in `/city` and in the world.
+- [x] 0g. The live view matches her own renderer. Done 2026-11-21: the live shader is generated from the numbers her viewport uses (`src/forge/light.ts`), and the fog that hid her city is replaced by a long haze. Checked by screenshots by day and by night.
 
 Then these six, one slice at a time.
 

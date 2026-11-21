@@ -94,6 +94,17 @@ One build: 120,000 triangles, 32 metres from its centre, 140 metres tall. A buil
 - Nothing moves. There are no people or vehicles, and a coaster has no cars.
 - Her streets do not join up across pieces of land unless she lines the land up.
 - Builds are loaded by distance from the eye, but far-off builds are not yet swapped for simpler shapes.
-- The live world draws her builds with standard materials. Her viewport's lighting is not yet matched there.
 - She cannot yet change or take down her own builds. Only the owner's desk can.
 - Agents cannot yet rent or own anything in a building. See `docs/LAND.md`.
+
+## Her light in the live world
+
+The live world lights what she has built with the same sums as her own viewport. `src/forge/light.ts` holds the numbers once. `view.ts` calls them when it draws a picture, and the live view's shader is generated from them, so the two cannot drift apart.
+
+- One side is lit from her own key direction, the other falls toward her deep colour, and edges that turn away from the eye brighten.
+- The sky dims the light: the sun lowers the lit side and the ambient level lowers the rest. Surfaces that shine keep their colour, so the city is lit windows at night.
+- Distance fades a build into the sky's colour between 320 m and 1,450 m. The open view's fog uses the same two distances for the ground.
+
+Before this, the open view used a fog that hid everything past about 150 m, which is where her city stands. The buildings were drawn correctly and could not be seen.
+
+Everything she has built is still loaded one mesh at a time within 900 m of the eye. That is replaced by loading by area.
