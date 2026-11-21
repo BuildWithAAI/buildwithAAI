@@ -1,3 +1,4 @@
+import { ringFree } from "./land";
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { moderateNote } from "../brain/social";
@@ -56,6 +57,8 @@ export function expandClaim(
   const cap = ceiling == null ? CHUNK_COORD_LIMIT : Math.min(CHUNK_COORD_LIMIT, ceiling);
   const to = Math.min(from + step, cap);
   if (to <= from) return { ok: false, reason: ceiling != null && from >= ceiling && ceiling < CHUNK_COORD_LIMIT ? "CEILING" : "EDGE" };
+  // A ring is taken whole. If someone else holds land it would cover, she grows chunk by chunk instead (see land.ts).
+  if (!ringFree(db, to)) return { ok: false, reason: "HELD" };
   const day = territoryDay(Date.now());
   try {
     appendChunkEdit(db, {

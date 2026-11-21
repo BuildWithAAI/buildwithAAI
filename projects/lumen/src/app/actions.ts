@@ -13,6 +13,12 @@ import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } 
 import { checkBrakes, clearBrake, setLadderMode } from "../economy/ladder";
 import { decideVenture, getVenture, launchVenture, proposeVenture, setVentureStatus } from "../economy/ventures";
 import { mergeVentures } from "../economy/merge";
+import { compose, IDEA_KINDS, type IdeaKind } from "../forge/ideas";
+import { buildRecipe, cleanRecipe } from "../forge/recipe";
+import { herHand, raise, remove as removeBuild, reshape, undo as undoBuildStep, wander } from "../forge/store";
+import { rng } from "../form/genome";
+import { grantPlot } from "../world/land";
+import { takeUnit, vacate } from "../world/units";
 import { blankPlan, getPlan, savePlan, setCheck, TEXT_FIELDS, type CostLine } from "../economy/plans";
 import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, printFacts, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
 import { listShop, shopCheckoutOpen } from "../shop/store";
@@ -504,5 +510,86 @@ export async function ventureMergeAction(form: FormData) {
   await ventureStep((now) => {
     if (text(form, "sure") !== "merge") throw new Error("ECON_MERGE_CONFIRM");
     mergeVentures(getEngine().db, text(form, "fromId"), text(form, "intoId"), now);
+  });
+}
+
+/** Desk steps for the forge. Owner only. */
+async function forgeStep(run: (now: number) => void): Promise<void> {
+  await gate();
+  let failed: string | null = null;
+  try {
+    run(Date.now());
+  } catch (error) {
+    failed = error instanceof Error && /^FORGE_[A-Z_]+$/.test(error.message) ? error.message : "FORGE_FAILED";
+  }
+  revalidatePath("/admin/forge");
+  revalidatePath("/forge");
+  if (failed) redirect(`/admin/forge?error=${failed}`);
+}
+
+export async function forgeIdeaAction(form: FormData) {
+  await forgeStep((now) => {
+    const kind = text(form, "kind") as IdeaKind;
+    if (!(IDEA_KINDS as readonly string[]).includes(kind)) throw new Error("FORGE_TOOL");
+    const db = getEngine().db;
+    const recipe = cleanRecipe(compose(kind, now >>> 0));
+    const typed = text(form, "x") !== "" && text(form, "z") !== "";
+    const built = buildRecipe(recipe, herHand());
+    // With no place typed she finds one herself, the same way she does on her own.
+    const place = typed ? { x: Number(text(form, "x")), z: Number(text(form, "z")), turn: Number(text(form, "turn") || "0") } : wander(db, recipe.layer ?? "structure", built.half, built.height, rng(now >>> 0));
+    if (!place) throw new Error("FORGE_NO_GROUND");
+    raise(db, recipe, place, now, "owner", kind);
+  });
+}
+
+/** A recipe pasted by the owner. It goes through the same checks as one she writes herself. */
+export async function forgeRecipeAction(form: FormData) {
+  await forgeStep((now) => {
+    let recipe: { place?: unknown };
+    try {
+      recipe = JSON.parse(String(form.get("recipe") ?? "")) as { place?: unknown };
+    } catch {
+      throw new Error("FORGE_RECIPE");
+    }
+    const id = text(form, "id");
+    if (id) reshape(getEngine().db, id, recipe, now);
+    else raise(getEngine().db, recipe, recipe?.place, now, "owner");
+  });
+}
+
+export async function forgeUndoAction(form: FormData) {
+  await forgeStep((now) => {
+    undoBuildStep(getEngine().db, text(form, "id"), now);
+  });
+}
+
+export async function forgeRemoveAction(form: FormData) {
+  await forgeStep((now) => {
+    removeBuild(getEngine().db, text(form, "id"), now);
+  });
+}
+
+export async function forgeModelAction(form: FormData) {
+  await forgeStep(() => setFlag(getEngine().db, "forge_model", form.get("on") === "0" ? "0" : "1"));
+}
+
+/** The owner records a plot for another holder by hand. The same rule applies as for any sale: never her land, her buffer or her lanes. */
+export async function landGrantAction(form: FormData) {
+  await forgeStep((now) => {
+    const result = grantPlot(getEngine().db, Number(text(form, "cx")), Number(text(form, "cy")), text(form, "holder"), now);
+    if (!result.ok) throw new Error(`FORGE_LAND_${result.reason}`);
+  });
+}
+
+/** The owner records that an agent has taken a unit, or that a rented one was given back. No payment is taken and no income is written. The terms are Zoora's. */
+export async function unitTakeAction(form: FormData) {
+  await forgeStep((now) => {
+    const how = text(form, "how");
+    if (how === "vacate") {
+      if (!vacate(getEngine().db, text(form, "unit"))) throw new Error("FORGE_UNIT_NOT_LET");
+      return;
+    }
+    const result = takeUnit(getEngine().db, text(form, "unit"), text(form, "holder"), how === "sold" ? "sold" : "let", now);
+    if (!result.ok) throw new Error(`FORGE_UNIT_${result.reason}`);
   });
 }
