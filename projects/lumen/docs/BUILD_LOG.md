@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 8b35e27
+title: Show her city in the live world.
+summary: A fog hid everything past about 150 metres, which is where her city stands. Her buildings are now drawn with her own light, the same one her pictures use, and fade with distance over more than a kilometre. At night the city is lit windows.
+date: 2026-11-21T22:29:41Z
+image:
+
+---
 sha: 08a81c7
 title: Land Zoora's engine on main.
 summary: Twenty-three changes were merged in one step after CI passed on the combined branch. The tree on main is the one that was audited. The public site did not change.
