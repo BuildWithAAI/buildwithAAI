@@ -5,6 +5,7 @@ import { decideVenture, proposeVenture, scorecard } from "../src/economy/venture
 import { confirmPodOrder, decideProduct, getPodOrder, openPodOrder, proposeProduct, syncOpenPodOrders, syncPodOrder } from "../src/fulfillment/pod";
 import { artUrlAllowed, createDraft } from "../src/fulfillment/printful";
 import { markTainted } from "../src/security/taint";
+import { launched, proposeWithPlan } from "./helpers/venture";
 
 const T = 1_800_000_000_000;
 const ENV = { PRINTFUL_TOKEN: ["pf", "test", "token"].join("-"), PRINTFUL_ART_HOSTS: "zoora.ai" };
@@ -44,8 +45,7 @@ function printful(start: { total?: string | null; calc?: string } = {}) {
 
 function shop(retailCents = 2_500) {
   const db = openDatabase();
-  proposeVenture(db, { id: "tide-prints", name: "Tide prints", kind: "prints", by: "zoora" }, T);
-  decideVenture(db, "tide-prints", "approved", { budgetCents: 3_000, days: 30 }, T);
+  launched(db, "tide-prints", "prints", 3_000, 30, T);
   proposeProduct(db, ENV, { id: "tide-tee", ventureId: "tide-prints", title: "Tide tee", variantId: 4012, placement: "front", technique: "dtg", artUrl: ART, retailCents }, T);
   decideProduct(db, "tide-tee", "approved", true, T);
   return db;

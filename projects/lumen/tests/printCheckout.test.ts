@@ -7,6 +7,7 @@ import { Ledger } from "../src/money/ledger";
 import { parsePaidSession, stripeSalesClient, type SalesClient } from "../src/money/stripe";
 import { handleStripeWebhook } from "../src/money/webhook";
 import { protectedPath } from "../src/security/protected";
+import { launched, proposeWithPlan } from "./helpers/venture";
 
 const T = 1_800_000_000_000;
 const STRIPE = ["sk", "test", "abcdefghijklmnop"].join("_");
@@ -57,8 +58,7 @@ function world(start: { total?: string; paid?: boolean; amount?: number; country
 
 function shop() {
   const db = openDatabase();
-  proposeVenture(db, { id: "tide-prints", name: "Tide prints", kind: "prints", by: "zoora" }, T);
-  decideVenture(db, "tide-prints", "approved", { budgetCents: 3_000, days: 30 }, T);
+  launched(db, "tide-prints", "prints", 3_000, 30, T);
   proposeProduct(db, ENV, { id: "tide-tee", ventureId: "tide-prints", title: "Tide tee", variantId: 4012, placement: "front", technique: "dtg", artUrl: ART, retailCents: 2_500 }, T);
   decideProduct(db, "tide-tee", "approved", true, T);
   return db;
@@ -295,7 +295,7 @@ describe("her own proposals", () => {
 
   it("skips a kind the owner already started", () => {
     const db = openDatabase();
-    proposeVenture(db, { id: "tide-prints", name: "Tide prints", kind: "prints", by: "owner" }, T);
+    proposeWithPlan(db, { id: "tide-prints", name: "Tide prints", kind: "prints", by: "owner" }, T);
     decideVenture(db, "tide-prints", "approved", { budgetCents: 0, days: 30 }, T);
     expect(considerVenture(db, strong, T + PROPOSE_EVERY_MS)?.id).toBe("her-pages");
   });

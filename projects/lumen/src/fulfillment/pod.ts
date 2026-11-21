@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { randomBytes } from "node:crypto";
 import { flag } from "../db/db";
+import { getPlan, noteQuote, savePlan, type Facts } from "../economy/plans";
 import { getVenture, ventureLine, ventureSpendAllowed } from "../economy/ventures";
 import { Ledger } from "../money/ledger";
 import { deskNotifier } from "../money/notify";
@@ -131,6 +132,11 @@ export function decideProduct(db: DatabaseSync, id: string, decision: "approved"
   if (decision === "approved" && ownArt !== true) throw new Error("POD_OWN_ART_REQUIRED");
   if (!["approved", "declined", "retired"].includes(decision)) throw new Error("POD_DECISION");
   db.prepare("UPDATE pod_products SET status = ?, decided_at = ? WHERE id = ?").run(decision, now, id);
+  if (decision === "approved") {
+    // The first approved product sets the plan's price, if the plan has none.
+    const plan = getPlan(db, current.ventureId);
+    if (plan && plan.priceCents == null) savePlan(db, current.ventureId, { ...plan, priceCents: current.retailCents }, "owner", now);
+  }
   return getProduct(db, id)!;
 }
 
@@ -169,7 +175,9 @@ export async function openPodOrder(db: DatabaseSync, env: Env, input: OpenInput,
   const item = getProduct(db, input.productId);
   if (!item || item.status !== "approved") throw new Error("POD_PRODUCT_NOT_APPROVED");
   const venture = getVenture(db, item.ventureId);
-  if (!venture || venture.status !== "active" || venture.deadlineMs == null || venture.deadlineMs <= now) throw new Error("POD_VENTURE_NOT_RUNNING");
+  // A sample can be ordered while the venture is still setting up. A paid order needs it launched.
+  const open = venture && (venture.status === "active" || (venture.status === "setup" && input.paidRef == null));
+  if (!venture || !open || venture.deadlineMs == null || venture.deadlineMs <= now) throw new Error("POD_VENTURE_NOT_RUNNING");
   if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 20) throw new Error("POD_QUANTITY");
   if (input.paidRef != null && !PAID_REF.test(input.paidRef)) throw new Error("POD_PAID_REF");
   if (input.paidRef != null && db.prepare("SELECT 1 FROM pod_orders WHERE paid_ref = ?").get(input.paidRef)) throw new Error("POD_PAID_REF_USED");
@@ -225,6 +233,8 @@ async function price(db: DatabaseSync, env: Env, current: PodOrder, seen: Remote
     if ((retail - seen.costCents) * 100 < retail * minMarginPercent(env)) return drop(db, env, { ...current, costCents: seen.costCents }, "MARGIN", now, fetchImpl);
   }
   set(db, current.id, "priced", now, { costCents: seen.costCents });
+  // A priced sample is a real quote. It settles what one unit costs in the venture's plan.
+  if (current.paidRef == null) noteQuote(db, current.ventureId, Math.ceil(seen.costCents / current.quantity), now);
 }
 
 /**
@@ -492,4 +502,20 @@ export async function refundPaidPrint(db: DatabaseSync, env: Env, id: string, no
   // The refund itself is booked in the ledger when Stripe reports it.
   db.prepare("UPDATE pod_orders SET status = 'refunded', updated_at = ? WHERE id = ?").run(now, id);
   return getPodOrder(db, id)!;
+}
+
+/** What the code can see for a venture's day-one list. */
+export function printFacts(db: DatabaseSync, env: Env, salesOpen: boolean, ventureId: string): Omit<Facts, "kind"> {
+  ensurePod(db);
+  const secret = env.STRIPE_SECRET_KEY ?? "";
+  const approved = db.prepare("SELECT COUNT(*) AS n FROM pod_products WHERE venture_id = ? AND status = 'approved'").get(ventureId) as { n: number };
+  return { printerSet: printfulConfigured(env), artHostSet: Boolean((env.PRINTFUL_ART_HOSTS ?? "").trim()), cardSet: secret.startsWith("sk_live_") || secret.startsWith("sk_test_"), salesOpen, approvedProducts: Number(approved.n) };
+}
+
+/** Used by a merger: every product and order of one venture becomes the other's. */
+export function movePrintAssets(db: DatabaseSync, fromId: string, intoId: string): { products: number; orders: number } {
+  ensurePod(db);
+  const products = db.prepare("UPDATE pod_products SET venture_id = ? WHERE venture_id = ?").run(intoId, fromId);
+  const orders = db.prepare("UPDATE pod_orders SET venture_id = ? WHERE venture_id = ?").run(intoId, fromId);
+  return { products: Number(products.changes), orders: Number(orders.changes) };
 }
