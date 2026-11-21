@@ -86,3 +86,65 @@ export function glowFor(emotions: Emotions, mood: number): Glow {
 export function emotionWords(emotions: Emotions): string {
   return EMOTION_NAMES.filter((name) => emotions[name] >= 0.45).join(", ") || "quiet inside";
 }
+
+/** World minutes for a feeling to close most of the gap to where her needs point. */
+export const FEELING_MINUTES = 20;
+/** How far a need signal carries. Calm is held lower so that a met creature is not only ever calm. */
+const REACH: Record<EmotionName, number> = { joy: 2, calm: 1.2, curiosity: 2, loneliness: 2, frustration: 2, pride: 2, boredom: 2, worry: 2 };
+
+/**
+ * Feelings settle toward what her needs point at, by the minute, and a moment adds on top and then fades.
+ * The older blend added a share of the signal on every tick and kept 94 percent of the rest, so any steady
+ * signal above about 0.17 ran to the ceiling and stayed there, and how fast depended on the tick.
+ */
+export function settleEmotions(emotions: Emotions, signals: Partial<Emotions>, impulse: Partial<Emotions>, minutes: number): Emotions {
+  const next = { ...emotions };
+  const share = 1 - Math.exp(-Math.max(0, minutes) / FEELING_MINUTES);
+  for (const name of EMOTION_NAMES) {
+    const target = clamp01((signals[name] ?? 0) * REACH[name]);
+    next[name] = clamp01(next[name] + (target - next[name]) * share + (impulse[name] ?? 0));
+  }
+  return next;
+}
+
+/** What doing a thing leaves behind. Small, and smaller when the act has been repeated. */
+export const ACT_FEELS: Record<string, Partial<Emotions>> = {
+  paint: { pride: 0.3, joy: 0.12 },
+  pulse_pattern: { pride: 0.18, joy: 0.1 },
+  scrap_and_redo: { frustration: 0.25, pride: 0.1 },
+  sulk: { frustration: 0.2, loneliness: 0.1 },
+  show_gallery: { pride: 0.3 },
+  call_out: { loneliness: 0.22 },
+  approach_notes: { joy: 0.12 },
+  light_show: { joy: 0.25 },
+  dance: { joy: 0.3 },
+  explore: { curiosity: 0.25 },
+  inspect: { curiosity: 0.2 },
+  forage: { curiosity: 0.15, joy: 0.08 },
+  read_page: { curiosity: 0.25 },
+  write_diary: { calm: 0.15, pride: 0.08 },
+  rest: { calm: 0.12 },
+  drift: { calm: 0.1, boredom: 0.08 },
+  dim_lights: { calm: 0.15 },
+  sleep: { calm: 0.1 },
+};
+
+export function actImpulse(action: string, scale: number): Partial<Emotions> {
+  const out: Partial<Emotions> = {};
+  for (const [name, value] of Object.entries(ACT_FEELS[action] ?? {})) out[name as EmotionName] = Math.round(value * Math.max(0, Math.min(1, scale)) * 10000) / 10000;
+  return out;
+}
+
+/**
+ * A rut makes her restless, once per act. Sized for feelings that fade over minutes: the older bumps were
+ * sized for a feeling that lost 6 percent a tick, and on a slow fade they stacked to the ceiling. A rut of
+ * boredom does not feed itself, or boredom would be the rut it complains about.
+ */
+export function restless(emotions: Emotions, recentActions: string[], recentDominant: EmotionName[]): Emotions {
+  const next = { ...emotions };
+  const acts = recentActions.slice(-4);
+  if (acts.length === 4 && new Set(acts).size === 1) next.boredom = clamp01(next.boredom + 0.08);
+  const moods = recentDominant.slice(-6);
+  if (moods.length === 6 && new Set(moods).size <= 2 && moods[moods.length - 1] !== "boredom") next.boredom = clamp01(next.boredom + 0.05);
+  return next;
+}

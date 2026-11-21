@@ -1,3 +1,4 @@
+import { liveTradeAllowed } from "../economy/ladder";
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { flag, setFlag } from "../db/db";
@@ -59,6 +60,9 @@ export function evaluateTrade(proposal: TradeProposal, env: TradeEnv, db: Databa
   if (loss + proposal.usdCents > caps.maxDailyLossCents) return { ok: false, reason: "DAILY_LOSS" };
   if (!tradingLive(env)) return { ok: true, mode: "paper" };
   if (publicMoneyClosed(env)) return { ok: false, reason: "PUBLIC_MODE" };
+  // Live only. The ladder says whether she has earned live trading and how large a trade may be, and a tripped brake closes it.
+  const earned = liveTradeAllowed(db, proposal.usdCents);
+  if (!earned.ok) return { ok: false, reason: earned.reason };
   const signer = env.LUMEN_TRADE_SIGNER_URL ?? "";
   if (!signer.startsWith("https://")) return { ok: false, reason: "NO_SIGNER" };
   return { ok: true, mode: "live" };
