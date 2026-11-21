@@ -4,6 +4,9 @@ import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
 import { glowColor, noteSelf } from "../form/self";
+import { considerForge, designRequest, forgeDue, standing as standingBuilds } from "../forge/store";
+import { considerTerms } from "../world/units";
+import { growAround } from "../world/land";
 import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
 import { printfulConfigured } from "../fulfillment/printful";
@@ -303,6 +306,8 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       : lived;
     const built = considerCreative(db, minded, now);
     const grew = considerGrowth(db, built, now);
+    // The whole ring is not free because someone holds land in it. She still grows: one free chunk that touches hers.
+    if (grew && !grew.ok && grew.reason === "HELD") growAround(db, now);
     if (grew?.ok) {
       lived = remember(lived, {
         id: `claim-${grew.radius}-${now}`,
@@ -336,6 +341,26 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       memory: goal ?? lived.longTerm[0]?.text ?? null,
       research: finding?.question ?? null,
     }, now, env);
+    // She may raise something new in her world. With a model she designs it herself; without one she
+    // starts from an idea she knows. The model is given her own state only, never outside text.
+    if (!forging && forgeDue(db, now)) {
+      const canAsk = Boolean(env.LUMEN_LLM_API_KEY && env.LUMEN_LLM_MODEL && env.LUMEN_LLM_BASE_URL) && !killed(db, env) && flag(db, "forge_model", "1") === "1";
+      if (canAsk) {
+        forging = true;
+        void callModel(env, designRequest(db, dominantEmotion(lived.emotions)))
+          .then((own) => considerForge(db, lived.emotions, Date.now(), own))
+          .catch(() => undefined)
+          .finally(() => {
+            forging = false;
+          });
+      } else {
+        try {
+          considerForge(db, lived.emotions, now);
+        } catch {
+          // A build that fails is skipped. The next one is tried when it is due.
+        }
+      }
+    }
     // She may put one way to earn in front of the owner. It spends nothing and waits for a yes.
     considerVenture(db, lived.emotions as unknown as Record<string, number>, now);
     const ranked = (Object.entries(lived.emotions) as [string, number][]).sort((a, b) => b[1] - a[1]);
@@ -930,6 +955,9 @@ function publicLedger(row: LedgerRow) {
   };
 }
 
+/** True while she is waiting on her model for a design, so two are never asked for at once. */
+let forging = false;
+
 async function callModel(env: Env, body: string): Promise<unknown | null> {
   const key = env.LUMEN_LLM_API_KEY ?? "";
   const base = env.LUMEN_LLM_BASE_URL ?? "";
@@ -992,6 +1020,8 @@ export function startLoop(): void {
     if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
       setFlag(engine.db, "last_econ_read_hour", hour);
       try {
+        // She sets the rent and price of any building that has none, and resets one whose occupancy has moved.
+        considerTerms(engine.db, standingBuilds(engine.db), Date.now());
         // On the first beat she sees her own form. After that this does nothing unless her soul file changes.
         noteSelf(engine.db, Date.now());
         expireVentures(engine.db, Date.now());

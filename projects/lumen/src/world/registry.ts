@@ -1,3 +1,7 @@
+import { currentStyle } from "../form/self";
+import { lookFrom } from "../forge/hand";
+import { MATERIALS } from "../forge/mesh";
+import { standing } from "../forge/store";
 import { glowColor } from "../form/self";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
@@ -416,6 +420,22 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
       twist: build.params.twist,
       form: build.params.form,
     })),
+    ...(() => {
+      // Each vibe she has set is sent once, and each build points at the one it wears.
+      const style = currentStyle();
+      const vibes: string[] = [];
+      const forge = standing(db).map((build) => {
+        const key = JSON.stringify(build.vibe);
+        let look = vibes.indexOf(key);
+        if (look < 0) look = vibes.push(key) - 1;
+        return { id: build.id, name: build.name, layer: build.layer, version: build.version, x: build.x, y: build.y, z: build.z, yaw: (build.turn * Math.PI) / 180, tall: build.height, look };
+      });
+      const looks = vibes.map((key) => {
+        const look = lookFrom(style, JSON.parse(key) as { tint: number; shade: number; glow: number });
+        return MATERIALS.map((name) => ({ name, color: look[name].color, emissive: look[name].emissive, alpha: look[name].alpha }));
+      });
+      return { forge, looks };
+    })(),
     shop: (() => {
       const shop = readShop(db);
       return shop ? { name: shop.name, hue: shop.hue, form: shop.form, x: shop.x, z: shop.z, open: shop.open } : null;
