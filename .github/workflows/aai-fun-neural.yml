@@ -111,7 +111,7 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.13.16"
       - name: Install pinned development linter
@@ -148,7 +148,7 @@ jobs:
           ref: fc42d8b36da77c58430e4a7594a30a0225883b6c
           path: .ecosystem-community
           persist-credentials: false
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -48,7 +48,7 @@ jobs:
           ref: 97108a271face220aef6296fddb2e18abdb210b5
           path: .ecosystem-scanner
           persist-credentials: false
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
       - name: Install the existing hash-locked service runtime
