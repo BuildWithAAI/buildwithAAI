@@ -108,6 +108,16 @@ describe("print orders", () => {
     expect(scorecard(db, "tide-prints", T).incomeCents).toBe(2_500);
   });
 
+  it("an order id that is all digits still lands on the books", async () => {
+    const db = shop();
+    const { impl } = printful();
+    await openPodOrder(db, ENV, { id: "ord-1234567890", productId: "tide-tee", quantity: 1, paidRef: "pay:1", recipient: HOME }, T, impl);
+    await syncPodOrder(db, ENV, "ord-1234567890", T, impl);
+    expect((await confirmPodOrder(db, ENV, "ord-1234567890", "owner", T, impl)).ok).toBe(true);
+    expect(getPodOrder(db, "ord-1234567890")?.status).toBe("confirmed");
+    expect(scorecard(db, "tide-prints", T)).toMatchObject({ incomeCents: 2_500, expenseCents: 1_250 });
+  });
+
   it("the address is sent to the printer and is not kept", async () => {
     const db = shop();
     const { impl } = printful();

@@ -16,6 +16,7 @@ export function Nav({ showKeeper = false, showMoney = false, compact = false }: 
         <Link href="/floor">Floor</Link>
         <Link href="/treasury">Treasury</Link>
         <Link href="/prints">Prints</Link>
+        {showMoney ? <Link href="/merch">Merch</Link> : null}
         <Link href="/ideas">Ideas</Link>
         <Link href="/wishlist">Wishes</Link>
         {showMoney ? <Link href="/shop">Shop</Link> : null}

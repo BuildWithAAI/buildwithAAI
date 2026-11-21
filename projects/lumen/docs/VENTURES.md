@@ -35,9 +35,29 @@ Customer addresses go to Printful with the draft and are not stored by the engin
 3. Add a billing method in Printful. Set `PRINTFUL_PAID_FROM` to match.
 4. At `/admin/ventures`: approve a prints venture, add a product, order one sample.
 
+### Buying on the site
+
+1. `/merch` lists approved products in a running venture. "Pay by card" opens a Stripe checkout that takes the card and the shipping address.
+2. Stripe's webhook reports it paid. The order and the sale are written. Nothing has been sent to the printer yet.
+3. The engine asks Stripe again whether it was paid, for which product, how much, and where it ships. Any mismatch refuses the order.
+4. The draft is opened at Printful, then priced. With the desk switch off, it waits for the owner's click. With it on, it prints.
+5. Every five minutes the engine reads printed orders back: shipped, or cancelled by the printer.
+
+A paid order that will not be printed raises an alert. At `/admin/ventures` one button sends the customer's money back through Stripe.
+
+A refund or dispute that arrives before printing stops the order and deletes the draft. One that arrives after printing is a cost on the venture's scorecard.
+
+Settings: `POD_SHIP_COUNTRIES` (default `US`), `POD_SHIPPING_CENTS` (default `0`, meaning the price includes shipping).
+
+### Her own proposals
+
+About once a week, when a feeling is strong enough to act on, she puts one way to earn in front of the owner: prints, then writing, then white-label goods, then pictures as files. Only one waits at a time. The words are fixed and her own. A declined idea is not put forward again.
+
 ### Not built yet
 
-- The shop checkout does not open print orders. Today only the owner's desk does, for samples. Wiring a paid shop order to `openPodOrder` is the next step, and its income line must not be counted twice with the shop's own ledger.
-- Zoora cannot yet propose a venture or a product from her own loop. The functions exist; the brain does not call them.
-- No webhook. Shipping and refunds are not read back. A refund is entered by hand as a line.
-- The Printful calls follow the published v2 documentation and are tested against a stand-in. They have not been run against a real Printful account.
+- She cannot propose a product by herself. A print needs a PNG, JPG or PDF on your host and a Printful catalog variant. Her engine draws SVG only and has no catalog reader.
+- `/merch` links to the drawing instead of showing it, because the site's content policy allows images from the site itself only.
+- No Printful webhook. Shipping is read by asking, every five minutes. No tracking number is shown to the buyer.
+- When Printful cancels an order it already charged, the money it returns is entered by hand.
+- Shipping is one flat charge. Tax is not collected.
+- The Printful and Stripe calls follow the published documentation and are tested against stand-ins. They have not been run against real accounts.

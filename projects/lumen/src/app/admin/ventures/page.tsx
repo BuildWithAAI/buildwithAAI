@@ -6,7 +6,7 @@ import { listVentures, scorecard, VENTURE_KINDS } from "../../../economy/venture
 import { autoConfirmOn, listPodOrders, listProducts, minMarginPercent } from "../../../fulfillment/pod";
 import { printfulConfigured } from "../../../fulfillment/printful";
 import { getEngine } from "../../../server/engine";
-import { podAutoAction, podConfirmAction, podProductAction, podProductDecideAction, podSampleAction, podSyncAction, ventureDecideAction, ventureProposeAction, ventureStatusAction } from "../../actions";
+import { podRefundAction, podAutoAction, podConfirmAction, podProductAction, podProductDecideAction, podSampleAction, podSyncAction, ventureDecideAction, ventureProposeAction, ventureStatusAction } from "../../actions";
 
 function money(cents: number): string {
   return `${cents < 0 ? "-" : ""}$${(Math.abs(cents) / 100).toFixed(2)}`;
@@ -158,10 +158,16 @@ export default async function VentureDesk({ searchParams }: { searchParams: Prom
                 <td>{order.status}{order.reason ? ` (${order.reason})` : ""}</td>
                 <td>{order.costCents == null ? "cost not known yet" : `cost ${money(order.costCents)}`}</td>
                 <td>
-                  {["draft", "check", "opening", "confirming"].includes(order.status) ? (
+                  {["paid", "draft", "check", "opening", "confirming", "confirmed"].includes(order.status) ? (
                     <form action={podSyncAction}>
                       <input type="hidden" name="id" value={order.id} />
                       <button type="submit">Read from Printful</button>
+                    </form>
+                  ) : null}
+                  {["refused", "failed", "canceled"].includes(order.status) && order.paidRef?.startsWith("stripe:") ? (
+                    <form action={podRefundAction}>
+                      <input type="hidden" name="id" value={order.id} />
+                      <button type="submit">Send the customer&apos;s {money(order.retailCents)} back</button>
                     </form>
                   ) : null}
                   {order.status === "priced" ? (

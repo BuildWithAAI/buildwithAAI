@@ -12,8 +12,8 @@ import { allowRate, setFlag } from "../db/db";
 import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../economy/economy";
 import { checkBrakes, clearBrake, setLadderMode } from "../economy/ladder";
 import { decideVenture, proposeVenture, setVentureStatus } from "../economy/ventures";
-import { confirmPodOrder, decideProduct, openPodOrder, proposeProduct, syncPodOrder } from "../fulfillment/pod";
-import { listShop } from "../shop/store";
+import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
+import { listShop, shopCheckoutOpen } from "../shop/store";
 import { getEngine } from "../server/engine";
 
 async function ip(): Promise<string> {
@@ -103,6 +103,17 @@ export async function shopBuy(form: FormData) {
   if (!allowRate(engine.db, `shop-buy:${address}`, 6, 60_000, buyAt) || !allowRate(engine.db, "shop-buy:all", 60, 60_000, buyAt)) redirect("/shop?sales=soon");
   const result = await engine.shopCheckout(String(form.get("id") ?? ""), String(form.get("note") ?? ""), address);
   if (!result.ok || result.comingSoon || !result.url || !result.url.startsWith("http")) redirect("/shop?sales=soon");
+  redirect(result.url);
+}
+
+/** A visitor buys a print. Stripe takes the card and the address. Nothing is ordered from the printer until Stripe reports it paid. */
+export async function printBuy(form: FormData) {
+  const engine = getEngine();
+  const address = await ip();
+  const buyAt = Date.now();
+  if (!allowRate(engine.db, `print-buy:${address}`, 6, 60_000, buyAt) || !allowRate(engine.db, "print-buy:all", 60, 60_000, buyAt)) redirect("/merch?sales=soon");
+  const result = await printCheckout(engine.db, engine.env, String(form.get("id") ?? ""), shopCheckoutOpen(engine.db, engine.env), buyAt);
+  if (!result.ok || !result.url.startsWith("https://")) redirect("/merch?sales=soon");
   redirect(result.url);
 }
 
@@ -414,5 +425,12 @@ export async function podConfirmAction(form: FormData) {
 export async function podAutoAction(form: FormData) {
   await ventureStep(() => {
     setFlag(getEngine().db, "pod_auto_confirm", form.get("auto") === "on" ? "1" : "0");
+  });
+}
+
+/** The owner sends a customer's money back for a paid print that will not be made. */
+export async function podRefundAction(form: FormData) {
+  await ventureStep(async (now) => {
+    await refundPaidPrint(getEngine().db, process.env, text(form, "id"), now);
   });
 }

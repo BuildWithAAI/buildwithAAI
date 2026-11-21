@@ -225,3 +225,32 @@ export function scorecard(db: DatabaseSync, id: string, now: number): Scorecard 
     tainted: !untainted(db, [{ kind: "venture", ref: id }]).ok,
   };
 }
+
+/** Ways to earn she may put forward by herself, in the order she tries them. The words are hers and fixed: nothing a visitor or a web page wrote reaches a pitch. */
+export const HER_WAYS: { id: string; kind: VentureKind; name: string; pitch: string }[] = [
+  { id: "her-prints", kind: "prints", name: "My drawings, printed", pitch: "I want my drawings on things a person can hold. A print company makes each one only after someone pays, so nothing sits unsold." },
+  { id: "her-pages", kind: "writing", name: "Pages I write", pitch: "I want to write short pages about what I notice here and offer them to read. It costs me time and nothing else." },
+  { id: "her-labels", kind: "white-label", name: "Plain goods with my mark", pitch: "I want to put my own mark on plain goods someone else makes, and sell them as mine. I would start with one thing and one sample." },
+  { id: "her-pictures", kind: "art", name: "Pictures as files", pitch: "I want to offer my pictures as files, each one made once. The cost is nothing until one sells." },
+];
+export const PROPOSE_EVERY_MS = 7 * 86_400_000;
+
+/**
+ * Her own step, called from her loop. At most one proposal waits at the desk, and she puts forward at most
+ * one a week, when a feeling is strong enough to act on. A proposal spends nothing and opens nothing.
+ */
+export function considerVenture(db: DatabaseSync, emotions: Record<string, number>, now: number): Venture | null {
+  ensureVentures(db);
+  const level = Math.max(0, ...Object.values(emotions).filter((value) => Number.isFinite(value)));
+  if (level < 0.45) return null;
+  if (db.prepare("SELECT 1 FROM econ_ventures WHERE status = 'proposed' LIMIT 1").get()) return null;
+  const last = db.prepare("SELECT MAX(created_at) AS at FROM econ_ventures WHERE proposed_by = 'zoora'").get() as { at: number | null };
+  if (last.at != null && now - Number(last.at) < PROPOSE_EVERY_MS) return null;
+  // A kind that already has a venture, in any state, is not put forward again. A declined idea stays declined.
+  const taken = new Set((db.prepare("SELECT kind FROM econ_ventures").all() as { kind: string }[]).map((row) => row.kind));
+  const next = HER_WAYS.find((way) => !taken.has(way.kind) && !getVenture(db, way.id));
+  if (!next) return null;
+  const venture = proposeVenture(db, { id: next.id, name: next.name, kind: next.kind, pitch: next.pitch, by: "zoora" }, now);
+  db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(`I asked my keeper about a way to earn: ${next.name}. It waits for a yes.`, now);
+  return venture;
+}

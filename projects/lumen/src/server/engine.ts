@@ -3,7 +3,7 @@ import { soulIntact } from "../security/soul";
 import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
-import { expireVentures } from "../economy/ventures";
+import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
 import { printfulConfigured } from "../fulfillment/printful";
 import { createHash, randomBytes } from "node:crypto";
@@ -335,6 +335,8 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       memory: goal ?? lived.longTerm[0]?.text ?? null,
       research: finding?.question ?? null,
     }, now, env);
+    // She may put one way to earn in front of the owner. It spends nothing and waits for a yes.
+    considerVenture(db, lived.emotions as unknown as Record<string, number>, now);
     const ranked = (Object.entries(lived.emotions) as [string, number][]).sort((a, b) => b[1] - a[1]);
     considerKeeperList(db, {
       emotion: ranked[0]?.[0] ?? "calm",
@@ -977,6 +979,12 @@ export function startLoop(): void {
     void engine.tickOnce().catch(() => undefined);
     const day = new Date().toISOString().slice(0, 10);
     if (flag(engine.db, "last_reconcile_day", "") !== day) void engine.reconcileNow().catch(() => undefined);
+    // Print orders are moved along every five minutes: paid ones opened, drafts priced, shipping read back.
+    const fiveMinutes = String(Math.floor(Date.now() / 300_000));
+    if (printfulConfigured(engine.env) && flag(engine.db, "last_print_sync", "") !== fiveMinutes) {
+      setFlag(engine.db, "last_print_sync", fiveMinutes);
+      void syncOpenPodOrders(engine.db, engine.env, Date.now()).catch(() => undefined);
+    }
     // Balances are read once an hour. A reading is a network call, so it never holds up the tick.
     const hour = new Date().toISOString().slice(0, 13);
     if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
@@ -986,8 +994,6 @@ export function startLoop(): void {
       } catch {
         // The next hour tries again.
       }
-      // Reads print orders back from Printful. It records what happened there and confirms nothing.
-      if (printfulConfigured(engine.env)) void syncOpenPodOrders(engine.db, engine.env, Date.now()).catch(() => undefined);
       void runReaders(engine.db, engine.env, Date.now())
         .then(() => {
           detectMilestones(engine.db, Date.now());
