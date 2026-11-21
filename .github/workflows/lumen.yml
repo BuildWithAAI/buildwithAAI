@@ -1,0 +1,65 @@
+name: Lumen
+
+on:
+  pull_request:
+    paths:
+      - "projects/lumen/**"
+      - ".github/workflows/lumen.yml"
+  push:
+    branches: [main]
+    paths:
+      - "projects/lumen/**"
+      - ".github/workflows/lumen.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  next-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: projects/lumen
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # actions/setup-node v4.4.0. The tag v4.4.0 is commit 49933ea5288caeca8642d1e84afbd3f7d6820020.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - name: Install
+        run: npm ci
+      - name: Test
+        run: npm test
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Production build
+        run: npm run build
+      - name: Install Playwright Chromium
+        working-directory: projects/lumen
+        run: npx --no-install playwright install --with-deps chromium
+      - name: CSP hydration smoke
+        working-directory: projects/lumen
+        run: |
+          node scripts/csp-smoke.mjs
+          test -f "${RUNNER_TEMP}/csp-smoke-ok"
+          test -f "${RUNNER_TEMP}/world-fallback.png"
+      - name: Upload smoke screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lumen-smoke
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/home.png
+            ${{ runner.temp }}/guestbook.png
+            ${{ runner.temp }}/world-tip.png
+            ${{ runner.temp }}/world-fallback.png
+            ${{ runner.temp }}/desk-login.png
+            ${{ runner.temp }}/home-mobile.png
+            ${{ runner.temp }}/home-tablet.png
+            ${{ runner.temp }}/csp-smoke-ok
+          if-no-files-found: error
