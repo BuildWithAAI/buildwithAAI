@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
 import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../src/economy/economy";
-import { BASE_CAPS, brakes, checkBrakes, clearBrake, currentCaps, ladderAutoCap, liveTradeAllowed } from "../src/economy/ladder";
+import { BASE_CAPS, brakes, checkBrakes, clearBrake, currentCaps, ladderAutoCap, ladderMode, liveTradeAllowed, setLadderMode, workingFloat } from "../src/economy/ladder";
 
 const T = 1_800_000_000_000;
 
@@ -11,6 +11,7 @@ function withTreasury(dollars: number) {
   addVenue(db, { id: "cold", bookId: "company", name: "Cold reserve", kind: "wallet" }, T);
   recordReading(db, { venueId: "float", valueCents: dollars * 100, source: "reader" }, T);
   detectMilestones(db, T);
+  setLadderMode(db, "earned");
   return db;
 }
 
@@ -77,5 +78,38 @@ describe("ladder and brakes", () => {
     expect(checkBrakes(db, T + 1)).toEqual([]);
     recordReading(db, { venueId: "cold", valueCents: 400_000, source: "reader" }, T + 2);
     expect(checkBrakes(db, T + 2).map((brake) => brake.scope)).toEqual(["book:company"]);
+  });
+
+  it("is open by default: she may trade from day one, up to the money in her working venues", () => {
+    const db = openDatabase();
+    expect(ladderMode(db)).toBe("open");
+    expect(liveTradeAllowed(db, 100, T)).toEqual({ ok: false, reason: "LADDER_CAP" });
+    addVenue(db, { id: "float", bookId: "company", name: "Trading float", kind: "exchange" }, T);
+    addVenue(db, { id: "cold", bookId: "company", name: "Cold reserve", kind: "wallet" }, T);
+    recordReading(db, { venueId: "float", valueCents: 20_000, source: "reader" }, T);
+    recordReading(db, { venueId: "cold", valueCents: 9_000_000, source: "reader" }, T);
+    expect(workingFloat(db, T)).toBe(20_000);
+    expect(currentCaps(db, T)).toMatchObject({ trading: "live", tradeCents: 20_000, landSales: true, landRegistry: true });
+    expect(liveTradeAllowed(db, 20_000, T)).toEqual({ ok: true });
+    expect(liveTradeAllowed(db, 20_001, T)).toEqual({ ok: false, reason: "LADDER_CAP" });
+    expect(ladderAutoCap(db, 5_000)).toBe(5_000);
+    expect(ladderAutoCap(db, null)).toBeNull();
+  });
+
+  it("still stops on a brake in open mode, and can be switched to earned by the owner", () => {
+    const db = openDatabase();
+    addVenue(db, { id: "float", bookId: "company", name: "Trading float", kind: "exchange" }, T);
+    recordReading(db, { venueId: "float", valueCents: 100_000, source: "reader" }, T);
+    checkBrakes(db, T);
+    recordReading(db, { venueId: "float", valueCents: 70_000, source: "reader" }, T + 1);
+    checkBrakes(db, T + 1);
+    expect(liveTradeAllowed(db, 100, T + 1)).toEqual({ ok: false, reason: "BRAKE" });
+    expect(brakes(db).map((brake) => brake.scope).sort()).toEqual(["book:company", "venue:float"]);
+    clearBrake(db, "venue:float", T + 2);
+    expect(liveTradeAllowed(db, 100, T + 2)).toEqual({ ok: false, reason: "BRAKE" });
+    clearBrake(db, "book:company", T + 2);
+    expect(liveTradeAllowed(db, 100, T + 2)).toEqual({ ok: true });
+    setLadderMode(db, "earned");
+    expect(liveTradeAllowed(db, 100, T + 2)).toEqual({ ok: false, reason: "LADDER" });
   });
 });
