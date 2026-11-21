@@ -10,7 +10,7 @@ import { chainTimeMs, fetchFinalized, quoteSolOrder, verifySolPayment } from "..
 import { checkoutReturnOrigin } from "./api/checkout/auth";
 import { allowRate } from "../db/db";
 import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../economy/economy";
-import { checkBrakes, clearBrake } from "../economy/ladder";
+import { checkBrakes, clearBrake, setLadderMode } from "../economy/ladder";
 import { listShop } from "../shop/store";
 import { getEngine } from "../server/engine";
 
@@ -319,4 +319,9 @@ export async function economyBrakeAction(form: FormData) {
     if (!/^(venue:[a-z0-9-]{2,40}|book:company)$/.test(scope)) throw new Error("ECON_SCOPE");
     clearBrake(getEngine().db, scope, now);
   });
+}
+
+/** Open: she may act from day one inside her working balance. Earned: each step waits for an approved milestone. */
+export async function economyModeAction(form: FormData) {
+  await economyStep(() => setLadderMode(getEngine().db, form.get("mode") === "earned" ? "earned" : "open"));
 }
