@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
-import { addEntry, addVenue, bookSummary, decideMilestone, detectMilestones, milestones, proof, recordReading, splitIncome, STALE_MS } from "../src/economy/economy";
+import { addEntry, addVenue, bookSummary, decideMilestone, detectMilestones, milestones, proof, recordReading, splitIncome, STALE_MS, totalEarned } from "../src/economy/economy";
 
 const T = 1_800_000_000_000;
 
@@ -45,13 +45,16 @@ describe("economy", () => {
     expect(later.staleVenues).toBe(2);
   });
 
-  it("keeps the land book apart from the company book", () => {
+  it("keeps the land book apart from the company book, and counts both toward what she earned", () => {
     const db = seeded();
     addEntry(db, { bookId: "land", kind: "income", cents: 80_000, category: "plot", idem: "plot-1" }, T);
     recordReading(db, { venueId: "land-wallet", valueCents: 80_000, source: "reader" }, T);
-    expect(bookSummary(db, "company", T).treasuryCents).toBe(0);
+    recordReading(db, { venueId: "shop", valueCents: 30_000, source: "owner" }, T);
+    expect(bookSummary(db, "company", T).treasuryCents).toBe(30_000);
     expect(bookSummary(db, "land", T).incomeCents).toBe(80_000);
-    expect(detectMilestones(db, T)).toEqual([]);
+    expect(totalEarned(db, T)).toBe(110_000);
+    expect(detectMilestones(db, T)).toEqual([50_000, 100_000]);
+    expect(proof(db, T)).toMatchObject({ totalEarnedCents: 110_000, company: { earnedCents: 30_000 }, land: { earnedCents: 80_000 } });
   });
 
   it("records one line for one idem and refuses numbers that look like an account", () => {

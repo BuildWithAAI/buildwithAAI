@@ -4,8 +4,8 @@ import { OWNER_COOKIE } from "../../../auth/owner";
 import { loginReachable, ownerRouteOpen } from "../../../auth/publicMode";
 import { bookSummary, BOOKS, ENTRY_KINDS, listVenues, milestones, VENUE_KINDS } from "../../../economy/economy";
 import { getEngine } from "../../../server/engine";
-import { brakes, currentCaps } from "../../../economy/ladder";
-import { economyBrakeAction, economyEntryAction, economyMilestoneAction, economyReadingAction, economyVenueAction } from "../../actions";
+import { brakes, currentCaps, ladderMode } from "../../../economy/ladder";
+import { economyBrakeAction, economyModeAction, economyEntryAction, economyMilestoneAction, economyReadingAction, economyVenueAction } from "../../actions";
 
 function money(cents: number): string {
   return `${cents < 0 ? "-" : ""}$${(Math.abs(cents) / 100).toFixed(2)}`;
@@ -23,7 +23,8 @@ export default async function EconomyDesk({ searchParams }: { searchParams: Prom
   const now = Date.now();
   const venues = listVenues(engine.db);
   const ladder = milestones(engine.db);
-  const caps = currentCaps(engine.db);
+  const caps = currentCaps(engine.db, now);
+  const mode = ladderMode(engine.db);
   const tripped = brakes(engine.db);
   return (
     <div className="grid">
@@ -35,9 +36,20 @@ export default async function EconomyDesk({ searchParams }: { searchParams: Prom
       </section>
       <section className="card">
         <p className="kicker">What she may do now</p>
+        <p className="muted">
+          {mode === "open"
+            ? "Open. She may trade, sell and build from day one. Her limit is the money in her working venues. The milestones are a record."
+            : "Earned. Each step waits for a milestone you approve."}
+        </p>
+        <form action={economyModeAction}>
+          <button type="submit" name="mode" value="open" disabled={mode === "open"}>Open from day one</button>
+          <button type="submit" name="mode" value="earned" disabled={mode === "earned"}>Earn each step</button>
+        </form>
         <table>
           <tbody>
             <tr><th>Spend without asking</th><td>{caps.selfSpendCents > 0 ? `up to ${money(caps.selfSpendCents)}, and only if the spend settings allow it` : "nothing"}</td></tr>
+            <tr><th>Ways to earn at once</th><td>{caps.earningVenues}</td></tr>
+            <tr><th>Budget for one venture</th><td>{money(caps.ventureCents)}</td></tr>
             <tr><th>Trading</th><td>{caps.trading}</td></tr>
             <tr><th>Largest live trade</th><td>{money(caps.tradeCents)}</td></tr>
             <tr><th>Trading agents</th><td>{caps.traders}</td></tr>

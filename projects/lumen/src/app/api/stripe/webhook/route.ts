@@ -4,6 +4,8 @@ import { getEngine } from "../../../../server/engine";
 import { buildOwnerNotifier, deskNotifier } from "../../../../money/notify";
 import { logSecurity } from "../../../../http/log";
 import { handleStripeWebhook } from "../../../../money/webhook";
+import { syncOpenPodOrders } from "../../../../fulfillment/pod";
+import { printfulConfigured } from "../../../../fulfillment/printful";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,8 @@ export async function POST(request: Request) {
   if (!result.duplicate) {
     const event = JSON.parse(payload) as { type?: string; id?: string };
     const type = event.type === "checkout.session.completed" ? "sale" : event.type?.startsWith("charge.dispute") ? "alert" : null;
+    // A paid print is opened at the printer now, not on the next beat. This confirms nothing unless the owner switched that on.
+    if (event.type === "checkout.session.completed" && printfulConfigured(process.env)) void syncOpenPodOrders(engine.db, process.env, Date.now()).catch(() => undefined);
     if (type) void publishJarvis(process.env, { type, text: event.type ?? type }).catch(() => undefined);
   }
   return Response.json({ received: true, duplicate: result.duplicate });
