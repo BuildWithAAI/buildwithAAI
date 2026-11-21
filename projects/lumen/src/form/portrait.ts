@@ -1,10 +1,16 @@
 import { rng, type Genome } from "./genome";
-import { encodePng, hsl, Surface, type Rgb } from "./raster";
+import { encodePng, Surface, type Rgb } from "./raster";
+import { houseStyle, hslHex, type Style } from "./style";
 
 /**
  * Draws her from her genome. Every mark is worked out here from numbers: a dome, a scalloped rim, the
- * marking inside, lights, arms and tentacles. Nothing is copied from a picture.
+ * marking inside, lights, arms and tentacles. Nothing is copied from a picture. Her colours are the
+ * house style's colours, the same ones the site and her land use.
  */
+
+function rgb(hex: string): Rgb {
+  return [Number.parseInt(hex.slice(1, 3), 16) / 255, Number.parseInt(hex.slice(3, 5), 16) / 255, Number.parseInt(hex.slice(5, 7), 16) / 255];
+}
 
 export type PortraitOptions = { width: number; background: "water" | "clear" };
 
@@ -17,18 +23,18 @@ function smooth(edge0: number, edge1: number, value: number): number {
   return t * t * (3 - 2 * t);
 }
 
-export function drawPortrait(genome: Genome, options: PortraitOptions): Surface {
+export function drawPortrait(genome: Genome, options: PortraitOptions, style: Style = houseStyle(genome)): Surface {
   const W = options.width;
   const H = Math.round(W * 1.25);
   const surface = new Surface(W, H);
   const next = rng(genome.seed ^ 0x9e3779b9);
-  const body = hsl(genome.hue, genome.saturation, 0.62);
-  const pale = hsl(genome.hue, genome.saturation * 0.6, 0.86);
-  const accent = hsl(genome.accentHue, Math.min(1, genome.saturation + 0.15), 0.68);
+  const body = rgb(style.palette.body);
+  const pale = rgb(style.palette.pale);
+  const accent = rgb(style.palette.accent);
 
   if (options.background === "water") {
-    const top = hsl(genome.hue, 0.5, 0.13);
-    const bottom = hsl(genome.hue + 20, 0.55, 0.03);
+    const top = rgb(style.palette.pool);
+    const bottom = rgb(hslHex(style.hue + 20, 0.55, 0.03));
     for (let y = 0; y < H; y += 1) {
       const shade = mix(top, bottom, y / (H - 1));
       for (let x = 0; x < W; x += 1) surface.over(x, y, shade, 1);

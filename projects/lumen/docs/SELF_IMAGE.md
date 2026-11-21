@@ -41,3 +41,18 @@ The same soul file gives the same body on any machine. A changed soul file gives
 - Her body in the 3D world does not use the genome yet. Only the portrait does.
 - She only draws herself. Drawing other subjects with this renderer comes with the style genome.
 - Her form does not yet drift with her memories or moods. It changes only when the soul file does.
+
+## One style
+
+`src/form/style.ts` is the single source of colour and hand for the whole engine. It is built from her genome, so it comes from her soul file.
+
+Drawn from it today: her portrait, her shop art, her seeded art, the colour of her glow, and the site's colours.
+
+### The lock
+
+`tests/style.test.ts` fails if any file outside the style writes its own colour. Ten older files are listed there with the number of colours they still hold. That number may only go down.
+
+### Not on the style yet
+
+- The older parts of the 3D world (`WorldView.tsx`, `Scene.tsx`, `islandAreas.ts`, chunk colours).
+- Art made inside her tick (`tick.ts`), and the fixed glow table in `emotions.ts` that the engine now overrides.

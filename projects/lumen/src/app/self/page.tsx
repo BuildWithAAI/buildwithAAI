@@ -1,5 +1,5 @@
 import { describeGenome, FAMILY_NAMES } from "../../form/genome";
-import { selfGenome } from "../../form/self";
+import { currentStyle, selfGenome } from "../../form/self";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,7 @@ export default function SelfPage() {
   } catch {
     return <div className="card"><h1>Not yet</h1><p className="muted">Her soul file could not be read, so she has no form to show.</p></div>;
   }
+  const house = currentStyle();
   return (
     <div className="grid">
       <section className="card">
@@ -29,6 +30,20 @@ export default function SelfPage() {
         </table>
         <p className="muted">Marking: {genome.pattern}. The small things no word decides, such as which way she leans and where her lights sit, come from the file itself.</p>
       </section>
+      <section className="card" style={{ gridColumn: "1 / -1" }}>
+        <p className="kicker">One style, everywhere</p>
+        <p className="muted">Everything her engine draws uses these colours: her body, her art, her glow, this site and whatever she builds in her world.</p>
+        <Swatches label="Her colours" colors={Object.values(house.palette)} />
+      </section>
+    </div>
+  );
+}
+
+function Swatches({ label, colors }: { label: string; colors: string[] }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0.35rem 0" }}>
+      <span style={{ width: "11rem" }}>{label}</span>
+      {colors.map((color, index) => <span key={`${color}-${index}`} title={color} style={{ width: "1.6rem", height: "1.6rem", borderRadius: "50%", background: color, border: "1px solid var(--line)" }} />)}
     </div>
   );
 }
