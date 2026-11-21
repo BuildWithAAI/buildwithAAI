@@ -55,17 +55,19 @@ export type Surface = { color: string; /** 0 to 1: how much it shines by itself.
 export type Look = Record<MaterialName, Surface>;
 
 /** The eight materials, each a shade of her body colour or her light. Nothing else may be put on a surface. */
-export function lookFrom(style: Style): Look {
-  const h = style.hue;
+export function lookFrom(style: Style, vibe: { tint: number; shade: number; glow: number } = { tint: 0, shade: 0, glow: 1 }): Look {
+  const h = style.hue + vibe.tint;
+  const d = vibe.shade;
   // Told apart by how light they are, not by hue: dark land, pale stone, bright metal, and her gold for light.
   return {
-    stone: { color: hslHex(h, 0.16, 0.64), emissive: 0, alpha: 1 },
-    metal: { color: hslHex(h, 0.22, 0.84), emissive: 0, alpha: 1 },
-    glass: { color: style.palette.pale, emissive: 0.1, alpha: 0.36 },
-    body: { color: style.palette.body, emissive: 0.3, alpha: 0.88 },
-    glow: { color: style.palette.accent, emissive: 1, alpha: 1 },
-    water: { color: hslHex(h - 16, 0.66, 0.5), emissive: 0.12, alpha: 0.58 },
-    ground: { color: hslHex(h, 0.34, 0.25), emissive: 0, alpha: 1 },
-    dark: { color: hslHex(h, 0.45, 0.1), emissive: 0, alpha: 1 },
+    stone: { color: hslHex(h, 0.16, 0.64 + d), emissive: 0, alpha: 1 },
+    metal: { color: hslHex(h, 0.22, 0.84 + d * 0.5), emissive: 0, alpha: 1 },
+    glass: { color: hslHex(h, style.saturation * 0.6, 0.86), emissive: 0.1, alpha: 0.36 },
+    body: { color: hslHex(h, style.saturation, 0.62 + d), emissive: 0.3, alpha: 0.88 },
+    // Her light is the same colour whatever the vibe. Only how strongly it shines changes.
+    glow: { color: style.palette.accent, emissive: Math.min(1, vibe.glow), alpha: 1 },
+    water: { color: hslHex(h - 16, 0.66, 0.5 + d), emissive: 0.12, alpha: 0.58 },
+    ground: { color: hslHex(h, 0.34, 0.25 + d), emissive: 0, alpha: 1 },
+    dark: { color: hslHex(h, 0.45, 0.1 + d * 0.4), emissive: 0, alpha: 1 },
   };
 }

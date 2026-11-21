@@ -32,7 +32,15 @@ type Arrange = {
 };
 
 export type Part = Arrange & (({ op: "loft" } & LoftSpec) | ({ op: "spin" } & SpinSpec) | ({ op: "ground" } & GroundSpec) | { op: "group"; parts: Part[] });
-export type Recipe = { name: string; seed: number; islet: boolean; parts: Part[] };
+/**
+ * The feel of a piece of her world. She sets it on land she lays, and what stands on that land takes it,
+ * so a part of her world can have its own mood. It turns her body colour and deepens or lightens it.
+ * Her light stays her own colour everywhere, which is what keeps every part plainly hers.
+ */
+export type Vibe = { tint: number; shade: number; glow: number };
+export const PLAIN: Vibe = { tint: 0, shade: 0, glow: 1 };
+export type Layer = "ground" | "structure";
+export type Recipe = { name: string; seed: number; islet: boolean; layer?: Layer; vibe?: Vibe; /** Homes and shops she declares inside it, for agents to rent or buy. */ units?: { homes: number; shops: number }; parts: Part[] };
 
 const NOT_HERS = /\b(disney|pixar|marvel|nintendo|pokemon|lego|nike|apple|google|tesla|coca|mcdonald|starbucks|eiffel|empire state|burj|big ben|taj mahal|statue of liberty|space needle|trump|taylor swift)\b/i;
 
@@ -65,6 +73,13 @@ function outline(value: unknown): ProfileSpec {
   const v = (value ?? fail("FORGE_MISSING")) as Record<string, unknown>;
   if (typeof v !== "object") fail("FORGE_PROFILE");
   return { shape: pick(v.shape, ["round", "sided", "block"] as const), width: num(v.width, 0.02, 64), depth: optional(v.depth, 0.02, 64), sides: optional(v.sides, 3, 16), soft: optional(v.soft, 0, 1), lobes: optional(v.lobes, 0, 32), ripple: optional(v.ripple, 0, 0.3) };
+}
+
+function holes(value: unknown): { along: [number, number]; around: [number, number] }[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value) || value.length > 16) fail("FORGE_OPENINGS");
+  const pair = (item: unknown): [number, number] => (Array.isArray(item) && item.length === 2 ? [num(item[0], 0, 1), num(item[1], 0, 1)] : fail("FORGE_OPENINGS"));
+  return (value as Record<string, unknown>[]).map((item) => ({ along: pair(item?.along), around: pair(item?.around) }));
 }
 
 function cleanPart(value: unknown, depth: number): Part {
@@ -100,7 +115,7 @@ function cleanPart(value: unknown, depth: number): Part {
       through = (v.through as unknown[]).map((p) => vec(p, -LIMITS.height, LIMITS.height));
     }
     if (!through && v.up === undefined) fail("FORGE_PATH");
-    return { ...arrange, op: "loft", up: through ? undefined : num(v.up, 0.02, LIMITS.height), through, closed: v.closed === true, smooth: v.smooth !== false, from: outline(v.from), to: v.to === undefined ? undefined : outline(v.to), rings: optional(v.rings, 2, 200), segments: optional(v.segments, 6, 96), taper: optional(v.taper, 0.02, 4), swell: optional(v.swell, -0.5, 1), twist: optional(v.twist, -1440, 1440), cap: pick(v.cap, ["flat", "crown", "open"] as const), bands: optional(v.bands, 0, 40), hand: optional(v.hand, 0, 1) };
+    return { ...arrange, op: "loft", up: through ? undefined : num(v.up, 0.02, LIMITS.height), through, closed: v.closed === true, smooth: v.smooth !== false, from: outline(v.from), to: v.to === undefined ? undefined : outline(v.to), rings: optional(v.rings, 2, 200), segments: optional(v.segments, 6, 96), taper: optional(v.taper, 0.02, 4), swell: optional(v.swell, -0.5, 1), twist: optional(v.twist, -1440, 1440), cap: pick(v.cap, ["flat", "crown", "open"] as const), bands: optional(v.bands, 0, 40), hand: optional(v.hand, 0, 1), wall: optional(v.wall, 0.05, 8), bevel: optional(v.bevel, 0, 4), openings: holes(v.openings), windows: v.windows === undefined || v.windows === null ? undefined : { rows: Math.round(num((v.windows as Record<string, unknown>).rows, 1, 80)), cols: optional((v.windows as Record<string, unknown>).cols, 3, 48), lit: optional((v.windows as Record<string, unknown>).lit, 0, 1) } };
   }
   if (v.op === "spin") {
     if (!Array.isArray(v.outline) || v.outline.length < 2 || v.outline.length > 48) fail("FORGE_OUTLINE");
@@ -108,7 +123,7 @@ function cleanPart(value: unknown, depth: number): Part {
     return { ...arrange, op: "spin", outline: points, segments: optional(v.segments, 6, 96), smooth: v.smooth !== false, ripple: optional(v.ripple, 0, 0.3), cap: pick(v.cap, ["flat", "open", "top-open"] as const), hand: optional(v.hand, 0, 1) };
   }
   if (v.op === "ground") {
-    return { ...arrange, op: "ground", width: num(v.width, 0.5, LIMITS.radius * 2), depth: optional(v.depth, 0.5, LIMITS.radius * 2), kind: pick(v.kind, ["flat", "dunes", "rows", "crater", "pool", "terraces"] as const), relief: optional(v.relief, 0, 12), cells: optional(v.cells, 2, 96), seed: optional(v.seed, 0, 4294967295), rows: optional(v.rows, 1, 60), round: v.round === true };
+    return { ...arrange, op: "ground", width: num(v.width, 0.5, LIMITS.radius * 2), depth: optional(v.depth, 0.5, LIMITS.radius * 2), kind: pick(v.kind, ["flat", "dunes", "rows", "crater", "pool", "terraces"] as const), relief: optional(v.relief, 0, 12), cells: optional(v.cells, 2, 96), seed: optional(v.seed, 0, 4294967295), rows: optional(v.rows, 1, 60), round: v.round === true, slab: optional(v.slab, 0, 20) };
   }
   if (v.op === "group") {
     if (depth >= LIMITS.depth) fail("FORGE_TOO_DEEP");
@@ -127,7 +142,11 @@ export function cleanRecipe(input: unknown): Recipe {
   // Her world is her own. Nothing in it is named for someone else's brand or a real landmark.
   if (NOT_HERS.test(name)) fail("FORGE_NAME_NOT_HERS");
   if (!Array.isArray(v.parts) || v.parts.length < 1 || v.parts.length > LIMITS.parts) fail("FORGE_PARTS");
-  return { name, seed: Math.round(num(v.seed, 0, 4294967295, 1)), islet: v.islet !== false, parts: (v.parts as unknown[]).map((part) => cleanPart(part, 0)) };
+  const mood = v.vibe as Record<string, unknown> | undefined;
+  const vibe = mood && typeof mood === "object" ? { tint: num(mood.tint, -60, 60, 0), shade: num(mood.shade, -0.12, 0.12, 0), glow: num(mood.glow, 0.2, 1.6, 1) } : undefined;
+  const rooms = v.units as Record<string, unknown> | undefined;
+  const units = rooms && typeof rooms === "object" ? { homes: Math.round(num(rooms.homes, 0, 600, 0)), shops: Math.round(num(rooms.shops, 0, 60, 0)) } : undefined;
+  return { name, seed: Math.round(num(v.seed, 0, 4294967295, 1)), islet: v.islet === true, layer: pick(v.layer, ["ground", "structure"] as const), vibe, units, parts: (v.parts as unknown[]).map((part) => cleanPart(part, 0)) };
 }
 
 type Run = { hand: Hand; next: () => number; instances: number; triangles: number };
@@ -169,14 +188,14 @@ function make(part: Part, run: Run): Mesh {
       for (let k = 0; k < part.scatter.count; k += 1) lay(spot, { at: [(run.next() - 0.5) * part.scatter.spread[0], 0, (run.next() - 0.5) * part.scatter.spread[1]], turn: run.next() * 360, size: low + (high - low) * run.next() });
     } else lay(spot);
   }
-  // A mirror adds a second, flipped copy of everything laid so far.
-  if (part.mirror) append(copies, { positions: [...copies.positions], indices: [...copies.indices], materials: [...copies.materials] }, {}, part.mirror);
   const placed = emptyMesh();
   append(placed, copies, { at: part.at, turn: part.turn, tip: part.tip, roll: part.roll, size: part.size });
+  // A mirror adds a second copy on the other side of the build's own middle line, after the part is placed.
+  if (part.mirror) append(placed, { positions: [...placed.positions], indices: [...placed.indices], materials: [...placed.materials] }, {}, part.mirror);
   return placed;
 }
 
-export type Built = { mesh: Mesh; triangles: number; radius: number; height: number; isletRadius: number };
+export type Built = { mesh: Mesh; triangles: number; radius: number; height: number; isletRadius: number; /** Half its width and half its depth on the ground. */ half: [number, number] };
 
 /** Makes the thing. The same recipe and the same hand always make the same mesh. */
 export function buildRecipe(recipe: Recipe, hand: Hand): Built {
@@ -191,5 +210,5 @@ export function buildRecipe(recipe: Recipe, hand: Hand): Built {
   const triangles = triangleCount(mesh);
   if (triangles > LIMITS.triangles) fail("FORGE_TOO_HEAVY");
   if (triangles < 1 || !soundMesh(mesh)) fail("FORGE_BROKEN");
-  return { mesh, triangles, radius, height: box.max[1], isletRadius };
+  return { mesh, triangles, radius, height: box.max[1], isletRadius, half: [Math.max(Math.abs(box.min[0]), Math.abs(box.max[0])), Math.max(Math.abs(box.min[2]), Math.abs(box.max[2]))] };
 }

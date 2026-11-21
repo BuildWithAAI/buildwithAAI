@@ -14,8 +14,11 @@ import { checkBrakes, clearBrake, setLadderMode } from "../economy/ladder";
 import { decideVenture, getVenture, launchVenture, proposeVenture, setVentureStatus } from "../economy/ventures";
 import { mergeVentures } from "../economy/merge";
 import { compose, IDEA_KINDS, type IdeaKind } from "../forge/ideas";
-import { raise, remove as removeBuild, reshape, undo as undoBuildStep } from "../forge/store";
+import { buildRecipe, cleanRecipe } from "../forge/recipe";
+import { herHand, raise, remove as removeBuild, reshape, undo as undoBuildStep, wander } from "../forge/store";
+import { rng } from "../form/genome";
 import { grantPlot } from "../world/land";
+import { takeUnit, vacate } from "../world/units";
 import { blankPlan, getPlan, savePlan, setCheck, TEXT_FIELDS, type CostLine } from "../economy/plans";
 import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, printFacts, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
 import { listShop, shopCheckoutOpen } from "../shop/store";
@@ -528,22 +531,29 @@ export async function forgeIdeaAction(form: FormData) {
   await forgeStep((now) => {
     const kind = text(form, "kind") as IdeaKind;
     if (!(IDEA_KINDS as readonly string[]).includes(kind)) throw new Error("FORGE_TOOL");
-    raise(getEngine().db, compose(kind, now >>> 0), now, "owner", kind);
+    const db = getEngine().db;
+    const recipe = cleanRecipe(compose(kind, now >>> 0));
+    const typed = text(form, "x") !== "" && text(form, "z") !== "";
+    const built = buildRecipe(recipe, herHand());
+    // With no place typed she finds one herself, the same way she does on her own.
+    const place = typed ? { x: Number(text(form, "x")), z: Number(text(form, "z")), turn: Number(text(form, "turn") || "0") } : wander(db, recipe.layer ?? "structure", built.half, built.height, rng(now >>> 0));
+    if (!place) throw new Error("FORGE_NO_GROUND");
+    raise(db, recipe, place, now, "owner", kind);
   });
 }
 
 /** A recipe pasted by the owner. It goes through the same checks as one she writes herself. */
 export async function forgeRecipeAction(form: FormData) {
   await forgeStep((now) => {
-    let recipe: unknown;
+    let recipe: { place?: unknown };
     try {
-      recipe = JSON.parse(String(form.get("recipe") ?? ""));
+      recipe = JSON.parse(String(form.get("recipe") ?? "")) as { place?: unknown };
     } catch {
       throw new Error("FORGE_RECIPE");
     }
     const id = text(form, "id");
     if (id) reshape(getEngine().db, id, recipe, now);
-    else raise(getEngine().db, recipe, now, "owner");
+    else raise(getEngine().db, recipe, recipe?.place, now, "owner");
   });
 }
 
@@ -568,5 +578,18 @@ export async function landGrantAction(form: FormData) {
   await forgeStep((now) => {
     const result = grantPlot(getEngine().db, Number(text(form, "cx")), Number(text(form, "cy")), text(form, "holder"), now);
     if (!result.ok) throw new Error(`FORGE_LAND_${result.reason}`);
+  });
+}
+
+/** The owner records that an agent has taken a unit, or that a rented one was given back. No payment is taken and no income is written. The terms are Zoora's. */
+export async function unitTakeAction(form: FormData) {
+  await forgeStep((now) => {
+    const how = text(form, "how");
+    if (how === "vacate") {
+      if (!vacate(getEngine().db, text(form, "unit"))) throw new Error("FORGE_UNIT_NOT_LET");
+      return;
+    }
+    const result = takeUnit(getEngine().db, text(form, "unit"), text(form, "holder"), how === "sold" ? "sold" : "let", now);
+    if (!result.ok) throw new Error(`FORGE_UNIT_${result.reason}`);
   });
 }

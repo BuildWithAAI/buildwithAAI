@@ -3,6 +3,9 @@ import type { Vec3 } from "./mesh";
 import type { Part, Recipe } from "./recipe";
 
 /**
+ * Things she already knows how to make. None of them says where anything goes: that is hers to choose.
+ * "plain", "fields" and "ruin" are land. The rest stand on land.
+ *
  * Things she already knows how to start. Each one is written in the recipe language and nothing else,
  * so anything here she could have written herself, and she can change any of it. They are starting
  * points, not the limit: any recipe the forge accepts is something she may build.
@@ -10,7 +13,8 @@ import type { Part, Recipe } from "./recipe";
  * Every idea takes a seed, so no two towers or tracks she raises are the same.
  */
 
-export const IDEA_KINDS = ["spire", "exchange", "coaster", "tank", "fields", "ruin"] as const;
+export const IDEA_KINDS = ["spire", "block", "exchange", "arch", "coaster", "tank", "tree", "lamp", "road", "plain", "fields", "ruin"] as const;
+export const LAND_KINDS: readonly string[] = ["plain", "fields", "ruin"];
 export type IdeaKind = (typeof IDEA_KINDS)[number];
 
 const NAMES: Record<IdeaKind, [string[], string[]]> = {
@@ -20,7 +24,24 @@ const NAMES: Record<IdeaKind, [string[], string[]]> = {
   tank: [["Stillwater", "Glass", "Moon", "Drift", "Kelp"], ["Tank", "Bowl", "Aquarium", "Cistern"]],
   fields: [["Low", "Salt", "Quiet", "Green", "Far"], ["Fields", "Rows", "Acre", "Furrows"]],
   ruin: [["Dry", "Ash", "Lost", "Wind", "Bleached"], ["Waste", "Ruin", "Flats", "Remains"]],
+  block: [["Brine", "Harbor", "Lamp", "Reef", "Narrow", "Upper"], ["Block", "Row", "Court", "Works", "House"]],
+  plain: [["Open", "New", "Wide", "First", "Level"], ["Ground", "Quarter", "Reach", "Flat"]],
+  arch: [["Tide", "Salt", "Low", "Lantern", "Kelp"], ["Gate", "Arch", "Passage", "Way"]],
+  tree: [["Glass", "Slow", "Lamp", "Reef", "Pale"], ["Tree", "Frond", "Bloom"]],
+  lamp: [["Small", "Street", "Soft", "Night"], ["Lamp", "Light", "Lantern"]],
+  road: [["Long", "Shore", "Lamp", "Middle", "Quiet"], ["Road", "Street", "Way", "Lane"]],
 };
+
+/** A street as long as she wants it: a dark bed, a pale kerb each side and a line of her light down the middle. It is low, so it blocks nothing. */
+export function roadParts(reach: number): Part[] {
+  const half = Math.min(31, reach / 2);
+  const line = (y: number): Vec3[] => [[-half, y, 0], [half, y, 0]];
+  return [
+    { op: "loft", material: "dark", through: line(0.08), smooth: false, from: { shape: "block", width: 7.5, depth: 0.16, soft: 0.2 }, segments: 8 },
+    { op: "loft", material: "glow", through: line(0.18), smooth: false, from: { shape: "block", width: 0.22, depth: 0.05 }, segments: 6 },
+    { op: "loft", material: "stone", at: [0, 0, 4.1], through: line(0.14), smooth: false, from: { shape: "block", width: 0.7, depth: 0.28, soft: 0.4 }, segments: 8, mirror: "z" },
+  ];
+}
 
 export function compose(kind: IdeaKind, seed: number): Recipe {
   const next = rng(seed ^ 0x2f6e2b1);
@@ -34,10 +55,10 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
     const height = between(42, 78);
     const width = between(7, 10);
     parts.push({ op: "spin", material: "stone", outline: [[width * 1.5, 0], [width * 1.45, 1.2], [width * 1.1, 2], [width * 0.9, 2.4]], ripple: 0.05 });
-    parts.push({ op: "loft", material: "glass", at: [0, 2.2, 0], up: height, from: { shape: "block", width, soft: 0.35 }, to: { shape: "sided", sides: whole(5, 8), width: width * 0.62, soft: 0.5 }, twist: between(30, 140), taper: between(0.7, 0.95), rings: 40, bands: whole(12, 22), cap: "crown" });
+    parts.push({ op: "loft", material: "glass", at: [0, 2.2, 0], up: height, from: { shape: "block", width, soft: 0.35 }, to: { shape: "sided", sides: whole(5, 8), width: width * 0.62, soft: 0.5 }, twist: between(30, 140), taper: between(0.7, 0.95), rings: 40, bands: whole(3, 6), windows: { rows: Math.round(height / 3.2), cols: 16, lit: between(0.35, 0.8) }, cap: "crown" });
     parts.push({ op: "loft", material: "dark", at: [0, 2.2, 0], up: height * 0.98, from: { shape: "round", width: width * 0.34 }, cap: "flat", hand: 0, segments: 16 });
     const count = whole(2, 4);
-    parts.push({ op: "loft", material: "stone", at: [0, 0, 0], up: height * between(0.3, 0.5), from: { shape: "sided", sides: 6, width: width * 0.5, soft: 0.4 }, taper: 0.8, bands: whole(4, 8), cap: "crown", around: { count, radius: width * 1.25 }, segments: 48 });
+    parts.push({ op: "loft", material: "stone", at: [0, 0, 0], up: height * between(0.3, 0.5), from: { shape: "sided", sides: 6, width: width * 0.5, soft: 0.4 }, taper: 0.8, windows: { rows: whole(5, 9), cols: 9, lit: 0.5 }, cap: "crown", around: { count, radius: width * 1.25 }, segments: 48 });
   }
 
   if (kind === "exchange") {
@@ -45,7 +66,7 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
     const deep = wide * 0.55;
     const tall = between(8, 11);
     parts.push({ op: "loft", material: "stone", up: 1.2, from: { shape: "block", width: wide + 6, depth: deep + 8, soft: 0.15 }, cap: "flat", hand: 0 });
-    parts.push({ op: "loft", material: "stone", at: [0, 1.2, 0], up: tall, from: { shape: "block", width: wide, depth: deep, soft: 0.12 }, cap: "flat", bands: 3, hand: 0.3 });
+    parts.push({ op: "loft", material: "stone", at: [0, 1.2, 0], up: tall, from: { shape: "block", width: wide, depth: deep, soft: 0.12 }, cap: "flat", windows: { rows: 3, cols: 22, lit: 0.7 } });
     const columns = whole(7, 10);
     const gap = (wide - 2) / (columns - 1);
     parts.push({ op: "loft", material: "metal", at: [-(wide - 2) / 2, 1.2, deep / 2 + 1.6], up: tall, from: { shape: "round", width: 1.25, lobes: 12, ripple: 0.06 }, cap: "crown", repeat: { count: columns, step: [gap, 0, 0] }, mirror: "z", segments: 36 });
@@ -96,7 +117,7 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
 
   if (kind === "fields") {
     const wide = between(46, 56);
-    parts.push({ op: "ground", material: "ground", width: wide, kind: "rows", relief: 0.7, rows: whole(12, 20), round: true, cells: 90 });
+    parts.push({ op: "ground", material: "ground", width: wide, kind: "rows", relief: 0.7, rows: whole(12, 20), cells: 90, slab: 4 });
     parts.push({ op: "loft", material: "body", at: [0, 0.7, 0], up: 1.5, from: { shape: "round", width: 0.3 }, taper: 0.5, cap: "crown", segments: 8, rings: 3, scatter: { count: 130, spread: [wide * 0.62, wide * 0.62], size: [0.7, 1.6] } });
     parts.push({ op: "loft", material: "stone", at: [-wide * 0.2, 0.3, wide * 0.12], up: 6.5, from: { shape: "block", width: 9, depth: 6.5, soft: 0.2 }, taper: 0.92, bands: 1, cap: "crown" });
     parts.push({ op: "loft", material: "metal", at: [-wide * 0.2 + 7.5, 0.3, wide * 0.12 - 1], up: between(11, 15), from: { shape: "round", width: 3.6 }, bands: 3, cap: "crown" });
@@ -107,7 +128,7 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
 
   if (kind === "ruin") {
     const wide = between(50, 58);
-    parts.push({ op: "ground", material: "ground", width: wide, kind: "dunes", relief: between(1.6, 2.6), round: true, cells: 90 });
+    parts.push({ op: "ground", material: "ground", width: wide, kind: "dunes", relief: between(1.6, 2.6), cells: 90, slab: 4 });
     parts.push({ op: "ground", material: "dark", at: [wide * 0.14, 0.05, wide * 0.1], width: 18, kind: "crater", relief: 2.4, round: true, cells: 40 });
     const stumps = whole(4, 6);
     for (let k = 0; k < stumps; k += 1) {
@@ -119,5 +140,49 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
     parts.push({ op: "loft", material: "glow", at: [wide * 0.14, -1.4, wide * 0.1], up: between(9, 14), from: { shape: "sided", sides: 3, width: 0.9, soft: 0.1 }, taper: 0.1, twist: 60, cap: "flat", hand: 0, segments: 12 });
   }
 
-  return { name, seed: seed >>> 0, islet: true, parts };
+  if (kind === "block") {
+    // A few buildings of different heights sharing one base, the ordinary fabric of a town.
+    const count = whole(1, 3);
+    const lot = between(20, 30);
+    parts.push({ op: "loft", material: "stone", up: 0.5, from: { shape: "block", width: lot, depth: lot * 0.8, soft: 0.08 }, cap: "flat" });
+    for (let k = 0; k < count; k += 1) {
+      const tall = between(10, 44);
+      const wide = (lot - 3) / count - 1;
+      const deep = between(lot * 0.4, lot * 0.66);
+      const x = -lot / 2 + 1.5 + wide / 2 + k * (wide + 1);
+      parts.push({ op: "loft", material: next() < 0.35 ? "glass" : "stone", at: [x, 0.5, 0], up: tall, from: { shape: "block", width: wide, depth: deep, soft: between(0.04, 0.3) }, taper: between(0.9, 1), windows: { rows: Math.max(2, Math.round(tall / 3.1)), cols: whole(10, 18), lit: between(0.25, 0.85) }, cap: "flat", bevel: 0.35, segments: 40, rings: 6 });
+      parts.push({ op: "loft", material: "dark", at: [x, 0.5 + tall, 0], up: between(0.8, 2.2), from: { shape: "block", width: wide * 0.5, depth: deep * 0.5, soft: 0.2 }, cap: "flat", segments: 16, rings: 2 });
+    }
+  }
+
+  if (kind === "plain") {
+    parts.push({ op: "ground", material: "ground", width: between(57, 63), depth: between(57, 63), kind: "flat", cells: 8, slab: 4 });
+  }
+
+  if (kind === "arch") {
+    // A gate with a way cut through it: a hollow block with a hole in each long face.
+    const wide = between(14, 20);
+    const tall = between(9, 14);
+    const mouth: [number, number] = [0, between(0.6, 0.72)];
+    parts.push({ op: "loft", material: "stone", up: tall, from: { shape: "block", width: wide, depth: 5, soft: 0.12 }, wall: 1.1, bevel: 0.4, cap: "flat", segments: 64, rings: 24, openings: [{ along: mouth, around: [0.17, 0.33] }, { along: mouth, around: [0.67, 0.83] }] });
+    parts.push({ op: "loft", material: "glow", at: [0, tall + 0.1, 0], up: 0.3, from: { shape: "block", width: wide * 0.8, depth: 0.5 }, cap: "flat", segments: 12, rings: 2 });
+  }
+
+  if (kind === "tree") {
+    const tall = between(5, 10);
+    parts.push({ op: "loft", material: "stone", up: tall, from: { shape: "sided", sides: 6, width: 0.9, soft: 0.6 }, taper: 0.45, twist: between(-40, 40), cap: "flat", segments: 12, rings: 6 });
+    for (let k = 0; k < whole(2, 4); k += 1) parts.push({ op: "spin", material: k === 0 ? "body" : "glass", at: [between(-1.2, 1.2), tall * between(0.7, 1.05), between(-1.2, 1.2)], outline: [[0.1, between(1.6, 2.6)], [between(1.4, 2.6), 1], [between(1.8, 3), 0], [0.6, -0.5]], ripple: 0.08, segments: 20 });
+  }
+
+  if (kind === "lamp") {
+    parts.push({ op: "loft", material: "metal", up: 4.6, from: { shape: "round", width: 0.3 }, taper: 0.6, cap: "flat", segments: 8, rings: 3 });
+    parts.push({ op: "spin", material: "glow", at: [0, 4.6, 0], outline: [[0.05, 0.9], [0.45, 0.55], [0.5, 0], [0.2, -0.15]], segments: 12 });
+  }
+
+  if (kind === "road") parts.push(...roadParts(between(40, 60)));
+
+
+  // Buildings people could live or trade in declare homes and shops. The forge keeps only as many as really fit.
+  const units = kind === "block" ? { homes: whole(8, 60), shops: whole(1, 4) } : kind === "spire" ? { homes: whole(20, 90), shops: 1 } : kind === "exchange" ? { homes: 0, shops: whole(3, 8) } : undefined;
+  return { name, seed: seed >>> 0, islet: false, layer: LAND_KINDS.includes(kind) ? "ground" : "structure", units, parts };
 }

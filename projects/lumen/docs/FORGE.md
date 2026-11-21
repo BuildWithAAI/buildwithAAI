@@ -2,16 +2,28 @@
 
 The forge is the part of the engine Zoora builds her world with. It is written for her. It uses no modelling library, no outside models and no textures.
 
-## Where things stand
+## Nothing is placed for her
 
-Her island is her sanctuary and is left as it is. Everything she raises with the forge stands around it, each build on its own floating islet. Sites are 90 metres apart, so no build can touch another or the island.
+There are no sites, no grid and no plan. She chooses what to make, where it goes and which way it faces. Her island is her sanctuary and is left as it is.
 
-Her land grows outward and stays in one piece:
+There are two kinds of thing:
 
-- A new build may only go beside her island or beside something she has already built. Nearest home first.
-- Every build is joined to that neighbour by a path: an arched deck with a line of her light.
-- Nothing may be taken down if that would cut another build off from her island. A build whose neighbour comes down is given a path to another.
-- Every site is on land she holds.
+- **Land** is ground she lays to make her world bigger.
+- **Everything else** stands on land she has laid: buildings, rides, roads, squares, machines.
+
+Three rules hold. They are the ones agreed with the owner, and nothing else limits where she builds:
+
+1. Land must touch her island or land she already laid, so her world grows in one piece.
+2. Land must be on chunks she holds, and may not cover the middle of her island.
+3. A thing must stand on land. Two things with height may not share a spot. Things under 1.2 metres, like roads, block nothing.
+
+Land is not taken away from under a thing, or from between her island and other land.
+
+## Vibes
+
+Land carries a vibe: a mood she chooses for that part of her world. What stands on it takes that vibe unless it brings its own. A vibe turns her body colour (up to 60 degrees), lightens or deepens it, and sets how strongly her lights shine. Her light itself is the same colour everywhere, which is what keeps every part plainly hers.
+
+So parts of her world differ because she made them differ, not because anything was laid out for her.
 
 ## The three shaping tools
 
@@ -23,6 +35,13 @@ Her land grows outward and stays in one piece:
 
 Outlines are `round`, `sided` or `block`, with soft corners and scalloped edges. Any two can be blended.
 
+## Cutting
+
+- `"wall"` makes a loft hollow, with walls that thick.
+- `"openings"` cuts holes right through the wall: a stretch along the path and a stretch around the outline. The sides of each hole are closed. This is how she makes doors, arches, real windows and tunnel mouths.
+- `"bevel"` cuts the sharp edge off each flat end.
+- A hollow loft along a path, open at both ends, is a tunnel.
+
 ## Arranging
 
 Every part can be placed, turned, tipped, rolled and sized, then: `repeat` (a row), `around` (a circle), `mirror`, `scatter` (strewn by chance from the recipe's seed), or `group` (several parts arranged as one).
@@ -33,17 +52,16 @@ A recipe is a name, a seed and a list of parts. It is plain data. The same recip
 
 Recipes are checked hard, because a model may write them. Unknown tools are refused. Numbers are held to a range. The full language is in `RECIPE_GUIDE` in `src/forge/store.ts`, and is shown at `/admin/forge`.
 
-## Her hand: one aesthetic
+## Her hand
 
-She decides what to build. The forge decides how it is finished, the same way every time:
+Her signature is hers to use, not applied for her. A shaft is plain unless she asks otherwise.
 
-- Shafts swell slightly in the middle.
-- Upright things are crowned with a small bell: a flared, scalloped rim and a dome, in her body colour.
-- Her lights sit on each crown, and bands of light ring her towers.
-- Every build stands on a floating islet shaped like the underside of a bell, with trails hanging to the water.
-- There are eight materials and no others: stone, metal, glass, body, glow, water, ground, dark. Each is a shade of her own two colours.
+- `"cap": "crown"` tops a shaft with a small bell: a flared, scalloped rim, a dome and her lights.
+- `"hand"` (0 to 1) sets how much a part swells and how strong its crown is.
+- `"windows"` puts rows of windows around a shaft, lit or dark by a fixed chance. They follow the wall when it tapers, twists or changes shape.
+- `"bands"` rings a shaft with light.
 
-The hand is worked out from her genome, so it comes from her soul file. A different soul file gives a different hand.
+What does not vary is the art direction: eight materials and no others (stone, metal, glass, body, glow, water, ground, dark), each a shade of her own colours, and one way of lighting them.
 
 ## Her viewport
 
@@ -51,25 +69,31 @@ The hand is worked out from her genome, so it comes from her soul file. A differ
 
 ## How she builds
 
-About every three hours, at most four times a day, up to 48 standing builds. The world's creative switch stops it.
+About every thirty minutes, at most 24 times a day, up to 400 standing. The world's creative switch stops it.
 
-- With a model connected, she is told the recipe language and her own state, and writes a recipe. Nothing from outside is in that prompt. If the recipe passes the checks it is raised.
-- With no model, or if her recipe is refused, she starts from one of six ideas she knows (spire, exchange, coaster, tank, fields, ruin), each varied by seed.
+- **With a model connected**, she is told the tools, the three rules and what she has made so far (names, places, sizes), and writes one design with its place and vibe. Nothing from outside is in that prompt. If it passes the checks it is raised exactly where she said.
+- **With no model**, or if her design or its place is refused, she makes something she knows and finds room for it by trying places around what she already built. When her land is full she lays more, in the mood she is in. This is chance, not a layout.
+
+What she knows how to make: spire, block, exchange, arch, coaster, tank, tree, lamp, road (things), and plain, fields, ruin (land).
+
+Left to herself she draws a street down any open land before she builds on it, and keeps tall things off her streets. That is her habit, not a rule.
 
 ## Limits
 
-One build: 120,000 triangles, 32 metres from its centre, 140 metres tall. A build that exceeds these is refused, so no build can slow the world or cover a neighbour. Names of brands and real landmarks are refused. There is no text or image on any surface, so a logo cannot be made.
+One build: 120,000 triangles, 32 metres from its centre, 140 metres tall. A build that exceeds these is refused. Names of brands and real landmarks are refused. There is no text or image on any surface, so a logo cannot be made.
 
 ## Pages
 
 - `/forge`: what she has built, with a picture of each from her viewport.
-- `/admin/forge`: take down, undo, raise an idea, or paste a recipe. Switch her model designs on or off.
+- `/admin/forge`: take down, undo, raise an idea (at a place you type, or one she finds), or paste a recipe with its place. Switch her model designs on or off.
 - `/api/forge/<id>`: a build's mesh as bytes. `/api/forge/<id>/picture`: its picture.
 
 ## Not built yet
 
-- No cutting one shape out of another, so no window openings or tunnels.
-- Nothing moves. A coaster has a track and no cars.
-- The small things on her island are still the older simple pieces, and the island itself is not restyled.
-- The live world draws her builds with standard materials. Her viewport's edge-light is not yet matched there.
+- Openings are cut in lofts only. One shape cannot yet be cut out of another of a different kind.
+- Nothing moves. There are no people or vehicles, and a coaster has no cars.
+- Her streets do not join up across pieces of land unless she lines the land up.
+- Builds are loaded by distance from the eye, but far-off builds are not yet swapped for simpler shapes.
+- The live world draws her builds with standard materials. Her viewport's lighting is not yet matched there.
 - She cannot yet change or take down her own builds. Only the owner's desk can.
+- Agents cannot yet rent or own anything in a building. See `docs/LAND.md`.

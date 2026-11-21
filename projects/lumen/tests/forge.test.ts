@@ -9,7 +9,7 @@ import { compose, IDEA_KINDS } from "../src/forge/ideas";
 import { cross, dot, encodeMesh, MATERIALS, point, soundMesh, sub, triangleCount, type Mesh } from "../src/forge/mesh";
 import { buildRecipe, cleanRecipe, LIMITS } from "../src/forge/recipe";
 import { groundHeight, loft, noise, profile, spin } from "../src/forge/shape";
-import { considerForge, FORGE, forgeDue, getBuild, herHand, islandCell, meshBytes, pictureBytes, raise, recipeOf, remove, reshape, revOf, siteAt, standing, undo } from "../src/forge/store";
+import { boxesMeet, considerForge, FORGE, forgeDue, getBuild, herHand, meshBytes, pictureBytes, placeCheck, raise, recipeOf, remove, reshape, standing, undo, wander } from "../src/forge/store";
 import { renderMesh } from "../src/forge/view";
 import { setCreativeEnabled } from "../src/world/creative";
 
@@ -102,9 +102,11 @@ describe("her shaping tools", () => {
 
 describe("her hand", () => {
   it("crowns an upright shaft with a bell and sets her lights on it", () => {
-    const bare = loft({ up: 20, from: { width: 6 }, cap: "flat" }, 0, hand);
-    const crowned = loft({ up: 20, from: { width: 6 } }, 0, hand);
     const top = (mesh: Mesh) => Math.max(...mesh.positions.filter((_, i) => i % 3 === 1));
+    const bare = loft({ up: 20, from: { width: 6 }, cap: "flat" }, 0, hand);
+    const crowned = loft({ up: 20, from: { width: 6 }, cap: "crown" }, 0, hand);
+    // Nothing is finished for her unless she asks: a plain shaft is plain.
+    expect(top(loft({ up: 20, from: { width: 6 } }, 0, hand))).toBe(top(bare));
     expect(top(crowned)).toBeGreaterThan(top(bare));
     const count = (mesh: Mesh, name: (typeof MATERIALS)[number]) => mesh.materials.filter((id) => id === MATERIALS.indexOf(name)).length;
     expect(count(crowned, "glow")).toBe(hand.lights * 8);
@@ -222,146 +224,252 @@ describe("mesh bytes and her viewport", () => {
   });
 });
 
-describe("what she has built", () => {
-  it("sites never touch each other or her island", () => {
-    const widest = LIMITS.radius * 1.1 + 1;
-    expect(FORGE.site).toBeGreaterThan(widest * 2);
-    for (let i = -6; i <= 6; i += 1) {
-      for (let j = -6; j <= 6; j += 1) {
-        if (islandCell(i, j)) continue;
-        const spot = siteAt(i, j);
-        expect(Math.hypot(spot.x, spot.z)).toBeGreaterThan(72 + widest);
-      }
-    }
+const land = (name: string, width = 60, depth = 40, vibe?: object) => ({ name, vibe, parts: [{ op: "ground", width, depth, kind: "flat", slab: 4 }] });
+const post = (name: string, tall = 10, width = 6) => ({ name, parts: [{ op: "loft", up: tall, from: { shape: "block", width } }] });
+/** Land laid against the east shore of her island. */
+const EAST = { x: 72 + 28, z: 0, turn: 0 };
+
+describe("windows, land edges and vibes", () => {
+  it("windows follow the wall and are lit by a fixed chance", () => {
+    const plain = loft({ up: 30, from: { shape: "block", width: 10 }, twist: 40, taper: 0.8 }, 0, hand);
+    const lit = loft({ up: 30, from: { shape: "block", width: 10 }, twist: 40, taper: 0.8, windows: { rows: 10, cols: 8, lit: 0.5 } }, 0, hand);
+    const count = (mesh: Mesh, name: (typeof MATERIALS)[number]) => mesh.materials.filter((id) => id === MATERIALS.indexOf(name)).length;
+    expect(soundMesh(lit)).toBe(true);
+    expect(count(plain, "glow") + count(plain, "dark")).toBe(0);
+    expect(count(lit, "glow")).toBeGreaterThan(0);
+    expect(count(lit, "dark")).toBeGreaterThan(0);
+    expect(count(lit, "glow") + count(lit, "dark")).toBeGreaterThanOrEqual(10 * 8 * 2);
+    expect(encodeMesh(lit).equals(encodeMesh(loft({ up: 30, from: { shape: "block", width: 10 }, twist: 40, taper: 0.8, windows: { rows: 10, cols: 8, lit: 0.5 } }, 0, hand)))).toBe(true);
+    expect(count(loft({ up: 30, from: { width: 10 }, windows: { rows: 6, lit: 0 } }, 0, hand), "glow")).toBe(0);
   });
 
-  it("raises, reshapes, undoes and takes down, keeping every version", () => {
+  it("land has an edge that goes down, so it is not a floating sheet", () => {
+    const sheet = buildRecipe(cleanRecipe({ name: "Sheet", parts: [{ op: "ground", width: 20, slab: 0 }] }), hand);
+    const slab = buildRecipe(cleanRecipe({ name: "Slab", parts: [{ op: "ground", width: 20, slab: 4 }] }), hand);
+    expect(Math.min(...slab.mesh.positions.filter((_, i) => i % 3 === 1))).toBe(-4);
+    expect(slab.triangles).toBeGreaterThan(sheet.triangles);
+  });
+
+  it("a vibe turns her body colour and never her light", () => {
+    const plain = lookFrom(style);
+    const moody = lookFrom(style, { tint: 50, shade: -0.1, glow: 0.4 });
+    expect(moody.stone.color).not.toBe(plain.stone.color);
+    expect(moody.ground.color).not.toBe(plain.ground.color);
+    expect(moody.glow.color).toBe(plain.glow.color);
+    expect(cleanRecipe({ ...land("Mood"), vibe: { tint: 999, shade: -9, glow: 99 } }).vibe).toEqual({ tint: 60, shade: -0.12, glow: 1.6 });
+  });
+});
+
+describe("cutting and bevels", () => {
+  it("a hollow shape has the volume of its walls, and faces the right way inside and out", () => {
+    const tube = loft({ up: 10, from: { width: 8 }, wall: 1, cap: "flat", segments: 96 }, 0, hand);
+    expect(soundMesh(tube)).toBe(true);
+    expect(volume(tube) / (Math.PI * (16 - 9) * 10)).toBeCloseTo(1, 2);
+  });
+
+  it("an opening is cut right through the wall and its sides are closed", () => {
+    const whole = loft({ up: 10, from: { width: 8 }, wall: 1, cap: "flat", segments: 96, rings: 21 }, 0, hand);
+    const cut = loft({ up: 10, from: { width: 8 }, wall: 1, cap: "flat", segments: 96, rings: 21, openings: [{ along: [0, 0.5], around: [0.1, 0.2] }] }, 0, hand);
+    expect(soundMesh(cut)).toBe(true);
+    // Half the height and a tenth of the way round is a twentieth of the wall. Closed sides keep it a solid, so its volume says so.
+    expect(volume(cut) / volume(whole)).toBeCloseTo(0.95, 2);
+    // A hole that wraps past the start of the outline is one hole.
+    const wrapped = loft({ up: 10, from: { width: 8 }, wall: 1, cap: "flat", segments: 96, rings: 21, openings: [{ along: [0, 0.5], around: [0.95, 0.05] }] }, 0, hand);
+    expect(volume(wrapped) / volume(whole)).toBeCloseTo(0.95, 2);
+    // Asking for an opening without a wall still gives a wall to cut.
+    expect(triangleCount(loft({ up: 4, from: { width: 4 }, openings: [{ along: [0, 1], around: [0, 0.2] }] }, 0, hand))).toBeGreaterThan(0);
+  });
+
+  it("a tunnel is a hollow loft along a path, open at both ends", () => {
+    const tunnel = loft({ through: [[-20, 2, 0], [0, 4, 6], [20, 2, 0]], from: { width: 6 }, wall: 0.6, cap: "open", rings: 40 }, 0, hand);
+    expect(soundMesh(tunnel)).toBe(true);
+    expect(Math.abs(volume(tunnel))).toBeGreaterThan(100);
+  });
+
+  it("a bevel takes the sharp edge off and a little of the volume", () => {
+    const sharp = loft({ up: 10, from: { width: 8 }, cap: "flat", segments: 96, rings: 6 }, 0, hand);
+    const cut = loft({ up: 10, from: { width: 8 }, cap: "flat", bevel: 0.6, segments: 96, rings: 6 }, 0, hand);
+    expect(soundMesh(cut)).toBe(true);
+    expect(volume(cut)).toBeLessThan(volume(sharp));
+    expect(volume(cut)).toBeGreaterThan(volume(sharp) * 0.9);
+    const top = (mesh: Mesh) => Math.max(...mesh.positions.filter((_, i) => i % 3 === 1));
+    expect(top(cut)).toBeCloseTo(top(sharp), 9);
+  });
+
+  it("a mirror puts a second copy on the other side of the build", () => {
+    const built = buildRecipe(cleanRecipe({ name: "Two Posts", parts: [{ op: "loft", up: 3, from: { width: 1 }, at: [0, 0, 5], mirror: "z" }] }), hand);
+    const zs = built.mesh.positions.filter((_, i) => i % 3 === 2);
+    expect(Math.max(...zs)).toBeCloseTo(5.5, 6);
+    expect(Math.min(...zs)).toBeCloseTo(-5.5, 6);
+    expect(volume(built.mesh) / (2 * Math.PI * 0.25 * 3)).toBeCloseTo(1, 1);
+  });
+
+  it("the recipe checks openings like everything else", () => {
+    expect(() => cleanRecipe({ name: "Thing", parts: [{ op: "loft", up: 3, from: { width: 2 }, openings: [{ along: [0, 1] }] }] })).toThrow("FORGE_OPENINGS");
+    expect(() => cleanRecipe({ name: "Thing", parts: [{ op: "loft", up: 3, from: { width: 2 }, openings: "all" }] })).toThrow("FORGE_OPENINGS");
+    const part = cleanRecipe({ name: "Thing", parts: [{ op: "loft", up: 3, from: { width: 2 }, wall: 99, bevel: 99, openings: [{ along: [-1, 5], around: [0.2, 0.4] }] }] }).parts[0] as { wall: number; bevel: number; openings: { along: number[] }[] };
+    expect([part.wall, part.bevel, part.openings[0]!.along]).toEqual([8, 4, [0, 1]]);
+  });
+});
+
+describe("she builds her world how she wants", () => {
+  it("left to herself she draws a street on open land before building there, and keeps it clear", () => {
     const db = openDatabase();
-    const built = raise(db, tower, T, "owner", "own", hand);
-    expect(built).toMatchObject({ name: "Test Tower", version: 1, status: "standing", parent: "island" });
+    const proud = { ...(calm as object), calm: 0, pride: 0.9 } as never;
+    let at = T;
+    for (let k = 0; k < 24; k += 1) {
+      at += FORGE.everyMs;
+      considerForge(db, proud, at);
+    }
+    const all = standing(db);
+    const firstLand = all.findIndex((build) => build.kind === "plain");
+    expect(all[firstLand + 1]!.kind).toBe("road");
+    const roads = all.filter((build) => build.kind === "road");
+    expect(roads.length).toBeGreaterThan(0);
+    for (const road of roads) expect(road.height).toBeLessThan(FORGE.flat);
+    for (const build of all) if (build.layer === "structure" && build.height > FORGE.flat) expect(roads.some((road) => boxesMeet(road, build, 0.3))).toBe(false);
+    // Keeping streets clear is her habit, not a rule: she can still be told to build across one.
+    const road = roads[0]!;
+    expect(raise(db, post("Across The Road", 8, 3), { x: road.x, z: road.z, turn: 0 }, at + 1, "owner", "own", hand).status).toBe("standing");
+  });
+
+
+  it("nothing is placed for her: an empty world has nothing in it and nowhere marked out", () => {
+    const db = openDatabase();
+    expect(standing(db)).toHaveLength(0);
+    // With no land yet, a thing has nowhere to stand, wherever it is put.
+    expect(wander(db, "structure", [5, 5], 10, () => 0.5)).toBeNull();
+    for (const at of [EAST, { x: 500, z: -300, turn: 30 }]) expect(() => raise(db, post("Lone Post"), at, T, "owner", "own", hand)).toThrow("FORGE_NO_GROUND");
+  });
+
+  it("she puts a thing exactly where she says, facing the way she says", () => {
+    const db = openDatabase();
+    raise(db, land("First Land"), EAST, T, "owner", "plain", hand);
+    const built = raise(db, post("Corner Post"), { x: 91.5, z: -7.25, turn: 33 }, T + 1, "owner", "own", hand);
+    expect([built.x, built.z, built.turn]).toEqual([91.5, -7.25, 33]);
+    expect(built).toMatchObject({ layer: "structure", version: 1, status: "standing" });
+    expect(() => raise(db, post("Bad Place"), { x: Number.NaN, z: 0, turn: 0 }, T, "owner", "own", hand)).toThrow("FORGE_PLACE");
+    expect(() => raise(db, post("No Place"), undefined, T, "owner", "own", hand)).toThrow("FORGE_PLACE");
+  });
+
+  it("land must touch her island or land she laid, on chunks she holds, and may not cover her sanctuary", () => {
+    const db = openDatabase();
+    expect(() => raise(db, land("Far Land"), { x: 400, z: 0, turn: 0 }, T, "owner", "plain", hand)).toThrow("FORGE_NOT_TOUCHING");
+    expect(() => raise(db, land("On Top"), { x: 20, z: 0, turn: 0 }, T, "owner", "plain", hand)).toThrow("FORGE_SANCTUARY");
+    expect(() => raise(db, land("Not Hers"), { x: 17 * 180, z: 0, turn: 0 }, T, "owner", "plain", hand)).toThrow("FORGE_NOT_HER_LAND");
+    const first = raise(db, land("First Land"), EAST, T, "owner", "plain", hand);
+    expect(first.layer).toBe("ground");
+    // Now land can be laid further out, as long as each piece touches the last.
+    const second = raise(db, land("Second Land"), { x: EAST.x + 59, z: 10, turn: 0 }, T + 1, "owner", "plain", hand);
+    expect(second.status).toBe("standing");
+    expect(() => raise(db, land("Gap Land"), { x: EAST.x + 59 + 70, z: 10, turn: 0 }, T + 2, "owner", "plain", hand)).toThrow("FORGE_NOT_TOUCHING");
+    // Turned land is judged as it lies, not by a square around it.
+    expect(raise(db, land("Turned Land", 40, 20), { x: EAST.x, z: 20 + 14, turn: 45 }, T + 3, "owner", "plain", hand).turn).toBe(45);
+  });
+
+  it("a thing must stand on land, two tall things may not share a spot, and low things block nothing", () => {
+    const db = openDatabase();
+    raise(db, land("First Land"), EAST, T, "owner", "plain", hand);
+    expect(() => raise(db, post("On The Island"), { x: 10, z: 10, turn: 0 }, T, "owner", "own", hand)).toThrow("FORGE_NO_GROUND");
+    expect(() => raise(db, post("Half Off"), { x: EAST.x + 29, z: 0, turn: 0 }, T, "owner", "own", hand)).toThrow("FORGE_NO_GROUND");
+    raise(db, post("Tall One"), { x: EAST.x, z: 0, turn: 0 }, T + 1, "owner", "own", hand);
+    expect(() => raise(db, post("Same Spot"), { x: EAST.x + 2, z: 1, turn: 20 }, T + 2, "owner", "own", hand)).toThrow("FORGE_OVERLAP");
+    expect(raise(db, post("Beside It"), { x: EAST.x + 7, z: 0, turn: 0 }, T + 3, "owner", "own", hand).status).toBe("standing");
+    const road = { name: "Low Road", parts: [{ op: "loft", material: "dark", through: [[-25, 0.1, 0], [25, 0.1, 0]], smooth: false, from: { shape: "block", width: 6, depth: 0.2 } }] };
+    expect(raise(db, road, { x: EAST.x, z: 0, turn: 0 }, T + 4, "owner", "own", hand).height).toBeLessThan(FORGE.flat);
+    expect(raise(db, post("After Road"), { x: EAST.x - 14, z: 0, turn: 0 }, T + 5, "owner", "own", hand).status).toBe("standing");
+    expect(boxesMeet({ x: 0, z: 0, turn: 0, hw: 5, hd: 5 }, { x: 9, z: 0, turn: 45, hw: 5, hd: 5 })).toBe(true);
+    expect(boxesMeet({ x: 0, z: 0, turn: 0, hw: 5, hd: 5 }, { x: 13, z: 0, turn: 45, hw: 5, hd: 5 })).toBe(false);
+  });
+
+  it("land sets the vibe of its part of her world, and what stands there takes it", () => {
+    const db = openDatabase();
+    const moody = { tint: 40, shade: -0.08, glow: 0.5 };
+    raise(db, land("Moody Land", 60, 40, moody), EAST, T, "owner", "plain", hand);
+    expect(raise(db, post("Takes It"), { x: EAST.x, z: 0, turn: 0 }, T + 1, "owner", "own", hand).vibe).toEqual(moody);
+    expect(raise(db, { ...post("Brings Its Own"), vibe: { tint: -30, shade: 0, glow: 1 } }, { x: EAST.x + 12, z: 0, turn: 0 }, T + 2, "owner", "own", hand).vibe.tint).toBe(-30);
+  });
+
+  it("stands on the land at the land's own height", () => {
+    const db = openDatabase();
+    raise(db, { name: "Hill Land", parts: [{ op: "ground", width: 60, kind: "terraces", relief: 3, seed: 4, slab: 4 }] }, { x: 72 + 28, z: 0, turn: 0 }, T, "owner", "own", hand);
+    const heights = [[0, 0], [12, 8], [-10, -14], [15, -15]].map(([dx, dz], k) => raise(db, post(`Post ${String.fromCharCode(65 + k)}`, 6, 2), { x: 100 + dx!, z: dz!, turn: 0 }, T + k + 1, "owner", "own", hand).y);
+    expect(new Set(heights.map((y) => y.toFixed(2))).size).toBeGreaterThan(1);
+    for (const y of heights) expect(y).toBeGreaterThanOrEqual(FORGE.level - 0.05);
+  });
+
+  it("reshapes, undoes and takes down, keeping every version", () => {
+    const db = openDatabase();
+    raise(db, land("First Land"), EAST, T, "owner", "plain", hand);
+    const built = raise(db, tower, { x: EAST.x, z: 0, turn: 10 }, T, "owner", "own", hand);
     expect(meshBytes(db, built.id)?.toString("latin1", 0, 4)).toBe("ZMSH");
     expect(pictureBytes(db, built.id)?.subarray(1, 4).toString("latin1")).toBe("PNG");
     const taller = reshape(db, built.id, { ...tower, name: "Taller Tower", parts: [{ ...tower.parts[0], up: 40 }] }, T + 1, hand);
-    expect(taller).toMatchObject({ name: "Taller Tower", version: 2 });
+    expect(taller).toMatchObject({ name: "Taller Tower", version: 2, x: built.x, z: built.z, turn: 10 });
     expect(taller.height).toBeGreaterThan(built.height);
-    expect(undo(db, built.id, T + 2, hand)).toMatchObject({ name: "Test Tower", version: 1 });
+    expect(() => reshape(db, built.id, { ...tower, parts: [{ ...tower.parts[0], from: { shape: "block", width: 50 } }] }, T + 2, hand)).toThrow("FORGE_NO_GROUND");
+    expect(undo(db, built.id, T + 3, hand)).toMatchObject({ name: "Test Tower", version: 1 });
     expect(recipeOf(db, built.id)?.name).toBe("Test Tower");
-    const second = raise(db, { ...tower, name: "Second Tower" }, T + 3, "owner", "own", hand);
-    expect([second.si, second.sj]).not.toEqual([built.si, built.sj]);
     expect(undo(db, built.id, T + 4, hand).status).toBe("removed");
     expect(meshBytes(db, built.id)).toBeNull();
-    // A freed site is used again.
-    const third = raise(db, { ...tower, name: "Third Tower" }, T + 5, "owner", "own", hand);
-    expect([third.si, third.sj]).toEqual([built.si, built.sj]);
+    expect(() => remove(db, built.id, T + 5)).toThrow("FORGE_UNKNOWN");
+    expect(() => raise(db, { name: "Bad", parts: [{ op: "nope" }] }, EAST, T, "owner", "own", hand)).toThrow("FORGE_TOOL");
+  });
+
+  it("land is not taken away from under a thing, or from between her island and other land", () => {
+    const db = openDatabase();
+    const first = raise(db, land("First Land"), EAST, T, "owner", "plain", hand);
+    const second = raise(db, land("Second Land"), { x: EAST.x + 59, z: 0, turn: 0 }, T + 1, "owner", "plain", hand);
+    const thing = raise(db, post("On Second"), { x: second.x, z: 0, turn: 0 }, T + 2, "owner", "own", hand);
+    expect(() => remove(db, second.id, T + 3)).toThrow("FORGE_HOLDS_LAND");
+    expect(() => remove(db, first.id, T + 3)).toThrow("FORGE_HOLDS_LAND");
+    expect(() => reshape(db, second.id, land("Second Land", 10, 10), T + 3, hand)).toThrow();
+    remove(db, thing.id, T + 4);
+    expect(() => remove(db, first.id, T + 5)).toThrow("FORGE_HOLDS_LAND");
     expect(remove(db, second.id, T + 6).status).toBe("removed");
-    expect(() => remove(db, second.id, T + 7)).toThrow("FORGE_UNKNOWN");
-    expect(() => raise(db, { name: "Bad", parts: [{ op: "nope" }] }, T, "owner", "own", hand)).toThrow("FORGE_TOOL");
-    expect(standing(db)).toHaveLength(1);
+    expect(remove(db, first.id, T + 7).status).toBe("removed");
   });
 
-  it("her land grows outward in one piece: every build touches her island or something she built", () => {
+  it("left to herself she lays land, builds on it, lays more when it is full, and every choice keeps the rules", () => {
     const db = openDatabase();
-    const builds = Array.from({ length: 30 }, (_, k) => raise(db, { ...tower, name: `Tower ${String.fromCharCode(65 + (k % 26))}${k}` }, T + k, "owner", "own", hand));
-    const at = new Map(builds.map((build) => [`${build.si},${build.sj}`, build]));
-    expect(at.size).toBe(30);
-    for (const build of builds) {
-      expect(islandCell(build.si, build.sj)).toBe(false);
-      const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([di, dj]) => [build.si + di!, build.sj + dj!] as const);
-      if (build.parent === "island") expect(sides.some(([i, j]) => islandCell(i, j))).toBe(true);
-      else {
-        const parent = builds.find((other) => other.id === build.parent)!;
-        expect(sides.some(([i, j]) => i === parent.si && j === parent.sj)).toBe(true);
-        // The path leads toward home, and its far end was built first.
-        expect(Math.hypot(parent.si, parent.sj)).toBeLessThan(Math.hypot(build.si, build.sj));
-        expect(builds.indexOf(parent)).toBeLessThan(builds.indexOf(build));
-      }
+    const proud = { ...(calm as object), calm: 0, pride: 0.9 } as never;
+    let at = T;
+    const made: ReturnType<typeof considerForge>[] = [];
+    for (let k = 0; k < 20; k += 1) {
+      at += FORGE.everyMs;
+      made.push(considerForge(db, k % 2 ? calm : proud, at));
     }
-    // Nearest home first: the eight sites beside the island fill before anything further out.
-    expect(builds.slice(0, 8).every((build) => build.parent === "island")).toBe(true);
-    expect(builds[8]!.parent).not.toBe("island");
+    const all = standing(db);
+    expect(made[0]).toMatchObject({ layer: "ground", by: "zoora" });
+    expect(all.filter((build) => build.layer === "ground").length).toBeGreaterThan(1);
+    expect(all.filter((build) => build.layer === "structure").length).toBeGreaterThan(3);
+    for (const build of all) expect(placeCheck(db, build.layer, build, build.height, build.id).ok).toBe(true);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM diary").get() as { n: number }).n).toBe(all.length);
+    // The land she lays carries the mood she was in.
+    expect(new Set(all.filter((build) => build.layer === "ground").map((build) => JSON.stringify(build.vibe))).size).toBeGreaterThanOrEqual(1);
   });
 
-  it("a build's mesh carries its path, which ends at the neighbour it leads to", () => {
+  it("she builds when it is due, within a day's count, and not when the creative switch is off", () => {
     const db = openDatabase();
-    const builds = Array.from({ length: 9 }, (_, k) => raise(db, { ...tower, name: `Tower ${String.fromCharCode(65 + k)}` }, T + k, "owner", "own", hand));
-    const outer = builds[8]!;
-    const parent = builds.find((build) => build.id === outer.parent)!;
-    const bytes = meshBytes(db, outer.id)!;
-    expect(bytes.readUInt32LE(8)).toBeGreaterThan(outer.triangles);
-    // In the build's own frame the path reaches most of the way to the neighbour, 90 metres off.
-    const points = bytes.readUInt32LE(4);
-    let reach = 0;
-    for (let i = 0; i < points; i += 1) reach = Math.max(reach, Math.hypot(bytes.readFloatLE(44 + i * 12), bytes.readFloatLE(44 + i * 12 + 8)));
-    expect(reach).toBeGreaterThan(FORGE.site - parent.radius);
-    expect(reach).toBeLessThan(FORGE.site);
-    // Changing the neighbour changes the path, so the world is told to fetch this build again.
-    const before = revOf(db, outer);
-    reshape(db, parent.id, { ...tower, name: "Wider", parts: [{ ...tower.parts[0], from: { shape: "block", width: 20 } }] }, T + 50, hand);
-    expect(revOf(db, getBuild(db, outer.id)!)).not.toBe(before);
-    expect(meshBytes(db, outer.id)!.equals(bytes)).toBe(false);
-  });
-
-  it("nothing is taken down if that would cut other builds off from her island", () => {
-    const db = openDatabase();
-    const builds = Array.from({ length: 9 }, (_, k) => raise(db, { ...tower, name: `Tower ${String.fromCharCode(65 + k)}` }, T + k, "owner", "own", hand));
-    const outer = builds[8]!;
-    const holds = builds.find((build) => build.id === outer.parent)!;
-    // Take down every root except the one the outer build hangs from, so it is the only way home.
-    for (const build of builds.slice(0, 8)) {
-      if (build.id === holds.id) continue;
-      const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([di, dj]) => build.si + di! === outer.si && build.sj + dj! === outer.sj);
-      if (sides) remove(db, build.id, T + 20);
-    }
-    expect(() => remove(db, holds.id, T + 30)).toThrow("FORGE_HOLDS_PATH");
-    expect(() => undo(db, holds.id, T + 30, hand)).toThrow("FORGE_HOLDS_PATH");
-    expect(getBuild(db, holds.id)?.status).toBe("standing");
-    // Once the outer build is gone, the one that held its path can come down.
-    remove(db, outer.id, T + 40);
-    expect(remove(db, holds.id, T + 50).status).toBe("removed");
-  });
-
-  it("a build whose neighbour comes down is given a path to another", () => {
-    const db = openDatabase();
-    const builds = Array.from({ length: 10 }, (_, k) => raise(db, { ...tower, name: `Tower ${String.fromCharCode(65 + k)}` }, T + k, "owner", "own", hand));
-    const child = builds.find((build) => build.parent !== "island" && [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([di, dj]) => builds.some((other) => other.si === build.si + di! && other.sj === build.sj + dj!)).length >= 2);
-    if (!child) return;
-    const old = child.parent;
-    remove(db, old, T + 60);
-    const now = getBuild(db, child.id)!;
-    expect(now.parent).not.toBe(old);
-    expect(now.status).toBe("standing");
-  });
-
-  it("she builds when it is due, at most a few a day, and not when the creative switch is off", () => {
-    const db = openDatabase();
-    const first = considerForge(db, calm, T)!;
-    expect(first.by).toBe("zoora");
-    expect(["tank", "fields"]).toContain(first.kind);
-    expect((db.prepare("SELECT text FROM diary ORDER BY id DESC LIMIT 1").get() as { text: string }).text).toContain(first.name);
+    expect(considerForge(db, calm, T)).not.toBeNull();
     expect(considerForge(db, calm, T + FORGE.everyMs - 1)).toBeNull();
     for (let k = 1; k < FORGE.perDay; k += 1) expect(considerForge(db, calm, T + FORGE.everyMs * k)).not.toBeNull();
-    // The day's count is reached, so the next is refused even though the wait has passed.
     expect(considerForge(db, calm, T + FORGE.everyMs * FORGE.perDay)).toBeNull();
-    expect(standing(db)).toHaveLength(FORGE.perDay);
     setCreativeEnabled(db, false);
     expect(forgeDue(db, T + 10 * 86_400_000)).toBe(false);
-    expect(considerForge(db, calm, T + 10 * 86_400_000)).toBeNull();
   });
 
-  it("she reaches for what she has built least", () => {
+  it("a design of her own goes where she says; a bad one or a bad place falls back to what she knows", () => {
     const db = openDatabase();
-    const kinds = Array.from({ length: 4 }, (_, k) => considerForge(db, calm, T + FORGE.everyMs * k)!.kind);
-    expect(new Set(kinds).size).toBeGreaterThanOrEqual(3);
-  });
-
-  it("a design of her own is raised when it is sound, and she falls back to what she knows when it is not", () => {
-    const db = openDatabase();
-    const own = considerForge(db, calm, T, { name: "Glass Stair", seed: 8, parts: [{ op: "loft", material: "glass", up: 12, from: { shape: "sided", sides: 5, width: 4 }, twist: 200 }] })!;
-    expect(own).toMatchObject({ name: "Glass Stair", kind: "own", by: "zoora" });
-    const fallback = considerForge(db, calm, T + FORGE.everyMs, { name: "Broken", parts: [{ op: "summon", what: "a demon" }] })!;
-    expect(fallback.kind).not.toBe("own");
-    const branded = considerForge(db, calm, T + FORGE.everyMs * 2, { name: "Disney Castle", parts: [{ op: "loft", up: 5, from: { width: 2 } }] })!;
-    expect(branded.name).not.toContain("Disney");
-    expect(getBuild(db, own.id)?.triangles).toBe(triangleCount(buildRecipe(recipeOf(db, own.id)!, herHand()).mesh));
+    const first = considerForge(db, calm, T, { ...land("Her Own Land", 60, 50, { tint: -25, shade: 0.04, glow: 1.2 }), place: EAST })!;
+    expect(first).toMatchObject({ name: "Her Own Land", kind: "own", layer: "ground", x: EAST.x, z: 0, vibe: { tint: -25 } });
+    const stair = considerForge(db, calm, T + FORGE.everyMs, { name: "Glass Stair", place: { x: EAST.x + 5, z: -4, turn: 15 }, parts: [{ op: "loft", material: "glass", up: 12, from: { shape: "sided", sides: 5, width: 4 }, twist: 200, windows: { rows: 4 } }] })!;
+    expect(stair).toMatchObject({ name: "Glass Stair", kind: "own", x: EAST.x + 5, z: -4, turn: 15 });
+    // She gives no place: she finds one herself.
+    expect(considerForge(db, calm, T + FORGE.everyMs * 2, post("No Place Given"))!.name).toBe("No Place Given");
+    expect(considerForge(db, calm, T + FORGE.everyMs * 3, { name: "Broken", place: EAST, parts: [{ op: "summon" }] })!.kind).not.toBe("own");
+    expect(considerForge(db, calm, T + FORGE.everyMs * 4, { ...post("In The Sea"), place: { x: 900, z: 900, turn: 0 } })!.name).not.toBe("In The Sea");
+    expect(considerForge(db, calm, T + FORGE.everyMs * 5, { name: "Disney Castle", place: EAST, parts: [{ op: "loft", up: 5, from: { width: 2 } }] })!.name).not.toContain("Disney");
+    expect(getBuild(db, stair.id)?.triangles).toBe(triangleCount(buildRecipe(recipeOf(db, stair.id)!, herHand()).mesh));
   });
 });
