@@ -11,8 +11,10 @@ import { checkoutReturnOrigin } from "./api/checkout/auth";
 import { allowRate, setFlag } from "../db/db";
 import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../economy/economy";
 import { checkBrakes, clearBrake, setLadderMode } from "../economy/ladder";
-import { decideVenture, proposeVenture, setVentureStatus } from "../economy/ventures";
-import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
+import { decideVenture, getVenture, launchVenture, proposeVenture, setVentureStatus } from "../economy/ventures";
+import { mergeVentures } from "../economy/merge";
+import { blankPlan, getPlan, savePlan, setCheck, TEXT_FIELDS, type CostLine } from "../economy/plans";
+import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, printFacts, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
 import { listShop, shopCheckoutOpen } from "../shop/store";
 import { getEngine } from "../server/engine";
 
@@ -432,5 +434,75 @@ export async function podAutoAction(form: FormData) {
 export async function podRefundAction(form: FormData) {
   await ventureStep(async (now) => {
     await refundPaidPrint(getEngine().db, process.env, text(form, "id"), now);
+  });
+}
+
+function optionalCents(raw: FormDataEntryValue | null): number | null {
+  return String(raw ?? "").trim() === "" ? null : dollarsToCents(raw);
+}
+
+/** One cost per line, written "label, dollars". */
+function costLines(raw: FormDataEntryValue | null): CostLine[] {
+  return String(raw ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const cut = line.lastIndexOf(",");
+      if (cut < 1) throw new Error("ECON_PLAN_LINES");
+      return { label: line.slice(0, cut).trim(), cents: dollarsToCents(line.slice(cut + 1).trim().replace(/^\$/, "")) };
+    });
+}
+
+/** The owner edits a venture's plan. A cost the owner types is the owner's word, unless marked as a guess. */
+export async function venturePlanAction(form: FormData) {
+  const id = text(form, "id");
+  await ventureStep((now) => {
+    const db = getEngine().db;
+    if (!getVenture(db, id)) throw new Error("ECON_VENTURE_UNKNOWN");
+    const current = getPlan(db, id) ?? blankPlan();
+    const next = { ...current };
+    for (const field of TEXT_FIELDS) next[field] = text(form, field);
+    next.priceCents = optionalCents(form.get("price"));
+    const cost = optionalCents(form.get("unitCost"));
+    // A quoted cost stays quoted unless the owner changes the figure.
+    const kept = cost != null && cost === current.unitCostCents && current.unitCostSource === "quoted";
+    next.unitCostCents = cost;
+    next.unitCostSource = cost == null ? null : kept ? "quoted" : form.get("costIsGuess") === "yes" ? "estimate" : "owner";
+    next.shippingChargeCents = optionalCents(form.get("shippingCharge")) ?? 0;
+    next.feeBasisPoints = Math.round(Number(text(form, "feePercent") || "2.9") * 100);
+    next.feeFixedCents = optionalCents(form.get("feeFixed")) ?? 0;
+    next.startup = costLines(form.get("startup"));
+    next.monthly = costLines(form.get("monthly"));
+    const target = text(form, "targetUnits");
+    next.targetUnits = target ? Number(target) : null;
+    next.budgetAskCents = optionalCents(form.get("budgetAsk")) ?? 0;
+    next.daysAsk = Number(text(form, "daysAsk") || "30");
+    savePlan(db, id, next, "owner", now);
+  });
+  revalidatePath(`/admin/ventures/${id}`);
+  redirect(`/admin/ventures/${id}`);
+}
+
+export async function ventureCheckAction(form: FormData) {
+  const id = text(form, "id");
+  await ventureStep((now) => setCheck(getEngine().db, id, text(form, "key"), form.get("done") === "yes", now));
+  redirect(`/admin/ventures/${id}`);
+}
+
+/** Day one. Refused unless the plan's dollars are settled and every item on the list is done. */
+export async function ventureLaunchAction(form: FormData) {
+  await ventureStep((now) => {
+    const engine = getEngine();
+    const id = text(form, "id");
+    launchVenture(engine.db, id, printFacts(engine.db, engine.env, shopCheckoutOpen(engine.db, engine.env), id), now);
+  });
+}
+
+/** One venture is absorbed into another. It cannot be undone, so the owner types the word. */
+export async function ventureMergeAction(form: FormData) {
+  await ventureStep((now) => {
+    if (text(form, "sure") !== "merge") throw new Error("ECON_MERGE_CONFIRM");
+    mergeVentures(getEngine().db, text(form, "fromId"), text(form, "intoId"), now);
   });
 }

@@ -2,11 +2,13 @@ import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { OWNER_COOKIE } from "../../../auth/owner";
 import { loginReachable, ownerRouteOpen } from "../../../auth/publicMode";
+import { listMergers } from "../../../economy/merge";
+import { figures, getPlan, planGaps } from "../../../economy/plans";
 import { listVentures, scorecard, VENTURE_KINDS } from "../../../economy/ventures";
 import { autoConfirmOn, listPodOrders, listProducts, minMarginPercent } from "../../../fulfillment/pod";
 import { printfulConfigured } from "../../../fulfillment/printful";
 import { getEngine } from "../../../server/engine";
-import { podRefundAction, podAutoAction, podConfirmAction, podProductAction, podProductDecideAction, podSampleAction, podSyncAction, ventureDecideAction, ventureProposeAction, ventureStatusAction } from "../../actions";
+import { podRefundAction, podAutoAction, podConfirmAction, podProductAction, podProductDecideAction, podSampleAction, podSyncAction, ventureDecideAction, ventureLaunchAction, ventureMergeAction, ventureProposeAction, ventureStatusAction } from "../../actions";
 
 function money(cents: number): string {
   return `${cents < 0 ? "-" : ""}$${(Math.abs(cents) / 100).toFixed(2)}`;
@@ -23,6 +25,8 @@ export default async function VentureDesk({ searchParams }: { searchParams: Prom
   if (!authed || !ownerRouteOpen("/admin", authed)) redirect("/admin/login");
   const now = Date.now();
   const ventures = listVentures(engine.db);
+  const mergeable = ventures.filter((venture) => ["setup", "active", "paused"].includes(venture.status));
+  const mergers = listMergers(engine.db);
   const products = listProducts(engine.db);
   const orders = listPodOrders(engine.db);
   const auto = autoConfirmOn(engine.db);
@@ -33,11 +37,14 @@ export default async function VentureDesk({ searchParams }: { searchParams: Prom
       <section className="card" style={{ gridColumn: "1 / -1" }}>
         <p className="kicker">Keeper desk</p>
         <h1>Ventures</h1>
-        <p className="muted">A venture is one way she tries to earn. You approve it with a budget and a time limit. The budget is what it may lose: a sale a customer already paid for covers its own cost.</p>
+        <p className="muted">A venture is one way she tries to earn. Each has a business plan. You approve it with a budget and a time limit, and it sets up. It launches only when its dollars are settled and its day-one list is done. The budget is what it may lose.</p>
         {query.error ? <p className="muted">Not done: {String(query.error).slice(0, 40)}</p> : null}
       </section>
       {ventures.map((venture) => {
         const card = scorecard(engine.db, venture.id, now);
+        const plan = getPlan(engine.db, venture.id);
+        const sums = plan ? figures(plan) : null;
+        const missing = plan ? planGaps(plan, venture.status === "proposed" ? "setup" : "launch") : [];
         return (
           <section className="card" key={venture.id}>
             <p className="kicker">{venture.kind} · {venture.status} · proposed by {venture.proposedBy}</p>
@@ -45,11 +52,18 @@ export default async function VentureDesk({ searchParams }: { searchParams: Prom
             {venture.pitch ? <p>{venture.pitch}</p> : null}
             {card.tainted ? <p className="muted">Marked: something from outside is behind this idea. It can never spend without you.</p> : null}
             {venture.note ? <p className="muted">{venture.note}</p> : null}
+            {plan && sums ? (
+              <p className="muted">
+                Plan: {plan.priceCents == null ? "no price yet" : `sells at ${money(plan.priceCents)}`}, {sums.unitMarginCents == null ? "margin not known yet" : `${money(sums.unitMarginCents)} left per sale (${sums.marginPercent}%)`}, {sums.breakEvenUnits == null ? "no break-even yet" : `pays back after ${sums.breakEvenUnits} sales`}. Asks for {money(plan.budgetAskCents)} over {plan.daysAsk} days.
+              </p>
+            ) : <p className="muted">No plan yet. It cannot be approved without one.</p>}
+            {missing.length ? <p className="muted">Still missing: {missing.map((gap) => gap.say).join(" ")}</p> : null}
+            <p><a href={`/admin/ventures/${venture.id}`}>Open the plan and the day-one list</a></p>
             {venture.status === "proposed" ? (
               <form action={ventureDecideAction}>
                 <input type="hidden" name="id" value={venture.id} />
-                <label>Budget in dollars <input name="budget" inputMode="decimal" pattern="[0-9]+(\.[0-9]{1,2})?" defaultValue="25" /></label>
-                <label>Days <input name="days" inputMode="numeric" pattern="[0-9]{1,3}" defaultValue="30" /></label>
+                <label>Budget in dollars <input name="budget" inputMode="decimal" pattern="[0-9]+(\.[0-9]{1,2})?" defaultValue={((plan?.budgetAskCents ?? 0) / 100).toFixed(2)} /></label>
+                <label>Days <input name="days" inputMode="numeric" pattern="[0-9]{1,3}" defaultValue={String(plan?.daysAsk ?? 30)} /></label>
                 <button type="submit" name="decision" value="approved">Approve</button>
                 <button type="submit" name="decision" value="declined">Decline</button>
               </form>
@@ -65,11 +79,17 @@ export default async function VentureDesk({ searchParams }: { searchParams: Prom
                 </tbody>
               </table>
             )}
-            {venture.status === "active" || venture.status === "paused" ? (
+            {venture.status === "setup" ? (
+              <form action={ventureLaunchAction}>
+                <input type="hidden" name="id" value={venture.id} />
+                <button type="submit">Launch it</button>
+              </form>
+            ) : null}
+            {venture.status === "active" || venture.status === "setup" || venture.status === "paused" ? (
               <form action={ventureStatusAction}>
                 <input type="hidden" name="id" value={venture.id} />
                 <label>More days, when resuming <input name="days" inputMode="numeric" pattern="[0-9]{1,3}" /></label>
-                {venture.status === "active" ? <button type="submit" name="to" value="paused">Pause</button> : <button type="submit" name="to" value="active">Resume</button>}
+                {venture.status === "paused" ? <button type="submit" name="to" value="active">Resume</button> : <button type="submit" name="to" value="paused">Pause</button>}
                 <button type="submit" name="to" value="closed">Close for good</button>
               </form>
             ) : null}
@@ -85,6 +105,17 @@ export default async function VentureDesk({ searchParams }: { searchParams: Prom
           <label>What it is <input name="pitch" maxLength={400} /></label>
           <button type="submit">Add as a proposal</button>
         </form>
+      </section>
+      <section className="card">
+        <p className="kicker">Merge two ventures</p>
+        <p className="muted">The first is absorbed into the second. Its lines, unspent budget, products and orders move across, and the later time limit stands. It cannot be undone. Land and company ventures are never merged.</p>
+        <form action={ventureMergeAction}>
+          <label>Absorb <select name="fromId">{mergeable.map((venture) => <option key={venture.id} value={venture.id}>{venture.name}</option>)}</select></label>
+          <label>Into <select name="intoId">{mergeable.map((venture) => <option key={venture.id} value={venture.id}>{venture.name}</option>)}</select></label>
+          <label>Type the word merge <input name="sure" required pattern="merge" autoComplete="off" /></label>
+          <button type="submit">Merge them</button>
+        </form>
+        {mergers.map((merger) => <p className="muted" key={merger.id}>{merger.fromId} into {merger.intoId}: {merger.linesMoved} lines, {money(merger.budgetMovedCents)} of budget, {merger.productsMoved} products, {merger.ordersMoved} orders.</p>)}
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
         <p className="kicker">Print on demand</p>
