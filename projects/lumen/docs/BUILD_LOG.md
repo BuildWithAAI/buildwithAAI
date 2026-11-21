@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 6db7a11
+title: Find a place without reading the whole world.
+summary: Placing a build used to read every build standing. An index of footprints now answers in a fraction of a millisecond, so finding a place takes about 2 milliseconds with a million builds standing. A small world is built exactly as before.
+date: 2026-11-21T22:50:56Z
+image:
+
+---
 sha: 8b35e27
 title: Show her city in the live world.
 summary: A fog hid everything past about 150 metres, which is where her city stands. Her buildings are now drawn with her own light, the same one her pictures use, and fade with distance over more than a kilometre. At night the city is lit windows.
