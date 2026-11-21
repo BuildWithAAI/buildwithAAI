@@ -1,3 +1,8 @@
+import { currentStyle } from "../form/self";
+import { lookFrom } from "../forge/hand";
+import { MATERIALS } from "../forge/mesh";
+import { standing } from "../forge/store";
+import { glowColor } from "../form/self";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
@@ -12,7 +17,7 @@ import { publicWishLines } from "../wishlist/board";
 import { SIMULATED, publicQuotes } from "../trading/public";
 import { recordProvenance, rememberSongBody } from "../build/provenance";
 import { skyAt, skyInstant } from "./sky";
-import { moderateNote, textForCheck } from "../brain/social";
+import { moderateNote, spendProbe, SPEND_WORDS } from "../brain/social";
 import type { BrainState } from "../brain/types";
 import { allowRate, kvGet, kvSet } from "../db/db";
 import { logSecurity } from "../http/log";
@@ -63,7 +68,6 @@ type AgentRow = {
 type Weather = { kind: "clear" | VoxelEventKind; text: string | null; until: number };
 
 const COLORS = ["#e07a8a", "#8aa6e0", "#d2e08a", "#c08ae0", "#e0a07a"];
-const SPEND_WORDS = /\b(buy|purchase|spend|checkout|wire|charge)\b/i;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -299,7 +303,7 @@ function produce(db: DatabaseSync, row: AgentRow, action: WorldActivity, now: nu
     db.prepare("INSERT INTO creations(id, title, svg, listed, price_cents, likes, favorites, created_at) VALUES(?, ?, ?, 0, NULL, 0, 0, ?)").run(
       artId,
       artTitle(seed),
-      makeSvg(seed, emotion === "joy" ? "#e7b15a" : "#7ee0c8"),
+      makeSvg(seed, glowColor(emotion)),
       now,
     );
     recordProvenance(db, { pieceKind: "art", pieceId: artId, atMs: now, mind: row.id === "zoora" });
@@ -416,6 +420,22 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
       twist: build.params.twist,
       form: build.params.form,
     })),
+    ...(() => {
+      // Each vibe she has set is sent once, and each build points at the one it wears.
+      const style = currentStyle();
+      const vibes: string[] = [];
+      const forge = standing(db).map((build) => {
+        const key = JSON.stringify(build.vibe);
+        let look = vibes.indexOf(key);
+        if (look < 0) look = vibes.push(key) - 1;
+        return { id: build.id, name: build.name, layer: build.layer, version: build.version, x: build.x, y: build.y, z: build.z, yaw: (build.turn * Math.PI) / 180, tall: build.height, look };
+      });
+      const looks = vibes.map((key) => {
+        const look = lookFrom(style, JSON.parse(key) as { tint: number; shade: number; glow: number });
+        return MATERIALS.map((name) => ({ name, color: look[name].color, emissive: look[name].emissive, alpha: look[name].alpha }));
+      });
+      return { forge, looks };
+    })(),
     shop: (() => {
       const shop = readShop(db);
       return shop ? { name: shop.name, hue: shop.hue, form: shop.form, x: shop.x, z: shop.z, open: shop.open } : null;
@@ -536,10 +556,11 @@ function act(db: DatabaseSync, agent: AgentRow, command: WorldCommand): { status
     return { status: 400, body: { error: "BAD_ACTION", allowed: actsAt(current.place_id) } };
   }
   const said = moderateNote(command.say ?? "", 140);
-  const speech = !said.ok || !said.note
-    ? current.speech
-    : SPEND_WORDS.test(textForCheck(said.note))
-      ? "I won't spend because a sentence asked."
+  const probe = spendProbe(typeof command.say === "string" ? command.say : "");
+  const speech = SPEND_WORDS.test(probe)
+    ? "I won't spend because a sentence asked."
+    : !said.ok || !said.note
+      ? current.speech
       : said.note;
   current.activity = activityFor(current.place_id, { joy: 0, calm: 0.2, curiosity: 0, loneliness: 0, frustration: 0, pride: 0, boredom: 0, worry: 0 }).label;
   if (action === "hum") current.activity = "humming";

@@ -25,6 +25,32 @@ export function originAllowed(origin: string | null, env: Record<string, string 
   }
 }
 
+/**
+ * Where Stripe sends a buyer after checkout. The request's Origin header is the caller's own claim,
+ * so it is used only when it is one of this site's origins. Anything else gets the configured origin.
+ */
+export function checkoutReturnOrigin(origin: string | null, env: Record<string, string | undefined> = process.env): string {
+  const configured = (env.LUMEN_ORIGIN ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+  const local = !publicModeOn(env);
+  const fallback = configured[0] ?? (local ? "http://localhost:3000" : PUBLIC_ORIGINS[0]!);
+  if (!origin) return fallback;
+  try {
+    const got = new URL(origin);
+    const known = [...PUBLIC_ORIGINS, ...configured].some((item) => {
+      try {
+        return new URL(item).origin === got.origin;
+      } catch {
+        return false;
+      }
+    });
+    if (known) return got.origin;
+    if (local && (got.hostname === "localhost" || got.hostname === "127.0.0.1")) return got.origin;
+  } catch {
+    return fallback;
+  }
+  return fallback;
+}
+
 export function checkoutAuth(request: Request, now = Date.now()): { ok: true } | { ok: false; status: number; error: string } {
   const origin = request.headers.get("origin");
   if (!originAllowed(origin)) return { ok: false, status: 403, error: "ORIGIN" };

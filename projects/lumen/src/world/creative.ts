@@ -5,6 +5,9 @@ import { flag, kvGet, kvSet, setFlag } from "../db/db";
 import { scrubInstructions } from "../research/ideas";
 import { recordProvenance } from "../build/provenance";
 import { AREAS, areaById, type AreaId, type BuildSlot } from "./areas";
+import { appendChunkEdit, decorPayload } from "./chunkEdits";
+import { territoryDesk } from "./territory";
+import { worldToChunk } from "./chunkMath";
 import type { BuildEntry } from "../build/log";
 
 export const BUILD_KINDS = ["decoration", "art", "garden", "structure", "sign", "mural", "music", "path", "bench"] as const;
@@ -251,26 +254,71 @@ export function placeCreative(db: DatabaseSync, signals: CreativeSignals, now: n
 }
 
 export function hideBuild(db: DatabaseSync, id: string, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
-  return changeStatus(db, id, "placed", "hidden", now);
+  return withWrite(db, () => {
+    const changed = changeStatus(db, id, "placed", "hidden", now);
+    if (!changed.ok) return changed;
+    let written = false;
+    for (let attempt = 1; attempt <= 2 && !written; attempt += 1) {
+      try {
+        rememberChunkDecor(db, changed.build, "decor-rollback", now);
+        written = true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.log(JSON.stringify({
+          ts: new Date(now).toISOString(),
+          event: "decor_rollback_failed",
+          status: 500,
+          route: "creative",
+          attempt,
+          detail: message.slice(0, 80),
+        }));
+      }
+    }
+    return changed;
+  });
 }
 
 export function undoBuild(db: DatabaseSync, id: string, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
   const current = listBuilds(db).find((build) => build.id === id);
   if (!current || current.status === "undone") return { ok: false, reason: "NOT_PLACED" };
-  const changed = changeStatus(db, id, current.status, "undone", now);
-  if (!changed.ok) return changed;
-  db.prepare("UPDATE creative_log SET undone = 1 WHERE build_id = ?").run(id);
-  if (chicagoDay(current.createdAt) === chicagoDay(now)) {
-    const key = `materials-spent:${chicagoDay(now)}`;
-    const spent = Number(kvGet(db, key) ?? "0");
-    kvSet(db, key, String(Math.max(0, spent - current.materials)));
-  }
-  return changed;
+  return withWrite(db, () => {
+    const changed = changeStatus(db, id, current.status, "undone", now);
+    if (!changed.ok) return changed;
+    rememberChunkDecor(db, changed.build, "decor-rollback", now);
+    db.prepare("UPDATE creative_log SET undone = 1 WHERE build_id = ?").run(id);
+    if (chicagoDay(current.createdAt) === chicagoDay(now)) {
+      const key = `materials-spent:${chicagoDay(now)}`;
+      const spent = Number(kvGet(db, key) ?? "0");
+      kvSet(db, key, String(Math.max(0, spent - current.materials)));
+    }
+    return changed;
+  });
 }
 
 export function buildVersions(db: DatabaseSync, id: string): { version: number; status: string; atMs: number }[] {
   const rows = db.prepare("SELECT version, status, at_ms FROM world_build_versions WHERE build_id = ? ORDER BY version ASC").all(id) as { version: number; status: string; at_ms: number }[];
   return rows.map((row) => ({ version: row.version, status: row.status, atMs: row.at_ms }));
+}
+
+function withWrite<T>(db: DatabaseSync, run: () => T): T {
+  let owns = false;
+  try {
+    db.exec("BEGIN IMMEDIATE");
+    owns = true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/within a transaction/i.test(message)) throw error;
+  }
+  try {
+    const value = run();
+    if (owns) db.exec("COMMIT");
+    return value;
+  } catch (error) {
+    if (owns) {
+      try { db.exec("ROLLBACK"); } catch { /* already closed */ }
+    }
+    throw error;
+  }
 }
 
 function changeStatus(db: DatabaseSync, id: string, from: string, to: BuildStatus, now: number): { ok: true; build: WorldBuild } | { ok: false; reason: string } {
@@ -295,6 +343,7 @@ function insertBuild(db: DatabaseSync, build: WorldBuild): void {
     atMs: build.createdAt,
     flaggedVisitorText: build.influenced ? build.why : null,
   });
+  rememberChunkDecor(db, build, "decor", build.createdAt);
 }
 
 function recordVersion(db: DatabaseSync, build: WorldBuild, now: number): void {
@@ -322,8 +371,8 @@ function toBuild(row: BuildRow): WorldBuild {
   };
 }
 
-export function creativeBoard(db: DatabaseSync, now: number): { on: boolean; left: number; builds: WorldBuild[] } {
-  return { on: creativeEnabled(db), left: materialsLeft(db, now), builds: listBuilds(db).slice(0, 16) };
+export function creativeBoard(db: DatabaseSync, now: number): { on: boolean; left: number; builds: WorldBuild[]; territory: ReturnType<typeof territoryDesk> } {
+  return { on: creativeEnabled(db), left: materialsLeft(db, now), builds: listBuilds(db).slice(0, 16), territory: territoryDesk(db, now) };
 }
 
 export function considerCreative(db: DatabaseSync, state: { emotions: Emotions; placeId: string; longTerm: { text: string }[] }, now: number): WorldBuild | null {
@@ -389,7 +438,30 @@ function reviseBuild(db: DatabaseSync, current: WorldBuild, draft: CreativeDraft
   kvSet(db, `materials-spent:${day}`, String(DAILY_MATERIALS - materialsLeft(db, now) + 1));
   db.prepare("UPDATE creative_log SET title = ?, summary = ? WHERE build_id = ?").run(next.title, next.why, current.id);
   db.prepare("INSERT INTO diary(text, tone, private, created_at) VALUES(?, 'steady', 0, ?)").run(next.why, now);
+  rememberChunkDecor(db, next, "decor", now);
   return { ok: true, build: next };
+}
+
+function rememberChunkDecor(db: DatabaseSync, build: WorldBuild, action: "decor" | "decor-rollback", now: number): void {
+  const spot = worldToChunk(build.x, build.z);
+  try {
+    appendChunkEdit(db, {
+      id: `edit-${build.id}-v${build.version}-${action}`,
+      atMs: now,
+      chunkX: spot.cx,
+      chunkY: spot.cy,
+      tileX: spot.tx,
+      tileY: spot.ty,
+      kind: action,
+      payload: decorPayload(build),
+      actor: "zoora",
+      idempotencyKey: `decor:${build.id}:v${build.version}:${action}`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === "OUTSIDE") return;
+    throw error;
+  }
 }
 
 function composeParams(emotion: string, level: number, memory: string, idea: string, research: string, prior: BuildParams | null): BuildParams {

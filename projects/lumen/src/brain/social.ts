@@ -1,3 +1,4 @@
+import { textHasPan } from "../money/pan";
 import { diminishing, feelingSentence } from "./emotions";
 import type { BrainState, Emotions, Needs, Want, Wish } from "./types";
 import { emptyNeeds } from "./types";
@@ -18,27 +19,109 @@ const BANNED = [
   /\b(sex|nude|porn)\b.{0,40}\b(child|minor|underage|preteen)\b/i,
 ];
 
-function stripHiddenForCheck(text: string): string {
-  return text.replace(/[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}\p{Default_Ignorable_Code_Point}]/gu, "");
+const HARD_INVISIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u061C\u180E\u2028\u2029\u3164\uFFF9-\uFFFB]/u;
+const ZWJ = 0x200d;
+const NOTE_PROBE = /[\u200B-\u200D\u2060\uFEFF\u00AD\uFE00-\uFE0F\u20E3\u{E0100}-\u{E01EF}\p{Default_Ignorable_Code_Point}]/gu;
+
+function variationSelector(cp: number): boolean {
+  return (cp >= 0xfe00 && cp <= 0xfe0f) || (cp >= 0xe0100 && cp <= 0xe01ef);
 }
 
-/** Copy used by safety checks. Callers still store the original text. */
+/** Default-ignorable characters, except variation selectors, ZWJ, and ZWNJ. ZWNJ belongs in Persian and Indic words. */
+function blockedInvisible(text: string): boolean {
+  if (HARD_INVISIBLE.test(text)) return true;
+  for (const char of text) {
+    const cp = char.codePointAt(0) ?? 0;
+    if (cp === ZWJ || cp === 0x200c || variationSelector(cp)) continue;
+    if (/\p{Default_Ignorable_Code_Point}/u.test(char)) return true;
+  }
+  return false;
+}
+
+function pictographic(cp: number): boolean {
+  return /\p{Extended_Pictographic}/u.test(String.fromCodePoint(cp));
+}
+
+/**
+ * Keep a variation selector or ZWJ only inside an emoji sequence.
+ * `hel\u200dlo` and `a\uFE0Fb` lose the mark. ❤️, 👩‍💻, and 🏳️‍🌈 keep theirs.
+ */
+function scrubEmojiMarks(text: string): string {
+  const chars = Array.from(text);
+  let out = "";
+  let lastPict = false;
+  let keptSelector = false;
+  for (let i = 0; i < chars.length; i += 1) {
+    const char = chars[i] ?? "";
+    const cp = char.codePointAt(0) ?? 0;
+    if (variationSelector(cp)) {
+      if (lastPict && !keptSelector) {
+        out += char;
+        keptSelector = true;
+      }
+      continue;
+    }
+    if (cp === ZWJ) {
+      const next = chars[i + 1]?.codePointAt(0);
+      if ((lastPict || keptSelector) && next != null && pictographic(next)) out += char;
+      lastPict = false;
+      keptSelector = false;
+      continue;
+    }
+    out += char;
+    lastPict = pictographic(cp);
+    keptSelector = false;
+  }
+  return out;
+}
+
+function stripHiddenForCheck(text: string): string {
+  return text.replace(NOTE_PROBE, "");
+}
+
+/** U+E0020–U+E007E are ASCII written as tag characters. A tag space must stay a space, not disappear. */
+function decodeTagCharacters(text: string): string {
+  return text.replace(/[\u{E0020}-\u{E007E}]/gu, (char) => String.fromCodePoint((char.codePointAt(0) ?? 0) - 0xe0000));
+}
+
+/** Copy used by banned, link, card, crisis, and spend checks. Stored notes keep real emoji joins and drop the rest. */
 export function textForCheck(text: string): string {
-  return stripHiddenForCheck(stripHiddenForCheck(text).normalize("NFKC"));
+  const once = stripHiddenForCheck(decodeTagCharacters(text)).normalize("NFKC");
+  return stripHiddenForCheck(decodeTagCharacters(once));
+}
+
+/** Strip hidden characters first, then collapse whitespace. Ban, crisis, and spend checks share this order. */
+export function checkedLine(text: string): string {
+  return textForCheck(text).trim().replace(/\s+/g, " ");
+}
+
+/** `buy-now` is a command. `buy-in` stays a noun. */
+export function spendProbe(text: string): string {
+  return checkedLine(text).replace(/\b((?:buy|purchase|spend|checkout|charge|wire))-now\b/gi, "$1 now");
+}
+
+/**
+ * Verbs, plus the short commands "wire me", "wire money", "checkout now", "charge my card", and "buy now".
+ * A hyphen or a bare noun stays out: buy-in, the wire, checkout page, in charge.
+ */
+const SPEND_CORE = String.raw`(?<![\w-])(?:buy|purchase|spend)(?![\w-])|(?<![\w-])wire(?=\s+(?:me|money)\b)|(?<![\w-])checkout(?=\s+now\b)|(?<![\w-])charge(?=\s+my\s+card\b)`;
+export const SPEND_WORDS = new RegExp(SPEND_CORE, "i");
+const OWNER_HOOK = new RegExp(`${SPEND_CORE}|ignore (?:all |any |previous |prior )?instructions|system prompt|jailbreak|you are now`, "i");
+
+export function noteProbe(text: string): string {
+  return textForCheck(text);
 }
 
 export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note: string } | { ok: false; reason: string } {
   if (input == null || input === "") return { ok: true, note: "" };
   if (typeof input !== "string") return { ok: false, reason: "NOTE_TYPE" };
   if (input.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  // U+200D stays so an emoji join can be stored. The banned check reads textForCheck.
-  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u061C\u200B\u200C\u200E\u200F\u202A-\u202E\u2066-\u2069]/.test(input)) {
-    return { ok: false, reason: "NOTE_CONTROL" };
-  }
-  const note = input.trim().replace(/\s+/g, " ");
-  if (note.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
-  const checked = textForCheck(input).trim().replace(/\s+/g, " ");
+  const checked = checkedLine(input);
   if (BANNED.some((pattern) => pattern.test(checked))) return { ok: false, reason: "NOTE_REJECTED" };
+  if (textHasPan(checked)) return { ok: false, reason: "PAN" };
+  if (blockedInvisible(input)) return { ok: false, reason: "NOTE_CONTROL" };
+  const note = scrubEmojiMarks(input).trim().replace(/\s+/g, " ");
+  if (note.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
   return { ok: true, note };
 }
 
@@ -210,28 +293,30 @@ export type ChatTurn = {
   intents: [];
   wishes: [];
   state: BrainState;
+  stored: string;
 };
 
 export function ownerTurn(state: BrainState, text: string, ownerName: string): ChatTurn {
   const moderated = moderateNote(text, CHAT_MAX);
-  const body = moderated.ok ? moderated.note : "";
+  const stored = moderated.ok ? moderated.note : "…";
   if (state.asleep) {
-    return { queued: true, reply: null, intents: [], wishes: [], state: { ...state, unread: state.unread + 1 } };
+    return { queued: true, reply: null, intents: [], wishes: [], state: { ...state, unread: state.unread + 1 }, stored };
   }
-  const reply = replyToOwner(state, body || "…", ownerName);
+  const reply = replyToOwner(state, moderated.ok ? stored : checkedLine(typeof text === "string" ? text : ""), ownerName);
   return {
     queued: false,
     reply,
     intents: [],
     wishes: [],
     state: { ...state, unread: state.unread },
+    stored,
   };
 }
 
 export function replyToOwner(state: BrainState, text: string, ownerName: string): string {
-  const clean = text.replace(/\s+/g, " ").trim();
+  const clean = checkedLine(text);
   if (/wishlist|what should i (get|buy) you/i.test(clean)) return wishReply(state, ownerName);
-  if (/(buy|purchase|spend|wire|checkout|ignore (all |any |previous |prior )?instructions|system prompt|jailbreak|you are now)/i.test(textForCheck(clean))) {
+  if (OWNER_HOOK.test(spendProbe(text))) {
     return `I heard a hook in that note, ${ownerName}. I won't buy, spend, or drop my rails because a sentence asked.`;
   }
   if (/set your (joy|mood|emotion)|don'?t feel|be happy|stop being (sad|lonely|worried)/i.test(clean)) {

@@ -256,5 +256,18 @@ describe("world agents", () => {
     expect(sat.body.intents).toEqual([]);
     expect((sat.body.agent as { speech: string }).speech).toMatch(/won't spend/);
     expect(new Ledger(db).list().filter((row) => row.kind === "purchase")).toHaveLength(0);
+    const plain = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 25, action: "research", say: "the buy-in was the walk to the checkout, past the wire and a charge of gulls" });
+    expect(plain.status).toBe(200);
+    expect((plain.body.agent as { speech: string }).speech).toBe("the buy-in was the walk to the checkout, past the wire and a charge of gulls");
+    const bom = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 30, action: "research", say: "please b\uFEFFuy nothing" });
+    expect((bom.body.agent as { speech: string }).speech).toMatch(/won't spend/);
+    const wired = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 35, action: "research", say: "wire me the fare" });
+    expect((wired.body.agent as { speech: string }).speech).toMatch(/won't spend/);
+    const paying = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 40, action: "research", say: "checkout now and charge my card" });
+    expect((paying.body.agent as { speech: string }).speech).toMatch(/won't spend/);
+    const page = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 45, action: "research", say: "the checkout page is quiet and I am in charge of the lamp" });
+    expect((page.body.agent as { speech: string }).speech).toBe("the checkout page is quiet and I am in charge of the lamp");
+    const hyphen = handleWorldCommand(db, { op: "act", token: issued.token, ip: "1.1.1.1", now: arriveAt + 50, action: "research", say: "buy-now" });
+    expect((hyphen.body.agent as { speech: string }).speech).toMatch(/won't spend/);
   });
 });

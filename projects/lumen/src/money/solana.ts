@@ -224,8 +224,8 @@ export function verifySolPayment(db: DatabaseSync, orderId: string, signature: s
   if (!row) return { ok: false, reason: "MISSING" };
   if (row.status === "paid") {
     const checked = verifySolTransaction(tx, { recipient: row.recipient, lamports: 1n, reference: row.reference_key });
-    const extra = checked.ok ? checked.paid : 0n;
-    flagSolRefund(db, orderId, signature, "SECOND", extra, now);
+    // A made-up signature has no transaction behind it. Only a real second payment earns a refund flag.
+    if (checked.ok) flagSolRefund(db, orderId, signature, "SECOND", checked.paid, now);
     return { ok: false, reason: "SECOND" };
   }
   if (row.status !== "quoted") return { ok: false, reason: "MISSING" };

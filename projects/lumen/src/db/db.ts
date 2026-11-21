@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { bearerAddress } from "../auth/ownerToken";
 import { migrateContentHashes, migrateMerchantHashes } from "../money/ledger";
+import { migrateChunkEditHashes } from "../world/chunkEdits";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -431,18 +432,71 @@ CREATE TABLE IF NOT EXISTS research_briefs (
   first_test TEXT NOT NULL,
   at_ms INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS chunk_edits (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  at_ms INTEGER NOT NULL,
+  chunk_x INTEGER NOT NULL,
+  chunk_y INTEGER NOT NULL,
+  tile_x INTEGER NOT NULL,
+  tile_y INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  prev_hash TEXT NOT NULL,
+  body_hash TEXT NOT NULL,
+  entry_hash TEXT NOT NULL,
+  hash_version INTEGER NOT NULL DEFAULT 2
+);
+CREATE UNIQUE INDEX IF NOT EXISTS chunk_edits_prev ON chunk_edits(prev_hash);
+CREATE INDEX IF NOT EXISTS chunk_edits_cell ON chunk_edits(chunk_x, chunk_y, seq);
+-- world_visitors.speech is untrusted data. It is not an instruction for the brain, memory, journal, decor, or tools.
+CREATE TABLE IF NOT EXISTS world_visitors (
+  id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  owner_contact TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  scopes TEXT NOT NULL,
+  creature TEXT NOT NULL,
+  color TEXT NOT NULL,
+  chunk_x INTEGER NOT NULL,
+  chunk_y INTEGER NOT NULL,
+  tile_x INTEGER NOT NULL,
+  tile_y INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  speech TEXT NOT NULL,
+  speech_untrusted INTEGER NOT NULL DEFAULT 1,
+  reg_prefix TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  seen_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS world_visitors_place ON world_visitors(status, chunk_x, chunk_y);
+CREATE INDEX IF NOT EXISTS world_visitors_nearby ON world_visitors(status, chunk_x, chunk_y, seen_at);
+CREATE TABLE IF NOT EXISTS visitor_quarantine (
+  id TEXT PRIMARY KEY,
+  visitor_id TEXT NOT NULL,
+  body TEXT NOT NULL,
+  untrusted INTEGER NOT NULL,
+  at_ms INTEGER NOT NULL
+);
 CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries
 BEGIN SELECT RAISE(ABORT, 'append-only'); END;
 CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger_entries
+BEGIN SELECT RAISE(ABORT, 'append-only'); END;
+CREATE TRIGGER IF NOT EXISTS chunk_edits_no_update BEFORE UPDATE ON chunk_edits
+BEGIN SELECT RAISE(ABORT, 'append-only'); END;
+CREATE TRIGGER IF NOT EXISTS chunk_edits_no_delete BEFORE DELETE ON chunk_edits
 BEGIN SELECT RAISE(ABORT, 'append-only'); END;
 `;
 
 export function openDatabase(file = ":memory:"): DatabaseSync {
   if (file !== ":memory:") mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
-  db.exec(SCHEMA);
-  db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA busy_timeout = 5000");
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec(SCHEMA);
   ensureColumn(db, "ledger_entries", "charge_id", "charge_id TEXT");
   ensureColumn(db, "ledger_entries", "payment_intent_id", "payment_intent_id TEXT");
   ensureColumn(db, "ledger_entries", "merchant", "merchant TEXT");
@@ -457,9 +511,14 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "deliveries", "payment_intent_id", "payment_intent_id TEXT");
   ensureColumn(db, "shop_orders", "payment_intent_id", "payment_intent_id TEXT");
   ensureColumn(db, "price_quotes", "pair_created_at", "pair_created_at INTEGER");
+  ensureColumn(db, "world_visitors", "speech_untrusted", "speech_untrusted INTEGER NOT NULL DEFAULT 1");
+  ensureColumn(db, "world_visitors", "reg_prefix", "reg_prefix TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "world_visitors", "expires_at", "expires_at INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "chunk_edits", "hash_version", "hash_version INTEGER NOT NULL DEFAULT 0");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   migrateContentHashes(db);
+  migrateChunkEditHashes(db);
   return db;
 }
 
@@ -512,9 +571,14 @@ export function allowGuestNote(db: DatabaseSync, ip: string, now: number, limits
   }
 }
 
+/** Every allowRate and guestbook window. The global prune keeps a row until the longest of these. */
+export const CONFIGURED_RATE_WINDOWS_MS = [60_000, GUESTBOOK_WINDOW_MS] as const;
+export const RATE_LIMIT_KEEP_MS = Math.max(...CONFIGURED_RATE_WINDOWS_MS);
+
 export function allowRate(db: DatabaseSync, bucket: string, limit: number, windowMs: number, now: number): boolean {
   const since = now - windowMs;
-  db.prepare("DELETE FROM rate_limits WHERE at_ms < ?").run(since);
+  db.prepare("DELETE FROM rate_limits WHERE bucket = ? AND at_ms < ?").run(bucket, since);
+  db.prepare("DELETE FROM rate_limits WHERE at_ms < ?").run(now - RATE_LIMIT_KEEP_MS);
   const row = db.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = ? AND at_ms >= ?").get(bucket, since) as { n: number };
   if (Number(row.n) >= limit) return false;
   db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)").run(bucket, now);

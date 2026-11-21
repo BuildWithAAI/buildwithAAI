@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { addExpandedAreas } from "./islandAreas";
+import { bobGuests, syncChunkLayer, syncGuestLayer, syncTerritoryGlow } from "./chunkLayer";
 import type { PublicAgent, PublicWorld } from "../world/public";
+import type { PublicChunk, PublicGuest } from "../world/chunkMath";
+import { chunkKey, chunksToLoad, worldToChunk } from "../world/chunkMath";
+import { CLAIM_BUFFER, CLAIM_START_RADIUS } from "../world/territoryRules";
 import type { Vec3 } from "../world/places";
 import { directionFromHorizon } from "../world/sky";
 import { clampLabelPoint, clipThought, labelCaption, placeThought, shortSkyLine, type ScreenPoint } from "../world/labels";
@@ -35,13 +39,35 @@ const CAMS: Record<string, { pos: [number, number, number]; look: [number, numbe
 
 type Board = { texture: THREE.CanvasTexture; paint: (lines: string[]) => void };
 
-export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorld; cam: string; thoughts?: string[] }) {
+export function WorldView({
+  initial,
+  cam,
+  thoughts = [],
+  chunks = [],
+  guests = [],
+  territory = { radius: CLAIM_START_RADIUS, buffer: CLAIM_BUFFER },
+}: {
+  initial: PublicWorld;
+  cam: string;
+  thoughts?: string[];
+  chunks?: PublicChunk[];
+  guests?: PublicGuest[];
+  territory?: { radius: number; buffer: number };
+}) {
   const mount = useRef<HTMLDivElement | null>(null);
   const bubbleRef = useRef<HTMLButtonElement | null>(null);
   const [thoughtOpen, setThoughtOpen] = useState(false);
   const [thoughtIndex, setThoughtIndex] = useState(0);
   const world = useRef(initial);
   const [live, setLive] = useState(initial);
+  const [loadedChunks, setLoadedChunks] = useState(chunks);
+  const [guestList, setGuestList] = useState(guests);
+  const chunkRef = useRef(loadedChunks);
+  const guestRef = useRef(guestList);
+  const territoryRef = useRef(territory);
+  chunkRef.current = loadedChunks;
+  guestRef.current = guestList;
+  territoryRef.current = territory;
   const [sound, setSound] = useState(false);
   const [view, setView] = useState(CAMS[cam] ? cam : "overview");
   const [follow, setFollow] = useState(Boolean(CAMS[cam]?.follow));
@@ -147,7 +173,8 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
       return;
     }
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 600);
+    const far = low ? 1200 : 1500;
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, far);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({
@@ -245,6 +272,13 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
 
     const rain = buildRain();
     scene.add(rain);
+    const chunkLayer = new THREE.Group();
+    chunkLayer.name = "endless-chunks";
+    const guestLayer = new THREE.Group();
+    guestLayer.name = "guest-creatures";
+    const territoryLayer = new THREE.Group();
+    territoryLayer.name = "territory-edge";
+    scene.add(chunkLayer, guestLayer, territoryLayer);
     const visitor = buildVisitor();
     scene.add(visitor);
     const gem = new THREE.Mesh(
@@ -308,6 +342,7 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
     const head = new THREE.Vector3();
     let frame = 0;
     const buildPieces = new Map<string, THREE.Group>();
+    const forgePieces = new Map<string, THREE.Group>();
     const shopPiece: { key: string; group: THREE.Group } | { key: "" } = { key: "" };
     let feedKey = "";
     let wishKey = "";
@@ -385,7 +420,12 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
         paintSvg(easelBoard, snap.easel.svg);
       }
       syncBuilds(scene, buildPieces, snap.builds ?? []);
+      syncForge(scene, forgePieces, snap.forge ?? [], snap.looks ?? [], camera.position);
       syncShop(scene, shopPiece, snap.shop ?? null);
+      syncChunkLayer(chunkLayer, chunkRef.current);
+      syncGuestLayer(guestLayer, guestRef.current, terrainHeight);
+      syncTerritoryGlow(territoryLayer, territoryRef.current.radius, territoryRef.current.buffer);
+      bobGuests(guestLayer, time);
       const researchText = `${snap.research?.question ?? ""}|${(snap.research?.pins ?? []).join("|")}`;
       if (researchText !== researchKey) {
         researchKey = researchText;
@@ -511,8 +551,49 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
       renderer.render(scene, camera);
     };
     tick();
+    const known = new Set(chunkRef.current.map((chunk) => chunkKey(chunk.cx, chunk.cy)));
+    let flight = false;
+    const pullTerrain = async (force: boolean) => {
+      if (flight) return;
+      const here = worldToChunk(controls.target.x, controls.target.z);
+      const cell = force ? { cx: here.cx, cy: here.cy } : chunksToLoad(known, here.cx, here.cy, 1)[0];
+      if (!cell) return;
+      flight = true;
+      try {
+        const response = await fetch(`/api/world/chunk?x=${cell.cx}&y=${cell.cy}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const body = (await response.json()) as PublicChunk & { guests?: PublicGuest[]; territory?: { radius: number; buffer: number } };
+        if (typeof body.tiles !== "string" || body.cx !== cell.cx || body.cy !== cell.cy) return;
+        known.add(chunkKey(cell.cx, cell.cy));
+        const nextChunks = [
+          ...chunkRef.current.filter((chunk) => chunkKey(chunk.cx, chunk.cy) !== chunkKey(cell.cx, cell.cy)),
+          { cx: body.cx, cy: body.cy, tiles: body.tiles, decor: Array.isArray(body.decor) ? body.decor : [], private: Boolean(body.private) },
+        ];
+        chunkRef.current = nextChunks;
+        setLoadedChunks(nextChunks);
+        if (body.territory && Number.isInteger(body.territory.radius) && Number.isInteger(body.territory.buffer)) {
+          territoryRef.current = body.territory;
+        }
+        if (Array.isArray(body.guests)) {
+          const nextGuests = [
+            ...guestRef.current.filter((guest) => guest.cx !== cell.cx || guest.cy !== cell.cy),
+            ...body.guests,
+          ];
+          guestRef.current = nextGuests;
+          setGuestList(nextGuests);
+        }
+      } catch {
+        /* keep the chunks already on screen */
+      } finally {
+        flight = false;
+      }
+    };
+    const terrainTimer = window.setInterval(() => void pullTerrain(false), 1200);
+    const guestTimer = window.setInterval(() => void pullTerrain(true), 15_000);
     return () => {
       cancelAnimationFrame(frame);
+      window.clearInterval(terrainTimer);
+      window.clearInterval(guestTimer);
       observer.disconnect();
       controls.dispose();
       renderer.dispose();
@@ -529,7 +610,7 @@ export function WorldView({ initial, cam, thoughts = [] }: { initial: PublicWorl
   const thought = thoughts.length ? thoughts[thoughtIndex % thoughts.length] : "";
   const shownThought = clipThought(thought, thoughtOpen);
   return (
-    <div className="world-stage">
+    <div className="world-stage" data-world-chunks={loadedChunks.length} data-world-guests={guestList.length}>
       <div className="world-canvas" ref={mount} />
       {thought ? (
         <button
@@ -679,6 +760,94 @@ function syncBuilds(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds
     if (seen.has(id)) continue;
     scene.remove(group);
     pieces.delete(id);
+  }
+}
+
+/**
+ * What she raised with the forge. Each build's mesh is fetched once per version and drawn with the
+ * materials the engine sends, so nothing here chooses a colour or a shape.
+ */
+/** Builds further than this from the eye are not loaded, and ones that fall behind it are let go. The gap between the two stops a build at the edge from flickering in and out. */
+const FORGE_NEAR = 520;
+const FORGE_FAR = 640;
+
+function dropForge(scene: THREE.Scene, group: THREE.Group): void {
+  scene.remove(group);
+  group.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
+    for (const item of Array.isArray(material) ? material : material ? [material] : []) item.dispose();
+  });
+}
+
+function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds: PublicWorld["forge"], looks: PublicWorld["looks"], eye: THREE.Vector3): void {
+  const seen = new Set<string>();
+  for (const build of builds) {
+    const look = looks[build.look] ?? looks[0];
+    if (!look) continue;
+    // Her world can be far bigger than what is in view. Only what is near enough to see is loaded.
+    const away = Math.hypot(build.x - eye.x, build.z - eye.z);
+    if (away > (pieces.has(build.id) ? FORGE_FAR : FORGE_NEAR)) continue;
+    seen.add(build.id);
+    const key = `${build.version}:${look.map((item) => item.color).join("")}`;
+    let group = pieces.get(build.id);
+    if (!group || group.userData.key !== key) {
+      if (group) dropForge(scene, group);
+      group = new THREE.Group();
+      group.userData.key = key;
+      pieces.set(build.id, group);
+      scene.add(group);
+      void loadForgeMesh(group, build, look, key);
+    }
+    group.position.set(build.x, build.y, build.z);
+    group.rotation.y = build.yaw;
+  }
+  for (const [id, group] of pieces) {
+    if (seen.has(id)) continue;
+    dropForge(scene, group);
+    pieces.delete(id);
+  }
+}
+
+async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][number], look: PublicWorld["looks"][number], key: string): Promise<void> {
+  try {
+    const response = await fetch(`/api/forge/${build.id}?v=${build.version}`);
+    if (!response.ok) return;
+    const bytes = await response.arrayBuffer();
+    const head = new DataView(bytes);
+    if (bytes.byteLength < 12 || head.getUint32(0, true) !== 0x48534d5a) return;
+    const points = head.getUint32(4, true);
+    const triangles = head.getUint32(8, true);
+    const table = 12 + look.length * 4;
+    if (bytes.byteLength !== table + points * 12 + triangles * 12) return;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(bytes, table, points * 3), 3));
+    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(bytes, table + points * 12, triangles * 3), 1));
+    let start = 0;
+    look.forEach((_, index) => {
+      const count = head.getUint32(12 + index * 4, true) * 3;
+      if (count) geometry.addGroup(start, count, index);
+      start += count;
+    });
+    geometry.computeVertexNormals();
+    const materials = look.map((item) => {
+      const color = new THREE.Color(item.color);
+      return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: item.emissive * 1.1, roughness: item.name === "metal" ? 0.3 : 0.55, metalness: item.name === "metal" ? 0.45 : 0.04, transparent: item.alpha < 1, opacity: item.alpha, depthWrite: item.alpha >= 1, side: THREE.DoubleSide });
+    });
+    // The build may have changed while its mesh was on the way.
+    if (group.userData.key !== key) return;
+    group.add(new THREE.Mesh(geometry, materials));
+    // Land and low things carry no name board.
+    if (build.layer !== "structure" || build.tall < 6) return;
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+    geometry.computeBoundingBox();
+    label.position.y = (geometry.boundingBox?.max.y ?? 10) + 3;
+    label.scale.set(14, 4.6, 1);
+    paintLabel(label, build.name);
+    group.add(label);
+  } catch {
+    // A build that cannot be fetched is left out. The next snapshot tries again when its version changes.
   }
 }
 

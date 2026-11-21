@@ -16,7 +16,7 @@ Prices below are from that pricing page as of November 2026, for a machine that 
 
 A dedicated IPv4 is $2/month. Do not allocate one. Outbound traffic is $0.02/GB in North America, so a quiet site stays near the estimate. A 31-day month is billed a little higher because machines are billed by the second. Check the dashboard estimate before you leave the app running.
 
-`projects/lumen/fly.toml` already sets the machine size, `iad`, `auto_stop_machines = "off"`, `min_machines_running = 1`, the 1GB volume mount, `LUMEN_DATA=/data/lumen.sqlite`, and `LUMEN_PUBLIC_MODE=true`. That flag is the public site and the closed login. It is not the money switch, and it is not turned off to go live. Live money also needs the secret `LUMEN_MONEY_LIVE=true`, which is not in `fly.toml`. Spending still needs `LUMEN_SPEND_ENABLED=true` and `STRIPE_ISSUING_KEY`, a different key from `STRIPE_SECRET_KEY`. Live sales still need `LUMEN_SALES_ENABLED=true`. A Privacy.com charge is posted to `POST /api/privacy/charge` with the owner credential. The body is a transaction id, merchant, and amount. The card number is not in it. The brain tick starts when the Node process starts (`src/instrumentation.ts`), not when a visitor connects, so the world keeps moving on an empty island.
+`projects/lumen/fly.toml` already sets the machine size, `iad`, `auto_stop_machines = "off"`, `min_machines_running = 1`, the 1GB volume mount, `LUMEN_DATA=/data/lumen.sqlite`, and `LUMEN_PUBLIC_MODE=true`. That flag is the public site and the closed login. It is not the money switch, and it is not turned off to go live. `LUMEN_VISITORS_ENABLED` defaults to false. It is not in `fly.toml`. Leave it unset, or set it to `false`, and visiting agents stay off. Only the exact value `true` opens registration. Live money also needs the secret `LUMEN_MONEY_LIVE=true`, which is not in `fly.toml`. Spending still needs `LUMEN_SPEND_ENABLED=true` and `STRIPE_ISSUING_KEY`, a different key from `STRIPE_SECRET_KEY`. Live sales still need `LUMEN_SALES_ENABLED=true`. A Privacy.com charge is posted to `POST /api/privacy/charge` with the owner credential. The body is a transaction id, merchant, and amount. The card number is not in it. The brain tick starts when the Node process starts (`src/instrumentation.ts`), not when a visitor connects, so the world keeps moving on an empty island.
 
 A local production `npm start`, after `/`, `/world`, and `/build`, and after further ticks with no new requests, measured 187,240 kB RSS (about 183 MiB) for the `next-server` process. That fits in 512MB, which also has to hold the guest operating system. The machine size stays 512MB.
 
@@ -118,6 +118,47 @@ fly secrets import -a lumen-tidepool < secrets.env
 ```
 
 `fly secrets import` stages them for the next deploy. Do not commit `secrets.env`. Delete `secrets.env` from the owner machine after the import succeeds.
+
+## Check the volume before a deploy
+
+Run this on your own machine before `fly deploy` when the volume already has a database. It is not a `release_command`. Nothing here starts on the machine by itself.
+
+Download a copy of `/data/lumen.sqlite` first. Do not point these commands at the live file. Make a second file with SQLite `VACUUM INTO` before you change anything. The destination is a single-quoted SQL string, with `'` written as `''`. `sqlite3` is not in the image. Node is.
+
+```powershell
+node -e "const {DatabaseSync}=require('node:sqlite'); const db=new DatabaseSync(process.argv[1]); const dest=String(process.argv[2]).replace(/'/g, ""''""); db.exec(""VACUUM INTO '"" + dest + ""'""); db.close();" "C:\backups\lumen.sqlite" "C:\backups\lumen-before-deploy.sqlite"
+icacls "C:\backups\lumen-before-deploy.sqlite" /inheritance:r /grant:r "${env:USERNAME}:F"
+```
+
+REQUIRED. Run that `icacls` line in the same step. `VACUUM INTO` leaves the backup world-readable (mode 644) until it runs.
+
+On Linux, the same copy. The `chmod` line is REQUIRED for the same reason: the new file is mode 644 until it runs.
+
+```bash
+umask 077
+node -e 'const {DatabaseSync}=require("node:sqlite"); const q=String.fromCharCode(39); const db=new DatabaseSync(process.argv[1]); const dest=String(process.argv[2]).split(q).join(q+q); db.exec("VACUUM INTO "+q+dest+q); db.close();' /var/backups/lumen.sqlite /var/backups/lumen-before-deploy.sqlite
+chmod 600 /var/backups/lumen-before-deploy.sqlite
+```
+
+REQUIRED. `umask 077` runs before `VACUUM INTO`. The `chmod 600` line is still required: a new SQLite file can stay mode 644 until it runs.
+
+The ledger should be one chain. Two rows with the same previous hash are a fork. An empty list is the chain you want:
+
+```powershell
+fly ssh console -a lumen-tidepool -C "node -e ""const {DatabaseSync}=require('node:sqlite'); const db=new DatabaseSync('/data/lumen.sqlite',{readOnly:true}); const rows=db.prepare('SELECT prev_hash, COUNT(*) AS n FROM ledger_entries GROUP BY prev_hash HAVING n > 1').all(); console.log(JSON.stringify(rows)); db.close();"""
+```
+
+The chunk log is checked read-only, from this repo, on the backup copy:
+
+```powershell
+cd projects\lumen
+$env:LUMEN_DATA = "C:\backups\lumen-before-deploy.sqlite"
+npm run predeploy
+```
+
+`npm run predeploy` refuses a missing file and a 0-byte file. It does not migrate, and it does not write a desk notice. A brand-new database with no tables exits 0 with a note. A broken chunk chain prints one line and exits non-zero. Another SQL error is reported as `predeploy_error`, not as a broken chain. Fix the copy before you deploy.
+
+A pre-M1 volume, including a live database from `468dc57`, `afb3876`, or `20ff075`, has no `chunk_edits`. Predeploy reports `chunk_chain_absent` and exits 0. It does not create the table. The check fails when visitor, territory, or chunk state from M1 is present and `chunk_edits` is missing.
 
 ## Deploy one machine
 

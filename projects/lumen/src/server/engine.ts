@@ -1,7 +1,19 @@
+import { pruneHistory } from "../db/prune";
+import { soulIntact } from "../security/soul";
+import { detectMilestones } from "../economy/economy";
+import { checkBrakes, ladderAutoCap } from "../economy/ladder";
+import { runReaders } from "../economy/readers";
+import { glowColor, noteSelf } from "../form/self";
+import { considerForge, designRequest, forgeDue, standing as standingBuilds } from "../forge/store";
+import { considerTerms } from "../world/units";
+import { growAround } from "../world/land";
+import { considerVenture, expireVentures } from "../economy/ventures";
+import { syncOpenPodOrders } from "../fulfillment/pod";
+import { printfulConfigured } from "../fulfillment/printful";
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
-import { glowFor } from "../brain/emotions";
+import { dominantEmotion, glowFor } from "../brain/emotions";
 import { crisisMatch, guestReply } from "../brain/crisis";
 import { scrubInstructions } from "../research/ideas";
 import { giftById, giftDeltas, interactDeltas, moderateNote, ownerTurn, publicWants, reactionToOwnerDecision, sortInbox, textForCheck, artReaction, GIFT_CATALOG } from "../brain/social";
@@ -22,7 +34,7 @@ import { evaluatePolicy, type PolicyContext } from "../money/policy";
 import { compareRecords, type ProviderRecord } from "../money/reconcile";
 import { cardCredentials, issuingKey, listIssuingTransactions, descriptorMap } from "../money/card";
 import { killSwitchOn, parseMoneyRules, salesMode, spendAllowed, cardAvailableCents, type Env } from "../money/rules";
-import { expireClaims } from "../money/checkoutQueue";
+import { expireClaims, textHasPan } from "../money/checkoutQueue";
 import { researchChatReply } from "../research/ideas";
 import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
@@ -35,6 +47,10 @@ import { recordProvenance } from "../build/provenance";
 import { loadIdentity } from "../identity/load";
 import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals, revertGoal, seedOwnerGoals } from "../identity/goals";
 import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
+import { remember } from "../brain/memory";
+import { considerGrowth, considerPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../world/territory";
+import { clearChunkChainBroken, degradeChunkChain, guardChunkChain, rebuildClaimRadius, reverifyChunkChain } from "../world/chunkEdits";
+import { revokeVisitor } from "../world/visitors";
 import { publishFromTick, rollbackScene, setSceneFrozen } from "../world/scene";
 import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
 import { localMinutes, skyAt, skyInstant } from "../world/sky";
@@ -60,7 +76,15 @@ export function createEngine(env: Env, file?: string) {
     issuer,
     now: () => Date.now(),
     snapshot: () => snapshot(db, env),
-    tickOnce: () => runTick(db, env, issuer, Date.now()),
+    tickOnce: () => {
+      // A soul file that does not match the owner's pin stops her. She does not run as someone else.
+      const soul = soulIntact(env);
+      if (!soul.ok) {
+        setFlag(db, "soul_alert", soul.reason);
+        return Promise.reject(new Error(soul.reason));
+      }
+      return tickGuarded(db, env, issuer);
+    },
     leaveGift: (giftId: string, note: unknown, author: string, ip: string) => leaveGift(db, env, giftId, note, author, ip),
     interact: (kind: "wave" | "tap", ip: string) => interact(db, kind, ip),
     guestbook: (note: unknown, author: string, ip: string) => guestbook(db, note, author, ip),
@@ -96,6 +120,11 @@ export function createEngine(env: Env, file?: string) {
     issueWorldToken: (name: string) => issueAgent(db, name, Date.now()),
     creativeBoard: () => creativeBoard(db, Date.now()),
     setCreative: (on: boolean) => setCreativeEnabled(db, on),
+    freezeTerritory: (on: boolean) => setTerritoryFrozen(db, on),
+    vetoTerritory: (radius?: number) => vetoGrowth(db, Date.now(), radius),
+    unprivateChunk: (cx: number, cy: number) => unprivateChunk(db, cx, cy, Date.now()),
+    reverifyChain: () => reverifyChunkChain(db, Date.now()),
+    revokeVisitor: (id: string) => revokeVisitor(db, id, Date.now()),
     rollbackScene: () => rollbackScene(db),
     freezeScene: (on: boolean) => setSceneFrozen(db, on),
     hideBuild: (id: string) => hideWorldBuild(db, id, Date.now()),
@@ -154,7 +183,7 @@ function ensureSeed(db: DatabaseSync): void {
       db.prepare("INSERT INTO creations(id, title, svg, listed, price_cents, likes, favorites, created_at) VALUES(?, ?, ?, 0, NULL, 0, 0, ?)").run(
         `seed-${i}`,
         artTitle(seed),
-        makeSvg(seed, i === 2 ? "#ffd27a" : "#8ef0d8"),
+        makeSvg(seed, glowColor(i === 2 ? "joy" : "calm")),
         seededAt,
       );
       recordProvenance(db, { pieceKind: "art", pieceId: `seed-${i}`, atMs: seededAt });
@@ -198,7 +227,7 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
   const recent = rows.filter((row) => row.atMs >= hourAgo && (row.kind === "purchase" || row.kind === "decline" || row.kind === "approval")).length;
   const unknown = db.prepare("SELECT COUNT(*) AS n FROM purchase_claims WHERE state = 'unknown'").get() as { n: number };
   return {
-    rules: parsed.rules,
+    rules: { ...parsed.rules, autoApproveCapCents: ladderAutoCap(db, parsed.rules.autoApproveCapCents) },
     spendOpen: spend.open,
     killed: killed(db, env),
     reconciliationAlert: flag(db, "reconciliation_alert") === "1",
@@ -209,6 +238,23 @@ function policyContext(db: DatabaseSync, env: Env): PolicyContext | null {
     cardAvailableCents: env.LUMEN_CARD_ISSUER === "owner_checkout" ? cardAvailableCents(env) : undefined,
   };
 }
+
+const ticking = new WeakMap<DatabaseSync, Promise<TickResult>>();
+
+/**
+ * One tick at a time per database. A tick loads the state, may wait on the model, and saves.
+ * A second tick started in that wait would save first and then be overwritten by the older state.
+ */
+function tickGuarded(db: DatabaseSync, env: Env, issuer: CardIssuer): Promise<TickResult> {
+  const running = ticking.get(db);
+  if (running) return running;
+  const next = runTick(db, env, issuer, Date.now()).finally(() => ticking.delete(db));
+  ticking.set(db, next);
+  return next;
+}
+
+export const MODEL_TIMEOUT_MS = 20_000;
+export const CHECKOUT_REUSE_MS = 23 * 60 * 60 * 1000;
 
 async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: number): Promise<TickResult> {
   sweepStuckPurchases(db, now);
@@ -259,6 +305,23 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       ? { ...lived, longTerm: [{ id: "goal", tier: "long" as const, section: "fact" as const, text: goal, salience: 1, placeId: null, atMinute: 0 }, ...lived.longTerm] }
       : lived;
     const built = considerCreative(db, minded, now);
+    const grew = considerGrowth(db, built, now);
+    // The whole ring is not free because someone holds land in it. She still grows: one free chunk that touches hers.
+    if (grew && !grew.ok && grew.reason === "HELD") growAround(db, now);
+    if (grew?.ok) {
+      lived = remember(lived, {
+        id: `claim-${grew.radius}-${now}`,
+        tier: "short",
+        section: "fact",
+        text: grew.memory.text,
+        salience: 0.4,
+        placeId: null,
+        atMinute: lived.worldMinute,
+        provenance: grew.memory.provenance,
+      });
+      saveState(db, lived);
+    }
+    considerPrivacy(db, built, now);
     publishFromTick(db, lived.emotions, lived.tick, now);
     const finding = db.prepare("SELECT question FROM findings ORDER BY at_ms DESC LIMIT 1").get() as { question: string } | undefined;
     const held = inventoryLine(db);
@@ -278,6 +341,28 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       memory: goal ?? lived.longTerm[0]?.text ?? null,
       research: finding?.question ?? null,
     }, now, env);
+    // She may raise something new in her world. With a model she designs it herself; without one she
+    // starts from an idea she knows. The model is given her own state only, never outside text.
+    if (!forging && forgeDue(db, now)) {
+      const canAsk = Boolean(env.LUMEN_LLM_API_KEY && env.LUMEN_LLM_MODEL && env.LUMEN_LLM_BASE_URL) && !killed(db, env) && flag(db, "forge_model", "1") === "1";
+      if (canAsk) {
+        forging = true;
+        void callModel(env, designRequest(db, dominantEmotion(lived.emotions)))
+          .then((own) => considerForge(db, lived.emotions, Date.now(), own))
+          .catch(() => undefined)
+          .finally(() => {
+            forging = false;
+          });
+      } else {
+        try {
+          considerForge(db, lived.emotions, now);
+        } catch {
+          // A build that fails is skipped. The next one is tried when it is due.
+        }
+      }
+    }
+    // She may put one way to earn in front of the owner. It spends nothing and waits for a yes.
+    considerVenture(db, lived.emotions as unknown as Record<string, number>, now);
     const ranked = (Object.entries(lived.emotions) as [string, number][]).sort((a, b) => b[1] - a[1]);
     considerKeeperList(db, {
       emotion: ranked[0]?.[0] ?? "calm",
@@ -342,12 +427,12 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
   if (!allowRate(db, `gift:${ip}`, 10, 3600_000, Date.now())) return { ok: false, error: "RATE_LIMIT" };
   const gift = giftById(giftId);
   if (!gift) return { ok: false, error: "UNKNOWN_GIFT" };
-  const moderated = moderateNote(note);
-  if (!moderated.ok) return moderated;
-  if (typeof note === "string" && moderated.note && crisisMatch(textForCheck(note))) {
+  if (typeof note === "string" && crisisMatch(textForCheck(note))) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'gift')").run(Date.now());
     return { ok: false, error: "CRISIS" };
   }
+  const moderated = moderateNote(note);
+  if (!moderated.ok) return moderated;
   const named = screenedAuthor(author);
   if (!named.ok) return named;
   const state = loadState(db);
@@ -358,12 +443,12 @@ function leaveGift(db: DatabaseSync, env: Env, giftId: string, note: unknown, au
     ...state,
     needs,
     giftCounts: { ...state.giftCounts, [giftId]: prior + 1 },
-    visitorSeen: state.visitorSeen.includes(author) ? state.visitorSeen : [...state.visitorSeen, author].slice(-40),
+    visitorSeen: state.visitorSeen.includes(named.name) ? state.visitorSeen : [...state.visitorSeen, named.name].slice(-40),
   };
   saveState(db, next);
   const id = randomBytes(8).toString("hex");
   db.prepare("INSERT INTO gifts(id, gift_id, note, untrusted, author, created_at) VALUES(?, ?, ?, 1, ?, ?)").run(id, giftId, moderated.note, named.name, Date.now());
-  db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`${visitorName(author)} left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
+  db.prepare("INSERT INTO feed(kind, text, source, created_at) VALUES('event', ?, 'visitor', ?)").run(`${visitorName(named.name)} left ${gift.name}. The note is untrusted and cannot spend.`, Date.now());
   void env;
   return { ok: true, id };
 }
@@ -390,13 +475,13 @@ function interact(db: DatabaseSync, kind: "wave" | "tap", ip: string) {
 
 function guestbook(db: DatabaseSync, note: unknown, author: string, ip: string) {
   if (!allowGuestNote(db, ip, Date.now())) return { ok: false, error: "RATE_LIMIT" };
-  const moderated = moderateNote(note, 280);
-  if (!moderated.ok) return moderated;
-  if (!moderated.note) return { ok: false, error: "EMPTY" };
   if (typeof note === "string" && crisisMatch(textForCheck(note))) {
     db.prepare("INSERT INTO audit(at_ms, kind, detail) VALUES(?, 'crisis', 'guestbook')").run(Date.now());
     return { ok: false, error: "CRISIS" };
   }
+  const moderated = moderateNote(note, 280);
+  if (!moderated.ok) return moderated;
+  if (!moderated.note) return { ok: false, error: "EMPTY" };
   const state = loadState(db);
   const messages = (db.prepare("SELECT id, channel, author FROM messages WHERE status = 'queued'").all() as { id: string; channel: "owner" | "visitor"; author: string }[]);
   const id = randomBytes(8).toString("hex");
@@ -452,9 +537,15 @@ function login(db: DatabaseSync, env: Env, secret: string, ip: string) {
 }
 
 function screenedAuthor(author: string): { ok: true; name: string } | { ok: false; reason: string } {
-  const moderated = moderateNote(author, Math.max(author.length, 140));
+  const stored = (author || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const forCheck = stored.replace(/\u061C/g, "");
+  if (!forCheck) return { ok: true, name: "visitor" };
+  const checked = textForCheck(forCheck).trim().replace(/\s+/g, " ");
+  if (crisisMatch(checked)) return { ok: false, reason: "CRISIS" };
+  if (textHasPan(checked)) return { ok: false, reason: "PAN" };
+  const moderated = moderateNote(forCheck, Math.max(forCheck.length, 140));
   if (!moderated.ok) return moderated;
-  return { ok: true, name: (author || "visitor").slice(0, 40) };
+  return { ok: true, name: stored };
 }
 
 function visitorName(author: string): string {
@@ -493,7 +584,7 @@ function ownerChat(db: DatabaseSync, env: Env, text: string, bucket = "owner-cha
     id,
     author === "jarvis" ? "jarvis" : "owner",
     name,
-    text.slice(0, 500),
+    turn.stored.slice(0, 500),
     turn.queued ? "queued" : "replied",
     reply,
     Date.now(),
@@ -618,17 +709,20 @@ async function checkout(db: DatabaseSync, env: Env, creationId: string, idempote
   const mode = salesMode(env, parsed.ok, killed(db, env));
   if (mode === "disabled") return { ok: false, error: "SALES_DISABLED" };
   if (!idempotencyKey || idempotencyKey.length < 8 || idempotencyKey.length > 80) return { ok: false, error: "IDEMPOTENCY" };
-  const existing = db.prepare("SELECT url, status FROM checkouts WHERE idempotency_key = ?").get(idempotencyKey) as { url: string; status: string } | undefined;
+  // The form key is the same for every buyer of a piece. A Stripe session lasts 24 hours, so a stored one
+  // is handed out again only inside a 23 hour window. After that an abandoned session no longer blocks the piece.
+  const sessionKey = `${idempotencyKey}:${Math.floor(Date.now() / CHECKOUT_REUSE_MS)}`;
+  const existing = db.prepare("SELECT url, status FROM checkouts WHERE idempotency_key = ?").get(sessionKey) as { url: string; status: string } | undefined;
   if (existing?.url) return { ok: true, url: existing.url, duplicate: true };
   const art = db.prepare("SELECT id, title, listed, price_cents FROM creations WHERE id = ?").get(creationId) as { id: string; title: string; listed: number; price_cents: number | null } | undefined;
   if (!art || !art.listed || art.price_cents == null) return { ok: false, error: "NOT_LISTED" };
   const secret = env.STRIPE_SECRET_KEY ?? "";
   const client = stripeSalesClient(secret);
-  const session = await client.createCheckout({ creationId, title: art.title, priceCents: art.price_cents, origin, idempotencyKey });
+  const session = await client.createCheckout({ creationId, title: art.title, priceCents: art.price_cents, origin, idempotencyKey: sessionKey });
   db.prepare("INSERT INTO checkouts(id, creation_id, idempotency_key, session_id, url, status, created_at) VALUES(?, ?, ?, ?, ?, 'open', ?)").run(
     randomBytes(8).toString("hex"),
     creationId,
-    idempotencyKey,
+    sessionKey,
     session.id,
     session.url,
     Date.now(),
@@ -783,7 +877,8 @@ function approveProposal(db: DatabaseSync, id: string) {
 function snapshot(db: DatabaseSync, env: Env) {
   const state = loadState(db);
   const labels = labelsOf(state);
-  const glow = glowFor(state.emotions, state.mood);
+  // Her glow keeps its beat from her feelings and takes its colour from the one style.
+  const glow = { ...glowFor(state.emotions, state.mood), color: glowColor(dominantEmotion(state.emotions)) };
   const parsed = rulesOf(env);
   const kill = killed(db, env);
   const sales = salesMode(env, parsed.ok, kill);
@@ -860,17 +955,27 @@ function publicLedger(row: LedgerRow) {
   };
 }
 
+/** True while she is waiting on her model for a design, so two are never asked for at once. */
+let forging = false;
+
 async function callModel(env: Env, body: string): Promise<unknown | null> {
   const key = env.LUMEN_LLM_API_KEY ?? "";
   const base = env.LUMEN_LLM_BASE_URL ?? "";
   const model = env.LUMEN_LLM_MODEL ?? "";
   if (!key || !base || !model || body.includes(key)) return null;
   const payload = JSON.parse(body) as { messages: unknown };
-  const response = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, temperature: 0.7, messages: payload.messages, response_format: { type: "json_object" } }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, temperature: 0.7, messages: payload.messages, response_format: { type: "json_object" } }),
+      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+    });
+  } catch {
+    // A slow or unreachable model is not a reason to lose the tick. Zoora continues on rules.
+    return null;
+  }
   if (!response.ok) return null;
   const json = (await response.json()) as { choices?: { message?: { content?: string } }[] };
   const content = json.choices?.[0]?.message?.content;
@@ -893,6 +998,9 @@ function inQuietHours(env: Env, now: number): boolean {
 
 export function startLoop(): void {
   const engine = getEngine();
+  rebuildClaimRadius(engine.db);
+  if (!guardChunkChain(engine.db)) degradeChunkChain(engine.db);
+  else clearChunkChainBroken(engine.db);
   const holder = globalThis as GlobalEngine & { loop?: boolean };
   if (holder.loop) return;
   holder.loop = true;
@@ -901,6 +1009,45 @@ export function startLoop(): void {
     void engine.tickOnce().catch(() => undefined);
     const day = new Date().toISOString().slice(0, 10);
     if (flag(engine.db, "last_reconcile_day", "") !== day) void engine.reconcileNow().catch(() => undefined);
+    // Print orders are moved along every five minutes: paid ones opened, drafts priced, shipping read back.
+    const fiveMinutes = String(Math.floor(Date.now() / 300_000));
+    if (printfulConfigured(engine.env) && flag(engine.db, "last_print_sync", "") !== fiveMinutes) {
+      setFlag(engine.db, "last_print_sync", fiveMinutes);
+      void syncOpenPodOrders(engine.db, engine.env, Date.now()).catch(() => undefined);
+    }
+    // Balances are read once an hour. A reading is a network call, so it never holds up the tick.
+    const hour = new Date().toISOString().slice(0, 13);
+    if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
+      setFlag(engine.db, "last_econ_read_hour", hour);
+      try {
+        // She sets the rent and price of any building that has none, and resets one whose occupancy has moved.
+        considerTerms(engine.db, standingBuilds(engine.db), Date.now());
+        // On the first beat she sees her own form. After that this does nothing unless her soul file changes.
+        noteSelf(engine.db, Date.now());
+        expireVentures(engine.db, Date.now());
+      } catch {
+        // The next hour tries again.
+      }
+      void runReaders(engine.db, engine.env, Date.now())
+        .then(() => {
+          detectMilestones(engine.db, Date.now());
+          checkBrakes(engine.db, Date.now());
+        })
+        .catch(() => undefined);
+    }
+    if (flag(engine.db, "last_prune_day", "") !== day) {
+      setFlag(engine.db, "last_prune_day", day);
+      try {
+        detectMilestones(engine.db, Date.now());
+      } catch {
+        /* the books are checked again tomorrow, and on every desk entry */
+      }
+      try {
+        pruneHistory(engine.db);
+      } catch {
+        /* a failed prune must not stop the tick. It runs again tomorrow */
+      }
+    }
   };
   beat();
   setInterval(beat, interval);

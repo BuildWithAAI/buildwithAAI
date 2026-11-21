@@ -203,6 +203,13 @@ describe("Zoora's telegram voice", () => {
     const db = openDatabase();
     for (let i = 0; i < 30; i += 1) expect(allowRate(db, "telegram:203.0.113.5", 30, 60_000, 1)).toBe(true);
     expect(allowRate(db, "telegram:203.0.113.5", 30, 60_000, 1)).toBe(false);
+    const shared = openDatabase();
+    const hour = 3_600_000;
+    const at = 5_000_000;
+    expect(allowRate(shared, "gift:203.0.113.9", 10, hour, at)).toBe(true);
+    expect(allowRate(shared, "chunk-read:203.0.113.9", 60, 60_000, at + 120_000)).toBe(true);
+    expect(allowRate(shared, "gift:203.0.113.9", 10, hour, at + 120_000)).toBe(true);
+    expect(Number((shared.prepare("SELECT COUNT(*) AS n FROM rate_limits WHERE bucket = 'gift:203.0.113.9'").get() as { n: number }).n)).toBe(2);
     const chunks = Array.from({ length: 20 }, () => new Uint8Array(1000));
     let index = 0;
     const body = new ReadableStream({

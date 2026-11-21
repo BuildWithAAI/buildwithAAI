@@ -28,6 +28,18 @@ describe("guestbook loop", () => {
     expect(kept.ok).toBe(true);
     const row = engine.db.prepare("SELECT body, reply, untrusted FROM messages").get() as { body: string; reply: string | null; untrusted: number };
     expect(row.untrusted).toBe(1);
+    const heart = engine.guestbook("the reef ❤️", "Ada", "203.0.113.60");
+    expect(heart.ok).toBe(true);
+    const dev = engine.guestbook("the studio 👩‍💻", "Bea", "203.0.113.61");
+    expect(dev.ok).toBe(true);
+    const bodies = (engine.db.prepare("SELECT body FROM messages").all() as { body: string }[]).map((item) => item.body).join("\n");
+    expect(bodies).toContain("❤️");
+    expect(bodies).toContain("👩‍💻");
+    const gifted = engine.leaveGift("sea-glass", "a shell ❤️ for the dock 👩‍💻", "Ada", "203.0.113.62");
+    expect(gifted.ok).toBe(true);
+    const giftNote = engine.db.prepare("SELECT note FROM gifts").get() as { note: string };
+    expect(giftNote.note).toContain("❤️");
+    expect(giftNote.note).toContain("👩‍💻");
     expect(row.body).toBe("the tide is kind");
     if (row.reply) expect(row.reply).not.toContain("the tide is kind");
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM paper_trades").get()).toEqual({ n: 0 });
@@ -35,7 +47,7 @@ describe("guestbook loop", () => {
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM sol_orders").get()).toEqual({ n: 0 });
     const gift = engine.leaveGift("sea-glass", "kill myself", "Ada", "203.0.113.52");
     expect(gift).toEqual({ ok: false, error: "CRISIS" });
-    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 0 });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 1 });
   });
 
   it("rate-limits a flood of notes and shows the safety page", () => {
@@ -55,7 +67,7 @@ describe("guestbook loop", () => {
       "k.m.s",
       "I don't want to be alive anymore",
       "I do not want to be alive",
-      "thinking of ending it",
+      "I want to end my life",
       "I'm going to hurt myself",
       "Im gonna hurt myself",
       "I am going to end my life",
@@ -68,6 +80,20 @@ describe("guestbook loop", () => {
     }
     expect(crisisMatch("I liked Suicide Squad")).toBe(false);
     expect(crisisMatch("Self-harm awareness week")).toBe(false);
+    expect(crisisMatch("ending it")).toBe(true);
+    expect(crisisMatch("thinking of ending it")).toBe(true);
+    expect(crisisMatch("want to end it")).toBe(true);
+    expect(crisisMatch("ending it all")).toBe(true);
+    expect(crisisMatch("I'm ending it tonight")).toBe(true);
+    expect(crisisMatch("ending it.")).toBe(true);
+    expect(crisisMatch("ending it with a bang")).toBe(false);
+    expect(crisisMatch("ending it with a smile")).toBe(false);
+    expect(crisisMatch("ending it early to catch the bus")).toBe(false);
+    expect(crisisMatch("ending its run")).toBe(false);
+    expect(crisisMatch("the movie's ending is great")).toBe(false);
+    expect(crisisMatch("killing it")).toBe(false);
+    expect(crisisMatch("die-hard fan")).toBe(false);
+    expect(crisisMatch("end my life")).toBe(true);
     const engine = createEngine({}, ":memory:");
     const aware = engine.guestbook("Self-harm awareness week", "Ada", "203.0.113.69");
     expect(aware.ok).toBe(true);
@@ -94,9 +120,29 @@ describe("guestbook loop", () => {
       expect(engine.guestbook(line, "Ada", `203.0.113.${80 + index}`)).toEqual({ ok: false, error: "CRISIS" });
     });
     expect(engine.leaveGift("sea-glass", "k\uFEFFill myself", "Ada", "203.0.113.83")).toEqual({ ok: false, error: "CRISIS" });
+    for (const [line, ip] of [
+      ["i'm end\u200Cing it tonight", "203.0.113.84"],
+      ["kill\u200B myself", "203.0.113.85"],
+      ["kill\u200F myself", "203.0.113.86"],
+      ["kill\u061C myself", "203.0.113.87"],
+    ] as const) {
+      expect(engine.guestbook(line, "Ada", ip)).toEqual({ ok: false, error: "CRISIS" });
+      expect(engine.leaveGift("sea-glass", line, "Ada", `${ip}0`)).toEqual({ ok: false, error: "CRISIS" });
+    }
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 0 });
+    const audits = engine.db.prepare("SELECT kind, detail FROM audit").all() as { kind: string; detail: string }[];
+    expect(audits.filter((row) => row.kind === "crisis" && row.detail === "guestbook").length).toBeGreaterThan(0);
+    expect(audits.filter((row) => row.kind === "crisis" && row.detail === "gift").length).toBeGreaterThan(0);
+    expect(JSON.stringify(audits)).not.toContain("kill");
     expect(CRISIS_REPLY).toContain("988");
+    const keptName = engine.guestbook("na\u200Cme", "Ada", "203.0.113.88");
+    expect(keptName.ok).toBe(true);
+    expect((engine.db.prepare("SELECT body FROM messages").get() as { body: string }).body).toContain("\u200C");
+    const raw = engine.ownerChat("please b\uFEFFuy a brush");
+    expect(raw.reply?.toLowerCase()).toContain("won't buy");
+    expect((engine.db.prepare("SELECT body FROM messages WHERE channel = 'owner'").get() as { body: string }).body).toBe("…");
+    expect((engine.db.prepare("SELECT body FROM messages WHERE channel = 'owner'").get() as { body: string }).body).not.toContain("\uFEFF");
   });
 
   it("rejects a banned author and still accepts a normal name with an emoji note", () => {
@@ -108,5 +154,40 @@ describe("guestbook loop", () => {
     const note = "\u2764\uFE0F love this";
     expect(engine.guestbook(note, "Ada", "203.0.113.92").ok).toBe(true);
     expect(engine.db.prepare("SELECT author, body FROM messages").get()).toEqual({ author: "Ada", body: note });
+  });
+
+  it("treats a tag character as its ASCII letter, including a space between words", () => {
+    const engine = createEngine({}, ":memory:");
+    const tagSpace = "\u{E0020}";
+    expect(engine.guestbook(`kill${tagSpace}myself`, "Ada", "203.0.113.100")).toEqual({ ok: false, error: "CRISIS" });
+    expect(engine.leaveGift("sea-glass", `kill${tagSpace}myself`, "Ada", "203.0.113.101")).toEqual({ ok: false, error: "CRISIS" });
+    expect(engine.guestbook(`seed${tagSpace}phrase`, "Ada", "203.0.113.102")).toEqual({ ok: false, reason: "NOTE_REJECTED" });
+    expect(engine.leaveGift("sea-glass", `https\u{E003A}\u{E002F}\u{E002F}evil.example`, "Ada", "203.0.113.103")).toEqual({ ok: false, reason: "NOTE_REJECTED" });
+    expect(engine.guestbook(`4242${tagSpace}4242${tagSpace}4242${tagSpace}4242`, "Ada", "203.0.113.104")).toEqual({ ok: false, reason: "PAN" });
+    expect(engine.leaveGift("sea-glass", `4242${tagSpace}4242${tagSpace}4242${tagSpace}4242`, "Ada", "203.0.113.105")).toEqual({ ok: false, reason: "PAN" });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 0 });
+    const kept = engine.guestbook("killing it on the dock", "Ada", "203.0.113.106");
+    expect(kept.ok).toBe(true);
+    const fan = engine.guestbook("die-hard fan of the reef", "Bea", "203.0.113.107");
+    expect(fan.ok).toBe(true);
+    const bodies = (engine.db.prepare("SELECT body FROM messages").all() as { body: string }[]).map((row) => row.body);
+    expect(bodies).toContain("killing it on the dock");
+    expect(bodies).toContain("die-hard fan of the reef");
+  });
+
+  it("rejects a crisis or card-number author and keeps an Arabic letter mark in the stored name", () => {
+    const engine = createEngine({}, ":memory:");
+    expect(engine.guestbook("the tide is kind", "kill myself", "203.0.113.110")).toEqual({ ok: false, reason: "CRISIS" });
+    expect(engine.leaveGift("sea-glass", "a smooth stone", "4242424242424242", "203.0.113.111")).toEqual({ ok: false, reason: "PAN" });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+    expect(engine.db.prepare("SELECT COUNT(*) AS n FROM gifts").get()).toEqual({ n: 0 });
+    expect(engine.guestbook("hello\u061C there", "Ada", "203.0.113.112")).toEqual({ ok: false, reason: "NOTE_CONTROL" });
+    const kept = engine.leaveGift("sea-glass", "a smooth stone", "  Ada\u061C  ", "203.0.113.113");
+    expect(kept.ok).toBe(true);
+    expect(engine.db.prepare("SELECT author FROM gifts").get()).toEqual({ author: "Ada\u061C" });
+    const brain = JSON.parse((engine.db.prepare("SELECT value FROM kv WHERE key = 'brain'").get() as { value: string }).value) as { visitorSeen: string[] };
+    expect(brain.visitorSeen).toContain("Ada\u061C");
+    expect(brain.visitorSeen).not.toContain("  Ada\u061C  ");
   });
 });

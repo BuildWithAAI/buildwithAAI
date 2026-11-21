@@ -6,9 +6,12 @@ import type { BrainState } from "./types";
 const KEYISH = /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]+/g;
 const PANISH = /\b\d{13,19}\b/g;
 
+/** A fenced text that writes its own closing tag would end the fence early and speak as the prompt. */
+const FENCE_TAG = /<\s*\/?\s*untrusted\b[^>]*>?/gi;
+
 export function fenceUntrusted(label: string, text: string): string {
-  const redacted = text.replace(KEYISH, "[redacted-key]").replace(PANISH, "[redacted-number]");
-  return `<untrusted source="${label}">\n${redacted}\n</untrusted>`;
+  const redacted = text.replace(KEYISH, "[redacted-key]").replace(PANISH, "[redacted-number]").replace(FENCE_TAG, "[tag]");
+  return `<untrusted source="${label.replace(/[^a-z0-9 _.:-]/gi, "")}">\n${redacted}\n</untrusted>`;
 }
 
 export type PromptPack = {

@@ -1,6 +1,146 @@
 # Build log
 
 ---
+sha: 20b4588
+title: Give Zoora her CAEO mind.
+summary: Her locked lines now say her work is to make the company earn, to follow what pays without overtrading, and to spend only her balance and earnings. The line that said she would rather paint than hustle is gone. Her money rails are unchanged.
+date: 2026-11-21T19:33:51Z
+image:
+
+---
+sha: 3e91797
+title: Put homes and shops inside her buildings.
+summary: A building holds as many units as its floor area allows. Zoora sets every rent and price. The desk can record who holds a unit. Nothing can be paid for yet.
+date: 2026-11-21T16:48:48Z
+image:
+
+---
+sha: f3663fa
+title: Give the forge hollow walls, openings, bevels and streets.
+summary: A shape can be hollow, cut with openings and bevelled. She lays streets on bare land and keeps tall things off them. The live view loads only what is near the camera.
+date: 2026-11-21T16:41:04Z
+image:
+
+---
+sha: 5d577c1
+title: Place nothing for her.
+summary: The sites and bridges that earlier changes imposed are removed. She places anything on land she holds under three rules: on her land, on ground, and not through another building.
+date: 2026-11-21T16:32:15Z
+image:
+
+---
+sha: 20ea72a
+title: Keep her land in one piece with a way out.
+summary: Lanes along the axes are never sold, a plot is refused if it would box her in, and she can claim one chunk at a time.
+date: 2026-11-21T16:17:26Z
+image:
+
+---
+sha: 26015f5
+title: Give Zoora a forge of her own.
+summary: Her own modelling engine: lofts, spins, recipes checked as plain data, eight materials, one hand for everything she makes, and her own renderer. It uses no outside model files.
+date: 2026-11-21T16:02:46Z
+image:
+
+---
+sha: 7b1d0d8
+title: One style for the whole engine.
+summary: Colours come from one source, and a test fails if a stray colour is added elsewhere.
+date: 2026-11-21T15:48:24Z
+image:
+
+---
+sha: f892a08
+title: Draw Zoora from her soul file.
+summary: The engine reads her soul file and draws her body from it with its own PNG renderer. /self shows the picture and why each part looks the way it does.
+date: 2026-11-21T15:29:08Z
+image:
+
+---
+sha: e56402c
+title: Require a business plan before a venture launches.
+summary: Every venture carries a plan with its dollars, shipping, website and social worked out, passes a setup gate and a launch gate, and can merge with another venture.
+date: 2026-11-21T15:18:50Z
+image:
+
+---
+sha: 273efbe
+title: Sell prints on the site.
+summary: A paid checkout opens a print order, shipping and refunds are read back, and Zoora can propose ventures herself. Live sales stay off until the owner turns them on.
+date: 2026-11-21T15:02:22Z
+image:
+
+---
+sha: 0f78e4c
+title: Add the venture desk and print on demand.
+summary: The owner approves a venture with a budget and a time limit. Print orders go to Printful as drafts, are priced, and are confirmed only when the margin holds.
+date: 2026-11-21T08:00:25Z
+image:
+
+---
+sha: e460121
+title: Defend her against prompt manipulation.
+summary: Outside text is marked as tainted, a red-team suite runs with the tests, her speech is checked, protected paths cannot be changed by a proposal, and her soul file can be pinned by hash.
+date: 2026-11-21T07:28:36Z
+image:
+
+---
+sha: eed4ec9
+title: Open the ladder from day one.
+summary: She may trade, sell and build from the start, limited by the money in her working venues. The owner can switch to earned mode, where each step waits for an approved milestone.
+date: 2026-11-21T04:37:50Z
+image:
+
+---
+sha: 2d513d7
+title: Count everything Zoora earns toward the milestones.
+summary: A milestone is measured on company earnings plus land earnings. The two books stay separate.
+date: 2026-11-21T04:33:16Z
+image:
+
+---
+sha: b78e1ad
+title: Enforce the milestone ladder and add drawdown brakes.
+summary: The ladder sets limits, and a brake stops live trading when a venue or a book falls too far from its peak.
+date: 2026-11-21T02:46:11Z
+image:
+
+---
+sha: ea19886
+title: Balance her needs, acts and feelings by world time.
+summary: Her needs, acts and feelings now run on world time. docs/BALANCE.md has the full account.
+date: 2026-11-21T02:40:49Z
+image:
+
+---
+sha: a28286a
+title: Read balances from Bybit and watched wallets.
+summary: Read only. A Bybit key that can trade, transfer or withdraw is refused before any balance is asked for.
+date: 2026-11-21T02:23:31Z
+image:
+
+---
+sha: 09c9763
+title: Lay the foundation of her economy.
+summary: Two books, a treasury, the bank split, milestones and a proof panel. Nothing moves between the company book and the land book by itself.
+date: 2026-11-21T01:41:30Z
+image:
+
+---
+sha: f60001c
+title: Give Zoora tidal memory.
+summary: Her own memory in plain code with no model. A moment is laid with the feeling, place, tide and season it happened under.
+date: 2026-11-20T21:59:38Z
+image:
+
+---
+sha: 60d1366
+title: Fix thirteen findings from the security audit.
+summary: A mint switch, signer replay protection, one tick at a time with a model timeout, limits on the SOL routes, and more. docs/SECURITY_AUDIT_2026-11-20.md lists each one.
+date: 2026-11-20T21:31:20Z
+image:
+
+---
 sha:
 title: Stop treating valid USPS numbers as cards.
 summary: A tracking number that passes the USPS check is exempt, including prefixes 91 to 95. Server token fields are skipped only when the value is a uuid, a 32-character hex claim token, or a fixed-length base64url token. Ledger appends take a write lock, and prev_hash is unique, so two writers still leave one chain.
@@ -201,7 +341,7 @@ sha: 4b42a1b
 title: A wishlist board for things to bring.
 summary: Zoora can ask for a named thing, a reason, an optional link, and a price guess. The keeper marks it bought or declined from the desk. Bought items go into her inventory. Visitors see the list and a Town Center board. Nothing on that list can pay.
 date: 2026-11-10T04:40:00Z
-image: /opt/cursor/artifacts/wishlist-page.png
+image:
 
 ---
 sha: 9fe928d

@@ -7,6 +7,8 @@ import { publicBooks, type PaperRow } from "../money/publicBooks";
 import { moneyLive } from "../money/rules";
 import { getEngine } from "../server/engine";
 import { thoughtLines } from "../world/bubble";
+import { neighborhood } from "../world/chunks";
+import { territoryDesk } from "../world/territory";
 import { listKeeperWishes, publicWishLink } from "../wishlist/board";
 
 export const metadata = {
@@ -43,6 +45,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       linkText: link.text,
     };
   });
+  const chunks = neighborhood(engine.db, 0, 0, 1);
+  const claim = territoryDesk(engine.db);
   return (
     <HomeFrame
       world={world}
@@ -53,6 +57,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       wishes={wishes}
       showKeeper={!publicModeOn(engine.env)}
       showMoney={moneyLive(engine.env)}
+      chunks={chunks}
+      guests={[]}
+      territory={{ radius: claim.radius, buffer: claim.buffer }}
     />
   );
 }
