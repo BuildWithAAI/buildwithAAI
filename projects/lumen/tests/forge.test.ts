@@ -260,7 +260,80 @@ describe("windows, land edges and vibes", () => {
   });
 });
 
+describe("cutting and bevels", () => {
+  it("a hollow shape has the volume of its walls, and faces the right way inside and out", () => {
+    const tube = loft({ up: 10, from: { width: 8 }, wall: 1, cap: "flat", segments: 96 }, 0, hand);
+    expect(soundMesh(tube)).toBe(true);
+    expect(volume(tube) / (Math.PI * (16 - 9) * 10)).toBeCloseTo(1, 2);
+  });
+
+  it("an opening is cut right through the wall and its sides are closed", () => {
+    const whole = loft({ up: 10, from: { width: 8 }, wall: 1, cap: "flat", segments: 96, rings: 21 }, 0, hand);
+    const cut = loft({ up: 10, from: { width: 8 }, wall: 1, cap: "flat", segments: 96, rings: 21, openings: [{ along: [0, 0.5], around: [0.1, 0.2] }] }, 0, hand);
+    expect(soundMesh(cut)).toBe(true);
+    // Half the height and a tenth of the way round is a twentieth of the wall. Closed sides keep it a solid, so its volume says so.
+    expect(volume(cut) / volume(whole)).toBeCloseTo(0.95, 2);
+    // A hole that wraps past the start of the outline is one hole.
+    const wrapped = loft({ up: 10, from: { width: 8 }, wall: 1, cap: "flat", segments: 96, rings: 21, openings: [{ along: [0, 0.5], around: [0.95, 0.05] }] }, 0, hand);
+    expect(volume(wrapped) / volume(whole)).toBeCloseTo(0.95, 2);
+    // Asking for an opening without a wall still gives a wall to cut.
+    expect(triangleCount(loft({ up: 4, from: { width: 4 }, openings: [{ along: [0, 1], around: [0, 0.2] }] }, 0, hand))).toBeGreaterThan(0);
+  });
+
+  it("a tunnel is a hollow loft along a path, open at both ends", () => {
+    const tunnel = loft({ through: [[-20, 2, 0], [0, 4, 6], [20, 2, 0]], from: { width: 6 }, wall: 0.6, cap: "open", rings: 40 }, 0, hand);
+    expect(soundMesh(tunnel)).toBe(true);
+    expect(Math.abs(volume(tunnel))).toBeGreaterThan(100);
+  });
+
+  it("a bevel takes the sharp edge off and a little of the volume", () => {
+    const sharp = loft({ up: 10, from: { width: 8 }, cap: "flat", segments: 96, rings: 6 }, 0, hand);
+    const cut = loft({ up: 10, from: { width: 8 }, cap: "flat", bevel: 0.6, segments: 96, rings: 6 }, 0, hand);
+    expect(soundMesh(cut)).toBe(true);
+    expect(volume(cut)).toBeLessThan(volume(sharp));
+    expect(volume(cut)).toBeGreaterThan(volume(sharp) * 0.9);
+    const top = (mesh: Mesh) => Math.max(...mesh.positions.filter((_, i) => i % 3 === 1));
+    expect(top(cut)).toBeCloseTo(top(sharp), 9);
+  });
+
+  it("a mirror puts a second copy on the other side of the build", () => {
+    const built = buildRecipe(cleanRecipe({ name: "Two Posts", parts: [{ op: "loft", up: 3, from: { width: 1 }, at: [0, 0, 5], mirror: "z" }] }), hand);
+    const zs = built.mesh.positions.filter((_, i) => i % 3 === 2);
+    expect(Math.max(...zs)).toBeCloseTo(5.5, 6);
+    expect(Math.min(...zs)).toBeCloseTo(-5.5, 6);
+    expect(volume(built.mesh) / (2 * Math.PI * 0.25 * 3)).toBeCloseTo(1, 1);
+  });
+
+  it("the recipe checks openings like everything else", () => {
+    expect(() => cleanRecipe({ name: "Thing", parts: [{ op: "loft", up: 3, from: { width: 2 }, openings: [{ along: [0, 1] }] }] })).toThrow("FORGE_OPENINGS");
+    expect(() => cleanRecipe({ name: "Thing", parts: [{ op: "loft", up: 3, from: { width: 2 }, openings: "all" }] })).toThrow("FORGE_OPENINGS");
+    const part = cleanRecipe({ name: "Thing", parts: [{ op: "loft", up: 3, from: { width: 2 }, wall: 99, bevel: 99, openings: [{ along: [-1, 5], around: [0.2, 0.4] }] }] }).parts[0] as { wall: number; bevel: number; openings: { along: number[] }[] };
+    expect([part.wall, part.bevel, part.openings[0]!.along]).toEqual([8, 4, [0, 1]]);
+  });
+});
+
 describe("she builds her world how she wants", () => {
+  it("left to herself she draws a street on open land before building there, and keeps it clear", () => {
+    const db = openDatabase();
+    const proud = { ...(calm as object), calm: 0, pride: 0.9 } as never;
+    let at = T;
+    for (let k = 0; k < 24; k += 1) {
+      at += FORGE.everyMs;
+      considerForge(db, proud, at);
+    }
+    const all = standing(db);
+    const firstLand = all.findIndex((build) => build.kind === "plain");
+    expect(all[firstLand + 1]!.kind).toBe("road");
+    const roads = all.filter((build) => build.kind === "road");
+    expect(roads.length).toBeGreaterThan(0);
+    for (const road of roads) expect(road.height).toBeLessThan(FORGE.flat);
+    for (const build of all) if (build.layer === "structure" && build.height > FORGE.flat) expect(roads.some((road) => boxesMeet(road, build, 0.3))).toBe(false);
+    // Keeping streets clear is her habit, not a rule: she can still be told to build across one.
+    const road = roads[0]!;
+    expect(raise(db, post("Across The Road", 8, 3), { x: road.x, z: road.z, turn: 0 }, at + 1, "owner", "own", hand).status).toBe("standing");
+  });
+
+
   it("nothing is placed for her: an empty world has nothing in it and nowhere marked out", () => {
     const db = openDatabase();
     expect(standing(db)).toHaveLength(0);

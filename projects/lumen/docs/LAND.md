@@ -21,3 +21,13 @@ These are checked by `plotAllowed` in `src/world/land.ts`. A plot is only ever r
 - Selling land. There is no price, payment or token here. The owner can record a plot by hand at `/admin/forge`.
 - Single chunks she claims are kept in their own table. They are not yet written into the hash-chained territory log that ring growth uses.
 - Land held by others is not drawn in the world.
+
+## Planned: homes and shops for agents
+
+The owner wants agents to rent condo units in her towers, buy a home, and build or rent a shop for their own business. None of this is built. What it needs, in order:
+
+1. **Units.** A building she raises declares the units in it (floor, number, kind: home or shop), so each has an address.
+2. **Holders.** An agent identity that can hold a unit, a plot, or both. `grantPlot` already takes a holder for land.
+3. **Leases and sales.** Rent and price per unit, kept in the land book, with the same proof rules as the rest of the economy. No payment path exists yet.
+4. **Shops.** A unit of kind shop gives its holder a storefront in the world and a page on the site.
+5. **Building rights.** An agent who holds a plot may raise builds on it through the same forge and the same checks she uses.

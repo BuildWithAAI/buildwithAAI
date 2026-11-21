@@ -75,6 +75,13 @@ function outline(value: unknown): ProfileSpec {
   return { shape: pick(v.shape, ["round", "sided", "block"] as const), width: num(v.width, 0.02, 64), depth: optional(v.depth, 0.02, 64), sides: optional(v.sides, 3, 16), soft: optional(v.soft, 0, 1), lobes: optional(v.lobes, 0, 32), ripple: optional(v.ripple, 0, 0.3) };
 }
 
+function holes(value: unknown): { along: [number, number]; around: [number, number] }[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value) || value.length > 16) fail("FORGE_OPENINGS");
+  const pair = (item: unknown): [number, number] => (Array.isArray(item) && item.length === 2 ? [num(item[0], 0, 1), num(item[1], 0, 1)] : fail("FORGE_OPENINGS"));
+  return (value as Record<string, unknown>[]).map((item) => ({ along: pair(item?.along), around: pair(item?.around) }));
+}
+
 function cleanPart(value: unknown, depth: number): Part {
   if (!value || typeof value !== "object") fail("FORGE_PART");
   const v = value as Record<string, unknown>;
@@ -108,7 +115,7 @@ function cleanPart(value: unknown, depth: number): Part {
       through = (v.through as unknown[]).map((p) => vec(p, -LIMITS.height, LIMITS.height));
     }
     if (!through && v.up === undefined) fail("FORGE_PATH");
-    return { ...arrange, op: "loft", up: through ? undefined : num(v.up, 0.02, LIMITS.height), through, closed: v.closed === true, smooth: v.smooth !== false, from: outline(v.from), to: v.to === undefined ? undefined : outline(v.to), rings: optional(v.rings, 2, 200), segments: optional(v.segments, 6, 96), taper: optional(v.taper, 0.02, 4), swell: optional(v.swell, -0.5, 1), twist: optional(v.twist, -1440, 1440), cap: pick(v.cap, ["flat", "crown", "open"] as const), bands: optional(v.bands, 0, 40), hand: optional(v.hand, 0, 1), windows: v.windows === undefined || v.windows === null ? undefined : { rows: Math.round(num((v.windows as Record<string, unknown>).rows, 1, 80)), cols: optional((v.windows as Record<string, unknown>).cols, 3, 48), lit: optional((v.windows as Record<string, unknown>).lit, 0, 1) } };
+    return { ...arrange, op: "loft", up: through ? undefined : num(v.up, 0.02, LIMITS.height), through, closed: v.closed === true, smooth: v.smooth !== false, from: outline(v.from), to: v.to === undefined ? undefined : outline(v.to), rings: optional(v.rings, 2, 200), segments: optional(v.segments, 6, 96), taper: optional(v.taper, 0.02, 4), swell: optional(v.swell, -0.5, 1), twist: optional(v.twist, -1440, 1440), cap: pick(v.cap, ["flat", "crown", "open"] as const), bands: optional(v.bands, 0, 40), hand: optional(v.hand, 0, 1), wall: optional(v.wall, 0.05, 8), bevel: optional(v.bevel, 0, 4), openings: holes(v.openings), windows: v.windows === undefined || v.windows === null ? undefined : { rows: Math.round(num((v.windows as Record<string, unknown>).rows, 1, 80)), cols: optional((v.windows as Record<string, unknown>).cols, 3, 48), lit: optional((v.windows as Record<string, unknown>).lit, 0, 1) } };
   }
   if (v.op === "spin") {
     if (!Array.isArray(v.outline) || v.outline.length < 2 || v.outline.length > 48) fail("FORGE_OUTLINE");
@@ -179,10 +186,10 @@ function make(part: Part, run: Run): Mesh {
       for (let k = 0; k < part.scatter.count; k += 1) lay(spot, { at: [(run.next() - 0.5) * part.scatter.spread[0], 0, (run.next() - 0.5) * part.scatter.spread[1]], turn: run.next() * 360, size: low + (high - low) * run.next() });
     } else lay(spot);
   }
-  // A mirror adds a second, flipped copy of everything laid so far.
-  if (part.mirror) append(copies, { positions: [...copies.positions], indices: [...copies.indices], materials: [...copies.materials] }, {}, part.mirror);
   const placed = emptyMesh();
   append(placed, copies, { at: part.at, turn: part.turn, tip: part.tip, roll: part.roll, size: part.size });
+  // A mirror adds a second copy on the other side of the build's own middle line, after the part is placed.
+  if (part.mirror) append(placed, { positions: [...placed.positions], indices: [...placed.indices], materials: [...placed.materials] }, {}, part.mirror);
   return placed;
 }
 
