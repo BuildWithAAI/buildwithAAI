@@ -10,6 +10,9 @@ import type { DatabaseSync } from "node:sqlite";
  * owner ("owner"). Zoora has no way to write one. A milestone is measured from readings, less what
  * the owner put in and less costs paid from outside, so it counts what was earned and not what was deposited.
  *
+ * A milestone counts everything Zoora earned for Zoora Technologies: the shop, art, writing, trading and
+ * the land. The two books are kept apart, and what each earned is added for the milestone.
+ *
  * Reaching a milestone unlocks nothing. It files a request. The owner approves or declines it.
  */
 
@@ -29,17 +32,22 @@ const MAX_CENTS = 1_000_000_000_000;
 /** What each milestone is proposed to open. A default only: the owner can change the wording when approving. */
 export const LADDER: Record<number, string> = {
   500: "A second way to earn opens.",
-  1_000: "A small spend she can approve herself, inside the hard cap.",
-  2_500: "Trader oversight opens on paper only.",
-  5_000: "First live allocation to one trading agent, hard capped.",
-  10_000: "A second trading agent. Hardware bucket may fund phase 1.",
+  1_000: "A small spend she can approve herself. A first venture budget.",
+  2_500: "A third way to earn. Trading opens on paper only.",
+  5_000: "A larger venture budget. First live trading, one agent, hard capped.",
+  10_000: "A fourth way to earn. The hardware bucket may fund phase 1.",
   25_000: "The land registry opens in her own ledger.",
-  50_000: "Land sales open on Solana.",
+  50_000: "Land sales open on Solana. A fifth way to earn.",
   100_000: "Legal review and a company entity before anything larger.",
-  250_000: "Wider caps across venues, reviewed one by one.",
+  250_000: "Wider budgets across the business, reviewed one by one.",
   500_000: "A second resident may be proposed.",
   1_000_000: "The owner and Zoora write the next ladder.",
 };
+
+/** Everything earned for Zoora Technologies: the company book and the land book, added. */
+export function totalEarned(db: DatabaseSync, now: number): number {
+  return bookSummary(db, "company", now).earnedCents + bookSummary(db, "land", now).earnedCents;
+}
 
 export function ensureEconomy(db: DatabaseSync): void {
   db.exec(`
@@ -214,11 +222,11 @@ export function bookSummary(db: DatabaseSync, bookId: BookId, now: number): Book
 export type MilestoneRow = { thresholdCents: number; status: "ahead" | "reached" | "approved" | "declined"; reachedAt: number | null; decidedAt: number | null; unlock: string };
 
 /**
- * Measured on the company book only. A milestone that was reached stays reached if the treasury later falls:
- * the record is that she got there. Nothing is opened here.
+ * Measured on everything earned, company and land together. A milestone that was reached stays reached if
+ * the treasury later falls: the record is that she got there. Nothing is opened here.
  */
 export function detectMilestones(db: DatabaseSync, now: number): number[] {
-  const earned = bookSummary(db, "company", now).earnedCents;
+  const earned = totalEarned(db, now);
   const fresh: number[] = [];
   for (const dollars of MILESTONE_DOLLARS) {
     const threshold = dollars * 100;
@@ -257,8 +265,10 @@ export function milestones(db: DatabaseSync): MilestoneRow[] {
 /** What the public proof panel shows. Totals by kind of venue only. No venue names, ids, memos or notes. */
 export type Proof = {
   asOf: number;
+  /** Company and land together. This is the figure the milestones are measured against. */
+  totalEarnedCents: number;
   company: Pick<BookSummary, "treasuryCents" | "earnedCents" | "lastReadingAt" | "staleVenues" | "venues" | "buckets">;
-  land: Pick<BookSummary, "treasuryCents" | "incomeCents" | "expenseCents" | "lastReadingAt">;
+  land: Pick<BookSummary, "treasuryCents" | "earnedCents" | "incomeCents" | "expenseCents" | "lastReadingAt">;
   milestones: Pick<MilestoneRow, "thresholdCents" | "status" | "reachedAt">[];
 };
 
@@ -267,8 +277,9 @@ export function proof(db: DatabaseSync, now: number): Proof {
   const land = bookSummary(db, "land", now);
   return {
     asOf: now,
+    totalEarnedCents: company.earnedCents + land.earnedCents,
     company: { treasuryCents: company.treasuryCents, earnedCents: company.earnedCents, lastReadingAt: company.lastReadingAt, staleVenues: company.staleVenues, venues: company.venues, buckets: company.buckets },
-    land: { treasuryCents: land.treasuryCents, incomeCents: land.incomeCents, expenseCents: land.expenseCents, lastReadingAt: land.lastReadingAt },
+    land: { treasuryCents: land.treasuryCents, earnedCents: land.earnedCents, incomeCents: land.incomeCents, expenseCents: land.expenseCents, lastReadingAt: land.lastReadingAt },
     milestones: milestones(db).map((row) => ({ thresholdCents: row.thresholdCents, status: row.status, reachedAt: row.reachedAt })),
   };
 }

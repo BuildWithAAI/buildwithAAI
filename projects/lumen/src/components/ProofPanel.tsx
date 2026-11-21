@@ -17,15 +17,17 @@ export function ProofPanel({ proof }: { proof: Proof }) {
   return (
     <section className="card" aria-label="Proof">
       <p className="kicker">Proof</p>
-      <h2>Earned so far</h2>
-      <p className="money">{money(proof.company.earnedCents)}</p>
+      <h2>Earned for Zoora Technologies</h2>
+      <p className="money">{money(proof.totalEarnedCents)}</p>
       <p className="muted">
-        Counted from balances read at each venue, less what the keeper put in and less costs paid from outside. Last reading {day(proof.company.lastReadingAt)}.
+        Everything she has earned: the shop, art, writing, trading and the land. Counted from balances read at each venue, less what the keeper put in and less costs paid from outside. Last reading {day(proof.company.lastReadingAt)}.
         {proof.company.staleVenues > 0 ? ` ${proof.company.staleVenues} venue${proof.company.staleVenues === 1 ? " has" : "s have"} no reading in the last 7 days and ${proof.company.staleVenues === 1 ? "is" : "are"} not counted.` : ""}
       </p>
       <table>
         <tbody>
-          <tr><th>Treasury</th><td>{money(proof.company.treasuryCents)}</td></tr>
+          <tr><th>Company earned</th><td>{money(proof.company.earnedCents)}</td></tr>
+          <tr><th>Land earned</th><td>{money(proof.land.earnedCents)}</td></tr>
+          <tr><th>Company treasury</th><td>{money(proof.company.treasuryCents)}</td></tr>
           {proof.company.venues.map((venue) => (
             <tr key={venue.kind}><th>{venue.kind}</th><td>{money(venue.cents)}</td></tr>
           ))}
@@ -47,7 +49,7 @@ export function ProofPanel({ proof }: { proof: Proof }) {
         </tbody>
       </table>
       <h2>Land</h2>
-      <p className="muted">The island keeps its own books. They are not part of the milestones above.</p>
+      <p className="muted">The island keeps its own books. What it earns counts toward the milestones above.</p>
       <table>
         <tbody>
           <tr><th>Land treasury</th><td>{money(proof.land.treasuryCents)}</td></tr>
