@@ -36,6 +36,10 @@ export type PublicWorld = {
   easel: { title: string; svg: string } | null;
   research: { idea: string | null; question: string; pins: string[] };
   builds: { id: string; kind: string; title: string; x: number; z: number; size: number; yaw: number; version: number; hue: number; parts: number; twist: number; form: number }[];
+  /** What she has raised with the forge. Each stands on its own floating islet around her island. */
+  forge: { id: string; name: string; version: number; x: number; z: number; yaw: number; lift: number }[];
+  /** The eight materials every forge build is made of, in the order the mesh bytes refer to them. */
+  look: { name: string; color: string; emissive: number; alpha: number }[];
   shop: { name: string; hue: number; form: number; x: number; z: number; open: boolean } | null;
   tape: { mode: "PAPER" | "LIVE"; lines: string[] };
   choices: string[];

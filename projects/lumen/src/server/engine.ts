@@ -4,6 +4,7 @@ import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
 import { glowColor, noteSelf } from "../form/self";
+import { considerForge, designRequest, forgeDue, standing } from "../forge/store";
 import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
 import { printfulConfigured } from "../fulfillment/printful";
@@ -336,6 +337,26 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       memory: goal ?? lived.longTerm[0]?.text ?? null,
       research: finding?.question ?? null,
     }, now, env);
+    // She may raise something new in her world. With a model she designs it herself; without one she
+    // starts from an idea she knows. The model is given her own state only, never outside text.
+    if (!forging && forgeDue(db, now)) {
+      const canAsk = Boolean(env.LUMEN_LLM_API_KEY && env.LUMEN_LLM_MODEL && env.LUMEN_LLM_BASE_URL) && !killed(db, env) && flag(db, "forge_model", "1") === "1";
+      if (canAsk) {
+        forging = true;
+        void callModel(env, designRequest(dominantEmotion(lived.emotions), lived.placeId, standing(db).map((build) => build.name)))
+          .then((own) => considerForge(db, lived.emotions, Date.now(), own))
+          .catch(() => undefined)
+          .finally(() => {
+            forging = false;
+          });
+      } else {
+        try {
+          considerForge(db, lived.emotions, now);
+        } catch {
+          // A build that fails is skipped. The next one is tried when it is due.
+        }
+      }
+    }
     // She may put one way to earn in front of the owner. It spends nothing and waits for a yes.
     considerVenture(db, lived.emotions as unknown as Record<string, number>, now);
     const ranked = (Object.entries(lived.emotions) as [string, number][]).sort((a, b) => b[1] - a[1]);
@@ -929,6 +950,9 @@ function publicLedger(row: LedgerRow) {
     ref: row.ref,
   };
 }
+
+/** True while she is waiting on her model for a design, so two are never asked for at once. */
+let forging = false;
 
 async function callModel(env: Env, body: string): Promise<unknown | null> {
   const key = env.LUMEN_LLM_API_KEY ?? "";

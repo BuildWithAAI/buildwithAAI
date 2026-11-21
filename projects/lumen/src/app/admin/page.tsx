@@ -58,6 +58,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           {publicMode ? null : <a className="button" href="/admin/ledger">Balance and P&amp;L</a>}
           <a className="button" href="/admin/economy">Economy</a>
           <a className="button" href="/admin/ventures">Ventures</a>
+          <a className="button" href="/admin/forge">The forge</a>
         </div>
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
