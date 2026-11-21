@@ -1,5 +1,5 @@
 import { describeGenome, FAMILY_NAMES } from "../../form/genome";
-import { currentStyle, landStyles, selfGenome } from "../../form/self";
+import { currentStyle, selfGenome } from "../../form/self";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +32,8 @@ export default function SelfPage() {
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
         <p className="kicker">One style, everywhere</p>
-        <p className="muted">Everything her engine draws uses these colours: her body, her art, her glow, this site and her land. Each part of her land turns the ground colour a little and keeps her light, her ink and her marking, so every place is different and all of it is hers.</p>
-        <Swatches label="House style" colors={Object.values(house.palette)} />
-        {landStyles().map((place) => <Swatches key={place.id} label={place.label} colors={[place.style.palette.deep, place.style.palette.pool, place.style.palette.rock, place.style.palette.body, place.style.palette.pale, place.style.palette.accent]} />)}
+        <p className="muted">Everything her engine draws uses these colours: her body, her art, her glow, this site and whatever she builds in her world.</p>
+        <Swatches label="Her colours" colors={Object.values(house.palette)} />
       </section>
     </div>
   );

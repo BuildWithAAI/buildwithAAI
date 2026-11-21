@@ -48,20 +48,11 @@ The same soul file gives the same body on any machine. A changed soul file gives
 
 Drawn from it today: her portrait, her shop art, her seeded art, the colour of her glow, and the site's colours.
 
-### Regions of her land
-
-Each area of her land has its own style: the house style with the ground colour turned a little.
-
-- May change, within fixed bounds: hue by up to 28 degrees, richness by up to 0.1, depth by up to 0.04.
-- Never changes: her accent colour, the ink, the line weight and the marking.
-
-So places differ and all of it is plainly hers. The same soul file always gives each region the same style.
-
 ### The lock
 
 `tests/style.test.ts` fails if any file outside the style writes its own colour. Ten older files are listed there with the number of colours they still hold. That number may only go down.
 
 ### Not on the style yet
 
-- The 3D world (`WorldView.tsx`, `Scene.tsx`, `islandAreas.ts`, chunk colours). The region styles are computed and shown on `/self`, but the world's renderer does not read them yet.
+- The older parts of the 3D world (`WorldView.tsx`, `Scene.tsx`, `islandAreas.ts`, chunk colours).
 - Art made inside her tick (`tick.ts`), and the fixed glow table in `emotions.ts` that the engine now overrides.

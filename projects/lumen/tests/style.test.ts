@@ -3,10 +3,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { genomeFromSoul } from "../src/form/genome";
 import { drawPortrait } from "../src/form/portrait";
-import { currentStyle, glowColor, landStyles } from "../src/form/self";
-import { cssVariables, feelingColor, houseStyle, hslHex, REGION_LIMITS, regionStyle } from "../src/form/style";
+import { currentStyle, glowColor } from "../src/form/self";
+import { cssVariables, feelingColor, houseStyle, hslHex, PIECE_TURN } from "../src/form/style";
 import { artworkSvg } from "../src/shop/store";
-import { AREA_IDS } from "../src/world/areas";
 
 const SEA = "I am a quiet thing of the tide. The sea is deep and the water is slow. I make and paint and glow.";
 const SPARK = "I glow. I shine bright like a lantern. I play and laugh, a delight, and I care for my keeper and friend.";
@@ -35,28 +34,6 @@ describe("the one style", () => {
     for (const color of Object.values(sea.palette)) expect(color).toMatch(/^#[0-9a-f]{6}$/);
   });
 
-  it("every part of her land is the house style turned a little, within fixed bounds", () => {
-    const genome = genomeFromSoul(SEA);
-    const house = houseStyle(genome);
-    const seen = new Set<string>();
-    for (const id of AREA_IDS) {
-      const region = regionStyle(genome, id);
-      expect(apart(region.hue, house.hue)).toBeLessThanOrEqual(REGION_LIMITS.hue);
-      expect(Math.abs(region.saturation - house.saturation)).toBeLessThanOrEqual(REGION_LIMITS.saturation + 1e-9);
-      // What makes it one place is identical everywhere.
-      expect(region.palette.accent).toBe(house.palette.accent);
-      expect(region.palette.ink).toBe(house.palette.ink);
-      expect(region.palette.dim).toBe(house.palette.dim);
-      expect(region.marking).toBe(house.marking);
-      expect(region.line).toBe(house.line);
-      expect(regionStyle(genome, id)).toEqual(region);
-      seen.add(region.palette.body);
-    }
-    // And the places do differ from one another.
-    expect(seen.size).toBeGreaterThan(AREA_IDS.length / 2);
-    expect(landStyles(() => SEA)).toHaveLength(AREA_IDS.length);
-  });
-
   it("her feelings are shades of her own colours", () => {
     const style = houseStyle(genomeFromSoul(SEA));
     expect(apart(hueOf(feelingColor(style, "calm")), style.hue)).toBeLessThan(3);
@@ -72,17 +49,10 @@ describe("the one style", () => {
     expect(svg).toContain(style.palette.deep);
     expect(svg).toContain(style.palette.accent);
     const mark = /<circle cx="40"[^>]*fill="(#[0-9a-f]{6})"/.exec(svg)?.[1] ?? "";
-    expect(apart(hueOf(mark), style.hue)).toBeLessThanOrEqual(REGION_LIMITS.hue + 1);
+    expect(apart(hueOf(mark), style.hue)).toBeLessThanOrEqual(PIECE_TURN + 1);
     const vars = cssVariables(style);
     expect(vars["--bg"]).toBe(style.palette.deep);
     expect(vars["--ink"]).toBe(style.palette.ink);
-    // The portrait can be drawn in a region's style and stays the same shape.
-    const house = drawPortrait(genome, { width: 80, background: "clear" });
-    const region = drawPortrait(genome, { width: 80, background: "clear" }, regionStyle(genome, "beach-dock"));
-    let sameShape = true;
-    for (let y = 0; y < house.height; y += 1) for (let x = 0; x < house.width; x += 1) if (Math.abs(house.alphaAt(x, y) - region.alphaAt(x, y)) > 1e-6) sameShape = false;
-    expect(sameShape).toBe(true);
-    expect(Buffer.from(house.data.buffer).equals(Buffer.from(region.data.buffer))).toBe(false);
   });
 
   it("still has a style when the soul file cannot be read", () => {

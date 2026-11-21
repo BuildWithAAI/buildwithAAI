@@ -10,7 +10,7 @@ import { scrubInstructions } from "../research/ideas";
 import { areaById } from "../world/areas";
 import { positionAllowed, slotWorld } from "../world/creative";
 import { currentStyle } from "../form/self";
-import { hslHex, type Style } from "../form/style";
+import { hslHex, PIECE_TURN, type Style } from "../form/style";
 
 export const LISTING_KINDS = ["art", "music", "writing", "service"] as const;
 export type ListingKind = (typeof LISTING_KINDS)[number];
@@ -407,8 +407,8 @@ function noteChange(db: DatabaseSync, id: string, action: string, title: string,
 
 /** Procedural marks only. Titles, visitor notes, model text, and web text stay out of the file. */
 export function artworkSvg(hue: number, style: Style = currentStyle()): string {
-  // Each piece turns a little from her body colour, inside the same bound a region of her land is held to.
-  const turn = (((hue % 360) + 360) % 57) - 28;
+  // Each piece turns a little from her body colour, never further than PIECE_TURN.
+  const turn = (((hue % 360) + 360) % (PIECE_TURN * 2 + 1)) - PIECE_TURN;
   const mark = hslHex(style.hue + turn, style.saturation, 0.62);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" fill="${style.palette.deep}"/><circle cx="40" cy="40" r="16" fill="${mark}"/><circle cx="${28 + (((hue % 360) + 360) % 24)}" cy="30" r="2.4" fill="${style.palette.accent}"/></svg>`;
 }

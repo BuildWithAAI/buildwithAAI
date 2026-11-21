@@ -6,10 +6,8 @@ import type { Genome } from "./genome";
  *
  * The style comes from her genome, so it comes from her soul file. There is one of it.
  *
- * A part of her land may look different, the way districts of one city do. A region's style is the
- * house style with its ground colour turned a little: a bounded shift in hue, richness and depth, fixed
- * for that region. What makes it all one place never changes between regions: the accent colour, the
- * ink, the line and the marking. So a region can have its own weather and still be plainly hers.
+ * Whatever she builds, anywhere in her world, is drawn with these colours and this hand. A tower, a
+ * farm and a roller coaster are different things in one world, not different worlds.
  *
  * This file reads nothing from disk, so the site's pages and the world's renderer can both use it.
  */
@@ -25,7 +23,7 @@ export type Palette = {
   body: string;
   /** The body colour toward white: highlights and thin edges. */
   pale: string;
-  /** Her lights. The one colour that is the same in every region. */
+  /** Her lights. The colour that marks a thing as hers. */
   accent: string;
   /** Text and fine lines. */
   ink: string;
@@ -34,7 +32,6 @@ export type Palette = {
 };
 
 export type Style = {
-  region: string;
   hue: number;
   accentHue: number;
   saturation: number;
@@ -45,8 +42,8 @@ export type Style = {
   palette: Palette;
 };
 
-/** The most a region may turn from the house style. */
-export const REGION_LIMITS = { hue: 28, saturation: 0.1, depth: 0.04 } as const;
+/** The most one small piece of art may turn from her body colour, in degrees of hue. */
+export const PIECE_TURN = 28;
 
 function wrap(hue: number): number {
   return ((hue % 360) + 360) % 360;
@@ -63,10 +60,9 @@ export function hslHex(h: number, s: number, l: number): string {
   return `#${[r, g, b].map((value) => Math.round((value + m) * 255).toString(16).padStart(2, "0")).join("")}`;
 }
 
-function build(region: string, genome: Pick<Genome, "accentHue" | "glow" | "pattern" | "reading">, hue: number, saturation: number, depth: number): Style {
+function build(genome: Pick<Genome, "accentHue" | "glow" | "pattern" | "reading">, hue: number, saturation: number): Style {
   const accentSat = Math.min(1, 0.6 + genome.reading.making * 0.35);
   return {
-    region,
     hue,
     accentHue: genome.accentHue,
     saturation,
@@ -74,12 +70,11 @@ function build(region: string, genome: Pick<Genome, "accentHue" | "glow" | "patt
     line: 0.006 + genome.reading.order * 0.004,
     marking: genome.pattern,
     palette: {
-      deep: hslHex(hue, 0.5, 0.07 + depth),
-      pool: hslHex(hue, 0.48, 0.13 + depth),
-      rock: hslHex(hue, 0.22, 0.2 + depth),
+      deep: hslHex(hue, 0.5, 0.07),
+      pool: hslHex(hue, 0.48, 0.13),
+      rock: hslHex(hue, 0.22, 0.2),
       body: hslHex(hue, saturation, 0.62),
       pale: hslHex(hue, saturation * 0.6, 0.86),
-      // The accent, ink and dim text do not use the region's hue. They are the thread through all of it.
       accent: hslHex(genome.accentHue, accentSat, 0.68),
       ink: hslHex(genome.accentHue, 0.3, 0.94),
       dim: hslHex(genome.accentHue, 0.12, 0.68),
@@ -88,25 +83,7 @@ function build(region: string, genome: Pick<Genome, "accentHue" | "glow" | "patt
 }
 
 export function houseStyle(genome: Genome): Style {
-  return build("house", genome, genome.hue, genome.saturation, 0);
-}
-
-function hash(text: string): number {
-  let value = 2166136261;
-  for (const char of text) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
-  return value >>> 0;
-}
-
-/** A number from -1 to 1, fixed for a region and a purpose. */
-function turn(seed: number, region: string, purpose: string): number {
-  return (hash(`${seed}:${region}:${purpose}`) / 4294967295) * 2 - 1;
-}
-
-/** The style of one part of her land. Always the same for the same soul and the same region. */
-export function regionStyle(genome: Genome, region: string): Style {
-  const hue = wrap(genome.hue + turn(genome.seed, region, "hue") * REGION_LIMITS.hue);
-  const saturation = Math.min(0.95, Math.max(0.3, genome.saturation + turn(genome.seed, region, "saturation") * REGION_LIMITS.saturation));
-  return build(region, genome, hue, saturation, turn(genome.seed, region, "depth") * REGION_LIMITS.depth);
+  return build(genome, genome.hue, genome.saturation);
 }
 
 /** Hue offsets for feelings, measured from her own body colour, so her moods are shades of her and not a fixed chart. */

@@ -2,8 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { readIdentityFile } from "../identity/load";
 import { genomeFromSoul, type Genome } from "./genome";
 import { portraitPng } from "./portrait";
-import { feelingColor, houseStyle, regionStyle, type Style } from "./style";
-import { AREAS } from "../world/areas";
+import { feelingColor, houseStyle, type Style } from "./style";
 
 /**
  * Her self-image. The first time the engine runs with a soul file, it reads the file, works out her
@@ -75,12 +74,6 @@ function genomeOrFallback(read?: () => string): Genome {
 /** The one style everything is drawn in. */
 export function currentStyle(read?: () => string): Style {
   return houseStyle(genomeOrFallback(read));
-}
-
-/** The style of each part of her land: the house style, turned a little for that place. */
-export function landStyles(read?: () => string): { id: string; label: string; style: Style }[] {
-  const genome = genomeOrFallback(read);
-  return AREAS.map((area) => ({ id: area.id, label: area.label, style: regionStyle(genome, area.id) }));
 }
 
 /** The colour of her glow for a feeling, as a shade of her own colours. */
