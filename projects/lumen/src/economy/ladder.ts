@@ -20,25 +20,36 @@ export type Caps = {
   /** The most one live trade may be, in cents. */
   tradeCents: number;
   traders: number;
+  /** Ways to earn she may run at once: a shop, prints, writing, land and so on. */
+  earningVenues: number;
+  /** The most one venture may be given to try an idea, in cents. */
+  ventureCents: number;
   landRegistry: boolean;
   landSales: boolean;
 };
 
-export const BASE_CAPS: Caps = { selfSpendCents: 0, trading: "off", tradeCents: 0, traders: 0, landRegistry: false, landSales: false };
+export const BASE_CAPS: Caps = { selfSpendCents: 0, trading: "off", tradeCents: 0, traders: 0, earningVenues: 1, ventureCents: 0, landRegistry: false, landSales: false };
 
-/** What each approved milestone grants. Later steps restate what they keep, so the highest approved step is the answer. */
+function step(dollars: number, caps: Partial<Caps>): { dollars: number; caps: Caps } {
+  return { dollars, caps: { ...BASE_CAPS, ...caps } };
+}
+
+/**
+ * What each approved milestone grants across the whole business, not only trading. Each step restates
+ * everything it grants, so the highest approved step is the answer.
+ */
 export const STEPS: { dollars: number; caps: Caps }[] = [
-  { dollars: 500, caps: { ...BASE_CAPS } },
-  { dollars: 1_000, caps: { ...BASE_CAPS, selfSpendCents: 1_000 } },
-  { dollars: 2_500, caps: { ...BASE_CAPS, selfSpendCents: 1_000, trading: "paper" } },
-  { dollars: 5_000, caps: { selfSpendCents: 1_000, trading: "live", tradeCents: 5_000, traders: 1, landRegistry: false, landSales: false } },
-  { dollars: 10_000, caps: { selfSpendCents: 2_500, trading: "live", tradeCents: 15_000, traders: 2, landRegistry: false, landSales: false } },
-  { dollars: 25_000, caps: { selfSpendCents: 2_500, trading: "live", tradeCents: 25_000, traders: 2, landRegistry: true, landSales: false } },
-  { dollars: 50_000, caps: { selfSpendCents: 5_000, trading: "live", tradeCents: 50_000, traders: 2, landRegistry: true, landSales: true } },
-  { dollars: 100_000, caps: { selfSpendCents: 10_000, trading: "live", tradeCents: 100_000, traders: 3, landRegistry: true, landSales: true } },
-  { dollars: 250_000, caps: { selfSpendCents: 10_000, trading: "live", tradeCents: 250_000, traders: 3, landRegistry: true, landSales: true } },
-  { dollars: 500_000, caps: { selfSpendCents: 25_000, trading: "live", tradeCents: 500_000, traders: 4, landRegistry: true, landSales: true } },
-  { dollars: 1_000_000, caps: { selfSpendCents: 25_000, trading: "live", tradeCents: 500_000, traders: 4, landRegistry: true, landSales: true } },
+  step(500, { earningVenues: 2 }),
+  step(1_000, { earningVenues: 2, selfSpendCents: 1_000, ventureCents: 2_500 }),
+  step(2_500, { earningVenues: 3, selfSpendCents: 1_000, ventureCents: 5_000, trading: "paper" }),
+  step(5_000, { earningVenues: 3, selfSpendCents: 1_000, ventureCents: 10_000, trading: "live", tradeCents: 5_000, traders: 1 }),
+  step(10_000, { earningVenues: 4, selfSpendCents: 2_500, ventureCents: 25_000, trading: "live", tradeCents: 15_000, traders: 2 }),
+  step(25_000, { earningVenues: 4, selfSpendCents: 2_500, ventureCents: 50_000, trading: "live", tradeCents: 25_000, traders: 2, landRegistry: true }),
+  step(50_000, { earningVenues: 5, selfSpendCents: 5_000, ventureCents: 100_000, trading: "live", tradeCents: 50_000, traders: 2, landRegistry: true, landSales: true }),
+  step(100_000, { earningVenues: 6, selfSpendCents: 10_000, ventureCents: 250_000, trading: "live", tradeCents: 100_000, traders: 3, landRegistry: true, landSales: true }),
+  step(250_000, { earningVenues: 8, selfSpendCents: 10_000, ventureCents: 500_000, trading: "live", tradeCents: 250_000, traders: 3, landRegistry: true, landSales: true }),
+  step(500_000, { earningVenues: 10, selfSpendCents: 25_000, ventureCents: 1_000_000, trading: "live", tradeCents: 500_000, traders: 4, landRegistry: true, landSales: true }),
+  step(1_000_000, { earningVenues: 10, selfSpendCents: 25_000, ventureCents: 1_000_000, trading: "live", tradeCents: 500_000, traders: 4, landRegistry: true, landSales: true }),
 ];
 
 /** The caps of the highest milestone the owner has approved. Reached, declined and skipped steps grant nothing. */
@@ -46,8 +57,8 @@ export function currentCaps(db: DatabaseSync): Caps {
   ensureEconomy(db);
   const row = db.prepare("SELECT MAX(threshold_cents) AS top FROM econ_milestones WHERE status = 'approved'").get() as { top: number | null };
   if (row.top == null) return { ...BASE_CAPS };
-  const step = STEPS.find((item) => item.dollars * 100 === Number(row.top));
-  return step ? { ...step.caps } : { ...BASE_CAPS };
+  const top = STEPS.find((item) => item.dollars * 100 === Number(row.top));
+  return top ? { ...top.caps } : { ...BASE_CAPS };
 }
 
 /** The ladder can lower the self-approve cap a setting gives. It cannot raise it, and with no setting nothing is self-approved. */

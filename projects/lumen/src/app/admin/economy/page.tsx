@@ -38,6 +38,8 @@ export default async function EconomyDesk({ searchParams }: { searchParams: Prom
         <table>
           <tbody>
             <tr><th>Spend without asking</th><td>{caps.selfSpendCents > 0 ? `up to ${money(caps.selfSpendCents)}, and only if the spend settings allow it` : "nothing"}</td></tr>
+            <tr><th>Ways to earn at once</th><td>{caps.earningVenues}</td></tr>
+            <tr><th>Budget for one venture</th><td>{money(caps.ventureCents)}</td></tr>
             <tr><th>Trading</th><td>{caps.trading}</td></tr>
             <tr><th>Largest live trade</th><td>{money(caps.tradeCents)}</td></tr>
             <tr><th>Trading agents</th><td>{caps.traders}</td></tr>
