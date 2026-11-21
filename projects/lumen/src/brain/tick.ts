@@ -311,7 +311,10 @@ export async function tick(state: BrainState, input: TickInput): Promise<TickRes
   const recentActions = [...next.recentActions, action.name].slice(-8);
   const recentPhrases = pushPhrase(next.recentPhrases, speech);
   const thoughtLog = [...next.thoughtLog, speech].slice(-40);
-  const fixations = noteFixations(next.fixations, speech);
+  // A line shaped by a visitor or a page does not feed her fixations. A word repeated at her until she
+  // repeats it would otherwise become a want of her own, and a want can become a purchase.
+  const outsideShaped = decision.source === "model" && (input.chatTriggered || input.webTextPresent);
+  const fixations = outsideShaped ? next.fixations : noteFixations(next.fixations, speech);
   emotions = restless(settleEmotions(emotions, emotions, actImpulse(action.name, hab), 0), recentActions, next.recentDominant);
   const recentDominant = [...next.recentDominant, dominantEmotion(emotions)].slice(-8);
 

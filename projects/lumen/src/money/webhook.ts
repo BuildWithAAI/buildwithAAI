@@ -4,6 +4,7 @@ import { Ledger } from "./ledger";
 import type { OwnerNotifier } from "./notify";
 import { revokePaidDownload } from "../shop/delivery";
 import { deliverShopSale, refundShopCharge } from "../shop/store";
+import { printRefunded, recordPaidPrint } from "../fulfillment/pod";
 import { cardCredentials, confirmIssuerTransaction, decideAuthorization, mapDescriptor } from "./card";
 import { killSwitchOn, parseMoneyRules, spendAllowed } from "./rules";
 import { flag } from "../db/db";
@@ -42,6 +43,12 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
       if (paid) deliverShopSale(db, shopListing, paidRefs, amount, nowMs);
       return;
     }
+    const printProduct = String((object.metadata as { print_product?: string } | undefined)?.print_product ?? "");
+    if (printProduct) {
+      // The order and the sale are written here. The draft at the printer is opened afterwards, off this request.
+      if (paid) recordPaidPrint(db, { sessionId: String(object.id ?? ""), productId: printProduct, amountCents: amount, paymentIntentId: paidRefs.paymentIntentId, chargeId: paidRefs.chargeId }, nowMs);
+      return;
+    }
     const creationId = String((object.metadata as { creation_id?: string } | undefined)?.creation_id ?? "");
     ledger.append({
       id: `sale-${event.id}`,
@@ -69,6 +76,8 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
   if (event.type === "charge.refunded" || event.type === "refund.created") {
     bookRefunds(ledger, event, nowMs);
     const refs = stripeRefs(event.type, object);
+    const printRefunds = event.type === "refund.created" ? [{ id: String(object.id ?? ""), amountCents: numberField(object.amount) }] : refundItems(object).map((item) => ({ id: item.id, amountCents: item.amount }));
+    printRefunded(db, process.env, refs.paymentIntentId, printRefunds, nowMs);
     if ((refs.paymentIntentId || refs.chargeId) && refundClosesAccess(db, event.type, object, process.env)) {
       refundShopCharge(db, refs);
       revokePaidDownload(db, refs, nowMs);
@@ -130,6 +139,8 @@ function applyEvent(db: DatabaseSync, event: StripeEvent, nowMs: number, notifie
       });
     }
     const disputeRefs = stripeRefs(event.type, object);
+    // A disputed print that has not been printed yet is stopped.
+    if (event.type === "charge.dispute.created" || event.type === "charge.dispute.funds_withdrawn") printRefunded(db, process.env, disputeRefs.paymentIntentId, [], nowMs);
     if ((disputeRefs.paymentIntentId || disputeRefs.chargeId) && (event.type === "charge.dispute.created" || event.type === "charge.dispute.funds_withdrawn")) {
       refundShopCharge(db, disputeRefs, "disputed");
       revokePaidDownload(db, disputeRefs, nowMs);

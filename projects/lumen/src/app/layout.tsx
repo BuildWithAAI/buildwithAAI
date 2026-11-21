@@ -7,6 +7,8 @@ import { AiNotice } from "../components/AiNotice";
 import { HydrationMark } from "../components/HydrationMark";
 import { Nav } from "../components/Nav";
 import { SiteFooter } from "../components/SiteFooter";
+import { currentStyle } from "../form/self";
+import { cssVariables } from "../form/style";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nonce = (await headers()).get("x-nonce") ?? "";
   const immersive = (await headers()).get("x-lumen-path") === "/";
   return (
-    <html lang="en" data-csp={nonce ? "nonce" : "open"}>
+    <html lang="en" data-csp={nonce ? "nonce" : "open"} style={cssVariables(currentStyle()) as React.CSSProperties}>
       <body className={immersive ? "immersive" : undefined}>
         <HydrationMark />
         <AiNotice />
