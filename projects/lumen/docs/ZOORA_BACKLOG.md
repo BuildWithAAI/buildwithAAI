@@ -20,7 +20,7 @@ These come before the six below. `docs/AUDIT_2026-11-21.md` has the evidence beh
 - [x] 0a. Land the chain. Merged 2026-11-21 with the owner's approval: #88, #91 and #93 to #113. `main` is at `08a81c7`, it has `projects/lumen`, and CI is green on it.
 - [ ] 0b. First private run on the owner's computer, public mode off. Acceptance: the world opens in a browser with a real graphics card, a model key is set, and the frame rate and the look are written down.
 - [ ] 0c. Let the public view load her world. Listings and meshes are served by chunk. Acceptance: with public mode on, a visitor loads a world of 400 builds with no refused request, and the per-address limit still holds for everything else.
-- [ ] 0d. A spatial index for placement. Acceptance: one placement takes 50 ms or less with 1,000,000 builds standing.
+- [x] 0d. A spatial index for placement. Done 2026-11-21: finding a place takes about 2 ms with 1,000,120 builds standing, slowest 5.5 ms. `docs/FORGE.md` has the table.
 - [ ] 0e. Her balance is the hard spend ceiling. Acceptance: no spend, trade or venture budget can pass her balance plus her profits, and every paid model call is written to her books.
 - [ ] 0f. Buildings that make sense. She designs site, floors, structure, skin and rooms, and the forge builds from that. Acceptance: every home and shop is a real room reachable from the entrance, and a plan set is drawn by her own renderer.
 - [x] 0g. The live view matches her own renderer. Done 2026-11-21: the live shader is generated from the numbers her viewport uses (`src/forge/light.ts`), and the fog that hid her city is replaced by a long haze. Checked by screenshots by day and by night.

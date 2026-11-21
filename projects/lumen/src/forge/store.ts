@@ -39,7 +39,16 @@ export const ISLAND = { shore: 72, heart: 40 } as const;
 export type Place = { x: number; z: number; turn: number };
 export type ForgeBuild = { id: string; name: string; kind: string; layer: Layer; version: number; status: "standing" | "removed"; x: number; y: number; z: number; /** Degrees. */ turn: number; /** Half its width and depth. */ hw: number; hd: number; height: number; triangles: number; vibe: Vibe; by: "zoora" | "owner"; createdAt: number; updatedAt: number };
 
+const AABB = (r: string) => {
+  const ex = `(abs(${r}.hw * cos(radians(${r}.turn))) + abs(${r}.hd * sin(radians(${r}.turn))))`;
+  const ez = `(abs(${r}.hw * sin(radians(${r}.turn))) + abs(${r}.hd * cos(radians(${r}.turn))))`;
+  // Whole centimetres, rounded outward, so a lookup can never miss a build that touches the box.
+  return `CAST(floor((${r}.x - ${ex}) * 100) AS INTEGER), CAST(ceil((${r}.x + ${ex}) * 100) AS INTEGER), CAST(floor((${r}.z - ${ez}) * 100) AS INTEGER), CAST(ceil((${r}.z + ${ez}) * 100) AS INTEGER)`;
+};
+const ready = new WeakSet<DatabaseSync>();
+
 export function ensureForge(db: DatabaseSync): void {
+  if (ready.has(db)) return;
   db.exec(`
     CREATE TABLE IF NOT EXISTS forge_things (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, layer TEXT NOT NULL, recipe TEXT NOT NULL, version INTEGER NOT NULL, status TEXT NOT NULL,
@@ -47,7 +56,45 @@ export function ensureForge(db: DatabaseSync): void {
       triangles INTEGER NOT NULL, vibe TEXT NOT NULL, made_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS forge_versions (build_id TEXT NOT NULL, version INTEGER NOT NULL, recipe TEXT NOT NULL, at_ms INTEGER NOT NULL, PRIMARY KEY(build_id, version));
+    CREATE INDEX IF NOT EXISTS forge_things_standing ON forge_things(status, layer, created_at, id);
+    CREATE INDEX IF NOT EXISTS forge_things_made ON forge_things(made_by, created_at);
+    -- How many builds stand in each layer, kept as they change, so a count never reads the world.
+    CREATE TABLE IF NOT EXISTS forge_tally (layer TEXT PRIMARY KEY, n INTEGER NOT NULL);
+    CREATE TRIGGER IF NOT EXISTS forge_tally_add AFTER INSERT ON forge_things WHEN NEW.status = 'standing' BEGIN
+      INSERT INTO forge_tally(layer, n) VALUES (NEW.layer, 1) ON CONFLICT(layer) DO UPDATE SET n = n + 1;
+    END;
+    CREATE TRIGGER IF NOT EXISTS forge_tally_change AFTER UPDATE OF status ON forge_things WHEN OLD.status <> NEW.status BEGIN
+      INSERT INTO forge_tally(layer, n) VALUES (NEW.layer, 0) ON CONFLICT(layer) DO NOTHING;
+      UPDATE forge_tally SET n = n + (NEW.status = 'standing') - (OLD.status = 'standing') WHERE layer = NEW.layer;
+    END;
+    CREATE TRIGGER IF NOT EXISTS forge_tally_drop AFTER DELETE ON forge_things WHEN OLD.status = 'standing' BEGIN
+      UPDATE forge_tally SET n = n - 1 WHERE layer = OLD.layer;
+    END;
+    -- Where every standing build is, so a place can be checked without reading the whole world.
+    CREATE VIRTUAL TABLE IF NOT EXISTS forge_index USING rtree_i32(id, minx, maxx, minz, maxz);
+    CREATE TRIGGER IF NOT EXISTS forge_index_add AFTER INSERT ON forge_things WHEN NEW.status = 'standing' BEGIN
+      INSERT INTO forge_index(id, minx, maxx, minz, maxz) VALUES (NEW.rowid, ${AABB("NEW")});
+    END;
+    CREATE TRIGGER IF NOT EXISTS forge_index_change AFTER UPDATE OF status, x, z, turn, hw, hd ON forge_things BEGIN
+      DELETE FROM forge_index WHERE id = NEW.rowid;
+      INSERT INTO forge_index(id, minx, maxx, minz, maxz) SELECT NEW.rowid, ${AABB("NEW")} WHERE NEW.status = 'standing';
+    END;
+    CREATE TRIGGER IF NOT EXISTS forge_index_drop AFTER DELETE ON forge_things BEGIN
+      DELETE FROM forge_index WHERE id = OLD.rowid;
+    END;
   `);
+  // A world made before the index existed is indexed once, here.
+  const have = db.prepare("SELECT (SELECT COUNT(*) FROM forge_things WHERE status = 'standing') AS things, (SELECT COUNT(*) FROM forge_index) AS indexed").get() as { things: number; indexed: number };
+  const tallied = db.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM forge_tally").get() as { n: number };
+  if (Number(have.things) !== Number(have.indexed) || Number(have.things) !== Number(tallied.n)) {
+    db.exec(`
+      DELETE FROM forge_index;
+      INSERT INTO forge_index(id, minx, maxx, minz, maxz) SELECT t.rowid, ${AABB("t")} FROM forge_things t WHERE t.status = 'standing';
+      DELETE FROM forge_tally;
+      INSERT INTO forge_tally(layer, n) SELECT layer, COUNT(*) FROM forge_things WHERE status = 'standing' GROUP BY layer;
+    `);
+  }
+  ready.add(db);
 }
 
 type Row = { id: string; name: string; kind: string; layer: Layer; recipe: string; version: number; status: "standing" | "removed"; x: number; y: number; z: number; turn: number; hw: number; hd: number; height: number; triangles: number; vibe: string; made_by: "zoora" | "owner"; created_at: number; updated_at: number };
@@ -62,6 +109,32 @@ export function getBuild(db: DatabaseSync, id: string): ForgeBuild | null {
   ensureForge(db);
   const row = db.prepare("SELECT * FROM forge_things WHERE id = ?").get(id) as Row | undefined;
   return row ? shape(row) : null;
+}
+
+/** How many builds stand, without reading them. */
+export function countStanding(db: DatabaseSync, layer?: Layer): number {
+  ensureForge(db);
+  const row = (layer
+    ? db.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM forge_tally WHERE layer = ?").get(layer)
+    : db.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM forge_tally").get()) as { n: number };
+  return Number(row.n);
+}
+
+/**
+ * The standing builds whose footprints could touch a box, read through the index, in the order they
+ * were made. `pad` widens the box, in metres. This is what keeps a placement the same cost in a world
+ * of a million builds as in a world of ten.
+ */
+export function near(db: DatabaseSync, box: Box, pad = 2): ForgeBuild[] {
+  ensureForge(db);
+  const a = (box.turn * Math.PI) / 180;
+  const ex = Math.abs(box.hw * Math.cos(a)) + Math.abs(box.hd * Math.sin(a)) + pad;
+  const ez = Math.abs(box.hw * Math.sin(a)) + Math.abs(box.hd * Math.cos(a)) + pad;
+  // CROSS JOIN makes SQLite start from the index. Left to choose, it walks every build to keep them in order.
+  const rows = db
+    .prepare("SELECT t.* FROM forge_index i CROSS JOIN forge_things t ON t.rowid = i.id WHERE i.maxx >= ? AND i.minx <= ? AND i.maxz >= ? AND i.minz <= ? AND t.status = 'standing'")
+    .all(Math.floor((box.x - ex) * 100), Math.ceil((box.x + ex) * 100), Math.floor((box.z - ez) * 100), Math.ceil((box.z + ez) * 100)) as Row[];
+  return rows.sort((p, q) => Number(p.created_at) - Number(q.created_at) || (p.id < q.id ? -1 : p.id > q.id ? 1 : 0)).map(shape);
 }
 
 export function recipeOf(db: DatabaseSync, id: string): Recipe | null {
@@ -125,7 +198,7 @@ function landUnder(grounds: ForgeBuild[], x: number, z: number): ForgeBuild | nu
 export type PlaceCheck = { ok: true; ground: ForgeBuild | null } | { ok: false; reason: "FORGE_NOT_HER_LAND" | "FORGE_SANCTUARY" | "FORGE_NOT_TOUCHING" | "FORGE_NO_GROUND" | "FORGE_OVERLAP" };
 
 /** The three rules. `self` is left out of the checks, for when a standing build is being changed. */
-export function placeCheck(db: DatabaseSync, layer: Layer, box: Box, height: number, self?: string, all: ForgeBuild[] = standing(db)): PlaceCheck {
+export function placeCheck(db: DatabaseSync, layer: Layer, box: Box, height: number, self?: string, all: ForgeBuild[] = near(db, box)): PlaceCheck {
   const others = all.filter((build) => build.id !== self);
   const grounds = others.filter((build) => build.layer === "ground");
   if (layer === "ground") {
@@ -168,7 +241,7 @@ export function raise(db: DatabaseSync, input: unknown, at: unknown, now: number
   const recipe = cleanRecipe(input);
   const place = cleanPlace(at);
   const built = buildRecipe(recipe, hand);
-  if (standing(db).length >= FORGE.standing) throw new Error("FORGE_FULL");
+  if (countStanding(db) >= FORGE.standing) throw new Error("FORGE_FULL");
   if (by === "zoora") {
     const recent = db.prepare("SELECT COUNT(*) AS n FROM forge_things WHERE made_by = 'zoora' AND created_at > ?").get(now - 86_400_000) as { n: number };
     if (Number(recent.n) >= FORGE.perDay) throw new Error("FORGE_DAILY");
@@ -301,18 +374,43 @@ export function forgeDue(db: DatabaseSync, now: number): boolean {
   return last.at == null || now - Number(last.at) >= FORGE.everyMs;
 }
 
+/** Up to this many pieces of land she reads whole. Past it she works from her newest land and this many draws by chance. */
+const POOL = 512;
+const SAMPLE = 96;
+
+/**
+ * The land she picks from when she looks for a place. A small world is read whole, in the order it
+ * was laid. A large one is sampled: her newest land, and land drawn by chance from all of it.
+ */
+function groundPool(db: DatabaseSync, next: () => number): ForgeBuild[] {
+  if (countStanding(db, "ground") <= POOL) {
+    return (db.prepare("SELECT * FROM forge_things WHERE status = 'standing' AND layer = 'ground' ORDER BY created_at, id").all() as Row[]).map(shape);
+  }
+  const found = new Map<string, ForgeBuild>();
+  for (const row of db.prepare("SELECT * FROM forge_things WHERE status = 'standing' AND layer = 'ground' ORDER BY created_at DESC, id DESC LIMIT 64").all() as Row[]) found.set(row.id, shape(row));
+  // Asked for together, the two ends make SQLite read every row. Asked one at a time, each is a single step.
+  const span = {
+    lo: Number((db.prepare("SELECT MIN(rowid) AS n FROM forge_things").get() as { n: number }).n),
+    hi: Number((db.prepare("SELECT MAX(rowid) AS n FROM forge_things").get() as { n: number }).n),
+  };
+  // NOT INDEXED walks the table from the chosen row, so a draw reads a handful of rows however large the world is.
+  const pick = db.prepare("SELECT * FROM forge_things NOT INDEXED WHERE rowid >= ? AND status = 'standing' AND layer = 'ground' ORDER BY rowid LIMIT 1");
+  for (let tries = 0; tries < SAMPLE; tries += 1) {
+    const row = pick.get(span.lo + Math.floor(next() * (span.hi - span.lo + 1))) as Row | undefined;
+    if (row) found.set(row.id, shape(row));
+  }
+  return [...found.values()];
+}
+
 /**
  * When she has no model to think with, she still chooses for herself. She tries places around what she
  * has already made, by chance, and takes the first that the rules allow. Nothing here is a plan: where
  * she ends up depends on what she built before and on chance.
  */
 export function wander(db: DatabaseSync, layer: Layer, half: [number, number], height: number, next: () => number): Place | null {
-  const all = standing(db);
-  const grounds = all.filter((build) => build.layer === "ground");
+  const grounds = groundPool(db, next);
   // Open land first. Land that came with its own features, like fields, is only built on when there is nowhere else.
   const open = grounds.filter((ground) => ground.kind === "plain" || ground.kind === "own");
-  // She keeps her own streets clear. This is her habit, not a rule: a model may build over a road if it wants to.
-  const roads = all.filter((build) => build.kind === "road");
   for (let attempt = 0; attempt < 320; attempt += 1) {
     let place: Place;
     if (layer === "ground") {
@@ -339,8 +437,10 @@ export function wander(db: DatabaseSync, layer: Layer, half: [number, number], h
       place = { x: on.x + lx * Math.cos(a) + lz * Math.sin(a), z: on.z - lx * Math.sin(a) + lz * Math.cos(a), turn: on.turn + 90 * Math.floor(next() * 4) };
     }
     const box = { ...place, hw: half[0], hd: half[1] };
-    if (layer === "structure" && height > FORGE.flat && roads.some((road) => boxesMeet(road, box, 0.3))) continue;
-    if (placeCheck(db, layer, box, height, undefined, all).ok) return place;
+    const around = near(db, box);
+    // She keeps her own streets clear. This is her habit, not a rule: a model may build over a road if it wants to.
+    if (layer === "structure" && height > FORGE.flat && around.some((road) => road.kind === "road" && boxesMeet(road, box, 0.3))) continue;
+    if (placeCheck(db, layer, box, height, undefined, around).ok) return place;
   }
   return null;
 }
@@ -357,7 +457,7 @@ const VIBES: Record<string, Vibe> = { calm: PLAIN, pride: { tint: -18, shade: 0.
 export function considerForge(db: DatabaseSync, emotions: Emotions, now: number, own?: unknown): ForgeBuild | null {
   if (!forgeDue(db, now)) return null;
   const feeling = dominantEmotion(emotions);
-  const next = rng((now ^ Math.imul(standing(db).length + 1, 2654435761)) >>> 0);
+  const next = rng((now ^ Math.imul(countStanding(db) + 1, 2654435761)) >>> 0);
   let build: ForgeBuild | null = null;
   const mine = own as { place?: unknown } | null | undefined;
   if (mine && typeof mine === "object") {
@@ -371,8 +471,8 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
     }
   }
   if (!build) {
-    const all = standing(db);
-    const lands = all.filter((item) => item.layer === "ground").length;
+    const lands = countStanding(db, "ground");
+    const total = countStanding(db);
     const attempt = (kind: IdeaKind): ForgeBuild | null => {
       try {
         const recipe = cleanRecipe({ ...compose(kind, Math.floor(next() * 4294967295)), ...(LAND_KINDS.includes(kind) ? { vibe: VIBES[feeling] ?? PLAIN } : {}) });
@@ -384,7 +484,11 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
       }
     };
     // Open land with no street yet gets one first, down its longer side, so what she builds there has something to face.
-    const bare = all.find((item) => item.layer === "ground" && item.kind === "plain" && !all.some((other) => other.kind === "road" && holds(item, other.x, other.z)));
+    // A plain gets its street before anything else is built, so in a large world only her newest plains can still be bare.
+    const plains = (lands <= POOL
+      ? db.prepare("SELECT * FROM forge_things WHERE status = 'standing' AND layer = 'ground' AND kind = 'plain' ORDER BY created_at, id").all()
+      : db.prepare("SELECT * FROM (SELECT * FROM forge_things WHERE status = 'standing' AND layer = 'ground' AND kind = 'plain' ORDER BY created_at DESC, id DESC LIMIT 64) ORDER BY created_at, id").all()) as Row[];
+    const bare = plains.map(shape).find((item) => !near(db, item, 0).some((other) => other.kind === "road" && holds(item, other.x, other.z)));
     if (bare) {
       try {
         const long = bare.hw >= bare.hd;
@@ -395,7 +499,7 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
     }
     const things = THING_FOR[feeling] ?? [...IDEA_KINDS];
     // She builds on the land she has until it is getting full, then lays more.
-    if (!build && lands > 0 && all.length - lands < lands * 8) build = attempt(things[Math.floor(next() * things.length)]!);
+    if (!build && lands > 0 && total - lands < lands * 8) build = attempt(things[Math.floor(next() * things.length)]!);
     if (!build) build = attempt(LAND_FOR[feeling] ?? "plain");
   }
   if (!build) return null;

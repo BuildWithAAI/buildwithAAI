@@ -108,3 +108,22 @@ The live world lights what she has built with the same sums as her own viewport.
 Before this, the open view used a fog that hid everything past about 150 m, which is where her city stands. The buildings were drawn correctly and could not be seen.
 
 Everything she has built is still loaded one mesh at a time within 900 m of the eye. That is replaced by loading by area.
+
+## Finding what stands near a place
+
+Every standing build has an entry in `forge_index`, an R-tree of footprints in whole centimetres, rounded outward. Database triggers keep it and a running count (`forge_tally`) in step with every write, so no code path can forget to. A world made before the index existed is indexed once when it is opened.
+
+- `near(db, box, pad)` returns the builds whose footprints could touch a box. The placement check, her unaided chooser and the daily cap all use it or the running count. Nothing on the placement path reads the whole world.
+- A small world is still read whole where order matters, so she builds exactly what she built before: 400 builds match the previous code in recipe, position and mesh.
+- A large world is sampled when she looks for land: her newest 64 pieces and 96 drawn by chance.
+
+Measured with stand-in rows on the real functions:
+
+| Builds standing | Nearby lookup | Placement check | Finding a place |
+| --- | --- | --- | --- |
+| 100,120 | 0.05 ms | 0.04 ms | 1.5 to 1.7 ms |
+| 1,000,120 | 0.08 ms | 0.05 ms | 1.7 to 2.1 ms, slowest 5.5 ms |
+
+Before the index, one placement check took 1,436 ms at 100,400 builds.
+
+Still read whole: the world snapshot, the city page, and the check made when land is taken away. Loading by area replaces the first.
