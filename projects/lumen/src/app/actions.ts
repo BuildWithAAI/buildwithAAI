@@ -11,9 +11,17 @@ import { checkoutReturnOrigin } from "./api/checkout/auth";
 import { allowRate, setFlag } from "../db/db";
 import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../economy/economy";
 import { checkBrakes, clearBrake, setLadderMode } from "../economy/ladder";
-import { decideVenture, proposeVenture, setVentureStatus } from "../economy/ventures";
-import { confirmPodOrder, decideProduct, openPodOrder, proposeProduct, syncPodOrder } from "../fulfillment/pod";
-import { listShop } from "../shop/store";
+import { decideVenture, getVenture, launchVenture, proposeVenture, setVentureStatus } from "../economy/ventures";
+import { mergeVentures } from "../economy/merge";
+import { compose, IDEA_KINDS, type IdeaKind } from "../forge/ideas";
+import { buildRecipe, cleanRecipe } from "../forge/recipe";
+import { herHand, raise, remove as removeBuild, reshape, undo as undoBuildStep, wander } from "../forge/store";
+import { rng } from "../form/genome";
+import { grantPlot } from "../world/land";
+import { takeUnit, vacate } from "../world/units";
+import { blankPlan, getPlan, savePlan, setCheck, TEXT_FIELDS, type CostLine } from "../economy/plans";
+import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, printFacts, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
+import { listShop, shopCheckoutOpen } from "../shop/store";
 import { getEngine } from "../server/engine";
 
 async function ip(): Promise<string> {
@@ -103,6 +111,17 @@ export async function shopBuy(form: FormData) {
   if (!allowRate(engine.db, `shop-buy:${address}`, 6, 60_000, buyAt) || !allowRate(engine.db, "shop-buy:all", 60, 60_000, buyAt)) redirect("/shop?sales=soon");
   const result = await engine.shopCheckout(String(form.get("id") ?? ""), String(form.get("note") ?? ""), address);
   if (!result.ok || result.comingSoon || !result.url || !result.url.startsWith("http")) redirect("/shop?sales=soon");
+  redirect(result.url);
+}
+
+/** A visitor buys a print. Stripe takes the card and the address. Nothing is ordered from the printer until Stripe reports it paid. */
+export async function printBuy(form: FormData) {
+  const engine = getEngine();
+  const address = await ip();
+  const buyAt = Date.now();
+  if (!allowRate(engine.db, `print-buy:${address}`, 6, 60_000, buyAt) || !allowRate(engine.db, "print-buy:all", 60, 60_000, buyAt)) redirect("/merch?sales=soon");
+  const result = await printCheckout(engine.db, engine.env, String(form.get("id") ?? ""), shopCheckoutOpen(engine.db, engine.env), buyAt);
+  if (!result.ok || !result.url.startsWith("https://")) redirect("/merch?sales=soon");
   redirect(result.url);
 }
 
@@ -414,5 +433,163 @@ export async function podConfirmAction(form: FormData) {
 export async function podAutoAction(form: FormData) {
   await ventureStep(() => {
     setFlag(getEngine().db, "pod_auto_confirm", form.get("auto") === "on" ? "1" : "0");
+  });
+}
+
+/** The owner sends a customer's money back for a paid print that will not be made. */
+export async function podRefundAction(form: FormData) {
+  await ventureStep(async (now) => {
+    await refundPaidPrint(getEngine().db, process.env, text(form, "id"), now);
+  });
+}
+
+function optionalCents(raw: FormDataEntryValue | null): number | null {
+  return String(raw ?? "").trim() === "" ? null : dollarsToCents(raw);
+}
+
+/** One cost per line, written "label, dollars". */
+function costLines(raw: FormDataEntryValue | null): CostLine[] {
+  return String(raw ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const cut = line.lastIndexOf(",");
+      if (cut < 1) throw new Error("ECON_PLAN_LINES");
+      return { label: line.slice(0, cut).trim(), cents: dollarsToCents(line.slice(cut + 1).trim().replace(/^\$/, "")) };
+    });
+}
+
+/** The owner edits a venture's plan. A cost the owner types is the owner's word, unless marked as a guess. */
+export async function venturePlanAction(form: FormData) {
+  const id = text(form, "id");
+  await ventureStep((now) => {
+    const db = getEngine().db;
+    if (!getVenture(db, id)) throw new Error("ECON_VENTURE_UNKNOWN");
+    const current = getPlan(db, id) ?? blankPlan();
+    const next = { ...current };
+    for (const field of TEXT_FIELDS) next[field] = text(form, field);
+    next.priceCents = optionalCents(form.get("price"));
+    const cost = optionalCents(form.get("unitCost"));
+    // A quoted cost stays quoted unless the owner changes the figure.
+    const kept = cost != null && cost === current.unitCostCents && current.unitCostSource === "quoted";
+    next.unitCostCents = cost;
+    next.unitCostSource = cost == null ? null : kept ? "quoted" : form.get("costIsGuess") === "yes" ? "estimate" : "owner";
+    next.shippingChargeCents = optionalCents(form.get("shippingCharge")) ?? 0;
+    next.feeBasisPoints = Math.round(Number(text(form, "feePercent") || "2.9") * 100);
+    next.feeFixedCents = optionalCents(form.get("feeFixed")) ?? 0;
+    next.startup = costLines(form.get("startup"));
+    next.monthly = costLines(form.get("monthly"));
+    const target = text(form, "targetUnits");
+    next.targetUnits = target ? Number(target) : null;
+    next.budgetAskCents = optionalCents(form.get("budgetAsk")) ?? 0;
+    next.daysAsk = Number(text(form, "daysAsk") || "30");
+    savePlan(db, id, next, "owner", now);
+  });
+  revalidatePath(`/admin/ventures/${id}`);
+  redirect(`/admin/ventures/${id}`);
+}
+
+export async function ventureCheckAction(form: FormData) {
+  const id = text(form, "id");
+  await ventureStep((now) => setCheck(getEngine().db, id, text(form, "key"), form.get("done") === "yes", now));
+  redirect(`/admin/ventures/${id}`);
+}
+
+/** Day one. Refused unless the plan's dollars are settled and every item on the list is done. */
+export async function ventureLaunchAction(form: FormData) {
+  await ventureStep((now) => {
+    const engine = getEngine();
+    const id = text(form, "id");
+    launchVenture(engine.db, id, printFacts(engine.db, engine.env, shopCheckoutOpen(engine.db, engine.env), id), now);
+  });
+}
+
+/** One venture is absorbed into another. It cannot be undone, so the owner types the word. */
+export async function ventureMergeAction(form: FormData) {
+  await ventureStep((now) => {
+    if (text(form, "sure") !== "merge") throw new Error("ECON_MERGE_CONFIRM");
+    mergeVentures(getEngine().db, text(form, "fromId"), text(form, "intoId"), now);
+  });
+}
+
+/** Desk steps for the forge. Owner only. */
+async function forgeStep(run: (now: number) => void): Promise<void> {
+  await gate();
+  let failed: string | null = null;
+  try {
+    run(Date.now());
+  } catch (error) {
+    failed = error instanceof Error && /^FORGE_[A-Z_]+$/.test(error.message) ? error.message : "FORGE_FAILED";
+  }
+  revalidatePath("/admin/forge");
+  revalidatePath("/forge");
+  if (failed) redirect(`/admin/forge?error=${failed}`);
+}
+
+export async function forgeIdeaAction(form: FormData) {
+  await forgeStep((now) => {
+    const kind = text(form, "kind") as IdeaKind;
+    if (!(IDEA_KINDS as readonly string[]).includes(kind)) throw new Error("FORGE_TOOL");
+    const db = getEngine().db;
+    const recipe = cleanRecipe(compose(kind, now >>> 0));
+    const typed = text(form, "x") !== "" && text(form, "z") !== "";
+    const built = buildRecipe(recipe, herHand());
+    // With no place typed she finds one herself, the same way she does on her own.
+    const place = typed ? { x: Number(text(form, "x")), z: Number(text(form, "z")), turn: Number(text(form, "turn") || "0") } : wander(db, recipe.layer ?? "structure", built.half, built.height, rng(now >>> 0));
+    if (!place) throw new Error("FORGE_NO_GROUND");
+    raise(db, recipe, place, now, "owner", kind);
+  });
+}
+
+/** A recipe pasted by the owner. It goes through the same checks as one she writes herself. */
+export async function forgeRecipeAction(form: FormData) {
+  await forgeStep((now) => {
+    let recipe: { place?: unknown };
+    try {
+      recipe = JSON.parse(String(form.get("recipe") ?? "")) as { place?: unknown };
+    } catch {
+      throw new Error("FORGE_RECIPE");
+    }
+    const id = text(form, "id");
+    if (id) reshape(getEngine().db, id, recipe, now);
+    else raise(getEngine().db, recipe, recipe?.place, now, "owner");
+  });
+}
+
+export async function forgeUndoAction(form: FormData) {
+  await forgeStep((now) => {
+    undoBuildStep(getEngine().db, text(form, "id"), now);
+  });
+}
+
+export async function forgeRemoveAction(form: FormData) {
+  await forgeStep((now) => {
+    removeBuild(getEngine().db, text(form, "id"), now);
+  });
+}
+
+export async function forgeModelAction(form: FormData) {
+  await forgeStep(() => setFlag(getEngine().db, "forge_model", form.get("on") === "0" ? "0" : "1"));
+}
+
+/** The owner records a plot for another holder by hand. The same rule applies as for any sale: never her land, her buffer or her lanes. */
+export async function landGrantAction(form: FormData) {
+  await forgeStep((now) => {
+    const result = grantPlot(getEngine().db, Number(text(form, "cx")), Number(text(form, "cy")), text(form, "holder"), now);
+    if (!result.ok) throw new Error(`FORGE_LAND_${result.reason}`);
+  });
+}
+
+/** The owner records that an agent has taken a unit, or that a rented one was given back. No payment is taken and no income is written. The terms are Zoora's. */
+export async function unitTakeAction(form: FormData) {
+  await forgeStep((now) => {
+    const how = text(form, "how");
+    if (how === "vacate") {
+      if (!vacate(getEngine().db, text(form, "unit"))) throw new Error("FORGE_UNIT_NOT_LET");
+      return;
+    }
+    const result = takeUnit(getEngine().db, text(form, "unit"), text(form, "holder"), how === "sold" ? "sold" : "let", now);
+    if (!result.ok) throw new Error(`FORGE_UNIT_${result.reason}`);
   });
 }

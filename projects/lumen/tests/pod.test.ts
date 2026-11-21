@@ -5,6 +5,7 @@ import { decideVenture, proposeVenture, scorecard } from "../src/economy/venture
 import { confirmPodOrder, decideProduct, getPodOrder, openPodOrder, proposeProduct, syncOpenPodOrders, syncPodOrder } from "../src/fulfillment/pod";
 import { artUrlAllowed, createDraft } from "../src/fulfillment/printful";
 import { markTainted } from "../src/security/taint";
+import { launched, proposeWithPlan } from "./helpers/venture";
 
 const T = 1_800_000_000_000;
 const ENV = { PRINTFUL_TOKEN: ["pf", "test", "token"].join("-"), PRINTFUL_ART_HOSTS: "zoora.ai" };
@@ -44,8 +45,7 @@ function printful(start: { total?: string | null; calc?: string } = {}) {
 
 function shop(retailCents = 2_500) {
   const db = openDatabase();
-  proposeVenture(db, { id: "tide-prints", name: "Tide prints", kind: "prints", by: "zoora" }, T);
-  decideVenture(db, "tide-prints", "approved", { budgetCents: 3_000, days: 30 }, T);
+  launched(db, "tide-prints", "prints", 3_000, 30, T);
   proposeProduct(db, ENV, { id: "tide-tee", ventureId: "tide-prints", title: "Tide tee", variantId: 4012, placement: "front", technique: "dtg", artUrl: ART, retailCents }, T);
   decideProduct(db, "tide-tee", "approved", true, T);
   return db;
@@ -106,6 +106,16 @@ describe("print orders", () => {
     expect(await confirmPodOrder(db, ENV, "ord-1", "owner", T, impl)).toMatchObject({ ok: false, reason: "POD_NOT_PRICED" });
     expect(state.calls.filter((call) => call.path.endsWith("/confirmation"))).toHaveLength(1);
     expect(scorecard(db, "tide-prints", T).incomeCents).toBe(2_500);
+  });
+
+  it("an order id that is all digits still lands on the books", async () => {
+    const db = shop();
+    const { impl } = printful();
+    await openPodOrder(db, ENV, { id: "ord-1234567890", productId: "tide-tee", quantity: 1, paidRef: "pay:1", recipient: HOME }, T, impl);
+    await syncPodOrder(db, ENV, "ord-1234567890", T, impl);
+    expect((await confirmPodOrder(db, ENV, "ord-1234567890", "owner", T, impl)).ok).toBe(true);
+    expect(getPodOrder(db, "ord-1234567890")?.status).toBe("confirmed");
+    expect(scorecard(db, "tide-prints", T)).toMatchObject({ incomeCents: 2_500, expenseCents: 1_250 });
   });
 
   it("the address is sent to the printer and is not kept", async () => {
