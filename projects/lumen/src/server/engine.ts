@@ -3,6 +3,9 @@ import { soulIntact } from "../security/soul";
 import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
+import { expireVentures } from "../economy/ventures";
+import { syncOpenPodOrders } from "../fulfillment/pod";
+import { printfulConfigured } from "../fulfillment/printful";
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
@@ -978,6 +981,13 @@ export function startLoop(): void {
     const hour = new Date().toISOString().slice(0, 13);
     if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
       setFlag(engine.db, "last_econ_read_hour", hour);
+      try {
+        expireVentures(engine.db, Date.now());
+      } catch {
+        // The next hour tries again.
+      }
+      // Reads print orders back from Printful. It records what happened there and confirms nothing.
+      if (printfulConfigured(engine.env)) void syncOpenPodOrders(engine.db, engine.env, Date.now()).catch(() => undefined);
       void runReaders(engine.db, engine.env, Date.now())
         .then(() => {
           detectMilestones(engine.db, Date.now());

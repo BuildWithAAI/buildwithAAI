@@ -9,6 +9,7 @@ export const PROTECTED: readonly RegExp[] = [
   /^src\/money\//,
   /^src\/auth\//,
   /^src\/economy\//,
+  /^src\/fulfillment\//,
   /^src\/security\//,
   /^src\/trading\//,
   /^src\/integrations\//,

@@ -8,9 +8,11 @@ import { clientAddress, OWNER_COOKIE, ownerCookie } from "../auth/owner";
 import { loginReachable, publicModeOn } from "../auth/publicMode";
 import { chainTimeMs, fetchFinalized, quoteSolOrder, verifySolPayment } from "../money/solana";
 import { checkoutReturnOrigin } from "./api/checkout/auth";
-import { allowRate } from "../db/db";
+import { allowRate, setFlag } from "../db/db";
 import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../economy/economy";
 import { checkBrakes, clearBrake, setLadderMode } from "../economy/ladder";
+import { decideVenture, proposeVenture, setVentureStatus } from "../economy/ventures";
+import { confirmPodOrder, decideProduct, openPodOrder, proposeProduct, syncPodOrder } from "../fulfillment/pod";
 import { listShop } from "../shop/store";
 import { getEngine } from "../server/engine";
 
@@ -324,4 +326,93 @@ export async function economyBrakeAction(form: FormData) {
 /** Open: she may act from day one inside her working balance. Earned: each step waits for an approved milestone. */
 export async function economyModeAction(form: FormData) {
   await economyStep(() => setLadderMode(getEngine().db, form.get("mode") === "earned" ? "earned" : "open"));
+}
+
+/** Desk steps for ventures and print orders. Owner only. Some of them wait on the printer, so this one is async. */
+async function ventureStep(run: (now: number) => void | Promise<void>): Promise<void> {
+  await gate();
+  let failed: string | null = null;
+  try {
+    await run(Date.now());
+  } catch (error) {
+    failed = error instanceof Error && /^(ECON|POD|PRINTFUL)_[A-Z_]+$/.test(error.message) ? error.message : "ECON_FAILED";
+  }
+  revalidatePath("/admin/ventures");
+  if (failed) redirect(`/admin/ventures?error=${failed}`);
+}
+
+function text(form: FormData, name: string): string {
+  return String(form.get(name) ?? "").trim();
+}
+
+export async function ventureProposeAction(form: FormData) {
+  await ventureStep((now) => {
+    proposeVenture(getEngine().db, { id: text(form, "id"), name: text(form, "name"), kind: text(form, "kind"), pitch: text(form, "pitch"), by: "owner" }, now);
+  });
+}
+
+export async function ventureDecideAction(form: FormData) {
+  await ventureStep((now) => {
+    const approved = form.get("decision") === "approved";
+    decideVenture(getEngine().db, text(form, "id"), approved ? "approved" : "declined", { budgetCents: approved ? dollarsToCents(form.get("budget")) : 0, days: approved ? Number(text(form, "days")) : 0 }, now);
+  });
+}
+
+export async function ventureStatusAction(form: FormData) {
+  await ventureStep((now) => {
+    const to = text(form, "to");
+    if (to !== "active" && to !== "paused" && to !== "closed") throw new Error("ECON_VENTURE_STATE");
+    const days = text(form, "days");
+    setVentureStatus(getEngine().db, text(form, "id"), to, now, days ? { days: Number(days) } : undefined);
+  });
+}
+
+export async function podProductAction(form: FormData) {
+  await ventureStep((now) => {
+    proposeProduct(getEngine().db, process.env, { id: text(form, "id"), ventureId: text(form, "ventureId"), title: text(form, "title"), variantId: Number(text(form, "variantId")), placement: text(form, "placement"), technique: text(form, "technique"), artUrl: text(form, "artUrl"), retailCents: dollarsToCents(form.get("retail")) }, now);
+  });
+}
+
+/** Approving needs the box ticked: the owner has looked at the art and it is Zoora's own. */
+export async function podProductDecideAction(form: FormData) {
+  await ventureStep((now) => {
+    const decision = text(form, "decision");
+    if (decision !== "approved" && decision !== "declined" && decision !== "retired") throw new Error("POD_DECISION");
+    decideProduct(getEngine().db, text(form, "id"), decision, form.get("ownArt") === "yes", now);
+  });
+}
+
+/** A sample sent to an address the owner types. The address goes to the printer and is not stored here. */
+export async function podSampleAction(form: FormData) {
+  await ventureStep(async (now) => {
+    const id = `smp-${now.toString(36)}-${randomBytes(3).toString("hex")}`;
+    const order = await openPodOrder(
+      getEngine().db,
+      process.env,
+      { id, productId: text(form, "productId"), quantity: 1, paidRef: null, recipient: { name: text(form, "name"), address1: text(form, "address1"), address2: text(form, "address2") || undefined, city: text(form, "city"), stateCode: text(form, "stateCode") || undefined, countryCode: text(form, "countryCode").toUpperCase(), zip: text(form, "zip") } },
+      now,
+    );
+    if (order.status === "failed") throw new Error(/^PRINTFUL_[A-Z_]+$/.test(order.reason) ? order.reason : "POD_FAILED");
+  });
+}
+
+export async function podSyncAction(form: FormData) {
+  await ventureStep(async (now) => {
+    await syncPodOrder(getEngine().db, process.env, text(form, "id"), now);
+  });
+}
+
+/** The owner's click that prints and charges. */
+export async function podConfirmAction(form: FormData) {
+  await ventureStep(async (now) => {
+    const result = await confirmPodOrder(getEngine().db, process.env, text(form, "id"), "owner", now);
+    if (!result.ok) throw new Error(result.reason);
+  });
+}
+
+/** Whether paid orders may be confirmed without the owner. Samples never are. */
+export async function podAutoAction(form: FormData) {
+  await ventureStep(() => {
+    setFlag(getEngine().db, "pod_auto_confirm", form.get("auto") === "on" ? "1" : "0");
+  });
 }
