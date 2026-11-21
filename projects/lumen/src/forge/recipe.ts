@@ -40,7 +40,7 @@ export type Part = Arrange & (({ op: "loft" } & LoftSpec) | ({ op: "spin" } & Sp
 export type Vibe = { tint: number; shade: number; glow: number };
 export const PLAIN: Vibe = { tint: 0, shade: 0, glow: 1 };
 export type Layer = "ground" | "structure";
-export type Recipe = { name: string; seed: number; islet: boolean; layer?: Layer; vibe?: Vibe; parts: Part[] };
+export type Recipe = { name: string; seed: number; islet: boolean; layer?: Layer; vibe?: Vibe; /** Homes and shops she declares inside it, for agents to rent or buy. */ units?: { homes: number; shops: number }; parts: Part[] };
 
 const NOT_HERS = /\b(disney|pixar|marvel|nintendo|pokemon|lego|nike|apple|google|tesla|coca|mcdonald|starbucks|eiffel|empire state|burj|big ben|taj mahal|statue of liberty|space needle|trump|taylor swift)\b/i;
 
@@ -144,7 +144,9 @@ export function cleanRecipe(input: unknown): Recipe {
   if (!Array.isArray(v.parts) || v.parts.length < 1 || v.parts.length > LIMITS.parts) fail("FORGE_PARTS");
   const mood = v.vibe as Record<string, unknown> | undefined;
   const vibe = mood && typeof mood === "object" ? { tint: num(mood.tint, -60, 60, 0), shade: num(mood.shade, -0.12, 0.12, 0), glow: num(mood.glow, 0.2, 1.6, 1) } : undefined;
-  return { name, seed: Math.round(num(v.seed, 0, 4294967295, 1)), islet: v.islet === true, layer: pick(v.layer, ["ground", "structure"] as const), vibe, parts: (v.parts as unknown[]).map((part) => cleanPart(part, 0)) };
+  const rooms = v.units as Record<string, unknown> | undefined;
+  const units = rooms && typeof rooms === "object" ? { homes: Math.round(num(rooms.homes, 0, 600, 0)), shops: Math.round(num(rooms.shops, 0, 60, 0)) } : undefined;
+  return { name, seed: Math.round(num(v.seed, 0, 4294967295, 1)), islet: v.islet === true, layer: pick(v.layer, ["ground", "structure"] as const), vibe, units, parts: (v.parts as unknown[]).map((part) => cleanPart(part, 0)) };
 }
 
 type Run = { hand: Hand; next: () => number; instances: number; triangles: number };

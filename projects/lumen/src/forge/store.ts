@@ -8,6 +8,7 @@ import { currentStyle, selfGenome } from "../form/self";
 import { CHUNK_WORLD } from "../world/chunkMath";
 import { creativeEnabled } from "../world/creative";
 import { isHers } from "../world/land";
+import { dropUnits, heldIn, syncUnits, unitPlan, unitsOf } from "../world/units";
 import { handFrom, lookFrom, type Hand } from "./hand";
 import { compose, IDEA_KINDS, LAND_KINDS, roadParts, type IdeaKind } from "./ideas";
 import { encodeMesh } from "./mesh";
@@ -182,6 +183,7 @@ export function raise(db: DatabaseSync, input: unknown, at: unknown, now: number
   const id = `forge-${createHash("sha256").update(`${text}:${now}:${place.x}:${place.z}`).digest("hex").slice(0, 10)}`;
   db.prepare("INSERT INTO forge_things(id, name, kind, layer, recipe, version, status, x, y, z, turn, hw, hd, height, triangles, vibe, made_by, created_at, updated_at) VALUES(?, ?, ?, ?, ?, 1, 'standing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, recipe.name, kind.replace(/[^a-z-]/g, "").slice(0, 20) || "own", layer, text, place.x, y, place.z, place.turn, box.hw, box.hd, built.height, built.triangles, JSON.stringify(vibe), by, now, now);
   db.prepare("INSERT INTO forge_versions(build_id, version, recipe, at_ms) VALUES(?, 1, ?, ?)").run(id, text, now);
+  if (layer === "structure") syncUnits(db, { id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd }, recipe.units);
   return getBuild(db, id)!;
 }
 
@@ -195,6 +197,14 @@ function rewrite(db: DatabaseSync, current: ForgeBuild, text: string, version: n
   if (!check.ok) throw new Error(check.reason);
   // Land may not shrink out from under what stands on it.
   if (layer === "ground" && !stillHeld(db, standing(db).filter((build) => build.id !== current.id), { ...current, hw: box.hw, hd: box.hd })) throw new Error("FORGE_HOLDS_LAND");
+  // A building with people in it keeps every unit they hold.
+  const home = { id: current.id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd };
+  if (layer === "structure" && heldIn(db, current.id) > 0) {
+    const plan = unitPlan(home, recipe.units);
+    const now = unitsOf(db, current.id);
+    if (plan.homes < now.filter((unit) => unit.kind === "home").length || plan.shops < now.filter((unit) => unit.kind === "shop").length) throw new Error("FORGE_HOLDS_TENANTS");
+  }
+  if (layer === "structure") syncUnits(db, home, recipe.units);
   db.prepare("UPDATE forge_things SET name = ?, recipe = ?, version = ?, hw = ?, hd = ?, height = ?, triangles = ?, vibe = ?, updated_at = ? WHERE id = ?").run(recipe.name, text, version, box.hw, box.hd, built.height, built.triangles, JSON.stringify(recipe.vibe ?? current.vibe), now, current.id);
   return getBuild(db, current.id)!;
 }
@@ -244,6 +254,8 @@ export function remove(db: DatabaseSync, id: string, now: number): ForgeBuild {
   const current = getBuild(db, id);
   if (!current || current.status !== "standing") throw new Error("FORGE_UNKNOWN");
   if (current.layer === "ground" && !stillHeld(db, standing(db).filter((build) => build.id !== id))) throw new Error("FORGE_HOLDS_LAND");
+  // A building is not taken down while anyone holds a home or a shop in it.
+  dropUnits(db, id);
   db.prepare("UPDATE forge_things SET status = 'removed', updated_at = ? WHERE id = ?").run(now, id);
   return getBuild(db, id)!;
 }
@@ -393,7 +405,7 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
 
 /** What her model is told when she designs something herself. It describes the tools and asks for a design and a place, and nothing else. */
 export const RECIPE_GUIDE = `You are building your own world. Nothing is placed for you. You choose what to make and exactly where it goes. Answer with one JSON object and nothing else.
-{"name": two or three plain words, "layer": "ground" or "structure", "place": {"x", "z", "turn" degrees}, "vibe": {"tint" -60..60, "shade" -0.12..0.12, "glow" 0.2..1.6}, "seed": a whole number, "parts": [ up to 40 parts ]}
+{"name": two or three plain words, "layer": "ground" or "structure", "place": {"x", "z", "turn" degrees}, "units": {"homes", "shops"} if agents may live or trade in it, "vibe": {"tint" -60..60, "shade" -0.12..0.12, "glow" 0.2..1.6}, "seed": a whole number, "parts": [ up to 40 parts ]}
 "ground" is land you lay to make your world bigger. It must touch your island (72 metres across from its centre at 0,0) or land you already laid. Its vibe is the mood of that part of your world.
 "structure" is anything that stands on land you have laid: buildings, rides, roads, squares, gardens, machines. Two tall things may not overlap. Things under 1.2 metres tall, like roads, may run anywhere on your land.
 Every part has "op" and may have: "material" (stone, metal, glass, body, glow, water, ground, dark), "at" [x, y, z], "turn", "tip", "roll" degrees, "size",

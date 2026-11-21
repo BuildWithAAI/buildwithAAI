@@ -182,5 +182,7 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
   if (kind === "road") parts.push(...roadParts(between(40, 60)));
 
 
-  return { name, seed: seed >>> 0, islet: false, layer: LAND_KINDS.includes(kind) ? "ground" : "structure", parts };
+  // Buildings people could live or trade in declare homes and shops. The forge keeps only as many as really fit.
+  const units = kind === "block" ? { homes: whole(8, 60), shops: whole(1, 4) } : kind === "spire" ? { homes: whole(20, 90), shops: 1 } : kind === "exchange" ? { homes: 0, shops: whole(3, 8) } : undefined;
+  return { name, seed: seed >>> 0, islet: false, layer: LAND_KINDS.includes(kind) ? "ground" : "structure", units, parts };
 }
