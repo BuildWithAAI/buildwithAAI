@@ -1,6 +1,5 @@
 import { createHmac } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { fetchSolUsd } from "../money/solana";
 import { recordReading } from "./economy";
 
 /**
@@ -9,8 +8,10 @@ import { recordReading } from "./economy";
  * Bybit: a read-only API key. Before any balance is asked for, the key is checked, and a key that
  * can trade, transfer or withdraw is refused. No order, transfer or withdrawal call exists in this file.
  *
- * Solana wallets (a hardware wallet, Phantom): watched by public address. No key, seed or signature is
- * involved, and nothing here can move a coin.
+ * Wallets (a hardware wallet, Phantom): watched by public address on Solana, Bitcoin, Ethereum, BNB Chain
+ * and Avalanche. No key, seed or signature is involved, and nothing here can move a coin.
+ *
+ * Prices come from Bybit's public spot tickers, quoted in USDT and counted as dollars.
  */
 
 type Env = Record<string, string | undefined>;
@@ -87,20 +88,73 @@ export async function readSolWallet(rpcUrl: string, address: string, solUsd: num
   return Math.round((lamports / 1_000_000_000) * solUsd * 100 + usdc * 100);
 }
 
-/** `venue=address,venue=address`. A malformed pair is dropped, not guessed at. */
-export function parseWatch(raw: string | undefined): { venueId: string; address: string }[] {
-  return (raw ?? "")
-    .split(",")
-    .map((pair) => pair.trim().split("="))
-    .filter((pair): pair is [string, string] => pair.length === 2 && VENUE.test(pair[0] ?? "") && ADDRESS.test(pair[1] ?? ""))
-    .map(([venueId, address]) => ({ venueId, address }));
+export const EVM_CHAINS = { eth: { symbol: "ETH", rpcEnv: "ECON_RPC_ETH" }, bnb: { symbol: "BNB", rpcEnv: "ECON_RPC_BNB" }, avax: { symbol: "AVAX", rpcEnv: "ECON_RPC_AVAX" } } as const;
+export type EvmChain = keyof typeof EVM_CHAINS;
+const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+const BTC_ADDRESS = /^(bc1[02-9ac-hj-np-z]{20,80}|[13][1-9A-HJ-NP-Za-km-z]{25,39})$/;
+
+export type Watch = { venueId: string; chain: "sol" | "btc" | EvmChain; address: string };
+
+/**
+ * `venue=chain:address,venue=chain:address`. Chains: sol, btc, eth, bnb, avax. One venue may have several
+ * entries, and its reading is their sum. A malformed entry is dropped, not guessed at.
+ */
+export function parseWatch(raw: string | undefined): Watch[] {
+  const out: Watch[] = [];
+  for (const pair of (raw ?? "").split(",")) {
+    const [venueId, rest, extra] = pair.trim().split("=");
+    if (extra !== undefined || !venueId || !rest || !VENUE.test(venueId)) continue;
+    const cut = rest.indexOf(":");
+    const chain = cut > 0 ? rest.slice(0, cut) : "";
+    const address = cut > 0 ? rest.slice(cut + 1) : "";
+    if (chain === "sol" && ADDRESS.test(address)) out.push({ venueId, chain, address });
+    else if (chain === "btc" && BTC_ADDRESS.test(address)) out.push({ venueId, chain, address });
+    else if (chain in EVM_CHAINS && EVM_ADDRESS.test(address)) out.push({ venueId, chain: chain as EvmChain, address });
+  }
+  return out;
+}
+
+/** Last spot price in USDT from Bybit's public tickers. No key is sent. */
+export async function readPrice(symbol: string, fetchImpl: typeof fetch = fetch): Promise<number> {
+  if (!/^[A-Z]{2,10}$/.test(symbol)) throw new Error("PRICE_SYMBOL");
+  const response = await fetchImpl(`${BYBIT}/v5/market/tickers?category=spot&symbol=${symbol}USDT`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!response.ok) throw new Error("PRICE_HTTP");
+  const body = (await response.json()) as { retCode?: number; result?: { list?: { lastPrice?: unknown }[] } };
+  const price = Number(body.result?.list?.[0]?.lastPrice);
+  if (body.retCode !== 0 || !Number.isFinite(price) || price <= 0) throw new Error("PRICE_REFUSED");
+  return price;
+}
+
+/** The native coin of an EVM chain at the given price, in whole cents. Tokens on the chain are not valued. */
+export async function readEvmWallet(rpcUrl: string, address: string, coinUsd: number, fetchImpl: typeof fetch = fetch): Promise<number> {
+  if (!EVM_ADDRESS.test(address)) throw new Error("EVM_ADDRESS");
+  if (!Number.isFinite(coinUsd) || coinUsd <= 0) throw new Error("PRICE_REFUSED");
+  const hex = await rpc(rpcUrl, "eth_getBalance", [address, "latest"], fetchImpl);
+  if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{1,64}$/.test(hex)) throw new Error("EVM_BALANCE");
+  // Wei are counted exactly, then cut to a millionth of a coin, which is far below a cent.
+  const micro = Number(BigInt(hex) / 1_000_000_000_000n);
+  return Math.round((micro / 1_000_000) * coinUsd * 100);
+}
+
+/** Confirmed bitcoin at one address, from an Esplora-style API such as a self-hosted or public mempool explorer. */
+export async function readBtcAddress(apiBase: string, address: string, btcUsd: number, fetchImpl: typeof fetch = fetch): Promise<number> {
+  if (!BTC_ADDRESS.test(address)) throw new Error("BTC_ADDRESS");
+  if (!Number.isFinite(btcUsd) || btcUsd <= 0) throw new Error("PRICE_REFUSED");
+  const response = await fetchImpl(`${apiBase.replace(/\/$/, "")}/address/${address}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!response.ok) throw new Error("BTC_HTTP");
+  const body = (await response.json()) as { chain_stats?: { funded_txo_sum?: unknown; spent_txo_sum?: unknown } };
+  const sats = Number(body.chain_stats?.funded_txo_sum) - Number(body.chain_stats?.spent_txo_sum);
+  if (!Number.isSafeInteger(sats) || sats < 0) throw new Error("BTC_BALANCE");
+  return Math.round((sats / 100_000_000) * btcUsd * 100);
 }
 
 export type ReaderResult = { venueId: string; ok: boolean; reason: string };
 
 /**
- * Read every configured venue once. One venue failing does not stop the others, and a failure
- * records nothing: the last good reading stands until it goes stale. Reasons are codes, never a key or a body.
+ * Read every configured venue once. A wallet venue is the sum of all its watched addresses. If any one
+ * of them cannot be read, nothing is recorded for that venue, because a partial sum would understate it:
+ * the last good reading stands until it goes stale. One venue failing does not stop the others.
+ * Reasons are codes, never a key or a body.
  */
 export async function runReaders(db: DatabaseSync, env: Env, now: number, fetchImpl: typeof fetch = fetch): Promise<ReaderResult[]> {
   const results: ReaderResult[] = [];
@@ -115,23 +169,29 @@ export async function runReaders(db: DatabaseSync, env: Env, now: number, fetchI
   };
   const bybitVenue = env.ECON_BYBIT_VENUE ?? "";
   if (VENUE.test(bybitVenue)) await attempt(bybitVenue, () => readBybit(env, now, fetchImpl));
-  const watch = parseWatch(env.ECON_SOL_WATCH);
-  if (watch.length) {
-    const rpcUrl = env.LUMEN_SOL_RPC_URL ?? "";
-    const priceUrl = env.LUMEN_SOL_PRICE_URL ?? "";
-    let price: number | null = null;
-    try {
-      price = rpcUrl.startsWith("https://") && priceUrl ? await fetchSolUsd(priceUrl, fetchImpl) : null;
-    } catch {
-      price = null;
-    }
-    for (const item of watch) {
-      await attempt(item.venueId, async () => {
-        if (!rpcUrl.startsWith("https://")) throw new Error("SOL_RPC_NOT_SET");
-        if (price == null) throw new Error("SOL_PRICE");
-        return readSolWallet(rpcUrl, item.address, price, fetchImpl);
-      });
-    }
+
+  const prices = new Map<string, Promise<number>>();
+  const price = (symbol: string) => {
+    if (!prices.has(symbol)) prices.set(symbol, readPrice(symbol, fetchImpl));
+    return prices.get(symbol)!;
+  };
+  const https = (name: string, missing: string) => {
+    const url = env[name] ?? "";
+    if (!url.startsWith("https://")) throw new Error(missing);
+    return url;
+  };
+  const byVenue = new Map<string, Watch[]>();
+  for (const item of parseWatch(env.ECON_WATCH)) byVenue.set(item.venueId, [...(byVenue.get(item.venueId) ?? []), item]);
+  for (const [venueId, items] of byVenue) {
+    await attempt(venueId, async () => {
+      let total = 0;
+      for (const item of items) {
+        if (item.chain === "sol") total += await readSolWallet(https("LUMEN_SOL_RPC_URL", "SOL_RPC_NOT_SET"), item.address, await price("SOL"), fetchImpl);
+        else if (item.chain === "btc") total += await readBtcAddress(https("ECON_BTC_API", "BTC_API_NOT_SET"), item.address, await price("BTC"), fetchImpl);
+        else total += await readEvmWallet(https(EVM_CHAINS[item.chain].rpcEnv, "EVM_RPC_NOT_SET"), item.address, await price(EVM_CHAINS[item.chain].symbol), fetchImpl);
+      }
+      return total;
+    });
   }
   return results;
 }

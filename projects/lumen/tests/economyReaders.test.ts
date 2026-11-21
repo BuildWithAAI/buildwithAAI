@@ -47,8 +47,41 @@ describe("economy readers", () => {
     await expect(readSolWallet("https://rpc.example", "not-an-address", 100, impl)).rejects.toThrow("SOL_ADDRESS");
   });
 
-  it("drops a malformed watch pair", () => {
-    expect(parseWatch(`reserve=${WALLET}, land = x, =${WALLET},bad id=${WALLET}`)).toEqual([{ venueId: "reserve", address: WALLET }]);
+  it("drops a malformed watch entry and keeps the chain of each good one", () => {
+    const eth = "0x52908400098527886E0F7030069857D2E4169EE7";
+    const btc = "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq";
+    expect(parseWatch(`reserve=sol:${WALLET}, reserve=eth:${eth},reserve=btc:${btc},land=doge:${WALLET}, bad id=sol:${WALLET},reserve=${WALLET},x=eth:${WALLET}`)).toEqual([
+      { venueId: "reserve", chain: "sol", address: WALLET },
+      { venueId: "reserve", chain: "eth", address: eth },
+      { venueId: "reserve", chain: "btc", address: btc },
+    ]);
+  });
+
+  it("sums every watched address of a venue, and records nothing for the venue if one cannot be read", async () => {
+    const eth = "0x52908400098527886E0F7030069857D2E4169EE7";
+    const btc = "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq";
+    const prices: Record<string, string> = { SOLUSDT: "100", ETHUSDT: "2000", BTCUSDT: "50000", AVAXUSDT: "20" };
+    const asked: string[] = [];
+    const net = (btcOk: boolean) =>
+      (async (url: string, init?: RequestInit) => {
+        asked.push(url);
+        if (url.includes("/v5/market/tickers")) return Response.json({ retCode: 0, result: { list: [{ lastPrice: prices[new URL(url).searchParams.get("symbol") ?? ""] }] } });
+        if (url.startsWith("https://btc.example")) return btcOk ? Response.json({ chain_stats: { funded_txo_sum: 30_000_000, spent_txo_sum: 10_000_000 } }) : new Response("no", { status: 500 });
+        const body = JSON.parse(String(init?.body)) as { method: string };
+        if (body.method === "eth_getBalance") return Response.json({ result: "0x" + (1_500_000_000_000_000_000n).toString(16) });
+        if (body.method === "getBalance") return Response.json({ result: { value: 1_000_000_000 } });
+        return Response.json({ result: { value: [] } });
+      }) as typeof fetch;
+    const settings = { ECON_WATCH: `reserve=sol:${WALLET},reserve=eth:${eth},reserve=btc:${btc}`, LUMEN_SOL_RPC_URL: "https://sol.example", ECON_RPC_ETH: "https://eth.example", ECON_BTC_API: "https://btc.example/api" };
+    const db = openDatabase();
+    addVenue(db, { id: "reserve", bookId: "company", name: "Cold reserve", kind: "wallet" }, T);
+    expect(await runReaders(db, settings, T, net(false))).toEqual([{ venueId: "reserve", ok: false, reason: "BTC_HTTP" }]);
+    expect(bookSummary(db, "company", T).treasuryCents).toBe(0);
+    expect(await runReaders(db, settings, T, net(true))).toEqual([{ venueId: "reserve", ok: true, reason: "OK" }]);
+    // 1 SOL at 100, 1.5 ETH at 2,000, 0.2 BTC at 50,000.
+    expect(bookSummary(db, "company", T).treasuryCents).toBe(10_000 + 300_000 + 1_000_000);
+    expect(asked.some((url) => url === "https://btc.example/api/address/" + btc)).toBe(true);
+    expect(await runReaders(db, { ...settings, ECON_RPC_ETH: "http://eth.example" }, T, net(true))).toEqual([{ venueId: "reserve", ok: false, reason: "EVM_RPC_NOT_SET" }]);
   });
 
   it("records what it could read as reader readings and leaves a failed venue alone", async () => {
@@ -56,7 +89,7 @@ describe("economy readers", () => {
     addVenue(db, { id: "bybit", bookId: "company", name: "Trading float", kind: "exchange" }, T);
     addVenue(db, { id: "land", bookId: "land", name: "Land wallet", kind: "wallet" }, T);
     const net = bybit({ readOnly: 1, permissions: {} }, "500");
-    const results = await runReaders(db, { ...env, ECON_BYBIT_VENUE: "bybit", ECON_SOL_WATCH: `land=${WALLET}` }, T, net.impl);
+    const results = await runReaders(db, { ...env, ECON_BYBIT_VENUE: "bybit", ECON_WATCH: `land=sol:${WALLET}` }, T, net.impl);
     expect(results).toEqual([
       { venueId: "bybit", ok: true, reason: "OK" },
       { venueId: "land", ok: false, reason: "SOL_RPC_NOT_SET" },
