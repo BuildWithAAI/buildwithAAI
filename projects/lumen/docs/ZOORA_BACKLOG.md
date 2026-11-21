@@ -13,6 +13,18 @@ Already on this branch. Do not redo them.
 - [x] Creative mind and Telegram. Zoora composes shapes and speaks in the first person. Alerts stay off that voice.
 - [x] Shop, selling only. Zoora publishes on its own. Live Stripe checkout is on when the live key and webhook secret are set. No spend intent.
 
+### 0. Owner direction, 2026-11-21
+
+These come before the six below. `docs/AUDIT_2026-11-21.md` has the evidence behind each one. Research comes first on every item.
+
+- [ ] 0a. Land the chain. Merge #88, #91, then #93 to #112, bottom up, as merge commits. Owner approval only. Acceptance: `main` has `projects/lumen` and CI is green on it.
+- [ ] 0b. First private run on the owner's computer, public mode off. Acceptance: the world opens in a browser with a real graphics card, a model key is set, and the frame rate and the look are written down.
+- [ ] 0c. Let the public view load her world. Listings and meshes are served by chunk. Acceptance: with public mode on, a visitor loads a world of 400 builds with no refused request, and the per-address limit still holds for everything else.
+- [ ] 0d. A spatial index for placement. Acceptance: one placement takes 50 ms or less with 1,000,000 builds standing.
+- [ ] 0e. Her balance is the hard spend ceiling. Acceptance: no spend, trade or venture budget can pass her balance plus her profits, and every paid model call is written to her books.
+- [ ] 0f. Buildings that make sense. She designs site, floors, structure, skin and rooms, and the forge builds from that. Acceptance: every home and shop is a real room reachable from the entrance, and a plan set is drawn by her own renderer.
+- [ ] 0g. The live view matches her own renderer. Acceptance: the same building reads the same in `/city` and in the world.
+
 Then these six, one slice at a time.
 
 ### 1. Living provenance
