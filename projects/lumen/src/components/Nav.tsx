@@ -12,6 +12,7 @@ export function Nav({ showKeeper = false, showMoney = false, compact = false }: 
       <Link href="/?cam=saloon">Saloon</Link>
       <details className="nav-more">
         <summary>More</summary>
+        <Link href="/self">Self</Link>
         <Link href="/build">Build</Link>
         <Link href="/floor">Floor</Link>
         <Link href="/treasury">Treasury</Link>

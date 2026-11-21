@@ -3,6 +3,7 @@ import { soulIntact } from "../security/soul";
 import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
+import { noteSelf } from "../form/self";
 import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
 import { printfulConfigured } from "../fulfillment/printful";
@@ -990,6 +991,8 @@ export function startLoop(): void {
     if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
       setFlag(engine.db, "last_econ_read_hour", hour);
       try {
+        // On the first beat she sees her own form. After that this does nothing unless her soul file changes.
+        noteSelf(engine.db, Date.now());
         expireVentures(engine.db, Date.now());
       } catch {
         // The next hour tries again.
