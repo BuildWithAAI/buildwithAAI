@@ -38,8 +38,50 @@ export type StripeRecord = {
   kind: "sale" | "refund" | "payout" | "dispute";
 };
 
+/** A printed thing is shipped, so its checkout asks for an address and adds a flat shipping charge. */
+export type PrintCheckout = { productId: string; countries: string[]; shippingCents: number; returnPath: string };
+
+/** What a paid print order needs from a finished checkout. Read from Stripe when the order is opened, and not stored. */
+export type PaidSession = {
+  paid: boolean;
+  amountCents: number;
+  printProduct: string;
+  paymentIntentId: string | null;
+  shipping: { name: string; line1: string; line2: string; city: string; state: string; country: string; postalCode: string } | null;
+};
+
+function text(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+/** Newer Stripe versions put the address under `collected_information`; older ones on the session itself. */
+export function parsePaidSession(json: Record<string, unknown>): PaidSession {
+  const collected = (json.collected_information ?? {}) as { shipping_details?: unknown };
+  const details = (collected.shipping_details ?? json.shipping_details ?? null) as { name?: unknown; address?: Record<string, unknown> | null } | null;
+  const address = details?.address ?? null;
+  const intent = json.payment_intent;
+  const paymentIntentId = typeof intent === "string" ? intent : intent && typeof intent === "object" ? text((intent as { id?: unknown }).id) : "";
+  const amount = typeof json.amount_total === "number" && Number.isSafeInteger(json.amount_total) ? json.amount_total : 0;
+  return {
+    paid: json.payment_status === "paid",
+    amountCents: amount,
+    printProduct: text((json.metadata as { print_product?: unknown } | undefined)?.print_product),
+    paymentIntentId: paymentIntentId || null,
+    shipping: address
+      ? { name: text(details?.name), line1: text(address.line1), line2: text(address.line2), city: text(address.city), state: text(address.state), country: text(address.country), postalCode: text(address.postal_code) }
+      : null,
+  };
+}
+
+export async function readCheckoutSession(secret: string, sessionId: string, fetchImpl: typeof fetch = fetch): Promise<PaidSession> {
+  if (!/^cs_[A-Za-z0-9_]{8,120}$/.test(sessionId)) throw new Error("SESSION_ID");
+  const response = await fetchImpl(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, { headers: { Authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(15_000) });
+  if (!response.ok) throw new Error("SALES_PROVIDER_ERROR");
+  return parsePaidSession((await response.json()) as Record<string, unknown>);
+}
+
 export type SalesClient = {
-  createCheckout(input: { creationId: string; title: string; priceCents: number; origin: string; idempotencyKey: string; shopListing?: string }): Promise<{ id: string; url: string }>;
+  createCheckout(input: { creationId: string; title: string; priceCents: number; origin: string; idempotencyKey: string; shopListing?: string; print?: PrintCheckout }): Promise<{ id: string; url: string }>;
   createRefund(input: { chargeId?: string | null; paymentIntentId?: string | null; idempotencyKey: string }): Promise<{ id: string }>;
   listRecords(): Promise<StripeRecord[]>;
 };
@@ -85,6 +127,17 @@ export function stripeSalesClient(secret: string, fetchImpl: typeof fetch = fetc
         "metadata[creation_id]": input.creationId,
         ...(input.shopListing ? { "metadata[shop_listing]": input.shopListing } : {}),
       });
+      if (input.print) {
+        body.set("success_url", `${input.origin}${input.print.returnPath}?checkout=success`);
+        body.set("cancel_url", `${input.origin}${input.print.returnPath}?checkout=cancel`);
+        body.delete("metadata[creation_id]");
+        body.set("metadata[print_product]", input.print.productId);
+        input.print.countries.forEach((country, index) => body.set(`shipping_address_collection[allowed_countries][${index}]`, country));
+        body.set("shipping_options[0][shipping_rate_data][type]", "fixed_amount");
+        body.set("shipping_options[0][shipping_rate_data][display_name]", "Shipping");
+        body.set("shipping_options[0][shipping_rate_data][fixed_amount][amount]", String(input.print.shippingCents));
+        body.set("shipping_options[0][shipping_rate_data][fixed_amount][currency]", "usd");
+      }
       const response = await fetchImpl("https://api.stripe.com/v1/checkout/sessions", {
         method: "POST",
         headers: {

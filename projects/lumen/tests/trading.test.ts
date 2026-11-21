@@ -1,3 +1,4 @@
+import { grantLiveTrading } from "./helpers/ladder";
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
 import { setFlag } from "../src/db/db";
@@ -41,7 +42,7 @@ describe("paper trading", () => {
   it("fills from the quote, blocks the caps and the kill switch, and stays paper without the live switch", async () => {
     expect(PLACE_IDS).toContain("solana-saloon");
     expect(PLACE_IDS).toContain("trading-floor");
-    const db = openDatabase();
+    const db = grantLiveTrading(openDatabase());
     expect(evaluateTrade(proposal(), env, db, "ok")).toEqual({ ok: true, mode: "paper" });
     expect(evaluateTrade(proposal(), { ...env, LUMEN_TRADING_LIVE: "true" }, db, "ok")).toEqual({ ok: false, reason: "NO_SIGNER" });
     expect(evaluateTrade(proposal(), { ...env, LUMEN_TRADING_LIVE: "true", LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade" }, db, "ok").ok).toBe(true);

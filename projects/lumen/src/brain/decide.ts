@@ -27,12 +27,17 @@ export function actionWeight(name: string, state: BrainState): number {
   let weight = 0.35;
   for (const [need, tags] of Object.entries(NEED_TAGS)) {
     if (action.tags.some((tag) => tags.includes(tag))) {
-      weight += state.needs[need as keyof typeof state.needs] * 1.4;
+      // The pull of a need grows faster than the need. A small want barely moves her and a large one decides,
+      // so she goes to what is most unmet and does not spread her time evenly over five half-met needs.
+      const level = state.needs[need as keyof typeof state.needs];
+      weight += level * level * 2.6;
     }
   }
   const dom = dominantEmotion(state.emotions);
   if ((EMOTION_TAGS[dom] ?? []).includes(name)) weight += 0.9 + state.emotions[dom];
   if (state.energy > 0.85 && action.tags.includes("expression")) weight += 0.45;
+  // Nothing used to send her to rest when she was spent, so her energy sat near the floor. A thin pulse now pulls toward rest.
+  if (state.energy < 0.3 && action.rest) weight += (0.3 - state.energy) * 8;
   // What she remembers of a place leans the choice toward it or away from it. It does not make the choice.
   const pull = action.place ? state.tide?.pull[action.place] ?? 0 : 0;
   if (pull !== 0) weight *= 1 + pull;

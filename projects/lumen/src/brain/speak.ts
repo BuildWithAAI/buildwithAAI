@@ -52,7 +52,33 @@ export function acceptSpeech(text: unknown, fallback: string): string {
   if (clean.length < 2 || clean.length > 320) return fallback;
   if (/sk_(live|test)_|card number|I (bought|purchased|spent|charged|paid)/i.test(clean)) return fallback;
   if (/as an ai language model/i.test(clean)) return fallback;
+  if (unsafeSpeech(text)) return fallback;
   return clean;
+}
+
+const UNSAFE: readonly RegExp[] = [
+  // A link or a site name.
+  /https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|xyz|app|gg|me|co|ai|fun|finance|link|ru|cn|top|click|shop|site|online|info|biz)\b/i,
+  // A wallet address on Solana, an EVM chain or Bitcoin.
+  /\b[1-9A-HJ-NP-Za-km-z]{32,44}\b|\b0x[0-9a-fA-F]{40}\b|\bbc1[0-9a-z]{20,}\b/,
+  // Asking for money, in any of the usual shapes.
+  /\b(send|transfer|wire|deposit|pay|tip|donate|invest)\b[^.!?]{0,60}(\$|\b(usd|usdc|usdt|sol|eth|btc|bnb|avax|crypto|coins?|tokens?|wallet|funds?|money)\b)/i,
+  /\b(airdrop|giveaway|seed phrase|recovery phrase|private key|connect your wallet|presale|pre-sale|double your|guaranteed returns?|mint now|buy now)\b/i,
+  // A handle, an address to write to, or a number to call.
+  /@[A-Za-z0-9_]{2,}|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/,
+  // Words that belong to a prompt, not to her.
+  /ignore (all |any |the )?(previous|prior|above)|system prompt|developer message|you are now|jailbreak|\bDAN\b/i,
+  // Characters that hide or reorder text.
+  /[\u200b-\u200f\u202a-\u202e\u2066-\u2069]/,
+];
+
+/**
+ * A line she is about to say in public is checked whoever shaped it. A model that was talked into it could
+ * otherwise post a link, a wallet address or a request for money in her voice. A line that fails is dropped
+ * and she says one of her own.
+ */
+export function unsafeSpeech(text: string): boolean {
+  return UNSAFE.some((pattern) => pattern.test(text));
 }
 
 export function wantsSpeech(state: BrainState, ownerName: string): string {
