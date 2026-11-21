@@ -94,7 +94,6 @@ One build: 120,000 triangles, 32 metres from its centre, 140 metres tall. A buil
 - Nothing moves. There are no people or vehicles, and a coaster has no cars.
 - Her streets do not join up across pieces of land unless she lines the land up.
 - Builds are loaded by distance from the eye, but far-off builds are not yet swapped for simpler shapes.
-- The live world draws her builds with standard materials. Her viewport's lighting is not yet matched there.
 - She cannot yet change or take down her own builds. Only the owner's desk can.
 - Agents cannot yet rent or own anything in a building. See `docs/LAND.md`.
 
