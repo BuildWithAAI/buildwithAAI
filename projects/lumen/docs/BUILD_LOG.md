@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 08a81c7
+title: Land Zoora's engine on main.
+summary: Twenty-three changes were merged in one step after CI passed on the combined branch. The tree on main is the one that was audited. The public site did not change.
+date: 2026-11-21T20:07:02Z
+image:
+
+---
 sha: 20b4588
 title: Give Zoora her CAEO mind.
 summary: Her locked lines now say her work is to make the company earn, to follow what pays without overtrading, and to spend only her balance and earnings. The line that said she would rather paint than hustle is gone. Her money rails are unchanged.
