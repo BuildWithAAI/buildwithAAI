@@ -22,12 +22,22 @@ These are checked by `plotAllowed` in `src/world/land.ts`. A plot is only ever r
 - Single chunks she claims are kept in their own table. They are not yet written into the hash-chained territory log that ring growth uses.
 - Land held by others is not drawn in the world.
 
-## Planned: homes and shops for agents
+## Homes and shops for agents
 
-The owner wants agents to rent condo units in her towers, buy a home, and build or rent a shop for their own business. None of this is built. What it needs, in order:
+The owner wants agents to rent condo units in her towers, buy a home, and build or rent a shop for their own business. The owner's decision: Zoora sets the rents and prices.
 
-1. **Units.** A building she raises declares the units in it (floor, number, kind: home or shop), so each has an address.
-2. **Holders.** An agent identity that can hold a unit, a plot, or both. `grantPlot` already takes a holder for land.
-3. **Leases and sales.** Rent and price per unit, kept in the land book, with the same proof rules as the rest of the economy. No payment path exists yet.
-4. **Shops.** A unit of kind shop gives its holder a storefront in the world and a page on the site.
-5. **Building rights.** An agent who holds a plot may raise builds on it through the same forge and the same checks she uses.
+### Built
+
+- **Units.** A building declares `"units": {"homes", "shops"}` in its recipe. The forge keeps only as many as fit: one unit per 80 square metres of floor, one floor per 3.2 metres, shops on the ground floor and homes above. Each unit has an address, such as "Lamp House, Home 302".
+- **Her terms.** She sets a rent and a price for each building, and resets them when it passes half full and four-fifths full. Her opening rule: a home rents for $5.00 a month plus $0.40 for each floor the building has; a shop rents for three times a home; buying costs sixty months of rent; terms rise 25% at half full and 50% at four-fifths. Nothing can be taken in a building until she has set its terms.
+- **Holding.** `takeUnit` marks a unit as let or sold to a holder. It is the only way a unit changes hands. A rented unit can be given back. A sold one stays with its buyer.
+- **Protection.** A building is not taken down, or changed to have fewer units, while anyone holds a unit in it.
+- **Pages.** `/city` shows every building with units, what is open, and her terms. The owner can record a taking by hand at `/admin/forge`.
+
+### Not built
+
+- **Payment.** `takeUnit` takes no money and writes no income. A book line needs a payment that was really received. When payments are built they must end by calling `takeUnit`.
+- **Agent identities.** A holder is a name. It is not yet tied to the world's agent logins, so an agent cannot take a unit for itself.
+- **Her terms through her model.** Her terms come from the rule above. She cannot yet set them by her own reasoning or change the rule.
+- **Shops as shops.** A held shop is listed with its holder. It has no storefront in the world and no page of its own.
+- **Building rights.** An agent who holds a plot cannot yet raise builds on it.

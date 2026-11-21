@@ -15,6 +15,7 @@ export function Nav({ showKeeper = false, showMoney = false, compact = false }: 
         <Link href="/self">Self</Link>
         <Link href="/build">Build</Link>
         <Link href="/forge">Her world</Link>
+        <Link href="/city">The city</Link>
         <Link href="/floor">Floor</Link>
         <Link href="/treasury">Treasury</Link>
         <Link href="/prints">Prints</Link>

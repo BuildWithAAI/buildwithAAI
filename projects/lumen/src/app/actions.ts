@@ -18,6 +18,7 @@ import { buildRecipe, cleanRecipe } from "../forge/recipe";
 import { herHand, raise, remove as removeBuild, reshape, undo as undoBuildStep, wander } from "../forge/store";
 import { rng } from "../form/genome";
 import { grantPlot } from "../world/land";
+import { takeUnit, vacate } from "../world/units";
 import { blankPlan, getPlan, savePlan, setCheck, TEXT_FIELDS, type CostLine } from "../economy/plans";
 import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, printFacts, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
 import { listShop, shopCheckoutOpen } from "../shop/store";
@@ -577,5 +578,18 @@ export async function landGrantAction(form: FormData) {
   await forgeStep((now) => {
     const result = grantPlot(getEngine().db, Number(text(form, "cx")), Number(text(form, "cy")), text(form, "holder"), now);
     if (!result.ok) throw new Error(`FORGE_LAND_${result.reason}`);
+  });
+}
+
+/** The owner records that an agent has taken a unit, or that a rented one was given back. No payment is taken and no income is written. The terms are Zoora's. */
+export async function unitTakeAction(form: FormData) {
+  await forgeStep((now) => {
+    const how = text(form, "how");
+    if (how === "vacate") {
+      if (!vacate(getEngine().db, text(form, "unit"))) throw new Error("FORGE_UNIT_NOT_LET");
+      return;
+    }
+    const result = takeUnit(getEngine().db, text(form, "unit"), text(form, "holder"), how === "sold" ? "sold" : "let", now);
+    if (!result.ok) throw new Error(`FORGE_UNIT_${result.reason}`);
   });
 }
