@@ -1,6 +1,7 @@
 import { Surface, type Rgb } from "../form/raster";
 import type { Style } from "../form/style";
 import type { Look } from "./hand";
+import { LIGHT, lit as herLit } from "./light";
 import { add, bounds, cross, dot, MATERIALS, pointNormals, scale, sub, unit, type Mesh, type Vec3 } from "./mesh";
 
 /**
@@ -98,25 +99,18 @@ export function renderMesh(mesh: Mesh, looks: Look | Look[], style: Style, optio
     sx[i] = w / 2 + (dot(rel, right) / Math.max(z, near)) * focal;
     sy[i] = h / 2 - (dot(rel, up) / Math.max(z, near)) * focal;
   }
-  const key = unit([0.5, 0.72, 0.4]);
+  const key = unit([...LIGHT.key]);
   const pale = rgb(style.palette.pale);
   // Lit sides take a little of her gold. Shaded sides fall toward her deep colour. Two tones, everywhere.
-  const warm = mix([1, 1, 1], accent, 0.3);
+  // The sums live in light.ts, which the live world's shader is generated from too.
+  const tones = { deep, pale, accent };
   const lit = (index: number, material: number): Rgb => {
     const surface = surfaceOf(material);
     const base = rgb(surface.color);
     let n: Vec3 = [normals[index * 3]!, normals[index * 3 + 1]!, normals[index * 3 + 2]!];
     const toEye = unit(sub(eye, world[index]!));
     if (dot(n, toEye) < 0) n = scale(n, -1);
-    const direct = Math.max(0, dot(n, key));
-    const fill = 0.3 + 0.2 * n[1];
-    const edge = (1 - Math.max(0, dot(n, toEye))) ** 3;
-    const shade = 0.16 + fill * 0.42;
-    let c: Rgb = [base[0] * (shade + direct * 0.82 * warm[0]), base[1] * (shade + direct * 0.82 * warm[1]), base[2] * (shade + direct * 0.82 * warm[2])];
-    c = mix(mix(deep, c, 0.5 + 0.5 * Math.min(1, shade + direct)), pale, edge * 0.42);
-    c = mix(c, base, surface.emissive * 0.85);
-    if (surface.emissive >= 1) c = mix(base, [1, 1, 1], 0.25);
-    return mix(c, haze, fog(sz[index]!));
+    return mix(herLit(base, surface.emissive, n[1], dot(n, key), dot(n, toEye), tones), haze, fog(sz[index]!));
   };
 
   const triangles = mesh.indices.length / 3;
