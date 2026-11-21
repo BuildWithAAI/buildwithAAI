@@ -28,7 +28,7 @@ export default async function ForgeDesk({ searchParams }: { searchParams: Promis
       <section className="card" style={{ gridColumn: "1 / -1" }}>
         <p className="kicker">Keeper desk</p>
         <h1>The forge</h1>
-        <p className="muted">Her modelling engine. She raises at most {FORGE.perDay} builds a day, one every {FORGE.everyMs / 3_600_000} hours, up to {FORGE.standing} standing. One build may be {LIMITS.triangles.toLocaleString("en-US")} triangles, {LIMITS.radius} metres from its centre and {LIMITS.height} metres tall. The world's creative switch on the keeper page stops her building.</p>
+        <p className="muted">Her modelling engine. Nothing is placed for her: she chooses what to make and where it goes. She raises at most {FORGE.perDay} builds a day, one every {FORGE.everyMs / 60_000} minutes, up to {FORGE.standing} standing. One build may be {LIMITS.triangles.toLocaleString("en-US")} triangles, {LIMITS.radius} metres from its centre and {LIMITS.height} metres tall. The world's creative switch on the keeper page stops her building.</p>
         {query.error ? <p className="muted">Not done: {String(query.error).slice(0, 40)}</p> : null}
         <form action={forgeModelAction}>
           <p>{model ? "When a model is connected, she designs her own builds with it." : "She builds only from the ideas she already knows."}</p>
@@ -40,7 +40,7 @@ export default async function ForgeDesk({ searchParams }: { searchParams: Promis
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/api/forge/${build.id}/picture?v=${build.version}`} alt={build.name} style={{ width: "100%", height: "auto", borderRadius: "12px" }} />
           <h2>{build.name}</h2>
-          <p className="muted">{build.kind} · by {build.by} · version {build.version} · {build.triangles.toLocaleString("en-US")} triangles · path leads to {build.parent === "island" ? "her island" : builds.find((other) => other.id === build.parent)?.name ?? "a neighbour"}</p>
+          <p className="muted">{build.kind} · by {build.by} · version {build.version} · {build.triangles.toLocaleString("en-US")} triangles · {build.layer === "ground" ? "land" : "stands"} at {Math.round(build.x)}, {Math.round(build.z)}</p>
           <form action={forgeUndoAction}>
             <input type="hidden" name="id" value={build.id} />
             <button type="submit">{build.version > 1 ? "Undo the last change" : "Take it down"}</button>
@@ -77,6 +77,10 @@ export default async function ForgeDesk({ searchParams }: { searchParams: Promis
         <p className="kicker">Raise one of her known ideas</p>
         <form action={forgeIdeaAction}>
           <label>Idea <select name="kind">{IDEA_KINDS.map((kind) => <option key={kind}>{kind}</option>)}</select></label>
+          <p className="muted">Leave the place empty and she finds one herself.</p>
+          <label>Across (x) <input name="x" inputMode="decimal" pattern="-?[0-9]+(\.[0-9]+)?" /></label>
+          <label>Along (z) <input name="z" inputMode="decimal" pattern="-?[0-9]+(\.[0-9]+)?" /></label>
+          <label>Turned, degrees <input name="turn" inputMode="decimal" pattern="-?[0-9]+(\.[0-9]+)?" /></label>
           <button type="submit">Raise it</button>
         </form>
       </section>
@@ -84,6 +88,7 @@ export default async function ForgeDesk({ searchParams }: { searchParams: Promis
         <p className="kicker">Raise or change a build from a recipe</p>
         <form action={forgeRecipeAction}>
           <label>Change this build, or leave empty to raise a new one <select name="id"><option value="">A new build</option>{builds.map((build) => <option key={build.id} value={build.id}>{build.name}</option>)}</select></label>
+          <p className="muted">A new build needs a &quot;place&quot; in its recipe: x, z and turn.</p>
           <label>Recipe, as JSON <textarea name="recipe" rows={10} required maxLength={60000} spellCheck={false} /></label>
           <button type="submit">Build it</button>
         </form>

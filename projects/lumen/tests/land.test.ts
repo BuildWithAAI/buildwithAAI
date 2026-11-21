@@ -5,7 +5,7 @@ import { CHUNK_COORD_LIMIT, CHUNK_WORLD } from "../src/world/chunkMath";
 import { CHUNKS_PER_DAY, claimChunk, ensureLand, frontier, grantPlot, growAround, herReaches, holderAt, inLane, isHers, landDesk, plotAllowed, ringFree } from "../src/world/land";
 import { expandClaim, setTerritoryFrozen } from "../src/world/territory";
 import { CLAIM_BUFFER, CLAIM_START_RADIUS } from "../src/world/territoryRules";
-import { nextSite, raise, siteAt } from "../src/forge/store";
+import { raise } from "../src/forge/store";
 
 const T = Date.now();
 const R = CLAIM_START_RADIUS;
@@ -104,13 +104,10 @@ describe("she can always grow", () => {
     expect(growAround(db, T + 4 * 86_400_000)).toEqual({ ok: false, reason: "FROZEN" });
   });
 
-  it("everything she builds stands on land she holds", () => {
+  it("she may only lay land on chunks she holds", () => {
     const db = openDatabase();
-    for (let k = 0; k < 12; k += 1) {
-      const site = nextSite(db)!;
-      const spot = siteAt(site.i, site.j);
-      expect(isHers(db, Math.round(spot.x / CHUNK_WORLD), Math.round(spot.z / CHUNK_WORLD))).toBe(true);
-      raise(db, { name: `Post ${String.fromCharCode(65 + k)}`, parts: [{ op: "loft", up: 4, from: { width: 2 } }] }, T + k, "owner");
-    }
+    const land = { name: "Edge Land", parts: [{ op: "ground", width: 40, slab: 4 }] };
+    expect(() => raise(db, land, { x: (R + 1) * CHUNK_WORLD, z: 0, turn: 0 }, T, "owner")).toThrow("FORGE_NOT_HER_LAND");
+    expect(isHers(db, R, 0)).toBe(true);
   });
 });

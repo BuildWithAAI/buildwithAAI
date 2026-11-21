@@ -4,7 +4,7 @@ import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
 import { glowColor, noteSelf } from "../form/self";
-import { considerForge, designRequest, forgeDue, standing } from "../forge/store";
+import { considerForge, designRequest, forgeDue } from "../forge/store";
 import { growAround } from "../world/land";
 import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
@@ -346,7 +346,7 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       const canAsk = Boolean(env.LUMEN_LLM_API_KEY && env.LUMEN_LLM_MODEL && env.LUMEN_LLM_BASE_URL) && !killed(db, env) && flag(db, "forge_model", "1") === "1";
       if (canAsk) {
         forging = true;
-        void callModel(env, designRequest(dominantEmotion(lived.emotions), lived.placeId, standing(db).map((build) => build.name)))
+        void callModel(env, designRequest(db, dominantEmotion(lived.emotions)))
           .then((own) => considerForge(db, lived.emotions, Date.now(), own))
           .catch(() => undefined)
           .finally(() => {

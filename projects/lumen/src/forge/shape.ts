@@ -177,15 +177,17 @@ export type LoftSpec = {
   cap?: "flat" | "crown" | "open";
   /** Rings of light around an upright shaft. */
   bands?: number;
-  /** 0 to 1: how much of her hand this part takes. Default 1. */
+  /** Rows of windows around an upright shaft. `lit` is the share that are lit. */
+  windows?: { rows: number; cols?: number; lit?: number };
+  /** 0 to 1: how much of her hand this part takes. A crown takes all of it unless told otherwise; anything else takes none. */
   hand?: number;
 };
 
 export function loft(spec: LoftSpec, material: number, hand: Hand): Mesh {
   const mesh = emptyMesh();
-  const strength = clamp(spec.hand ?? 1, 0, 1);
   const upright = !spec.through;
-  const cap = spec.cap ?? (upright ? "crown" : "flat");
+  const cap = spec.cap ?? "flat";
+  const strength = clamp(spec.hand ?? (cap === "crown" ? 1 : 0), 0, 1);
   const segments = clamp(Math.round(spec.segments ?? (cap === "crown" ? 64 : 32)), 6, 96);
   const closed = Boolean(spec.through && spec.closed);
   let centres: Vec3[];
@@ -230,6 +232,35 @@ export function loft(spec: LoftSpec, material: number, hand: Hand): Mesh {
       const low: Frame = { ...stations[0]!, p: [0, height * t - belt / 2, 0] };
       const high: Frame = { ...stations[0]!, p: [0, height * t + belt / 2, 0] };
       skin(mesh, [ringAt(low, t, 1.015), ringAt(high, t, 1.015)], id("glow"));
+    }
+  }
+
+  if (upright && spec.windows) {
+    // Windows follow the wall wherever it goes: tapered, twisted or changing shape. Each is lit or dark by a fixed chance.
+    const height = spec.up ?? 1;
+    const rows = clamp(Math.round(spec.windows.rows), 1, 80);
+    const cols = clamp(Math.round(spec.windows.cols ?? 12), 3, 48);
+    const lit = clamp(spec.windows.lit ?? 0.6, 0, 1);
+    for (let r = 0; r < rows; r += 1) {
+      const t0 = (r + 0.28) / rows;
+      const t1 = (r + 0.74) / rows;
+      const low = ringAt({ ...stations[0]!, p: [0, height * t0, 0] }, t0, 1.012);
+      const high = ringAt({ ...stations[0]!, p: [0, height * t1, 0] }, t1, 1.012);
+      for (let c = 0; c < cols; c += 1) {
+        const first = Math.floor(((c + 0.18) / cols) * segments);
+        const last = Math.max(first + 1, Math.floor(((c + 0.82) / cols) * segments));
+        const on = hashCell(r, c, rows * 131 + cols) < lit;
+        const base = mesh.positions.length / 3;
+        for (let i = first; i <= last; i += 1) {
+          vertex(mesh, low[i % segments]!);
+          vertex(mesh, high[i % segments]!);
+        }
+        for (let k = 0; k < last - first; k += 1) {
+          const a = base + k * 2;
+          triangle(mesh, a, a + 3, a + 2, id(on ? "glow" : "dark"));
+          triangle(mesh, a, a + 1, a + 3, id(on ? "glow" : "dark"));
+        }
+      }
     }
   }
 
@@ -315,7 +346,7 @@ export function noise(x: number, z: number, seed: number): number {
   return (total / 0.875) * 2 - 1;
 }
 
-export type GroundSpec = { width: number; depth?: number; kind?: "flat" | "dunes" | "rows" | "crater" | "pool" | "terraces"; relief?: number; cells?: number; seed?: number; rows?: number; round?: boolean };
+export type GroundSpec = { width: number; depth?: number; kind?: "flat" | "dunes" | "rows" | "crater" | "pool" | "terraces"; relief?: number; cells?: number; seed?: number; rows?: number; round?: boolean; /** How far its edge goes down. Land needs one so it is not a floating sheet. */ slab?: number };
 
 export function groundHeight(spec: GroundSpec, x: number, z: number): number {
   const half = spec.width / 2;
@@ -357,6 +388,21 @@ export function ground(spec: GroundSpec, material: number): Mesh {
       const d = c + 1;
       triangle(mesh, a, c, b, material);
       triangle(mesh, b, c, d, material);
+    }
+  }
+  const slab = spec.slab ?? 0;
+  if (slab > 0) {
+    // The edge of the land, walked once around and dropped straight down.
+    const rim: number[] = [];
+    for (let i = 0; i < cells; i += 1) rim.push(i);
+    for (let j = 0; j < cells; j += 1) rim.push(j * (cells + 1) + cells);
+    for (let i = cells; i > 0; i -= 1) rim.push(cells * (cells + 1) + i);
+    for (let j = cells; j > 0; j -= 1) rim.push(j * (cells + 1));
+    const under = rim.map((index) => vertex(mesh, [mesh.positions[index * 3]!, -slab, mesh.positions[index * 3 + 2]!]));
+    for (let k = 0; k < rim.length; k += 1) {
+      const n = (k + 1) % rim.length;
+      triangle(mesh, rim[k]!, under[k]!, rim[n]!, material);
+      triangle(mesh, rim[n]!, under[k]!, under[n]!, material);
     }
   }
   return mesh;
@@ -403,24 +449,3 @@ export function islet(radius: number, hand: Hand, seed: number): Mesh {
   return mesh;
 }
 
-/**
- * The path between two pieces of her land: an arched deck with a line of her light along it. Every
- * build is joined by one of these to the land it grew from, so nothing she raises stands alone.
- */
-export function causeway(from: Vec3, to: Vec3, hand: Hand): Mesh {
-  const mesh = emptyMesh();
-  const span = Math.hypot(to[0] - from[0], to[2] - from[2]);
-  if (span < 0.5) return mesh;
-  const arch = Math.min(6, span * 0.07);
-  const points: Vec3[] = [0, 0.25, 0.5, 0.75, 1].map((t) => [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t + arch * Math.sin(Math.PI * t), from[2] + (to[2] - from[2]) * t]);
-  const lay = (part: Mesh) => {
-    const base = mesh.positions.length / 3;
-    mesh.positions.push(...part.positions);
-    for (const index of part.indices) mesh.indices.push(index + base);
-    mesh.materials.push(...part.materials);
-  };
-  const rings = clamp(Math.round(span / 2.5), 12, 60);
-  lay(loft({ through: points, from: { shape: "block", width: 3.4, depth: 0.5, soft: 0.5 }, rings, segments: 12, cap: "flat", hand: 0 }, id("stone"), hand));
-  lay(loft({ through: points.map(([x, y, z]) => [x, y + 0.42, z] as Vec3), from: { shape: "round", width: 0.32 }, rings, segments: 6, cap: "flat", hand: 0 }, id("glow"), hand));
-  return mesh;
-}

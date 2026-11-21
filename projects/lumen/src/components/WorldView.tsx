@@ -420,7 +420,7 @@ export function WorldView({
         paintSvg(easelBoard, snap.easel.svg);
       }
       syncBuilds(scene, buildPieces, snap.builds ?? []);
-      syncForge(scene, forgePieces, snap.forge ?? [], snap.look ?? []);
+      syncForge(scene, forgePieces, snap.forge ?? [], snap.looks ?? []);
       syncShop(scene, shopPiece, snap.shop ?? null);
       syncChunkLayer(chunkLayer, chunkRef.current);
       syncGuestLayer(guestLayer, guestRef.current, terrainHeight);
@@ -767,11 +767,13 @@ function syncBuilds(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds
  * What she raised with the forge. Each build's mesh is fetched once per version and drawn with the
  * materials the engine sends, so nothing here chooses a colour or a shape.
  */
-function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds: PublicWorld["forge"], look: PublicWorld["look"]): void {
+function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds: PublicWorld["forge"], looks: PublicWorld["looks"]): void {
   const seen = new Set<string>();
   for (const build of builds) {
+    const look = looks[build.look] ?? looks[0];
+    if (!look) continue;
     seen.add(build.id);
-    const key = `${build.rev}:${look.map((item) => item.color).join("")}`;
+    const key = `${build.version}:${look.map((item) => item.color).join("")}`;
     let group = pieces.get(build.id);
     if (!group || group.userData.key !== key) {
       if (group) scene.remove(group);
@@ -781,7 +783,7 @@ function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds:
       scene.add(group);
       void loadForgeMesh(group, build, look, key);
     }
-    group.position.set(build.x, build.lift, build.z);
+    group.position.set(build.x, build.y, build.z);
     group.rotation.y = build.yaw;
   }
   for (const [id, group] of pieces) {
@@ -791,9 +793,9 @@ function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds:
   }
 }
 
-async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][number], look: PublicWorld["look"], key: string): Promise<void> {
+async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][number], look: PublicWorld["looks"][number], key: string): Promise<void> {
   try {
-    const response = await fetch(`/api/forge/${build.id}?v=${encodeURIComponent(build.rev)}`);
+    const response = await fetch(`/api/forge/${build.id}?v=${build.version}`);
     if (!response.ok) return;
     const bytes = await response.arrayBuffer();
     const head = new DataView(bytes);
@@ -819,6 +821,8 @@ async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][num
     // The build may have changed while its mesh was on the way.
     if (group.userData.key !== key) return;
     group.add(new THREE.Mesh(geometry, materials));
+    // Land and low things carry no name board.
+    if (build.layer !== "structure" || build.tall < 6) return;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
     geometry.computeBoundingBox();
     label.position.y = (geometry.boundingBox?.max.y ?? 10) + 3;
