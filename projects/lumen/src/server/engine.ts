@@ -1,4 +1,5 @@
 import { pruneHistory } from "../db/prune";
+import { soulIntact } from "../security/soul";
 import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
@@ -68,7 +69,15 @@ export function createEngine(env: Env, file?: string) {
     issuer,
     now: () => Date.now(),
     snapshot: () => snapshot(db, env),
-    tickOnce: () => tickGuarded(db, env, issuer),
+    tickOnce: () => {
+      // A soul file that does not match the owner's pin stops her. She does not run as someone else.
+      const soul = soulIntact(env);
+      if (!soul.ok) {
+        setFlag(db, "soul_alert", soul.reason);
+        return Promise.reject(new Error(soul.reason));
+      }
+      return tickGuarded(db, env, issuer);
+    },
     leaveGift: (giftId: string, note: unknown, author: string, ip: string) => leaveGift(db, env, giftId, note, author, ip),
     interact: (kind: "wave" | "tap", ip: string) => interact(db, kind, ip),
     guestbook: (note: unknown, author: string, ip: string) => guestbook(db, note, author, ip),
