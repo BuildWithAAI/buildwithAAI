@@ -1,5 +1,6 @@
 import { pruneHistory } from "../db/prune";
 import { detectMilestones } from "../economy/economy";
+import { runReaders } from "../economy/readers";
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { makeSvg, artTitle } from "../brain/art";
@@ -963,6 +964,14 @@ export function startLoop(): void {
     void engine.tickOnce().catch(() => undefined);
     const day = new Date().toISOString().slice(0, 10);
     if (flag(engine.db, "last_reconcile_day", "") !== day) void engine.reconcileNow().catch(() => undefined);
+    // Balances are read once an hour. A reading is a network call, so it never holds up the tick.
+    const hour = new Date().toISOString().slice(0, 13);
+    if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
+      setFlag(engine.db, "last_econ_read_hour", hour);
+      void runReaders(engine.db, engine.env, Date.now())
+        .then(() => detectMilestones(engine.db, Date.now()))
+        .catch(() => undefined);
+    }
     if (flag(engine.db, "last_prune_day", "") !== day) {
       setFlag(engine.db, "last_prune_day", day);
       try {
