@@ -56,6 +56,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <form action={reconcileAction}><button type="submit">Run reconciliation</button></form>
           <form action={logout}><button type="submit">Log out</button></form>
           {publicMode ? null : <a className="button" href="/admin/ledger">Balance and P&amp;L</a>}
+          <a className="button" href="/admin/economy">Economy</a>
+          <a className="button" href="/admin/ventures">Ventures</a>
+          <a className="button" href="/admin/forge">The forge</a>
         </div>
       </section>
       <section className="card" style={{ gridColumn: "1 / -1" }}>
