@@ -9,7 +9,7 @@ import { compose, IDEA_KINDS } from "../src/forge/ideas";
 import { cross, dot, encodeMesh, MATERIALS, point, soundMesh, sub, triangleCount, type Mesh } from "../src/forge/mesh";
 import { buildRecipe, cleanRecipe, LIMITS } from "../src/forge/recipe";
 import { groundHeight, loft, noise, profile, spin } from "../src/forge/shape";
-import { considerForge, FORGE, forgeDue, getBuild, herHand, meshBytes, pictureBytes, raise, recipeOf, remove, reshape, siteAt, standing, undo } from "../src/forge/store";
+import { considerForge, FORGE, forgeDue, getBuild, herHand, islandCell, meshBytes, pictureBytes, raise, recipeOf, remove, reshape, revOf, siteAt, standing, undo } from "../src/forge/store";
 import { renderMesh } from "../src/forge/view";
 import { setCreativeEnabled } from "../src/world/creative";
 
@@ -224,18 +224,21 @@ describe("mesh bytes and her viewport", () => {
 
 describe("what she has built", () => {
   it("sites never touch each other or her island", () => {
-    const sites = Array.from({ length: FORGE.standing }, (_, i) => siteAt(i));
     const widest = LIMITS.radius * 1.1 + 1;
-    for (let a = 0; a < sites.length; a += 1) {
-      expect(Math.hypot(sites[a]!.x, sites[a]!.z)).toBeGreaterThanOrEqual(72 + widest * 1.1 + 10);
-      for (let b = a + 1; b < sites.length; b += 1) expect(Math.hypot(sites[a]!.x - sites[b]!.x, sites[a]!.z - sites[b]!.z)).toBeGreaterThan(widest * 1.1 * 2);
+    expect(FORGE.site).toBeGreaterThan(widest * 2);
+    for (let i = -6; i <= 6; i += 1) {
+      for (let j = -6; j <= 6; j += 1) {
+        if (islandCell(i, j)) continue;
+        const spot = siteAt(i, j);
+        expect(Math.hypot(spot.x, spot.z)).toBeGreaterThan(72 + widest);
+      }
     }
   });
 
   it("raises, reshapes, undoes and takes down, keeping every version", () => {
     const db = openDatabase();
     const built = raise(db, tower, T, "owner", "own", hand);
-    expect(built).toMatchObject({ name: "Test Tower", version: 1, status: "standing", site: 0 });
+    expect(built).toMatchObject({ name: "Test Tower", version: 1, status: "standing", parent: "island" });
     expect(meshBytes(db, built.id)?.toString("latin1", 0, 4)).toBe("ZMSH");
     expect(pictureBytes(db, built.id)?.subarray(1, 4).toString("latin1")).toBe("PNG");
     const taller = reshape(db, built.id, { ...tower, name: "Taller Tower", parts: [{ ...tower.parts[0], up: 40 }] }, T + 1, hand);
@@ -244,15 +247,89 @@ describe("what she has built", () => {
     expect(undo(db, built.id, T + 2, hand)).toMatchObject({ name: "Test Tower", version: 1 });
     expect(recipeOf(db, built.id)?.name).toBe("Test Tower");
     const second = raise(db, { ...tower, name: "Second Tower" }, T + 3, "owner", "own", hand);
-    expect(second.site).toBe(1);
+    expect([second.si, second.sj]).not.toEqual([built.si, built.sj]);
     expect(undo(db, built.id, T + 4, hand).status).toBe("removed");
     expect(meshBytes(db, built.id)).toBeNull();
     // A freed site is used again.
-    expect(raise(db, { ...tower, name: "Third Tower" }, T + 5, "owner", "own", hand).site).toBe(0);
+    const third = raise(db, { ...tower, name: "Third Tower" }, T + 5, "owner", "own", hand);
+    expect([third.si, third.sj]).toEqual([built.si, built.sj]);
     expect(remove(db, second.id, T + 6).status).toBe("removed");
     expect(() => remove(db, second.id, T + 7)).toThrow("FORGE_UNKNOWN");
     expect(() => raise(db, { name: "Bad", parts: [{ op: "nope" }] }, T, "owner", "own", hand)).toThrow("FORGE_TOOL");
     expect(standing(db)).toHaveLength(1);
+  });
+
+  it("her land grows outward in one piece: every build touches her island or something she built", () => {
+    const db = openDatabase();
+    const builds = Array.from({ length: 30 }, (_, k) => raise(db, { ...tower, name: `Tower ${String.fromCharCode(65 + (k % 26))}${k}` }, T + k, "owner", "own", hand));
+    const at = new Map(builds.map((build) => [`${build.si},${build.sj}`, build]));
+    expect(at.size).toBe(30);
+    for (const build of builds) {
+      expect(islandCell(build.si, build.sj)).toBe(false);
+      const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([di, dj]) => [build.si + di!, build.sj + dj!] as const);
+      if (build.parent === "island") expect(sides.some(([i, j]) => islandCell(i, j))).toBe(true);
+      else {
+        const parent = builds.find((other) => other.id === build.parent)!;
+        expect(sides.some(([i, j]) => i === parent.si && j === parent.sj)).toBe(true);
+        // The path leads toward home, and its far end was built first.
+        expect(Math.hypot(parent.si, parent.sj)).toBeLessThan(Math.hypot(build.si, build.sj));
+        expect(builds.indexOf(parent)).toBeLessThan(builds.indexOf(build));
+      }
+    }
+    // Nearest home first: the eight sites beside the island fill before anything further out.
+    expect(builds.slice(0, 8).every((build) => build.parent === "island")).toBe(true);
+    expect(builds[8]!.parent).not.toBe("island");
+  });
+
+  it("a build's mesh carries its path, which ends at the neighbour it leads to", () => {
+    const db = openDatabase();
+    const builds = Array.from({ length: 9 }, (_, k) => raise(db, { ...tower, name: `Tower ${String.fromCharCode(65 + k)}` }, T + k, "owner", "own", hand));
+    const outer = builds[8]!;
+    const parent = builds.find((build) => build.id === outer.parent)!;
+    const bytes = meshBytes(db, outer.id)!;
+    expect(bytes.readUInt32LE(8)).toBeGreaterThan(outer.triangles);
+    // In the build's own frame the path reaches most of the way to the neighbour, 90 metres off.
+    const points = bytes.readUInt32LE(4);
+    let reach = 0;
+    for (let i = 0; i < points; i += 1) reach = Math.max(reach, Math.hypot(bytes.readFloatLE(44 + i * 12), bytes.readFloatLE(44 + i * 12 + 8)));
+    expect(reach).toBeGreaterThan(FORGE.site - parent.radius);
+    expect(reach).toBeLessThan(FORGE.site);
+    // Changing the neighbour changes the path, so the world is told to fetch this build again.
+    const before = revOf(db, outer);
+    reshape(db, parent.id, { ...tower, name: "Wider", parts: [{ ...tower.parts[0], from: { shape: "block", width: 20 } }] }, T + 50, hand);
+    expect(revOf(db, getBuild(db, outer.id)!)).not.toBe(before);
+    expect(meshBytes(db, outer.id)!.equals(bytes)).toBe(false);
+  });
+
+  it("nothing is taken down if that would cut other builds off from her island", () => {
+    const db = openDatabase();
+    const builds = Array.from({ length: 9 }, (_, k) => raise(db, { ...tower, name: `Tower ${String.fromCharCode(65 + k)}` }, T + k, "owner", "own", hand));
+    const outer = builds[8]!;
+    const holds = builds.find((build) => build.id === outer.parent)!;
+    // Take down every root except the one the outer build hangs from, so it is the only way home.
+    for (const build of builds.slice(0, 8)) {
+      if (build.id === holds.id) continue;
+      const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([di, dj]) => build.si + di! === outer.si && build.sj + dj! === outer.sj);
+      if (sides) remove(db, build.id, T + 20);
+    }
+    expect(() => remove(db, holds.id, T + 30)).toThrow("FORGE_HOLDS_PATH");
+    expect(() => undo(db, holds.id, T + 30, hand)).toThrow("FORGE_HOLDS_PATH");
+    expect(getBuild(db, holds.id)?.status).toBe("standing");
+    // Once the outer build is gone, the one that held its path can come down.
+    remove(db, outer.id, T + 40);
+    expect(remove(db, holds.id, T + 50).status).toBe("removed");
+  });
+
+  it("a build whose neighbour comes down is given a path to another", () => {
+    const db = openDatabase();
+    const builds = Array.from({ length: 10 }, (_, k) => raise(db, { ...tower, name: `Tower ${String.fromCharCode(65 + k)}` }, T + k, "owner", "own", hand));
+    const child = builds.find((build) => build.parent !== "island" && [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([di, dj]) => builds.some((other) => other.si === build.si + di! && other.sj === build.sj + dj!)).length >= 2);
+    if (!child) return;
+    const old = child.parent;
+    remove(db, old, T + 60);
+    const now = getBuild(db, child.id)!;
+    expect(now.parent).not.toBe(old);
+    expect(now.status).toBe("standing");
   });
 
   it("she builds when it is due, at most a few a day, and not when the creative switch is off", () => {

@@ -5,6 +5,7 @@ import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
 import { glowColor, noteSelf } from "../form/self";
 import { considerForge, designRequest, forgeDue, standing } from "../forge/store";
+import { growAround } from "../world/land";
 import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
 import { printfulConfigured } from "../fulfillment/printful";
@@ -304,6 +305,8 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       : lived;
     const built = considerCreative(db, minded, now);
     const grew = considerGrowth(db, built, now);
+    // The whole ring is not free because someone holds land in it. She still grows: one free chunk that touches hers.
+    if (grew && !grew.ok && grew.reason === "HELD") growAround(db, now);
     if (grew?.ok) {
       lived = remember(lived, {
         id: `claim-${grew.radius}-${now}`,

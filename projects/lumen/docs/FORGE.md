@@ -4,7 +4,14 @@ The forge is the part of the engine Zoora builds her world with. It is written f
 
 ## Where things stand
 
-Her island is her sanctuary and is left as it is. Everything she raises with the forge stands around it, each build on its own floating islet. Sites are on rings, far enough apart that no build can touch another or the island.
+Her island is her sanctuary and is left as it is. Everything she raises with the forge stands around it, each build on its own floating islet. Sites are 90 metres apart, so no build can touch another or the island.
+
+Her land grows outward and stays in one piece:
+
+- A new build may only go beside her island or beside something she has already built. Nearest home first.
+- Every build is joined to that neighbour by a path: an arched deck with a line of her light.
+- Nothing may be taken down if that would cut another build off from her island. A build whose neighbour comes down is given a path to another.
+- Every site is on land she holds.
 
 ## The three shaping tools
 

@@ -771,7 +771,7 @@ function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds:
   const seen = new Set<string>();
   for (const build of builds) {
     seen.add(build.id);
-    const key = `${build.version}:${look.map((item) => item.color).join("")}`;
+    const key = `${build.rev}:${look.map((item) => item.color).join("")}`;
     let group = pieces.get(build.id);
     if (!group || group.userData.key !== key) {
       if (group) scene.remove(group);
@@ -793,7 +793,7 @@ function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds:
 
 async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][number], look: PublicWorld["look"], key: string): Promise<void> {
   try {
-    const response = await fetch(`/api/forge/${build.id}?v=${build.version}`);
+    const response = await fetch(`/api/forge/${build.id}?v=${encodeURIComponent(build.rev)}`);
     if (!response.ok) return;
     const bytes = await response.arrayBuffer();
     const head = new DataView(bytes);

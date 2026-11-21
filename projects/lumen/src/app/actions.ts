@@ -15,6 +15,7 @@ import { decideVenture, getVenture, launchVenture, proposeVenture, setVentureSta
 import { mergeVentures } from "../economy/merge";
 import { compose, IDEA_KINDS, type IdeaKind } from "../forge/ideas";
 import { raise, remove as removeBuild, reshape, undo as undoBuildStep } from "../forge/store";
+import { grantPlot } from "../world/land";
 import { blankPlan, getPlan, savePlan, setCheck, TEXT_FIELDS, type CostLine } from "../economy/plans";
 import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, printFacts, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
 import { listShop, shopCheckoutOpen } from "../shop/store";
@@ -560,4 +561,12 @@ export async function forgeRemoveAction(form: FormData) {
 
 export async function forgeModelAction(form: FormData) {
   await forgeStep(() => setFlag(getEngine().db, "forge_model", form.get("on") === "0" ? "0" : "1"));
+}
+
+/** The owner records a plot for another holder by hand. The same rule applies as for any sale: never her land, her buffer or her lanes. */
+export async function landGrantAction(form: FormData) {
+  await forgeStep((now) => {
+    const result = grantPlot(getEngine().db, Number(text(form, "cx")), Number(text(form, "cy")), text(form, "holder"), now);
+    if (!result.ok) throw new Error(`FORGE_LAND_${result.reason}`);
+  });
 }

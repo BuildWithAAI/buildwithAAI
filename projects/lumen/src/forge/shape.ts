@@ -402,3 +402,25 @@ export function islet(radius: number, hand: Hand, seed: number): Mesh {
   }
   return mesh;
 }
+
+/**
+ * The path between two pieces of her land: an arched deck with a line of her light along it. Every
+ * build is joined by one of these to the land it grew from, so nothing she raises stands alone.
+ */
+export function causeway(from: Vec3, to: Vec3, hand: Hand): Mesh {
+  const mesh = emptyMesh();
+  const span = Math.hypot(to[0] - from[0], to[2] - from[2]);
+  if (span < 0.5) return mesh;
+  const arch = Math.min(6, span * 0.07);
+  const points: Vec3[] = [0, 0.25, 0.5, 0.75, 1].map((t) => [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t + arch * Math.sin(Math.PI * t), from[2] + (to[2] - from[2]) * t]);
+  const lay = (part: Mesh) => {
+    const base = mesh.positions.length / 3;
+    mesh.positions.push(...part.positions);
+    for (const index of part.indices) mesh.indices.push(index + base);
+    mesh.materials.push(...part.materials);
+  };
+  const rings = clamp(Math.round(span / 2.5), 12, 60);
+  lay(loft({ through: points, from: { shape: "block", width: 3.4, depth: 0.5, soft: 0.5 }, rings, segments: 12, cap: "flat", hand: 0 }, id("stone"), hand));
+  lay(loft({ through: points.map(([x, y, z]) => [x, y + 0.42, z] as Vec3), from: { shape: "round", width: 0.32 }, rings, segments: 6, cap: "flat", hand: 0 }, id("glow"), hand));
+  return mesh;
+}

@@ -1,7 +1,7 @@
 import { currentStyle } from "../form/self";
 import { lookFrom } from "../forge/hand";
 import { MATERIALS } from "../forge/mesh";
-import { standing } from "../forge/store";
+import { revOf, standing } from "../forge/store";
 import { glowColor } from "../form/self";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
@@ -420,7 +420,7 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
       twist: build.params.twist,
       form: build.params.form,
     })),
-    forge: standing(db).map((build) => ({ id: build.id, name: build.name, version: build.version, x: build.x, z: build.z, yaw: build.yaw, lift: build.lift })),
+    forge: standing(db).map((build) => ({ id: build.id, name: build.name, version: build.version, rev: revOf(db, build), x: build.x, z: build.z, yaw: build.yaw, lift: build.lift })),
     look: (() => {
       const look = lookFrom(currentStyle());
       return MATERIALS.map((name) => ({ name, color: look[name].color, emissive: look[name].emissive, alpha: look[name].alpha }));

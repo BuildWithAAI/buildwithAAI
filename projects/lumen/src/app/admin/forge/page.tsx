@@ -7,7 +7,9 @@ import { IDEA_KINDS } from "../../../forge/ideas";
 import { LIMITS } from "../../../forge/recipe";
 import { FORGE, RECIPE_GUIDE, standing } from "../../../forge/store";
 import { getEngine } from "../../../server/engine";
-import { forgeIdeaAction, forgeModelAction, forgeRecipeAction, forgeRemoveAction, forgeUndoAction } from "../../actions";
+import { landDesk } from "../../../world/land";
+import { CLAIM_BUFFER } from "../../../world/territoryRules";
+import { forgeIdeaAction, forgeModelAction, forgeRecipeAction, forgeRemoveAction, forgeUndoAction, landGrantAction } from "../../actions";
 
 export default async function ForgeDesk({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const query = await searchParams;
@@ -20,6 +22,7 @@ export default async function ForgeDesk({ searchParams }: { searchParams: Promis
   if (!authed || !ownerRouteOpen("/admin", authed)) redirect("/admin/login");
   const builds = standing(engine.db).reverse();
   const model = flag(engine.db, "forge_model", "1") === "1";
+  const land = landDesk(engine.db, Date.now());
   return (
     <div className="grid">
       <section className="card" style={{ gridColumn: "1 / -1" }}>
@@ -37,7 +40,7 @@ export default async function ForgeDesk({ searchParams }: { searchParams: Promis
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/api/forge/${build.id}/picture?v=${build.version}`} alt={build.name} style={{ width: "100%", height: "auto", borderRadius: "12px" }} />
           <h2>{build.name}</h2>
-          <p className="muted">{build.kind} · by {build.by} · version {build.version} · {build.triangles.toLocaleString("en-US")} triangles · site {build.site}</p>
+          <p className="muted">{build.kind} · by {build.by} · version {build.version} · {build.triangles.toLocaleString("en-US")} triangles · path leads to {build.parent === "island" ? "her island" : builds.find((other) => other.id === build.parent)?.name ?? "a neighbour"}</p>
           <form action={forgeUndoAction}>
             <input type="hidden" name="id" value={build.id} />
             <button type="submit">{build.version > 1 ? "Undo the last change" : "Take it down"}</button>
@@ -50,6 +53,26 @@ export default async function ForgeDesk({ searchParams }: { searchParams: Promis
           ) : null}
         </section>
       ))}
+      <section className="card">
+        <p className="kicker">Her land</p>
+        <table>
+          <tbody>
+            <tr><th>Her claim</th><td>{land.radius * 2 + 1} by {land.radius * 2 + 1} chunks around her island</td></tr>
+            <tr><th>Single chunks claimed beyond it</th><td>{land.reaches}</td></tr>
+            <tr><th>Plots held by others</th><td>{land.othersPlots}</td></tr>
+            <tr><th>Next whole ring</th><td>{land.ringFree ? "free" : "blocked by a plot, so she grows chunk by chunk"}</td></tr>
+            <tr><th>Has land to claim</th><td>{land.canGrow ? "yes" : "no"}</td></tr>
+          </tbody>
+        </table>
+        <p className="muted">Nobody else may hold her land, the {CLAIM_BUFFER} chunks around it, or the four lanes that run from her home to the edge of the world. So she can never be surrounded.</p>
+        <form action={landGrantAction}>
+          <p className="muted">Record a plot for another holder. No payment is taken here.</p>
+          <label>Chunk across <input name="cx" required inputMode="numeric" pattern="-?[0-9]{1,4}" /></label>
+          <label>Chunk down <input name="cy" required inputMode="numeric" pattern="-?[0-9]{1,4}" /></label>
+          <label>Holder <input name="holder" required pattern="[a-z0-9][a-z0-9-]{1,39}" placeholder="agent-name" /></label>
+          <button type="submit">Record the plot</button>
+        </form>
+      </section>
       <section className="card">
         <p className="kicker">Raise one of her known ideas</p>
         <form action={forgeIdeaAction}>
