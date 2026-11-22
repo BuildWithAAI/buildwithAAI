@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 8365d71
+title: AUDUSD is in her book, on paper, on the broker's own prices.
+summary: Her forex rules have a book of their own. One trade is 0.01 lot and a limit order, the book puts her stop 30 pips away where three dollars is lost, and the target is hers. It trades on paper against the broker's bid and ask, read by a small bridge on the owner's computer that cannot trade. The bridge has not met a real MetaTrader terminal yet, and nothing sends an order to a broker.
+date: 2026-11-22T16:46:14Z
+image:
+
+---
 sha: 67597c8
 title: Her trading rules are in the book.
 summary: Every trade is three dollars and a limit order, with a stop and a target she sets before she enters. The engine watches her orders and sells at the stop with no say from her. No setting has to be typed in, and live her money is her limit. Nothing places an order yet, so this is rules and a book, not trading.
