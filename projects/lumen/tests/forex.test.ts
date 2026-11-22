@@ -1,39 +1,75 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { openDatabase, setFlag } from "../src/db/db";
+import { flag, openDatabase, setFlag } from "../src/db/db";
+import { setLadderMode } from "../src/economy/ladder";
 import { TRADE_RULES, dailyLossCents } from "../src/trading/book";
-import { FX_PAIRS, FX_RULES, activeFxOrders, evaluateFx, fetchFxFeed, fxBridgeUrl, fxRules, fxTick, getFxOrder, parseFxFeed, placeFxOrder, pointsToCents, stopPoints, watchFx, type FxFeed, type FxOrder } from "../src/trading/forex";
+import { FX_PAIRS, FX_RULES, activeFxOrders, evaluateFx, fetchFxFeed, fxBridgeSet, fxBridgeUrl, fxRules, getFxOrder, parseFxFeed, placeFxOrder, pointsToCents, stopPoints, watchFx, type FxOrder } from "../src/trading/forex";
+import { grantLiveTrading } from "./helpers/ladder";
 
-// A Monday, 03:00 UTC. Prices are in points: 65000 is 0.65000, and ten points are a pip.
+// A Monday, 03:00 UTC. Prices on the wire are in points: 65000 is 0.65000, and ten points are a pip.
 const now = Date.UTC(2026, 10, 23, 3);
-const SPREAD = 8;
-
-type Step = [at: number, bid: number, ask?: number];
-function feed(steps: Step[], over: Partial<FxFeed> = {}): FxFeed {
-  return { pair: "AUDUSD", account: "demo", stopsLevel: 0, path: steps.map(([at, bid, ask]) => ({ at, bid, ask: ask ?? bid + SPREAD })), ...over };
-}
-const market = (bid: number, at = now) => feed([[at, bid]]);
+const MINUTE = 60_000;
+const secret = "bridge-".concat("s".repeat(40));
+const live = { LUMEN_FX_BRIDGE_URL: "http://127.0.0.1:8765", LUMEN_FX_BRIDGE_SECRET: secret };
+const hmac = (key: string, text: string) => createHmac("sha256", key).update(text).digest("hex");
 const order = (over: Partial<FxOrder> = {}): FxOrder => ({ pair: "AUDUSD", side: "buy", limit: "0.65000", target: "0.65600", thesis: "the price has held this level three times this week", influencedByVisitor: false, influencedByWeb: false, influencedByTelegram: false, ...over });
 const sale = (over: Partial<FxOrder> = {}): FxOrder => order({ side: "sell", limit: "0.65500", target: "0.65000", ...over });
 const idOf = (result: unknown) => (result as { id: string }).id;
-const NOTHING = { filled: 0, stopped: 0, taken: 0, expired: 0 };
+const NOTHING = { filled: 0, stopped: 0, taken: 0, closed: 0, cancelled: 0 };
+const noteOf = (db: ReturnType<typeof openDatabase>, id: string, step: "fill" | "exit") => (db.prepare("SELECT note FROM ledger_entries WHERE idempotency_key = ?").get(`fx:${id}:${step}`) as { note: string } | undefined)?.note;
 
-/** A buy at 0.65000 that has been filled: stop 0.64700, target 0.65600. */
-function long(db: ReturnType<typeof openDatabase>, env: Record<string, string> = {}): string {
-  const id = idOf(placeFxOrder(db, env, order(), market(65_100), now));
-  expect(fxTick(db, env, () => feed([[now + 1_000, 64_990]]), now + 1_000)).toMatchObject({ filled: 1 });
-  return id;
+type Ask = Record<string, unknown> & { instruction: string; id: string; nonce: string };
+type Held = { status: string; ticket: string; account: string; ask: Ask; fill?: number; exit?: number; exitWhy?: string; resultCents?: number; reason?: string };
+
+/**
+ * A bridge and a broker for these tests, in a few lines. It keeps what it was asked to place and answers
+ * the way `bridge/mt5_bridge.py` does, signed with the shared secret. The real bridge is run for real in
+ * `fxBridge.test.ts`. Nothing here is a price: these tests are about what the engine sends and writes down.
+ */
+function broker(account: "real" | "demo" = "real") {
+  const held = new Map<string, Held>();
+  const asked: Ask[] = [];
+  const say: { down: boolean; deaf: boolean; refuse: Record<string, unknown> | null; forge: ((answer: Record<string, unknown>) => { body: unknown; signature?: string | null }) | null } = { down: false, deaf: false, refuse: null, forge: null };
+  let ticket = 500_000;
+  const stand = (id: string): Record<string, unknown> => {
+    const order = held.get(id);
+    if (!order) return { ok: true, id, status: "none" };
+    const { ask, ...rest } = order;
+    return { ok: true, id, side: ask.side, centiLots: ask.centiLots, limit: ask.limit, stop: ask.stop, target: ask.target, ...rest };
+  };
+  const fetchImpl = (async (_url: string, init: { body: string; headers: Record<string, string> }) => {
+    const ask = JSON.parse(init.body) as Ask;
+    asked.push(ask);
+    if (say.down) throw new Error("ECONNREFUSED");
+    // The bridge lets in only what is signed with the secret.
+    expect(init.headers["x-lumen-signature"]).toBe(hmac(secret, init.body));
+    let answer: Record<string, unknown>;
+    if (ask.instruction === "place") {
+      if (say.refuse) answer = { ok: false, id: ask.id, ...say.refuse };
+      else {
+        // An id it has seen is never placed again.
+        if (!held.has(ask.id)) held.set(ask.id, { status: "resting", ticket: String((ticket += 1)), account, ask });
+        answer = stand(ask.id);
+      }
+      // The broker took it, and the answer never got back.
+      if (say.deaf) throw new Error("ETIMEDOUT");
+    } else if (ask.instruction === "cancel") {
+      const order = held.get(ask.id);
+      if (order && order.status === "resting") order.status = "cancelled";
+      answer = stand(ask.id);
+    } else if (ask.instruction === "state") answer = stand(ask.id);
+    else answer = { ok: false, reason: "INSTRUCTION" };
+    answer = { ...answer, nonce: ask.nonce };
+    const forged = say.forge?.(answer);
+    const text = JSON.stringify(forged ? forged.body : answer);
+    const signature = forged && forged.signature !== undefined ? forged.signature : hmac(secret, text);
+    return new Response(text, { status: answer.ok ? 200 : 409, headers: signature ? { "x-lumen-signature": signature } : {} });
+  }) as unknown as typeof fetch;
+  return { held, asked, say, fetchImpl, of: (id: string) => held.get(id)!, sent: (instruction: string) => asked.filter((ask) => ask.instruction === instruction) };
 }
 
-/** A sale at 0.65500 that has been filled: stop 0.65800, target 0.65000. */
-function short(db: ReturnType<typeof openDatabase>): string {
-  const id = idOf(placeFxOrder(db, {}, sale(), market(65_400), now));
-  expect(fxTick(db, {}, () => feed([[now + 1_000, 65_500]]), now + 1_000)).toMatchObject({ filled: 1 });
-  return id;
-}
-
-describe("forex: the owner's rules", () => {
-  it("is 0.01 lot with a stop where three dollars is lost, which on AUDUSD is 30 pips", () => {
+describe("forex: live, under the owner's rules", () => {
+  it("places a real order: 0.01 lot, a limit, a stop where three dollars is lost, and her own target", async () => {
     expect(FX_PAIRS.AUDUSD).toEqual({ digits: 5, contract: 100_000 });
     expect(fxRules({})).toEqual({ centiLots: 1, riskCents: 300 });
     expect(stopPoints("AUDUSD", fxRules({}))).toBe(300);
@@ -41,247 +77,343 @@ describe("forex: the owner's rules", () => {
     expect([pointsToCents("AUDUSD", 1, 10), pointsToCents("AUDUSD", 1, 300)]).toEqual([10, 300]);
 
     const db = openDatabase();
-    const bought = placeFxOrder(db, {}, order({ limit: "0.65" }), market(65_100), now);
-    expect(bought).toMatchObject({ ok: true, mode: "paper", status: "resting", stop: "0.64700" });
-    expect(getFxOrder(db, idOf(bought))).toMatchObject({ pair: "AUDUSD", side: "buy", lots: "0.01", riskCents: 300, limit: "0.65000", stop: "0.64700", target: "0.65600", status: "resting", fill: null, expiresAt: now + TRADE_RULES.restMs });
+    const desk = broker();
+    const placed = await placeFxOrder(db, live, order({ limit: "0.65" }), now, desk.fetchImpl);
+    expect(placed).toEqual({ ok: true, id: expect.stringMatching(/^fx-[0-9a-f]{8}$/), mode: "live", status: "resting", stop: "0.64700", ticket: "500001" });
+    const id = idOf(placed);
+    // What went to the bridge, whole. Her stop is the book's, 30 pips under her limit, and the loss there is the rule's three dollars.
+    expect(desk.asked).toEqual([{ instruction: "place", id, pair: "AUDUSD", side: "buy", centiLots: 1, limit: 65_000, stop: 64_700, target: 65_600, lossCents: 300, nonce: expect.stringMatching(/^[0-9a-f]{32}$/), issuedAtMs: now }]);
+    expect(getFxOrder(db, id)).toMatchObject({ mode: "live", status: "resting", ticket: "500001", pair: "AUDUSD", side: "buy", lots: "0.01", riskCents: 300, limit: "0.65000", stop: "0.64700", target: "0.65600", fill: null, note: null, expiresAt: now + TRADE_RULES.restMs });
 
     // A sale has its stop the same distance over her entry.
-    const sold = placeFxOrder(openDatabase(), {}, sale(), market(65_400), now);
-    expect(sold).toMatchObject({ ok: true, stop: "0.65800" });
+    const other = broker();
+    expect(await placeFxOrder(openDatabase(), live, sale(), now, other.fetchImpl)).toMatchObject({ ok: true, mode: "live", stop: "0.65800" });
+    expect(other.asked[0]).toMatchObject({ side: "sell", limit: 65_500, stop: 65_800, target: 65_000, lossCents: 300 });
   });
 
-  it("follows the figures the owner sets, and never loses more at the stop than he said", () => {
+  it("follows the figures the owner sets, and never loses more at the stop than he said", async () => {
     expect(fxRules({ LUMEN_FX_LOTS: "0.02", LUMEN_FX_RISK_USD: "5" })).toEqual({ centiLots: 2, riskCents: 500 });
     expect(fxRules({ LUMEN_FX_LOTS: "lots", LUMEN_FX_RISK_USD: "-3" })).toEqual({ centiLots: 1, riskCents: 300 });
     expect(fxRules({ LUMEN_FX_LOTS: "0", LUMEN_FX_RISK_USD: "0" })).toEqual({ centiLots: 1, riskCents: 300 });
     // Twice the size, half the distance. A bigger loss allowed, a wider stop.
     expect(stopPoints("AUDUSD", fxRules({ LUMEN_FX_LOTS: "0.02" }))).toBe(150);
     expect(stopPoints("AUDUSD", fxRules({ LUMEN_FX_RISK_USD: "5" }))).toBe(500);
-    // 0.07 lot does not divide three dollars evenly. The stop is rounded nearer, so the loss is $2.94 and not $3.01.
+    // 0.07 lot does not divide three dollars evenly. The stop is put nearer, so the loss is $2.94 and not $3.01.
     const odd = fxRules({ LUMEN_FX_LOTS: "0.07" });
     expect(stopPoints("AUDUSD", odd)).toBe(42);
     expect(pointsToCents("AUDUSD", odd.centiLots, stopPoints("AUDUSD", odd))).toBe(294);
+    const desk = broker();
+    await placeFxOrder(openDatabase(), { ...live, LUMEN_FX_LOTS: "0.07" }, order(), now, desk.fetchImpl);
+    expect(desk.asked[0]).toMatchObject({ centiLots: 7, stop: 64_958, lossCents: 294 });
     // A size so large that three dollars is less than one point away cannot be traded under the rule.
-    expect(placeFxOrder(openDatabase(), { LUMEN_FX_LOTS: "500" }, order(), market(65_100), now)).toEqual({ ok: false, reason: "FX_RULES" });
+    expect(await placeFxOrder(openDatabase(), { ...live, LUMEN_FX_LOTS: "500" }, order(), now, desk.fetchImpl)).toEqual({ ok: false, reason: "FX_RULES" });
   });
 
-  it("refuses an order that is not a proper one, and says why", () => {
+  it("refuses an order that is not a proper one, and the bridge is asked nothing", async () => {
     const db = openDatabase();
-    const place = (over: Partial<FxOrder>, env: Record<string, string> = {}, prices: FxFeed | null = market(65_100)) => placeFxOrder(db, env, order(over), prices, now);
-    for (const pair of ["EURUSD", "USDJPY", "audusd", "", "constructor"]) expect(place({ pair })).toEqual({ ok: false, reason: "FX_PAIR" });
-    expect(place({ side: "long" as "buy" })).toEqual({ ok: false, reason: "FX_SIDE" });
+    const desk = broker();
+    const place = (over: Partial<FxOrder>, env: Record<string, string> = {}) => placeFxOrder(db, { ...live, ...env }, order(over), now, desk.fetchImpl);
+    for (const pair of ["EURUSD", "USDJPY", "audusd", "", "constructor"]) expect(await place({ pair })).toEqual({ ok: false, reason: "FX_PAIR" });
+    expect(await place({ side: "long" as "buy" })).toEqual({ ok: false, reason: "FX_SIDE" });
     // A target has to be on the side she profits on, and a price has to be a plain price.
-    for (const bad of [{ target: "0.65000" }, { target: "0.64000" }, { limit: "1e3" }, { limit: "-0.65" }, { limit: "" }, { target: "soon" }, { limit: "0.650001" }, { limit: "0" }]) expect(place(bad)).toEqual({ ok: false, reason: "LEVELS" });
-    expect(placeFxOrder(db, {}, sale({ target: "0.65500" }), market(65_400), now)).toEqual({ ok: false, reason: "LEVELS" });
-    expect(placeFxOrder(db, {}, sale({ target: "0.66000" }), market(65_400), now)).toEqual({ ok: false, reason: "LEVELS" });
+    for (const bad of [{ target: "0.65000" }, { target: "0.64000" }, { limit: "1e3" }, { limit: "-0.65" }, { limit: "" }, { target: "soon" }, { limit: "0.650001" }, { limit: "0" }]) expect(await place(bad)).toEqual({ ok: false, reason: "LEVELS" });
+    expect(await placeFxOrder(db, live, sale({ target: "0.65500" }), now, desk.fetchImpl)).toEqual({ ok: false, reason: "LEVELS" });
+    expect(await placeFxOrder(db, live, sale({ target: "0.66000" }), now, desk.fetchImpl)).toEqual({ ok: false, reason: "LEVELS" });
     // A stop under zero is no stop.
-    expect(place({ limit: "0.00200", target: "0.00300" }, {}, market(250))).toEqual({ ok: false, reason: "LEVELS" });
-    expect(place({ thesis: "vibes" })).toEqual({ ok: false, reason: "NO_THESIS" });
-    for (const flagged of [{ influencedByVisitor: true }, { influencedByWeb: true }, { influencedByTelegram: true }]) expect(place(flagged)).toEqual({ ok: false, reason: "INFLUENCE" });
-    expect(place({}, { LUMEN_KILL_SWITCH: "true" })).toEqual({ ok: false, reason: "KILL_SWITCH" });
+    expect(await place({ limit: "0.00200", target: "0.00300" })).toEqual({ ok: false, reason: "LEVELS" });
+    expect(await place({ thesis: "vibes" })).toEqual({ ok: false, reason: "NO_THESIS" });
+    for (const flagged of [{ influencedByVisitor: true }, { influencedByWeb: true }, { influencedByTelegram: true }]) expect(await place(flagged)).toEqual({ ok: false, reason: "INFLUENCE" });
+    expect(await place({}, { LUMEN_KILL_SWITCH: "true" })).toEqual({ ok: false, reason: "KILL_SWITCH" });
     // A broker password has no business in this app. If one is in its settings, forex stays shut.
-    expect(place({}, { MT5_PASSWORD: "set" })).toEqual({ ok: false, reason: "KEY_IN_APP" });
-    expect(place({}, { LUMEN_MT5_PASSWORD: "set" })).toEqual({ ok: false, reason: "KEY_IN_APP" });
-    expect(activeFxOrders(db)).toEqual([]);
+    expect(await place({}, { MT5_PASSWORD: "set" })).toEqual({ ok: false, reason: "KEY_IN_APP" });
+    expect(await place({}, { LUMEN_MT5_PASSWORD: "set" })).toEqual({ ok: false, reason: "KEY_IN_APP" });
+    expect(desk.asked).toEqual([]);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM fx_orders").get()).toEqual({ n: 0 });
   });
 
-  it("is a limit order and nothing else: her price has to be better than the market, and there has to be a market", () => {
+  it("does not trade past the owner's own gates", async () => {
+    const desk = broker();
+    const place = (db: ReturnType<typeof openDatabase>, env: Record<string, string | undefined>, at = now, over: Partial<FxOrder> = {}) => placeFxOrder(db, env, order(over), at, desk.fetchImpl);
+    // With no bridge set up there is nowhere to send an order, and nothing else is done with it.
+    expect(fxBridgeSet({})).toBe(false);
+    expect(await place(openDatabase(), {})).toEqual({ ok: false, reason: "NO_BRIDGE" });
+    expect(await place(openDatabase(), { ...live, LUMEN_FX_BRIDGE_SECRET: "short" })).toEqual({ ok: false, reason: "NO_BRIDGE" });
+    expect(await place(openDatabase(), { ...live, LUMEN_FX_BRIDGE_URL: "http://example.com:8765" })).toEqual({ ok: false, reason: "NO_BRIDGE" });
+    // The public site with money still shut.
+    expect(await place(openDatabase(), { ...live, LUMEN_PUBLIC_MODE: "true" })).toEqual({ ok: false, reason: "PUBLIC_MODE" });
+    // An unclear word about a real order, or a tripped brake, stops her trading until the owner clears it.
+    const paused = openDatabase();
+    setFlag(paused, "trading_unknown", "1");
+    expect(await place(paused, live)).toEqual({ ok: false, reason: "UNKNOWN" });
+    const braked = openDatabase();
+    setFlag(braked, "econ_brake", "1");
+    expect(await place(braked, live)).toEqual({ ok: false, reason: "BRAKE" });
+    // If he has set the ladder to "earned", she trades once he has approved the step that opens trading, and no more than it allows.
+    const ladder = openDatabase();
+    setLadderMode(ladder, "earned");
+    expect(await place(ladder, live)).toEqual({ ok: false, reason: "LADDER" });
+    expect(await place(grantLiveTrading(openDatabase()), { ...live, LUMEN_FX_RISK_USD: "6000" }, now, { limit: "9.00000", target: "9.10000" })).toEqual({ ok: false, reason: "LADDER_CAP" });
+    expect(desk.asked).toEqual([]);
+    expect(await place(grantLiveTrading(openDatabase()), live)).toMatchObject({ ok: true, mode: "live" });
+    expect(await place(openDatabase(), { ...live, LUMEN_PUBLIC_MODE: "true", LUMEN_MONEY_LIVE: "true" })).toMatchObject({ ok: true, mode: "live" });
+    // The old live switch decides nothing. There is no paper, so there is nothing for it to switch from.
+    expect(evaluateFx({ LUMEN_TRADING_LIVE: "false" }, openDatabase(), order(), 300, now)).toEqual({ ok: true });
+  });
+
+  it("says why when the bridge or the broker will not take an order, and places nothing", async () => {
     const db = openDatabase();
-    // No price, an old price, or a price for another pair: no order.
-    expect(placeFxOrder(db, {}, order(), null, now)).toEqual({ ok: false, reason: "NO_QUOTE" });
-    expect(placeFxOrder(db, {}, order(), market(65_100, now - FX_RULES.freshMs - 1), now)).toEqual({ ok: false, reason: "NO_QUOTE" });
-    expect(placeFxOrder(db, {}, order(), { ...market(65_100), pair: "EURUSD" as "AUDUSD" }, now)).toEqual({ ok: false, reason: "NO_QUOTE" });
-    // The ask is 0.65008. A buy at it or over it would be a market order.
-    expect(placeFxOrder(db, {}, order({ limit: "0.65008" }), market(65_000), now)).toEqual({ ok: false, reason: "FX_LIMIT" });
-    expect(placeFxOrder(db, {}, order({ limit: "0.65100", target: "0.65700" }), market(65_000), now)).toEqual({ ok: false, reason: "FX_LIMIT" });
-    expect(placeFxOrder(db, {}, order({ limit: "0.65007" }), market(65_000), now)).toMatchObject({ ok: true, status: "resting" });
-    // The bid is 0.65400. A sale at it or under it would be a market order.
-    const other = openDatabase();
-    expect(placeFxOrder(other, {}, sale({ limit: "0.65400" }), market(65_400), now)).toEqual({ ok: false, reason: "FX_LIMIT" });
-    expect(placeFxOrder(other, {}, sale({ limit: "0.65300" }), market(65_400), now)).toEqual({ ok: false, reason: "FX_LIMIT" });
-    expect(placeFxOrder(other, {}, sale({ limit: "0.65401" }), market(65_400), now)).toMatchObject({ ok: true, status: "resting" });
-    // One trade in a pair at a time.
-    expect(placeFxOrder(other, {}, sale(), market(65_400), now + 1)).toEqual({ ok: false, reason: "ALREADY" });
-  });
-
-  it("keeps the distance the broker asks for between an order and the market, and between an order and its target", () => {
-    const near = feed([[now, 65_100]], { stopsLevel: 50 });
-    // The ask is 0.65108, so a buy has to wait at 0.65058 or under.
-    expect(placeFxOrder(openDatabase(), {}, order({ limit: "0.65059" }), near, now)).toEqual({ ok: false, reason: "FX_LIMIT" });
-    expect(placeFxOrder(openDatabase(), {}, order({ limit: "0.65058" }), near, now)).toMatchObject({ ok: true });
-    expect(placeFxOrder(openDatabase(), {}, order({ target: "0.65049" }), near, now)).toEqual({ ok: false, reason: "LEVELS" });
-    expect(placeFxOrder(openDatabase(), {}, order({ target: "0.65050" }), near, now)).toMatchObject({ ok: true });
-    // A broker that wants more room than her stop has cannot be traded under the rule.
-    expect(placeFxOrder(openDatabase(), {}, order(), feed([[now, 65_500]], { stopsLevel: 301 }), now)).toEqual({ ok: false, reason: "LEVELS" });
+    const desk = broker();
+    // Her limit was at the market. A limit order has to wait at a better price, and the bridge checks that against the live price.
+    desk.say.refuse = { reason: "FX_LIMIT", bid: 65_000, ask: 65_008 };
+    const first = await placeFxOrder(db, live, order(), now, desk.fetchImpl);
+    expect(first).toEqual({ ok: false, reason: "FX_LIMIT", id: expect.any(String) });
+    expect(getFxOrder(db, idOf(first))).toMatchObject({ status: "cancelled", note: "FX_LIMIT", ticket: null, closedAt: now });
+    desk.say.refuse = { reason: "BROKER_10016", brokerSays: "Invalid stops" };
+    const second = await placeFxOrder(db, live, order(), now + 1, desk.fetchImpl);
+    expect(getFxOrder(db, idOf(second))).toMatchObject({ status: "cancelled", note: "BROKER_10016 Invalid stops" });
+    desk.say.refuse = { reason: "the broker said <b>no</b>" };
+    expect(await placeFxOrder(db, live, order(), now + 2, desk.fetchImpl)).toMatchObject({ ok: false, reason: "REFUSED" });
+    expect(desk.held.size).toBe(0);
+    // A refusal is not an order. She may place another.
+    desk.say.refuse = null;
+    expect(await placeFxOrder(db, live, order(), now + 3, desk.fetchImpl)).toMatchObject({ ok: true, status: "resting" });
+    expect(await placeFxOrder(db, live, order(), now + 4, desk.fetchImpl)).toEqual({ ok: false, reason: "ALREADY" });
   });
 });
 
-describe("forex: what the book does with her order", () => {
-  it("fills a buy at her limit when the ask comes down to it, not when the bid does", () => {
+describe("forex: an order is never sent twice and never forgotten", () => {
+  it("keeps an order written as on its way when the bridge goes quiet, and places no other in the pair", async () => {
     const db = openDatabase();
-    const id = idOf(placeFxOrder(db, {}, order(), market(65_100), now));
-    // The bid is under her limit and the ask is not. Nobody will sell to her at 0.65000 yet.
-    expect(fxTick(db, {}, () => feed([[now + 1_000, 64_995]]), now + 1_000)).toEqual(NOTHING);
-    expect(fxTick(db, {}, () => null, now + 2_000)).toEqual(NOTHING);
-    expect(fxTick(db, {}, () => feed([[now + 3_000, 64_980]]), now + 3_000)).toEqual({ ...NOTHING, filled: 1 });
-    expect(getFxOrder(db, id)).toMatchObject({ status: "open", fill: "0.65000", filledAt: now + 3_000, exit: null, resultCents: null });
-    const row = db.prepare("SELECT note, amount_cents FROM ledger_entries WHERE idempotency_key = ?").get(`fx:${id}:fill`) as { note: string; amount_cents: number };
-    expect(row).toEqual({ note: "PAPER buy AUDUSD 0.01 lot at 0.65000. Stop 0.64700. Target 0.65600. Both were set before I entered. Not advice.", amount_cents: 0 });
+    const desk = broker();
+    desk.say.down = true;
+    const placed = await placeFxOrder(db, live, order(), now, desk.fetchImpl);
+    expect(placed).toEqual({ ok: false, reason: "UNKNOWN", id: expect.any(String) });
+    const id = idOf(placed);
+    expect(getFxOrder(db, id)).toMatchObject({ status: "sending", ticket: null });
+    expect(await placeFxOrder(db, live, order(), now + 1_000, desk.fetchImpl)).toEqual({ ok: false, reason: "ALREADY" });
+    // With the bridge still down a look changes nothing.
+    expect(await watchFx(db, live, now + MINUTE, desk.fetchImpl)).toEqual(NOTHING);
+    expect(getFxOrder(db, id)).toMatchObject({ status: "sending" });
+    // The bridge is back and has no record of it. It is given two minutes before it is taken as never having arrived.
+    desk.say.down = false;
+    expect(await watchFx(db, live, now + FX_RULES.lostMs - 1, desk.fetchImpl)).toEqual(NOTHING);
+    expect(await watchFx(db, live, now + FX_RULES.lostMs, desk.fetchImpl)).toEqual({ ...NOTHING, cancelled: 1 });
+    expect(getFxOrder(db, id)).toMatchObject({ status: "cancelled", note: "It never reached the broker." });
+    // In all of that the bridge was asked to place it exactly once.
+    expect(desk.sent("place")).toHaveLength(1);
+    expect(await placeFxOrder(db, live, order(), now + 3 * MINUTE, desk.fetchImpl)).toMatchObject({ ok: true });
   });
 
-  it("takes three dollars at the stop with no say from her, and more if the market jumps past it", () => {
+  it("finds an order the broker took when the answer never came back", async () => {
     const db = openDatabase();
-    const id = long(db);
-    expect(fxTick(db, {}, () => feed([[now + 2_000, 64_701]]), now + 2_000)).toEqual(NOTHING);
-    expect(fxTick(db, {}, () => feed([[now + 3_000, 64_700]]), now + 3_000)).toEqual({ ...NOTHING, stopped: 1 });
-    expect(getFxOrder(db, id)).toMatchObject({ status: "closed", exit: "0.64700", exitWhy: "stop", resultCents: -300, closedAt: now + 3_000 });
+    const desk = broker();
+    desk.say.deaf = true;
+    const placed = await placeFxOrder(db, live, order(), now, desk.fetchImpl);
+    expect(placed).toMatchObject({ ok: false, reason: "UNKNOWN" });
+    const id = idOf(placed);
+    desk.say.deaf = false;
+    expect(desk.of(id).status).toBe("resting");
+    expect(await watchFx(db, live, now + MINUTE, desk.fetchImpl)).toEqual(NOTHING);
+    expect(getFxOrder(db, id)).toMatchObject({ status: "resting", ticket: "500001", mode: "live", seenAt: now + MINUTE });
+    expect(desk.sent("place")).toHaveLength(1);
+  });
+
+  it("asks the bridge nothing when she has no order out", async () => {
+    const desk = broker();
+    expect(await watchFx(openDatabase(), live, now, desk.fetchImpl)).toEqual(NOTHING);
+    expect(desk.asked).toEqual([]);
+  });
+});
+
+describe("forex: the broker holds her order, and the book writes down what the broker did", () => {
+  it("records a fill and a stop in the broker's own figures", async () => {
+    const db = openDatabase();
+    const desk = broker();
+    const id = idOf(await placeFxOrder(db, live, order(), now, desk.fetchImpl));
+    expect(await watchFx(db, live, now + MINUTE, desk.fetchImpl)).toEqual(NOTHING);
+    expect(desk.asked[1]).toMatchObject({ instruction: "state", id });
+    // Her price came, and the broker filled her a little better than her limit.
+    Object.assign(desk.of(id), { status: "open", fill: 64_998 });
+    expect(await watchFx(db, live, now + 2 * MINUTE, desk.fetchImpl)).toEqual({ ...NOTHING, filled: 1 });
+    expect(getFxOrder(db, id)).toMatchObject({ status: "open", fill: "0.64998", filledAt: now + 2 * MINUTE, exit: null, resultCents: null });
+    expect(noteOf(db, id, "fill")).toBe("LIVE buy AUDUSD 0.01 lot at 0.64998. Stop 0.64700. Target 0.65600. Both were set before I entered, and the broker holds them. Not advice.");
+    expect(await watchFx(db, live, now + 3 * MINUTE, desk.fetchImpl)).toEqual(NOTHING);
+    // The market fell through her stop. The broker closed it, slipped by 0.3 of a pip, and took its commission.
+    Object.assign(desk.of(id), { status: "closed", exit: 64_697, exitWhy: "stop", resultCents: -304 });
+    expect(await watchFx(db, live, now + 4 * MINUTE, desk.fetchImpl)).toEqual({ ...NOTHING, stopped: 1 });
+    expect(getFxOrder(db, id)).toMatchObject({ status: "closed", fill: "0.64998", exit: "0.64697", exitWhy: "stop", resultCents: -304, closedAt: now + 4 * MINUTE });
+    expect(noteOf(db, id, "exit")).toBe("LIVE AUDUSD closed at 0.64697, at its stop. Result -$3.04, the broker's figure. Not advice.");
     expect(activeFxOrders(db)).toEqual([]);
-    expect((db.prepare("SELECT note FROM ledger_entries WHERE idempotency_key = ?").get(`fx:${id}:exit`) as { note: string }).note).toBe("PAPER AUDUSD closed at 0.64700, at its stop. Result -$3.00. Not advice.");
-
-    // Over a weekend the price opens 5 pips under her stop. She is out at that price, and it cost $3.50.
-    const gap = openDatabase();
-    const jumped = long(gap);
-    expect(fxTick(gap, {}, () => feed([[now + 2_000, 64_650]]), now + 2_000)).toEqual({ ...NOTHING, stopped: 1 });
-    expect(getFxOrder(gap, jumped)).toMatchObject({ exit: "0.64650", exitWhy: "stop", resultCents: -350 });
+    // A closed trade is not asked about again.
+    const asked = desk.asked.length;
+    expect(await watchFx(db, live, now + 5 * MINUTE, desk.fetchImpl)).toEqual(NOTHING);
+    expect(desk.asked).toHaveLength(asked);
+    // No market order, no change to her stop and no close was ever asked of the bridge.
+    expect([...new Set(desk.asked.map((ask) => ask.instruction))].sort()).toEqual(["place", "state"]);
   });
 
-  it("takes the target at the target, and no more than the target", () => {
+  it("records a target, a trade that filled and closed between two looks, and a close by the owner's hand", async () => {
     const db = openDatabase();
-    const id = long(db);
-    expect(fxTick(db, {}, () => feed([[now + 2_000, 65_599]]), now + 2_000)).toEqual(NOTHING);
-    expect(fxTick(db, {}, () => feed([[now + 3_000, 65_640]]), now + 3_000)).toEqual({ ...NOTHING, taken: 1 });
-    expect(getFxOrder(db, id)).toMatchObject({ status: "closed", exit: "0.65600", exitWhy: "target", resultCents: 600 });
-  });
+    const desk = broker();
+    const id = idOf(await placeFxOrder(db, live, sale(), now, desk.fetchImpl));
+    // One look later it has been filled and has reached her target already.
+    Object.assign(desk.of(id), { status: "closed", fill: 65_500, exit: 65_000, exitWhy: "target", resultCents: 500 });
+    expect(await watchFx(db, live, now + MINUTE, desk.fetchImpl)).toEqual({ ...NOTHING, filled: 1, taken: 1 });
+    expect(getFxOrder(db, id)).toMatchObject({ status: "closed", fill: "0.65500", exit: "0.65000", exitWhy: "target", resultCents: 500 });
+    expect(noteOf(db, id, "fill")).toContain("LIVE sell AUDUSD 0.01 lot at 0.65500");
+    expect(noteOf(db, id, "exit")).toBe("LIVE AUDUSD closed at 0.65000, at its target. Result +$5.00, the broker's figure. Not advice.");
 
-  it("mirrors all of it for a sale: filled on the bid, stopped and taken on the ask", () => {
-    const db = openDatabase();
-    const id = idOf(placeFxOrder(db, {}, sale(), market(65_400), now));
-    // The ask is at her limit and the bid is not. Nobody will buy from her at 0.65500 yet.
-    expect(fxTick(db, {}, () => feed([[now + 1_000, 65_492]]), now + 1_000)).toEqual(NOTHING);
-    expect(fxTick(db, {}, () => feed([[now + 2_000, 65_510]]), now + 2_000)).toEqual({ ...NOTHING, filled: 1 });
-    expect(getFxOrder(db, id)).toMatchObject({ status: "open", fill: "0.65500", stop: "0.65800" });
-    // She buys back at the ask. The bid is under her stop and the ask is at it: she is out.
-    expect(fxTick(db, {}, () => feed([[now + 3_000, 65_791]]), now + 3_000)).toEqual(NOTHING);
-    expect(fxTick(db, {}, () => feed([[now + 4_000, 65_792]]), now + 4_000)).toEqual({ ...NOTHING, stopped: 1 });
-    expect(getFxOrder(db, id)).toMatchObject({ exit: "0.65800", exitWhy: "stop", resultCents: -300 });
-
-    const won = openDatabase();
-    const taken = short(won);
-    expect(fxTick(won, {}, () => feed([[now + 2_000, 64_993]]), now + 2_000)).toEqual(NOTHING);
-    expect(fxTick(won, {}, () => feed([[now + 3_000, 64_950]]), now + 3_000)).toEqual({ ...NOTHING, taken: 1 });
-    expect(getFxOrder(won, taken)).toMatchObject({ exit: "0.65000", exitWhy: "target", resultCents: 500 });
-  });
-
-  it("misses nothing between two looks, and plays what happened in the order it happened", () => {
-    const db = openDatabase();
-    const id = idOf(placeFxOrder(db, {}, order(), market(65_100), now));
-    // One look, a minute later. In that minute the price came to her limit, ran to her target, and then fell through her stop.
-    const minute: Step[] = [[now - 10_000, 64_900], [now + 5_000, 65_050], [now + 20_000, 64_990], [now + 30_000, 65_300], [now + 40_000, 65_610], [now + 50_000, 64_000]];
-    expect(fxTick(db, {}, () => feed(minute), now + 60_000)).toEqual({ ...NOTHING, filled: 1, taken: 1 });
-    // The price from before she placed the order did not fill it. The fall after her target did not touch her.
-    expect(getFxOrder(db, id)).toMatchObject({ status: "closed", filledAt: now + 20_000, closedAt: now + 40_000, exit: "0.65600", exitWhy: "target", resultCents: 600 });
-    // The same prices looked at again change nothing.
-    expect(fxTick(db, {}, () => feed(minute), now + 61_000)).toEqual(NOTHING);
-
-    // The other way round: the stop came first.
-    const lost = openDatabase();
-    const stopped = idOf(placeFxOrder(lost, {}, order(), market(65_100), now));
-    expect(fxTick(lost, {}, () => feed([[now + 5_000, 64_990], [now + 10_000, 64_690], [now + 20_000, 65_700]]), now + 60_000)).toEqual({ ...NOTHING, filled: 1, stopped: 1 });
-    expect(getFxOrder(lost, stopped)).toMatchObject({ exit: "0.64690", exitWhy: "stop", resultCents: -310 });
-
-    // A spread blown wide open: the ask reaches her limit while the bid is already under her stop. Filled, and out, on the one price.
-    const wide = openDatabase();
-    const both = idOf(placeFxOrder(wide, {}, order(), market(65_100), now));
-    expect(fxTick(wide, {}, () => feed([[now + 5_000, 64_600, 64_990]]), now + 5_000)).toEqual({ ...NOTHING, filled: 1, stopped: 1 });
-    expect(getFxOrder(wide, both)).toMatchObject({ fill: "0.65000", exit: "0.64600", resultCents: -400 });
-
-    // An order still waiting remembers how far it has looked, so a later look starts from there.
+    const hand = openDatabase();
+    const other = broker();
+    const closed = idOf(await placeFxOrder(hand, live, order(), now, other.fetchImpl));
+    Object.assign(other.of(closed), { status: "open", fill: 65_000 });
+    await watchFx(hand, live, now + MINUTE, other.fetchImpl);
+    Object.assign(other.of(closed), { status: "closed", exit: 65_120, exitWhy: "other", resultCents: 120 });
+    expect(await watchFx(hand, live, now + 2 * MINUTE, other.fetchImpl)).toEqual({ ...NOTHING, closed: 1 });
+    expect(getFxOrder(hand, closed)).toMatchObject({ exitWhy: "other", resultCents: 120 });
+    expect(noteOf(hand, closed, "exit")).toBe("LIVE AUDUSD closed at 0.65120, not at its stop or its target. Result +$1.20, the broker's figure. Not advice.");
+    // A close with no figure from the broker yet is not written as closed.
     const waits = openDatabase();
-    const resting = idOf(placeFxOrder(waits, {}, order(), market(65_100), now));
-    fxTick(waits, {}, () => feed([[now + 5_000, 65_050], [now + 9_000, 65_060]]), now + 10_000);
-    expect(getFxOrder(waits, resting)).toMatchObject({ status: "resting", seenAt: now + 9_000 });
+    const slow = broker();
+    const pending = idOf(await placeFxOrder(waits, live, order(), now, slow.fetchImpl));
+    Object.assign(slow.of(pending), { status: "closed", fill: 65_000, exit: 64_700, exitWhy: "stop" });
+    expect(await watchFx(waits, live, now + MINUTE, slow.fetchImpl)).toEqual({ ...NOTHING, filled: 1 });
+    expect(getFxOrder(waits, pending)).toMatchObject({ status: "open", resultCents: null });
   });
 
-  it("cancels an order that has waited a day, and a price after its day is not for it", () => {
+  it("calls a practice account what it is, and counts only real losses against a daily limit", async () => {
     const db = openDatabase();
-    const id = idOf(placeFxOrder(db, {}, order(), market(65_100), now));
+    const desk = broker("demo");
+    const placed = await placeFxOrder(db, live, order(), now, desk.fetchImpl);
+    expect(placed).toMatchObject({ ok: true, mode: "demo" });
+    Object.assign(desk.of(idOf(placed)), { status: "closed", fill: 65_000, exit: 64_700, exitWhy: "stop", resultCents: -300 });
+    await watchFx(db, live, now + MINUTE, desk.fetchImpl);
+    expect(noteOf(db, idOf(placed), "exit")).toContain("DEMO AUDUSD closed at 0.64700");
+    expect([dailyLossCents(db, "live", now + MINUTE), dailyLossCents(db, "demo" as "live", now + MINUTE)]).toEqual([0, 300]);
+
+    // On the real account, with a daily limit of five dollars: three are lost, and another three at risk would pass it.
+    const real = openDatabase();
+    const money = broker();
+    const env = { ...live, LUMEN_TRADE_DAILY_LOSS_USD: "5" };
+    const lost = idOf(await placeFxOrder(real, env, order(), now, money.fetchImpl));
+    Object.assign(money.of(lost), { status: "closed", fill: 65_000, exit: 64_700, exitWhy: "stop", resultCents: -300 });
+    await watchFx(real, env, now + MINUTE, money.fetchImpl);
+    expect(dailyLossCents(real, "live", now + MINUTE)).toBe(300);
+    expect(await placeFxOrder(real, env, order(), now + 2 * MINUTE, money.fetchImpl)).toEqual({ ok: false, reason: "DAILY_LOSS" });
+    expect(await placeFxOrder(real, env, order(), now + 86_400_000, money.fetchImpl)).toMatchObject({ ok: true });
+    // With no limit set there is none.
+    expect(await placeFxOrder(real, live, order({ pair: "AUDUSD" }), now + 86_400_000 + 1, money.fetchImpl)).toEqual({ ok: false, reason: "ALREADY" });
+  });
+
+  it("pulls an order that has waited a day, and keeps the trade if it was filled in that moment", async () => {
+    const db = openDatabase();
+    const desk = broker();
+    const id = idOf(await placeFxOrder(db, live, order(), now, desk.fetchImpl));
     const end = now + TRADE_RULES.restMs;
-    expect(fxTick(db, {}, () => feed([[end + 1, 64_900]]), end + 60_000)).toEqual({ ...NOTHING, expired: 1 });
+    expect(await watchFx(db, live, end - 1, desk.fetchImpl)).toEqual(NOTHING);
+    expect(await watchFx(db, live, end, desk.fetchImpl)).toEqual({ ...NOTHING, cancelled: 1 });
+    expect(desk.asked[desk.asked.length - 1]).toMatchObject({ instruction: "cancel", id });
     expect(getFxOrder(db, id)).toMatchObject({ status: "cancelled", fill: null });
-    // With no prices to be had at all it is still cancelled.
-    const quiet = openDatabase();
-    const silent = idOf(placeFxOrder(quiet, {}, order(), market(65_100), now));
-    expect(fxTick(quiet, {}, () => null, end)).toEqual({ ...NOTHING, expired: 1 });
-    expect(getFxOrder(quiet, silent)).toMatchObject({ status: "cancelled" });
-    // Her price came a second before the day ran out, and the engine looked five minutes late. It was filled in time, so it is a trade.
+    expect(desk.of(id).status).toBe("cancelled");
+
     const late = openDatabase();
-    const made = idOf(placeFxOrder(late, {}, order(), market(65_100), now));
-    expect(fxTick(late, {}, () => feed([[end - 1_000, 64_900], [end + 1_000, 64_950]]), end + 300_000)).toEqual({ ...NOTHING, filled: 1 });
-    expect(getFxOrder(late, made)).toMatchObject({ status: "open", filledAt: end - 1_000 });
+    const other = broker();
+    const filled = idOf(await placeFxOrder(late, live, order(), now, other.fetchImpl));
+    Object.assign(other.of(filled), { status: "open", fill: 65_000 });
+    expect(await watchFx(late, live, end, other.fetchImpl)).toEqual({ ...NOTHING, filled: 1 });
+    expect(getFxOrder(late, filled)).toMatchObject({ status: "open", fill: "0.65000" });
   });
 
-  it("does nothing while trading is stopped, and does not act afterwards on what happened meanwhile", () => {
+  it("pulls her waiting orders when trading is stopped, and leaves an open trade with its stop and its target", async () => {
     const db = openDatabase();
-    const id = idOf(placeFxOrder(db, {}, order(), market(65_100), now));
-    const came: Step[] = [[now + 30_000, 64_900]];
-    expect(fxTick(db, { LUMEN_KILL_SWITCH: "true" }, () => feed(came), now + 60_000)).toEqual(NOTHING);
-    expect(getFxOrder(db, id)).toMatchObject({ status: "resting", seenAt: now + 60_000 });
-    expect(fxTick(db, {}, () => feed(came), now + 90_000)).toEqual(NOTHING);
-    // An unclear answer from a signer pauses all her trading until the owner clears it. Her price coming does not fill her.
-    setFlag(db, "trading_unknown", "1");
-    expect(fxTick(db, {}, () => feed([[now + 100_000, 64_900]]), now + 100_000)).toEqual(NOTHING);
-    setFlag(db, "trading_unknown", "0");
-    expect(fxTick(db, {}, () => feed([[now + 100_000, 64_900]]), now + 110_000)).toEqual(NOTHING);
-    expect(fxTick(db, {}, () => feed([[now + 120_000, 64_900]]), now + 120_000)).toEqual({ ...NOTHING, filled: 1 });
-    // The desk's own kill does the same as the setting.
-    setFlag(db, "trading_kill", "1");
-    expect(fxTick(db, {}, () => feed([[now + 130_000, 64_000]]), now + 130_000)).toEqual(NOTHING);
-    expect(getFxOrder(db, id)).toMatchObject({ status: "open" });
-    expect(placeFxOrder(openDatabase(), {}, order(), market(65_100), now)).toMatchObject({ ok: true });
-  });
+    const desk = broker();
+    const id = idOf(await placeFxOrder(db, live, order(), now, desk.fetchImpl));
+    expect(await watchFx(db, { ...live, LUMEN_KILL_SWITCH: "true" }, now + MINUTE, desk.fetchImpl)).toEqual({ ...NOTHING, cancelled: 1 });
+    expect(desk.asked[desk.asked.length - 1]).toMatchObject({ instruction: "cancel", id });
+    expect(desk.of(id).status).toBe("cancelled");
 
-  it("keeps one daily loss limit over coins and forex, if the owner sets one, and none if he does not", () => {
-    const db = openDatabase();
-    const env = { LUMEN_TRADE_DAILY_LOSS_USD: "5" };
-    long(db, env);
-    fxTick(db, env, () => feed([[now + 2_000, 64_700]]), now + 2_000);
-    expect([dailyLossCents(db, "paper", now), dailyLossCents(db, "live", now), dailyLossCents(db, "paper", now + 86_400_000)]).toEqual([300, 0, 0]);
-    // Three dollars are lost today. Another three at risk would pass his five.
-    expect(evaluateFx(env, db, order(), 300, now + 3_000)).toEqual({ ok: false, reason: "DAILY_LOSS" });
-    expect(placeFxOrder(db, env, order(), market(65_100, now + 3_000), now + 3_000)).toEqual({ ok: false, reason: "DAILY_LOSS" });
-    expect(placeFxOrder(db, env, order(), market(65_100, now + 86_400_000), now + 86_400_000)).toMatchObject({ ok: true });
-    const free = openDatabase();
-    long(free);
-    fxTick(free, {}, () => feed([[now + 2_000, 64_700]]), now + 2_000);
-    expect(placeFxOrder(free, {}, order(), market(65_100, now + 3_000), now + 3_000)).toMatchObject({ ok: true, mode: "paper" });
-  });
-
-  it("stays on paper whatever the live switch says", () => {
-    expect(evaluateFx({ LUMEN_TRADING_LIVE: "true" }, openDatabase(), order(), 300, now)).toEqual({ ok: true, mode: "paper" });
+    const held = openDatabase();
+    const other = broker();
+    const open = idOf(await placeFxOrder(held, live, order(), now, other.fetchImpl));
+    Object.assign(other.of(open), { status: "open", fill: 65_000 });
+    await watchFx(held, live, now + MINUTE, other.fetchImpl);
+    setFlag(held, "trading_kill", "1");
+    expect(await watchFx(held, live, now + 2 * MINUTE, other.fetchImpl)).toEqual(NOTHING);
+    expect(other.sent("cancel")).toEqual([]);
+    expect(getFxOrder(held, open)).toMatchObject({ status: "open" });
+    // Its close is still written down while trading is stopped: the broker closed it, not her.
+    Object.assign(other.of(open), { status: "closed", exit: 65_600, exitWhy: "target", resultCents: 600 });
+    expect(await watchFx(held, live, now + 3 * MINUTE, other.fetchImpl)).toEqual({ ...NOTHING, taken: 1 });
   });
 });
 
-describe("forex: prices come only from her own bridge", () => {
-  const secret = "bridge-".concat("s".repeat(40));
-  const env = { LUMEN_FX_BRIDGE_URL: "http://127.0.0.1:8765", LUMEN_FX_BRIDGE_SECRET: secret };
-  const answerFor = (ask: Record<string, unknown>, over: Record<string, unknown> = {}) => ({ ok: true, nonce: ask.nonce, pair: "AUDUSD", symbol: "AUDUSD.s", digits: 5, contract: 100_000, stopsLevel: 0, account: "demo", path: [[now - 500, 65_100, 65_108]], ...over });
-  type Reply = { status?: number; body: unknown; signature?: string | null };
+describe("forex: only her own bridge is believed", () => {
+  it("writes down nothing from an answer that is unsigned, signed by another, or an answer to another question", async () => {
+    const db = openDatabase();
+    const desk = broker();
+    const id = idOf(await placeFxOrder(db, live, order(), now, desk.fetchImpl));
+    const jackpot = (answer: Record<string, unknown>) => ({ ...answer, status: "closed", fill: 65_000, exit: 99_999, exitWhy: "target", resultCents: 3_499_900 });
+    const forgeries: ((answer: Record<string, unknown>) => { body: unknown; signature?: string | null })[] = [
+      (answer) => ({ body: jackpot(answer), signature: null }),
+      (answer) => ({ body: jackpot(answer), signature: hmac("another secret entirely, long enough", JSON.stringify(jackpot(answer))) }),
+      (answer) => ({ body: { ...jackpot(answer), nonce: "0".repeat(32) } }),
+      (answer) => ({ body: { ...jackpot(answer), id: "fx-00000000" } }),
+      () => ({ body: "not json" }),
+    ];
+    for (const forge of forgeries) {
+      desk.say.forge = forge;
+      expect(await watchFx(db, live, now + MINUTE, desk.fetchImpl)).toEqual(NOTHING);
+      expect(getFxOrder(db, id)).toMatchObject({ status: "resting", exit: null, resultCents: null });
+    }
+    // The same is so when she places an order: an unsigned yes is not a yes.
+    const other = openDatabase();
+    desk.say.forge = (answer) => ({ body: answer, signature: null });
+    expect(await placeFxOrder(other, live, order(), now, desk.fetchImpl)).toMatchObject({ ok: false, reason: "UNKNOWN" });
+    expect(activeFxOrders(other)[0]).toMatchObject({ status: "sending" });
+  });
 
-  function bridge(reply: (ask: Record<string, unknown>) => Reply) {
-    const calls: { url: string; body: string; headers: Record<string, string> }[] = [];
-    const fetchImpl = (async (url: string, init: { body: string; headers: Record<string, string> }) => {
-      calls.push({ url: String(url), body: init.body, headers: init.headers });
-      const out = reply(JSON.parse(init.body) as Record<string, unknown>);
-      const text = typeof out.body === "string" ? out.body : JSON.stringify(out.body);
-      const signature = out.signature === undefined ? createHmac("sha256", secret).update(text).digest("hex") : out.signature;
-      return new Response(text, { status: out.status ?? 200, headers: signature ? { "x-lumen-signature": signature } : {} });
-    }) as unknown as typeof fetch;
-    return { calls, fetchImpl };
-  }
+  it("stops her trading and says so when the broker holds something other than she sent", async () => {
+    // The bridge read her order back with another stop and could not pull it.
+    const db = openDatabase();
+    const desk = broker();
+    desk.say.refuse = { reason: "READBACK_STUCK", what: "stop", ticket: "777" };
+    const stuck = await placeFxOrder(db, live, order(), now, desk.fetchImpl);
+    expect(stuck).toMatchObject({ ok: false, reason: "READBACK_STUCK" });
+    expect(flag(db, "trading_unknown")).toBe("1");
+    expect(getFxOrder(db, idOf(stuck))).toMatchObject({ status: "sending", note: expect.stringContaining("Look at the terminal") });
+    desk.say.refuse = null;
+    expect(await placeFxOrder(db, live, order(), now + 1, desk.fetchImpl)).toEqual({ ok: false, reason: "UNKNOWN" });
 
-  it("reads the bridge's answer and throws away anything out of shape", () => {
-    const good = answerFor({ nonce: "n" });
-    expect(parseFxFeed(good, "AUDUSD", now)).toEqual({ pair: "AUDUSD", account: "demo", stopsLevel: 0, path: [{ at: now - 500, bid: 65_100, ask: 65_108 }] });
+    // Later, the bridge says the broker's stop is not the one she sent.
+    const moved = openDatabase();
+    const other = broker();
+    const id = idOf(await placeFxOrder(moved, live, order(), now, other.fetchImpl));
+    other.of(id).ask.stop = 64_000;
+    await watchFx(moved, live, now + MINUTE, other.fetchImpl);
+    expect(flag(moved, "trading_unknown")).toBe("1");
+    expect(getFxOrder(moved, id)).toMatchObject({ status: "resting", note: "The broker holds another stop than she sent." });
+
+    // Or the bridge has no record of an order the book believes is at the broker.
+    const lost = openDatabase();
+    const blank = broker();
+    const gone = idOf(await placeFxOrder(lost, live, order(), now, blank.fetchImpl));
+    blank.held.delete(gone);
+    expect(await watchFx(lost, live, now + MINUTE, blank.fetchImpl)).toEqual(NOTHING);
+    expect(flag(lost, "trading_unknown")).toBe("1");
+    expect(getFxOrder(lost, gone)).toMatchObject({ status: "resting", note: "The bridge has lost track of this order. Look at the terminal." });
+  });
+
+  it("calls a bridge on this computer or over https, and nothing else", () => {
+    const at = (url: string) => fxBridgeUrl({ LUMEN_FX_BRIDGE_URL: url });
+    expect([at("http://127.0.0.1:8765"), at("http://localhost:8765"), at("http://[::1]:8765"), at("https://bridge.example/fx")]).toEqual(["http://127.0.0.1:8765/", "http://localhost:8765/", "http://[::1]:8765/", "https://bridge.example/fx"]);
+    const named = ["http://", ["owner", "word"].join(":"), "@127.0.0.1:8765"].join("");
+    for (const url of ["", "bridge", "http://192.168.1.20:8765", "http://example.com", "ftp://127.0.0.1", "http://127.0.0.1.example.com:8765", named]) expect(at(url)).toBeNull();
+    expect(fxBridgeSet(live)).toBe(true);
+  });
+
+  it("reads the broker's prices for her research, and throws away anything out of shape", async () => {
+    const good = { ok: true, pair: "AUDUSD", symbol: "AUDUSD.s", digits: 5, contract: 100_000, stopsLevel: 0, account: "real", path: [[now - 500, 65_100, 65_108]] };
+    expect(parseFxFeed(good, "AUDUSD", now)).toEqual({ pair: "AUDUSD", account: "real", stopsLevel: 0, path: [{ at: now - 500, bid: 65_100, ask: 65_108 }] });
     const bad: Record<string, unknown>[] = [
       { ok: false },
       { pair: "EURUSD" },
@@ -303,62 +435,25 @@ describe("forex: prices come only from her own bridge", () => {
     ];
     for (const over of bad) expect(parseFxFeed({ ...good, ...over }, "AUDUSD", now)).toBeNull();
     expect(parseFxFeed(null, "AUDUSD", now)).toBeNull();
-  });
 
-  it("calls a bridge on this computer or over https, and nothing else", () => {
-    const at = (url: string) => fxBridgeUrl({ LUMEN_FX_BRIDGE_URL: url });
-    expect([at("http://127.0.0.1:8765"), at("http://localhost:8765"), at("http://[::1]:8765"), at("https://bridge.example/fx")]).toEqual(["http://127.0.0.1:8765/", "http://localhost:8765/", "http://[::1]:8765/", "https://bridge.example/fx"]);
-    const named = ["http://", ["owner", "word"].join(":"), "@127.0.0.1:8765"].join("");
-    for (const url of ["", "bridge", "http://192.168.1.20:8765", "http://example.com", "ftp://127.0.0.1", "http://127.0.0.1.example.com:8765", named]) expect(at(url)).toBeNull();
-  });
-
-  it("signs what it asks, and believes only an answer signed with the same secret that carries its own nonce", async () => {
-    const honest = bridge((ask) => ({ body: answerFor(ask) }));
-    const got = await fetchFxFeed("AUDUSD", now - 60_000, env, now, honest.fetchImpl);
-    expect(got).toMatchObject({ pair: "AUDUSD", account: "demo", path: [{ bid: 65_100, ask: 65_108 }] });
-    const [call] = honest.calls;
-    expect(call.url).toBe("http://127.0.0.1:8765/");
-    expect(JSON.parse(call.body)).toMatchObject({ instruction: "quote", pair: "AUDUSD", sinceMs: now - 60_000, issuedAtMs: now, nonce: expect.stringMatching(/^[0-9a-f]{32}$/) });
-    expect(call.headers["x-lumen-signature"]).toBe(createHmac("sha256", secret).update(call.body).digest("hex"));
-    // No password, login or key of any kind goes with it.
-    expect(call.body).not.toMatch(/password|login|secret/i);
-
-    const refused: Reply[] = [
-      { body: {}, status: 401 },
-      { body: "not json" },
-    ];
-    for (const reply of refused) expect(await fetchFxFeed("AUDUSD", 0, env, now, bridge(() => reply).fetchImpl)).toBeNull();
-    // Unsigned, signed with another secret, or an answer to some other request.
-    expect(await fetchFxFeed("AUDUSD", 0, env, now, bridge((ask) => ({ body: answerFor(ask), signature: null })).fetchImpl)).toBeNull();
-    expect(await fetchFxFeed("AUDUSD", 0, env, now, bridge((ask) => ({ body: answerFor(ask), signature: createHmac("sha256", "another").update(JSON.stringify(answerFor(ask))).digest("hex") })).fetchImpl)).toBeNull();
-    expect(await fetchFxFeed("AUDUSD", 0, env, now, bridge((ask) => ({ body: answerFor(ask, { nonce: "0".repeat(32) }) })).fetchImpl)).toBeNull();
-    expect(await fetchFxFeed("AUDUSD", 0, env, now, bridge((ask) => ({ body: answerFor(ask, { ok: false, reason: "NO_PRICE" }), status: 503 })).fetchImpl)).toBeNull();
-
-    // With no address, a short secret, or an address that is not hers, nothing is called at all.
-    const silent = bridge((ask) => ({ body: answerFor(ask) }));
-    expect(await fetchFxFeed("AUDUSD", 0, {}, now, silent.fetchImpl)).toBeNull();
-    expect(await fetchFxFeed("AUDUSD", 0, { ...env, LUMEN_FX_BRIDGE_SECRET: "short" }, now, silent.fetchImpl)).toBeNull();
-    expect(await fetchFxFeed("AUDUSD", 0, { ...env, LUMEN_FX_BRIDGE_URL: "http://example.com" }, now, silent.fetchImpl)).toBeNull();
-    expect(silent.calls).toEqual([]);
-  });
-
-  it("asks for nothing with no order out, and otherwise for the prices since her order was last looked at", async () => {
-    const db = openDatabase();
-    const served = bridge((ask) => ({ body: answerFor(ask, { path: [[now + 20_000, 64_990, 64_998], [now + 40_000, 65_610, 65_618]] }) }));
-    expect(await watchFx(db, env, now, served.fetchImpl)).toEqual(NOTHING);
-    expect(served.calls).toEqual([]);
-    const id = idOf(placeFxOrder(db, env, order(), market(65_100), now));
-    expect(await watchFx(db, env, now + 60_000, served.fetchImpl)).toEqual({ ...NOTHING, filled: 1, taken: 1 });
-    expect(served.calls.length).toBe(1);
-    expect(JSON.parse(served.calls[0].body)).toMatchObject({ instruction: "quote", pair: "AUDUSD", sinceMs: now });
-    expect(getFxOrder(db, id)).toMatchObject({ status: "closed", resultCents: 600 });
-    // A bridge that is switched off is no price. Her order waits.
-    const down = openDatabase();
-    const waiting = idOf(placeFxOrder(down, env, order(), market(65_100), now));
-    const dead = (async () => {
-      throw new Error("ECONNREFUSED");
-    }) as unknown as typeof fetch;
-    expect(await watchFx(down, env, now + 60_000, dead)).toEqual(NOTHING);
-    expect(getFxOrder(down, waiting)).toMatchObject({ status: "resting" });
+    const calls: Record<string, unknown>[] = [];
+    const serve = (reply: (ask: Record<string, unknown>) => { body: unknown; status?: number; signature?: string | null }) =>
+      (async (_url: string, init: { body: string }) => {
+        const ask = JSON.parse(init.body) as Record<string, unknown>;
+        calls.push(ask);
+        const out = reply(ask);
+        const text = JSON.stringify(out.body);
+        const signature = out.signature === undefined ? hmac(secret, text) : out.signature;
+        return new Response(text, { status: out.status ?? 200, headers: signature ? { "x-lumen-signature": signature } : {} });
+      }) as unknown as typeof fetch;
+    expect(await fetchFxFeed("AUDUSD", now - MINUTE, live, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce } })))).toMatchObject({ pair: "AUDUSD", path: [{ bid: 65_100, ask: 65_108 }] });
+    expect(calls[0]).toMatchObject({ instruction: "quote", pair: "AUDUSD", sinceMs: now - MINUTE, issuedAtMs: now });
+    expect(await fetchFxFeed("AUDUSD", 0, live, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce }, signature: null })))).toBeNull();
+    expect(await fetchFxFeed("AUDUSD", 0, live, now, serve(() => ({ body: { ...good, nonce: "0".repeat(32) } })))).toBeNull();
+    expect(await fetchFxFeed("AUDUSD", 0, live, now, serve((ask) => ({ body: { ok: false, reason: "NO_PRICE", nonce: ask.nonce }, status: 503 })))).toBeNull();
+    // With no bridge set up nothing is called at all.
+    const before = calls.length;
+    expect(await fetchFxFeed("AUDUSD", 0, {}, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce } })))).toBeNull();
+    expect(calls).toHaveLength(before);
   });
 });

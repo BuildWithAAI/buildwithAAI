@@ -34,7 +34,7 @@ The owner's rules, 2026-11-22. They are in `src/trading/book.ts`, and every orde
 By market, as the owner set it on 2026-11-22:
 
 - **Solana meme coins: $3 in each trade.** This is what the book does today.
-- **Forex: 0.01 lot, and $3 lost at the stop.** On a pair quoted in dollars, one pip on 0.01 lot is 10 cents, so the stop is 30 pips from her entry. On any other pair a pip is worth a different amount, and the stop is as many pips as come to $3. Because the lot is fixed, so is how far away the stop can be: she can take a trade only if the price that proves her wrong is within that distance. A broker holds a limit order with its stop and its target attached, so on forex they act even when her engine is off. Built on paper for AUDUSD, with the broker's own prices read by a bridge on the owner's computer: `docs/FOREX.md`. Sending her order to the broker is not built.
+- **Forex: 0.01 lot, and $3 lost at the stop.** On a pair quoted in dollars, one pip on 0.01 lot is 10 cents, so the stop is 30 pips from her entry. On any other pair a pip is worth a different amount, and the stop is as many pips as come to $3. Because the lot is fixed, so is how far away the stop can be: she can take a trade only if the price that proves her wrong is within that distance. A broker holds a limit order with its stop and its target attached, so on forex they act even when her engine is off. Built for AUDUSD, live: her order goes through a bridge on the owner's computer to the MetaTrader 5 terminal and the broker. `docs/FOREX.md` has it, with what has not yet met a real terminal.
 
 Two things follow from how these markets work, and both were checked on 2026-11-22:
 

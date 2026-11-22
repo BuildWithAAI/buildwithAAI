@@ -1063,7 +1063,7 @@ export function startLoop(): void {
     watching = true;
     void watchOrders(engine.db, engine.env, Date.now())
       .catch(() => undefined)
-      // Her forex orders are looked at in the same breath, from the prices her bridge has kept since the last look.
+      // Her forex orders are at the broker. In the same breath the bridge is asked where each one stands.
       .then(() => watchFx(engine.db, engine.env, Date.now()))
       .catch(() => undefined)
       .finally(() => {

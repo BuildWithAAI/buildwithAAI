@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 8e256c5
+title: Forex is live. Her order goes to the broker.
+summary: The owner's rule is that there is no paper trading, so the paper forex book is gone. Her AUDUSD order now goes through a bridge on his computer to the MetaTrader 5 terminal and the broker, as a waiting limit order with its stop and its target in the one request. The terminal checks it first, it is read back after, and it is never sent twice. The bridge has still met only a stand-in for MetaTrader, and nothing decides to place an order yet.
+date: 2026-11-22T18:45:15Z
+image:
+
+---
 sha: 8365d71
 title: AUDUSD is in her book, on paper, on the broker's own prices.
 summary: Her forex rules have a book of their own. One trade is 0.01 lot and a limit order, the book puts her stop 30 pips away where three dollars is lost, and the target is hers. It trades on paper against the broker's bid and ask, read by a small bridge on the owner's computer that cannot trade. The bridge has not met a real MetaTrader terminal yet, and nothing sends an order to a broker.
