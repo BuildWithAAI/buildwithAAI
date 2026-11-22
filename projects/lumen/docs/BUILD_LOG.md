@@ -1,10 +1,10 @@
 # Build log
 
 ---
-sha: PENDING
+sha: 67597c8
 title: Her trading rules are in the book.
 summary: Every trade is three dollars and a limit order, with a stop and a target she sets before she enters. The engine watches her orders and sells at the stop with no say from her. No setting has to be typed in, and live her money is her limit. Nothing places an order yet, so this is rules and a book, not trading.
-date: PENDING
+date: 2026-11-22T08:04:34Z
 image:
 
 ---
