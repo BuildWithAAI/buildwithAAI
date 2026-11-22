@@ -1,4 +1,6 @@
-import { emptyMesh, MATERIALS, place, triangle, vertex, type MaterialName, type Mesh, type Vec3 } from "./mesh";
+import { startAt, type WalkRoom } from "../world/walk";
+import { emptyMesh, MATERIALS, place, triangle, triangleCount, vertex, type MaterialName, type Mesh, type Vec3 } from "./mesh";
+import { floorInside, reach, ROOMS, type FloorInside, type InsideSpec } from "./rooms";
 
 /**
  * Her building tool.
@@ -14,6 +16,10 @@ import { emptyMesh, MATERIALS, place, triangle, vertex, type MaterialName, type 
  *
  * One layout is worked out from her numbers. The mesh is built from it, and so is the plan the
  * live world uses to let someone walk inside, so the two cannot disagree.
+ *
+ * Inside, she may draw walls and doors on any floor and mark the rooms they close as homes and
+ * shops. Those are worked out in `rooms.ts`. They are drawn as a mesh of their own, which the live
+ * world fetches only when someone goes in, so her rooms cost nothing to anyone outside.
  */
 
 export const BUILDING = {
@@ -47,6 +53,8 @@ export type BuildingSpec = {
   door?: { side?: number; at?: number; width?: number; height?: number } | false;
   roof?: "flat" | "parapet";
   stairs?: { at?: [number, number] } | false;
+  /** The walls, doors and rooms she draws inside it. Each layout names the floors it is on. A floor in none of them is one open space. */
+  inside?: InsideSpec[];
 };
 
 type P2 = [number, number];
@@ -406,20 +414,182 @@ export function buildingMesh(spec: BuildingSpec, material: number, next: () => n
   return mesh;
 }
 
-/** One building as the live world needs it to let someone walk inside: every floor's outline, the door and the stairs, in the build's own metres. */
+/** How large a floor is at a height, as a share of the base. */
+const sizeAt = (plan: Layout, y: number) => 1 - (1 - plan.taper) * clamp(y / plan.wallTop, 0, 1);
+/** The space inside the outside walls on one floor, and the stairwell, in the building's own metres. */
+const rimOf = (plan: Layout, floor: number): P2[] => plan.inner.map(([x, z]) => [x * sizeAt(plan, plan.levels[floor]!), z * sizeAt(plan, plan.levels[floor]!)]);
+const wellOf = (plan: Layout): P2[] | null => (plan.stairs ? [[plan.stairs.x - plan.stairs.hw, plan.stairs.z + plan.stairs.hd], [plan.stairs.x + plan.stairs.hw, plan.stairs.z + plan.stairs.hd], [plan.stairs.x + plan.stairs.hw, plan.stairs.z - plan.stairs.hd], [plan.stairs.x - plan.stairs.hw, plan.stairs.z - plan.stairs.hd]] : null);
+
+/** One floor of a building as her walls are drawn on it: the space inside its outside walls and the stairwell, in the building's own metres. Floors are counted from 0. */
+export function floorShape(spec: BuildingSpec, floor: number): { rim: P2[]; well: P2[] | null } {
+  const plan = layoutOf(spec);
+  return { rim: rimOf(plan, Math.min(plan.levels.length - 1, Math.max(0, floor))), well: wellOf(plan) };
+}
+
+/** Which of her layouts a floor has: the last one that names it. Floors are counted from 0 here and from 1 in her layouts. */
+function layoutFor(spec: BuildingSpec, floor: number): number {
+  let found = -1;
+  (spec.inside ?? []).forEach((layout, index) => {
+    if (layout.floors[0] <= floor + 1 && floor + 1 <= layout.floors[1]) found = index;
+  });
+  return found;
+}
+
+/** What about a building decides its inside. Its windows, what it is made of and where it stands do not. */
+const insideKey = (spec: BuildingSpec) => JSON.stringify([spec.outline, spec.floors, spec.floorHeight, spec.wall, spec.taper, spec.door, spec.stairs, spec.roof, spec.inside]);
+const worked = new Map<string, (FloorInside | null)[]>();
+const judged = new Map<string, string | null>();
+function kept<T>(store: Map<string, T>, key: string, make: () => T): T {
+  if (store.has(key)) return store.get(key) as T;
+  if (store.size >= 48) store.delete(store.keys().next().value as string);
+  const value = make();
+  store.set(key, value);
+  return value;
+}
+
+/** Every floor's inside, worked out: her walls, doors and rooms, in the building's own metres. Null for a floor she left open. Floors with the same layout and the same size share one working. */
+export function insideOf(spec: BuildingSpec, plan: Layout = layoutOf(spec)): (FloorInside | null)[] {
+  if (!spec.inside?.length) return plan.levels.map(() => null);
+  return kept(worked, insideKey(spec), () => {
+    const well = wellOf(plan);
+    const same = new Map<string, FloorInside>();
+    return plan.levels.map((y, floor) => {
+      const which = layoutFor(spec, floor);
+      if (which < 0) return null;
+      const key = `${which}:${sizeAt(plan, y).toFixed(9)}`;
+      let found = same.get(key);
+      if (!found) same.set(key, (found = floorInside(rimOf(plan, floor), well, spec.inside![which]!)));
+      return found;
+    });
+  });
+}
+
+/**
+ * Refuses a building whose inside breaks a rule: a room too small, a mark that is in no room, a door
+ * that does not fit its wall, a wall in the doorway or on the stairs, or a room that cannot be walked
+ * to. This is asked when she raises or changes a build, never when one is only read, so a build that
+ * was once allowed can always be drawn.
+ */
+export function checkInside(spec: BuildingSpec): void {
+  if (!spec.inside?.length) return;
+  const verdict = kept(judged, insideKey(spec), () => {
+    const plan = layoutOf(spec);
+    const floors = insideOf(spec, plan);
+    for (const floor of floors) if (floor?.problems.length) return floor.problems[0]!;
+    if (triangleCount(insideMesh(spec)) > ROOMS.triangles) return "FORGE_TOO_HEAVY";
+    // Each floor is walked from its way in: the front door on the ground floor, the stairs above. From the door she must also be able to reach the stairs.
+    const bare = buildingPlan({ ...spec, inside: undefined }, {});
+    const start = startAt(bare);
+    const well = wellOf(plan);
+    const walked = new Set<FloorInside>();
+    for (let floor = 0; floor < floors.length; floor += 1) {
+      const inside = floors[floor];
+      if (!inside || (floor > 0 && walked.has(inside))) continue;
+      if (floor > 0) walked.add(inside);
+      const byDoor = floor === 0 && bare.door !== null;
+      const entry: P2 = byDoor ? [start.x, start.z] : bare.stairs ? bare.stairs.foot : inside.rooms[0]?.at ?? [0, 0];
+      const problem = reach(rimOf(plan, floor), well, inside, entry, byDoor && bare.stairs ? [bare.stairs.foot] : []);
+      if (problem) return problem;
+    }
+    return null;
+  });
+  if (verdict) throw new Error(verdict);
+}
+
+/**
+ * Her inside walls as a mesh, in the building's own metres. A wall runs from the floor to the ceiling,
+ * with a skirting at its foot. A door is an opening with a frame round it, wall above it, and a leaf
+ * that stands open with a handle on it. Beside the door of a home or a shop there is a small plate of
+ * her light.
+ */
+export function insideMesh(spec: BuildingSpec): Mesh {
+  const mesh = emptyMesh();
+  if (!spec.inside?.length) return mesh;
+  const plan = layoutOf(spec);
+  const [metal, body, glow] = [id("metal"), id("body"), id("glow")];
+  const quad = (p: Vec3, q: Vec3, r: Vec3, s: Vec3, made: number) => {
+    const [a, b, c, d] = [vertex(mesh, p), vertex(mesh, q), vertex(mesh, r), vertex(mesh, s)];
+    triangle(mesh, a, b, c, made);
+    triangle(mesh, a, c, d, made);
+  };
+  const half = ROOMS.wall / 2;
+  insideOf(spec, plan).forEach((floor, index) => {
+    if (!floor) return;
+    const made = id(spec.inside![layoutFor(spec, index)]!.material ?? "stone");
+    const y0 = plan.levels[index]!;
+    const y1 = y0 + plan.floorHeight - BUILDING.slab;
+    /** An upright piece between two spots on the floor, from one height to another. */
+    const sheet = (p: P2, q: P2, low: number, high: number, of: number) => quad([p[0], low, p[1]], [q[0], low, q[1]], [q[0], high, q[1]], [p[0], high, p[1]], of);
+    /** A spot `m` metres along from `from` in the way `e`, and `out` metres to its left. */
+    const spot = (from: P2, e: P2, m: number, out: number): P2 => [from[0] + e[0] * m - e[1] * out, from[1] + e[1] * m + e[0] * out];
+    for (const span of floor.spans) {
+      const long = Math.hypot(span.b[0] - span.a[0], span.b[1] - span.a[1]);
+      const e: P2 = [(span.b[0] - span.a[0]) / long, (span.b[1] - span.a[1]) / long];
+      // Where it joins another wall it runs on to that wall's middle, so the corner is closed. A bare end is finished with a face of its own.
+      const [from, to] = [span.open[0] ? 0 : -half, span.open[1] ? long : long + half];
+      for (const side of [1, -1]) {
+        sheet(spot(span.a, e, from, half * side), spot(span.a, e, to, half * side), y0, y1, made);
+        sheet(spot(span.a, e, from, (half + 0.012) * side), spot(span.a, e, to, (half + 0.012) * side), y0, y0 + 0.09, metal);
+      }
+      if (span.open[0]) sheet(spot(span.a, e, 0, half), spot(span.a, e, 0, -half), y0, y1, made);
+      if (span.open[1]) sheet(spot(span.a, e, long, half), spot(span.a, e, long, -half), y0, y1, made);
+    }
+    for (const door of floor.doors) {
+      const wide = Math.hypot(door.b[0] - door.a[0], door.b[1] - door.a[1]);
+      const e: P2 = [(door.b[0] - door.a[0]) / wide, (door.b[1] - door.a[1]) / wide];
+      const top = y0 + Math.min(ROOMS.doorHeight, y1 - y0 - 0.12);
+      const bar = 0.06;
+      for (const side of [1, -1]) {
+        // The wall above the door, and a frame that stands a little proud of the wall.
+        sheet(spot(door.a, e, 0, half * side), spot(door.a, e, wide, half * side), top, y1, made);
+        const proud = (half + 0.015) * side;
+        sheet(spot(door.a, e, -bar, proud), spot(door.a, e, 0, proud), y0, top + bar, metal);
+        sheet(spot(door.a, e, wide, proud), spot(door.a, e, wide + bar, proud), y0, top + bar, metal);
+        sheet(spot(door.a, e, 0, proud), spot(door.a, e, wide, proud), top, top + bar, metal);
+      }
+      const [p, q, r, s] = [spot(door.a, e, 0, half), spot(door.a, e, wide, half), spot(door.a, e, wide, -half), spot(door.a, e, 0, -half)];
+      quad([p[0], top, p[1]], [q[0], top, q[1]], [r[0], top, r[1]], [s[0], top, s[1]], made);
+      // The leaf stands open into the home or the shop the door leads to. Where it leads to neither, or to one on each side, it opens to the left.
+      const lived = door.rooms.map((room) => room >= 0 && floor.rooms[room]!.use !== "hall");
+      const into = lived[1] && !lived[0] ? -1 : 1;
+      const hinge = spot(door.a, e, 0.02, half * into);
+      const swing: P2 = [e[0] * Math.cos(1.5) - e[1] * Math.sin(1.5) * into, e[1] * Math.cos(1.5) + e[0] * Math.sin(1.5) * into];
+      const leaf = wide - 0.05;
+      sheet(hinge, spot(hinge, swing, leaf, 0), y0 + 0.01, top - 0.01, body);
+      for (const face of [0.02, -0.02]) sheet(spot(hinge, swing, leaf * 0.84, face), spot(hinge, swing, leaf * 0.94, face), y0 + 1, y0 + 1.1, glow);
+      // A plate of her light beside the door of a home or a shop, on the side people come to it from.
+      if (lived[0] !== lived[1] && Math.max(...door.beside) >= 0.4) {
+        const out = (half + 0.012) * (lived[0] ? -1 : 1);
+        // On the side of the door away from its hinge, where there is wall for it.
+        const from = door.beside[1] >= 0.4 ? wide + 0.2 : -0.34;
+        sheet(spot(door.a, e, from, out), spot(door.a, e, from + 0.14, out), y0 + 1.4, y0 + 1.54, glow);
+      }
+    }
+  });
+  return mesh;
+}
+
+/** One building as the live world needs it to let someone walk inside: every floor's outline, her inside walls and rooms, the door and the stairs, in the build's own metres. */
 export type BuildingPlan = {
   floorHeight: number;
-  /** Each floor's height and the room inside its walls, ground floor first. */
-  floors: { y: number; room: [number, number][] }[];
+  /** How thick her inside walls are. */
+  partition: number;
+  /** Each floor: its height, the space inside its outside walls, the solid stretches of her inside walls, and the rooms they close. Ground floor first. */
+  floors: { y: number; rim: [number, number][]; walls: [number, number, number, number][]; rooms: WalkRoom[] }[];
   /** The middle of the doorway, the way out of it, and its size. */
   door: { at: Vec3; out: [number, number]; width: number; height: number } | null;
   /** The stairwell, with the spot in front of it where she steps on and off. */
   stairs: { kind: Stairs["kind"]; well: [number, number][]; foot: [number, number] } | null;
 };
 
-export function buildingPlan(spec: BuildingSpec, where: { at?: Vec3; turn?: number }): BuildingPlan {
+/**
+ * `where` is where the building stands in its build. `count` numbers the homes and shops: one count is
+ * passed to every building in a build, so that each home and shop on a floor has a number of its own.
+ * A room's `unit` is how its home's or shop's id ends: "h" or "s", the floor, and the number.
+ */
+export function buildingPlan(spec: BuildingSpec, where: { at?: Vec3; turn?: number }, count: Map<string, number> = new Map()): BuildingPlan {
   const plan = layoutOf(spec);
-  const size = (y: number) => 1 - (1 - plan.taper) * clamp(y / plan.wallTop, 0, 1);
+  const size = (y: number) => sizeAt(plan, y);
   const put = (x: number, y: number, z: number): Vec3 => place([x, y, z], { at: where.at, turn: where.turn });
   const flat = (x: number, z: number): [number, number] => {
     const p = put(x, 0, z);
@@ -429,7 +599,28 @@ export function buildingPlan(spec: BuildingSpec, where: { at?: Vec3; turn?: numb
     const p = place([x, 0, z], { turn: where.turn });
     return [p[0], p[2]];
   };
-  const floors = plan.levels.map((y) => ({ y: put(0, y, 0)[1], room: plan.inner.map(([x, z]) => flat(x * size(y), z * size(y))) }));
+  // Her walls and rooms are sent to a hundredth of a millimetre.
+  const near = (p: P2): [number, number] => {
+    const [x, z] = flat(p[0], p[1]);
+    return [Math.round(x * 1e5) / 1e5, Math.round(z * 1e5) / 1e5];
+  };
+  const inside = insideOf(spec, plan);
+  const floors = plan.levels.map((y, index) => {
+    const floor = inside[index];
+    // Homes and shops are numbered in the order she marked them.
+    const units = new Map<number, string>();
+    for (const room of [...(floor?.rooms ?? [])].filter((item) => item.use !== "hall").sort((p, q) => p.mark! - q.mark!)) {
+      const key = `${room.use === "home" ? "h" : "s"}${index + 1}`;
+      count.set(key, (count.get(key) ?? 0) + 1);
+      units.set(room.mark!, `${key}-${count.get(key)}`);
+    }
+    const rooms: WalkRoom[] = (floor?.rooms ?? []).map((room) => {
+      const unit = room.use === "hall" ? null : units.get(room.mark!)!;
+      const plain = unit ? `${room.use === "home" ? "Home" : "Shop"} ${index + 1}${unit.split("-")[1]!.padStart(2, "0")}` : "Hall";
+      return { outline: room.outline.map(near), at: near(room.at), use: room.use, label: room.name ? (unit ? `${room.name}, ${plain}` : room.name) : plain, unit, area: Math.round(room.area * 100) / 100 };
+    });
+    return { y: put(0, y, 0)[1], rim: plan.inner.map(([x, z]) => flat(x * size(y), z * size(y))), walls: (floor?.spans ?? []).map((span) => [...near(span.a), ...near(span.b)] as [number, number, number, number]), rooms };
+  });
   let door: BuildingPlan["door"] = null;
   if (plan.door) {
     const w = plan.walls[plan.door.side]!;
@@ -438,5 +629,5 @@ export function buildingPlan(spec: BuildingSpec, where: { at?: Vec3; turn?: numb
   }
   const s = plan.stairs;
   const stairs = s ? { kind: s.kind, well: ([[-1, 1], [1, 1], [1, -1], [-1, -1]] as const).map(([sx, sz]) => flat(s.x + sx * s.hw, s.z + sz * s.hd)), foot: flat(s.x, s.z + s.hd + 0.7) } : null;
-  return { floorHeight: plan.floorHeight, floors, door, stairs };
+  return { floorHeight: plan.floorHeight, partition: ROOMS.wall, floors, door, stairs };
 }

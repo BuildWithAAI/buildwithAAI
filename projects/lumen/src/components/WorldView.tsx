@@ -15,7 +15,13 @@ import { clampLabelPoint, clipThought, labelCaption, placeThought, shortSkyLine,
 import { AREAS } from "../world/areas";
 import { WORLD_TIP, WORLD_TIP_KEY, worldTipOpen } from "./visit";
 import { forgeMaterials, HAZE_FAR, HAZE_NEAR, setHerLight } from "./herLight";
-import { changeFloor, eyeOf, look, nearestDoor, startAt, walk, type WalkPlan, type Walker } from "../world/walk";
+import { changeFloor, eyeOf, look, nearestDoor, roomAt, startAt, walk, type WalkPlan, type Walker } from "../world/walk";
+import { unitQuote } from "../app/actions";
+
+/** What someone walking through a build is told about one of its homes or shops. */
+type UnitNote = { id: string; status: "open" | "let" | "sold"; priceCents: number; rentCents: number };
+/** The room she is standing in: what it is called, and its home or shop if it is one. */
+type RoomNote = { label: string; unit: string | null; open: boolean; priceCents: number | null };
 
 const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number]; follow?: boolean }> = {
   overview: { pos: [78, 48, 78], look: [0, 1, 4] },
@@ -60,7 +66,7 @@ export function WorldView({
   const bubbleRef = useRef<HTMLButtonElement | null>(null);
   // The build she tapped, and the building she is walking inside.
   const [picked, setPicked] = useState<{ id: string; name: string; enter: boolean } | null>(null);
-  const [inside, setInside] = useState<{ name: string; floor: number; floors: number; stairs: boolean } | null>(null);
+  const [inside, setInside] = useState<{ name: string; floor: number; floors: number; stairs: boolean; room: RoomNote | null } | null>(null);
   const pickRef = useRef<(id: string | null) => void>(() => undefined);
   const enterRef = useRef<(id: string) => void>(() => undefined);
   const leaveRef = useRef<() => void>(() => undefined);
@@ -357,7 +363,7 @@ export function WorldView({
     const shopPiece: { key: string; group: THREE.Group } | { key: "" } = { key: "" };
 
     // Tapping a build names it. If it has a door, she can go in: the eye moves inside and walks its floors.
-    let within: { id: string; group: THREE.Group; plan: WalkPlan; walker: Walker; name: string; back: { pos: THREE.Vector3; look: THREE.Vector3; fov: number } } | null = null;
+    let within: { id: string; group: THREE.Group; plan: WalkPlan; walker: Walker; name: string; back: { pos: THREE.Vector3; look: THREE.Vector3; fov: number }; walls: THREE.Mesh | null; units: Map<string, UnitNote>; room: string } | null = null;
     let shown: THREE.Group | null = null;
     let stepping = 0;
     let lastTick = performance.now();
@@ -369,8 +375,27 @@ export function WorldView({
       if (group?.userData.label) (group.userData.label as THREE.Sprite).visible = true;
       setPicked(group ? { id: String(group.userData.id), name: String(group.userData.name), enter: Boolean(group.userData.enter) } : null);
     };
+    /** The room she is in, as the bar at the foot of the picture shows it. */
+    const roomNote = (): RoomNote | null => {
+      if (!within) return null;
+      const room = roomAt(within.plan, within.walker.floor, within.walker.x, within.walker.z);
+      if (!room) return null;
+      const unit = room.unit ? within.units.get(room.unit) : undefined;
+      return { label: room.label, unit: room.unit, open: unit?.status === "open", priceCents: unit ? unit.priceCents : null };
+    };
+    const showInside = () => {
+      if (!within) return;
+      const room = roomNote();
+      within.room = room ? `${room.label}|${room.open}|${room.priceCents}` : "";
+      setInside({ name: within.name, floor: within.walker.floor, floors: within.plan.floors.length, stairs: Boolean(within.plan.stairs), room });
+    };
     const leave = () => {
       if (!within) return;
+      // Her inside walls are only in the picture while someone is inside.
+      if (within.walls) {
+        within.group.remove(within.walls);
+        within.walls.geometry.dispose();
+      }
       camera.fov = within.back.fov;
       camera.updateProjectionMatrix();
       camera.position.copy(within.back.pos);
@@ -389,15 +414,26 @@ export function WorldView({
     enterRef.current = (id) => {
       const group = forgePieces.get(id);
       if (!group || within) return;
-      void fetch(`/api/forge/${id}/plan?v=${group.userData.version}`)
-        .then((response) => (response.ok ? (response.json() as Promise<{ buildings: WalkPlan[] }>) : null))
-        .then((body) => {
-          if (!body || within || forgePieces.get(id) !== group) return;
+      const version = group.userData.version;
+      // The plan she walks by, the walls she drew inside, and what each home and shop is asked for. The walls are fetched now, and not before.
+      void Promise.all([
+        fetch(`/api/forge/${id}/plan?v=${version}`).then((response) => (response.ok ? (response.json() as Promise<{ buildings: WalkPlan[] }>) : null)),
+        fetch(`/api/forge/${id}/inside?v=${version}`).then((response) => (response.ok ? response.arrayBuffer() : null)),
+        fetch(`/api/units?build=${id}`).then((response) => (response.ok ? (response.json() as Promise<{ units: UnitNote[] }>) : null)).catch(() => null),
+      ])
+        .then(([body, bytes, held]) => {
+          if (!body || !bytes || within || forgePieces.get(id) !== group) return;
           // A build may hold several buildings. She goes in by the door nearest where she tapped.
           const local = group.worldToLocal(tapped.clone());
           const plan = nearestDoor(body.buildings, local.x, local.z);
           if (!plan) return;
-          within = { id, group, plan, walker: startAt(plan), name: String(group.userData.name), back: { pos: camera.position.clone(), look: controls.target.clone(), fov: camera.fov } };
+          const walls = meshFrom(bytes, (group.userData.look ?? []) as PublicWorld["looks"][number]);
+          if (walls) {
+            // A tap is for the build, not for a wall inside it.
+            walls.userData.inside = true;
+            group.add(walls);
+          }
+          within = { id, group, plan, walker: startAt(plan), name: String(group.userData.name), back: { pos: camera.position.clone(), look: controls.target.clone(), fov: camera.fov }, walls, units: new Map((held?.units ?? []).map((unit) => [unit.id, unit])), room: "" };
           controls.enabled = false;
           anim.active = false;
           followRef.current = false;
@@ -405,7 +441,7 @@ export function WorldView({
           camera.fov = 68;
           camera.updateProjectionMatrix();
           pick(null);
-          setInside({ name: within.name, floor: 0, floors: plan.floors.length, stairs: Boolean(plan.stairs) });
+          showInside();
         })
         .catch(() => undefined);
     };
@@ -413,7 +449,7 @@ export function WorldView({
       const next = within ? changeFloor(within.plan, within.walker, by) : null;
       if (!within || !next) return;
       within.walker = next;
-      setInside({ name: within.name, floor: next.floor, floors: within.plan.floors.length, stairs: true });
+      showInside();
     };
     const ray = new THREE.Raycaster();
     let press: { x: number; y: number; at: number; travel: number } | null = null;
@@ -436,7 +472,7 @@ export function WorldView({
       if (!tap || within) return;
       const box = renderer.domElement.getBoundingClientRect();
       ray.setFromCamera(new THREE.Vector2(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1), camera);
-      const meshes = [...forgePieces.values()].flatMap((group) => group.children.filter((child) => (child as THREE.Mesh).isMesh));
+      const meshes = [...forgePieces.values()].flatMap((group) => group.children.filter((child) => (child as THREE.Mesh).isMesh && !child.userData.inside));
       // Bare land is not a thing to name. Anything standing on it is, and so is land with a building on it.
       const hit = ray.intersectObjects(meshes, false).find((found) => found.object.parent?.userData.layer === "structure" || found.object.parent?.userData.enter);
       if (hit) tapped.copy(hit.point);
@@ -606,6 +642,9 @@ export function WorldView({
         const { eye, toward } = eyeOf(within.plan, within.walker);
         camera.position.copy(within.group.localToWorld(new THREE.Vector3(...eye)));
         camera.lookAt(within.group.localToWorld(new THREE.Vector3(...toward)));
+        // The bar names the room she is in. It is told only when she steps into another.
+        const room = roomNote();
+        if ((room ? `${room.label}|${room.open}|${room.priceCents}` : "") !== within.room) showInside();
       } else if (anim.active) {
         const t = ease((performance.now() - anim.started) / 1100);
         camera.position.lerpVectors(anim.fromPos, anim.toPos, t);
@@ -747,7 +786,7 @@ export function WorldView({
   const thought = thoughts.length ? thoughts[thoughtIndex % thoughts.length] : "";
   const shownThought = clipThought(thought, thoughtOpen);
   return (
-    <div className="world-stage" data-world-chunks={loadedChunks.length} data-world-guests={guestList.length} data-world-inside={inside ? inside.floor + 1 : 0}>
+    <div className="world-stage" data-world-chunks={loadedChunks.length} data-world-guests={guestList.length} data-world-inside={inside ? inside.floor + 1 : 0} data-world-room={inside?.room?.label ?? ""}>
       <div className="world-canvas" ref={mount} />
       {thought ? (
         <button
@@ -791,7 +830,14 @@ export function WorldView({
       ) : null}
       {inside ? (
         <div className="world-inside">
-          <span>{`${inside.name} · floor ${inside.floor + 1} of ${inside.floors}`}</span>
+          <span>{`${inside.name} · floor ${inside.floor + 1} of ${inside.floors}${inside.room ? ` · ${inside.room.label}` : ""}`}</span>
+          {inside.room?.unit && inside.room.open && inside.room.priceCents !== null ? (
+            <form action={unitQuote}>
+              <input type="hidden" name="unit" value={inside.room.unit} />
+              <button type="submit" title="Payment is in SOL, from your own wallet.">{`Buy · $${(inside.room.priceCents / 100).toFixed(2)}`}</button>
+            </form>
+          ) : null}
+          {inside.room?.unit && !inside.room.open && inside.room.priceCents !== null ? <span>Taken</span> : null}
           <button type="button" title="Hold to walk. On a keyboard: W, A, S, D and the arrow keys." onPointerDown={() => stepRef.current(1)} onPointerUp={() => stepRef.current(0)} onPointerLeave={() => stepRef.current(0)} onPointerCancel={() => stepRef.current(0)}>Walk</button>
           <button type="button" onPointerDown={() => stepRef.current(-1)} onPointerUp={() => stepRef.current(0)} onPointerLeave={() => stepRef.current(0)} onPointerCancel={() => stepRef.current(0)}>Back</button>
           {inside.stairs ? <button type="button" disabled={inside.floor + 1 >= inside.floors} onClick={() => floorRef.current(1)}>Up</button> : null}
@@ -956,7 +1002,7 @@ function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds:
     }
     group.position.set(build.x, build.y, build.z);
     group.rotation.y = build.yaw;
-    Object.assign(group.userData, { id: build.id, name: build.name, layer: build.layer, version: build.version, enter: Boolean(build.enter) });
+    Object.assign(group.userData, { id: build.id, name: build.name, layer: build.layer, version: build.version, enter: Boolean(build.enter), look });
   }
   for (const [id, group] of pieces) {
     if (seen.has(id)) continue;
@@ -965,32 +1011,37 @@ function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds:
   }
 }
 
+/** A forge mesh from its bytes, wearing a look. Null if the bytes are not a mesh, or it has nothing in it. */
+function meshFrom(bytes: ArrayBuffer, look: PublicWorld["looks"][number]): THREE.Mesh | null {
+  const head = new DataView(bytes);
+  if (bytes.byteLength < 12 || head.getUint32(0, true) !== 0x48534d5a) return null;
+  const points = head.getUint32(4, true);
+  const triangles = head.getUint32(8, true);
+  const table = 12 + look.length * 4;
+  if (!triangles || bytes.byteLength !== table + points * 12 + triangles * 12) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(bytes, table, points * 3), 3));
+  geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(bytes, table + points * 12, triangles * 3), 1));
+  let start = 0;
+  look.forEach((_, index) => {
+    const count = head.getUint32(12 + index * 4, true) * 3;
+    if (count) geometry.addGroup(start, count, index);
+    start += count;
+  });
+  geometry.computeVertexNormals();
+  // Her own light, shared by every build that wears this look.
+  return new THREE.Mesh(geometry, forgeMaterials(look));
+}
+
 async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][number], look: PublicWorld["looks"][number], key: string): Promise<void> {
   try {
     const response = await fetch(`/api/forge/${build.id}?v=${build.version}`);
     if (!response.ok) return;
-    const bytes = await response.arrayBuffer();
-    const head = new DataView(bytes);
-    if (bytes.byteLength < 12 || head.getUint32(0, true) !== 0x48534d5a) return;
-    const points = head.getUint32(4, true);
-    const triangles = head.getUint32(8, true);
-    const table = 12 + look.length * 4;
-    if (bytes.byteLength !== table + points * 12 + triangles * 12) return;
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(bytes, table, points * 3), 3));
-    geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(bytes, table + points * 12, triangles * 3), 1));
-    let start = 0;
-    look.forEach((_, index) => {
-      const count = head.getUint32(12 + index * 4, true) * 3;
-      if (count) geometry.addGroup(start, count, index);
-      start += count;
-    });
-    geometry.computeVertexNormals();
-    // Her own light, shared by every build that wears this look.
-    const materials = forgeMaterials(look);
+    const mesh = meshFrom(await response.arrayBuffer(), look);
     // The build may have changed while its mesh was on the way.
-    if (group.userData.key !== key) return;
-    group.add(new THREE.Mesh(geometry, materials));
+    if (!mesh || group.userData.key !== key) return;
+    const geometry = mesh.geometry;
+    group.add(mesh);
     // Land and low things carry no name board.
     if (build.layer !== "structure" || build.tall < 6) return;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));

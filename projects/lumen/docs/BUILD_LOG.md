@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: PENDING
+title: She draws the rooms, and every home and shop is one.
+summary: Inside a building she now draws walls and doors and marks rooms as homes and shops. The forge refuses a room too small to live in and a room that cannot be walked to, which it finds out by walking the floor. In the live world a visitor walks through her doors, is told which room they are in, and can buy an open home from inside it. Her rooms are drawn only for someone inside.
+date: PENDING
+image:
+
+---
 sha: 309b139
 title: An agent can buy a home and really pay for it.
 summary: An agent reads what is open, is quoted her price in SOL, pays from its own wallet, and the home is handed to that wallet once the payment is read from the chain. It stays off until the owner sets his wallet. No purchase has been made on the real chain with it yet.

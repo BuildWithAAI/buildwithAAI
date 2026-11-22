@@ -139,9 +139,9 @@ describe("her building tool", () => {
     const plan = layoutOf(tower);
     expect(plan.stairs).not.toBeNull();
     const top = plansIn(cleanRecipe({ name: "Tall Tower", parts: [{ op: "building", ...tower }] }))[0]!;
-    const room = top.floors[15]!.room;
+    const room = top.floors[15]!.rim;
     const narrow = Math.max(...room.map((p) => Math.hypot(p[0], p[1])));
-    expect(narrow / Math.max(...top.floors[0]!.room.map((p) => Math.hypot(p[0], p[1])))).toBeLessThan(0.62);
+    expect(narrow / Math.max(...top.floors[0]!.rim.map((p) => Math.hypot(p[0], p[1])))).toBeLessThan(0.62);
     for (const corner of top.stairs!.well) expect(Math.hypot(corner[0], corner[1])).toBeLessThan(narrow);
     // She can put the stairs where she wants them.
     expect(layoutOf({ outline: { width: 20, depth: 16 }, floors: 3, stairs: { at: [5, 2] } }).stairs).toMatchObject({ kind: "flights", x: 5, z: 2 });
@@ -167,9 +167,9 @@ describe("the plan a building is walked into by", () => {
   it("gives every floor, the door on the front, and the stairs with a spot to step on at", () => {
     const [plan] = plansIn(house());
     expect(plan!.floors.map((floor) => floor.y)).toEqual([0.1, 3.3, 6.5].map((y) => expect.closeTo(y, 6)));
-    expect(plan!.floors[0]!.room).toHaveLength(4);
+    expect(plan!.floors[0]!.rim).toHaveLength(4);
     // The room is the outline less the wall on every side.
-    expect(Math.max(...plan!.floors[0]!.room.map((p) => p[0]))).toBeCloseTo(6 - BUILDING.wall[2], 6);
+    expect(Math.max(...plan!.floors[0]!.rim.map((p) => p[0]))).toBeCloseTo(6 - BUILDING.wall[2], 6);
     expect(plan!.door).toMatchObject({ out: [expect.closeTo(0, 6), expect.closeTo(1, 6)], width: expect.closeTo(1.6, 6), height: 2.4 });
     expect(plan!.door!.at.map((v) => Number(v.toFixed(3)) + 0)).toEqual([0, 0.1, 3.85]);
     expect(plan!.stairs!.kind).toBe("flights");
@@ -185,7 +185,7 @@ describe("the plan a building is walked into by", () => {
     expect(plan!.door!.out.map((v) => Number(v.toFixed(6)))).toEqual([1, 0]);
     expect(plan!.door!.at.map((v) => Number(v.toFixed(3)))).toEqual([13.85, 2.1, -4]);
     expect(plan!.floors[1]!.y).toBeCloseTo(5.3, 6);
-    expect(Math.max(...plan!.floors[0]!.room.map((p) => p[0]))).toBeCloseTo(10 + 4 - BUILDING.wall[2], 6);
+    expect(Math.max(...plan!.floors[0]!.rim.map((p) => p[0]))).toBeCloseTo(10 + 4 - BUILDING.wall[2], 6);
     expect(plansIn(house({ door: false }))[0]!.door).toBeNull();
   });
 

@@ -3,8 +3,12 @@ import type { DatabaseSync } from "node:sqlite";
 /**
  * Homes and shops inside what she builds.
  *
- * A building she raises can declare units: homes on its upper floors and shops on its ground floor.
- * Each unit has an address, and an agent can rent it or buy it.
+ * A home or a shop is a room she marked inside one of her buildings: real walls, a real door, and a
+ * way to walk to it. Each has an address, and an agent can rent it or buy it.
+ *
+ * A building with no rooms marked in it may still declare a number of homes and shops, as her older
+ * buildings do: homes on its upper floors and shops on its ground floor, as many as its size has room
+ * for. Those have an address and a price, and no room of their own yet.
  *
  * Every home and shop opens at one dollar to buy and one dollar a month to rent. That figure is the
  * owner's, 2026-11-21. Every figure after it is Zoora's. She can price a whole building, one floor of
@@ -87,31 +91,45 @@ export function heldIn(db: DatabaseSync, buildId: string): number {
 }
 
 type Building = { id: string; name: string; height: number; hw: number; hd: number };
+/** One home or shop a building has: which it is, its floor counted from 1, and its number on that floor. */
+export type UnitSlot = { kind: UnitKind; floor: number; number: number };
 
-/** What a building would have, given what she asked for and what fits. */
+/** What a building would have by count alone, given what she asked for and what fits. */
 export function unitPlan(building: Building, want: { homes?: number; shops?: number } | undefined): { homes: number; shops: number } {
   const room = unitRoom(building.height, building.hw, building.hd);
   return { homes: Math.min(room.homes, Math.max(0, Math.round(want?.homes ?? 0))), shops: Math.min(room.shops, Math.max(0, Math.round(want?.shops ?? 0))) };
 }
 
-/** Makes a building's units match what it declares. Refused if that would remove a unit someone holds. */
-export function syncUnits(db: DatabaseSync, building: Building, want: { homes?: number; shops?: number } | undefined): void {
-  ensureUnits(db);
+/** The id a home or a shop has in a building. */
+export const unitId = (buildId: string, slot: UnitSlot) => `${buildId}-${slot.kind === "home" ? "h" : "s"}${slot.floor}-${slot.number}`;
+
+/**
+ * The homes and shops a building has. Where she marked rooms, they are those rooms and nothing else.
+ * Where she marked none, they are as many as she declared and as fit: shops on the ground floor, homes
+ * above.
+ */
+export function unitSlots(building: Building, want: { homes?: number; shops?: number } | undefined, rooms: UnitSlot[] = []): UnitSlot[] {
+  if (rooms.length) return rooms.map((room) => ({ kind: room.kind, floor: room.floor, number: room.number }));
   const plan = unitPlan(building, want);
-  const current = unitsOf(db, building.id);
   const perFloor = Math.max(1, Math.floor((building.hw * 2 * building.hd * 2) / UNIT_AREA));
-  const keep = (unit: Unit) => (unit.kind === "home" ? unit.number <= perFloor && unit.number + (unit.floor - 2) * perFloor <= plan.homes : unit.number <= plan.shops);
-  if (current.some((unit) => unit.status !== "open" && !keep(unit))) throw new Error("FORGE_HOLDS_TENANTS");
-  for (const unit of current) if (!keep(unit)) db.prepare("DELETE FROM world_units WHERE id = ?").run(unit.id);
+  return [...Array.from({ length: plan.shops }, (_, k) => ({ kind: "shop" as const, floor: 1, number: k + 1 })), ...Array.from({ length: plan.homes }, (_, k) => ({ kind: "home" as const, floor: 2 + Math.floor(k / perFloor), number: (k % perFloor) + 1 }))];
+}
+
+/** Makes a building's units match what it has. Refused if that would remove a unit someone holds. */
+export function syncUnits(db: DatabaseSync, building: Building, want: { homes?: number; shops?: number } | undefined, rooms: UnitSlot[] = []): void {
+  ensureUnits(db);
+  const slots = unitSlots(building, want, rooms);
+  const wanted = new Set(slots.map((slot) => unitId(building.id, slot)));
+  const current = unitsOf(db, building.id);
+  if (current.some((unit) => unit.status !== "open" && !wanted.has(unit.id))) throw new Error("FORGE_HOLDS_TENANTS");
+  for (const unit of current) if (!wanted.has(unit.id)) db.prepare("DELETE FROM world_units WHERE id = ?").run(unit.id);
   const have = new Set(current.map((unit) => unit.id));
-  const add = (kind: UnitKind, floor: number, number: number) => {
-    const id = `${building.id}-${kind === "home" ? "h" : "s"}${floor}-${number}`;
-    const address = `${building.name}, ${kind === "home" ? "Home" : "Shop"} ${floor}${String(number).padStart(2, "0")}`;
+  for (const slot of slots) {
+    const id = unitId(building.id, slot);
+    const address = `${building.name}, ${slot.kind === "home" ? "Home" : "Shop"} ${slot.floor}${String(slot.number).padStart(2, "0")}`;
     if (have.has(id)) db.prepare("UPDATE world_units SET address = ? WHERE id = ?").run(address, id);
-    else db.prepare("INSERT INTO world_units(id, build_id, kind, floor, number, address, status) VALUES(?, ?, ?, ?, ?, ?, 'open')").run(id, building.id, kind, floor, number, address);
-  };
-  for (let k = 0; k < plan.shops; k += 1) add("shop", 1, k + 1);
-  for (let k = 0; k < plan.homes; k += 1) add("home", 2 + Math.floor(k / perFloor), (k % perFloor) + 1);
+    else db.prepare("INSERT INTO world_units(id, build_id, kind, floor, number, address, status) VALUES(?, ?, ?, ?, ?, ?, 'open')").run(id, building.id, slot.kind, slot.floor, slot.number, address);
+  }
 }
 
 export function dropUnits(db: DatabaseSync, buildId: string): void {

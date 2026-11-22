@@ -1,8 +1,9 @@
 import { rng } from "../form/genome";
 import type { Hand } from "./hand";
 import { append, bounds, emptyMesh, MATERIALS, soundMesh, triangleCount, type MaterialName, type Mesh, type Placement, type Vec3 } from "./mesh";
-import { BUILDING, buildingMesh, buildingPlan, type BuildingPlan, type BuildingSpec } from "./building";
+import { BUILDING, buildingMesh, buildingPlan, checkInside, insideMesh, type BuildingPlan, type BuildingSpec } from "./building";
 import { roadMesh, ROADS, ROAD_TYPES, type RoadSpec } from "./roads";
+import { ROOMS, type InsideSpec } from "./rooms";
 import { ground, islet, loft, spin, type GroundSpec, type LoftSpec, type Point2, type ProfileSpec, type SpinSpec } from "./shape";
 
 /**
@@ -84,6 +85,36 @@ function holes(value: unknown): { along: [number, number]; around: [number, numb
   return (value as Record<string, unknown>[]).map((item) => ({ along: pair(item?.along), around: pair(item?.around) }));
 }
 
+/** The walls, doors and rooms she draws inside a building. Only what is written here is kept, and every number is held to a range. Whether the rooms keep the rules is asked when she builds, not here. */
+function inside(value: unknown): InsideSpec[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value) || value.length > ROOMS.layouts) fail("FORGE_INSIDE");
+  const list = (item: unknown, most: number): unknown[] => (item === undefined || item === null ? [] : Array.isArray(item) && item.length <= most ? item : fail("FORGE_INSIDE"));
+  const spot = (item: unknown): [number, number] => (Array.isArray(item) && item.length === 2 ? [num(item[0], -LIMITS.radius, LIMITS.radius), num(item[1], -LIMITS.radius, LIMITS.radius)] : fail("FORGE_INSIDE"));
+  const floor = (item: unknown) => Math.round(num(item, 1, BUILDING.floors));
+  return (value as unknown[]).map((entry) => {
+    if (!entry || typeof entry !== "object") fail("FORGE_INSIDE");
+    const v = entry as Record<string, unknown>;
+    // One floor, a run of floors, or every floor if she names none.
+    const floors: [number, number] = v.floors === undefined || v.floors === null ? [1, BUILDING.floors] : Array.isArray(v.floors) && v.floors.length === 2 ? [Math.min(floor(v.floors[0]), floor(v.floors[1])), Math.max(floor(v.floors[0]), floor(v.floors[1]))] : [floor(v.floors), floor(v.floors)];
+    const walls = list(v.walls, ROOMS.walls).map((item) => {
+      const wall = (item && typeof item === "object" ? item : fail("FORGE_INSIDE")) as Record<string, unknown>;
+      const [from, to] = [spot(wall.from), spot(wall.to)];
+      if (Math.hypot(to[0] - from[0], to[1] - from[1]) < 0.3) fail("FORGE_INSIDE");
+      // A door is how far along the wall it stands, with or without a width.
+      const doors = list(wall.doors, ROOMS.doors).map((door) => (typeof door === "number" ? { at: num(door, 0, 1) } : door && typeof door === "object" ? { at: num((door as Record<string, unknown>).at, 0, 1), width: optional((door as Record<string, unknown>).width, ROOMS.door[0], ROOMS.door[1]) } : fail("FORGE_INSIDE")));
+      return { from, to, ...(doors.length ? { doors } : {}) };
+    });
+    const rooms = list(v.rooms, ROOMS.marks).map((item) => {
+      const mark = (item && typeof item === "object" ? item : fail("FORGE_INSIDE")) as Record<string, unknown>;
+      const name = mark.name === undefined || mark.name === null ? "" : String(mark.name).replace(/[^A-Za-z0-9 '\-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 24);
+      if (NOT_HERS.test(name)) fail("FORGE_NAME_NOT_HERS");
+      return { at: spot(mark.at), use: pick(mark.use, ["home", "shop", "hall"] as const) ?? fail("FORGE_INSIDE"), ...(name ? { name } : {}) };
+    });
+    return { floors, material: pick(v.material, MATERIALS), walls, ...(rooms.length ? { rooms } : {}) };
+  });
+}
+
 function cleanPart(value: unknown, depth: number): Part {
   if (!value || typeof value !== "object") fail("FORGE_PART");
   const v = value as Record<string, unknown>;
@@ -158,6 +189,7 @@ function cleanPart(value: unknown, depth: number): Part {
       door: d === false ? false : d && typeof d === "object" ? { side: optional(d.side, 0, 23), at: optional(d.at, 0, 1), width: optional(d.width, 0.9, 6), height: optional(d.height, 2, 5) } : undefined,
       roof: pick(v.roof, ["flat", "parapet"] as const),
       stairs: s === false ? false : spot ? { at: spot } : undefined,
+      inside: inside(v.inside),
     };
   }
   if (v.op === "group") {
@@ -188,9 +220,36 @@ export function cleanRecipe(input: unknown): Recipe {
   return { name, seed: Math.round(num(v.seed, 0, 4294967295, 1)), islet: v.islet === true, layer, vibe, units, parts };
 }
 
-/** The buildings in a recipe that can be walked into, each as the live world needs it: its floors, its door and its stairs, where they stand in the build. */
+const buildingsIn = (recipe: Recipe) => recipe.parts.filter((part): part is Part & { op: "building" } & BuildingSpec => part.op === "building");
+
+/** The buildings in a recipe that can be walked into, each as the live world needs it: its floors, her rooms, its door and its stairs, where they stand in the build. */
 export function plansIn(recipe: Recipe): BuildingPlan[] {
-  return recipe.parts.filter((part): part is Part & { op: "building" } & BuildingSpec => part.op === "building").map((part) => buildingPlan(part, { at: part.at, turn: part.turn }));
+  // One count for the whole build, so every home and shop on a floor has a number of its own whichever building it is in.
+  const count = new Map<string, number>();
+  return buildingsIn(recipe).map((part) => buildingPlan(part, { at: part.at, turn: part.turn }, count));
+}
+
+/** A room she marked as a home or a shop: which it is, its floor counted from 1, its number on that floor, and its outline in the build's own metres. */
+export type RoomUnit = { kind: "home" | "shop"; floor: number; number: number; outline: [number, number][] };
+
+/** Every home and shop she marked in a recipe's buildings, in the order they are numbered. */
+export function roomsIn(recipe: Recipe): RoomUnit[] {
+  return plansIn(recipe).flatMap((plan) => plan.floors.flatMap((floor) => floor.rooms.flatMap((room) => {
+    const found = room.unit?.match(/^([hs])(\d+)-(\d+)$/);
+    return found ? [{ kind: found[1] === "h" ? ("home" as const) : ("shop" as const), floor: Number(found[2]), number: Number(found[3]), outline: room.outline }] : [];
+  })));
+}
+
+/** Refuses a recipe in which the inside of a building breaks a rule. Asked when she raises or changes a build. */
+export function checkRooms(recipe: Recipe): void {
+  for (const part of buildingsIn(recipe)) checkInside(part);
+}
+
+/** Her inside walls for a whole build, as one mesh in the build's own metres. Empty if she drew none. */
+export function insideIn(recipe: Recipe): Mesh {
+  const mesh = emptyMesh();
+  for (const part of buildingsIn(recipe)) append(mesh, insideMesh(part), { at: part.at, turn: part.turn });
+  return mesh;
 }
 
 /** The roads in a recipe: the lines she drew. A build with any of these is a road. */
