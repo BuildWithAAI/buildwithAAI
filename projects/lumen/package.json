@@ -30,7 +30,7 @@
     "@types/three": "^0.170.0",
     "esbuild": "^0.25.12",
     "playwright": "1.55.1",
-    "typescript": "^5.9.2",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.12"
   },
   "overrides": {
