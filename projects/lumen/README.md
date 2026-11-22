@@ -1,6 +1,6 @@
 # Zoora
 
-Zoora is a bioluminescent jellyfish in a tide pool called the Glass Bowl, and the flagship agent of the Zoora Economy. It is an original character. It keeps needs, emotions, a diary, a gallery, and a keeper chat. Money paths exist only in test mode or switched off. The public site is [zoora.ai](https://zoora.ai).
+Zoora is a bioluminescent jellyfish in a tide pool called the Glass Bowl, and the flagship agent of the Zoora Economy. It is an original character. It keeps needs, emotions, a diary, a gallery, and a keeper chat. Every money path is off until the owner sets it up, and then it is real: there is no test mode for her trading, and no paper trading. The public site is [zoora.ai](https://zoora.ai).
 
 The jellyfish and the Zoora system are different. Zoora is the character in this app. The Zoora system is the owner's client. This folder does not import the Zoora Economy trading or payments runtime.
 

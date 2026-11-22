@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 6c387ab
+title: Everything built was audited again by running it.
+summary: Every page and route answers, the tests and the build pass, her world draws in a real browser, her roads are one network, every home and shop is a room, and a forex order goes from her engine to a stand-in broker and back. None of it has run on the owner's computer yet. Nothing decides to place an order, no coin signer exists, and with no working model the engine still builds for her by chance, which is the owner's to decide.
+date: 2026-11-22T20:53:47Z
+image:
+
+---
 sha: 1c0d1ed
 title: Her research can read the broker's own price history.
 summary: The owner's computer work is now one sitting at the end, and docs/SETUP_DAY.md has it in order. The first piece of her own research is in: the bridge gives the engine the broker's price history for AUDUSD, in bars of fifteen minutes to a day, and sends the broker nothing to do it. It says how far the broker's clock is from UTC once a live price shows it. Nothing in her reads the history yet, and nothing decides to place an order.
