@@ -57,6 +57,8 @@ The kill switch pulls every order of hers that is still waiting at the broker. A
 
 Each fill and each close writes a line in her ledger, marked LIVE, with no money in it: her books take their money from the account's own balance, not from a sum of trades. If the terminal is logged in to a broker's practice account, the broker says so, and the order and its ledger lines are marked DEMO and counted apart from real money.
 
+Her forex orders are on the floor page, `/floor`: each one with its limit, its stop, its target, where it stands, the broker's result once it is closed, and why she entered. The total there counts the real account only.
+
 ## The bridge
 
 `bridge/mt5_bridge.py`. One Python file, standard library only, plus MetaTrader's package.
@@ -150,7 +152,7 @@ The refusals: `LOTS`, `RISK`, `LEVELS`, `FX_LIMIT`, `ALREADY`, `PAIR`, `SIDE`, `
 
 ## How it was checked
 
-- `tests/forex.test.ts`, 17 tests: the engine's side, with a bridge of a few lines standing in. What she sends, every gate, an order never sent twice, a quiet bridge, the broker's figures written down, forged answers ignored, the alarm when the broker holds something other than she sent.
+- `tests/forex.test.ts`, 18 tests: the engine's side, with a bridge of a few lines standing in. What she sends, every gate, an order never sent twice, a quiet bridge, the broker's figures written down, forged answers ignored, the alarm when the broker holds something other than she sent, and a row marked paper never treated as an order of hers.
 - `tests/fxBridge.test.ts`, 15 tests: the bridge started as its own process and asked over the wire, by raw requests and by the engine's own code. Every request it sent the broker is read back and compared, whole. A trade is followed to its stop, its target, a jump past the stop, and a close by hand.
 - Twenty-six deliberate breaks of the bridge and the book, one at a time. The tests caught each one that mattered. One break was a check the terminal's sum already covered, and that check was removed.
 
@@ -159,7 +161,6 @@ What stands in, in both, is MetaTrader: a file in `tests/fixtures/mt5` that answ
 ## Not built
 
 - **Her research and her own orders.** Nothing decides to place a forex order. The rules above are reached by the tests, by `--prove`, and by nothing else.
-- Her forex orders are not on the floor page.
 - Her MetaTrader account's balance is not read into her books.
 - Any pair but AUDUSD. A broker account that nets every trade in a pair into one position: the bridge refuses to trade on it.
 - An order waiting at the broker when the engine is off for more than a day is not pulled until the engine is back. It keeps its stop and its target.

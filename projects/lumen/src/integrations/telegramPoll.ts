@@ -3,7 +3,7 @@ import { createEngine } from "../server/engine";
 import type { AlertEnv, TelegramTransport } from "../money/notify";
 import { telegramApiTransport } from "../money/notify";
 import { moneyLive } from "../money/rules";
-import { tradingLive } from "../trading/book";
+import { floorOpen } from "../trading/floor";
 import { kvGet, kvSet } from "../db/db";
 import {
   dispatchOwnerMessage,
@@ -63,7 +63,7 @@ export async function pollCycle(
   io: { send?: TelegramTransport; fetch?: typeof fetch } = {},
 ): Promise<number> {
   const safe = pollSafeEnv(env);
-  if (moneyLive(safe) || tradingLive(safe) || safe.LUMEN_SALES_MODE !== "disabled" || safe.LUMEN_SPEND_ENABLED === "true") {
+  if (moneyLive(safe) || floorOpen(safe) || safe.LUMEN_SALES_MODE !== "disabled" || safe.LUMEN_SPEND_ENABLED === "true") {
     throw new Error("POLL_MONEY");
   }
   const offset = Number(kvGet(db, "tg_poll_offset") ?? "0");

@@ -232,7 +232,18 @@ const ACTIVE = "('sending', 'resting', 'open')";
 
 /** Her forex orders that are on their way to the broker, waiting there for their price, or in a trade, oldest first. */
 export function activeFxOrders(db: DatabaseSync): FxOrderState[] {
-  return (db.prepare(`SELECT * FROM fx_orders WHERE status IN ${ACTIVE} ORDER BY created_at, id`).all() as FxRow[]).map(stateOf);
+  return (db.prepare(`SELECT * FROM fx_orders WHERE mode IN ('live', 'demo') AND status IN ${ACTIVE} ORDER BY created_at, id`).all() as FxRow[]).map(stateOf);
+}
+
+/** Her latest forex orders, newest first, for the floor. A row left over from when there was paper trading is not one of them. */
+export function recentFxOrders(db: DatabaseSync, limit = 8): FxOrderState[] {
+  return (db.prepare("SELECT * FROM fx_orders WHERE mode IN ('live', 'demo') ORDER BY created_at DESC, id DESC LIMIT ?").all(Math.max(1, Math.min(50, Math.floor(limit)))) as FxRow[]).map(stateOf);
+}
+
+/** What her closed forex trades on the real account come to, in cents, in the broker's own figures. */
+export function fxResultCents(db: DatabaseSync): number {
+  const row = db.prepare("SELECT COALESCE(SUM(result_cents), 0) AS cents FROM fx_orders WHERE mode = 'live' AND status = 'closed' AND result_cents IS NOT NULL").get() as { cents: number };
+  return Number(row.cents);
 }
 
 export function getFxOrder(db: DatabaseSync, id: string): FxOrderState | null {
@@ -369,7 +380,7 @@ export async function placeFxOrder(db: DatabaseSync, env: TradeEnv, order: FxOrd
   if (!decision.ok) return decision;
   if (!fxBridgeSet(env)) return { ok: false, reason: "NO_BRIDGE" };
   // One trade in a pair at a time, and an order still on its way counts.
-  if (db.prepare(`SELECT id FROM fx_orders WHERE pair = ? AND status IN ${ACTIVE}`).get(pair)) return { ok: false, reason: "ALREADY" };
+  if (db.prepare(`SELECT id FROM fx_orders WHERE pair = ? AND mode IN ('live', 'demo') AND status IN ${ACTIVE}`).get(pair)) return { ok: false, reason: "ALREADY" };
   const id = `fx-${randomBytes(4).toString("hex")}`;
   const stopText = fromPoints(stop, digits);
   db.prepare("INSERT INTO fx_orders(id, mode, pair, side, centi_lots, risk_cents, limit_px, stop_px, target_px, status, thesis, created_at, expires_at, seen_at) VALUES(?, 'live', ?, ?, ?, ?, ?, ?, ?, 'sending', ?, ?, ?, ?)").run(id, pair, order.side, rules.centiLots, rules.riskCents, fromPoints(limit, digits), stopText, fromPoints(target, digits), thesis, now, now + TRADE_RULES.restMs, now);

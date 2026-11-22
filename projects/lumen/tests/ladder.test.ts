@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
-import { addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../src/economy/economy";
-import { BASE_CAPS, brakes, checkBrakes, clearBrake, currentCaps, ladderAutoCap, ladderMode, liveTradeAllowed, setLadderMode, workingFloat } from "../src/economy/ladder";
+import { LADDER, addEntry, addVenue, decideMilestone, detectMilestones, recordReading } from "../src/economy/economy";
+import { BASE_CAPS, STEPS, brakes, checkBrakes, clearBrake, currentCaps, ladderAutoCap, ladderMode, liveTradeAllowed, setLadderMode, workingFloat } from "../src/economy/ladder";
 
 const T = 1_800_000_000_000;
 
@@ -29,10 +29,14 @@ describe("ladder and brakes", () => {
     expect(currentCaps(db).selfSpendCents).toBe(1_000);
     expect(currentCaps(db).trading).toBe("off");
     decideMilestone(db, 250_000, "approved", T);
-    expect(currentCaps(db).trading).toBe("paper");
+    // There is no paper trading, so there is no step that opens it. She trades for real or not at all.
+    expect(currentCaps(db).trading).toBe("off");
+    expect(currentCaps(db).ventureCents).toBe(5_000);
     expect(liveTradeAllowed(db, 100)).toEqual({ ok: false, reason: "LADDER" });
     decideMilestone(db, 500_000, "declined", T);
-    expect(currentCaps(db).trading).toBe("paper");
+    expect(currentCaps(db).trading).toBe("off");
+    expect(STEPS.map((item) => item.caps.trading).filter((value) => value !== "off" && value !== "live")).toEqual([]);
+    expect(Object.values(LADDER).join(" ")).not.toMatch(/paper/i);
   });
 
   it("caps a live trade at the size the ladder grants", () => {

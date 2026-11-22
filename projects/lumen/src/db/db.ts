@@ -565,10 +565,28 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "fx_orders", "ticket", "ticket TEXT");
   ensureColumn(db, "fx_orders", "note", "note TEXT");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
+  retirePaper(db);
   migrateMerchantHashes(db);
   migrateContentHashes(db);
   migrateChunkEditHashes(db);
   return db;
+}
+
+/**
+ * There is no paper trading. An order left over from when there was is closed out here, each time the
+ * database is opened, so nothing can ever read it as an order of hers again: not the watcher that asks the
+ * broker about open orders, and not the check for a trade already on. What it was stays in the tables and
+ * is on no page. Her real orders are `live`, or `demo` when the broker says the account is a practice one.
+ */
+function retirePaper(db: DatabaseSync): void {
+  const now = Date.now();
+  db.prepare("UPDATE trade_orders SET status = 'cancelled', closed_at = COALESCE(closed_at, ?) WHERE mode != 'live' AND status IN ('resting', 'filling', 'open', 'closing')").run(now);
+  db.prepare("UPDATE fx_orders SET status = 'cancelled', closed_at = COALESCE(closed_at, ?) WHERE mode NOT IN ('live', 'demo') AND status IN ('sending', 'resting', 'open')").run(now);
+  db.prepare("UPDATE paper_trades SET status = 'closed' WHERE mode != 'live' AND status = 'open'").run();
+  // The ladder's own words for a step are kept with the step once it is reached. The old words for this one promised paper trading.
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'econ_milestones'").get()) {
+    db.prepare("UPDATE econ_milestones SET unlock = 'A third way to earn. A larger venture budget.' WHERE unlock = 'A third way to earn. Trading opens on paper only.'").run();
+  }
 }
 
 function ensureColumn(db: DatabaseSync, table: string, column: string, ddl: string): void {

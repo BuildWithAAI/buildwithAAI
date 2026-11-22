@@ -22,17 +22,27 @@ export type TradeProposal = {
 
 export type TradeEnv = Record<string, string | undefined>;
 
-export type TradeDecision = { ok: true; mode: "paper" | "live" } | { ok: false; reason: string };
+/** There is no paper trading. A trade that passes the gate is a real one. */
+export type TradeDecision = { ok: true; mode: "live" } | { ok: false; reason: string };
 
 const MINT = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
+/** The shortest secret the engine and a signer may share. It is what tells the signer an order is hers. */
+export const SIGNER_SECRET_MIN = 32;
+
+/**
+ * Her coin trading is connected: an https signer the owner runs, and the secret the two share. That is the
+ * whole of it. There is no paper trading and no switch between paper and live, so with no signer she does
+ * not trade coins at all. `LUMEN_TRADING_LIVE` is not read.
+ */
 export function tradingLive(env: TradeEnv = process.env): boolean {
-  return env.LUMEN_TRADING_LIVE === "true";
+  return (env.LUMEN_TRADE_SIGNER_URL ?? "").startsWith("https://") && (env.LUMEN_TRADE_SIGNER_SECRET ?? "").length >= SIGNER_SECRET_MIN;
 }
 
 /**
  * The owner's trading rules, 2026-11-22.
  *
+ * - There is no paper trading. Every trade is a real one, sent to the signer he runs, or it is not placed.
  * - Every trade in a Solana coin is three dollars. She does not choose the size. On forex his rule is 0.01 lot with three
  *   dollars lost at the stop, about 30 pips on a pair quoted in dollars. Forex has its own book, `forex.ts`.
  * - Every trade is a limit order: she names the most she will pay, and it is filled at that price or better or not at all.
@@ -84,15 +94,14 @@ export function evaluateTrade(proposal: TradeProposal, env: TradeEnv, db: Databa
   if (safety === "RUG") return { ok: false, reason: "RUG" };
   if (safety === "HONEYPOT") return { ok: false, reason: "HONEYPOT" };
   if (safety !== "ok") return { ok: false, reason: "UNCHECKED" };
+  // With no signer there is nowhere to send an order, and nothing else is done with it.
+  if (!tradingLive(env)) return { ok: false, reason: "NO_SIGNER" };
   // A daily loss limit is the owner's to set. With none set there is none.
-  if (caps.maxDailyLossCents != null && dailyLossCents(db, tradingLive(env) ? "live" : "paper") + proposal.usdCents > caps.maxDailyLossCents) return { ok: false, reason: "DAILY_LOSS" };
-  if (!tradingLive(env)) return { ok: true, mode: "paper" };
+  if (caps.maxDailyLossCents != null && dailyLossCents(db, "live") + proposal.usdCents > caps.maxDailyLossCents) return { ok: false, reason: "DAILY_LOSS" };
   if (publicMoneyClosed(env)) return { ok: false, reason: "PUBLIC_MODE" };
-  // Live only. The ladder says whether she has earned live trading and how large a trade may be, and a tripped brake closes it.
+  // Her money is her limit, and a tripped brake stops her. If the owner has set the ladder to "earned", it says whether she trades yet and how much.
   const earned = liveTradeAllowed(db, proposal.usdCents);
   if (!earned.ok) return { ok: false, reason: earned.reason };
-  const signer = env.LUMEN_TRADE_SIGNER_URL ?? "";
-  if (!signer.startsWith("https://")) return { ok: false, reason: "NO_SIGNER" };
   return { ok: true, mode: "live" };
 }
 
@@ -141,17 +150,13 @@ export async function proposeTrade(db: DatabaseSync, env: TradeEnv, proposal: Tr
   const safety = judgeQuote(quote, caps.minLiquidityUsd);
   const decision = evaluateTrade(proposal, env, db, safety);
   if (!decision.ok) return decision;
-  if (decision.mode === "live") {
-    const signed = await askSigner(env, proposal, fetchImpl);
-    if (!signed.ok) {
-      flagUnknown(db, now);
-      return { ok: false, reason: "UNKNOWN" };
-    }
-    book(db, proposal, quote, "live", signed.signature, now);
-    return { ok: true, mode: "live", id: signed.signature };
+  const signed = await askSigner(env, proposal, fetchImpl);
+  if (!signed.ok) {
+    flagUnknown(db, now);
+    return { ok: false, reason: "UNKNOWN" };
   }
-  const id = book(db, proposal, quote, "paper", null, now);
-  return { ok: true, mode: "paper", id };
+  book(db, proposal, quote, signed.signature, now);
+  return { ok: true, mode: "live", id: signed.signature };
 }
 
 export function flagUnknown(db: DatabaseSync, _now: number): void {
@@ -175,13 +180,13 @@ export type TradeOrder = {
   influencedByTelegram: boolean;
 };
 
-export type OrderState = { id: string; mode: "paper" | "live"; mint: string; symbol: string; usdCents: number; limitUsd: string; stopUsd: string; targetUsd: string; /** `filling` and `closing` are an order the signer is being asked about at this moment. */ status: "resting" | "filling" | "open" | "closing" | "closed" | "cancelled"; fillUsd: string | null; exitUsd: string | null; exitWhy: "stop" | "target" | null; resultCents: number | null; thesis: string; createdAt: number; expiresAt: number };
-type OrderRow = { id: string; mode: "paper" | "live"; mint: string; symbol: string; usd_cents: number; limit_usd: string; stop_usd: string; target_usd: string; status: OrderState["status"]; fill_usd: string | null; exit_usd: string | null; exit_why: "stop" | "target" | null; result_cents: number | null; thesis: string; created_at: number; expires_at: number };
+export type OrderState = { id: string; mode: "live"; mint: string; symbol: string; usdCents: number; limitUsd: string; stopUsd: string; targetUsd: string; /** `filling` and `closing` are an order the signer is being asked about at this moment. */ status: "resting" | "filling" | "open" | "closing" | "closed" | "cancelled"; fillUsd: string | null; exitUsd: string | null; exitWhy: "stop" | "target" | null; resultCents: number | null; thesis: string; createdAt: number; expiresAt: number };
+type OrderRow = { id: string; mode: "live"; mint: string; symbol: string; usd_cents: number; limit_usd: string; stop_usd: string; target_usd: string; status: OrderState["status"]; fill_usd: string | null; exit_usd: string | null; exit_why: "stop" | "target" | null; result_cents: number | null; thesis: string; created_at: number; expires_at: number };
 const orderOf = (row: OrderRow): OrderState => ({ id: row.id, mode: row.mode, mint: row.mint, symbol: row.symbol, usdCents: Number(row.usd_cents), limitUsd: row.limit_usd, stopUsd: row.stop_usd, targetUsd: row.target_usd, status: row.status, fillUsd: row.fill_usd, exitUsd: row.exit_usd, exitWhy: row.exit_why, resultCents: row.result_cents == null ? null : Number(row.result_cents), thesis: row.thesis, createdAt: Number(row.created_at), expiresAt: Number(row.expires_at) });
 
-/** Her orders that are waiting for their price or are in a trade, oldest first. */
+/** Her orders that are waiting for their price or are in a trade, oldest first. An order left over from when there was paper trading is not one of them. */
 export function activeOrders(db: DatabaseSync): OrderState[] {
-  return (db.prepare("SELECT * FROM trade_orders WHERE status IN ('resting', 'open') ORDER BY created_at, id").all() as OrderRow[]).map(orderOf);
+  return (db.prepare("SELECT * FROM trade_orders WHERE mode = 'live' AND status IN ('resting', 'open') ORDER BY created_at, id").all() as OrderRow[]).map(orderOf);
 }
 
 export function getOrder(db: DatabaseSync, id: string): OrderState | null {
@@ -199,29 +204,25 @@ function asProposal(order: { mint: string; symbol: string; stopUsd: string; targ
 }
 const CLEAN = { influencedByVisitor: false, influencedByWeb: false, influencedByTelegram: false };
 
-/** Buys at a price for an order that is waiting. True if it is now a trade. Live, the signer is told the most she will pay. */
+/** Buys at a price for an order that is waiting. True if it is now a trade. The signer is told the most she will pay. */
 async function fill(db: DatabaseSync, env: TradeEnv, order: OrderState, at: Quote, now: number, fetchImpl: typeof fetch): Promise<boolean> {
   const proposal = asProposal(order, "buy", order.usdCents, CLEAN);
   // The order is taken in hand first, so that two looks at the market can never buy it twice.
   if (Number(db.prepare("UPDATE trade_orders SET status = 'filling' WHERE id = ? AND status = 'resting'").run(order.id).changes) !== 1) return false;
-  // The whole gate is asked again at the moment of the fill: the kill switch, the coin's safety, and for a live trade whether her money covers it.
+  // The whole gate is asked again at the moment of the fill: the kill switch, the coin's safety, and whether her money covers it.
   const decision = evaluateTrade(proposal, env, db, judgeQuote(at, tradeCaps(env).minLiquidityUsd));
-  if (!decision.ok || decision.mode !== order.mode) {
+  if (!decision.ok) {
     db.prepare("UPDATE trade_orders SET status = 'resting' WHERE id = ? AND status = 'filling'").run(order.id);
     return false;
   }
-  let signature: string | null = null;
-  if (order.mode === "live") {
-    const signed = await askSigner(env, proposal, fetchImpl, { limitUsd: order.limitUsd });
-    if (!signed.ok) {
-      // Nobody knows whether that buy went through. The order is not tried again, since a second try could buy twice. Live trading waits for the owner.
-      flagUnknown(db, now);
-      db.prepare("UPDATE trade_orders SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'filling'").run(now, order.id);
-      return false;
-    }
-    signature = signed.signature;
+  const signed = await askSigner(env, proposal, fetchImpl, { limitUsd: order.limitUsd });
+  if (!signed.ok) {
+    // Nobody knows whether that buy went through. The order is not tried again, since a second try could buy twice. Her trading waits for the owner.
+    flagUnknown(db, now);
+    db.prepare("UPDATE trade_orders SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'filling'").run(now, order.id);
+    return false;
   }
-  const trade = book(db, proposal, at, order.mode, signature, now);
+  const trade = book(db, proposal, at, signed.signature, now);
   db.prepare("UPDATE trade_orders SET status = 'open', fill_usd = ?, filled_at = ?, trade_id = ? WHERE id = ? AND status = 'filling'").run(at.priceUsd, now, trade, order.id);
   return true;
 }
@@ -231,29 +232,26 @@ async function leave(db: DatabaseSync, env: TradeEnv, order: OrderState, why: "s
   const proceeds = Math.max(0, Math.round((order.usdCents * Number(at.priceUsd)) / Number(order.fillUsd)));
   const proposal = asProposal(order, "sell", proceeds, CLEAN);
   if (Number(db.prepare("UPDATE trade_orders SET status = 'closing' WHERE id = ? AND status = 'open'").run(order.id).changes) !== 1) return false;
-  let signature: string | null = null;
-  if (order.mode === "live") {
-    // A target is a limit sale: no less than her price. A stop is there to get out, so it is sold at once and given room.
-    const signed = await askSigner(env, proposal, fetchImpl, why === "target" ? { reason: "target", minUsd: order.targetUsd } : { reason: "stop", maxSlippageBps: TRADE_RULES.stopSlippageBps });
-    if (!signed.ok) {
-      // The trade stays open, and its stop is tried again once the owner has cleared the pause: selling what is already sold does nothing.
-      flagUnknown(db, now);
-      db.prepare("UPDATE trade_orders SET status = 'open' WHERE id = ? AND status = 'closing'").run(order.id);
-      return false;
-    }
-    signature = signed.signature;
+  // A target is a limit sale: no less than her price. A stop is there to get out, so it is sold at once and given room.
+  const signed = await askSigner(env, proposal, fetchImpl, why === "target" ? { reason: "target", minUsd: order.targetUsd } : { reason: "stop", maxSlippageBps: TRADE_RULES.stopSlippageBps });
+  if (!signed.ok) {
+    // The trade stays open, and its stop is tried again once the owner has cleared the pause: selling what is already sold does nothing.
+    flagUnknown(db, now);
+    db.prepare("UPDATE trade_orders SET status = 'open' WHERE id = ? AND status = 'closing'").run(order.id);
+    return false;
   }
-  book(db, proposal, at, order.mode, signature, now);
+  book(db, proposal, at, signed.signature, now);
   db.prepare("UPDATE trade_orders SET status = 'closed', exit_usd = ?, exit_why = ?, result_cents = ?, closed_at = ? WHERE id = ? AND status = 'closing'").run(at.priceUsd, why, proceeds - order.usdCents, now, order.id);
   return true;
 }
 
-export type OrderResult = { ok: true; id: string; mode: "paper" | "live"; status: "resting" | "open" } | { ok: false; reason: string };
+export type OrderResult = { ok: true; id: string; mode: "live"; status: "resting" | "open" } | { ok: false; reason: string };
 
 /**
  * She places a trade. It is three dollars, at her limit, with her stop and her target, or it is not
- * placed. If the price is already at her limit or under it, it is filled now at that price. Otherwise it
- * waits, and `tradeTick` fills it when the price comes to her.
+ * placed. It is a real trade: when it fills, the signer buys. If the price is already at her limit or
+ * under it, it is filled now at that price. Otherwise it waits, and `tradeTick` fills it when the price
+ * comes to her.
  */
 export async function placeOrder(db: DatabaseSync, env: TradeEnv, order: TradeOrder, quote: Quote, now: number, fetchImpl: typeof fetch = fetch): Promise<OrderResult> {
   const [limit, stop, target] = [Number(order.limitUsd), Number(order.stopUsd), Number(order.targetUsd)];
@@ -266,16 +264,18 @@ export async function placeOrder(db: DatabaseSync, env: TradeEnv, order: TradeOr
   const decision = evaluateTrade(proposal, env, db, judgeQuote(quote, tradeCaps(env).minLiquidityUsd));
   if (!decision.ok) return decision;
   // One trade in a coin at a time.
-  if (db.prepare("SELECT id FROM trade_orders WHERE mint = ? AND mode = ? AND status IN ('resting', 'filling', 'open', 'closing')").get(order.mint, decision.mode)) return { ok: false, reason: "ALREADY" };
-  if (decision.mode === "live") {
-    // Her money is her limit: everything she has in trades and waiting to trade, with this one, must be money she has.
-    const out = db.prepare("SELECT COALESCE(SUM(usd_cents), 0) AS cents FROM trade_orders WHERE mode = 'live' AND status IN ('resting', 'filling', 'open', 'closing')").get() as { cents: number };
-    if (Number(out.cents) + usdCents > workingFloat(db, now)) return { ok: false, reason: "BALANCE" };
-  }
+  if (db.prepare("SELECT id FROM trade_orders WHERE mint = ? AND mode = 'live' AND status IN ('resting', 'filling', 'open', 'closing')").get(order.mint)) return { ok: false, reason: "ALREADY" };
+  // Her money is her limit: everything she has in trades and waiting to trade, with this one, must be money she has.
+  const out = db.prepare("SELECT COALESCE(SUM(usd_cents), 0) AS cents FROM trade_orders WHERE mode = 'live' AND status IN ('resting', 'filling', 'open', 'closing')").get() as { cents: number };
+  if (Number(out.cents) + usdCents > workingFloat(db, now)) return { ok: false, reason: "BALANCE" };
   const id = `ord-${randomBytes(4).toString("hex")}`;
-  db.prepare("INSERT INTO trade_orders(id, mode, mint, symbol, usd_cents, limit_usd, stop_usd, target_usd, status, thesis, created_at, expires_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'resting', ?, ?, ?)").run(id, decision.mode, order.mint, quote.symbol, usdCents, order.limitUsd, order.stopUsd, order.targetUsd, thesis, now, now + TRADE_RULES.restMs);
-  const filled = Number(quote.priceUsd) <= limit && (await fill(db, env, getOrder(db, id)!, quote, now, fetchImpl));
-  return { ok: true, id, mode: decision.mode, status: filled ? "open" : "resting" };
+  db.prepare("INSERT INTO trade_orders(id, mode, mint, symbol, usd_cents, limit_usd, stop_usd, target_usd, status, thesis, created_at, expires_at) VALUES(?, 'live', ?, ?, ?, ?, ?, ?, 'resting', ?, ?, ?)").run(id, order.mint, quote.symbol, usdCents, order.limitUsd, order.stopUsd, order.targetUsd, thesis, now, now + TRADE_RULES.restMs);
+  if (Number(quote.priceUsd) <= limit) await fill(db, env, getOrder(db, id)!, quote, now, fetchImpl);
+  // What is said back is where the order stands in her books now, not what was hoped for it.
+  const after = getOrder(db, id)!;
+  // The signer's answer to the buy was unclear, so the order was dropped and her trading waits for the owner.
+  if (after.status === "cancelled") return { ok: false, reason: "UNKNOWN" };
+  return { ok: true, id, mode: "live", status: after.status === "open" ? "open" : "resting" };
 }
 
 /**
@@ -294,8 +294,8 @@ export async function tradeTick(db: DatabaseSync, env: TradeEnv, quoteOf: (mint:
   const done = { filled: 0, stopped: 0, taken: 0, expired: 0 };
   if (tradingStopped(env, db)) return done;
   for (const order of activeOrders(db)) {
-    // A live trade whose last word from the signer was unclear is left alone until the owner clears it.
-    if (order.mode === "live" && flag(db, "trading_unknown") === "1") continue;
+    // A trade whose last word from the signer was unclear is left alone until the owner clears it.
+    if (flag(db, "trading_unknown") === "1") continue;
     if (order.status === "resting" && now >= order.expiresAt) {
       db.prepare("UPDATE trade_orders SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'resting'").run(now, order.id);
       done.expired += 1;
@@ -330,48 +330,38 @@ export async function watchOrders(db: DatabaseSync, env: TradeEnv, now: number, 
   return tradeTick(db, env, (mint) => quotes.get(mint), now, fetchImpl);
 }
 
-export function tape(db: DatabaseSync, env: TradeEnv = process.env): { mode: "PAPER" | "LIVE"; showLivePnl: boolean; quotes: { symbol: string; priceUsd: string; priceSol: string; quotedAt: number; pairCreatedAt: number | null }[]; positions: { symbol: string; usdCents: number; solMicro: number }[]; history: { symbol: string; side: string; result: string | null; thesis: string; exitPlan: string; quotedAt: number; mode: string }[]; pnl: { usdCents: number; solMicro: number; paperUsdCents: number; paperSolMicro: number; liveUsdCents: number; liveSolMicro: number } } {
+/** What the floor page and the world's board show. Every row is a real trade. `live` says whether her coin trading is connected now. */
+export type Tape = { live: boolean; quotes: { symbol: string; priceUsd: string; priceSol: string; quotedAt: number; pairCreatedAt: number | null }[]; positions: { symbol: string; usdCents: number; solMicro: number }[]; history: { symbol: string; side: string; result: string | null; thesis: string; exitPlan: string; quotedAt: number }[]; pnl: { usdCents: number; solMicro: number } };
+
+export function tape(db: DatabaseSync, env: TradeEnv = process.env): Tape {
   const quotes = db.prepare("SELECT symbol, price_usd, price_sol, quoted_at, pair_created_at FROM price_quotes ORDER BY quoted_at DESC LIMIT 6").all() as { symbol: string; price_usd: string; price_sol: string; quoted_at: number; pair_created_at: number | null }[];
-  const open = db.prepare("SELECT symbol, usd_cents, sol_micro FROM paper_trades WHERE status = 'open'").all() as { symbol: string; usd_cents: number; sol_micro: number }[];
-  const history = db.prepare("SELECT symbol, side, result, thesis, exit_plan, quoted_at, mode FROM paper_trades ORDER BY created_at DESC LIMIT 8").all() as { symbol: string; side: string; result: string | null; thesis: string; exit_plan: string; quoted_at: number; mode: string }[];
-  const closed = db.prepare("SELECT result, mode FROM paper_trades WHERE status = 'closed' AND result IS NOT NULL").all() as { result: string; mode: string }[];
-  const totals = { paperUsd: 0, paperSol: 0, liveUsd: 0, liveSol: 0 };
+  // A row left over from when there was paper trading is not shown and not counted.
+  const open = db.prepare("SELECT symbol, usd_cents, sol_micro FROM paper_trades WHERE status = 'open' AND mode = 'live'").all() as { symbol: string; usd_cents: number; sol_micro: number }[];
+  const history = db.prepare("SELECT symbol, side, result, thesis, exit_plan, quoted_at FROM paper_trades WHERE mode = 'live' ORDER BY created_at DESC LIMIT 8").all() as { symbol: string; side: string; result: string | null; thesis: string; exit_plan: string; quoted_at: number }[];
+  const closed = db.prepare("SELECT result FROM paper_trades WHERE status = 'closed' AND result IS NOT NULL AND mode = 'live'").all() as { result: string }[];
+  const pnl = { usdCents: 0, solMicro: 0 };
   for (const row of closed) {
     const parsed = JSON.parse(row.result) as { usdCents?: number; solMicro?: number };
-    if (row.mode === "live") {
-      totals.liveUsd += parsed.usdCents ?? 0;
-      totals.liveSol += parsed.solMicro ?? 0;
-    } else {
-      totals.paperUsd += parsed.usdCents ?? 0;
-      totals.paperSol += parsed.solMicro ?? 0;
-    }
+    pnl.usdCents += parsed.usdCents ?? 0;
+    pnl.solMicro += parsed.solMicro ?? 0;
   }
-  const live = tradingLive(env);
   return {
-    mode: live ? "LIVE" : "PAPER",
-    showLivePnl: live,
+    live: tradingLive(env),
     quotes: quotes.map((row) => ({ symbol: row.symbol, priceUsd: row.price_usd, priceSol: row.price_sol, quotedAt: row.quoted_at, pairCreatedAt: row.pair_created_at })),
     positions: open.map((row) => ({ symbol: row.symbol, usdCents: row.usd_cents, solMicro: row.sol_micro })),
-    history: history.map((row) => ({ symbol: row.symbol, side: row.side, result: row.result, thesis: row.thesis, exitPlan: row.exit_plan, quotedAt: row.quoted_at, mode: row.mode })),
-    pnl: {
-      usdCents: totals.paperUsd,
-      solMicro: totals.paperSol,
-      paperUsdCents: totals.paperUsd,
-      paperSolMicro: totals.paperSol,
-      liveUsdCents: totals.liveUsd,
-      liveSolMicro: totals.liveSol,
-    },
+    history: history.map((row) => ({ symbol: row.symbol, side: row.side, result: row.result, thesis: row.thesis, exitPlan: row.exit_plan, quotedAt: row.quoted_at })),
+    pnl,
   };
 }
 
 export function latestThesis(db: DatabaseSync): string | null {
-  const row = db.prepare("SELECT symbol, side, thesis, mode FROM paper_trades ORDER BY created_at DESC LIMIT 1").get() as { symbol: string; side: string; thesis: string; mode: string } | undefined;
+  const row = db.prepare("SELECT symbol, side, thesis FROM paper_trades WHERE mode = 'live' ORDER BY created_at DESC LIMIT 1").get() as { symbol: string; side: string; thesis: string } | undefined;
   if (!row) return null;
-  const lead = row.mode === "live" ? "Live, I" : "On paper I";
-  return `${lead} ${row.side === "buy" ? "took" : "left"} ${row.symbol} because ${row.thesis} This is my own note, not advice.`;
+  return `I ${row.side === "buy" ? "took" : "left"} ${row.symbol} because ${row.thesis} This is my own note, not advice.`;
 }
 
-function book(db: DatabaseSync, proposal: TradeProposal, quote: NonNullable<ReturnType<typeof parseDexQuote>>, mode: "paper" | "live", signature: string | null, now: number): string {
+/** Writes a trade the signer has made into her books. The table is still named `paper_trades` from before. Every row written from here on is a real trade. */
+function book(db: DatabaseSync, proposal: TradeProposal, quote: NonNullable<ReturnType<typeof parseDexQuote>>, signature: string, now: number): string {
   const id = `tr-${randomBytes(4).toString("hex")}`;
   const solMicro = solNotional(proposal.usdCents, quote.priceUsd, quote.priceSol);
   db.prepare(
@@ -379,14 +369,14 @@ function book(db: DatabaseSync, proposal: TradeProposal, quote: NonNullable<Retu
      ON CONFLICT(mint) DO UPDATE SET symbol = excluded.symbol, price_usd = excluded.price_usd, price_sol = excluded.price_sol, quoted_at = excluded.quoted_at, pair_created_at = excluded.pair_created_at`,
   ).run(proposal.mint, quote.symbol, quote.priceUsd, quote.priceSol, now, quote.pairCreatedAt ?? null);
   if (proposal.side === "sell") {
-    const open = db.prepare("SELECT id, usd_cents, sol_micro FROM paper_trades WHERE mint = ? AND status = 'open' AND mode = ? ORDER BY created_at ASC LIMIT 1").get(proposal.mint, mode) as { id: string; usd_cents: number; sol_micro: number } | undefined;
+    const open = db.prepare("SELECT id, usd_cents, sol_micro FROM paper_trades WHERE mint = ? AND status = 'open' AND mode = 'live' ORDER BY created_at ASC LIMIT 1").get(proposal.mint) as { id: string; usd_cents: number; sol_micro: number } | undefined;
     const pnl = open ? { usdCents: proposal.usdCents - open.usd_cents, solMicro: solMicro - open.sol_micro } : { usdCents: 0, solMicro: 0 };
     if (open) db.prepare("UPDATE paper_trades SET status = 'closed', result = ? WHERE id = ?").run(JSON.stringify(pnl), open.id);
   }
   db.prepare(
     `INSERT INTO paper_trades(id, mode, mint, symbol, side, usd_cents, sol_micro, price_usd, price_sol, quoted_at, status, thesis, exit_plan, result, signature, created_at)
-     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-  ).run(id, mode, proposal.mint, quote.symbol, proposal.side, proposal.usdCents, solMicro, quote.priceUsd, quote.priceSol, now, proposal.side === "buy" ? "open" : "closed", proposal.thesis.slice(0, 180), proposal.exitPlan.slice(0, 180), signature, now);
+     VALUES(?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+  ).run(id, proposal.mint, quote.symbol, proposal.side, proposal.usdCents, solMicro, quote.priceUsd, quote.priceSol, now, proposal.side === "buy" ? "open" : "closed", proposal.thesis.slice(0, 180), proposal.exitPlan.slice(0, 180), signature, now);
   new Ledger(db).append({
     id: `trade-note-${id}`,
     atMs: now,
@@ -394,12 +384,18 @@ function book(db: DatabaseSync, proposal: TradeProposal, quote: NonNullable<Retu
     amountCents: 0,
     status: "confirmed",
     idempotencyKey: `trade:${id}`,
-    note: `${mode === "paper" ? "PAPER" : "LIVE"} ${proposal.side} ${quote.symbol} at ${quote.priceUsd} USD. Quoted ${new Date(now).toISOString()}. Not advice.`,
+    note: `LIVE ${proposal.side} ${quote.symbol} at ${quote.priceUsd} USD. Quoted ${new Date(now).toISOString()}. Not advice.`,
   });
   return id;
 }
 
+/**
+ * The one place an order leaves the engine for the coin signer. Nothing is sent unless the signer is a
+ * proper one: an https address and a shared secret of full length. That holds for a sale as much as for a
+ * buy, so a stop is never sent in the clear or signed with a secret too short to mean anything.
+ */
 async function askSigner(env: TradeEnv, proposal: TradeProposal, fetchImpl: typeof fetch, more: Record<string, string | number> = {}): Promise<{ ok: true; signature: string } | { ok: false; network?: boolean }> {
+  if (!tradingLive(env)) return { ok: false };
   const body = JSON.stringify({ instruction: "swap", network: "mainnet", mint: proposal.mint, side: proposal.side, usdCents: proposal.usdCents, maxSlippageBps: proposal.slippageBps, ...more, ...signerFreshness() });
   const headers = signerHeaders(env.LUMEN_TRADE_SIGNER_SECRET, body);
   if (!headers) return { ok: false };
@@ -419,8 +415,8 @@ async function askSigner(env: TradeEnv, proposal: TradeProposal, fetchImpl: type
   }
 }
 
-/** What she has lost today, in cents, in coins and in forex together. A daily loss limit, if the owner sets one, is one limit over both. */
-export function dailyLossCents(db: DatabaseSync, mode: "paper" | "live", now: number = Date.now()): number {
+/** What she has lost today, in cents, in coins and in forex together. A daily loss limit, if the owner sets one, is one limit over both. `demo` is forex on a broker's practice account, which is not real money and is counted apart. */
+export function dailyLossCents(db: DatabaseSync, mode: "live" | "demo", now: number = Date.now()): number {
   const day = new Date(now).toISOString().slice(0, 10);
   const rows = db.prepare("SELECT result, created_at FROM paper_trades WHERE status = 'closed' AND result IS NOT NULL AND mode = ?").all(mode) as { result: string; created_at: number }[];
   const coins = rows.reduce((sum, row) => {

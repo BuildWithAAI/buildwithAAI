@@ -358,7 +358,7 @@ function buildFloor(low: boolean, heightAt: Height): { group: THREE.Group; tape:
   const signBoard = signTexture("ZOORA TRADING FLOOR", "#042f2e", "#c4b5fd", "#f8fafc");
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 0.62), new THREE.MeshBasicMaterial({ map: signBoard }));
   sign.position.set(x, y + 3.15, z + 2.42);
-  const screen = quoteBoard(["PAPER", "— — —", "— — —"]);
+  const screen = quoteBoard(["CLOSED", "— — —", "— — —"]);
   const tape = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.7), new THREE.MeshBasicMaterial({ map: screen.texture }));
   tape.position.set(x, y + 1.65, z - 2.18);
   const desk = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.7), new THREE.MeshStandardMaterial({ color: 0x134e4a, roughness: 0.45 }));
@@ -414,9 +414,9 @@ function quoteBoard(lines: string[]): { texture: THREE.CanvasTexture; paint: (ne
     ctx.fillStyle = "#1c1917";
     ctx.font = "700 26px sans-serif";
     ctx.textAlign = "left";
-    const badge = next[0] === "LIVE" ? "LIVE" : "PAPER";
+    const badge = next[0] === "LIVE" ? "LIVE" : "CLOSED";
     ctx.fillText(badge, 48, 51);
-    const rows = next.filter((line) => line !== "PAPER" && line !== "LIVE");
+    const rows = next.filter((line) => line !== "CLOSED" && line !== "LIVE");
     const shown = rows.length ? rows : ["— — —", "— — —"];
     shown.slice(0, 4).forEach((line, index) => {
       const empty = line.includes("—");

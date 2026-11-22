@@ -9,6 +9,8 @@ import { bookSummary, ensureEconomy } from "./economy";
  * her working venues, and the milestones record how far she has come. The owner can switch it to "earned",
  * where each step waits for an approved milestone. Zoora cannot change the mode or raise a limit.
  *
+ * There is no paper trading. In "earned" mode she does not trade at all until the step that opens it.
+ *
  * The brakes only ever close. A trading venue that falls far enough from its own high, or a company book
  * that does, stops live trading until the owner clears it at the desk.
  */
@@ -16,7 +18,8 @@ import { bookSummary, ensureEconomy } from "./economy";
 export type Caps = {
   /** The most she may spend without asking, in cents. Zero means every purchase waits for the owner. */
   selfSpendCents: number;
-  trading: "off" | "paper" | "live";
+  /** There is no paper trading: she trades for real or not at all. */
+  trading: "off" | "live";
   /** The most one live trade may be, in cents. */
   tradeCents: number;
   traders: number;
@@ -41,7 +44,7 @@ function step(dollars: number, caps: Partial<Caps>): { dollars: number; caps: Ca
 export const STEPS: { dollars: number; caps: Caps }[] = [
   step(500, { earningVenues: 2 }),
   step(1_000, { earningVenues: 2, selfSpendCents: 1_000, ventureCents: 2_500 }),
-  step(2_500, { earningVenues: 3, selfSpendCents: 1_000, ventureCents: 5_000, trading: "paper" }),
+  step(2_500, { earningVenues: 3, selfSpendCents: 1_000, ventureCents: 5_000 }),
   step(5_000, { earningVenues: 3, selfSpendCents: 1_000, ventureCents: 10_000, trading: "live", tradeCents: 5_000, traders: 1 }),
   step(10_000, { earningVenues: 4, selfSpendCents: 2_500, ventureCents: 25_000, trading: "live", tradeCents: 15_000, traders: 2 }),
   step(25_000, { earningVenues: 4, selfSpendCents: 2_500, ventureCents: 50_000, trading: "live", tradeCents: 25_000, traders: 2, landRegistry: true }),
@@ -186,7 +189,7 @@ export function clearBrake(db: DatabaseSync, scope: string, now: number): boolea
 
 export type LiveTradeCheck = { ok: true } | { ok: false; reason: "LADDER" | "LADDER_CAP" | "BRAKE" };
 
-/** Asked before any live trade. Paper trading does not come through here. */
+/** Asked before any trade. Every trade is a real one. */
 export function liveTradeAllowed(db: DatabaseSync, usdCents: number, now: number = Date.now()): LiveTradeCheck {
   if (flag(db, "econ_brake") === "1") return { ok: false, reason: "BRAKE" };
   const caps = currentCaps(db, now);

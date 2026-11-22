@@ -93,10 +93,12 @@ describe("red team", () => {
     }
   });
 
-  it("refuses a trade shaped by a visitor, the web or Telegram, even with live trading fully open", () => {
+  it("refuses a trade shaped by a visitor, the web or Telegram, even with trading fully open", () => {
     const db = grantLiveTrading(openDatabase());
-    const env = { LUMEN_TRADING_ENABLED: "true", LUMEN_TRADE_MAX_USD: "50", LUMEN_TRADE_MAX_DAILY_LOSS_USD: "100", LUMEN_TRADE_MAX_SLIPPAGE_BPS: "100" };
+    const env = { LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade", LUMEN_TRADE_SIGNER_SECRET: "s".repeat(32), LUMEN_TRADE_MAX_USD: "50", LUMEN_TRADE_DAILY_LOSS_USD: "100", LUMEN_TRADE_MAX_SLIPPAGE_BPS: "100" };
     const base = { mint: WALLET, symbol: "X", side: "buy" as const, usdCents: 500, thesis: "t", exitPlan: "e", slippageBps: 50, influencedByVisitor: false, influencedByWeb: false, influencedByTelegram: false };
+    // The same trade with nothing shaping it goes through, so each refusal below is for the influence alone.
+    expect(evaluateTrade(base, env, db, "ok")).toEqual({ ok: true, mode: "live" });
     for (const flag of ["influencedByVisitor", "influencedByWeb", "influencedByTelegram"] as const) {
       expect(evaluateTrade({ ...base, [flag]: true }, env, db, "ok")).toEqual({ ok: false, reason: "INFLUENCE" });
     }

@@ -29,7 +29,7 @@ const world = {
   research: { idea: null, question: "", pins: [] },
   builds: [],
   shop: null,
-  tape: { mode: "PAPER", lines: [] },
+  tape: { mode: "CLOSED", lines: [] },
   choices: [],
   watchOnly: true,
 } as PublicWorld;
@@ -41,7 +41,7 @@ describe("the island home", () => {
       cam: "overview",
       greeting: "Hello. I feel calm.",
       thoughts: ["reading the notice board"],
-      books: publicBooks([], [], false),
+      books: publicBooks([], false),
       wishes: [],
       showKeeper: false,
       showMoney: false,
@@ -60,18 +60,16 @@ describe("the island home", () => {
     expect(readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8")).toContain('canonical: "./"');
   });
 
-  it("shows an empty ledger without invented amounts, and keeps paper separate", () => {
-    const empty = publicBooks([], [{ symbol: "SOL", side: "buy", mode: "paper" }], false);
+  it("shows an empty ledger without invented amounts, and no practice trades", () => {
+    const empty = publicBooks([], false);
     expect(empty.empty).toBe(true);
     expect(empty.incomeCents).toBeNull();
     expect(empty.balanceCents).toBeNull();
     expect(empty.headline).toBe("No transactions yet. Live money is off.");
-    expect(empty.simulated).toEqual([{ label: "SIMULATED SOL buy" }]);
+    expect(Object.keys(empty)).not.toContain("simulated");
     const html = renderToStaticMarkup(createElement(LedgerPanel, { books: empty }));
     expect(html).toContain("No transactions yet. Live money is off.");
-    expect(html).toContain("PAPER / SIMULATED");
-    expect(html).toContain("Live money is off.");
-    expect(html).toContain("SIMULATED SOL buy");
+    expect(html).not.toMatch(/paper|simulated/i);
     expect(html).not.toMatch(/\$\d/);
     expect(html).not.toContain("<form");
     const db = openDatabase();
@@ -94,7 +92,7 @@ describe("the island home", () => {
       idempotencyKey: "hold-1",
       note: "not confirmed",
     });
-    const books = publicBooks(new Ledger(db).list(), [], false);
+    const books = publicBooks(new Ledger(db).list(), false);
     expect(books.empty).toBe(false);
     expect(books.incomeCents).toBe(250);
     expect(books.spendingCents).toBe(0);

@@ -45,8 +45,8 @@ const tradeEnv = {
   LUMEN_TRADE_DAILY_LOSS_USD: "20",
   LUMEN_TRADE_MAX_SLIPPAGE_BPS: "100",
   LUMEN_RUG_LIQUIDITY_USD: "1000",
-  LUMEN_TRADING_LIVE: "true",
   LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade",
+  LUMEN_TRADE_SIGNER_SECRET: "s".repeat(32),
 };
 
 function tx(input: { recipient: string; reference: string; delta: number; blockTime?: number }): SolTx {
@@ -98,8 +98,9 @@ describe("re-review 11", () => {
     expect(readText(new URL("../src/app/actions.ts", import.meta.url), "utf8")).toContain("chainTimeMs(tx)");
   });
 
-  it("keeps live trading off in public mode until money is explicitly live", () => {
+  it("keeps trading off in public mode until money is explicitly live", () => {
     const db = grantLiveTrading(openDatabase());
+    expect(evaluateTrade(proposal(), tradeEnv, db, "ok")).toEqual({ ok: true, mode: "live" });
     expect(evaluateTrade(proposal(), { ...tradeEnv, LUMEN_PUBLIC_MODE: "true" }, db, "ok")).toEqual({ ok: false, reason: "PUBLIC_MODE" });
     expect(evaluateTrade(proposal(), { ...tradeEnv, LUMEN_PUBLIC_MODE: "true", LUMEN_MONEY_LIVE: "true" }, db, "ok")).toEqual({ ok: true, mode: "live" });
     expect(loginReachable("203.0.113.8", { LUMEN_PUBLIC_MODE: "true", LUMEN_MONEY_LIVE: "true" })).toBe(false);

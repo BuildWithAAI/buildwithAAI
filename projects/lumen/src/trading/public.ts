@@ -1,6 +1,42 @@
 export const DAY_MS = 24 * 60 * 60 * 1000;
-export const SIMULATED = "SIMULATED, no real money, not financial advice.";
-export const PAPER_ASSUMPTIONS = "Paper fills use the DexScreener quote, both the USD price and the native price, at the time of the fill. The paper engine does not subtract slippage or a fee. Closed P&L is the exit quote minus the entry quote. An order is filled at its limit once the quote is at it or under it. A stop is sold at the quote that reached it, and a target at the target.";
+export const NOT_ADVICE = "Not financial advice.";
+/** Goes wherever a price or a result of hers is shown. Her trades are real ones. */
+export const REAL_MONEY = `Real money. ${NOT_ADVICE}`;
+/** How the figures on the floor are made, so nobody reads more into them than is there. */
+export const FLOOR_NOTES = "Every trade here is a real one. A forex result is the broker's own figure, after its commission and swap. A coin figure is the DexScreener quote at the time of the trade: what the chain gave, with its slippage and fees, is not read back yet, so the true result can differ.";
+
+/** One forex order of hers as the floor shows it. `demo` is a broker's practice account: it is marked and not counted. */
+export type FloorFx = {
+  mode: "live" | "demo";
+  pair: string;
+  side: "buy" | "sell";
+  lots: string;
+  limit: string;
+  stop: string;
+  target: string;
+  status: "sending" | "resting" | "open" | "closed" | "cancelled";
+  fill: string | null;
+  exit: string | null;
+  exitWhy: "stop" | "target" | "other" | null;
+  resultCents: number | null;
+  thesis: string;
+  createdAt: number;
+};
+
+/** What the floor page shows: her forex orders and her coin trades. Every figure is from a real trade. */
+export type FloorBoard = {
+  /** Her orders can reach the broker now. */
+  forexLive: boolean;
+  /** Her orders can reach the coin signer now. */
+  coinsLive: boolean;
+  forex: FloorFx[];
+  /** Closed forex trades on the real account, added. */
+  forexPnlCents: number;
+  quotes: { symbol: string; priceUsd: string; priceSol: string; quotedAt: number; pairCreatedAt: number | null }[];
+  positions: { symbol: string; usdCents: number; solMicro: number }[];
+  history: { symbol: string; side: string; result: string | null; thesis: string; exitPlan: string; quotedAt: number }[];
+  pnl: { usdCents: number; solMicro: number };
+};
 
 export function tokenOldEnough(pairCreatedAt: number | null, now: number): boolean {
   return pairCreatedAt != null && Number.isFinite(pairCreatedAt) && now - pairCreatedAt >= DAY_MS;
