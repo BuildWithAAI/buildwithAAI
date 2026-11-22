@@ -33,7 +33,8 @@ export function tradingLive(env: TradeEnv = process.env): boolean {
 /**
  * The owner's trading rules, 2026-11-22.
  *
- * - Every trade is three dollars. She does not choose the size.
+ * - Every trade in a Solana coin is three dollars. She does not choose the size. On forex his rule is 0.01 lot with three
+ *   dollars lost at the stop, about 30 pips on a pair quoted in dollars. No forex venue is connected, so that is not in this book yet.
  * - Every trade is a limit order: she names the most she will pay, and it is filled at that price or better or not at all.
  * - Every trade has a stop and a target, set from her own research before she enters. Neither can be moved afterwards.
  *   The stop is acted on by the engine the moment the price is at it or under it, with no say from her.

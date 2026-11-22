@@ -31,6 +31,11 @@ The owner's rules, 2026-11-22. They are in `src/trading/book.ts`, and every orde
 - **Her money is her limit.** A live order is refused unless everything she has in trades and waiting to trade, with this one, is money she has in a trading venue. Nothing has to be typed in for that. On paper there is no limit.
 - **One trade in a coin at a time.** While the kill switch is on, nothing is filled and nothing is sold.
 
+By market, as the owner set it on 2026-11-22:
+
+- **Solana meme coins: $3 in each trade.** This is what the book does today.
+- **Forex: 0.01 lot, and $3 lost at the stop.** On a pair quoted in dollars, one pip on 0.01 lot is 10 cents, so the stop is 30 pips from her entry. On any other pair a pip is worth a different amount, and the stop is as many pips as come to $3. Because the lot is fixed, so is how far away the stop can be: she can take a trade only if the price that proves her wrong is within that distance. A broker holds a limit order with its stop and its target attached, so on forex they act even when her engine is off. Not built: no forex venue is connected.
+
 Two things follow from how these markets work, and both were checked on 2026-11-22:
 
 - **A coin on a bonding curve or in a pool has no order book**, so an order cannot rest at the venue. Jupiter's trigger orders would hold one, but the least it takes is $10, and a trade here is $3. So the engine holds the order itself and sends the trade when the price comes. That is why it looks once a minute, and why the engine has to be running for an order to fill or a stop to act.
