@@ -40,7 +40,7 @@ import { researchAdapter } from "../research/search";
 import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../research/run";
 import { stripeSalesClient } from "../money/stripe";
 import { composeThought, offerThought } from "../integrations/telegramOwner";
-import { latestThesis } from "../trading/book";
+import { latestThesis, watchOrders } from "../trading/book";
 import { considerShop, hideListing, listShop, listingMaxCents, publishListing, readShop, retireListing, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
 import { considerKeeperList, inventoryLine, listKeeperWishes, markKeeperWish } from "../wishlist/board";
 import { recordProvenance } from "../build/provenance";
@@ -1054,6 +1054,18 @@ export function startLoop(): void {
   };
   beat();
   setInterval(beat, interval);
+  // Her orders are looked at once a minute. One whose price has come is filled, and a trade at its stop or its target is closed. With no orders out, nothing is read.
+  const watchMs = Math.max(15_000, Number(process.env.LUMEN_TRADE_WATCH_MS ?? 60_000));
+  let watching = false;
+  setInterval(() => {
+    if (watching) return;
+    watching = true;
+    void watchOrders(engine.db, engine.env, Date.now())
+      .catch(() => undefined)
+      .finally(() => {
+        watching = false;
+      });
+  }, watchMs);
   const drainMs = Math.max(5_000, Number(process.env.LUMEN_ALERT_DRAIN_MS ?? 15_000));
   setInterval(() => {
     try {

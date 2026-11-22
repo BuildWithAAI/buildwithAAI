@@ -161,6 +161,28 @@ CREATE TABLE IF NOT EXISTS checkout_queue (
   receipt TEXT,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS trade_orders (
+  id TEXT PRIMARY KEY,
+  mode TEXT NOT NULL,
+  mint TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  usd_cents INTEGER NOT NULL,
+  limit_usd TEXT NOT NULL,
+  stop_usd TEXT NOT NULL,
+  target_usd TEXT NOT NULL,
+  status TEXT NOT NULL,
+  fill_usd TEXT,
+  exit_usd TEXT,
+  exit_why TEXT,
+  result_cents INTEGER,
+  thesis TEXT NOT NULL,
+  trade_id TEXT,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  filled_at INTEGER,
+  closed_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS trade_orders_live ON trade_orders(status, created_at);
 CREATE TABLE IF NOT EXISTS paper_trades (
   id TEXT PRIMARY KEY,
   mode TEXT NOT NULL,

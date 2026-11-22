@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 67597c8
+title: Her trading rules are in the book.
+summary: Every trade is three dollars and a limit order, with a stop and a target she sets before she enters. The engine watches her orders and sells at the stop with no say from her. No setting has to be typed in, and live her money is her limit. Nothing places an order yet, so this is rules and a book, not trading.
+date: 2026-11-22T08:04:34Z
+image:
+
+---
 sha: b96eb73
 title: She draws the rooms, and every home and shop is one.
 summary: Inside a building she now draws walls and doors and marks rooms as homes and shops. The forge refuses a room too small to live in and a room that cannot be walked to, which it finds out by walking the floor. In the live world a visitor walks through her doors, is told which room they are in, and can buy an open home from inside it. Her rooms are drawn only for someone inside.

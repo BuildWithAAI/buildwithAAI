@@ -1,6 +1,6 @@
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const SIMULATED = "SIMULATED, no real money, not financial advice.";
-export const PAPER_ASSUMPTIONS = "Paper fills use the DexScreener quote, both the USD price and the native price, at the time of the fill. The paper engine does not subtract slippage or a fee. Closed P&L is the exit quote minus the entry quote.";
+export const PAPER_ASSUMPTIONS = "Paper fills use the DexScreener quote, both the USD price and the native price, at the time of the fill. The paper engine does not subtract slippage or a fee. Closed P&L is the exit quote minus the entry quote. An order is filled at its limit once the quote is at it or under it. A stop is sold at the quote that reached it, and a target at the target.";
 
 export function tokenOldEnough(pairCreatedAt: number | null, now: number): boolean {
   return pairCreatedAt != null && Number.isFinite(pairCreatedAt) && now - pairCreatedAt >= DAY_MS;
