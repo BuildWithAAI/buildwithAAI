@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 1c0d1ed
+title: Her research can read the broker's own price history.
+summary: The owner's computer work is now one sitting at the end, and docs/SETUP_DAY.md has it in order. The first piece of her own research is in: the bridge gives the engine the broker's price history for AUDUSD, in bars of fifteen minutes to a day, and sends the broker nothing to do it. It says how far the broker's clock is from UTC once a live price shows it. Nothing in her reads the history yet, and nothing decides to place an order.
+date: 2026-11-22T20:09:53Z
+image:
+
+---
 sha: cb83c0d
 title: No paper trading anywhere. Every trade is a real one.
 summary: The owner's rule is that there is no paper trading, so the rest of it is gone. A coin order goes to the signer he runs or is not placed, and nothing chooses between paper and live. The floor page shows her forex orders and her coin trades and says LIVE or CLOSED, and so do the board in her world and her Telegram status. Old paper rows are closed out when the books are opened. No coin signer exists yet, so she trades no coin today, and nothing decides to place an order yet.
