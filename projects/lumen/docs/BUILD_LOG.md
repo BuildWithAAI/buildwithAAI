@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: f8145f7
+title: Every building can be entered.
+summary: She has a building tool now. Its walls have thickness, its floors are real, its windows and door are openings with frames, sills and glass, and stairs join every floor. Her own buildings use it and face the road. In the live world a visitor taps a building, goes in, walks its floors and looks out of its windows.
+date: 2026-11-22T00:45:05Z
+image:
+
+---
 sha: 93461d2
 title: All her roads connect.
 summary: A road is now a line she draws, as an avenue, a street or an alley. A road that touches no road of hers is refused, and one is not taken away if that would cut her network in two. Nothing lays a road for her. Left to herself she builds beside her roads, so her town grows along them.
