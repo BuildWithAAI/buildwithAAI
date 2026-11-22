@@ -56,7 +56,7 @@ Ends on: `http://localhost:3000` opens her world in a browser with the model key
 
 1. The terminal is open and logged in, with **Algo Trading** on.
 2. `pip install MetaTrader5`
-3. `python bridge\mt5_bridge.py --check`. It sends nothing. It prints the kind of account, what the terminal calls AUDUSD, the size of a lot, whether programs may trade, the terminal's own sum for a 30-pip loss, and the terminal's own answer to an order like hers.
+3. `python bridge\mt5_bridge.py --check`. It sends nothing. It prints the kind of account, what the terminal calls AUDUSD, the size of a lot, whether programs may trade, the terminal's own sum for a 30-pip loss, the terminal's own answer to an order like hers, whether the pair's history can be read, and how far the broker's clock is from UTC.
 4. `python bridge\mt5_bridge.py --prove`. **This places one real order**, 0.01 lot, 300 pips under the market where it cannot fill, reads it back, shows it is not sent twice, and pulls it. The market has to be open.
 5. A secret is made and given to the bridge and to the engine, the bridge is started, and the engine is started again.
 

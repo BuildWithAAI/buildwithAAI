@@ -54,6 +54,8 @@ export const FX_RULES = {
   waitMs: 25_000,
   /** An order the bridge was asked to place, and has no record of after this long, never reached the broker. */
   lostMs: 120_000,
+  /** The most bars of history read in one look. */
+  bars: 500,
 } as const;
 
 /** The size of one forex trade and what it loses at its stop: the owner's 0.01 lot and three dollars, or the figures he has set. The bridge holds the same two figures and refuses an order that is not his size or risks more. */
@@ -177,6 +179,59 @@ export function parseFxFeed(json: unknown, pair: FxPair, now: number): FxFeed | 
 export async function fetchFxFeed(pair: FxPair, sinceMs: number, env: TradeEnv, now: number, fetchImpl: typeof fetch = fetch): Promise<FxFeed | null> {
   const answer = await askBridge(env, { instruction: "quote", pair, sinceMs: Math.max(0, Math.floor(sinceMs)) }, now, fetchImpl, 4_000);
   return answer && answer.status === 200 ? parseFxFeed(answer.json, pair, now) : null;
+}
+
+/** The history she may read for her research: bars of fifteen minutes, an hour, four hours and a day. */
+export const FX_FRAMES = ["M15", "H1", "H4", "D1"] as const;
+export type FxFrame = (typeof FX_FRAMES)[number];
+
+/**
+ * One bar of the broker's own price history. Prices are in points. `at` is when the bar opened by the
+ * broker's clock, in seconds, exactly as the terminal gives it. That clock is the broker's time zone and
+ * can be hours from UTC, so `at` says which bar came after which and is not read as a time of day here.
+ */
+export type FxBar = { at: number; open: number; high: number; low: number; close: number; ticks: number; spread: number };
+
+/** The broker's history for a pair, oldest bar first. The last bar is the one still being made. */
+export type FxBars = {
+  pair: FxPair;
+  frame: FxFrame;
+  account: "demo" | "real" | "contest";
+  /** How many minutes the broker's clock is ahead of UTC, once a live price has shown it. Not known while the market is shut. */
+  aheadMinutes: number | null;
+  bars: FxBar[];
+};
+
+/** Reads the bridge's history. Anything out of shape, a pair whose digits are not what her arithmetic assumes, a bar whose high is not its high, bars out of order or more than were asked for, and none of it is used. */
+export function parseFxBars(json: unknown, pair: FxPair, frame: FxFrame, count: number): FxBars | null {
+  const body = (json ?? {}) as Record<string, unknown>;
+  if (body.ok !== true || body.pair !== pair || body.frame !== frame || body.digits !== FX_PAIRS[pair].digits) return null;
+  const account = body.account;
+  if (account !== "demo" && account !== "real" && account !== "contest") return null;
+  const ahead = body.aheadMinutes;
+  if (ahead !== null && (typeof ahead !== "number" || !Number.isSafeInteger(ahead) || ahead % 15 !== 0 || Math.abs(ahead) > 14 * 60)) return null;
+  if (!Array.isArray(body.bars) || body.bars.length === 0 || body.bars.length > count || body.bars.length > FX_RULES.bars) return null;
+  const bars: FxBar[] = [];
+  let last = 0;
+  for (const item of body.bars as unknown[]) {
+    if (!Array.isArray(item) || item.length !== 7 || !item.every((value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0)) return null;
+    const [at, open, high, low, close, ticks, spread] = item as [number, number, number, number, number, number, number];
+    if (at <= last || low <= 0 || low > Math.min(open, close) || high < Math.max(open, close)) return null;
+    last = at;
+    bars.push({ at, open, high, low, close, ticks, spread });
+  }
+  return { pair, frame, account, aheadMinutes: ahead, bars };
+}
+
+/**
+ * The broker's own price history for a pair, for her research: up to `count` bars, ending with the one
+ * still being made. It reads, and nothing is sent to the broker. No history, if the bridge has none to
+ * give or cannot be reached. It is there with the market shut, which a live price is not.
+ */
+export async function fetchFxBars(pair: FxPair, frame: FxFrame, count: number, env: TradeEnv, now: number, fetchImpl: typeof fetch = fetch): Promise<FxBars | null> {
+  if (!isPair(pair) || !(FX_FRAMES as readonly string[]).includes(frame) || !Number.isSafeInteger(count) || count < 1 || count > FX_RULES.bars) return null;
+  const answer = await askBridge(env, { instruction: "bars", pair, frame, count }, now, fetchImpl, 10_000);
+  return answer && answer.status === 200 ? parseFxBars(answer.json, pair, frame, count) : null;
 }
 
 /** What she sends to trade forex: the pair, which way, her limit, her target and why. The size and the stop are not hers to send. */

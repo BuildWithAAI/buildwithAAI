@@ -26,6 +26,9 @@ DEAL_ENTRY_IN, DEAL_ENTRY_OUT, DEAL_ENTRY_INOUT, DEAL_ENTRY_OUT_BY = 0, 1, 2, 3
 DEAL_REASON_CLIENT, DEAL_REASON_EXPERT, DEAL_REASON_SL, DEAL_REASON_TP, DEAL_REASON_SO = 0, 3, 4, 5, 6
 ORDER_STATE_PLACED, ORDER_STATE_CANCELED, ORDER_STATE_FILLED, ORDER_STATE_REJECTED, ORDER_STATE_EXPIRED = 1, 2, 4, 5, 6
 ACCOUNT_MARGIN_MODE_RETAIL_NETTING, ACCOUNT_MARGIN_MODE_RETAIL_HEDGING = 0, 2
+TIMEFRAME_M15, TIMEFRAME_H1, TIMEFRAME_H4, TIMEFRAME_D1 = 15, 16385, 16388, 16408
+_FRAMES = {TIMEFRAME_M15: "M15", TIMEFRAME_H1: "H1", TIMEFRAME_H4: "H4", TIMEFRAME_D1: "D1"}
+_BAR_COLUMNS = ("time", "open", "high", "low", "close", "tick_volume", "spread", "real_volume")
 
 _tick = None
 # With STANDIN_MT5_HIDDEN=1 the pair starts outside Market Watch, with no price and a blank pip value, as in a fresh terminal.
@@ -130,7 +133,7 @@ def _symbol(name, trade_mode):
     contract = _contract()
     shown = name == SYMBOL and _selected
     control = _control()
-    return SimpleNamespace(name=name, visible=shown, select=shown, digits=5, point=0.00001, trade_contract_size=contract, volume_min=0.01, volume_max=100.0, volume_step=0.01, trade_stops_level=int(control.get("stops_level", 0)), trade_freeze_level=0, trade_tick_value=contract / 100000.0 if shown else 0.0, trade_tick_size=0.00001, trade_mode=trade_mode, trade_exemode=2, filling_mode=3, order_mode=int(control.get("order_mode", 127)), expiration_mode=int(control.get("expiration_mode", 15)), currency_base="AUD", currency_profit="USD")
+    return SimpleNamespace(name=name, visible=shown, select=shown, digits=int(control.get("digits", 5)), point=0.00001, trade_contract_size=contract, volume_min=0.01, volume_max=100.0, volume_step=0.01, trade_stops_level=int(control.get("stops_level", 0)), trade_freeze_level=0, trade_tick_value=contract / 100000.0 if shown else 0.0, trade_tick_size=0.00001, trade_mode=trade_mode, trade_exemode=2, filling_mode=3, order_mode=int(control.get("order_mode", 127)), expiration_mode=int(control.get("expiration_mode", 15)), currency_base="AUD", currency_profit="USD")
 
 
 def symbol_info(name):
@@ -172,6 +175,33 @@ def symbol_info_tick(name):
         return None
     _match()
     return _read_tick()
+
+
+def copy_rates_from_pos(symbol, timeframe, start_pos, count):
+    """
+    Bars from the file the test writes. As in MetaTrader, a position counts from the present into the
+    past, position 0 is the bar still being made, and what comes back is oldest first. MetaTrader gives
+    rows with named columns: here a row is a dict, or a plain tuple when the test asks for one.
+    """
+    control = _control()
+    if symbol != SYMBOL or control.get("no_history"):
+        return None
+    if control.get("empty_history"):
+        return []
+    try:
+        with open(os.environ.get("STANDIN_MT5_BARS", ""), "r", encoding="utf-8") as handle:
+            rows = json.load(handle).get(_FRAMES.get(int(timeframe), ""), [])
+    except (OSError, ValueError):
+        return None
+    end = len(rows) - int(start_pos)
+    # A terminal that gives more than was asked for: the bridge has to cut it to the newest.
+    wanted = int(count) + (2 if control.get("too_many") else 0)
+    chosen = [list(row) + [0] for row in rows[max(0, end - wanted):max(0, end)]]
+    if control.get("newest_first"):
+        chosen.reverse()
+    if control.get("plain_rows"):
+        return [tuple(row) for row in chosen]
+    return [dict(zip(_BAR_COLUMNS, row)) for row in chosen]
 
 
 def order_calc_profit(action, symbol, volume, price_open, price_close):

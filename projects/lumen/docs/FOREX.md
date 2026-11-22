@@ -65,7 +65,7 @@ Her forex orders are on the floor page, `/floor`: each one with its limit, its s
 
 It attaches to the MetaTrader 5 terminal that is already open and logged in. It holds no account number and no password: the terminal does. It listens on the same computer only, at `127.0.0.1`.
 
-It answers four instructions: `quote`, `place`, `state` and `cancel`. There is no market order in the file, no changing of a stop or a target, no closing of a trade and no login, and a test fails if one is added. It sends the broker two kinds of request only: a waiting limit order, and the removal of one.
+It answers five instructions: `quote`, `bars`, `place`, `state` and `cancel`. The first two read. They send the broker nothing. There is no market order in the file, no changing of a stop or a target, no closing of a trade and no login, and a test fails if one is added. It sends the broker two kinds of request only: a waiting limit order, and the removal of one.
 
 To set it up on the Windows computer, once:
 
@@ -84,7 +84,7 @@ cd projects\lumen
 python bridge\mt5_bridge.py --check
 ```
 
-It prints the kind of account and the server it is on, what the terminal calls AUDUSD, the size of a lot, the smallest lot, how near the market an order may sit, which kinds of order the broker allows, and whether programs may trade. It prints the terminal's own sum for a 30-pip loss on 0.01 lot, and the terminal's own answer to an order like hers, asked without sending one. It then watches the price for three seconds. The account number is not printed, so the print can be pasted anywhere.
+It prints the kind of account and the server it is on, what the terminal calls AUDUSD, the size of a lot, the smallest lot, how near the market an order may sit, which kinds of order the broker allows, and whether programs may trade. It prints the terminal's own sum for a 30-pip loss on 0.01 lot, and the terminal's own answer to an order like hers, asked without sending one. It then watches the price for three seconds, and if the price moves it says how far the broker's clock is from UTC. It reads a few bars of the pair's history, which is what her research reads, and says whether it got them. The account number is not printed, so the print can be pasted anywhere.
 
 If more than one MetaTrader 5 is installed, look at the server name on the second line. If it is not the broker meant, point the bridge at the right terminal with `LUMEN_MT5_TERMINAL`, below.
 
@@ -148,19 +148,23 @@ or why not, with the broker's own words if it was the broker:
 
 `{ "instruction": "quote", "pair": "AUDUSD", "sinceMs": 1795316400000 }` is answered with `path`: every price change after that time, oldest first, as the time on the bridge's own clock, the bid and the ask. It is for her research. The bridge does not pass on the price it found when it started, because with the market shut that price could be days old.
 
-The refusals: `LOTS`, `RISK`, `LEVELS`, `FX_LIMIT`, `ALREADY`, `PAIR`, `SIDE`, `ID` from the rules; `TERMINAL`, `TRADING_OFF`, `ACCOUNT_OFF`, `NETTING`, `CURRENCY`, `SYMBOL`, `SPEC`, `ORDER_KIND`, `SYMBOL_OFF`, `NO_PRICE`, `SUM`, `CHECK` from what the terminal shows; `BROKER_` and a number when the broker's check or the broker itself said no; `READBACK` when the order was pulled because it was not what was sent, `READBACK_STUCK` when it could not be pulled; `UNKNOWN` when there was no clear word.
+`{ "instruction": "bars", "pair": "AUDUSD", "frame": "H1", "count": 300 }` is answered with `bars`: the broker's own price history, oldest first. `frame` is `M15`, `H1`, `H4` or `D1`, and `count` is up to 500. Each bar is its opening time, then its open, high, low and close in points, its tick count and its spread. The last bar is the one still being made. It is for her research. It reads the terminal and sends the broker nothing, and it is there with the market shut, which a live price is not. A bar whose high is not its high, or two bars with one time, and the whole answer is refused: nothing is guessed in its place.
+
+A bar's time is the broker's clock, exactly as the terminal gives it, in seconds. MetaQuotes' book says the terminal keeps bar times in UTC, and a user on a broker's practice account reported them three hours ahead of the present, so the bridge does not take them for UTC. Once it has seen a live price change, it works out how far the broker's clock is ahead of this computer's and says so in `aheadMinutes`. It believes only a gap that is a whole number of quarter hours and no more than fourteen hours. Until then `aheadMinutes` is `null`, which is "not known" and not zero. Sources: [MetaQuotes, `copy_rates_from_pos`](https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesfrompos_py), [the MQL5 book's page on reading quotes](https://www.mql5.com/zh/book/advanced/python/python_copyrates), and [the user's report](https://www.mql5.com/en/users/prabnur/publications).
+
+The refusals: `LOTS`, `RISK`, `LEVELS`, `FX_LIMIT`, `ALREADY`, `PAIR`, `SIDE`, `ID` from the rules; `TERMINAL`, `TRADING_OFF`, `ACCOUNT_OFF`, `NETTING`, `CURRENCY`, `SYMBOL`, `SPEC`, `ORDER_KIND`, `SYMBOL_OFF`, `NO_PRICE`, `SUM`, `CHECK` from what the terminal shows; `FRAME`, `COUNT`, `NO_HISTORY`, `HISTORY` from a reading of history; `BROKER_` and a number when the broker's check or the broker itself said no; `READBACK` when the order was pulled because it was not what was sent, `READBACK_STUCK` when it could not be pulled; `UNKNOWN` when there was no clear word.
 
 ## How it was checked
 
-- `tests/forex.test.ts`, 18 tests: the engine's side, with a bridge of a few lines standing in. What she sends, every gate, an order never sent twice, a quiet bridge, the broker's figures written down, forged answers ignored, the alarm when the broker holds something other than she sent, and a row marked paper never treated as an order of hers.
-- `tests/fxBridge.test.ts`, 15 tests: the bridge started as its own process and asked over the wire, by raw requests and by the engine's own code. Every request it sent the broker is read back and compared, whole. A trade is followed to its stop, its target, a jump past the stop, and a close by hand.
-- Twenty-six deliberate breaks of the bridge and the book, one at a time. The tests caught each one that mattered. One break was a check the terminal's sum already covered, and that check was removed.
+- `tests/forex.test.ts`, 19 tests: the engine's side, with a bridge of a few lines standing in. What she sends, every gate, an order never sent twice, a quiet bridge, the broker's figures written down, forged answers ignored, the alarm when the broker holds something other than she sent, a row marked paper never treated as an order of hers, and history that is out of shape thrown away.
+- `tests/fxBridge.test.ts`, 16 tests: the bridge started as its own process and asked over the wire, by raw requests and by the engine's own code. Every request it sent the broker is read back and compared, whole. A trade is followed to its stop, its target, a jump past the stop, and a close by hand. The history reading is asked for every way it can go wrong, with the broker's record checked to show nothing was sent.
+- Twenty-six deliberate breaks of the bridge and the book, one at a time. The tests caught each one that mattered. One break was a check the terminal's sum already covered, and that check was removed. Thirty more for the history reading, each caught.
 
 What stands in, in both, is MetaTrader: a file in `tests/fixtures/mt5` that answers the bridge's calls the way MetaQuotes' pages say the terminal does. **It is not a terminal and not a broker.** Whether Bybit's account lets a program trade, how it fills a waiting order, what it does to an order's note, and what its figures look like are all still to be seen, and steps 4 and 5 above are how.
 
 ## Not built
 
-- **Her research and her own orders.** Nothing decides to place a forex order. The rules above are reached by the tests, by `--prove`, and by nothing else.
+- **Her research and her own orders.** Nothing decides to place a forex order. The broker's prices and history reach the engine, and nothing in her reads them yet. The rules above are reached by the tests, by `--prove`, and by nothing else.
 - Her MetaTrader account's balance is not read into her books.
 - Any pair but AUDUSD. A broker account that nets every trade in a pair into one position: the bridge refuses to trade on it.
 - An order waiting at the broker when the engine is off for more than a day is not pulled until the engine is back. It keeps its stop and its target.
