@@ -37,7 +37,7 @@ export type PublicWorld = {
   research: { idea: string | null; question: string; pins: string[] };
   builds: { id: string; kind: string; title: string; x: number; z: number; size: number; yaw: number; version: number; hue: number; parts: number; twist: number; form: number }[];
   /** What she has raised with the forge. Each stands on its own floating islet around her island. */
-  forge: { id: string; name: string; layer: string; version: number; x: number; y: number; z: number; /** Radians. */ yaw: number; tall: number; /** Which of `looks` it wears. */ look: number }[];
+  forge: { id: string; name: string; layer: string; version: number; x: number; y: number; z: number; /** Radians. */ yaw: number; tall: number; /** Which of `looks` it wears. */ look: number; /** It has a door someone can walk in by. */ enter?: boolean }[];
   /** One entry for each vibe she has set: the eight materials in that mood, in the order the mesh bytes refer to them. */
   looks: { name: string; color: string; emissive: number; alpha: number }[][];
   /** The two colours of her light that every look shares: the shade and the bright edge. */

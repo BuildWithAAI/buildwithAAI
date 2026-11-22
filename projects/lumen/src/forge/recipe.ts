@@ -1,6 +1,7 @@
 import { rng } from "../form/genome";
 import type { Hand } from "./hand";
 import { append, bounds, emptyMesh, MATERIALS, soundMesh, triangleCount, type MaterialName, type Mesh, type Placement, type Vec3 } from "./mesh";
+import { BUILDING, buildingMesh, buildingPlan, type BuildingPlan, type BuildingSpec } from "./building";
 import { roadMesh, ROADS, ROAD_TYPES, type RoadSpec } from "./roads";
 import { ground, islet, loft, spin, type GroundSpec, type LoftSpec, type Point2, type ProfileSpec, type SpinSpec } from "./shape";
 
@@ -32,7 +33,7 @@ type Arrange = {
   scatter?: { count: number; spread: [number, number]; size?: [number, number] };
 };
 
-export type Part = Arrange & (({ op: "loft" } & LoftSpec) | ({ op: "spin" } & SpinSpec) | ({ op: "ground" } & GroundSpec) | ({ op: "road" } & RoadSpec) | { op: "group"; parts: Part[] });
+export type Part = Arrange & (({ op: "loft" } & LoftSpec) | ({ op: "spin" } & SpinSpec) | ({ op: "ground" } & GroundSpec) | ({ op: "road" } & RoadSpec) | ({ op: "building" } & BuildingSpec) | { op: "group"; parts: Part[] });
 /**
  * The feel of a piece of her world. She sets it on land she lays, and what stands on that land takes it,
  * so a part of her world can have its own mood. It turns her body colour and deepens or lightens it.
@@ -135,6 +136,30 @@ function cleanPart(value: unknown, depth: number): Part {
     for (let i = 1; i < through.length; i += 1) if (Math.hypot(through[i]![0] - through[i - 1]![0], through[i]![1] - through[i - 1]![1]) < ROADS.step) fail("FORGE_ROAD_LINE");
     return { op: "road", type, through, width: optional(v.width, ROADS.width[type][0], ROADS.width[type][1]), curve: v.curve === true };
   }
+  if (v.op === "building") {
+    // A building stands upright where she puts it, so its floors are level and its door is where the plan says. It is moved and turned, and nothing else.
+    if (depth > 0) fail("FORGE_BUILDING_NESTED");
+    const o = (v.outline ?? fail("FORGE_MISSING")) as Record<string, unknown>;
+    const w = v.windows as Record<string, unknown> | false | undefined;
+    const d = v.door as Record<string, unknown> | false | undefined;
+    const s = v.stairs as Record<string, unknown> | false | undefined;
+    const spot = s && Array.isArray(s.at) && s.at.length === 2 ? ([num(s.at[0], -LIMITS.radius, LIMITS.radius), num(s.at[1], -LIMITS.radius, LIMITS.radius)] as [number, number]) : undefined;
+    return {
+      material: arrange.material,
+      at: arrange.at,
+      turn: arrange.turn,
+      op: "building",
+      outline: { shape: pick(o.shape, ["block", "sided", "round"] as const), width: num(o.width, 2.4, LIMITS.radius * 2), depth: optional(o.depth, 2.4, LIMITS.radius * 2), sides: optional(o.sides, 3, 16) },
+      floors: Math.round(num(v.floors, 1, BUILDING.floors)),
+      floorHeight: optional(v.floorHeight, BUILDING.floorHeight[0], BUILDING.floorHeight[1]),
+      wall: optional(v.wall, BUILDING.wall[0], BUILDING.wall[1]),
+      taper: optional(v.taper, 0.5, 1),
+      windows: w === false ? false : w && typeof w === "object" ? { every: optional(w.every, 1.2, 12), width: optional(w.width, 0.2, 0.92), height: optional(w.height, 0.2, 0.85), sill: optional(w.sill, 0.05, 0.6), lit: optional(w.lit, 0, 1) } : undefined,
+      door: d === false ? false : d && typeof d === "object" ? { side: optional(d.side, 0, 23), at: optional(d.at, 0, 1), width: optional(d.width, 0.9, 6), height: optional(d.height, 2, 5) } : undefined,
+      roof: pick(v.roof, ["flat", "parapet"] as const),
+      stairs: s === false ? false : spot ? { at: spot } : undefined,
+    };
+  }
   if (v.op === "group") {
     if (depth >= LIMITS.depth) fail("FORGE_TOO_DEEP");
     if (!Array.isArray(v.parts) || v.parts.length < 1 || v.parts.length > LIMITS.parts) fail("FORGE_PARTS");
@@ -163,6 +188,11 @@ export function cleanRecipe(input: unknown): Recipe {
   return { name, seed: Math.round(num(v.seed, 0, 4294967295, 1)), islet: v.islet === true, layer, vibe, units, parts };
 }
 
+/** The buildings in a recipe that can be walked into, each as the live world needs it: its floors, its door and its stairs, where they stand in the build. */
+export function plansIn(recipe: Recipe): BuildingPlan[] {
+  return recipe.parts.filter((part): part is Part & { op: "building" } & BuildingSpec => part.op === "building").map((part) => buildingPlan(part, { at: part.at, turn: part.turn }));
+}
+
 /** The roads in a recipe: the lines she drew. A build with any of these is a road. */
 export function roadsIn(recipe: Recipe): RoadSpec[] {
   return recipe.parts.filter((part): part is Part & { op: "road" } & RoadSpec => part.op === "road");
@@ -176,6 +206,7 @@ function make(part: Part, run: Run): Mesh {
   if (part.op === "loft") shape = loft(part, material, run.hand);
   else if (part.op === "spin") shape = spin(part, material, run.hand);
   else if (part.op === "road") shape = roadMesh(part, run.hand);
+  else if (part.op === "building") shape = buildingMesh(part, material, rng(Math.floor(run.next() * 4294967295)));
   else if (part.op === "ground") shape = ground({ ...part, seed: part.seed ?? Math.floor(run.next() * 4294967295) }, MATERIALS.indexOf(part.material ?? "ground"));
   else {
     shape = emptyMesh();

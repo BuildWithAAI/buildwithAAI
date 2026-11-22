@@ -15,6 +15,7 @@ import { clampLabelPoint, clipThought, labelCaption, placeThought, shortSkyLine,
 import { AREAS } from "../world/areas";
 import { WORLD_TIP, WORLD_TIP_KEY, worldTipOpen } from "./visit";
 import { forgeMaterials, HAZE_FAR, HAZE_NEAR, setHerLight } from "./herLight";
+import { changeFloor, eyeOf, look, nearestDoor, startAt, walk, type WalkPlan, type Walker } from "../world/walk";
 
 const CAMS: Record<string, { pos: [number, number, number]; look: [number, number, number]; follow?: boolean }> = {
   overview: { pos: [78, 48, 78], look: [0, 1, 4] },
@@ -57,6 +58,14 @@ export function WorldView({
 }) {
   const mount = useRef<HTMLDivElement | null>(null);
   const bubbleRef = useRef<HTMLButtonElement | null>(null);
+  // The build she tapped, and the building she is walking inside.
+  const [picked, setPicked] = useState<{ id: string; name: string; enter: boolean } | null>(null);
+  const [inside, setInside] = useState<{ name: string; floor: number; floors: number; stairs: boolean } | null>(null);
+  const pickRef = useRef<(id: string | null) => void>(() => undefined);
+  const enterRef = useRef<(id: string) => void>(() => undefined);
+  const leaveRef = useRef<() => void>(() => undefined);
+  const floorRef = useRef<(by: 1 | -1) => void>(() => undefined);
+  const stepRef = useRef<(ahead: number) => void>(() => undefined);
   const [thoughtOpen, setThoughtOpen] = useState(false);
   const [thoughtIndex, setThoughtIndex] = useState(0);
   const world = useRef(initial);
@@ -346,6 +355,108 @@ export function WorldView({
     const buildPieces = new Map<string, THREE.Group>();
     const forgePieces = new Map<string, THREE.Group>();
     const shopPiece: { key: string; group: THREE.Group } | { key: "" } = { key: "" };
+
+    // Tapping a build names it. If it has a door, she can go in: the eye moves inside and walks its floors.
+    let within: { id: string; group: THREE.Group; plan: WalkPlan; walker: Walker; name: string; back: { pos: THREE.Vector3; look: THREE.Vector3; fov: number } } | null = null;
+    let shown: THREE.Group | null = null;
+    let stepping = 0;
+    let lastTick = performance.now();
+    const keys = new Set<string>();
+    const tapped = new THREE.Vector3();
+    const pick = (group: THREE.Group | null) => {
+      if (shown?.userData.label) (shown.userData.label as THREE.Sprite).visible = false;
+      shown = group;
+      if (group?.userData.label) (group.userData.label as THREE.Sprite).visible = true;
+      setPicked(group ? { id: String(group.userData.id), name: String(group.userData.name), enter: Boolean(group.userData.enter) } : null);
+    };
+    const leave = () => {
+      if (!within) return;
+      camera.fov = within.back.fov;
+      camera.updateProjectionMatrix();
+      camera.position.copy(within.back.pos);
+      controls.target.copy(within.back.look);
+      controls.enabled = true;
+      within = null;
+      stepping = 0;
+      keys.clear();
+      setInside(null);
+    };
+    pickRef.current = (id) => pick(id ? forgePieces.get(id) ?? null : null);
+    leaveRef.current = leave;
+    stepRef.current = (ahead) => {
+      stepping = ahead;
+    };
+    enterRef.current = (id) => {
+      const group = forgePieces.get(id);
+      if (!group || within) return;
+      void fetch(`/api/forge/${id}/plan?v=${group.userData.version}`)
+        .then((response) => (response.ok ? (response.json() as Promise<{ buildings: WalkPlan[] }>) : null))
+        .then((body) => {
+          if (!body || within || forgePieces.get(id) !== group) return;
+          // A build may hold several buildings. She goes in by the door nearest where she tapped.
+          const local = group.worldToLocal(tapped.clone());
+          const plan = nearestDoor(body.buildings, local.x, local.z);
+          if (!plan) return;
+          within = { id, group, plan, walker: startAt(plan), name: String(group.userData.name), back: { pos: camera.position.clone(), look: controls.target.clone(), fov: camera.fov } };
+          controls.enabled = false;
+          anim.active = false;
+          followRef.current = false;
+          setFollow(false);
+          camera.fov = 68;
+          camera.updateProjectionMatrix();
+          pick(null);
+          setInside({ name: within.name, floor: 0, floors: plan.floors.length, stairs: Boolean(plan.stairs) });
+        })
+        .catch(() => undefined);
+    };
+    floorRef.current = (by) => {
+      const next = within ? changeFloor(within.plan, within.walker, by) : null;
+      if (!within || !next) return;
+      within.walker = next;
+      setInside({ name: within.name, floor: next.floor, floors: within.plan.floors.length, stairs: true });
+    };
+    const ray = new THREE.Raycaster();
+    let press: { x: number; y: number; at: number; travel: number } | null = null;
+    const pressDown = (event: PointerEvent) => {
+      press = { x: event.clientX, y: event.clientY, at: performance.now(), travel: 0 };
+      // Inside, the drag is hers to look with, so it is kept even if the pointer leaves the picture.
+      if (within) renderer.domElement.setPointerCapture(event.pointerId);
+    };
+    const pressMove = (event: PointerEvent) => {
+      if (press && event.pointerType === "mouse" && event.buttons === 0) press = null;
+      if (!press) return;
+      const [dx, dy] = [event.clientX - press.x, event.clientY - press.y];
+      press = { ...press, x: event.clientX, y: event.clientY, travel: press.travel + Math.abs(dx) + Math.abs(dy) };
+      // Inside, dragging looks about.
+      if (within) within.walker = look(within.walker, -dx * 0.005, -dy * 0.004);
+    };
+    const pressUp = (event: PointerEvent) => {
+      const tap = press && press.travel < 8 && performance.now() - press.at < 500;
+      press = null;
+      if (!tap || within) return;
+      const box = renderer.domElement.getBoundingClientRect();
+      ray.setFromCamera(new THREE.Vector2(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1), camera);
+      const meshes = [...forgePieces.values()].flatMap((group) => group.children.filter((child) => (child as THREE.Mesh).isMesh));
+      // Bare land is not a thing to name. Anything standing on it is, and so is land with a building on it.
+      const hit = ray.intersectObjects(meshes, false).find((found) => found.object.parent?.userData.layer === "structure" || found.object.parent?.userData.enter);
+      if (hit) tapped.copy(hit.point);
+      pick(hit ? (hit.object.parent as THREE.Group) : null);
+    };
+    const keyDown = (event: KeyboardEvent) => {
+      if (!within) return;
+      if (event.code === "Escape") leave();
+      else if (["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+        keys.add(event.code);
+        event.preventDefault();
+      }
+    };
+    const keyUp = (event: KeyboardEvent) => keys.delete(event.code);
+    renderer.domElement.addEventListener("pointerdown", pressDown);
+    renderer.domElement.addEventListener("pointermove", pressMove);
+    renderer.domElement.addEventListener("pointerup", pressUp);
+    window.addEventListener("keydown", keyDown);
+    window.addEventListener("keyup", keyUp);
+
     let feedKey = "";
     let wishKey = "";
     let diaryKey = "";
@@ -483,7 +594,19 @@ export function WorldView({
         curves.delete(id);
       }
 
-      if (anim.active) {
+      const elapsed = Math.min(0.1, (performance.now() - lastTick) / 1000);
+      lastTick = performance.now();
+      // If the build she is inside was changed or taken down, she is put back outside.
+      if (within && forgePieces.get(within.id) !== within.group) leave();
+      if (within) {
+        const held = (code: string) => (keys.has(code) ? 1 : 0);
+        const turn = held("ArrowLeft") - held("ArrowRight");
+        if (turn) within.walker = look(within.walker, turn * 1.8 * elapsed, 0);
+        within.walker = walk(within.plan, within.walker, Math.max(-1, Math.min(1, stepping + held("KeyW") + held("ArrowUp") - held("KeyS") - held("ArrowDown"))), held("KeyD") - held("KeyA"), elapsed);
+        const { eye, toward } = eyeOf(within.plan, within.walker);
+        camera.position.copy(within.group.localToWorld(new THREE.Vector3(...eye)));
+        camera.lookAt(within.group.localToWorld(new THREE.Vector3(...toward)));
+      } else if (anim.active) {
         const t = ease((performance.now() - anim.started) / 1100);
         camera.position.lerpVectors(anim.fromPos, anim.toPos, t);
         controls.target.lerpVectors(anim.fromLook, anim.toLook, t);
@@ -493,7 +616,7 @@ export function WorldView({
         camera.position.lerp(desired, 0.06);
         controls.target.lerp(leader.position.clone().add(new THREE.Vector3(0, 0.2, 0)), 0.1);
       }
-      controls.update();
+      if (!within) controls.update();
       const bubble = bubbleRef.current;
       const width = host.clientWidth || 1;
       const height = host.clientHeight || 1;
@@ -506,6 +629,11 @@ export function WorldView({
       for (const agent of snap.agents) {
         const entry = agents.get(agent.id);
         if (!entry) continue;
+        // Inside a building the view is the room. Name boards from outside are put away.
+        if (within) {
+          entry.label.visible = false;
+          continue;
+        }
         if (!narrow) {
           entry.label.visible = true;
           entry.label.position.set(0, 1.15, 0);
@@ -533,6 +661,8 @@ export function WorldView({
         entry.label.center.set(0.5, 0.5);
       }
       if (bubble) {
+        // Inside a building her thought is put away with the name boards.
+        bubble.style.display = within ? "none" : "";
         if (!leader) bubble.hidden = true;
         else {
           head.set(0, 1.7, 0);
@@ -599,6 +729,8 @@ export function WorldView({
       window.clearInterval(terrainTimer);
       window.clearInterval(guestTimer);
       observer.disconnect();
+      window.removeEventListener("keydown", keyDown);
+      window.removeEventListener("keyup", keyUp);
       controls.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
@@ -606,6 +738,7 @@ export function WorldView({
   }, []);
 
   const choose = (name: string) => {
+    leaveRef.current();
     setView(name);
     if (!CAMS[name]?.follow) setFollow(false);
     jump.current(name);
@@ -614,7 +747,7 @@ export function WorldView({
   const thought = thoughts.length ? thoughts[thoughtIndex % thoughts.length] : "";
   const shownThought = clipThought(thought, thoughtOpen);
   return (
-    <div className="world-stage" data-world-chunks={loadedChunks.length} data-world-guests={guestList.length}>
+    <div className="world-stage" data-world-chunks={loadedChunks.length} data-world-guests={guestList.length} data-world-inside={inside ? inside.floor + 1 : 0}>
       <div className="world-canvas" ref={mount} />
       {thought ? (
         <button
@@ -649,7 +782,24 @@ export function WorldView({
           <button type="button" onClick={() => { window.localStorage.setItem(WORLD_TIP_KEY, "1"); setTip(false); }}>Got it</button>
         </div>
       ) : null}
-      <div className="world-hud">
+      {picked && !inside ? (
+        <div className="world-pick card" data-pick={picked.id}>
+          <strong>{picked.name}</strong>
+          {picked.enter ? <button type="button" onClick={() => enterRef.current(picked.id)}>Enter</button> : null}
+          <button type="button" onClick={() => pickRef.current(null)}>Close</button>
+        </div>
+      ) : null}
+      {inside ? (
+        <div className="world-inside">
+          <span>{`${inside.name} · floor ${inside.floor + 1} of ${inside.floors}`}</span>
+          <button type="button" title="Hold to walk. On a keyboard: W, A, S, D and the arrow keys." onPointerDown={() => stepRef.current(1)} onPointerUp={() => stepRef.current(0)} onPointerLeave={() => stepRef.current(0)} onPointerCancel={() => stepRef.current(0)}>Walk</button>
+          <button type="button" onPointerDown={() => stepRef.current(-1)} onPointerUp={() => stepRef.current(0)} onPointerLeave={() => stepRef.current(0)} onPointerCancel={() => stepRef.current(0)}>Back</button>
+          {inside.stairs ? <button type="button" disabled={inside.floor + 1 >= inside.floors} onClick={() => floorRef.current(1)}>Up</button> : null}
+          {inside.stairs ? <button type="button" disabled={inside.floor === 0} onClick={() => floorRef.current(-1)}>Down</button> : null}
+          <button type="button" onClick={() => leaveRef.current()}>Leave</button>
+        </div>
+      ) : null}
+      <div className="world-hud" hidden={Boolean(inside)}>
         <button type="button" className="places-toggle" aria-expanded={placesOpen} onClick={() => setPlacesOpen((open) => !open)}>Places</button>
         <div className={placesOpen ? "places-sheet open" : "places-sheet"}>
           {["overview", "island", "town", "art", "music", "code", "beach", "forest", "garden", "market", "lighthouse", "research", "saloon", "saloon-in", "floor", "floor-in", "together", "zoora", "follow"].map((name) => (
@@ -806,6 +956,7 @@ function syncForge(scene: THREE.Scene, pieces: Map<string, THREE.Group>, builds:
     }
     group.position.set(build.x, build.y, build.z);
     group.rotation.y = build.yaw;
+    Object.assign(group.userData, { id: build.id, name: build.name, layer: build.layer, version: build.version, enter: Boolean(build.enter) });
   }
   for (const [id, group] of pieces) {
     if (seen.has(id)) continue;
@@ -847,6 +998,9 @@ async function loadForgeMesh(group: THREE.Group, build: PublicWorld["forge"][num
     label.position.y = (geometry.boundingBox?.max.y ?? 10) + 3;
     label.scale.set(14, 4.6, 1);
     paintLabel(label, build.name);
+    // A name board is shown for the build she tapped, not for every build at once.
+    label.visible = false;
+    group.userData.label = label;
     group.add(label);
   } catch {
     // A build that cannot be fetched is left out. The next snapshot tries again when its version changes.

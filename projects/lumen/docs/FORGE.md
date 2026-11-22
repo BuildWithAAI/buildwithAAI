@@ -81,6 +81,54 @@ Measured with stand-in rows on the real functions, in a city where every road is
 
 A world made before this rule keeps its streets, and they become roads of the street kind when it is opened. They were never joined to each other, and nothing joins them for her. The rule holds for every road laid after.
 
+## Her buildings
+
+The owner's direction, 2026-11-21: every building can be entered, and its details matter. A building is made with one tool, `{"op": "building", ...}`, and every number in it is hers.
+
+| She sets | Range | If she does not say |
+| --- | --- | --- |
+| `outline` | a block, 3 to 16 straight sides, or round | required |
+| `floors` | 1 to 60 | required |
+| `floorHeight` | 2.6 to 8 m | 3.2 m |
+| `wall` | 0.2 to 1.2 m thick | 0.3 m |
+| `taper` | the top is 0.5 to 1 of the base | 1 |
+| `windows` | bay width, and the window's share of the bay and the storey, its sill, the share lit; or none | a window every 3 m |
+| `door` | which wall, how far along, width 0.9 to 6 m, height 2 to 5 m; or none | 1.6 by 2.4 m in the middle of the front |
+| `roof` | a parapet or a flat roof with a kerb | parapet |
+| `stairs` | where they stand; or none | against the back wall of a block, in the middle of any other shape |
+
+What the tool builds from those numbers:
+
+- **Walls with thickness**, an outside face and an inside face.
+- **Windows that are holes** through the wall, each with a frame, a sill that stands out from the wall, and a pane halfway through it. A lit pane glows. A clear one is glass, and the room shows through it. A wide window gets an upright and a tall one a rail.
+- **A door that is a hole** through the wall, with a frame, leaves standing open into the building, a handle, a canopy with her light under it, and a step.
+- **A floor at every storey**, with the ceiling of the storey below on its underside. Above the ground floor the stairwell is cut out, and has a glass rail on the three sides nobody steps through.
+- **Stairs from every floor to the next.** Two flights with a landing where they fit. A spiral round a post where they do not. A ladder where a spiral does not. The kind is chosen so it fits on the top floor of a building that narrows.
+- **A plinth** at the foot of the wall, **a coping** on top of it, and **a line of her light** under the coping.
+
+The stairs and the headroom use the figures the International Building Code gives: no step rises more than 178 mm, each is 280 mm deep, and a storey leaves more than 2,286 mm clear.
+
+A round building is given straight walls wide enough for a door: 8 for a small one, up to 24 for a large one. If she chooses many sides on a small building, no wall is wide enough for a door and it has none.
+
+A building part is moved and turned and takes no other arrangement, so its floors stay level. It cannot be put in a group. Its front faces +z. A crown, columns, a sign, or anything she puts inside are parts of her own, made with the other tools.
+
+Four of the things she knows how to make are buildings now, and each has a door on its front: every building in a block, the spire, the exchange, and the barn in her fields. Left to herself she turns a build so its front is toward the road it stands beside.
+
+Counted in a world of 400 builds she grew with no model: 119 buildings with a door, 883 floors between them, stairs in every one with more than one floor. The world is 2.68 million triangles. About 1.25 million of those are the plants in her 24 fields, which were there before. A block of buildings is about 9,500 triangles and a spire about 20,000.
+
+### Walking inside
+
+`/api/forge/<id>/plan` gives each building in a build as the live world needs it: every floor's height and the room inside its walls, the door, and the stairwell with the spot in front of it. It is worked out from the same layout as the mesh, so the two cannot disagree.
+
+In the live world:
+
+- **Tap a build** to see its name. Name boards no longer stand over every build at once.
+- **Enter**, if it has a door. The eye goes in by the door nearest where she tapped and stands at a person's eye height, 1.6 m.
+- **Look** by dragging. **Walk** by holding the Walk or Back button, or with W, A, S, D and the arrow keys. She stays inside the walls, slides along a wall she walks into, and goes round the stairwell.
+- **Up and Down** take her to the next floor by the stairs. **Leave**, or Escape, puts the view back where it was.
+
+`src/world/walk.ts` holds the walking and knows nothing about drawing, so it is tested on its own.
+
 ## Recipes
 
 A recipe is a name, a seed and a list of parts. It is plain data. The same recipe always makes the same mesh, so every build is kept by version and can be undone.
@@ -106,7 +154,7 @@ What does not vary is the art direction: eight materials and no others (stone, m
 
 About every thirty minutes, at most 24 times a day, up to 400 standing. The world's creative switch stops it.
 
-- **With a model connected**, she is told the tools, the four rules, what she has made so far (names, places, sizes) and where her roads run, and writes one design with its place and vibe. Nothing from outside is in that prompt. If it passes the checks it is raised exactly where she said. If it is refused, she is told why the next time, in one fixed sentence chosen by the refusal's code. No text she or anyone else wrote is carried into that sentence.
+- **With a model connected**, she is told the tools (the building tool among them), the four rules, what she has made so far (names, places, sizes) and where her roads run, and writes one design with its place and vibe. Nothing from outside is in that prompt. If it passes the checks it is raised exactly where she said. If it is refused, she is told why the next time, in one fixed sentence chosen by the refusal's code. No text she or anyone else wrote is carried into that sentence.
 - **With no model**, or if her design or its place is refused, she makes something she knows and finds room for it by trying places around what she already built. When her land is full she lays more, in the mood she is in. This is chance, not a layout.
 
 What she knows how to make: spire, block, exchange, arch, coaster, tank, tree, lamp, road (things), and plain, fields, ruin (land).
@@ -115,7 +163,7 @@ Left to herself she has these habits. They are habits, not rules, and a model is
 
 - She brings a road onto new open land before she builds there. Her first road crosses open land at a place drawn by chance. Every road after it starts on a road she has, at a point drawn by chance, and runs on or turns off by chance, as an alley, a street or an avenue.
 - She keeps two roads that run the same way at least 14 m apart, keeps roads on level open ground, and does not drive a road through something tall she built.
-- What she raises stands beside a road and faces it, and never on one.
+- What she raises stands beside a road, never on one, and is turned so its front, where the door is, faces that road.
 - She most often lays new land where one of her roads is heading, and not over the middle of land she already has.
 - When there is no room left beside her roads, she most often adds a road before she lays more land.
 
@@ -129,12 +177,16 @@ One build: 120,000 triangles, 32 metres from its centre, 140 metres tall. A buil
 
 - `/forge`: what she has built, with a picture of each from her viewport.
 - `/admin/forge`: take down, undo, raise an idea (at a place you type, or one she finds), or paste a recipe with its place. Switch her model designs on or off.
-- `/api/forge/<id>`: a build's mesh as bytes. `/api/forge/<id>/picture`: its picture.
+- `/api/forge/<id>`: a build's mesh as bytes. `/api/forge/<id>/picture`: its picture. `/api/forge/<id>/plan`: how it is walked into.
 
 ## Not built yet
 
 - Openings are cut in lofts only. One shape cannot yet be cut out of another of a different kind.
 - Nothing moves. There are no people or vehicles, and a coaster has no cars.
+- A building's floors are open. There are no rooms yet: no inside walls, no inside doors, and nothing she has furnished. A home or a shop in it is still a count, not a room.
+- Inside, she changes floor with a button and arrives in front of the stairs. She does not climb them step by step. She cannot walk out through the door: Leave puts the view back outside.
+- There is one stair in a building and no lift. Buildings stacked on each other in one build are not joined by stairs.
+- Everything inside a building is in the same mesh as its outside, and is loaded with it. Rooms and furnishing will need the inside loaded only when the eye is near.
 - She does not travel yet. Her roads are one network, and nothing walks or drives on it. A build has no address.
 - Roads lie level. There are no bridges, slopes or tunnels, and left to herself she keeps roads off land with relief, so fields and ruins can cut part of her land off from her roads.
 - She has no land kinds for a beach or mountains yet. A model can shape land with the ground tool; her own ideas are plain, fields and ruin.
