@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: cb83c0d
+title: No paper trading anywhere. Every trade is a real one.
+summary: The owner's rule is that there is no paper trading, so the rest of it is gone. A coin order goes to the signer he runs or is not placed, and nothing chooses between paper and live. The floor page shows her forex orders and her coin trades and says LIVE or CLOSED, and so do the board in her world and her Telegram status. Old paper rows are closed out when the books are opened. No coin signer exists yet, so she trades no coin today, and nothing decides to place an order yet.
+date: 2026-11-22T19:20:59Z
+image:
+
+---
 sha: 8e256c5
 title: Forex is live. Her order goes to the broker.
 summary: The owner's rule is that there is no paper trading, so the paper forex book is gone. Her AUDUSD order now goes through a bridge on his computer to the MetaTrader 5 terminal and the broker, as a waiting limit order with its stop and its target in the one request. The terminal checks it first, it is read back after, and it is never sent twice. The bridge has still met only a stand-in for MetaTrader, and nothing decides to place an order yet.
