@@ -1,0 +1,63 @@
+[project]
+name = "zoora-signer"
+version = "0.1.0"
+description = "Zoora capped pump.fun signer. Dry run only. No money and no mainnet signing."
+requires-python = ">=3.11"
+readme = "README.md"
+dependencies = [
+  "cryptography==50.0.2",
+  "httpx==0.28.1",
+  "keyring==25.6.0",
+  "solders==0.26.0",
+  "tzdata==2026.6",
+]
+
+[project.optional-dependencies]
+dev = [
+  "hypothesis==6.131.4",
+  "mypy==1.15.0",
+  "pip-audit==2.9.0",
+  "pytest==9.0.3",
+  "ruff==0.11.2",
+]
+
+[project.scripts]
+zoora-signer = "zoora_signer.cli:main"
+
+[build-system]
+requires = ["setuptools==84.1.0", "wheel==0.46.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "src"
+packages = ["zoora_signer"]
+
+[[tool.mypy.overrides]]
+module = ["solders", "solders.*", "keyring", "keyring.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["zoora_signer.signing", "zoora_signer.txbuild"]
+disallow_untyped_calls = false
+warn_return_any = false
+
+[tool.hypothesis]
+derandomize = true

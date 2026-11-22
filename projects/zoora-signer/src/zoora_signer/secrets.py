@@ -1,0 +1,284 @@
+"""Secrets. The signing key comes from the store, never from the environment or a file."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from zoora_signer.constants import (
+    FORBIDDEN_ENV,
+    HMAC_MIN_BYTES,
+    KEYRING_EVENT_HMAC,
+    KEYRING_HMAC,
+    KEYRING_RPC,
+    KEYRING_SERVICE,
+    KEYRING_SIGNING,
+    RPC_PROVIDER_NAME,
+    SIGNING_KEY_BYTES,
+)
+
+
+class InvalidSigningKey(ValueError):
+    pass
+
+
+def parse_signing_key(text: str) -> bytes:
+    """Only a 64-byte keypair as 128 hex characters is accepted."""
+
+    raw = text.strip()
+    if raw.startswith("<") or " " in raw or raw.startswith("["):
+        raise InvalidSigningKey("FORMAT")
+    if len(raw) != SIGNING_KEY_BYTES * 2:
+        raise InvalidSigningKey("FORMAT")
+    try:
+        decoded = bytes.fromhex(raw)
+    except ValueError as exc:
+        raise InvalidSigningKey("FORMAT") from exc
+    if decoded.hex() != raw.lower():
+        raise InvalidSigningKey("FORMAT")
+    return decoded
+
+
+def secret_needles(secret: bytes) -> tuple[str, ...]:
+    import base64
+
+    encoded = [
+        secret.hex(),
+        secret.hex().upper(),
+        base64.b64encode(secret).decode(),
+        _b58(secret),
+        "[" + ",".join(str(byte) for byte in secret) + "]",
+        "[" + ", ".join(str(byte) for byte in secret) + "]",
+    ]
+    try:
+        text = secret.decode("utf-8")
+    except UnicodeDecodeError:
+        text = ""
+    if text:
+        encoded.append(text)
+    return tuple(item for item in encoded if len(item) >= 8)
+
+
+def _b58(data: bytes) -> str:
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    value = int.from_bytes(data, "big")
+    chars = []
+    while value:
+        value, rem = divmod(value, 58)
+        chars.append(alphabet[rem])
+    zeros = 0
+    for byte in data:
+        if byte == 0:
+            zeros += 1
+        else:
+            break
+    return "1" * zeros + "".join(reversed(chars))
+
+
+def _hmac_bytes(key: bytes | None) -> bytes | None:
+    if key is None or len(key) < HMAC_MIN_BYTES:
+        return None
+    return key
+
+
+def event_key_id(key: bytes) -> str:
+    """Public id of an event HMAC key. Not the key."""
+
+    import hashlib
+
+    return hashlib.sha256(key).hexdigest()[:16]
+
+
+def event_key_acceptable(key: bytes, hmac_key: bytes | None) -> bool:
+    """Reject a short, repeated, low-entropy, or intent-HMAC-identical event key."""
+
+    if _hmac_bytes(key) is None or len(set(key)) < 8:
+        return False
+    if hmac_key is not None and len(hmac_key) == len(key):
+        import hmac
+
+        if hmac.compare_digest(key, hmac_key):
+            return False
+    return True
+
+
+class KeyMaterialInEnv(RuntimeError):
+    pass
+
+
+def reject_key_material_in_env() -> None:
+    for name in FORBIDDEN_ENV:
+        if os.environ.get(name):
+            raise KeyMaterialInEnv(name)
+
+
+class MemorySecretStore:
+    def __init__(self) -> None:
+        self.signing_key: bytes | None = None
+        self.hmac_key: bytes | None = None
+        self.event_hmac: bytes | None = None
+        self.rpc_url: str | None = None
+
+    def get_signing_key(self) -> bytes | None:
+        reject_key_material_in_env()
+        if self.signing_key is None:
+            return None
+        return parse_signing_key(self.signing_key.hex())
+
+    def wallet_pubkey(self) -> str | None:
+        """Public half of the stored keypair. Does not return or request the seed."""
+
+        if self.signing_key is None or len(self.signing_key) != SIGNING_KEY_BYTES:
+            return None
+        from solders.pubkey import Pubkey
+
+        return str(Pubkey.from_bytes(self.signing_key[32:]))
+
+    def has_signing_key(self) -> bool:
+        try:
+            return self.get_signing_key() is not None
+        except InvalidSigningKey:
+            return False
+
+    def get_hmac_key(self) -> bytes | None:
+        reject_key_material_in_env()
+        return _hmac_bytes(self.hmac_key)
+
+    def set_hmac_key(self, key: bytes) -> None:
+        if _hmac_bytes(key) is None:
+            raise InvalidSigningKey("HMAC_SHORT")
+        self.hmac_key = key
+
+    def get_event_hmac(self) -> bytes | None:
+        reject_key_material_in_env()
+        return _hmac_bytes(self.event_hmac)
+
+    def set_event_hmac(self, key: bytes) -> None:
+        if not event_key_acceptable(key, self.get_hmac_key()):
+            raise InvalidSigningKey("EVENT_KEY")
+        self.event_hmac = key
+
+    def get_rpc_url(self) -> str | None:
+        reject_key_material_in_env()
+        return self.rpc_url
+
+
+class KeyringSecretStore:
+    """Windows Credential Manager through the keyring package. Values are never logged."""
+
+    def __init__(self, rpc_env_file: Path | None = None) -> None:
+        self._rpc_env_file = rpc_env_file
+
+    def get_signing_key(self) -> bytes | None:
+        reject_key_material_in_env()
+        raw = _password(KEYRING_SIGNING)
+        if raw is None:
+            return None
+        return parse_signing_key(raw)
+
+    def wallet_pubkey(self) -> str | None:
+        """Public half of the stored keypair. The seed is not returned."""
+
+        reject_key_material_in_env()
+        raw = _password(KEYRING_SIGNING)
+        if raw is None:
+            return None
+        try:
+            decoded = parse_signing_key(raw)
+        except InvalidSigningKey:
+            return None
+        from solders.pubkey import Pubkey
+
+        return str(Pubkey.from_bytes(decoded[32:]))
+
+    def has_signing_key(self) -> bool:
+        try:
+            return self.get_signing_key() is not None
+        except InvalidSigningKey:
+            return False
+
+    def get_hmac_key(self) -> bytes | None:
+        reject_key_material_in_env()
+        raw = _password(KEYRING_HMAC)
+        if raw is None:
+            return None
+        try:
+            decoded = bytes.fromhex(raw.strip())
+        except ValueError:
+            return None
+        return _hmac_bytes(decoded)
+
+    def set_hmac_key(self, key: bytes) -> None:
+        if _hmac_bytes(key) is None:
+            raise InvalidSigningKey("HMAC_SHORT")
+        import keyring
+
+        keyring.set_password(KEYRING_SERVICE, KEYRING_HMAC, key.hex())
+
+    def get_event_hmac(self) -> bytes | None:
+        reject_key_material_in_env()
+        raw = _password(KEYRING_EVENT_HMAC)
+        if raw is None:
+            return None
+        try:
+            decoded = bytes.fromhex(raw.strip())
+        except ValueError:
+            return None
+        return _hmac_bytes(decoded)
+
+    def set_event_hmac(self, key: bytes) -> None:
+        if not event_key_acceptable(key, self.get_hmac_key()):
+            raise InvalidSigningKey("EVENT_KEY")
+        import keyring
+
+        keyring.set_password(KEYRING_SERVICE, KEYRING_EVENT_HMAC, key.hex())
+
+    def get_rpc_url(self) -> str | None:
+        reject_key_material_in_env()
+        raw = _password(KEYRING_RPC)
+        if raw:
+            return raw.strip()
+        if self._rpc_env_file is not None:
+            return read_rpc_env_file(self._rpc_env_file)
+        return None
+
+
+def _password(account: str) -> str | None:
+    import keyring
+
+    return keyring.get_password(KEYRING_SERVICE, account)
+
+
+_FORBIDDEN_FILE_KEYS = (
+    "SIGNER",
+    "SEED",
+    "SECRET",
+    "HMAC",
+    "PRIVATE",
+    "MNEMONIC",
+    "SIGNING",
+)
+
+
+def read_rpc_env_file(path: Path) -> str | None:
+    """RPC URL only. A signing key in this file is refused."""
+
+    if not path.is_file():
+        return None
+    url: str | None = None
+    provider = RPC_PROVIDER_NAME
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        name = key.strip().upper()
+        if any(part in name for part in _FORBIDDEN_FILE_KEYS):
+            raise KeyMaterialInEnv(name)
+        if name in {"ZOORA_RPC_URL", "HELIUS_RPC_URL"}:
+            url = value.strip().strip('"').strip("'")
+        elif name == "ZOORA_RPC_PROVIDER":
+            provider = value.strip() or provider
+    if provider != RPC_PROVIDER_NAME:
+        return url
+    return url
