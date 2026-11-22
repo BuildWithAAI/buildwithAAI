@@ -11,6 +11,8 @@ from types import SimpleNamespace
 
 SYMBOL = "AUDUSD.s"
 _tick = None
+# With STANDIN_MT5_HIDDEN=1 the pair starts outside Market Watch, with no price and a blank pip value, as in a fresh terminal.
+_selected = os.environ.get("STANDIN_MT5_HIDDEN") != "1"
 
 
 def initialize(*args, **kwargs):
@@ -35,7 +37,8 @@ def account_info():
 
 def _symbol(name, trade_mode):
     contract = float(os.environ.get("STANDIN_MT5_CONTRACT", "100000"))
-    return SimpleNamespace(name=name, visible=name == SYMBOL, select=name == SYMBOL, digits=5, point=0.00001, trade_contract_size=contract, volume_min=0.01, volume_max=100.0, volume_step=0.01, trade_stops_level=0, trade_freeze_level=0, trade_tick_value=contract / 100000.0, trade_tick_size=0.00001, trade_mode=trade_mode, trade_exemode=2, filling_mode=3, order_mode=127, expiration_mode=15, currency_base="AUD", currency_profit="USD")
+    shown = name == SYMBOL and _selected
+    return SimpleNamespace(name=name, visible=shown, select=shown, digits=5, point=0.00001, trade_contract_size=contract, volume_min=0.01, volume_max=100.0, volume_step=0.01, trade_stops_level=0, trade_freeze_level=0, trade_tick_value=contract / 100000.0 if shown else 0.0, trade_tick_size=0.00001, trade_mode=trade_mode, trade_exemode=2, filling_mode=3, order_mode=127, expiration_mode=15, currency_base="AUD", currency_profit="USD")
 
 
 def symbol_info(name):
@@ -52,12 +55,15 @@ def symbols_get(group=None):
 
 
 def symbol_select(name, enable=True):
+    global _selected
+    if name == SYMBOL:
+        _selected = bool(enable)
     return name == SYMBOL
 
 
 def symbol_info_tick(name):
     global _tick
-    if name != SYMBOL:
+    if name != SYMBOL or not _selected:
         return None
     try:
         with open(os.environ["STANDIN_MT5_TICK"], "r", encoding="utf-8") as handle:
