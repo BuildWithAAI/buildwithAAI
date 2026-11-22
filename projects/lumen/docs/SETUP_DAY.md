@@ -13,6 +13,8 @@ The owner decides when the build is complete. These are the pieces that are not 
 - [ ] **Her research and her own orders** (backlog 0v). Today nothing decides to place an order.
 - [ ] **The coin signer for his one wallet** (0t, 0e). Today a coin order has nowhere to go.
 - [ ] **Loading the world by area** (0c). Today the public view cannot load a world of 400 builds.
+- [ ] **The open security findings** (0z). Four matter before real keys go in.
+- [ ] **The owner's decision on what she builds with no model** (0z).
 - [ ] **The setup command** (0y). One command that walks this page in order and writes down what it saw.
 
 Built and waiting for the day: the engine, her world and her rooms, her trading rules, the forex bridge (`docs/FOREX.md`), the floor page, home sales in SOL (`docs/LAND.md`, `docs/SOL.md`).
@@ -43,6 +45,8 @@ copy .env.example .env.local
 ```
 
 In `.env.local`: `OWNER_PASSWORD_HASH` (from `npm run hash-password`), `OWNER_SESSION_SECRET`, `LUMEN_LLM_BASE_URL`, `LUMEN_LLM_API_KEY`, `LUMEN_LLM_MODEL`. The table in `README.md` says what each is. Leave `LUMEN_PUBLIC_MODE` unset: the first run is private.
+
+**Set the model key before the first start.** With no working model the engine builds for her from the things it knows how to make, at places drawn by chance, and it starts within the first minute (`docs/AUDIT_2026-11-22.md`, finding 2).
 
 ```powershell
 npm start
