@@ -12,9 +12,10 @@ import { researching, stationView } from "../research/run";
 import { visibleBuilds } from "./creative";
 import { readScene, sceneChoices, sceneWeatherKind, sceneWeatherText } from "./scene";
 import { readShop } from "../shop/store";
-import { tape } from "../trading/book";
+import { tape, type TradeEnv } from "../trading/book";
+import { floorOpen } from "../trading/floor";
 import { publicWishLines } from "../wishlist/board";
-import { SIMULATED, publicQuotes } from "../trading/public";
+import { NOT_ADVICE, REAL_MONEY, publicQuotes } from "../trading/public";
 import { recordProvenance, rememberSongBody } from "../build/provenance";
 import { skyAt, skyInstant } from "./sky";
 import { moderateNote, spendProbe, SPEND_WORDS } from "../brain/social";
@@ -379,7 +380,7 @@ export function allowWorldRead(ip: string, now: number, limit = 90, windowMs = 6
   return true;
 }
 
-export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?: string; LUMEN_WORLD_LON?: string; LUMEN_WORLD_TZ?: string; LUMEN_SKY_AT?: string } = {}): PublicWorld {
+export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?: string; LUMEN_WORLD_LON?: string; LUMEN_WORLD_TZ?: string; LUMEN_SKY_AT?: string } & TradeEnv = {}): PublicWorld {
   ensureResidents(db, now);
   const fresh = db.prepare("SELECT * FROM world_agents WHERE present = 1 ORDER BY joined_at ASC").all() as AgentRow[];
   const weather = readWeather(db, now);
@@ -440,21 +441,23 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
       const shop = readShop(db);
       return shop ? { name: shop.name, hue: shop.hue, form: shop.form, x: shop.x, z: shop.z, open: shop.open } : null;
     })(),
-    tape: tapeLines(db),
+    tape: tapeLines(db, env),
     choices: sceneChoices(db),
     watchOnly: true,
   };
 }
 
-function tapeLines(db: DatabaseSync): { mode: "PAPER" | "LIVE"; lines: string[] } {
-  const board = tape(db);
-  const lines: string[] = [board.mode, SIMULATED];
+/** The board in her trading floor. LIVE when an order of hers has somewhere real to go, CLOSED when it has not. There is no other state. */
+function tapeLines(db: DatabaseSync, env: TradeEnv): { mode: "LIVE" | "CLOSED"; lines: string[] } {
+  const board = tape(db, env);
+  const mode = floorOpen(env) ? "LIVE" : "CLOSED";
+  const lines: string[] = [mode, mode === "LIVE" ? REAL_MONEY : NOT_ADVICE];
   const quotes = publicQuotes(board.quotes, Date.now());
   if (!quotes.length) lines.push("— — —");
   for (const quote of quotes.slice(0, 2)) lines.push(`${quote.symbol} ${quote.priceUsd} USD`);
   const thesis = board.history[0]?.thesis;
   lines.push(thesis ? thesis.slice(0, 42) : "— — —");
-  return { mode: board.mode, lines };
+  return { mode, lines };
 }
 
 const GARDEN_GROW_MS = 6 * 60 * 60 * 1000;

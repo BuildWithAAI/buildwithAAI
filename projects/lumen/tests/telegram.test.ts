@@ -21,15 +21,18 @@ import {
   TELEGRAM_BODY_MAX,
   TELEGRAM_COMMANDS,
   TELEGRAM_THROTTLE_MS,
+  TRADING_POWERS,
 } from "../src/integrations/telegramOwner";
 import { pollCycle, pollStartup, runTelegramPoll, telegramCaller } from "../src/integrations/telegramPoll";
 import { moneyLive } from "../src/money/rules";
 import { shopCheckoutOpen } from "../src/shop/store";
 import { tradingLive } from "../src/trading/book";
+import { floorOpen } from "../src/trading/floor";
+import { fxBridgeSet } from "../src/trading/forex";
 import { initialState } from "../src/brain/tick";
 import { creativeEnabled, setCreativeEnabled } from "../src/world/creative";
 import { BOT_COMMANDS, setMyCommands } from "../scripts/telegram-set-commands.mjs";
-import { forbiddenPollKeys, launchPoll, minimalPollEnv, pollEnvAllowed, preparePollEnv, removePollBundle } from "../scripts/telegram-poll.mjs";
+import { TRADING_POWERS as POLL_TRADING_POWERS, forbiddenPollKeys, launchPoll, minimalPollEnv, pollEnvAllowed, preparePollEnv, removePollBundle } from "../scripts/telegram-poll.mjs";
 
 const live = {
   LUMEN_TELEGRAM_BOT_TOKEN: "secret-token",
@@ -146,7 +149,16 @@ describe("Zoora's telegram voice", () => {
     expect(status.reply).toContain("local data, not production");
     expect(status.reply).toContain("I do not have a balance");
     expect(status.reply).toContain("The shop checkout is closed.");
-    expect(status.reply).toContain("The Saloon is paper only.");
+    // There is no paper trading. With no signer and no bridge set, each side is closed, and says so.
+    expect(status.reply).toContain("The Saloon is closed. No signer is set here.");
+    expect(status.reply).toContain("Forex is closed. No bridge is set here.");
+    expect(status.reply).not.toMatch(/paper/i);
+    expect(status.reply.length).toBeLessThan(500);
+    const trading = { ...live, LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade", LUMEN_TRADE_SIGNER_SECRET: "s".repeat(32), LUMEN_FX_BRIDGE_URL: "http://127.0.0.1:8765", LUMEN_FX_BRIDGE_SECRET: "b".repeat(32) };
+    const open = commandReply("status", readVoiceFacts(db, trading));
+    expect(open).toContain("The Saloon is live.");
+    expect(open).toContain("Forex is live.");
+    expect(open.length).toBeLessThan(500);
     expect(status.reply).not.toMatch(/\$\s?\d/);
     const world = await acceptTelegramUpdate(db, live, ownerPacket("/world"), "hook-secret", talk, noon);
     expect(world.reply).toContain("Art Studio");
@@ -249,7 +261,10 @@ describe("Zoora's telegram voice", () => {
     const hostile = {
       ...live,
       LUMEN_MONEY_LIVE: "true",
-      LUMEN_TRADING_LIVE: "true",
+      LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade",
+      LUMEN_TRADE_SIGNER_SECRET: "s".repeat(32),
+      LUMEN_FX_BRIDGE_URL: "http://127.0.0.1:8765",
+      LUMEN_FX_BRIDGE_SECRET: "b".repeat(32),
       LUMEN_SALES_MODE: "live",
       LUMEN_SALES_ENABLED: "true",
       LUMEN_SPEND_ENABLED: "true",
@@ -258,9 +273,17 @@ describe("Zoora's telegram voice", () => {
       STRIPE_WEBHOOK_SECRET: "whsec_test",
       LUMEN_DATA: ":memory:",
     };
+    // The parent could trade for real, on both sides. The polling process must not be able to.
+    expect(tradingLive(hostile)).toBe(true);
+    expect(fxBridgeSet(hostile)).toBe(true);
     const safe = pollSafeEnv(hostile);
     expect(moneyLive(safe)).toBe(false);
     expect(tradingLive(safe)).toBe(false);
+    expect(fxBridgeSet(safe)).toBe(false);
+    expect(floorOpen(safe)).toBe(false);
+    for (const name of TRADING_POWERS) expect(safe[name]).toBeUndefined();
+    // The parent's own settings are left as they were.
+    expect(hostile.LUMEN_TRADE_SIGNER_URL).toBe("https://signer.example/trade");
     expect(safe.LUMEN_SALES_MODE).toBe("disabled");
     expect(safe.MINT_ENABLED).toBe("false");
     expect(shopCheckoutOpen(openDatabase(), safe)).toBe(false);
@@ -291,7 +314,9 @@ describe("Zoora's telegram voice", () => {
     expect(next).toBe(7);
     expect(talked).toEqual([]);
     expect(sent.join(" ")).toContain("Live money is off");
-    expect(sent.join(" ")).toContain("The Saloon is paper only.");
+    expect(sent.join(" ")).toContain("The Saloon is closed.");
+    expect(sent.join(" ")).toContain("Forex is closed.");
+    expect(sent.join(" ")).not.toMatch(/paper/i);
     expect(sent.join(" ")).not.toMatch(/\$\s?\d/);
     expect(db.prepare("SELECT chat_id FROM telegram_drops").get()).toEqual({ chat_id: "9" });
     expect(kvGet(db, "tg_poll_offset")).toBe("7");
@@ -343,7 +368,7 @@ describe("Zoora's telegram voice", () => {
     expect(failed).toBe(1);
     expect(errors.join(" ")).not.toContain(token);
     expect(errors.join(" ")).toContain("[redacted]");
-    const env = { LUMEN_MONEY_LIVE: "true", LUMEN_TRADING_LIVE: "true", LUMEN_SALES_MODE: "live", LUMEN_SPEND_ENABLED: "true", MINT_ENABLED: "true", STRIPE_SECRET_KEY: "sk_live_x", LUMEN_TELEGRAM_BOT_TOKEN: token };
+    const env = { LUMEN_MONEY_LIVE: "true", LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade", LUMEN_SALES_MODE: "live", LUMEN_SPEND_ENABLED: "true", MINT_ENABLED: "true", STRIPE_SECRET_KEY: "sk_live_x", LUMEN_TELEGRAM_BOT_TOKEN: token };
     expect(preparePollEnv({ LUMEN_TELEGRAM_MODE: "webhook" })).toBe(false);
     const logged: string[] = [];
     let ran = false;
@@ -442,5 +467,17 @@ describe("Zoora's telegram voice", () => {
       OTHER_TOKEN: "t",
       LUMEN_TELEGRAM_BOT_TOKEN: "secret-token",
     }).sort()).toEqual(["CARD_ISSUER", "LUMEN_STRIPE_KEY", "MY_PRIVATE_KEY", "OTHER_TOKEN", "stripe_secret_key"]);
+    // There is no paper trading, so whatever lets an engine trade is a power the polling bot must not start with.
+    // The script and the engine name the same four.
+    expect([...POLL_TRADING_POWERS].sort()).toEqual([...TRADING_POWERS].sort());
+    for (const name of TRADING_POWERS) {
+      expect(forbiddenPollKeys({ [name]: "x", PATH: "/bin" })).toEqual([name]);
+      expect(forbiddenPollKeys({ [name]: "", PATH: "/bin" })).toEqual([]);
+    }
+    expect(forbiddenPollKeys({ LUMEN_FX_BRIDGE_PORT: "8765", PATH: "/bin" })).toEqual(["LUMEN_FX_BRIDGE_PORT"]);
+    const powered: Record<string, string> = Object.fromEntries(TRADING_POWERS.map((name) => [name, "x"]));
+    expect(preparePollEnv(powered)).toBe(true);
+    for (const name of TRADING_POWERS) expect(powered[name]).toBeUndefined();
+    expect(powered.LUMEN_TELEGRAM_MODE).toBe("poll");
   });
 });

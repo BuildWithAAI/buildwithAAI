@@ -3,7 +3,7 @@ import { HomeFrame } from "../components/HomeFrame";
 import { homeGreeting } from "../components/visit";
 import type { WishlistItemView } from "../components/WishlistView";
 import { Ledger } from "../money/ledger";
-import { publicBooks, type PaperRow } from "../money/publicBooks";
+import { publicBooks } from "../money/publicBooks";
 import { moneyLive } from "../money/rules";
 import { getEngine } from "../server/engine";
 import { thoughtLines } from "../world/bubble";
@@ -31,8 +31,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     wish: (world.wishlist as string[]).find((line) => line !== "The board is blank.") ?? null,
     guestReply: guest?.reply ?? null,
   });
-  const paper = engine.db.prepare("SELECT symbol, side, mode FROM paper_trades WHERE mode != 'live' ORDER BY created_at DESC LIMIT 6").all() as PaperRow[];
-  const books = publicBooks(new Ledger(engine.db).list(), paper, moneyLive(engine.env));
+  const books = publicBooks(new Ledger(engine.db).list(), moneyLive(engine.env));
   const wishes: WishlistItemView[] = listKeeperWishes(engine.db, "open").map((item) => {
     const link = publicWishLink(item.link, engine.env);
     return {

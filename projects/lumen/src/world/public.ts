@@ -43,7 +43,8 @@ export type PublicWorld = {
   /** The two colours of her light that every look shares: the shade and the bright edge. */
   light?: { deep: string; pale: string };
   shop: { name: string; hue: number; form: number; x: number; z: number; open: boolean } | null;
-  tape: { mode: "PAPER" | "LIVE"; lines: string[] };
+  /** The board in her trading floor. LIVE when an order of hers can reach a real venue, CLOSED when it cannot. */
+  tape: { mode: "LIVE" | "CLOSED"; lines: string[] };
   choices: string[];
   watchOnly: true;
 };

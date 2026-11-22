@@ -120,27 +120,33 @@ describe("security recheck", () => {
     expect(allowGuestNote(book, "2001:db8:9:9::2", at + 9)).toBe(false);
   });
 
-  it("formats a paper result and leaves a live row out of the paper floor", () => {
+  it("formats a real result on the floor, and shows no stored field and no practice trade", () => {
     const html = renderToStaticMarkup(createElement(FloorView, {
       now: 24 * 60 * 60 * 1000 + 100,
       board: {
-        mode: "PAPER",
-        showLivePnl: false,
+        forexLive: false,
+        coinsLive: false,
+        forex: [],
+        forexPnlCents: 0,
         quotes: [
           { symbol: "LIVEX", priceUsd: "1", priceSol: "1", quotedAt: 1, pairCreatedAt: 1 },
-          { symbol: "PAPER", priceUsd: "1", priceSol: "1", quotedAt: 1, pairCreatedAt: 1 },
+          { symbol: "TIDE", priceUsd: "1", priceSol: "1", quotedAt: 1, pairCreatedAt: 1 },
         ],
         positions: [],
         history: [
-          { symbol: "LIVEX", side: "sell", result: "{\"usdCents\":-120,\"solMicro\":-3}", thesis: "a paper note", exitPlan: "leave", quotedAt: 1, mode: "live" },
-          { symbol: "PAPER", side: "sell", result: "{\"usdCents\":40,\"solMicro\":1}", thesis: "the tide", exitPlan: "hold", quotedAt: 1, mode: "paper" },
+          { symbol: "LIVEX", side: "sell", result: "{\"usdCents\":-120,\"solMicro\":-3}", thesis: "a note", exitPlan: "leave", quotedAt: 1 },
+          { symbol: "TIDE", side: "sell", result: "{\"usdCents\":40,\"solMicro\":1}", thesis: "the tide", exitPlan: "hold", quotedAt: 1 },
         ],
-        pnl: { paperUsdCents: 40, paperSolMicro: 1, liveUsdCents: -120, liveSolMicro: -3 },
+        pnl: { usdCents: -80, solMicro: -2 },
       },
     }));
-    expect(html).not.toContain("PAPER sell LIVEX");
+    expect(html).toContain("LIVE sell LIVEX");
+    expect(html).toContain("LIVE sell TIDE");
     expect(html).not.toContain("usdCents");
+    expect(html).toContain("Closed -$1.20");
     expect(html).toContain("Closed $0.40");
-    expect(html).toContain("SIMULATED");
+    expect(html).toContain("Coins P&amp;L -$0.80");
+    expect(html).toContain("Real money. Not financial advice.");
+    expect(html).not.toMatch(/paper|simulated/i);
   });
 });

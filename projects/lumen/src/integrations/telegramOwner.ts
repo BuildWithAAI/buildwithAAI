@@ -10,6 +10,7 @@ import { killSwitchOn, moneyLive } from "../money/rules";
 import { scrubInstructions } from "../research/ideas";
 import { shopCheckoutOpen } from "../shop/store";
 import { tradingLive } from "../trading/book";
+import { fxBridgeSet } from "../trading/forex";
 import { areaById } from "../world/areas";
 import { readScene, type SceneState } from "../world/scene";
 
@@ -73,11 +74,14 @@ export function ownerTelegram(env: AlertEnv): OwnerTelegram {
   return { mode: "live", chatId, secretSet: Boolean(env.LUMEN_TELEGRAM_WEBHOOK_SECRET) };
 }
 
-/** Polling never inherits a live-money switch from the parent environment. */
+/** What lets an engine trade: the coin signer and the forex bridge, each with the secret it shares. A process without them cannot place an order. */
+export const TRADING_POWERS = ["LUMEN_TRADE_SIGNER_URL", "LUMEN_TRADE_SIGNER_SECRET", "LUMEN_FX_BRIDGE_URL", "LUMEN_FX_BRIDGE_SECRET"] as const;
+
+/** Polling never inherits a live-money switch or a trading power from the parent environment. */
 export function pollSafeEnv(env: AlertEnv): AlertEnv {
   const next: AlertEnv = { ...env, LUMEN_TELEGRAM_MODE: "poll" };
   delete next.LUMEN_MONEY_LIVE;
-  delete next.LUMEN_TRADING_LIVE;
+  for (const name of TRADING_POWERS) delete next[name];
   next.LUMEN_SALES_MODE = "disabled";
   next.LUMEN_SALES_ENABLED = "false";
   next.SALES_ENABLED = "false";
@@ -166,7 +170,10 @@ export type VoiceFacts = {
   asleep: boolean;
   scene: SceneState | null;
   moneyLive: boolean;
+  /** Her coin orders can reach the signer from this process. */
   tradingLive: boolean;
+  /** Her forex orders can reach the bridge from this process. */
+  forexLive: boolean;
   checkoutOpen: boolean;
   kill: boolean;
 };
@@ -187,6 +194,7 @@ export function readVoiceFacts(db: DatabaseSync, env: AlertEnv): VoiceFacts {
     scene: readScene(db),
     moneyLive: moneyLive(env),
     tradingLive: tradingLive(env),
+    forexLive: fxBridgeSet(env),
     checkoutOpen: shopCheckoutOpen(db, env),
     kill,
   };
@@ -352,9 +360,11 @@ function statusReply(facts: VoiceFacts): string {
     ? "Live money is on in this process. I will not invent a balance."
     : "Live money is off. I do not have a balance, and I will not invent one.";
   const shop = facts.checkoutOpen ? "The shop checkout is open." : "The shop checkout is closed.";
-  const saloon = facts.tradingLive ? "The Saloon is live." : "The Saloon is paper only.";
+  // There is no paper trading. Each side is live, or it is not trading at all.
+  const saloon = facts.tradingLive ? "The Saloon is live." : "The Saloon is closed. No signer is set here.";
+  const forex = facts.forexLive ? "Forex is live." : "Forex is closed. No bridge is set here.";
   const kill = facts.kill ? "The kill switch is on." : "The kill switch is off.";
-  return `${awake} ${money} ${shop} ${saloon} ${kill} This reads this instance's local data, not production.`;
+  return `${awake} ${money} ${shop} ${saloon} ${forex} ${kill} This reads this instance's local data, not production.`;
 }
 
 function worldReply(facts: VoiceFacts): string {

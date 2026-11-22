@@ -220,27 +220,34 @@ describe("re-review 10", () => {
     expect(readFileSync(new URL("../src/server/engine.ts", import.meta.url), "utf8")).toContain("sweepStuckPurchases(db, now)");
   });
 
-  it("pauses on a signer network error, signs the body, and keeps live P&L apart from paper", async () => {
+  it("pauses on a signer network error, signs the body, and writes down nothing the signer did not sign", async () => {
     const db = grantLiveTrading(openDatabase());
-    const paper = await proposeTrade(db, tradeEnv, proposal(), quote("150", "1"), now);
-    expect(paper).toMatchObject({ ok: true, mode: "paper" });
-    await proposeTrade(db, tradeEnv, proposal({ side: "sell", usdCents: 600 }), quote("180", "1.2"), now + 1);
     let calls = 0;
     let header = "";
-    const liveEnv = { ...tradeEnv, LUMEN_TRADING_LIVE: "true", LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade", LUMEN_TRADE_SIGNER_SECRET: "trade-secret" };
-    const bought = await proposeTrade(db, liveEnv, proposal({ side: "buy", thesis: "a live mark" }), quote("150", "1"), now + 2, async (_url, init) => {
+    let body = "";
+    const sign = (async (_url: string | URL | Request, init?: RequestInit) => {
       calls += 1;
       header = new Headers(init?.headers).get("x-lumen-signature") ?? "";
+      body = String(init?.body);
       return Response.json({ signature: "live-sig" });
-    });
-    expect(bought).toMatchObject({ ok: true, mode: "live" });
-    expect(header).toMatch(/^[a-f0-9]{64}$/);
-    const board = tape(db);
-    expect(board.history.find((row) => row.mode === "live")?.mode).toBe("live");
-    expect(board.pnl.paperUsdCents).toBe(100);
-    expect(board.pnl.liveUsdCents).toBe(0);
-    expect(latestThesis(db)).toContain("Live, I");
-    expect(latestThesis(db)).not.toContain("On paper");
+    }) as typeof fetch;
+    // With no signer set a trade is not placed. There is no practice book for it to land in.
+    expect(await proposeTrade(db, tradeEnv, proposal(), quote("150", "1"), now, sign)).toEqual({ ok: false, reason: "NO_SIGNER" });
+    expect(calls).toBe(0);
+    expect(tape(db, tradeEnv)).toMatchObject({ live: false, history: [], positions: [] });
+    expect(latestThesis(db)).toBeNull();
+    const shared = "trade-secret".padEnd(32, "-");
+    const liveEnv = { ...tradeEnv, LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade", LUMEN_TRADE_SIGNER_SECRET: shared };
+    const bought = await proposeTrade(db, liveEnv, proposal({ side: "buy", thesis: "a live mark" }), quote("150", "1"), now + 2, sign);
+    expect(bought).toMatchObject({ ok: true, mode: "live", id: "live-sig" });
+    expect(calls).toBe(1);
+    expect(header).toBe(hmac("sha256", shared).update(body).digest("hex"));
+    const board = tape(db, liveEnv);
+    expect(board.live).toBe(true);
+    expect(board.history).toHaveLength(1);
+    expect(board.positions).toEqual([{ symbol: "SOL", usdCents: 500, solMicro: expect.any(Number) }]);
+    expect(board.pnl).toEqual({ usdCents: 0, solMicro: 0 });
+    expect(latestThesis(db)).toBe("I took SOL because a live mark This is my own note, not advice.");
     const paused = grantLiveTrading(openDatabase());
     const failed = await proposeTrade(paused, liveEnv, proposal(), quote("150", "1"), now, async () => {
       calls += 1;

@@ -8,16 +8,19 @@ import { redactToken } from "./telegram-redact.mjs";
 
 export const POLL_ALLOWLIST = ["PATH", "NODE_ENV", "TZ", "LUMEN_DATA", "LUMEN_TELEGRAM_BOT_TOKEN", "LUMEN_TELEGRAM_OWNER_CHAT_ID", "LUMEN_TELEGRAM_OWNER_USER_ID", "LUMEN_TELEGRAM_MODE"];
 
+/** What lets an engine trade. There is no paper trading, so a process that holds one of these could place a real order. */
+export const TRADING_POWERS = ["LUMEN_TRADE_SIGNER_URL", "LUMEN_TRADE_SIGNER_SECRET", "LUMEN_FX_BRIDGE_URL", "LUMEN_FX_BRIDGE_SECRET"];
+
 export function forbiddenPollKeys(env) {
   return Object.keys(env).filter((key) => {
     const value = env[key];
     if (value == null || String(value).length === 0) return false;
     const upper = key.toUpperCase();
-    if (upper === "LUMEN_MONEY_LIVE" || upper === "LUMEN_TRADING_LIVE") return true;
+    if (upper === "LUMEN_MONEY_LIVE" || TRADING_POWERS.includes(upper)) return true;
     if (upper.includes("PRIVATE_KEY") || upper.includes("ISSUER") || upper.includes("STRIPE")) return true;
     if (upper.startsWith("LUMEN_STRIPE_")) return true;
     if ((upper.endsWith("_SECRET") || upper.endsWith("_TOKEN")) && upper !== "LUMEN_TELEGRAM_BOT_TOKEN") return true;
-    return /ISSUING|PRIVACY|SIGNER|MINT/i.test(key);
+    return /ISSUING|PRIVACY|SIGNER|BRIDGE|MINT/i.test(key);
   });
 }
 
@@ -48,7 +51,7 @@ export function preparePollEnv(env) {
   if (env.LUMEN_TELEGRAM_MODE && env.LUMEN_TELEGRAM_MODE !== "poll") return false;
   env.LUMEN_TELEGRAM_MODE = "poll";
   delete env.LUMEN_MONEY_LIVE;
-  delete env.LUMEN_TRADING_LIVE;
+  for (const name of TRADING_POWERS) delete env[name];
   env.LUMEN_SALES_MODE = "disabled";
   env.LUMEN_SALES_ENABLED = "false";
   env.SALES_ENABLED = "false";
@@ -67,15 +70,15 @@ export function removePollBundle(file) {
 export async function launchPoll({ env = process.env, run, writeError = (line) => console.error(line) }) {
   const forbidden = forbiddenPollKeys(env);
   if (forbidden.length) {
-    writeError("Refusing to poll because a money, issuing, privacy, signer, or mint variable is set.");
+    writeError("Refusing to poll because a money, issuing, privacy, signer, bridge, or mint variable is set.");
     return 1;
   }
   if (!preparePollEnv(env)) {
     writeError("Refusing to poll because LUMEN_TELEGRAM_MODE is not poll.");
     return 1;
   }
-  if (env.LUMEN_MONEY_LIVE === "true" || env.LUMEN_TRADING_LIVE === "true" || env.LUMEN_SALES_MODE !== "disabled") {
-    writeError("Refusing to poll because money would stay live.");
+  if (env.LUMEN_MONEY_LIVE === "true" || TRADING_POWERS.some((name) => env[name]) || env.LUMEN_SALES_MODE !== "disabled") {
+    writeError("Refusing to poll because money or trading would stay live.");
     return 1;
   }
   try {
@@ -107,7 +110,7 @@ const entry = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
 if (import.meta.url === entry && !process.argv.includes("--minimal")) {
   const forbidden = forbiddenPollKeys(process.env);
   if (forbidden.length) {
-    console.error("Refusing to poll because a money, issuing, privacy, signer, or mint variable is set.");
+    console.error("Refusing to poll because a money, issuing, privacy, signer, bridge, or mint variable is set.");
     process.exit(1);
   }
   const child = spawnSync(process.execPath, [process.argv[1], "--minimal"], {

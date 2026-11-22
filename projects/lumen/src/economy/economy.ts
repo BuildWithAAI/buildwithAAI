@@ -33,8 +33,8 @@ const MAX_CENTS = 1_000_000_000_000;
 export const LADDER: Record<number, string> = {
   500: "A second way to earn opens.",
   1_000: "A small spend she can approve herself. A first venture budget.",
-  2_500: "A third way to earn. Trading opens on paper only.",
-  5_000: "A larger venture budget. First live trading, one agent, hard capped.",
+  2_500: "A third way to earn. A larger venture budget.",
+  5_000: "A larger venture budget. Trading opens, one agent, hard capped.",
   10_000: "A fourth way to earn. The hardware bucket may fund phase 1.",
   25_000: "The land registry opens in her own ledger.",
   50_000: "Land sales open on Solana. A fifth way to earn.",

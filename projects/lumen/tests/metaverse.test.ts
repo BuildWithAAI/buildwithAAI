@@ -338,7 +338,7 @@ describe("visiting agents", () => {
       cam: "overview",
       greeting: "Hello.",
       thoughts: [],
-      books: publicBooks([], [], false),
+      books: publicBooks([], false),
       wishes: [],
       showKeeper: false,
       showMoney: false,
@@ -1245,7 +1245,7 @@ function emptyWorld(): PublicWorld {
     research: { idea: null, question: "", pins: [] },
     builds: [],
     shop: null,
-    tape: { mode: "PAPER", lines: [] },
+    tape: { mode: "CLOSED", lines: [] },
     choices: [],
     watchOnly: true,
   };

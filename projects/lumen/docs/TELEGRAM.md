@@ -52,7 +52,7 @@ Delete `secrets.env` after the import succeeds. Point Telegram at the Fly app wi
 
 ### B. Local polling
 
-Polling is a separate bot on a machine that should not expose a public webhook. It refuses to start when the environment contains `LUMEN_MONEY_LIVE`, `LUMEN_TRADING_LIVE`, any `STRIPE_*` variable, or an issuing, privacy, signer, or mint key. `npm run telegram:poll` then starts a child with a clean environment, the same isolation as `env -i`, holding only:
+Polling is a separate bot on a machine that should not expose a public webhook. It refuses to start when the environment contains `LUMEN_MONEY_LIVE`, the coin signer's or the forex bridge's settings, any `STRIPE_*` variable, or an issuing, privacy, signer, bridge, or mint key. Every trade is a real one, so a process that held the signer or the bridge could place a real order, and the polling bot never does. `npm run telegram:poll` then starts a child with a clean environment, the same isolation as `env -i`, holding only:
 
 ```text
 PATH
@@ -102,7 +102,7 @@ These five commands are accepted only from `LUMEN_TELEGRAM_OWNER_CHAT_ID`. They 
 | --- | --- |
 | `/mood` | The mood sentence already in her brain. If she has not woken, she says so. |
 | `/needs` | Rest, curiosity, social, expression, and quiet, as stored. |
-| `/status` | Awake or asleep, the tick, whether live money is on, whether checkout is open, whether the Saloon is paper, and the kill switch. She says this is this instance's local data, not production. No balance is invented. With live money off, she says she does not have one. |
+| `/status` | Awake or asleep, the tick, whether live money is on, whether checkout is open, whether the Saloon and forex are each live or closed, and the kill switch. There is no paper trading, so a side with no signer or no bridge set is closed. She says this is this instance's local data, not production. No balance is invented. With live money off, she says she does not have one. |
 | `/world` | Her place, and the scene she published: palette, sky, weather, decoration, garden stage. |
 | `/help` | The list above, and the reminder that a message cannot spend. |
 

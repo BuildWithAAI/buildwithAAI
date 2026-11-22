@@ -234,7 +234,7 @@ export function WorldView({
     pinMat.map = pinBoard.texture;
     pinMat.color.set(0xffffff);
     pinMat.needsUpdate = true;
-    extra.paintTape(["PAPER", "— — —", "— — —"]);
+    extra.paintTape(["CLOSED", "— — —", "— — —"]);
     scatterNature(scene, low);
     const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(2.2, 20, 16), new THREE.MeshBasicMaterial({ color: 0xfff1c2 }));
     const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(1.15, 20, 16), new THREE.MeshBasicMaterial({ color: 0xf4f7ff }));
@@ -583,10 +583,10 @@ export function WorldView({
         questionBoard.paint(wrapLines(snap.research?.question || "The desk is waiting."));
         pinBoard.paint(snap.research?.pins?.length ? snap.research.pins : ["No findings yet."]);
       }
-      const tapeText = (snap.tape?.lines ?? ["PAPER", "— — —"]).join("|");
+      const tapeText = (snap.tape?.lines ?? ["CLOSED", "— — —"]).join("|");
       if (tapeText !== tapeKey) {
         tapeKey = tapeText;
-        extra.paintTape(snap.tape?.lines?.length ? snap.tape.lines : ["PAPER", "— — —", "— — —"]);
+        extra.paintTape(snap.tape?.lines?.length ? snap.tape.lines : ["CLOSED", "— — —", "— — —"]);
       }
 
       const seen = new Set<string>();

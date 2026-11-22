@@ -36,7 +36,7 @@ export type AreaActivity =
   | "research"
   | "pin-finding"
   | "read-tape"
-  | "paper-trade"
+  | "watch-prices"
   | "watch-screens"
   | "write-thesis";
 
@@ -105,7 +105,7 @@ const AREA_SEED: Omit<AreaDef, "buildSlots">[] = [
   { id: "market-row", label: "Market row", x: -36, y: 0.85, z: -28, acts: ["browse", "show-art"], needs: { social: 0.55 }, emotions: { pride: 1.25 } },
   { id: "lighthouse-hill", label: "Lighthouse hill", x: 6, y: 0.85, z: 58, acts: ["lookout", "wonder"], needs: { curiosity: 0.2 }, emotions: { curiosity: 1.2, calm: 0.9 } },
   { id: "research-station", label: "Research Station", x: -16, y: 0.85, z: -44, acts: ["research", "pin-finding"], needs: { curiosity: 0.35 }, emotions: { curiosity: 1.55 } },
-  { id: "solana-saloon", label: "Solana Saloon", x: 19, y: 0.85, z: 40, acts: ["read-tape", "paper-trade"], needs: { social: 0.2 }, emotions: { pride: 0.15 } },
+  { id: "solana-saloon", label: "Solana Saloon", x: 19, y: 0.85, z: 40, acts: ["read-tape", "watch-prices"], needs: { social: 0.2 }, emotions: { pride: 0.15 } },
   { id: "trading-floor", label: "Trading Floor", x: -42, y: 0.85, z: -8, acts: ["watch-screens", "write-thesis"], needs: { curiosity: 0.08 }, emotions: { curiosity: 0.12 } },
 ];
 

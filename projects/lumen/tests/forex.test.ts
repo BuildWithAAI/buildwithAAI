@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { flag, openDatabase, setFlag } from "../src/db/db";
 import { setLadderMode } from "../src/economy/ladder";
 import { TRADE_RULES, dailyLossCents } from "../src/trading/book";
-import { FX_PAIRS, FX_RULES, activeFxOrders, evaluateFx, fetchFxFeed, fxBridgeSet, fxBridgeUrl, fxRules, getFxOrder, parseFxFeed, placeFxOrder, pointsToCents, stopPoints, watchFx, type FxOrder } from "../src/trading/forex";
+import { FX_PAIRS, FX_RULES, activeFxOrders, evaluateFx, fetchFxFeed, fxBridgeSet, fxBridgeUrl, fxResultCents, fxRules, getFxOrder, parseFxFeed, placeFxOrder, pointsToCents, recentFxOrders, stopPoints, watchFx, type FxOrder } from "../src/trading/forex";
 import { grantLiveTrading } from "./helpers/ladder";
 
 // A Monday, 03:00 UTC. Prices on the wire are in points: 65000 is 0.65000, and ten points are a pip.
@@ -89,6 +89,25 @@ describe("forex: live, under the owner's rules", () => {
     const other = broker();
     expect(await placeFxOrder(openDatabase(), live, sale(), now, other.fetchImpl)).toMatchObject({ ok: true, mode: "live", stop: "0.65800" });
     expect(other.asked[0]).toMatchObject({ side: "sell", limit: 65_500, stop: 65_800, target: 65_000, lossCents: 300 });
+  });
+
+  it("never treats a row marked paper as an order of hers", async () => {
+    const db = openDatabase();
+    const desk = broker();
+    // However such a row came to be in her books, the broker is never asked about it and it stands in nothing's way.
+    db.prepare("INSERT INTO fx_orders(id, mode, pair, side, centi_lots, risk_cents, limit_px, stop_px, target_px, status, thesis, created_at, expires_at, seen_at) VALUES('fx-0000aaaa', 'paper', 'AUDUSD', 'buy', 1, 300, '0.65000', '0.64700', '0.65600', 'resting', 'left over', ?, ?, ?)").run(now, now + TRADE_RULES.restMs, now);
+    db.prepare("INSERT INTO fx_orders(id, mode, pair, side, centi_lots, risk_cents, limit_px, stop_px, target_px, status, fill_px, exit_px, exit_why, result_cents, thesis, created_at, expires_at, seen_at, closed_at) VALUES('fx-0000bbbb', 'paper', 'AUDUSD', 'buy', 1, 300, '0.65000', '0.64700', '0.65600', 'closed', '0.65000', '0.64700', 'stop', -300, 'left over', ?, ?, ?, ?)").run(now, now + TRADE_RULES.restMs, now, now);
+    expect(activeFxOrders(db)).toEqual([]);
+    expect(recentFxOrders(db)).toEqual([]);
+    expect(fxResultCents(db)).toBe(0);
+    expect(await watchFx(db, live, now + MINUTE, desk.fetchImpl)).toEqual(NOTHING);
+    expect(desk.asked).toEqual([]);
+    // Its three-dollar loss is not a loss of hers today, so a five-dollar daily limit still has room for a real trade.
+    const placed = await placeFxOrder(db, { ...live, LUMEN_TRADE_DAILY_LOSS_USD: "5" }, order(), now, desk.fetchImpl);
+    expect(placed).toMatchObject({ ok: true, mode: "live", status: "resting" });
+    expect(activeFxOrders(db).map((item) => [item.id, item.mode])).toEqual([[idOf(placed), "live"]]);
+    expect(recentFxOrders(db).map((item) => item.id)).toEqual([idOf(placed)]);
+    expect((db.prepare("SELECT status FROM fx_orders WHERE id = 'fx-0000aaaa'").get() as { status: string }).status).toBe("resting");
   });
 
   it("follows the figures the owner sets, and never loses more at the stop than he said", async () => {
@@ -289,7 +308,7 @@ describe("forex: the broker holds her order, and the book writes down what the b
     Object.assign(desk.of(idOf(placed)), { status: "closed", fill: 65_000, exit: 64_700, exitWhy: "stop", resultCents: -300 });
     await watchFx(db, live, now + MINUTE, desk.fetchImpl);
     expect(noteOf(db, idOf(placed), "exit")).toContain("DEMO AUDUSD closed at 0.64700");
-    expect([dailyLossCents(db, "live", now + MINUTE), dailyLossCents(db, "demo" as "live", now + MINUTE)]).toEqual([0, 300]);
+    expect([dailyLossCents(db, "live", now + MINUTE), dailyLossCents(db, "demo", now + MINUTE)]).toEqual([0, 300]);
 
     // On the real account, with a daily limit of five dollars: three are lost, and another three at risk would pass it.
     const real = openDatabase();

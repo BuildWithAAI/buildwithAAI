@@ -47,6 +47,15 @@ describe("Zoora's scene", () => {
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM shop_orders").get()).toEqual({ n: 0 });
     expect(engine.db.prepare("SELECT COUNT(*) AS n FROM paper_trades").get()).toEqual({ n: 0 });
     expect(salesMode({ LUMEN_PUBLIC_MODE: "true" }, true, false)).toBe("disabled");
-    expect(engine.world().tape.mode).toBe("PAPER");
+    // No signer and no bridge is set, so her trading floor is closed. It is not on paper: there is none.
+    expect(engine.world().tape.mode).toBe("CLOSED");
+    expect(engine.world().tape.lines.slice(0, 2)).toEqual(["CLOSED", "Not financial advice."]);
+    expect(engine.world().tape.lines.join(" ")).not.toMatch(/paper|simulated/i);
+    // With the bridge set, or the signer, an order of hers has somewhere real to go, and the board says so.
+    const bridged = createEngine({ LUMEN_FX_BRIDGE_URL: "http://127.0.0.1:8765", LUMEN_FX_BRIDGE_SECRET: "b".repeat(32) }, ":memory:").world().tape;
+    expect(bridged.lines.slice(0, 2)).toEqual(["LIVE", "Real money. Not financial advice."]);
+    expect(bridged.mode).toBe("LIVE");
+    expect(createEngine({ LUMEN_TRADE_SIGNER_URL: "https://signer.example/trade", LUMEN_TRADE_SIGNER_SECRET: "s".repeat(32) }, ":memory:").world().tape.mode).toBe("LIVE");
+    expect(createEngine({ LUMEN_TRADING_LIVE: "true" }, ":memory:").world().tape.mode).toBe("CLOSED");
   });
 });
