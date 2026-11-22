@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
-import { fetchFxFeed, getFxOrder, placeFxOrder, watchFx, type FxFeed } from "../src/trading/forex";
+import { fetchFxBars, fetchFxFeed, getFxOrder, placeFxOrder, watchFx, type FxFeed } from "../src/trading/forex";
 
 /**
  * The bridge itself, run as its own process the way the owner runs it, and asked over the wire, by raw
@@ -26,7 +26,8 @@ const secret = randomBytes(24).toString("hex");
 const folder = mkdtempSync(path.join(tmpdir(), "fx-bridge-"));
 const file = (name: string) => path.join(folder, name);
 const tickFile = file("tick.json");
-const pythonEnv = { ...process.env, PYTHONPATH: path.join(root, "tests", "fixtures", "mt5"), PYTHONDONTWRITEBYTECODE: "1", STANDIN_MT5_TICK: tickFile };
+const barsFile = file("bars.json");
+const pythonEnv = { ...process.env, PYTHONPATH: path.join(root, "tests", "fixtures", "mt5"), PYTHONDONTWRITEBYTECODE: "1", STANDIN_MT5_TICK: tickFile, STANDIN_MT5_BARS: barsFile };
 const served = { STANDIN_MT5_CONTROL: file("control.json"), STANDIN_MT5_BOOK: file("book.json"), LUMEN_FX_BRIDGE_JOURNAL: file("journal.json"), STANDIN_MT5_ACCOUNT: "2" };
 const env = { LUMEN_FX_BRIDGE_URL: url, LUMEN_FX_BRIDGE_SECRET: secret };
 
@@ -48,6 +49,16 @@ function price(bid: number, ask: number = bid + 0.00008, target = tickFile): voi
   stamp += 1;
   swap(target, JSON.stringify({ bid, ask, msc: stamp }));
 }
+
+/**
+ * The terminal's price history, as MetaTrader gives it: for each bar its opening time by the broker's
+ * clock, in seconds, then open, high, low and close as prices, the tick count and the spread.
+ */
+const HOUR = 3_600;
+const monday = Date.UTC(2026, 10, 16) / 1000;
+const hourly = Array.from({ length: 8 }, (_, i) => [monday + i * HOUR, 0.65 + i * 0.0001, 0.6503 + i * 0.0001, 0.6498 + i * 0.0001, 0.6501 + i * 0.0001, 100 + i, 8]);
+const daily = Array.from({ length: 6 }, (_, i) => [monday + i * 24 * HOUR, 0.64 + i * 0.001, 0.645 + i * 0.001, 0.638 + i * 0.001, 0.641 + i * 0.001, 5_000 + i, 9]);
+const history = (frames: Record<string, number[][]> = { H1: hourly, D1: daily }, target = barsFile) => swap(target, JSON.stringify(frames));
 
 /** What the stand-in broker is told to do differently from now on. */
 const broker = (control: Record<string, unknown> = {}, target = served.STANDIN_MT5_CONTROL) => swap(target, JSON.stringify(control));
@@ -128,6 +139,7 @@ describe.skipIf(!python)("the bridge, run as its own process", () => {
   beforeAll(async () => {
     price(0.651);
     broker();
+    history();
     await start();
   });
 
@@ -141,7 +153,7 @@ describe.skipIf(!python)("the bridge, run as its own process", () => {
     for (const never of [/TRADE_ACTION_(DEAL|SLTP|MODIFY|CLOSE_BY)/, /ORDER_TYPE_(BUY|SELL)_STOP/, /\.login\s*\(/, /password\s*=/i, /order_send_async|order_close/]) expect(source).not.toMatch(never);
     // Every call it makes into the terminal is one of these.
     const calls = [...source.matchAll(/mt5\.([a-z_]+)\(/g)].map((match) => match[1]);
-    expect([...new Set(calls)].sort()).toEqual(["account_info", "history_deals_get", "history_orders_get", "initialize", "last_error", "order_calc_profit", "order_check", "order_send", "orders_get", "positions_get", "shutdown", "symbol_info", "symbol_info_tick", "symbol_select", "symbols_get", "terminal_info"]);
+    expect([...new Set(calls)].sort()).toEqual(["account_info", "copy_rates_from_pos", "history_deals_get", "history_orders_get", "initialize", "last_error", "order_calc_profit", "order_check", "order_send", "orders_get", "positions_get", "shutdown", "symbol_info", "symbol_info_tick", "symbol_select", "symbols_get", "terminal_info"]);
     // An order is sent from two places only: one places a waiting limit order, the other pulls one. Each names its action outright.
     const actions = [...source.matchAll(/"action":\s*number\((?:self\.)?mt5,\s*"([A-Z_]+)"\)/g)].map((match) => match[1]);
     expect(new Set(actions)).toEqual(new Set(["TRADE_ACTION_PENDING", "TRADE_ACTION_REMOVE"]));
@@ -167,6 +179,9 @@ describe.skipIf(!python)("the bridge, run as its own process", () => {
     // The terminal's own arithmetic for her stop, and its own word on an order like hers.
     expect(good.out).toContain("the terminal's own sum for a loss of 30.0 pips on 0.01 lot: -3.00 USD");
     expect(good.out).toContain("asked whether it would take a 0.01-lot buy limit with a stop and a target: yes (0 Done). Nothing was sent.");
+    // Her research reads the broker's own history. The check reads a few bars of it and says what it got.
+    expect(good.out).toContain("history, D1 bars: 5 read. The newest opens at 2026-11-21 00:00 by the broker's clock.");
+    expect(good.out).toContain("history, H1 bars: 5 read. The newest opens at 2026-11-16 07:00 by the broker's clock.");
     expect(good.out).toContain("check: ok");
     // The account number is not printed, so the print can be pasted anywhere.
     expect(good.out).not.toContain("87654321");
@@ -191,6 +206,13 @@ describe.skipIf(!python)("the bridge, run as its own process", () => {
     expect(shut.status).toBe(1);
     expect(shut.out).toContain("programs may trade: terminal NO");
     expect(shut.out).toContain("asked whether it would take a 0.01-lot buy limit with a stop and a target: NO (10027 Rejected by the test)");
+    // A terminal that gives no history: her research would have nothing to read, and the check says so.
+    const blank = file("blank.json");
+    broker({ no_history: true }, blank);
+    const empty = run(["--check"], { STANDIN_MT5_CONTROL: blank });
+    expect(empty.status).toBe(1);
+    expect(empty.out).toContain("history, D1 bars: NONE GIVEN");
+    expect(empty.out).toContain("check: something above needs a look");
     // The owner's own figures, if he has set them.
     expect(run(["--check"], { LUMEN_FX_LOTS: "0.02", LUMEN_FX_RISK_USD: "5" }).out).toContain("0.02 lot a trade, no more than 5.00 lost at its stop");
     expect(run(["--check"], { STANDIN_MT5_ACCOUNT: "2" }).out).toContain("account: REAL on StandIn-Demo");
@@ -240,15 +262,16 @@ describe.skipIf(!python)("the bridge, run as its own process", () => {
     let out = "";
     watching.stdout?.on("data", (chunk) => (out += String(chunk)));
     const ended = new Promise<number | null>((resolve) => watching.on("close", resolve));
-    // The price moves while it watches.
+    // The price moves while it watches. Each price carries the broker's clock, which here is two hours ahead of this computer's.
     for (let step = 2; step < 14; step += 1) {
       await new Promise((resolve) => setTimeout(resolve, 150));
-      price(0.651 + step / 100_000, 0.65108 + step / 100_000, own);
+      swap(own, JSON.stringify({ bid: 0.651 + step / 100_000, ask: 0.65108 + step / 100_000, msc: Date.now() + 2 * HOUR * 1000 }));
     }
     expect(await ended).toBe(0);
     const changed = /watched for 2\.0 seconds: the price changed (\d+) times\. The market is open/.exec(out);
     expect(changed).not.toBeNull();
     expect(Number(changed![1])).toBeGreaterThanOrEqual(2);
+    expect(out).toContain("the broker's clock: +2 hours from UTC. Its bars are stamped in that clock.");
   });
 
   it("lets nobody in who is not the engine, and lets a request in once", async () => {
@@ -537,5 +560,99 @@ describe.skipIf(!python)("the bridge, run as its own process", () => {
     const again = await ask("place", order);
     expect(again.json).toMatchObject({ ok: true, id: order.id, ticket: String(ticket) });
     expect(orderSends()).toEqual([]);
+  }, 30_000);
+  it("gives her the broker's own price history to research from, and sends the broker nothing", async () => {
+    history();
+    broker();
+    const sentBefore = book().sent.length;
+    const bars = (fields: Record<string, unknown>) => ask("bars", fields);
+    const first = await until(async () => {
+      const answer = await bars({ pair: "AUDUSD", frame: "H1", count: 3 });
+      return answer.status === 200 ? answer : null;
+    });
+    // The three newest hourly bars, oldest first, in points. The bridge was just started and has seen no believable clock, so it claims none.
+    expect(first.json).toEqual({
+      ok: true, pair: "AUDUSD", digits: 5, frame: "H1", account: "real", aheadMinutes: null, nonce: expect.any(String),
+      bars: [
+        [monday + 5 * HOUR, 65_050, 65_080, 65_030, 65_060, 105, 8],
+        [monday + 6 * HOUR, 65_060, 65_090, 65_040, 65_070, 106, 8],
+        [monday + 7 * HOUR, 65_070, 65_100, 65_050, 65_080, 107, 8],
+      ],
+    });
+    // Asked for more than there is, it gives what there is.
+    expect(((await bars({ pair: "AUDUSD", frame: "D1", count: 500 })).json.bars as number[][]).map((bar) => bar[0])).toEqual(daily.map((bar) => bar[0]));
+    // The engine's own reader, through the same door.
+    expect(await fetchFxBars("AUDUSD", "H1", 2, env, Date.now())).toEqual({
+      pair: "AUDUSD", frame: "H1", account: "real", aheadMinutes: null,
+      bars: [
+        { at: monday + 6 * HOUR, open: 65_060, high: 65_090, low: 65_040, close: 65_070, ticks: 106, spread: 8 },
+        { at: monday + 7 * HOUR, open: 65_070, high: 65_100, low: 65_050, close: 65_080, ticks: 107, spread: 8 },
+      ],
+    });
+    // What is not on her list is not read: another pair, another length of bar, or a count that is not a count.
+    const refused: [Record<string, unknown>, string][] = [
+      [{ pair: "EURUSD", frame: "H1", count: 3 }, "PAIR"],
+      [{ pair: "AUDUSD", frame: "M1", count: 3 }, "FRAME"],
+      [{ pair: "AUDUSD", frame: "TIMEFRAME_H1", count: 3 }, "FRAME"],
+      [{ pair: "AUDUSD", frame: "H1" }, "COUNT"],
+      [{ pair: "AUDUSD", frame: "H1", count: 0 }, "COUNT"],
+      [{ pair: "AUDUSD", frame: "H1", count: 501 }, "COUNT"],
+      [{ pair: "AUDUSD", frame: "H1", count: "3" }, "COUNT"],
+      [{ pair: "AUDUSD", frame: "H1", count: true }, "COUNT"],
+      [{ pair: "AUDUSD", frame: "H1", count: 2.5 }, "COUNT"],
+      // The terminal has no four-hour bars in this test.
+      [{ pair: "AUDUSD", frame: "H4", count: 3 }, "NO_HISTORY"],
+    ];
+    for (const [fields, reason] of refused) {
+      const answer = await bars(fields);
+      expect([answer.status, answer.json.reason, fields]).toEqual([409, reason, fields]);
+    }
+    // MetaTrader gives rows with named columns. Rows without names are read by position, and rows given newest first are put in order.
+    broker({ plain_rows: true, newest_first: true });
+    expect(((await bars({ pair: "AUDUSD", frame: "H1", count: 3 })).json.bars as number[][])).toEqual(first.json.bars);
+    // A terminal that gives more bars than were asked for: she gets the newest of them, and no more than she asked.
+    broker({ too_many: true });
+    expect(((await bars({ pair: "AUDUSD", frame: "H1", count: 3 })).json.bars as number[][])).toEqual(first.json.bars);
+    // A terminal that gives nothing, or an empty answer: she has no history, and the engine reads that as none.
+    for (const control of [{ no_history: true }, { empty_history: true }]) {
+      broker(control);
+      const answer = await bars({ pair: "AUDUSD", frame: "H1", count: 3 });
+      expect([answer.status, answer.json.reason]).toEqual([409, "NO_HISTORY"]);
+      expect(await fetchFxBars("AUDUSD", "H1", 3, env, Date.now())).toBeNull();
+    }
+    broker();
+    // A bar whose high is under its close, or two bars with one time: nothing is guessed, the whole answer is refused.
+    history({ H1: [...hourly.slice(0, 7), [monday + 7 * HOUR, 0.6507, 0.6506, 0.6505, 0.6508, 107, 8]] });
+    expect((await bars({ pair: "AUDUSD", frame: "H1", count: 3 })).json).toMatchObject({ ok: false, reason: "HISTORY" });
+    history({ H1: [...hourly.slice(0, 7), hourly[6]] });
+    expect((await bars({ pair: "AUDUSD", frame: "H1", count: 3 })).json).toMatchObject({ ok: false, reason: "HISTORY" });
+    expect(await fetchFxBars("AUDUSD", "H1", 3, env, Date.now())).toBeNull();
+    history();
+    // A broker whose AUDUSD has three digits is not the pair her arithmetic knows. Its history is not turned into her points.
+    broker({ digits: 3 });
+    const odd = await until(async () => {
+      const answer = await bars({ pair: "AUDUSD", frame: "H1", count: 3 });
+      return answer.json.reason === "SPEC" ? answer : null;
+    });
+    expect(odd.json).toMatchObject({ ok: false, reason: "SPEC", digits: 3 });
+    broker();
+    await until(async () => (await bars({ pair: "AUDUSD", frame: "H1", count: 3 })).status === 200);
+    // A price whose clock is fifteen hours from this computer's is no time zone on earth. It is seen as a price and not believed as a clock.
+    swap(tickFile, JSON.stringify({ bid: 0.6513, ask: 0.65138, msc: Date.now() + 15 * HOUR * 1000 }));
+    await seen(65_130);
+    expect((await bars({ pair: "AUDUSD", frame: "H1", count: 1 })).json.aheadMinutes).toBeNull();
+    // A live price shows how far the broker's clock is from UTC: here three hours ahead. From then on the bridge says so.
+    swap(tickFile, JSON.stringify({ bid: 0.6514, ask: 0.65148, msc: Date.now() + 3 * HOUR * 1000 }));
+    const clocked = await until(async () => {
+      const answer = await bars({ pair: "AUDUSD", frame: "H1", count: 1 });
+      return answer.json.aheadMinutes === 180 ? answer : null;
+    });
+    expect(clocked.json.bars).toEqual([[monday + 7 * HOUR, 65_070, 65_100, 65_050, 65_080, 107, 8]]);
+    // A price whose clock is seven minutes off a quarter hour is not a time zone. It is not believed, and the last good reading stands.
+    swap(tickFile, JSON.stringify({ bid: 0.6515, ask: 0.65158, msc: Date.now() + 3 * HOUR * 1000 + 22 * 60_000 }));
+    await seen(65_150);
+    expect((await fetchFxBars("AUDUSD", "D1", 2, env, Date.now()))!.aheadMinutes).toBe(180);
+    // Through all of it the broker was sent nothing: not an order, not a check of one.
+    expect(book().sent.length).toBe(sentBefore);
   }, 30_000);
 });

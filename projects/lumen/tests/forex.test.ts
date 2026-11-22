@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { flag, openDatabase, setFlag } from "../src/db/db";
 import { setLadderMode } from "../src/economy/ladder";
 import { TRADE_RULES, dailyLossCents } from "../src/trading/book";
-import { FX_PAIRS, FX_RULES, activeFxOrders, evaluateFx, fetchFxFeed, fxBridgeSet, fxBridgeUrl, fxResultCents, fxRules, getFxOrder, parseFxFeed, placeFxOrder, pointsToCents, recentFxOrders, stopPoints, watchFx, type FxOrder } from "../src/trading/forex";
+import { FX_FRAMES, FX_PAIRS, FX_RULES, activeFxOrders, evaluateFx, fetchFxBars, fetchFxFeed, fxBridgeSet, fxBridgeUrl, fxResultCents, fxRules, getFxOrder, parseFxBars, parseFxFeed, placeFxOrder, pointsToCents, recentFxOrders, stopPoints, watchFx, type FxOrder } from "../src/trading/forex";
 import { grantLiveTrading } from "./helpers/ladder";
 
 // A Monday, 03:00 UTC. Prices on the wire are in points: 65000 is 0.65000, and ten points are a pip.
@@ -474,5 +474,90 @@ describe("forex: only her own bridge is believed", () => {
     const before = calls.length;
     expect(await fetchFxFeed("AUDUSD", 0, {}, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce } })))).toBeNull();
     expect(calls).toHaveLength(before);
+  });
+  it("reads the broker's own price history for her research, and throws away anything out of shape", async () => {
+    expect([...FX_FRAMES]).toEqual(["M15", "H1", "H4", "D1"]);
+    // Bars as the bridge gives them: opening time by the broker's clock, then open, high, low, close in points, the tick count and the spread.
+    const hour = 3_600;
+    const t0 = 1_795_000_000;
+    const good = { ok: true, pair: "AUDUSD", digits: 5, frame: "H1", account: "real", aheadMinutes: 180, bars: [[t0, 65_000, 65_030, 64_980, 65_010, 120, 8], [t0 + hour, 65_010, 65_060, 65_005, 65_050, 140, 9], [t0 + 2 * hour, 65_050, 65_050, 65_050, 65_050, 1, 8]] };
+    expect(parseFxBars(good, "AUDUSD", "H1", 3)).toEqual({
+      pair: "AUDUSD", frame: "H1", account: "real", aheadMinutes: 180,
+      bars: [
+        { at: t0, open: 65_000, high: 65_030, low: 64_980, close: 65_010, ticks: 120, spread: 8 },
+        { at: t0 + hour, open: 65_010, high: 65_060, low: 65_005, close: 65_050, ticks: 140, spread: 9 },
+        // A bar that has only just opened has one price for all four.
+        { at: t0 + 2 * hour, open: 65_050, high: 65_050, low: 65_050, close: 65_050, ticks: 1, spread: 8 },
+      ],
+    });
+    // With the market shut no live price has shown the broker's clock, and that is said, not guessed.
+    expect(parseFxBars({ ...good, aheadMinutes: null }, "AUDUSD", "H1", 3)!.aheadMinutes).toBeNull();
+    expect(parseFxBars({ ...good, aheadMinutes: -300 }, "AUDUSD", "H1", 3)!.aheadMinutes).toBe(-300);
+    const bar = (over: Partial<Record<"at" | "open" | "high" | "low" | "close" | "ticks" | "spread", number>>) => {
+      const b = { at: t0, open: 65_000, high: 65_030, low: 64_980, close: 65_010, ticks: 120, spread: 8, ...over };
+      return [b.at, b.open, b.high, b.low, b.close, b.ticks, b.spread];
+    };
+    const bad: Record<string, unknown>[] = [
+      { ok: false },
+      { pair: "EURUSD" },
+      // History of another length of bar than she asked for is not what she asked for.
+      { frame: "H4" },
+      // A broker whose price has other digits would make her arithmetic wrong. It is not read.
+      { digits: 3 },
+      { account: "prop" },
+      { aheadMinutes: undefined },
+      { aheadMinutes: 37 },
+      { aheadMinutes: 15 * 60 },
+      { aheadMinutes: "180" },
+      { bars: [] },
+      { bars: "none" },
+      // More than she asked for.
+      { bars: [...good.bars, bar({ at: t0 + 3 * hour })] },
+      // A bar whose high is not its high, or whose low is not its low, is not a bar.
+      { bars: [bar({ high: 65_005 })] },
+      { bars: [bar({ low: 65_005 })] },
+      { bars: [bar({ high: 64_990, low: 64_980, open: 64_985, close: 65_010 })] },
+      { bars: [bar({ low: 0, open: 0 })] },
+      { bars: [bar({ open: 65_000.5 })] },
+      { bars: [bar({ ticks: -1 })] },
+      { bars: [[t0, 65_000, 65_030, 64_980, 65_010, 120]] },
+      { bars: [[t0, 65_000, 65_030, 64_980, 65_010, 120, 8, 0]] },
+      { bars: [{ at: t0 }] },
+      // Out of order, or the same bar twice.
+      { bars: [bar({ at: t0 + hour }), bar({ at: t0 })] },
+      { bars: [bar({}), bar({})] },
+      { bars: [bar({ at: 0 })] },
+    ];
+    for (const over of bad) expect(parseFxBars({ ...good, ...over }, "AUDUSD", "H1", 3)).toBeNull();
+    expect(parseFxBars(null, "AUDUSD", "H1", 3)).toBeNull();
+    expect(parseFxBars({ ...good, bars: Array.from({ length: FX_RULES.bars + 1 }, (_, i) => bar({ at: t0 + i * hour })) }, "AUDUSD", "H1", FX_RULES.bars + 1)).toBeNull();
+
+    const calls: Record<string, unknown>[] = [];
+    const serve = (reply: (ask: Record<string, unknown>) => { body: unknown; status?: number; signature?: string | null }) =>
+      (async (_url: string, init: { body: string; headers: Record<string, string> }) => {
+        const ask = JSON.parse(init.body) as Record<string, unknown>;
+        calls.push(ask);
+        expect(init.headers["x-lumen-signature"]).toBe(hmac(secret, init.body));
+        const out = reply(ask);
+        const text = JSON.stringify(out.body);
+        const signature = out.signature === undefined ? hmac(secret, text) : out.signature;
+        return new Response(text, { status: out.status ?? 200, headers: signature ? { "x-lumen-signature": signature } : {} });
+      }) as unknown as typeof fetch;
+    expect(await fetchFxBars("AUDUSD", "H1", 3, live, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce } })))).toMatchObject({ pair: "AUDUSD", frame: "H1", aheadMinutes: 180, bars: [{ close: 65_010 }, { close: 65_050 }, { close: 65_050 }] });
+    // What she asks is a reading and nothing else: no order, no size, no price of hers.
+    expect(calls[0]).toEqual({ instruction: "bars", pair: "AUDUSD", frame: "H1", count: 3, nonce: expect.stringMatching(/^[0-9a-f]{32}$/), issuedAtMs: now });
+    // An answer that is unsigned, signed by another, an answer to another question, or the bridge's own no, and she has no history.
+    expect(await fetchFxBars("AUDUSD", "H1", 3, live, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce }, signature: null })))).toBeNull();
+    expect(await fetchFxBars("AUDUSD", "H1", 3, live, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce }, signature: hmac("x".repeat(40), JSON.stringify({ ...good, nonce: ask.nonce })) })))).toBeNull();
+    expect(await fetchFxBars("AUDUSD", "H1", 3, live, now, serve(() => ({ body: { ...good, nonce: "0".repeat(32) } })))).toBeNull();
+    expect(await fetchFxBars("AUDUSD", "H1", 3, live, now, serve((ask) => ({ body: { ok: false, reason: "NO_HISTORY", nonce: ask.nonce }, status: 409 })))).toBeNull();
+    expect(await fetchFxBars("AUDUSD", "H1", 3, live, now, (async () => { throw new Error("ECONNREFUSED"); }) as unknown as typeof fetch)).toBeNull();
+    // What is not hers to ask is not asked at all.
+    const before = calls.length;
+    expect(await fetchFxBars("EURUSD" as "AUDUSD", "H1", 3, live, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce } })))).toBeNull();
+    expect(await fetchFxBars("AUDUSD", "M1" as "H1", 3, live, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce } })))).toBeNull();
+    for (const count of [0, -1, 2.5, FX_RULES.bars + 1, Number.NaN]) expect(await fetchFxBars("AUDUSD", "H1", count, live, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce } })))).toBeNull();
+    expect(await fetchFxBars("AUDUSD", "H1", 3, {}, now, serve((ask) => ({ body: { ...good, nonce: ask.nonce } })))).toBeNull();
+    expect(calls.length).toBe(before);
   });
 });

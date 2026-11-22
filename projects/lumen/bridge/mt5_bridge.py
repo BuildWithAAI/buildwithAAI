@@ -13,6 +13,7 @@ signed the same way and carries the request's nonce.
 What it will do, and nothing else:
 
     quote    every price change of a pair since a time
+    bars     the broker's own price history of a pair, for her research. It reads and sends nothing.
     place    one waiting limit order, with its stop and its target in the same request
     state    where one of her orders stands at the broker
     cancel   pull one of her orders that is still waiting
@@ -64,6 +65,9 @@ SAMPLE_SECONDS = 0.25
 KEEP_MS = 10 * 60_000
 MAX_PATH = 1_200
 MAX_BODY = 2_048
+# The history she may read for her research, by the name she asks for it and MetaTrader's own name for it, and the most bars in one answer.
+FRAMES = {"M15": "TIMEFRAME_M15", "H1": "TIMEFRAME_H1", "H4": "TIMEFRAME_H4", "D1": "TIMEFRAME_D1"}
+MAX_BARS = 500
 ACCOUNT_KINDS = {0: "demo", 1: "contest", 2: "real"}
 # Every order of hers carries this number and a note with her order's id, so the bridge knows its own.
 MAGIC = 20261122
@@ -83,6 +87,7 @@ NUMBERS = {
     "DEAL_REASON_SL": 4, "DEAL_REASON_TP": 5, "DEAL_REASON_SO": 6,
     "ORDER_STATE_CANCELED": 2, "ORDER_STATE_FILLED": 4, "ORDER_STATE_REJECTED": 5, "ORDER_STATE_EXPIRED": 6,
     "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING": 2,
+    "TIMEFRAME_M15": 15, "TIMEFRAME_H1": 16385, "TIMEFRAME_H4": 16388, "TIMEFRAME_D1": 16408,
 }
 
 
@@ -191,6 +196,8 @@ class Feed:
         self.lock = threading.Lock()
         self.account = None
         self.pairs = {}
+        # How far the broker's clock is ahead of UTC, in minutes, once a live price has shown it. Not known until then.
+        self.ahead = None
         self.jobs = queue.Queue()
 
     def connect(self):
@@ -246,7 +253,10 @@ class Feed:
             if not 0 < bid <= ask:
                 continue
             at = self.clock()
+            ahead = clock_gap(key[0], at)
             with self.lock:
+                if ahead is not None:
+                    self.ahead = ahead
                 entry["path"].append((at, bid, ask))
                 while entry["path"] and at - entry["path"][0][0] > KEEP_MS:
                     entry["path"].popleft()
@@ -302,6 +312,62 @@ class Feed:
             answer = dict(entry["spec"])
             answer.update({"pair": pair, "account": self.account, "path": [list(step) for step in steps[-MAX_PATH:]]})
             return answer
+
+    def bars(self, pair, frame, count):
+        """
+        The broker's own price history for a pair, oldest bar first, for her research. It reads, and
+        sends the broker nothing. The newest bar is the one still being made. Each bar's time is the
+        broker's clock, as the terminal gives it, and is not turned into anything else here.
+        """
+        if pair not in PAIRS:
+            return no("PAIR")
+        if frame not in FRAMES:
+            return no("FRAME")
+        if type(count) is not int or not 1 <= count <= MAX_BARS:
+            return no("COUNT")
+        with self.lock:
+            entry = self.pairs.get(pair)
+            account, ahead = self.account, self.ahead
+        if entry is None or account is None:
+            return no("NO_PRICE")
+        spec = entry["spec"]
+        if spec["digits"] != PAIRS[pair]["digits"]:
+            return no("SPEC", digits=spec["digits"])
+        rates = self.mt5.copy_rates_from_pos(spec["symbol"], number(self.mt5, FRAMES[frame]), 0, count)
+        if rates is None or len(rates) == 0:
+            return no("NO_HISTORY")
+        scale = 10 ** spec["digits"]
+        bars = []
+        for rate in rates:
+            at = int(part(rate, "time", 0))
+            opened, high, low, close = (int(round(float(part(rate, name, place)) * scale)) for name, place in (("open", 1), ("high", 2), ("low", 3), ("close", 4)))
+            # A bar whose high is not its high is not a bar. Nothing is guessed in its place: the whole answer is refused.
+            if at <= 0 or not 0 < low <= min(opened, close) <= max(opened, close) <= high:
+                return no("HISTORY")
+            bars.append([at, opened, high, low, close, max(0, int(part(rate, "tick_volume", 5))), max(0, int(part(rate, "spread", 6)))])
+        bars.sort(key=lambda bar: bar[0])
+        if any(later[0] <= earlier[0] for earlier, later in zip(bars, bars[1:])):
+            return no("HISTORY")
+        return {"ok": True, "pair": pair, "digits": spec["digits"], "frame": frame, "account": account, "aheadMinutes": ahead, "bars": bars[-count:]}
+
+
+def clock_gap(price_ms, seen_ms):
+    """
+    How far the broker's clock is ahead of UTC, in minutes. A price that has just changed carries the
+    broker's clock, and this computer has UTC, so the gap between the two is the broker's time zone. It
+    is a whole number of quarter hours and no more than fourteen hours, or it is not believed.
+    """
+    gap = (price_ms - seen_ms) / 60_000.0
+    ahead = int(round(gap / 15.0)) * 15
+    return ahead if abs(gap - ahead) <= 3 and abs(ahead) <= 14 * 60 else None
+
+
+def part(rate, name, place):
+    """One figure of a bar. MetaTrader gives a bar as a row with named columns. A plain row is read by position."""
+    try:
+        return rate[name]
+    except (KeyError, IndexError, TypeError, ValueError):
+        return rate[place]
 
 
 def no(reason, **more):
@@ -669,7 +735,11 @@ class Handler(BaseHTTPRequestHandler):
             payload = {"ok": True, "nonce": nonce}
             payload.update(quote)
             return self.answer(200, payload)
-        work = {"place": lambda: desk.place(ask), "state": lambda: desk.state(ask.get("id")), "cancel": lambda: desk.cancel(ask.get("id"))}.get(what)
+        work = {
+            "place": lambda: desk.place(ask), "state": lambda: desk.state(ask.get("id")), "cancel": lambda: desk.cancel(ask.get("id")),
+            # Her research reads history through the terminal, on the terminal's own thread like everything else that speaks to it.
+            "bars": lambda: feed.bars(ask.get("pair"), ask.get("frame"), ask.get("count")),
+        }.get(what)
         if work is None:
             # Anything else, a market order or a close among them, has nothing here to carry it out.
             return self.answer(400, {"ok": False, "reason": "INSTRUCTION", "nonce": nonce})
@@ -735,15 +805,16 @@ def check(mt5, env, out=print, watch_seconds=3.0):
             pip = 10 * float(info.point)
             out("  last price: bid %.*f, ask %.*f, spread %.1f pips. If the market is shut this is its last price, however old." % (info.digits, tick.bid, info.digits, tick.ask, (tick.ask - tick.bid) / pip))
             # The bridge passes on a price only once it has seen it change. This is that same reading, for a few seconds.
-            changes, last, until = 0, (int(tick.time_msc), float(tick.bid), float(tick.ask)), time.monotonic() + watch_seconds
+            changes, last, until, ahead = 0, (int(tick.time_msc), float(tick.bid), float(tick.ask)), time.monotonic() + watch_seconds, None
             while time.monotonic() < until:
                 time.sleep(SAMPLE_SECONDS)
                 seen = mt5.symbol_info_tick(symbol)
                 key = (int(seen.time_msc), float(seen.bid), float(seen.ask)) if seen is not None else last
                 if key != last:
-                    changes, last = changes + 1, key
+                    changes, last, ahead = changes + 1, key, clock_gap(key[0], now_ms())
             if changes:
                 out("  watched for %.1f seconds: the price changed %d times. The market is open." % (watch_seconds, changes))
+                out("  the broker's clock: %s" % ("could not be measured against this computer's. Is this computer's clock right?" if ahead is None else "%+g hours from UTC. Its bars are stamped in that clock." % (ahead / 60.0)))
             else:
                 out("  watched for %.1f seconds: the price did not change. The market is shut, or this pair is not being updated. An order cannot be placed until it is open." % watch_seconds)
             # What the terminal itself says to an order like hers, without sending one: her size, a buy limit 300 pips under
@@ -772,6 +843,15 @@ def check(mt5, env, out=print, watch_seconds=3.0):
                     out("  asked whether it would take a %.2f-lot buy limit with a stop and a target: %s (%s %s). Nothing was sent." % (volume, "yes" if fine else "NO", checked.retcode, str(getattr(checked, "comment", ""))[:60]))
                     if not fine:
                         status = 1
+        # Her research reads the broker's own price history. This is that same reading, of a few bars.
+        for frame in ("D1", "H1"):
+            rates = mt5.copy_rates_from_pos(symbol, number(mt5, FRAMES[frame]), 0, 5)
+            if rates is None or len(rates) == 0:
+                out("  history, %s bars: NONE GIVEN (%s). Her research would have nothing to read." % (frame, mt5.last_error(),))
+                status = 1
+            else:
+                newest = max(int(part(rate, "time", 0)) for rate in rates)
+                out("  history, %s bars: %d read. The newest opens at %s by the broker's clock." % (frame, len(rates), time.strftime("%Y-%m-%d %H:%M", time.gmtime(newest))))
         # What the broker itself says one pip is worth, to set against the owner's rule: 0.01 lot, 30 pips, three dollars.
         size, value = float(getattr(info, "trade_tick_size", 0) or 0), float(getattr(info, "trade_tick_value", 0) or 0)
         if size > 0 and value > 0:
