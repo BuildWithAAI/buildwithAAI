@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: bafaf32
+title: Every home opens at one dollar, and every price after that is hers.
+summary: A home or a shop in her city now opens at $1 to buy and $1 a month. She prices a whole building, one floor, the penthouse or a single unit however she likes, and nothing reprices for her. What a holder agreed is kept.
+date: 2026-11-22T02:23:58Z
+image:
+
+---
 sha: f8145f7
 title: Every building can be entered.
 summary: She has a building tool now. Its walls have thickness, its floors are real, its windows and door are openings with frames, sills and glass, and stairs join every floor. Her own buildings use it and face the road. In the live world a visitor taps a building, goes in, walks its floors and looks out of its windows.
