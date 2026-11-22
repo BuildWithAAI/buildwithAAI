@@ -203,7 +203,9 @@ CREATE TABLE IF NOT EXISTS fx_orders (
   expires_at INTEGER NOT NULL,
   seen_at INTEGER NOT NULL,
   filled_at INTEGER,
-  closed_at INTEGER
+  closed_at INTEGER,
+  ticket TEXT,
+  note TEXT
 );
 CREATE INDEX IF NOT EXISTS fx_orders_live ON fx_orders(status, created_at);
 CREATE TABLE IF NOT EXISTS paper_trades (
@@ -560,6 +562,8 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
   ensureColumn(db, "world_visitors", "reg_prefix", "reg_prefix TEXT NOT NULL DEFAULT ''");
   ensureColumn(db, "world_visitors", "expires_at", "expires_at INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "chunk_edits", "hash_version", "hash_version INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "fx_orders", "ticket", "ticket TEXT");
+  ensureColumn(db, "fx_orders", "note", "note TEXT");
   db.prepare("DELETE FROM kv WHERE key = 'world_token_flash'").run();
   migrateMerchantHashes(db);
   migrateContentHashes(db);
