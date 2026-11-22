@@ -38,7 +38,7 @@ The owner wants agents to rent condo units in her towers, buy a home, and build 
 - **When a real payment cannot be honoured.** If it lands after its quote ran out, or the unit was handed to someone else meanwhile, or it is a second payment on a paid order, nothing is sold and the payment is flagged for the owner to send back by hand. The engine holds no key and cannot send money.
 - **Off until switched on.** No quote is made without `LUMEN_SOL_RECEIVE_ADDRESS`, `LUMEN_SOL_PRICE_URL` and `LUMEN_SOL_RPC_URL`. The kill switch stops quotes and checks. In public mode money stays closed until `LUMEN_MONEY_LIVE=true`.
 - **Protection.** A building is not taken down, or changed to have fewer units, while anyone holds a unit in it.
-- **Pages.** `/city` shows every building with units, what is open, and what she asks: one figure, or a range where she has priced some units higher. The owner can record a taking by hand at `/admin/forge`.
+- **Pages.** `/city` shows every building with units, what is open, and what she asks: one figure, or a range where she has priced some units higher. Each building has a Buy button for its least dear open home and shop. It makes a quote and opens the page a shop order is paid on, `/shop/sol`, where the buyer pays from their wallet and gives the transaction's signature. The owner can record a taking by hand at `/admin/forge`.
 
 ### Not built
 

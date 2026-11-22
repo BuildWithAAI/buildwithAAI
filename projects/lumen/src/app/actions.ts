@@ -18,6 +18,7 @@ import { buildRecipe, cleanRecipe } from "../forge/recipe";
 import { herHand, raise, remove as removeBuild, reshape, undo as undoBuildStep, wander, wanderRoad } from "../forge/store";
 import { rng } from "../form/genome";
 import { grantPlot } from "../world/land";
+import { quoteUnit } from "../world/unitPay";
 import { takeUnit, vacate } from "../world/units";
 import { blankPlan, getPlan, savePlan, setCheck, TEXT_FIELDS, type CostLine } from "../economy/plans";
 import { confirmPodOrder, decideProduct, openPodOrder, printCheckout, printFacts, proposeProduct, refundPaidPrint, syncPodOrder } from "../fulfillment/pod";
@@ -136,6 +137,17 @@ export async function solQuote(form: FormData) {
   const quote = await quoteSolOrder(engine.db, engine.env, { kind: "shop", itemId: listing.id, title: listing.title, usdCents: listing.priceCents }, Date.now());
   if (!quote.ok) redirect("/shop?sales=sol");
   redirect(`/shop/sol?order=${quote.id}`);
+}
+
+/** A visitor asks to buy a home or a shop. They are sent to the same page a shop order is paid on, with a quote for Zoora's price. */
+export async function unitQuote(form: FormData) {
+  const engine = getEngine();
+  const at = Date.now();
+  // Each quote reads a price over the network and holds the unit for up to ten minutes. Both are bounded per address and overall.
+  if (!allowRate(engine.db, `unit-quote:${await ip()}`, 4, 60_000, at) || !allowRate(engine.db, "unit-quote:all", 60, 60_000, at)) redirect("/city?sales=RATE_LIMIT");
+  const quote = await quoteUnit(engine.db, engine.env, String(form.get("unit") ?? "").slice(0, 60), at);
+  if (!quote.ok) redirect(`/city?sales=${encodeURIComponent(quote.reason)}`);
+  redirect(`/shop/sol?order=${quote.order}`);
 }
 
 export async function solVerify(form: FormData) {
