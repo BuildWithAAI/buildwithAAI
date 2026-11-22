@@ -4,6 +4,7 @@ import { flag } from "../db/db";
 import { Ledger } from "./ledger";
 import { vetResearchUrl } from "../research/ssrf";
 import { killSwitchOn, publicMoneyClosed, type Env } from "./rules";
+import { getUnit, takeUnit } from "../world/units";
 
 const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const LAMPORTS = 1_000_000_000n;
@@ -147,7 +148,7 @@ export function verifySolTransaction(tx: SolTx | null, expect: { recipient: stri
   return { ok: true, paid };
 }
 
-export async function quoteSolOrder(db: DatabaseSync, env: Env, input: { kind: "shop" | "nft"; itemId: string; title: string; usdCents: number }, now: number, fetchImpl: typeof fetch = fetch): Promise<{ ok: true; id: string; url: string; lamports: string; expiresAt: number } | { ok: false; reason: string }> {
+export async function quoteSolOrder(db: DatabaseSync, env: Env, input: { kind: "shop" | "nft" | "unit"; itemId: string; title: string; usdCents: number }, now: number, fetchImpl: typeof fetch = fetch): Promise<{ ok: true; id: string; url: string; lamports: string; expiresAt: number } | { ok: false; reason: string }> {
   const blocked = solanaPayBlock(db, env);
   if (blocked) return { ok: false, reason: blocked };
   const recipient = (env.LUMEN_SOL_RECEIVE_ADDRESS ?? "").trim();
@@ -252,6 +253,19 @@ export function verifySolPayment(db: DatabaseSync, orderId: string, signature: s
       });
     }
     return { ok: false, reason: "REFUND" };
+  }
+  if (row.item_kind === "unit") {
+    // A home or a shop goes to the wallet that paid for it: the first key of a transaction is the one that signed and paid its fee.
+    const buyer = accountKeys(tx!)[0] ?? "";
+    const unit = getUnit(db, row.item_id);
+    // If an earlier check handed it over and stopped before the order was marked paid, it is already this buyer's on this order.
+    const handed = unit?.status === "sold" && unit.via === orderId && unit.holder === buyer;
+    if (!handed && !takeUnit(db, row.item_id, buyer, "sold", now, { agreedCents: row.usd_cents, via: orderId }).ok) {
+      // The payment is real but the unit cannot be handed over. Nothing is sold, and the money is flagged to go back.
+      flagSolRefund(db, orderId, signature, "UNIT", checked.paid, now);
+      db.prepare("UPDATE sol_orders SET status = 'refund_due', signature = ? WHERE id = ?").run(signature, orderId);
+      return { ok: false, reason: "REFUND" };
+    }
   }
   const expected = BigInt(row.lamports);
   if (checked.paid > expected) flagSolRefund(db, orderId, signature, "OVERPAY", checked.paid - expected, now);

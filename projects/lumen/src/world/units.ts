@@ -25,6 +25,8 @@ export type Unit = {
   priceCents: number | null; rentCents: number | null;
   /** What its holder agreed to when they took it: the price if it was sold, the rent a month if it was let. */
   agreedCents: number | null;
+  /** The paid order it was handed over for, if it was bought and paid for. */
+  via: string | null;
 };
 export type Terms = { homeRentCents: number; homePriceCents: number; shopRentCents: number; shopPriceCents: number };
 /** What a unit is asked for: to buy, and a month to rent. */
@@ -39,6 +41,8 @@ const MOST = 1_000_000_000;
 export const FLOOR = 3.2;
 export const UNIT_AREA = 80;
 const HOLDER = /^[a-z0-9][a-z0-9-]{1,39}$/;
+/** A holder who paid is known by the wallet that paid: a Solana address. */
+const WALLET = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 export function ensureUnits(db: DatabaseSync): void {
   db.exec(`
@@ -52,6 +56,7 @@ export function ensureUnits(db: DatabaseSync): void {
   // A world made before a unit could have a price of its own gets the columns.
   const have = new Set((db.prepare("PRAGMA table_info(world_units)").all() as { name: string }[]).map((column) => column.name));
   for (const column of ["price_cents", "rent_cents", "agreed_cents"]) if (!have.has(column)) db.exec(`ALTER TABLE world_units ADD COLUMN ${column} INTEGER`);
+  if (!have.has("via")) db.exec("ALTER TABLE world_units ADD COLUMN via TEXT");
 }
 
 /** How many units a building really has room for. She cannot declare forty homes in a lamp post. */
@@ -61,9 +66,9 @@ export function unitRoom(height: number, hw: number, hd: number): { homes: numbe
   return { homes: perFloor * Math.max(0, floors - 1), shops: floors >= 1 ? perFloor : 0 };
 }
 
-type Row = { id: string; build_id: string; kind: UnitKind; floor: number; number: number; address: string; status: Unit["status"]; holder: string | null; since: number | null; price_cents: number | null; rent_cents: number | null; agreed_cents: number | null };
+type Row = { id: string; build_id: string; kind: UnitKind; floor: number; number: number; address: string; status: Unit["status"]; holder: string | null; since: number | null; price_cents: number | null; rent_cents: number | null; agreed_cents: number | null; via: string | null };
 const whole = (value: number | null) => (value == null ? null : Number(value));
-const shape = (row: Row): Unit => ({ id: row.id, buildId: row.build_id, kind: row.kind, floor: Number(row.floor), number: Number(row.number), address: row.address, status: row.status, holder: row.holder, since: whole(row.since), priceCents: whole(row.price_cents), rentCents: whole(row.rent_cents), agreedCents: whole(row.agreed_cents) });
+const shape = (row: Row): Unit => ({ id: row.id, buildId: row.build_id, kind: row.kind, floor: Number(row.floor), number: Number(row.number), address: row.address, status: row.status, holder: row.holder, since: whole(row.since), priceCents: whole(row.price_cents), rentCents: whole(row.rent_cents), agreedCents: whole(row.agreed_cents), via: row.via ?? null });
 
 export function unitsOf(db: DatabaseSync, buildId: string): Unit[] {
   ensureUnits(db);
@@ -192,14 +197,18 @@ export function herPrices(db: DatabaseSync, wanted: unknown, made: string | null
 
 export type TakeResult = { ok: true; unit: Unit } | { ok: false; reason: "UNKNOWN" | "TAKEN" | "HOLDER" | "HOW" };
 
-/** Marks a unit as let or sold to a holder, and keeps what was agreed: her price or her rent for it at that moment. This is the only way a unit changes hands. It takes no money and writes no income. */
-export function takeUnit(db: DatabaseSync, unitId: string, holder: string, how: "let" | "sold", now: number): TakeResult {
+/**
+ * Marks a unit as let or sold to a holder, and keeps what was agreed. This is the only way a unit
+ * changes hands. It takes no money and writes no income itself: a paid sale calls it once the payment
+ * is confirmed, and passes the price that was quoted and the order it was paid on as `deal`.
+ */
+export function takeUnit(db: DatabaseSync, unitId: string, holder: string, how: "let" | "sold", now: number, deal?: { agreedCents: number; via: string }): TakeResult {
   const unit = getUnit(db, unitId);
   if (!unit) return { ok: false, reason: "UNKNOWN" };
   if (how !== "let" && how !== "sold") return { ok: false, reason: "HOW" };
-  if (holder === "zoora" || !HOLDER.test(holder)) return { ok: false, reason: "HOLDER" };
+  if (holder === "zoora" || !(HOLDER.test(holder) || WALLET.test(holder))) return { ok: false, reason: "HOLDER" };
   const ask = askOf(db, unit);
-  const done = db.prepare("UPDATE world_units SET status = ?, holder = ?, since = ?, agreed_cents = ? WHERE id = ? AND status = 'open'").run(how, holder, now, how === "sold" ? ask.priceCents : ask.rentCents, unitId);
+  const done = db.prepare("UPDATE world_units SET status = ?, holder = ?, since = ?, agreed_cents = ?, via = ? WHERE id = ? AND status = 'open'").run(how, holder, now, deal?.agreedCents ?? (how === "sold" ? ask.priceCents : ask.rentCents), deal?.via ?? null, unitId);
   if (Number(done.changes) !== 1) return { ok: false, reason: "TAKEN" };
   return { ok: true, unit: getUnit(db, unitId)! };
 }
@@ -207,7 +216,14 @@ export function takeUnit(db: DatabaseSync, unitId: string, holder: string, how: 
 /** A let unit is given back. A sold unit stays with its buyer. */
 export function vacate(db: DatabaseSync, unitId: string): boolean {
   ensureUnits(db);
-  return Number(db.prepare("UPDATE world_units SET status = 'open', holder = NULL, since = NULL, agreed_cents = NULL WHERE id = ? AND status = 'let'").run(unitId).changes) === 1;
+  return Number(db.prepare("UPDATE world_units SET status = 'open', holder = NULL, since = NULL, agreed_cents = NULL, via = NULL WHERE id = ? AND status = 'let'").run(unitId).changes) === 1;
+}
+
+/** Homes and shops nobody holds, with what each is asked for. This is what an agent reads to choose one. */
+export function openUnits(db: DatabaseSync, limit = 200): { id: string; address: string; kind: UnitKind; floor: number; priceCents: number; rentCents: number }[] {
+  ensureUnits(db);
+  const rows = db.prepare("SELECT * FROM world_units WHERE status = 'open' ORDER BY build_id, kind DESC, floor, number LIMIT ?").all(Math.min(500, Math.max(1, Math.round(limit)))) as Row[];
+  return rows.map(shape).map((unit) => ({ id: unit.id, address: unit.address, kind: unit.kind, floor: unit.floor, ...askOf(db, unit) }));
 }
 
 /** The least and the most asked for the open units of one kind in a building, in cents. */
