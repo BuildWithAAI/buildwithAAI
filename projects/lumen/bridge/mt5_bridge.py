@@ -22,6 +22,7 @@ Settings, read from the environment:
     LUMEN_FX_BRIDGE_PORT     the port on this computer. Unset is 8765.
     LUMEN_FX_SYMBOL_AUDUSD   the terminal's own name for AUDUSD, if the bridge picks the wrong one.
     LUMEN_MT5_TERMINAL       the path of terminal64.exe, if more than one terminal is installed.
+    LUMEN_FX_CHECK_SECONDS   how long --check watches the price for a change. Unset is 3.
 
 See docs/FOREX.md.
 """
@@ -262,7 +263,7 @@ def flags(value, names):
     return ", ".join(name for bit, name in names if int(value) & bit) or "none"
 
 
-def check(mt5, env, out=print):
+def check(mt5, env, out=print, watch_seconds=3.0):
     """Prints what the terminal shows: the facts the engine's arithmetic, and the order half still to be built, depend on."""
     terminal = mt5.terminal_info()
     account = mt5.account_info()
@@ -286,7 +287,10 @@ def check(mt5, env, out=print):
             status = 1
             continue
         if not getattr(info, "visible", True):
+            # A pair outside Market Watch has no live price and some of its figures are blank. It is added, and read again.
             mt5.symbol_select(symbol, True)
+            time.sleep(0.5)
+            info = mt5.symbol_info(symbol) or info
         out("%s is called %s here. Other names seen: %s" % (pair, symbol, ", ".join(name for name in names if name != symbol) or "none"))
         out("  digits %s, one lot %s %s, lots from %s in steps of %s" % (info.digits, ("%f" % info.trade_contract_size).rstrip("0").rstrip("."), getattr(info, "currency_base", ""), info.volume_min, info.volume_step))
         out("  least distance for an order, a stop or a target: %s points. Frozen within: %s points" % (info.trade_stops_level, getattr(info, "trade_freeze_level", "?")))
@@ -294,12 +298,29 @@ def check(mt5, env, out=print):
         out("  orders allowed: %s (%s)" % (flags(getattr(info, "order_mode", 0), ((1, "market"), (2, "limit"), (4, "stop"), (8, "stop-limit"), (16, "stop loss"), (32, "take profit"), (64, "close by"))), getattr(info, "order_mode", "?")))
         out("  filling: %s (%s). Order life: %s (%s)" % (flags(getattr(info, "filling_mode", 0), ((1, "fill or kill"), (2, "immediate or cancel"), (4, "book or cancel"))), getattr(info, "filling_mode", "?"), flags(getattr(info, "expiration_mode", 0), ((1, "until cancelled"), (2, "day"), (4, "until a time"), (8, "until a day"))), getattr(info, "expiration_mode", "?")))
         tick = mt5.symbol_info_tick(symbol)
+        for _ in range(8):
+            if tick is not None and tick.bid and tick.ask:
+                break
+            time.sleep(0.25)
+            tick = mt5.symbol_info_tick(symbol)
         if tick is None or not tick.bid or not tick.ask:
             out("  price: none yet. Open the pair in Market Watch and run this again.")
             status = 1
         else:
             pip = 10 * float(info.point)
             out("  last price: bid %.*f, ask %.*f, spread %.1f pips. If the market is shut this is its last price, however old." % (info.digits, tick.bid, info.digits, tick.ask, (tick.ask - tick.bid) / pip))
+            # The bridge passes on a price only once it has seen it change. This is that same reading, for a few seconds.
+            changes, last, until = 0, (int(tick.time_msc), float(tick.bid), float(tick.ask)), time.monotonic() + watch_seconds
+            while time.monotonic() < until:
+                time.sleep(SAMPLE_SECONDS)
+                seen = mt5.symbol_info_tick(symbol)
+                key = (int(seen.time_msc), float(seen.bid), float(seen.ask)) if seen is not None else last
+                if key != last:
+                    changes, last = changes + 1, key
+            if changes:
+                out("  watched for %.1f seconds: the price changed %d times. The market is open and the bridge would have prices to give." % (watch_seconds, changes))
+            else:
+                out("  watched for %.1f seconds: the price did not change. The market is shut, or this pair is not being updated. The bridge gives no price until it changes." % watch_seconds)
         # What the broker itself says one pip is worth, to set against the owner's rule: 0.01 lot, 30 pips, three dollars.
         size, value = float(getattr(info, "trade_tick_size", 0) or 0), float(getattr(info, "trade_tick_value", 0) or 0)
         if size > 0 and value > 0:
@@ -359,7 +380,13 @@ def main(argv, env=os.environ, out=print):
         out("Could not attach to a MetaTrader 5 terminal: %s. Install it, open it, log in to the account, and run this again." % (mt5.last_error(),))
         return 2
     try:
-        return check(mt5, env, out) if "--check" in argv else serve(mt5, env, out)
+        if "--check" not in argv:
+            return serve(mt5, env, out)
+        try:
+            watch = min(60.0, max(0.0, float(env.get("LUMEN_FX_CHECK_SECONDS") or 3)))
+        except ValueError:
+            watch = 3.0
+        return check(mt5, env, out, watch)
     finally:
         mt5.shutdown()
 

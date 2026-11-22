@@ -65,7 +65,7 @@ const seen = (bidPoints: number, since = 0): Promise<FxFeed> => until(async () =
 });
 
 function run(args: string[], more: Record<string, string> = {}): { status: number | null; out: string } {
-  const done = spawnSync(python!, ["bridge/mt5_bridge.py", ...args], { cwd: root, env: { ...pythonEnv, ...more }, encoding: "utf8", timeout: 10_000 });
+  const done = spawnSync(python!, ["bridge/mt5_bridge.py", ...args], { cwd: root, env: { ...pythonEnv, LUMEN_FX_CHECK_SECONDS: "0.3", ...more }, encoding: "utf8", timeout: 10_000 });
   return { status: done.status, out: `${done.stdout}${done.stderr}` };
 }
 
@@ -104,12 +104,22 @@ describe.skipIf(!python)("the price bridge, run as its own process", () => {
     expect(good.out).toContain("AUDUSD is called AUDUSD.s here. Other names seen: AUDUSD+");
     expect(good.out).toContain("digits 5, one lot 100000 AUD, lots from 0.01 in steps of 0.01");
     expect(good.out).toContain("on 0.01 lot one pip is 10.00 cents here, so 30 pips is 3.00 USD");
+    expect(good.out).toContain("last price: bid 0.65100, ask 0.65108, spread 0.8 pips");
+    // Nothing moved the price while it watched, so it says the bridge would have had nothing to give.
+    expect(good.out).toContain("watched for 0.3 seconds: the price did not change");
     expect(good.out).toContain("programs may trade: terminal yes, account yes, account by program yes");
     expect(good.out).toContain("trading by Python switched off in the terminal: no. Closing oldest first only: no");
     expect(good.out).toContain("orders allowed: market, limit, stop, stop-limit, stop loss, take profit, close by (127)");
     expect(good.out).toContain("check: ok");
     // The account number is not printed, so the print can be pasted anywhere.
     expect(good.out).not.toContain("87654321");
+
+    // A fresh terminal: the pair is not in Market Watch, so it has no price and a blank pip value. The check adds it and reads it again.
+    const hidden = run(["--check"], { STANDIN_MT5_HIDDEN: "1" });
+    expect(hidden.status).toBe(0);
+    expect(hidden.out).toContain("AUDUSD is called AUDUSD.s here");
+    expect(hidden.out).toContain("last price: bid 0.65100, ask 0.65108");
+    expect(hidden.out).toContain("so 30 pips is 3.00 USD");
 
     const small = run(["--check"], { STANDIN_MT5_CONTRACT: "10000" });
     expect(small.status).toBe(1);
@@ -123,6 +133,28 @@ describe.skipIf(!python)("the price bridge, run as its own process", () => {
     const bare = run([], { LUMEN_FX_BRIDGE_PORT: String(PORT + 1) });
     expect(bare.status).toBe(2);
     expect(bare.out).toContain("Nothing was started");
+  });
+
+  it("watches the price for a few seconds and says whether the market is moving", async () => {
+    const own = path.join(folder, "check.json");
+    const move = (bid: number, msc: number) => {
+      writeFileSync(`${own}.next`, JSON.stringify({ bid, ask: bid + 0.00008, msc }));
+      renameSync(`${own}.next`, own);
+    };
+    move(0.651, 1);
+    const watching = spawn(python!, ["bridge/mt5_bridge.py", "--check"], { cwd: root, env: { ...pythonEnv, STANDIN_MT5_TICK: own, LUMEN_FX_CHECK_SECONDS: "2", PYTHONUNBUFFERED: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+    let out = "";
+    watching.stdout?.on("data", (chunk) => (out += String(chunk)));
+    const ended = new Promise<number | null>((resolve) => watching.on("close", resolve));
+    // The price moves while it watches.
+    for (let step = 2; step < 14; step += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      move(0.651 + step / 100_000, step);
+    }
+    expect(await ended).toBe(0);
+    const changed = /watched for 2\.0 seconds: the price changed (\d+) times\. The market is open/.exec(out);
+    expect(changed).not.toBeNull();
+    expect(Number(changed![1])).toBeGreaterThanOrEqual(2);
   });
 
   it("lets nobody in who is not the engine, and lets a request in once", async () => {

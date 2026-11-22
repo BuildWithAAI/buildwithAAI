@@ -67,7 +67,9 @@ cd projects\lumen
 python bridge\mt5_bridge.py --check
 ```
 
-It prints the kind of account, what the terminal calls AUDUSD, the size of a lot, the smallest lot, how near the market an order may sit, which kinds of order the broker allows, whether programs may trade, and what the broker itself says 30 pips on 0.01 lot comes to. The account number is not printed, so the print can be pasted anywhere. **The order half will be built from this print.**
+It prints the kind of account and the server it is on, what the terminal calls AUDUSD, the size of a lot, the smallest lot, how near the market an order may sit, which kinds of order the broker allows, whether programs may trade, and what the broker itself says 30 pips on 0.01 lot comes to. It then watches the price for three seconds and says whether it moved. The account number is not printed, so the print can be pasted anywhere. **The order half will be built from this print.**
+
+If more than one MetaTrader 5 is installed, look at the server name on the second line. If it is not the broker meant, point the bridge at the right terminal with `LUMEN_MT5_TERMINAL`, below.
 
 4. Make a secret, and give the same one to the bridge and to the engine:
 
@@ -85,6 +87,13 @@ LUMEN_FX_BRIDGE_SECRET=the same line
 ```
 
 Leave the bridge's window open. Ctrl+C stops it.
+
+The bridge reads these, and only the first has to be set:
+
+- `LUMEN_FX_BRIDGE_SECRET`, the secret above.
+- `LUMEN_FX_BRIDGE_PORT`, the port on this computer. Unset, 8765.
+- `LUMEN_FX_SYMBOL_AUDUSD`, the terminal's own name for AUDUSD. A broker often adds to the name, such as `AUDUSD.s`. The bridge finds the name itself and the check prints it with the others it saw. Set this only if it picked the wrong one.
+- `LUMEN_MT5_TERMINAL`, the full path of `terminal64.exe`, if more than one terminal is installed.
 
 Never put the MT5 password in the engine's settings. If `MT5_PASSWORD` or `LUMEN_MT5_PASSWORD` is set there, forex stays shut.
 
