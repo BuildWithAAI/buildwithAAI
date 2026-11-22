@@ -50,28 +50,34 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
   const parts: Part[] = [];
 
   if (kind === "spire") {
+    // One tall tapering tower she can walk into from the street and climb to the top, with her hand in its crown.
     const height = between(42, 78);
-    const width = between(7, 10);
-    parts.push({ op: "spin", material: "stone", outline: [[width * 1.5, 0], [width * 1.45, 1.2], [width * 1.1, 2], [width * 0.9, 2.4]], ripple: 0.05 });
-    parts.push({ op: "loft", material: "glass", at: [0, 2.2, 0], up: height, from: { shape: "block", width, soft: 0.35 }, to: { shape: "sided", sides: whole(5, 8), width: width * 0.62, soft: 0.5 }, twist: between(30, 140), taper: between(0.7, 0.95), rings: 40, bands: whole(3, 6), windows: { rows: Math.round(height / 3.2), cols: 16, lit: between(0.35, 0.8) }, cap: "crown" });
-    parts.push({ op: "loft", material: "dark", at: [0, 2.2, 0], up: height * 0.98, from: { shape: "round", width: width * 0.34 }, cap: "flat", hand: 0, segments: 16 });
-    const count = whole(2, 4);
-    parts.push({ op: "loft", material: "stone", at: [0, 0, 0], up: height * between(0.3, 0.5), from: { shape: "sided", sides: 6, width: width * 0.5, soft: 0.4 }, taper: 0.8, windows: { rows: whole(5, 9), cols: 9, lit: 0.5 }, cap: "crown", around: { count, radius: width * 1.25 }, segments: 48 });
+    const width = between(11, 14);
+    const sides = whole(5, 8);
+    const storey = between(3.2, 3.6);
+    const floors = Math.round(height / storey);
+    const taper = between(0.55, 0.75);
+    parts.push({ op: "spin", material: "stone", outline: [[width * 0.9, 0], [width * 0.88, 0.15], [width * 0.78, 0.15], [width * 0.76, 0.3], [width * 0.6, 0.3]], ripple: 0.03 });
+    parts.push({ op: "building", material: "glass", at: [0, 0.3, 0], outline: { shape: "sided", sides, width }, floors, floorHeight: storey, taper, roof: "flat", windows: { every: between(2.2, 2.8), width: 0.86, height: 0.72, sill: 0.1, lit: between(0.3, 0.7) }, door: { width: between(1.6, 2.2) } });
+    parts.push({ op: "loft", material: "glass", at: [0, 0.4 + floors * storey, 0], up: height * between(0.1, 0.16), from: { shape: "sided", sides, width: width * taper * 0.8, soft: 0.4 }, taper: 0.25, bands: whole(1, 3), cap: "crown", segments: 48 });
+    // Pinnacles to either side. None stands in front of the door.
+    parts.push({ op: "loft", material: "stone", at: [0, 0, 0], up: height * between(0.3, 0.5), from: { shape: "sided", sides: 6, width: width * 0.3, soft: 0.4 }, taper: 0.5, bands: whole(2, 4), cap: "crown", around: { count: whole(2, 3), radius: width * 0.66 }, segments: 48 });
   }
 
   if (kind === "exchange") {
+    // A trading hall on two shallow steps, with a row of columns across its front and a wide door between the middle two.
     const wide = between(24, 30);
     const deep = wide * 0.55;
     const tall = between(8, 11);
-    parts.push({ op: "loft", material: "stone", up: 1.2, from: { shape: "block", width: wide + 6, depth: deep + 8, soft: 0.15 }, cap: "flat", hand: 0 });
-    parts.push({ op: "loft", material: "stone", at: [0, 1.2, 0], up: tall, from: { shape: "block", width: wide, depth: deep, soft: 0.12 }, cap: "flat", windows: { rows: 3, cols: 22, lit: 0.7 } });
-    const columns = whole(7, 10);
+    parts.push({ op: "loft", material: "stone", up: 0.3, from: { shape: "block", width: wide + 6, depth: deep + 8, soft: 0.15 }, cap: "flat", hand: 0 });
+    parts.push({ op: "building", material: "stone", at: [0, 0.3, 0], outline: { shape: "block", width: wide, depth: deep }, floors: 2, floorHeight: tall / 2, wall: 0.5, roof: "flat", windows: { every: between(2.6, 3.4), width: 0.5, height: 0.62, sill: 0.2, lit: 0.7 }, door: { width: 3.2, height: 3.4 } });
+    const columns = whole(4, 5) * 2;
     const gap = (wide - 2) / (columns - 1);
-    parts.push({ op: "loft", material: "metal", at: [-(wide - 2) / 2, 1.2, deep / 2 + 1.6], up: tall, from: { shape: "round", width: 1.25, lobes: 12, ripple: 0.06 }, cap: "crown", repeat: { count: columns, step: [gap, 0, 0] }, mirror: "z", segments: 36 });
-    parts.push({ op: "loft", material: "stone", at: [0, 1.2 + tall, 0], up: 2.4, from: { shape: "block", width: wide + 3, depth: deep + 6, soft: 0.1 }, taper: 0.72, cap: "flat", hand: 0 });
-    parts.push({ op: "spin", material: "glass", at: [0, 3.6 + tall, 0], outline: [[deep * 0.34, 0], [deep * 0.36, 1.6], [deep * 0.3, 4], [deep * 0.16, 5.6], [0.05, 6.2]], ripple: 0.05 });
+    parts.push({ op: "loft", material: "metal", at: [-(wide - 2) / 2, 0.3, deep / 2 + 1.6], up: tall + 0.1, from: { shape: "round", width: 1.25, lobes: 12, ripple: 0.06 }, cap: "crown", repeat: { count: columns, step: [gap, 0, 0] }, mirror: "z", segments: 36 });
+    parts.push({ op: "loft", material: "stone", at: [0, 0.4 + tall, 0], up: 2.4, from: { shape: "block", width: wide + 3, depth: deep + 6, soft: 0.1 }, taper: 0.72, cap: "flat", hand: 0 });
+    parts.push({ op: "spin", material: "glass", at: [0, 2.8 + tall, 0], outline: [[deep * 0.34, 0], [deep * 0.36, 1.6], [deep * 0.3, 4], [deep * 0.16, 5.6], [0.05, 6.2]], ripple: 0.05 });
     const ring: Vec3[] = Array.from({ length: 12 }, (_, k) => [Math.cos((k / 12) * Math.PI * 2) * deep * 0.5, 0, Math.sin((k / 12) * Math.PI * 2) * deep * 0.5]);
-    parts.push({ op: "loft", material: "glow", at: [0, 4.1 + tall, 0], through: ring, closed: true, from: { shape: "round", width: 0.35 }, segments: 8, rings: 72 });
+    parts.push({ op: "loft", material: "glow", at: [0, 3.3 + tall, 0], through: ring, closed: true, from: { shape: "round", width: 0.35 }, segments: 8, rings: 72 });
   }
 
   if (kind === "coaster") {
@@ -117,7 +123,7 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
     const wide = between(46, 56);
     parts.push({ op: "ground", material: "ground", width: wide, kind: "rows", relief: 0.7, rows: whole(12, 20), cells: 90, slab: 4 });
     parts.push({ op: "loft", material: "body", at: [0, 0.7, 0], up: 1.5, from: { shape: "round", width: 0.3 }, taper: 0.5, cap: "crown", segments: 8, rings: 3, scatter: { count: 130, spread: [wide * 0.62, wide * 0.62], size: [0.7, 1.6] } });
-    parts.push({ op: "loft", material: "stone", at: [-wide * 0.2, 0.3, wide * 0.12], up: 6.5, from: { shape: "block", width: 9, depth: 6.5, soft: 0.2 }, taper: 0.92, bands: 1, cap: "crown" });
+    parts.push({ op: "building", material: "stone", at: [-wide * 0.2, 0.3, wide * 0.12], outline: { shape: "block", width: 9, depth: 6.5 }, floors: 2, floorHeight: 3, roof: "flat", windows: { every: 3, lit: 0.3 }, door: { width: 1.4 } });
     parts.push({ op: "loft", material: "metal", at: [-wide * 0.2 + 7.5, 0.3, wide * 0.12 - 1], up: between(11, 15), from: { shape: "round", width: 3.6 }, bands: 3, cap: "crown" });
     const mast = between(13, 17);
     parts.push({ op: "loft", material: "stone", at: [wide * 0.22, 0.3, -wide * 0.16], up: mast, from: { shape: "sided", sides: 8, width: 2.4, soft: 0.5 }, taper: 0.45, cap: "crown", segments: 48 });
@@ -139,17 +145,20 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
   }
 
   if (kind === "block") {
-    // A few buildings of different heights sharing one base, the ordinary fabric of a town.
+    // A few buildings of different heights along one kerb, the ordinary fabric of a town. Each has its own door on the front.
     const count = whole(1, 3);
     const lot = between(20, 30);
-    parts.push({ op: "loft", material: "stone", up: 0.5, from: { shape: "block", width: lot, depth: lot * 0.8, soft: 0.08 }, cap: "flat" });
+    parts.push({ op: "loft", material: "stone", up: 0.15, from: { shape: "block", width: lot, depth: lot * 0.8, soft: 0.08 }, cap: "flat" });
     for (let k = 0; k < count; k += 1) {
-      const tall = between(10, 44);
+      const storey = between(3, 3.6);
+      const floors = Math.max(2, Math.round(between(10, 44) / storey));
       const wide = (lot - 3) / count - 1;
-      const deep = between(lot * 0.4, lot * 0.66);
+      const deep = between(lot * 0.4, lot * 0.6);
       const x = -lot / 2 + 1.5 + wide / 2 + k * (wide + 1);
-      parts.push({ op: "loft", material: next() < 0.35 ? "glass" : "stone", at: [x, 0.5, 0], up: tall, from: { shape: "block", width: wide, depth: deep, soft: between(0.04, 0.3) }, taper: between(0.9, 1), windows: { rows: Math.max(2, Math.round(tall / 3.1)), cols: whole(10, 18), lit: between(0.25, 0.85) }, cap: "flat", bevel: 0.35, segments: 40, rings: 6 });
-      parts.push({ op: "loft", material: "dark", at: [x, 0.5 + tall, 0], up: between(0.8, 2.2), from: { shape: "block", width: wide * 0.5, depth: deep * 0.5, soft: 0.2 }, cap: "flat", segments: 16, rings: 2 });
+      const z = lot * 0.4 - deep / 2 - 1.3;
+      const glassy = next() < 0.35;
+      parts.push({ op: "building", material: glassy ? "glass" : "stone", at: [x, 0.15, z], outline: { shape: "block", width: wide, depth: deep }, floors, floorHeight: storey, taper: between(0.95, 1), roof: next() < 0.7 ? "parapet" : "flat", windows: { every: between(2.2, 3.4), width: glassy ? between(0.78, 0.9) : between(0.42, 0.66), height: glassy ? between(0.62, 0.75) : between(0.42, 0.58), sill: glassy ? 0.12 : between(0.26, 0.34), lit: between(0.25, 0.85) }, door: { width: between(1.2, 2.4) } });
+      parts.push({ op: "loft", material: "dark", at: [x, 0.25 + floors * storey, z], up: between(0.8, 2.2), from: { shape: "block", width: wide * 0.4, depth: deep * 0.4, soft: 0.2 }, cap: "flat", segments: 16, rings: 2 });
     }
   }
 

@@ -13,7 +13,8 @@ import { dropUnits, heldIn, syncUnits, unitPlan, unitsOf } from "../world/units"
 import { handFrom, lookFrom, type Hand } from "./hand";
 import { compose, IDEA_KINDS, LAND_KINDS, roadName, type IdeaKind } from "./ideas";
 import { encodeMesh } from "./mesh";
-import { buildRecipe, cleanRecipe, PLAIN, roadsIn, type Built, type Layer, type Recipe, type Vibe } from "./recipe";
+import type { BuildingPlan } from "./building";
+import { buildRecipe, cleanRecipe, PLAIN, plansIn, roadsIn, type Built, type Layer, type Recipe, type Vibe } from "./recipe";
 import { alongside, onePiece, pieceMeetsBox, roadHalf, roadPieces, ROADS, roadsMeet, roadWidth, type Piece, type RoadSpec, type RoadType } from "./roads";
 import { groundHeight } from "./shape";
 import { renderMesh } from "./view";
@@ -41,7 +42,7 @@ export const FORGE = { standing: 400, perDay: 24, everyMs: 30 * 60_000, /** Heig
 export const ISLAND = { shore: 72, heart: 40 } as const;
 
 export type Place = { x: number; z: number; turn: number };
-export type ForgeBuild = { id: string; name: string; kind: string; layer: Layer; version: number; status: "standing" | "removed"; x: number; y: number; z: number; /** Degrees. */ turn: number; /** Half its width and depth. */ hw: number; hd: number; height: number; triangles: number; vibe: Vibe; by: "zoora" | "owner"; createdAt: number; updatedAt: number; /** The kind of road it is, if it is a road. */ road: RoadType | null };
+export type ForgeBuild = { id: string; name: string; kind: string; layer: Layer; version: number; status: "standing" | "removed"; x: number; y: number; z: number; /** Degrees. */ turn: number; /** Half its width and depth. */ hw: number; hd: number; height: number; triangles: number; vibe: Vibe; by: "zoora" | "owner"; createdAt: number; updatedAt: number; /** The kind of road it is, if it is a road. */ road: RoadType | null; /** How many buildings in it have a door someone can walk in by. */ doors: number };
 
 const AABB = (r: string) => {
   const ex = `(abs(${r}.hw * cos(radians(${r}.turn))) + abs(${r}.hd * sin(radians(${r}.turn))))`;
@@ -67,7 +68,7 @@ export function ensureForge(db: DatabaseSync): void {
     CREATE TABLE IF NOT EXISTS forge_things (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, layer TEXT NOT NULL, recipe TEXT NOT NULL, version INTEGER NOT NULL, status TEXT NOT NULL,
       x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, turn REAL NOT NULL, hw REAL NOT NULL, hd REAL NOT NULL, height REAL NOT NULL,
-      triangles INTEGER NOT NULL, vibe TEXT NOT NULL, made_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, road TEXT
+      triangles INTEGER NOT NULL, vibe TEXT NOT NULL, made_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, road TEXT, doors INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS forge_versions (build_id TEXT NOT NULL, version INTEGER NOT NULL, recipe TEXT NOT NULL, at_ms INTEGER NOT NULL, PRIMARY KEY(build_id, version));
     CREATE INDEX IF NOT EXISTS forge_things_standing ON forge_things(status, layer, created_at, id);
@@ -113,6 +114,7 @@ export function ensureForge(db: DatabaseSync): void {
       throw error;
     }
   }
+  if (!(db.prepare("PRAGMA table_info(forge_things)").all() as { name: string }[]).some((column) => column.name === "doors")) db.exec("ALTER TABLE forge_things ADD COLUMN doors INTEGER NOT NULL DEFAULT 0");
   // Her standing roads, by id and by when they were laid. The queries below name these, because left to choose SQLite reads every standing build instead.
   db.exec("CREATE INDEX IF NOT EXISTS forge_things_roads ON forge_things(id) WHERE road IS NOT NULL AND status = 'standing'; CREATE INDEX IF NOT EXISTS forge_things_roads_laid ON forge_things(created_at) WHERE road IS NOT NULL AND status = 'standing'");
   // A world made before the index existed is indexed once, here.
@@ -129,7 +131,7 @@ export function ensureForge(db: DatabaseSync): void {
   ready.add(db);
 }
 
-type Row = { id: string; name: string; kind: string; layer: Layer; version: number; status: "standing" | "removed"; x: number; y: number; z: number; turn: number; hw: number; hd: number; height: number; triangles: number; vibe: string; made_by: "zoora" | "owner"; created_at: number; updated_at: number; road: RoadType | null };
+type Row = { id: string; name: string; kind: string; layer: Layer; version: number; status: "standing" | "removed"; x: number; y: number; z: number; turn: number; hw: number; hd: number; height: number; triangles: number; vibe: string; made_by: "zoora" | "owner"; created_at: number; updated_at: number; road: RoadType | null; doors: number };
 const vibes = new Map<string, Vibe>();
 /** A vibe is one of a handful, so each is read once. */
 function vibeOf(text: string): Vibe {
@@ -141,8 +143,8 @@ function vibeOf(text: string): Vibe {
   return vibe;
 }
 /** Everything about a build but its recipe, which is long and is only read when it is needed. */
-const FIELDS = "t.id, t.name, t.kind, t.layer, t.version, t.status, t.x, t.y, t.z, t.turn, t.hw, t.hd, t.height, t.triangles, t.vibe, t.made_by, t.created_at, t.updated_at, t.road";
-const shape = (row: Row): ForgeBuild => ({ id: row.id, name: row.name, kind: row.kind, layer: row.layer, version: Number(row.version), status: row.status, x: row.x, y: row.y, z: row.z, turn: row.turn, hw: row.hw, hd: row.hd, height: row.height, triangles: Number(row.triangles), vibe: vibeOf(row.vibe), by: row.made_by, createdAt: Number(row.created_at), updatedAt: Number(row.updated_at), road: row.road ?? null });
+const FIELDS = "t.id, t.name, t.kind, t.layer, t.version, t.status, t.x, t.y, t.z, t.turn, t.hw, t.hd, t.height, t.triangles, t.vibe, t.made_by, t.created_at, t.updated_at, t.road, t.doors";
+const shape = (row: Row): ForgeBuild => ({ id: row.id, name: row.name, kind: row.kind, layer: row.layer, version: Number(row.version), status: row.status, x: row.x, y: row.y, z: row.z, turn: row.turn, hw: row.hw, hd: row.hd, height: row.height, triangles: Number(row.triangles), vibe: vibeOf(row.vibe), by: row.made_by, createdAt: Number(row.created_at), updatedAt: Number(row.updated_at), road: row.road ?? null, doors: Number(row.doors ?? 0) });
 
 export function standing(db: DatabaseSync): ForgeBuild[] {
   ensureForge(db);
@@ -322,6 +324,17 @@ function roadRule(db: DatabaseSync, self: string | undefined, before: Piece[], a
   if (missing.size) throw new Error("FORGE_ROAD_CUTS");
 }
 
+/** How many of a recipe's buildings have a door. */
+const doorsIn = (recipe: Recipe): number => plansIn(recipe).filter((plan) => plan.door).length;
+
+/** The buildings in a standing build that can be walked into: floors, door and stairs, in the build's own metres. */
+export function plansOf(db: DatabaseSync, id: string): BuildingPlan[] | null {
+  const build = getBuild(db, id);
+  if (!build || build.status !== "standing") return null;
+  const recipe = recipeOf(db, id);
+  return recipe ? plansIn(recipe) : null;
+}
+
 /** The widest kind of road among those in a build. */
 const widest = (roads: RoadSpec[]): RoadType | null => (roads.length ? [...roads].sort((a, b) => roadWidth(b) - roadWidth(a))[0]!.type : null);
 
@@ -369,7 +382,7 @@ export function raise(db: DatabaseSync, input: unknown, at: unknown, now: number
   const vibe = recipe.vibe ?? check.ground?.vibe ?? PLAIN;
   const text = JSON.stringify(recipe);
   const id = `forge-${createHash("sha256").update(`${text}:${now}:${place.x}:${place.z}`).digest("hex").slice(0, 10)}`;
-  db.prepare("INSERT INTO forge_things(id, name, kind, layer, recipe, version, status, x, y, z, turn, hw, hd, height, triangles, vibe, made_by, created_at, updated_at, road) VALUES(?, ?, ?, ?, ?, 1, 'standing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, recipe.name, roads.length ? "road" : kind.replace(/[^a-z-]/g, "").slice(0, 20) || "own", layer, text, place.x, y, place.z, place.turn, box.hw, box.hd, built.height, built.triangles, JSON.stringify(vibe), by, now, now, widest(roads));
+  db.prepare("INSERT INTO forge_things(id, name, kind, layer, recipe, version, status, x, y, z, turn, hw, hd, height, triangles, vibe, made_by, created_at, updated_at, road, doors) VALUES(?, ?, ?, ?, ?, 1, 'standing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, recipe.name, roads.length ? "road" : kind.replace(/[^a-z-]/g, "").slice(0, 20) || "own", layer, text, place.x, y, place.z, place.turn, box.hw, box.hd, built.height, built.triangles, JSON.stringify(vibe), by, now, now, widest(roads), doorsIn(recipe));
   db.prepare("INSERT INTO forge_versions(build_id, version, recipe, at_ms) VALUES(?, 1, ?, ?)").run(id, text, now);
   if (layer === "structure") syncUnits(db, { id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd }, recipe.units);
   return getBuild(db, id)!;
@@ -397,7 +410,7 @@ function rewrite(db: DatabaseSync, current: ForgeBuild, text: string, version: n
     if (plan.homes < now.filter((unit) => unit.kind === "home").length || plan.shops < now.filter((unit) => unit.kind === "shop").length) throw new Error("FORGE_HOLDS_TENANTS");
   }
   if (layer === "structure") syncUnits(db, home, recipe.units);
-  db.prepare("UPDATE forge_things SET name = ?, kind = ?, recipe = ?, version = ?, hw = ?, hd = ?, height = ?, triangles = ?, vibe = ?, updated_at = ?, road = ? WHERE id = ?").run(recipe.name, roads.length ? "road" : current.kind === "road" ? "own" : current.kind, text, version, box.hw, box.hd, built.height, built.triangles, JSON.stringify(recipe.vibe ?? current.vibe), now, widest(roads), current.id);
+  db.prepare("UPDATE forge_things SET name = ?, kind = ?, recipe = ?, version = ?, hw = ?, hd = ?, height = ?, triangles = ?, vibe = ?, updated_at = ?, road = ?, doors = ? WHERE id = ?").run(recipe.name, roads.length ? "road" : current.kind === "road" ? "own" : current.kind, text, version, box.hw, box.hd, built.height, built.triangles, JSON.stringify(recipe.vibe ?? current.vibe), now, widest(roads), doorsIn(recipe), current.id);
   return getBuild(db, current.id)!;
 }
 
@@ -584,7 +597,8 @@ export function wander(db: DatabaseSync, layer: Layer, half: [number, number], h
       const t = next();
       const side = next() < 0.5 ? 1 : -1;
       const back = piece.half + 0.6 + next() * 5 + half[1];
-      place = { x: piece.ax + (piece.bx - piece.ax) * t - dir[1] * side * back, z: piece.az + (piece.bz - piece.az) * t + dir[0] * side * back, turn: (Math.atan2(-dir[1], dir[0]) * 180) / Math.PI + (next() < 0.5 ? 0 : 180) };
+      // A build's front is the side its door is on. It is turned so that side is the one toward the road.
+      place = { x: piece.ax + (piece.bx - piece.ax) * t - dir[1] * side * back, z: piece.az + (piece.bz - piece.az) * t + dir[0] * side * back, turn: (Math.atan2(-dir[1], dir[0]) * 180) / Math.PI + (side > 0 ? 180 : 0) };
       around = street.around;
     } else {
       if (!grounds.length) return null;
@@ -802,6 +816,7 @@ op "loft": an outline carried along a path. Either "up": height, or "through": [
 op "spin": "outline" [[distance from the axis, height], ...] turned around the upright axis. Optional "cap": "flat" | "open" | "top-open", "ripple".
 op "ground": "width", "depth", "kind": "flat" | "dunes" | "rows" | "crater" | "pool" | "terraces", "relief", "slab" (how deep its edge goes; use 4 for land).
 op "road": a road along a line on the ground. "type": "avenue" | "street" | "alley", "through": [[x, z], ...] (2 to 24 points, at least 3 apart, in the build's own metres), optional "width", "curve": true to bend smoothly through the points. It takes no "at", "turn" or "repeat". A build with a road in it lies flat: lamps, trees and buildings go in builds of their own.
+op "building": a building that can be walked into, with real walls, floors, a door, windows and stairs. "outline": {"shape": "block" | "sided" | "round", "width", "depth", "sides"}, "floors" 1..60. Optional: "floorHeight" 2.6..8, "wall" thickness, "taper" 0.5..1 (the top as a share of the base), "windows": {"every": bay width in metres, "width" and "height" as shares of the bay and the storey, "sill", "lit" 0..1} or false, "door": {"side": which wall, counting from the front, "at" 0..1 along it, "width", "height"} or false, "roof": "flat" | "parapet", "stairs": {"at": [x, z]} or false. Its front faces +z. It takes "material" (its walls), "at" and "turn" only. Turn the build so its door faces a road. A crown, columns, a sign, or anything you put inside it are parts of your own.
 op "group": "parts": [ ... ], arranged together.
 Units are metres. y is up. A build's own parts stay within 30 of its centre and under 130 tall. Do not copy a real building and do not use a brand's name.`;
 
@@ -814,6 +829,7 @@ const REFUSED: Record<string, string> = {
   FORGE_ROAD_TYPE: "a road must say whether it is an avenue, a street or an alley",
   FORGE_ROAD_NESTED: "a road cannot be put inside a group",
   FORGE_ROAD_LAYER: "a road lies on land and cannot be land itself",
+  FORGE_BUILDING_NESTED: "a building cannot be put inside a group",
   FORGE_NO_GROUND: "it did not stand wholly on land you have laid",
   FORGE_OVERLAP: "it overlapped something tall that already stands there",
   FORGE_NOT_TOUCHING: "that land did not touch your island or land you already laid",

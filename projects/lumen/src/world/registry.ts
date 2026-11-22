@@ -428,7 +428,7 @@ export function worldView(db: DatabaseSync, now: number, env: { LUMEN_WORLD_LAT?
         const key = JSON.stringify(build.vibe);
         let look = vibes.indexOf(key);
         if (look < 0) look = vibes.push(key) - 1;
-        return { id: build.id, name: build.name, layer: build.layer, version: build.version, x: build.x, y: build.y, z: build.z, yaw: (build.turn * Math.PI) / 180, tall: build.height, look };
+        return { id: build.id, name: build.name, layer: build.layer, version: build.version, x: build.x, y: build.y, z: build.z, yaw: (build.turn * Math.PI) / 180, tall: build.height, look, enter: build.doors > 0 };
       });
       const looks = vibes.map((key) => {
         const look = lookFrom(style, JSON.parse(key) as { tint: number; shade: number; glow: number });

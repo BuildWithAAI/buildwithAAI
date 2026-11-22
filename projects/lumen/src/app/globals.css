@@ -95,6 +95,13 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 0.4rem
 .world-banner, .world-hud { position: absolute; z-index: 2; left: 0.6rem; right: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
 .world-banner { top: 0.6rem; color: var(--ink); text-shadow: 0 1px 2px #000; pointer-events: none; }
 .world-hud { bottom: 0.6rem; }
+.world-hud[hidden] { display: none; }
+.world-pick { position: absolute; z-index: 3; left: 50%; transform: translateX(-50%); bottom: 4.4rem; display: flex; gap: 0.6rem; align-items: center; padding: 0.55rem 0.9rem; max-width: calc(100% - 1.2rem); }
+.world-pick strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.world-inside { position: absolute; z-index: 3; left: 0.6rem; right: 0.6rem; bottom: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; justify-content: center; }
+.world-inside button, .world-inside span { background: rgba(6, 18, 22, 0.78); border: 1px solid var(--line); border-radius: 999px; padding: 0.5rem 0.95rem; }
+.world-inside button { touch-action: none; user-select: none; -webkit-user-select: none; }
+.world-inside button:disabled { opacity: 0.4; }
 .world-hud button, .world-banner > span { background: rgba(6, 18, 22, 0.78); border: 1px solid var(--line); border-radius: 999px; padding: 0.35rem 0.7rem; }
 .world-banner > span { pointer-events: none; }
 .banner-menu, .places-toggle { display: none; }
