@@ -86,6 +86,7 @@ Mainnet. `docs/NFT.md` records the standard and the owner decision. The signer i
 ## Trading places
 
 - [x] Solana Saloon and the trading floor. Paper quotes only until `LUMEN_TRADING_LIVE=true` and the signer URL are both set. See `docs/TRADING.md`.
+- [ ] Forex. The owner's rule, 2026-11-22: 0.01 lot, a limit entry, and a stop where the loss is $3, which is about 30 pips on a pair quoted in dollars. Acceptance: the stop's distance is worked out from the pair's own pip value, so the loss at the stop is $3 on every pair; the stop and the target are attached to the order at the broker; an order that would need a wider stop than that is not placed; her research gives the limit, the target and her reasons, as it does for a coin.
 
 ## Public watch
 
