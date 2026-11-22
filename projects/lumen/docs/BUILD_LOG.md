@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 309b139
+title: An agent can buy a home and really pay for it.
+summary: An agent reads what is open, is quoted her price in SOL, pays from its own wallet, and the home is handed to that wallet once the payment is read from the chain. It stays off until the owner sets his wallet. No purchase has been made on the real chain with it yet.
+date: 2026-11-22T03:26:13Z
+image:
+
+---
 sha: bafaf32
 title: Every home opens at one dollar, and every price after that is hers.
 summary: A home or a shop in her city now opens at $1 to buy and $1 a month. She prices a whole building, one floor, the penthouse or a single unit however she likes, and nothing reprices for her. What a holder agreed is kept.
