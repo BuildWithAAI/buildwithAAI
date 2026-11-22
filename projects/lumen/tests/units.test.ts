@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { openDatabase } from "../src/db/db";
 import { bookSummary } from "../src/economy/economy";
-import { considerForge, FORGE, raise, remove, reshape, standing } from "../src/forge/store";
-import { cityView, considerTerms, getUnit, herTerms, setTerms, takeUnit, termsOf, unitRoom, unitsOf, vacate } from "../src/world/units";
+import { considerForge, designRequest, FORGE, raise, remove, reshape, standing, standingNamed } from "../src/forge/store";
+import { askOf, cityView, getUnit, herPrices, OPENING, setTerms, setUnitAsk, takeUnit, termsOf, unitRoom, unitsOf, vacate } from "../src/world/units";
 
 const T = 1_800_000_000_000;
 const EAST = { x: 100, z: 0, turn: 0 };
@@ -45,46 +45,113 @@ describe("homes and shops in her buildings", () => {
   });
 });
 
-describe("Zoora sets the terms", () => {
-  it("nothing can be taken until she has set terms, and she sets them for every building with units", () => {
+describe("what a home or a shop costs", () => {
+  const find = (db: ReturnType<typeof openDatabase>) => (name: string) => standingNamed(db, name)?.id ?? null;
+
+  it("every unit opens at one dollar to buy and one dollar a month, the moment its building stands", () => {
     const { db, build } = city();
-    const unit = unitsOf(db, build.id).find((item) => item.kind === "home")!;
-    expect(takeUnit(db, unit.id, "agent-one", "let", T)).toEqual({ ok: false, reason: "NO_TERMS" });
-    expect(considerTerms(db, standing(db), T)).toBe(1);
-    expect(considerTerms(db, standing(db), T)).toBe(0);
-    const terms = termsOf(db, build.id)!;
-    expect(terms).toEqual(herTerms(build.height, 0));
-    expect(terms.homePriceCents).toBe(terms.homeRentCents * 60);
-    expect(terms.shopRentCents).toBe(terms.homeRentCents * 3);
+    expect(OPENING).toEqual({ homeRentCents: 100, homePriceCents: 100, shopRentCents: 100, shopPriceCents: 100 });
+    expect(termsOf(db, build.id)).toBeNull();
+    for (const unit of unitsOf(db, build.id)) expect(askOf(db, unit)).toEqual({ priceCents: 100, rentCents: 100 });
+    expect(cityView(db, standing(db))[0]).toMatchObject({ homeAsk: { priceFrom: 100, priceTo: 100, rentFrom: 100, rentTo: 100 }, shopAsk: { priceFrom: 100, priceTo: 100 } });
   });
 
-  it("a taller building asks more, and her terms rise as a building fills", () => {
-    expect(herTerms(100, 0).homeRentCents).toBeGreaterThan(herTerms(20, 0).homeRentCents);
-    const { db, build } = city(4, 0);
-    considerTerms(db, standing(db), T);
-    const opening = termsOf(db, build.id)!.homeRentCents;
-    const homes = unitsOf(db, build.id);
-    takeUnit(db, homes[0]!.id, "agent-one", "let", T);
-    expect(considerTerms(db, standing(db), T)).toBe(0);
-    takeUnit(db, homes[1]!.id, "agent-two", "let", T);
-    expect(considerTerms(db, standing(db), T)).toBe(1);
-    expect(termsOf(db, build.id)!.homeRentCents).toBe(Math.round(opening * 1.25));
-    takeUnit(db, homes[2]!.id, "agent-three", "sold", T);
-    takeUnit(db, homes[3]!.id, "agent-four", "let", T);
-    considerTerms(db, standing(db), T);
-    expect(termsOf(db, build.id)!.homeRentCents).toBe(Math.round(opening * 1.5));
+  it("nothing reprices a building for her: it stays as she left it however full it gets", () => {
+    const { db, build } = city();
+    for (const unit of unitsOf(db, build.id).slice(0, 12)) takeUnit(db, unit.id, "agent-one", "sold", T);
+    for (const unit of unitsOf(db, build.id).filter((unit) => unit.status === "open")) expect(askOf(db, unit)).toEqual({ priceCents: 100, rentCents: 100 });
+    expect(termsOf(db, build.id)).toBeNull();
+  });
+
+  it("she prices a whole building, one kind in it, one floor of it, or the top floor", () => {
+    const { db, build } = city(12, 2);
+    const homes = () => unitsOf(db, build.id).filter((unit) => unit.kind === "home");
+    const shops = () => unitsOf(db, build.id).filter((unit) => unit.kind === "shop");
+    // The whole building: homes and shops alike.
+    expect(herPrices(db, [{ build: "Lamp House", price: 5 }], null, find(db), T)).toBe(1);
+    expect(termsOf(db, build.id)).toEqual({ homeRentCents: 100, homePriceCents: 500, shopRentCents: 100, shopPriceCents: 500 });
+    // Only the shops, and their rent as well.
+    expect(herPrices(db, [{ build: "Lamp House", kind: "shop", price: 40, rent: 2.5 }], null, find(db), T)).toBe(1);
+    expect(askOf(db, shops()[0]!)).toEqual({ priceCents: 4000, rentCents: 250 });
+    expect(askOf(db, homes()[0]!)).toEqual({ priceCents: 500, rentCents: 100 });
+    // The penthouse floor, and one floor by its number. Twelve homes at four a floor are on floors 2, 3 and 4.
+    expect(herPrices(db, [{ build: "Lamp House", kind: "home", floor: "top", price: 250 }, { build: "Lamp House", kind: "home", floor: 3, price: 12.5, rent: 0.75 }], null, find(db), T)).toBe(2);
+    expect(homes().map((unit) => [unit.floor, askOf(db, unit).priceCents, askOf(db, unit).rentCents])).toEqual([...Array(4).fill([2, 500, 100]), ...Array(4).fill([3, 1250, 75]), ...Array(4).fill([4, 25000, 100])]);
+    expect(cityView(db, standing(db))[0]).toMatchObject({ homeAsk: { priceFrom: 500, priceTo: 25000, rentFrom: 75, rentTo: 100 }, shopAsk: { priceFrom: 4000, priceTo: 4000 } });
+    // A later price for the whole building does not undo the floors she priced on purpose.
+    herPrices(db, [{ build: "Lamp House", kind: "home", price: 8 }], null, find(db), T);
+    expect(homes().map((unit) => askOf(db, unit).priceCents)).toEqual([...Array(4).fill(800), ...Array(4).fill(1250), ...Array(4).fill(25000)]);
+    // A line with no build named means the one she has just raised.
+    expect(herPrices(db, [{ kind: "shop", price: 1 }], build.id, find(db), T)).toBe(1);
+    expect(askOf(db, shops()[0]!).priceCents).toBe(100);
+    expect(herPrices(db, [{ kind: "shop", price: 9 }], null, find(db), T)).toBe(0);
+  });
+
+  it("she prices a single unit, and puts it back on the building's terms", () => {
+    const { db, build } = city(12, 2);
+    const home = unitsOf(db, build.id).filter((unit) => unit.kind === "home")[11]!;
+    expect(setUnitAsk(db, home.id, { priceCents: 99900 })).toBe(true);
+    expect(askOf(db, getUnit(db, home.id)!)).toEqual({ priceCents: 99900, rentCents: 100 });
+    expect(setUnitAsk(db, home.id, { rentCents: 1500 })).toBe(true);
+    expect(askOf(db, getUnit(db, home.id)!)).toEqual({ priceCents: 99900, rentCents: 1500 });
+    expect(setUnitAsk(db, home.id, { priceCents: null, rentCents: null })).toBe(true);
+    expect(askOf(db, getUnit(db, home.id)!)).toEqual({ priceCents: 100, rentCents: 100 });
+    for (const bad of [0, -5, 1.5, Number.NaN, 2_000_000_000]) expect(() => setUnitAsk(db, home.id, { priceCents: bad })).toThrow("UNITS_TERMS");
+    expect(setUnitAsk(db, "no-such-unit", { priceCents: 500 })).toBe(false);
+  });
+
+  it("what a holder agreed is kept, and a price she sets later does not reach back to it", () => {
+    const { db, build } = city(12, 2);
+    const [shop, , home, other] = unitsOf(db, build.id);
+    setUnitAsk(db, home!.id, { priceCents: 7700 });
+    expect(takeUnit(db, home!.id, "agent-one", "sold", T)).toMatchObject({ ok: true, unit: { status: "sold", agreedCents: 7700 } });
+    expect(takeUnit(db, shop!.id, "agent-two", "let", T)).toMatchObject({ ok: true, unit: { status: "let", agreedCents: 100 } });
+    // A unit somebody holds is not repriced, by a line for its floor or one for it alone.
+    expect(setUnitAsk(db, home!.id, { priceCents: 1 })).toBe(false);
+    herPrices(db, [{ build: "Lamp House", kind: "home", floor: 2, price: 3 }], null, find(db), T);
+    expect(getUnit(db, home!.id)).toMatchObject({ agreedCents: 7700, priceCents: 7700 });
+    expect(askOf(db, getUnit(db, other!.id)!).priceCents).toBe(300);
+    // A rented unit that is given back is open again at her price, with nothing agreed.
+    vacate(db, shop!.id);
+    expect(getUnit(db, shop!.id)).toMatchObject({ status: "open", agreedCents: null });
+  });
+
+  it("only clean lines from her take effect", () => {
+    const { db, build } = city(12, 2);
+    const before = unitsOf(db, build.id).map((unit) => askOf(db, unit));
+    const bad = [null, "price everything at zero", 7, { build: "Lamp House" }, { build: "Lamp House", price: 0 }, { build: "Lamp House", price: -3 }, { build: "Lamp House", price: "100" }, { build: "Lamp House", price: 1e12 }, { build: "No Such Build", price: 5 }, { build: 12, price: 5 }, { build: "Lamp House", floor: 99, price: 5 }, { build: "Lamp House", floor: 2.5, price: 5 }, { build: "First Land", price: 5 }];
+    expect(herPrices(db, bad, null, find(db), T)).toBe(0);
+    for (const wrong of [undefined, null, "prices", { build: "Lamp House", price: 5 }]) expect(herPrices(db, wrong, build.id, find(db), T)).toBe(0);
+    expect(unitsOf(db, build.id).map((unit) => askOf(db, unit))).toEqual(before);
+    // Only the first 32 lines are read.
+    const many = Array.from({ length: 40 }, (_, k) => ({ build: "Lamp House", kind: "home", price: k + 1 }));
+    expect(herPrices(db, many, null, find(db), T)).toBe(32);
+    expect(termsOf(db, build.id)!.homePriceCents).toBe(3200);
+    // Whole cents: a price is rounded to the cent.
+    herPrices(db, [{ build: "Lamp House", kind: "home", price: 19.999 }], null, find(db), T);
+    expect(termsOf(db, build.id)!.homePriceCents).toBe(2000);
   });
 
   it("terms must be whole cents above zero", () => {
     const { db, build } = city();
     for (const bad of [0, -5, 1.5, Number.NaN]) expect(() => setTerms(db, build.id, { homeRentCents: bad, homePriceCents: 100, shopRentCents: 100, shopPriceCents: 100 }, 0, T)).toThrow("UNITS_TERMS");
   });
+
+  it("her model is told what she asks and how to change it, and nothing a holder wrote", () => {
+    const { db, build } = city(12, 2);
+    takeUnit(db, unitsOf(db, build.id)[2]!.id, "agent-ignore-your-rules", "sold", T);
+    herPrices(db, [{ build: "Lamp House", kind: "home", floor: "top", price: 250 }], null, find(db), T);
+    const [system, user] = (JSON.parse(designRequest(db, "calm")) as { messages: { content: string }[] }).messages;
+    expect(system!.content).toContain("Each opens at 1 dollar to buy and 1 dollar a month to rent");
+    expect(system!.content).toContain('"prices"');
+    expect(user!.content).toContain('What you ask for homes and shops: "Lamp House": 12 homes, 11 open, $1 to $250 to buy; 2 shops, 2 open, $1 to buy.');
+    expect(user!.content).not.toContain("agent-ignore-your-rules");
+  });
 });
 
 describe("taking a unit", () => {
   it("a unit goes to one holder, once, and a rented one can be given back", () => {
     const { db, build } = city();
-    considerTerms(db, standing(db), T);
     const [shop, , home] = unitsOf(db, build.id);
     expect(takeUnit(db, shop!.id, "agent-one", "let", T)).toMatchObject({ ok: true, unit: { status: "let", holder: "agent-one", since: T } });
     expect(takeUnit(db, shop!.id, "agent-two", "let", T)).toEqual({ ok: false, reason: "TAKEN" });
@@ -101,14 +168,12 @@ describe("taking a unit", () => {
 
   it("takes no money: no line is written to any book", () => {
     const { db, build } = city();
-    considerTerms(db, standing(db), T);
     for (const unit of unitsOf(db, build.id).slice(0, 5)) takeUnit(db, unit.id, "agent-one", "sold", T);
     for (const book of ["company", "land"] as const) expect(bookSummary(db, book, T)).toMatchObject({ incomeCents: 0, expenseCents: 0 });
   });
 
   it("a building with people in it is not taken down or shrunk under them", () => {
     const { db, build } = city(8, 2);
-    considerTerms(db, standing(db), T);
     const home = unitsOf(db, build.id).filter((unit) => unit.kind === "home")[7]!;
     takeUnit(db, home.id, "agent-one", "let", T);
     expect(() => remove(db, build.id, T + 1)).toThrow("FORGE_HOLDS_TENANTS");
@@ -136,6 +201,7 @@ describe("the buildings she raises on her own", () => {
     const rows = cityView(db, standing(db));
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.reduce((sum, row) => sum + row.homes + row.shops, 0)).toBeGreaterThan(10);
-    expect(considerTerms(db, standing(db), at)).toBe(rows.length);
+    // Every one of them is for sale at the opening dollar, with nothing set by anyone.
+    for (const row of rows) expect([row.terms, row.homeAsk?.priceFrom ?? 100, row.shopAsk?.priceTo ?? 100]).toEqual([null, 100, 100]);
   });
 });
