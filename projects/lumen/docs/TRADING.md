@@ -15,7 +15,7 @@ Trading starts in paper mode. The word PAPER is on the floor page, on the world 
 The owner may also set, and none of these has to be set:
 
 - `LUMEN_TRADE_USD`, what one trade is. Unset, it is $3.
-- `LUMEN_TRADE_DAILY_LOSS_USD`, a daily loss limit. Unset, there is none.
+- `LUMEN_TRADE_DAILY_LOSS_USD`, a daily loss limit, over coins and forex together. Unset, there is none.
 - `LUMEN_TRADE_ALLOW` and `LUMEN_TRADE_DENY`, comma-separated mints
 - `LUMEN_RUG_LIQUIDITY_USD`, the liquidity in dollars under which a pair is refused. If this is unset, the check uses $5,000.
 - `LUMEN_TRADE_MAX_USD` and `LUMEN_TRADE_MAX_SLIPPAGE_BPS` bound a trade sent straight to the gate, which her own orders never are. Unset, they are the size of one trade and 500.
@@ -34,7 +34,7 @@ The owner's rules, 2026-11-22. They are in `src/trading/book.ts`, and every orde
 By market, as the owner set it on 2026-11-22:
 
 - **Solana meme coins: $3 in each trade.** This is what the book does today.
-- **Forex: 0.01 lot, and $3 lost at the stop.** On a pair quoted in dollars, one pip on 0.01 lot is 10 cents, so the stop is 30 pips from her entry. On any other pair a pip is worth a different amount, and the stop is as many pips as come to $3. Because the lot is fixed, so is how far away the stop can be: she can take a trade only if the price that proves her wrong is within that distance. A broker holds a limit order with its stop and its target attached, so on forex they act even when her engine is off. Not built: no forex venue is connected.
+- **Forex: 0.01 lot, and $3 lost at the stop.** On a pair quoted in dollars, one pip on 0.01 lot is 10 cents, so the stop is 30 pips from her entry. On any other pair a pip is worth a different amount, and the stop is as many pips as come to $3. Because the lot is fixed, so is how far away the stop can be: she can take a trade only if the price that proves her wrong is within that distance. A broker holds a limit order with its stop and its target attached, so on forex they act even when her engine is off. Built on paper for AUDUSD, with the broker's own prices read by a bridge on the owner's computer: `docs/FOREX.md`. Sending her order to the broker is not built.
 
 Two things follow from how these markets work, and both were checked on 2026-11-22:
 
@@ -43,7 +43,7 @@ Two things follow from how these markets work, and both were checked on 2026-11-
 
 Live, the signer is sent her limit with a buy (`limitUsd`), her target with a target sale (`reason: "target"`, `minUsd`), and `reason: "stop"` with a stop sale. No signer that reads those fields exists yet. An order is taken in hand before the signer is asked, so two looks at the market cannot buy or sell it twice. If the signer's answer to a buy is unclear, the order is dropped and not tried again, because a second try could buy twice. If its answer to a sale is unclear, the trade stays open and the sale is tried again once the owner clears the pause.
 
-Not built: nothing places an order yet. She has no way to do her research and send an order, and the owner's desk has no form for one, so today these rules are reached only by the tests. Her orders are not shown on the floor page. Fees are not taken off a paper trade. Forex and exchange venues, which do have order books and real limit orders, are not connected.
+Not built: nothing places an order yet. She has no way to do her research and send an order, and the owner's desk has no form for one, so today these rules are reached only by the tests. Her orders are not shown on the floor page. Fees are not taken off a paper trade. Forex is on paper only, and exchange venues, which do have order books and real limit orders, are not connected.
 
 A pair with a honeypot label, or with no usable quote, is refused. The kill switch stops a new trade. The desk also has a trading kill and a control that clears the unknown pause. Both require the owner session and both write an audit row. An uncertain signer reply is stored as unknown and pauses further trading.
 

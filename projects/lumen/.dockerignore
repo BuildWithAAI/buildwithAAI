@@ -8,3 +8,4 @@ tests
 docs/*
 !docs/BUILD_LOG.md
 README.md
+bridge

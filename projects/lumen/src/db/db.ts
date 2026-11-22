@@ -183,6 +183,29 @@ CREATE TABLE IF NOT EXISTS trade_orders (
   closed_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS trade_orders_live ON trade_orders(status, created_at);
+CREATE TABLE IF NOT EXISTS fx_orders (
+  id TEXT PRIMARY KEY,
+  mode TEXT NOT NULL,
+  pair TEXT NOT NULL,
+  side TEXT NOT NULL,
+  centi_lots INTEGER NOT NULL,
+  risk_cents INTEGER NOT NULL,
+  limit_px TEXT NOT NULL,
+  stop_px TEXT NOT NULL,
+  target_px TEXT NOT NULL,
+  status TEXT NOT NULL,
+  fill_px TEXT,
+  exit_px TEXT,
+  exit_why TEXT,
+  result_cents INTEGER,
+  thesis TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  seen_at INTEGER NOT NULL,
+  filled_at INTEGER,
+  closed_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS fx_orders_live ON fx_orders(status, created_at);
 CREATE TABLE IF NOT EXISTS paper_trades (
   id TEXT PRIMARY KEY,
   mode TEXT NOT NULL,

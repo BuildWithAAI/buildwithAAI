@@ -41,6 +41,7 @@ import { advanceResearch, ideaBoard, readBrief, settleResearch } from "../resear
 import { stripeSalesClient } from "../money/stripe";
 import { composeThought, offerThought } from "../integrations/telegramOwner";
 import { latestThesis, watchOrders } from "../trading/book";
+import { watchFx } from "../trading/forex";
 import { considerShop, hideListing, listShop, listingMaxCents, publishListing, readShop, retireListing, setShopFlag, shopCheckout, shopCheckoutOpen } from "../shop/store";
 import { considerKeeperList, inventoryLine, listKeeperWishes, markKeeperWish } from "../wishlist/board";
 import { recordProvenance } from "../build/provenance";
@@ -1061,6 +1062,9 @@ export function startLoop(): void {
     if (watching) return;
     watching = true;
     void watchOrders(engine.db, engine.env, Date.now())
+      .catch(() => undefined)
+      // Her forex orders are looked at in the same breath, from the prices her bridge has kept since the last look.
+      .then(() => watchFx(engine.db, engine.env, Date.now()))
       .catch(() => undefined)
       .finally(() => {
         watching = false;
