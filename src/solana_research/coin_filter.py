@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from urllib.request import Request, build_opener
 
-from .rpc import DEFAULT_PUBLIC_RPC, rpc_call
+from .rpc import NoRedirect, PUBLIC_ENDPOINTS, rpc_call
 
 TOKEN = "27RP3fkHt6T2QpCzsrJjk9oMZXAP5cya77VaR3UMpump"
 
@@ -42,7 +42,7 @@ def adverse(first: dict, second: dict) -> dict:
 
 
 def scan(endpoint: str, slot: int, mint: str, path: Path, limit: int = 8) -> dict:
-    if endpoint != DEFAULT_PUBLIC_RPC:
+    if endpoint not in PUBLIC_ENDPOINTS:
         return {"written": 0, "reason": "RPC_REFUSED", "action": "NO_EXECUTION"}
     block = rpc_call(endpoint, "getBlock", [slot, {
         "encoding": "json",
@@ -63,7 +63,7 @@ def scan(endpoint: str, slot: int, mint: str, path: Path, limit: int = 8) -> dic
         }).encode()
         request = Request(endpoint, data=body, headers={"Content-Type": "application/json"}, method="POST")
         try:
-            with build_opener().open(request, timeout=20) as response:
+            with build_opener(NoRedirect()).open(request, timeout=20) as response:
                 payload = json.loads(response.read(250000))
         except Exception:
             return {"written": written, "reason": "RPC_BUSY", "action": "NO_EXECUTION"}

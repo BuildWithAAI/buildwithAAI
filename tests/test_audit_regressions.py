@@ -69,17 +69,21 @@ class AuditRegressions(unittest.TestCase):
 
     def test_rpc_rejects_execution_and_unsafe_endpoint(self):
         with patch('src.solana_research.rpc.build_opener') as opener:
-            for endpoint,method in [('https://rpc.test','sendTransaction'),('http://rpc.test','getBlock'),
-                                    ('https://user:secret@rpc.test','getBlock')]:
-                with self.assertRaises(ValueError):rpc_call(endpoint,method,[])
+            for endpoint, method in [('https://rpc.test', 'sendTransaction'), ('http://rpc.test', 'getBlock'),
+                                    ('https://user:secret@rpc.test', 'getBlock'),
+                                    ('https://rpc.test', 'getBlock'),
+                                    ('https://api.mainnet-beta.solana.com?api-key=secret', 'getBlock')]:
+                with self.assertRaises(ValueError):
+                    rpc_call(endpoint, method, [])
             opener.assert_not_called()
 
     def test_rpc_response_is_bounded(self):
         with patch('src.solana_research.rpc.build_opener') as opener:
-            response=opener.return_value.open.return_value.__enter__.return_value
-            response.read.return_value=b'x'*(MAX_RESPONSE_BYTES+1)
-            with self.assertRaises(RuntimeError):rpc_call('https://rpc.test','getBlock',[42])
-            response.read.assert_called_once_with(MAX_RESPONSE_BYTES+1)
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.read.return_value = b'x' * (MAX_RESPONSE_BYTES + 1)
+            with self.assertRaises(RuntimeError):
+                rpc_call('https://api.mainnet-beta.solana.com', 'getBlock', [42])
+            response.read.assert_called_once_with(MAX_RESPONSE_BYTES + 1)
 
     def test_get_blocks_rejects_missing_result_and_wide_window(self):
         with patch('src.solana_research.rpc.rpc_call',return_value={'jsonrpc':'2.0','id':1}):

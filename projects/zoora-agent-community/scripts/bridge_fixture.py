@@ -23,8 +23,12 @@ sys.path.insert(0, str(ROOT))
 from zoora_community.bridge_sandbox import HOST, BridgeSandboxClient, main  # noqa: E402
 from zoora_community.validation import canonical  # noqa: E402
 
-CERT = ROOT / "tests" / "fixtures" / "bridge-localhost-cert.pem"
-TLS_KEY = CERT.with_name("bridge-localhost-public-test-key.pem")
+TESTS = ROOT / "tests"
+if str(TESTS) not in sys.path:
+    sys.path.insert(0, str(TESTS))
+from localhost_tls import ensure_localhost_tls  # noqa: E402
+
+CERT, TLS_KEY = ensure_localhost_tls()
 KEY = "sk-test-PUBLIC-LOCAL-FIXTURE-NEVER-A-REAL-API-KEY"
 
 

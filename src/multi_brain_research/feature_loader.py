@@ -32,20 +32,24 @@ def features_from_observations(observations: Iterable[dict], index: int) -> tupl
     if price <= 0:
         raise LoaderError("NON_POSITIVE_PRICE")
     if index == 0:
+        # No earlier trade exists in this episode, so the measured change is zero.
         signed_return = 0.0
         flow = 0.0
         liquidity = 0.0
     else:
         previous = rows[index - 1]
         prior = _num(previous, "last_trade_price")
+        if prior <= 0:
+            raise LoaderError("NON_POSITIVE_PRICE")
         signed_return = max(-1.0, min(1.0, (price - prior) / prior))
         quote = _num(current, "quote_atoms")
-        prior_quote = max(1.0, abs(_num(previous, "quote_atoms")))
+        prior_quote = abs(_num(previous, "quote_atoms"))
+        if prior_quote == 0:
+            raise LoaderError("MISSING_FEATURE_SOURCE")
         flow = max(-1.0, min(1.0, _num(current, "signed_quote_flow") / prior_quote))
         liquidity = max(-1.0, min(1.0, (quote - prior_quote) / prior_quote))
-    distance = max(0.0, min(1.0, abs(1.0 - price / max(price, 1e-12)) ))
-    # Distance uses only the current price against the adverse band already defined.
-    distance = max(0.0, min(1.0, abs(price * ADVERSE_BAND) / price))
+    # 0 at or beyond the adverse drop, 1 at or beyond the same rise. Not a constant.
+    distance = max(0.0, min(1.0, (signed_return + ADVERSE_BAND) / (2 * ADVERSE_BAND)))
     return (
         round(signed_return, 6),
         round(flow, 6),

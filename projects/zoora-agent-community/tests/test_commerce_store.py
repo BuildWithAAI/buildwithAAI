@@ -8,6 +8,8 @@ import json
 import sqlite3
 import subprocess
 import sys
+import threading
+import time
 import unittest
 from unittest.mock import patch
 import uuid
@@ -151,6 +153,29 @@ class DurableCommerceTests(unittest.TestCase):
         self.assertEqual(results.count("PAYMENT_BUDGET"), 6)
         self.assertEqual(self.view()["state"]["authority"]["totals"]["payment_reserved"], 120)
         self.f.store.audit()
+
+    def test_a_brief_write_lock_is_waited_out(self):
+        holder = sqlite3.connect(
+            self.f.store.path, timeout=15, autocommit=True, check_same_thread=False,
+        )
+        self.addCleanup(holder.close)
+        holder.execute("BEGIN IMMEDIATE")
+        holder.execute("UPDATE metadata SET value=value WHERE key='instance_id'")
+
+        def release():
+            time.sleep(0.3)
+            holder.execute("ROLLBACK")
+
+        worker = threading.Thread(target=release)
+        worker.start()
+        try:
+            started = time.monotonic()
+            self.post(purchase_command())
+            waited = time.monotonic() - started
+        finally:
+            worker.join(5)
+        self.assertFalse(worker.is_alive())
+        self.assertGreaterEqual(waited, 0.2)
 
     def test_two_actual_processes_cannot_double_reserve_budget(self):
         # The credential is sent over stdin, never in argv or process output.

@@ -10,7 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from .rpc import DEFAULT_PUBLIC_RPC, rpc_call
+from .rpc import DEFAULT_PUBLIC_RPC, PUBLIC_ENDPOINTS, rpc_call
 
 TOKEN = "27RP3fkHt6T2QpCzsrJjk9oMZXAP5cya77VaR3UMpump"
 
@@ -36,7 +36,7 @@ def hide(record: dict) -> dict:
 
 
 def capture_block(endpoint: str = DEFAULT_PUBLIC_RPC) -> dict:
-    if endpoint != DEFAULT_PUBLIC_RPC:
+    if endpoint not in PUBLIC_ENDPOINTS:
         return {"labeled": False, "reason": "RPC_REFUSED", "action": "NO_EXECUTION"}
     slot = rpc_call(endpoint, "getBlocks", [1, 1])
     # getBlocks needs a real window. Use getSlot via a block fetch from a known finalized slot
@@ -46,7 +46,7 @@ def capture_block(endpoint: str = DEFAULT_PUBLIC_RPC) -> dict:
 
 
 def from_slot(endpoint: str, slot: int, path: Path) -> dict:
-    if endpoint != DEFAULT_PUBLIC_RPC:
+    if endpoint not in PUBLIC_ENDPOINTS:
         return {"labeled": False, "reason": "RPC_REFUSED", "action": "NO_EXECUTION"}
     payload = rpc_call(endpoint, "getBlock", [slot, {"encoding": "json", "transactionDetails": "signatures", "rewards": False, "maxSupportedTransactionVersion": 0}])
     block = payload.get("result") or {}

@@ -1,6 +1,8 @@
-"""Score one four-feature row with the existing first brain.
+"""Score one tape row with the paper-long heuristic.
 
-The receipt stays NO_EXECUTION. This is not market skill.
+An account snapshot that lacks a return, flow, and liquidity change abstains.
+This does not fit the hemibrain on a single invented label. The receipt stays
+NO_EXECUTION. This is not market skill.
 """
 from __future__ import annotations
 
@@ -8,20 +10,33 @@ import json
 from pathlib import Path
 
 from .brain_input import features
-from .first_brain import load_graph, receipt, train
 
 
 def score(row: dict, graph_path: Path) -> dict:
-    graph = load_graph(graph_path)
     mapped = features(row)
-    values = tuple(mapped["features"][name] for name in (
+    body = {
+        "module_id": "tape_heuristic_v1",
+        "prediction_ppm": None,
+        "uncertainty_ppm": None,
+        "abstain_reason": "MISSING_DATA",
+        "missing": mapped["missing"],
+        "market_skill": "NOT_ESTABLISHED",
+        "classification": row.get("classification"),
+        "graph_path_used": False,
+        "action": "NO_EXECUTION",
+    }
+    if any(mapped["features"][name] is None for name in (
         "signed_return", "flow_imbalance", "liquidity_change", "distance_to_adverse_band"
-    ))
-    rows = [(values, 0)]
-    model = train(graph["edges"], rows, seed=7, steps=5)
-    body = receipt(graph["edges"], model, values, 100_000, graph["graph_sha256"])
-    body["market_skill"] = "NOT_ESTABLISHED"
-    body["classification"] = row.get("classification")
+    )):
+        return body
+    from .brain_input import paper_long_support
+    scored = paper_long_support(mapped)
+    body.update(
+        prediction_ppm=scored["prediction_ppm"],
+        uncertainty_ppm=scored["uncertainty_ppm"],
+        abstain_reason=scored["abstain_reason"],
+        graph_path_used=graph_path is not None,
+    )
     return body
 
 

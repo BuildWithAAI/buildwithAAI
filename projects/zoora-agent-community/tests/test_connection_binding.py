@@ -3,7 +3,6 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import time
@@ -260,7 +259,7 @@ class ConnectionBindingTests(unittest.TestCase):
 
     def test_cli_pinned_worker_and_direct_report_with_real_tls(self):
         job = self.submit()
-        env = {**os.environ, "SSL_CERT_FILE": str(Path(__file__).parent / "fixtures/bridge-localhost-cert.pem")}
+        env = {**os.environ, "SSL_CERT_FILE": str(self.tls.certificate)}
         common = ["--community-origin", self.tls.origin, "--expected-instance", self.instance,
                   "--expected-agent", self.agent, "--credential-file", str(self.credential),
                   "--model", "synthetic-fixture", "--model-port", str(self.model.port)]

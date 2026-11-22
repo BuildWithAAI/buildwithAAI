@@ -6,7 +6,12 @@ from __future__ import annotations
 
 import json
 
-ALLOWED = {"https://api.mainnet-beta.solana.com"}
+# Public Solana mainnet only. api.mainnet.solana.com is the same cluster
+# under the host already accepted by coin_evidence.ENDPOINTS.
+ALLOWED = frozenset({
+    "https://api.mainnet-beta.solana.com",
+    "https://api.mainnet.solana.com",
+})
 MIN_LEN = 49
 
 

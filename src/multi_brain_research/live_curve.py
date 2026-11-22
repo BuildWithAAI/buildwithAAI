@@ -7,7 +7,9 @@ from __future__ import annotations
 import base64
 import json
 import struct
-from urllib.request import Request, build_opener
+
+from .public_rpc import post
+from .rpc_allow import ALLOWED
 
 CURVE = "Eq93BkkDVBLkjgHxZU6qVk7hrnzTnAyVfCNrXCVix1PL"
 PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
@@ -18,17 +20,12 @@ class CurveReadError(ValueError):
 
 
 def read_curve(endpoint: str) -> dict:
-    if not endpoint.startswith("https://"):
+    if endpoint not in ALLOWED:
         raise CurveReadError("REFUSED")
-    body = json.dumps({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "getAccountInfo",
-        "params": [CURVE, {"encoding": "base64", "commitment": "finalized"}],
-    }).encode()
-    request = Request(endpoint, data=body, headers={"Content-Type": "application/json"}, method="POST")
-    with build_opener().open(request, timeout=20) as response:
-        payload = json.loads(response.read(262144))
+    try:
+        payload = post(endpoint, "getAccountInfo", [CURVE, {"encoding": "base64", "commitment": "finalized"}])
+    except ValueError as error:
+        raise CurveReadError("REFUSED") from error
     value = (payload.get("result") or {}).get("value")
     if not value or value.get("owner") != PUMP:
         raise CurveReadError("MISSING_CURVE")

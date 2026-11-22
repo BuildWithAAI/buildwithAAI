@@ -1,4 +1,6 @@
-"""Third brain.
+"""TEST_FIXTURE. Not a paper-trading council member.
+
+Third brain.
 
 The no-trade control abstains. An abstention cannot break consensus alone.
 """
@@ -7,6 +9,8 @@ from __future__ import annotations
 import json
 
 from .control_brains import no_trade
+
+ROLE = "TEST_FIXTURE"
 
 
 def third(features: tuple[float, float, float, float]) -> dict:

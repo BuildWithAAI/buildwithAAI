@@ -1,0 +1,14 @@
+{
+  "url": "https://api.geckoterminal.com/api/v2/networks/solana/pools/zd8E6E7gm3jNPPziMLS4qS1pvpGweJY4MfCh9wD3Gpp/trades",
+  "pool": "zd8E6E7gm3jNPPziMLS4qS1pvpGweJY4MfCh9wD3Gpp",
+  "mint": "F49ncWoGVf2EYpg4iqbkhuMvyLRgJYSrTMT3jCUSpump",
+  "symbol": "Look",
+  "fetched_during": "2026-11-05 self-improvement run, after snapshots/2026-11-05/0610.jsonl",
+  "newest_block_timestamp": "2026-11-05T06:14:30Z",
+  "oldest_block_timestamp": "2026-11-05T06:09:52Z",
+  "http_status": 200,
+  "full_trade_count": 300,
+  "trimmed_trade_count": 12,
+  "full_body_sha256": "51c9c500173eb1ca3f9b822908cff8ce6041678b9fdd07aa937a33f61bea5225",
+  "note": "look-trades-2026-11-05.json keeps 12 trades from that page. Each trade object is unmodified. The page had 300 trades."
+}
