@@ -9,7 +9,7 @@ import { currentStyle, selfGenome } from "../form/self";
 import { CHUNK_WORLD } from "../world/chunkMath";
 import { creativeEnabled } from "../world/creative";
 import { isHers } from "../world/land";
-import { dropUnits, heldIn, syncUnits, unitPlan, unitsOf } from "../world/units";
+import { askOf, dropUnits, heldIn, syncUnits, unitPlan, unitsOf, type UnitKind } from "../world/units";
 import { handFrom, lookFrom, type Hand } from "./hand";
 import { compose, IDEA_KINDS, LAND_KINDS, roadName, type IdeaKind } from "./ideas";
 import { encodeMesh } from "./mesh";
@@ -115,6 +115,7 @@ export function ensureForge(db: DatabaseSync): void {
     }
   }
   if (!(db.prepare("PRAGMA table_info(forge_things)").all() as { name: string }[]).some((column) => column.name === "doors")) db.exec("ALTER TABLE forge_things ADD COLUMN doors INTEGER NOT NULL DEFAULT 0");
+  db.exec("CREATE INDEX IF NOT EXISTS forge_things_named ON forge_things(name, created_at) WHERE status = 'standing'");
   // Her standing roads, by id and by when they were laid. The queries below name these, because left to choose SQLite reads every standing build instead.
   db.exec("CREATE INDEX IF NOT EXISTS forge_things_roads ON forge_things(id) WHERE road IS NOT NULL AND status = 'standing'; CREATE INDEX IF NOT EXISTS forge_things_roads_laid ON forge_things(created_at) WHERE road IS NOT NULL AND status = 'standing'");
   // A world made before the index existed is indexed once, here.
@@ -322,6 +323,13 @@ function roadRule(db: DatabaseSync, self: string | undefined, before: Piece[], a
     }
   }
   if (missing.size) throw new Error("FORGE_ROAD_CUTS");
+}
+
+/** Her newest standing build of a name. Names are hers and need not be unique, so the newest is meant. */
+export function standingNamed(db: DatabaseSync, name: string): ForgeBuild | null {
+  ensureForge(db);
+  const row = db.prepare("SELECT * FROM forge_things INDEXED BY forge_things_named WHERE name = ? AND status = 'standing' ORDER BY created_at DESC LIMIT 1").get(name) as Row | undefined;
+  return row ? shape(row) : null;
 }
 
 /** How many of a recipe's buildings have a door. */
@@ -818,6 +826,7 @@ op "ground": "width", "depth", "kind": "flat" | "dunes" | "rows" | "crater" | "p
 op "road": a road along a line on the ground. "type": "avenue" | "street" | "alley", "through": [[x, z], ...] (2 to 24 points, at least 3 apart, in the build's own metres), optional "width", "curve": true to bend smoothly through the points. It takes no "at", "turn" or "repeat". A build with a road in it lies flat: lamps, trees and buildings go in builds of their own.
 op "building": a building that can be walked into, with real walls, floors, a door, windows and stairs. "outline": {"shape": "block" | "sided" | "round", "width", "depth", "sides"}, "floors" 1..60. Optional: "floorHeight" 2.6..8, "wall" thickness, "taper" 0.5..1 (the top as a share of the base), "windows": {"every": bay width in metres, "width" and "height" as shares of the bay and the storey, "sill", "lit" 0..1} or false, "door": {"side": which wall, counting from the front, "at" 0..1 along it, "width", "height"} or false, "roof": "flat" | "parapet", "stairs": {"at": [x, z]} or false. Its front faces +z. It takes "material" (its walls), "at" and "turn" only. Turn the build so its door faces a road. A crown, columns, a sign, or anything you put inside it are parts of your own.
 op "group": "parts": [ ... ], arranged together.
+Homes and shops. "units" says how many a design holds, up to what fits in it. Each opens at 1 dollar to buy and 1 dollar a month to rent. Every price after that is yours, as high or as low as you like. To set prices, add "prices" beside "parts": [{"build": "the name of a build of yours, or leave it out for the one you are designing", "kind": "home" | "shop", "floor": a floor number or "top", "price": dollars to buy, "rent": dollars a month}]. Leave out "floor" to price the whole building, and "kind" to price both kinds.
 Units are metres. y is up. A build's own parts stay within 30 of its centre and under 130 tall. Do not copy a real building and do not use a brand's name.`;
 
 /** Why a design of hers was not built, as she is told it. */
@@ -861,7 +870,21 @@ export function designRequest(db: DatabaseSync, feeling: string): string {
   const made = recent.map(said);
   // She is told where her newest roads run even when they are not among her newest builds, so she can join one.
   const roads = (db.prepare("SELECT * FROM forge_things INDEXED BY forge_things_roads_laid WHERE road IS NOT NULL AND status = 'standing' ORDER BY created_at DESC LIMIT 12").all() as Row[]).map(shape).filter((road) => !recent.some((build) => build.id === road.id)).map(said);
+  // What she asks for the homes and shops in her newest buildings, so she can change it if she wants to. Only her own names and figures are in this.
+  const money = (cents: number) => `$${(cents / 100).toFixed(2).replace(/\.00$/, "")}`;
+  const asked = recent.filter((build) => build.layer === "structure").flatMap((build) => {
+    const units = unitsOf(db, build.id);
+    const line = (kind: UnitKind) => {
+      const of = units.filter((unit) => unit.kind === kind);
+      const prices = of.filter((unit) => unit.status === "open").map((unit) => askOf(db, unit).priceCents);
+      if (!of.length) return [];
+      const range = prices.length ? `, ${money(Math.min(...prices))}${Math.max(...prices) > Math.min(...prices) ? ` to ${money(Math.max(...prices))}` : ""} to buy` : "";
+      return [`${of.length} ${kind}s, ${prices.length} open${range}`];
+    };
+    const lines = [...line("home"), ...line("shop")];
+    return lines.length ? [`"${build.name}": ${lines.join("; ")}`] : [];
+  }).slice(-8);
   const refused = kvGet(db, "forge_refused");
   const why = refused ? ` Your last design was not built: ${REFUSED[refused] ?? "the forge could not build it as written"}.` : "";
-  return JSON.stringify({ messages: [{ role: "system", content: RECIPE_GUIDE }, { role: "user", content: `You feel ${feeling}. What you have made so far: ${made.length ? made.join("; ") : "nothing yet. Your island is alone in the sea"}.${roads.length ? ` Other roads of yours: ${roads.join("; ")}.` : ""}${why} Decide what your world needs next and where it goes.` }] });
+  return JSON.stringify({ messages: [{ role: "system", content: RECIPE_GUIDE }, { role: "user", content: `You feel ${feeling}. What you have made so far: ${made.length ? made.join("; ") : "nothing yet. Your island is alone in the sea"}.${roads.length ? ` Other roads of yours: ${roads.join("; ")}.` : ""}${asked.length ? ` What you ask for homes and shops: ${asked.join(". ")}.` : ""}${why} Decide what your world needs next and where it goes.` }] });
 }

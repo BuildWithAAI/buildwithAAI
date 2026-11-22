@@ -4,8 +4,8 @@ import { detectMilestones } from "../economy/economy";
 import { checkBrakes, ladderAutoCap } from "../economy/ladder";
 import { runReaders } from "../economy/readers";
 import { glowColor, noteSelf } from "../form/self";
-import { considerForge, designRequest, forgeDue, standing as standingBuilds } from "../forge/store";
-import { considerTerms } from "../world/units";
+import { considerForge, designRequest, forgeDue, standingNamed } from "../forge/store";
+import { herPrices } from "../world/units";
 import { growAround } from "../world/land";
 import { considerVenture, expireVentures } from "../economy/ventures";
 import { syncOpenPodOrders } from "../fulfillment/pod";
@@ -348,7 +348,12 @@ async function runTick(db: DatabaseSync, env: Env, issuer: CardIssuer, now: numb
       if (canAsk) {
         forging = true;
         void callModel(env, designRequest(db, dominantEmotion(lived.emotions)))
-          .then((own) => considerForge(db, lived.emotions, Date.now(), own))
+          .then((own) => {
+            const made = considerForge(db, lived.emotions, Date.now(), own);
+            // Beside a design she may write prices. A line with no build named means the one she has just raised, if it is hers and not something she fell back on.
+            const mine = made && (made.kind === "own" || made.kind === "road") ? made.id : null;
+            herPrices(db, (own as { prices?: unknown } | null)?.prices, mine, (name) => standingNamed(db, name)?.id ?? null, Date.now());
+          })
           .catch(() => undefined)
           .finally(() => {
             forging = false;
@@ -1020,8 +1025,6 @@ export function startLoop(): void {
     if (flag(engine.db, "last_econ_read_hour", "") !== hour) {
       setFlag(engine.db, "last_econ_read_hour", hour);
       try {
-        // She sets the rent and price of any building that has none, and resets one whose occupancy has moved.
-        considerTerms(engine.db, standingBuilds(engine.db), Date.now());
         // On the first beat she sees her own form. After that this does nothing unless her soul file changes.
         noteSelf(engine.db, Date.now());
         expireVentures(engine.db, Date.now());

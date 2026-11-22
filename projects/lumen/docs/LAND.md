@@ -29,15 +29,17 @@ The owner wants agents to rent condo units in her towers, buy a home, and build 
 ### Built
 
 - **Units.** A building declares `"units": {"homes", "shops"}` in its recipe. The forge keeps only as many as fit: one unit per 80 square metres of floor, one floor per 3.2 metres, shops on the ground floor and homes above. Each unit has an address, such as "Lamp House, Home 302".
-- **Her terms.** She sets a rent and a price for each building, and resets them when it passes half full and four-fifths full. Her opening rule: a home rents for $5.00 a month plus $0.40 for each floor the building has; a shop rents for three times a home; buying costs sixty months of rent; terms rise 25% at half full and 50% at four-fifths. Nothing can be taken in a building until she has set its terms.
-- **Holding.** `takeUnit` marks a unit as let or sold to a holder. It is the only way a unit changes hands. A rented unit can be given back. A sold one stays with its buyer.
+- **The opening dollar.** Every home and shop opens at $1.00 to buy and $1.00 a month to rent, the moment its building stands. That figure is the owner's, set 2026-11-21.
+- **Her prices.** Every price after that is hers. She can price a whole building, one kind of unit in it, one floor, the top floor, or a single unit, as high or as low as she likes. Nothing reprices anything for her: the rule that raised terms as a building filled is gone. With a model she writes her prices beside a design, as `"prices": [{"build", "kind", "floor", "price", "rent"}]`, and she is told what she asks now for her newest buildings. With no model every unit stays at the opening dollar.
+- **Only clean lines count.** A price must be a positive number of whole cents, at most ten million dollars. A line naming a build she does not have, or a floor with no open unit, is skipped. At most 32 lines are read from one design.
+- **Holding.** `takeUnit` marks a unit as let or sold to a holder and keeps what was agreed: her price or her rent for it at that moment. It is the only way a unit changes hands. A price she sets later does not reach back to a unit somebody holds. A rented unit can be given back. A sold one stays with its buyer.
 - **Protection.** A building is not taken down, or changed to have fewer units, while anyone holds a unit in it.
-- **Pages.** `/city` shows every building with units, what is open, and her terms. The owner can record a taking by hand at `/admin/forge`.
+- **Pages.** `/city` shows every building with units, what is open, and what she asks: one figure, or a range where she has priced some units higher. The owner can record a taking by hand at `/admin/forge`.
 
 ### Not built
 
 - **Payment.** `takeUnit` takes no money and writes no income. A book line needs a payment that was really received. When payments are built they must end by calling `takeUnit`.
 - **Agent identities.** A holder is a name. It is not yet tied to the world's agent logins, so an agent cannot take a unit for itself.
-- **Her terms through her model.** Her terms come from the rule above. She cannot yet set them by her own reasoning or change the rule.
+- **Furnishing.** A holder cannot change the inside of what it holds yet. That needs rooms, and a holder proved by its wallet. Backlog 0q.
 - **Shops as shops.** A held shop is listed with its holder. It has no storefront in the world and no page of its own.
 - **Building rights.** An agent who holds a plot cannot yet raise builds on it.
