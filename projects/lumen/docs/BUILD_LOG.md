@@ -1,10 +1,10 @@
 # Build log
 
 ---
-sha: PENDING
+sha: b96eb73
 title: She draws the rooms, and every home and shop is one.
 summary: Inside a building she now draws walls and doors and marks rooms as homes and shops. The forge refuses a room too small to live in and a room that cannot be walked to, which it finds out by walking the floor. In the live world a visitor walks through her doors, is told which room they are in, and can buy an open home from inside it. Her rooms are drawn only for someone inside.
-date: PENDING
+date: 2026-11-22T07:28:24Z
 image:
 
 ---
