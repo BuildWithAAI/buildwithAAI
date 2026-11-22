@@ -96,6 +96,7 @@ The owner's direction, 2026-11-21: every building can be entered, and its detail
 | `door` | which wall, how far along, width 0.9 to 6 m, height 2 to 5 m; or none | 1.6 by 2.4 m in the middle of the front |
 | `roof` | a parapet or a flat roof with a kerb | parapet |
 | `stairs` | where they stand; or none | against the back wall of a block, in the middle of any other shape |
+| `inside` | the walls, doors and rooms she draws, floor by floor | every floor is one open space |
 
 What the tool builds from those numbers:
 
@@ -116,16 +117,52 @@ Four of the things she knows how to make are buildings now, and each has a door 
 
 Counted in a world of 400 builds she grew with no model: 119 buildings with a door, 883 floors between them, stairs in every one with more than one floor. The world is 2.68 million triangles. About 1.25 million of those are the plants in her 24 fields, which were there before. A block of buildings is about 9,500 triangles and a spire about 20,000.
 
+### Her rooms
+
+The owner's direction, 2026-11-21 and 2026-11-22: she draws the inside herself, and each home and shop is a real room. Inside a building she draws walls and puts doors in them. Where her walls close a space off, that space is a room, the way a house-building game does it. She says which rooms are homes and which are shops by marking a spot inside each. A room she does not mark is a hall: a lobby, a corridor, a landing. The forge draws no wall, door or room she did not ask for.
+
+```json
+"inside": [{ "floors": [2, 9], "material": "stone",
+  "walls": [{ "from": [-1.6, -6], "to": [-1.6, 6], "doors": [{ "at": 0.8, "width": 0.95 }] }],
+  "rooms": [{ "at": [-5, 3], "use": "home", "name": "Corner Flat" }] }]
+```
+
+- **A layout names its floors**, counted from 1 at the ground: one floor, a run of floors, or every floor if it names none. A floor in no layout is one open space. Where two layouts name a floor, the later one is used.
+- **Walls** are lines in the building's own metres, from its centre, with its front toward +z. A wall is cut off at the outside walls. One that stops within 0.25 m of another wall, or runs that far past it, is joined to it, so a room she meant to close is closed. A wall is 115 mm thick, a stud wall with board on both faces, and runs from the floor to the ceiling.
+- **Doors** go in walls and nowhere else. `at` is how far along the wall as she wrote it, 0 to 1. A door is 0.82 to 2.4 m wide, 0.95 m if she does not say, and 2.05 m tall. The least width is a little over the 813 mm a building code asks of a doorway.
+- **Rooms** are found from the walls: every closed space, however many sides it has, with its floor area and the widest circle that fits in it. A room that stands free in the middle of a floor is found too, and taken out of the room around it. The stairwell is never a room.
+- **A building that tapers** keeps her walls where she drew them and cuts them off at each floor's own outside walls, so the rooms by the outside walls are smaller the higher they are. Every floor is judged on its own.
+
+Four things are held to. A design that breaks one is not built, and with a model she is told which in one fixed sentence:
+
+| Rule | Refused as |
+| --- | --- |
+| A home or a shop has at least 6.5 m² of floor and room for a circle 2.13 m across. A hall has room for a circle 1.12 m across. These are a building code's figures for the smallest liveable room and the narrowest corridor. | `FORGE_ROOM_SMALL` |
+| Every room can be walked to: from the front door on the ground floor, and from the stairs on every floor above. From the front door she must be able to reach the stairs. | `FORGE_ROOM_SHUT` |
+| No wall stands in the front doorway, on the stairs, or on the spot where people step off them. | `FORGE_ROOM_WAY` |
+| A mark is inside a room, one mark to a room. A door fits on its wall, clear of the walls that join it. | `FORGE_ROOM_MARK`, `FORGE_ROOM_DOOR` |
+
+**Walked to means walked.** The forge does not only check that rooms are joined by doors. It tries the floor on a 0.1 m grid with the same test the live world uses to move someone about (`canStand` in `src/world/walk.ts`): first with none of her walls, then with them. Anywhere that could be reached before and cannot be reached now has been shut off. That catches what a count of doors would miss, such as a door that opens onto the strip beside the stairs, which is too narrow to walk down. It errs toward refusing: a body just fits through an opening 0.62 m wide, and an opening under about 0.78 m may be counted as shut. A door is never that narrow.
+
+**Her rooms are her homes and shops.** Each room marked `home` or `shop` is one unit, numbered floor by floor in the order she marked them, with an address such as "Lamp House, Home 302". Nothing she builds now is given a home or a shop that is not a room. See `docs/LAND.md`.
+
+**Drawn only for someone inside.** Her inside walls are a mesh of their own, at `/api/forge/<id>/inside`. The live world fetches it when someone goes in and drops it when they leave. A build's own mesh is not one triangle heavier for its rooms, so her rooms cost nothing to anyone outside. What is drawn: each wall with a skirting at its foot; each door as an opening with a frame, wall above it, and a leaf standing open with a handle; and a small plate of her light beside the door of a home or a shop. The inside of one building may be at most 60,000 triangles.
+
+Measured in a town of 150 builds she grew with no model: 37 buildings, every one with rooms; 1,096 rooms, of which 615 are homes, 97 shops and 384 halls; 712 homes and shops in all, each a room. All their inside walls together are 1.2 MB, fetched by nobody who stays outside. The largest plan is 34 KB. For a floor 20 m by 12 m with five rooms, working out the rooms takes about 3 ms, and walking the floor to judge it about 4 ms.
+
 ### Walking inside
 
-`/api/forge/<id>/plan` gives each building in a build as the live world needs it: every floor's height and the room inside its walls, the door, and the stairwell with the spot in front of it. It is worked out from the same layout as the mesh, so the two cannot disagree.
+`/api/forge/<id>/plan` gives each building in a build as the live world needs it: every floor's height and the space inside its outside walls, the solid stretches of her inside walls, her rooms, the front door, and the stairwell with the spot in front of it. It is worked out from the same layout as the mesh, so the two cannot disagree.
 
 In the live world:
 
 - **Tap a build** to see its name. Name boards no longer stand over every build at once.
 - **Enter**, if it has a door. The eye goes in by the door nearest where she tapped and stands at a person's eye height, 1.6 m.
-- **Look** by dragging. **Walk** by holding the Walk or Back button, or with W, A, S, D and the arrow keys. She stays inside the walls, slides along a wall she walks into, and goes round the stairwell.
+- **Look** by dragging. **Walk** by holding the Walk or Back button, or with W, A, S, D and the arrow keys. She stays inside the outside walls, goes round the stairwell, and is stopped by her inside walls. She slides along any wall she walks into, at whatever slant it runs, and is carried round the end of a wall into a doorway.
+- **The room she is in is named** at the foot of the picture: "Hall", "Shop 102", "Corner Flat, Home 303". If it is a home or a shop nobody holds, its price is shown with a Buy button, which makes the same quote the city page makes. One somebody holds is marked Taken.
 - **Up and Down** take her to the next floor by the stairs. **Leave**, or Escape, puts the view back where it was.
+
+Her middle keeps 0.25 m from the face of any wall, which is a person's shoulders. A step is taken a tenth of a metre at a time, however long the frame took, so no step can carry her through a wall. She walks no faster on a slant than straight ahead.
 
 `src/world/walk.ts` holds the walking and knows nothing about drawing, so it is tested on its own.
 
@@ -164,6 +201,7 @@ Left to herself she has these habits. They are habits, not rules, and a model is
 - She brings a road onto new open land before she builds there. Her first road crosses open land at a place drawn by chance. Every road after it starts on a road she has, at a point drawn by chance, and runs on or turns off by chance, as an alley, a street or an avenue.
 - She keeps two roads that run the same way at least 14 m apart, keeps roads on level open ground, and does not drive a road through something tall she built.
 - What she raises stands beside a road, never on one, and is turned so its front, where the door is, faces that road.
+- She draws rooms in every building she knows how to make. A wide building in a block has a hall from the front door to the stairs, with shops off it on the ground floor and flats off it above. A narrow one has a shop on the ground floor with the stairs behind it, and a home to each floor above. Her trading hall has shops down both sides, on both floors. Her spire has its stairs at the back and a home to each floor, as far up as a floor is still large enough for one. Every plan she draws by habit goes through the same check as a design from a model.
 - She most often lays new land where one of her roads is heading, and not over the middle of land she already has.
 - When there is no room left beside her roads, she most often adds a road before she lays more land.
 
@@ -171,28 +209,32 @@ Grown this way for 400 builds she had 101 roads, 3.6 km of them, in one network:
 
 ## Limits
 
-One build: 120,000 triangles, 32 metres from its centre, 140 metres tall. A build that exceeds these is refused. Names of brands and real landmarks are refused. There is no text or image on any surface, so a logo cannot be made.
+One build: 120,000 triangles, 32 metres from its centre, 140 metres tall. A build that exceeds these is refused. Names of brands and real landmarks are refused, for a build and for a room. There is no text or image on any surface, so a logo cannot be made.
+
+Inside one building: 12 layouts, 48 walls and 64 marked rooms to a layout, 4 doors to a wall, and 60,000 triangles for all its inside walls.
 
 ## Pages
 
 - `/forge`: what she has built, with a picture of each from her viewport.
 - `/admin/forge`: take down, undo, raise an idea (at a place you type, or one she finds), or paste a recipe with its place. Switch her model designs on or off.
-- `/api/forge/<id>`: a build's mesh as bytes. `/api/forge/<id>/picture`: its picture. `/api/forge/<id>/plan`: how it is walked into.
+- `/api/forge/<id>`: a build's mesh as bytes. `/api/forge/<id>/picture`: its picture. `/api/forge/<id>/plan`: how it is walked into, with her rooms. `/api/forge/<id>/inside`: her inside walls as bytes.
 
 ## Not built yet
 
 - Openings are cut in lofts only. One shape cannot yet be cut out of another of a different kind.
 - Nothing moves. There are no people or vehicles, and a coaster has no cars.
-- A building's floors are open. There are no rooms yet: no inside walls, no inside doors, and nothing she has furnished. A home or a shop in it is still a count, not a room.
+- She does not furnish her rooms yet. A part she puts inside a building is in the build's own mesh, is loaded with its outside, and is not something a walker goes round. Backlog 0u.
+- A home or a shop is one room. A home of several rooms, a shop with its own door onto the street, and a wall with a window in it are not built.
+- A building from before rooms existed may still have homes and shops that are a count, with no room of their own. Nothing changes them for her.
 - Inside, she changes floor with a button and arrives in front of the stairs. She does not climb them step by step. She cannot walk out through the door: Leave puts the view back outside.
 - There is one stair in a building and no lift. Buildings stacked on each other in one build are not joined by stairs.
-- Everything inside a building is in the same mesh as its outside, and is loaded with it. Rooms and furnishing will need the inside loaded only when the eye is near.
+- A building's floors and stairs are in the same mesh as its outside, and are loaded with it. Only her inside walls are fetched when someone goes in.
 - She does not travel yet. Her roads are one network, and nothing walks or drives on it. A build has no address.
 - Roads lie level. There are no bridges, slopes or tunnels, and left to herself she keeps roads off land with relief, so fields and ruins can cut part of her land off from her roads.
 - She has no land kinds for a beach or mountains yet. A model can shape land with the ground tool; her own ideas are plain, fields and ruin.
 - Builds are loaded by distance from the eye, but far-off builds are not yet swapped for simpler shapes.
 - She cannot yet change or take down her own builds. Only the owner's desk can.
-- Agents cannot yet rent or own anything in a building. See `docs/LAND.md`.
+- An agent can buy a home or a shop. It cannot yet rent one, or change the inside of what it holds. See `docs/LAND.md`.
 
 ## Her light in the live world
 

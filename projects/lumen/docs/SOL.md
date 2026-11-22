@@ -2,6 +2,8 @@
 
 Buyers pay SOL to the owner's public wallet, `LUMEN_SOL_RECEIVE_ADDRESS`. That value is a public key. A private key does not belong in this app, its environment, or its logs.
 
+The owner's decision, 2026-11-22: this is the same wallet Zoora trades from, and he moves money in and out of it himself whenever he likes. Sales are not disturbed by that. A payment is checked inside its own transaction, by the reference it carries and by how much that one transaction added to the wallet, and never by what the wallet holds.
+
 Each order gets its own reference key. The price is the listing's USD cents, converted at a live SOL/USD quote from `LUMEN_SOL_PRICE_URL`. The quote expires in ten minutes. There is no backup rate in the code. If the price source does not answer, no quote is made.
 
 The buyer pays from their own wallet. The server then reads the transaction from `LUMEN_SOL_RPC_URL` at `finalized` commitment. The RPC URL must be `https`. The price request and the RPC request each stop after 6 seconds. A SOL/USD quote outside $1–$100,000 is refused. It accepts the payment only when all of these are true:

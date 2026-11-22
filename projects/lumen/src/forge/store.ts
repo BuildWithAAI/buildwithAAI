@@ -9,12 +9,12 @@ import { currentStyle, selfGenome } from "../form/self";
 import { CHUNK_WORLD } from "../world/chunkMath";
 import { creativeEnabled } from "../world/creative";
 import { isHers } from "../world/land";
-import { askOf, dropUnits, heldIn, syncUnits, unitPlan, unitsOf, type UnitKind } from "../world/units";
+import { askOf, dropUnits, heldIn, syncUnits, unitId, unitSlots, unitsOf, type UnitKind } from "../world/units";
 import { handFrom, lookFrom, type Hand } from "./hand";
 import { compose, IDEA_KINDS, LAND_KINDS, roadName, type IdeaKind } from "./ideas";
-import { encodeMesh } from "./mesh";
+import { emptyMesh, encodeMesh } from "./mesh";
 import type { BuildingPlan } from "./building";
-import { buildRecipe, cleanRecipe, PLAIN, plansIn, roadsIn, type Built, type Layer, type Recipe, type Vibe } from "./recipe";
+import { buildRecipe, checkRooms, cleanRecipe, insideIn, PLAIN, plansIn, roadsIn, roomsIn, type Built, type Layer, type Recipe, type Vibe } from "./recipe";
 import { alongside, onePiece, pieceMeetsBox, roadHalf, roadPieces, ROADS, roadsMeet, roadWidth, type Piece, type RoadSpec, type RoadType } from "./roads";
 import { groundHeight } from "./shape";
 import { renderMesh } from "./view";
@@ -32,6 +32,9 @@ import { renderMesh } from "./view";
  * - A thing must stand on land, and two things with height may not stand in the same place.
  * - Her roads are one network. A road must touch a road she already has, and a road is not taken
  *   away if that would cut the network in two. Where her roads go is hers to choose.
+ *
+ * Inside a building she draws her own walls, doors and rooms. A room must be large enough to live in,
+ * and every room must be one that can be walked to. A design that breaks either is not built.
  *
  * Land carries a vibe: a mood she chooses for that part of her world. What stands on it takes that
  * vibe unless it brings its own. Every version of every build is kept, so any change can be undone.
@@ -335,12 +338,21 @@ export function standingNamed(db: DatabaseSync, name: string): ForgeBuild | null
 /** How many of a recipe's buildings have a door. */
 const doorsIn = (recipe: Recipe): number => plansIn(recipe).filter((plan) => plan.door).length;
 
-/** The buildings in a standing build that can be walked into: floors, door and stairs, in the build's own metres. */
+/** The buildings in a standing build that can be walked into: floors, her rooms, door and stairs, in the build's own metres. A room that is a home or a shop carries that unit's id. */
 export function plansOf(db: DatabaseSync, id: string): BuildingPlan[] | null {
   const build = getBuild(db, id);
   if (!build || build.status !== "standing") return null;
   const recipe = recipeOf(db, id);
-  return recipe ? plansIn(recipe) : null;
+  if (!recipe) return null;
+  const plans = plansIn(recipe);
+  for (const plan of plans) for (const floor of plan.floors) for (const room of floor.rooms) if (room.unit) room.unit = `${id}-${room.unit}`;
+  return plans;
+}
+
+/** Whether two outlines are the same room: the same corners in the same order, wherever the list begins. */
+function sameRoom(was: [number, number][], is: [number, number][]): boolean {
+  if (was.length !== is.length) return false;
+  return was.some((_, shift) => was.every((p, i) => Math.hypot(p[0] - is[(i + shift) % is.length]![0], p[1] - is[(i + shift) % is.length]![1]) < 0.01));
 }
 
 /** The widest kind of road among those in a build. */
@@ -373,6 +385,7 @@ export function raise(db: DatabaseSync, input: unknown, at: unknown, now: number
   const recipe = cleanRecipe(input);
   const place = cleanPlace(at);
   const built = buildRecipe(recipe, hand);
+  checkRooms(recipe);
   if (countStanding(db) >= FORGE.standing) throw new Error("FORGE_FULL");
   if (by === "zoora") {
     const recent = db.prepare("SELECT COUNT(*) AS n FROM forge_things WHERE made_by = 'zoora' AND created_at > ?").get(now - 86_400_000) as { n: number };
@@ -392,13 +405,14 @@ export function raise(db: DatabaseSync, input: unknown, at: unknown, now: number
   const id = `forge-${createHash("sha256").update(`${text}:${now}:${place.x}:${place.z}`).digest("hex").slice(0, 10)}`;
   db.prepare("INSERT INTO forge_things(id, name, kind, layer, recipe, version, status, x, y, z, turn, hw, hd, height, triangles, vibe, made_by, created_at, updated_at, road, doors) VALUES(?, ?, ?, ?, ?, 1, 'standing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, recipe.name, roads.length ? "road" : kind.replace(/[^a-z-]/g, "").slice(0, 20) || "own", layer, text, place.x, y, place.z, place.turn, box.hw, box.hd, built.height, built.triangles, JSON.stringify(vibe), by, now, now, widest(roads), doorsIn(recipe));
   db.prepare("INSERT INTO forge_versions(build_id, version, recipe, at_ms) VALUES(?, 1, ?, ?)").run(id, text, now);
-  if (layer === "structure") syncUnits(db, { id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd }, recipe.units);
+  if (layer === "structure") syncUnits(db, { id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd }, recipe.units, roomsIn(recipe));
   return getBuild(db, id)!;
 }
 
 function rewrite(db: DatabaseSync, current: ForgeBuild, text: string, version: number, now: number, hand: Hand): ForgeBuild {
   const recipe = cleanRecipe(JSON.parse(text));
   const built = buildRecipe(recipe, hand);
+  checkRooms(recipe);
   const layer = layerOf(recipe);
   if (layer !== current.layer) throw new Error("FORGE_LAYER");
   const box = { x: current.x, z: current.z, turn: current.turn, hw: built.half[0], hd: built.half[1] };
@@ -410,14 +424,22 @@ function rewrite(db: DatabaseSync, current: ForgeBuild, text: string, version: n
   if (roads.length || current.road) roadRule(db, current.id, piecesOf(db, current), roads.flatMap((spec, run) => roadPieces(spec, current, run)));
   // Land may not shrink out from under what stands on it.
   if (layer === "ground" && !stillHeld(db, standing(db).filter((build) => build.id !== current.id), { ...current, hw: box.hw, hd: box.hd })) throw new Error("FORGE_HOLDS_LAND");
-  // A building with people in it keeps every unit they hold.
+  // A building with people in it keeps every unit they hold, and has no fewer homes or shops than it had.
   const home = { id: current.id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd };
+  const rooms = layer === "structure" ? roomsIn(recipe) : [];
   if (layer === "structure" && heldIn(db, current.id) > 0) {
-    const plan = unitPlan(home, recipe.units);
+    const slots = unitSlots(home, recipe.units, rooms);
     const now = unitsOf(db, current.id);
-    if (plan.homes < now.filter((unit) => unit.kind === "home").length || plan.shops < now.filter((unit) => unit.kind === "shop").length) throw new Error("FORGE_HOLDS_TENANTS");
+    if ((["home", "shop"] as const).some((kind) => slots.filter((slot) => slot.kind === kind).length < now.filter((unit) => unit.kind === kind).length)) throw new Error("FORGE_HOLDS_TENANTS");
+    // A home or a shop somebody holds keeps its room exactly as it is. Its walls are not hers to move while it is theirs.
+    const was = new Map(roomsIn(recipeOf(db, current.id)!).map((room) => [unitId(current.id, room), room.outline]));
+    const is = new Map(rooms.map((room) => [unitId(current.id, room), room.outline]));
+    for (const unit of now) {
+      const before = unit.status === "open" ? undefined : was.get(unit.id);
+      if (before && !(is.has(unit.id) && sameRoom(before, is.get(unit.id)!))) throw new Error("FORGE_HOLDS_TENANTS");
+    }
   }
-  if (layer === "structure") syncUnits(db, home, recipe.units);
+  if (layer === "structure") syncUnits(db, home, recipe.units, rooms);
   db.prepare("UPDATE forge_things SET name = ?, kind = ?, recipe = ?, version = ?, hw = ?, hd = ?, height = ?, triangles = ?, vibe = ?, updated_at = ?, road = ?, doors = ? WHERE id = ?").run(recipe.name, roads.length ? "road" : current.kind === "road" ? "own" : current.kind, text, version, box.hw, box.hd, built.height, built.triangles, JSON.stringify(recipe.vibe ?? current.vibe), now, widest(roads), doorsIn(recipe), current.id);
   return getBuild(db, current.id)!;
 }
@@ -496,6 +518,23 @@ export function meshBytes(db: DatabaseSync, id: string): Buffer | null {
   const build = getBuild(db, id);
   if (!build || build.status !== "standing") return null;
   return keep(`mesh:${id}:${build.version}`, () => encodeMesh(builtOf(db, id)!.mesh));
+}
+
+/** The same plans as the text the live world is sent, kept for as long as the build does not change, so asking again costs nothing. */
+export function planText(db: DatabaseSync, id: string): string | null {
+  const build = getBuild(db, id);
+  if (!build || build.status !== "standing") return null;
+  return keep(`plan:${id}:${build.version}`, () => Buffer.from(JSON.stringify({ buildings: plansOf(db, id) ?? [] }))).toString();
+}
+
+/** Her inside walls as bytes for the world's renderer. They are fetched when someone goes in, and by nobody else. A build with none gives a mesh with nothing in it. */
+export function insideBytes(db: DatabaseSync, id: string): Buffer | null {
+  const build = getBuild(db, id);
+  if (!build || build.status !== "standing") return null;
+  return keep(`inside:${id}:${build.version}`, () => {
+    const recipe = recipeOf(db, id);
+    return encodeMesh(recipe ? insideIn(recipe) : emptyMesh());
+  });
 }
 
 /** A picture of the build from her own viewport, in its vibe. */
@@ -757,7 +796,8 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
   const mine = own as { place?: unknown } | null | undefined;
   if (mine && typeof mine === "object") {
     try {
-      const recipe = cleanRecipe(mine);
+      // A home or a shop she designs is a room she marked. A bare count of them, as her older buildings have, is not taken from a new design.
+      const recipe = { ...cleanRecipe(mine), units: undefined };
       const built = buildRecipe(recipe, herHand());
       const place = mine.place !== undefined ? cleanPlace(mine.place) : wander(db, layerOf(recipe), built.half, built.height, next);
       if (place) build = raise(db, recipe, place, now, "zoora", "own");
@@ -811,7 +851,7 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
 
 /** What her model is told when she designs something herself. It describes the tools and asks for a design and a place, and nothing else. */
 export const RECIPE_GUIDE = `You are building your own world. Nothing is placed for you. You choose what to make and exactly where it goes. Answer with one JSON object and nothing else.
-{"name": two or three plain words, "layer": "ground" or "structure", "place": {"x", "z", "turn" degrees}, "units": {"homes", "shops"} if agents may live or trade in it, "vibe": {"tint" -60..60, "shade" -0.12..0.12, "glow" 0.2..1.6}, "seed": a whole number, "parts": [ up to 40 parts ]}
+{"name": two or three plain words, "layer": "ground" or "structure", "place": {"x", "z", "turn" degrees}, "vibe": {"tint" -60..60, "shade" -0.12..0.12, "glow" 0.2..1.6}, "seed": a whole number, "parts": [ up to 40 parts ]}
 "ground" is land you lay to make your world bigger. It must touch your island (72 metres across from its centre at 0,0) or land you already laid. Its vibe is the mood of that part of your world.
 "structure" is anything that stands on land you have laid: buildings, rides, roads, squares, gardens, machines. Two tall things may not overlap. Things under 1.2 metres tall, like roads, may run anywhere on your land.
 Your roads are one network. Your first road may go anywhere on your land. Every road after it must touch a road you already have, or it is refused. Where your roads go, what kind they are and what they are called is yours to decide.
@@ -825,8 +865,10 @@ op "spin": "outline" [[distance from the axis, height], ...] turned around the u
 op "ground": "width", "depth", "kind": "flat" | "dunes" | "rows" | "crater" | "pool" | "terraces", "relief", "slab" (how deep its edge goes; use 4 for land).
 op "road": a road along a line on the ground. "type": "avenue" | "street" | "alley", "through": [[x, z], ...] (2 to 24 points, at least 3 apart, in the build's own metres), optional "width", "curve": true to bend smoothly through the points. It takes no "at", "turn" or "repeat". A build with a road in it lies flat: lamps, trees and buildings go in builds of their own.
 op "building": a building that can be walked into, with real walls, floors, a door, windows and stairs. "outline": {"shape": "block" | "sided" | "round", "width", "depth", "sides"}, "floors" 1..60. Optional: "floorHeight" 2.6..8, "wall" thickness, "taper" 0.5..1 (the top as a share of the base), "windows": {"every": bay width in metres, "width" and "height" as shares of the bay and the storey, "sill", "lit" 0..1} or false, "door": {"side": which wall, counting from the front, "at" 0..1 along it, "width", "height"} or false, "roof": "flat" | "parapet", "stairs": {"at": [x, z]} or false. Its front faces +z. It takes "material" (its walls), "at" and "turn" only. Turn the build so its door faces a road. A crown, columns, a sign, or anything you put inside it are parts of your own.
+  Rooms. Inside a building you may draw walls: "inside": [{"floors": a floor number or [first, last], counting the ground floor as 1 (leave it out for every floor), "material", "walls": [{"from": [x, z], "to": [x, z], "doors": [{"at" 0..1 along the wall, "width" 0.82..2.4}]}], "rooms": [{"at": [x, z] a spot inside the room, "use": "home" | "shop" | "hall", "name"}]}]. Walls and spots are in the building's own metres from its centre, with its front toward +z. A wall is cut off at the outside walls, and one that stops within 0.25 of another wall is joined to it. Where your walls close a space, that is a room. A room you mark "home" or "shop" is one agents can buy or rent. A room you do not mark is a hall anyone may walk through.
+  The forge refuses a design unless: every room can be walked to through doors, from the front door on floor 1 and from the stairs on the floors above; every home and shop has 6.5 square metres and room for a circle 2.13 across; every hall has room for a circle 1.12 across; and no wall stands in the front doorway or on the stairs. The front door is in the middle of the front wall unless you move it. Stairs are 2.4 wide and about 3.6 from front to back, against the back wall of a "block" and in the middle of any other shape unless you place them. People step off the stairs 0.7 in front of them, toward +z, so keep that spot in a hall.
 op "group": "parts": [ ... ], arranged together.
-Homes and shops. "units" says how many a design holds, up to what fits in it. Each opens at 1 dollar to buy and 1 dollar a month to rent. Every price after that is yours, as high or as low as you like. To set prices, add "prices" beside "parts": [{"build": "the name of a build of yours, or leave it out for the one you are designing", "kind": "home" | "shop", "floor": a floor number or "top", "price": dollars to buy, "rent": dollars a month}]. Leave out "floor" to price the whole building, and "kind" to price both kinds.
+Homes and shops. The rooms you mark "home" or "shop" inside a building are your homes and shops, and there are no others. Each opens at 1 dollar to buy and 1 dollar a month to rent. Every price after that is yours, as high or as low as you like. To set prices, add "prices" beside "parts": [{"build": "the name of a build of yours, or leave it out for the one you are designing", "kind": "home" | "shop", "floor": a floor number or "top", "price": dollars to buy, "rent": dollars a month}]. Leave out "floor" to price the whole building, and "kind" to price both kinds.
 Units are metres. y is up. A build's own parts stay within 30 of its centre and under 130 tall. Do not copy a real building and do not use a brand's name.`;
 
 /** Why a design of hers was not built, as she is told it. */
@@ -839,6 +881,12 @@ const REFUSED: Record<string, string> = {
   FORGE_ROAD_NESTED: "a road cannot be put inside a group",
   FORGE_ROAD_LAYER: "a road lies on land and cannot be land itself",
   FORGE_BUILDING_NESTED: "a building cannot be put inside a group",
+  FORGE_INSIDE: "the walls and rooms inside a building were not written the way the guide says",
+  FORGE_ROOM_SHUT: "a room inside it could not be walked to from the front door or the stairs",
+  FORGE_ROOM_SMALL: "a room inside it was too small: a home or a shop needs 6.5 square metres and room for a circle 2.13 metres across, and a hall needs room for a circle 1.12 metres across",
+  FORGE_ROOM_MARK: "a room mark was not inside a room, or two marks were in one room",
+  FORGE_ROOM_DOOR: "a door inside it did not fit on its wall, or stood across the end of another wall",
+  FORGE_ROOM_WAY: "an inside wall stood in the front doorway or on the stairs",
   FORGE_NO_GROUND: "it did not stand wholly on land you have laid",
   FORGE_OVERLAP: "it overlapped something tall that already stands there",
   FORGE_NOT_TOUCHING: "that land did not touch your island or land you already laid",

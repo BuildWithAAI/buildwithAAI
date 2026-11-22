@@ -102,6 +102,7 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 0.4rem
 .world-inside button, .world-inside span { background: rgba(6, 18, 22, 0.78); border: 1px solid var(--line); border-radius: 999px; padding: 0.5rem 0.95rem; }
 .world-inside button { touch-action: none; user-select: none; -webkit-user-select: none; }
 .world-inside button:disabled { opacity: 0.4; }
+.world-inside form { display: inline-flex; }
 .world-hud button, .world-banner > span { background: rgba(6, 18, 22, 0.78); border: 1px solid var(--line); border-radius: 999px; padding: 0.35rem 0.7rem; }
 .world-banner > span { pointer-events: none; }
 .banner-menu, .places-toggle { display: none; }

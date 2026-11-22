@@ -20,6 +20,8 @@ The owner also sets:
 - `LUMEN_TRADE_ALLOW` and `LUMEN_TRADE_DENY`, comma-separated mints
 - `LUMEN_RUG_LIQUIDITY_USD`, the liquidity in dollars under which a pair is refused. If this is unset, the check uses $5,000. The trade-size caps stay closed until the owner sets them.
 
+The owner's rule, 2026-11-22: her balance is her limit, whatever he deposits, and the wallet is his to move money in and out of at any time. The two dollar settings above are to be replaced by that rule (backlog 0e), and a signer must never stop because the owner moved his own money (backlog 0t). Neither is built yet: until then a trade is refused while those settings are unset.
+
 A pair with a honeypot label, or with no usable quote, is refused. The kill switch stops a new trade. The desk also has a trading kill and a control that clears the unknown pause. Both require the owner session and both write an audit row. An uncertain signer reply is stored as unknown and pauses further trading.
 
 The brain may propose a trade. The policy function decides. A visitor note, a web page, or a Telegram message cannot be the reason a trade is allowed.

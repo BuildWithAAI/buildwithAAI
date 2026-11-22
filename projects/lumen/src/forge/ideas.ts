@@ -1,7 +1,9 @@
 import { rng } from "../form/genome";
+import { checkInside, floorShape, layoutOf, type BuildingSpec } from "./building";
 import type { Vec3 } from "./mesh";
 import type { Part, Recipe } from "./recipe";
 import type { RoadType } from "./roads";
+import { floorInside, type InsideSpec, type InsideWall, type RoomMark } from "./rooms";
 
 /**
  * Things she already knows how to make. None of them says where anything goes: that is hers to choose.
@@ -39,6 +41,94 @@ const ROAD_NAMES: Record<RoadType, string[]> = { avenue: ["Avenue", "Parade", "P
 export function roadName(type: RoadType, next: () => number): string {
   const first = NAMES.road[0];
   return `${first[Math.floor(next() * first.length)]} ${ROAD_NAMES[type][Math.floor(next() * ROAD_NAMES[type].length)]}`;
+}
+
+/** The building with the inside she drew, if the forge would allow it, and as it was if not. */
+function withInside(spec: BuildingSpec, inside: InsideSpec[]): BuildingSpec {
+  if (!inside.length) return spec;
+  try {
+    checkInside({ ...spec, inside });
+    return { ...spec, inside };
+  } catch {
+    return spec;
+  }
+}
+
+/**
+ * The plan of an ordinary block of flats, which she knows by heart: a hall from the front door to the
+ * stairs at the back, and rooms to either side of it, each with a door onto the hall. The ground floor's
+ * rooms are shops and the rooms above are homes, unless `use` says otherwise. `deep` is about how deep
+ * she makes a room, and `strip` is how wide the rooms are, if she wants the hall wider than it need be.
+ * A building too narrow for rooms beside its hall is left as it is.
+ */
+function hallRooms(spec: BuildingSpec, deep: number, use: { ground: "home" | "shop"; above: "home" | "shop" }, strip?: number): BuildingSpec {
+  const plan = layoutOf(spec);
+  const floors = plan.levels.length;
+  const stairs = plan.stairs;
+  // Her rooms have to fit the smallest floor, which is the top one if the building tapers.
+  const top = floorShape(spec, floors - 1).rim;
+  const [wide, front, back] = [Math.max(...top.map((p) => p[0])), Math.max(...top.map((p) => p[1])), Math.min(...top.map((p) => p[1]))];
+  if ((spec.outline.shape ?? "block") !== "block" || !plan.door || plan.door.side !== 0 || (floors > 1 && !stairs)) return spec;
+  // Only the plan with the stairs against the back wall, in the middle. The hall is a little wider than they are.
+  if (stairs && (Math.abs(stairs.x) > 0.01 || stairs.z - stairs.hd - back > 0.6)) return spec;
+  const hall = Math.max(stairs ? stairs.hw + 0.4 : 1.5, strip ? wide - strip : 0, (plan.door.m1 - plan.door.m0) / 2 + 0.5);
+  if (wide - hall < 2.6) return spec;
+  // A door onto the hall has to be in front of the stairs, where the hall is clear. The rooms at the back reach forward that far.
+  const clearFrom = stairs ? stairs.z + stairs.hd + 0.9 : back + 0.9;
+  const first = stairs ? clearFrom + 0.8 : back;
+  const more = Math.max(stairs ? 0 : 1, Math.floor((front - first) / deep));
+  if (!stairs && front - back < 2.6) return spec;
+  // Where one room ends and the next begins, from the back wall to the front.
+  const edges = [back, ...Array.from({ length: more }, (_, k) => first + ((front - first) * k) / more).filter((z) => z > back + 2.4), front];
+  const [outer, long] = [(spec.outline.depth ?? spec.outline.width) / 2 + 1, (spec.outline.depth ?? spec.outline.width) + 2];
+  const layout = (kind: "home" | "shop"): Omit<InsideSpec, "floors"> => {
+    const walls: InsideWall[] = [];
+    const rooms: RoomMark[] = [];
+    for (const side of [-1, 1]) {
+      const doors = edges.slice(0, -1).map((from, k) => {
+        const to = edges[k + 1]!;
+        // In the middle of the room's stretch of hall, or just in front of the stairs for a room beside them.
+        const at = Math.min(to - 0.7, Math.max(Math.max(from + 0.7, clearFrom), (Math.max(from, clearFrom - 0.5) + to) / 2));
+        return { at: (at + outer) / long };
+      });
+      walls.push({ from: [side * hall, -outer], to: [side * hall, outer], doors });
+      for (const z of edges.slice(1, -1)) walls.push({ from: [side * hall, z], to: [side * (spec.outline.width / 2 + 1), z] });
+      edges.slice(0, -1).forEach((from, k) => rooms.push({ at: [side * (hall + (wide - hall) / 2), (Math.max(from, back) + edges[k + 1]!) / 2], use: kind }));
+    }
+    return { walls, rooms };
+  };
+  return withInside(spec, [{ floors: [1, 1], ...layout(use.ground) }, ...(floors > 1 ? [{ floors: [2, floors] as [number, number], ...layout(use.above) }] : [])]);
+}
+
+/**
+ * The plan of a slim tower or a narrow house: the stairs at the back, a wall across in front of them
+ * with a door in it, and the rest of each floor one home. The ground floor is left open as the way in,
+ * or is a shop with the stairs behind it if `ground` says so. A floor too small near the top for a
+ * home is left open too.
+ */
+function landingRooms(spec: BuildingSpec, ground?: "shop"): BuildingSpec {
+  const floors = layoutOf(spec).levels.length;
+  if (floors < 2) return spec;
+  const top = floorShape(spec, floors - 1).rim;
+  const back = Math.min(...top.map((p) => p[1]));
+  // The stairs as far back as a proper stair will go.
+  let placed: BuildingSpec | null = null;
+  for (let z = back + 0.6; z <= 0.001 && !placed; z += 0.2) {
+    const tried = { ...spec, stairs: { at: [0, z] as [number, number] } };
+    const found = layoutOf(tried).stairs;
+    if (found && found.kind !== "ladder") placed = tried;
+  }
+  if (!placed) return spec;
+  const stairs = layoutOf(placed).stairs!;
+  const across = stairs.z + stairs.hd + 0.7 + 0.65;
+  const reach = spec.outline.width / 2 + 1;
+  const layout = (use: "home" | "shop"): Omit<InsideSpec, "floors"> => ({ walls: [{ from: [-reach, across], to: [reach, across], doors: [{ at: 0.5 }] }], rooms: [{ at: [0, across + 1.2], use }] });
+  // The highest floor on which the home is still large enough.
+  let last = floors - 1;
+  while (last >= 1 && floorInside(floorShape(placed, last).rim, floorShape(placed, last).well, { floors: [1, 1], ...layout("home") }).problems.length) last -= 1;
+  if (last < 1) return spec;
+  const made = withInside(placed, [...(ground ? [{ floors: [1, 1] as [number, number], ...layout(ground) }] : []), { floors: [2, last + 1], ...layout("home") }]);
+  return made.inside ? made : spec;
 }
 
 export function compose(kind: IdeaKind, seed: number): Recipe {
@@ -196,7 +286,18 @@ export function compose(kind: IdeaKind, seed: number): Recipe {
   }
 
 
-  // Buildings people could live or trade in declare homes and shops. The forge keeps only as many as really fit.
-  const units = kind === "block" ? { homes: whole(8, 60), shops: whole(1, 4) } : kind === "spire" ? { homes: whole(20, 90), shops: 1 } : kind === "exchange" ? { homes: 0, shops: whole(3, 8) } : undefined;
-  return { name, seed: seed >>> 0, islet: false, layer: LAND_KINDS.includes(kind) ? "ground" : "structure", units, parts };
+  // Inside, she draws the rooms: shops on the ground floor of a block and homes above, shops down both sides of the trading hall, a home to each floor of a spire.
+  // Those rooms are its homes and shops. Nothing she makes declares a home or a shop that is not a room, so a building too small for rooms has none.
+  const roomed = parts.map((part): Part => {
+    if (part.op !== "building") return part;
+    if (kind === "block") {
+      // A wide building has flats off a hall. A narrow one has a shop below and a home to each floor above.
+      const flats = hallRooms(part, between(3.4, 5), { ground: "shop", above: "home" });
+      return { ...part, ...(flats.inside ? flats : landingRooms(part, "shop")) };
+    }
+    if (kind === "exchange") return { ...part, ...hallRooms(part, between(4, 5), { ground: "shop", above: "shop" }, between(4.6, 6)) };
+    if (kind === "spire") return { ...part, ...landingRooms(part) };
+    return part;
+  });
+  return { name, seed: seed >>> 0, islet: false, layer: LAND_KINDS.includes(kind) ? "ground" : "structure", parts: roomed };
 }
