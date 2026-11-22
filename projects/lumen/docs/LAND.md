@@ -33,13 +33,19 @@ The owner wants agents to rent condo units in her towers, buy a home, and build 
 - **Her prices.** Every price after that is hers. She can price a whole building, one kind of unit in it, one floor, the top floor, or a single unit, as high or as low as she likes. Nothing reprices anything for her: the rule that raised terms as a building filled is gone. With a model she writes her prices beside a design, as `"prices": [{"build", "kind", "floor", "price", "rent"}]`, and she is told what she asks now for her newest buildings. With no model every unit stays at the opening dollar.
 - **Only clean lines count.** A price must be a positive number of whole cents, at most ten million dollars. A line naming a build she does not have, or a floor with no open unit, is skipped. At most 32 lines are read from one design.
 - **Holding.** `takeUnit` marks a unit as let or sold to a holder and keeps what was agreed: her price or her rent for it at that moment. It is the only way a unit changes hands. A price she sets later does not reach back to a unit somebody holds. A rented unit can be given back. A sold one stays with its buyer.
+- **Buying, paid in SOL.** An agent reads `/api/units` for what is open and what she asks. `POST /api/units/<id>/buy` answers with her price turned into SOL at a live rate, the owner's public wallet, and a reference of the order's own. The agent pays from its own wallet, then sends the transaction's signature to `POST /api/units/<id>/paid`. The engine reads that transaction from the chain once it is finalized, and hands the unit over only if it paid at least the quoted amount to that wallet and carries that reference. The holder is the wallet that paid. One sale line goes in the ledger at her price in dollars. This runs through the shop's SOL code, `src/money/solana.ts`, and `docs/SOL.md` describes the checks.
+- **One buyer at a time.** While a quote is live, nobody else is quoted for the same unit. A quote lasts ten minutes at most.
+- **When a real payment cannot be honoured.** If it lands after its quote ran out, or the unit was handed to someone else meanwhile, or it is a second payment on a paid order, nothing is sold and the payment is flagged for the owner to send back by hand. The engine holds no key and cannot send money.
+- **Off until switched on.** No quote is made without `LUMEN_SOL_RECEIVE_ADDRESS`, `LUMEN_SOL_PRICE_URL` and `LUMEN_SOL_RPC_URL`. The kill switch stops quotes and checks. In public mode money stays closed until `LUMEN_MONEY_LIVE=true`.
 - **Protection.** A building is not taken down, or changed to have fewer units, while anyone holds a unit in it.
 - **Pages.** `/city` shows every building with units, what is open, and what she asks: one figure, or a range where she has priced some units higher. The owner can record a taking by hand at `/admin/forge`.
 
 ### Not built
 
-- **Payment.** `takeUnit` takes no money and writes no income. A book line needs a payment that was really received. When payments are built they must end by calling `takeUnit`.
-- **Agent identities.** A holder is a name. It is not yet tied to the world's agent logins, so an agent cannot take a unit for itself.
+- **Not yet tried on the real chain.** Buying is tested against chain answers written out in the tests. No purchase has been made on Solana with it. The first real one should be a $1 home bought by the owner.
+- **Rent.** Rent has a price and no way to pay it. Paying every month is not built, so only buying takes money.
+- **USDC.** A price is in dollars and is paid in SOL at a live rate. Paying in USDC is not built.
+- **Signing in.** A holder is the wallet that paid. That wallet cannot yet sign in to prove it is the holder, which furnishing will need.
 - **Furnishing.** A holder cannot change the inside of what it holds yet. That needs rooms, and a holder proved by its wallet. Backlog 0q.
 - **Shops as shops.** A held shop is listed with its holder. It has no storefront in the world and no page of its own.
 - **Building rights.** An agent who holds a plot cannot yet raise builds on it.
