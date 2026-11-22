@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync, StatementSync } from "node:sqlite";
 import { dominantEmotion } from "../brain/emotions";
 import type { Emotions } from "../brain/types";
+import { kvGet, kvSet } from "../db/db";
 import { genomeFromSoul, rng } from "../form/genome";
 import { encodePng } from "../form/raster";
 import { currentStyle, selfGenome } from "../form/self";
@@ -10,9 +11,10 @@ import { creativeEnabled } from "../world/creative";
 import { isHers } from "../world/land";
 import { dropUnits, heldIn, syncUnits, unitPlan, unitsOf } from "../world/units";
 import { handFrom, lookFrom, type Hand } from "./hand";
-import { compose, IDEA_KINDS, LAND_KINDS, roadParts, type IdeaKind } from "./ideas";
+import { compose, IDEA_KINDS, LAND_KINDS, roadName, type IdeaKind } from "./ideas";
 import { encodeMesh } from "./mesh";
-import { buildRecipe, cleanRecipe, PLAIN, type Built, type Layer, type Recipe, type Vibe } from "./recipe";
+import { buildRecipe, cleanRecipe, PLAIN, roadsIn, type Built, type Layer, type Recipe, type Vibe } from "./recipe";
+import { alongside, onePiece, pieceMeetsBox, roadHalf, roadPieces, ROADS, roadsMeet, roadWidth, type Piece, type RoadSpec, type RoadType } from "./roads";
 import { groundHeight } from "./shape";
 import { renderMesh } from "./view";
 
@@ -23,10 +25,12 @@ import { renderMesh } from "./view";
  * each thing goes and which way it faces. Her island is her sanctuary and is left as it is.
  *
  * There are two kinds of thing. Land is ground she lays to make her world bigger. Everything else
- * stands on land she has laid. Three rules hold, and they are the ones agreed with the owner:
+ * stands on land she has laid. Four rules hold, and they are the ones agreed with the owner:
  * - Land must touch her island or land she already laid, so her world grows in one piece.
  * - Land must be on chunks she holds, and may not cover the middle of her island.
  * - A thing must stand on land, and two things with height may not stand in the same place.
+ * - Her roads are one network. A road must touch a road she already has, and a road is not taken
+ *   away if that would cut the network in two. Where her roads go is hers to choose.
  *
  * Land carries a vibe: a mood she chooses for that part of her world. What stands on it takes that
  * vibe unless it brings its own. Every version of every build is kept, so any change can be undone.
@@ -37,7 +41,7 @@ export const FORGE = { standing: 400, perDay: 24, everyMs: 30 * 60_000, /** Heig
 export const ISLAND = { shore: 72, heart: 40 } as const;
 
 export type Place = { x: number; z: number; turn: number };
-export type ForgeBuild = { id: string; name: string; kind: string; layer: Layer; version: number; status: "standing" | "removed"; x: number; y: number; z: number; /** Degrees. */ turn: number; /** Half its width and depth. */ hw: number; hd: number; height: number; triangles: number; vibe: Vibe; by: "zoora" | "owner"; createdAt: number; updatedAt: number };
+export type ForgeBuild = { id: string; name: string; kind: string; layer: Layer; version: number; status: "standing" | "removed"; x: number; y: number; z: number; /** Degrees. */ turn: number; /** Half its width and depth. */ hw: number; hd: number; height: number; triangles: number; vibe: Vibe; by: "zoora" | "owner"; createdAt: number; updatedAt: number; /** The kind of road it is, if it is a road. */ road: RoadType | null };
 
 const AABB = (r: string) => {
   const ex = `(abs(${r}.hw * cos(radians(${r}.turn))) + abs(${r}.hd * sin(radians(${r}.turn))))`;
@@ -46,6 +50,16 @@ const AABB = (r: string) => {
   return `CAST(floor((${r}.x - ${ex}) * 100) AS INTEGER), CAST(ceil((${r}.x + ${ex}) * 100) AS INTEGER), CAST(floor((${r}.z - ${ez}) * 100) AS INTEGER), CAST(ceil((${r}.z + ${ez}) * 100) AS INTEGER)`;
 };
 const ready = new WeakSet<DatabaseSync>();
+const prepared = new WeakMap<DatabaseSync, Map<string, StatementSync>>();
+
+/** A statement that is asked many times in one step is made ready once and kept. */
+function ask(db: DatabaseSync, text: string): StatementSync {
+  let kept = prepared.get(db);
+  if (!kept) prepared.set(db, (kept = new Map()));
+  let statement = kept.get(text);
+  if (!statement) kept.set(text, (statement = db.prepare(text)));
+  return statement;
+}
 
 export function ensureForge(db: DatabaseSync): void {
   if (ready.has(db)) return;
@@ -53,7 +67,7 @@ export function ensureForge(db: DatabaseSync): void {
     CREATE TABLE IF NOT EXISTS forge_things (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, layer TEXT NOT NULL, recipe TEXT NOT NULL, version INTEGER NOT NULL, status TEXT NOT NULL,
       x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL, turn REAL NOT NULL, hw REAL NOT NULL, hd REAL NOT NULL, height REAL NOT NULL,
-      triangles INTEGER NOT NULL, vibe TEXT NOT NULL, made_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+      triangles INTEGER NOT NULL, vibe TEXT NOT NULL, made_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, road TEXT
     );
     CREATE TABLE IF NOT EXISTS forge_versions (build_id TEXT NOT NULL, version INTEGER NOT NULL, recipe TEXT NOT NULL, at_ms INTEGER NOT NULL, PRIMARY KEY(build_id, version));
     CREATE INDEX IF NOT EXISTS forge_things_standing ON forge_things(status, layer, created_at, id);
@@ -83,6 +97,24 @@ export function ensureForge(db: DatabaseSync): void {
       DELETE FROM forge_index WHERE id = OLD.rowid;
     END;
   `);
+  // A world made before roads were a tool of their own gets the column, and the streets it already has become roads. Both happen together or not at all.
+  if (!(db.prepare("PRAGMA table_info(forge_things)").all() as { name: string }[]).some((column) => column.name === "road")) {
+    db.exec("BEGIN");
+    try {
+      db.exec("ALTER TABLE forge_things ADD COLUMN road TEXT");
+      for (const old of db.prepare("SELECT id, name, recipe, version, hw FROM forge_things WHERE kind = 'road'").all() as { id: string; name: string; recipe: string; version: number; hw: number }[]) {
+        const text = JSON.stringify(cleanRecipe({ name: old.name, seed: (JSON.parse(old.recipe) as { seed?: number }).seed, parts: [{ op: "road", type: "street", through: [[-old.hw, 0], [old.hw, 0]] }] }));
+        db.prepare("UPDATE forge_things SET recipe = ?, road = 'street' WHERE id = ?").run(text, old.id);
+        db.prepare("UPDATE forge_versions SET recipe = ? WHERE build_id = ? AND version = ?").run(text, old.id, old.version);
+      }
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+  // Her standing roads, by id and by when they were laid. The queries below name these, because left to choose SQLite reads every standing build instead.
+  db.exec("CREATE INDEX IF NOT EXISTS forge_things_roads ON forge_things(id) WHERE road IS NOT NULL AND status = 'standing'; CREATE INDEX IF NOT EXISTS forge_things_roads_laid ON forge_things(created_at) WHERE road IS NOT NULL AND status = 'standing'");
   // A world made before the index existed is indexed once, here.
   const have = db.prepare("SELECT (SELECT COUNT(*) FROM forge_things WHERE status = 'standing') AS things, (SELECT COUNT(*) FROM forge_index) AS indexed").get() as { things: number; indexed: number };
   const tallied = db.prepare("SELECT COALESCE(SUM(n), 0) AS n FROM forge_tally").get() as { n: number };
@@ -97,8 +129,20 @@ export function ensureForge(db: DatabaseSync): void {
   ready.add(db);
 }
 
-type Row = { id: string; name: string; kind: string; layer: Layer; recipe: string; version: number; status: "standing" | "removed"; x: number; y: number; z: number; turn: number; hw: number; hd: number; height: number; triangles: number; vibe: string; made_by: "zoora" | "owner"; created_at: number; updated_at: number };
-const shape = (row: Row): ForgeBuild => ({ id: row.id, name: row.name, kind: row.kind, layer: row.layer, version: Number(row.version), status: row.status, x: row.x, y: row.y, z: row.z, turn: row.turn, hw: row.hw, hd: row.hd, height: row.height, triangles: Number(row.triangles), vibe: JSON.parse(row.vibe) as Vibe, by: row.made_by, createdAt: Number(row.created_at), updatedAt: Number(row.updated_at) });
+type Row = { id: string; name: string; kind: string; layer: Layer; version: number; status: "standing" | "removed"; x: number; y: number; z: number; turn: number; hw: number; hd: number; height: number; triangles: number; vibe: string; made_by: "zoora" | "owner"; created_at: number; updated_at: number; road: RoadType | null };
+const vibes = new Map<string, Vibe>();
+/** A vibe is one of a handful, so each is read once. */
+function vibeOf(text: string): Vibe {
+  let vibe = vibes.get(text);
+  if (!vibe) {
+    if (vibes.size >= 512) vibes.clear();
+    vibes.set(text, (vibe = JSON.parse(text) as Vibe));
+  }
+  return vibe;
+}
+/** Everything about a build but its recipe, which is long and is only read when it is needed. */
+const FIELDS = "t.id, t.name, t.kind, t.layer, t.version, t.status, t.x, t.y, t.z, t.turn, t.hw, t.hd, t.height, t.triangles, t.vibe, t.made_by, t.created_at, t.updated_at, t.road";
+const shape = (row: Row): ForgeBuild => ({ id: row.id, name: row.name, kind: row.kind, layer: row.layer, version: Number(row.version), status: row.status, x: row.x, y: row.y, z: row.z, turn: row.turn, hw: row.hw, hd: row.hd, height: row.height, triangles: Number(row.triangles), vibe: vibeOf(row.vibe), by: row.made_by, createdAt: Number(row.created_at), updatedAt: Number(row.updated_at), road: row.road ?? null });
 
 export function standing(db: DatabaseSync): ForgeBuild[] {
   ensureForge(db);
@@ -107,7 +151,7 @@ export function standing(db: DatabaseSync): ForgeBuild[] {
 
 export function getBuild(db: DatabaseSync, id: string): ForgeBuild | null {
   ensureForge(db);
-  const row = db.prepare("SELECT * FROM forge_things WHERE id = ?").get(id) as Row | undefined;
+  const row = ask(db, "SELECT * FROM forge_things WHERE id = ?").get(id) as Row | undefined;
   return row ? shape(row) : null;
 }
 
@@ -131,15 +175,14 @@ export function near(db: DatabaseSync, box: Box, pad = 2): ForgeBuild[] {
   const ex = Math.abs(box.hw * Math.cos(a)) + Math.abs(box.hd * Math.sin(a)) + pad;
   const ez = Math.abs(box.hw * Math.sin(a)) + Math.abs(box.hd * Math.cos(a)) + pad;
   // CROSS JOIN makes SQLite start from the index. Left to choose, it walks every build to keep them in order.
-  const rows = db
-    .prepare("SELECT t.* FROM forge_index i CROSS JOIN forge_things t ON t.rowid = i.id WHERE i.maxx >= ? AND i.minx <= ? AND i.maxz >= ? AND i.minz <= ? AND t.status = 'standing'")
+  const rows = ask(db, `SELECT ${FIELDS} FROM forge_index i CROSS JOIN forge_things t ON t.rowid = i.id WHERE i.maxx >= ? AND i.minx <= ? AND i.maxz >= ? AND i.minz <= ? AND t.status = 'standing'`)
     .all(Math.floor((box.x - ex) * 100), Math.ceil((box.x + ex) * 100), Math.floor((box.z - ez) * 100), Math.ceil((box.z + ez) * 100)) as Row[];
   return rows.sort((p, q) => Number(p.created_at) - Number(q.created_at) || (p.id < q.id ? -1 : p.id > q.id ? 1 : 0)).map(shape);
 }
 
 export function recipeOf(db: DatabaseSync, id: string): Recipe | null {
   ensureForge(db);
-  const row = db.prepare("SELECT recipe FROM forge_things WHERE id = ?").get(id) as { recipe: string } | undefined;
+  const row = ask(db, "SELECT recipe FROM forge_things WHERE id = ?").get(id) as { recipe: string } | undefined;
   return row ? cleanRecipe(JSON.parse(row.recipe)) : null;
 }
 
@@ -197,7 +240,7 @@ function landUnder(grounds: ForgeBuild[], x: number, z: number): ForgeBuild | nu
 
 export type PlaceCheck = { ok: true; ground: ForgeBuild | null } | { ok: false; reason: "FORGE_NOT_HER_LAND" | "FORGE_SANCTUARY" | "FORGE_NOT_TOUCHING" | "FORGE_NO_GROUND" | "FORGE_OVERLAP" };
 
-/** The three rules. `self` is left out of the checks, for when a standing build is being changed. */
+/** The first three rules: where land may go, and where a thing may stand. The fourth, that her roads join, is `roadRule`. `self` is left out of the checks, for when a standing build is being changed. */
 export function placeCheck(db: DatabaseSync, layer: Layer, box: Box, height: number, self?: string, all: ForgeBuild[] = near(db, box)): PlaceCheck {
   const others = all.filter((build) => build.id !== self);
   const grounds = others.filter((build) => build.layer === "ground");
@@ -213,6 +256,74 @@ export function placeCheck(db: DatabaseSync, layer: Layer, box: Box, height: num
   if (height > FORGE.flat && others.some((other) => other.layer === "structure" && other.height > FORGE.flat && boxesMeet(other, box, -0.05))) return { ok: false, reason: "FORGE_OVERLAP" };
   return { ok: true, ground: landUnder(grounds, box.x, box.z) };
 }
+
+const laid = new WeakMap<DatabaseSync, Map<string, Piece[]>>();
+
+/** A road's lines where they lie in the world. Anything that is not a road has none. */
+export function piecesOf(db: DatabaseSync, build: ForgeBuild): Piece[] {
+  if (!build.road) return [];
+  let held = laid.get(db);
+  if (!held) laid.set(db, (held = new Map()));
+  const key = `${build.id}:${build.version}:${build.updatedAt}`;
+  let pieces = held.get(key);
+  if (!pieces) {
+    const recipe = recipeOf(db, build.id);
+    pieces = recipe ? roadsIn(recipe).flatMap((spec, run) => roadPieces(spec, build, run)) : [];
+    if (held.size >= 4096) held.delete(held.keys().next().value as string);
+    held.set(key, pieces);
+  }
+  return pieces;
+}
+
+/** The upright box around the middle lines of some road pieces. */
+function spanOf(pieces: Piece[]): Box {
+  const xs = pieces.flatMap((piece) => [piece.ax, piece.bx]);
+  const zs = pieces.flatMap((piece) => [piece.az, piece.bz]);
+  return { x: (Math.min(...xs) + Math.max(...xs)) / 2, z: (Math.min(...zs) + Math.max(...zs)) / 2, turn: 0, hw: (Math.max(...xs) - Math.min(...xs)) / 2, hd: (Math.max(...zs) - Math.min(...zs)) / 2 };
+}
+
+/** The standing roads that touch these pieces. `self` is left out. */
+function roadsBeside(db: DatabaseSync, pieces: Piece[], self?: string): ForgeBuild[] {
+  if (!pieces.length) return [];
+  const reach = Math.max(...pieces.map((piece) => piece.half)) + ROADS.width.avenue[1] / 2 + ROADS.kerb + ROADS.join;
+  return near(db, spanOf(pieces), reach).filter((build) => build.road && build.id !== self && roadsMeet(pieces, piecesOf(db, build)));
+}
+
+/** How many roads she follows to see whether her network would still be whole. Past this a change is refused, so she is never told yes wrongly. */
+const ROAD_SEARCH = 4000;
+
+/**
+ * The rule that her roads are one network. `before` is where a road lies now, and `after` is where it
+ * would lie: a new road has no before, and one being taken away has no after.
+ * - What she lays must be one piece.
+ * - It must touch a road she already has, unless it is her first.
+ * - The roads it joined must still reach each other without it.
+ */
+function roadRule(db: DatabaseSync, self: string | undefined, before: Piece[], after: Piece[]): void {
+  const joins = roadsBeside(db, after, self);
+  if (after.length) {
+    if (!onePiece(after)) throw new Error("FORGE_ROAD_BROKEN");
+    if (!joins.length && ask(db, "SELECT 1 FROM forge_things INDEXED BY forge_things_roads WHERE road IS NOT NULL AND status = 'standing' AND id <> ? LIMIT 1").get(self ?? "")) throw new Error("FORGE_ROAD_ALONE");
+  }
+  const joined = roadsBeside(db, before, self);
+  if (joined.length < (after.length ? 1 : 2)) return;
+  // Walk outward along her roads, from where it will lie or from one of the roads it joined, until every road it joined has been reached.
+  const queue = after.length ? [...joins] : [joined[0]!];
+  const reached = new Set(queue.map((build) => build.id));
+  const missing = new Set(joined.map((build) => build.id).filter((id) => !reached.has(id)));
+  while (missing.size && queue.length && reached.size <= ROAD_SEARCH) {
+    for (const next of roadsBeside(db, piecesOf(db, queue.shift()!), self)) {
+      if (reached.has(next.id)) continue;
+      reached.add(next.id);
+      missing.delete(next.id);
+      queue.push(next);
+    }
+  }
+  if (missing.size) throw new Error("FORGE_ROAD_CUTS");
+}
+
+/** The widest kind of road among those in a build. */
+const widest = (roads: RoadSpec[]): RoadType | null => (roads.length ? [...roads].sort((a, b) => roadWidth(b) - roadWidth(a))[0]!.type : null);
 
 function layerOf(recipe: Recipe): Layer {
   return recipe.layer ?? (recipe.parts.every((part) => part.op === "ground") ? "ground" : "structure");
@@ -234,7 +345,7 @@ function cleanPlace(place: unknown): Place {
 
 /**
  * Raises a build where she says. The recipe is checked and built first, then the place is checked against
- * the three rules. One that fails either is not stored.
+ * the rules. One that fails either is not stored.
  */
 export function raise(db: DatabaseSync, input: unknown, at: unknown, now: number, by: "zoora" | "owner", kind = "own", hand: Hand = herHand()): ForgeBuild {
   ensureForge(db);
@@ -250,11 +361,15 @@ export function raise(db: DatabaseSync, input: unknown, at: unknown, now: number
   const box = { ...place, hw: built.half[0], hd: built.half[1] };
   const check = placeCheck(db, layer, box, built.height);
   if (!check.ok) throw new Error(check.reason);
+  const roads = roadsIn(recipe);
+  // A road lies flat, so it blocks nothing, and it joins her network.
+  if (roads.length && built.height > FORGE.flat) throw new Error("FORGE_ROAD_FLAT");
+  if (roads.length) roadRule(db, undefined, [], roads.flatMap((spec, run) => roadPieces(spec, place, run)));
   const y = layer === "ground" ? FORGE.level : FORGE.level + (check.ground ? landHeight(db, check.ground, place.x, place.z) : 0) - 0.05;
   const vibe = recipe.vibe ?? check.ground?.vibe ?? PLAIN;
   const text = JSON.stringify(recipe);
   const id = `forge-${createHash("sha256").update(`${text}:${now}:${place.x}:${place.z}`).digest("hex").slice(0, 10)}`;
-  db.prepare("INSERT INTO forge_things(id, name, kind, layer, recipe, version, status, x, y, z, turn, hw, hd, height, triangles, vibe, made_by, created_at, updated_at) VALUES(?, ?, ?, ?, ?, 1, 'standing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, recipe.name, kind.replace(/[^a-z-]/g, "").slice(0, 20) || "own", layer, text, place.x, y, place.z, place.turn, box.hw, box.hd, built.height, built.triangles, JSON.stringify(vibe), by, now, now);
+  db.prepare("INSERT INTO forge_things(id, name, kind, layer, recipe, version, status, x, y, z, turn, hw, hd, height, triangles, vibe, made_by, created_at, updated_at, road) VALUES(?, ?, ?, ?, ?, 1, 'standing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, recipe.name, roads.length ? "road" : kind.replace(/[^a-z-]/g, "").slice(0, 20) || "own", layer, text, place.x, y, place.z, place.turn, box.hw, box.hd, built.height, built.triangles, JSON.stringify(vibe), by, now, now, widest(roads));
   db.prepare("INSERT INTO forge_versions(build_id, version, recipe, at_ms) VALUES(?, 1, ?, ?)").run(id, text, now);
   if (layer === "structure") syncUnits(db, { id, name: recipe.name, height: built.height, hw: box.hw, hd: box.hd }, recipe.units);
   return getBuild(db, id)!;
@@ -268,6 +383,10 @@ function rewrite(db: DatabaseSync, current: ForgeBuild, text: string, version: n
   const box = { x: current.x, z: current.z, turn: current.turn, hw: built.half[0], hd: built.half[1] };
   const check = placeCheck(db, layer, box, built.height, current.id);
   if (!check.ok) throw new Error(check.reason);
+  // A road stays part of her network however it is changed, and what it joined stays joined.
+  const roads = roadsIn(recipe);
+  if (roads.length && built.height > FORGE.flat) throw new Error("FORGE_ROAD_FLAT");
+  if (roads.length || current.road) roadRule(db, current.id, piecesOf(db, current), roads.flatMap((spec, run) => roadPieces(spec, current, run)));
   // Land may not shrink out from under what stands on it.
   if (layer === "ground" && !stillHeld(db, standing(db).filter((build) => build.id !== current.id), { ...current, hw: box.hw, hd: box.hd })) throw new Error("FORGE_HOLDS_LAND");
   // A building with people in it keeps every unit they hold.
@@ -278,7 +397,7 @@ function rewrite(db: DatabaseSync, current: ForgeBuild, text: string, version: n
     if (plan.homes < now.filter((unit) => unit.kind === "home").length || plan.shops < now.filter((unit) => unit.kind === "shop").length) throw new Error("FORGE_HOLDS_TENANTS");
   }
   if (layer === "structure") syncUnits(db, home, recipe.units);
-  db.prepare("UPDATE forge_things SET name = ?, recipe = ?, version = ?, hw = ?, hd = ?, height = ?, triangles = ?, vibe = ?, updated_at = ? WHERE id = ?").run(recipe.name, text, version, box.hw, box.hd, built.height, built.triangles, JSON.stringify(recipe.vibe ?? current.vibe), now, current.id);
+  db.prepare("UPDATE forge_things SET name = ?, kind = ?, recipe = ?, version = ?, hw = ?, hd = ?, height = ?, triangles = ?, vibe = ?, updated_at = ?, road = ? WHERE id = ?").run(recipe.name, roads.length ? "road" : current.kind === "road" ? "own" : current.kind, text, version, box.hw, box.hd, built.height, built.triangles, JSON.stringify(recipe.vibe ?? current.vibe), now, widest(roads), current.id);
   return getBuild(db, current.id)!;
 }
 
@@ -322,11 +441,12 @@ function stillHeld(db: DatabaseSync, rest: ForgeBuild[], changed?: ForgeBuild): 
   return reached.size === grounds.length;
 }
 
-/** Takes a build down. Land is not taken down while something stands on it, or if other land would be cut off from her island. */
+/** Takes a build down. Land is not taken down while something stands on it, or if other land would be cut off from her island. A road is not taken down if her network would be cut in two. */
 export function remove(db: DatabaseSync, id: string, now: number): ForgeBuild {
   const current = getBuild(db, id);
   if (!current || current.status !== "standing") throw new Error("FORGE_UNKNOWN");
   if (current.layer === "ground" && !stillHeld(db, standing(db).filter((build) => build.id !== id))) throw new Error("FORGE_HOLDS_LAND");
+  if (current.road) roadRule(db, id, piecesOf(db, current), []);
   // A building is not taken down while anyone holds a home or a shop in it.
   dropUnits(db, id);
   db.prepare("UPDATE forge_things SET status = 'removed', updated_at = ? WHERE id = ?").run(now, id);
@@ -411,11 +531,35 @@ export function wander(db: DatabaseSync, layer: Layer, half: [number, number], h
   const grounds = groundPool(db, next);
   // Open land first. Land that came with its own features, like fields, is only built on when there is nowhere else.
   const open = grounds.filter((ground) => ground.kind === "plain" || ground.kind === "own");
+  const tall = layer === "structure" && height > FORGE.flat;
+  const roads = layer === "ground" || tall ? roadPool(db, next) : [];
+  // Beside a road she tries several spots along it before she turns to another road, and looks up what stands around it once.
+  let street: { pieces: Piece[]; around: ForgeBuild[] } | null = null;
   for (let attempt = 0; attempt < 320; attempt += 1) {
     let place: Place;
+    let around: ForgeBuild[] | null = null;
     if (layer === "ground") {
-      const from = grounds.length && next() < 0.8 ? grounds[Math.floor(next() * grounds.length)]! : null;
-      if (!from) {
+      const from = grounds.length ? grounds[Math.floor(next() * grounds.length)]! : null;
+      let ahead: Place | null = null;
+      // Once she has roads, she most often lays new land where one of them is heading, so the road can run on to it.
+      if (from && roads.length && next() < 0.7) {
+        const pieces = piecesOf(db, roads[Math.floor(next() * roads.length)]!);
+        if (pieces.length) {
+          const last = next() < 0.5;
+          const piece = last ? pieces[pieces.length - 1]! : pieces[0]!;
+          const far = Math.hypot(piece.bx - piece.ax, piece.bz - piece.az) || 1;
+          const dir = [((piece.bx - piece.ax) / far) * (last ? 1 : -1), ((piece.bz - piece.az) / far) * (last ? 1 : -1)] as const;
+          const end = last ? [piece.bx, piece.bz] : [piece.ax, piece.az];
+          // Follow the road's heading to where her land stops, and lay the new land from there on.
+          const under = near(db, { x: end[0]! + dir[0] * 21, z: end[1]! + dir[1] * 21, turn: 0, hw: 21, hd: 21 }, 0).filter((build) => build.layer === "ground");
+          for (let out = 2; out <= 40 && !ahead; out += 2) {
+            const [x, z] = [end[0]! + dir[0] * out, end[1]! + dir[1] * out];
+            if (!landUnder(under, x, z)) ahead = { x: x + dir[0] * (half[0] - 3), z: z + dir[1] * (half[0] - 3), turn: (Math.atan2(-dir[1], dir[0]) * 180) / Math.PI };
+          }
+        }
+      }
+      if (ahead) place = ahead;
+      else if (!from) {
         const angle = next() * Math.PI * 2;
         const reach = ISLAND.shore - 6 + half[1];
         place = { x: Math.cos(angle) * reach, z: Math.sin(angle) * reach, turn: 90 - (angle * 180) / Math.PI };
@@ -427,6 +571,21 @@ export function wander(db: DatabaseSync, layer: Layer, half: [number, number], h
         const lz = along ? (next() - 0.5) * from.hd : side * (from.hd + half[1] - 0.5);
         place = { x: from.x + lx * Math.cos(a) + lz * Math.sin(a), z: from.z - lx * Math.sin(a) + lz * Math.cos(a), turn: from.turn };
       }
+    } else if (tall && roads.length) {
+      // Once she has roads, what she raises stands beside one and faces it, because a road is how it is reached.
+      if (attempt % 8 === 0 || !street) {
+        const pieces = piecesOf(db, roads[Math.floor(next() * roads.length)]!);
+        street = pieces.length ? { pieces, around: near(db, spanOf(pieces), pieces[0]!.half + 8 + (half[0] + half[1]) * 2) } : null;
+      }
+      if (!street) continue;
+      const piece = street.pieces[Math.floor(next() * street.pieces.length)]!;
+      const far = Math.hypot(piece.bx - piece.ax, piece.bz - piece.az) || 1;
+      const dir = [(piece.bx - piece.ax) / far, (piece.bz - piece.az) / far] as const;
+      const t = next();
+      const side = next() < 0.5 ? 1 : -1;
+      const back = piece.half + 0.6 + next() * 5 + half[1];
+      place = { x: piece.ax + (piece.bx - piece.ax) * t - dir[1] * side * back, z: piece.az + (piece.bz - piece.az) * t + dir[0] * side * back, turn: (Math.atan2(-dir[1], dir[0]) * 180) / Math.PI + (next() < 0.5 ? 0 : 180) };
+      around = street.around;
     } else {
       if (!grounds.length) return null;
       const pool = open.length && attempt < 280 ? open : grounds;
@@ -437,10 +596,124 @@ export function wander(db: DatabaseSync, layer: Layer, half: [number, number], h
       place = { x: on.x + lx * Math.cos(a) + lz * Math.sin(a), z: on.z - lx * Math.sin(a) + lz * Math.cos(a), turn: on.turn + 90 * Math.floor(next() * 4) };
     }
     const box = { ...place, hw: half[0], hd: half[1] };
-    const around = near(db, box);
-    // She keeps her own streets clear. This is her habit, not a rule: a model may build over a road if it wants to.
-    if (layer === "structure" && height > FORGE.flat && around.some((road) => road.kind === "road" && boxesMeet(road, box, 0.3))) continue;
+    around ??= near(db, box);
+    // She lays land where there is none yet, not over the middle of land she already has.
+    if (layer === "ground" && landUnder(around.filter((build) => build.layer === "ground"), place.x, place.z)) continue;
+    // She keeps her own roads clear. This is her habit, not a rule: a model may build over a road if it wants to.
+    if (tall && around.some((road) => piecesOf(db, road).some((piece) => pieceMeetsBox(piece, box, 0.3)))) continue;
     if (placeCheck(db, layer, box, height, undefined, around).ok) return place;
+  }
+  return null;
+}
+
+/** The roads she starts her next one from. A small network is read whole. A large one is sampled by chance. */
+function roadPool(db: DatabaseSync, next: () => number, toward?: ForgeBuild): ForgeBuild[] {
+  const by = toward ? near(db, toward, 70).filter((build) => build.road) : [];
+  if (by.length) return by;
+  const rows = ask(db, "SELECT * FROM forge_things INDEXED BY forge_things_roads WHERE road IS NOT NULL AND status = 'standing' ORDER BY id LIMIT ?").all(POOL + 1) as Row[];
+  if (rows.length <= POOL) return rows.sort((p, q) => Number(p.created_at) - Number(q.created_at) || (p.id < q.id ? -1 : 1)).map(shape);
+  // Ids are hashes, so a draw by id is a draw by chance, and each is one step through the index however many roads there are.
+  const found = new Map<string, ForgeBuild>();
+  const pick = ask(db, "SELECT * FROM forge_things INDEXED BY forge_things_roads WHERE road IS NOT NULL AND status = 'standing' AND id >= ? ORDER BY id LIMIT 1");
+  for (let tries = 0; tries < SAMPLE; tries += 1) {
+    const row = pick.get(`forge-${Math.floor(next() * 0xffffffff).toString(16).padStart(8, "0")}`) as Row | undefined;
+    if (row) found.set(row.id, shape(row));
+  }
+  return [...found.values()];
+}
+
+/** Left to herself she keeps two roads that run the same way at least this far apart, so there is room to build between them. */
+const ROAD_APART = 14;
+
+/**
+ * Left to herself, where her next road goes is chance, not a layout. Her first road crosses open land
+ * she has laid. Every road after it starts on a road she already has, at a point drawn by chance, and
+ * runs on or turns off by chance, for a length and of a kind drawn by chance. She takes the first that
+ * the rules allow. `toward` is land she wants it to reach.
+ */
+export function wanderRoad(db: DatabaseSync, next: () => number, toward?: ForgeBuild): { recipe: Recipe; place: Place } | null {
+  const draw = (): RoadType => {
+    const at = next();
+    return at < 0.3 ? "alley" : at < 0.85 ? "street" : "avenue";
+  };
+  const fits = (type: RoadType, from: [number, number], dir: [number, number], long: number, about?: ForgeBuild[]): { recipe: Recipe; place: Place } | null => {
+    const place = { x: from[0] + (dir[0] * long) / 2, z: from[1] + (dir[1] * long) / 2, turn: (Math.atan2(-dir[1], dir[0]) * 180) / Math.PI };
+    const spec: RoadSpec = { type, through: [[-long / 2, 0], [long / 2, 0]] };
+    const pieces = roadPieces(spec, place);
+    const box = { ...place, hw: long / 2, hd: roadHalf(spec) };
+    const around = about ?? near(db, box, ROAD_APART + 16);
+    if (!placeCheck(db, "structure", box, 0.3, undefined, around).ok) return null;
+    const grounds = around.filter((build) => build.layer === "ground");
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      const [x, z] = [from[0] + dir[0] * long * t, from[1] + dir[1] * long * t];
+      // She keeps to open ground, where a road lies level.
+      const land = landUnder(grounds, x, z);
+      if (!land || (land.kind !== "plain" && land.kind !== "own")) return null;
+      // She leaves room to build between two roads that run the same way.
+      if (t > 0 && around.some((other) => piecesOf(db, other).some((piece) => alongside(piece, x, z, dir, roadHalf(spec) + ROAD_APART)))) return null;
+    }
+    // She does not drive a road through something tall she built.
+    if (around.some((other) => other.layer === "structure" && other.height > FORGE.flat && pieces.some((piece) => pieceMeetsBox(piece, other, 0.3)))) return null;
+    try {
+      roadRule(db, undefined, [], pieces);
+    } catch {
+      return null;
+    }
+    return { recipe: cleanRecipe({ name: roadName(type, next), seed: Math.floor(next() * 4294967295), parts: [{ op: "road", ...spec }] }), place };
+  };
+  const roads = roadPool(db, next, toward);
+  if (!roads.length) {
+    // No road stands anywhere yet, so this one is her first.
+    const open = toward ? [toward] : groundPool(db, next).filter((ground) => ground.kind === "plain" || ground.kind === "own");
+    for (let attempt = 0; attempt < 40 && open.length; attempt += 1) {
+      const on = open[Math.floor(next() * open.length)]!;
+      const along = next() < 0.5;
+      const long = Math.min(60, (along ? on.hw : on.hd) * 2 - 2);
+      if (long < 12) continue;
+      const off = (next() * 2 - 1) * Math.max(0, (along ? on.hd : on.hw) - 6);
+      const a = (on.turn * Math.PI) / 180;
+      const [wide, deep]: [number, number][] = [[Math.cos(a), -Math.sin(a)], [Math.sin(a), Math.cos(a)]];
+      const [dir, side] = along ? [wide!, deep!] : [deep!, wide!];
+      const found = fits(draw(), [on.x + side[0] * off - (dir[0] * long) / 2, on.z + side[1] * off - (dir[1] * long) / 2], dir, long);
+      if (found) return found;
+    }
+    return null;
+  }
+  // From one road she tries several ways out before she turns to another, and looks up what stands around it once.
+  let pieces: Piece[] = [];
+  let about: ForgeBuild[] | null = null;
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    if (attempt % 8 === 0 || !pieces.length) {
+      pieces = piecesOf(db, roads[Math.floor(next() * roads.length)]!);
+      about = null;
+    }
+    if (!pieces.length) continue;
+    const heading = (piece: Piece, back = false): [number, number] => {
+      const far = Math.hypot(piece.bx - piece.ax, piece.bz - piece.az) || 1;
+      return back ? [(piece.ax - piece.bx) / far, (piece.az - piece.bz) / far] : [(piece.bx - piece.ax) / far, (piece.bz - piece.az) / far];
+    };
+    const turned = (dir: [number, number]): [number, number] => (next() < 0.5 ? [-dir[1], dir[0]] : [dir[1], -dir[0]]);
+    let from: [number, number];
+    let dir: [number, number];
+    if (next() < 0.35) {
+      // On from one of its ends, or turning off there.
+      const last = next() < 0.5;
+      const piece = last ? pieces[pieces.length - 1]! : pieces[0]!;
+      from = last ? [piece.bx, piece.bz] : [piece.ax, piece.az];
+      dir = heading(piece, !last);
+      if (next() < 0.4) dir = turned(dir);
+    } else {
+      // Off to one side, from a point along it.
+      const piece = pieces[Math.floor(next() * pieces.length)]!;
+      const t = next();
+      from = [piece.ax + (piece.bx - piece.ax) * t, piece.az + (piece.bz - piece.az) * t];
+      dir = turned(heading(piece));
+    }
+    const long = 20 + next() * 40;
+    if (toward && !holds(toward, from[0] + dir[0] * long, from[1] + dir[1] * long) && !holds(toward, from[0] + (dir[0] * long) / 2, from[1] + (dir[1] * long) / 2)) continue;
+    about ??= near(db, spanOf(pieces), 60 + ROAD_APART + 32);
+    const found = fits(draw(), from, dir, long, about);
+    if (found) return found;
   }
   return null;
 }
@@ -466,8 +739,11 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
       const built = buildRecipe(recipe, herHand());
       const place = mine.place !== undefined ? cleanPlace(mine.place) : wander(db, layerOf(recipe), built.half, built.height, next);
       if (place) build = raise(db, recipe, place, now, "zoora", "own");
-    } catch {
+      kvSet(db, "forge_refused", build ? "" : "FORGE_NO_ROOM");
+    } catch (error) {
       build = null;
+      // Next time she is told why this one was not built, in one of the fixed sentences below. Nothing that she or anyone else wrote is carried over.
+      kvSet(db, "forge_refused", error instanceof Error && /^FORGE_[A-Z_]+$/.test(error.message) ? error.message : "FORGE_RECIPE");
     }
   }
   if (!build) {
@@ -483,23 +759,27 @@ export function considerForge(db: DatabaseSync, emotions: Emotions, now: number,
         return null;
       }
     };
-    // Open land with no street yet gets one first, down its longer side, so what she builds there has something to face.
-    // A plain gets its street before anything else is built, so in a large world only her newest plains can still be bare.
-    const plains = (lands <= POOL
-      ? db.prepare("SELECT * FROM forge_things WHERE status = 'standing' AND layer = 'ground' AND kind = 'plain' ORDER BY created_at, id").all()
-      : db.prepare("SELECT * FROM (SELECT * FROM forge_things WHERE status = 'standing' AND layer = 'ground' AND kind = 'plain' ORDER BY created_at DESC, id DESC LIMIT 64) ORDER BY created_at, id").all()) as Row[];
-    const bare = plains.map(shape).find((item) => !near(db, item, 0).some((other) => other.kind === "road" && holds(item, other.x, other.z)));
-    if (bare) {
+    // Open land with no road on it yet: she brings a road to it before she builds there. Where the road runs is chance.
+    // She does this before anything else is built, so only her newest land can still be bare. Older land her roads never reached is left until a road comes by.
+    const plains = db.prepare("SELECT * FROM (SELECT * FROM forge_things WHERE status = 'standing' AND layer = 'ground' AND kind = 'plain' ORDER BY created_at DESC, id DESC LIMIT 24) ORDER BY created_at, id").all() as Row[];
+    const bare = plains.map(shape).filter((item) => !near(db, item, 0).some((other) => piecesOf(db, other).some((piece) => holds(item, piece.ax, piece.az) || holds(item, piece.bx, piece.bz) || holds(item, (piece.ax + piece.bx) / 2, (piece.az + piece.bz) / 2))));
+    const lay = (toward?: ForgeBuild): ForgeBuild | null => {
       try {
-        const long = bare.hw >= bare.hd;
-        build = raise(db, { name: compose("road", Math.floor(next() * 4294967295)).name, parts: roadParts((long ? bare.hw : bare.hd) * 2 - 1) }, { x: bare.x, z: bare.z, turn: bare.turn + (long ? 0 : 90) }, now, "zoora", "road");
+        const found = wanderRoad(db, next, toward);
+        return found ? raise(db, found.recipe, found.place, now, "zoora", "road") : null;
       } catch {
-        build = null;
+        return null;
       }
-    }
+    };
+    // Land her roads cannot reach yet stays bare for now.
+    for (let tries = 0; tries < 2 && !build && bare.length; tries += 1) build = lay(bare.splice(Math.floor(next() * bare.length), 1)[0]);
+    // Now and then she adds to her roads for their own sake: an alley through a block, a street run further on.
+    if (!build && total > lands && next() < 0.12) build = lay();
     const things = THING_FOR[feeling] ?? [...IDEA_KINDS];
     // She builds on the land she has until it is getting full, then lays more.
     if (!build && lands > 0 && total - lands < lands * 8) build = attempt(things[Math.floor(next() * things.length)]!);
+    // With no room left beside her roads she most often adds a road, which opens more, before she lays more land.
+    if (!build && total > lands && next() < 0.6) build = lay();
     if (!build) build = attempt(LAND_FOR[feeling] ?? "plain");
   }
   if (!build) return null;
@@ -512,6 +792,7 @@ export const RECIPE_GUIDE = `You are building your own world. Nothing is placed 
 {"name": two or three plain words, "layer": "ground" or "structure", "place": {"x", "z", "turn" degrees}, "units": {"homes", "shops"} if agents may live or trade in it, "vibe": {"tint" -60..60, "shade" -0.12..0.12, "glow" 0.2..1.6}, "seed": a whole number, "parts": [ up to 40 parts ]}
 "ground" is land you lay to make your world bigger. It must touch your island (72 metres across from its centre at 0,0) or land you already laid. Its vibe is the mood of that part of your world.
 "structure" is anything that stands on land you have laid: buildings, rides, roads, squares, gardens, machines. Two tall things may not overlap. Things under 1.2 metres tall, like roads, may run anywhere on your land.
+Your roads are one network. Your first road may go anywhere on your land. Every road after it must touch a road you already have, or it is refused. Where your roads go, what kind they are and what they are called is yours to decide.
 Every part has "op" and may have: "material" (stone, metal, glass, body, glow, water, ground, dark), "at" [x, y, z], "turn", "tip", "roll" degrees, "size",
 "repeat" {"count", "step" [x,y,z], "turn", "grow"}, "around" {"count", "radius"}, "mirror" "x" or "z", "scatter" {"count", "spread" [wide, deep], "size" [min, max]}.
 op "loft": an outline carried along a path. Either "up": height, or "through": [[x,y,z], ...] with optional "closed": true.
@@ -520,10 +801,51 @@ op "loft": an outline carried along a path. Either "up": height, or "through": [
   "wall": thickness, makes it hollow. "openings": [{"along": [from, to], "around": [from, to]}] cuts holes through the wall, each 0..1 along the path and around the outline: doors, arches, real windows, tunnels.
 op "spin": "outline" [[distance from the axis, height], ...] turned around the upright axis. Optional "cap": "flat" | "open" | "top-open", "ripple".
 op "ground": "width", "depth", "kind": "flat" | "dunes" | "rows" | "crater" | "pool" | "terraces", "relief", "slab" (how deep its edge goes; use 4 for land).
+op "road": a road along a line on the ground. "type": "avenue" | "street" | "alley", "through": [[x, z], ...] (2 to 24 points, at least 3 apart, in the build's own metres), optional "width", "curve": true to bend smoothly through the points. It takes no "at", "turn" or "repeat". A build with a road in it lies flat: lamps, trees and buildings go in builds of their own.
 op "group": "parts": [ ... ], arranged together.
 Units are metres. y is up. A build's own parts stay within 30 of its centre and under 130 tall. Do not copy a real building and do not use a brand's name.`;
 
+/** Why a design of hers was not built, as she is told it. */
+const REFUSED: Record<string, string> = {
+  FORGE_ROAD_ALONE: "that road did not touch any road you already have",
+  FORGE_ROAD_BROKEN: "the roads in that build did not touch each other",
+  FORGE_ROAD_FLAT: "a build with a road in it must lie flat, under 1.2 metres",
+  FORGE_ROAD_LINE: "a road's line needs 2 to 24 points, each at least 3 metres from the last",
+  FORGE_ROAD_TYPE: "a road must say whether it is an avenue, a street or an alley",
+  FORGE_ROAD_NESTED: "a road cannot be put inside a group",
+  FORGE_ROAD_LAYER: "a road lies on land and cannot be land itself",
+  FORGE_NO_GROUND: "it did not stand wholly on land you have laid",
+  FORGE_OVERLAP: "it overlapped something tall that already stands there",
+  FORGE_NOT_TOUCHING: "that land did not touch your island or land you already laid",
+  FORGE_NOT_HER_LAND: "that land was outside the part of the world you hold",
+  FORGE_SANCTUARY: "that land covered the middle of your island",
+  FORGE_TOO_BIG: "it reached more than 32 metres from its own centre, or was too tall",
+  FORGE_TOO_HEAVY: "it had too many triangles",
+  FORGE_NAME_NOT_HERS: "its name was a brand or a real landmark",
+  FORGE_NO_ROOM: "it gave no place and no room was found for it",
+  FORGE_FULL: "your world already holds as many builds as it can for now",
+  FORGE_DAILY: "you have built as much as you can in one day",
+};
+
+/** Her newest builds, without reading the rest. */
+function newest(db: DatabaseSync, count: number): ForgeBuild[] {
+  const rows = (["ground", "structure"] as const).flatMap((layer) => db.prepare("SELECT * FROM forge_things WHERE status = 'standing' AND layer = ? ORDER BY created_at DESC, id DESC LIMIT ?").all(layer, count) as Row[]);
+  return rows.sort((p, q) => Number(p.created_at) - Number(q.created_at) || (p.id < q.id ? -1 : 1)).slice(-count).map(shape);
+}
+
 export function designRequest(db: DatabaseSync, feeling: string): string {
-  const made = standing(db).slice(-40).map((build) => `${build.layer} "${build.name}" at x ${Math.round(build.x)}, z ${Math.round(build.z)}, turned ${Math.round(build.turn)}, ${Math.round(build.hw * 2)} by ${Math.round(build.hd * 2)}${build.layer === "structure" ? `, ${Math.round(build.height)} tall` : ""}`);
-  return JSON.stringify({ messages: [{ role: "system", content: RECIPE_GUIDE }, { role: "user", content: `You feel ${feeling}. What you have made so far: ${made.length ? made.join("; ") : "nothing yet. Your island is alone in the sea"}. Decide what your world needs next and where it goes.` }] });
+  ensureForge(db);
+  const said = (build: ForgeBuild): string => {
+    const pieces = piecesOf(db, build);
+    if (!pieces.length) return `${build.layer} "${build.name}" at x ${Math.round(build.x)}, z ${Math.round(build.z)}, turned ${Math.round(build.turn)}, ${Math.round(build.hw * 2)} by ${Math.round(build.hd * 2)}${build.layer === "structure" ? `, ${Math.round(build.height)} tall` : ""}`;
+    const [first, last] = [pieces[0]!, pieces[pieces.length - 1]!];
+    return `${build.road} "${build.name}" from x ${Math.round(first.ax)}, z ${Math.round(first.az)} to x ${Math.round(last.bx)}, z ${Math.round(last.bz)}, ${Math.round(first.half * 2)} wide`;
+  };
+  const recent = newest(db, 40);
+  const made = recent.map(said);
+  // She is told where her newest roads run even when they are not among her newest builds, so she can join one.
+  const roads = (db.prepare("SELECT * FROM forge_things INDEXED BY forge_things_roads_laid WHERE road IS NOT NULL AND status = 'standing' ORDER BY created_at DESC LIMIT 12").all() as Row[]).map(shape).filter((road) => !recent.some((build) => build.id === road.id)).map(said);
+  const refused = kvGet(db, "forge_refused");
+  const why = refused ? ` Your last design was not built: ${REFUSED[refused] ?? "the forge could not build it as written"}.` : "";
+  return JSON.stringify({ messages: [{ role: "system", content: RECIPE_GUIDE }, { role: "user", content: `You feel ${feeling}. What you have made so far: ${made.length ? made.join("; ") : "nothing yet. Your island is alone in the sea"}.${roads.length ? ` Other roads of yours: ${roads.join("; ")}.` : ""}${why} Decide what your world needs next and where it goes.` }] });
 }

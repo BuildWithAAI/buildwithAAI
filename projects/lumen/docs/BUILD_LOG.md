@@ -1,6 +1,13 @@
 # Build log
 
 ---
+sha: 93461d2
+title: All her roads connect.
+summary: A road is now a line she draws, as an avenue, a street or an alley. A road that touches no road of hers is refused, and one is not taken away if that would cut her network in two. Nothing lays a road for her. Left to herself she builds beside her roads, so her town grows along them.
+date: 2026-11-21T23:59:13Z
+image:
+
+---
 sha: 6db7a11
 title: Find a place without reading the whole world.
 summary: Placing a build used to read every build standing. An index of footprints now answers in a fraction of a millisecond, so finding a place takes about 2 milliseconds with a million builds standing. A small world is built exactly as before.

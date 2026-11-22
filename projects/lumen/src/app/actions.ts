@@ -15,7 +15,7 @@ import { decideVenture, getVenture, launchVenture, proposeVenture, setVentureSta
 import { mergeVentures } from "../economy/merge";
 import { compose, IDEA_KINDS, type IdeaKind } from "../forge/ideas";
 import { buildRecipe, cleanRecipe } from "../forge/recipe";
-import { herHand, raise, remove as removeBuild, reshape, undo as undoBuildStep, wander } from "../forge/store";
+import { herHand, raise, remove as removeBuild, reshape, undo as undoBuildStep, wander, wanderRoad } from "../forge/store";
 import { rng } from "../form/genome";
 import { grantPlot } from "../world/land";
 import { takeUnit, vacate } from "../world/units";
@@ -532,8 +532,15 @@ export async function forgeIdeaAction(form: FormData) {
     const kind = text(form, "kind") as IdeaKind;
     if (!(IDEA_KINDS as readonly string[]).includes(kind)) throw new Error("FORGE_TOOL");
     const db = getEngine().db;
-    const recipe = cleanRecipe(compose(kind, now >>> 0));
     const typed = text(form, "x") !== "" && text(form, "z") !== "";
+    // A road with no place typed goes where she would put one herself: joined to her other roads.
+    if (kind === "road" && !typed) {
+      const found = wanderRoad(db, rng(now >>> 0));
+      if (!found) throw new Error("FORGE_ROAD_ALONE");
+      raise(db, found.recipe, found.place, now, "owner", kind);
+      return;
+    }
+    const recipe = cleanRecipe(compose(kind, now >>> 0));
     const built = buildRecipe(recipe, herHand());
     // With no place typed she finds one herself, the same way she does on her own.
     const place = typed ? { x: Number(text(form, "x")), z: Number(text(form, "z")), turn: Number(text(form, "turn") || "0") } : wander(db, recipe.layer ?? "structure", built.half, built.height, rng(now >>> 0));

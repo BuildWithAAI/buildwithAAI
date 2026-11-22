@@ -24,6 +24,10 @@ These come before the six below. `docs/AUDIT_2026-11-21.md` has the evidence beh
 - [ ] 0e. Her balance is the hard spend ceiling. Acceptance: no spend, trade or venture budget can pass her balance plus her profits, and every paid model call is written to her books.
 - [ ] 0f. Buildings that make sense. She designs site, floors, structure, skin and rooms, and the forge builds from that. Acceptance: every home and shop is a real room reachable from the entrance, and a plan set is drawn by her own renderer.
 - [x] 0g. The live view matches her own renderer. Done 2026-11-21: the live shader is generated from the numbers her viewport uses (`src/forge/light.ts`), and the fog that hid her city is replaced by a long haze. Checked by screenshots by day and by night.
+- [x] 0h. All her roads connect. Owner's rule, 2026-11-21: "All roads must connect", and she builds the city as she wants. Done 2026-11-21: a road is a line she draws (avenue, street or alley), a road that touches no road of hers is refused, and a road is not taken away if that cuts the network. Nothing lays a road for her. `docs/FORGE.md` has the rule and the numbers.
+- [ ] 0i. She travels her roads. Every build has an address on a road, a route is found along the network, and distance costs time. Acceptance: a route between any two addresses is found in a world of a million builds within 50 ms, and a build no road reaches says so.
+- [ ] 0j. Land kinds for a beach and for mountains, and roads that cross sloping land. Acceptance: she can lay either from her own ideas, and a road over a slope follows it.
+- [ ] 0k. Rent by place. Her terms for a home or a shop may take its address into account, so she can price further out cheaper. Acceptance: the price shown to an agent is the price she set for that place, and the rule she used is on the listing.
 
 Then these six, one slice at a time.
 

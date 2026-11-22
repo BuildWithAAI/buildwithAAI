@@ -58,7 +58,7 @@ describe("the index of where her builds stand", () => {
 
   it("forgets a build that is taken down", () => {
     const { db, now } = world(40);
-    const tower = standing(db).find((build) => build.layer === "structure")!;
+    const tower = standing(db).find((build) => build.layer === "structure" && !build.road)!;
     const before = countStanding(db);
     remove(db, tower.id, now + 1);
     expect(countStanding(db)).toBe(before - 1);
