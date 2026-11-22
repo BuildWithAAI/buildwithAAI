@@ -34,7 +34,7 @@ export function tradingLive(env: TradeEnv = process.env): boolean {
  * The owner's trading rules, 2026-11-22.
  *
  * - Every trade in a Solana coin is three dollars. She does not choose the size. On forex his rule is 0.01 lot with three
- *   dollars lost at the stop, about 30 pips on a pair quoted in dollars. No forex venue is connected, so that is not in this book yet.
+ *   dollars lost at the stop, about 30 pips on a pair quoted in dollars. Forex has its own book, `forex.ts`.
  * - Every trade is a limit order: she names the most she will pay, and it is filled at that price or better or not at all.
  * - Every trade has a stop and a target, set from her own research before she enters. Neither can be moved afterwards.
  *   The stop is acted on by the engine the moment the price is at it or under it, with no say from her.
@@ -64,7 +64,7 @@ export function tradeCaps(env: TradeEnv): { maxTradeCents: number; maxDailyLossC
   };
 }
 
-function tradingStopped(env: TradeEnv, db: DatabaseSync): boolean {
+export function tradingStopped(env: TradeEnv, db: DatabaseSync): boolean {
   return env.LUMEN_KILL_SWITCH === "true" || flag(db, "kill") === "1" || flag(db, "trading_kill") === "1";
 }
 
@@ -419,14 +419,18 @@ async function askSigner(env: TradeEnv, proposal: TradeProposal, fetchImpl: type
   }
 }
 
-function dailyLossCents(db: DatabaseSync, mode: "paper" | "live"): number {
-  const day = new Date().toISOString().slice(0, 10);
+/** What she has lost today, in cents, in coins and in forex together. A daily loss limit, if the owner sets one, is one limit over both. */
+export function dailyLossCents(db: DatabaseSync, mode: "paper" | "live", now: number = Date.now()): number {
+  const day = new Date(now).toISOString().slice(0, 10);
   const rows = db.prepare("SELECT result, created_at FROM paper_trades WHERE status = 'closed' AND result IS NOT NULL AND mode = ?").all(mode) as { result: string; created_at: number }[];
-  return rows.reduce((sum, row) => {
+  const coins = rows.reduce((sum, row) => {
     if (new Date(row.created_at).toISOString().slice(0, 10) !== day) return sum;
     const parsed = JSON.parse(row.result) as { usdCents?: number };
     return sum + Math.max(0, -(parsed.usdCents ?? 0));
   }, 0);
+  const start = Date.parse(`${day}T00:00:00Z`);
+  const forex = db.prepare("SELECT COALESCE(SUM(-result_cents), 0) AS cents FROM fx_orders WHERE status = 'closed' AND result_cents < 0 AND mode = ? AND closed_at >= ? AND closed_at < ?").get(mode, start, start + 86_400_000) as { cents: number };
+  return coins + Number(forex.cents);
 }
 
 function solNotional(usdCents: number, priceUsd: string, priceSol: string): number {
@@ -444,7 +448,7 @@ function wholeDollars(raw: string | undefined): number | null {
   return Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-function dollarsToCents(raw: string | undefined): number | null {
+export function dollarsToCents(raw: string | undefined): number | null {
   const text = (raw ?? "").trim();
   if (!/^\d+(\.\d{1,2})?$/.test(text)) return null;
   const [whole, frac = ""] = text.split(".");
