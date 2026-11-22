@@ -29,7 +29,7 @@
     "@types/suncalc": "^1.9.2",
     "@types/three": "^0.170.0",
     "esbuild": "^0.25.12",
-    "playwright": "1.55.1",
+    "playwright": "1.65.1",
     "typescript": "^5.9.2",
     "vitest": "^4.1.12"
   },
