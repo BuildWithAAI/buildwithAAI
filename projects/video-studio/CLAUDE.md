@@ -56,8 +56,10 @@ Always pass the composition ID; without it Remotion opens an interactive picker.
 | remotion.media | **No (403)** | Remotion's own browser download → we use the preinstalled one |
 | www.remotion.dev | **No** | Docs → read `.claude/skills/*` or raw.githubusercontent.com instead |
 | api.elevenlabs.io | **No** | ElevenLabs voice (needs allowlist + key) |
-| huggingface.co | **No** | Kokoro / Piper voice models (needs allowlist; HF downloads also redirect to CDN hosts) |
-| github.com web/API for other repos, release assets | **No (403)** | Kokoro-onnx GitHub release assets are not a workaround |
+| huggingface.co | **No** | Piper voices, `kokoro` (PyTorch) package. Not needed: use kokoro-onnx below |
+| github.com `/<owner>/<repo>/releases/download/...` | **Yes** (302 → release-assets.githubusercontent.com) | Kokoro ONNX model + voices |
+| github.com web pages / api.github.com for repos outside this org | **No (403)** | Nothing required |
+| support.google.com, developers.google.com, youtube.com, elevenlabs.io, sec.gov, ftc.gov | **No** | Policy re-checks: do them in a browser (see `docs/research/`) |
 | fonts.googleapis.com | Yes, but don't rely on it | Use `@fontsource/*` from npm so renders never fetch fonts |
 
 Never widen network access silently: propose the exact host through the environment tools and let the owner approve. Never put API keys in files, env vars committed to git, or chat — use the secure credential form.
@@ -68,7 +70,8 @@ Never widen network access silently: propose the exact host through the environm
 - The installed `remotion-render` skill says to use Remotion's bundled browser. That is impossible here (remotion.media blocked); the owner explicitly asked for the preinstalled browser, so keep `setBrowserExecutable`. On a machine with open network, unset it by removing `/opt/pw-browsers`-detection or setting `REMOTION_BROWSER_EXECUTABLE`.
 - Every composition is driven by props (storyboard JSON). No hard-coded copy in templates.
 - Durations come from voice audio (`calculateMetadata`), never guessed.
-- Agent skills live in `.claude/skills/` (13 skills from `remotion-dev/skills`, commit pinned in `skills-lock.json`). Update with `npx skills update -p`. Read `remotion-best-practices` before writing compositions.
+- Agent skills live in `.claude/skills/`: the 13 skills from `remotion-dev/skills` at commit `89c8afa`, recorded in `skills-lock.json`. They were installed with `npx skills@1.9.0 add remotion-dev/skills --skill '*' --agent claude-code --copy -y`. Remotion's docs prefer `npx remotion skills add` inside a Remotion project; it installs the same skills via `skills@1.7.0`. Update with `npx skills update -p`. Read `remotion-best-practices` before writing compositions.
+- Upgrades: keep every `remotion` / `@remotion/*` package on one exact version, and use the `remotion-upgrade` skill. We pinned 4.0.541 (2026-11-05), not the same-day 4.0.546. Remotion 5 is not released yet.
 
 ## Repository layout
 
@@ -86,4 +89,61 @@ projects/video-studio/
 
 Commit sources, templates, scripts, and content text. Never commit renders (`out/`), generated audio (`public/generated/`), or secrets.
 
-<!-- VERIFIED-FACTS -->
+## Voice (TTS)
+
+| Option | State | Facts |
+| --- | --- | --- |
+| **Kokoro via `kokoro-onnx`** (free, local) | **Works here, tested 2026-11-23** | `pip install kokoro-onnx==0.6.1 soundfile` (PyPI). Model files: `https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.int8.onnx` (114,119,327 B, sha256 `ae315a79…ee9c`) and `voices-v1.0.bin` (28,214,398 B, sha256 `bca610b8…f7d`). `Kokoro.create_timed(text, voice, speed, lang='en-us')` → `(audio, 24000, [Timing(phoneme,start,end)])`: **phoneme-level** timings, so word boundaries come from space phonemes. Speed test: 5.47 s of audio in 4.69 s on 4 CPUs (int8). Weights are Apache-2.0; kokoro-onnx is MIT; its `phonemizer` dependency is GPL-3.0 (a tool dependency, not a licence on the audio it produces). |
+| **ElevenLabs** (paid, best quality) | Blocked until the owner approves host `api.elevenlabs.io` and adds a key through the credential form | `POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/with-timestamps`, header `xi-api-key`. Response: `audio_base64` plus `alignment`/`normalized_alignment` {`characters`, `character_start_times_seconds`, `character_end_times_seconds`}, i.e. **character-level**, not word-level. Recommended model `eleven_v4` (stability + similarity_boost only, no SSML); not yet tested whether it returns non-null alignment. Free plan: non-commercial, attribution required (unverified). Cheapest commercial plan: Starter, ~$6/mo, 30k credits (conflicting sources). |
+| Piper | Not used | Voices are on huggingface.co (blocked). Engine is now GPL-3.0 (`OHF-Voice/piper1-gpl`). Phoneme alignment is experimental only. |
+
+Never clone or imitate a real person's voice.
+
+## Platform rules the pipeline must follow
+
+Full evidence, sources and dates: `docs/research/platform-facts-2026-11-23.md`. ✅ = primary source read. ⚠️ = official page blocked here; fact taken from search-index extracts or secondary sources. Re-check ⚠️ items in a browser before relying on them.
+
+**Remotion licence ✅.** Free for individuals and for-profit organisations with ≤3 employees. Remotion 5 (not yet released) will count **all people** sharing the codebase, contractors included. If more than 3 people work on this studio, a licence is needed: "Creators" $25/seat/month, or "Automators" $0.01/render with a $100/month minimum. Remotion 5 will also need Node 22 and `licenseKey` (`free-license` for free users).
+
+**Fonts ✅.** Use `@fontsource/*` npm packages (OFL-1.1, files bundled) loaded with `@remotion/fonts` + `staticFile`, or the package CSS. Do **not** use `@remotion/google-fonts`: it fetches from fonts.gstatic.com at render time. Candidates: Anton (thumbnail headlines), Montserrat, Inter (captions). All three are OFL with no Reserved Font Name.
+
+**Monetisation ⚠️.**
+- Ads today: 1,000 subscribers + 4,000 valid public watch hours in 12 months, or 1,000 subscribers + 10M Shorts views in 90 days.
+- Reported change for new applicants from **2027-02-01**: 1,000 subscribers + 8,000 watch hours in 365 days, or 20M Shorts views in 90 days (YouTube blog 2026-08-10, read via secondary outlets only).
+- Expanded tier (fan funding, Shopping): 500 subscribers + 3 uploads in 90 days + 3,000 watch hours, or 3M Shorts views.
+
+**Inauthentic content ⚠️** (renamed from "repetitious" on 2025-07-15). These cannot be monetised: templated storylines, image slideshows, scrolling text with little narrative, and the same situation with the same outcome. Every video needs its own structure, real commentary, and owner review.
+
+**Format specs ⚠️.**
+- Shorts: ≤3 min, vertical or square.
+- End screens: last 5–20 s of a video ≥25 s long. Not available on made-for-kids videos.
+- Chapters: start at `00:00`, ≥3 timestamps, each chapter ≥10 s.
+- Thumbnails: the current Help page says up to 3840×2160 (minimum width 640), 2 MB on mobile and 50 MB on desktop. The API takes JPEG/PNG up to 50 MiB since July 2026. **We render 1280×720 PNG and keep files under 2 MB.**
+- Loudness: YouTube publishes no official target. Normalise to −14 LUFS integrated with a −1 dBTP true-peak ceiling (community consensus).
+
+**AI label ✅.** Not required for clearly animated content narrated by a generic TTS voice. Required if a real person appears to say or do something they did not, or if a real person's voice is synthesised.
+
+**Disclosures ✅ (FTC 16 CFR 255, revised 2023-07-26).**
+- Material connections (ownership, payment, free product, affiliate links) must be disclosed in the video, both spoken **and** on screen, and in the description near the links.
+- Own product: say "I built this" / "This is my project" unless that is already obvious.
+- Fake or AI-generated testimonials are banned (16 CFR 465), with civil penalties.
+- YouTube paid-promotion box: tick it whenever a third party gives value. Default to ticking it for own-product promotion too, because YouTube's page counts own-brand endorsements when the relationship isn't clear ⚠️.
+
+**Made for kids ✅.** The audience must be set on every video. Animated characters are a child-directed factor. The FTC penalty is up to $53,088 per violation (2025 level, not adjusted in 2026). Default for this studio is **"No, not made for kids"** (tech and crypto content for adults). Avoid kid-appeal styling: nursery palettes, toys, simple songs.
+
+**Crypto ✅/⚠️.** YouTube bans cryptophishing (requests for wallet details), scams, and links to uncertified gambling, which since 2025-11-17 includes NFTs/items with monetary value ⚠️. SEC §17(b) requires disclosing compensation when touting a security. SEC/CFTC Release 33-11412 (2026-03-17) treats meme coins as "digital collectibles" ⚠️ (text not read). The FTC Act §5 bars deceptive claims. The UK FCA promotions regime applies to UK viewers wherever the creator is (criminal offence). **Script rules:**
+- No price predictions, return or income claims, or "buy" calls.
+- Disclose holdings.
+- No giveaways or airdrops tied to buying.
+- No third-party logos (Solana, Telegram, Pump.fun) without checking their brand rules.
+- Synthetic demo data only: no real users' handles, wallets or messages.
+- Any video that promotes the AAI coin itself needs legal review first.
+
+**Music ⚠️.** YouTube Audio Library terms could not be verified here. Until the owner checks them: use only tracks marked "Attribution not required", or CC BY tracks with exact credit in the description. Don't reuse them off YouTube. Or use no music.
+
+**Upload automation ⚠️ — manual upload for now.**
+- Quota: 10,000 units/day plus a separate videos.insert bucket. The insert reference says 1 unit per call, 100 calls/day; the quota calculator still says 1,600 (conflict).
+- Other costs: thumbnails.set 50, videos.update 50, captions.insert 400.
+- Since 2026-11-02 ✅, uploads from unverified projects are no longer forced private, and **omitted `privacyStatus` defaults to public**. Always send `privacyStatus: private`.
+- API-settable fields ✅: `status.selfDeclaredMadeForKids`, `status.containsSyntheticMedia`. `paidProductPlacementDetails` exists, but whether it can be written is unconfirmed. Keep that Studio step manual.
+- OAuth refresh tokens expire after 7 days while the consent screen is in "Testing".
