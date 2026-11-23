@@ -1,0 +1,6 @@
+node_modules/
+out/
+.cache/
+*.log
+# Generated voice audio and renders are rebuilt by the pipeline
+public/generated/
