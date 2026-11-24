@@ -174,7 +174,7 @@ const E_CLOSED: Pt[] = [[3.6, 2.2], [-1.6, 2.4]];
 
 const EyeSide: React.FC<{pose: EyePose; blink: number; lookX: number; lookY: number}> = ({pose, blink, lookX, lookY}) => {
 	const clipId = safeId(useId(), 'eyeS');
-	const s = pose.scale;
+	const s = pose.scale * 1.14;
 	const W = (p: Pt): Pt => (p.length === 3 ? [EYE_C.x + p[0] * s, EYE_C.y + p[1] * s, 'c'] : [EYE_C.x + p[0] * s, EYE_C.y + p[1] * s]);
 	const upper = E_UPPER.map((p) => [p[0], p[1] - pose.lidTop * 0.8] as Pt);
 	const lower = E_LOWER.map((p) => [p[0], p[1] - pose.lidBottom * 0.8] as Pt);
