@@ -1,0 +1,18 @@
+# Well-known, widely used spender contracts (same address on most EVM chains unless noted).
+# Purpose: avoid false "malicious" flags (GoPlus sometimes flags big routers). Unlimited approvals
+# to these are still reported at WATCH - revoke anything you no longer use.
+# Verify any addition on the project's official docs before adding.
+"0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D": Uniswap V2 Router02 (Ethereum)
+"0xE592427A0AEce92De3Edee1F18E0157C05861564": Uniswap V3 SwapRouter
+"0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45": Uniswap SwapRouter02
+"0xEf1c6E67703c7BD7107eed8303Fbe6EC2554BF6B": Uniswap Universal Router (legacy)
+"0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD": Uniswap Universal Router
+"0x66a9893cC07D91D95644AEDD05D03f95e1dBA8Af": Uniswap Universal Router (v4)
+"0x000000000022D473030F116dDEE9F6B43aC78BA3": Uniswap Permit2
+"0xDef1C0ded9bec7F1a1670819833240f027b25EfF": 0x Exchange Proxy
+"0x0000000000001fF3684f28c67538d4D072C22734": 0x AllowanceHolder
+"0x1111111254EEB25477B68fb85Ed929f73A960582": 1inch Aggregation Router v5
+"0x111111125421cA6dc452d289314280a0f8842A65": 1inch Aggregation Router v6
+"0xC92E8bdf79f0507f65a392b0ab4667716BFE0110": CoW Protocol GPv2VaultRelayer
+"0x881D40237659C251811CEC9c364ef91dC08D300C": MetaMask Swap Router (Ethereum)
+"0x1E0049783F008A0085193E00003D00cd54003c71": OpenSea Seaport Conduit
