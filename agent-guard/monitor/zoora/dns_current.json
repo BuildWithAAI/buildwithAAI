@@ -1,0 +1,354 @@
+{
+  "collected_at": "2026-11-24T17:05:00.400405-06:00",
+  "queries": {
+    "zoora.ai": {
+      "A": {
+        "Status": 0,
+        "Answer": [
+          "185.199.108.153",
+          "185.199.109.153",
+          "185.199.110.153",
+          "185.199.111.153"
+        ],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": []
+      },
+      "AAAA": {
+        "Status": 0,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "CNAME": {
+        "Status": 0,
+        "Answer": [],
+        "Comment": "Response from 156.154.132.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "MX": {
+        "Status": 0,
+        "Answer": [
+          "10 eforward1.registrar-servers.com.",
+          "10 eforward2.registrar-servers.com.",
+          "10 eforward3.registrar-servers.com.",
+          "15 eforward4.registrar-servers.com.",
+          "20 eforward5.registrar-servers.com."
+        ],
+        "Comment": "Response from 156.154.132.200.",
+        "Authority": []
+      },
+      "TXT": {
+        "Status": 0,
+        "Answer": [
+          "v=spf1 include:spf.efwd.registrar-servers.com ~all"
+        ],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": []
+      },
+      "CAA": {
+        "Status": 0,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "NS": {
+        "Status": 0,
+        "Answer": [
+          "dns1.registrar-servers.com.",
+          "dns2.registrar-servers.com."
+        ],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": []
+      },
+      "DS": {
+        "Status": 0,
+        "Answer": [],
+        "Comment": "Response from 2001:500:a4::1.",
+        "Authority": [
+          "v0n0.nic.ai. hostmaster.donuts.email. 1795560907 7200 900 1209600 3600"
+        ]
+      }
+    },
+    "www.zoora.ai": {
+      "A": {
+        "Status": 0,
+        "Answer": [
+          "185.199.108.153",
+          "185.199.109.153",
+          "185.199.110.153",
+          "185.199.111.153"
+        ],
+        "Comment": "Response from 198.51.44.5.",
+        "Authority": []
+      },
+      "AAAA": {
+        "Status": 0,
+        "Answer": [
+          "2606:50c0:8000::153",
+          "2606:50c0:8001::153",
+          "2606:50c0:8002::153",
+          "2606:50c0:8003::153"
+        ],
+        "Comment": "Response from 198.51.44.5.",
+        "Authority": []
+      },
+      "CNAME": {
+        "Status": 0,
+        "Answer": [
+          "buildwithaai.github.io."
+        ],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": []
+      },
+      "MX": {
+        "Status": 0,
+        "Answer": [],
+        "Comment": "Response from 198.51.44.5.",
+        "Authority": [
+          "dns1.p05.nsone.net. hostmaster.nsone.net. 1647625169 43200 7200 1209600 3600"
+        ]
+      },
+      "TXT": {
+        "Status": 0,
+        "Answer": [],
+        "Comment": "Response from 2600:9000:5306:5600::1.",
+        "Authority": [
+          "ns-1622.awsdns-10.co.uk. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+        ]
+      },
+      "CAA": {
+        "Status": 0,
+        "Answer": [
+          "0 issue \"digicert.com\"",
+          "0 issue \"letsencrypt.org\"",
+          "0 issue \"sectigo.com\"",
+          "0 issuewild \"digicert.com\"",
+          "0 issuewild \"letsencrypt.org\"",
+          "0 issuewild \"sectigo.com\""
+        ],
+        "Comment": "Response from 198.51.44.69.",
+        "Authority": []
+      },
+      "NS": {
+        "Status": 0,
+        "Answer": [],
+        "Comment": "Response from 205.251.198.86.",
+        "Authority": [
+          "ns-1622.awsdns-10.co.uk. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+        ]
+      },
+      "DS": {
+        "Status": 0,
+        "Answer": [],
+        "Comment": "Response from 198.51.44.5.",
+        "Authority": [
+          "dns1.p05.nsone.net. hostmaster.nsone.net. 1647625169 43200 7200 1209600 3600"
+        ]
+      }
+    },
+    "_dmarc.zoora.ai": {
+      "A": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "AAAA": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.132.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "CNAME": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "MX": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "TXT": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "CAA": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": null,
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "NS": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.132.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "DS": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      }
+    },
+    "world.zoora.ai": {
+      "A": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "AAAA": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "CNAME": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "MX": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": null,
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "TXT": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.132.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "CAA": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "NS": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": null,
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      },
+      "DS": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 156.154.133.200.",
+        "Authority": [
+          "dns1.registrar-servers.com. hostmaster.registrar-servers.com. 1794274945 43200 3600 604800 3601"
+        ]
+      }
+    },
+    "lumen-tidepool.fly.dev": {
+      "A": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 137.66.40.8.",
+        "Authority": [
+          "ns1.flydns.net. ops.fly.io. 1795561496 86400 7200 604800 300"
+        ]
+      },
+      "AAAA": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 137.66.40.7.",
+        "Authority": [
+          "ns1.flydns.net. ops.fly.io. 1795561496 86400 7200 604800 300"
+        ]
+      },
+      "CNAME": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 137.66.40.7.",
+        "Authority": [
+          "ns1.flydns.net. ops.fly.io. 1795561496 86400 7200 604800 300"
+        ]
+      },
+      "MX": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 137.66.40.8.",
+        "Authority": [
+          "ns1.flydns.net. ops.fly.io. 1795561496 86400 7200 604800 300"
+        ]
+      },
+      "TXT": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 137.66.40.7.",
+        "Authority": [
+          "ns1.flydns.net. ops.fly.io. 1795561496 86400 7200 604800 300"
+        ]
+      },
+      "CAA": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 137.66.40.7.",
+        "Authority": [
+          "ns1.flydns.net. ops.fly.io. 1795561496 86400 7200 604800 300"
+        ]
+      },
+      "NS": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 137.66.40.8.",
+        "Authority": [
+          "ns1.flydns.net. ops.fly.io. 1795561496 86400 7200 604800 300"
+        ]
+      },
+      "DS": {
+        "Status": 3,
+        "Answer": [],
+        "Comment": "Response from 137.66.40.7.",
+        "Authority": [
+          "ns1.flydns.net. ops.fly.io. 1795561496 86400 7200 604800 300"
+        ]
+      }
+    }
+  }
+}
