@@ -1,0 +1,4 @@
+# Zoora voice runtime dependencies (install on the owner's PC: pip install -r aai/voice/requirements.txt)
+# keyring >=25 uses Windows Credential Manager (WinVaultKeyring) on Windows.
+httpx>=0.27,<1
+keyring>=25,<26
