@@ -10,8 +10,9 @@ bullet list (01, 02, 03, 04); 05 and 06 are alternates for repeats.
 - plop: a water-drop "bloop": a rounder sine chirp rising into its pitch over 25 ms; 0.2 s.
 - tick: a VCSL woodblock (CC0) raised 5 semitones (its main mode lands near A6), shortened to a
   25-40 ms "tok", softened above 6 kHz.
-- swipe: friction noise whose band rises with speed, plus a paper grain (sparse crackle), a soft
-  edge flick at the end and a short pan across.
+- swipe: friction noise following a flicked card's speed (full speed 38 % in, then a longer glide
+  out): the level, the band (Q 1) and a sparse paper grain rise and fall with it; a soft edge
+  flick at the end and a short pan across.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ import numpy as np
 from audiolib.core import midi_to_hz, note_number, rng
 
 from .. import prims, space, vcsl
-from ..core import FPS, SYNTH_SOURCE, Sound
+from ..core import SYNTH_SOURCE, Sound
 
 FAMILY = "UI: pops, plops, soft ticks, card and page swipes"
 
@@ -70,7 +71,7 @@ TICK_SOURCES = [
     "Idiophones/Struck Idiophones/Woodblock/wood_click_f_rr2.wav",
     "Idiophones/Struck Idiophones/Woodblock/wood_click_ff.wav",
     "Idiophones/Struck Idiophones/Woodblock/wood_click3_vl2.wav",
-    "Idiophones/Struck Idiophones/Woodblock/wood_click_mp.wav",
+    "Idiophones/Struck Idiophones/Woodblock/wood_click_f_rr2.wav",
 ]
 
 
@@ -90,11 +91,14 @@ def swipe(sid: str, dur: float, f_lo: float, f_hi: float, direction: int, seed: 
     n = prims.n_samples(dur + 0.03)
     t = prims.t_axis(n)
     u = np.clip(t / dur, 0, 1)
-    # speed profile: quick start, steady, then the flick out
-    speed = np.sin(np.pi * np.clip(u, 0, 1) ** 0.7) ** 0.8
-    env = speed * prims.smoothstep(t / 0.012) * (t <= dur)
+    # speed profile of a flicked card: a quick push to full speed about 38 % in, then a longer
+    # glide out; the level, the band and the grain all follow it
+    pk = 0.38
+    speed = np.where(u < pk, (u / pk) ** 1.6, ((1 - u) / (1 - pk)) ** 1.1)
+    speed = np.clip(speed, 0, 1) * (t <= dur)
+    env = speed**1.2 * prims.smoothstep(t / 0.008)
     fc = f_lo * (f_hi / f_lo) ** speed
-    base = prims.svf(prims.noise(n, seed + "-b", "pink"), fc, q=0.75, mode="bandpass")
+    base = prims.svf(prims.noise(n, seed + "-b", "pink"), fc, q=1.0, mode="bandpass")
     base /= max(np.sqrt(np.mean(base[env > 0.4] ** 2)), 1e-12)
     # paper grain: sparse slips, denser when faster
     g = rng("swipe-grain", seed)
@@ -114,12 +118,12 @@ def swipe(sid: str, dur: float, f_lo: float, f_hi: float, direction: int, seed: 
         fl /= max(np.max(np.abs(fl)), 1e-12)
         k = prims.n_samples(dur * 0.93)
         mono[k : k + fl.size] += flick * float(np.max(np.abs(mono))) * fl[: max(0, n - k)]
-    pan = direction * 0.45 * np.tanh(3 * (u - 0.5))
+    pan = direction * 0.45 * np.tanh(3 * (u - pk))
     st = prims.pan(mono, pan) * math.sqrt(2)
     st = space.add_room(st, "desk", -22.0)
     return Sound(id=sid, group="swipe", category="ui", role="ui", audio=st, description=desc,
                  tags=["swipe", "ui", "card", "slide", "paper" if paper else "friction"], sync="start", sync_s=0.0,
-                 sources=[SYNTH_SOURCE], hp_hz=150.0, lp_hz=10000.0, extra={"direction": "left-to-right" if direction > 0 else "right-to-left"})
+                 sources=[SYNTH_SOURCE], hp_hz=150.0, lp_hz=9000.0, extra={"direction": "left-to-right" if direction > 0 else "right-to-left"})
 
 
 def render() -> list:
@@ -147,7 +151,7 @@ def render() -> list:
         (1, 5.0, 0.026, 6000, "Soft tick, second strike of the same block."),
         (2, 4.0, 0.024, 5500, "Soft tick, a little lower and firmer."),
         (3, 6.0, 0.022, 6500, "Soft tick, smaller block, lighter."),
-        (4, 3.0, 0.030, 3800, "The softest tick: a lighter strike, lower and darker."),
+        (4, 3.0, 0.030, 3800, "The softest tick: lower and darker (the second strike, 3 st up, low-passed)."),
     ]
     for i, (k, semis, t60, lp, desc) in enumerate(ticks, 1):
         out.append(tick(f"tick_{i:02d}", TICK_SOURCES[k], semis, t60, lp, desc))
@@ -162,5 +166,3 @@ def render() -> list:
         out.append(swipe(f"swipe_{i:02d}", dur, flo, fhi, d, f"sw{i}", grain, flick, paper, desc))
     return out
 
-
-FRAME_S = 1 / FPS

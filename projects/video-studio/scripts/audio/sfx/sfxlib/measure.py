@@ -6,10 +6,11 @@ Definitions:
   maximum within 15 ms of where the sound first rises to -30 dB re its peak.
 - peakMs: the sample peak. loudPeakMs: centre of the loudest 50 ms (K-weighted): a whoosh's
   pass-by as heard.
-- lufsMomentaryMax: BS.1770 K-weighted loudness in a 400 ms window, maximised over every sample
-  position, with silence around the file (so a 30 ms click is measured whole). This is what any
-  EBU R128 meter shows as "M max" and what `suggestedGainDb` is based on. lufs100Max is the same
-  with a 100 ms window, for reference (short clicks read relatively louder on it).
+- lufs200Max: BS.1770 K-weighted loudness in a 200 ms window, maximised over every sample
+  position, with silence around the file (so a 30 ms click is measured whole). `suggestedGainDb`
+  is based on it (see core.py for why 200 ms), capped so the true peak stays at or under -6 dBTP.
+  lufsMomentaryMax (400 ms: what an EBU R128 meter shows as "M max") and lufs100Max are reported
+  for reference: short clicks read about 3 dB lower on M400 and 3 dB higher on 100 ms than on 200 ms.
 - presence2to5Db: energy in 2-5 kHz minus energy in 200 Hz-2 kHz; above about +6 dB a sound gets
   edgy on phone speakers and earbuds.
 - resonances: narrow peaks (>= 8 dB above the spectrum smoothed over a third of an octave) between
@@ -27,7 +28,7 @@ import numpy as np
 from audiolib import loudness
 from audiolib.core import SR, as_stereo
 
-from .core import FPS, FRAME, PEAK_DBFS, ROLES, Sound, on_frame
+from .core import FPS, FRAME, GAIN_WINDOW_S, PEAK_DBFS, ROLES, TRUE_PEAK_CAP_DBTP, Sound, on_frame
 
 
 def design_tail_db(audio, window_s: float = 0.01) -> float:
@@ -188,6 +189,9 @@ def event_onset_errors_ms(a: np.ndarray, events: list) -> list:
     env = envelope(a)
     errs = []
     for ev in events:
+        if ev.get("marker"):  # a semantic marker (a rise starting, a top reached), not an attack
+            errs.append(None)
+            continue
         i0 = int(round(ev["t"] * SR))
         win = env[max(0, i0 - int(0.002 * SR)) : i0 + int(0.012 * SR)]
         if win.size == 0:
@@ -207,7 +211,9 @@ def analyse(final: np.ndarray, sound: Sound) -> dict:
     tr = transient_index(a)
     on = onset_index(a)
     lufs_m, m_centre = window_loudness_max(a, 0.4)
+    lufs_200, _ = window_loudness_max(a, GAIN_WINDOW_S)
     lufs_100, _ = window_loudness_max(a, 0.1)
+    tp = loudness.true_peak(a)
     pw = sound.extra.get("peakWindowMs")
     loud_centre = perceived_peak_s(a, pw / 1000.0 if pw else None)
     fr, s = spectrum_db(a)
@@ -221,7 +227,10 @@ def analyse(final: np.ndarray, sound: Sound) -> dict:
     else:
         raise ValueError(f"{sound.id}: sync '{sound.sync}' needs sync_s")
     tail = a[:, -max(1, int(0.01 * SR)) :]
-    target = ROLES[sound.role]["targetLufsM"]
+    target = ROLES[sound.role]["targetLufs"]
+    gain = target - lufs_200
+    cap = TRUE_PEAK_CAP_DBTP - tp
+    capped = gain > cap
     out = {
         "durationMs": _r(n / SR * 1000, 1),
         "samples": n,
@@ -233,12 +242,14 @@ def analyse(final: np.ndarray, sound: Sound) -> dict:
         "syncFrame30": int(round(sync_ms * FPS / 1000.0)),
         "syncOnFrame": on_frame(sync_ms / 1000.0),
         "samplePeakDbfs": _r(_db(pk), 3),
-        "truePeakDbtp": _r(loudness.true_peak(a), 2),
+        "truePeakDbtp": _r(tp, 2),
+        "lufs200Max": _r(lufs_200, 2),
         "lufsMomentaryMax": _r(lufs_m, 2),
         "lufsMomentaryMaxAtMs": _r(m_centre * 1000, 0),
         "lufs100Max": _r(lufs_100, 2),
-        "suggestedGainDb": _r(target - lufs_m, 1),
-        "targetLufsM": target,
+        "suggestedGainDb": _r(min(gain, cap), 1),
+        "gainCapped": bool(capped),
+        "targetLufs": target,
         "centroidHz": round(centroid),
         "presence2to5Db": _r(band_energy_db(fr, s, 2000, 5000) - band_energy_db(fr, s, 200, 2000), 1),
         "lowShareDb": _r(band_energy_db(fr, s, 20, 200) - total, 1),
@@ -251,6 +262,8 @@ def analyse(final: np.ndarray, sound: Sound) -> dict:
         "tailEndDbfs": _r(_db(float(np.sqrt(np.mean(tail**2)))), 1),
         "designTailDb": _r(design_tail_db(sound.audio), 1) if not sound.loop else None,
     }
+    if sound.sync == "hit":
+        out["syncAttackErrorMs"] = event_onset_errors_ms(a, [{"t": sync_ms / 1000.0}])[0]
     if sound.events:
         errs = event_onset_errors_ms(a, sound.events)
         out["eventErrorsMs"] = errs
@@ -274,14 +287,19 @@ def checks(m: dict, sound: Sound) -> list:
         add("designDecayed", m["designTailDb"] <= -60, "warn", f"the design had decayed to {m['designTailDb']} dB re peak when its buffer ended (<= -60: finishing never cuts an audible tail)")
     add("syncOnFrame", m["syncOnFrame"], "fail", f"sync {m['syncMs']} ms = frame {m['syncMs'] * FPS / 1000:.3f} at 30 fps")
     if sound.sync == "transient":
-        add("transientAtStart", m["transientMs"] <= 3.0, "fail", f"transient at {m['transientMs']} ms (<= 3)")
+        # 5 ms = a sixth of a frame; soft-mallet attacks need 3-5 ms to reach half amplitude, and
+        # audio-video sync is not detectable under +45 ms (ITU-R BT.1359)
+        add("transientAtStart", m["transientMs"] <= 5.0, "fail", f"transient at {m['transientMs']} ms (<= 5)")
+    if sound.sync == "hit":
+        e = m.get("syncAttackErrorMs")
+        add("hitOnSync", e is not None and -1.0 <= e <= 5.0, "fail", f"impact attack {e} ms after the sync point (0-5)")
     if sound.sync == "peak":
         add("peakNearSync", abs(m["loudPeakMs"] - m["syncMs"]) <= 1000 / FPS, "warn", f"loudest 50 ms centred at {m['loudPeakMs']} ms vs sync {m['syncMs']} ms (within one frame)")
     if sound.events and sound.frame_locked:
         add("eventsOnFrames", m.get("eventsOnFrames"), "fail", "every event on a 30 fps frame boundary")
         errs = [e for e in m.get("eventErrorsMs", []) if e is not None]
         worst = max((abs(e) for e in errs), default=0.0)
-        add("eventsAttack", worst <= 4.0, "warn", f"worst event attack {worst} ms from its frame (<= 4)")
+        add("eventsAttack", worst <= 5.0, "warn", f"worst event attack {worst} ms from its frame (<= 5)")
     add("harshResonance", not m["harshResonances"], "fail", f"harsh resonances: {m['harshResonances']}")
     add("presence", m["presence2to5Db"] <= 6.0, "warn", f"2-5 kHz vs 0.2-2 kHz {m['presence2to5Db']} dB (<= +6)")
     add("correlation", m["correlation"] >= 0.0, "fail", f"L/R correlation {m['correlation']} (>= 0)")
@@ -292,8 +310,6 @@ def group_summary(entries: list) -> dict:
     """Loudness spread inside each variation group (after peak normalisation)."""
     groups = {}
     for e in entries:
-        groups.setdefault(e["group"], []).append(e["loudness"]["lufsMomentaryMax"])
+        groups.setdefault(e["group"], []).append(e["loudness"]["lufs200Max"])
     return {g: {"n": len(v), "lufsMin": round(min(v), 2), "lufsMax": round(max(v), 2), "spreadDb": round(max(v) - min(v), 2)} for g, v in groups.items()}
 
-
-FRAME_SAMPLES = FRAME

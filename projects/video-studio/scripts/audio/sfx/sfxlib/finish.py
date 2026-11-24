@@ -8,6 +8,9 @@
    -78 dBFS, far under any bed or voice) and the last few milliseconds are faded to exactly zero
    (raised cosine), so nothing ends on a cut.
 4. Sample peak normalised to -6 dBFS.
+5. 512 samples (10.7 ms) of digital silence appended: the 24-bit writer dithers every 256-sample
+   block that holds any sound and leaves all-zero blocks exactly zero, so the file ends in true
+   digital silence rather than on 1-LSB dither.
 Loops are filtered circularly (three copies, keep the middle) and never faded, so the seam stays
 seamless. Finishing never moves audio in time: designed sync points stay on their frames.
 """
@@ -24,6 +27,7 @@ from . import prims
 from .core import PEAK_DBFS, Sound
 
 TAIL_FLOOR_DB = -72.0
+SILENT_PAD = 512  # two of the writer's 256-sample dither blocks
 TAIL_KEEP_S = 0.002
 FADE_IN_S = 0.00025
 
@@ -41,7 +45,8 @@ def finalize(sound: Sound) -> np.ndarray:
     a = _filter(a, sound)
     a = _soft_start(a)
     a = clean_tail(a)
-    return normalize(a)
+    a = normalize(a)
+    return np.concatenate([a, np.zeros((a.shape[0], SILENT_PAD))], axis=1)
 
 
 def _filter(a: np.ndarray, sound: Sound) -> np.ndarray:

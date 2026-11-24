@@ -9,8 +9,14 @@ at 60 fps.
 
 Levels: every file is peak-normalised to -6 dBFS (sample peak). Perceived loudness then differs
 with the sound's shape, so each manifest entry carries `suggestedGainDb`: the gain that brings the
-file's BS.1770 momentary-max loudness (400 ms windows, the standard short-sound measure any LUFS
-meter shows) to its role's target in a show mixed with narration at -14 LUFS-I.
+file's short-window loudness (BS.1770 K-weighted power in a 200 ms window, maximised over the
+file) to its role's target in a show mixed with narration at -14 LUFS-I, capped so the file's
+true peak never goes above -6 dBTP (Remotion sums tracks without a limiter; -6 dBTP is also the
+engine's ceiling for beds, "headroom for summing with voice and SFX"). Why 200 ms and not the EBU momentary 400 ms window: loudness
+integrates energy over roughly the first 200 ms of a sound (below that, equal energy sounds equally
+loud), so a 400 ms window under-reads a 20 ms click by about 3 dB more than our ears do; measured
+over this library, M400 put a key click's suggested gain 6.8 dB up, which would have pushed its
+peak to +0.8 dBFS. LUFS-M (400 ms) and a 100 ms reading are reported next to it in the manifest.
 """
 
 from __future__ import annotations
@@ -27,18 +33,20 @@ assert FRAME * FPS == SR
 PEAK_DBFS = -6.0
 BIT_DEPTH = 24
 
-# Mix roles: target momentary-max loudness (LUFS-M, 400 ms) at the suggested gain. Narration is
-# normalised to -14 LUFS-I (momentary peaks about -11); the bed sits about -26 LUFS-S and ducks a
-# further 6 dB under speech. Starting values for the mix: tune per scene by ear.
+# Mix roles: target short-window loudness (LUFS, 200 ms window, max) at the suggested gain.
+# Narration is normalised to -14 LUFS-I (its 200 ms peaks sit about -9); the bed sits about
+# -26 LUFS-S and ducks a further 6 dB under speech. Starting values for the mix: tune by ear.
+GAIN_WINDOW_S = 0.2
+TRUE_PEAK_CAP_DBTP = -6.0  # the engine's bed ceiling: headroom to sum with the voice (Remotion mixes without a limiter)
 ROLES = {
-    "transition": {"targetLufsM": -20.0, "use": "whooshes and swells at cuts and reveals, usually in a gap between lines"},
-    "meter": {"targetLufsM": -22.0, "use": "Rekt Meter needle and alarm rise: a feature moment, still under the voice"},
-    "notify": {"targetLufsM": -23.0, "use": "ding, success, error, DEVELOPING pulse: clear but never startling"},
-    "ui": {"targetLufsM": -26.0, "use": "pops, plops, ticks, swipes, mouse clicks: often under narration"},
-    "foley": {"targetLufsM": -28.0, "use": "keyboard, mug, chair, Badger's paws and tail: natural, background"},
+    "transition": {"targetLufs": -18.0, "use": "whooshes and swells at cuts and reveals, usually in a gap between lines"},
+    "meter": {"targetLufs": -22.0, "use": "Rekt Meter needle and alarm rise: a feature moment, still under the voice"},
+    "notify": {"targetLufs": -21.0, "use": "ding, success, error, DEVELOPING pulse: clear but never startling"},
+    "ui": {"targetLufs": -24.0, "use": "pops, plops, ticks, swipes: often under narration"},
+    "foley": {"targetLufs": -28.0, "use": "keyboard, mouse, mug, chair, Badger's paws and tail: natural, background"},
 }
 
-SYNC_KINDS = ("transient", "peak", "end", "start")
+SYNC_KINDS = ("transient", "hit", "peak", "end", "start")
 
 
 @dataclass
@@ -46,8 +54,9 @@ class Sound:
     """One designed effect before finishing.
 
     audio: (2, n) or (n,) float64 at 48 kHz, any level (finishing normalises it).
-    sync: what the sync point is: 'transient' (an impact at the very start), 'peak' (a whoosh's
-    pass-by), 'end' (the hit at the end of a reverse whoosh or a rise), 'start'.
+    sync: what the sync point is: 'transient' (an impact at the very start), 'hit' (an impact at
+    sync_s after a lead-in, e.g. a mug slid into place), 'peak' (a whoosh's pass-by), 'end' (the
+    top of a reverse whoosh or a rise), 'start' (motion that starts with the file).
     sync_s: the designed sync time in seconds (a multiple of 1/30 s); None means the measured
     transient (impacts start within the first millisecond).
     events: timed sub-events for multi-hit sounds, e.g. [{"t": 0.1333, "kind": "key"}]; every

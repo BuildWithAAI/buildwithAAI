@@ -65,9 +65,11 @@ def entry(sound: Sound, m: dict, rel_file: str, sha: str) -> dict:
         "loudness": {
             "samplePeakDbfs": m["samplePeakDbfs"],
             "truePeakDbtp": m["truePeakDbtp"],
+            "lufs200Max": m["lufs200Max"],
             "lufsMomentaryMax": m["lufsMomentaryMax"],
             "lufs100Max": m["lufs100Max"],
-            "targetLufsM": m["targetLufsM"],
+            "targetLufs": m["targetLufs"],
+            "gainCapped": m["gainCapped"],
         },
         "pitch": sound.pitch,
         "loop": sound.loop,
@@ -95,8 +97,8 @@ def build(entries: list, generated: str) -> dict:
         "fps": FPS,
         "frameSamples": FRAME,
         "loudness": {
-            "measure": "BS.1770 K-weighted momentary loudness, 400 ms window, maximised over every sample position with silence around the file (LUFS-M max)",
-            "suggestedGain": "suggestedGainDb = role target - lufsMomentaryMax; suggestedVolume = 10^(gain/20) for <Audio volume>",
+            "measure": "lufs200Max: BS.1770 K-weighted loudness in a 200 ms window, maximised over every sample position with silence around the file. Loudness integrates over about the first 200 ms of a sound, so this window rates clicks and swells alike; the EBU momentary 400 ms window (lufsMomentaryMax, also given) under-reads very short sounds by about 3 dB more.",
+            "suggestedGain": "suggestedGainDb = role target - lufs200Max, capped so the true peak after the gain stays at or under -6 dBTP (gainCapped); suggestedVolume = 10^(gain/20) for <Audio volume>",
             "roles": ROLES,
             "narration": "-14 LUFS-I (scripts/voice); beds about -26 LUFS-S, ducked 6 dB under speech (docs/AUDIO.md)",
         },

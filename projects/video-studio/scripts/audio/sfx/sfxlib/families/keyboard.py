@@ -2,7 +2,8 @@
 seamless typing loops, all locked to 30 fps frames.
 
 Voicing: a lubed, "thocky" board (energy around 0.4-2 kHz, a soft top), which reads as premium and
-is far less fatiguing under narration than a clicky one. A keystroke is modelled in parts:
+is far less fatiguing under narration than a clicky one. The low desk and case modes (136-215 Hz)
+sit between the mains harmonics (100/120/150/180 Hz), so repeated keys never read as hum. A keystroke is modelled in parts:
 - finger contact: a quiet low tap 1.8 ms before the bottom-out (the finger meeting the keycap);
 - bottom-out: the stem hits the housing, ringing the keycap and plate modes (inharmonic, 8-25 ms)
   and the case "thock" (380-650 Hz), with a short click of band-passed noise; harder strikes get a
@@ -23,7 +24,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from audiolib.core import SR, rng
+from audiolib.core import rng
 
 from .. import prims, rig, space
 from ..core import FPS, FRAME, SYNTH_SOURCE, Sound
@@ -33,19 +34,19 @@ FAMILY = "Mechanical keyboard: keys, spacebar, Enter, frame-locked typing bursts
 BASE = {
     "alpha": {
         "cap": [(1150, 0.022, 1.0), (1620, 0.016, 0.75), (2350, 0.010, 0.45), (3300, 0.007, 0.22), (4600, 0.005, 0.10)],
-        "case": [(440, 0.028, 0.60), (610, 0.020, 0.40), (190, 0.022, 0.25)],
+        "case": [(440, 0.028, 0.60), (610, 0.020, 0.40), (215, 0.022, 0.25)],
         "stab": None,
         "gain": 1.0,
     },
     "space": {
         "cap": [(520, 0.045, 1.0), (760, 0.035, 0.80), (1180, 0.024, 0.55), (1750, 0.015, 0.35), (2600, 0.009, 0.18), (3700, 0.006, 0.08)],
-        "case": [(300, 0.040, 0.60), (420, 0.030, 0.40), (150, 0.030, 0.35)],
+        "case": [(300, 0.040, 0.60), (420, 0.030, 0.40), (136, 0.030, 0.35)],
         "stab": (0.0045, 0.45),
         "gain": 1.25,
     },
     "enter": {
         "cap": [(760, 0.034, 1.0), (1120, 0.026, 0.75), (1700, 0.017, 0.50), (2500, 0.011, 0.28), (3500, 0.007, 0.12)],
-        "case": [(380, 0.032, 0.55), (540, 0.024, 0.40), (170, 0.025, 0.30)],
+        "case": [(380, 0.032, 0.55), (540, 0.024, 0.40), (207, 0.025, 0.30)],
         "stab": (0.0028, 0.35),
         "gain": 1.2,
     },
@@ -61,7 +62,7 @@ def _texture_modes(kind: str, pos: int, n: int = 10):
     g = rng("key-texture", kind, pos)
     f = np.exp(g.uniform(np.log(900.0), np.log(7000.0), n))
     env = 1.0 / (1.0 + (f / 2600.0) ** 2)  # rolls off above 2.6 kHz
-    return [(float(fi), float(g.uniform(0.0015, 0.006)), float(0.28 * e * g.uniform(0.5, 1.0))) for fi, e in zip(f, env)]
+    return [(float(fi), float(g.uniform(0.0015, 0.006)), float(0.28 * e * g.uniform(0.5, 1.0))) for fi, e in zip(f, env, strict=True)]
 
 
 def _modes_for(kind: str, pos: int, strike_seed: str):
@@ -186,7 +187,6 @@ def burst(sid: str, group: str, words: int, seed: str, enter: bool, desc: str, m
 
 def loop(sid: str, seed: str, desc: str, frames: int = 4 * rig.RIG_PERIOD) -> Sound:
     """A seamless typing loop of `frames` frames (a multiple of 36 keeps the rig alignment)."""
-    g = rng("typing-loop", seed)
     plan = []
     words = 30
     while True:
@@ -210,7 +210,6 @@ def loop(sid: str, seed: str, desc: str, frames: int = 4 * rig.RIG_PERIOD) -> So
     length = frames / FPS
     st = _with_room(render_events(plan, length, seed, wrap=True), wrap_n=prims.n_samples(length))
     events = [{"t": ev["frame"] / FPS, "kind": "press", "key": ev["key"], "vel": ev["vel"]} for ev in plan]
-    _ = g
     return Sound(id=sid, group="typing_loop", category="keyboard", role="foley", audio=st, description=desc,
                  tags=["keyboard", "mechanical", "typing", "loop", "rig-synced"], events=events, sources=[SYNTH_SOURCE], loop=True,
                  sync="start", sync_s=0.0, hp_hz=90.0, lp_hz=12000.0, rig=rig_info, extra={"keys": len(plan), "loopFrames": frames, "seamGapFrames": width})
@@ -240,4 +239,4 @@ def render() -> list:
     return out
 
 
-__all__ = ["render", "keystroke", "render_events", "SR"]
+__all__ = ["render", "keystroke", "render_events"]

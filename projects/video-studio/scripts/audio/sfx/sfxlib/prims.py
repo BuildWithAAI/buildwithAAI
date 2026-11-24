@@ -300,7 +300,7 @@ def pulse_train(n: int, times_s, amps, width_s: float = 0.0002) -> np.ndarray:
     """Hann pulses (unit area x amp) at the given times: the excitation of a creak or a rattle."""
     out = np.zeros(n)
     p = hann_pulse(width_s)
-    for t, a in zip(times_s, amps):
+    for t, a in zip(times_s, amps, strict=True):
         i = n_samples(t)
         if i >= n:
             continue

@@ -39,3 +39,17 @@ Verified 2026-11-24 for the audio engine (`scripts/audio/`, docs in `docs/AUDIO.
 ## Content ID note (honest)
 
 The music is composed in code and rendered from CC0, MIT and public-domain samples, so it carries no third-party composition or recording rights. That does not make a Content ID false positive impossible: the same public samples (especially VCSL and the GM soundfonts) are used by many others, and somebody could register a track built from them. Risk is lowest for original compositions with our own arrangement and processing, and we never use pre-made loops. Keep each project's render script, MIDI and stems (the engine writes them) as evidence of independent creation, in case a claim needs disputing.
+
+## SFX library (`scripts/audio/sfx/`, delivered to `public/audio/sfx/`)
+
+Added 2026-11-24 by the sound designer. Every effect is either our own synthesis (the code in `scripts/audio/sfx/`) or a processed VCSL one-shot (CC0, the pinned commit above). No new source was added. Each entry of `public/audio/sfx/manifest.json` lists its exact sources (path, commit, licence, pitch shift); `scripts/audio/sfx/build.py` regenerates every file bit for bit, which is the evidence of independent creation if a claim ever needs disputing.
+
+| Asset (VCSL path) | Licence | Where its licence text is | Used for |
+| --- | --- | --- | --- |
+| `Idiophones/Struck Idiophones/Woodblock/` `wood_click_f_rr1`, `wood_click_f_rr2`, `wood_click_ff`, `wood_click3_vl2` | VCSL, CC0 | `.cache/vcsl/LICENSE` | soft UI ticks (raised 3-6 semitones, damped to 25-35 ms) |
+| `Idiophones/Struck Idiophones/Vibraphone/Soft Mallets/` `Vibes_soft_D4_v2_rr1_Main`, `Vibes_soft_A4_v2_rr1_Main`, `Vibes_soft_G3_v2_rr1_Main` | VCSL, CC0 | same | the notification dings (they sound D5, A5 and G4: VCSL labels use C3 = middle C) |
+| `Idiophones/Struck Idiophones/Marimba/` `Marimba_hit_Outrigger_C4_med_01`, `_G4_med_01`, `_B4_med_01`, `_F3_med_01` | VCSL, CC0 | same | the success cues |
+| `Membranophones/Struck Membranophones/Frame Drum/` `HDrumL_HitMuted_v3_rr1/rr2_Sum`, `HDrumS_HitMuted_v3_rr1/rr2_Sum` | VCSL, CC0 | same | Badger's tail thumps |
+| Our synthesis (`scripts/audio/sfx/sfxlib/`: modal bodies, filtered noise, stick-slip friction, PolyBLEP oscillators) | our code | n/a | whooshes, pops, plops, swipes, keyboard, mouse, mug, chair, error, DEVELOPING, Rekt Meter, paws |
+
+Not used: soundfont presets, stock SFX libraries, AI audio, and any dog vocal: Badger's voice will come from the owner's own recordings (CLAUDE.md).

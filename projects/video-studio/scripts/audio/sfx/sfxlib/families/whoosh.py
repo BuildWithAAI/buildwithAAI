@@ -59,7 +59,7 @@ def passby_whoosh(sid: str, group: str, dur: float, tp_frames: int, w_in: float,
     side = side / max(float(np.sqrt(np.mean(side**2))), 1e-12) * float(np.sqrt(np.mean(mono**2)))
     st[0] += 0.18 * side
     st[1] -= 0.18 * side
-    st = space.add_room(st, "air", room_db)
+    st = space.add_room(st, "air" if room_db > -19.0 or dur > 0.5 else "desk", room_db)
     win = measure.peak_window_s(dur)
     st, sync_s = measure.align_peak_to_frame(st, win)
     return Sound(id=sid, group=group, category="whoosh", role="transition", audio=st, description=desc,
@@ -114,17 +114,17 @@ def render() -> list:
     for i, (tpf, wi, wo, flo, fhi, d, desc) in enumerate(shorts, 1):
         out.append(passby_whoosh(f"whoosh_short_{i:02d}", "whoosh_short", 0.40, tpf, wi, wo, flo, fhi, d, f"ws{i}", body=0.25, edge=0.22, room_db=-20.0, tags=["short"], desc=desc))
     mediums = [
-        (9, 0.10, 0.16, 320, 2000, +1, "Medium pass-by, left to right: scene changes and panel wipes."),
-        (9, 0.09, 0.18, 300, 1800, -1, "Medium pass-by, right to left, slightly darker."),
-        (8, 0.11, 0.15, 360, 2200, +1, "Medium pass-by with a brighter edge."),
-        (10, 0.12, 0.17, 280, 1700, -1, "Medium pass-by, the weightiest of the set."),
+        (9, 0.085, 0.14, 320, 2000, +1, "Medium pass-by, left to right: scene changes and panel wipes."),
+        (9, 0.075, 0.16, 300, 1800, -1, "Medium pass-by, right to left, slightly darker."),
+        (8, 0.090, 0.13, 360, 2200, +1, "Medium pass-by with a brighter edge."),
+        (10, 0.100, 0.15, 280, 1700, -1, "Medium pass-by, the weightiest of the set."),
     ]
     for i, (tpf, wi, wo, flo, fhi, d, desc) in enumerate(mediums, 1):
         out.append(passby_whoosh(f"whoosh_medium_{i:02d}", "whoosh_medium", 0.80, tpf, wi, wo, flo, fhi, d, f"wm{i}", body=0.5, edge=0.25, flutter=0.18, tags=["medium"], desc=desc))
     longs = [
-        (21, 0.22, 0.30, 240, 1600, +1, "Long, smooth pass-by: chapter changes and big reveals."),
-        (21, 0.20, 0.34, 220, 1500, -1, "Long pass-by, right to left, a deeper body."),
-        (20, 0.24, 0.28, 260, 1750, +1, "Long pass-by, a little brighter and lighter."),
+        (21, 0.15, 0.24, 240, 1600, +1, "Long, smooth pass-by: chapter changes and big reveals."),
+        (21, 0.14, 0.27, 220, 1500, -1, "Long pass-by, right to left, a deeper body."),
+        (20, 0.16, 0.22, 260, 1750, +1, "Long pass-by, a little brighter and lighter."),
     ]
     for i, (tpf, wi, wo, flo, fhi, d, desc) in enumerate(longs, 1):
         out.append(passby_whoosh(f"whoosh_long_{i:02d}", "whoosh_long", 1.50, tpf, wi, wo, flo, fhi, d, f"wl{i}", body=0.7, edge=0.28, doppler_oct=0.45, flutter=0.25, tags=["long"], desc=desc))

@@ -33,7 +33,7 @@ import shutil  # noqa: E402
 import time  # noqa: E402
 
 from audiolib import analysis, io, paths  # noqa: E402
-from audiolib.core import SR, seed_from  # noqa: E402
+from audiolib.core import seed_from  # noqa: E402
 from sfxlib import families, finish, manifest, measure, review  # noqa: E402
 
 OUT = paths.OUT / "sfx"
