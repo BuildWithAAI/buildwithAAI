@@ -27,7 +27,7 @@ node scripts/assets/make.ts zoora-ai/<slug> --only article,social       # a subs
 node scripts/assets/build-site.ts [--site hub|pages] [--include-drafts] # out/assets/_site/<site>/articles/
 node scripts/assets/build-podcast-feed.ts zoora-security --lang en      # out/assets/_site/podcast/zoora-security/en/
 node scripts/assets/cover.ts zoora-security                             # 3000x3000 cover from a PodcastCover still
-node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/assets/tests/*.test.ts   # 25 tests, ~30 s
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/assets/tests/*.test.ts   # 35 tests, about a minute
 ```
 
 `make.ts` options: `--lang`, `--only`, `--site`, `--youtube-id`, `--published`, `--kit`, `--offers`, `--names`,
@@ -54,8 +54,8 @@ input error. `build-podcast-feed.ts` 1 = owner inputs missing. `cover.ts` 3 = th
 | --- | --- | --- |
 | Storyboard | `content/<channel>/<slug>/storyboard.json` (+ `storyboard.<lang>.json`); `_dev` reads `src/episode/dev/fixtures/<slug>/` | episode workflow (`src/episode/types.ts`) |
 | Timeline + narration | `public/generated/<channel>/<slug>/<lang>/timeline.json`, `narration.wav` | voice step (`scripts/voice`) |
-| Publish kit | `out/publish/<channel>/<slug>/kit.json` (other languages: `<lang>/kit.json` or `kit.<lang>.json`) | publish kit (`scripts/publish-kit`, PublishKit in `creator-hub/src/types.ts`) |
-| Corrections | `content/<channel>/corrections.json` (pinned ones are shown on the article) | news claim gate (`scripts/news`) |
+| Publish kit | `out/publish/<channel>/<slug>/kit.json` (other languages: `<lang>/kit.json` or `kit.<lang>.json`; a dub without one borrows the source-language kit, see [Dubs and the publish kit](#dubs-and-the-publish-kit)) | publish kit (`scripts/publish-kit`, PublishKit in `creator-hub/src/types.ts`) |
+| Corrections | `content/<channel>/corrections.json` (pinned ones are shown on the article; `languages.<lang>` holds the owner's translation of a correction) | news claim gate (`scripts/news`) |
 | Developing label | `storyboard.news.developing` (or `storyboard.developing`) | news claim gate |
 | Offer registry | `../creator-hub/config/offers.json` (gitignored) | creator-hub |
 | Private names | `data/private/names.txt` (gitignored; one name per line) | owner |
@@ -70,12 +70,21 @@ Where a dependency is not finished, the tool uses a thin adapter and says so in 
   kit always wins.
 - **No announcer** (`creator-hub/tools/announcer` does not exist): social posts are plain text and JSON files. When the
   announcer lands, its input format still has to be wired in (the manifest warns).
-- **Narration markup** is parsed by `lib/markup.ts`, a copy of `src/episode/markup.ts`'s `displayText`; a test compares
-  the two on every fixture so drift fails the tests.
+- **Narration markup** is parsed by `lib/markup.ts`, a copy of the committed `src/episode/markup.ts`'s `displayText`;
+  a test compares the two on every fixture so drift fails the tests.
 
-Sidecar fields (all optional): `summary`, `takeaways[]`, `youtubeVideoId`, `publishedAt` (YYYY-MM-DD or ISO),
-`podcast.{skip, season, episode}`, `social.{hook, hashtags[]}`. Without a summary the tool uses the first two
-sentences of the transcript and warns. Without takeaways it uses the on-screen steps and bullets, then chapter titles.
+Sidecar fields (all optional): `summary`, `takeaways[]`, `youtubeVideoId`, `publishedAt` (YYYY-MM-DD or an ISO
+timestamp), `podcast.{skip, season, episode, title}`, `social.{hook, hashtags[]}`. Types are checked and anything else
+is refused (exit 2): `podcast.skip` must be true or false, `podcast.season` and `podcast.episode` positive whole
+numbers, `podcast.title` a string, and unknown keys are errors. On the security channel a script is drafted from
+outside news text, so these values are treated as untrusted. Without a summary the tool uses the first two sentences of
+the transcript and warns. Without takeaways it uses the on-screen steps and bullets, then chapter titles.
+
+**Publish times.** `--published` or `publishedAt` should be the upload's full publish time (for a batch item, its
+slot's `publishAt`). A date alone means that day at 00:00 in the owner's zone, America/Chicago (CST or CDT), never
+midnight UTC (which is the evening before in Oklahoma); the manifest warns and asks for the full time. The feeds
+(the RSS `pubDate`, the Atom `published`) get that timestamp; the page's `article:published_time`, schema.org's
+`datePublished` and the VideoObject's `uploadDate` stay date-only when no time was given.
 
 ## Rules every asset follows
 
@@ -99,6 +108,21 @@ sentences of the transcript and warns. Without takeaways it uses the on-screen s
 - **Accuracy.** Unverified sources block. Fiction stories need the fiction disclaimer (`ui.fictionDisclaimer` for
   non-English). Developing stories get a banner and a "DEVELOPING:" prefix. A storyboard edited after the voice step
   (its narration no longer matches the timeline words) is flagged `timeline-stale` and nothing stays `ok`.
+- **Corrections in the page's language.** A pinned correction shows in the page's language when
+  `corrections.json` gives one (`"languages": {"es": "…"}`); otherwise it shows in its own language, marked with that
+  language, and the asset warns (`correction-untranslated`) until the owner adds the translation.
+
+### Dubs and the publish kit
+
+The publish kit writes one kit per episode, in the source language. A dub (es, pt-br) without its own kit borrows that
+kit for what is the same in every language: the YouTube video id (dubs are audio tracks on the same video), the chapter
+times (when the dub was voiced with `--fit-to` the kit's language, so its timeline matches), and the offers (each with
+its own localized disclosure rule, above). The kit's title and summary stay out: they are in the wrong language. Every
+other disclosure line of the kit (for example "The messages and pages shown in this video are recreations with
+fictional accounts", or an own-product "I built this") needs an owner-approved translation in
+`config/channels.json` under `"disclosureTranslations": {"<the exact kit line>": {"es": "…", "pt-br": "…"}}`. Until it
+has one, the asset is **blocked** (`disclosure-untranslated`): a disclosure is never dropped. The manifest names the
+borrowed kit in its owner actions.
 
 ## (a) Article
 
@@ -115,8 +139,9 @@ A static, self-contained page: no scripts, no web fonts, no images loaded by the
   `VideoObject` (name, description, thumbnailUrl, uploadDate, duration, embedUrl, transcript). The VideoObject is only
   written once the YouTube id and publish date are known; until then the page is `noindex`.
 - `build-site.ts` collects the `ok` articles of one site into `out/assets/_site/<site>/articles/` with `sitemap.xml`
-  (hreflang alternates included), `feed.xml` (Atom) and `index.html`, and warns when an hreflang target is not in the
-  build.
+  (hreflang alternates included), `feed.xml` (Atom), `index.html`, and an index page per channel
+  (`articles/<channel>/index.html`, listed in the sitemap: the podcast feed's `<link>` points there), and warns when an
+  hreflang target is not in the build.
 
 ### Hosting the articles (owner decision; nothing is set up)
 
@@ -154,11 +179,15 @@ Pick one canonical home. Publishing the same article on two hosts as canonical s
   show, author, year, language, comment, copyright, episode link, optional 600 px cover, TLEN, and chapters as one CTOC
   frame plus CHAP frames per the ID3v2 Chapter Frame Addendum). M4A (AAC-LC 128 kbit/s) with iTunes tags and a
   QuickTime chapter track. Both are decoded and measured again (loudness, 44.1 kHz stereo, duration within 150 ms) and
-  ffprobe must read back the same chapters.
-- **Chapters** come from scene boundaries; a scene shorter than 10 s joins the chapter before it, so chapters match
-  YouTube's minimum. The same chapters go into the ID3 tag, the M4A, `chapters.json` (Podcasting 2.0 JSON chapters
-  1.2.0), the RSS (`psc:chapters`, which Spotify reads for shows hosted elsewhere), the show notes (`MM:SS Title` lines,
-  which Spotify and YouTube read when there are at least 3) and the article headings.
+  ffprobe must read back the same chapters. In the M4A's ffmetadata, `\ = ; #` and line feeds are escaped, and carriage
+  returns and NUL become spaces, so a title can never add a tag or a chapter (ffmpeg ends a line at a carriage return).
+- **Chapters** are the publish kit's chapters when there is a kit (the same list as the YouTube description and the
+  newsletter), mapped onto the narration timeline. Without a kit, or when its chapters do not fit the timeline, they
+  come from scene boundaries (a scene shorter than 10 s joins the chapter before it, so chapters match YouTube's
+  minimum) and the manifest says so; a kit chapter under 10 s is a warning, because YouTube then ignores every
+  chapter. The same chapters go into the ID3 tag, the M4A, `chapters.json` (Podcasting 2.0 JSON chapters 1.2.0), the
+  RSS (`psc:chapters`, which Spotify reads for shows hosted elsewhere), the show notes (`MM:SS Title` lines, which
+  Spotify and YouTube read when there are at least 3) and the article headings.
 - **Show notes** (Markdown and HTML): summary, watch and article links, chapters, takeaways, offers with disclosures,
   sources with access dates, disclosures, the subscribe link. The HTML is under Apple's 4000-character description limit
   or the manifest warns.
@@ -181,6 +210,12 @@ Pick one canonical home. Publishing the same article on two hosts as canonical s
   write until the owner has set `feedUrl`, `mediaBase`, `imageUrl` and `ownerEmail` (the email is public in the feed;
   directories send verification codes there). Once assigned, keep `podcast:guid` for life: record it in
   `podcast.shows.<lang>.guid`. Do not commit MP3s to git; host them on static file hosting.
+- **Nothing reaches the feed unchecked.** Every value in `feed.xml` is escaped (`xml()`), wrapped in CDATA (`cdata()`,
+  which also drops characters XML 1.0 forbids, such as a vertical tab pasted into a summary, and splits `]]>`), or
+  checked to be a number or an enum value. `build-podcast-feed.ts` re-reads each episode's `item.json` and checks every
+  field before use (types, the `episodeType` enum, positive whole season and episode numbers, https links, plain file
+  names); one invalid item stops the feed ("never edit them by hand") instead of letting text close an `<item>` and add
+  channel tags such as `itunes:new-feed-url` or `itunes:block`.
 
 ### Spotify for Creators (free hosting)
 

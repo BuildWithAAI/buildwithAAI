@@ -10,8 +10,8 @@ cd projects/video-studio
 node scripts/batch/cli.ts plan --week 2026-W49            # items, slots, WRITER packets, farm drafts; pins the ideas
 node scripts/batch/cli.ts status --week 2026-W49          # what is still missing, per item
 node scripts/batch/cli.ts review --week 2026-W49          # out/approval/week-2026-W49/index.html (one page)
-node scripts/batch/cli.ts approve --week 2026-W49 --items all            # the owner, at a terminal
-node scripts/batch/cli.ts approve --week 2026-W49 --items ai1 --reply "APPROVE 2026-W49 ai1"   # his reply, verbatim
+node scripts/batch/cli.ts approve --week 2026-W49 --items all            # the owner, at a terminal (types the page code)
+node scripts/batch/cli.ts approve --week 2026-W49 --items ai1 --reply "APPROVE 2026-W49 ai1 #93770ddb"   # his reply, verbatim
 node scripts/batch/cli.ts calendar --from 2026-W49 --weeks 4 --out docs/CONTENT_CALENDAR.md
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/batch/tests/*.test.ts
 ```

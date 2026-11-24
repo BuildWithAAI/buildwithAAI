@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Decrypt render-farm artifacts (docs/RENDER_FARM.md, "Getting the files").
+# Decrypt render-farm artifacts (docs/RENDER_FARM.md, "Download and decrypt").
 #
 #   scripts/farm/decrypt.sh --key ~/.zoora/farm-owner.key [--out DIR] [--force] INPUT...
 #

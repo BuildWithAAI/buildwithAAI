@@ -2,12 +2,12 @@
 
 The farm encrypts every output of an encrypted request (renders, checksums, tool logs) to a **public** key kept here,
 `<recipient>.pub.pem`. Only the matching **private** key can decrypt them, and it never enters this repository or
-GitHub: no CI step can read an output. Details: `docs/RENDER_FARM.md`, "Keys".
+GitHub: no CI step can read an output. Details: `docs/RENDER_FARM.md`, "Keys and secrets".
 
 | File | Recipient | Who holds the private key |
 | --- | --- | --- |
 | `owner.pub.pem` | `owner` (the default for every request) | The owner, on his own computer. **Not created yet: an owner step.** |
-| `selftest.pub.pem` | `selftest` (the farm's own self-test; test compositions only) | Nobody keeps it: it was made on 2026-11-24 to prove the encrypted path once, in a scratch folder that is not kept. |
+| `selftest.pub.pem` | `selftest` (the farm's own self-test; test compositions only) | Nobody needs it: it was made on 2026-11-24 in a scratch folder of the build session, to prove the encrypted path end to end. It is not in this repository or on GitHub, and the farm accepts this recipient only for test compositions. |
 
 ## Creating the owner's key pair (once)
 

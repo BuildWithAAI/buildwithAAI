@@ -1,5 +1,5 @@
 /**
- * Artifact encryption (docs/RENDER_FARM.md, "Keys"). The repository is public, so anyone signed in to GitHub can
+ * Artifact encryption (docs/RENDER_FARM.md, "Keys and secrets"). The repository is public, so anyone signed in to GitHub can
  * download its artifacts: an encrypted request never uploads plaintext. Two schemes, both in-process with node:crypto
  * (no openssl binary is looked up through PATH while a key is in memory):
  *
@@ -53,7 +53,7 @@ export class FarmError extends Error {}
 /** Why a hand-off secret is unusable, or null. Never includes the secret. */
 export const keyProblem = (key: string | undefined): string | null => {
 	if (!key) {
-		return `the secret ${HANDOFF_ENV} is not set. It encrypts the narration the voice jobs hand to the render jobs (kept 1 day); nobody needs to know its value. Set it once in GitHub (docs/RENDER_FARM.md, "Keys"): openssl rand -base64 48 | gh secret set ${HANDOFF_ENV} --env render-farm. Nothing was uploaded.`;
+		return `the secret ${HANDOFF_ENV} is not set. It encrypts the narration the voice jobs hand to the render jobs (kept 1 day); nobody needs to know its value. Set it once in GitHub (docs/RENDER_FARM.md, "Keys and secrets"): openssl rand -base64 48 | gh secret set ${HANDOFF_ENV} --env render-farm. Nothing was uploaded.`;
 	}
 	if (/[\r\n]/.test(key) || key !== key.trim()) return `${HANDOFF_ENV} contains a line break or starts or ends with whitespace; set it again without it. Nothing was uploaded.`;
 	if (key.length < MIN_KEY_CHARS) return `${HANDOFF_ENV} is shorter than ${MIN_KEY_CHARS} characters; replace it with the output of: openssl rand -base64 48. Nothing was uploaded.`;
@@ -96,7 +96,7 @@ export const recipientProblem = (project: string, name: string): string | null =
 	if (!RECIPIENT_RE.test(name)) return 'the recipient must be 1-32 lowercase letters, digits and dashes';
 	const path = recipientPath(project, name);
 	if (!existsSync(path)) {
-		return `${KEYS_DIR}/${name}.pub.pem is not in this commit. ${name === 'owner' ? 'The owner creates his key pair once and commits only the public key (docs/RENDER_FARM.md, "Keys"); until then encrypted requests cannot run.' : 'Commit that public key, or use the default recipient "owner".'}`;
+		return `${KEYS_DIR}/${name}.pub.pem is not in this commit. ${name === 'owner' ? 'The owner creates his key pair once and commits only the public key (docs/RENDER_FARM.md, "Keys and secrets"); until then encrypted requests cannot run.' : 'Commit that public key, or use the default recipient "owner".'}`;
 	}
 	const parsed = parseRecipientPem(readFileSync(path, 'utf8'));
 	return parsed.ok ? null : `${KEYS_DIR}/${name}.pub.pem ${parsed.problem}`;

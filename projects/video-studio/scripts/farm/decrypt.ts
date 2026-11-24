@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Decrypt render-farm artifacts (docs/RENDER_FARM.md, "Getting the files").
+ * Decrypt render-farm artifacts (docs/RENDER_FARM.md, "Download and decrypt").
  *
  *   node scripts/farm/decrypt.ts --key ~/.zoora/farm-owner.key [--out DIR] [--force] INPUT...
  *
