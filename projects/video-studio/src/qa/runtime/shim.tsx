@@ -4,16 +4,17 @@
  * its files are edited. This module re-exports the real package and replaces two components:
  *
  *  - <Composition> / <Still>: the component is wrapped so <QaProbe/> renders after it inside the composition
- *    (same timeline, same commit), and every <Composition id="X"> also registers <Composition id="QaRef-X">,
- *    the canonical character reference used by the off-model check.
+ *    (same timeline, same commit), and every <Composition id="X"> (or <Still>) also registers
+ *    <Composition id="QaRef-X">, the canonical character reference used by the off-model check. The reference
+ *    component is loaded lazily, so only a run that renders references loads src/characters.
  *
  * Imports in src/qa/runtime are excluded from the swap, so they (and this file) see the real package.
  */
 import React from 'react';
 import * as Real from 'remotion';
 import {qaRefId} from '../protocol.ts';
-import {QaCharacterRef, qaRefDefaults, qaRefMetadata} from './QaCharacterRef';
 import {QaProbe} from './QaProbe';
+import {qaRefDefaults, qaRefMetadata} from './refMeta.ts';
 
 export * from 'remotion';
 
@@ -58,23 +59,36 @@ const probeProps = (props: Record<string, unknown>): Record<string, unknown> => 
 const RealComposition = Real.Composition as unknown as React.FC<Record<string, unknown>>;
 const RealStill = Real.Still as unknown as React.FC<Record<string, unknown>>;
 
+/** The reference draws src/characters: loaded on first use, so a composition without characters never needs it. */
+const loadQaRef = () => import('./QaCharacterRef');
+
+/** The canonical-reference composition registered next to every composition and still. */
+const QaRef: React.FC<{id: unknown}> = ({id}) => (
+	<RealComposition
+		id={qaRefId(String(id))}
+		lazyComponent={loadQaRef}
+		width={qaRefDefaults.width}
+		height={qaRefDefaults.height}
+		fps={qaRefDefaults.fps}
+		durationInFrames={1}
+		defaultProps={qaRefDefaults}
+		calculateMetadata={qaRefMetadata}
+	/>
+);
+
 const QaComposition: React.FC<Record<string, unknown>> = (props) => (
 	<>
 		<RealComposition {...probeProps(props)} />
-		<RealComposition
-			id={qaRefId(String(props.id))}
-			component={QaCharacterRef}
-			width={qaRefDefaults.width}
-			height={qaRefDefaults.height}
-			fps={qaRefDefaults.fps}
-			durationInFrames={1}
-			defaultProps={qaRefDefaults}
-			calculateMetadata={qaRefMetadata}
-		/>
+		<QaRef id={props.id} />
 	</>
 );
 
-const QaStill: React.FC<Record<string, unknown>> = (props) => <RealStill {...probeProps(props)} />;
+const QaStill: React.FC<Record<string, unknown>> = (props) => (
+	<>
+		<RealStill {...probeProps(props)} />
+		<QaRef id={props.id} />
+	</>
+);
 
 export const Composition = QaComposition as unknown as typeof Real.Composition;
 export const Still = QaStill as unknown as typeof Real.Still;

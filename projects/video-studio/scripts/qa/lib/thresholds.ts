@@ -25,7 +25,7 @@ export const THRESHOLDS = {
 		min: 4.5,
 		/** Only measured when the text is this opaque (ancestor opacity product); fades are skipped. */
 		minOpacity: 0.95,
-		/** Glyph pixels: |with text - without text| (max channel) at least this, or 25% of the strongest. */
+		/** Glyph pixels: |with text - without text| (max channel) at least this. */
 		glyphDiff: 16,
 		/** Percentile of the per-pixel contrasts reported (robust against anti-aliasing). Calibrated. */
 		percentile: 20,
@@ -49,6 +49,11 @@ export const THRESHOLDS = {
 		paletteFracError: 0.01,
 		/** Characters fainter than this (fade) are not compared pixel by pixel. */
 		minOpacity: 0.98,
+		/**
+		 * A character below this opacity means a cross-fade is under way (characters are opaque outside
+		 * transitions): the frame gets only the flicker test. The last frame of an eased fade is at about 0.985.
+		 */
+		crossFadeOpacity: 0.999,
 		/** Pin / ear-cap blob position tolerance vs the canonical render, in character units (Zoo = 900 tall). */
 		blobTolUnits: 12,
 	},

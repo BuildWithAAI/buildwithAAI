@@ -50,7 +50,10 @@ export const QaFxClean: React.FC = () => (
 	</Stage>
 );
 
-/** Text overflow and clipping: a clipped headline, a spilling label, a label off the frame edge, tiny text. */
+/**
+ * Text: a clipped headline, a spilling label, a label off the frame edge, tiny text, and the host's name painted
+ * in capitals by a CSS uppercase style (the source string is title case).
+ */
 export const QaFxText: React.FC = () => (
 	<Stage>
 		<div style={{position: 'absolute', left: 160, top: 160, width: 320, height: 70, overflow: 'hidden'}}>
@@ -61,6 +64,7 @@ export const QaFxText: React.FC = () => (
 		</div>
 		<div style={label({left: 1640, top: 560, fontSize: 56, whiteSpace: 'nowrap'})}>Cut by the edge</div>
 		<div style={label({left: 160, top: 760, fontSize: 16, fontFamily: FONTS.body, fontWeight: 600})}>Tiny legal line nobody can read</div>
+		<div style={label({left: 160, top: 880, fontSize: 44, textTransform: 'uppercase'})}>Hosted by Zoo</div>
 	</Stage>
 );
 

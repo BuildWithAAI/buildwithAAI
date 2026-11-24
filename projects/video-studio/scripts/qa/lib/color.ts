@@ -65,5 +65,3 @@ export const percentile = (xs: ArrayLike<number>, p: number): number => {
 	const hi = Math.ceil(k);
 	return a[lo] + (a[hi] - a[lo]) * (k - lo);
 };
-
-export const median = (xs: ArrayLike<number>): number => percentile(xs, 50);

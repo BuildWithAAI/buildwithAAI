@@ -5,6 +5,7 @@
  */
 import {Internals} from 'remotion';
 import type {BannedFact, CharacterFact, CharacterKind, Matrix, Rect, TextFact, TextRole} from '../protocol.ts';
+import {applyTextTransform} from '../protocol.ts';
 import {componentChain, contextValueSeen, findReader, fiberOf, hasComponentAncestor, localFrameFrom, ownerComponent, serialiseProps} from './fiber.ts';
 
 export type MeasureContext = {
@@ -223,7 +224,6 @@ type Clipper = {rect: Rect; by: TextFact['clippedBy'][number]};
 const clippersOf = (el: Element, ctx: MeasureContext): Clipper[] => {
 	const out: Clipper[] = [];
 	let n: Element | null = el.parentElement;
-	let child: Element = el;
 	while (n && n !== ctx.root) {
 		const cs = getComputedStyle(n);
 		if (isSvg(n)) {
@@ -238,10 +238,8 @@ const clippersOf = (el: Element, ctx: MeasureContext): Clipper[] => {
 			if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') out.push({rect: paddingBox(n, ctx), by: 'overflow'});
 			if (cs.clipPath && cs.clipPath !== 'none') out.push({rect: cssClipRect(n, cs.clipPath, ctx), by: 'clip-path'});
 		}
-		child = n;
 		n = n.parentElement;
 	}
-	void child;
 	return out;
 };
 
@@ -291,8 +289,7 @@ const inkCache = new Map<string, Ink>();
 const inkMetrics = (text: string, cs: CSSStyleDeclaration): Ink | null => {
 	if (!metricsCtx) metricsCtx = document.createElement('canvas').getContext('2d');
 	if (!metricsCtx) return null;
-	const tt = cs.textTransform;
-	const shown = tt === 'uppercase' ? text.toUpperCase() : tt === 'lowercase' ? text.toLowerCase() : tt === 'capitalize' ? text.replace(/\b\p{L}/gu, (c) => c.toUpperCase()) : text;
+	const shown = applyTextTransform(text, cs.textTransform);
 	const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
 	const key = `${font}|${shown}`;
 	const hit = inkCache.get(key);
@@ -403,6 +400,7 @@ export const measureTexts = (ctx: MeasureContext): TextFact[] => {
 		out.push({
 			key: `${domPath(el, ctx.root)}#${idx}`,
 			text: text.length > 160 ? `${text.slice(0, 157)}...` : text,
+			...(cs.textTransform && cs.textTransform !== 'none' ? {transform: cs.textTransform} : {}),
 			role,
 			kind: svg ? 'svg' : 'html',
 			rects,

@@ -3,7 +3,7 @@
  * text size, safe zones, captions and text over faces, character transforms, effects, identity facts against
  * the frozen manifest, banned render techniques, and elements that exist for a single frame.
  */
-import type {CharacterFact, FrameFacts, Rect, TextFact} from '../../../../src/qa/protocol.ts';
+import {applyTextTransform, type CharacterFact, type FrameFacts, type Rect, type TextFact} from '../../../../src/qa/protocol.ts';
 import {inflate, intersectRect, rectArea, unionRect} from '../image.ts';
 import type {Finding, Severity} from '../issues.ts';
 import {expectedBadgerBody, type Manifest} from '../manifest.ts';
@@ -19,6 +19,12 @@ export const charLabel = (c: CharacterFact, i: number) => `${charName(c)} #${i +
 /** Identity of a text node across frames (its DOM slot and content). */
 export const textKey = (t: Pick<TextFact, 'path' | 'text'>) => `${t.path}|${t.text}`;
 export const charKey = (c: Pick<CharacterFact, 'key'>) => `char:${c.key}`;
+
+/**
+ * The host's name in capitals as a word ("ZOO", "ZOO'S", "$ZOO"; not "ZOORA"). Owner rule (CLAUDE.md, 2026-11-24):
+ * the host is "Zoo", title case, never "ZOO", on screen as everywhere else.
+ */
+export const HOST_CAPS = /(?<![\p{L}\p{N}])ZOO(?![\p{L}\p{N}])/u;
 
 /** Texts the geometry checks look at: not review badges, not faded out. */
 export const liveTexts = (f: FrameFacts): TextFact[] => f.texts.filter((t) => t.role !== 'badge' && t.opacity >= T.text.minOpacity);
@@ -91,6 +97,25 @@ export const textFindings = (f: FrameFacts): Finding[] => {
 				message: `${t.effPx} px on screen (minimum ${T.text.minPx} px, ART_GUIDE SL10)`,
 				measured: {px: t.effPx, fontPx: t.fontPx},
 				score: T.text.minPx - t.effPx,
+				elementKey,
+			});
+		// the painted text is checked, so a CSS uppercase style on "Zoo" counts as well
+		const shown = applyTextTransform(t.text, t.transform);
+		if (t.visibleFrac > 0 && HOST_CAPS.test(shown))
+			out.push({
+				check: 'text-name',
+				severity: 'error',
+				frame: f.frame,
+				box: t.box,
+				subject: `"${q(shown)}"`,
+				key,
+				message: /\$ZOO(?![\p{L}\p{N}])/u.test(shown)
+					? 'the ticker "$ZOO" spells the host\'s name in capitals (owner rule: "Zoo", never "ZOO"); use another fictional ticker'
+					: HOST_CAPS.test(t.text)
+						? 'the host\'s name is written "ZOO"; the owner rule is title case "Zoo"'
+						: `the host's name is painted "ZOO" by CSS text-transform: ${t.transform}; the owner rule is title case "Zoo"`,
+				measured: {transform: t.transform ?? 'none'},
+				score: 1,
 				elementKey,
 			});
 	}

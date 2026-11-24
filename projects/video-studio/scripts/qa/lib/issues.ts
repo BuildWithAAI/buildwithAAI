@@ -8,12 +8,13 @@ export type Severity = 'error' | 'warn' | 'info';
 
 /** Checks, grouped by the six QA areas of the report. */
 export const CHECKS = {
-	// 1. text overflow and clipping
+	// 1. text overflow and clipping (plus legibility and the host-name rule)
 	'text-clipped': {area: 'text', title: 'Text clipped by its container'},
 	'text-offframe': {area: 'text', title: 'Text cut by the frame edge'},
 	'text-overflow': {area: 'text', title: 'Text spills out of its box'},
 	'text-truncated': {area: 'text', title: 'Text shortened with an ellipsis or line clamp'},
 	'text-small': {area: 'text', title: 'Text smaller than 24 px on screen'},
+	'text-name': {area: 'text', title: 'Host name in capitals ("ZOO")'},
 	// 2. safe zones
 	'safe-area': {area: 'safe', title: 'Outside the safe area'},
 	'shorts-ui': {area: 'safe', title: 'Under the Shorts player UI'},
@@ -46,7 +47,7 @@ export const CHECKS = {
 export type CheckId = keyof typeof CHECKS;
 
 export const AREAS = {
-	text: '1. Text overflow and clipping',
+	text: '1. Text: overflow, clipping, size, host name',
 	safe: '2. Safe zones',
 	faces: '3. Captions and faces',
 	contrast: '4. Text contrast',

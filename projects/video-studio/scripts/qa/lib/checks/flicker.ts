@@ -58,6 +58,9 @@ export const flickerFindings = (t: number, prev: Image, cur: Image, next: Image,
 		for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (pop[y * w + x]) count[Math.floor(y / 4) * gw + Math.floor(x / 4)]++;
 		for (let i = 0; i < gw * gh; i++) grid[i] = count[i] > 0 ? 1 : 0;
 		const {comps} = components(grid, gw, gh, 1);
+		// one finding per frame: the pop regions that are not motion, merged
+		let total = 0;
+		const boxes: Array<{x: number; y: number; w: number; h: number}> = [];
 		for (const c of comps) {
 			let area = 0;
 			for (let y = c.y0; y < c.y1; y++) for (let x = c.x0; x < c.x1; x++) area += count[y * gw + x];
@@ -67,23 +70,32 @@ export const flickerFindings = (t: number, prev: Image, cur: Image, next: Image,
 			// through: an arm swing, a head turn). A true one-frame state sits on an otherwise unchanged area.
 			const m = motionAround(box, prev, next, w, h);
 			if (m.moving >= T.flicker.motionRatio * area) continue;
+			total += area;
+			boxes.push(box);
+		}
+		if (boxes.length) {
+			const x0 = Math.min(...boxes.map((b) => b.x));
+			const y0 = Math.min(...boxes.map((b) => b.y));
+			const box = {x: x0, y: y0, w: Math.max(...boxes.map((b) => b.x + b.w)) - x0, h: Math.max(...boxes.map((b) => b.y + b.h)) - y0};
 			const what = facts ? describe(box, facts) : '';
 			out.push({
 				check: 'flicker',
 				severity: 'error',
 				frame: t,
 				box,
-				subject: `pop at ${box.x},${box.y}${what ? ` (${what})` : ''}`,
+				subject: `frame ${t}${what ? ` (${what})` : ''}`,
 				key: `${Math.round(box.x / 48)}:${Math.round(box.y / 48)}`,
-				message: `${area} px differ in frame ${t} from both frame ${t - 1} and frame ${t + 1}, which match each other: a one-frame state${what ? ` on ${what}` : ''}`,
-				measured: {px: area},
-				score: area,
+				message: `${total} px in ${boxes.length} region${boxes.length === 1 ? '' : 's'} differ in frame ${t} from both frame ${t - 1} and frame ${t + 1}, which match each other: a one-frame state${what ? ` on ${what}` : ''}`,
+				measured: {px: total, regions: boxes.length},
+				score: total,
 				thumb: {kind: 'triplet'},
 			});
 		}
 	}
 	const [m0, m1, m2] = [meanLuma(prev), meanLuma(cur), meanLuma(next)];
-	if (Math.abs(m1 - m0) > T.flicker.flashLuma && Math.abs(m1 - m2) > T.flicker.flashLuma && Math.abs(m2 - m0) < T.flicker.flashLuma / 3)
+	if (Math.abs(m1 - m0) > T.flicker.flashLuma && Math.abs(m1 - m2) > T.flicker.flashLuma && Math.abs(m2 - m0) < T.flicker.flashLuma / 3) {
+		// the flash is the defect: drop the pop finding of the same frame
+		out.length = 0;
 		out.push({
 			check: 'flash',
 			severity: 'error',
@@ -96,6 +108,7 @@ export const flickerFindings = (t: number, prev: Image, cur: Image, next: Image,
 			score: Math.abs(m1 - m0),
 			thumb: {kind: 'triplet'},
 		});
+	}
 	return out;
 };
 
@@ -182,7 +195,12 @@ export const analyseScout = (frames: Map<number, LumaFrame>, maxPops = 12): Scou
 		if (run.length >= T.scout.motionSpanFrames && strong >= 3) {
 			const s0 = run[0];
 			const e0 = run[run.length - 1] + 2; // one settling frame after the last moving one
-			if (!boundaries.some(([a, b]) => a <= e0 && s0 <= b)) boundaries.push([s0, e0]);
+			// a slide that starts or ends with a cut extends that boundary instead of being dropped
+			const hit = boundaries.find(([a, b]) => a <= e0 && s0 <= b);
+			if (hit) {
+				hit[0] = Math.min(hit[0], s0);
+				hit[1] = Math.max(hit[1], e0);
+			} else boundaries.push([s0, e0]);
 		}
 		run = [];
 		strong = 0;

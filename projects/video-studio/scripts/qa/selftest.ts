@@ -4,14 +4,14 @@
 //
 // Each fixture plants one defect class; the test asserts that every expected check fires with at least the
 // expected severity, and that nothing else reaches warning or error (the false-positive guard). The clean
-// control must pass with no warnings. Bundles once, one browser for all fixtures. Exit 0 = all pass, 1 = any fail.
+// control must pass with no warnings. Bundles once, one browser for all fixtures. Exit 0 = all pass, 1 = any fail,
+// 2 = the self-test itself could not run.
 import {cpus} from 'node:os';
-import {join} from 'node:path';
+import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {resolve} from 'node:path';
 import {openBrowser, type HeadlessBrowser} from '@remotion/renderer';
 import {browserExecutable, bundleForQa, PROJECT_ROOT} from './lib/bundle.ts';
-import {parseArgs, run} from './check.ts';
+import {parseArgs, run, type RunResult} from './check.ts';
 import type {CheckId, Severity} from './lib/issues.ts';
 
 type Expect = {comp: string; must: Array<[CheckId, Severity]>; allow?: CheckId[]};
@@ -21,7 +21,7 @@ const RANK: Record<Severity, number> = {info: 1, warn: 2, error: 3};
 /** What each fixture must report (check, minimum severity) and what else it may report. */
 export const EXPECTATIONS: Expect[] = [
 	{comp: 'QaFxClean', must: []},
-	{comp: 'QaFxText', must: [['text-clipped', 'error'], ['text-overflow', 'warn'], ['text-offframe', 'error'], ['text-small', 'warn']], allow: ['safe-area']},
+	{comp: 'QaFxText', must: [['text-clipped', 'error'], ['text-overflow', 'warn'], ['text-offframe', 'error'], ['text-small', 'warn'], ['text-name', 'error']], allow: ['safe-area']},
 	{comp: 'QaFxSafe', must: [['safe-area', 'error']], allow: ['text-face-zone']},
 	{comp: 'QaFxShorts', must: [['shorts-ui', 'error']], allow: ['safe-area']},
 	{comp: 'QaFxFaces', must: [['caption-face', 'error'], ['text-face', 'error']], allow: ['face-occluded', 'text-face-zone']},
@@ -61,7 +61,17 @@ const main = async () => {
 		for (const e of EXPECTATIONS) {
 			if (only && !only.includes(e.comp)) continue;
 			const args = parseArgs(['--entry', entry, '--comp', e.comp, '--out', join(PROJECT_ROOT, 'out', 'qa', 'selftest', e.comp), '--concurrency', String(concurrency)]);
-			const res = await run(args, {serveUrl, browser, quiet: true});
+			let res: RunResult;
+			try {
+				res = await run(args, {serveUrl, browser, quiet: true});
+			} catch (err) {
+				// one broken fixture must not hide the others' results
+				failed++;
+				const why = (err instanceof Error ? err.message : String(err)).split('\n')[0];
+				rows.push(`| ${e.comp} | ${e.must.map(([c]) => c).join(', ') || '(none: clean control)'} | 0/${e.must.length} | - | FAIL: could not run: ${why.replace(/\|/g, '\\|')} |`);
+				console.log(`FAIL ${e.comp}: could not run: ${why}`);
+				continue;
+			}
 			const problems: string[] = [];
 			for (const [check, sev] of e.must) {
 				const hit = res.issues.find((i) => i.check === check && RANK[i.severity] >= RANK[sev]);
@@ -87,4 +97,12 @@ const main = async () => {
 	return failed ? 1 : 0;
 };
 
-if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(await main());
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+	let code = 2;
+	try {
+		code = await main();
+	} catch (err) {
+		console.error(`self-test could not run: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+	}
+	process.exit(code);
+}

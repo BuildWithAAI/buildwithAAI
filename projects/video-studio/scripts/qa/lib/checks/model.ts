@@ -50,7 +50,11 @@ const biggest = (mask: Uint8Array, w: number, h: number, minArea: number) => {
 	return comps.sort((a, b) => b.area - a.area)[0] ?? null;
 };
 
-/** Pixels of the palette check: interior (3x3 uniform, fully opaque) pixels of the character. */
+/**
+ * Pixels of the palette check: interior pixels of the character (fully opaque, every 3x3 neighbour within 3
+ * levels per channel). The tolerance keeps the check working when Chrome rasterises a filtered group slightly
+ * soft; anti-aliased edges vary far more than 3 levels and stay out.
+ */
 const offPalette = (img: Image, cr: Crop, own: Uint8Array, palette: RGB[], cache: Map<number, boolean>): {interior: number; off: number; offColors: Map<number, number>} => {
 	let interior = 0;
 	let off = 0;
@@ -65,7 +69,7 @@ const offPalette = (img: Image, cr: Crop, own: Uint8Array, palette: RGB[], cache
 			for (let dy = -1; dy <= 1 && uniform; dy++)
 				for (let dx = -1; dx <= 1; dx++) {
 					const ni = gi + (dy * W + dx) * 4;
-					if (img.data[ni] !== img.data[gi] || img.data[ni + 1] !== img.data[gi + 1] || img.data[ni + 2] !== img.data[gi + 2] || img.data[ni + 3] !== 255) {
+					if (Math.abs(img.data[ni] - img.data[gi]) > 3 || Math.abs(img.data[ni + 1] - img.data[gi + 1]) > 3 || Math.abs(img.data[ni + 2] - img.data[gi + 2]) > 3 || img.data[ni + 3] !== 255) {
 						uniform = false;
 						break;
 					}
@@ -205,14 +209,14 @@ export const modelPixelFindings = (f: FrameFacts, P: Image, S: Image, refs: Char
 			const pinBox = (b: NonNullable<typeof sb>): Rect => ({x: cr.x0 + b.x0, y: cr.y0 + b.y0, w: b.x1 - b.x0, h: b.y1 - b.y0});
 			const add = (msg: string, b: Rect, sevScore: number) =>
 				out.push({check: 'model-pin', severity: 'error', frame: f.frame, box: b, subject: who, key: `${c.key}|pin|${msg.split(':')[0]}`, message: msg, measured: {view: c.view ?? '?'}, score: sevScore, thumb: {kind: 'compare', ref: 'solo-vs-ref'}, charIndex: i});
+			// one finding per frame, the most specific one (a pin on the wrong side has necessarily moved too)
+			const dist = sb && rb ? Math.hypot(sb.cx - rb.cx, sb.cy - rb.cy) : 0;
 			if (rb && !sb) add(`pin missing: the canonical ${c.view} view shows the teal pin, the scene does not`, c.box, 3);
+			else if (sb && exp === 'hidden') add(`pin visible in the ${c.view} view (manifest: hidden)`, pinBox(sb), 3);
 			else if (sb && !rb && exp !== 'right') add(`pin visible where the canonical ${c.view} view hides it`, pinBox(sb), 3);
-			else if (sb && rb) {
-				const dist = Math.hypot(cr.x0 + sb.cx - (cr.x0 + rb.cx), cr.y0 + sb.cy - (cr.y0 + rb.cy));
-				if (dist > tol) add(`pin moved: ${Math.round(dist / scale)} units from its canonical position`, pinBox(sb), 2);
-			}
-			if (sb && exp === 'right' && cr.x0 + sb.cx < originX) add(`pin on the wrong side: screen-left of Zoo's centre line in the ${c.view} view (manifest: anatomical LEFT chest = screen right)`, pinBox(sb), 4);
-			if (sb && exp === 'hidden') add(`pin visible in the ${c.view} view (manifest: hidden)`, pinBox(sb), 3);
+			else if (sb && exp === 'right' && cr.x0 + sb.cx < originX)
+				add(`pin on the wrong side: screen-left of Zoo's centre line in the ${c.view} view (manifest: anatomical LEFT chest = screen right)${rb ? `, ${Math.round(dist / scale)} units from its canonical position` : ''}`, pinBox(sb), 4);
+			else if (sb && rb && dist > tol) add(`pin moved: ${Math.round(dist / scale)} units from its canonical position`, pinBox(sb), 2);
 		} else if (c.headBox && c.headBox.x >= 0 && c.headBox.y >= 0 && c.headBox.x + c.headBox.w <= P.width && c.headBox.y + c.headBox.h <= P.height) {
 			// Badger's dark ear cap: dark (#19191C) pixels in the top 55% of the head box (head fully in frame,
 			// or a cropped head would hide the cap and leave a small marking to be mistaken for it)

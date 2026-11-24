@@ -43,9 +43,9 @@ export const measureContrast = (P: Image, Tx: Image, t: TextFact): ContrastMeasu
 			if (v > maxD) maxD = v;
 		}
 	if (maxD < T.contrast.glyphDiff) return null;
-	const thr = Math.max(T.contrast.glyphDiff, 0.25 * maxD);
+	// a fixed threshold: a relative one would drop the faint glyphs of text that is only partly low-contrast
 	const M = new Uint8Array(n);
-	for (let i = 0; i < n; i++) M[i] = d[i] >= thr ? 1 : 0;
+	for (let i = 0; i < n; i++) M[i] = d[i] >= T.contrast.glyphDiff ? 1 : 0;
 	// glyph cores: close to the declared text colour when it is a plain opaque colour, else the strongest pixels
 	const F = new Uint8Array(n);
 	let fCount = 0;
@@ -69,7 +69,6 @@ export const measureContrast = (P: Image, Tx: Image, t: TextFact): ContrastMeasu
 	const rs: number[] = [];
 	const gs: number[] = [];
 	const bs: number[] = [];
-	const behind: number[] = [];
 	for (let i = 0; i < n; i++) {
 		if (!F[i]) continue;
 		const y = Math.floor(i / w);
@@ -77,26 +76,57 @@ export const measureContrast = (P: Image, Tx: Image, t: TextFact): ContrastMeasu
 		rs.push(P.data[pi]);
 		gs.push(P.data[pi + 1]);
 		bs.push(P.data[pi + 2]);
-		behind.push(contrastRgb([P.data[pi], P.data[pi + 1], P.data[pi + 2]], [Tx.data[pi], Tx.data[pi + 1], Tx.data[pi + 2]]));
 	}
 	const textRgb: RGB = [percentile(rs, 50), percentile(gs, 50), percentile(bs, 50)];
+	// Contrast per vertical strip (about 1.5 em wide): text that is readable over one part of its background and
+	// not over another fails on its worst strip, not on an average that hides it.
+	const stripW = Math.max(32, Math.round(1.5 * Math.max(12, t.effPx || t.fontPx || 24)));
+	const strips = Math.max(1, Math.ceil(w / stripW));
+	const behind: number[][] = Array.from({length: strips}, () => []);
+	const edge: number[][] = Array.from({length: strips}, () => []);
+	for (let i = 0; i < n; i++) {
+		if (!F[i]) continue;
+		const y = Math.floor(i / w);
+		const x = i - y * w;
+		const pi = ((c.y0 + y) * P.width + c.x0 + x) * 4;
+		behind[Math.floor(x / stripW)].push(contrastRgb([P.data[pi], P.data[pi + 1], P.data[pi + 2]], [Tx.data[pi], Tx.data[pi + 1], Tx.data[pi + 2]]));
+	}
 	const d1 = dilate(F, w, h, 1);
 	const d3 = dilate(F, w, h, 3);
-	const edge: number[] = [];
 	const br: number[] = [];
 	const bg: number[] = [];
 	const bb: number[] = [];
 	for (let i = 0; i < n; i++) {
 		if (!d3[i] || d1[i] || F[i]) continue;
 		const y = Math.floor(i / w);
-		const pi = ((c.y0 + y) * P.width + c.x0 + (i - y * w)) * 4;
-		edge.push(contrastRgb(textRgb, [P.data[pi], P.data[pi + 1], P.data[pi + 2]]));
+		const x = i - y * w;
+		const pi = ((c.y0 + y) * P.width + c.x0 + x) * 4;
+		edge[Math.floor(x / stripW)].push(contrastRgb(textRgb, [P.data[pi], P.data[pi + 1], P.data[pi + 2]]));
 		br.push(Tx.data[pi]);
 		bg.push(Tx.data[pi + 1]);
 		bb.push(Tx.data[pi + 2]);
 	}
-	const pe = edge.length ? percentile(edge, T.contrast.percentile) : 0;
-	const pb = behind.length ? percentile(behind, T.contrast.percentile) : 0;
+	let pe = Infinity;
+	let pb = Infinity;
+	let worst = Infinity;
+	for (let k = 0; k < strips; k++) {
+		const e = edge[k].length >= 10 ? percentile(edge[k], T.contrast.percentile) : NaN;
+		const b = behind[k].length >= 10 ? percentile(behind[k], T.contrast.percentile) : NaN;
+		if (Number.isNaN(e) && Number.isNaN(b)) continue;
+		const v = Math.max(Number.isNaN(e) ? 0 : e, Number.isNaN(b) ? 0 : b);
+		if (v < worst) {
+			worst = v;
+			pe = Number.isNaN(e) ? 0 : e;
+			pb = Number.isNaN(b) ? 0 : b;
+		}
+	}
+	if (!Number.isFinite(worst)) {
+		// too few pixels per strip (tiny text): one strip for the whole text
+		const e = edge.flat();
+		const b = behind.flat();
+		pe = e.length ? percentile(e, T.contrast.percentile) : 0;
+		pb = b.length ? percentile(b, T.contrast.percentile) : 0;
+	}
 	return {
 		contrast: Math.round(Math.max(pe, pb) * 100) / 100,
 		behind: Math.round(pb * 100) / 100,

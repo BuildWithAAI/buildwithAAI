@@ -35,6 +35,10 @@ export const QA_PASSES: readonly QaPass[] = ['scout', 'pixels', 'textoff', 'solo
 /** Composition id of the canonical-reference composition registered next to `compId` in QA bundles. */
 export const qaRefId = (compId: string): string => `QaRef-${compId}`;
 
+/** The text as painted under a CSS text-transform value (uppercase, lowercase, capitalize; anything else unchanged). */
+export const applyTextTransform = (text: string, transform: string | undefined): string =>
+	transform === 'uppercase' ? text.toUpperCase() : transform === 'lowercase' ? text.toLowerCase() : transform === 'capitalize' ? text.replace(/(^|[^\p{L}\p{N}'’])(\p{L})/gu, (_m, pre: string, c: string) => pre + c.toUpperCase()) : text;
+
 export type Rect = {x: number; y: number; w: number; h: number};
 /** SVG/DOM affine matrix [a, b, c, d, e, f]: x' = a x + c y + e, y' = b x + d y + f. */
 export type Matrix = [number, number, number, number, number, number];
@@ -44,7 +48,10 @@ export type TextRole = 'caption' | 'badge' | 'text';
 export type TextFact = {
 	/** Stable within a frame; built from the DOM path and text index. */
 	key: string;
+	/** The DOM text (before CSS text-transform). */
 	text: string;
+	/** The computed CSS text-transform when it is not 'none' (what is painted is applyTextTransform(text, transform)). */
+	transform?: string;
 	role: TextRole;
 	kind: 'html' | 'svg';
 	/**

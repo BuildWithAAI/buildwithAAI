@@ -128,4 +128,3 @@ export class QaRenderer {
 }
 
 export const loadPng = (file: string) => decodePng(new Uint8Array(readFileSync(file)));
-export const writeJson = (file: string, data: unknown) => writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);

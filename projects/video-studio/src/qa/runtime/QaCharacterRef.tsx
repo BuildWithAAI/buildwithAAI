@@ -8,7 +8,7 @@
  * blend, clip, recolour) therefore shows up as a difference between the scene's solo pass and this render.
  */
 import React from 'react';
-import {AbsoluteFill, Freeze, useCurrentFrame, type CalculateMetadataFunction} from 'remotion';
+import {AbsoluteFill, Freeze, useCurrentFrame} from 'remotion';
 import {Badger} from '../../characters/badger/Badger';
 import {ZooRig} from '../../characters/zoo/Zoo';
 import type {RefProps} from '../protocol.ts';
@@ -35,16 +35,5 @@ export const QaCharacterRef: React.FC<RefProps> = ({items, width, height}) => {
 	);
 };
 
-export const qaRefDefaults: RefProps = {items: [], width: 1920, height: 1080, fps: 30, durationInFrames: 1};
-
-/** Size, fps and length come from the request: long enough that <Freeze> never clamps a local frame. */
-export const qaRefMetadata: CalculateMetadataFunction<RefProps> = ({props}) => {
-	const maxLocal = props.items.reduce((m, it) => Math.max(m, Math.ceil(it.localFrame) + 1), 1);
-	return {
-		width: props.width,
-		height: props.height,
-		fps: props.fps,
-		durationInFrames: Math.max(1, props.items.length, props.durationInFrames, maxLocal),
-		props,
-	};
-};
+/** Loaded lazily by the shim (`lazyComponent`), so only renders that draw a reference load src/characters. */
+export default QaCharacterRef;

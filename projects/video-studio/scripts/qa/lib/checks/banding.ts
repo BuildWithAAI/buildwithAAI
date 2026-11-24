@@ -146,24 +146,32 @@ export const gradientFindings = (f: FrameFacts, P: Image, pre: Prepared = prepar
 			for (let y = by * GB; y < (by + 1) * GB; y += 4) for (let x = bx * GB; x < (bx + 1) * GB; x += 4) txt += tm[y * w + x];
 			blocks[by * pre.gw + bx] = txt / ((GB / 4) * (GB / 4)) < 0.5 ? 1 : 0;
 		}
-	return regionsOf(blocks, pre.gw, pre.gh, T.gradient.minBlocks, P, pre.Y, GB)
-		.filter((r) => r.lumaRange >= T.gradient.minChange)
-		.map((r) => {
-			const L = lightness(r.meanRgb);
-			const frac = (r.blocks * GB * GB) / (w * h);
-			const sev = frac >= T.gradient.largeFrac || L < T.gradient.darkLstar ? 'error' : 'warn';
-			return {
-				check: 'gradient' as const,
-				severity: sev,
-				frame: f.frame,
-				box: r.rect,
-				subject: `gradient at ${Math.round(r.rect.x)},${Math.round(r.rect.y)}`,
-				key: `${Math.round(r.rect.x / 64)}:${Math.round(r.rect.y / 64)}:${Math.round(r.rect.w / 64)}:${Math.round(r.rect.h / 64)}`,
-				message: `smooth ${L < T.gradient.darkLstar ? 'dark ' : ''}gradient over ${(frac * 100).toFixed(1)}% of the frame (L* ${L.toFixed(0)}, luma range ${r.lumaRange}): it will band after YouTube's re-encode; use 2-3 flat steps (ART_GUIDE LS5)`,
-				measured: {framePercent: Number((frac * 100).toFixed(2)), lightness: Math.round(L), lumaRange: r.lumaRange},
-				score: frac * (L < T.gradient.darkLstar ? 2 : 1),
-			};
-		});
+	const regions = regionsOf(blocks, pre.gw, pre.gh, T.gradient.minBlocks, P, pre.Y, GB).filter((r) => r.lumaRange >= T.gradient.minChange);
+	if (!regions.length) return [];
+	// one finding per frame (a vignette or a soft shadow splits into many regions around the artwork)
+	const area = regions.reduce((a, r) => a + r.blocks * GB * GB, 0);
+	const frac = area / (w * h);
+	const darkest = regions.reduce((a, r) => (lightness(r.meanRgb) < lightness(a.meanRgb) ? r : a));
+	const L = lightness(darkest.meanRgb);
+	const x0 = Math.min(...regions.map((r) => r.rect.x));
+	const y0 = Math.min(...regions.map((r) => r.rect.y));
+	const box = {x: x0, y: y0, w: Math.max(...regions.map((r) => r.rect.x + r.rect.w)) - x0, h: Math.max(...regions.map((r) => r.rect.y + r.rect.h)) - y0};
+	const range = Math.max(...regions.map((r) => r.lumaRange));
+	const sev = frac >= T.gradient.largeFrac || L < T.gradient.darkLstar ? 'error' : 'warn';
+	return [
+		{
+			check: 'gradient' as const,
+			severity: sev,
+			frame: f.frame,
+			box,
+			subject: `${regions.length} gradient region${regions.length === 1 ? '' : 's'}`,
+			key: 'gradient',
+			message: `smooth ${L < T.gradient.darkLstar ? 'dark ' : ''}gradient in ${regions.length} region${regions.length === 1 ? '' : 's'} covering ${(frac * 100).toFixed(1)}% of the frame (darkest L* ${L.toFixed(0)}, luma range up to ${range}): it will band after YouTube's re-encode; use 2-3 flat steps (ART_GUIDE LS5)`,
+			measured: {framePercent: Number((frac * 100).toFixed(2)), regions: regions.length, darkestLightness: Math.round(L), lumaRange: range},
+			related: regions.slice(0, 8).map((r) => ({rect: r.rect, label: 'gradient'})),
+			score: frac * (L < T.gradient.darkLstar ? 2 : 1),
+		},
+	];
 };
 
 export const textureFindings = (f: FrameFacts, P: Image, pre: Prepared = prepareFrame(P)): Finding[] => {

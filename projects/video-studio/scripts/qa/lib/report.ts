@@ -2,8 +2,8 @@
  * Report output: out/qa/<comp>/report.md (the owner's 5-minute review: verdict, then the issues worth a look,
  * each with a thumbnail) and report.json (everything, machine-readable), plus issues/<n>-<check>.png.
  */
-import {existsSync, mkdirSync, writeFileSync} from 'node:fs';
-import {join, relative} from 'node:path';
+import {mkdirSync, writeFileSync} from 'node:fs';
+import {join} from 'node:path';
 import type {Rect} from '../../../src/qa/protocol.ts';
 import {blank, crop, fit, flatten, hstack, inflate, strokeRect, type Image, type RGBA} from './image.ts';
 import {AREAS, CHECKS, timecode, type Area, type Finding, type Issue, type Severity} from './issues.ts';
@@ -116,6 +116,11 @@ export type ReportMeta = {
 };
 
 const SEV_LABEL: Record<Severity, string> = {error: 'ERROR', warn: 'warn', info: 'info'};
+const LEGENDS: Record<string, string> = {
+	crop: 'Left: the whole frame; right: close-up. Magenta: the issue; cyan: the face, zone or box it is measured against.',
+	compare: 'Panels: the scene; the character alone as the scene composed it; the canonical render (same props, same frame); difference (red = changed).',
+	triplet: 'Panels: the frame before, the frame, the frame after.',
+};
 const mdEscape = (s: string) => s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 
 const fmtMeasured = (m: Finding['measured']) =>
@@ -162,6 +167,11 @@ export const writeReport = (outDir: string, meta: ReportMeta, issues: Issue[]): 
 			if (i.thumb) {
 				L.push('');
 				L.push(`![${i.title}, frame ${i.worst.frame}](${i.thumb})`);
+				const legend = LEGENDS[i.worst.thumb?.kind ?? 'crop'];
+				if (legend) {
+					L.push('');
+					L.push(`*${legend}*`);
+				}
 			}
 			L.push('');
 		});
@@ -199,7 +209,7 @@ export const writeReport = (outDir: string, meta: ReportMeta, issues: Issue[]): 
 				const k = `${s.who}: ${s.why}`;
 				byWhy.set(k, [...(byWhy.get(k) ?? []), s.frame]);
 			}
-			for (const [k, fr] of byWhy) L.push(`- Canonical comparison skipped for ${mdEscape(k)} (frames ${fr.slice(0, 12).join(', ')}${fr.length > 12 ? ', ...' : ''})`);
+			for (const [k, fr] of byWhy) L.push(`- Skipped ${mdEscape(k)} (frames ${fr.slice(0, 12).join(', ')}${fr.length > 12 ? ', ...' : ''})`);
 		}
 		L.push('');
 	}
@@ -237,8 +247,30 @@ export const writeReport = (outDir: string, meta: ReportMeta, issues: Issue[]): 
 	return {md: mdFile, json: jsonFile, verdict};
 };
 
-export const relPath = (from: string, to: string) => relative(from, to) || '.';
-export const ensureDir = (d: string) => {
-	if (!existsSync(d)) mkdirSync(d, {recursive: true});
-	return d;
+export type ErrorMeta = {tool: string; date: string; entry: string; comp: string; props: unknown};
+
+/**
+ * The report for a run that could not finish (the composition failed to load or render, the browser died ...):
+ * verdict ERROR with the reason, so a stale report from an earlier run is never mistaken for this one.
+ */
+export const writeErrorReport = (outDir: string, meta: ErrorMeta, reason: string): {md: string; json: string} => {
+	mkdirSync(outDir, {recursive: true});
+	const first = reason.split('\n')[0].trim();
+	const md = [
+		`# Visual QA: ${meta.comp}`,
+		'',
+		'**ERROR**: the visual check could not run, so nothing was checked. Fix the cause and run it again.',
+		'',
+		`- Composition: \`${meta.comp}\` from \`${meta.entry}\`.`,
+		`- Run: ${meta.date}.`,
+		`- Reason: ${mdEscape(first)}`,
+		'',
+		'The full error is in report.json (`error`).',
+		'',
+	].join('\n');
+	const mdFile = join(outDir, 'report.md');
+	writeFileSync(mdFile, md);
+	const jsonFile = join(outDir, 'report.json');
+	writeFileSync(jsonFile, `${JSON.stringify({...meta, verdict: 'ERROR', error: reason, issues: []}, null, 2)}\n`);
+	return {md: mdFile, json: jsonFile};
 };

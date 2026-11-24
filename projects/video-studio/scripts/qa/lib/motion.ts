@@ -70,7 +70,7 @@ export const demoteTransient = (findings: Finding[], geo: GeoMap): number => {
 export const demoteInTransitions = (findings: Finding[], transitions: Set<number>): number => {
 	let n = 0;
 	for (const f of findings) {
-		if (!transitions.has(f.frame) || f.check === 'one-frame-state' || f.check === 'banned' || f.severity === 'info') continue;
+		if (!transitions.has(f.frame) || f.check === 'one-frame-state' || f.check === 'banned' || f.check === 'text-name' || f.severity === 'info') continue;
 		f.severity = 'info';
 		if (!f.message.endsWith('(during a transition)')) f.message += ' (during a transition)';
 		n++;

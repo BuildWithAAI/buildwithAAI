@@ -33,7 +33,7 @@ import {parseFrameList, planSamples, scoutStep as autoScoutStep, type Reason} fr
 import {groupFindings, type Finding, type Issue} from './lib/issues.ts';
 import {loadManifest} from './lib/manifest.ts';
 import {loadPng, QaRenderer, scoutScale} from './lib/render.ts';
-import {renderThumb, writeReport, type ThumbSources} from './lib/report.ts';
+import {renderThumb, writeErrorReport, writeReport, type ThumbSources} from './lib/report.ts';
 import {THRESHOLDS} from './lib/thresholds.ts';
 import {zonesFor, type ShortsProfile} from './lib/zones.ts';
 import type {Image} from './lib/png.ts';
@@ -88,7 +88,7 @@ export const parseArgs = (argv: string[]): Args => {
 			case '--props': {
 				const v = val().trim();
 				let text = v;
-				if (!v.startsWith('{')) {
+				if (!/^[{[]/.test(v)) {
 					const file = resolve(v.startsWith('@') ? v.slice(1) : v);
 					if (!existsSync(file)) throw new UsageError(`--props: no such file ${v}`);
 					text = readFileSync(file, 'utf8');
@@ -147,6 +147,8 @@ export const parseArgs = (argv: string[]): Args => {
 	}
 	if (!a.entry) throw new UsageError('--entry is required');
 	if (!a.comp) throw new UsageError('--comp is required');
+	// Remotion's own rule for composition ids; it also keeps out/qa/<comp> inside out/qa
+	if (!/^[\p{L}\p{N}-]+$/u.test(a.comp)) throw new UsageError(`--comp: "${a.comp}" is not a composition id (letters, digits and "-" only)`);
 	return {
 		entry: a.entry,
 		comp: a.comp,
@@ -180,13 +182,29 @@ export const canonicalMatrix = (ctm: [number, number, number, number, number, nu
 export type RunResult = {code: number; verdict: 'PASS' | 'FAIL'; issues: Issue[]; report: string; json: string; toolErrors: string[]};
 export type Shared = {serveUrl?: string; browser?: HeadlessBrowser; quiet?: boolean};
 
+/** Runs the check; a run that cannot finish still writes report.md/json (verdict ERROR) and then rethrows. */
 export const run = async (args: Args, shared: Shared = {}): Promise<RunResult> => {
+	const outDir = resolve(args.out ?? join(PROJECT_ROOT, 'out', 'qa', args.comp));
+	for (const f of ['report.md', 'report.json']) rmSync(join(outDir, f), {force: true});
+	try {
+		return await runChecks(args, shared, outDir);
+	} catch (err) {
+		const reason = err instanceof Error ? (err.stack ?? err.message) : String(err);
+		try {
+			writeErrorReport(outDir, {tool: TOOL, date: new Date().toISOString(), entry: relToRoot(resolve(args.entry)), comp: args.comp, props: args.props}, reason);
+		} catch {
+			// the original error matters more than a failed report write
+		}
+		throw err;
+	}
+};
+
+const runChecks = async (args: Args, shared: Shared, outDir: string): Promise<RunResult> => {
 	const t0 = Date.now();
 	const timings: Record<string, number> = {};
 	const log = (m: string) => {
 		if (!shared.quiet) console.log(m);
 	};
-	const outDir = resolve(args.out ?? join(PROJECT_ROOT, 'out', 'qa', args.comp));
 	const workDir = join(outDir, 'frames');
 	rmSync(join(outDir, 'issues'), {recursive: true, force: true});
 	rmSync(workDir, {recursive: true, force: true});
@@ -282,8 +300,13 @@ export const run = async (args: Args, shared: Shared = {}): Promise<RunResult> =
 				findings.push(...extra);
 			}
 			const geo = buildGeo([...domFacts.values(), ...pFacts.values()]);
-			const withText = plan.frames.filter((f) => pFacts.get(f)?.texts.some((t) => t.role !== 'badge'));
-			const withChars = plan.frames.filter((f) => (pFacts.get(f)?.chars.length ?? 0) > 0);
+			// frames that blend two scenes get only the flicker test, so they need no textoff, solo or reference renders
+			const blendOf = (fr: number): string | null => {
+				const ff = pFacts.get(fr);
+				return ff ? blendReason(fr, ff, transitions) : null;
+			};
+			const withText = plan.frames.filter((f) => !blendOf(f) && pFacts.get(f)?.texts.some((t) => t.role !== 'badge'));
+			const withChars = plan.frames.filter((f) => !blendOf(f) && (pFacts.get(f)?.chars.length ?? 0) > 0);
 			if (withText.length) {
 				log(`  textoff: ${withText.length} frames ...`);
 				const t = await r.pass('textoff', comp, args.props, withText, {label: 'textoff'});
@@ -308,11 +331,16 @@ export const run = async (args: Args, shared: Shared = {}): Promise<RunResult> =
 				}
 				if (items.length) {
 					log(`  canonical references: ${items.length} renders ...`);
-					const refProps = {items, width: W, height: H, fps: comp.fps, durationInFrames: D};
-					const refComp = await r.select(qaRefId(args.comp), refProps, 'ref');
-					const rp = await r.pass('ref', refComp, refProps, items.map((_, i) => i), {label: 'ref'});
-					errors.push(...rp.errors);
-					for (const [i, file] of rp.files) refFile.set(keys[i], file);
+					try {
+						const refProps = {items, width: W, height: H, fps: comp.fps, durationInFrames: D};
+						const refComp = await r.select(qaRefId(args.comp), refProps, 'ref');
+						const rp = await r.pass('ref', refComp, refProps, items.map((_, i) => i), {label: 'ref'});
+						errors.push(...rp.errors);
+						for (const [i, file] of rp.files) refFile.set(keys[i], file);
+					} catch (err) {
+						// the DOM off-model checks still ran; only the pixel comparison is lost
+						errors.push(`canonical references could not be rendered, so the pixel comparison was skipped: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}`);
+					}
 				}
 			}
 			timings.render = Date.now() - tp;
@@ -345,10 +373,10 @@ export const run = async (args: Args, shared: Shared = {}): Promise<RunResult> =
 				const facts = pFacts.get(fr);
 				const img = scene(fr);
 				if (!facts || !img) continue;
-				const fading = facts.chars.some((c) => c.effects.opacity > 0.02 && c.effects.opacity < THRESHOLDS.model.minOpacity);
-				if (transitions.has(fr) || fading || overlapsScenes(facts)) {
+				const blend = blendOf(fr);
+				if (blend) {
 					// a cross-fade or wipe blends two scenes: only the flicker test below applies
-					stats.skipped.push({frame: fr, who: 'frame', why: transitions.has(fr) ? 'inside a scene transition' : 'characters fading (cross-fade)'});
+					stats.skipped.push({frame: fr, who: 'all pixel checks but flicker', why: blend});
 				} else {
 					const tf = Tfiles.get(fr);
 					if (tf) {
@@ -459,6 +487,18 @@ export const run = async (args: Args, shared: Shared = {}): Promise<RunResult> =
 /** Each character appears once per scene; two Zoos (or two Badgers) mean two scenes overlap mid-transition. */
 const overlapsScenes = (f: FrameFacts): boolean => f.chars.filter((c) => c.kind === 'zoo').length > 1 || f.chars.filter((c) => c.kind === 'badger').length > 1;
 
+/**
+ * Why a frame blends two scenes (so only the flicker test applies), or null. Characters are opaque except in a
+ * transition (layer opacity is allowed only there, ART_GUIDE CV1), so a character below full opacity marks a
+ * cross-fade even on its last frames, where the scout sees too little change to call it a transition.
+ */
+export const blendReason = (fr: number, f: FrameFacts, transitions: Set<number>): string | null => {
+	if (transitions.has(fr)) return 'inside a scene transition';
+	if (f.chars.some((c) => c.effects.opacity > 0.02 && c.effects.opacity < THRESHOLDS.model.crossFadeOpacity)) return 'a character below full opacity (cross-fade)';
+	if (overlapsScenes(f)) return 'two scenes overlap (the same character twice)';
+	return null;
+};
+
 /** The first frame of each DOM finding group (they need real pixels for the thumbnail). */
 const firstFrames = (fs: Finding[]): number[] => {
 	const first = new Map<string, number>();
@@ -480,7 +520,7 @@ if (isMain) {
 		if (err instanceof UsageError) {
 			if (err.message) console.error(err.message);
 			console.error(USAGE);
-		} else console.error(`visual QA failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+		} else console.error(`visual QA could not run (report.md says ERROR): ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
 		code = 2;
 	}
 	process.exit(code);

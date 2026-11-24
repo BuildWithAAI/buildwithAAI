@@ -166,19 +166,6 @@ export const strokeRect = (img: Image, r: Rect, color: RGBA, thickness = 3): Ima
 	return img;
 };
 
-/** Semi-transparent fill, in place. */
-export const tintRect = (img: Image, r: Rect, color: RGBA): Image => {
-	const c = clampRect(r, img.width, img.height);
-	if (!c) return img;
-	const a = color[3] / 255;
-	for (let y = c.y0; y < c.y1; y++)
-		for (let x = c.x0; x < c.x1; x++) {
-			const i = (y * img.width + x) * 4;
-			for (let k = 0; k < 3; k++) img.data[i + k] = Math.round(color[k] * a + img.data[i + k] * (1 - a));
-		}
-	return img;
-};
-
 /** Side-by-side strip with a gap, on a solid background. */
 export const hstack = (imgs: Image[], gap = 8, bg: RGBA = [32, 34, 38, 255]): Image => {
 	const w = imgs.reduce((a, i) => a + i.width, 0) + gap * (imgs.length + 1);
@@ -198,13 +185,6 @@ export const luma = (img: Image): Float32Array => {
 	const y = new Float32Array(n);
 	for (let i = 0; i < n; i++) y[i] = 0.2126 * img.data[i * 4] + 0.7152 * img.data[i * 4 + 1] + 0.0722 * img.data[i * 4 + 2];
 	return y;
-};
-
-export const alphaMask = (img: Image, threshold = 128): Uint8Array => {
-	const n = img.width * img.height;
-	const m = new Uint8Array(n);
-	for (let i = 0; i < n; i++) m[i] = img.data[i * 4 + 3] >= threshold ? 1 : 0;
-	return m;
 };
 
 /** Square dilation (Chebyshev radius r) of a 0/1 mask; separable running max. */
@@ -300,14 +280,3 @@ export const components = (mask: Uint8Array, w: number, h: number, minArea = 1):
 	return {labels, comps};
 };
 
-/** Maximum absolute channel difference per pixel (RGB only). */
-export const channelDiff = (a: Image, b: Image): Uint8Array => {
-	if (a.width !== b.width || a.height !== b.height) throw new Error(`size mismatch ${a.width}x${a.height} vs ${b.width}x${b.height}`);
-	const n = a.width * a.height;
-	const d = new Uint8Array(n);
-	for (let i = 0; i < n; i++) {
-		const o = i * 4;
-		d[i] = Math.max(Math.abs(a.data[o] - b.data[o]), Math.abs(a.data[o + 1] - b.data[o + 1]), Math.abs(a.data[o + 2] - b.data[o + 2]));
-	}
-	return d;
-};
