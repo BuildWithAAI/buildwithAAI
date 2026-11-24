@@ -1,0 +1,16 @@
+{
+  "channel": "zoora-ai",
+  "displayName": "Zoora AI",
+  "handle": "@ZooraTechnologies",
+  "zooVoice": {
+    "engine": "kokoro-onnx 0.6.1 / kokoro-v1.0.int8",
+    "default": "im_nicola",
+    "byLang": { "en": "im_nicola", "es": "im_nicola", "pt-br": "im_nicola", "hi": "im_nicola", "it": "im_nicola", "zh": "im_nicola" },
+    "speed": 1.0,
+    "decidedBy": "owner",
+    "decidedAt": "2026-11-24",
+    "note": "Owner chose Nicola for every language and accepted the Italian accent. Japanese is unsupported until a real G2P works; French is excluded."
+  },
+  "launchLanguages": ["en", "es", "pt-br"],
+  "badger": { "voice": null, "note": "Badger is nonverbal (PROJECT_INSTRUCTIONS)." }
+}
