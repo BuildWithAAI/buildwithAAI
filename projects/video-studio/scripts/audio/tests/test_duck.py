@@ -65,15 +65,57 @@ class DuckTest(unittest.TestCase):
             bed = synth.noise(4 * SR, "pink") * 0.05
             io.write(d / "bed.wav", np.vstack([bed, bed]))
             io.write(d / "voice.wav", speechlike(PATTERN))
-            with redirect_stdout(_io.StringIO()), redirect_stderr(_io.StringIO()):
-                code = duck_cli.main(["--bed", str(d / "bed.wav"), "--voice", str(d / "voice.wav"), "--out", str(d / "out.wav"), "--frames", str(d / "g.json")])
+            out_buf = _io.StringIO()
+            with redirect_stdout(out_buf), redirect_stderr(_io.StringIO()):
+                # --depth alone keeps the old broadband behaviour
+                code = duck_cli.main(["--bed", str(d / "bed.wav"), "--voice", str(d / "voice.wav"), "--out", str(d / "out.wav"), "--frames", str(d / "g.json"), "--depth", "6"])
                 missing = duck_cli.main(["--bed", str(d / "nope.wav"), "--voice", str(d / "voice.wav"), "--out", str(d / "x.wav")])
+                split = duck_cli.main(["--bed", str(d / "bed.wav"), "--voice", str(d / "voice.wav"), "--out", str(d / "split.wav"), "--frames", str(d / "s.json")])
+                bad = duck_cli.main(["--bed", str(d / "bed.wav"), "--voice", str(d / "voice.wav"), "--out", str(d / "x.wav"), "--depths", "1,2"])
             self.assertEqual(code, 0)
             out = io.read(d / "out.wav")
             self.assertEqual(out.shape, (2, 10 * SR))  # the 4 s bed was looped to the voice length
             frames = json.loads((d / "g.json").read_text())
-            self.assertEqual((frames["fps"], len(frames["gains"])), (30, 300))
+            self.assertEqual((frames["fps"], frames["mode"], len(frames["gains"])), (30, "broadband", 300))
             self.assertEqual(missing, 2)
+            self.assertEqual(split, 0)  # the default is the band-split duck
+            sf = json.loads((d / "s.json").read_text())
+            self.assertEqual((sf["mode"], sf["crossoversHz"], sf["depthsDb"]), ("split", [700.0, 5000.0], [2.0, 12.0, 4.0]))
+            self.assertEqual(sorted(sf["bands"]), ["high", "low", "mid"])
+            self.assertTrue(all(len(v) == 300 for v in sf["bands"].values()))
+            self.assertAlmostEqual(min(sf["bands"]["mid"]), 10 ** (-12 / 20), places=3)
+            summaries = [json.loads(line) for line in out_buf.getvalue().splitlines() if line.startswith("{")]
+            self.assertEqual([s["mode"] for s in summaries], ["broadband", "split"])
+            self.assertEqual(summaries[1]["gainUnderSpeechDb"], [-2.0, -12.0, -4.0])
+            self.assertEqual(bad, 2)
+
+
+class SplitDuckTest(unittest.TestCase):
+    def test_bands_sum_back_to_the_input(self):
+        x = np.vstack([synth.noise(SR, "white", "a"), synth.noise(SR, "pink", "b")]) * 0.3
+        bands = duck.split_bands(x)
+        self.assertEqual(len(bands), 3)
+        self.assertLess(float(np.max(np.abs(sum(bands) - x))), 1e-9)  # exact: no ducking means no change at all
+        with self.assertRaises(ValueError):
+            duck.split_bands(x, (5000.0, 700.0))
+        with self.assertRaises(ValueError):
+            duck.split_bands(x, (700.0, 30000.0))
+
+    def test_each_band_ducks_by_its_own_depth(self):
+        t = np.arange(4 * SR) / SR
+        act = np.zeros(t.size, dtype=bool)
+        act[SR : 3 * SR] = True
+        for f, want in ((150.0, -2.0), (2000.0, -12.0), (12000.0, -4.0)):
+            tone = np.sin(2 * np.pi * f * t)[None, :] * 0.2
+            out, gains = duck.split_duck(tone, act)
+            seg = slice(int(1.6 * SR), int(2.6 * SR))  # fully ducked, away from the ramps
+            got = 20 * np.log10(np.sqrt(np.mean(out[:, seg] ** 2)) / np.sqrt(np.mean(tone[:, seg] ** 2)))
+            self.assertAlmostEqual(got, want, delta=0.25, msg=f"{f} Hz")
+            rest = slice(int(3.8 * SR), 4 * SR)  # released again after the speech
+            self.assertAlmostEqual(float(np.sqrt(np.mean(out[:, rest] ** 2))), float(np.sqrt(np.mean(tone[:, rest] ** 2))), delta=1e-3)
+        self.assertEqual(len(gains), 3)
+        with self.assertRaises(ValueError):
+            duck.split_duck(tone, act, depths=(2.0, 12.0))
 
 
 if __name__ == "__main__":

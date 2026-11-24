@@ -135,17 +135,20 @@ YouTube publishes no loudness target; -14 LUFS-I / -1 dBTP is the community-meas
 
 ### Beds under voice: ducking (`duck.py`, `audiolib.duck`)
 
-A bed mastered at -26 LUFS-S sits about 12 LU under -14 LUFS narration before any ducking, and its 1-4 kHz pocket keeps consonants clear. Duck it further while Zoo speaks:
+A bed mastered at -26 LUFS-S sits about 12 LU under -14 LUFS narration before any ducking. Duck it further while Zoo speaks:
 
 ```bash
-python3 scripts/audio/duck.py --bed bed.wav --voice public/generated/<channel>/<slug>/en/narration.wav \
+python3 scripts/audio/duck.py --bed bed.flac --voice public/generated/<channel>/<slug>/en/narration.wav \
     --out out/audio/<slug>/bed_ducked.wav --frames out/audio/<slug>/bed_gain.json --fps 30
 ```
 
 - Speech detection: 150 Hz-4 kHz RMS in 30 ms windows every 10 ms, within 30 dB of the voice's loud level; gaps under 0.35 s (between words) stay ducked so the music does not pump, real pauses let it up. `activity_from_intervals()` takes word timings instead.
-- Gain: -6 dB under speech (`--depth`), 150 ms attack, 500 ms release, 120 ms lookahead (the duck is complete when the first word lands; the release starts only after the speech ends); straight dB ramps, interpolated per sample (no zipper noise). Starting values: tune per show (4-8 dB).
-- Output: the ducked bed (24-bit WAV, the bed looped or cut to the voice's length; loop beds must be mastered with `loop=True`), and optionally `{"fps": 30, "gains": [...]}` per-frame linear gains for `<Audio volume={(f) => gains[f]} />` when the bed plays un-ducked in Remotion.
-- Measured on the voice step's 62.6 s demo narration (`public/generated/_dev/engine-demo/en/narration.wav`, Kokoro, -14 LUFS) with the reference bed: 14 speech segments found, sentence pauses of 0.4-1.1 s opened, 58 % of the time ducked, -6.0 dB under speech, 0.0 dB in pauses, **voice 18.5 LU over the bed under speech**.
+- **Band-split duck (the default, `--mode split`).** The bed is split at 700 Hz and 5 kHz (zero-phase: a forward-backward 4th-order Butterworth per edge, Linkwitz-Riley 8th-order magnitude; the mid band is the remainder, so the bands sum back to the bed exactly) and each band is ducked by its own depth under speech: **2 / 12 / 4 dB** (`--depths`). Only the consonant band goes far down.
+  - Why (fixed 2026-11-24 after the music critic's measurements): Zoo's voice (Kokoro `im_nicola`) is dark. His F0 is 68-119 Hz (median 81-88 Hz) and his 1-2.5 kHz band sits 18-26 dB under his spectrum's peak. Under a broadband 6 dB duck the music beds left a short-time band-audibility index (ANSI S3.5 band weights, 32 ms frames) of 0.67-0.72 under the show beds, below the 0.75-0.76 of speech-shaped noise at the same loudness, with 24-29 % of speech frames under 3 dB SNR in 1-4 kHz. The band-split duck raised the index to 0.75-0.80 while the music stayed 2-3 LU more present (voice 15-17 LU over the bed instead of 18-19).
+- **Broadband duck (`--mode broadband`, or `--depth` alone):** the whole bed by `--depth` dB (default 6), as before.
+- Gain curves: 150 ms attack, 500 ms release, 120 ms lookahead (the duck is complete when the first word lands; the release starts only after the speech ends); straight dB ramps, interpolated per sample (no zipper noise).
+- Output: the ducked bed (24-bit WAV, the bed looped or cut to the voice's length; loop beds must be mastered with `loop=True`). `--frames` writes the per-frame linear gains: broadband `{"fps", "mode", "gains"}` for `<Audio volume={(f) => gains[f]} />`; split `{"fps", "mode", "crossoversHz", "depthsDb", "bands": {"low", "mid", "high"}}`. One volume curve cannot apply a band-split duck, so in Remotion play the ducked WAV.
+- Measured on the voice step's 62.6 s demo narration (`public/generated/_dev/engine-demo/en/narration.wav`, Kokoro, -14 LUFS) with the reference bed and the broadband 6 dB duck: 14 speech segments found, sentence pauses of 0.4-1.1 s opened, 58 % of the time ducked, -6.0 dB under speech, 0.0 dB in pauses, voice 18.5 LU over the bed under speech. The music package's own measurements with the band-split duck are in `scripts/audio/music/README.md`.
 - Keep SFX accents for punchlines in the gaps between lines.
 
 **Final program loudness.** The narration is normalised to -14 LUFS as a mono file. ffmpeg's mono-to-stereo upmix applies -3 dB per side, so it stays -14 LUFS as stereo (measured: -13.9 mono, -14.0 upmixed); a plain copy of the mono channel to both sides at unity reads +3 LU (-11 LUFS). Whatever the renderer does, measure the delivered stereo program (extract the MP4's audio, run `metrics.py --profile standalone`), and when the voice + bed + SFX mix is built in Python, finish it with `master.master(mix, "standalone")`.

@@ -17,8 +17,9 @@ first word lands, and releases only after the speech ends. Starting values (150 
 broadcast practice; tune them by ear per show.
 
 Band-split ducking (`split_duck`, the default of scripts/audio/duck.py): the bed is split into
-low / mid / high bands (zero-phase Linkwitz-Riley magnitude, crossovers at 700 Hz and 5 kHz; the
-mid band is the remainder, so the three bands sum back to the input exactly) and each band is
+low / mid / high bands (zero-phase, Linkwitz-Riley 8th-order magnitude from a forward-backward
+4th-order Butterworth, crossovers at 700 Hz and 5 kHz; the mid band is the remainder, so the three
+bands sum back to the input exactly) and each band is
 ducked by its own depth under speech: VOICE_DEPTHS = 2 / 12 / 4 dB. Why: a broadband 6 dB duck
 turns the whole bed down although only the consonant band masks the narration. Measured with
 Kokoro im_nicola (Zoo; F0 68-119 Hz, a 1-2.5 kHz spectrum 18-26 dB under its peak) on the music
@@ -113,13 +114,14 @@ def apply_gain(audio, gain_db: np.ndarray) -> np.ndarray:
     return a * np.power(10.0, gain_db / 20.0)
 
 
-def split_bands(audio, crossovers=VOICE_CROSSOVERS, sr: int = SR) -> list:
+def split_bands(audio, crossovers=VOICE_CROSSOVERS, sr: int = SR, order: int = 4) -> list:
     """Split audio into len(crossovers) + 1 bands that sum back to the input exactly.
 
-    Each band edge is a zero-phase (forward-backward) 2nd-order Butterworth, i.e. a Linkwitz-Riley
-    4th-order magnitude (-6 dB at the crossover) with no phase shift; the bands between two edges
-    are the remainder (input minus the bands below and above), so nothing is lost or smeared when
-    no band is ducked. Offline use (it is non-causal)."""
+    Each band edge is a zero-phase (forward-backward) Butterworth low-pass of `order`: the
+    magnitude is the Butterworth's squared, i.e. Linkwitz-Riley of twice the order (-6 dB at the
+    crossover; order 4 = 48 dB/octave, the split the critic measured), with no phase shift. The
+    bands between two edges are the remainder (input minus the bands below and above), so nothing
+    is lost or smeared when no band is ducked. Offline use (it is non-causal)."""
     from .dsp import apply_sos, butter
 
     a = as_channels(audio).astype(np.float64)
@@ -128,7 +130,7 @@ def split_bands(audio, crossovers=VOICE_CROSSOVERS, sr: int = SR) -> list:
         raise ValueError("crossovers must rise strictly between 0 and Nyquist")
     if not xs:
         return [a]
-    lows = [apply_sos(a, butter("lowpass", f, 2, sr), zero_phase=True) for f in xs]
+    lows = [apply_sos(a, butter("lowpass", f, order, sr), zero_phase=True) for f in xs]
     bands = [lows[0]]
     for k in range(1, len(xs)):
         bands.append(lows[k] - lows[k - 1])
