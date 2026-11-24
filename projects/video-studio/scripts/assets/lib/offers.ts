@@ -37,7 +37,20 @@ export const loadRegistry = (path: string): Offer[] => {
 	});
 };
 
-export const selectOffers = (ids: string[], registry: Offer[] | null, registryPath: string | null, now: Date): OfferSelection => {
+/**
+ * Disclosures must be in the language of the page or post (FTC: a disclosure in a different language from the
+ * endorsement is not clear). The registry holds one (English) disclosure per offer, so for any other language an offer
+ * is used only when config/channels.json "offerDisclosures" has an owner-approved translation for it.
+ */
+export type LocalizedDisclosures = Record<string, Record<string, string>>;
+
+export const selectOffers = (
+	ids: string[],
+	registry: Offer[] | null,
+	registryPath: string | null,
+	now: Date,
+	opts: {lang?: string; localized?: LocalizedDisclosures} = {},
+): OfferSelection => {
 	const wanted = [...new Set(ids)];
 	if (!registry) return {offers: [], leftOut: wanted.map((id) => ({id, reason: 'no offer registry was given, so no offer can be checked'})), registryPath};
 	const offers: UsableOffer[] = [];
@@ -60,8 +73,11 @@ export const selectOffers = (ids: string[], registry: Offer[] | null, registryPa
 								: !DISCLOSURE_WORDS.test(o.disclosure)
 									? 'its disclosure does not say what the relationship is'
 									: null;
+		const lang = opts.lang ?? 'en';
+		const translated = lang === 'en' ? o?.disclosure.trim() : opts.localized?.[id]?.[lang]?.trim();
 		if (why || !o) leftOut.push({id, reason: why ?? 'unknown'});
-		else offers.push({id: o.id, name: o.name, disclosure: o.disclosure.trim(), relationship: o.relationship});
+		else if (!translated) leftOut.push({id, reason: `no ${lang} disclosure (add an owner-approved translation under "offerDisclosures" in config/channels.json)`});
+		else offers.push({id: o.id, name: o.name, disclosure: translated, relationship: o.relationship});
 	}
 	return {offers, leftOut, registryPath};
 };

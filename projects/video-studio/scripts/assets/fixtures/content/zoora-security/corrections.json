@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "corrections": [
+    {
+      "id": "c1",
+      "slug": "fixture-fake-support",
+      "date": "2026-11-25",
+      "correct": "The FTC page linked below is general consumer guidance; it does not describe this specific message.",
+      "sourceIds": ["ftc-crypto-scams"],
+      "status": "pinned"
+    },
+    {
+      "id": "c2",
+      "slug": "another-episode",
+      "date": "2026-11-25",
+      "correct": "Not for this episode.",
+      "sourceIds": [],
+      "status": "pinned"
+    }
+  ]
+}

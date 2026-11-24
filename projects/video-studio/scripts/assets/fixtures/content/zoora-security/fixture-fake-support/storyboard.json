@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "fixture-fake-support",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Support never DMs you first",
+  "fiction": false,
+  "news": {"format": "explainer"},
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "A stranger in your DMs says he works for wallet support. He wants you to verify your wallet. Badger already hates this.",
+      "onScreen": {"kicker": "Scam of the Week", "title": "Support never DMs you first"},
+      "badger": {"present": true, "reaction": "judge"}
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Here is how the trick works. The scammer watches public help channels. When you ask a question in public, he messages you first, acts friendly, and sends a link to a fake verification page. [src:ftc-crypto-scams]",
+      "onScreen": {"title": "How the fake support trick works", "bullets": ["They watch public help channels", "They message you first", "They send a fake verification link"]},
+      "badger": {"present": true, "reaction": "worried"}
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "narration": "Badger's Red Flag: a countdown. The page says your wallet will be frozen in {10|ten} minutes unless you type your recovery phrase. Real support never asks for it. [src:ftc-crypto-scams]",
+      "onScreen": {"title": "Badger's Red Flag: the countdown"},
+      "badger": {"present": true, "reaction": "shocked"},
+      "minDurationSec": 13
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Zoo's One Fix. Only use support links from the official website, never from a direct message. Never type your recovery phrase into any page. And if you lost money, report it. [src:ftc-report]",
+      "onScreen": {"title": "Zoo's One Fix", "steps": ["Use support links from the official website only", "Never type your recovery phrase into a page", "Report the account, then block it"]},
+      "badger": {"present": false}
+    },
+    {
+      "id": "s05",
+      "type": "cta",
+      "narration": "If this saved you a bad afternoon, subscribe. Badger will keep judging the links, so you don't have to.",
+      "onScreen": {"title": "Subscribe"},
+      "badger": {"present": true, "reaction": "happy"}
+    },
+    {
+      "id": "s06",
+      "type": "endscreen",
+      "narration": "Next week: what we know about this month's biggest exploit.",
+      "onScreen": {"title": "Next week"},
+      "badger": {"present": true, "reaction": "lookUp"}
+    }
+  ],
+  "sources": [
+    {
+      "id": "ftc-crypto-scams",
+      "title": "FTC: What To Know About Cryptocurrency and Scams",
+      "url": "https://consumer.ftc.gov/articles/what-know-about-cryptocurrency-and-scams",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "ftc-report",
+      "title": "FTC: ReportFraud.ftc.gov",
+      "url": "https://reportfraud.ftc.gov/",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "offers": ["hardware-wallet", "exchange-demo"]
+}

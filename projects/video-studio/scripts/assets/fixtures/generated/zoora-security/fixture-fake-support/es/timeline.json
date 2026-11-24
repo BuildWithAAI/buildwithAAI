@@ -1,0 +1,850 @@
+{
+ "version": 1,
+ "slug": "fixture-fake-support",
+ "lang": "es",
+ "mode": "native",
+ "voice": "im_nicola",
+ "speed": 1,
+ "model": {
+  "file": "kokoro-v1.0.int8.onnx",
+  "sha256": "fixture-not-a-real-render"
+ },
+ "sampleRate": 24000,
+ "fps": 30,
+ "totalMs": 64200,
+ "scenes": [
+  {
+   "id": "s01",
+   "audio": "generated/zoora-security/fixture-fake-support/es/scenes/s01.wav",
+   "startMs": 0,
+   "durationMs": 10500,
+   "speechMs": 10130,
+   "words": [
+    {
+     "text": "Un",
+     "startMs": 120,
+     "endMs": 300
+    },
+    {
+     "text": "desconocido",
+     "startMs": 370,
+     "endMs": 890
+    },
+    {
+     "text": "te",
+     "startMs": 960,
+     "endMs": 1140
+    },
+    {
+     "text": "escribe",
+     "startMs": 1210,
+     "endMs": 1700
+    },
+    {
+     "text": "y",
+     "startMs": 1770,
+     "endMs": 1950
+    },
+    {
+     "text": "dice",
+     "startMs": 2020,
+     "endMs": 2300
+    },
+    {
+     "text": "que",
+     "startMs": 2370,
+     "endMs": 2580
+    },
+    {
+     "text": "trabaja",
+     "startMs": 2650,
+     "endMs": 3140
+    },
+    {
+     "text": "en",
+     "startMs": 3210,
+     "endMs": 3390
+    },
+    {
+     "text": "el",
+     "startMs": 3460,
+     "endMs": 3640
+    },
+    {
+     "text": "soporte",
+     "startMs": 3710,
+     "endMs": 4200
+    },
+    {
+     "text": "de",
+     "startMs": 4270,
+     "endMs": 4450
+    },
+    {
+     "text": "tu",
+     "startMs": 4520,
+     "endMs": 4700
+    },
+    {
+     "text": "monedero.",
+     "startMs": 4770,
+     "endMs": 5290
+    },
+    {
+     "text": "Quiere",
+     "startMs": 5550,
+     "endMs": 5970
+    },
+    {
+     "text": "que",
+     "startMs": 6040,
+     "endMs": 6250
+    },
+    {
+     "text": "verifiques",
+     "startMs": 6320,
+     "endMs": 6840
+    },
+    {
+     "text": "tu",
+     "startMs": 6910,
+     "endMs": 7090
+    },
+    {
+     "text": "monedero.",
+     "startMs": 7160,
+     "endMs": 7680
+    },
+    {
+     "text": "A",
+     "startMs": 7940,
+     "endMs": 8120
+    },
+    {
+     "text": "Badger",
+     "startMs": 8190,
+     "endMs": 8610
+    },
+    {
+     "text": "ya",
+     "startMs": 8680,
+     "endMs": 8860
+    },
+    {
+     "text": "no",
+     "startMs": 8930,
+     "endMs": 9110
+    },
+    {
+     "text": "le",
+     "startMs": 9180,
+     "endMs": 9360
+    },
+    {
+     "text": "gusta",
+     "startMs": 9430,
+     "endMs": 9780
+    },
+    {
+     "text": "nada.",
+     "startMs": 9850,
+     "endMs": 10130
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s02",
+   "audio": "generated/zoora-security/fixture-fake-support/es/scenes/s02.wav",
+   "startMs": 10500,
+   "durationMs": 15000,
+   "speechMs": 14600,
+   "words": [
+    {
+     "text": "Así",
+     "startMs": 120,
+     "endMs": 330
+    },
+    {
+     "text": "funciona",
+     "startMs": 400,
+     "endMs": 920
+    },
+    {
+     "text": "el",
+     "startMs": 990,
+     "endMs": 1170
+    },
+    {
+     "text": "truco.",
+     "startMs": 1240,
+     "endMs": 1590
+    },
+    {
+     "text": "El",
+     "startMs": 1850,
+     "endMs": 2030
+    },
+    {
+     "text": "estafador",
+     "startMs": 2100,
+     "endMs": 2620
+    },
+    {
+     "text": "vigila",
+     "startMs": 2690,
+     "endMs": 3110
+    },
+    {
+     "text": "los",
+     "startMs": 3180,
+     "endMs": 3390
+    },
+    {
+     "text": "canales",
+     "startMs": 3460,
+     "endMs": 3950
+    },
+    {
+     "text": "de",
+     "startMs": 4020,
+     "endMs": 4200
+    },
+    {
+     "text": "ayuda",
+     "startMs": 4270,
+     "endMs": 4620
+    },
+    {
+     "text": "públicos.",
+     "startMs": 4690,
+     "endMs": 5210
+    },
+    {
+     "text": "Cuando",
+     "startMs": 5470,
+     "endMs": 5890
+    },
+    {
+     "text": "haces",
+     "startMs": 5960,
+     "endMs": 6310
+    },
+    {
+     "text": "una",
+     "startMs": 6380,
+     "endMs": 6590
+    },
+    {
+     "text": "pregunta",
+     "startMs": 6660,
+     "endMs": 7180
+    },
+    {
+     "text": "en",
+     "startMs": 7250,
+     "endMs": 7430
+    },
+    {
+     "text": "público,",
+     "startMs": 7500,
+     "endMs": 7990
+    },
+    {
+     "text": "te",
+     "startMs": 8060,
+     "endMs": 8240
+    },
+    {
+     "text": "escribe",
+     "startMs": 8310,
+     "endMs": 8800
+    },
+    {
+     "text": "primero,",
+     "startMs": 8870,
+     "endMs": 9360
+    },
+    {
+     "text": "se",
+     "startMs": 9430,
+     "endMs": 9610
+    },
+    {
+     "text": "muestra",
+     "startMs": 9680,
+     "endMs": 10170
+    },
+    {
+     "text": "amable",
+     "startMs": 10240,
+     "endMs": 10660
+    },
+    {
+     "text": "y",
+     "startMs": 10730,
+     "endMs": 10910
+    },
+    {
+     "text": "te",
+     "startMs": 10980,
+     "endMs": 11160
+    },
+    {
+     "text": "envía",
+     "startMs": 11230,
+     "endMs": 11580
+    },
+    {
+     "text": "un",
+     "startMs": 11650,
+     "endMs": 11830
+    },
+    {
+     "text": "enlace",
+     "startMs": 11900,
+     "endMs": 12320
+    },
+    {
+     "text": "a",
+     "startMs": 12390,
+     "endMs": 12570
+    },
+    {
+     "text": "una",
+     "startMs": 12640,
+     "endMs": 12850
+    },
+    {
+     "text": "página",
+     "startMs": 12920,
+     "endMs": 13340
+    },
+    {
+     "text": "de",
+     "startMs": 13410,
+     "endMs": 13590
+    },
+    {
+     "text": "verificación",
+     "startMs": 13660,
+     "endMs": 14180
+    },
+    {
+     "text": "falsa.",
+     "startMs": 14250,
+     "endMs": 14600
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s03",
+   "audio": "generated/zoora-security/fixture-fake-support/es/scenes/s03.wav",
+   "startMs": 25500,
+   "durationMs": 13200,
+   "speechMs": 12850,
+   "words": [
+    {
+     "text": "La",
+     "startMs": 120,
+     "endMs": 300
+    },
+    {
+     "text": "señal",
+     "startMs": 370,
+     "endMs": 720
+    },
+    {
+     "text": "de",
+     "startMs": 790,
+     "endMs": 970
+    },
+    {
+     "text": "alarma",
+     "startMs": 1040,
+     "endMs": 1460
+    },
+    {
+     "text": "de",
+     "startMs": 1530,
+     "endMs": 1710
+    },
+    {
+     "text": "Badger:",
+     "startMs": 1780,
+     "endMs": 2200
+    },
+    {
+     "text": "una",
+     "startMs": 2460,
+     "endMs": 2670
+    },
+    {
+     "text": "cuenta",
+     "startMs": 2740,
+     "endMs": 3160
+    },
+    {
+     "text": "atrás.",
+     "startMs": 3230,
+     "endMs": 3580
+    },
+    {
+     "text": "La",
+     "startMs": 3840,
+     "endMs": 4020
+    },
+    {
+     "text": "página",
+     "startMs": 4090,
+     "endMs": 4510
+    },
+    {
+     "text": "dice",
+     "startMs": 4580,
+     "endMs": 4860
+    },
+    {
+     "text": "que",
+     "startMs": 4930,
+     "endMs": 5140
+    },
+    {
+     "text": "tu",
+     "startMs": 5210,
+     "endMs": 5390
+    },
+    {
+     "text": "monedero",
+     "startMs": 5460,
+     "endMs": 5980
+    },
+    {
+     "text": "se",
+     "startMs": 6050,
+     "endMs": 6230
+    },
+    {
+     "text": "congelará",
+     "startMs": 6300,
+     "endMs": 6820
+    },
+    {
+     "text": "en",
+     "startMs": 6890,
+     "endMs": 7070
+    },
+    {
+     "text": "10",
+     "startMs": 7140,
+     "endMs": 7320
+    },
+    {
+     "text": "minutos",
+     "startMs": 7390,
+     "endMs": 7880
+    },
+    {
+     "text": "si",
+     "startMs": 7950,
+     "endMs": 8130
+    },
+    {
+     "text": "no",
+     "startMs": 8200,
+     "endMs": 8380
+    },
+    {
+     "text": "escribes",
+     "startMs": 8450,
+     "endMs": 8970
+    },
+    {
+     "text": "tu",
+     "startMs": 9040,
+     "endMs": 9220
+    },
+    {
+     "text": "frase",
+     "startMs": 9290,
+     "endMs": 9640
+    },
+    {
+     "text": "de",
+     "startMs": 9710,
+     "endMs": 9890
+    },
+    {
+     "text": "recuperación.",
+     "startMs": 9960,
+     "endMs": 10480
+    },
+    {
+     "text": "El",
+     "startMs": 10740,
+     "endMs": 10920
+    },
+    {
+     "text": "soporte",
+     "startMs": 10990,
+     "endMs": 11480
+    },
+    {
+     "text": "real",
+     "startMs": 11550,
+     "endMs": 11830
+    },
+    {
+     "text": "nunca",
+     "startMs": 11900,
+     "endMs": 12250
+    },
+    {
+     "text": "la",
+     "startMs": 12320,
+     "endMs": 12500
+    },
+    {
+     "text": "pide.",
+     "startMs": 12570,
+     "endMs": 12850
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s04",
+   "audio": "generated/zoora-security/fixture-fake-support/es/scenes/s04.wav",
+   "startMs": 38700,
+   "durationMs": 13700,
+   "speechMs": 13330,
+   "words": [
+    {
+     "text": "El",
+     "startMs": 120,
+     "endMs": 300
+    },
+    {
+     "text": "consejo",
+     "startMs": 370,
+     "endMs": 860
+    },
+    {
+     "text": "de",
+     "startMs": 930,
+     "endMs": 1110
+    },
+    {
+     "text": "Zoo.",
+     "startMs": 1180,
+     "endMs": 1390
+    },
+    {
+     "text": "Usa",
+     "startMs": 1650,
+     "endMs": 1860
+    },
+    {
+     "text": "solo",
+     "startMs": 1930,
+     "endMs": 2210
+    },
+    {
+     "text": "enlaces",
+     "startMs": 2280,
+     "endMs": 2770
+    },
+    {
+     "text": "de",
+     "startMs": 2840,
+     "endMs": 3020
+    },
+    {
+     "text": "soporte",
+     "startMs": 3090,
+     "endMs": 3580
+    },
+    {
+     "text": "de",
+     "startMs": 3650,
+     "endMs": 3830
+    },
+    {
+     "text": "la",
+     "startMs": 3900,
+     "endMs": 4080
+    },
+    {
+     "text": "web",
+     "startMs": 4150,
+     "endMs": 4360
+    },
+    {
+     "text": "oficial,",
+     "startMs": 4430,
+     "endMs": 4920
+    },
+    {
+     "text": "nunca",
+     "startMs": 4990,
+     "endMs": 5340
+    },
+    {
+     "text": "de",
+     "startMs": 5410,
+     "endMs": 5590
+    },
+    {
+     "text": "un",
+     "startMs": 5660,
+     "endMs": 5840
+    },
+    {
+     "text": "mensaje",
+     "startMs": 5910,
+     "endMs": 6400
+    },
+    {
+     "text": "directo.",
+     "startMs": 6470,
+     "endMs": 6960
+    },
+    {
+     "text": "Nunca",
+     "startMs": 7220,
+     "endMs": 7570
+    },
+    {
+     "text": "escribas",
+     "startMs": 7640,
+     "endMs": 8160
+    },
+    {
+     "text": "tu",
+     "startMs": 8230,
+     "endMs": 8410
+    },
+    {
+     "text": "frase",
+     "startMs": 8480,
+     "endMs": 8830
+    },
+    {
+     "text": "de",
+     "startMs": 8900,
+     "endMs": 9080
+    },
+    {
+     "text": "recuperación",
+     "startMs": 9150,
+     "endMs": 9670
+    },
+    {
+     "text": "en",
+     "startMs": 9740,
+     "endMs": 9920
+    },
+    {
+     "text": "ninguna",
+     "startMs": 9990,
+     "endMs": 10480
+    },
+    {
+     "text": "página.",
+     "startMs": 10550,
+     "endMs": 10970
+    },
+    {
+     "text": "Y",
+     "startMs": 11230,
+     "endMs": 11410
+    },
+    {
+     "text": "si",
+     "startMs": 11480,
+     "endMs": 11660
+    },
+    {
+     "text": "perdiste",
+     "startMs": 11730,
+     "endMs": 12250
+    },
+    {
+     "text": "dinero,",
+     "startMs": 12320,
+     "endMs": 12740
+    },
+    {
+     "text": "denúncialo.",
+     "startMs": 12810,
+     "endMs": 13330
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s05",
+   "audio": "generated/zoora-security/fixture-fake-support/es/scenes/s05.wav",
+   "startMs": 52400,
+   "durationMs": 6600,
+   "speechMs": 6230,
+   "words": [
+    {
+     "text": "Si",
+     "startMs": 120,
+     "endMs": 300
+    },
+    {
+     "text": "esto",
+     "startMs": 370,
+     "endMs": 650
+    },
+    {
+     "text": "te",
+     "startMs": 720,
+     "endMs": 900
+    },
+    {
+     "text": "ahorró",
+     "startMs": 970,
+     "endMs": 1390
+    },
+    {
+     "text": "una",
+     "startMs": 1460,
+     "endMs": 1670
+    },
+    {
+     "text": "mala",
+     "startMs": 1740,
+     "endMs": 2020
+    },
+    {
+     "text": "tarde,",
+     "startMs": 2090,
+     "endMs": 2440
+    },
+    {
+     "text": "suscríbete.",
+     "startMs": 2510,
+     "endMs": 3030
+    },
+    {
+     "text": "Badger",
+     "startMs": 3290,
+     "endMs": 3710
+    },
+    {
+     "text": "seguirá",
+     "startMs": 3780,
+     "endMs": 4270
+    },
+    {
+     "text": "juzgando",
+     "startMs": 4340,
+     "endMs": 4860
+    },
+    {
+     "text": "los",
+     "startMs": 4930,
+     "endMs": 5140
+    },
+    {
+     "text": "enlaces",
+     "startMs": 5210,
+     "endMs": 5700
+    },
+    {
+     "text": "por",
+     "startMs": 5770,
+     "endMs": 5980
+    },
+    {
+     "text": "ti.",
+     "startMs": 6050,
+     "endMs": 6230
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s06",
+   "audio": "generated/zoora-security/fixture-fake-support/es/scenes/s06.wav",
+   "startMs": 59000,
+   "durationMs": 5200,
+   "speechMs": 4520,
+   "words": [
+    {
+     "text": "La",
+     "startMs": 120,
+     "endMs": 300
+    },
+    {
+     "text": "semana",
+     "startMs": 370,
+     "endMs": 790
+    },
+    {
+     "text": "que",
+     "startMs": 860,
+     "endMs": 1070
+    },
+    {
+     "text": "viene:",
+     "startMs": 1140,
+     "endMs": 1490
+    },
+    {
+     "text": "lo",
+     "startMs": 1750,
+     "endMs": 1930
+    },
+    {
+     "text": "que",
+     "startMs": 2000,
+     "endMs": 2210
+    },
+    {
+     "text": "sabemos",
+     "startMs": 2280,
+     "endMs": 2770
+    },
+    {
+     "text": "del",
+     "startMs": 2840,
+     "endMs": 3050
+    },
+    {
+     "text": "mayor",
+     "startMs": 3120,
+     "endMs": 3470
+    },
+    {
+     "text": "ataque",
+     "startMs": 3540,
+     "endMs": 3960
+    },
+    {
+     "text": "del",
+     "startMs": 4030,
+     "endMs": 4240
+    },
+    {
+     "text": "mes.",
+     "startMs": 4310,
+     "endMs": 4520
+    }
+   ],
+   "mouth": []
+  }
+ ],
+ "loudness": {
+  "integratedLufs": -14,
+  "truePeakDb": -1.2
+ },
+ "warnings": [
+  "FIXTURE: hand-made word timings for scripts/assets tests (not Kokoro output). mouth[] is trimmed to keep the fixture small."
+ ],
+ "narration": "generated/zoora-security/fixture-fake-support/es/narration.wav"
+}

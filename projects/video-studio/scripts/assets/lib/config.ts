@@ -43,6 +43,8 @@ export type ChannelConfig = {
 	podcastMinSec: number;
 	youtubeChannelUrl: string | null;
 	hashtags: Record<string, string[]>;
+	/** Owner-approved translations of offer disclosures: {offerId: {lang: text}} (English comes from the registry). */
+	offerDisclosures: Record<string, Record<string, string>>;
 	podcast: PodcastConfig;
 };
 
@@ -130,6 +132,17 @@ export const loadChannelConfig = (file: string, channel: string): ChannelConfig 
 			if (Array.isArray(tags)) hashtags[lang] = tags.filter((t): t is string => typeof t === 'string' && /^[\p{L}\p{N}_]{2,40}$/u.test(t));
 		}
 	}
+	const offerDisclosures: Record<string, Record<string, string>> = {};
+	for (const src of [d.offerDisclosures, c.offerDisclosures]) {
+		if (!isRecord(src)) continue;
+		for (const [id, byLang] of Object.entries(src)) {
+			if (!isRecord(byLang)) throw new InputError(`${file}: offerDisclosures.${id} must be an object of {lang: text}`);
+			for (const [lang, text] of Object.entries(byLang)) {
+				if (typeof text !== 'string' || !text.trim()) throw new InputError(`${file}: offerDisclosures.${id}.${lang} must be a non-empty string`);
+				(offerDisclosures[id] ??= {})[lang] = text.trim();
+			}
+		}
+	}
 	const minSec = c.podcastMinSec ?? d.podcastMinSec;
 	return {
 		channel,
@@ -142,6 +155,7 @@ export const loadChannelConfig = (file: string, channel: string): ChannelConfig 
 		podcastMinSec: typeof minSec === 'number' && minSec >= 0 ? minSec : 180,
 		youtubeChannelUrl: httpsUrl(c.youtubeChannelUrl, `channels.${channel}.youtubeChannelUrl`, true),
 		hashtags,
+		offerDisclosures,
 		podcast: {
 			enabled: p.enabled === true,
 			reason: typeof p.reason === 'string' ? p.reason : null,

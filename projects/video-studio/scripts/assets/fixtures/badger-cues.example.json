@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "notes": "Example only (scripts/assets/lib/podcast.ts documents the format). Put the real file at public/generated/<channel>/<slug>/<lang>/badger-cues.json; clip paths are relative to it. A cue must not overlap Zoo's words.",
+  "cues": [
+    {"clip": "clips/badger-huff-01.wav", "atMs": 35400, "gainDb": -3, "label": "huff after Badger's Red Flag"}
+  ]
+}

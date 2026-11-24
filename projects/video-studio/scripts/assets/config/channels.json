@@ -19,17 +19,32 @@
         "notes": "Optional mirror on the zoora.ai GitHub Pages site. LAUNCH.md copy rules apply there, so this build carries no offer links."
       }
     },
-    "newsletterLangs": ["en"],
-    "podcastMinSec": 180
+    "newsletterLangs": [
+      "en"
+    ],
+    "podcastMinSec": 180,
+    "offerDisclosures": {}
   },
   "channels": {
     "zoora-security": {
       "displayName": "The Zoo & Badger Show",
       "youtubeChannelUrl": null,
       "hashtags": {
-        "en": ["CryptoSecurity", "AISecurity", "ScamAlert"],
-        "es": ["SeguridadCripto", "SeguridadIA", "Estafas"],
-        "pt-br": ["SegurancaCripto", "SegurancaIA", "Golpes"]
+        "en": [
+          "CryptoSecurity",
+          "AISecurity",
+          "ScamAlert"
+        ],
+        "es": [
+          "SeguridadCripto",
+          "SeguridadIA",
+          "Estafas"
+        ],
+        "pt-br": [
+          "SegurancaCripto",
+          "SegurancaIA",
+          "Golpes"
+        ]
       },
       "podcast": {
         "enabled": true,
@@ -46,7 +61,15 @@
             "mediaBase": null,
             "imageUrl": null,
             "link": "https://go.zoora.ai/articles/zoora-security/",
-            "categories": [["Technology"], ["News", "Tech News"]],
+            "categories": [
+              [
+                "Technology"
+              ],
+              [
+                "News",
+                "Tech News"
+              ]
+            ],
             "explicit": false,
             "type": "episodic",
             "copyright": "© 2026 Zoora AI",
@@ -60,9 +83,21 @@
       "displayName": "Zoora AI",
       "youtubeChannelUrl": "https://www.youtube.com/@ZooraTechnologies",
       "hashtags": {
-        "en": ["CryptoScams", "AI", "Memecoins"],
-        "es": ["Cripto", "IA", "Estafas"],
-        "pt-br": ["Cripto", "IA", "Golpes"]
+        "en": [
+          "CryptoScams",
+          "AI",
+          "Memecoins"
+        ],
+        "es": [
+          "Cripto",
+          "IA",
+          "Estafas"
+        ],
+        "pt-br": [
+          "Cripto",
+          "IA",
+          "Golpes"
+        ]
       },
       "podcast": {
         "enabled": false,

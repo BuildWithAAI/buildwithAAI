@@ -53,7 +53,7 @@ const PLACEHOLDERS: readonly Rule[] = [
 /** "ZOO" as a standalone word in capitals (ZOORA and Zoo are fine). */
 const ZOO_CAPS = /(?<![\p{L}\p{N}])ZOO(?![\p{L}\p{N}])/u;
 
-const snippet = (text: string, index: number, length: number): string => {
+const rawSnippet = (text: string, index: number, length: number): string => {
 	const start = Math.max(0, index - 25);
 	return `${start > 0 ? '…' : ''}${text.slice(start, index + length + 25).replace(/\s+/g, ' ').trim()}…`;
 };
@@ -74,10 +74,15 @@ export const namePatterns = (names: string[]): RegExp[] =>
 
 export type LintContext = {names: RegExp[]; transcript?: boolean};
 
+/** Replaces every private name in `text` with "[private name]" (messages, manifests and logs never carry one). */
+export const redact = (text: string, names: RegExp[]): string =>
+	names.reduce((acc, re) => acc.replace(new RegExp(re.source, `${re.flags.replace('g', '')}g`), '[private name]'), text.normalize('NFC'));
+
 /** Claim, name, ZOO and placeholder checks for one piece of reader-visible text. */
 export const lintText = (text: string, where: string, ctx: LintContext): LintIssue[] => {
 	const issues: LintIssue[] = [];
 	const t = text.normalize('NFC');
+	const snippet = (index: number, length: number) => redact(rawSnippet(t, index, length), ctx.names);
 	for (const rule of INCOME_CLAIMS) {
 		const m = rule.pattern.exec(t);
 		if (!m) continue;
@@ -86,23 +91,23 @@ export const lintText = (text: string, where: string, ctx: LintContext): LintIss
 			rule: 'income-claim',
 			where,
 			message: ctx.transcript
-				? `the video says "${m[0]}" (${rule.label}): check it is clearly a scam's pitch being described, and fix the video if not`
-				: `income or return claim (${rule.label}): "${m[0]}" in "${snippet(t, m.index, m[0].length)}". Rephrase without it, even when describing a scam.`,
+				? `the video says "${redact(m[0], ctx.names)}" (${rule.label}): check it is clearly a scam's pitch being described, and fix the video if not`
+				: `income or return claim (${rule.label}): "${redact(m[0], ctx.names)}" in "${snippet(m.index, m[0].length)}". Rephrase without it, even when describing a scam.`,
 		});
 	}
 	const zoo = ZOO_CAPS.exec(t);
-	if (zoo) issues.push({level: 'error', rule: 'zoo-name', where, message: `"ZOO" in capitals in "${snippet(t, zoo.index, 3)}": the host's name is "Zoo"`});
+	if (zoo) issues.push({level: 'error', rule: 'zoo-name', where, message: `"ZOO" in capitals in "${snippet(zoo.index, 3)}": the host's name is "Zoo"`});
 	ctx.names.forEach((re, i) => {
 		if (re.test(t)) issues.push({level: 'error', rule: 'private-name', where, message: `contains private name #${i + 1} from the private names list (not shown here). Remove it.`});
 	});
 	for (const rule of PLACEHOLDERS) {
 		const m = rule.pattern.exec(t);
-		if (m) issues.push({level: 'error', rule: 'placeholder', where, message: `${rule.label} is still in the text: "${m[0]}"`});
+		if (m) issues.push({level: 'error', rule: 'placeholder', where, message: `${rule.label} is still in the text: "${redact(m[0], ctx.names)}"`});
 	}
 	if (!ctx.transcript) {
 		for (const rule of SOFT_CLAIMS) {
 			const m = rule.pattern.exec(t);
-			if (m) issues.push({level: 'warning', rule: 'soft-claim', where, message: `${rule.label}: "${m[0]}". Make sure it is not a return or price claim.`});
+			if (m) issues.push({level: 'warning', rule: 'soft-claim', where, message: `${rule.label}: "${redact(m[0], ctx.names)}". Make sure it is not a return or price claim.`});
 		}
 	}
 	return issues;

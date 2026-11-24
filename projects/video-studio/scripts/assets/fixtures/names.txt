@@ -1,0 +1,3 @@
+# Test fixture for the private-name lint (fictional names, not real people).
+Quentin Marlowe-Testperson
+Zelda Fixturova

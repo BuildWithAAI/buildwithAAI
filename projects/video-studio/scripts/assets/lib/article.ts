@@ -182,10 +182,10 @@ export const renderArticle = (a: ArticleInput): {html: string; meta: ArticleMeta
 	body.push(`<header><a href="${esc(safeUrl(a.indexUrl, {httpsOnly: true}))}">${esc(a.siteName)}</a></header>`);
 	body.push('<main id="main">', '<article>');
 	body.push(p(a.showName, 'kicker'), `<h1>${esc(title)}</h1>`);
-	const meta: string[] = [];
-	if (a.publishedAt) meta.push(`${esc(s.published)} <time datetime="${esc(a.publishedAt)}">${esc(displayDate(a.publishedAt, a.lang))}</time>`);
-	if (a.durationMs) meta.push(`${esc(s.videoLength)}: ${esc(s.minutes.replace('{n}', String(Math.max(1, Math.round(a.durationMs / 60_000)))))}`);
-	if (meta.length) body.push(`<p class="meta">${meta.join(' · ')}</p>`);
+	const metaLine: string[] = [];
+	if (a.publishedAt) metaLine.push(`${esc(s.published)} <time datetime="${esc(a.publishedAt)}">${esc(displayDate(a.publishedAt, a.lang))}</time>`);
+	if (a.durationMs) metaLine.push(`${esc(s.videoLength)}: ${esc(s.minutes.replace('{n}', String(Math.max(1, Math.round(a.durationMs / 60_000)))))}`);
+	if (metaLine.length) body.push(`<p class="meta">${metaLine.join(' · ')}</p>`);
 
 	if (a.developing) {
 		const label = a.developing.label ?? s.developing;
@@ -238,7 +238,7 @@ export const renderArticle = (a: ArticleInput): {html: string; meta: ArticleMeta
 		}
 		parts.push(esc(para.text));
 		const refs = para.sourceIds.map((id) => sourceIndex.get(id)).filter((n): n is number => n !== undefined);
-		if (refs.length) parts.push(refs.map((n) => `<sup><a href="#src-${n}" aria-label="${esc(`${s.sources} ${n}`)}">[${n}]</a></sup>`).join(''));
+		if (refs.length) parts.push(refs.map((n) => `<sup><a href="#src-${n}" aria-label="${esc(`${s.sources}: ${n}`)}">[${n}]</a></sup>`).join(''));
 		body.push(`<p id="p-${esc(para.sceneId)}">${parts.join(' ')}</p>`);
 	}
 	body.push('</section>');

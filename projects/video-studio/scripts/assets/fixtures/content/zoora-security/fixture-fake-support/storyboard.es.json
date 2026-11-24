@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "fixture-fake-support",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "El soporte nunca te escribe primero",
+  "fiction": false,
+  "news": {"format": "explainer"},
+  "translation": {"status": "machine"},
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Un desconocido te escribe y dice que trabaja en el soporte de tu monedero. Quiere que verifiques tu monedero. A Badger ya no le gusta nada.",
+      "onScreen": {"kicker": "La estafa de la semana", "title": "El soporte nunca te escribe primero"}
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Así funciona el truco. El estafador vigila los canales de ayuda públicos. Cuando haces una pregunta en público, te escribe primero, se muestra amable y te envía un enlace a una página de verificación falsa. [src:ftc-crypto-scams]",
+      "onScreen": {"title": "Cómo funciona el falso soporte", "bullets": ["Vigilan los canales de ayuda públicos", "Te escriben primero", "Te envían un enlace de verificación falso"]}
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "narration": "La señal de alarma de Badger: una cuenta atrás. La página dice que tu monedero se congelará en {10|diez} minutos si no escribes tu frase de recuperación. El soporte real nunca la pide. [src:ftc-crypto-scams]",
+      "onScreen": {"title": "La señal de alarma de Badger: la cuenta atrás"},
+      "minDurationSec": 13
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "El consejo de Zoo. Usa solo enlaces de soporte de la web oficial, nunca de un mensaje directo. Nunca escribas tu frase de recuperación en ninguna página. Y si perdiste dinero, denúncialo. [src:ftc-report]",
+      "onScreen": {"title": "El consejo de Zoo", "steps": ["Usa solo enlaces de soporte de la web oficial", "Nunca escribas tu frase de recuperación en una página", "Denuncia la cuenta y bloquéala"]}
+    },
+    {
+      "id": "s05",
+      "type": "cta",
+      "narration": "Si esto te ahorró una mala tarde, suscríbete. Badger seguirá juzgando los enlaces por ti.",
+      "onScreen": {"title": "Suscríbete"}
+    },
+    {
+      "id": "s06",
+      "type": "endscreen",
+      "narration": "La semana que viene: lo que sabemos del mayor ataque del mes.",
+      "onScreen": {"title": "La semana que viene"}
+    }
+  ],
+  "sources": [
+    {
+      "id": "ftc-crypto-scams",
+      "title": "FTC: What To Know About Cryptocurrency and Scams",
+      "url": "https://consumer.ftc.gov/articles/what-know-about-cryptocurrency-and-scams",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "ftc-report",
+      "title": "FTC: ReportFraud.ftc.gov",
+      "url": "https://reportfraud.ftc.gov/",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "offers": ["hardware-wallet", "exchange-demo"],
+  "ui": {"sources": "Fuente", "subscribe": "Suscríbete", "watchNext": "Mira a continuación", "subscribeSlot": "Suscríbete"}
+}

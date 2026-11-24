@@ -13,7 +13,7 @@ export class MarkupError extends Error {}
 
 const SRC_ID = /^[A-Za-z0-9][A-Za-z0-9_.:\-/]*$/;
 /** Punctuation that hugs the previous word, so removing "[src:x]" never leaves "claim ." behind. */
-const HUG = '.,;:!?…)]}»”"\'%。，、；：！？）」』';
+const HUG = '.,;:!?…)]}»”"\'%。，、；：！？）」』।॥';
 
 const parse = (narration: string): Segment[] => {
 	if (typeof narration !== 'string') throw new MarkupError(`narration must be a string, got ${typeof narration}`);

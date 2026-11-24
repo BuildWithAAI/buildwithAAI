@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "fixture-fake-support",
+  "youtubeVideoId": "Zb7xq2Ph0aA",
+  "title": "Support never DMs you first",
+  "titleOptions": ["Support never DMs you first", "The fake support trick, step by step"],
+  "summary": "A stranger in your DMs claims to be wallet support and sends a verification link. We follow the trick step by step, and the one fix is simple: real support never messages you first.",
+  "chapters": [
+    {"start": "00:00", "title": "Support never DMs you first"},
+    {"start": "00:09", "title": "How the fake support trick works"},
+    {"start": "00:22", "title": "Badger's Red Flag: the countdown"},
+    {"start": "00:35", "title": "Zoo's One Fix"}
+  ],
+  "sources": [
+    {"title": "FTC: What To Know About Cryptocurrency and Scams", "url": "https://consumer.ftc.gov/articles/what-know-about-cryptocurrency-and-scams"},
+    {"title": "FTC: ReportFraud.ftc.gov", "url": "https://reportfraud.ftc.gov/"}
+  ],
+  "offers": [
+    {"id": "hardware-wallet", "hubUrl": "https://go.zoora.ai/go/hardware-wallet?v=fixture-fake-support&s=yt", "disclosure": "Affiliate link: I may earn a commission if you buy. It costs you nothing extra."},
+    {"id": "exchange-demo", "hubUrl": "https://go.zoora.ai/go/exchange-demo?v=fixture-fake-support&s=yt", "disclosure": "Referral link: I earn a share of fees if you sign up and trade. Crypto trading is high risk. Not financial advice."}
+  ],
+  "disclosures": [
+    "Affiliate link: I may earn a commission if you buy. It costs you nothing extra.",
+    "Referral link: I earn a share of fees if you sign up and trade. Crypto trading is high risk. Not financial advice.",
+    "The messages and pages shown in this video are recreations with fictional accounts."
+  ],
+  "posts": {
+    "youtube": {"text": "Real support never DMs you first. Links and disclosures below.", "charCount": 63, "limit": 5000, "notes": []},
+    "shorts": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 100, "notes": []},
+    "tiktok": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 2200, "notes": []},
+    "reels": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 2200, "notes": []},
+    "x": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 280, "notes": []},
+    "instagram": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 2200, "notes": []}
+  },
+  "captions": {"srt": null, "vtt": null},
+  "renders": [],
+  "settings": {"madeForKids": false, "containsSyntheticMedia": false, "paidPromotion": true, "reasons": ["Affiliate link in the description."]},
+  "checks": [{"id": "fixture", "ok": true, "detail": "scripts/assets test fixture, not a real episode."}],
+  "generatedAt": "2026-11-24T09:00:00.000Z"
+}

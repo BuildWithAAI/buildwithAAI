@@ -10,6 +10,7 @@
  */
 import {existsSync, readdirSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
+import {isSafeUrl} from './html.ts';
 import {sourceIds} from './markup.ts';
 import type {AssetsSidecar, Correction, EpisodeStoryboard, EpisodeTimeline, Lang, PublishKit} from './types.ts';
 import {InputError, isRecord, readJson} from './util.ts';
@@ -103,6 +104,7 @@ const checkStoryboard = (raw: unknown, path: string): EpisodeStoryboard => {
 				problems.push(`sources[${i}] needs string id, title, url and accessed`);
 				return;
 			}
+			if (!isSafeUrl(s.url)) problems.push(`sources[${i}].url must be an http(s) URL without credentials`);
 			srcIds.add(s.id);
 		});
 	if (Array.isArray(raw.scenes)) {

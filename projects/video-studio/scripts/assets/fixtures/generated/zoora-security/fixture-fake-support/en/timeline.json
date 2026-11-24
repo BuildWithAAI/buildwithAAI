@@ -1,0 +1,805 @@
+{
+ "version": 1,
+ "slug": "fixture-fake-support",
+ "lang": "en",
+ "mode": "native",
+ "voice": "im_nicola",
+ "speed": 1,
+ "model": {
+  "file": "kokoro-v1.0.int8.onnx",
+  "sha256": "fixture-not-a-real-render"
+ },
+ "sampleRate": 24000,
+ "fps": 30,
+ "totalMs": 61300,
+ "scenes": [
+  {
+   "id": "s01",
+   "audio": "generated/zoora-security/fixture-fake-support/en/scenes/s01.wav",
+   "startMs": 0,
+   "durationMs": 9200,
+   "speechMs": 8850,
+   "words": [
+    {
+     "text": "A",
+     "startMs": 120,
+     "endMs": 300
+    },
+    {
+     "text": "stranger",
+     "startMs": 370,
+     "endMs": 890
+    },
+    {
+     "text": "in",
+     "startMs": 960,
+     "endMs": 1140
+    },
+    {
+     "text": "your",
+     "startMs": 1210,
+     "endMs": 1490
+    },
+    {
+     "text": "DMs",
+     "startMs": 1560,
+     "endMs": 1770
+    },
+    {
+     "text": "says",
+     "startMs": 1840,
+     "endMs": 2120
+    },
+    {
+     "text": "he",
+     "startMs": 2190,
+     "endMs": 2370
+    },
+    {
+     "text": "works",
+     "startMs": 2440,
+     "endMs": 2790
+    },
+    {
+     "text": "for",
+     "startMs": 2860,
+     "endMs": 3070
+    },
+    {
+     "text": "wallet",
+     "startMs": 3140,
+     "endMs": 3560
+    },
+    {
+     "text": "support.",
+     "startMs": 3630,
+     "endMs": 4120
+    },
+    {
+     "text": "He",
+     "startMs": 4380,
+     "endMs": 4560
+    },
+    {
+     "text": "wants",
+     "startMs": 4630,
+     "endMs": 4980
+    },
+    {
+     "text": "you",
+     "startMs": 5050,
+     "endMs": 5260
+    },
+    {
+     "text": "to",
+     "startMs": 5330,
+     "endMs": 5510
+    },
+    {
+     "text": "verify",
+     "startMs": 5580,
+     "endMs": 6000
+    },
+    {
+     "text": "your",
+     "startMs": 6070,
+     "endMs": 6350
+    },
+    {
+     "text": "wallet.",
+     "startMs": 6420,
+     "endMs": 6840
+    },
+    {
+     "text": "Badger",
+     "startMs": 7100,
+     "endMs": 7520
+    },
+    {
+     "text": "already",
+     "startMs": 7590,
+     "endMs": 8080
+    },
+    {
+     "text": "hates",
+     "startMs": 8150,
+     "endMs": 8500
+    },
+    {
+     "text": "this.",
+     "startMs": 8570,
+     "endMs": 8850
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s02",
+   "audio": "generated/zoora-security/fixture-fake-support/en/scenes/s02.wav",
+   "startMs": 9200,
+   "durationMs": 13700,
+   "speechMs": 13320,
+   "words": [
+    {
+     "text": "Here",
+     "startMs": 120,
+     "endMs": 400
+    },
+    {
+     "text": "is",
+     "startMs": 470,
+     "endMs": 650
+    },
+    {
+     "text": "how",
+     "startMs": 720,
+     "endMs": 930
+    },
+    {
+     "text": "the",
+     "startMs": 1000,
+     "endMs": 1210
+    },
+    {
+     "text": "trick",
+     "startMs": 1280,
+     "endMs": 1630
+    },
+    {
+     "text": "works.",
+     "startMs": 1700,
+     "endMs": 2050
+    },
+    {
+     "text": "The",
+     "startMs": 2310,
+     "endMs": 2520
+    },
+    {
+     "text": "scammer",
+     "startMs": 2590,
+     "endMs": 3080
+    },
+    {
+     "text": "watches",
+     "startMs": 3150,
+     "endMs": 3640
+    },
+    {
+     "text": "public",
+     "startMs": 3710,
+     "endMs": 4130
+    },
+    {
+     "text": "help",
+     "startMs": 4200,
+     "endMs": 4480
+    },
+    {
+     "text": "channels.",
+     "startMs": 4550,
+     "endMs": 5070
+    },
+    {
+     "text": "When",
+     "startMs": 5330,
+     "endMs": 5610
+    },
+    {
+     "text": "you",
+     "startMs": 5680,
+     "endMs": 5890
+    },
+    {
+     "text": "ask",
+     "startMs": 5960,
+     "endMs": 6170
+    },
+    {
+     "text": "a",
+     "startMs": 6240,
+     "endMs": 6420
+    },
+    {
+     "text": "question",
+     "startMs": 6490,
+     "endMs": 7010
+    },
+    {
+     "text": "in",
+     "startMs": 7080,
+     "endMs": 7260
+    },
+    {
+     "text": "public,",
+     "startMs": 7330,
+     "endMs": 7750
+    },
+    {
+     "text": "he",
+     "startMs": 7820,
+     "endMs": 8000
+    },
+    {
+     "text": "messages",
+     "startMs": 8070,
+     "endMs": 8590
+    },
+    {
+     "text": "you",
+     "startMs": 8660,
+     "endMs": 8870
+    },
+    {
+     "text": "first,",
+     "startMs": 8940,
+     "endMs": 9290
+    },
+    {
+     "text": "acts",
+     "startMs": 9360,
+     "endMs": 9640
+    },
+    {
+     "text": "friendly,",
+     "startMs": 9710,
+     "endMs": 10230
+    },
+    {
+     "text": "and",
+     "startMs": 10300,
+     "endMs": 10510
+    },
+    {
+     "text": "sends",
+     "startMs": 10580,
+     "endMs": 10930
+    },
+    {
+     "text": "a",
+     "startMs": 11000,
+     "endMs": 11180
+    },
+    {
+     "text": "link",
+     "startMs": 11250,
+     "endMs": 11530
+    },
+    {
+     "text": "to",
+     "startMs": 11600,
+     "endMs": 11780
+    },
+    {
+     "text": "a",
+     "startMs": 11850,
+     "endMs": 12030
+    },
+    {
+     "text": "fake",
+     "startMs": 12100,
+     "endMs": 12380
+    },
+    {
+     "text": "verification",
+     "startMs": 12450,
+     "endMs": 12970
+    },
+    {
+     "text": "page.",
+     "startMs": 13040,
+     "endMs": 13320
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s03",
+   "audio": "generated/zoora-security/fixture-fake-support/en/scenes/s03.wav",
+   "startMs": 22900,
+   "durationMs": 13000,
+   "speechMs": 11380,
+   "words": [
+    {
+     "text": "Badger's",
+     "startMs": 120,
+     "endMs": 610
+    },
+    {
+     "text": "Red",
+     "startMs": 680,
+     "endMs": 890
+    },
+    {
+     "text": "Flag:",
+     "startMs": 960,
+     "endMs": 1240
+    },
+    {
+     "text": "a",
+     "startMs": 1500,
+     "endMs": 1680
+    },
+    {
+     "text": "countdown.",
+     "startMs": 1750,
+     "endMs": 2270
+    },
+    {
+     "text": "The",
+     "startMs": 2530,
+     "endMs": 2740
+    },
+    {
+     "text": "page",
+     "startMs": 2810,
+     "endMs": 3090
+    },
+    {
+     "text": "says",
+     "startMs": 3160,
+     "endMs": 3440
+    },
+    {
+     "text": "your",
+     "startMs": 3510,
+     "endMs": 3790
+    },
+    {
+     "text": "wallet",
+     "startMs": 3860,
+     "endMs": 4280
+    },
+    {
+     "text": "will",
+     "startMs": 4350,
+     "endMs": 4630
+    },
+    {
+     "text": "be",
+     "startMs": 4700,
+     "endMs": 4880
+    },
+    {
+     "text": "frozen",
+     "startMs": 4950,
+     "endMs": 5370
+    },
+    {
+     "text": "in",
+     "startMs": 5440,
+     "endMs": 5620
+    },
+    {
+     "text": "10",
+     "startMs": 5690,
+     "endMs": 5870
+    },
+    {
+     "text": "minutes",
+     "startMs": 5940,
+     "endMs": 6430
+    },
+    {
+     "text": "unless",
+     "startMs": 6500,
+     "endMs": 6920
+    },
+    {
+     "text": "you",
+     "startMs": 6990,
+     "endMs": 7200
+    },
+    {
+     "text": "type",
+     "startMs": 7270,
+     "endMs": 7550
+    },
+    {
+     "text": "your",
+     "startMs": 7620,
+     "endMs": 7900
+    },
+    {
+     "text": "recovery",
+     "startMs": 7970,
+     "endMs": 8490
+    },
+    {
+     "text": "phrase.",
+     "startMs": 8560,
+     "endMs": 8980
+    },
+    {
+     "text": "Real",
+     "startMs": 9240,
+     "endMs": 9520
+    },
+    {
+     "text": "support",
+     "startMs": 9590,
+     "endMs": 10080
+    },
+    {
+     "text": "never",
+     "startMs": 10150,
+     "endMs": 10500
+    },
+    {
+     "text": "asks",
+     "startMs": 10570,
+     "endMs": 10850
+    },
+    {
+     "text": "for",
+     "startMs": 10920,
+     "endMs": 11130
+    },
+    {
+     "text": "it.",
+     "startMs": 11200,
+     "endMs": 11380
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s04",
+   "audio": "generated/zoora-security/fixture-fake-support/en/scenes/s04.wav",
+   "startMs": 35900,
+   "durationMs": 12900,
+   "speechMs": 12490,
+   "words": [
+    {
+     "text": "Zoo's",
+     "startMs": 120,
+     "endMs": 400
+    },
+    {
+     "text": "One",
+     "startMs": 470,
+     "endMs": 680
+    },
+    {
+     "text": "Fix.",
+     "startMs": 750,
+     "endMs": 960
+    },
+    {
+     "text": "Only",
+     "startMs": 1220,
+     "endMs": 1500
+    },
+    {
+     "text": "use",
+     "startMs": 1570,
+     "endMs": 1780
+    },
+    {
+     "text": "support",
+     "startMs": 1850,
+     "endMs": 2340
+    },
+    {
+     "text": "links",
+     "startMs": 2410,
+     "endMs": 2760
+    },
+    {
+     "text": "from",
+     "startMs": 2830,
+     "endMs": 3110
+    },
+    {
+     "text": "the",
+     "startMs": 3180,
+     "endMs": 3390
+    },
+    {
+     "text": "official",
+     "startMs": 3460,
+     "endMs": 3980
+    },
+    {
+     "text": "website,",
+     "startMs": 4050,
+     "endMs": 4540
+    },
+    {
+     "text": "never",
+     "startMs": 4610,
+     "endMs": 4960
+    },
+    {
+     "text": "from",
+     "startMs": 5030,
+     "endMs": 5310
+    },
+    {
+     "text": "a",
+     "startMs": 5380,
+     "endMs": 5560
+    },
+    {
+     "text": "direct",
+     "startMs": 5630,
+     "endMs": 6050
+    },
+    {
+     "text": "message.",
+     "startMs": 6120,
+     "endMs": 6610
+    },
+    {
+     "text": "Never",
+     "startMs": 6870,
+     "endMs": 7220
+    },
+    {
+     "text": "type",
+     "startMs": 7290,
+     "endMs": 7570
+    },
+    {
+     "text": "your",
+     "startMs": 7640,
+     "endMs": 7920
+    },
+    {
+     "text": "recovery",
+     "startMs": 7990,
+     "endMs": 8510
+    },
+    {
+     "text": "phrase",
+     "startMs": 8580,
+     "endMs": 9000
+    },
+    {
+     "text": "into",
+     "startMs": 9070,
+     "endMs": 9350
+    },
+    {
+     "text": "any",
+     "startMs": 9420,
+     "endMs": 9630
+    },
+    {
+     "text": "page.",
+     "startMs": 9700,
+     "endMs": 9980
+    },
+    {
+     "text": "And",
+     "startMs": 10240,
+     "endMs": 10450
+    },
+    {
+     "text": "if",
+     "startMs": 10520,
+     "endMs": 10700
+    },
+    {
+     "text": "you",
+     "startMs": 10770,
+     "endMs": 10980
+    },
+    {
+     "text": "lost",
+     "startMs": 11050,
+     "endMs": 11330
+    },
+    {
+     "text": "money,",
+     "startMs": 11400,
+     "endMs": 11750
+    },
+    {
+     "text": "report",
+     "startMs": 11820,
+     "endMs": 12240
+    },
+    {
+     "text": "it.",
+     "startMs": 12310,
+     "endMs": 12490
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s05",
+   "audio": "generated/zoora-security/fixture-fake-support/en/scenes/s05.wav",
+   "startMs": 48800,
+   "durationMs": 7600,
+   "speechMs": 7180,
+   "words": [
+    {
+     "text": "If",
+     "startMs": 120,
+     "endMs": 300
+    },
+    {
+     "text": "this",
+     "startMs": 370,
+     "endMs": 650
+    },
+    {
+     "text": "saved",
+     "startMs": 720,
+     "endMs": 1070
+    },
+    {
+     "text": "you",
+     "startMs": 1140,
+     "endMs": 1350
+    },
+    {
+     "text": "a",
+     "startMs": 1420,
+     "endMs": 1600
+    },
+    {
+     "text": "bad",
+     "startMs": 1670,
+     "endMs": 1880
+    },
+    {
+     "text": "afternoon,",
+     "startMs": 1950,
+     "endMs": 2470
+    },
+    {
+     "text": "subscribe.",
+     "startMs": 2540,
+     "endMs": 3060
+    },
+    {
+     "text": "Badger",
+     "startMs": 3320,
+     "endMs": 3740
+    },
+    {
+     "text": "will",
+     "startMs": 3810,
+     "endMs": 4090
+    },
+    {
+     "text": "keep",
+     "startMs": 4160,
+     "endMs": 4440
+    },
+    {
+     "text": "judging",
+     "startMs": 4510,
+     "endMs": 5000
+    },
+    {
+     "text": "the",
+     "startMs": 5070,
+     "endMs": 5280
+    },
+    {
+     "text": "links,",
+     "startMs": 5350,
+     "endMs": 5700
+    },
+    {
+     "text": "so",
+     "startMs": 5770,
+     "endMs": 5950
+    },
+    {
+     "text": "you",
+     "startMs": 6020,
+     "endMs": 6230
+    },
+    {
+     "text": "don't",
+     "startMs": 6300,
+     "endMs": 6580
+    },
+    {
+     "text": "have",
+     "startMs": 6650,
+     "endMs": 6930
+    },
+    {
+     "text": "to.",
+     "startMs": 7000,
+     "endMs": 7180
+    }
+   ],
+   "mouth": []
+  },
+  {
+   "id": "s06",
+   "audio": "generated/zoora-security/fixture-fake-support/en/scenes/s06.wav",
+   "startMs": 56400,
+   "durationMs": 4900,
+   "speechMs": 4270,
+   "words": [
+    {
+     "text": "Next",
+     "startMs": 120,
+     "endMs": 400
+    },
+    {
+     "text": "week:",
+     "startMs": 470,
+     "endMs": 750
+    },
+    {
+     "text": "what",
+     "startMs": 1010,
+     "endMs": 1290
+    },
+    {
+     "text": "we",
+     "startMs": 1360,
+     "endMs": 1540
+    },
+    {
+     "text": "know",
+     "startMs": 1610,
+     "endMs": 1890
+    },
+    {
+     "text": "about",
+     "startMs": 1960,
+     "endMs": 2310
+    },
+    {
+     "text": "this",
+     "startMs": 2380,
+     "endMs": 2660
+    },
+    {
+     "text": "month's",
+     "startMs": 2730,
+     "endMs": 3150
+    },
+    {
+     "text": "biggest",
+     "startMs": 3220,
+     "endMs": 3710
+    },
+    {
+     "text": "exploit.",
+     "startMs": 3780,
+     "endMs": 4270
+    }
+   ],
+   "mouth": []
+  }
+ ],
+ "loudness": {
+  "integratedLufs": -14,
+  "truePeakDb": -1.2
+ },
+ "warnings": [
+  "FIXTURE: hand-made word timings for scripts/assets tests (not Kokoro output). mouth[] is trimmed to keep the fixture small."
+ ],
+ "narration": "generated/zoora-security/fixture-fake-support/en/narration.wav"
+}
