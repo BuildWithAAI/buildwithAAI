@@ -328,7 +328,7 @@ def build(opts: Options) -> Result:
         loudness = None
         if ln["type"] != "silent":
             loudness = {"integratedLufs": round(float(ln["result"]["input_i"]), 2), "truePeakDb": round(float(ln["result"]["input_tp"]), 2)}
-            if abs(loudness["integratedLufs"] - audio.TARGET_I) > 1.0 or loudness["truePeakDb"] > audio.TARGET_TP + 0.1:
+            if abs(loudness["integratedLufs"] - audio.TARGET_I) > audio.WARN_LU or loudness["truePeakDb"] > audio.TARGET_TP:
                 warnings.append(f"loudness {loudness['integratedLufs']} LUFS / {loudness['truePeakDb']} dBTP is off the -14 LUFS / -1 dBTP target")
         os.makedirs(os.path.join(stage, "scenes"))
         for sc in scenes:
@@ -355,7 +355,11 @@ def build(opts: Options) -> Result:
         timeline["warnings"] = warnings
         timeline["narration"] = f"{rel_dir}/narration.wav"
         schema.assert_valid(timeline)
-        debug_doc = {"g2p": s.g2p, "loudnorm": {"type": ln["type"], "targets": ln.get("targets"), "pass1": ln.get("pass1"), "result": ln.get("result")}, "scenes": debug}
+        debug_doc = {
+            "g2p": s.g2p,
+            "loudness": {"limiter": ln.get("limiter"), "loudnormType": ln["type"], "loudnormTargets": ln.get("targets"), "pass1": ln.get("pass1"), "result": ln.get("result")},
+            "scenes": debug,
+        }
         with open(os.path.join(stage, "timeline.json"), "w", encoding="utf-8") as fh:
             fh.write(_dump(timeline))
         with open(os.path.join(stage, "phonemes.json"), "w", encoding="utf-8") as fh:

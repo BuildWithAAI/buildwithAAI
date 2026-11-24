@@ -1,17 +1,27 @@
-"""WAV I/O, per-frame RMS and ffmpeg two-pass loudnorm (EBU R128).
+"""WAV I/O, per-frame RMS and loudness normalization (ffmpeg two-pass loudnorm, EBU R128).
 
 Target: -14 LUFS integrated, -1 dBTP true-peak ceiling (CLAUDE.md; YouTube publishes no official
-target). Pass 1 measures, pass 2 applies loudnorm with the measured values and linear=true. When the
-gain needed would push the true peak over the ceiling, ffmpeg itself switches to its dynamic mode (a
-look-ahead limiter), which can land a few tenths of a LU off on spiky TTS audio; then pass 2 is
-repeated with the target shifted by the measured error (at most twice), which lands within 0.3 LU.
-The limiter aims at -1.2 dBTP so that resampling back to 24 kHz cannot creep over -1.0. A final
-measurement goes into timeline.loudness. loudnorm works at 192 kHz internally; the output is resampled to 24 kHz and was
-verified to keep the exact sample count and alignment (a click at sample n stays at sample n), so
-per-scene cuts stay sample-exact.
+target). Chain, measured on real Kokoro output (2026-11-24):
+  1. pass 1: loudnorm measures the raw track.
+  2. pre-limiter, only when a linear gain to -14 LUFS would push the true peak past the ceiling:
+     Kokoro's raw narration sits near -25..-28 LUFS with an 18-20 dB crest factor, and loudnorm alone
+     then falls back to its dynamic mode and plateaus 1.5-2.3 LU short (zh -16.2 LUFS even when
+     asked for -9). A look-ahead limiter (alimiter, latency-compensated, -2 dBFS) with a gain solved
+     toward the target shaves the peaks first. Its gain may exceed the linear-safe gain by at most
+     LIMITER_BUDGET_DB (6 dB), so it never takes more than about 6 dB off a peak (measured: p99
+     4.4-5.4 dB per 10 ms frame, 0% of frames over 6 dB on en, pt-br and zh).
+  3. pass 2: loudnorm with the measured values and linear=true; when the peaks still do not allow a
+     linear gain, ffmpeg uses its dynamic mode, and the target is re-aimed by a secant step on the
+     measured error (at most twice).
+  4. a final measurement goes into timeline.loudness; build.py warns when it is more than 1 LU off.
+The limiter aims at -1.2 dBTP inside loudnorm so resampling to 24 kHz cannot creep over -1.0.
+loudnorm works at 192 kHz internally; output is resampled to 24 kHz. The whole chain was verified to
+keep the exact sample count and alignment (a click at sample n stays at sample n), so per-scene cuts
+stay sample-exact.
 """
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -22,6 +32,9 @@ LIMIT_TP = -1.2  # what loudnorm is asked for: 0.2 dB of room for overs from res
 TARGET_LRA = 20.0  # permissive, so the linear mode is used whenever the true peak allows it
 TOLERANCE_LU = 0.3
 MAX_CORRECTIONS = 2
+LIMITER_CEILING_DB = -2.0  # sample peak out of the pre-limiter
+LIMITER_BUDGET_DB = 6.0  # most gain the pre-limiter may add beyond the linear-safe gain
+WARN_LU = 1.0
 
 
 def need_ffmpeg() -> str:
@@ -76,13 +89,49 @@ def measure(path: str) -> dict:
     return _loudnorm_json(proc.stderr)
 
 
+def prelimit(src: str, dst: str, first: dict) -> dict | None:
+    """Gain + look-ahead limiter when linear normalization is impossible. None when it is not needed."""
+    safe = LIMIT_TP - float(first["input_tp"])  # the gain that puts the true peak at LIMIT_TP
+    need = TARGET_I - float(first["input_i"])
+    if need <= safe:
+        return None
+    cap = safe + LIMITER_BUDGET_DB
+    gain = min(need, cap)
+    steps = []
+    for _ in range(3):
+        af = f"volume={gain:.3f}dB,alimiter=limit={10 ** (LIMITER_CEILING_DB / 20):.5f}:attack=4:release=60:level=0:latency=1"
+        _ffmpeg(["-i", src, "-af", af, "-c:a", "pcm_f32le", dst])
+        got = measure(dst)
+        steps.append({"gainDb": round(gain, 2), "lufs": float(got["input_i"]), "truePeakDb": float(got["input_tp"])})
+        deficit = TARGET_I - float(got["input_i"])
+        if deficit <= 0.2 or gain >= cap - 1e-6:
+            break
+        gain = min(cap, gain + deficit / 0.7)  # the limiter eats part of every extra dB
+    return {"safeGainDb": round(safe, 2), "budgetDb": LIMITER_BUDGET_DB, "ceilingDb": LIMITER_CEILING_DB, "steps": steps}
+
+
 def loudnorm(src: str, dst: str, sample_rate: int) -> dict:
-    """Two-pass loudnorm src -> dst (PCM 16-bit, `sample_rate`). Returns pass-1, pass-2 and result data."""
+    """Pre-limiter (when needed) + two-pass loudnorm src -> dst (PCM 16-bit, `sample_rate`)."""
     first = measure(src)
     if first["input_i"] in ("-inf", "inf") or float(first["input_i"]) < -70:
         # silence: nothing to normalize
         shutil.copyfile(src, dst)
-        return {"pass1": first, "type": "silent", "result": first, "targets": []}
+        return {"pass1": first, "type": "silent", "result": first, "targets": [], "limiter": None}
+    limited = dst + ".limited.wav"
+    limiter = prelimit(src, limited, first)
+    if limiter:
+        src = limited
+        first = measure(src)
+    try:
+        out = _two_pass(src, dst, sample_rate, first)
+    finally:
+        if limiter and os.path.exists(limited):
+            os.remove(limited)
+    out["limiter"] = limiter
+    return out
+
+
+def _two_pass(src: str, dst: str, sample_rate: int, first: dict) -> dict:
     target = TARGET_I
     tried: list[tuple[float, float]] = []  # (loudnorm target, measured result)
     for _ in range(1 + MAX_CORRECTIONS):

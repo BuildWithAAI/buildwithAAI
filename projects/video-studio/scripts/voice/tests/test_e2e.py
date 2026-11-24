@@ -60,19 +60,26 @@ class EndToEnd(unittest.TestCase):
         cls.results = {}
         for lang in LANGS:
             cls.results[lang] = pipeline.build(pipeline.Options(FIXTURE, lang, out_root=cls.out_root, model_dir=MODEL_DIR, log=lambda _m: None))
-        cls.fit = pipeline.build(pipeline.Options(FIXTURE, "es", fit_to="en", out_root=cls.out_root, model_dir=MODEL_DIR, log=lambda _m: None))
+        # the dub goes to its own public/ root (with a copy of the en master) so it does not replace the native es build
+        cls.fit_root = tempfile.mkdtemp(prefix="voice-e2e-fit-")
+        master_rel = os.path.join("generated", "zoora-ai", "voice-smoke", "en")
+        shutil.copytree(os.path.join(cls.out_root, master_rel), os.path.join(cls.fit_root, master_rel))
+        cls.fit = pipeline.build(pipeline.Options(FIXTURE, "es", fit_to="en", out_root=cls.fit_root, model_dir=MODEL_DIR, log=lambda _m: None))
         samples = os.environ.get("VOICE_SAMPLES_DIR")
         if samples:
             os.makedirs(samples, exist_ok=True)
             for lang, res in cls.results.items():
                 shutil.copyfile(os.path.join(res.out_dir, "narration.wav"), os.path.join(samples, f"{lang}.wav"))
                 shutil.copyfile(os.path.join(res.out_dir, "timeline.json"), os.path.join(samples, f"{lang}.timeline.json"))
+                shutil.copyfile(os.path.join(res.out_dir, "phonemes.json"), os.path.join(samples, f"{lang}.phonemes.json"))
             shutil.copyfile(os.path.join(cls.fit.out_dir, "narration.wav"), os.path.join(samples, "es-fit-to-en.wav"))
+            shutil.copyfile(os.path.join(cls.fit.out_dir, "phonemes.json"), os.path.join(samples, "es-fit-to-en.phonemes.json"))
             shutil.copyfile(os.path.join(cls.fit.out_dir, "timeline.json"), os.path.join(samples, "es-fit-to-en.timeline.json"))
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.out_root, ignore_errors=True)
+        shutil.rmtree(cls.fit_root, ignore_errors=True)
 
     def test_schema_and_files(self):
         import soundfile as sf
@@ -146,11 +153,18 @@ class EndToEnd(unittest.TestCase):
                 self.assertIn("mbp", s01 + res.timeline["scenes"][1]["mouth"])
 
     def test_loudness(self):
-        for lang, res in self.results.items():
+        from voicelib import audio
+
+        for lang, res in [*self.results.items(), ("es-fit", self.fit)]:
             with self.subTest(lang=lang):
                 ld = res.timeline["loudness"]
-                self.assertAlmostEqual(ld["integratedLufs"], -14.0, delta=0.5)
-                self.assertLessEqual(ld["truePeakDb"], -1.0)
+                self.assertAlmostEqual(ld["integratedLufs"], audio.TARGET_I, delta=audio.WARN_LU)
+                self.assertLessEqual(ld["truePeakDb"], audio.TARGET_TP)
+                self.assertFalse(any(w.startswith("loudness") for w in res.warnings))
+                with open(os.path.join(res.out_dir, "phonemes.json"), encoding="utf-8") as fh:
+                    lim = json.load(fh)["loudness"]["limiter"]
+                if lim:  # the pre-limiter stays inside its budget
+                    self.assertLessEqual(lim["steps"][-1]["gainDb"], lim["safeGainDb"] + audio.LIMITER_BUDGET_DB + 1e-6)
 
     def test_warnings(self):
         self.assertEqual(self.results["en"].warnings, [])
@@ -192,7 +206,7 @@ class EndToEnd(unittest.TestCase):
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write("\n".join(lines) + "\n")
             proc = subprocess.run(
-                [tsc, "--noEmit", "--strict", "--target", "ES2022", "--module", "ESNext", "--moduleResolution", "bundler", "--skipLibCheck", "--types", "", path],
+                [tsc, "--noEmit", "--strict", "--target", "ES2022", "--module", "ESNext", "--moduleResolution", "bundler", "--skipLibCheck", path],
                 capture_output=True, text=True, timeout=300,
             )
             self.assertEqual(proc.returncode, 0, proc.stdout[-3000:] + proc.stderr[-1000:])
