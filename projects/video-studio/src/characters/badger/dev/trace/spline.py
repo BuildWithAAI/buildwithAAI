@@ -48,7 +48,17 @@ def f2(v):
 
 def spline(points, closed=False, tension=1.0):
     """Points in any space -> absolute 'M .. C ..' path string (Z when closed)."""
-    P = [tuple(p) for p in points]
+    P = []
+    for p in points:
+        p = tuple(p)
+        if P and abs(P[-1][0] - p[0]) < 1e-6 and abs(P[-1][1] - p[1]) < 1e-6:
+            # duplicate point (where two traced lines meet): keep one, keep a corner flag if either had it
+            if len(p) > 2 and p[2] == 'c':
+                P[-1] = p
+            continue
+        P.append(p)
+    if closed and len(P) > 2 and abs(P[0][0] - P[-1][0]) < 1e-6 and abs(P[0][1] - P[-1][1]) < 1e-6:
+        P.pop()
     n = len(P)
     tin, tout = _tangents(P, closed)
     out = ['M %s %s' % (f2(P[0][0]), f2(P[0][1]))]

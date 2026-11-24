@@ -118,7 +118,63 @@ sp.spot('R-07', 'right', 'haunch', (122, 329, 11.1 * K, 6.1 * K, -80), 'right ga
 sp.spot('R-08', 'right', 'legFrontNear', (226.1, 270.6, 10.1, 5.7, 86.7), 'right forearm R-08')
 sp.spot('R-NECK', 'right', 'neck', (210, 104, 6.9 * K, 4.0 * K, -73), 'right neck spot R-NECK')
 
-poses = [sp]
+
+# =====================================================================================================  LIE
+T = load('lie.json')
+K = 0.97 / 1.124
+lp = Pose('lie', 46.4 / 41.3, 296, 252, 'badger_pose_lying.png')
+P = lambda k: [tuple(p) for p in T[k]]
+tail = P('tail')
+lp.part('tail', tail + [(122, 238), (92, 226)], [tail], [P('tail_fold')], group='tail')
+fft = P('ff_top')
+ffp = P('ff_paw')
+lp.part('legFrontFar', fft + ffp[1:] + [(470, 250), (400, 240), (360, 228), (345, 214), (372, 200, 'c')], [fft, ffp])
+back = P('back')
+bg = P('belly_ground')
+ch = P('chest')
+lp.part('torso', [(312, 100, 'c')] + back[1:] + [(96, 248), (150, 248), (200, 248)] + bg + [(313, 250), (340, 240), (392, 215)] + rev(ch)
+        + [(345, 120, 'c')], [back, bg, ch], [P('crease1'), P('crease2')], group='torso')
+hn = P('haunch')
+lp.part('haunch', hn + [(140, 231), (118, 222), (108, 200), (112, 175), (125, 157)], [hn])
+hp = P('hpaw')
+lp.part('pawHindNear', hp + [(120, 240), (132, 230)], [hp], [[(194, 241), (194, 246), (194, 251)], [(205, 240), (205, 245), (205, 250)]])
+el = P('elbow')
+nfb = P('nf_bottom')
+nfp = P('nf_paw')
+nft = P('nf_top')
+lp.part('legFrontNear', el + nfb[1:] + nfp[1:] + rev(nft)[1:] + [(322, 212, 'c')], [el, nfb, nfp, nft],
+        [[(488, 247), (488, 251), (488, 255)]])
+nb = P('neck_back')
+th = P('throat')
+lp.part('neck', nb + [(306, 132, 'c'), (375, 142, 'c')] + rev(th) + [(350, 78), (318, 78)], [nb, th], group='neck')
+col = P('collar')
+lp.part('collar', col, [col + [col[0]]], color='collar', group='neck')
+top = col[1:9]
+bot = col[11:19]
+mid = [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 1) for a, b in zip(top, rev(bot))]
+lp.part('collarShadow', mid + bot[1:-1], [], color='collarShadow', group='neck')
+ring = [(363, 141), (362.5, 146), (366, 148.5), (369.5, 146), (369, 141)]
+lp.part('tagRing', ring, [], [ring], color='none', group='tag')
+tagp = blob(366, 156, 6.8, 8.0, 0)
+lp.part('tag', tagp, [tagp + [tagp[0]]], color='tag', group='tag')
+lp.part('tagShadow', [(368.5, 148.5), (371.8, 152.5), (372, 158), (368, 163, 'c'), (369.8, 157.5), (369.6, 152)], [], color='tagShadow', group='tag')
+lp.pivot('tailRoot', 88, 230)
+lp.pivot('neck', 340, 125)
+lp.pivot('tagAnchor', 366, 141)
+lp.pivot('breath', 240, 125)
+lp.pivot('headCentroid', 377.7, 44.0)   # eyes+nose centroid of the sheet's lying head
+lp.spot('R-01', 'right', 'torso', (118, 152, 17.2 * K, 10.8 * K, -55), 'croup spot R-01 (top of the rump, above the folded haunch)')
+lp.spot('R-02', 'right', 'torso', (196.4, 134.4, 15.8 * K, 8.8 * K, -2.6), 'mid-back spot R-02')
+lp.spot('R-03', 'right', 'torso', (215.0, 172.1, 9.9 * K, 8.3 * K, -70), 'mid-flank spot R-03')
+lp.spot('R-04', 'right', 'torso', (285.8, 182.2, 10.8 * K, 7.4 * K, -68.6), 'right shoulder spot R-04')
+lp.spot('R-05', 'right', 'torso', (259.4, 214.0, 8.1 * K, 5.8 * K, 2.1), 'lower-ribs spot R-05')
+lp.spot('L-WITHERS', 'left', 'torso', [(244, 126.5, 'c'), (262, 129), (282, 125.5, 'c'), (276, 133), (262, 135), (250, 132.5)], 'edge of the left withers patch over the top line')
+lp.spot('R-06', 'right', 'haunch', (176, 188, 11.6 * K, 7.2 * K, -60), 'front of the right thigh R-06 (on the folded haunch)')
+lp.spot('R-07', 'right', 'haunch', (127, 213, 11.1 * K, 6.1 * K, -62.7), 'right gaskin R-07, low on the folded haunch')
+lp.spot('R-08', 'right', 'legFrontNear', (392, 238, 12.8 * K, 8.4 * K, -5), 'right forearm R-08 (forearm lies along the ground)')
+lp.spot('R-NECK', 'right', 'neck', (328.0, 101.0, 6.9 * K, 4.0 * K, 81.7), 'right neck spot R-NECK')
+
+poses = [sp, lp]
 
 out = {p.name: {'parts': p.parts, 'pivots': p.pivots} for p in poses}
 with open(sys.argv[1], 'w') as fh:

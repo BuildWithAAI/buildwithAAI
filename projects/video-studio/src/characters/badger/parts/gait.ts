@@ -89,30 +89,45 @@ export const plantLegs = (R: SideRig, dir: 1 | -1, body: SidePose['body'], offse
 /** BADGER's walk: a lateral-sequence 4-beat gait (LH, LF, RH, RF a quarter cycle apart). */
 export const WALK = {
 	/** Body travel per gait cycle at scale 1 (world units). Move the root by exactly this much per cycle. */
-	stride: 250,
+	stride: 175 / 0.6,
 	/** Fraction of the cycle each paw is on the ground. */
 	duty: 0.6,
-	/** Stance sweep of each paw relative to its standing spot (units): lands `reach` ahead, lifts `trail` behind. */
-	reach: 58,
-	trail: 92,
+	/**
+	 * Stance sweep of each paw pivot, relative to its own shoulder / hip (units, + = forward): it lands at `land`
+	 * and lifts at `lift`. Both sweeps are 175 units (= stride * duty), so planted paws never slide. The hind
+	 * paws work from under the hip to behind it, as in badger_pose_walking.png.
+	 */
+	front: {land: 92, lift: -83},
+	hind: {land: 72, lift: -103},
+	/** Shoulder glide (scapula) of the front legs, fraction of the paw offset, capped (hidden inside the chest). */
+	glide: 0.3,
+	glideMax: 20,
+	/**
+	 * Stance legs keep their reach (pivot-to-paw distance / full leg length) inside these bands; the shoulder or
+	 * hip slides up/down inside the body to do so (scapula / pelvis movement, hidden by the torso). Front legs stay
+	 * almost straight, as a dog's do; hind legs keep some hock flex.
+	 */
+	reachFront: [0.965, 0.99],
+	reachHind: [0.84, 0.99],
+	maxSlide: 34,
 	/** Heel roll about the planted toe at the end of stance (deg), so the trailing leg can stay on the ground. */
-	roll: 26,
+	roll: 22,
 	/** Paw lift at mid-swing (units). */
 	lift: 28,
 	/** Body carried lower than the stand (legs slightly flexed), plus a small bob. */
-	drop: 12,
+	drop: 8,
 	bob: 2,
 	/** Phase offsets per ANATOMICAL leg; walkPhase 0 is close to badger_pose_walking.png. */
 	offsets: {leftHind: -0.15, leftFront: 0.1, rightHind: 0.35, rightFront: 0.6},
-	neck: -13,
-	tail: 20,
+	neck: -17,
+	tail: 26,
 } as const;
 
 const frac = (v: number) => v - Math.floor(v);
 
 const NUM = /-?\d*\.?\d+/g;
-/** Toe contact point of a paw (paw-pivot space): the most forward of its lowest points. */
-const toeOf = (geom: LegGeom, dir: 1 | -1): Pt => {
+/** Toe contact point of a paw (paw-pivot space, normalised): the most forward of its lowest points. */
+export const toeOf = (geom: LegGeom, dir: 1 | -1): Pt => {
 	const n = (geom.paw.fill.match(NUM) ?? []).map(Number);
 	const pts: Pt[] = [];
 	for (let i = 0; i + 1 < n.length; i += 2) pts.push({x: dir * n[i], y: n[i + 1]});
@@ -121,16 +136,11 @@ const toeOf = (geom: LegGeom, dir: 1 | -1): Pt => {
 	return low.reduce((a, b) => (b.x > a.x ? b : a));
 };
 
-/** Walk pose at gait phase t (0..1). Planted toes move back at exactly `stride` per cycle in the body frame. */
+/** Walk pose at gait phase t (cycles; fractional part used). Planted toes move back at exactly `stride` per cycle. */
 export const walkPose = (R: SideRig, dir: 1 | -1, t: number, nearSide: 'left' | 'right'): SidePose => {
 	const W = WALK;
 	const ph = frac(t);
 	const body = {forward: 0, up: -W.drop + W.bob * Math.cos(ph * Math.PI * 4), pitch: 0};
-	const exc = W.reach + W.trail;
-	// keep exactly stride*duty of stance sweep so planted paws never slide
-	const k = (W.stride * W.duty) / exc;
-	const xf = W.reach * k;
-	const xb = -W.trail * k;
 	const far = nearSide === 'left' ? 'right' : 'left';
 	const offOf = (key: LegKey): number => {
 		const side = key.endsWith('Near') ? nearSide : far;
@@ -138,37 +148,64 @@ export const walkPose = (R: SideRig, dir: 1 | -1, t: number, nearSide: 'left' | 
 		return W.offsets[`${side}${front ? 'Front' : 'Hind'}` as keyof typeof W.offsets];
 	};
 	const legs = {} as Record<LegKey, LegAngles>;
+	const mountShift = {} as Record<LegKey, Pt>;
 	for (const s of legSpecs(R)) {
 		const u = frac(ph - offOf(s.key));
 		const rest = restPaw(s.geom, dir, s.mount);
-		const toe = toeOf(s.geom, dir); // paw-pivot space, normalised
-		// pivot when the paw is rolled by phi about its toe (toe fixed): pivot = toeWorld + R(-phi)(-toe)
-		const rolledPivot = (toeX: number, phi: number): Pt => {
+		const m = {x: dir * s.mount.x, y: s.mount.y};
+		const rng = s.front ? W.front : W.hind;
+		const toe = toeOf(s.geom, dir);
+		// paw pivot when the paw is rolled by phi about its toe, the toe touching the ground at x = toeX
+		const pivotAt = (toeX: number, phi: number): Pt => {
 			const r = rot({x: -toe.x, y: -toe.y}, (-phi * Math.PI) / 180);
-			return {x: rest.x + toeX + toe.x + r.x, y: rest.y + toe.y + r.y};
+			return {x: toeX + r.x, y: rest.y + toe.y + r.y};
+		};
+		const toeLand = m.x + rng.land + toe.x;
+		const toeLift = m.x + rng.lift + toe.x;
+		const Lmax = Math.hypot(s.geom.lowerPivot.x, s.geom.lowerPivot.y) + Math.hypot(s.geom.pawPivot.x, s.geom.pawPivot.y);
+		const band = s.front ? W.reachFront : W.reachHind;
+		const glideAt = (tx: number) => (s.front ? Math.max(-W.glideMax, Math.min(W.glideMax, W.glide * (tx - m.x))) : 0);
+		/** Mount slide (dx forward, dy down) that keeps a planted paw pivot within the reach band. */
+		const slideFor = (tgtRoot: Pt): Pt => {
+			const tb = rootToBody(tgtRoot, body);
+			const gx = glideAt(tgtRoot.x);
+			const dx = tb.x - (m.x + gx);
+			const dy0 = tb.y - m.y;
+			const d0 = Math.hypot(dx, dy0);
+			const want = Math.max(band[0] * Lmax, Math.min(band[1] * Lmax, d0));
+			const dy = Math.sqrt(Math.max(0, want * want - dx * dx));
+			const slide = Math.max(-W.maxSlide, Math.min(W.maxSlide, dy0 - dy));
+			return {x: gx, y: slide};
 		};
 		let target: Pt;
+		let slide: Pt;
 		let pawWorld = 0;
 		let prefer = s.front ? 0 : 10;
-		const rollStart = W.duty * 0.62;
+		const rollStart = W.duty * 0.6;
 		if (u < W.duty) {
-			const toeX = xf - (u / W.duty) * (xf - xb); // the toe contact moves back linearly while the body advances
+			const toeX = toeLand - (u / W.duty) * (toeLand - toeLift); // planted toe; the body advances over it
 			const phi = u > rollStart ? W.roll * Math.pow((u - rollStart) / (W.duty - rollStart), 1.6) : 0;
-			target = rolledPivot(toeX, phi);
+			target = pivotAt(toeX, phi);
+			slide = slideFor(target);
 			pawWorld = phi;
 		} else {
 			const sp = (u - W.duty) / (1 - W.duty);
 			const e = 0.5 - 0.5 * Math.cos(sp * Math.PI);
-			const a = rolledPivot(xb, W.roll);
-			const b = rolledPivot(xf, 0);
+			const a = pivotAt(toeLift, W.roll);
+			const b = pivotAt(toeLand, 0);
 			target = {x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e - W.lift * Math.sin(sp * Math.PI)};
+			const sa = slideFor(a);
+			const sb = slideFor(b);
+			slide = {x: sa.x + (sb.x - sa.x) * e, y: sa.y + (sb.y - sa.y) * e};
 			const fold = (s.front ? -46 : -20) * Math.sin(Math.min(1, sp * 1.12) * Math.PI);
 			pawWorld = W.roll * Math.pow(1 - sp, 2) + fold;
 			if (s.front) prefer = -70;
 		}
-		legs[s.key] = solveLeg(s.geom, dir, s.mount, rootToBody(target, body), prefer, body.pitch, pawWorld);
+		mountShift[s.key] = slide;
+		const mount = {x: s.mount.x + dir * slide.x, y: s.mount.y + slide.y};
+		legs[s.key] = solveLeg(s.geom, dir, mount, rootToBody(target, body), prefer, body.pitch, pawWorld);
 	}
-	return {body, neck: W.neck, legs, tail: W.tail};
+	return {body, neck: W.neck, legs, tail: W.tail, mountShift};
 };
 
 /** Root x offset (world units at scale 1, along the facing) for a walk that has run `cycles` gait cycles. */

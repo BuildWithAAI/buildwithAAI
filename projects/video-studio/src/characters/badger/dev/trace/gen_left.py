@@ -190,8 +190,8 @@ rig = {
         'lower': seg(fl_fill, fl_strokes, FRONT_WRIST),
         'pawPivot': rnd(sub(W(*FRONT_PAW), W(*FRONT_WRIST))),
         'paw': seg(fp_fill, fp_strokes, FRONT_PAW, fp_details),
-        'lowerJointR': round(17 * KX, 2),
-        'pawJointR': round(15.5 * KX, 2),
+        'lowerJointR': round(16.5 * KX, 2),  # 0.5 px inside the leg's half-width at the cut
+        'pawJointR': round(15 * KX, 2),
     },
     'legHind': {
         'upper': seg(hu_fill, hu_strokes, HIND_HIP),
@@ -199,8 +199,8 @@ rig = {
         'lower': seg(hl_fill, hl_strokes, HIND_HOCK),
         'pawPivot': rnd(sub(W(*HIND_PAW), W(*HIND_HOCK))),
         'paw': seg(hp_fill, hp_strokes, HIND_PAW, hp_details),
-        'lowerJointR': round(20 * KX, 2),
-        'pawJointR': round(17.5 * KX, 2),
+        'lowerJointR': round(19.5 * KX, 2),
+        'pawJointR': round(17 * KX, 2),
     },
     'tail': {**seg(tail_fill, tail_strokes, TAIL_ROOT), 'tip': rnd(sub(W(*TAIL_TIP), W(*TAIL_ROOT)))},
 }

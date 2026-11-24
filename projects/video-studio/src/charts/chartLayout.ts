@@ -1,9 +1,12 @@
 // chartLayout.ts: the pure model behind CandlestickChart (CHART_SPEC 4-7). Every rect, label and colour the component
 // draws is computed here in absolute output pixels, so node scripts can check exactly what renders without a browser.
+// Number text comes from chartFormat.ts, not from chartGeometry's verbatim fmtUsd/fmtPct (see chartFormat.ts header).
 import {direction, type Candle, type Dir} from './ohlc.ts';
-import {candleRects, fmtPct, fmtUsd, priceScale, revealAt, slots, type Rect, type ScaleMode} from './chartGeometry.ts';
+import {candleRects, priceScale, revealAt, slots, type Rect, type ScaleMode} from './chartGeometry.ts';
+import {fmtPctDisplay, fmtUsdSig, labelSig, linearTicks, parseUsd, SUBSCRIPTS} from './chartFormat.ts';
 import {CHART_DARK, CHART_LIGHT, type ChartTokens} from './tokens.ts';
 import {checkRefLabel, intervalLabel, unitLabel, type ChartData} from './chartData.ts';
+import {BRAND} from '../characters/palette.ts';
 
 export type Box = {x: number; y: number; w: number; h: number};
 export type RevealSpec = {mode: 'step' | 'live'; startFrame: number; framesPerCandle: number};
@@ -16,12 +19,15 @@ export type ChartOptions = {
 	showVolume?: boolean;
 	lastPrice?: boolean;
 	callout?: {candlesBack: number; label: string} | null;
+	// false hides the callout on this frame but keeps its footer space, so nothing moves when it returns. A shot hides
+	// it while history pops on in 'step' mode, where a new value every 2 f would read as a slot machine (A8, P5).
+	calloutVisible?: boolean;
 	hollowUp?: boolean;
 	draft?: boolean; // prints `seed N` in the footer (CHART_SPEC 8: draft renders only)
 };
 
 // ---------- layout constants (CHART_SPEC 4; output px) ----------
-export const HOUSE_OUTLINE = '#0B0C0F'; // panel frame: 4 px near-black (BRAND.nearBlack), radius 16 (CHART_SPEC 3)
+export const HOUSE_OUTLINE = BRAND.nearBlack; // panel frame: 4 px near-black, radius 16 (CHART_SPEC 3; CV1 tokens only)
 const OUTLINE = 4;
 const PAD = 32; // inner padding inside the outline
 const INSET = OUTLINE + PAD;
@@ -36,7 +42,8 @@ const VOL_FRAC = 0.18; // volume pane 15-20% of the inner height
 const MIN_PRICE_FRAC = 0.55;
 const SPLIT_HEADER_BELOW = 1000; // L3: split the header when the panel is narrower
 const PILL_H = 40, PILL_R = 8, PILL_DX = 8, PILL_W = 124, PILL_W_MAX = AXIS_COL - PILL_DX;
-const PILL_CLEAR = 32; // hide tick labels within 32 px of the pill (L8)
+const PILL_CLEAR = 32; // hide a tick label whose tick is within 32 px of the pill's EDGE (L8): |tickY - pillY| < 20 + 32
+const LAST_LINE_SKIP = 6; // no dashed last-price line within 6 px of a gridline: the two would read as a double line
 const LABEL_MIN_GAP = 28; // static de-cluttering of tick labels (24 px text)
 const DASH = 8; // last-price line: 2 px, neutral, dashed 8/8 (L8)
 const GLYPH_W = 24, GLYPH_H = 20, GLYPH_GAP = 10; // the up/down triangle before the callout (CD7)

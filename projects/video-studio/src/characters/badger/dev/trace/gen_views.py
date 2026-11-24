@@ -194,7 +194,7 @@ bv.spot('R-07', 'right', 'legHindRight', (189.2, 389.4, 8.3, 5.6, 81.5), (189, 3
 # Length axis (TT x, withers 195 .. tail root 505) -> back-view height (TB y): the back is foreshortened,
 # the rear of the croup turns down toward the tail root. Width axis (TT y, spine 162) -> TB x around the spine.
 SPINE_Y = 162.0
-LEN_MAP = [(195, 142.0), (260, 156.0), (330, 172.0), (380, 184.0), (440, 202.0), (470, 222.0), (505, 262.0)]
+LEN_MAP = [(195, 140.0), (260, 152.0), (330, 168.0), (380, 185.0), (440, 215.0), (470, 235.0), (505, 262.0)]
 HALF_W_TT = 54.0                      # top map half width (spine to the side outline)
 HALF_W_TB = [(142, 40.0), (175, 52.0), (205, 63.0), (240, 68.0), (265, 69.0)]  # back-view half width by height
 
@@ -208,24 +208,31 @@ def interp(tab, v):
     return tab[-1][1]
 
 
-def top_to_back(x, y):
+def top_to_back(x, y, k=0.84):
     """Orthographic: the lateral offset seen from above is the lateral offset seen from behind; points away
-    from the spine sit lower on the rounded back (cross-section treated as a half ellipse, 22 px deep)."""
+    from the spine sit lower on the rounded back (cross-section treated as a half ellipse, 34 px deep)."""
     u = (SPINE_Y - y) / HALF_W_TT          # +1 = anatomical right edge (TT image top)
     base = interp(LEN_MAP, x)
     hw = interp(HALF_W_TB, base)
-    by = base + 22.0 * (1 - math.sqrt(max(0.0, 1 - u * u)))
-    return (137.0 + hw * u, by)
+    by = base + 34.0 * (1 - math.sqrt(max(0.0, 1 - u * u)))
+    return (137.0 + k * hw * u, by)  # k < 1 keeps edge spots just inside the silhouette, as the back view draws them
 
 
 def proj_blob(cx, cy, rx, ry, rot, n=12):
+    """A small top-map spot projected as a whole: its centre goes through top_to_back, its shape is scaled by the
+    local foreshortening (length axis -> height; lateral axis -> width, kept at >= 50% near the flanks so an edge
+    spot reads as a spot, not a sliver)."""
     a = math.radians(rot)
+    X0, Y0 = top_to_back(cx, cy)
+    sy = (interp(LEN_MAP, cx + 2) - interp(LEN_MAP, cx - 2)) / 4.0
+    u = max(-1.0, min(1.0, (SPINE_Y - cy) / HALF_W_TT))
+    sx = 0.84 * interp(HALF_W_TB, Y0) / HALF_W_TT * max(0.5, math.sqrt(max(0.0, 1 - u * u)))
     out = []
     for i in range(n):
         t = 2 * math.pi * i / n
-        x = cx + rx * math.cos(t) * math.cos(a) - ry * math.sin(t) * math.sin(a)
-        y = cy + rx * math.cos(t) * math.sin(a) + ry * math.sin(t) * math.cos(a)
-        out.append(top_to_back(x, y))
+        dx = rx * math.cos(t) * math.cos(a) - ry * math.sin(t) * math.sin(a)
+        dy = rx * math.cos(t) * math.sin(a) + ry * math.sin(t) * math.cos(a)
+        out.append((X0 - dy * sx, Y0 + dx * sy))
     return out
 
 
@@ -234,7 +241,7 @@ CT = 'badger_coat_top.png'
 patch_tt = [(222, 122), (238, 120), (258, 124), (276, 133), (292, 143), (308, 150), (320, 158), (324, 168), (318, 178),
             (300, 186), (280, 192), (258, 200), (238, 204), (226, 198), (222, 180), (224, 160), (220, 140)]
 T_SPOTS = [
-    ('T-PATCH', 'left', [top_to_back(*p) for p in patch_tt], (262, 167), 'L-WITHERS',
+    ('T-PATCH', 'left', [top_to_back(*p, k=1.0) for p in patch_tt], (262, 167), 'L-WITHERS',
      'large withers patch from above: centred on the spine, wraps mostly to the left side (top map)'),
     ('T-01', 'midline', proj_blob(376.7, 146.5, 12.5, 7.5, 0.7), (377, 147), None, 'spine spot mid back (top map)'),
     ('T-02', 'midline', proj_blob(460.4, 170.8, 14.5, 10.4, -50.2), (460, 171), None, 'spine spot on the croup above the tail (top map)'),

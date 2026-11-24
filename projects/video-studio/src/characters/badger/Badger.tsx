@@ -93,10 +93,10 @@ const RIGHT_PARTS = spotsByPart(RIGHT_SPOTS);
 const DEFAULT_EARS_BACK: Record<Expression, number> = {neutral: 0, happy: 0, worried: 0.7, shocked: 0.15};
 
 /**
- * Right stand: the far (anatomical LEFT) front paw stands 23.4 units ahead of the near one. The leg is rotated
+ * Right stand: the far (anatomical LEFT) front paw stands 29.2 units ahead of the near one. The leg is rotated
  * from its shoulder (IK) rather than shifted, so its top stays hidden behind the chest (decision R-STANCE).
  */
-const RIGHT_STAND: SidePose = {...STAND_POSE, legs: plantLegs(RIGHT_RIG, 1, STAND_POSE.body, {frontFar: {x: 23.4, y: 0}})};
+const RIGHT_STAND: SidePose = {...STAND_POSE, legs: plantLegs(RIGHT_RIG, 1, STAND_POSE.body, {frontFar: {x: 29.2, y: 0}})};
 
 /** Pose state for the side rigs (facing-normalised, see SidePose). */
 export const sidePoseFor = (pose: BadgerPose, view: 'left' | 'right', walkPhase = 0): SidePose => {
@@ -111,6 +111,8 @@ export const sidePoseFor = (pose: BadgerPose, view: 'left' | 'right', walkPhase 
 };
 
 const lookUpHead = (dir: 1 | -1): BadgerHead => (dir === 1 ? 'upRightScreen' : 'upLeftScreen');
+/** The sheet's sitting and lying poses turn the head three-quarters toward the camera. */
+const POSE_HEAD: BadgerHead = 'threeQuarterRightScreen';
 /** The sheet's walking pose uses the profile head. */
 const walkHead = (dir: 1 | -1): BadgerHead => (dir === 1 ? 'profileRightScreen' : 'profileLeftScreen');
 
@@ -135,11 +137,20 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 		lookY = 0,
 		neckTurn = 0,
 	} = props;
-	// walk and look-up are side-view poses: a non-side view walks / looks up in the right view (its facing)
+	// walk and look-up are side-view poses: a front / back / 3/4 view walks or looks up in the sheet's facing
+	// (screen right). sit and lie exist only in the sheet's facing (screen right, right-side markings); they are
+	// never mirrored to make a left-facing version (decision P-FACING).
 	const sideOnly = pose === 'walk' || pose === 'lookUp';
-	const bodyView: BadgerView = !IMPLEMENTED_VIEWS.includes(view) ? 'left' : sideOnly && view !== 'left' && view !== 'right' ? 'right' : view;
+	const fixedRight = pose === 'sit' || pose === 'lie';
+	const bodyView: BadgerView = !IMPLEMENTED_VIEWS.includes(view)
+		? 'left'
+		: fixedRight || (sideOnly && view !== 'left' && view !== 'right')
+			? 'right'
+			: view;
 	const dir: 1 | -1 = bodyView === 'right' ? 1 : -1;
-	const head = props.head ?? (pose === 'lookUp' ? lookUpHead(dir) : pose === 'walk' ? walkHead(dir) : DEFAULT_HEAD[bodyView]);
+	const head =
+		props.head ??
+		(pose === 'lookUp' ? lookUpHead(dir) : pose === 'walk' ? walkHead(dir) : pose === 'sit' || pose === 'lie' ? POSE_HEAD : DEFAULT_HEAD[bodyView]);
 	const headState: HeadState = {
 		expression,
 		blink: clamp01(props.blink),

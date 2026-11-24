@@ -23,7 +23,7 @@ T = json.load(open(os.path.join(HERE, 'traces', 'right.json')))
 
 KX, KY = 0.9734, 1.0283
 FRONT_FAR_DX = 30   # far (anatomical LEFT) front paw stands 30 CR px forward (decision R-STANCE) ...
-FRONT_FAR_MOUNT_DX = 6  # ... its shoulder only 6 px forward; the stand pose rotates the leg (IK) to reach the paw spot
+FRONT_FAR_MOUNT_DX = 0  # ... from the same shoulder: the stand pose rotates the leg (IK) to reach the paw spot
 HIND_FAR_DX = 26    # far hind leg 26 CR px forward, as drawn on coat_right
 FOOT_MIN, FOOT_MAX = 91, 456 + FRONT_FAR_DX
 OX = -KX * (FOOT_MIN + FOOT_MAX) / 2
@@ -126,13 +126,13 @@ neck = {
 }
 
 # ---------------------------------------------------------------- front leg (near = anatomical RIGHT; far reuses it)
-ff = until('fl_front', ymax=397) + [(420.8, 398)]
-fr = until('fl_rear', ymax=397) + [(388.2, 398)]
+ff = until('fl_front', ymax=397) + [(420.8, 398, 'c')]
+fr = until('fl_rear', ymax=397) + [(388.2, 398, 'c')]
 fu_fill = [(381, 250, 'c'), (396, 238), (425, 236), (447, 250, 'c')] + ff + [(388.2, 398, 'c')] + rev(fr)
 front_upper = seg(fu_fill, [ff, fr], FRONT_SHOULDER)
 # lower (pastern): round top centred on the wrist pivot (hidden under the upper at rest), flat bottom at the paw cut
-fl_rear = [(395, 408), (392, 404), (388.2, 398)]
-fl_front = [(420.8, 398), (422, 403), (423, 408)]
+fl_rear = [(395, 408, 'c'), (392, 404), (388.2, 398, 'c')]
+fl_front = [(420.8, 398, 'c'), (422, 403), (423, 408, 'c')]
 front_lower = seg(fl_rear + [(388.2, 398, 'c'), (420.8, 398, 'c')] + fl_front + [(423, 408, 'c'), (395, 408, 'c')],
                   [fl_rear[::-1], fl_front], FRONT_WRIST)
 fp = pts('fp_outline')
@@ -140,12 +140,12 @@ fp_vis = [(395, 408), (397, 412)] + [p for p in fp if p[1] >= 414] + [(424, 412)
 front_paw = seg(fp_vis + [(423, 408, 'c'), (395, 408, 'c')], [fp_vis], FRONT_PAW, [[(437, 431), (437, 436), (438, 440)], [(447, 432), (447, 436), (448, 439)]])
 
 # ---------------------------------------------------------------- hind leg
-hr = until('hl_rear', ymax=366) + [(92, 368)]
-hf = until('hl_front', ymax=366) + [(124, 368)]
-hu_fill = ([(220, 244, 'c'), (206, 222), (176, 210), (146, 208), (124, 214), (113, 232)] + hr + [(124, 368, 'c')] + rev(hf))
+hr = until('hl_rear', ymax=366) + [(92, 368, 'c')]
+hf = until('hl_front', ymax=366) + [(124, 368, 'c')]
+hu_fill = ([(220, 244, 'c'), (206, 228), (176, 220), (146, 218), (124, 224), (114, 236)] + hr + [(124, 368, 'c')] + rev(hf))
 hind_upper = seg(hu_fill, [hr, hf], HIND_HIP)
-hl_rear = [(93, 410), (92.5, 390), (92, 368)]
-hl_front = [(124, 368), (122.5, 382), (120.5, 396), (120, 410)]
+hl_rear = [(93, 410, 'c'), (92.5, 390), (92, 368, 'c')]
+hl_front = [(124, 368, 'c'), (122.5, 382), (120.5, 396), (120, 410, 'c')]
 hind_lower = seg(hl_rear + [(92, 368, 'c'), (124, 368, 'c')] + hl_front + [(120, 410, 'c'), (93, 410, 'c')],
                  [hl_rear[::-1], hl_front], HIND_HOCK)
 hp = pts('hp_outline')
@@ -210,8 +210,8 @@ rig = {
         'lower': front_lower,
         'pawPivot': rnd(sub(W(*FRONT_PAW), W(*FRONT_WRIST))),
         'paw': front_paw,
-        'lowerJointR': round(16.3 * KX, 2),
-        'pawJointR': round(14 * KX, 2),
+        'lowerJointR': round(15.8 * KX, 2),  # 0.5 px inside the leg's half-width at the cut
+        'pawJointR': round(13.5 * KX, 2),
     },
     'legHind': {
         'upper': hind_upper,
@@ -219,8 +219,8 @@ rig = {
         'lower': hind_lower,
         'pawPivot': rnd(sub(W(*HIND_PAW), W(*HIND_HOCK))),
         'paw': hind_paw,
-        'lowerJointR': round(16 * KX, 2),
-        'pawJointR': round(13.5 * KX, 2),
+        'lowerJointR': round(15.5 * KX, 2),
+        'pawJointR': round(13 * KX, 2),
     },
     'tail': tail,
 }

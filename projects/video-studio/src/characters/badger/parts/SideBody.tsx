@@ -50,6 +50,11 @@ export type SidePose = {
 	readonly legs: Record<LegKey, LegAngles>;
 	/** Extra tail rotation (+ = up) added to the wag. */
 	readonly tail: number;
+	/**
+	 * Optional slide of a leg's mount inside the body (units; x + = forward, y + = down): the scapula / pelvis
+	 * movement of the walk. The leg's top stays hidden inside the torso.
+	 */
+	readonly mountShift?: Partial<Record<LegKey, Pt>>;
 };
 
 export const REST_LEG: LegAngles = {upper: 0, lower: 0, paw: 0};
@@ -148,10 +153,15 @@ export const SideBody: React.FC<{
 	const T = R.torso.pivot;
 	const rootT = `translate(${T.x + dir * pose.body.forward} ${T.y - pose.body.up}) rotate(${pitchSvg})`;
 	const L = pose.legs;
+	const ms = pose.mountShift ?? {};
+	const mnt = (k: LegKey, p: Pt): Pt => {
+		const d = ms[k];
+		return d ? {x: p.x + dir * d.x, y: p.y + d.y} : p;
+	};
 	return (
 		<g transform={rootT}>
-			{hindFarOverride ?? <Leg geom={R.legHind} mount={M.legHindFar} angles={svgLeg(L.hindFar, dir)} uid={`${uid}-hf`} far />}
-			<Leg geom={R.legFront} mount={M.legFrontFar} angles={svgLeg(L.frontFar, dir)} uid={`${uid}-ff`} far />
+			{hindFarOverride ?? <Leg geom={R.legHind} mount={mnt('hindFar', M.legHindFar)} angles={svgLeg(L.hindFar, dir)} uid={`${uid}-hf`} far />}
+			<Leg geom={R.legFront} mount={mnt('frontFar', M.legFrontFar)} angles={svgLeg(L.frontFar, dir)} uid={`${uid}-ff`} far />
 			<Tail geom={R.tail} mount={M.tail} wag={wag} bend={bend} uid={uid} />
 			<g transform={neckT}>
 				<NeckSide geom={R.neck} uid={uid} spots={spots.neck} />
@@ -162,9 +172,9 @@ export const SideBody: React.FC<{
 				</PartShape>
 			</g>
 			{hindNearOverride ?? (
-				<Leg geom={R.legHind} mount={M.legHindNear} angles={svgLeg(L.hindNear, dir)} uid={`${uid}-hn`} spots={spots.legHindNear} />
+				<Leg geom={R.legHind} mount={mnt('hindNear', M.legHindNear)} angles={svgLeg(L.hindNear, dir)} uid={`${uid}-hn`} spots={spots.legHindNear} />
 			)}
-			<Leg geom={R.legFront} mount={M.legFrontNear} angles={svgLeg(L.frontNear, dir)} uid={`${uid}-fn`} spots={spots.legFrontNear} />
+			<Leg geom={R.legFront} mount={mnt('frontNear', M.legFrontNear)} angles={svgLeg(L.frontNear, dir)} uid={`${uid}-fn`} spots={spots.legFrontNear} />
 			<g transform={neckT}>
 				<CollarSide geom={R.neck} worldAngle={neckAngle + pitchSvg} />
 			</g>

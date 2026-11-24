@@ -7,7 +7,22 @@ import {BADGER_COLORS, LINE} from '../palette';
 import type {BadgerHead} from '../types';
 import {HEAD_GEOM} from './parts/heads/headGeom';
 import {LEFT_RIG} from './parts/rigLeft';
-import {LEFT_SPOT_COUNT, LEFT_SPOTS, HEAD_MARKINGS, FRONT_NECK_SPOTS} from './spots';
+import {RIGHT_RIG} from './parts/rigRight';
+import {VIEW_RIGS} from './parts/viewRigs';
+import {POSE_RIGS} from './parts/poseRigs';
+import {WALK} from './parts/gait';
+import {
+	LEFT_SPOT_COUNT,
+	LEFT_SPOTS,
+	HEAD_MARKINGS,
+	FRONT_NECK_SPOTS,
+	RIGHT_SPOTS,
+	FRONT_SPOTS,
+	BACK_SPOTS,
+	THREE_QUARTER_SPOTS,
+	SIT_SPOTS,
+	LIE_SPOTS,
+} from './spots';
 
 export type Pivot = {readonly x: number; readonly y: number; readonly parent: string; readonly space: string};
 
@@ -34,10 +49,38 @@ export type BadgerManifest = {
 		readonly rigCheck: Record<string, number>;
 	};
 	readonly anatomy: {readonly conventions: readonly string[]};
-	readonly views: {readonly implemented: readonly string[]; readonly headViews: readonly BadgerHead[]; readonly poses: Record<string, string>};
+	readonly views: {
+		readonly implemented: readonly string[];
+		readonly headViews: readonly BadgerHead[];
+		readonly defaultHeads: Record<string, string>;
+		readonly poses: Record<string, string>;
+	};
 	readonly pivots: Record<string, Pivot>;
+	readonly pivotsRight: Record<string, Pivot>;
+	readonly viewPivots: Record<string, Record<string, Pivot>>;
+	readonly posePivots: Record<string, Record<string, Pivot>>;
 	readonly headPivots: Record<string, Record<string, Pivot>>;
-	readonly markings: {readonly leftBodySpotCount: number; readonly leftBodySpotIds: readonly string[]; readonly headIds: readonly string[]; readonly frontNeckIds: readonly string[]};
+	readonly walk: {
+		readonly gait: string;
+		readonly cycleUnits: number;
+		readonly duty: number;
+		readonly phaseOffsets: Record<string, number>;
+		readonly rootMotion: string;
+		readonly verification: string;
+	};
+	readonly markings: {
+		readonly leftBodySpotCount: number;
+		readonly leftBodySpotIds: readonly string[];
+		readonly rightBodySpotIds: readonly string[];
+		readonly frontViewIds: readonly string[];
+		readonly backViewIds: readonly string[];
+		readonly threeQuarterViewIds: readonly string[];
+		readonly sitIds: readonly string[];
+		readonly lieIds: readonly string[];
+		readonly topMapLinks: Record<string, string>;
+		readonly headIds: readonly string[];
+		readonly frontNeckIds: readonly string[];
+	};
 	readonly decisions: readonly ContinuityDecision[];
 };
 
@@ -45,8 +88,10 @@ const R = LEFT_RIG;
 const T = R.torso.pivot;
 const M = R.mounts;
 
-const legPivots = (name: string, mount: {x: number; y: number}, kind: 'front' | 'hind'): Record<string, Pivot> => {
-	const g = kind === 'front' ? R.legFront : R.legHind;
+type LegRig = {readonly legFront: {readonly lowerPivot: {x: number; y: number}; readonly pawPivot: {x: number; y: number}}; readonly legHind: {readonly lowerPivot: {x: number; y: number}; readonly pawPivot: {x: number; y: number}}};
+
+const legPivots = (name: string, mount: {x: number; y: number}, kind: 'front' | 'hind', rig: LegRig = R): Record<string, Pivot> => {
+	const g = kind === 'front' ? rig.legFront : rig.legHind;
 	return {
 		[`${name}.upper`]: {x: mount.x, y: mount.y, parent: 'torso', space: 'torso-local'},
 		[`${name}.lower`]: {x: g.lowerPivot.x, y: g.lowerPivot.y, parent: `${name}.upper`, space: `${name}.upper-local`},
@@ -76,6 +121,24 @@ const HEAD_VIEWS: BadgerHead[] = [
 	'upRightScreen',
 ];
 
+const RR = RIGHT_RIG;
+const RM = RR.mounts;
+
+const groupPivots = (pv: Readonly<Record<string, {readonly x: number; readonly y: number}>>, what: string): Record<string, Pivot> =>
+	Object.fromEntries(
+		Object.entries(pv).map(([k, v]) => [
+			k,
+			{
+				x: v.x,
+				y: v.y,
+				parent: 'root',
+				space: `${what} root (world units, origin = ground contact point)${k === 'headCentroid' ? '; the head is mounted so its eyes+nose centroid lands here (Badger.tsx headLandmark)' : ''}`,
+			},
+		]),
+	);
+
+const ids = (xs: readonly {readonly id: string}[]) => xs.map((x) => x.id);
+
 const ZOO_PX = 478; // badger_size_comparison.png (2x crop): ZOO sole 498 .. top of hair 20
 const UPP = 900 / ZOO_PX; // 1.8828 world units per crop px
 const b = (px: number) => ({px, units: Math.round(px * UPP * 10) / 10, ratioToZoo: Math.round((px / ZOO_PX) * 1000) / 1000});
@@ -90,6 +153,10 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		'reference/crops/badger_coat_right.png (right profile head + pale-ear spot)',
 		'reference/crops/badger_expr_neutral|happy|worried|shocked.png (front head + expressions)',
 		'reference/crops/badger_turn_34.png (3/4 calibration), badger_pose_looking_up.png (look-up check)',
+		'reference/crops/badger_coat_right.png (RIGHT body rig + R- markings, traced; v1.0.0 extra views)',
+		'reference/crops/badger_turn_front.png, badger_turn_back.png, badger_turn_34.png (front / back / three-quarter bodies, traced)',
+		'reference/crops/badger_coat_top.png (back-view markings T-, projected)',
+		'reference/crops/badger_pose_sitting.png, badger_pose_lying.png (sit / lie bodies, traced), badger_pose_walking.png (walk phase 0)',
 	],
 	paletteKeysUsed: [
 		'coat',
@@ -145,6 +212,20 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			frontHeadSkullWidth: 98,
 			frontHeadHeight: 123,
 			lineWidth: LINE.width,
+			// RIGHT view (rigRight.ts, stand): withers outer edge, torso outline length, footprint (far front paw placed by IK)
+			rightWithersOuter: 312.3,
+			rightTorsoLength: 352.0,
+			rightFootprintMinX: -191.2,
+			rightFootprintMaxX: 190.6,
+			// turnaround views share one scale: 0.950 units per crop px (side-view withers 329 px = 312.6, decision V-SCALE)
+			frontViewWidth: 134.7,
+			frontHeadSkullWidthOnSheet: 97.9,
+			backViewHeight: 436.6,
+			threeQuarterBodyWidth: 293.2,
+			// pose bodies: scale from the head (eye spacing 46.4 units), decision P-SCALE
+			sitHeadCentroidHeight: 369.3,
+			lieLength: 541.3,
+			lieHeadCentroidHeight: 233.7,
 		},
 	},
 	anatomy: {
@@ -152,20 +233,34 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			"Prop and part names are ANATOMICAL unless suffixed 'Screen'.",
 			"view 'left': the dog faces SCREEN LEFT and its ANATOMICAL LEFT side faces the camera (badger_coat_left.png).",
 			"In view 'left' the near legs are the anatomical LEFT legs (legFrontNear, legHindNear); the far legs are the RIGHT legs, drawn behind in coatShadow with no visible markings.",
+			"view 'right': the dog faces SCREEN RIGHT and its ANATOMICAL RIGHT side faces the camera (badger_coat_right.png). Near legs are the anatomical RIGHT legs; the far (LEFT) legs are drawn behind in coatShadow. The near ear is the PALE right ear.",
+			"view 'front': anatomical LEFT = SCREEN RIGHT (dark ear on screen right). view 'back': anatomical LEFT = SCREEN LEFT (dark ear on screen left). view 'threeQuarter': the dog's right flank faces the camera, the head turned to screen right (badger_turn_34.png).",
+			"Every view and pose body is its own trace with its own marking records; no view or pose is produced by mirroring another.",
 			"Front head: anatomical left = screen right. The DARK-capped ear is the anatomical LEFT ear in every head view (screen right in 'front'; the near ear in left-facing views; the far ear in right-facing views).",
 			'The pale anatomical RIGHT ear carries the small spot H-EAR-R-SPOT.',
 			'No view is produced by horizontally flipping the character or any marking (see decisions D-08, D-09).',
 		],
 	},
 	views: {
-		implemented: ['left'],
+		implemented: ['left', 'right', 'front', 'back', 'threeQuarter'],
 		headViews: HEAD_VIEWS,
+		defaultHeads: {
+			left: 'front',
+			right: 'profileRightScreen',
+			front: 'front',
+			threeQuarter: 'threeQuarterRightScreen',
+			back: 'none: the back of the head is part of the traced back view (head prop ignored)',
+			sit: 'threeQuarterRightScreen',
+			lie: 'threeQuarterRightScreen',
+			walk: 'profileLeftScreen / profileRightScreen (facing)',
+			lookUp: 'upLeftScreen / upRightScreen (facing)',
+		},
 		poses: {
-			stand: 'implemented (left)',
-			lookUp: "implemented as head 'upLeftScreen' + raised neck (left)",
-			sit: 'not built in v1: falls back to stand',
-			lie: 'not built in v1: falls back to stand',
-			walk: 'not built in v1: falls back to stand (leg pivots are ready)',
+			stand: 'all five views',
+			lookUp: "side views: head 'upLeftScreen' / 'upRightScreen' + raised neck (the sheet faces right; front/back/3/4 requests render the right view)",
+			walk: 'side views, both facings: 4-beat lateral-sequence gait from walkPhase, IK legs, planted stance paws (front/back/3/4 requests render the right view)',
+			sit: 'traced pose body (badger_pose_sitting.png), screen-right facing only, right-side markings (decision P-FACING)',
+			lie: 'traced pose body (badger_pose_lying.png), screen-right facing only, right-side markings (decision P-FACING)',
 		},
 	},
 	pivots: {
@@ -180,10 +275,48 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		...legPivots('legHindNear', M.legHindNear, 'hind'),
 		...legPivots('legHindFar', M.legHindFar, 'hind'),
 	},
+	pivotsRight: {
+		root: {x: 0, y: 0, parent: 'none', space: 'world (ground contact, centre of footprint)'},
+		torso: {x: RR.torso.pivot.x, y: RR.torso.pivot.y, parent: 'root', space: 'world'},
+		neck: {x: RM.neck.x, y: RM.neck.y, parent: 'torso', space: 'torso-local'},
+		headMount: {x: RR.neck.headMount.x, y: RR.neck.headMount.y, parent: 'neck', space: 'neck-local (+ RIGHT_HEAD_MOUNT per head view)'},
+		tagAnchor: {x: RR.neck.tagAnchor.x, y: RR.neck.tagAnchor.y, parent: 'neck', space: 'neck-local (tag counter-rotates to hang plumb)'},
+		tail: {x: RM.tail.x, y: RM.tail.y, parent: 'torso', space: 'torso-local (curve driven by tailWag)'},
+		...legPivots('legFrontNear', RM.legFrontNear, 'front', RR),
+		...legPivots('legFrontFar', RM.legFrontFar, 'front', RR),
+		...legPivots('legHindNear', RM.legHindNear, 'hind', RR),
+		...legPivots('legHindFar', RM.legHindFar, 'hind', RR),
+	},
+	viewPivots: {
+		front: groupPivots(VIEW_RIGS.front.pivots, 'front view'),
+		back: groupPivots(VIEW_RIGS.back.pivots, 'back view'),
+		threeQuarter: groupPivots(VIEW_RIGS.threeQuarter.pivots, 'three-quarter view'),
+	},
+	posePivots: {
+		sit: groupPivots(POSE_RIGS.sit.pivots, 'sit pose'),
+		lie: groupPivots(POSE_RIGS.lie.pivots, 'lie pose'),
+	},
 	headPivots: Object.fromEntries(HEAD_VIEWS.map((v) => [v, headPivotsFor(v)])),
+	walk: {
+		gait: 'lateral-sequence 4-beat walk: left hind, left front, right hind, right front, a quarter cycle apart (parts/gait.ts WALK.offsets)',
+		cycleUnits: Math.round(WALK.stride * 10) / 10,
+		duty: WALK.duty,
+		phaseOffsets: {...WALK.offsets},
+		rootMotion:
+			'walkPhase is in gait cycles. Move the root by WALK.stride * scale per cycle along the facing (badgerWalkDistance(cycles) in parts/gait.ts) and planted paws stay fixed on the ground.',
+		verification:
+			'Numerically checked (esbuild + node, 3 cycles, 1200 samples, both facings, all four legs): every stance toe stays fixed in world space (max drift 0.000 units in x and y).',
+	},
 	markings: {
 		leftBodySpotCount: LEFT_SPOT_COUNT,
-		leftBodySpotIds: LEFT_SPOTS.map((s) => s.id),
+		leftBodySpotIds: ids(LEFT_SPOTS),
+		rightBodySpotIds: ids(RIGHT_SPOTS),
+		frontViewIds: ids(FRONT_SPOTS),
+		backViewIds: ids(BACK_SPOTS),
+		threeQuarterViewIds: ids(THREE_QUARTER_SPOTS),
+		sitIds: ids(SIT_SPOTS),
+		lieIds: ids(LIE_SPOTS),
+		topMapLinks: Object.fromEntries(BACK_SPOTS.filter((s) => s.sameAs).map((s) => [s.id, s.sameAs as string])),
 		headIds: HEAD_MARKINGS.map((m) => m.id),
 		frontNeckIds: FRONT_NECK_SPOTS.map((s) => s.id),
 	},
@@ -269,6 +402,105 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			sheetShowed: 'One round teal tag; edge-on (oval) in side views.',
 			chosen: 'One tag: round disc in the front bust, edge-on oval in the left view, hanging plumb from the collar ring.',
 			why: 'Single tag per the locked design; orientation follows the view.',
+		},
+		{
+			id: 'BADGER-D14-right-body',
+			sheetShowed: 'badger_coat_right.png: the right side with its own spot pattern (9 marks) and only a sliver of the left withers patch at the top line.',
+			chosen:
+				"view 'right' is its own trace of coat_right (rigRight.ts, gen_right.py), mapped with kx 0.9734 / ky 1.0283 so withers (312.3) and body length match the binding size panel (D01). Its markings are separate records R-01..R-08 and R-NECK; the patch edge keeps the id L-WITHERS (side left). Near ear: the pale right ear (profileRightScreen head).",
+			why: 'The labelled coat maps control body markings; opposite views carry their own anatomical markings and nothing is flipped.',
+		},
+		{
+			id: 'BADGER-D15-right-stance',
+			sheetShowed: 'coat_right draws the far (left) front paw about 30 sheet px ahead of the near one and the far hind paw 26 px ahead.',
+			chosen:
+				'The far hind leg mounts 26 px forward; the far front leg keeps the near shoulder and is rotated by IK so its paw lands 29.2 units ahead, so its top never pokes out in front of the chest.',
+			why: 'Matches the coat map stance without inventing anatomy; a shifted shoulder showed the leg top outside the chest.',
+		},
+		{
+			id: 'BADGER-D16-withers-patch-right-facing',
+			sheetShowed:
+				'The turnaround side view, the walking, looking-up, sitting and lying panels (all facing screen right) draw the large withers patch on the visible right side; coat_right shows only its top-line edge.',
+			chosen: 'In every screen-right-facing view and pose the patch shows only as its top-line edge (L-WITHERS, side left). Extends D04.',
+			why: 'Coat maps control body markings and the locked design puts the large patch near the LEFT withers.',
+		},
+		{
+			id: 'BADGER-D17-turnaround-scale',
+			sheetShowed: 'The turnaround draws all four views at one scale; its side-view withers stand 329 crop px above the ground line (y=484).',
+			chosen:
+				'Front, back and 3/4 bodies are traced at 0.950 units per crop px (312.6 / 329), so their withers match the binding size panel. The replaceable heads keep their size: the turnaround front skull measures 97.9 units against 99.5 for the shared front head.',
+			why: 'Size panel controls scale; the turnaround controls anatomy. One head size in every view avoids a head that changes size on a view switch.',
+		},
+		{
+			id: 'BADGER-D18-front-view',
+			sheetShowed:
+				'badger_turn_front.png: dark ear on screen right; spots on both shoulders, both forearms, one on the midline chest under the tag; neck spots on both sides; only a narrow strip of a hind leg between the front legs.',
+			chosen:
+				"view 'front' traces the turnaround body, neck, collar and tag; head 'front' is mounted on the sheet's face centroid. Markings reuse the coat-map ids as seen from the front (R-04 / L-03 shoulders, R-08 / L-09 forearms, R-NECK / L-NECK) plus M-CHEST.",
+			why: 'Front views control anatomy and the front head controls which ear is dark.',
+		},
+		{
+			id: 'BADGER-D19-midline-chest-spot',
+			sheetShowed: 'A spot on the midline of the chest below the tag (front, 3/4 and sitting drawings). No coat map can show the chest midline.',
+			chosen: 'Kept as M-CHEST (side midline) on the front, 3/4 and sit bodies; it never appears in side views.',
+			why: 'The turnaround front controls anatomy where no coat map covers the area; the side maps are not contradicted.',
+		},
+		{
+			id: 'BADGER-D20-back-view',
+			sheetShowed:
+				'badger_turn_back.png: the dark ear on SCREEN LEFT; a crescent patch under the collar; shoulder and hip spots that do not match the top map exactly.',
+			chosen:
+				"view 'back' traces the turnaround back (head, ears, collar, body, legs, tail). Dark ear = anatomical LEFT = screen left. Back markings are the top coat map (T-PATCH, T-01..T-08) projected onto the rounded back; leg spots seen from behind keep their side-map ids (L-07, L-08, R-07). T- records name the side marking they continue (sameAs).",
+			why: 'The top coat map controls back markings (reference priority); the anatomical left ear is dark in every view (D03).',
+		},
+		{
+			id: 'BADGER-D21-top-map-orientation',
+			sheetShowed: 'badger_coat_top.png is a dorsal view with the head at screen left.',
+			chosen:
+				'Image TOP = anatomical RIGHT (a dog facing screen left, seen from above, has its right side at the top). Seen from behind, anatomical right = screen right, so T- spots from the image top land on screen right of the back view.',
+			why: 'Keeps every marking on its anatomical side; consistent with D03 (top-map ear colour read the same way).',
+		},
+		{
+			id: 'BADGER-D22-three-quarter-view',
+			sheetShowed:
+				'badger_turn_34.png: right flank toward camera; it draws the left withers patch large on top, a spot at the back of the thigh that is not on coat_right, and omits R-05 / R-06.',
+			chosen:
+				"view 'threeQuarter' traces the turnaround body; markings follow coat_right (R-01..R-08, R-NECK) plus the far forearm L-09, the far shoulder L-03 at the chest edge, M-CHEST and the L-WITHERS edge. The extra thigh spot is omitted.",
+			why: 'Coat maps control body markings; the 3/4 drawing controls the silhouette.',
+		},
+		{
+			id: 'BADGER-D23-pose-facing',
+			sheetShowed: 'The sitting, lying, walking and looking-up panels all face screen right.',
+			chosen:
+				"sit and lie are traced pose bodies that exist only in the sheet's facing (screen right, right-side markings); requesting them with view 'left' renders the right-facing body. walk and lookUp are built on both side rigs: right-facing uses the right markings, left-facing the left markings.",
+			why: 'Sit and lie cannot be produced for the other facing without mirroring asymmetric markings, which is forbidden; walk and look-up are poses of the traced side rigs, which exist for both sides.',
+		},
+		{
+			id: 'BADGER-D24-pose-scale-and-markings',
+			sheetShowed: 'The pose panels are drawn at different scales; their spot layouts are looser than the coat maps.',
+			chosen:
+				"Sit and lie are scaled so their heads match the shared 3/4 head (eye spacing 46.4 units); check: the sit front leg (elbow to ground) is 179 units against 180 in the 3/4 view. Their spots are the coat_right records placed on the posed parts (R-06, R-07 on the folded haunch; R-08 on the forearm), plus M-CHEST and L-09 on the sit's turned chest and far leg.",
+			why: 'Size panel controls scale; coat maps control markings; pose drawings show the performance.',
+		},
+		{
+			id: 'BADGER-D25-walk',
+			sheetShowed: 'badger_pose_walking.png: one walking frame, far front leg reaching forward, near hind leg extended back, head carried forward.',
+			chosen:
+				'A 4-beat lateral-sequence gait (duty 0.6, 291.7 units per cycle) solved with two-bone IK per leg. Stance toes are fixed in world space (toe roll about the planted toe at the end of stance; shoulder / hip slide inside the body keeps the legs within reach). walkPhase 0 approximates the sheet frame; the neck lowers 17 deg and the tail lifts 26 deg while walking.',
+			why: 'Pose drawings show how the same character performs; no foot sliding was required.',
+		},
+		{
+			id: 'BADGER-D26-joints',
+			sheetShowed: 'Legs are single outlined shapes with no visible joint seams.',
+			chosen:
+				'Legs use round cut-out joints: segments meet on a flat cut through the pivot and a disk of the joint radius fills the bend. Each segment outline is drawn through a hard-edged occlusion mask of the other segment fills, so no interior seam shows when a joint bends. The masks are binary (black/white), never soft, and are not used for shading. The left rig joint pivots moved to the centre of each cut (FRONT_PAW, HIND_HOCK, HIND_PAW); the standing drawing is unchanged except for antialiasing at the joints.',
+			why: 'Clean flat outlines in every walk frame; consistent near-black outline weight.',
+		},
+		{
+			id: 'BADGER-D27-look-up-right',
+			sheetShowed: 'badger_pose_looking_up.png: right-facing, head raised toward ZOO, pale near ear hanging.',
+			chosen: "Right look-up uses head 'upRightScreen' on the right neck (RIGHT_HEAD_MOUNT: neck -2 deg, offset -7 / +1) and the right-side markings.",
+			why: 'Matches the panel facing and keeps right-side markings in a right-facing pose.',
 		},
 	],
 };
