@@ -232,10 +232,10 @@ const Beard34: React.FC<{hole: number; jawDrop: number}> = ({hole, jawDrop}) => 
 	);
 };
 
-const Moustache34: React.FC<{liftR: number}> = ({liftR}) => (
+const Moustache34: React.FC<{liftR: number; liftL?: number}> = ({liftR, liftL = 0}) => (
 	<g data-part="moustache">
 		<Clipped clip={face34Path(0)}>
-			<path d={smooth(moustachePts(MOUSTACHE, liftR).map(tqPt))} fill={ZOO_COLORS.moustache} />
+			<path d={smooth(moustachePts(MOUSTACHE, liftR, liftL).map(tqPt))} fill={ZOO_COLORS.moustache} />
 		</Clipped>
 	</g>
 );
@@ -304,7 +304,7 @@ export const Head34: React.FC<Head34Props> = ({expression, mouth, blink, browLif
 			<Shape name="face" d={face34Path(jaw)} fill={ZOO_COLORS.skin} shadow={{d: FACE_SHADOW, fill: ZOO_COLORS.skinShadow}} stroke={0} />
 			<Mouth shape={shape} mod={mod} project={tqMouth} spec={mouthSpec} />
 			<Beard34 hole={hole} jawDrop={jaw} />
-			<Moustache34 liftR={mod.moustacheLiftR} />
+			<Moustache34 liftR={mod.moustacheLiftR} liftL={mod.moustacheLiftL ?? 0} />
 			<path data-part="jawOutline" d={jaw34Outline(jaw)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />
 			<g data-part="nose">
 				<path d={UNDER_TIP} fill={ZOO_COLORS.skinShadow} />

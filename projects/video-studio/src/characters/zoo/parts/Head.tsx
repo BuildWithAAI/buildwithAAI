@@ -6,9 +6,10 @@
  * (PIVOTS.head) for headTilt.
  */
 import React from 'react';
-import {LINE} from '../../palette';
+import {LINE, ZOO_COLORS} from '../../palette';
 import type {Expression, MouthShape} from '../../types';
 import {ZOO_LINE} from '../lines';
+import {tapered, type Pt} from '../geometry';
 import {BROW_LIFT, EXPRESSIONS, MOD0, PIVOTS, type MouthMod} from '../rig';
 import {Beard, Moustache} from './Beard';
 import {BROW_R, browTopIn, Brows, posed} from './Brows';
@@ -37,7 +38,14 @@ export const explicitMod = (m: MouthMod): MouthMod => ({
 	cornerR: m.cornerR * 0.5,
 	wave: m.wave * 0.4,
 	moustacheLiftR: m.moustacheLiftR * 0.6,
+	moustacheLiftL: (m.moustacheLiftL ?? 0) * 0.6,
 });
+
+/**
+ * The smile crease on the screen-right cheek (repair round 4, ZOO-E4): a short soft fold beside the lifted moustache end, in
+ * the skin-shadow tone, tapered at both ends.
+ */
+export const CHEEK_CREASE: Pt[] = [[24.2, -789.4], [27.8, -785.2], [30, -780], [30.6, -775.6]];
 
 /** Per-side brow raise in units for browLift 0..1 (the deadpan raise is one-sided: anatomical left leads). */
 export const browLifts = (browLift: number) => {
@@ -62,7 +70,10 @@ export const Head: React.FC<HeadProps> = ({expression, mouth, blink, browLift, l
 			<FaceSkin jawDrop={jaw} />
 			<Mouth shape={shape} mod={mod} spec={mouthSpec} />
 			<Beard hole={hole} jawDrop={jaw} />
-			<Moustache liftR={mod.moustacheLiftR} />
+			<Moustache liftR={mod.moustacheLiftR} liftL={mod.moustacheLiftL ?? 0} />
+			{spec.cheek ? (
+				<path data-part="cheekCrease" d={tapered(CHEEK_CREASE, (t) => ZOO_LINE.fine * 1.25 * spec.cheek! * ls * Math.sin(Math.PI * Math.min(1, Math.max(0, t * 0.96 + 0.02))))} fill={ZOO_COLORS.skinShadow} />
+			) : null}
 			<path data-part="jawOutline" d={jawOutline(jaw)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />
 			<Nose />
 			<Eyes pose={spec.eyes} blink={blink} lookX={lookX} lookY={lookY} />

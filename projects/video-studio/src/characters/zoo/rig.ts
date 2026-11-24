@@ -9,7 +9,7 @@
  */
 import type {Expression} from '../types';
 import {clamp01, lerp, smoothstep} from './geometry';
-import {SHOCKED_MOUTH, type MouthSpec} from './mouth';
+import {HAPPY_MOUTH, SHOCKED_MOUTH, type MouthSpec} from './mouth';
 
 export const FRONT = {
 	totalHeight: 900, // sole (y=0) to top of hair (y=-900)
@@ -232,8 +232,11 @@ export type BrowPose = {lift: number; inner: number; outer: number; arch: number
 export const BROW_LIFT = {left: 4.5, right: 1.6} as const;
 /** Eye controls. lidTop > 0 opens wider; lidBottom > 0 raises the lower lid (smile squint). */
 export type EyePose = {lidTop: number; lidBottom: number; scale: number; iris: number};
-/** Mouth modifiers applied on top of a library shape. */
-export type MouthMod = {cornerL: number; cornerR: number; openScale: number; widthScale: number; wave: number; moustacheLiftR: number};
+/**
+ * Mouth modifiers applied on top of a library shape. cornerR / moustacheLiftR act on the SCREEN-right side (anatomical left),
+ * cornerL / moustacheLiftL on the screen-left side. moustacheLiftL is optional (repair round 4).
+ */
+export type MouthMod = {cornerL: number; cornerR: number; openScale: number; widthScale: number; wave: number; moustacheLiftR: number; moustacheLiftL?: number};
 
 export type ExpressionSpec = {
 	browL: BrowPose; // anatomical left (screen right)
@@ -247,6 +250,8 @@ export type ExpressionSpec = {
 	mouthSpec?: MouthSpec;
 	mod: MouthMod;
 	crease: number; // 0..1 worry crease between the brows
+	/** Optional 0..1 smile crease on the screen-right cheek, beside the lifted moustache end (repair round 4, ZOO-E4). */
+	cheek?: number;
 };
 
 const B0: BrowPose = {lift: 0, inner: 0, outer: 0, arch: 0};
@@ -257,17 +262,20 @@ export const MOD0: MouthMod = {cornerL: 0, cornerR: 0, openScale: 1, widthScale:
 export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	// Deadpan: flat straight mouth; the anatomical-left (screen-right) brow is subtly raised in its base shape.
 	neutral: {browL: B0, browR: B0, eyes: E0, mouth: 'closed', mod: MOD0, crease: 0},
-	// Small asymmetric smirk: a soft closed U-smile with the screen-right corner and moustache lifting more; lower lids
-	// rise (smile squint) while the upper lids stay open.
+	// Small asymmetric smirk (repair round 4, decision ZOO-E4; zoo_expr_happy.png): its own closed-mouth drawing, a wide U-smile
+	// line with a soft lower-lip band (HAPPY_MOUTH), the screen-right corner lifting ~8.5 u and the left ~4, the moustache ends
+	// rising (screen right 7 u, left 3.4) so the smile shows under them, a short smile crease on the screen-right cheek, and the
+	// lower lids up with the upper lids slightly down (a smile squint). Rounds 1-3 only nudged the flat closed line's corners
+	// (3.2-4.5 / 6.4) under an almost unchanged moustache, which read as neutral or tired at bust size (ZOO-E2: no head yaw).
 	happy: {
 		browL: {lift: 2.6, inner: 0, outer: 0.4, arch: 0.6},
 		browR: {lift: 2.2, inner: 0.4, outer: 0, arch: 0.4},
-		eyes: {lidTop: 0.2, lidBottom: 2.4, scale: 1, iris: 1},
+		eyes: {lidTop: -0.8, lidBottom: 3.8, scale: 1, iris: 1},
 		mouth: 'closed',
-		// Repair round 2: both corners lift more (cornerL 3.2 -> 4.5, moustache 3.6 -> 4) so the smile reads at bust size
-		// without the panel's head turn (ZOO-E2).
-		mod: {...MOD0, cornerL: 4.5, cornerR: 6.4, moustacheLiftR: 4},
+		mouthSpec: HAPPY_MOUTH,
+		mod: {...MOD0, cornerL: 4, cornerR: 8.5, moustacheLiftR: 7, moustacheLiftL: 3.4},
 		crease: 0,
+		cheek: 1,
 	},
 	// Worried (zoo_expr_worried.png): both inner ends rise ~6-7.5 u with a sharp upturn (curl), the screen-right brow's
 	// arch inverts (~-4 u at its middle), the tails rise ~1.5-2 u; inner-to-tail drop >= 11 u. Mouth slightly down.

@@ -48,12 +48,16 @@ export const MOUSTACHE: Pt[] = [
 /** v1 moustache shadow band (kept for reference; the moustache is now drawn flat). */
 export const MOUSTACHE_SHADOW: Pt[] = [[-27, -769], [-18, -772.4], [-6, -774.2], [0, -775.4], [6, -774.2], [18, -772.4], [27, -769], [26, -763], [-26, -763]];
 
-/** liftR > 0 raises the screen-right half (smirk); the left half barely moves. */
-export const moustachePts = (pts: Pt[], liftR: number): Pt[] =>
+/**
+ * liftR > 0 raises the screen-right half (smirk): the end rises most, so the droop flattens; liftL (optional, repair round 4)
+ * raises the screen-left half the same way. Each half moves only on its own side of the philtrum.
+ */
+export const moustachePts = (pts: Pt[], liftR: number, liftL = 0): Pt[] =>
 	pts.map((p) => {
-		const t = Math.max(0, p[0]) / 27;
-		const dy = -liftR * Math.pow(t, 1.2);
-		const dx = liftR * 0.25 * t;
+		const tR = Math.max(0, p[0]) / 27;
+		const tL = Math.max(0, -p[0]) / 27;
+		const dy = -liftR * Math.pow(tR, 1.2) - liftL * Math.pow(tL, 1.2);
+		const dx = liftR * 0.25 * tR - liftL * 0.25 * tL;
 		return p.length === 3 ? [p[0] + dx, p[1] + dy, 'c'] : [p[0] + dx, p[1] + dy];
 	});
 
@@ -68,8 +72,8 @@ export const Beard: React.FC<{hole: number; jawDrop: number}> = ({hole, jawDrop}
 	</g>
 );
 
-export const Moustache: React.FC<{liftR: number}> = ({liftR}) => (
+export const Moustache: React.FC<{liftR: number; liftL?: number}> = ({liftR, liftL = 0}) => (
 	<g data-part="moustache">
-		<path d={smooth(moustachePts(MOUSTACHE, liftR))} fill={ZOO_COLORS.moustache} />
+		<path d={smooth(moustachePts(MOUSTACHE, liftR, liftL))} fill={ZOO_COLORS.moustache} />
 	</g>
 );
