@@ -65,6 +65,7 @@ test('2026-W49 from the real backlogs: the pilot Monday, the hedge fund Thursday
 	assert.equal(short.parentId, 'ai2');
 	assert.equal(short.paths.render, 'out/publish/zoora-ai/ai-agent-hedge-fund/media/short-4.mp4');
 	assert.equal(short.paths.shortText, 'out/publish/zoora-ai/ai-agent-hedge-fund/shorts-4.txt');
+	assert.equal(short.paths.writer, 'out/batch/2026-W49/ai2/WRITER.md', 'a Short is written in its episode\'s packet');
 	assert.equal(items.filter((i) => i.channel === 'zoora-security').every((i) => i.kind === 'long'), true, 'security gets explainers only; the daily news stays in scripts/daily');
 });
 

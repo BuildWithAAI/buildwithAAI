@@ -127,8 +127,8 @@ export type ItemPaths = {
 	thumbnails: string | null;
 	/** Shorts only: the publish kit's shorts-<n>.txt (title and description). */
 	shortText: string | null;
-	/** Long-form only: the writer packet. */
-	writer: string | null;
+	/** The writer packet: the episode's own; a Short points to its episode's packet (it is written in that storyboard). */
+	writer: string;
 };
 
 export type PlanItem = {

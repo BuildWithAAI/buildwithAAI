@@ -156,7 +156,7 @@ export const inspectItem = async (root: string, item: PlanItem): Promise<ItemSta
 	let scenes: SceneView[] = [];
 	let sources: SourceView[] = [];
 	let sbShorts: Array<{id: string; sceneIds: string[]; title: string}> = [];
-	if (!storyboard.exists) blockers.push(`No storyboard yet (${p.storyboard}): the writer session writes it from the WRITER packet.`);
+	if (!storyboard.exists) blockers.push(`No storyboard yet (${p.storyboard}): the writer session writes it from ${p.writer}.`);
 	else {
 		const read = readJson(join(root, p.storyboard));
 		const d = read.ok ? read.data : null;

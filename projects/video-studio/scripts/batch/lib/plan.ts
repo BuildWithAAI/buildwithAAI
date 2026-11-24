@@ -118,7 +118,7 @@ export const runPlan = (o: PlanOptions): PlanResult => {
 			if (!c || !b || !idea) continue;
 			const shorts = plan.items.filter((s) => s.parentId === item.id);
 			const writer = renderWriter({config, week: plan.week, today: dateIn(o.nowMs, config.timeZone), item, shorts, idea, channel: c, rules: b.rules, bank, researchExists: !!item.research.file});
-			const writerPath = join(o.root, item.paths.writer as string);
+			const writerPath = join(o.root, item.paths.writer);
 			writeTextAtomic(writerPath, writer);
 			files.push(writerPath);
 			const farmPath = join(dir, item.id, 'render-request.json');
@@ -152,7 +152,7 @@ export const readPlan = (root: string, week: string): {plan: WeekPlan; sha256: s
 	if (!isRecord(plan) || plan.kind !== 'zoora-weekly-batch-plan' || plan.week !== week || !Array.isArray(plan.items)) throw new UsageError(`${path} is not the ${week} plan.`);
 	for (const item of plan.items as PlanItem[]) {
 		const p = isRecord(item) && isRecord(item.paths) ? item.paths : null;
-		const paths = p ? [p.content, p.storyboard, p.kit, p.kitDir, p.render, p.thumbnails, p.shortText].filter((x) => x !== null) : [];
+		const paths = p ? [p.content, p.storyboard, p.kit, p.kitDir, p.render, p.thumbnails, p.shortText, p.writer].filter((x) => x !== null) : [];
 		if (!p || !paths.every((x) => typeof x === 'string' && safeStudioPath(x))) throw new UsageError(`${path}: item ${isRecord(item) ? String(item.id) : '?'} has a path outside out/, content/ or public/; run plan again.`);
 	}
 	return {plan: plan as WeekPlan, sha256: sha256(text), path};

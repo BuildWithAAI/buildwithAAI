@@ -79,7 +79,8 @@ const pathsFor = (channel: string, slug: string, week: string, id: string, kind:
 		render: kind === 'long' ? `${kitDir}/media/long.mp4` : `${kitDir}/media/short-${n}.mp4`,
 		thumbnails: kind === 'long' ? `${kitDir}/media/thumbnails/en` : null,
 		shortText: kind === 'short' ? `${kitDir}/shorts-${n}.txt` : null,
-		writer: kind === 'long' ? `out/batch/${week}/${id}/WRITER.md` : null,
+		// a Short is written inside its episode's storyboard, so its packet is the episode's
+		writer: `out/batch/${week}/${kind === 'long' ? id : id.replace(/-s\d+$/, '')}/WRITER.md`,
 	};
 };
 
