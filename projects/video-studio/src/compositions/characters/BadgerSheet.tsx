@@ -13,7 +13,7 @@ import {NeckFront} from '../../characters/badger/parts/Neck';
 import {BRAND} from '../../characters/palette';
 import type {BadgerPose, BadgerView, Expression} from '../../characters/types';
 
-const ROW1 = {ground: 420, scale: 0.78} as const;
+const ROW1 = {ground: 424, scale: 0.78} as const;
 const VIEWS: readonly {view: BadgerView; x: number}[] = [
 	{view: 'left', x: 250},
 	{view: 'front', x: 580},
@@ -22,7 +22,7 @@ const VIEWS: readonly {view: BadgerView; x: number}[] = [
 	{view: 'back', x: 1700},
 ];
 
-const ROW2 = {ground: 742, scale: 0.56} as const;
+const ROW2 = {ground: 736, scale: 0.56} as const;
 const POSES: readonly {pose: BadgerPose; x: number; walkPhase?: number}[] = [
 	{pose: 'sit', x: 250},
 	{pose: 'lie', x: 640},
@@ -49,7 +49,7 @@ const BUSTS: readonly {expression: Expression; judge?: number}[] = [
 	{expression: 'shocked'},
 	{expression: 'neutral', judge: 1},
 ];
-const ROW3 = {y: 1000, scale: 1.5, x0: 230, gap: 345} as const;
+const ROW3 = {y: 982, scale: 1.42, x0: 290, gap: 335} as const;
 
 export const BadgerSheet: React.FC = () => (
 	<AbsoluteFill style={{backgroundColor: BRAND.background}}>
@@ -67,7 +67,7 @@ export const BadgerSheet: React.FC = () => (
 					<Bust expression={b.expression} judge={b.judge} />
 				</g>
 			))}
-			<text x={1880} y={1062} textAnchor="end" fontFamily={FONTS.body} fontWeight={600} fontSize={20} fill={BRAND.nearBlack}>
+			<text x={1880} y={44} textAnchor="end" fontFamily={FONTS.body} fontWeight={600} fontSize={20} fill={BRAND.nearBlack}>
 				BADGER · character asset v1.0.0
 			</text>
 		</svg>

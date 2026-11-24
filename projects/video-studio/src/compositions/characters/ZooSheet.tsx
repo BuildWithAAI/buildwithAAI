@@ -14,7 +14,7 @@ import {BRAND} from '../../characters/palette';
 import type {Expression, ZooView} from '../../characters/types';
 import {MOUTH_ORDER} from './MouthDemo';
 
-const GROUND = 560;
+const GROUND = 575;
 const S = 0.54;
 const TURN: readonly {view: ZooView; x: number}[] = [
 	{view: 'front', x: 150},
@@ -31,8 +31,8 @@ const EXPR_VB = '-151.68 -915.38 279.6 279.6';
 const MOUTH_VB = '-69.97 -804.76 139.94 90.55';
 const EXPRS: readonly Expression[] = ['neutral', 'happy', 'worried', 'shocked'];
 
-const BUST = {size: 326, x0: 22, gap: 6, y: 612} as const;
-const CHIP = {w: 176, h: 114, x0: 1360, y0: 640, gapX: 10, gapY: 22} as const;
+const BUST = {size: 322, x0: 24, gap: 4, y: 640} as const;
+const CHIP = {w: 176, h: 114, x0: 1350, y0: 672, gapX: 12, gapY: 24} as const;
 
 export const ZooSheet: React.FC = () => (
 	<AbsoluteFill style={{backgroundColor: BRAND.background}}>
@@ -73,7 +73,7 @@ export const ZooSheet: React.FC = () => (
 					</g>
 				);
 			})}
-			<text x={1880} y={1050} textAnchor="end" fontFamily={FONTS.body} fontWeight={600} fontSize={20} fill={BRAND.nearBlack}>
+			<text x={1880} y={44} textAnchor="end" fontFamily={FONTS.body} fontWeight={600} fontSize={20} fill={BRAND.nearBlack}>
 				ZOO · character asset v1.0.0
 			</text>
 		</svg>

@@ -21,8 +21,8 @@ export const MOUTH_ORDER: readonly {shape: MouthShape; label: string}[] = [
 	{shape: 'mbp', label: 'M / B / P'},
 ];
 
-/** Head-and-shoulders framing (world units), centred on the face. */
-const BUST_VB = '-125 -918 250 250';
+/** Head-and-shoulders framing (world units), centred on the face, low enough to show the whole pin. */
+const BUST_VB = '-140 -920 280 280';
 /** Mouth close-up framing (world units), as the zoo_mouth_* crops. */
 const MOUTH_VB = '-69.97 -804.76 139.94 90.55';
 
@@ -72,7 +72,7 @@ export const MouthDemo: React.FC = () => {
 			</svg>
 			<div style={{position: 'absolute', left: 1080, top: 150, width: 760}}>
 				<div style={{fontSize: 34, fontWeight: 600, letterSpacing: 0.5}}>ZOO mouth library · {index + 1} / 6</div>
-				<div style={{fontSize: 120, fontWeight: 800, lineHeight: 1.1, marginTop: 18}}>{current.label}</div>
+				<div style={{fontSize: 104, fontWeight: 800, lineHeight: 1.1, marginTop: 18, whiteSpace: 'nowrap'}}>{current.label}</div>
 			</div>
 			<div
 				style={{

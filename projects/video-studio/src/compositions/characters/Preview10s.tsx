@@ -5,8 +5,9 @@
  *   0-3 s   stand together; ZOO blinks (~f39) and lifts his brow (f60-80).
  *   3-6 s   ZOO points to screen right (wind-up f87-92, swing f92-104, hold); Badger's head is replaced
  *           by threeQuarterRightScreen at f97 (5 frames after the swing starts), covered by a blink.
- *   6-10 s  ZOO lowers the arm (f182-197) back to deadpan; Badger looks up at him (upLeftScreen at f200 with
- *           an eased neck raise), holds, then judges (judge f234-242, ears f236-248, chin tilt f238-254,
+ *           Badger stands in front of ZOO in depth, so the arm's sweep passes behind his head.
+ *   6-10 s  ZOO lowers the arm (f182-197) back to deadpan; Badger looks up at him (front-head breakdown f198-199,
+ *           upLeftScreen at f200 with an eased neck raise), holds, then judges (judge f234-242, ears f236-248, chin tilt f238-254,
  *           slow blink f256-272) and holds to the end.
  * No audio. Breathing on both characters is driven by the frame.
  */
@@ -153,6 +154,11 @@ const badgerTrack = (f: number): BadgerState => {
 			],
 			EASE.in,
 		);
+		// Two-frame breakdown through the front head (eyes already travelling up toward ZOO) before the look-up,
+		// so the replacement turns through camera instead of popping from screen right to up-left.
+		if (f >= BEATS.badgerLookUp - 2) {
+			return {head: 'front', pose: 'stand', blink, headTilt: 0, neckTurn, judge: 0, earsBack: 0, lookX: -0.4, lookY: -0.6};
+		}
 		return {head: 'threeQuarterRightScreen', pose: 'stand', blink, headTilt, neckTurn, judge: 0, earsBack: 0, lookX: 0.3, lookY: 0};
 	}
 	// Look up at ZOO: upLeftScreen mounts the neck 13 deg higher than the 3/4 head; ease that rise in.
@@ -184,6 +190,21 @@ export const Preview10s: React.FC = () => {
 		<AbsoluteFill style={{backgroundColor: BRAND.background}}>
 			<svg width={FRAME.width} height={FRAME.height} viewBox={`0 0 ${FRAME.width} ${FRAME.height}`}>
 				<line x1={0} y1={GROUND_Y + 1.5} x2={FRAME.width} y2={GROUND_Y + 1.5} stroke={BRAND.silver} strokeWidth={3} />
+				<ZooRig
+					x={ZOO_X}
+					y={GROUND_Y}
+					scale={PAIR_SCALE}
+					view="front"
+					pose="point"
+					poseAmount={z.poseAmount}
+					pointWindup={z.pointWindup}
+					expression="neutral"
+					blink={z.blink}
+					browLift={z.browLift}
+					lookX={z.lookX}
+					headTilt={z.headTilt}
+				/>
+				{/* Badger is drawn in front of ZOO: the pointing arm's sweep passes BEHIND his head (decision INT-P2). */}
 				<Badger
 					x={BADGER_X}
 					y={GROUND_Y}
@@ -199,20 +220,6 @@ export const Preview10s: React.FC = () => {
 					neckTurn={b.neckTurn}
 					lookX={b.lookX}
 					lookY={b.lookY}
-				/>
-				<ZooRig
-					x={ZOO_X}
-					y={GROUND_Y}
-					scale={PAIR_SCALE}
-					view="front"
-					pose="point"
-					poseAmount={z.poseAmount}
-					pointWindup={z.pointWindup}
-					expression="neutral"
-					blink={z.blink}
-					browLift={z.browLift}
-					lookX={z.lookX}
-					headTilt={z.headTilt}
 				/>
 			</svg>
 		</AbsoluteFill>

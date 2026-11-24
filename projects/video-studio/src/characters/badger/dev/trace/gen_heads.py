@@ -306,7 +306,12 @@ def fix_three_quarter(view, theta, fFace):
     heads[view]['skull']['fill'] = mp(fill_t, F)
     contour = map_path('M 281.4 92 C 284 99 285.5 108 284.5 117 C 283 129 278 141 272 151 C 270 155 269.5 158 269.5 162', mx)
     lip_far = map_path('M 271.5 187 C 271.5 198 271 207 268 213', mx)
-    heads[view]['skull']['strokes'] = heads[view]['skull']['strokes'][:2] + [mp(contour, F)]
+    # near cheek outline continues down the jaw toward the throat (the front head drew this edge with the lip line,
+    # which now starts lower)
+    fSkull = compose(ts, F)
+    near_cheek = ('M 113 104 C 112 125 114 145 119 158 C 122 165 125 170 129 175 C 135 186 143 197 152 206' if right else
+                  'M 293 100 C 295 120 294 145 289 158 C 286 165 282 171 278 176 C 273 187 266 197 257 206')
+    heads[view]['skull']['strokes'] = [heads[view]['skull']['strokes'][0], mp(near_cheek, fSkull), mp(contour, F)]
     heads[view]['skull']['details'] = []
     heads[view]['philtrum'] = mp(lip_far, F)
     # mouth: start the near side low on the cheek (t=0.7 of the cheek segment), keep the rest of each library line
