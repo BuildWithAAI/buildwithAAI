@@ -29,6 +29,22 @@ Stop for owner review at the end of every phase.
 - **Pilot story:** "POV: You become a top caller on Pump.fun". Cautionary, grounded in real on-chain investigations, fictional composite characters, no real names unless sources support it. Next video: "You created an autonomous AI trading agent hedge fund".
 - **Pilot CTA:** subscribe only, no product pitch.
 
+## Channel 2: crypto security news (working slug `zoora-security`, display name TBD) — owner rules, 2026-11-24 (binding)
+
+- **Format:** "The ZOO & Badger Show", a talk-show / podcast set. ZOO hosts and talks. Badger is the nonverbal co-host (PROJECT_INSTRUCTIONS): his reactions carry the jokes. Recurring segments: Rekt Meter, Badger's Red Flag, ZOO's One Fix, Scam of the Week.
+- **Cadence:** a daily Short (one incident, how it worked, one fix), "what we know" Shorts for major incidents, a weekly long-form round-up with fund-flow analysis, and evergreen explainers that every news video links to.
+- **Pipeline:**
+  1. The news radar drafts with sources.
+  2. The claim gate runs: confirmed facts only, attributed, no naming of suspects, no exploit how-tos.
+  3. The owner approves on his phone (about 5 minutes per video).
+  4. Render, publish kit, auto-announcer and the daily "Threat Brief" email.
+- **Rules:**
+  - Label developing stories "developing" and pin corrections.
+  - Don't redraw or speculate about others' material; attribute every fact.
+  - Don't publish daily unless each video adds real analysis.
+  - A strike on either channel endangers both, so accuracy comes first.
+- **Zoora AI channel cadence:** 2 long story episodes a week plus daily Shorts cut from them. The best security stories later become Zoora AI "POV" episodes, so the two channels feed each other.
+
 ## Art quality rules (owner, 2026-11-24) — binding
 
 - **Charts must be accurate.** Green candles go **up** (close > open); red candles go **down** (close < open). Wicks run to high/low. Every OHLC series must pass validation (high ≥ max(open, close), low ≤ min(open, close), positive prices). No amber, cyan or red-going-up candles. All 3 current style frames break this rule.
