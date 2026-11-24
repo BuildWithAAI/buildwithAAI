@@ -19,7 +19,11 @@ const findHeadlessShell = (): string | null => {
 const browser = process.env.REMOTION_BROWSER_EXECUTABLE ?? findHeadlessShell();
 if (browser) Config.setBrowserExecutable(browser);
 
-Config.setVideoImageFormat('jpeg');
+// PNG frames: JPEG q80 frames measured 35.69 dB vs 40.00 dB after H.264, at the same wall time (docs/ART_GUIDE.md EN1).
+Config.setVideoImageFormat('png');
+// Near-lossless master for YouTube's re-encode; 'slow' costs ~nothing because frame capture is the bottleneck (EN2).
+Config.setCrf(12);
+Config.setX264Preset('slow');
 // YouTube-friendly output: limited-range 4:2:0, BT.709 colour metadata.
 Config.setPixelFormat('yuv420p');
 Config.setColorSpace('bt709');
