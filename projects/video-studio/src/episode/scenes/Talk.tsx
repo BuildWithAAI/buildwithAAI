@@ -8,32 +8,11 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {C, OUTLINE, R} from '../theme';
 import {LAYOUTS, type Box} from '../layout/specs';
-import {Lines, useFit} from '../text/FitText';
+import {Lines, useFit, useFitGroup} from '../text/FitText';
 import {CharacterLayer, entry, SceneBg, useDirection, type SceneCtx} from './parts';
 import {BadgerInsert, inInsert} from './Insert';
 import {list, str} from '../validate';
-
-/** Stack heights (pure, shared with the fit test): each card is its text plus padding; cards are `gap` apart. */
-export const stackCards = (textHeights: number[], padY: number, gap: number): {tops: number[]; heights: number[]; total: number} => {
-	const heights = textHeights.map((h) => Math.ceil(h) + 2 * padY);
-	const tops: number[] = [];
-	let y = 0;
-	for (const h of heights) {
-		tops.push(y);
-		y += h + gap;
-	}
-	return {tops, heights, total: heights.length ? y - gap : 0};
-};
-
-/** Title-over-list block placement (pure, shared with the fit test). */
-export const TITLE_GAP = 44;
-export const placeBlock = (column: {top: number; bottom: number}, titleH: number, listH: number, centred: boolean): {titleY: number; listY: number; height: number; fits: boolean} => {
-	const gap = titleH > 0 && listH > 0 ? TITLE_GAP : 0;
-	const height = Math.ceil(titleH) + gap + listH;
-	const room = column.bottom - column.top;
-	const top = centred ? Math.round(column.top + Math.max(0, (room - height) / 2)) : column.top;
-	return {titleY: top, listY: top + Math.ceil(titleH) + gap, height, fits: height <= room + 0.5};
-};
+import {placeBlock, stackCards} from '../layout/blocks';
 
 export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const frame = useCurrentFrame();
@@ -44,17 +23,32 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const bullets = (list(ctx.sc, 'bullets') ?? []).slice(0, 4);
 	const title = str(ctx.sc, 'title') ?? '';
 	const titleFit = useFit(title, L.title, ctx.lang);
-	// one fit per bullet (hooks need a fixed count: always 4)
-	const fits = [0, 1, 2, 3].map((i) => useFit(bullets[i] ?? '', L.item, ctx.lang)); // eslint-disable-line react-hooks/rules-of-hooks
+	// all bullets at one size, shrunk together until title + list fit the column
+	const titleH = title ? titleFit.height : 0;
+	const fits = useFitGroup(
+		bullets,
+		L.item,
+		ctx.lang,
+		(rs) =>
+			placeBlock(
+				L.column,
+				titleH,
+				stackCards(
+					rs.map((r) => r.height),
+					L.itemPad.y,
+					L.gap,
+				).total,
+			).fits,
+		`talk ${ctx.sc.id}`,
+	);
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
 	const stack = stackCards(
-		bullets.map((_, i) => fits[i].height),
+		fits.map((r) => r.height),
 		L.itemPad.y,
 		L.gap,
 	);
-	const block = placeBlock(L.column, title ? titleFit.height : 0, stack.total, true);
-	if (!block.fits) throw new Error(`talk ${ctx.sc.id}: the title and ${bullets.length} bullets need ${block.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten them.`);
+	const block = placeBlock(L.column, titleH, stack.total);
 	const revealed = dir.reveals.filter((r) => frame >= r).length;
 	const titleBox: Box = {...L.title.box, y: block.titleY, h: Math.ceil(titleFit.height)};
 	return (

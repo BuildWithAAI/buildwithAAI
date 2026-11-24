@@ -5,7 +5,7 @@
  *
  * Reports contain commenters' names and text. They are written under out/ (gitignored): keep them private.
  */
-import {mkdirSync, readdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {type Action, HOLD_AT, type Reason, REVIEW_AT} from './classifier.ts';
 import type {ModerationStatus} from './youtube.ts';
@@ -49,7 +49,9 @@ export type Report = {
 	applied: AppliedResult | null;
 };
 
-export const newReport = (fields: Omit<Report, 'version' | 'tool' | 'thresholds' | 'totals' | 'applied'> & {scanned: ReportItem[]; threads: number | null}): Report => {
+export const newReport = (
+	fields: Omit<Report, 'version' | 'tool' | 'thresholds' | 'totals' | 'items' | 'applied'> & {scanned: ReportItem[]; threads: number | null},
+): Report => {
 	const count = (action: Action) => fields.scanned.filter((item) => item.action === action).length;
 	return {
 		version: 1,
@@ -86,12 +88,12 @@ export const readReport = (path: string): Report => {
 	return {...(data as Report), items};
 };
 
-/** "latest" means the newest guard-*.json in the report directory. */
-export const resolveReport = (value: string, dir: string): string => {
+/** "latest" means the newest report of the given kind in the report folder (scan reports for apply, apply reports for release). */
+export const resolveReport = (value: string, dir: string, mode: Report['mode']): string => {
 	if (value !== 'latest') return value;
-	const files = readdirSync(dir).filter((name) => /^guard-(?:scan|apply)-\d{8}-\d{6}\.json$/.test(name)).sort();
-	const newest = files.at(-1);
-	if (!newest) throw new Error(`No report found in ${dir}. Run "guard scan" first.`);
+	const pattern = new RegExp(`^guard-${mode}-\\d{8}-\\d{6}\\.json$`);
+	const newest = (existsSync(dir) ? readdirSync(dir) : []).filter((name) => pattern.test(name)).sort().at(-1);
+	if (!newest) throw new Error(`No ${mode} report found in ${dir}. Run "guard ${mode === 'scan' ? 'scan' : 'apply --confirm'}" first.`);
 	return join(dir, newest);
 };
 
@@ -100,20 +102,35 @@ export const resolveReport = (value: string, dir: string): string => {
 /** Control and bidirectional-override characters could hide or reorder text in a viewer. */
 const UNSAFE_CHARS = /[\u0000-\u0008\u000B-\u001F\u007F​-‏‪-‮⁦-⁩﻿]/gu;
 
-/** Escapes untrusted text for Markdown and HTML: nothing in a comment can become a link, heading or tag. */
-export const mdText = (text: string, max = 600): string => {
+const TLDS = 'com|net|org|io|xyz|app|live|site|online|top|info|pro|finance|exchange|dev|me|co|cc|ly|gg|link|click|vip|shop|club|ai|ru|cn|tk|ml|ga|cf|gq|biz|us|uk|example';
+
+/**
+ * Defangs links the way threat reports do (hxxps://, site[.]com, name[at]mail[.]com), so a scam link
+ * quoted in a report is never clickable, even in viewers that turn bare URLs into links.
+ */
+export const defang = (text: string): string =>
+	text
+		.replace(/\bhttp(s?):\/\//gi, 'hxxp$1://')
+		.replace(/\bwww\./gi, 'www[.]')
+		.replace(/([\w.+-])@([\w-]+\.)/g, '$1[at]$2')
+		.replace(new RegExp(String.raw`\b([a-z0-9-]+)\.(${TLDS})\b`, 'gi'), '$1[.]$2');
+
+/**
+ * Escapes untrusted text for Markdown and HTML: nothing in a comment can become a link, heading or tag.
+ * Block text (a quoted comment) also escapes line starts that would make a list or heading.
+ */
+export const mdText = (text: string, max = 600, block = false): string => {
 	const clean = text.replace(UNSAFE_CHARS, '').replace(/\r\n?/g, '\n').trim();
-	const clipped = clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
-	return clipped
+	const escaped = defang(clean.length > max ? `${clean.slice(0, max - 1)}…` : clean)
 		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;')
-		.replace(/([\\`*_[\]{}#|~!])/g, '\\$1')
-		.replace(/^(\s*)([-+=]|\d+[.)])/gm, '$1\\$2');
+		.replace(/([\\`*_[\]{}#|~!])/g, '\\$1');
+	return block ? escaped.replace(/^(\s*)([-+=]|\d+[.)])/gm, '$1\\$2') : escaped.replace(/\n+/g, ' ');
 };
 
 const quote = (text: string): string =>
-	mdText(text)
+	mdText(text, 600, true)
 		.split('\n')
 		.map((line) => `> ${line}`)
 		.join('\n');
@@ -201,9 +218,33 @@ export const renderMarkdown = (report: Report): string => {
 	return out.join('\n');
 };
 
+/**
+ * The YouTube API Services Developer Policies limit how long API data may be kept (30 days for most data,
+ * per docs/research/platform-facts-2026-11-23.md in video-studio), so reports older than that are deleted.
+ * Only this tool's own guard-*.json / guard-*.md files are touched.
+ */
+export const REPORT_RETENTION_DAYS = 30;
+
+export const pruneReports = (dir: string, now: Date, days = REPORT_RETENTION_DAYS): string[] => {
+	if (!existsSync(dir)) return [];
+	const cutoff = now.getTime() - days * 86_400_000;
+	const removed: string[] = [];
+	for (const name of readdirSync(dir)) {
+		const m = /^guard-(?:scan|apply)-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\.(?:json|md)$/.exec(name);
+		if (!m) continue;
+		const written = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6]));
+		if (written < cutoff) {
+			rmSync(join(dir, name), {force: true});
+			removed.push(name);
+		}
+	}
+	return removed;
+};
+
 /** Writes guard-<mode>-<YYYYMMDD-HHMMSS>.json and .md into `dir` and returns their paths. */
 export const writeReport = (dir: string, report: Report): {json: string; markdown: string} => {
 	mkdirSync(dir, {recursive: true});
+	pruneReports(dir, new Date(report.generatedAt));
 	const stamp = report.generatedAt.replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
 	const base = join(dir, `guard-${report.mode}-${stamp}`);
 	const json = `${base}.json`;

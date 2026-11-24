@@ -402,7 +402,7 @@ const WALLET_CONNECT = rx(
 		String.raw`\b(?:validate|sync|synchroni[sz]e|rectify|whitelist|migrate|reactivate|authenticate|verify)\s+(?:your|ur)\s+(?:\w+\s+)?${WALLET_NOUN}\b${NOT_ADVICE}`,
 		String.raw`\bconnect\s+(?:your|ur)\s+(?:\w+\s+)?(?:wallets?|metamask|phantom)\b${GAP}{0,40}?(?:\bclaim|\breceive|\bget (?:the|your)|\bairdrop|\breward|\beligib|\bwhitelist|\bpresale|\bmint|\bbonus|\bportal|\bdapp|\bhere\b|\bbelow\b|\.(?:com|net|org|io|xyz|app|live|site|online|top|info|pro|finance|example)\b|\[\s*\.\s*\])`,
 		String.raw`\bwallet\s?connect\b`,
-		String.raw`\b(?:go to|visit|head to|open)\s+\S*(?:\.[a-z]{2,}|\[\s*\.\s*\])\S*\s+(?:and|to)\s+(?:connect|claim|sync|validate|verify)\b`,
+		String.raw`\b(?:go to|visit|head to|open)\s+[^\s.]{1,60}(?:\.[a-z]{2,10}|\s*\[\s*\.\s*\]\s*[a-z]{2,10})[^\s]{0,60}\s+(?:and|to)\s+(?:connect|claim|sync|validate|verify)\b`,
 	],
 	'gu',
 );

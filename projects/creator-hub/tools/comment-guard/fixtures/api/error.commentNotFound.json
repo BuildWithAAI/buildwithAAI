@@ -1,0 +1,15 @@
+{
+	"error": {
+		"code": 404,
+		"message": "The comment identified by the request's id parameter could not be found.",
+		"errors": [
+			{
+				"message": "Comment not found.",
+				"domain": "youtube.comment",
+				"reason": "commentNotFound",
+				"location": "id",
+				"locationType": "parameter"
+			}
+		]
+	}
+}

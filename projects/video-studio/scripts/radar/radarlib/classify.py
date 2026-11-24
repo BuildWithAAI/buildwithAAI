@@ -6,7 +6,7 @@ decision can be printed as a reason.
 import re
 
 from . import safety
-from .textutil import MONEY_RE, clean_ws, money_value
+from .textutil import MONEY_RE, clean_ws, core_name, money_value
 
 TYPES = (
     "exploit", "phishing", "drainer", "rug", "key-compromise", "social-engineering", "bridge",
@@ -36,7 +36,7 @@ INCIDENT_RE = re.compile(
     r"stolen|steal(?:s|ing)?|theft|thefts|heist|breach(?:es|ed)?|phish(?:ing|ed|er|ers)?|"
     r"scam(?:s|med|mer|mers)?|fraudsters?|rug[- ]?pull(?:s|ed)?|rugged|compromis(?:e|ed|es)|"
     r"malware|infostealer|drainers?|poisoning|attackers?|attacked|ransomware|siphon(?:ed|s)?|"
-    r"looted|loot|ponzi|pig[- ]butcher\w*|impersonat\w+|laundered|launder(?:ing|s)?)\b",
+    r"looted|loot|ponzi|pig[- ]butcher\w*|impersonat\w+|incident analysis|post-?mortem)\b",
     re.IGNORECASE,
 )
 SECURITY_TOPIC_RE = re.compile(
@@ -477,15 +477,26 @@ def _ticker_like(candidate):
     )
 
 
-def extract_subject(title):
+def extract_subject(title, exclude=()):
     """Best-effort subject (protocol, company or campaign) of a security headline.
 
     Returns (subject, method) or (None, None). Precision over recall: a headline
     without a confident subject stays unclustered ("also seen") rather than
-    becoming an incident with a guessed name.
+    becoming an incident with a guessed name. `exclude` holds names that can never
+    be the subject (the publishing outlet or vendor itself).
     """
     if not title:
         return None, None
+    excluded = {e.lower() for e in exclude}
+    subject, method = _extract_subject(title, excluded)
+    if subject and _MODIFIER_SUFFIX.search(subject):
+        subject = subject[: subject.rfind("-")]
+    if subject and (subject.lower() in excluded or core_name(subject) in excluded):
+        return None, None
+    return subject, method
+
+
+def _extract_subject(title, excluded):
     text = MONEY_RE.sub(" " + AMT + " ", title.replace("’", "'"))
     raw = text.split()
     tokens = [t.rstrip(",:;") for t in raw]
@@ -500,17 +511,22 @@ def extract_subject(title):
             candidate = _possessive_owner(tokens, j) or candidate
         if candidate:
             return candidate, "headline pattern"
-        if word in _ACTIVE_TRIGGERS:
+        # "North Korea hacks Binance": only in sentence-case headlines, where a
+        # capitalised word after a lower-case verb is a name, not the next title word
+        if word in _ACTIVE_TRIGGERS and _bare(token)[:1].islower():
             candidate = _clean_run(_run_after(tokens, ends, index))
             if candidate:
                 return candidate, "headline pattern"
+    # "exploit of X", "hack on X", "... drain $5M from X"
     for index, token in enumerate(tokens[:-1]):
-        if re.fullmatch(r"(?i)(?:hack|exploit|breach|attack|theft|heist|drain)\w*", _bare(token)) and \
-                tokens[index + 1].lower() in ("of", "on", "at", "against", "from"):
+        nxt = tokens[index + 1].lower()
+        noun = re.fullmatch(r"(?i)(?:hack|exploit|breach|attack|theft|heist)\w*", _bare(token))
+        if (noun and nxt in ("of", "on", "at", "against")) or (
+                nxt == "from" and re.search(r"(?i)\b(?:drain|stole|steal|siphon|loot|swip|withdr)\w*", " ".join(tokens[:index + 1]))):
             candidate = _clean_run(_run_after(tokens, ends, index + 1))
             if candidate:
                 return candidate, "headline pattern"
-    if len(tokens) > 1 and _cap_like(tokens[0]) and not _is_stop(tokens[0]):
+    if len(tokens) > 1 and _cap_like(tokens[0]) and not _is_stop(tokens[0]) and _bare(tokens[0]).lower() not in excluded:
         nxt = _bare(tokens[1])
         if nxt and nxt[0].islower():
             candidate = _clean_run([tokens[0]])
@@ -518,11 +534,10 @@ def extract_subject(title):
                 return candidate, "sentence-case subject"
     for token in tokens:
         word = _bare(_strip_possessive(token))
-        if word == AMT or word.lower() in _STOPWORDS or len(word) < 3 or word.isdigit():
+        if word == AMT or word.lower() in _STOPWORDS or word.lower() in excluded or len(word) < 3 or word.isdigit():
             continue
-        distinctive = (word.isupper() and word.isalpha()) or (
-            any(ch.isupper() for ch in word[1:]) and any(ch.islower() for ch in word)
-        ) or re.fullmatch(r"[A-Za-z0-9]+\.[A-Za-z]{2,}", word) is not None
+        distinctive = (word.isupper() and word.isalpha()) or re.search(r"[a-z][A-Z]", word) is not None \
+            or re.fullmatch(r"[A-Za-z0-9]+\.[A-Za-z]{2,}", word) is not None
         if distinctive:
             return word, "distinctive token"
     return None, None

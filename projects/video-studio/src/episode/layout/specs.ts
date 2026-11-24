@@ -51,7 +51,8 @@ export const SAFE: Record<Format, {left: number; right: number; top: number; bot
 
 /** Burned-in captions: one or two short lines on a plate, away from every face (checked by the layout test). */
 export const CAPTIONS: Record<Format, TextSpec> = {
-	landscape: t({x: 360, y: 900, w: 1200, h: 126}, 'heading', 900, 54, 40, 1, 1.15, 'center', {valign: 'bottom'}),
+	// 800 px wide so a left or right position clears a peeking Badger when the centre does not
+	landscape: t({x: 560, y: 900, w: 800, h: 126}, 'heading', 900, 54, 40, 2, 1.15, 'center', {valign: 'bottom'}),
 	// right edge 920: clear of the Shorts button column (x > ~950 in the lower half)
 	vertical: t({x: 160, y: 1312, w: 760, h: 188}, 'heading', 900, 66, 46, 2, 1.12, 'center', {valign: 'center'}),
 };
@@ -306,8 +307,9 @@ export const LOWER_THIRD: Record<Format, {box: Box; name: TextSpec; role: TextSp
 	vertical: null, // Shorts carry no lower third: the top and bottom of the frame belong to the Shorts UI
 };
 export const FICTION_CARD: Record<Format, TextSpec> = {
-	landscape: t({x: 96, y: 56, w: 1100, h: 56}, 'body', 700, 28, 24, 1, 1.0, 'left', {valign: 'center'}),
-	vertical: t({x: 54, y: 200, w: 760, h: 76}, 'body', 700, 26, 24, 2, 1.15, 'left', {valign: 'center'}),
+	// the text box (the plate adds 12 px above and below); two lines allowed for long translations
+	landscape: t({x: 96, y: 56, w: 1100, h: 64}, 'body', 700, 28, 24, 2, 1.15, 'left'),
+	vertical: t({x: 54, y: 200, w: 760, h: 64}, 'body', 700, 26, 24, 2, 1.15, 'left'),
 };
 /** Dev / review badges (English by design: they are markers for the owner, never viewer copy). */
 export const BADGE_AREA: Record<Format, {right: number; y: number}> = {

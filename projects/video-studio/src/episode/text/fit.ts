@@ -5,6 +5,12 @@
  * The width measure is injected: canvas measureText in the browser, real font tables in the Node tests.
  */
 
+/** Whitespace-normalised text, upper-cased with the language's own rules when the spec asks for it. */
+export const prepText = (text: string, spec: {uppercase?: boolean}, lang: string): string => {
+	const s = text.replace(/\s+/g, ' ').trim();
+	return spec.uppercase ? s.toLocaleUpperCase(lang === 'pt-br' ? 'pt-BR' : lang) : s;
+};
+
 /** Width in px of `text` at `size` px, for one bound font (family + weight). */
 export type Measure = (text: string, size: number) => number;
 
@@ -155,4 +161,22 @@ export const fitText = (text: string, spec: FitSpec, measure: Measure): FitResul
 	while (last.length > 1 && measure(joinUnits(last, spec.unspaced ?? false) + '…', spec.minSize) > spec.maxWidth) last = last.slice(0, -1);
 	kept[keep - 1] = joinUnits(last, spec.unspaced ?? false).replace(/[\s,;:·-]+$/u, '') + '…';
 	return {...result(kept, spec.minSize, spec, measure, w.broke, false), truncated: true};
+};
+
+/**
+ * Fit a list (bullets, steps) at ONE shared size: start from the smallest size any item would take alone, then shrink
+ * them together until `blockFits` accepts the whole stack. Uniform type reads as one list; the block never overflows
+ * its column. Returns the results at the floor (overflowing) if nothing fits, so the caller can fail loudly.
+ */
+export const fitGroup = (texts: string[], spec: FitSpec, measure: Measure, blockFits: (rs: FitResult[]) => boolean): FitResult[] => {
+	if (!texts.length) return [];
+	const cap = Math.min(...texts.map((t) => fitText(t, spec, measure).fontSize));
+	let last: FitResult[] = [];
+	for (let size = cap; size >= spec.minSize; size--) {
+		const rs = texts.map((t) => fitText(t, {...spec, maxSize: size, minSize: size}, measure));
+		last = rs;
+		if (rs.some((r) => r.overflow || r.brokeWord)) continue;
+		if (blockFits(rs)) return rs;
+	}
+	return last.map((r) => ({...r, overflow: true}));
 };

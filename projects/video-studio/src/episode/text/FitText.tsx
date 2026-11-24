@@ -4,16 +4,12 @@
  */
 import React, {useMemo} from 'react';
 import type {Lang} from '../types';
-import {fitText, type FitResult} from './fit';
+import {fitGroup, fitText, prepText, type FitResult, type FitSpec} from './fit';
 import {measureFor} from './measure';
 import {fontFor} from '../i18n/fonts';
 import {UNSPACED} from '../markup';
 import type {Box, TextSpec} from '../layout/specs';
 
-export const prepText = (text: string, spec: Pick<TextSpec, 'uppercase'>, lang: Lang): string => {
-	const s = text.replace(/\s+/g, ' ').trim();
-	return spec.uppercase ? s.toLocaleUpperCase(lang === 'pt-br' ? 'pt-BR' : lang) : s;
-};
 
 export const useFit = (text: string, spec: TextSpec, lang: Lang, box: Box = spec.box): FitResult => {
 	const font = fontFor(lang, spec.role, spec.weight);
@@ -42,6 +38,35 @@ export const useFit = (text: string, spec: TextSpec, lang: Lang, box: Box = spec
 		return r;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [text, lang, box.w, box.h, spec.maxSize, spec.minSize, spec.maxLines, spec.lineHeight, spec.uppercase, spec.balance, spec.ellipsis, font.fontFamily, font.fontWeight]);
+};
+
+const specFor = (spec: TextSpec, box: Box, lang: Lang): FitSpec => ({
+	maxWidth: box.w,
+	maxHeight: box.h,
+	maxSize: spec.maxSize,
+	minSize: spec.minSize,
+	maxLines: spec.maxLines,
+	lineHeight: spec.lineHeight,
+	unspaced: UNSPACED.has(lang),
+	balance: spec.balance,
+	ellipsis: spec.ellipsis,
+});
+
+/** A list at one shared size that also fits its block (fit.ts fitGroup); throws when it cannot fit. */
+export const useFitGroup = (texts: string[], spec: TextSpec, lang: Lang, blockFits: (rs: FitResult[]) => boolean, what: string): FitResult[] => {
+	const font = fontFor(lang, spec.role, spec.weight);
+	const key = JSON.stringify(texts);
+	return useMemo(() => {
+		const rs = fitGroup(
+			texts.map((t) => prepText(t, spec, lang)),
+			specFor(spec, spec.box, lang),
+			measureFor(font),
+			blockFits,
+		);
+		if (rs.some((r) => r.overflow)) throw new Error(`${what}: the ${texts.length} items do not fit their column even at the ${spec.minSize} px floor. Shorten them in the storyboard.`);
+		return rs;
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [key, lang, spec, font.fontFamily, font.fontWeight, what]);
 };
 
 export type LinesProps = {

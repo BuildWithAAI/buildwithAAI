@@ -13,6 +13,7 @@ import {CharacterLayer, Card, entry, SceneBg, useDirection, type SceneCtx} from 
 import {BadgerInsert, inInsert} from './Insert';
 import {str} from '../validate';
 import {sourceIds, UNSPACED} from '../markup';
+import {quoteBlock} from '../layout/blocks';
 
 export const domainOf = (url: string): string => {
 	const m = /^[a-z]+:\/\/([^/?#]+)/i.exec(url);
@@ -26,27 +27,6 @@ export const quoteSource = (ctx: SceneCtx): string => {
 	const id = sourceIds(ctx.sc.narration)[0];
 	const s = ctx.sb.sources.find((x) => x.id === id);
 	return s ? `${s.title} · ${domainOf(s.url)}` : '';
-};
-
-/** Card geometry around the fitted texts (pure, shared with the fit test). */
-export const quoteBlock = (
-	L: {column: {top: number; bottom: number}; pad: number; markSize: number},
-	h: {quote: number; attribution: number; source: number},
-	centred: boolean,
-): {cardY: number; cardH: number; markY: number; quoteY: number; attrY: number; srcY: number; fits: boolean} => {
-	const markH = Math.round(L.markSize * 0.62);
-	const q = Math.ceil(h.quote);
-	const a = Math.ceil(h.attribution);
-	const sH = Math.ceil(h.source);
-	const inner = markH + 20 + q + (a ? 40 + a : 0) + (sH ? 12 + sH : 0);
-	const cardH = inner + 2 * L.pad;
-	const room = L.column.bottom - L.column.top;
-	const cardY = centred ? Math.round(L.column.top + Math.max(0, (room - cardH) / 2)) : L.column.top;
-	const markY = cardY + L.pad;
-	const quoteY = markY + markH + 20;
-	const attrY = quoteY + q + (a ? 40 : 0);
-	const srcY = attrY + a + (sH ? 12 : 0);
-	return {cardY, cardH, markY, quoteY, attrY, srcY, fits: cardH <= room + 0.5};
 };
 
 export const QuoteScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
@@ -63,7 +43,7 @@ export const QuoteScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const sFit = useFit(source, L.source, ctx.lang);
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
-	const g = quoteBlock(L, {quote: qFit.height, attribution: attribution ? aFit.height : 0, source: source ? sFit.height : 0}, true);
+	const g = quoteBlock(L, {quote: qFit.height, attribution: attribution ? aFit.height : 0, source: source ? sFit.height : 0});
 	if (!g.fits) throw new Error(`quote ${ctx.sc.id}: the quote card needs ${g.cardH}px; the column has ${L.column.bottom - L.column.top}px. Shorten the quote.`);
 	const card: Box = {x: L.card.x, y: g.cardY, w: L.card.w, h: g.cardH};
 	const unspaced = UNSPACED.has(ctx.lang);

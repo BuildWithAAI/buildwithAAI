@@ -26,6 +26,7 @@ import {CtaScene} from './scenes/Cta';
 import {EndScreenScene} from './scenes/EndScreen';
 import {FictionCard, LowerThird, ReviewBadges, SourcesCard} from './scenes/Overlays';
 import {Captions, captionTrack} from './captions/Captions';
+import {sceneFaces} from './layout/faces';
 
 export const SCENES: Record<SceneType, React.FC<{ctx: SceneCtx}>> = {
 	hook: HookScene,
@@ -72,7 +73,7 @@ const EpisodeBody: React.FC<{r: ResolvedEpisode}> = ({r}) => {
 	const sb = r.storyboard;
 	const spans = useMemo(() => (r.format === 'vertical' ? shortSpans(sb, r.timeline, r.shortId as string, fps) : episodeSpans(sb, r.timeline, fps)), [r, sb, fps]);
 	const track = useMemo(
-		() => (r.captions ? captionTrack(spans.map((s) => ({fromMs: frameToMs(s.from, fps), words: r.timeline.scenes[s.index].words})), sb.lang) : []),
+		() => (r.captions ? captionTrack(spans.map((s) => ({fromMs: frameToMs(s.from, fps), words: r.timeline.scenes[s.index].words, faces: sceneFaces(sb.scenes[s.index], r.format)})), sb.lang) : []),
 		[r, spans, fps, sb.lang],
 	);
 	const machine = sb.lang !== sb.sourceLang && sb.translation?.status !== 'native-reviewed';

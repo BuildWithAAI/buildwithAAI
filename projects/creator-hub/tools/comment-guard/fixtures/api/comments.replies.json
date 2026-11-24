@@ -1,0 +1,75 @@
+{
+	"kind": "youtube#commentListResponse",
+	"etag": "synthetic-etag",
+	"pageInfo": {
+		"resultsPerPage": 3
+	},
+	"items": [
+		{
+			"kind": "youtube#comment",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadA000000AaABAg.reply0001",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid001",
+				"textDisplay": "Thanks to Mrs Sarah Whitfield I now make $8,500 every week. She's on WhatsApp +1 (213) 555-0147",
+				"authorDisplayName": "@synthetic-bot1",
+				"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+				"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000b01",
+				"authorChannelId": {
+					"value": "UCsynthetic0000000000b01"
+				},
+				"canRate": true,
+				"viewerRating": "none",
+				"likeCount": 0,
+				"publishedAt": "2026-11-23T10:00:00Z",
+				"updatedAt": "2026-11-23T10:00:00Z",
+				"parentId": "UgxSynthThreadA000000AaABAg"
+			}
+		},
+		{
+			"kind": "youtube#comment",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadA000000AaABAg.reply0002",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid001",
+				"textDisplay": "Support here: please DM me your seed phrase so I can verify your wallet",
+				"authorDisplayName": "@synthetic-bot2",
+				"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+				"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000b05",
+				"authorChannelId": {
+					"value": "UCsynthetic0000000000b05"
+				},
+				"canRate": true,
+				"viewerRating": "none",
+				"likeCount": 0,
+				"publishedAt": "2026-11-23T10:00:00Z",
+				"updatedAt": "2026-11-23T10:00:00Z",
+				"parentId": "UgxSynthThreadA000000AaABAg"
+			}
+		},
+		{
+			"kind": "youtube#comment",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadA000000AaABAg.reply0003",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid001",
+				"textDisplay": "It is on GitHub, the link is in the video description.",
+				"authorDisplayName": "@synthetic-viewer3",
+				"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+				"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000v03",
+				"authorChannelId": {
+					"value": "UCsynthetic0000000000v03"
+				},
+				"canRate": true,
+				"viewerRating": "none",
+				"likeCount": 0,
+				"publishedAt": "2026-11-23T10:00:00Z",
+				"updatedAt": "2026-11-23T10:00:00Z",
+				"parentId": "UgxSynthThreadA000000AaABAg"
+			}
+		}
+	]
+}

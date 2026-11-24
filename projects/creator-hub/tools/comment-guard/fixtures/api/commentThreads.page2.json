@@ -1,0 +1,109 @@
+{
+	"kind": "youtube#commentThreadListResponse",
+	"etag": "synthetic-etag",
+	"pageInfo": {
+		"totalResults": 3,
+		"resultsPerPage": 3
+	},
+	"items": [
+		{
+			"kind": "youtube#commentThread",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadD000000AaABAg",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid002",
+				"topLevelComment": {
+					"kind": "youtube#comment",
+					"etag": "synthetic-etag",
+					"id": "UgxSynthThreadD000000AaABAg",
+					"snippet": {
+						"channelId": "UCsyntheticZOORA00000001",
+						"videoId": "synthVid002",
+						"textDisplay": "Watch out, the replies are full of bots saying 'text me on WhatsApp'. They're scammers, report them.",
+						"authorDisplayName": "@synthetic-viewer2",
+						"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+						"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000v02",
+						"authorChannelId": {
+							"value": "UCsynthetic0000000000v02"
+						},
+						"canRate": true,
+						"viewerRating": "none",
+						"likeCount": 0,
+						"publishedAt": "2026-11-23T10:00:00Z",
+						"updatedAt": "2026-11-23T10:00:00Z"
+					}
+				},
+				"canReply": true,
+				"totalReplyCount": 0,
+				"isPublic": true
+			}
+		},
+		{
+			"kind": "youtube#commentThread",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadE000000AaABAg",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid002",
+				"topLevelComment": {
+					"kind": "youtube#comment",
+					"etag": "synthetic-etag",
+					"id": "UgxSynthThreadE000000AaABAg",
+					"snippet": {
+						"channelId": "UCsyntheticZOORA00000001",
+						"videoId": "synthVid002",
+						"textDisplay": "BTC GIVEAWAY: Send 0.1 BTC and get 0.2 BTC back instantly. First 100 people only!",
+						"authorDisplayName": "@synthetic-bot3",
+						"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+						"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000b03",
+						"authorChannelId": {
+							"value": "UCsynthetic0000000000b03"
+						},
+						"canRate": true,
+						"viewerRating": "none",
+						"likeCount": 0,
+						"publishedAt": "2026-11-23T10:00:00Z",
+						"updatedAt": "2026-11-23T10:00:00Z"
+					}
+				},
+				"canReply": true,
+				"totalReplyCount": 0,
+				"isPublic": true
+			}
+		},
+		{
+			"kind": "youtube#commentThread",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadF000000AaABAg",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid002",
+				"topLevelComment": {
+					"kind": "youtube#comment",
+					"etag": "synthetic-etag",
+					"id": "UgxSynthThreadF000000AaABAg",
+					"snippet": {
+						"channelId": "UCsyntheticZOORA00000001",
+						"videoId": "synthVid002",
+						"textDisplay": "I make $1,200 daily with this AI trading bot, check my channel",
+						"authorDisplayName": "@synthetic-bot4",
+						"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+						"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000b04",
+						"authorChannelId": {
+							"value": "UCsynthetic0000000000b04"
+						},
+						"canRate": true,
+						"viewerRating": "none",
+						"likeCount": 0,
+						"publishedAt": "2026-11-23T10:00:00Z",
+						"updatedAt": "2026-11-23T10:00:00Z"
+					}
+				},
+				"canReply": true,
+				"totalReplyCount": 0,
+				"isPublic": true
+			}
+		}
+	]
+}

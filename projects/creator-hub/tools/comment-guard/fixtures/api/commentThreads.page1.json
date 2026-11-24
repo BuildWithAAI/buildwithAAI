@@ -1,0 +1,136 @@
+{
+	"kind": "youtube#commentThreadListResponse",
+	"etag": "synthetic-etag",
+	"nextPageToken": "PAGE2",
+	"pageInfo": {
+		"totalResults": 3,
+		"resultsPerPage": 3
+	},
+	"items": [
+		{
+			"kind": "youtube#commentThread",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadA000000AaABAg",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid001",
+				"topLevelComment": {
+					"kind": "youtube#comment",
+					"etag": "synthetic-etag",
+					"id": "UgxSynthThreadA000000AaABAg",
+					"snippet": {
+						"channelId": "UCsyntheticZOORA00000001",
+						"videoId": "synthVid001",
+						"textDisplay": "Is the Telegram bot you mentioned open source? I want to check the code first.",
+						"authorDisplayName": "@synthetic-viewer1",
+						"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+						"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000v01",
+						"authorChannelId": {
+							"value": "UCsynthetic0000000000v01"
+						},
+						"canRate": true,
+						"viewerRating": "none",
+						"likeCount": 0,
+						"publishedAt": "2026-11-23T10:00:00Z",
+						"updatedAt": "2026-11-23T10:00:00Z"
+					}
+				},
+				"canReply": true,
+				"totalReplyCount": 3,
+				"isPublic": true
+			},
+			"replies": {
+				"comments": [
+					{
+						"kind": "youtube#comment",
+						"etag": "synthetic-etag",
+						"id": "UgxSynthThreadA000000AaABAg.reply0001",
+						"snippet": {
+							"channelId": "UCsyntheticZOORA00000001",
+							"videoId": "synthVid001",
+							"textDisplay": "Thanks to Mrs Sarah Whitfield I now make $8,500 every week. She's on WhatsApp +1 (213) 555-0147",
+							"authorDisplayName": "@synthetic-bot1",
+							"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+							"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000b01",
+							"authorChannelId": {
+								"value": "UCsynthetic0000000000b01"
+							},
+							"canRate": true,
+							"viewerRating": "none",
+							"likeCount": 0,
+							"publishedAt": "2026-11-23T10:00:00Z",
+							"updatedAt": "2026-11-23T10:00:00Z",
+							"parentId": "UgxSynthThreadA000000AaABAg"
+						}
+					}
+				]
+			}
+		},
+		{
+			"kind": "youtube#commentThread",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadB000000AaABAg",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid001",
+				"topLevelComment": {
+					"kind": "youtube#comment",
+					"etag": "synthetic-etag",
+					"id": "UgxSynthThreadB000000AaABAg",
+					"snippet": {
+						"channelId": "UCsyntheticZOORA00000001",
+						"videoId": "synthVid001",
+						"textDisplay": "Congratulations, you're one of our lucky winners! Contact our manager on Telegram @ZooraAI_Manager_example to claim your prize",
+						"authorDisplayName": "Zoora AI Official",
+						"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+						"authorChannelUrl": "http://www.youtube.com/channel/UCsynthetic0000000000b02",
+						"authorChannelId": {
+							"value": "UCsynthetic0000000000b02"
+						},
+						"canRate": true,
+						"viewerRating": "none",
+						"likeCount": 0,
+						"publishedAt": "2026-11-23T10:00:00Z",
+						"updatedAt": "2026-11-23T10:00:00Z"
+					}
+				},
+				"canReply": true,
+				"totalReplyCount": 0,
+				"isPublic": true
+			}
+		},
+		{
+			"kind": "youtube#commentThread",
+			"etag": "synthetic-etag",
+			"id": "UgxSynthThreadC000000AaABAg",
+			"snippet": {
+				"channelId": "UCsyntheticZOORA00000001",
+				"videoId": "synthVid001",
+				"topLevelComment": {
+					"kind": "youtube#comment",
+					"etag": "synthetic-etag",
+					"id": "UgxSynthThreadC000000AaABAg",
+					"snippet": {
+						"channelId": "UCsyntheticZOORA00000001",
+						"videoId": "synthVid001",
+						"textDisplay": "Pinned: we will NEVER ask you to message us on WhatsApp or Telegram. Report anyone who does.",
+						"authorDisplayName": "@ZooraTechnologies",
+						"authorProfileImageUrl": "https://yt3.ggpht.example/avatar.jpg",
+						"authorChannelUrl": "http://www.youtube.com/channel/UCsyntheticZOORA00000001",
+						"authorChannelId": {
+							"value": "UCsyntheticZOORA00000001"
+						},
+						"canRate": true,
+						"viewerRating": "none",
+						"likeCount": 0,
+						"publishedAt": "2026-11-23T10:00:00Z",
+						"updatedAt": "2026-11-23T10:00:00Z"
+					}
+				},
+				"canReply": true,
+				"totalReplyCount": 0,
+				"isPublic": true
+			}
+		}
+	]
+}

@@ -6,7 +6,8 @@
 import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {C, R} from '../theme';
-import {LAYOUTS, type Box} from '../layout/specs';
+import {FRAME, LAYOUTS, type Box} from '../layout/specs';
+import {hookBlock, RULE_H} from '../layout/blocks';
 import {Lines, useFit} from '../text/FitText';
 import {CharacterLayer, entry, RiseClip, SceneBg, useDirection, type SceneCtx} from './parts';
 import {BadgerInsert, inInsert} from './Insert';
@@ -26,19 +27,12 @@ export const HookScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
 	// vertical rhythm: kicker, title, rule, subtitle, centred in the text column
-	const area = L.column;
-	const kH = kicker ? L.kicker.box.h + 30 : 0;
-	const ruleH = 8;
-	const sH = subtitle ? 30 + sFit.height : 0;
-	const blockH = kH + tFit.height + 30 + ruleH + sH;
-	let y = Math.max(area.top, Math.round(area.top + (area.bottom - area.top - blockH) / 2));
-	const kBox: Box = {...L.kicker.box, y};
-	y += kH;
-	const tBox: Box = {...L.title.box, y, h: Math.ceil(tFit.height)};
-	y += Math.ceil(tFit.height) + 30;
-	const rule: Box = {x: vertical ? 540 - 48 : L.title.box.x, y, w: 96, h: ruleH};
-	y += ruleH + 30;
-	const sBox: Box | null = L.subtitle ? {...L.subtitle.box, y, h: Math.ceil(sFit.height)} : null;
+	const g = hookBlock(L.column, {kicker: kicker ? L.kicker.box.h : 0, title: tFit.height, subtitle: subtitle ? sFit.height : 0});
+	if (!g.fits) throw new Error(`hook ${ctx.sc.id}: the title block needs ${g.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten the title.`);
+	const kBox: Box = {...L.kicker.box, y: g.kickerY};
+	const tBox: Box = {...L.title.box, y: g.titleY, h: Math.ceil(tFit.height)};
+	const rule: Box = {x: vertical ? Math.round(FRAME.vertical.width / 2 - 48) : L.title.box.x, y: g.ruleY, w: 96, h: RULE_H};
+	const sBox: Box | null = L.subtitle ? {...L.subtitle.box, y: g.subtitleY, h: Math.ceil(sFit.height)} : null;
 
 	const lineH = tFit.fontSize * L.title.lineHeight;
 	const pillW = Math.ceil(kFit.width) + 2 * 24;

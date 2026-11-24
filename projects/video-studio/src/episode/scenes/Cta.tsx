@@ -14,24 +14,7 @@ import {BadgerInsert, inInsert} from './Insert';
 import {str} from '../validate';
 import {uiLabel} from '../i18n/ui';
 import {EASE, track} from '../motion';
-
-/** Block geometry: title, button, disclosure, stacked and centred (pure, shared with the fit test). */
-export const ctaBlock = (
-	L: {column: {top: number; bottom: number}; pad: number; button: {h: number}},
-	h: {title: number; disclosure: number},
-	centred: boolean,
-): {top: number; height: number; titleY: number; buttonY: number; disclosureY: number; fits: boolean} => {
-	const t = Math.ceil(h.title);
-	const d = Math.ceil(h.disclosure);
-	const inner = t + (t ? 40 : 0) + L.button.h + (d ? 44 + d : 0);
-	const height = inner + 2 * L.pad;
-	const room = L.column.bottom - L.column.top;
-	const top = centred ? Math.round(L.column.top + Math.max(0, (room - height) / 2)) : L.column.top;
-	const titleY = top + L.pad;
-	const buttonY = titleY + t + (t ? 40 : 0);
-	const disclosureY = buttonY + L.button.h + 44;
-	return {top, height, titleY, buttonY, disclosureY, fits: height <= room + 0.5};
-};
+import {ctaBlock} from '../layout/blocks';
 
 export const CtaScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const frame = useCurrentFrame();
@@ -48,7 +31,7 @@ export const CtaScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const dFit = useFit(disclosure, L.disclosure, ctx.lang);
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
-	const g = ctaBlock(L, {title: title ? tFit.height : 0, disclosure: disclosure ? dFit.height : 0}, true);
+	const g = ctaBlock(L, {title: title ? tFit.height : 0, disclosure: disclosure ? dFit.height : 0});
 	if (!g.fits) throw new Error(`cta ${ctx.sc.id}: the CTA block needs ${g.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten the title or disclosure.`);
 	const centreX = L.card ? L.card.x + L.card.w / 2 : FRAME[ctx.format].width / 2;
 	const btn: Box = {x: Math.round(centreX - L.button.w / 2), y: g.buttonY, w: L.button.w, h: L.button.h};

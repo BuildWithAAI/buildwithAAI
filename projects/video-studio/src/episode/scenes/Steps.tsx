@@ -7,24 +7,12 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {C, OUTLINE} from '../theme';
 import {LAYOUTS, type Box} from '../layout/specs';
-import {Lines, useFit} from '../text/FitText';
+import {Lines, useFit, useFitGroup} from '../text/FitText';
 import {fontFor} from '../i18n/fonts';
 import {CharacterLayer, entry, SceneBg, useDirection, type SceneCtx} from './parts';
 import {BadgerInsert, inInsert} from './Insert';
 import {list, str} from '../validate';
-import {placeBlock} from './Talk';
-
-/** Row layout (pure, shared with the fit test): each row is max(badge, text) tall, rows `gap` apart. */
-export const stackRows = (textHeights: number[], badge: number, gap: number): {tops: number[]; heights: number[]; total: number} => {
-	const heights = textHeights.map((h) => Math.max(badge, Math.ceil(h)));
-	const tops: number[] = [];
-	let y = 0;
-	for (const h of heights) {
-		tops.push(y);
-		y += h + gap;
-	}
-	return {tops, heights, total: heights.length ? y - gap : 0};
-};
+import {placeBlock, stackRows} from '../layout/blocks';
 
 export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const frame = useCurrentFrame();
@@ -35,16 +23,32 @@ export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const steps = (list(ctx.sc, 'steps') ?? []).slice(0, 5);
 	const title = str(ctx.sc, 'title') ?? '';
 	const titleFit = useFit(title, L.title, ctx.lang);
-	const fits = [0, 1, 2, 3, 4].map((i) => useFit(steps[i] ?? '', L.item, ctx.lang)); // eslint-disable-line react-hooks/rules-of-hooks
+	// all steps at one size, shrunk together until title + list fit the column
+	const titleH = title ? titleFit.height : 0;
+	const fits = useFitGroup(
+		steps,
+		L.item,
+		ctx.lang,
+		(rs) =>
+			placeBlock(
+				L.column,
+				titleH,
+				stackRows(
+					rs.map((r) => r.height),
+					L.badge,
+					L.gap,
+				).total,
+			).fits,
+		`steps ${ctx.sc.id}`,
+	);
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
 	const rows = stackRows(
-		steps.map((_, i) => fits[i].height),
+		fits.map((r) => r.height),
 		L.badge,
 		L.gap,
 	);
-	const block = placeBlock(L.column, title ? titleFit.height : 0, rows.total, true);
-	if (!block.fits) throw new Error(`steps ${ctx.sc.id}: the title and ${steps.length} steps need ${block.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten them.`);
+	const block = placeBlock(L.column, titleH, rows.total);
 	const y0 = block.listY;
 	const revealed = dir.reveals.filter((r) => frame >= r).length;
 	const num = fontFor(ctx.lang, 'heading', 900);

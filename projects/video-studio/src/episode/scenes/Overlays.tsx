@@ -54,12 +54,15 @@ export const FictionCard: React.FC<{format: Format; sb: Storyboard}> = ({format,
 	const p = inOut(frame, 4, 4 + 150);
 	if (p <= 0) return null;
 	const padX = 18;
+	const padY = 12;
 	const w = Math.ceil(fit.width) + 2 * padX + 26;
+	const h = Math.ceil(fit.height) + 2 * padY;
+	const firstLine = fit.fontSize * spec.lineHeight;
 	return (
-		<div style={{position: 'absolute', left: spec.box.x, top: spec.box.y, width: w, height: spec.box.h, clipPath: `inset(0 ${(1 - p) * 100}% 0 0)`}}>
+		<div style={{position: 'absolute', left: spec.box.x, top: spec.box.y, width: w, height: h, clipPath: `inset(0 ${(1 - p) * 100}% 0 0)`}}>
 			<div style={{position: 'absolute', inset: 0, boxSizing: 'border-box', backgroundColor: C.card, border: `${OUTLINE}px solid ${C.ink}`, borderRadius: R.m}} />
-			<div style={{position: 'absolute', left: padX, top: '50%', marginTop: -6, width: 12, height: 12, backgroundColor: C.teal, borderRadius: R.s}} />
-			<Lines fit={fit} spec={spec} lang={sb.lang} color={C.ink} box={{x: padX + 26, y: 0, w: spec.box.w, h: spec.box.h}} />
+			<div style={{position: 'absolute', left: padX, top: Math.round(padY + firstLine / 2 - 6), width: 12, height: 12, backgroundColor: C.teal, borderRadius: R.s}} />
+			<Lines fit={fit} spec={spec} lang={sb.lang} color={C.ink} box={{x: padX + 26, y: padY, w: spec.box.w, h: Math.ceil(fit.height)}} />
 		</div>
 	);
 };
