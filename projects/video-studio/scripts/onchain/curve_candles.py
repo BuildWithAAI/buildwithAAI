@@ -15,12 +15,14 @@ them are read once with getBlock (accounts mode, which also gives the index of
 each transaction in its block); the rest with getTransaction. Each trade's price
 is the venue-side price: |SOL change of the curve/pool| / |token change| (fees
 paid to third parties excluded). Trades are ordered by (slot, tx index); for
-transactions fetched one by one the index is unknown and they sort after the
-indexed ones in the same slot (flagged).
+transactions fetched one by one the index comes from the signature listing's
+transactionIndex (when the node returns it; otherwise they sort last in the slot
+and are flagged indexed=false).
 
-Output: {"trades": [...], "candles": [...], "meta": {...}}; each candle is
-{t (bucket start, s from t_ref), open, high, low, close, volume_sol, n_trades};
-empty buckets are omitted.
+Output: {"trades": [...], "candles": [...], "meta": {...}}; candles come from
+candles.build_candles (t = bucket start in unix seconds, OHLC in SOL per token,
+volume in SOL, empty buckets flat at the previous close) and pass
+candles.validate.
 """
 
 import argparse
@@ -34,6 +36,7 @@ from rpc import RPC  # noqa: E402
 import trades  # noqa: E402
 import solkeys  # noqa: E402
 import txfetch  # noqa: E402
+import candles as candles_mod  # noqa: E402
 
 PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
 
@@ -63,7 +66,7 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
             tx = txfetch.block_tx_as_tx(blk, i, s)
         else:
             tx = txfetch.get_tx(rpc, r["signature"])
-            i = None
+            i = r.get("transactionIndex")
         pt = trades.pool_trades(tx, venue, mint, signature=r["signature"], tx_index=i)
         if not pt:
             continue
@@ -77,23 +80,13 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
     return out, {"sigs": len(rows), "ok": len(ok), "dense_slots": len(dense), "paging": meta}
 
 
-def candles(trs, t_ref, bucket):
-    c = collections.OrderedDict()
-    for t in trs:
-        p = t.get("price_sol_per_token")
-        if not p:
-            continue
-        b = ((t["blockTime"] - t_ref) // bucket) * bucket
-        k = c.get(b)
-        if k is None:
-            c[b] = {"t": b, "open": p, "high": p, "low": p, "close": p, "volume_sol": t["sol_amount"], "n_trades": 1}
-        else:
-            k["high"] = max(k["high"], p)
-            k["low"] = min(k["low"], p)
-            k["close"] = p
-            k["volume_sol"] += t["sol_amount"]
-            k["n_trades"] += 1
-    return sorted(c.values(), key=lambda k: k["t"])
+def to_candles(trs, t_ref, before, after, bucket):
+    """5-s (or --bucket) OHLCV via candles.build_candles (shared with other cases)."""
+    rows = [{"blockTime": t["blockTime"], "slot": t["slot"], "tx_index": t.get("tx_index"),
+             "price": t.get("price_sol_per_token"), "volume": t["sol_amount"], "side": t["side"]} for t in trs]
+    cs = candles_mod.build_candles(rows, t_ref - before, t_ref + after + 1, step=bucket)
+    candles_mod.validate(cs)
+    return cs
 
 
 def main():
@@ -111,7 +104,7 @@ def main():
     rpc = RPC(a.cache)
     venue = a.venue_account or bonding_curve(a.mint)
     trs, meta = collect(rpc, a.mint, venue, a.t_ref, a.before, a.after, a.dense_min)
-    cs = candles(trs, a.t_ref, a.bucket)
+    cs = to_candles(trs, a.t_ref, a.before, a.after, a.bucket)
     meta.update({"mint": a.mint, "venue_account": venue, "t_ref": a.t_ref, "before": a.before,
                  "after": a.after, "bucket": a.bucket, "n_trades": len(trs), "rpc": rpc.stats})
     with open(a.out + ".tmp", "w") as f:

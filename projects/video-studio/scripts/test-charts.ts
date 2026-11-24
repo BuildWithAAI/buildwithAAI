@@ -280,6 +280,11 @@ const revealModels: ChartModel[] = [];
 for (let f = 0; f < REVEAL_FRAMES; f++) revealModels.push(layoutChart(revealOpts(f), f));
 const flicker = flickerIssues(revealModels);
 check2(flicker.length === 0, `reveal flicker: ${flicker.slice(0, 3).join('; ')}`);
+// negative control: the first fix round's 1 f/candle launch (with the callout shown) must be flagged
+const oneF: ChartModel[] = [];
+for (let f = 0; f < 40; f++) oneF.push(layoutChart({...revealOpts(f), reveal: {mode: 'step', startFrame: 6, framesPerCandle: 1}, calloutVisible: true}, f));
+const oneFlicker = flickerIssues(oneF).length;
+check2(oneFlicker > 0, 'negative control: a 1 f/candle step reveal was not flagged');
 // text boxes from Inter metrics: ink from 0.8 em above the baseline to 0.24 em below; the pill is its rect
 const textBox = (t: {text: string; x: number; y: number}, size: number, weight: 600 | 700, anchor: 'start' | 'end' = 'start') => {
 	const w = textWidth(t.text, size, weight);
@@ -359,7 +364,7 @@ console.log(
 		`linearTicks: ${fmtN(linWindows)} windows; outside 4-7 ticks: ${linOutOfBand}, duplicate labels: ${linDup}, labels off by > step/2: ${linMisread} (verbatim ticks+fmtUsd: ${verbatimDup} windows with duplicates)`,
 		`fmtPct: ${fmtN(pctValues)} values; glyph, sign or precision inconsistent: ${pctBad}`,
 		`volumeMix: 45% rule reproduces the 4 spec volume tokens: ${mixOk}; doji volume ${mixOver(CHART_DARK.flat, CHART_DARK.surface, 0.45)} dark, ${mixOver(CHART_LIGHT.flat, CHART_LIGHT.surface, 0.45)} light`,
-		`ChartReveal: ${REVEAL_FRAMES} frames; 1-frame states: ${flicker.length}; text collisions (all frames and demos): ${textCollisions}; min tick label to pill gap: ${minPillGap.toFixed(1)} px`,
+		`ChartReveal: ${REVEAL_FRAMES} frames; 1-frame states: ${flicker.length} (1 f/candle control: ${oneFlicker}); text collisions (all frames and demos): ${textCollisions}; min tick label to pill gap: ${minPillGap.toFixed(1)} px`,
 		`G3 open box: ${fmtN(g3Candles)} candles; close edge and wick ends exact outside the open box; ink past high/low max ${g3MaxPast.toFixed(3)} px, > 1 px on ${fmtN(g3Past1)} (${((100 * g3Past1) / g3Candles).toFixed(1)}%)`,
 	].join('\n'),
 );

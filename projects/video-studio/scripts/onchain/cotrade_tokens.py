@@ -15,7 +15,8 @@ changed the wallet's balance of that token, so no unrelated traffic is fetched.
 Slots where two or more group wallets touched the token are read once with
 getBlock (accounts mode), which also gives each transaction's index in the
 block (exact same-slot order). Other transactions are fetched one by one with
-getTransaction. All trades are parsed from meta (token delta; SOL delta
+getTransaction, taking the index from the signature listing's
+transactionIndex. All trades are parsed from meta (token delta; SOL delta
 including fees, tips and rent).
 """
 
@@ -85,7 +86,7 @@ def rebuild_token(rpc, wallets, mint, prog=None, block_min_wallets=2):
                     x["venue"] = txfetch.venue_from_keys(tx)
             else:
                 tx = txfetch.get_tx(rpc, r["signature"])
-                got = trades.parse_wallet_trades(tx, w["address"])
+                got = trades.parse_wallet_trades(tx, w["address"], tx_index=r.get("transactionIndex"))
             for x in got:
                 if x["token"] != mint:
                     continue
