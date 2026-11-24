@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "fixture-ret-gaps",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Synthetic broken timing",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "a",
+      "onScreen": {
+        "title": "Hook"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "b",
+      "onScreen": {
+        "title": "Talk"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "quote",
+      "narration": "c",
+      "onScreen": {
+        "quote": "q",
+        "attribution": "x"
+      }
+    },
+    {
+      "id": "s04",
+      "type": "talk",
+      "narration": "d",
+      "onScreen": {
+        "title": "Missing from the timeline"
+      }
+    },
+    {
+      "id": "s05",
+      "type": "cta",
+      "narration": "e",
+      "onScreen": {
+        "title": "Subscribe"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "fixture-src",
+      "title": "Synthetic fixture source",
+      "url": "https://example.com/fixture",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ]
+}

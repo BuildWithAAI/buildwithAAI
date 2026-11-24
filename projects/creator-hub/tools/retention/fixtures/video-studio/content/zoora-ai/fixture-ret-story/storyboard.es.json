@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "fixture-ret-story",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "Synthetic retention fixture story",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Synthetic hook line.",
+      "onScreen": {
+        "title": "Encontraste un token"
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Synthetic talk line.",
+      "onScreen": {
+        "title": "Cómo empezó"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "Synthetic chart line.",
+      "onScreen": {
+        "title": "La subida"
+      },
+      "chart": {
+        "seed": 7,
+        "illustrative": true
+      },
+      "badger": {
+        "present": true,
+        "reaction": "shocked"
+      }
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Synthetic steps line.",
+      "onScreen": {
+        "title": "La bandera roja de Badger: la cuenta atrás",
+        "steps": [
+          "Check the holders",
+          "Check the deployer"
+        ]
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s05",
+      "type": "cta",
+      "narration": "Subscribe.",
+      "onScreen": {
+        "title": "Suscríbete"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s06",
+      "type": "endscreen",
+      "narration": "See you next time.",
+      "onScreen": {
+        "title": "Siguiente"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      },
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [
+    {
+      "id": "fixture-src",
+      "title": "Synthetic fixture source",
+      "url": "https://example.com/fixture",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s03",
+        "s04"
+      ],
+      "title": "The pump"
+    },
+    {
+      "id": "short-missing",
+      "sceneIds": [
+        "s01",
+        "s09"
+      ],
+      "title": "Broken short"
+    }
+  ],
+  "translation": {
+    "status": "machine"
+  }
+}

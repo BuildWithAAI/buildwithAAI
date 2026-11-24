@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "slug": "fixture-ret-tiny",
+  "lang": "en",
+  "mode": "native",
+  "voice": "im_nicola",
+  "speed": 1.0,
+  "model": {
+    "file": "kokoro-v1.0.int8.onnx",
+    "sha256": "fixture"
+  },
+  "sampleRate": 24000,
+  "fps": 30,
+  "totalMs": 4000,
+  "scenes": [
+    {
+      "id": "s01",
+      "audio": "generated/x/fixture-ret-tiny/en/scenes/s01.wav",
+      "startMs": 0,
+      "durationMs": 1500,
+      "speechMs": 1100,
+      "words": [],
+      "mouth": []
+    },
+    {
+      "id": "s02",
+      "audio": "generated/x/fixture-ret-tiny/en/scenes/s02.wav",
+      "startMs": 1500,
+      "durationMs": 2500,
+      "speechMs": 2100,
+      "words": [],
+      "mouth": []
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "fixture-ret-show",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Synthetic retention fixture show",
+  "fiction": false,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Synthetic cold open.",
+      "onScreen": {
+        "kicker": "Scam of the Week"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "segment": "headline",
+      "narration": "Synthetic headline.",
+      "onScreen": {
+        "title": "Synthetic headline"
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "segment": "howItWorked",
+      "narration": "Synthetic how it worked.",
+      "onScreen": {
+        "nodes": [
+          "attacker",
+          "wallet"
+        ]
+      },
+      "badger": {
+        "present": true
+      }
+    },
+    {
+      "id": "s04",
+      "type": "talk",
+      "segment": "badgerRedFlag",
+      "narration": "Synthetic red flag.",
+      "onScreen": {
+        "flag": "A countdown"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s05",
+      "type": "steps",
+      "segment": "zooOneFix",
+      "narration": "Synthetic fix.",
+      "onScreen": {
+        "fix": "Use the official site"
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "Subscribe.",
+      "onScreen": {
+        "title": "Subscribe"
+      },
+      "badger": {
+        "present": true
+      }
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "Next week.",
+      "onScreen": {
+        "explainer": "Fake support"
+      },
+      "badger": {
+        "present": true
+      },
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [
+    {
+      "id": "fixture-src",
+      "title": "Synthetic fixture source",
+      "url": "https://example.com/fixture",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "daily",
+      "sceneIds": [
+        "s01",
+        "s04",
+        "s07"
+      ],
+      "title": "Daily"
+    }
+  ]
+}

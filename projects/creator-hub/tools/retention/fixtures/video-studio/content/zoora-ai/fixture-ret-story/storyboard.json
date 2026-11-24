@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "fixture-ret-story",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Synthetic retention fixture story",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Synthetic hook line.",
+      "onScreen": {
+        "title": "You found a token"
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Synthetic talk line.",
+      "onScreen": {
+        "title": "How it started"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "Synthetic chart line.",
+      "onScreen": {
+        "title": "The pump"
+      },
+      "chart": {
+        "seed": 7,
+        "illustrative": true
+      },
+      "badger": {
+        "present": true,
+        "reaction": "shocked"
+      }
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Synthetic steps line.",
+      "onScreen": {
+        "title": "Badger's Red Flag: the countdown",
+        "steps": [
+          "Check the holders",
+          "Check the deployer"
+        ]
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s05",
+      "type": "cta",
+      "narration": "Subscribe.",
+      "onScreen": {
+        "title": "Subscribe"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s06",
+      "type": "endscreen",
+      "narration": "See you next time.",
+      "onScreen": {
+        "title": "Next"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      },
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [
+    {
+      "id": "fixture-src",
+      "title": "Synthetic fixture source",
+      "url": "https://example.com/fixture",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s03",
+        "s04"
+      ],
+      "title": "The pump"
+    },
+    {
+      "id": "short-missing",
+      "sceneIds": [
+        "s01",
+        "s09"
+      ],
+      "title": "Broken short"
+    }
+  ]
+}

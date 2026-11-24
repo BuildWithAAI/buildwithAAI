@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "fixture-ret-tiny",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Synthetic tiny",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "a",
+      "onScreen": {
+        "title": "Tiny"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "b",
+      "onScreen": {
+        "title": "Tinier"
+      },
+      "badger": {
+        "present": true
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "fixture-src",
+      "title": "Synthetic fixture source",
+      "url": "https://example.com/fixture",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "tiny",
+      "sceneIds": [
+        "s01",
+        "s02"
+      ],
+      "title": "Tiny"
+    }
+  ]
+}

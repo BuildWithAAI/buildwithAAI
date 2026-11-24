@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "slug": "fixture-ret-story",
+  "lang": "es",
+  "mode": "native",
+  "voice": "im_nicola",
+  "speed": 1.0,
+  "model": {
+    "file": "kokoro-v1.0.int8.onnx",
+    "sha256": "fixture"
+  },
+  "sampleRate": 24000,
+  "fps": 30,
+  "totalMs": 58100,
+  "scenes": [
+    {
+      "id": "s01",
+      "audio": "generated/x/fixture-ret-story/es/scenes/s01.wav",
+      "startMs": 0,
+      "durationMs": 2800,
+      "speechMs": 2400,
+      "words": [],
+      "mouth": []
+    },
+    {
+      "id": "s02",
+      "audio": "generated/x/fixture-ret-story/es/scenes/s02.wav",
+      "startMs": 2800,
+      "durationMs": 10100,
+      "speechMs": 9700,
+      "words": [],
+      "mouth": []
+    },
+    {
+      "id": "s03",
+      "audio": "generated/x/fixture-ret-story/es/scenes/s03.wav",
+      "startMs": 12900,
+      "durationMs": 8600,
+      "speechMs": 8200,
+      "words": [],
+      "mouth": []
+    },
+    {
+      "id": "s04",
+      "audio": "generated/x/fixture-ret-story/es/scenes/s04.wav",
+      "startMs": 21500,
+      "durationMs": 12300,
+      "speechMs": 11900,
+      "words": [],
+      "mouth": []
+    },
+    {
+      "id": "s05",
+      "audio": "generated/x/fixture-ret-story/es/scenes/s05.wav",
+      "startMs": 33800,
+      "durationMs": 4300,
+      "speechMs": 3900,
+      "words": [],
+      "mouth": []
+    },
+    {
+      "id": "s06",
+      "audio": "generated/x/fixture-ret-story/es/scenes/s06.wav",
+      "startMs": 38100,
+      "durationMs": 20000,
+      "speechMs": 19600,
+      "words": [],
+      "mouth": []
+    }
+  ],
+  "warnings": []
+}
