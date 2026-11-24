@@ -216,14 +216,20 @@ class Chinese(unittest.TestCase):
         spans = zh.spans(text)
         self.assertEqual("".join(d for d, _, _ in spans), text)
         self.assertIn(("$40,000", "四万美元", True), spans)
+        self.assertIn(("2026年", "二零二六年", True), zh.spans("价格在2026年涨到了"))
 
 
 class Japanese(unittest.TestCase):
     def test_minimal(self):
-        cases = {"$40,000": "40000ドル", "68.67%": "68点六七パーセント", "1.5Mトークン": "1500000トークン", "4万": "4万"}
+        cases = {"$40,000": "40000ドル", "68.67%": "68点六七パーセント", "1.5Mトークン": "1500000トークン", "4万": "4万", "0.25 SOL": "0点二五 SOL"}
         for text, want in cases.items():
             with self.subTest(text=text):
                 self.assertEqual(n(text, "ja"), want)
+
+    def test_number_spans_do_not_swallow_spaces(self):
+        from voicelib.normalize import ja
+
+        self.assertEqual(ja.spans("0.25 SOL")[0][0], "0.25")
 
 
 class ParseNum(unittest.TestCase):

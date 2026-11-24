@@ -118,14 +118,14 @@ def _time(m: re.Match) -> str:
     return f"{cardinal(h)}点" + (f"{cardinal(mi)}分" if mi else "")
 
 
-@rule(r"(\d{4})(?=\s?年)")
+@rule(r"(\d{4})\s?年")
 def _year(m: re.Match) -> str:
-    return digits(m.group(1))
+    return digits(m.group(1)) + "年"  # the unit stays in the span: one caption word "2026年"
 
 
-@rule(r"(\d{1,2})(?=\s?[月日号点时])")
+@rule(r"(\d{1,2})\s?([月日号点时])")
 def _month_day(m: re.Match) -> str:
-    return cardinal(int(m.group(1)))
+    return cardinal(int(m.group(1))) + m.group(2)
 
 
 @rule(rf"({SIGN})?([$＄€£¥￥₹])\s?({NUM})(bn|[kKmMbBtT万亿])?")

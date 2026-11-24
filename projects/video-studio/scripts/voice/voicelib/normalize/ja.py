@@ -30,7 +30,7 @@ def _num(s: str, scale: str | None = None) -> str:
     return _decimal(i, f)
 
 
-_PATTERN = re.compile(rf"([$＄€£¥￥₹])?\s?({NUM})(bn|[kKmMbBtT](?![A-Za-z]))?\s?([%％])?")
+_PATTERN = re.compile(rf"([$＄€£¥￥₹])?\s?({NUM})(bn|[kKmMbBtT](?![A-Za-z]))?(?:\s?([%％]))?")
 
 
 def spans(text: str) -> list[tuple[str, str, bool]]:
