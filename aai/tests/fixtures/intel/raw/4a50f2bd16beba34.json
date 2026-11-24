@@ -1,0 +1,1 @@
+{"key": "https://www.okx.com/api/v5/market/index-tickers?{\"instId\": \"SOL-USDT\"}", "recorded_at": 1793756938.7776484, "as": "json", "body": {"code": "0", "data": [{"instId": "SOL-USDT", "idxPx": "91.91", "high24h": "93.94", "low24h": "91.27", "open24h": "92.46", "sodUtc0": "92.83", "sodUtc8": "93.75", "ts": "1793756937098"}], "msg": ""}}

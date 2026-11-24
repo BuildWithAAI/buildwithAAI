@@ -1,0 +1,1 @@
+{"key": "https://openapi.blofin.com/api/v1/market/open-interest?{\"instId\": \"SOL-USDT\"}", "recorded_at": 1793756935.306196, "as": "json", "body": {"code": "0", "msg": "success", "data": [{"instId": "SOL-USDT", "openInterest": "469401", "openInterestCurrency": "469401", "ts": "1793756880000"}]}}
