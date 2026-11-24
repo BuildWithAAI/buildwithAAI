@@ -11,3 +11,6 @@ __pycache__/
 
 # In-progress temp files written by tools
 *.tmp
+
+# Audio engine: local Python env (pedalboard, mido, numpy, scipy, soundfile)
+.venv-audio/

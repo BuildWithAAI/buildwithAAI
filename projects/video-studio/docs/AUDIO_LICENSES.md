@@ -1,0 +1,41 @@
+# Audio licences: sources, evidence and exclusions
+
+Verified 2026-11-24 for the audio engine (`scripts/audio/`, docs in `docs/AUDIO.md`). Every sound in our music and SFX comes from one of the sources below, from our own code (synthesis) or from recordings the owner supplies. Rule (binding for the composer and the sound designer): **use only sources listed as allowed here, and add any new source to this file with its evidence before its first use.** No AI music services, no loops or samples of unknown origin, no copyrighted recordings.
+
+## Allowed sources
+
+| Source | Version / pin | Licence | Evidence read (where) | Use |
+| --- | --- | --- | --- | --- |
+| Our own synthesis (`audiolib.synth`: PolyBLEP oscillators, noise, plucked string, pad, sub, riser, kick; `audiolib.reverb` IRs) | this repo | Our code; the output is ours | n/a | Anything |
+| VCSL (Versilian Community Sample Library), Versilian Studios LLC | git `c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e`, tree `aee077dea292930ede43d557a4c5e9edb2a6ceaf`, from https://github.com/sgossner/VCSL | **CC0 1.0 Universal** (public-domain dedication) | `.cache/vcsl/LICENSE` (full CC0 1.0 legal code, checked by `setup.sh`); `.cache/vcsl/README.md`: "This collection is under a Creative Commons 0 license. Essentially it's Public Domain- you can do whatever you want with these sounds (even make commercial software), no royalties, no credit, no special terms." | Pianos, drums, percussion, mallets, anything in the set |
+| MuseScore_General HQ soundfont 0.2.1 (S. Christian Collins) | Ubuntu 24.04 packages `musescore-general-soundfont` 0.2.1-1 (`MuseScore_General_Full.sf3`, sha256 `f9a37b36…aeae`) and `musescore-general-soundfont-lossless` 0.2.1-1 (`MuseScore_General_Full.sf2`, sha256 `59287cbb…0a8f`) | **MIT**, parts public domain or CC0 | `/usr/share/doc/musescore-general-soundfont/copyright` (Debian): "MuseScore_General_HQ SoundFont (MIT, parts PD or CC0)", listing MuseScore Drumline samples (CC0), the "Splendid Grand piano from AKAI S5000 (verified Public Domain)", VCSL crash samples (CC0), VSCO 2 CE strings (CC0), FluidR3 Mono (MIT, Michael Cowgill; temple blocks Ethan Winer; drumline cymbals Michael Schorsch) and the original Fluid R3 (MIT, Frank Wen), with the full MIT text. Per-preset sources: `MuseScore_General_HQ_Sample_Sources.csv` and `MuseScore_General_HQ_Readme.md` from the .deb (`dpkg-deb -x`; this container strips `/usr/share/doc` extras) | GM instruments through fluidsynth |
+| FluidR3_GM soundfont (Frank Wen) | Ubuntu 24.04 package `fluid-soundfont-gm` 3.1-5.3 (`FluidR3_GM.sf2`, sha256 `74594e8f…1cb0`) | **MIT** | `/usr/share/doc/fluid-soundfont-gm/copyright`: "I hereby release Fluid under the MIT license, as described in COPYING", with the full MIT text; contributors credited; "constructed in part from samples found in the public domain … and largely from recordings of my own" | GM instruments through fluidsynth |
+
+### Notes on the soundfonts
+
+- **MIT condition.** MIT requires the copyright and permission notice in "all copies or substantial portions of the Software". We do not redistribute the soundfonts (they come from Ubuntu's packages at render time), and the notices are kept here and in the Debian copyright files. Rendered music is a new performance through a synthesizer, not a copy of the soundfont; no on-screen or description credit is required. A courtesy credit line in a channel's "About" text is optional: "Some instruments: FluidR3 GM (Frank Wen, MIT) and MuseScore General (S. Christian Collins, MIT)".
+- **Two presets with weaker provenance** in MuseScore_General (from its sample-sources CSV): "Trumpet" (bank 0, preset 56: "Samples: uncredited | License: Public Domain") and "Synth Bass 2" (bank 0, preset 39: "Original License: public domain", uncredited). The package licence still covers them, but the upstream credit is thin. **Policy: do not feature these two presets in exposed, signature parts** (theme melodies, stings); use another source or synthesis there.
+- **Recording-quality caveat (not licensing):** the GM finger and pick bass presets (programs 33, 34; same samples in both soundfonts) have loop-splice sidebands on held notes (measured, see `docs/AUDIO.md`). Prefer `synth.PluckString` for bass lines.
+
+## Tools (they do not license the output)
+
+| Tool | Version | Licence | Role |
+| --- | --- | --- | --- |
+| FluidSynth | 2.3.4 (Ubuntu `fluidsynth` 2.3.4-1build3) | LGPL-2.1+ (`/usr/share/doc/fluidsynth/copyright`) | Renders MIDI through soundfonts |
+| pedalboard (Spotify) | 0.9.26 | GPL-3.0 (PyPI metadata) | True-peak limiter, chorus/delay/phaser/ladder filter. A GPL tool places no licence on audio it processes; we do not distribute pedalboard |
+| mido | 1.3.3 | MIT | MIDI files |
+| numpy / scipy / soundfile (+ cffi, pycparser, packaging, typing_extensions) | 2.5.5 / 1.18.1 / 0.14.0 | BSD-3-Clause (deps: MIT, BSD-3-Clause, Apache-2.0 or BSD-2-Clause, PSF-2.0) | DSP, file I/O |
+| ffmpeg | 6.1.1 (Ubuntu) | GPL build (tool) | Loudness measurement (ebur128), spectrograms, AAC previews |
+
+## Excluded (not clearly permissive for commercial YouTube use)
+
+| Candidate | Why excluded |
+| --- | --- |
+| `avldrums.lv2-soundfont` (AVL Drumkits) | CC-BY-SA 4.0: attribution plus share-alike on adaptations; not "clearly permissive" for our owned-music goal |
+| `fluid-soundfont-gs`, `timgm6mb-soundfont`, `fluidr3mono-gm-soundfont`, `opl3-soundfont`, `csound-soundfont` | Not needed (duplicates of the above or lower quality); licences not reviewed, so not allowed |
+| YouTube Audio Library, Pixabay, Freesound, other stock libraries | Out of scope for owned music: licences are per track, change over time, and Content ID exposure is unknown (`docs/research/platform-facts-2026-11-23.md`) |
+| AI music generators | Excluded by the owner's brief |
+
+## Content ID note (honest)
+
+The music is composed in code and rendered from CC0, MIT and public-domain samples, so it carries no third-party composition or recording rights. That does not make a Content ID false positive impossible: the same public samples (especially VCSL and the GM soundfonts) are used by many others, and somebody could register a track built from them. Risk is lowest for original compositions with our own arrangement and processing, and we never use pre-made loops. Keep each project's render script, MIDI and stems (the engine writes them) as evidence of independent creation, in case a claim needs disputing.
