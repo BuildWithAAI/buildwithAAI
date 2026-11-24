@@ -1,13 +1,16 @@
 import React from 'react';
 import {useCurrentFrame, useVideoConfig} from 'remotion';
 import type {BadgerHead, BadgerPose, BadgerProps, BadgerView, Expression} from '../types';
-import {HeadState} from './parts/heads/Head';
+import {Head, HeadState} from './parts/heads/Head';
+import {NeckFront} from './parts/Neck';
+import {ViewBody, ViewRig} from './parts/ViewBody';
+import {VIEW_RIGS} from './parts/viewRigs';
 import {LEFT_RIG} from './parts/rigLeft';
 import {RIGHT_RIG} from './parts/rigRight';
 import {plantLegs, walkPose} from './parts/gait';
 import {HeadMount, SideBody, SidePose, STAND_POSE, spotsByPart} from './parts/SideBody';
 import {clamp01} from './parts/shared';
-import {LEFT_SPOTS, RIGHT_SPOTS} from './spots';
+import {BACK_SPOTS, FRONT_SPOTS, LEFT_SPOTS, RIGHT_SPOTS, THREE_QUARTER_SPOTS} from './spots';
 
 /** Optional extras on top of the shared BadgerProps contract (all optional, nothing renamed). */
 export type BadgerExtraProps = {
@@ -20,8 +23,18 @@ export type BadgerExtraProps = {
 
 export type BadgerAllProps = BadgerProps & BadgerExtraProps;
 
-/** Body views implemented. */
-export const IMPLEMENTED_VIEWS: readonly BadgerView[] = ['left', 'right'];
+/** Body views implemented (all five). Nothing is produced by mirroring another view. */
+export const IMPLEMENTED_VIEWS: readonly BadgerView[] = ['left', 'right', 'front', 'back', 'threeQuarter'];
+
+/**
+ * Head placement in the front and three-quarter body views (view-root world units): the head pivot is put
+ * where the sheet's eyes-and-nose centroid sits on badger_turn_front.png / badger_turn_34.png.
+ * The front view also carries the front neck/collar bust (parts/Neck.tsx) at `neck`.
+ */
+export const VIEW_HEAD_MOUNT = {
+	front: {head: {x: 1.0, y: -333.3}, neck: {x: 1.0, y: -313.8}},
+	threeQuarter: {head: {x: 101.1, y: -336.7}},
+} as const;
 
 /**
  * Default head for each body view. Left: the size-comparison panel shows the face turned to camera with only a
@@ -109,7 +122,9 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 		lookY = 0,
 		neckTurn = 0,
 	} = props;
-	const bodyView: BadgerView = IMPLEMENTED_VIEWS.includes(view) ? view : 'left';
+	// walk and look-up are side-view poses: a non-side view walks / looks up in the right view (its facing)
+	const sideOnly = pose === 'walk' || pose === 'lookUp';
+	const bodyView: BadgerView = !IMPLEMENTED_VIEWS.includes(view) ? 'left' : sideOnly && view !== 'left' && view !== 'right' ? 'right' : view;
 	const dir: 1 | -1 = bodyView === 'right' ? 1 : -1;
 	const head = props.head ?? (pose === 'lookUp' ? lookUpHead(dir) : pose === 'walk' ? walkHead(dir) : DEFAULT_HEAD[bodyView]);
 	const headState: HeadState = {
@@ -122,9 +137,62 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 	};
 	const breath = breathe ? Math.sin(((frame / fps) * Math.PI * 2) / 3.4) : 0;
 	const sidePose = sidePoseFor(pose, dir === 1 ? 'right' : 'left', props.walkPhase ?? 0);
+	const isSide = bodyView === 'left' || bodyView === 'right';
+	let body: React.ReactNode = null;
+	if (!isSide) {
+		const common = {tailWag, breath, neckTurn, uidPrefix: `bv${bodyView}`};
+		if (bodyView === 'front') {
+			const m = VIEW_HEAD_MOUNT.front;
+			body = (
+				<ViewBody
+					rig={VIEW_RIGS.front as unknown as ViewRig}
+					spots={FRONT_SPOTS}
+					{...common}
+					inserts={[
+						{
+							after: 'legFrontLeft',
+							group: 'head',
+							node: (
+								<g>
+									<g transform={`translate(${m.neck.x} ${m.neck.y})`}>
+										<NeckFront />
+									</g>
+									<g transform={`translate(${m.head.x} ${m.head.y}) rotate(${headTilt})`}>
+										<Head view={head} state={headState} />
+									</g>
+								</g>
+							),
+						},
+					]}
+				/>
+			);
+		} else if (bodyView === 'threeQuarter') {
+			const m = VIEW_HEAD_MOUNT.threeQuarter;
+			body = (
+				<ViewBody
+					rig={VIEW_RIGS.threeQuarter as unknown as ViewRig}
+					spots={THREE_QUARTER_SPOTS}
+					{...common}
+					inserts={[
+						{
+							after: 'tagShadow',
+							group: 'head',
+							node: (
+								<g transform={`translate(${m.head.x} ${m.head.y}) rotate(${-headTilt})`}>
+									<Head view={head} state={headState} />
+								</g>
+							),
+						},
+					]}
+				/>
+			);
+		} else {
+			body = <ViewBody rig={VIEW_RIGS.back as unknown as ViewRig} spots={BACK_SPOTS} {...common} />;
+		}
+	}
 	return (
 		<g transform={`translate(${x} ${y}) scale(${scale})`} data-character="badger" data-view={bodyView} data-pose={pose}>
-			{dir === -1 ? (
+			{!isSide ? body : dir === -1 ? (
 				<SideBody
 					rig={LEFT_RIG}
 					dir={-1}

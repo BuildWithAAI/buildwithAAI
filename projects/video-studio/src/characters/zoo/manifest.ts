@@ -1,12 +1,18 @@
 /**
- * ZOO character manifest, v1.0.0 (front-view core rig). The reusable baseline: reuse these assets
- * unchanged across episodes. Identity source: reference/model-sheets/zoo_model_sheet_v1.png and
- * its crops in reference/crops/. Binding rules: docs/PROJECT_INSTRUCTIONS.md.
+ * ZOO character manifest, v1.0.0 (front core rig + 3/4, side and back views + seated typing pose).
+ * The reusable baseline: reuse these assets unchanged across episodes. Identity source:
+ * reference/model-sheets/zoo_model_sheet_v1.png and its crops in reference/crops/. Binding rules:
+ * docs/PROJECT_INSTRUCTIONS.md.
  */
-import {BRAND, LINE, ZOO_COLORS} from '../palette';
+import {BRAND, LINE, PROP_COLORS, ZOO_COLORS} from '../palette';
 import {ARM_POINT, BREATH, EXPRESSIONS, FRONT, PIVOTS, POINT_HAND_FRAME, POINT_HAND_SWITCH} from './rig';
 import {MOUTHS} from './mouth';
 import {PIN_CENTER} from './parts/Pin';
+import {PIVOTS_34, PIVOTS_BACK, PIVOTS_SIDE, PIVOTS_TYPING, type ViewPivot} from './views/pivots';
+import {TYPING_LAYOUT} from './views/Typing';
+import {DESK} from './props/Desk';
+import {CHAIR} from './props/Chair';
+import {KEYBOARD} from './props/Keyboard';
 
 type PartPivot = {x: number; y: number; parent: string | null; controls: string};
 
@@ -15,8 +21,11 @@ export type ZooManifest = {
 	version: '1.0.0';
 	views: Record<'front' | 'threeQuarter' | 'side' | 'back', string>;
 	units: string;
-	palette: {keys: Record<string, string>; brand: string[]; line: {color: string; width: number; detailWidth: number}};
+	palette: {keys: Record<string, string>; propKeys: Record<string, string>; brand: string[]; line: {color: string; width: number; detailWidth: number}};
 	dimensions: typeof FRONT & {measuredFrom: Record<string, string>};
+	viewDimensions: Record<'threeQuarter' | 'side' | 'back' | 'typing', Record<string, number | string>>;
+	viewPivots: Record<'threeQuarter' | 'side' | 'back' | 'typing', Record<string, ViewPivot>>;
+	typing: {layout: typeof TYPING_LAYOUT; props: Record<string, string>; usage: string};
 	conventions: Record<string, string>;
 	pivots: Record<string, PartPivot>;
 	expressions: string[];
@@ -38,15 +47,17 @@ export const ZOO_MANIFEST: ZooManifest = {
 	id: 'zoo',
 	version: '1.0.0',
 	views: {
-		front: 'built (src/characters/zoo, this rig)',
-		threeQuarter: 'not built yet; <Zoo view="threeQuarter"> currently draws the front view',
-		side: 'not built yet; falls back to the front view',
-		back: 'not built yet; falls back to the front view',
+		front: 'built: parts/ (core rig). Poses stand, point.',
+		threeQuarter:
+			'built: views/ThreeQuarter.tsx + views/threeQuarter/ (body turned to SCREEN RIGHT; near side = anatomical right). All expressions, blink, look, brow lift and the full mouth library (front drawings mapped by tq.ts, never mirrored). Pose stand.',
+		side: 'built: views/Side.tsx + views/side/ (profile facing SCREEN RIGHT; the anatomical RIGHT side is visible). All expressions and all six mouths via a profile lip notch. Pose stand.',
+		back: 'built: views/Back.tsx (anatomical LEFT = screen left). headTilt and breathing; no face controls are visible. Pose stand.',
 	},
 	units:
 		'World units: 1 unit = 1 px at scale 1. ZOO is exactly 900 units from sole (y=0) to the top of the hair outline (y=-900). Origin = ground contact point between the feet; y grows downward.',
 	palette: {
 		keys: {...ZOO_COLORS},
+		propKeys: {...PROP_COLORS},
 		brand: ['nearBlack (outlines)', 'offWhite (pin highlight)', 'teal (pin, via ZOO_COLORS.pin)', 'background (dev renders only)'],
 		line: {color: LINE.color, width: LINE.width, detailWidth: LINE.detailWidth},
 	},
@@ -64,6 +75,55 @@ export const ZOO_MANIFEST: ZooManifest = {
 				'front view heights (identity control): brow bottoms -827, eye line -816, nose bottom -786, moustache top -780, chin -740 (see ZOO-F2)',
 		},
 	},
+	viewDimensions: {
+		threeQuarter: {
+			totalHeight: 898.2,
+			headTop: -898.2,
+			chin: -736.2,
+			headHeight: 162,
+			headsTall: 898.2 / 162,
+			shoulderWidth: 211, // near sleeve outer edge (-123) to far shoulder (88) at shoulder height
+			faceMidlineAtMouth: 29,
+			measuredFrom: 'zoo_turn_34.png: origin crop (154, 640), 1 px = 900/630 u; same ground and scale as the front crop (sheet offset x=630)',
+		},
+		side: {
+			totalHeight: 895.4,
+			headTop: -895.4,
+			chin: -738.2,
+			headHeight: 157.2,
+			headLength: 169.6, // back hair tuft (-87.6) to forelock tip (82)
+			chestDepth: 136.6, // shirt back (-77) to placket front (59.6)
+			shoeLength: 140,
+			measuredFrom: 'zoo_turn_side.png: origin crop (150, 640); sheet offset x=880',
+		},
+		back: {
+			totalHeight: 899,
+			headTop: -899,
+			napeBottom: -752.4,
+			shoulderWidth: 225.2, // -110.6 .. 114.6 at the shoulder points
+			hipWidth: 166,
+			measuredFrom: 'zoo_turn_back.png: origin crop (154.5, 640); sheet offset x=1110',
+		},
+		typing: {
+			headTop: -728.2,
+			seatTop: TYPING_LAYOUT.chair.y + CHAIR.seatTop,
+			deskTop: DESK.top,
+			keyTop: TYPING_LAYOUT.keyboard.y + KEYBOARD.top,
+			measuredFrom: 'zoo_pose_typing.png framed at 1.555 u/px, origin crop (252, 478) (decision ZOO-T1)',
+		},
+	},
+	viewPivots: {threeQuarter: PIVOTS_34, side: PIVOTS_SIDE, back: PIVOTS_BACK, typing: PIVOTS_TYPING},
+	typing: {
+		layout: TYPING_LAYOUT,
+		props: {
+			Chair: 'props/Chair.tsx: origin = floor under the gas column; draw BEFORE <Zoo>',
+			Desk: 'props/Desk.tsx: origin = centre of its footprint on the floor; top at DESK.top',
+			Keyboard: 'props/Keyboard.tsx: origin = centre of its underside on the desk top',
+			Monitor: 'props/Monitor.tsx: origin = centre of the stand base on the desk top',
+		},
+		usage:
+			'<Chair x={L.chair.x} .../> then <Zoo pose="typing" typing between={<><Desk/><Monitor/><Keyboard/></>}/> with each prop at TYPING_LAYOUT (ZOO world space). Or split: <Zoo layer="back"/>, the desk set, then <Zoo layer="front"/> with the same placement. typing=true taps the fingers from the frame (fingerLift).',
+	},
 	conventions: {
 		anatomical: 'Prop and part names ending in L/R are ANATOMICAL. In the front view anatomical LEFT is screen RIGHT (+x).',
 		pin: `Teal jellyfish pin on the anatomical LEFT chest (screen right), above the chest pocket, centre (${PIN_CENTER.x}, ${PIN_CENTER.y}).`,
@@ -72,7 +132,9 @@ export const ZOO_MANIFEST: ZooManifest = {
 		brows: 'Anatomical-left brow (screen right) sits ~2 u higher with a soft arch at rest: the deadpan raised brow.',
 		hair: 'Asymmetric: swept top, crown curl with a dark hollow right of centre, pointed forelock hanging left of centre to (-17.5,-841), wings on the screen-left. Never mirrored.',
 		mirroring:
-			'No view is ever made by flipping. Bilateral pairs without markings (ears, eyes, hands, sleeves, legs, shoes, collar leaves) are authored once and mirrored to the opposite side WITHIN the front view.',
+			'No view is ever made by flipping. Bilateral pairs without markings (ears, eyes, hands, sleeves, legs, shoes, collar leaves) are authored once and mirrored to the opposite side WITHIN a view (front, back). The 3/4 and side views reuse front FACE drawings only through non-mirroring maps (anatomical left stays anatomical left).',
+		views:
+			'threeQuarter and side face SCREEN RIGHT, so the near side is the anatomical RIGHT. The pin (anatomical left chest) shows on the far panel in 3/4, and is hidden in profile and from behind, as on the sheet. Buttons stay on the anatomical-right panel at the front-view heights; the pocket stays under the pin.',
 		layering:
 			'back to front: legs+shoes, arms (behind the overshirt panels), collar stand, neck, tee, overshirt panels, collar leaves, pocket, buttons, pin, head (back hair, ears, face, mouth, beard, moustache, jaw outline, nose, eyes, brows, front hair).',
 		coordinateSpaces:
@@ -112,7 +174,7 @@ export const ZOO_MANIFEST: ZooManifest = {
 	poses: {
 		stand: 'arms relaxed at the sides',
 		point: `anatomical LEFT arm (screen right) raised to shoulder height and extended to screen right, index extended. Joint deltas at poseAmount 1: shoulder ${ARM_POINT.shoulder}, elbow ${ARM_POINT.elbow}, wrist ${ARM_POINT.wrist} deg; hand swaps at ${POINT_HAND_SWITCH}; pointing-hand frame ${POINT_HAND_FRAME} deg.`,
-		typing: 'not built in the front rig (seated 3/4 pose); falls back to stand',
+		typing: `seated 3/4 pose facing screen right (views/Typing.tsx), any view value; upper body = 3/4 parts offset by (${TYPING_LAYOUT.upper.dx}, ${TYPING_LAYOUT.upper.dy}); hands on the keyboard; typing=true taps fingers from the frame; layer/between props place a desk between the body and the hands`,
 	},
 	animation: {
 		breathAmplitudeUnits: BREATH.amplitude,
