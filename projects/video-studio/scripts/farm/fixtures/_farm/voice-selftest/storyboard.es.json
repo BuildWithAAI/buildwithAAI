@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "channel": "_farm",
+  "slug": "voice-selftest",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "Prueba de voz de la granja de renderizado",
+  "fiction": false,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "talk",
+      "narration": "Esta es la prueba de voz de la granja de renderizado. La voz de Zoo está lista en todos los idiomas."
+    }
+  ],
+  "sources": [],
+  "translation": {"status": "machine"}
+}

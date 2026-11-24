@@ -1,0 +1,19 @@
+{
+  "id": "episode-en-es-ptbr",
+  "entry": "src/episode/index.ts",
+  "encrypt": true,
+  "retentionDays": 7,
+  "voice": [
+    {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "en", "voice": "im_nicola"},
+    {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "es", "voice": "im_nicola"},
+    {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "pt-br", "voice": "im_nicola"}
+  ],
+  "jobs": [
+    {"composition": "Episode", "kind": "video", "output": "out/episodes/pumpfun-top-caller/en/episode.mp4", "props": {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "en"}},
+    {"composition": "Episode", "kind": "video", "output": "out/episodes/pumpfun-top-caller/es/episode.mp4", "props": {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "es"}},
+    {"composition": "Episode", "kind": "video", "output": "out/episodes/pumpfun-top-caller/pt-br/episode.mp4", "props": {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "pt-br"}},
+    {"composition": "EpisodeShort", "kind": "video", "output": "out/episodes/pumpfun-top-caller/en/short-1.mp4", "props": {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "en", "shortId": "short-1"}},
+    {"composition": "EpisodeShort", "kind": "video", "output": "out/episodes/pumpfun-top-caller/es/short-1.mp4", "props": {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "es", "shortId": "short-1"}},
+    {"composition": "EpisodeShort", "kind": "video", "output": "out/episodes/pumpfun-top-caller/pt-br/short-1.mp4", "props": {"channel": "zoora-ai", "slug": "pumpfun-top-caller", "lang": "pt-br", "shortId": "short-1"}}
+  ]
+}

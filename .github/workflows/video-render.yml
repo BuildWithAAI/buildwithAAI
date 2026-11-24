@@ -1,0 +1,265 @@
+# Video render farm: free parallel rendering on GitHub-hosted runners.
+# How to use it: projects/video-studio/docs/RENDER_FARM.md
+#
+# Push a request file, projects/video-studio/render-requests/<id>.json, on any branch (or run this workflow by hand
+# with the request id). Then:
+#   plan     validates the request files the push added or changed and builds the job matrices;
+#   voice    voices every language in parallel (Kokoro, Zoo = im_nicola; model files cached by their sha256);
+#   render   renders every composition x language in parallel, 8 at a time, probes it with ffprobe, encrypts it,
+#            and uploads it as an artifact;
+#   summary  writes one table: each output's resolution, duration, size and render time.
+#
+# SECURITY. This repository is PUBLIC: anyone signed in to GitHub can read these logs and download these artifacts.
+# - Requests are encrypted by default. Every output of an encrypted request is encrypted BEFORE upload with
+#   openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -salt, keyed by the repository secret
+#   RENDER_ARTIFACT_KEY. Without that secret the run fails before rendering, and plaintext is never uploaded.
+# - Props, narration and tool output of encrypted requests never reach the log (tool output goes to an encrypted log).
+# - Untrusted values (file contents, the dispatch input, branch names) reach scripts only through env, and
+#   scripts/farm/farm.ts validates them. No run: block interpolates an expression.
+# - Read-only token, no persisted git credentials, every action pinned to a commit SHA.
+name: Video render farm
+
+on:
+  push:
+    paths:
+      - "projects/video-studio/render-requests/**"
+  workflow_dispatch:
+    inputs:
+      request:
+        description: "Request id: the file name in projects/video-studio/render-requests, without .json"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: projects/video-studio
+    outputs:
+      render_matrix: ${{ steps.plan.outputs.render_matrix }}
+      render_count: ${{ steps.plan.outputs.render_count }}
+      voice_matrix: ${{ steps.plan.outputs.voice_matrix }}
+      voice_count: ${{ steps.plan.outputs.voice_count }}
+      kokoro_key: ${{ steps.plan.outputs.kokoro_key }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Plan the renders
+        id: plan
+        env:
+          FARM_EVENT: ${{ github.event_name }}
+          FARM_BEFORE: ${{ github.event.before }}
+          FARM_HEAD: ${{ github.sha }}
+          FARM_DISPATCH_REQUEST: ${{ inputs.request }}
+          FARM_KEY_SET: ${{ secrets.RENDER_ARTIFACT_KEY != '' }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts plan
+
+  voice:
+    name: Voice ${{ matrix.request }} ${{ matrix.lang }} (${{ matrix.channel }}/${{ matrix.slug }})
+    needs: plan
+    if: ${{ needs.plan.outputs.voice_count != '0' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.plan.outputs.voice_matrix) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: projects/video-studio
+    env:
+      FARM_REQUEST: ${{ matrix.request }}
+      FARM_VOICE_INDEX: ${{ matrix.vindex }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Preflight (request, voice entry, key)
+        id: preflight
+        env:
+          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-preflight
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: projects/video-studio/scripts/voice/requirements*.txt
+      - name: Restore the Kokoro model cache
+        id: kokoro-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: projects/video-studio/.cache/kokoro
+          key: ${{ needs.plan.outputs.kokoro_key }}
+      - name: Install ffmpeg (the voice step's loudness normalization)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg > /dev/null
+          ffmpeg -hide_banner -version | head -n 1
+      - name: Set up Kokoro (pinned packages, sha256-verified model files)
+        env:
+          VOICE_SKIP_CJK: ${{ matrix.cjk && '0' || '1' }}
+          PYTHON: python3
+        run: scripts/voice/setup.sh
+      - name: Save the Kokoro model cache
+        if: ${{ steps.kokoro-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: projects/video-studio/.cache/kokoro
+          key: ${{ needs.plan.outputs.kokoro_key }}
+      - name: Build the narration
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-build
+      - name: Encrypt and package
+        id: pack
+        if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
+        env:
+          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-pack
+      - name: Upload the narration
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' && steps.pack.outputs.has_files == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.preflight.outputs.artifact }}
+          path: ${{ runner.temp }}/farm/voice-out
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 1
+          overwrite: true
+      - name: Upload the probe record
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.preflight.outputs.probe_artifact }}
+          path: ${{ runner.temp }}/farm/probe-out
+          retention-days: 1
+          if-no-files-found: error
+          overwrite: true
+
+  render:
+    name: Render ${{ matrix.request }} ${{ matrix.index }} ${{ matrix.composition }} ${{ matrix.lang }} (${{ matrix.kind }})
+    needs: [plan, voice]
+    # Runs when the voice job was skipped (no narration) or partly failed: a job whose narration is missing fails in
+    # its own unpack step, and the other requests in the same push still render.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.render_count != '0' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.plan.outputs.render_matrix) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: projects/video-studio
+    env:
+      FARM_REQUEST: ${{ matrix.request }}
+      FARM_JOB_INDEX: ${{ matrix.index }}
+      REMOTION_CONCURRENCY: "3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: projects/video-studio/package-lock.json
+      - name: Preflight (request, job, key, props file)
+        id: preflight
+        env:
+          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts preflight
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Download the narration
+        if: ${{ matrix.voiceExpect > 0 }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ${{ matrix.voicePattern }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/farm/voice-in
+      - name: Unpack the narration
+        if: ${{ matrix.voiceExpect > 0 }}
+        env:
+          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-unpack
+      - name: Download Remotion's browser
+        run: npx --no-install remotion browser ensure
+      - name: Render
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts render
+      - name: Probe (ffprobe)
+        id: probe
+        if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts probe
+      - name: Encrypt and package
+        id: pack
+        if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
+        env:
+          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts pack
+      - name: Upload the output
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' && steps.pack.outputs.has_files == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.preflight.outputs.artifact }}
+          path: ${{ runner.temp }}/farm/upload
+          retention-days: ${{ steps.preflight.outputs.retention_days }}
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+      - name: Upload the probe record
+        if: ${{ !cancelled() && steps.probe.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.preflight.outputs.probe_artifact }}
+          path: ${{ runner.temp }}/farm/probe-out
+          retention-days: 1
+          if-no-files-found: error
+          overwrite: true
+
+  summary:
+    name: Summary
+    needs: [plan, render]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.render_count != '0' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: projects/video-studio
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: projects/video-studio/scripts/farm
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Download the probe records
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: probe_*
+          merge-multiple: true
+          path: ${{ runner.temp }}/farm/probes
+      - name: Write the run summary
+        env:
+          FARM_RENDER_COUNT: ${{ needs.plan.outputs.render_count }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts summary

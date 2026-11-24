@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "channel": "_farm",
+  "slug": "voice-selftest",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Render farm voice self-test",
+  "fiction": false,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "talk",
+      "narration": "This is the render farm voice check. Zoo's voice is ready in every language."
+    }
+  ],
+  "sources": []
+}

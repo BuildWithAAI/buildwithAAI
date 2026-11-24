@@ -115,7 +115,7 @@ export const voiceContentDir = (v: Pick<VoiceEntry, 'channel' | 'slug'>): string
 	v.channel === FARM_CHANNEL ? `scripts/farm/fixtures/${FARM_CHANNEL}/${v.slug}` : `content/${v.channel}/${v.slug}`;
 
 /** The voice step's output folder for a voice entry, relative to projects/video-studio/public. */
-export const voiceOutputDir = (v: Pick<VoiceEntry, 'channel' | 'slug' | 'lang'>): string => `generated/${v.channel}/${v.slug}/${v.lang}`;
+export const voiceOutputDir = (v: {channel: string; slug: string; lang: string}): string => `generated/${v.channel}/${v.slug}/${v.lang}`;
 
 /**
  * Validates one parsed request file. `fileId` is the file name without .json; the request's id must equal it.
