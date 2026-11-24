@@ -6,7 +6,7 @@
 import React from 'react';
 import {AbsoluteFill, Composition, useCurrentFrame} from 'remotion';
 import {BRAND} from '../../palette';
-import type {Expression, MouthShape} from '../../types';
+import type {Expression, MouthShape, ZooPose, ZooView} from '../../types';
 import {ZooRig} from '../Zoo';
 import {Chair, Desk, Keyboard, Monitor} from '../props';
 import {TYPING_LAYOUT} from '../views/Typing';
@@ -264,8 +264,49 @@ export const ZooHeadDev: React.FC<React.ComponentProps<typeof ZooRig>> = (p) => 
 	</Bg>
 );
 
+/**
+ * High-resolution zoom on any world box of a view (repair round 3: hands and shoes are compared against the 2x crops at
+ * 8-10 px per unit). The box's top-left maps to the image's top-left at min(1200 / w, 1200 / h) px per unit.
+ */
+export const ZooZoomDev: React.FC<{view?: ZooView; box: [number, number, number, number]; lineScale?: number; pose?: ZooPose; poseAmount?: number}> = ({
+	view = 'front',
+	box,
+	lineScale = 1,
+	pose,
+	poseAmount,
+}) => (
+	<Bg>
+		<svg width="100%" height="100%" viewBox={box.join(' ')} preserveAspectRatio="xMinYMin meet">
+			<ZooRig view={view} pose={pose} poseAmount={poseAmount} lineScale={lineScale} breathe={false} />
+		</svg>
+	</Bg>
+);
+
+/**
+ * The front figure at the three delivery framings (repair round 3): the asset sheet (0.54 px/u, lineScale 1.59), the proof
+ * pair (0.88 px/u, lineScale 1) and ZooFront (1.4 px/u, lineScale 1), side by side, top-aligned.
+ */
+const SCALES: [number, number][] = [
+	[0.54, 1.59],
+	[0.88, 1],
+	[1.4, 1],
+];
+export const ZooScalesDev: React.FC<{view?: ZooView}> = ({view = 'front'}) => (
+	<Bg>
+		<div style={{display: 'flex', alignItems: 'flex-start', gap: 20}}>
+			{SCALES.map(([k, ls]) => (
+				<svg key={k} width={428.57 * k} height={942.86 * k} viewBox={FRONT_VB}>
+					<ZooRig view={view} lineScale={ls} breathe={false} />
+				</svg>
+			))}
+		</div>
+	</Bg>
+);
+
 export const ZooDevRoot: React.FC = () => (
 	<>
+		<Composition id="ZooZoom" component={ZooZoomDev} durationInFrames={1} fps={30} width={1200} height={1200} defaultProps={{view: 'front' as ZooView, box: [70, -440, 80, 120] as [number, number, number, number], lineScale: 1}} />
+		<Composition id="ZooScales" component={ZooScalesDev} durationInFrames={1} fps={30} width={1340} height={1320} defaultProps={{view: 'front' as ZooView}} />
 		<Composition id="ZooHead" component={ZooHeadDev} durationInFrames={1} fps={30} width={1140} height={1050} defaultProps={{lineScale: 0.55}} />
 		<Composition id="ZooFront" component={ZooFrontDev} durationInFrames={1} fps={30} width={600} height={1320} />
 		<Composition id="ZooExpressions" component={ZooExpressionsDev} durationInFrames={1} fps={30} width={1600} height={400} />
