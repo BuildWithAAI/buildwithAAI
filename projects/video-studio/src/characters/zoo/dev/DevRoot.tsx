@@ -39,7 +39,7 @@ export const ZooViewDev: React.FC<{view: 'threeQuarter' | 'side' | 'back'; expre
 );
 
 /** 3/4 busts: same framing scale as the front expression busts, centred on the 3/4 face. */
-const EXPR34_VB = '-118 -915.38 279.6 279.6';
+const EXPR34_VB = '-140 -915.38 279.6 279.6';
 export const ZooExpressions34Dev: React.FC = () => (
 	<Bg>
 		<div style={{display: 'flex', width: '100%', height: '100%'}}>
@@ -129,6 +129,43 @@ export const ZooTurnaroundDev: React.FC = () => (
 					</text>
 				</g>
 			))}
+		</svg>
+	</Bg>
+);
+
+const VIEW_MATRIX: Array<React.ComponentProps<typeof ZooRig>> = [
+	{view: 'threeQuarter', expression: 'happy', mouth: 'ee', headTilt: 6},
+	{view: 'threeQuarter', expression: 'worried', blink: 0.6, lookX: -1},
+	{view: 'threeQuarter', expression: 'shocked', blink: 1},
+	{view: 'threeQuarter', mouth: 'oh', lookY: 1, browLift: 1},
+	{view: 'side', expression: 'worried', mouth: 'ah', headTilt: -6},
+	{view: 'side', blink: 1, lookX: -1},
+	{view: 'back', headTilt: 8},
+	{view: 'threeQuarter', showPivots: true},
+];
+/** Combination check for the extra views (expression x explicit mouth x blink/tilt/look extremes). */
+export const ZooViewsMatrixDev: React.FC = () => (
+	<Bg>
+		<div style={{display: 'flex', flexWrap: 'wrap', width: '100%', height: '100%'}}>
+			{VIEW_MATRIX.map((p, i) => (
+				<svg key={i} width={400} height={400} viewBox={p.view === 'back' ? '-140 -915.38 279.6 279.6' : p.view === 'side' ? '-110 -915.38 279.6 279.6' : '-140 -915.38 279.6 279.6'}>
+					<ZooRig {...p} breathe={false} />
+				</svg>
+			))}
+		</div>
+	</Bg>
+);
+
+/** Same typing scene drawn as two ZOO layers around the desk set (layer="back" / layer="front"). */
+export const ZooTypingLayersDev: React.FC = () => (
+	<Bg>
+		<svg width="100%" height="100%" viewBox={TYPING_VB}>
+			<Chair x={L.chair.x} y={L.chair.y} />
+			<ZooRig pose="typing" typing layer="back" />
+			<Desk x={L.desk.x} y={L.desk.y} />
+			<Monitor x={L.monitor.x} y={L.monitor.y} />
+			<Keyboard x={L.keyboard.x} y={L.keyboard.y} />
+			<ZooRig pose="typing" typing layer="front" showPivots />
 		</svg>
 	</Bg>
 );
@@ -229,6 +266,8 @@ export const ZooDevRoot: React.FC = () => (
 		<Composition id="ZooMouths34" component={ZooMouths34Dev} durationInFrames={1} fps={30} width={1020} height={440} />
 		<Composition id="ZooSideHeads" component={ZooSideHeadsDev} durationInFrames={1} fps={30} width={1500} height={600} />
 		<Composition id="ZooTurnaround" component={ZooTurnaroundDev} durationInFrames={1} fps={30} width={1900} height={700} />
+		<Composition id="ZooViewsMatrix" component={ZooViewsMatrixDev} durationInFrames={1} fps={30} width={1600} height={800} />
+		<Composition id="ZooTypingLayers" component={ZooTypingLayersDev} durationInFrames={30} fps={30} width={1040} height={1000} />
 		<Composition id="ZooTyping" component={ZooTypingDev} durationInFrames={90} fps={30} width={1040} height={1000} />
 		<Composition id="Zoo34" component={ZooViewDev} durationInFrames={1} fps={30} width={640} height={1320} defaultProps={{view: 'threeQuarter' as const}} />
 		<Composition id="ZooSide" component={ZooViewDev} durationInFrames={1} fps={30} width={560} height={1320} defaultProps={{view: 'side' as const}} />

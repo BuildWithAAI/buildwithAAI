@@ -92,14 +92,15 @@ class View:
 F = load('front.json')
 fv = View('front', 156)
 CF = 'badger_turn_front.png'
-# far hind legs seen between the front legs (single shadow tone), drawn first
-fv.part('hindBehind', [(131, 296, 'c'), (182, 296, 'c'), (183, 380), (184, 446, 'c'), (130, 446, 'c'), (129, 380)],
-        [[(134, 446), (157, 448), (181, 446)]], [pts(F, 'hind_line')], color='coatShadow')
+# the far hind leg shows only as a narrow strip inside the screen-left gap between the front legs (single shadow
+# tone); the rest of the gap is background, as on the sheet
+fv.part('hindBehind', [(134, 298, 'c'), (147, 301, 'c')] + pts(F, 'hind_line')[1:] + [(134, 444, 'c'), (131, 380)],
+        [pts(F, 'hind_line')], color='coatShadow')
 outL = pts(F, 'out_L')
 outR = pts(F, 'out_R')
 oLt = [p for p in outL if p[1] <= 292]
 oRt = [p for p in outR if p[1] <= 292]
-fv.part('torso', [(112, 150, 'c')] + oLt + [(104, 300, 'c'), (137, 301)] + pts(F, 'brisket')[1:-1] + [(176, 300), (212, 300, 'c')] + rev(oRt) + [(203, 150, 'c')],
+fv.part('torso', [(113, 150, 'c')] + oLt + [(104, 300, 'c'), (137, 301)] + pts(F, 'brisket')[1:-1] + [(176, 300), (212, 300, 'c')] + rev(oRt) + [(203, 150, 'c')],
         [oLt, oRt, pts(F, 'brisket')], group='torso')
 oLb = [p for p in outL if p[1] >= 280]
 oRb = [p for p in outR if p[1] >= 280]
@@ -116,7 +117,26 @@ fv.spot('L-03', 'left', 'torso', (217.3, 204.2, 7.0, 4.1, 80.6), (217, 204), CF,
 fv.spot('M-CHEST', 'midline', 'torso', (157.5, 236.8, 10.0, 6.0, -88.6), (158, 237), CF, 'midline chest spot below the tag (front only; side maps cannot show the midline)')
 fv.spot('R-08', 'right', 'legFrontRight', (108.2, 353.1, 11.4, 7.3, -89.8), (108, 353), CF, 'right forearm spot R-08 seen from the front')
 fv.spot('L-09', 'left', 'legFrontLeft', (206.4, 353.0, 11.2, 7.0, 89.1), (206, 353), CF, 'left forearm spot L-09 seen from the front')
-fv.pivot('neckFront', 158, 168)          # where the front neck/collar bust (parts/Neck.tsx NeckFront) sits
+# neck, collar and tag (front): traced on badger_turn_front.png
+nL = pts(F, 'neck_L')
+nR = pts(F, 'neck_R')
+fv.part('neck', nL + [(116, 172, 'c'), (198, 172, 'c')] + rev(nR) + [(180, 92), (134, 92)], [nL, nR], group='neck')
+col_top = [(114, 152), (124, 157.5), (132, 163.5), (140, 167.5), (148, 169.5), (156, 169.5), (164, 170.5), (172, 168.5), (180, 164.5), (188, 158.5), (198, 151)]
+col_bot = [(196, 164.5), (188, 171.5), (180, 176.5), (172, 178.5), (164, 180), (156, 181), (148, 179.5), (140, 178.5), (132, 175.5), (124, 170.5), (114, 165)]
+col = [(col_top[0][0], col_top[0][1], 'c')] + col_top[1:-1] + [(198, 151, 'c'), (200.5, 158), (col_bot[0][0], col_bot[0][1], 'c')] + col_bot[1:-1] + [(114, 165, 'c'), (111.5, 158.5)]
+fv.part('collar', col, [col + [col[0]]], color='collar', group='neck')
+cmid = [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 1.5) for a, b in zip(col_top[1:-1], rev(col_bot[1:-1]))]
+fv.part('collarShadow', cmid + col_bot[1:-1], [], color='collarShadow', group='neck')
+ring = [(155.5, 182), (154.5, 186.5), (158.5, 189.5), (162.5, 186.5), (161.5, 182)]
+fv.part('tagRing', ring, [], [ring], color='none', group='tag')
+tagp = blob(158.5, 197, 8.2, 9.0, 0)
+fv.part('tag', tagp, [tagp + [tagp[0]]], color='tag', group='tag')
+fv.part('tagShadow', [(162, 189.5), (166, 194), (166.5, 200), (162, 205.5, 'c'), (163.8, 199.5), (163.5, 193.5)], [], color='tagShadow', group='tag')
+fv.spot('R-NECK', 'right', 'neck', (127.0, 141.0, 2.6, 7.0, 0), (127, 141), CF, 'right neck spot R-NECK seen from the front (screen left)')
+fv.spot('L-NECK', 'left', 'neck', (187.0, 141.0, 2.6, 7.0, 0), (187, 141), CF, 'left neck spot L-NECK seen from the front (screen right)')
+fv.pivot('neck', 157, 160)
+fv.pivot('headCentroid', 157.4, 81.9)   # eyes+nose centroid of the sheet's front head
+fv.pivot('tagAnchor', 158.5, 182)
 fv.pivot('breath', 156, 190)
 
 # =====================================================================================================  BACK
@@ -135,17 +155,18 @@ bv.part('earLeftBack', pts(B, 'earL'), [pts(B, 'earL') + [pts(B, 'earL')[0]]], c
 nL = pts(B, 'neck_L')
 nR = pts(B, 'neck_R')
 bv.part('neckBack', [(100, 104, 'c'), (174, 104, 'c')] + nR + [(176, 150, 'c'), (98, 150, 'c')] + rev(nL), [nL, nR], group='neckBack')
-ct = pts(B, 'collar_top')
-cb = pts(B, 'collar_bot')
-bv.part('collarBack', ct + cb, [ct + cb + [ct[0]]], color='collar', group='neckBack')
-mid = [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 2) for a, b in zip(ct, rev(cb))]
-bv.part('collarBackShadow', mid + cb[1:-1], [], color='collarShadow', group='neckBack')
 bodyL = pts(B, 'body_L')
 bodyR = pts(B, 'body_R')
 bLt = [p for p in bodyL if p[1] <= 262]
 bRt = [p for p in bodyR if p[1] <= 262]
 bv.part('torso', [(98, 132, 'c')] + bLt + [(84, 300), (118, 334), (160, 342), (196, 300)] + rev(bRt) + [(176, 132, 'c'), (137, 126)],
         [bLt, bRt], [pts(B, 'inner_L'), pts(B, 'inner_R')], group='torso')
+# the collar band sits in front of the top of the back
+ct = pts(B, 'collar_top')
+cb = pts(B, 'collar_bot')
+bv.part('collarBack', ct + cb, [ct + cb + [ct[0]]], color='collar', group='neckBack')
+mid = [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 2) for a, b in zip(ct, rev(cb))]
+bv.part('collarBackShadow', mid + cb[1:-1], [], color='collarShadow', group='neckBack')
 bLb = [p for p in bodyL if p[1] >= 250]
 bRb = [p for p in bodyR if p[1] >= 250]
 pL = pts(B, 'paw_L')
@@ -189,11 +210,11 @@ def interp(tab, v):
 
 def top_to_back(x, y):
     """Orthographic: the lateral offset seen from above is the lateral offset seen from behind; points away
-    from the spine sit lower on the rounded back (cross-section treated as a half ellipse, 15 px deep)."""
+    from the spine sit lower on the rounded back (cross-section treated as a half ellipse, 22 px deep)."""
     u = (SPINE_Y - y) / HALF_W_TT          # +1 = anatomical right edge (TT image top)
     base = interp(LEN_MAP, x)
     hw = interp(HALF_W_TB, base)
-    by = base + 15.0 * (1 - math.sqrt(max(0.0, 1 - u * u)))
+    by = base + 22.0 * (1 - math.sqrt(max(0.0, 1 - u * u)))
     return (137.0 + hw * u, by)
 
 
@@ -274,6 +295,7 @@ qv.part('tagRing', [(319, 186), (318, 191), (322, 194), (326, 191), (325, 186)],
 qv.part('tag', blob(322, 202, 7.4, 8.6, 0), [blob(322, 202, 7.4, 8.6, 0) + [blob(322, 202, 7.4, 8.6, 0)[0]]], color='tag', group='tag')
 qv.part('tagShadow', [(325, 195), (329, 200), (329, 206), (324, 210.5, 'c'), (326.5, 205), (326.5, 199)], [], color='tagShadow', group='tag')
 qv.pivot('tailRoot', 105, 262)
+qv.pivot('headCentroid', 349.4, 78.3)   # eyes+nose centroid of the sheet's 3/4 head
 qv.pivot('neck', 300, 175)
 qv.pivot('tagAnchor', 322, 186)
 qv.pivot('breath', 230, 160)

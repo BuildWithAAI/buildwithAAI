@@ -1,16 +1,16 @@
 import React from 'react';
 import {useCurrentFrame, useVideoConfig} from 'remotion';
 import type {BadgerHead, BadgerPose, BadgerProps, BadgerView, Expression} from '../types';
-import {Head, HeadState} from './parts/heads/Head';
-import {NeckFront} from './parts/Neck';
+import {Head, HeadState, headGeom} from './parts/heads/Head';
 import {ViewBody, ViewRig} from './parts/ViewBody';
+import {POSE_RIGS} from './parts/poseRigs';
 import {VIEW_RIGS} from './parts/viewRigs';
 import {LEFT_RIG} from './parts/rigLeft';
 import {RIGHT_RIG} from './parts/rigRight';
 import {plantLegs, walkPose} from './parts/gait';
 import {HeadMount, SideBody, SidePose, STAND_POSE, spotsByPart} from './parts/SideBody';
 import {clamp01} from './parts/shared';
-import {BACK_SPOTS, FRONT_SPOTS, LEFT_SPOTS, RIGHT_SPOTS, THREE_QUARTER_SPOTS} from './spots';
+import {BACK_SPOTS, FRONT_SPOTS, LEFT_SPOTS, LIE_SPOTS, RIGHT_SPOTS, SIT_SPOTS, THREE_QUARTER_SPOTS} from './spots';
 
 /** Optional extras on top of the shared BadgerProps contract (all optional, nothing renamed). */
 export type BadgerExtraProps = {
@@ -26,15 +26,28 @@ export type BadgerAllProps = BadgerProps & BadgerExtraProps;
 /** Body views implemented (all five). Nothing is produced by mirroring another view. */
 export const IMPLEMENTED_VIEWS: readonly BadgerView[] = ['left', 'right', 'front', 'back', 'threeQuarter'];
 
-/**
- * Head placement in the front and three-quarter body views (view-root world units): the head pivot is put
- * where the sheet's eyes-and-nose centroid sits on badger_turn_front.png / badger_turn_34.png.
- * The front view also carries the front neck/collar bust (parts/Neck.tsx) at `neck`.
- */
-export const VIEW_HEAD_MOUNT = {
-	front: {head: {x: 1.0, y: -333.3}, neck: {x: 1.0, y: -313.8}},
-	threeQuarter: {head: {x: 101.1, y: -336.7}},
+/** Spot set per non-side body (view or pose body). */
+const BODY_SPOTS = {
+	front: FRONT_SPOTS,
+	back: BACK_SPOTS,
+	threeQuarter: THREE_QUARTER_SPOTS,
+	sit: SIT_SPOTS,
+	lie: LIE_SPOTS,
 } as const;
+
+/**
+ * Eyes-and-nose centroid of a replaceable head (head-local). The front / 3/4 views and the pose bodies mount the
+ * head so this centroid lands on the sheet's own face centroid (pivot 'headCentroid' of each traced body).
+ */
+export const headLandmark = (view: BadgerHead): {x: number; y: number} => {
+	const g = headGeom(view);
+	const n = (g.nose.d.match(/-?\d*\.?\d+/g) ?? []).map(Number);
+	const xs = n.filter((_, i) => i % 2 === 0);
+	const ys = n.filter((_, i) => i % 2 === 1);
+	const nose = {x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2};
+	const pts = [nose, ...g.eyes.map((e) => e.c)];
+	return {x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length};
+};
 
 /**
  * Default head for each body view. Left: the size-comparison panel shows the face turned to camera with only a
@@ -137,58 +150,32 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 	};
 	const breath = breathe ? Math.sin(((frame / fps) * Math.PI * 2) / 3.4) : 0;
 	const sidePose = sidePoseFor(pose, dir === 1 ? 'right' : 'left', props.walkPhase ?? 0);
-	const isSide = bodyView === 'left' || bodyView === 'right';
+	const poseBody = pose === 'sit' || pose === 'lie' ? pose : null;
+	const isSide = !poseBody && (bodyView === 'left' || bodyView === 'right');
 	let body: React.ReactNode = null;
 	if (!isSide) {
-		const common = {tailWag, breath, neckTurn, uidPrefix: `bv${bodyView}`};
-		if (bodyView === 'front') {
-			const m = VIEW_HEAD_MOUNT.front;
-			body = (
-				<ViewBody
-					rig={VIEW_RIGS.front as unknown as ViewRig}
-					spots={FRONT_SPOTS}
-					{...common}
-					inserts={[
-						{
-							after: 'legFrontLeft',
-							group: 'head',
-							node: (
-								<g>
-									<g transform={`translate(${m.neck.x} ${m.neck.y})`}>
-										<NeckFront />
-									</g>
-									<g transform={`translate(${m.head.x} ${m.head.y}) rotate(${headTilt})`}>
-										<Head view={head} state={headState} />
-									</g>
-								</g>
-							),
-						},
-					]}
-				/>
-			);
-		} else if (bodyView === 'threeQuarter') {
-			const m = VIEW_HEAD_MOUNT.threeQuarter;
-			body = (
-				<ViewBody
-					rig={VIEW_RIGS.threeQuarter as unknown as ViewRig}
-					spots={THREE_QUARTER_SPOTS}
-					{...common}
-					inserts={[
-						{
-							after: 'tagShadow',
-							group: 'head',
-							node: (
-								<g transform={`translate(${m.head.x} ${m.head.y}) rotate(${-headTilt})`}>
-									<Head view={head} state={headState} />
-								</g>
-							),
-						},
-					]}
-				/>
-			);
-		} else {
-			body = <ViewBody rig={VIEW_RIGS.back as unknown as ViewRig} spots={BACK_SPOTS} {...common} />;
-		}
+		const key = poseBody ?? (bodyView as 'front' | 'back' | 'threeQuarter');
+		const rig = (poseBody ? POSE_RIGS[poseBody] : VIEW_RIGS[bodyView as 'front' | 'back' | 'threeQuarter']) as unknown as ViewRig;
+		const c = rig.pivots.headCentroid;
+		const lm = c ? headLandmark(head) : {x: 0, y: 0};
+		const tilt = key === 'front' ? headTilt : -headTilt;
+		const headNode = c ? (
+			<g transform={`translate(${(c.x - lm.x).toFixed(2)} ${(c.y - lm.y).toFixed(2)}) rotate(${tilt})`}>
+				<Head view={head} state={headState} />
+			</g>
+		) : null;
+		body = (
+			<ViewBody
+				rig={rig}
+				spots={BODY_SPOTS[key]}
+				tailWag={tailWag}
+				tailBase={0}
+				breath={breath}
+				neckTurn={neckTurn}
+				uidPrefix={`bv${key}`}
+				inserts={headNode ? [{after: 'tagShadow', group: 'head', node: headNode}] : []}
+			/>
+		);
 	}
 	return (
 		<g transform={`translate(${x} ${y}) scale(${scale})`} data-character="badger" data-view={bodyView} data-pose={pose}>

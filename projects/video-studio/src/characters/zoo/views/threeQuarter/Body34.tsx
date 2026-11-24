@@ -11,7 +11,6 @@
 import React from 'react';
 import {LINE, ZOO_COLORS} from '../../../palette';
 import {line, smooth, type Pt} from '../../geometry';
-import {HandFill, HandUnderlay} from '../../parts/Hand';
 import {JellyfishPin} from '../../parts/Pin';
 import {Clipped, Shape, Stroke} from '../../parts/Shape';
 
@@ -106,7 +105,7 @@ const SLEEVE_FAR_SHADOW = smooth([[60, -700], [80, -700], [86, -640], [84, -420]
 const CUFF_FAR = line([[75.8, -455.4], [90, -456.6], [104, -455.2]]);
 
 /** Wrist pivots (cuff bottom centre) used to hang the hands. */
-export const WRIST34 = {near: {x: -93, y: -417.6}, far: {x: 91, y: -416.4}} as const;
+export const WRIST34 = {near: {x: -95.5, y: -418}, far: {x: 90.8, y: -418}} as const;
 
 const Sleeve: React.FC<{d: string; shadow: string; cuff: string; extra?: string; name: string}> = ({d, shadow, cuff, extra, name}) => (
 	<g data-part={name}>
@@ -116,24 +115,54 @@ const Sleeve: React.FC<{d: string; shadow: string; cuff: string; extra?: string;
 	</g>
 );
 
-/** A hand drawing hung at a wrist: `mirror` = the anatomical RIGHT hand (the front rig's mirrored pair). */
-const HangingHand: React.FC<{x: number; y: number; mirror: boolean; sx?: number; sy?: number; name: string}> = ({x, y, mirror, sx = 1, sy = 1, name}) => (
-	<g data-part={name} transform={`translate(${x} ${y}) scale(${(mirror ? -1 : 1) * sx} ${sy})`}>
-		<HandUnderlay shape="relaxed" />
-		<HandFill shape="relaxed" />
+/**
+ * 3/4 hands, drawn for this view from the sheet (zoo_turn_34.png). Near = anatomical RIGHT hand: its
+ * back faces the viewer, four finger lobes at the bottom, the thumb along the front edge. Far =
+ * anatomical LEFT hand: fingers curl toward the thigh with the thumb tip resting over them.
+ */
+const HAND_NEAR: Pt[] = [
+	[-111, -420], [-113, -400], [-114.4, -380], [-114, -362], [-112.6, -346], [-110, -336.6], [-105.6, -332], [-101.6, -333.6], [-99.6, -339, 'c'],
+	[-97, -332], [-92.6, -330], [-88.6, -332], [-87, -337.6, 'c'], [-84.4, -332.4], [-80, -331.4], [-76.8, -334.6], [-76, -340, 'c'],
+	[-72.4, -341.6], [-68.4, -346], [-66.4, -351, 'c'], [-63.4, -356], [-62.6, -366], [-65.4, -377], [-71, -389], [-77.4, -399], [-80, -420],
+];
+const HAND_NEAR_SHADOW = smooth([[-82, -402], [-60, -406], [-58, -326], [-84, -326], [-80, -350]]);
+const HAND_NEAR_LINES: Pt[][] = [
+	[[-99.6, -339], [-99.6, -351], [-101, -362]],
+	[[-87, -337.6], [-87.4, -350], [-88.6, -361]],
+	[[-76, -340], [-76.6, -351], [-77.6, -360]],
+	[[-66.4, -351], [-71.4, -356], [-76.6, -357]], // thumb tip against the index finger
+	[[-78.6, -396], [-74.4, -381], [-72, -368]], // thumb edge
+];
+const HAND_FAR: Pt[] = [
+	[78, -418], [76, -402], [73, -388], [71.4, -374], [72.6, -364, 'c'], [69, -358], [68, -350], [70.6, -343], [76, -338.6], [83, -336.6],
+	[90, -339], [95.4, -345], [99.6, -354], [102.6, -368], [104, -390], [103.6, -418],
+];
+const HAND_FAR_SHADOW = smooth([[66, -372], [84, -374], [90, -350], [80, -332], [64, -332]]);
+const HAND_FAR_LINES: Pt[][] = [
+	[[72.6, -364], [80, -366], [86.4, -362]], // thumb tip over the index finger
+	[[70.6, -343], [78, -348], [86, -348.4]],
+	[[76, -338.6], [83, -344], [91, -346]],
+];
+
+const Hand34: React.FC<{outline: Pt[]; shadow: string; lines: Pt[][]; name: string}> = ({outline, shadow, lines, name}) => (
+	<g data-part={name}>
+		<Shape d={smooth(outline)} fill={ZOO_COLORS.skin} shadow={{d: shadow, fill: ZOO_COLORS.skinShadow}} />
+		{lines.map((l, i) => (
+			<Stroke key={i} d={line(l)} width={LINE.detailWidth} />
+		))}
 	</g>
 );
 
 export const FarArm34: React.FC = () => (
 	<g data-part="armL">
-		<HangingHand x={WRIST34.far.x} y={WRIST34.far.y} mirror={false} sx={0.82} sy={0.88} name="handL" />
+		<Hand34 outline={HAND_FAR} shadow={HAND_FAR_SHADOW} lines={HAND_FAR_LINES} name="handL" />
 		<Sleeve d={smooth(SLEEVE_FAR)} shadow={SLEEVE_FAR_SHADOW} cuff={CUFF_FAR} name="sleeveL" />
 	</g>
 );
 
 export const NearArm34: React.FC = () => (
 	<g data-part="armR">
-		<HangingHand x={WRIST34.near.x} y={WRIST34.near.y} mirror sx={1} sy={0.88} name="handR" />
+		<Hand34 outline={HAND_NEAR} shadow={HAND_NEAR_SHADOW} lines={HAND_NEAR_LINES} name="handR" />
 		<Sleeve d={smooth(SLEEVE_NEAR)} shadow={SLEEVE_NEAR_SHADOW} cuff={CUFF_NEAR} extra={ELBOW_NEAR} name="sleeveR" />
 		<circle data-part="cuffButton" cx={-125.4} cy={-436} r={2.8} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={1} />
 	</g>
