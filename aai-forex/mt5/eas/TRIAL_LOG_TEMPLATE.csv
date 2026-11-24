@@ -1,0 +1,1 @@
+trial_id,source_sha256,ea_number,rule_freeze_timestamp_ct,compiler_build,symbol,broker_specs_file,signal_tf,data_source,data_quality_file,start,end,utc_offset_schedule,settings_file,train_or_forward_or_holdout,prior_history_exposure,costs_file,net_profit,pf,closed_trades,max_equity_dd_percent,expectancy_r,skips_risk,skips_margin,trial_count_so_far,verdict,notes
