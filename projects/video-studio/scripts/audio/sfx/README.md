@@ -1,6 +1,6 @@
 # SFX library (`scripts/audio/sfx`)
 
-Original sound effects for Zoora AI and The Zoo & Badger Show: 114 files in 26 variation groups,
+Original sound effects for Zoora AI and The Zoo & Badger Show: 116 files in 27 variation groups,
 48 kHz / 24-bit stereo WAV, each peak-normalised to -6 dBFS, with a manifest that gives every
 file its sync point in frames, its suggested gain and its sources. Everything is synthesised in
 code (modal bodies, filtered noise, friction models) or built from processed VCSL percussion
@@ -13,8 +13,9 @@ python3 scripts/audio/sfx/build.py --export     # render, finish, measure, revie
 python3 scripts/audio/sfx/sync_check.py         # render a sync check through Remotion and measure it (about 50 s)
 python3 scripts/audio/sfx/build.py --audition   # one listening reel at the suggested gains + cue sheet (out/audio/sfx/audition/)
 python3 scripts/audio/sfx/build.py --only keyboard --no-metrics   # iterate on one family (no export)
-.venv-audio/bin/python -m unittest discover -s scripts/audio/sfx/tests -t scripts/audio/sfx   # 44 tests, about 3 s
-node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/audio/sfx/sfx.test.ts    # TS helper, 7 tests
+python3 scripts/audio/sfx/speech_mask.py <narration.wav> --out <speech_frames.json>   # where Zoo speaks, per frame (for placing UI sounds)
+.venv-audio/bin/python -m unittest discover -s scripts/audio/sfx/tests -t scripts/audio/sfx   # 46 tests, about 3 s
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/audio/sfx/sfx.test.ts    # TS helper, 12 tests
 ```
 
 `build.py` writes `out/audio/sfx/` (gitignored): `wav/<category>/<id>.wav`, `manifest.json`,
@@ -32,8 +33,9 @@ is deterministic: the same code renders the same files, bit for bit.
 | `whoosh_medium` | 4 | pass-bys, 0.8 s | peak | transition |
 | `whoosh_long` | 3 | smooth pass-bys, 1.5 s | peak | transition |
 | `whoosh_reverse` | 4 | swells into a cut: 15, 24 and 36 frames | end (the cut) | transition |
-| `pop` | 6 | bullet pops D5, G5, A5, D6 (01-04 rise in order for a list) + 2 alternates | transient | ui |
-| `plop` | 4 | rounder water-drop plops, D4-D5 | transient | ui |
+| `pop` | 4 | bullet pops, all on D5 (four touches, safe for `pick()`) | transient | ui |
+| `pop_rise` | 4 | the rising list set D5, G5, A5, D6: use 01-04 in order, never `pick()` | transient | ui |
+| `plop` | 4 | rounder water-drop plops, all on A4 | transient | ui |
 | `tick` | 5 | soft wooden UI ticks (VCSL woodblock) | transient | ui |
 | `swipe` | 5 | card swipes and page turns | start | ui |
 | `key` | 10 | mechanical key, press on frame 0, release on frame 2-4 | transient | foley |
@@ -46,10 +48,10 @@ is deterministic: the same code renders the same files, bit for bit.
 | `ding` | 4 | notification: D5-A5, A5, the motif head D5-D5-A5, A4-D5 (VCSL vibraphone) | transient | notify |
 | `success` | 4 | small, dry marimba "ta-da"s on D, G and A | transient | notify |
 | `error` | 4 | soft comedic buzzes falling E-flat to D | transient | notify |
-| `developing_pulse` | 4 | DEVELOPING blips on D4 (single, double, ticker) | transient | notify |
+| `developing_pulse` | 4 | DEVELOPING blips on D4 with their octave and twelfth (single, double, ticker) | transient | notify |
 | `developing_loop` | 3 | seamless 90 BPM DEVELOPING loops (the show-bed tempo) | start | notify |
 | `rekt_needle` | 4 | Rekt Meter needle to 1/4, 1/2, 3/4 and the full dial, on the Show's 24-frame ease | start | meter |
-| `rekt_alarm` | 4 | rounded alarm rises (24, 36, 48 frames; one stepped D-G-A-D) | end (the top) | meter |
+| `rekt_alarm` | 4 | rounded alarm rises with an octave-up layer (24, 36, 48 frames; one stepped D-G-A-D) | end (the top) | meter |
 | `badger_paw` | 5 | paw taps, a walk and a scrabble on a hard floor (claws and pads) | transient | foley |
 | `badger_tail` | 4 | tail thumps: one to four wags | hit (first thump) | foley |
 
@@ -57,14 +59,17 @@ is deterministic: the same code renders the same files, bit for bit.
 
 ```tsx
 import manifest from '../../public/audio/sfx/manifest.json';
-import {asManifest, pick, pickSequence, rigStartFrame, sfx, startFrame, volume} from '../../scripts/audio/sfx/sfx.ts';
+import {asManifest, nearestGapFrame, pick, pickSequence, rigStartFrame, sfx, startFrame, volume, volumeUnderSpeech} from '../../scripts/audio/sfx/sfx.ts';
 
 const lib = asManifest(manifest);
 const w = pick(lib, 'whoosh_medium', `cut-${sceneIndex}`);   // deterministic: never Math.random in Remotion
 <Sequence from={startFrame(w, cutFrame)}>                    // the pass-by lands exactly on cutFrame
 	<Audio src={staticFile(w.file)} volume={volume(w)} />       // suggested gain; volume(w, -3) trims 3 dB more
 </Sequence>
-const pops = pickSequence(lib, 'pop', bullets.length, sceneId);   // or sfx(lib, `pop_0${i + 1}`) for the rising D-G-A-D set
+const pops = pickSequence(lib, 'pop', bullets.length, sceneId);   // or sfx(lib, `pop_rise_0${i + 1}`) for the rising D-G-A-D set
+// UI sounds go between Zoo's words: speech = speech_mask.py's "speech" array (or speechMaskFromSpans(word timings))
+const at = nearestGapFrame(speech, bulletFrame) ?? bulletFrame;      // null: no gap within 6 frames
+<Audio src={staticFile(pop.file)} volume={speech[at] ? volumeUnderSpeech(pop) : volume(pop)} />   // ui: 3 dB lower on a word
 const t = sfx(lib, 'typing_burst_03');
 <Sequence from={rigStartFrame(t, typingStart)}>              // every key on a frame where one of Zoo's fingers lands
 ```
@@ -109,14 +114,33 @@ measured as `lufs200Max`: BS.1770 K-weighted loudness in a 200 ms window, maximi
 
 | Role | Target (200 ms window) | For |
 | --- | --- | --- |
-| transition | -18 LUFS | whooshes and swells, usually in a gap between lines |
+| transition | -21 LUFS | whooshes and swells, usually in a gap between lines |
 | meter | -22 LUFS | Rekt Meter needle and alarm |
 | notify | -21 LUFS | ding, success, error, DEVELOPING |
-| ui | -24 LUFS | pops, plops, ticks, swipes, often under narration |
+| ui | -27 LUFS (-3 dB more on a word: `underSpeechTrimDb`) | pops, plops, ticks, swipes, best in the gaps between Zoo's words |
 | foley | -28 LUFS | keyboard, mouse, mug, chair, Badger |
 
 Narration sits at -14 LUFS-I (its 200 ms peaks about -9). These are starting values: tune each
 scene by ear.
+
+**Phone speakers (critic round 1, 2026-11-24).** On a phone-speaker model (the mono sum through a
+4th-order 350 Hz high-pass, a 12 kHz low-pass and +3 dB at 3 kHz) Zoo's narration loses about
+5.4 LU. Whooshes, pops, ticks and swipes lose nothing (they gain 0.2-1.6 dB), so at the first
+targets (-18 and -24) they played 6-7 dB hotter against him on a phone than on headphones: the
+transition and ui targets came down 3 dB. Every file's `loudness.phoneLossDb` is in the manifest.
+The ticks sit at 1.7-2.2 kHz, right on his consonants, so UI sounds go in the gaps between words
+(`speech_mask.py` + `nearestGapFrame`), or 3 dB lower (`volumeUnderSpeech`) when they must land on a
+word. The other way round, sounds whose body sits under a phone's range must not vanish there: a
+fail-level check holds the DEVELOPING blips to a loss of 3 dB or less (they lost 4.6-6.2 dB with
+the body at D4, so the tick carried them: now a D5 partial at -2 dB and an A5 at -10 dB carry them,
+measured -2.7 to -2.8) and the Rekt alarm to 4 dB or less (it lost 7.1 dB; now an octave-up
+triangle-and-saw layer through a 3 kHz low-pass and a lighter sub octave, measured -1.6 to -3.7, its
+2-5 kHz still 21-24 dB under 0.2-2 kHz, so never shrill). The rest of notify and meter must stay
+within 4 dB.
+
+**Pitch groups.** `pick()` chooses at random inside a group, so a group keeps one pitch: `pop` and
+`plop` vary only the touch (critic round 1: they each spanned an octave, so the pitch jumped between
+uses). The ordered rising set is its own group, `pop_rise`, used by index.
 
 - Why 200 ms and not the EBU momentary 400 ms window: loudness integrates the energy of roughly
   the first 200 ms of a sound, so equal energy within it sounds equally loud. A 400 ms window
@@ -147,7 +171,8 @@ E-flat is the one deliberate "wrong" note.
 - **Pops and plops:** a sine that snaps up into its pitch in about 6 ms (the "p"), an octave
   partial, a soft sub thump and a breath of noise. The plop is a slower, rounder water-drop
   chirp. Both are dry: on the air room a pure tone rang like a bell, so they moved to a whisper
-  of the desk room.
+  of the desk room. The four `pop` variations differ in snap, decay, octave partial and breath,
+  not pitch.
 - **Ticks:** VCSL woodblock strikes raised 3-6 semitones (the main mode lands near A6), damped to
   a 25-35 ms "tok" and darkened.
 - **Swipes:** friction noise following a flicked card's speed (full speed 38% in, then a longer
@@ -181,14 +206,15 @@ E-flat is the one deliberate "wrong" note.
   0.33), damped after 60 ms: small and dry. **Error:** band-limited pulse plus saw, low-passed at
   1.6 kHz with a nasal bump at 650 Hz, a 28 Hz buzz flutter and a 4 dB sag across each buzz. It's
   comedic, never a game-show buzzer.
-- **DEVELOPING:** a sine D4 with its octave and a band-passed tick, blooming in the air room. The
-  loops run at 90 BPM (20 frames a beat), the show-bed tempo, with the first beat on frame 10 so
-  the seam falls between pulses.
+- **DEVELOPING:** a sine D4 with its octave (-2 dB) and twelfth (-10 dB) and a band-passed tick,
+  blooming in the air room. The loops run at 90 BPM (20 frames a beat), the show-bed tempo, with
+  the first beat on frame 10 so the seam falls between pulses.
 - **Rekt Meter:** synthesised detent ticks on the dial crossings (see Sync) over a servo hum that
   follows the needle's speed, then the stop clunk and a tiny spring. The alarm is a band-limited
-  triangle and square (detuned 6 cents) with a sub octave, rising toward D. Its tremolo speeds up
-  from 3 to 8 Hz, it swells 18 dB, and its low-pass opens only to 2.4 kHz (centroid 260-340 Hz),
-  so it is tense without ever being shrill.
+  triangle and square (detuned 6 cents) with a light sub octave, rising toward D, plus an octave-up
+  layer (mostly triangle, a little saw, low-passed at 3 kHz) as loud as the body, so a phone speaker
+  plays it. Its tremolo speeds up from 3 to 8 Hz, it swells 18 dB, and the body's low-pass opens
+  only to 2.4 kHz (centroid 330-480 Hz), so it is tense without ever being shrill.
 - **Badger:** paws are a soft pad thud plus one to three claw ticks landing a few ms apart
   (keratin on hardwood). Tail thumps are VCSL frame-drum muted hand hits (the large drum +3
   semitones for the thump, the small drum -4 for the padded "fwap", both darkened) after a short
@@ -205,13 +231,15 @@ E-flat is the one deliberate "wrong" note.
 - the sync point on a frame boundary, and impacts' attacks within 5 ms of their sync point;
 - no harsh resonance, meaning a narrow peak (12 dB or more above the third-octave-smoothed
   spectrum) in 2-6 kHz, within 12 dB of the loudest peak, ringing 80 ms or more;
-- L/R correlation ≥ 0, and seamless loops (seam click ratio ≤ 2).
+- L/R correlation ≥ 0, and seamless loops (seam click ratio ≤ 2);
+- phone translation: the DEVELOPING groups lose 3 dB or less on the phone model, the Rekt alarm,
+  and every other notify and meter sound, 4 dB or less.
 
 Warn-level checks: every event's attack within 5 ms of its frame; the design decayed to -60 dB
 before its buffer ended (so finishing never cuts an audible tail); a whoosh's measured pass-by
 within one frame of its sync point; 2-5 kHz no more than 6 dB above 0.2-2 kHz.
 
-Result of the final build (2026-11-24): 114 files, **0 fail-level and 0 warn-level QA findings**.
+Result of the final build (2026-11-24, after critic round 1): 116 files, **0 fail-level and 0 warn-level QA findings**.
 The engine's `metrics.py --profile sfx` reports **0 failures** on every file. It does give 65
 warnings, all of which I checked:
 
@@ -242,8 +270,8 @@ Per-group measurements (`out/audio/sfx/report.json`):
 | typing bursts / loops | 1587-5702 / 4800 | 800-940 | -14 to -12 dB | 6.6-10.4 keys a second over a burst |
 | mouse / mug / chair | 183-322 / 176-278 / 496-1014 | 1270-1470 / 490-610 / 640-1050 | -20 to -6.5 dB | |
 | ding / success / error | 1077-1161 / 487-525 / 322-436 | 560-1080 / 370-430 | -56 to -21 dB | softest top in the library |
-| DEVELOPING pulse / loop | 518-942 / 2667 | 295-593 | -59 to -43 dB | |
-| Rekt needle / alarm | 1051-1072 / 1186-1962 | 810-1110 / 260-340 | -27 to -5 dB | the alarm's top stays under 2.4 kHz |
+| DEVELOPING pulse / loop | 518-942 / 2667 | 343-739 | -59 to -44 dB | phone loss -2.7 to -2.8 dB (pulse_03 on D5: +0.2) |
+| Rekt needle / alarm | 1051-1072 / 1186-1962 | 810-1110 / 331-480 | -27 to -5 dB | the alarm: phone loss -1.6 to -3.7 dB |
 | Badger paws / tail | 229-680 / 376-1260 | 690-970 / 360-420 | -21 to 0 dB | claws are the brightest foley |
 
 ## Honest self-review
@@ -306,5 +334,6 @@ scripts/audio/sfx/
   sfxlib/             core, prims, vcsl, space, rig, finish, measure, manifest, review
   sfxlib/families/    whoosh, ui, keyboard, desk, notify, rekt, badger
   tests/              stdlib unittest (primitives, rig, finishing, measurements, VCSL pitch, families, the exported library)
+  speech_mask.py      per-frame speech mask of a narration, for placing UI sounds in the gaps
 public/audio/sfx/     manifest.json and <category>/<id>.wav (27 MB, largest file 1.6 MB)
 ```

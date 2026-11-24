@@ -11,11 +11,11 @@ import numpy as np
 
 from audiolib import io, paths
 from sfxlib import manifest as man
-from sfxlib.core import FRAME, PEAK_DBFS, ROLES, TRUE_PEAK_CAP_DBTP
+from sfxlib.core import FRAME, PEAK_DBFS, ROLES, TRUE_PEAK_CAP_DBTP, phone_loss_limit
 
 PUBLIC = paths.PUBLIC_AUDIO / "sfx" / "manifest.json"
 REQUIRED_GROUPS = {
-    "whoosh_short", "whoosh_medium", "whoosh_long", "whoosh_reverse", "pop", "plop", "tick", "swipe",
+    "whoosh_short", "whoosh_medium", "whoosh_long", "whoosh_reverse", "pop", "pop_rise", "plop", "tick", "swipe",
     "key", "key_space", "key_enter", "typing_burst", "typing_loop", "mouse_click", "mouse_double",
     "ding", "success", "error", "developing_pulse", "developing_loop", "rekt_needle", "rekt_alarm",
     "mug", "chair_creak", "badger_paw", "badger_tail",
@@ -79,6 +79,19 @@ class Library(unittest.TestCase):
             # the 200 ms basis sits between the EBU momentary (400 ms) and a 100 ms reading
             self.assertLessEqual(lo["lufsMomentaryMax"], lo["lufs200Max"] + 0.01, e["id"])
             self.assertLessEqual(lo["lufs200Max"], lo["lufs100Max"] + 0.01, e["id"])
+
+    def test_phone_translation_and_pitch_groups(self):
+        """Critic round 1: alerts must not vanish on a phone speaker; random groups keep one pitch."""
+        by_group = {}
+        for e in self.m["sounds"]:
+            lim = phone_loss_limit(e["group"], e["role"])
+            if lim is not None:
+                self.assertGreaterEqual(e["loudness"]["phoneLossDb"], lim, e["id"])
+            self.assertEqual(e["underSpeechTrimDb"], ROLES[e["role"]].get("underSpeechTrimDb", 0.0), e["id"])
+            by_group.setdefault(e["group"], []).append(e)
+        for g in ("pop", "plop"):
+            self.assertEqual(len({e["pitch"] for e in by_group[g]}), 1, g)
+        self.assertEqual([e["pitch"] for e in sorted(by_group["pop_rise"], key=lambda e: e["id"])], ["D5", "G5", "A5", "D6"])
 
     def test_sources_are_permissive_and_there_is_no_dog_voice(self):
         for e in self.m["sounds"]:

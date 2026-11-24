@@ -2,8 +2,11 @@
 
 Pitch: the tonal UI sounds use only D, G and A, the pitch classes shared by every bed in the
 music direction (D dorian, D minor, D phrygian, F lydian and D major all contain them), so a pop
-never clashes with whatever music is under it. The pop set D5-G5-A5-D6 rises in order for a
-bullet list (01, 02, 03, 04); 05 and 06 are alternates for repeats.
+never clashes with whatever music is under it.
+
+Groups (critic round 1: `pick()` chooses at random inside a group, so a group must not change
+pitch): `pop` is four variations on D5 for repeats and `pick()`; `pop_rise` is the ordered set
+D5-G5-A5-D6 for a bullet list (use 01-04 in order, never `pick()`); `plop` is four variations on A4.
 
 - pop: a sine that snaps up into its pitch in 6 ms (the "p"), an octave partial, a soft
   low thump and a breath of band-passed noise; 0.15 s.
@@ -128,24 +131,30 @@ def swipe(sid: str, dur: float, f_lo: float, f_hi: float, direction: int, seed: 
 
 def render() -> list:
     out = []
-    pops = [
-        ("D5", 0.0, 0.085, 0.82, "Bullet pop, step 1 of the D5-G5-A5-D6 set (use 01-04 in order for a list)."),
-        ("G5", 0.0, 0.080, 0.82, "Bullet pop, step 2 (G5)."),
-        ("A5", 0.0, 0.078, 0.82, "Bullet pop, step 3 (A5)."),
-        ("D6", 0.0, 0.070, 0.84, "Bullet pop, step 4 (D6), the brightest."),
-        ("A5", -8.0, 0.090, 0.78, "Alternate pop on A5, rounder: for repeats on one pitch."),
-        ("D5", 8.0, 0.075, 0.86, "Alternate pop on D5, tighter: for repeats on one pitch."),
+    pops = [  # one pitch (D5), four touches: pick() never changes the pitch between uses
+        (0.0, 0.085, 0.82, 0.13, -20.0, "Bullet pop on D5, the standard touch."),
+        (0.0, 0.075, 0.86, 0.11, -22.0, "Bullet pop on D5, tighter and a little drier."),
+        (0.0, 0.092, 0.79, 0.15, -19.0, "Bullet pop on D5, rounder."),
+        (0.0, 0.080, 0.84, 0.12, -21.0, "Bullet pop on D5, lighter."),
     ]
-    for i, (note, cents, t60, snap, desc) in enumerate(pops, 1):
-        out.append(pop(f"pop_{i:02d}", note, f"pop{i}", cents=cents, t60=t60, snap=snap, desc=desc, tags=[f"step{i}"] if i <= 4 else ["alternate"]))
-    plops = [
-        ("D4", 0.55, 0.025, 0.13, "Water-drop plop on D4: softer and rounder than the pops."),
-        ("G4", 0.58, 0.022, 0.12, "Plop on G4."),
-        ("A4", 0.52, 0.028, 0.13, "Plop on A4."),
-        ("D5", 0.60, 0.020, 0.10, "Plop on D5, the lightest."),
+    for i, (cents, t60, snap, octave, puff, desc) in enumerate(pops, 1):
+        out.append(pop(f"pop_{i:02d}", "D5", f"pop{i}", cents=cents, t60=t60, snap=snap, octave=octave, puff_db=puff, desc=desc, tags=["repeat"]))
+    rise = [
+        ("D5", 0.085, 0.82, "Rising bullet pop, step 1 of D5-G5-A5-D6 (use pop_rise_01-04 in order for a list)."),
+        ("G5", 0.080, 0.82, "Rising bullet pop, step 2 (G5)."),
+        ("A5", 0.078, 0.82, "Rising bullet pop, step 3 (A5)."),
+        ("D6", 0.070, 0.84, "Rising bullet pop, step 4 (D6), the brightest."),
     ]
-    for i, (note, sr_, rise, t60, desc) in enumerate(plops, 1):
-        out.append(plop(f"plop_{i:02d}", note, f"plop{i}", sr_, rise, t60, desc))
+    for i, (note, t60, snap, desc) in enumerate(rise, 1):
+        out.append(pop(f"pop_rise_{i:02d}", note, f"poprise{i}", t60=t60, snap=snap, desc=desc, group="pop_rise", tags=[f"step{i}", "ordered"]))
+    plops = [  # one pitch (A4), four drops
+        (0.55, 0.025, 0.13, "Water-drop plop on A4: softer and rounder than the pops."),
+        (0.60, 0.020, 0.11, "Plop on A4, quicker."),
+        (0.50, 0.030, 0.14, "Plop on A4, a slower, deeper drop."),
+        (0.58, 0.022, 0.10, "Plop on A4, the lightest."),
+    ]
+    for i, (sr_, rise_s, t60, desc) in enumerate(plops, 1):
+        out.append(plop(f"plop_{i:02d}", "A4", f"plop{i}", sr_, rise_s, t60, desc))
     ticks = [
         (0, 5.0, 0.030, 6000, "Soft wooden UI tick (woodblock +5 st, main mode near A6)."),
         (1, 5.0, 0.026, 6000, "Soft tick, second strike of the same block."),

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {existsSync, readFileSync} from 'node:fs';
 import {describe, it} from 'node:test';
-import {asManifest, durationInFrames, eventFrames, hash, pick, pickSequence, rigStartFrame, sfx, startFrame, syncFrames, validateManifest, variations, volume} from './sfx.ts';
+import {asManifest, durationInFrames, eventFrames, hash, nearestGapFrame, pick, pickSequence, rigStartFrame, sfx, speechMaskFromSpans, startFrame, syncFrames, validateManifest, variations, volume, volumeUnderSpeech} from './sfx.ts';
 import type {SfxEntry, SfxManifest} from './sfx.ts';
 
 const entry = (id: string, over: Partial<SfxEntry> = {}): SfxEntry => ({
@@ -111,5 +111,43 @@ describe('the exported library', {skip: !existsSync(PUBLIC)}, () => {
 			assert.ok(volume(e) > 0);
 		}
 		for (const e of m.sounds.filter((s) => s.rig)) assert.ok(rigStartFrame(e, 0) < 36);
+	});
+});
+
+describe('speech gaps (critic round 1: UI sounds off Zoo\'s consonants)', () => {
+	it('builds a per-frame mask from spans', () => {
+		const m = speechMaskFromSpans([[0.1, 0.3], [0.5, 0.52]], 20);
+		assert.equal(m.length, 20);
+		assert.deepEqual(m.flatMap((x, i) => (x ? [i] : [])), [3, 4, 5, 6, 7, 8, 15]);
+		assert.deepEqual(speechMaskFromSpans([[0.5, 0.4]], 5), [false, false, false, false, false]);
+	});
+	it('moves a pop to the nearest gap, earlier first, and gives up past maxShift', () => {
+		const speech = [true, true, true, false, false, true, true, true, true, true, true, false, false, false];
+		assert.equal(nearestGapFrame(speech, 3), 3);
+		assert.equal(nearestGapFrame(speech, 6), 3); // 3 frames back beats 5 forward
+		assert.equal(nearestGapFrame(speech, 9), 11);
+		assert.equal(nearestGapFrame(speech, 8, 1), null);
+		assert.equal(nearestGapFrame(speech, 20), 20); // past the narration: silent
+	});
+	it('trims a sound that has to stay under speech by its role', () => {
+		const e = entry('pop_01', {underSpeechTrimDb: -3});
+		assert.ok(Math.abs(20 * Math.log10(volume(e) / volumeUnderSpeech(e)) - 3) < 1e-9);
+		assert.equal(volumeUnderSpeech(entry('pop_02')), volume(entry('pop_02')));
+	});
+});
+
+describe('the delivered library (critic round 1)', {skip: !existsSync(PUBLIC)}, () => {
+	const load = () => asManifest(JSON.parse(readFileSync(PUBLIC, 'utf8')));
+	it('keeps one pitch per random group and the rising set in its own group', () => {
+		const lib = load();
+		for (const g of ['pop', 'plop']) assert.equal(new Set(variations(lib, g).map((e) => e.pitch)).size, 1, g);
+		assert.deepEqual(variations(lib, 'pop_rise').map((e) => e.pitch), ['D5', 'G5', 'A5', 'D6']);
+	});
+	it('ui sounds carry the under-speech trim, and the role targets moved down 3 dB', () => {
+		for (const e of load().sounds) {
+			if (e.role === 'ui') assert.equal(e.underSpeechTrimDb, -3, e.id);
+			if (e.role === 'ui') assert.equal(e.loudness.targetLufs, -27, e.id);
+			if (e.role === 'transition') assert.equal(e.loudness.targetLufs, -21, e.id);
+		}
 	});
 });

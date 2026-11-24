@@ -11,8 +11,11 @@ meter's `start` frame.
 
 Alarm rise: a rounded tone (band-limited triangle and square, detuned 6 cents, with a sub octave)
 rising toward D, a tremolo that speeds up from 3 to 8 Hz, and a low-pass that opens only to
-2.4 kHz, so it builds tension without hurting on a phone speaker. It reaches its top exactly on its
-sync frame (syncKind 'end'), holds two frames and releases in 40 ms.
+2.4 kHz, so it builds tension without hurting on a phone speaker; an octave-up layer (mostly
+triangle, a little saw, low-passed at 3 kHz) as loud as the body and a lighter sub octave put its energy
+where a phone speaker plays it (critic round 1: centred at 260-340 Hz, it lost 7.1 dB on a phone;
+the gate now is a loss within 4 dB). It reaches its top exactly on its sync frame
+(syncKind 'end'), holds two frames and releases in 40 ms.
 """
 
 from __future__ import annotations
@@ -36,6 +39,7 @@ MAJOR_EVERY = 8  # 40 detents / 5 decades
 TOOTH = [(2600, 0.005, 1.0), (3800, 0.004, 0.45), (1500, 0.008, 0.40), (650, 0.015, 0.45), (980, 0.012, 0.30)]
 MAJOR = [(1900, 0.008, 1.0), (2900, 0.006, 0.45), (1100, 0.012, 0.50), (480, 0.020, 0.55), (760, 0.016, 0.35)]
 CLUNK = [(180, 0.060, 0.8), (320, 0.045, 0.6), (700, 0.030, 0.4), (1500, 0.020, 0.18)]
+ALARM_OCTAVE_DB = 0.0
 
 
 def needle_track(target: float, n: int):
@@ -111,9 +115,16 @@ def alarm(sid: str, frames: int, note_from: str, note_to: str, seed: str, desc: 
     tri = synth.osc("triangle", f, n, oversample=2)
     sq = synth.osc("square", f * 2 ** (6 / 1200), n, oversample=2)
     sub = prims.chirp(f / 2)
-    x = tri + 0.5 * sq + 0.2 * sub
+    x = tri + 0.5 * sq + 0.1 * sub  # a lighter sub octave (it was 0.2): a phone speaker plays none of it
     cutoff = 800 * (2400 / 800) ** u
     x = prims.svf(x, cutoff, q=0.9, mode="lowpass")
+    x = prims.highpass(x, 160.0, order=2)  # less of the low fundamental, which a phone speaker drops anyway
+    # the octave-up layer: phone presence. Mostly triangle (round, like the body) with a saw for the
+    # 1-3 kHz edge, through a 3 kHz low-pass; rms-matched to the body, ALARM_OCTAVE_DB under it
+    f2 = f * 2 * 2 ** (-4 / 1200)
+    octv = 0.75 * synth.osc("triangle", f2, n, oversample=2) + 0.25 * synth.osc("saw", f2, n, oversample=2)
+    octv = prims.lowpass(octv, 3000.0, order=2)
+    x = x + octv * prims.db(ALARM_OCTAVE_DB) * float(np.sqrt(np.mean(x ** 2)) / max(np.sqrt(np.mean(octv ** 2)), 1e-12))
     # tremolo speeding up: the urgency
     rate = 3 + 5 * u**1.3
     phase = np.cumsum(rate) / prims.n_samples(1.0)

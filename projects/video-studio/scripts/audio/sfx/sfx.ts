@@ -43,8 +43,11 @@ export type SfxEntry = {
 	syncFrame30: number;
 	suggestedGainDb: number;
 	suggestedVolume: number;
-	/** lufs200Max is the gain basis (K-weighted, 200 ms window); gainCapped: the gain was limited so the true peak stays <= -6 dBTP. */
-	loudness: {samplePeakDbfs: number; truePeakDbtp: number; lufs200Max: number; lufsMomentaryMax: number; lufs100Max: number; targetLufs: number; gainCapped: boolean};
+	/** Extra trim (dB, <= 0) when the sound plays while Zoo speaks: ui -3, others 0. Better: nearestGapFrame. */
+	underSpeechTrimDb?: number;
+	/** lufs200Max is the gain basis (K-weighted, 200 ms window); gainCapped: the gain was limited so the true peak stays <= -6 dBTP;
+	 * phoneLossDb: what the file loses on a phone-speaker model (narration loses about 5.4). */
+	loudness: {samplePeakDbfs: number; truePeakDbtp: number; lufs200Max: number; lufsMomentaryMax: number; lufs100Max: number; targetLufs: number; gainCapped: boolean; phoneLossDb?: number};
 	pitch: string | null;
 	loop: boolean;
 	events: SfxEvent[];
@@ -150,6 +153,37 @@ export const startFrame = (e: SfxEntry, alignFrame: number, fps = 30): number =>
 
 /** Linear volume for <Audio volume>: the suggested gain plus a trim in dB. */
 export const volume = (e: SfxEntry, trimDb = 0): number => 10 ** ((e.suggestedGainDb + trimDb) / 20);
+
+/** Linear volume for a sound that plays while Zoo speaks: also its role's under-speech trim (ui: -3 dB). */
+export const volumeUnderSpeech = (e: SfxEntry, trimDb = 0): number => volume(e, (e.underSpeechTrimDb ?? 0) + trimDb);
+
+/** A per-frame speech mask (true = Zoo speaks) from [start, end] spans in seconds, e.g. word timings.
+ * scripts/audio/sfx/speech_mask.py makes the same mask from the narration audio. */
+export const speechMaskFromSpans = (spans: ReadonlyArray<readonly [number, number]>, frames: number, fps = 30): boolean[] => {
+	const mask = new Array<boolean>(Math.max(0, frames)).fill(false);
+	for (const [a, b] of spans) {
+		if (!(b > a)) continue;
+		for (let f = Math.max(0, Math.floor(a * fps)); f < Math.min(frames, Math.ceil(b * fps)); f++) mask[f] = true;
+	}
+	return mask;
+};
+
+/** The frame nearest `frame` (at most `maxShift` frames away, earlier first on a tie) where nobody
+ * speaks for `holdFrames` frames from it: where a pop or tick will not land on a consonant (critic
+ * round 1: UI ticks sit at 1.7-2.2 kHz, on Zoo's consonants). Frames past the mask's end count as
+ * silent. Returns null when no gap is that close: keep the frame and use volumeUnderSpeech. */
+export const nearestGapFrame = (speech: readonly boolean[], frame: number, maxShift = 6, holdFrames = 2): number | null => {
+	const quiet = (f: number): boolean => {
+		if (f < 0) return false;
+		for (let k = 0; k < holdFrames; k++) if (speech[f + k]) return false;
+		return true;
+	};
+	for (let d = 0; d <= maxShift; d++) {
+		if (quiet(frame - d)) return frame - d;
+		if (d > 0 && quiet(frame + d)) return frame + d;
+	}
+	return null;
+};
 
 export const durationInFrames = (e: SfxEntry, fps = 30): number => Math.ceil((e.durationMs * fps) / 1000);
 

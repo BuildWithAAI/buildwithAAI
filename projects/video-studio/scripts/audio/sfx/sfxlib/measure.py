@@ -28,7 +28,7 @@ import numpy as np
 from audiolib import loudness
 from audiolib.core import SR, as_stereo
 
-from .core import FPS, FRAME, GAIN_WINDOW_S, PEAK_DBFS, ROLES, TRUE_PEAK_CAP_DBTP, Sound, on_frame
+from .core import FPS, FRAME, GAIN_WINDOW_S, PEAK_DBFS, PHONE_MODEL, ROLES, TRUE_PEAK_CAP_DBTP, Sound, on_frame, phone_loss_limit
 
 
 def design_tail_db(audio, window_s: float = 0.01) -> float:
@@ -203,6 +203,23 @@ def event_onset_errors_ms(a: np.ndarray, events: list) -> list:
     return errs
 
 
+def phone(a: np.ndarray) -> np.ndarray:
+    """The critic's phone-speaker model (core.PHONE_MODEL) applied to the mono sum, as stereo."""
+    from audiolib import dsp
+
+    pm = PHONE_MODEL
+    mono = as_stereo(a).mean(axis=0)
+    y = dsp.eq(mono, [{"kind": "highpass", "f": pm["highpassHz"], "order": pm["highpassOrder"]},
+                      {"kind": "lowpass", "f": pm["lowpassHz"], "order": pm["lowpassOrder"]},
+                      {"kind": "peak", "f": pm["peakHz"], "q": pm["peakQ"], "db": pm["peakDb"]}])[0]
+    return np.vstack([y, y])
+
+
+def phone_loss_db(a: np.ndarray) -> float:
+    """Loudness lost on the phone model: 200 ms-window loudness (max) on the phone minus on the file."""
+    return window_loudness_max(phone(a), GAIN_WINDOW_S)[0] - window_loudness_max(as_stereo(a), GAIN_WINDOW_S)[0]
+
+
 def analyse(final: np.ndarray, sound: Sound) -> dict:
     a = as_stereo(final)
     n = a.shape[1]
@@ -250,6 +267,7 @@ def analyse(final: np.ndarray, sound: Sound) -> dict:
         "suggestedGainDb": _r(min(gain, cap), 1),
         "gainCapped": bool(capped),
         "targetLufs": target,
+        "phoneLossDb": _r(phone_loss_db(a), 1),
         "centroidHz": round(centroid),
         "presence2to5Db": _r(band_energy_db(fr, s, 2000, 5000) - band_energy_db(fr, s, 200, 2000), 1),
         "lowShareDb": _r(band_energy_db(fr, s, 20, 200) - total, 1),
@@ -301,6 +319,10 @@ def checks(m: dict, sound: Sound) -> list:
         worst = max((abs(e) for e in errs), default=0.0)
         add("eventsAttack", worst <= 5.0, "warn", f"worst event attack {worst} ms from its frame (<= 5)")
     add("harshResonance", not m["harshResonances"], "fail", f"harsh resonances: {m['harshResonances']}")
+    lim = phone_loss_limit(sound.group, sound.role)
+    if lim is not None:
+        add("phoneLoss", m["phoneLossDb"] is not None and m["phoneLossDb"] >= lim, "fail",
+            f"loses {m['phoneLossDb']} dB on the phone model (>= {lim}: it must not vanish on a phone speaker)")
     add("presence", m["presence2to5Db"] <= 6.0, "warn", f"2-5 kHz vs 0.2-2 kHz {m['presence2to5Db']} dB (<= +6)")
     add("correlation", m["correlation"] >= 0.0, "fail", f"L/R correlation {m['correlation']} (>= 0)")
     return c

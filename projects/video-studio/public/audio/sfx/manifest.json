@@ -13,10 +13,11 @@
   "frameSamples": 1600,
   "loudness": {
     "measure": "lufs200Max: BS.1770 K-weighted loudness in a 200 ms window, maximised over every sample position with silence around the file. Loudness integrates over about the first 200 ms of a sound, so this window rates clicks and swells alike; the EBU momentary 400 ms window (lufsMomentaryMax, also given) under-reads very short sounds by about 3 dB more.",
-    "suggestedGain": "suggestedGainDb = role target - lufs200Max, capped so the true peak after the gain stays at or under -6 dBTP (gainCapped); suggestedVolume = 10^(gain/20) for <Audio volume>",
+    "suggestedGain": "suggestedGainDb = role target - lufs200Max, capped so the true peak after the gain stays at or under -6 dBTP (gainCapped); suggestedVolume = 10^(gain/20) for <Audio volume>. underSpeechTrimDb: extra trim when the sound plays while Zoo speaks (ui: -3 dB; better, move it into a gap: sfx.ts nearestGapFrame)",
+    "phoneLoss": "loudness.phoneLossDb: 200 ms-window loudness lost on a phone-speaker model (mono, 350 Hz high-pass, 12 kHz low-pass, +3 dB at 3 kHz); narration loses about 5.4",
     "roles": {
       "transition": {
-        "targetLufs": -18.0,
+        "targetLufs": -21.0,
         "use": "whooshes and swells at cuts and reveals, usually in a gap between lines"
       },
       "meter": {
@@ -28,8 +29,9 @@
         "use": "ding, success, error, DEVELOPING pulse: clear but never startling"
       },
       "ui": {
-        "targetLufs": -24.0,
-        "use": "pops, plops, ticks, swipes: often under narration"
+        "targetLufs": -27.0,
+        "underSpeechTrimDb": -3.0,
+        "use": "pops, plops, ticks, swipes: in the gaps between Zoo's words (sfx.ts nearestGapFrame), else 3 dB lower"
       },
       "foley": {
         "targetLufs": -28.0,
@@ -86,9 +88,17 @@
         "pop_01",
         "pop_02",
         "pop_03",
-        "pop_04",
-        "pop_05",
-        "pop_06"
+        "pop_04"
+      ]
+    },
+    "pop_rise": {
+      "category": "ui",
+      "role": "ui",
+      "ids": [
+        "pop_rise_01",
+        "pop_rise_02",
+        "pop_rise_03",
+        "pop_rise_04"
       ]
     },
     "plop": {
@@ -334,16 +344,18 @@
       "syncKind": "peak",
       "syncMs": 166.67,
       "syncFrame30": 5,
-      "suggestedGainDb": -2.3,
-      "suggestedVolume": 0.7674,
+      "suggestedGainDb": -5.3,
+      "suggestedVolume": 0.5433,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.93,
         "lufs200Max": -15.73,
         "lufsMomentaryMax": -18.62,
         "lufs100Max": -13.64,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.3
       },
       "pitch": null,
       "loop": false,
@@ -383,16 +395,18 @@
       "syncKind": "peak",
       "syncMs": 166.67,
       "syncFrame30": 5,
-      "suggestedGainDb": -2.4,
-      "suggestedVolume": 0.7586,
+      "suggestedGainDb": -5.4,
+      "suggestedVolume": 0.537,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
         "lufs200Max": -15.6,
         "lufsMomentaryMax": -18.48,
         "lufs100Max": -13.66,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.1
       },
       "pitch": null,
       "loop": false,
@@ -432,16 +446,18 @@
       "syncKind": "peak",
       "syncMs": 166.67,
       "syncFrame30": 5,
-      "suggestedGainDb": -3.0,
-      "suggestedVolume": 0.7079,
+      "suggestedGainDb": -6.0,
+      "suggestedVolume": 0.5012,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.75,
         "lufs200Max": -14.96,
         "lufsMomentaryMax": -17.8,
         "lufs100Max": -13.04,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.4
       },
       "pitch": null,
       "loop": false,
@@ -481,16 +497,18 @@
       "syncKind": "peak",
       "syncMs": 133.33,
       "syncFrame30": 4,
-      "suggestedGainDb": -1.8,
-      "suggestedVolume": 0.8128,
+      "suggestedGainDb": -4.8,
+      "suggestedVolume": 0.5754,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
         "lufs200Max": -16.22,
         "lufsMomentaryMax": -19.1,
         "lufs100Max": -14.06,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.2
       },
       "pitch": null,
       "loop": false,
@@ -530,16 +548,18 @@
       "syncKind": "peak",
       "syncMs": 333.33,
       "syncFrame30": 10,
-      "suggestedGainDb": -4.2,
-      "suggestedVolume": 0.6166,
+      "suggestedGainDb": -7.2,
+      "suggestedVolume": 0.4365,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.93,
         "lufs200Max": -13.85,
         "lufsMomentaryMax": -16.12,
         "lufs100Max": -12.64,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.2
       },
       "pitch": null,
       "loop": false,
@@ -579,16 +599,18 @@
       "syncKind": "peak",
       "syncMs": 333.33,
       "syncFrame30": 10,
-      "suggestedGainDb": -3.1,
-      "suggestedVolume": 0.6998,
+      "suggestedGainDb": -6.1,
+      "suggestedVolume": 0.4955,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.91,
         "lufs200Max": -14.86,
         "lufsMomentaryMax": -17.06,
         "lufs100Max": -13.71,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.1
       },
       "pitch": null,
       "loop": false,
@@ -628,16 +650,18 @@
       "syncKind": "peak",
       "syncMs": 266.67,
       "syncFrame30": 8,
-      "suggestedGainDb": -3.5,
-      "suggestedVolume": 0.6683,
+      "suggestedGainDb": -6.5,
+      "suggestedVolume": 0.4732,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
         "lufs200Max": -14.5,
         "lufsMomentaryMax": -16.54,
         "lufs100Max": -13.41,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.2
       },
       "pitch": null,
       "loop": false,
@@ -677,16 +701,18 @@
       "syncKind": "peak",
       "syncMs": 333.33,
       "syncFrame30": 10,
-      "suggestedGainDb": -3.8,
-      "suggestedVolume": 0.6457,
+      "suggestedGainDb": -6.8,
+      "suggestedVolume": 0.4571,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
         "lufs200Max": -14.18,
         "lufsMomentaryMax": -15.98,
         "lufs100Max": -13.34,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.0
       },
       "pitch": null,
       "loop": false,
@@ -726,16 +752,18 @@
       "syncKind": "peak",
       "syncMs": 733.33,
       "syncFrame30": 22,
-      "suggestedGainDb": -4.0,
-      "suggestedVolume": 0.631,
+      "suggestedGainDb": -7.0,
+      "suggestedVolume": 0.4467,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.79,
         "lufs200Max": -14.0,
         "lufsMomentaryMax": -15.62,
         "lufs100Max": -13.23,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.2
       },
       "pitch": null,
       "loop": false,
@@ -775,16 +803,18 @@
       "syncKind": "peak",
       "syncMs": 766.67,
       "syncFrame30": 23,
-      "suggestedGainDb": -2.9,
-      "suggestedVolume": 0.7161,
+      "suggestedGainDb": -5.9,
+      "suggestedVolume": 0.507,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
         "lufs200Max": -15.12,
         "lufsMomentaryMax": -16.06,
         "lufs100Max": -14.97,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 0.9
       },
       "pitch": null,
       "loop": false,
@@ -824,16 +854,18 @@
       "syncKind": "peak",
       "syncMs": 666.67,
       "syncFrame30": 20,
-      "suggestedGainDb": -5.1,
-      "suggestedVolume": 0.5559,
+      "suggestedGainDb": -8.1,
+      "suggestedVolume": 0.3936,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
         "lufs200Max": -12.92,
         "lufsMomentaryMax": -14.18,
         "lufs100Max": -12.57,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.2
       },
       "pitch": null,
       "loop": false,
@@ -874,16 +906,18 @@
       "syncKind": "end",
       "syncMs": 800.0,
       "syncFrame30": 24,
-      "suggestedGainDb": -2.4,
-      "suggestedVolume": 0.7586,
+      "suggestedGainDb": -5.4,
+      "suggestedVolume": 0.537,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.93,
         "lufs200Max": -15.56,
         "lufsMomentaryMax": -18.42,
         "lufs100Max": -13.27,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.5
       },
       "pitch": null,
       "loop": false,
@@ -920,16 +954,18 @@
       "syncKind": "end",
       "syncMs": 500.0,
       "syncFrame30": 15,
-      "suggestedGainDb": -1.3,
-      "suggestedVolume": 0.861,
+      "suggestedGainDb": -4.3,
+      "suggestedVolume": 0.6095,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.86,
         "lufs200Max": -16.73,
         "lufsMomentaryMax": -19.71,
         "lufs100Max": -14.13,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.5
       },
       "pitch": null,
       "loop": false,
@@ -966,16 +1002,18 @@
       "syncKind": "end",
       "syncMs": 1200.0,
       "syncFrame30": 36,
-      "suggestedGainDb": -4.4,
-      "suggestedVolume": 0.6026,
+      "suggestedGainDb": -7.4,
+      "suggestedVolume": 0.4266,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.89,
         "lufs200Max": -13.6,
         "lufsMomentaryMax": -16.25,
         "lufs100Max": -11.76,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.5
       },
       "pitch": null,
       "loop": false,
@@ -1012,16 +1050,18 @@
       "syncKind": "end",
       "syncMs": 800.0,
       "syncFrame30": 24,
-      "suggestedGainDb": -1.8,
-      "suggestedVolume": 0.8128,
+      "suggestedGainDb": -4.8,
+      "suggestedVolume": 0.5754,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.9,
         "lufs200Max": -16.16,
         "lufsMomentaryMax": -19.06,
         "lufs100Max": -13.8,
-        "targetLufs": -18.0,
-        "gainCapped": false
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.3
       },
       "pitch": null,
       "loop": false,
@@ -1047,9 +1087,9 @@
         "ui",
         "bullet",
         "tonal",
-        "step1"
+        "repeat"
       ],
-      "description": "Bullet pop, step 1 of the D5-G5-A5-D6 set (use 01-04 in order for a list).",
+      "description": "Bullet pop on D5, the standard touch.",
       "durationMs": 133.9,
       "onsetMs": 0.06,
       "transientMs": 0.33,
@@ -1058,16 +1098,18 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -2.8,
-      "suggestedVolume": 0.7244,
+      "suggestedGainDb": -5.8,
+      "suggestedVolume": 0.5129,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
         "lufs200Max": -21.18,
         "lufsMomentaryMax": -24.19,
         "lufs100Max": -18.17,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -0.1
       },
       "pitch": "D5",
       "loop": false,
@@ -1093,29 +1135,31 @@
         "ui",
         "bullet",
         "tonal",
-        "step2"
+        "repeat"
       ],
-      "description": "Bullet pop, step 2 (G5).",
-      "durationMs": 142.7,
+      "description": "Bullet pop on D5, tighter and a little drier.",
+      "durationMs": 130.4,
       "onsetMs": 0.06,
-      "transientMs": 0.29,
-      "peakMs": 3.1,
+      "transientMs": 0.31,
+      "peakMs": 1.5,
       "loudPeakMs": 25.1,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -2.5,
-      "suggestedVolume": 0.7499,
+      "suggestedGainDb": -5.6,
+      "suggestedVolume": 0.5248,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
-        "truePeakDbtp": -6.0,
-        "lufs200Max": -21.48,
-        "lufsMomentaryMax": -24.49,
-        "lufs100Max": -18.47,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "truePeakDbtp": -5.99,
+        "lufs200Max": -21.43,
+        "lufsMomentaryMax": -24.44,
+        "lufs100Max": -18.42,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -0.1
       },
-      "pitch": "G5",
+      "pitch": "D5",
       "loop": false,
       "events": [],
       "sources": [
@@ -1125,7 +1169,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "c1f81d6246ab3e23f207c956cee6ca17766af728037cd2b9e66460ea8f74edd1"
+      "sha256": "62a9277db9c4c31cb7e128240d7253308b85cff4baff983346068abe4fb78ed9"
     },
     {
       "id": "pop_03",
@@ -1139,29 +1183,31 @@
         "ui",
         "bullet",
         "tonal",
-        "step3"
+        "repeat"
       ],
-      "description": "Bullet pop, step 3 (A5).",
-      "durationMs": 138.2,
+      "description": "Bullet pop on D5, rounder.",
+      "durationMs": 135.7,
       "onsetMs": 0.06,
-      "transientMs": 0.29,
-      "peakMs": 2.8,
+      "transientMs": 0.31,
+      "peakMs": 4.1,
       "loudPeakMs": 25.1,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -2.3,
-      "suggestedVolume": 0.7674,
+      "suggestedGainDb": -6.3,
+      "suggestedVolume": 0.4842,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -21.75,
-        "lufsMomentaryMax": -24.76,
-        "lufs100Max": -18.74,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "lufs200Max": -20.74,
+        "lufsMomentaryMax": -23.75,
+        "lufs100Max": -17.73,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -0.1
       },
-      "pitch": "A5",
+      "pitch": "D5",
       "loop": false,
       "events": [],
       "sources": [
@@ -1171,7 +1217,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "9f969dcbc996393e3d9efd529318d3c108708ba8b862ed61ac23e5d4ea7cf279"
+      "sha256": "83682a209a578f2339a7e4d1d7555e25dbcc9110ad03c56a6aea3a6d880042b5"
     },
     {
       "id": "pop_04",
@@ -1185,119 +1231,29 @@
         "ui",
         "bullet",
         "tonal",
-        "step4"
+        "repeat"
       ],
-      "description": "Bullet pop, step 4 (D6), the brightest.",
-      "durationMs": 129.0,
+      "description": "Bullet pop on D5, lighter.",
+      "durationMs": 132.1,
       "onsetMs": 0.06,
-      "transientMs": 0.65,
-      "peakMs": 2.1,
-      "loudPeakMs": 25.1,
-      "syncKind": "transient",
-      "syncMs": 0.0,
-      "syncFrame30": 0,
-      "suggestedGainDb": -2.4,
-      "suggestedVolume": 0.7586,
-      "loudness": {
-        "samplePeakDbfs": -6.0,
-        "truePeakDbtp": -6.0,
-        "lufs200Max": -21.57,
-        "lufsMomentaryMax": -24.58,
-        "lufs100Max": -18.56,
-        "targetLufs": -24.0,
-        "gainCapped": false
-      },
-      "pitch": "D6",
-      "loop": false,
-      "events": [],
-      "sources": [
-        {
-          "kind": "synthesis",
-          "by": "scripts/audio/sfx (this repo)",
-          "licence": "original work, owned"
-        }
-      ],
-      "sha256": "38547e723989eecf64342a00f6bc598fca5c0b7bd07f95fb79c5ecb929efcd57"
-    },
-    {
-      "id": "pop_05",
-      "file": "audio/sfx/ui/pop_05.wav",
-      "group": "pop",
-      "variation": 5,
-      "category": "ui",
-      "role": "ui",
-      "tags": [
-        "pop",
-        "ui",
-        "bullet",
-        "tonal",
-        "alternate"
-      ],
-      "description": "Alternate pop on A5, rounder: for repeats on one pitch.",
-      "durationMs": 135.8,
-      "onsetMs": 0.06,
-      "transientMs": 0.35,
-      "peakMs": 2.9,
-      "loudPeakMs": 25.1,
-      "syncKind": "transient",
-      "syncMs": 0.0,
-      "syncFrame30": 0,
-      "suggestedGainDb": -2.7,
-      "suggestedVolume": 0.7328,
-      "loudness": {
-        "samplePeakDbfs": -6.0,
-        "truePeakDbtp": -6.0,
-        "lufs200Max": -21.3,
-        "lufsMomentaryMax": -24.31,
-        "lufs100Max": -18.29,
-        "targetLufs": -24.0,
-        "gainCapped": false
-      },
-      "pitch": "A5",
-      "loop": false,
-      "events": [],
-      "sources": [
-        {
-          "kind": "synthesis",
-          "by": "scripts/audio/sfx (this repo)",
-          "licence": "original work, owned"
-        }
-      ],
-      "sha256": "22e9424e6403ce36edacac0e02a46b6d084aff9c24a6f867cd58b53cc17d525d"
-    },
-    {
-      "id": "pop_06",
-      "file": "audio/sfx/ui/pop_06.wav",
-      "group": "pop",
-      "variation": 6,
-      "category": "ui",
-      "role": "ui",
-      "tags": [
-        "pop",
-        "ui",
-        "bullet",
-        "tonal",
-        "alternate"
-      ],
-      "description": "Alternate pop on D5, tighter: for repeats on one pitch.",
-      "durationMs": 130.2,
-      "onsetMs": 0.06,
-      "transientMs": 0.29,
+      "transientMs": 0.33,
       "peakMs": 1.4,
       "loudPeakMs": 25.1,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -2.5,
-      "suggestedVolume": 0.7499,
+      "suggestedGainDb": -5.8,
+      "suggestedVolume": 0.5129,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -21.46,
-        "lufsMomentaryMax": -24.47,
-        "lufs100Max": -18.45,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "lufs200Max": -21.22,
+        "lufsMomentaryMax": -24.23,
+        "lufs100Max": -18.21,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -0.1
       },
       "pitch": "D5",
       "loop": false,
@@ -1309,7 +1265,203 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "9b9d34f75cd4bf51db9f3240c82c59efb8c35b7257a9ff67409d3e98a79a6aea"
+      "sha256": "e19e9bcd17650a212c15a3e2c35ea8df46c35c84b5af28b216f484c458303319"
+    },
+    {
+      "id": "pop_rise_01",
+      "file": "audio/sfx/ui/pop_rise_01.wav",
+      "group": "pop_rise",
+      "variation": 1,
+      "category": "ui",
+      "role": "ui",
+      "tags": [
+        "pop",
+        "ui",
+        "bullet",
+        "tonal",
+        "step1",
+        "ordered"
+      ],
+      "description": "Rising bullet pop, step 1 of D5-G5-A5-D6 (use pop_rise_01-04 in order for a list).",
+      "durationMs": 133.9,
+      "onsetMs": 0.06,
+      "transientMs": 0.33,
+      "peakMs": 1.5,
+      "loudPeakMs": 25.1,
+      "syncKind": "transient",
+      "syncMs": 0.0,
+      "syncFrame30": 0,
+      "suggestedGainDb": -5.8,
+      "suggestedVolume": 0.5129,
+      "underSpeechTrimDb": -3.0,
+      "loudness": {
+        "samplePeakDbfs": -6.0,
+        "truePeakDbtp": -6.0,
+        "lufs200Max": -21.18,
+        "lufsMomentaryMax": -24.19,
+        "lufs100Max": -18.17,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -0.1
+      },
+      "pitch": "D5",
+      "loop": false,
+      "events": [],
+      "sources": [
+        {
+          "kind": "synthesis",
+          "by": "scripts/audio/sfx (this repo)",
+          "licence": "original work, owned"
+        }
+      ],
+      "sha256": "2a8393c6d6c0f9b678b53b46cab41682811e0445a58b33d270d31bf225b1327d"
+    },
+    {
+      "id": "pop_rise_02",
+      "file": "audio/sfx/ui/pop_rise_02.wav",
+      "group": "pop_rise",
+      "variation": 2,
+      "category": "ui",
+      "role": "ui",
+      "tags": [
+        "pop",
+        "ui",
+        "bullet",
+        "tonal",
+        "step2",
+        "ordered"
+      ],
+      "description": "Rising bullet pop, step 2 (G5).",
+      "durationMs": 142.7,
+      "onsetMs": 0.06,
+      "transientMs": 0.29,
+      "peakMs": 3.1,
+      "loudPeakMs": 25.1,
+      "syncKind": "transient",
+      "syncMs": 0.0,
+      "syncFrame30": 0,
+      "suggestedGainDb": -5.6,
+      "suggestedVolume": 0.5248,
+      "underSpeechTrimDb": -3.0,
+      "loudness": {
+        "samplePeakDbfs": -6.0,
+        "truePeakDbtp": -6.0,
+        "lufs200Max": -21.44,
+        "lufsMomentaryMax": -24.45,
+        "lufs100Max": -18.42,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 0.1
+      },
+      "pitch": "G5",
+      "loop": false,
+      "events": [],
+      "sources": [
+        {
+          "kind": "synthesis",
+          "by": "scripts/audio/sfx (this repo)",
+          "licence": "original work, owned"
+        }
+      ],
+      "sha256": "35a903b9ebdae2825070800acaaed75b4e3675814b45754d3e31a43a61e0bc80"
+    },
+    {
+      "id": "pop_rise_03",
+      "file": "audio/sfx/ui/pop_rise_03.wav",
+      "group": "pop_rise",
+      "variation": 3,
+      "category": "ui",
+      "role": "ui",
+      "tags": [
+        "pop",
+        "ui",
+        "bullet",
+        "tonal",
+        "step3",
+        "ordered"
+      ],
+      "description": "Rising bullet pop, step 3 (A5).",
+      "durationMs": 138.2,
+      "onsetMs": 0.06,
+      "transientMs": 0.38,
+      "peakMs": 2.8,
+      "loudPeakMs": 25.1,
+      "syncKind": "transient",
+      "syncMs": 0.0,
+      "syncFrame30": 0,
+      "suggestedGainDb": -5.3,
+      "suggestedVolume": 0.5433,
+      "underSpeechTrimDb": -3.0,
+      "loudness": {
+        "samplePeakDbfs": -6.0,
+        "truePeakDbtp": -6.0,
+        "lufs200Max": -21.74,
+        "lufsMomentaryMax": -24.75,
+        "lufs100Max": -18.73,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 0.2
+      },
+      "pitch": "A5",
+      "loop": false,
+      "events": [],
+      "sources": [
+        {
+          "kind": "synthesis",
+          "by": "scripts/audio/sfx (this repo)",
+          "licence": "original work, owned"
+        }
+      ],
+      "sha256": "c9ced9f641836c7bd6d43329f78c5d38de377f3a1b98cf077ec3b0e46b930963"
+    },
+    {
+      "id": "pop_rise_04",
+      "file": "audio/sfx/ui/pop_rise_04.wav",
+      "group": "pop_rise",
+      "variation": 4,
+      "category": "ui",
+      "role": "ui",
+      "tags": [
+        "pop",
+        "ui",
+        "bullet",
+        "tonal",
+        "step4",
+        "ordered"
+      ],
+      "description": "Rising bullet pop, step 4 (D6), the brightest.",
+      "durationMs": 129.0,
+      "onsetMs": 0.06,
+      "transientMs": 0.62,
+      "peakMs": 2.1,
+      "loudPeakMs": 25.1,
+      "syncKind": "transient",
+      "syncMs": 0.0,
+      "syncFrame30": 0,
+      "suggestedGainDb": -5.3,
+      "suggestedVolume": 0.5433,
+      "underSpeechTrimDb": -3.0,
+      "loudness": {
+        "samplePeakDbfs": -6.0,
+        "truePeakDbtp": -6.0,
+        "lufs200Max": -21.66,
+        "lufsMomentaryMax": -24.67,
+        "lufs100Max": -18.64,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 0.5
+      },
+      "pitch": "D6",
+      "loop": false,
+      "events": [],
+      "sources": [
+        {
+          "kind": "synthesis",
+          "by": "scripts/audio/sfx (this repo)",
+          "licence": "original work, owned"
+        }
+      ],
+      "sha256": "b90abcd3d497697662e0189d724939d97fe6c22e12d5576213adddedab882c7c"
     },
     {
       "id": "plop_01",
@@ -1325,27 +1477,29 @@
         "drop",
         "tonal"
       ],
-      "description": "Water-drop plop on D4: softer and rounder than the pops.",
-      "durationMs": 173.8,
-      "onsetMs": 0.15,
-      "transientMs": 0.9,
-      "peakMs": 3.4,
-      "loudPeakMs": 25.4,
+      "description": "Water-drop plop on A4: softer and rounder than the pops.",
+      "durationMs": 170.2,
+      "onsetMs": 0.12,
+      "transientMs": 0.79,
+      "peakMs": 2.5,
+      "loudPeakMs": 25.3,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.8,
-      "suggestedVolume": 0.5754,
+      "suggestedGainDb": -7.8,
+      "suggestedVolume": 0.4074,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -19.2,
-        "lufsMomentaryMax": -22.21,
-        "lufs100Max": -16.19,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "lufs200Max": -19.17,
+        "lufsMomentaryMax": -22.18,
+        "lufs100Max": -16.16,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -2.6
       },
-      "pitch": "D4",
+      "pitch": "A4",
       "loop": false,
       "events": [],
       "sources": [
@@ -1355,7 +1509,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "853e0da75800adacd9804b9a7353cc14b64b69028b7899cf7d6fbc633b198c42"
+      "sha256": "5c30d354475d07544b6f94355afcf0918cf5f0a0097cf0b7ddf38d9dea0075c0"
     },
     {
       "id": "plop_02",
@@ -1371,27 +1525,29 @@
         "drop",
         "tonal"
       ],
-      "description": "Plop on G4.",
-      "durationMs": 169.3,
+      "description": "Plop on A4, quicker.",
+      "durationMs": 147.9,
       "onsetMs": 0.12,
-      "transientMs": 0.81,
-      "peakMs": 2.6,
-      "loudPeakMs": 25.3,
+      "transientMs": 0.77,
+      "peakMs": 2.3,
+      "loudPeakMs": 25.1,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.6,
-      "suggestedVolume": 0.5888,
+      "suggestedGainDb": -7.3,
+      "suggestedVolume": 0.4315,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -19.37,
-        "lufsMomentaryMax": -22.38,
-        "lufs100Max": -16.36,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "lufs200Max": -19.75,
+        "lufsMomentaryMax": -22.76,
+        "lufs100Max": -16.74,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -2.1
       },
-      "pitch": "G4",
+      "pitch": "A4",
       "loop": false,
       "events": [],
       "sources": [
@@ -1401,7 +1557,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "9ce3eedc441ad146d2c6977053fb99ed30a1801562823120b24e5bba170c366d"
+      "sha256": "2d9802f768e1b0ec733a3ab54c1a1e42cab258af0fdae636423401890d1c783a"
     },
     {
       "id": "plop_03",
@@ -1417,25 +1573,27 @@
         "drop",
         "tonal"
       ],
-      "description": "Plop on A4.",
-      "durationMs": 165.5,
+      "description": "Plop on A4, a slower, deeper drop.",
+      "durationMs": 186.4,
       "onsetMs": 0.12,
-      "transientMs": 0.81,
-      "peakMs": 2.6,
-      "loudPeakMs": 25.4,
+      "transientMs": 0.83,
+      "peakMs": 2.7,
+      "loudPeakMs": 25.2,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.8,
-      "suggestedVolume": 0.5754,
+      "suggestedGainDb": -8.1,
+      "suggestedVolume": 0.3936,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -19.2,
-        "lufsMomentaryMax": -22.21,
-        "lufs100Max": -16.19,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "lufs200Max": -18.94,
+        "lufsMomentaryMax": -21.95,
+        "lufs100Max": -15.93,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -3.2
       },
       "pitch": "A4",
       "loop": false,
@@ -1447,7 +1605,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "e21f824ce01b7de37629659bccf6240d8b97cd3aa1ba5f3a08bdeb3b28a171ff"
+      "sha256": "80c38dd35a7c719f9b677104399e4ed5d1f0411d8fa894b0dbdfa053a1fd8853"
     },
     {
       "id": "plop_04",
@@ -1463,27 +1621,29 @@
         "drop",
         "tonal"
       ],
-      "description": "Plop on D5, the lightest.",
-      "durationMs": 155.6,
-      "onsetMs": 0.1,
+      "description": "Plop on A4, the lightest.",
+      "durationMs": 145.9,
+      "onsetMs": 0.12,
       "transientMs": 0.79,
-      "peakMs": 5.2,
-      "loudPeakMs": 25.1,
+      "peakMs": 2.4,
+      "loudPeakMs": 25.2,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.1,
-      "suggestedVolume": 0.6237,
+      "suggestedGainDb": -6.9,
+      "suggestedVolume": 0.4519,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -19.9,
-        "lufsMomentaryMax": -22.91,
-        "lufs100Max": -16.89,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "lufs200Max": -20.1,
+        "lufsMomentaryMax": -23.11,
+        "lufs100Max": -17.09,
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": -2.5
       },
-      "pitch": "D5",
+      "pitch": "A4",
       "loop": false,
       "events": [],
       "sources": [
@@ -1493,7 +1653,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "4868e601ca91f78e11377b0a5e4c7dd7f83572c8a9b913a83ebfe68ed33e6d7a"
+      "sha256": "2c4d2cd1dd761a5f9d5b95e60f77203fc895965e158bc6e9053b381d7080e172"
     },
     {
       "id": "tick_01",
@@ -1518,16 +1678,18 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -1.7,
-      "suggestedVolume": 0.8222,
+      "suggestedGainDb": -4.7,
+      "suggestedVolume": 0.5821,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
         "lufs200Max": -22.29,
         "lufsMomentaryMax": -25.3,
         "lufs100Max": -19.28,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.6
       },
       "pitch": null,
       "loop": false,
@@ -1570,16 +1732,18 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -3.7,
-      "suggestedVolume": 0.6531,
+      "suggestedGainDb": -6.7,
+      "suggestedVolume": 0.4624,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
         "lufs200Max": -20.29,
         "lufsMomentaryMax": -23.3,
         "lufs100Max": -17.28,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.5
       },
       "pitch": null,
       "loop": false,
@@ -1622,16 +1786,18 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -1.0,
-      "suggestedVolume": 0.8913,
+      "suggestedGainDb": -4.0,
+      "suggestedVolume": 0.631,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.93,
         "lufs200Max": -22.96,
         "lufsMomentaryMax": -25.97,
         "lufs100Max": -19.95,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.7
       },
       "pitch": null,
       "loop": false,
@@ -1674,16 +1840,18 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -0.2,
-      "suggestedVolume": 0.9772,
+      "suggestedGainDb": -2.2,
+      "suggestedVolume": 0.7762,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.76,
         "lufs200Max": -24.84,
         "lufsMomentaryMax": -27.85,
         "lufs100Max": -21.83,
-        "targetLufs": -24.0,
-        "gainCapped": true
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 2.1
       },
       "pitch": null,
       "loop": false,
@@ -1726,16 +1894,18 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.0,
-      "suggestedVolume": 0.631,
+      "suggestedGainDb": -7.0,
+      "suggestedVolume": 0.4467,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
         "lufs200Max": -19.98,
         "lufsMomentaryMax": -22.99,
         "lufs100Max": -16.97,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.2
       },
       "pitch": null,
       "loop": false,
@@ -1778,16 +1948,18 @@
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -6.9,
-      "suggestedVolume": 0.4519,
+      "suggestedGainDb": -9.9,
+      "suggestedVolume": 0.3199,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.93,
         "lufs200Max": -17.14,
         "lufsMomentaryMax": -20.13,
         "lufs100Max": -14.6,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.7
       },
       "pitch": null,
       "loop": false,
@@ -1827,16 +1999,18 @@
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -6.7,
-      "suggestedVolume": 0.4624,
+      "suggestedGainDb": -9.7,
+      "suggestedVolume": 0.3273,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.98,
         "lufs200Max": -17.33,
         "lufsMomentaryMax": -20.34,
         "lufs100Max": -14.7,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.5
       },
       "pitch": null,
       "loop": false,
@@ -1876,16 +2050,18 @@
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -7.0,
-      "suggestedVolume": 0.4467,
+      "suggestedGainDb": -10.0,
+      "suggestedVolume": 0.3162,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.95,
         "lufs200Max": -17.02,
         "lufsMomentaryMax": -20.03,
         "lufs100Max": -14.15,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.7
       },
       "pitch": null,
       "loop": false,
@@ -1925,16 +2101,18 @@
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -9.7,
-      "suggestedVolume": 0.3273,
+      "suggestedGainDb": -12.7,
+      "suggestedVolume": 0.2317,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.96,
         "lufs200Max": -14.3,
         "lufsMomentaryMax": -17.24,
         "lufs100Max": -12.1,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.5
       },
       "pitch": null,
       "loop": false,
@@ -1974,16 +2152,18 @@
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -6.4,
-      "suggestedVolume": 0.4786,
+      "suggestedGainDb": -9.4,
+      "suggestedVolume": 0.3388,
+      "underSpeechTrimDb": -3.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.94,
         "lufs200Max": -17.61,
         "lufsMomentaryMax": -20.58,
         "lufs100Max": -15.26,
-        "targetLufs": -24.0,
-        "gainCapped": false
+        "targetLufs": -27.0,
+        "gainCapped": false,
+        "phoneLossDb": 1.5
       },
       "pitch": null,
       "loop": false,
@@ -2025,6 +2205,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -2032,7 +2213,8 @@
         "lufsMomentaryMax": -34.74,
         "lufs100Max": -29.0,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.4
       },
       "pitch": null,
       "loop": false,
@@ -2084,6 +2266,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -2091,7 +2274,8 @@
         "lufsMomentaryMax": -34.18,
         "lufs100Max": -28.44,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.3
       },
       "pitch": null,
       "loop": false,
@@ -2143,6 +2327,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -2150,7 +2335,8 @@
         "lufsMomentaryMax": -33.92,
         "lufs100Max": -27.9,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.2
       },
       "pitch": null,
       "loop": false,
@@ -2202,6 +2388,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.87,
@@ -2209,7 +2396,8 @@
         "lufsMomentaryMax": -32.67,
         "lufs100Max": -26.95,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.2
       },
       "pitch": null,
       "loop": false,
@@ -2261,6 +2449,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.94,
@@ -2268,7 +2457,8 @@
         "lufsMomentaryMax": -31.75,
         "lufs100Max": -26.01,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.1
       },
       "pitch": null,
       "loop": false,
@@ -2320,6 +2510,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.9,
@@ -2327,7 +2518,8 @@
         "lufsMomentaryMax": -33.14,
         "lufs100Max": -27.12,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.3
       },
       "pitch": null,
       "loop": false,
@@ -2379,6 +2571,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -2386,7 +2579,8 @@
         "lufsMomentaryMax": -33.25,
         "lufs100Max": -27.53,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.2
       },
       "pitch": null,
       "loop": false,
@@ -2438,6 +2632,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.91,
@@ -2445,7 +2640,8 @@
         "lufsMomentaryMax": -31.93,
         "lufs100Max": -26.14,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.3
       },
       "pitch": null,
       "loop": false,
@@ -2497,6 +2693,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.89,
@@ -2504,7 +2701,8 @@
         "lufsMomentaryMax": -32.56,
         "lufs100Max": -26.54,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.4
       },
       "pitch": null,
       "loop": false,
@@ -2556,6 +2754,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.85,
@@ -2563,7 +2762,8 @@
         "lufsMomentaryMax": -34.21,
         "lufs100Max": -28.46,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.4
       },
       "pitch": null,
       "loop": false,
@@ -2615,6 +2815,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.95,
@@ -2622,7 +2823,8 @@
         "lufsMomentaryMax": -34.22,
         "lufs100Max": -28.51,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.7
       },
       "pitch": null,
       "loop": false,
@@ -2674,6 +2876,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.92,
@@ -2681,7 +2884,8 @@
         "lufsMomentaryMax": -32.85,
         "lufs100Max": -27.1,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.7
       },
       "pitch": null,
       "loop": false,
@@ -2733,6 +2937,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.9,
       "suggestedVolume": 0.9016,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.81,
@@ -2740,7 +2945,8 @@
         "lufsMomentaryMax": -30.12,
         "lufs100Max": -24.1,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -1.3
       },
       "pitch": null,
       "loop": false,
@@ -2792,6 +2998,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.8,
       "suggestedVolume": 0.912,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.95,
@@ -2799,7 +3006,8 @@
         "lufsMomentaryMax": -30.17,
         "lufs100Max": -24.44,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -1.3
       },
       "pitch": null,
       "loop": false,
@@ -2852,6 +3060,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -2859,7 +3068,8 @@
         "lufsMomentaryMax": -33.13,
         "lufs100Max": -27.31,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.3
       },
       "pitch": null,
       "loop": false,
@@ -2912,6 +3122,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -2919,7 +3130,8 @@
         "lufsMomentaryMax": -33.16,
         "lufs100Max": -27.31,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.1
       },
       "pitch": null,
       "loop": false,
@@ -2972,6 +3184,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.9,
       "suggestedVolume": 0.9016,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -2979,7 +3192,8 @@
         "lufsMomentaryMax": -30.1,
         "lufs100Max": -24.29,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.5
       },
       "pitch": null,
       "loop": false,
@@ -3032,6 +3246,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.2,
       "suggestedVolume": 0.9772,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.83,
@@ -3039,7 +3254,8 @@
         "lufsMomentaryMax": -33.11,
         "lufs100Max": -27.31,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.1
       },
       "pitch": null,
       "loop": false,
@@ -3091,6 +3307,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
@@ -3098,7 +3315,8 @@
         "lufsMomentaryMax": -29.51,
         "lufs100Max": -26.77,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.6
       },
       "pitch": null,
       "loop": false,
@@ -3240,6 +3458,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.4,
       "suggestedVolume": 0.955,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.85,
@@ -3247,7 +3466,8 @@
         "lufsMomentaryMax": -29.38,
         "lufs100Max": -25.86,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.8
       },
       "pitch": null,
       "loop": false,
@@ -3389,6 +3609,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -3396,7 +3617,8 @@
         "lufsMomentaryMax": -31.21,
         "lufs100Max": -27.06,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.5
       },
       "pitch": null,
       "loop": false,
@@ -3580,6 +3802,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.2,
       "suggestedVolume": 0.9772,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.79,
@@ -3587,7 +3810,8 @@
         "lufsMomentaryMax": -30.23,
         "lufs100Max": -27.06,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.8
       },
       "pitch": null,
       "loop": false,
@@ -3827,6 +4051,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.9,
       "suggestedVolume": 0.9016,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -3834,7 +4059,8 @@
         "lufsMomentaryMax": -29.6,
         "lufs100Max": -26.22,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.5
       },
       "pitch": null,
       "loop": false,
@@ -4186,6 +4412,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.4,
       "suggestedVolume": 0.955,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.87,
@@ -4193,7 +4420,8 @@
         "lufsMomentaryMax": -29.0,
         "lufs100Max": -25.91,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.8
       },
       "pitch": null,
       "loop": false,
@@ -4370,6 +4598,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.9,
@@ -4377,7 +4606,8 @@
         "lufsMomentaryMax": -29.21,
         "lufs100Max": -26.66,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.8
       },
       "pitch": null,
       "loop": true,
@@ -4659,6 +4889,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.91,
@@ -4666,7 +4897,8 @@
         "lufsMomentaryMax": -29.51,
         "lufs100Max": -26.63,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.6
       },
       "pitch": null,
       "loop": true,
@@ -4969,6 +5201,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.9,
       "suggestedVolume": 0.9016,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -4976,7 +5209,8 @@
         "lufsMomentaryMax": -27.91,
         "lufs100Max": -24.7,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.5
       },
       "pitch": null,
       "loop": true,
@@ -5286,6 +5520,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -5293,7 +5528,8 @@
         "lufsMomentaryMax": -32.27,
         "lufs100Max": -26.25,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.7
       },
       "pitch": null,
       "loop": false,
@@ -5343,6 +5579,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.92,
@@ -5350,7 +5587,8 @@
         "lufsMomentaryMax": -32.1,
         "lufs100Max": -26.85,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.7
       },
       "pitch": null,
       "loop": false,
@@ -5400,6 +5638,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -5407,7 +5646,8 @@
         "lufsMomentaryMax": -32.08,
         "lufs100Max": -26.06,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.7
       },
       "pitch": null,
       "loop": false,
@@ -5457,6 +5697,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.96,
@@ -5464,7 +5705,8 @@
         "lufsMomentaryMax": -32.21,
         "lufs100Max": -26.19,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.8
       },
       "pitch": null,
       "loop": false,
@@ -5514,6 +5756,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.95,
@@ -5521,7 +5764,8 @@
         "lufsMomentaryMax": -31.93,
         "lufs100Max": -26.64,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.8
       },
       "pitch": null,
       "loop": false,
@@ -5572,6 +5816,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -1.7,
       "suggestedVolume": 0.8222,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -5579,7 +5824,8 @@
         "lufsMomentaryMax": -29.35,
         "lufs100Max": -25.95,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": 0.8
       },
       "pitch": null,
       "loop": false,
@@ -5640,6 +5886,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -1.7,
       "suggestedVolume": 0.8222,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.95,
@@ -5647,7 +5894,8 @@
         "lufsMomentaryMax": -29.3,
         "lufs100Max": -26.16,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": 0.7
       },
       "pitch": null,
       "loop": false,
@@ -5708,6 +5956,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -1.4,
       "suggestedVolume": 0.8511,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.97,
@@ -5715,7 +5964,8 @@
         "lufsMomentaryMax": -29.3,
         "lufs100Max": -25.87,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": 0.8
       },
       "pitch": null,
       "loop": false,
@@ -5776,6 +6026,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -4.8,
       "suggestedVolume": 0.5754,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -5783,7 +6034,8 @@
         "lufsMomentaryMax": -26.2,
         "lufs100Max": -20.18,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.1
       },
       "pitch": null,
       "loop": false,
@@ -5829,6 +6081,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -4.8,
       "suggestedVolume": 0.5754,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.98,
@@ -5836,7 +6089,8 @@
         "lufsMomentaryMax": -26.23,
         "lufs100Max": -20.21,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.9
       },
       "pitch": null,
       "loop": false,
@@ -5883,6 +6137,7 @@
       "syncFrame30": 3,
       "suggestedGainDb": -4.5,
       "suggestedVolume": 0.5957,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.97,
@@ -5890,7 +6145,8 @@
         "lufsMomentaryMax": -26.55,
         "lufs100Max": -20.6,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.0
       },
       "pitch": null,
       "loop": false,
@@ -5936,6 +6192,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -5.4,
       "suggestedVolume": 0.537,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -5943,7 +6200,8 @@
         "lufsMomentaryMax": -25.59,
         "lufs100Max": -19.57,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.0
       },
       "pitch": null,
       "loop": false,
@@ -5989,6 +6247,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -12.3,
       "suggestedVolume": 0.2427,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
@@ -5996,7 +6255,8 @@
         "lufsMomentaryMax": -18.11,
         "lufs100Max": -15.02,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.7
       },
       "pitch": null,
       "loop": false,
@@ -6036,6 +6296,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -10.7,
       "suggestedVolume": 0.2917,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6043,7 +6304,8 @@
         "lufsMomentaryMax": -18.02,
         "lufs100Max": -16.91,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -1.1
       },
       "pitch": null,
       "loop": false,
@@ -6083,6 +6345,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -10.9,
       "suggestedVolume": 0.2851,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.98,
@@ -6090,7 +6353,8 @@
         "lufsMomentaryMax": -19.71,
         "lufs100Max": -16.15,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.2
       },
       "pitch": null,
       "loop": false,
@@ -6131,6 +6395,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -12.5,
       "suggestedVolume": 0.2371,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6138,7 +6403,8 @@
         "lufsMomentaryMax": -18.47,
         "lufs100Max": -14.17,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": 0.8
       },
       "pitch": null,
       "loop": false,
@@ -6178,6 +6444,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -9.2,
       "suggestedVolume": 0.3467,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
@@ -6185,7 +6452,8 @@
         "lufsMomentaryMax": -12.95,
         "lufs100Max": -11.22,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.1
       },
       "pitch": "D5-A5",
       "loop": false,
@@ -6253,6 +6521,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -11.5,
       "suggestedVolume": 0.2661,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6260,7 +6529,8 @@
         "lufsMomentaryMax": -11.2,
         "lufs100Max": -9.17,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.3
       },
       "pitch": "A5",
       "loop": false,
@@ -6318,6 +6588,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -9.6,
       "suggestedVolume": 0.3311,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6325,7 +6596,8 @@
         "lufsMomentaryMax": -12.84,
         "lufs100Max": -11.1,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.1
       },
       "pitch": "D5-D5-A5",
       "loop": false,
@@ -6399,6 +6671,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -9.6,
       "suggestedVolume": 0.3311,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6406,7 +6679,8 @@
         "lufsMomentaryMax": -12.87,
         "lufs100Max": -10.75,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.1
       },
       "pitch": "A4-D5",
       "loop": false,
@@ -6474,6 +6748,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -9.6,
       "suggestedVolume": 0.3311,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6481,7 +6756,8 @@
         "lufsMomentaryMax": -14.36,
         "lufs100Max": -9.8,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.4
       },
       "pitch": "A4 D5",
       "loop": false,
@@ -6547,6 +6823,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -8.9,
       "suggestedVolume": 0.3589,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6554,7 +6831,8 @@
         "lufsMomentaryMax": -14.96,
         "lufs100Max": -10.82,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": 0.3
       },
       "pitch": "D5 A5 D6",
       "loop": false,
@@ -6635,6 +6913,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -5.7,
       "suggestedVolume": 0.5188,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6642,7 +6921,8 @@
         "lufsMomentaryMax": -18.27,
         "lufs100Max": -12.92,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.0
       },
       "pitch": "A4 D5+A5",
       "loop": false,
@@ -6717,6 +6997,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -8.8,
       "suggestedVolume": 0.3631,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6724,7 +7005,8 @@
         "lufsMomentaryMax": -15.02,
         "lufs100Max": -11.49,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": 0.3
       },
       "pitch": "G5 A5 D6",
       "loop": false,
@@ -6796,6 +7078,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -3.3,
       "suggestedVolume": 0.6839,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6803,7 +7086,8 @@
         "lufsMomentaryMax": -18.87,
         "lufs100Max": -16.09,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.7
       },
       "pitch": null,
       "loop": false,
@@ -6856,6 +7140,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -5.2,
       "suggestedVolume": 0.5495,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6863,7 +7148,8 @@
         "lufsMomentaryMax": -18.38,
         "lufs100Max": -15.24,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.1
       },
       "pitch": null,
       "loop": false,
@@ -6910,6 +7196,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -3.1,
       "suggestedVolume": 0.6998,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
@@ -6917,7 +7204,8 @@
         "lufsMomentaryMax": -20.87,
         "lufs100Max": -17.21,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.7
       },
       "pitch": null,
       "loop": false,
@@ -6970,6 +7258,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -2.8,
       "suggestedVolume": 0.7244,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -6977,7 +7266,8 @@
         "lufsMomentaryMax": -19.31,
         "lufs100Max": -17.44,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.7
       },
       "pitch": null,
       "loop": false,
@@ -7025,24 +7315,26 @@
         "tonal"
       ],
       "description": "DEVELOPING pulse: one soft tonal blip on D4 with a sonar-like bloom.",
-      "durationMs": 521.1,
-      "onsetMs": 0.15,
-      "transientMs": 2.65,
-      "peakMs": 3.9,
-      "loudPeakMs": 29.3,
+      "durationMs": 494.2,
+      "onsetMs": 0.21,
+      "transientMs": 2.79,
+      "peakMs": 3.8,
+      "loudPeakMs": 27.5,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.7,
-      "suggestedVolume": 0.5821,
+      "suggestedGainDb": -2.3,
+      "suggestedVolume": 0.7674,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -16.26,
-        "lufsMomentaryMax": -19.27,
-        "lufs100Max": -13.38,
+        "lufs200Max": -18.72,
+        "lufsMomentaryMax": -21.73,
+        "lufs100Max": -15.8,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.8
       },
       "pitch": "D4",
       "loop": false,
@@ -7061,7 +7353,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "2414accfc2c21e9f694c788d1a55598b4a79b3164571d314ff614750fc109e97"
+      "sha256": "38832376a000aba07ce6f67f2afb00789e2f87edb524baf4d84340fa5ec4c578"
     },
     {
       "id": "developing_pulse_02",
@@ -7078,24 +7370,26 @@
         "tonal"
       ],
       "description": "DEVELOPING double pulse ('du-dum', frames 0 and 4).",
-      "durationMs": 637.5,
+      "durationMs": 601.5,
       "onsetMs": 0.17,
-      "transientMs": 2.65,
-      "peakMs": 3.9,
-      "loudPeakMs": 33.9,
+      "transientMs": 2.79,
+      "peakMs": 3.8,
+      "loudPeakMs": 32.5,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -5.8,
-      "suggestedVolume": 0.5129,
+      "suggestedGainDb": -3.3,
+      "suggestedVolume": 0.6839,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -15.22,
-        "lufsMomentaryMax": -18.07,
-        "lufs100Max": -14.41,
+        "lufs200Max": -17.65,
+        "lufsMomentaryMax": -20.55,
+        "lufs100Max": -16.84,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.8
       },
       "pitch": "D4",
       "loop": false,
@@ -7120,7 +7414,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "977497ec048500f4df90e8e07db6ea1ae20dffcb6a3cc6b7aee190cf5bac8eb9"
+      "sha256": "6f840d1c1f1eacf7f0f6ebdbb444e412e6380acb8856344afecc5a99849a14b6"
     },
     {
       "id": "developing_pulse_03",
@@ -7137,24 +7431,26 @@
         "tonal"
       ],
       "description": "DEVELOPING pulse, higher and lighter (D5).",
-      "durationMs": 518.4,
+      "durationMs": 512.7,
       "onsetMs": 0.12,
-      "transientMs": 1.96,
-      "peakMs": 3.7,
-      "loudPeakMs": 27.6,
+      "transientMs": 1.85,
+      "peakMs": 3.6,
+      "loudPeakMs": 27.4,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -6.5,
-      "suggestedVolume": 0.4732,
+      "suggestedGainDb": -4.3,
+      "suggestedVolume": 0.6095,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
-        "lufs200Max": -14.54,
-        "lufsMomentaryMax": -17.55,
-        "lufs100Max": -11.7,
+        "lufs200Max": -16.74,
+        "lufsMomentaryMax": -19.74,
+        "lufs100Max": -13.88,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": 0.2
       },
       "pitch": "D5",
       "loop": false,
@@ -7173,7 +7469,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "0b1b1cbe00113d74706bd251fd58b16c255f0184487fc4aeb96acb72c947fd28"
+      "sha256": "f15c08aaa8db807245ccce51c0ecf63502b915b2f4fab9f273790cac97aef7ab"
     },
     {
       "id": "developing_pulse_04",
@@ -7190,24 +7486,26 @@
         "tonal"
       ],
       "description": "DEVELOPING ticker: four D4 pulses a sixteenth apart at 90 BPM (5 frames), fading.",
-      "durationMs": 942.5,
+      "durationMs": 939.0,
       "onsetMs": 0.1,
-      "transientMs": 2.65,
-      "peakMs": 3.9,
-      "loudPeakMs": 47.5,
+      "transientMs": 2.79,
+      "peakMs": 3.8,
+      "loudPeakMs": 47.4,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.2,
-      "suggestedVolume": 0.6166,
+      "suggestedGainDb": -1.8,
+      "suggestedVolume": 0.8128,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -16.8,
-        "lufsMomentaryMax": -18.72,
-        "lufs100Max": -15.54,
+        "lufs200Max": -19.19,
+        "lufsMomentaryMax": -21.15,
+        "lufs100Max": -17.97,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.7
       },
       "pitch": "D4",
       "loop": false,
@@ -7244,7 +7542,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "5b2d320bbac5ccd47b03a7df296ede802a67021b0c5b63b05caf4e0530a50911"
+      "sha256": "72f9b7e89c21cc14f07ee2804def6d21b15755ce27956c4c71674e5da2c4cc51"
     },
     {
       "id": "developing_loop_01",
@@ -7263,23 +7561,25 @@
       ],
       "description": "Seamless DEVELOPING loop: a pulse on every beat at 90 BPM (beat 1 accented), first beat on frame 10.",
       "durationMs": 2666.7,
-      "onsetMs": 333.46,
-      "transientMs": 335.98,
-      "peakMs": 337.2,
-      "loudPeakMs": 409.2,
+      "onsetMs": 333.48,
+      "transientMs": 336.12,
+      "peakMs": 337.1,
+      "loudPeakMs": 410.7,
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.7,
-      "suggestedVolume": 0.5821,
+      "suggestedGainDb": -2.3,
+      "suggestedVolume": 0.7674,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -16.26,
-        "lufsMomentaryMax": -19.27,
-        "lufs100Max": -13.38,
+        "lufs200Max": -18.72,
+        "lufsMomentaryMax": -21.73,
+        "lufs100Max": -15.8,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.8
       },
       "pitch": "D",
       "loop": true,
@@ -7316,7 +7616,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "ddc057cb05bab7c8ff6b68b51db8af57e421ec40a8de7d398fff2ab9113a0ab2",
+      "sha256": "a6464d85bd989e74d33061cc63a6f84e5c01aecb48be2309a0490ff21eb9d22f",
       "extra": {
         "bpm": 90,
         "loopFrames": 80,
@@ -7340,23 +7640,25 @@
       ],
       "description": "Seamless DEVELOPING loop alternating D4 and a softer A4 at 90 BPM, first beat on frame 10.",
       "durationMs": 2666.7,
-      "onsetMs": 333.44,
-      "transientMs": 335.98,
-      "peakMs": 337.2,
-      "loudPeakMs": 409.0,
+      "onsetMs": 333.46,
+      "transientMs": 336.12,
+      "peakMs": 337.1,
+      "loudPeakMs": 409.3,
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -4.7,
-      "suggestedVolume": 0.5821,
+      "suggestedGainDb": -2.3,
+      "suggestedVolume": 0.7674,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -16.26,
-        "lufsMomentaryMax": -19.27,
-        "lufs100Max": -13.38,
+        "lufs200Max": -18.72,
+        "lufsMomentaryMax": -21.73,
+        "lufs100Max": -15.8,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.8
       },
       "pitch": "D",
       "loop": true,
@@ -7393,7 +7695,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "45ecb5158fd3c8515f6e1762835f05b42064d437869890c103f1eb0ca1f5f557",
+      "sha256": "69d59398619be5ca0254be2ecc505119ee064ac2de1b6bbbf760f2b7a8263d13",
       "extra": {
         "bpm": 90,
         "loopFrames": 80,
@@ -7418,22 +7720,24 @@
       "description": "Seamless, sparser DEVELOPING loop: two pulses per bar at 90 BPM (half-time feel), first beat on frame 10.",
       "durationMs": 2666.7,
       "onsetMs": 333.48,
-      "transientMs": 336.0,
-      "peakMs": 340.6,
-      "loudPeakMs": 410.2,
+      "transientMs": 336.12,
+      "peakMs": 337.1,
+      "loudPeakMs": 410.7,
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -5.2,
-      "suggestedVolume": 0.5495,
+      "suggestedGainDb": -2.7,
+      "suggestedVolume": 0.7328,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -15.85,
-        "lufsMomentaryMax": -18.85,
-        "lufs100Max": -13.02,
+        "lufs200Max": -18.26,
+        "lufsMomentaryMax": -21.27,
+        "lufs100Max": -15.39,
         "targetLufs": -21.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.8
       },
       "pitch": "D",
       "loop": true,
@@ -7458,7 +7762,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "460d6e77135639dc6671fb9624f677899171539c70b33cd891d10cbff62e17d3",
+      "sha256": "fd03238ab098b84ca691f2fa284b335c9379d64e095037ca2e95e5a858d0d433",
       "extra": {
         "bpm": 90,
         "loopFrames": 80,
@@ -7491,6 +7795,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.96,
@@ -7498,7 +7803,8 @@
         "lufsMomentaryMax": -26.73,
         "lufs100Max": -23.2,
         "targetLufs": -22.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.3
       },
       "pitch": null,
       "loop": false,
@@ -7568,6 +7874,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -7575,7 +7882,8 @@
         "lufsMomentaryMax": -25.51,
         "lufs100Max": -22.38,
         "targetLufs": -22.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.2
       },
       "pitch": null,
       "loop": false,
@@ -7655,6 +7963,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.97,
@@ -7662,7 +7971,8 @@
         "lufsMomentaryMax": -24.15,
         "lufs100Max": -20.93,
         "targetLufs": -22.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": 0.5
       },
       "pitch": null,
       "loop": false,
@@ -7752,6 +8062,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.1,
       "suggestedVolume": 0.9886,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.97,
@@ -7759,7 +8070,8 @@
         "lufsMomentaryMax": -23.8,
         "lufs100Max": -20.83,
         "targetLufs": -22.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": 0.6
       },
       "pitch": null,
       "loop": false,
@@ -7849,24 +8161,26 @@
         "riser"
       ],
       "description": "Alarm rise over 24 frames (the needle's sweep), D3 up to A3. Lands on its last frame (syncKind 'end').",
-      "durationMs": 1186.4,
-      "onsetMs": 3.04,
-      "transientMs": 18.75,
-      "peakMs": 867.1,
-      "loudPeakMs": 823.9,
+      "durationMs": 1183.6,
+      "onsetMs": 3.5,
+      "transientMs": 17.17,
+      "peakMs": 802.7,
+      "loudPeakMs": 822.9,
       "syncKind": "end",
       "syncMs": 800.0,
       "syncFrame30": 24,
-      "suggestedGainDb": -8.7,
-      "suggestedVolume": 0.3673,
+      "suggestedGainDb": -9.6,
+      "suggestedVolume": 0.3311,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -13.33,
-        "lufsMomentaryMax": -15.6,
-        "lufs100Max": -11.79,
+        "lufs200Max": -12.44,
+        "lufsMomentaryMax": -14.26,
+        "lufs100Max": -11.19,
         "targetLufs": -22.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.7
       },
       "pitch": "A3",
       "loop": false,
@@ -7891,7 +8205,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "8aab4d358ab6525e495687e0038dfa4b85cd03334b75a0991c23f9bcdcbe5472",
+      "sha256": "c16d265cd4c48576b25955fa7becc2219490d5f645b086c56b0702c187a702a7",
       "extra": {
         "riseFrames": 24
       }
@@ -7912,24 +8226,26 @@
         "riser"
       ],
       "description": "Alarm rise over 36 frames (1.2 s), up an octave to D4. Lands on its last frame (syncKind 'end').",
-      "durationMs": 1564.1,
-      "onsetMs": 3.08,
-      "transientMs": 18.71,
-      "peakMs": 1043.8,
-      "loudPeakMs": 1110.8,
+      "durationMs": 1568.8,
+      "onsetMs": 3.54,
+      "transientMs": 17.21,
+      "peakMs": 1158.7,
+      "loudPeakMs": 1125.6,
       "syncKind": "end",
       "syncMs": 1200.0,
       "syncFrame30": 36,
-      "suggestedGainDb": -12.3,
-      "suggestedVolume": 0.2427,
+      "suggestedGainDb": -8.9,
+      "suggestedVolume": 0.3589,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -9.71,
-        "lufsMomentaryMax": -10.91,
-        "lufs100Max": -9.29,
+        "lufs200Max": -13.05,
+        "lufsMomentaryMax": -14.14,
+        "lufs100Max": -12.42,
         "targetLufs": -22.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.3
       },
       "pitch": "D4",
       "loop": false,
@@ -7954,7 +8270,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "d9001dfc997b771f7a6cddcadac648df772f9e715686041312e24860ad1b8ab9",
+      "sha256": "d1e37ef1aef2449e43c1c484f9ae45b1b363d736f5cb05c00468f20eed344850",
       "extra": {
         "riseFrames": 36
       }
@@ -7975,24 +8291,26 @@
         "riser"
       ],
       "description": "Long alarm rise over 48 frames (1.6 s). Lands on its last frame (syncKind 'end').",
-      "durationMs": 1962.5,
-      "onsetMs": 3.44,
-      "transientMs": 18.6,
-      "peakMs": 1551.0,
-      "loudPeakMs": 1506.1,
+      "durationMs": 1971.1,
+      "onsetMs": 4.58,
+      "transientMs": 22.79,
+      "peakMs": 1565.8,
+      "loudPeakMs": 1515.4,
       "syncKind": "end",
       "syncMs": 1600.0,
       "syncFrame30": 48,
-      "suggestedGainDb": -12.8,
-      "suggestedVolume": 0.2291,
+      "suggestedGainDb": -9.6,
+      "suggestedVolume": 0.3311,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
-        "truePeakDbtp": -6.0,
-        "lufs200Max": -9.19,
-        "lufsMomentaryMax": -10.18,
-        "lufs100Max": -9.06,
+        "truePeakDbtp": -5.99,
+        "lufs200Max": -12.39,
+        "lufsMomentaryMax": -13.25,
+        "lufs100Max": -12.0,
         "targetLufs": -22.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -3.4
       },
       "pitch": "D4",
       "loop": false,
@@ -8017,7 +8335,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "2139ff4d94c9632813aec36914ac2e248d944f09e4b9c0d2c08db7f7b98ae808",
+      "sha256": "66c7e6c35d281ccc16e61e6596e0c59d735dfa6d89fcb1dd40a8cf225633d86c",
       "extra": {
         "riseFrames": 48
       }
@@ -8038,24 +8356,26 @@
         "riser"
       ],
       "description": "Stepped warning ladder over 48 frames: D3, G3, A3, D4. Lands on its last frame (syncKind 'end').",
-      "durationMs": 1954.4,
-      "onsetMs": 2.75,
-      "transientMs": 15.19,
-      "peakMs": 1278.0,
-      "loudPeakMs": 1226.9,
+      "durationMs": 1971.8,
+      "onsetMs": 3.48,
+      "transientMs": 17.17,
+      "peakMs": 1428.7,
+      "loudPeakMs": 1340.9,
       "syncKind": "end",
       "syncMs": 1600.0,
       "syncFrame30": 48,
-      "suggestedGainDb": -12.8,
-      "suggestedVolume": 0.2291,
+      "suggestedGainDb": -10.9,
+      "suggestedVolume": 0.2851,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -9.18,
-        "lufsMomentaryMax": -9.72,
-        "lufs100Max": -8.76,
+        "lufs200Max": -11.09,
+        "lufsMomentaryMax": -11.65,
+        "lufs100Max": -10.86,
         "targetLufs": -22.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -1.6
       },
       "pitch": "D4",
       "loop": false,
@@ -8080,7 +8400,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "5299f1413daa7fa62883084eedb63d8a1ec0150aebe90288bcaca64566b94f13",
+      "sha256": "2aebc2b31000862b19d1532677f1511e0ef5e913e4df8c518140abca9b925eaa",
       "extra": {
         "riseFrames": 48
       }
@@ -8112,6 +8432,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -8119,7 +8440,8 @@
         "lufsMomentaryMax": -33.5,
         "lufs100Max": -27.48,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -0.9
       },
       "pitch": null,
       "loop": false,
@@ -8166,6 +8488,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
@@ -8173,7 +8496,8 @@
         "lufsMomentaryMax": -30.92,
         "lufs100Max": -27.36,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -1.1
       },
       "pitch": null,
       "loop": false,
@@ -8225,6 +8549,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.4,
       "suggestedVolume": 0.955,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -8232,7 +8557,8 @@
         "lufsMomentaryMax": -29.24,
         "lufs100Max": -27.06,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -0.9
       },
       "pitch": null,
       "loop": false,
@@ -8290,6 +8616,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -0.0,
       "suggestedVolume": 1.0,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.97,
@@ -8297,7 +8624,8 @@
         "lufsMomentaryMax": -29.26,
         "lufs100Max": -27.31,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": true,
+        "phoneLossDb": -1.2
       },
       "pitch": null,
       "loop": false,
@@ -8360,6 +8688,7 @@
       "syncFrame30": 0,
       "suggestedGainDb": -2.5,
       "suggestedVolume": 0.7499,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -8367,7 +8696,8 @@
         "lufsMomentaryMax": -27.1,
         "lufs100Max": -25.22,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -1.2
       },
       "pitch": null,
       "loop": false,
@@ -8438,6 +8768,7 @@
       "syncFrame30": 2,
       "suggestedGainDb": -5.6,
       "suggestedVolume": 0.5248,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -8445,7 +8776,8 @@
         "lufsMomentaryMax": -25.39,
         "lufs100Max": -19.4,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.9
       },
       "pitch": null,
       "loop": false,
@@ -8509,6 +8841,7 @@
       "syncFrame30": 2,
       "suggestedGainDb": -5.3,
       "suggestedVolume": 0.5433,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -8516,7 +8849,8 @@
         "lufsMomentaryMax": -22.75,
         "lufs100Max": -19.7,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.6
       },
       "pitch": null,
       "loop": false,
@@ -8603,6 +8937,7 @@
       "syncFrame30": 2,
       "suggestedGainDb": -5.4,
       "suggestedVolume": 0.537,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
@@ -8610,7 +8945,8 @@
         "lufsMomentaryMax": -23.8,
         "lufs100Max": -19.57,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.5
       },
       "pitch": null,
       "loop": false,
@@ -8702,6 +9038,7 @@
       "syncFrame30": 2,
       "suggestedGainDb": -5.3,
       "suggestedVolume": 0.5433,
+      "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
@@ -8709,7 +9046,8 @@
         "lufsMomentaryMax": -22.94,
         "lufs100Max": -19.69,
         "targetLufs": -28.0,
-        "gainCapped": false
+        "gainCapped": false,
+        "phoneLossDb": -2.7
       },
       "pitch": null,
       "loop": false,

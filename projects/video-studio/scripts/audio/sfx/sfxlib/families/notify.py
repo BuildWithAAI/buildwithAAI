@@ -16,8 +16,10 @@ Sources:
 - success: VCSL marimba (CC0), dry and short (damped after 60 ms).
 - error: a band-limited pulse and saw (2x oversampled), low-passed at 1.6 kHz with a nasal bump
   at 650 Hz and a 28 Hz buzz flutter: present but small, never a game-show buzzer.
-- DEVELOPING: a sine D4 with its octave, a soft sonar-like bloom in the air room, and a tiny
-  band-passed tick on the attack.
+- DEVELOPING: a sine D4 with its octave and twelfth (D5 at -4 dB, A5 at -12 dB), a soft sonar-like
+  bloom in the air room, and a tiny band-passed tick on the attack. Critic round 1: with only a
+  -12 dB octave the body sat at D4 (294 Hz, under a phone speaker's range) and the blip lost
+  4.6-6.2 dB on a phone, so the tick carried it; the partials keep the loss within 3 dB.
 """
 
 from __future__ import annotations
@@ -153,11 +155,17 @@ def error(sid: str, buzzes: list, desc: str) -> Sound:
                  tags=["error", "denied", "buzz", "wrong", "comedic", "nope"], events=events, sources=[SYNTH_SOURCE], hp_hz=100.0, lp_hz=9000.0)
 
 
-def pulse_voice(note: str, t60: float, octave: float = 0.25, tick_db: float = -24.0, seed: str = "p") -> np.ndarray:
+DEVELOPING_OCTAVE_DB = -2.0  # D5 over a D4 pulse
+DEVELOPING_TWELFTH_DB = -10.0  # A5
+
+
+def pulse_voice(note: str, t60: float, octave_db: float = DEVELOPING_OCTAVE_DB, twelfth_db: float = DEVELOPING_TWELFTH_DB, tick_db: float = -24.0,
+                seed: str = "p") -> np.ndarray:
     f = float(midi_to_hz(note_number(note)))
     n = prims.n_samples(t60 + 0.05)
     body = prims.chirp(f, n) * prims.ar_env(n, 0.004, t60)
-    up = prims.chirp(2 * f, n) * prims.ar_env(n, 0.003, t60 * 0.5) * octave
+    up = prims.chirp(2 * f, n) * prims.ar_env(n, 0.003, t60 * 0.7) * prims.db(octave_db)
+    up = up + prims.chirp(3 * f, n) * prims.ar_env(n, 0.003, t60 * 0.45) * prims.db(twelfth_db)
     tick = prims.bandpass(prims.noise_burst(0.006, 0.003, seed + "-tick"), 900, 2800)
     tick = tick / max(np.max(np.abs(tick)), 1e-12) * prims.db(tick_db)
     x = body + up

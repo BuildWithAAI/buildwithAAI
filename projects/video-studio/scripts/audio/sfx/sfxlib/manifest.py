@@ -62,6 +62,7 @@ def entry(sound: Sound, m: dict, rel_file: str, sha: str) -> dict:
         "syncFrame30": m["syncFrame30"],
         "suggestedGainDb": gain,
         "suggestedVolume": round(10 ** (gain / 20.0), 4),
+        "underSpeechTrimDb": ROLES[sound.role].get("underSpeechTrimDb", 0.0),
         "loudness": {
             "samplePeakDbfs": m["samplePeakDbfs"],
             "truePeakDbtp": m["truePeakDbtp"],
@@ -70,6 +71,7 @@ def entry(sound: Sound, m: dict, rel_file: str, sha: str) -> dict:
             "lufs100Max": m["lufs100Max"],
             "targetLufs": m["targetLufs"],
             "gainCapped": m["gainCapped"],
+            "phoneLossDb": m["phoneLossDb"],
         },
         "pitch": sound.pitch,
         "loop": sound.loop,
@@ -98,7 +100,8 @@ def build(entries: list, generated: str) -> dict:
         "frameSamples": FRAME,
         "loudness": {
             "measure": "lufs200Max: BS.1770 K-weighted loudness in a 200 ms window, maximised over every sample position with silence around the file. Loudness integrates over about the first 200 ms of a sound, so this window rates clicks and swells alike; the EBU momentary 400 ms window (lufsMomentaryMax, also given) under-reads very short sounds by about 3 dB more.",
-            "suggestedGain": "suggestedGainDb = role target - lufs200Max, capped so the true peak after the gain stays at or under -6 dBTP (gainCapped); suggestedVolume = 10^(gain/20) for <Audio volume>",
+            "suggestedGain": "suggestedGainDb = role target - lufs200Max, capped so the true peak after the gain stays at or under -6 dBTP (gainCapped); suggestedVolume = 10^(gain/20) for <Audio volume>. underSpeechTrimDb: extra trim when the sound plays while Zoo speaks (ui: -3 dB; better, move it into a gap: sfx.ts nearestGapFrame)",
+            "phoneLoss": "loudness.phoneLossDb: 200 ms-window loudness lost on a phone-speaker model (mono, 350 Hz high-pass, 12 kHz low-pass, +3 dB at 3 kHz); narration loses about 5.4",
             "roles": ROLES,
             "narration": "-14 LUFS-I (scripts/voice); beds about -26 LUFS-S, ducked 6 dB under speech (docs/AUDIO.md)",
         },

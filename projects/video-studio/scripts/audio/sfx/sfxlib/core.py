@@ -38,13 +38,31 @@ BIT_DEPTH = 24
 # -26 LUFS-S and ducks a further 6 dB under speech. Starting values for the mix: tune by ear.
 GAIN_WINDOW_S = 0.2
 TRUE_PEAK_CAP_DBTP = -6.0  # the engine's bed ceiling: headroom to sum with the voice (Remotion mixes without a limiter)
+# Critic round 1 (2026-11-24): on a phone speaker (mono, 350 Hz high-pass) Zoo's voice loses 5.4 LU
+# while whooshes and UI sounds lose nothing or gain 0.2-1.6 dB, so at the old targets they played
+# 6-7 dB hotter against him on phones than on headphones: transition -18 -> -21 and ui -24 -> -27.
+# `underSpeechTrimDb`: placed while Zoo speaks (not in a gap), trim this much more.
 ROLES = {
-    "transition": {"targetLufs": -18.0, "use": "whooshes and swells at cuts and reveals, usually in a gap between lines"},
+    "transition": {"targetLufs": -21.0, "use": "whooshes and swells at cuts and reveals, usually in a gap between lines"},
     "meter": {"targetLufs": -22.0, "use": "Rekt Meter needle and alarm rise: a feature moment, still under the voice"},
     "notify": {"targetLufs": -21.0, "use": "ding, success, error, DEVELOPING pulse: clear but never startling"},
-    "ui": {"targetLufs": -24.0, "use": "pops, plops, ticks, swipes: often under narration"},
+    "ui": {"targetLufs": -27.0, "underSpeechTrimDb": -3.0,
+           "use": "pops, plops, ticks, swipes: in the gaps between Zoo's words (sfx.ts nearestGapFrame), else 3 dB lower"},
     "foley": {"targetLufs": -28.0, "use": "keyboard, mouse, mug, chair, Badger's paws and tail: natural, background"},
 }
+
+# The critic's phone-speaker model: the mono sum through a 4th-order 350 Hz high-pass, a 2nd-order
+# 12 kHz low-pass and +3 dB at 3 kHz (Q 1). Narration loses about 5.4 LU on it.
+PHONE_MODEL = {"highpassHz": 350.0, "highpassOrder": 4, "lowpassHz": 12000.0, "lowpassOrder": 2, "peakHz": 3000.0, "peakDb": 3.0, "peakQ": 1.0}
+# Loss on the phone model must stay within this (dB, 200 ms window) so the sound does not vanish on a
+# phone: by group first, else by role (critic round 1: the DEVELOPING blip lost 4.6-6.2 dB and the
+# Rekt alarm 7.1 dB; ding, success and error lost up to 3.5 dB and translate)
+PHONE_LOSS_MAX_DB = {"developing_pulse": -3.0, "developing_loop": -3.0, "rekt_alarm": -4.0, "notify": -4.0, "meter": -4.0}
+
+
+def phone_loss_limit(group: str, role: str):
+    """The phone-loss floor for a sound (dB), or None when its role has none."""
+    return PHONE_LOSS_MAX_DB.get(group, PHONE_LOSS_MAX_DB.get(role))
 
 SYNC_KINDS = ("transient", "hit", "peak", "end", "start")
 

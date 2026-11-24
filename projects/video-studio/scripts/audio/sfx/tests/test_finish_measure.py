@@ -92,6 +92,13 @@ class Measurements(unittest.TestCase):
         cut = prims.strike([(1000, 2.0, 1.0)], 0.3, 0.0002)
         self.assertGreater(measure.design_tail_db(cut), -20)
 
+    def test_phone_model_loses_low_tones_not_mid_ones(self):
+        t = np.arange(SR // 2) / SR
+        low = np.vstack([np.sin(2 * np.pi * 150 * t)] * 2) * 0.3
+        mid = np.vstack([np.sin(2 * np.pi * 1500 * t)] * 2) * 0.3
+        self.assertLess(measure.phone_loss_db(low), -15.0)  # under the model's 350 Hz high-pass
+        self.assertGreater(measure.phone_loss_db(mid), -1.0)
+
     def test_checks_flag_an_off_frame_sync(self):
         x = prims.dual(prims.noise(9600, "c") * prims.ar_env(9600, 0.05, 0.1))
         s = _sound(x, sync="peak", sync_s=0.051)
