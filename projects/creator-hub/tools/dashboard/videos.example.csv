@@ -1,0 +1,3 @@
+video_id,aliases,title,channel,format,tags,published_at,notes
+REPLACE_ID1,episode-slug-1,,zoora-ai,long,scams; wallet security,2026-11-01,Example row: replace with a real YouTube id and the slug its hub links used
+REPLACE_ID2,,,zoora-ai,short,scams,2026-11-02,Example Short cut from the episode above

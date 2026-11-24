@@ -37,8 +37,8 @@ export const clock = (seconds: number | null): string => {
 
 // Bars use #008F85 (light) and #20A89E (dark): the brand teal stepped so the mark clears 3:1 on the
 // card surface and stays inside the chart lightness band (checked with the dataviz palette validator).
-const CSS = `:root{--ink:#0B0C0F;--paper:#F4F6F8;--slate:#161A21;--teal:#29B8AD;--bg:var(--paper);--text:var(--ink);--muted:#4A5260;--surface:#FFFFFF;--line:#D9DEE5;--mark:#008F85;--ref:#4A5260;--warn-bg:#FFF4E0;--warn-text:#7A4A00;color-scheme:light dark}
-@media (prefers-color-scheme:dark){:root{--bg:var(--ink);--text:var(--paper);--muted:#AEB6C2;--surface:var(--slate);--line:#2B313C;--mark:#20A89E;--ref:#AEB6C2;--warn-bg:#2A2112;--warn-text:#FFD9A0}}
+const CSS = `:root{--ink:#0B0C0F;--paper:#F4F6F8;--slate:#161A21;--teal:#29B8AD;--bg:var(--paper);--text:var(--ink);--muted:#4A5260;--surface:#FFFFFF;--line:#D9DEE5;--mark:#008F85;--ref:#4A5260;--focus:var(--ink);--warn-bg:#FFF4E0;--warn-text:#7A4A00;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:var(--ink);--text:var(--paper);--muted:#AEB6C2;--surface:var(--slate);--line:#2B313C;--mark:#20A89E;--ref:#AEB6C2;--focus:var(--teal);--warn-bg:#2A2112;--warn-text:#FFD9A0}}
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--text);font:1rem/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;overflow-wrap:anywhere}
@@ -55,7 +55,7 @@ h2{font-size:1.25rem;line-height:1.3;margin:2.5rem 0 .35rem}
 h3{font-size:1rem;margin:1.25rem 0 .5rem}
 p{margin:.4rem 0 .9rem}
 a{color:inherit;text-decoration-color:var(--teal);text-decoration-thickness:2px;text-underline-offset:3px}
-:focus-visible{outline:3px solid var(--teal);outline-offset:3px;border-radius:4px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:4px}
 .lede,.muted{color:var(--muted)}
 .small{font-size:.9rem}
 .notice{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:0 12px 12px 0;padding:.75rem 1rem;margin:1rem 0}
@@ -81,7 +81,6 @@ a{color:inherit;text-decoration-color:var(--teal);text-decoration-thickness:2px;
 .bar-row:hover .mark{opacity:.8}
 .legend{display:flex;flex-wrap:wrap;gap:.25rem 1rem;color:var(--muted);font-size:.85rem;margin:.25rem 0 .75rem}
 .legend svg{vertical-align:middle;margin-right:.35rem}
-.tag{display:inline-block;font-size:.72rem;font-weight:650;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--muted);border-radius:999px;padding:0 .45rem;color:var(--muted);margin-left:.3rem;vertical-align:1px}
 .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:.5rem 0 1rem}
 table{width:100%;border-collapse:collapse;font-size:.9rem;overflow-wrap:normal}
 caption{text-align:left;font-weight:650;padding:.6rem .75rem}
@@ -184,7 +183,7 @@ export const renderDashboard = (input: PageInput): string => {
 
 	const kpi = (label: string, value: string, note = ''): string => `<div class="kpi"><dt>${esc(label)}</dt><dd>${esc(value)}${note ? `<small>${esc(note)}</small>` : ''}</dd></div>`;
 	const kpis = [
-		kpi('Videos with YouTube data', String(withViews.length), `${videos.length} known in total`),
+		kpi('Videos with data', String(withViews.length), `${videos.length} known in total`),
 		kpi('Views', compact(totalViews)),
 		kpi('Hub clicks', input.hubLoaded ? compact(totalClicks) : '–', input.hubLoaded ? 'humans, once per visitor, offer and day' : 'no hub data loaded'),
 		kpi('Conversions', totalConversions === null ? '–' : compact(totalConversions), totalConversions === null ? 'no payout file loaded' : 'from payout files'),

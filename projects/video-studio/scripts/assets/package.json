@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Marks scripts/assets/*.ts as ES modules so Node 22 runs them with type stripping and no MODULE_TYPELESS_PACKAGE_JSON warning. No dependencies: see docs/ASSETS.md."
+}
