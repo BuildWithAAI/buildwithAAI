@@ -128,19 +128,19 @@
   },
   "loudness": {
     "profile": "sting",
-    "integratedLufs": -16.1,
-    "shortTermMedianLufs": -17.4,
-    "shortTermMaxLufs": -16.4,
-    "lraLu": 3.0,
+    "integratedLufs": -16.0,
+    "shortTermMedianLufs": -16.9,
+    "shortTermMaxLufs": -15.9,
+    "lraLu": 2.6,
     "truePeakDbtp": -1.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.11,
-    "harshnessDb": -6.35,
-    "mudDb": 0.13,
-    "boxinessDb": -1.31,
-    "voicePocketDb": 2.68,
-    "centroidHz": 648.0
+    "slopeDbPerOct": -5.32,
+    "harshnessDb": -6.25,
+    "mudDb": 0.95,
+    "boxinessDb": -0.16,
+    "voicePocketDb": 1.86,
+    "centroidHz": 539.0
   },
   "checks": {
     "pass": true,

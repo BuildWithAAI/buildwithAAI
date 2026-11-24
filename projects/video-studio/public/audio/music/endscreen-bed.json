@@ -122,19 +122,19 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.2,
+    "integratedLufs": -26.1,
     "shortTermMedianLufs": -26.0,
     "shortTermMaxLufs": -25.4,
-    "lraLu": 1.2,
+    "lraLu": 1.0,
     "truePeakDbtp": -6.3
   },
   "spectrum": {
-    "slopeDbPerOct": -4.31,
+    "slopeDbPerOct": -4.41,
     "harshnessDb": -8.15,
-    "mudDb": 0.59,
-    "boxinessDb": -0.55,
-    "voicePocketDb": -7.13,
-    "centroidHz": 2150.0
+    "mudDb": 1.02,
+    "boxinessDb": 0.53,
+    "voicePocketDb": -7.99,
+    "centroidHz": 2032.0
   },
   "checks": {
     "pass": true,

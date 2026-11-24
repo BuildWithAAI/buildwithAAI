@@ -81,19 +81,19 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.0,
+    "integratedLufs": -26.1,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -24.8,
-    "lraLu": 2.2,
-    "truePeakDbtp": -8.5
+    "shortTermMaxLufs": -25.1,
+    "lraLu": 2.1,
+    "truePeakDbtp": -8.6
   },
   "spectrum": {
-    "slopeDbPerOct": -6.36,
-    "harshnessDb": -11.43,
-    "mudDb": 2.65,
-    "boxinessDb": 0.37,
-    "voicePocketDb": -3.67,
-    "centroidHz": 235.0
+    "slopeDbPerOct": -6.31,
+    "harshnessDb": -11.2,
+    "mudDb": 2.2,
+    "boxinessDb": 0.68,
+    "voicePocketDb": -3.35,
+    "centroidHz": 229.0
   },
   "checks": {
     "pass": true,
@@ -105,7 +105,7 @@
   },
   "file": "audio/music/bed-story-tension.flac",
   "format": "flac-16bit",
-  "bytes": 4190870,
+  "bytes": 4197363,
   "description": "A celli ostinato, a ticking woodblock and low piano octaves; the pulse, violas tremolo and the motif's tail from bar 8; high violins, tom rolls and a swell from bar 16.",
   "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [

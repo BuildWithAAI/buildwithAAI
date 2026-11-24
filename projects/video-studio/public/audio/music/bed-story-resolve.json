@@ -87,17 +87,17 @@
     "profile": "bed",
     "integratedLufs": -26.5,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -24.8,
-    "lraLu": 3.4,
-    "truePeakDbtp": -12.1
+    "shortTermMaxLufs": -25.1,
+    "lraLu": 3.2,
+    "truePeakDbtp": -11.2
   },
   "spectrum": {
-    "slopeDbPerOct": -5.15,
-    "harshnessDb": -14.33,
-    "mudDb": -1.53,
-    "boxinessDb": 1.49,
-    "voicePocketDb": -6.65,
-    "centroidHz": 679.0
+    "slopeDbPerOct": -5.43,
+    "harshnessDb": -13.87,
+    "mudDb": 1.13,
+    "boxinessDb": 0.96,
+    "voicePocketDb": -8.63,
+    "centroidHz": 575.0
   },
   "checks": {
     "pass": true,
@@ -109,7 +109,7 @@
   },
   "file": "audio/music/bed-story-resolve.flac",
   "format": "flac-16bit",
-  "bytes": 5505224,
+  "bytes": 5334071,
   "description": "Piano arpeggios and the major motif; strings, a soft kick and shaker from bar 8; violins and a harp lift in bars 16-19.",
   "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [

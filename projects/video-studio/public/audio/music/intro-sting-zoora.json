@@ -78,18 +78,18 @@
   "loudness": {
     "profile": "sting",
     "integratedLufs": -16.0,
-    "shortTermMedianLufs": -15.8,
-    "shortTermMaxLufs": -15.7,
+    "shortTermMedianLufs": -15.7,
+    "shortTermMaxLufs": -15.5,
     "lraLu": 0.6,
-    "truePeakDbtp": -2.5
+    "truePeakDbtp": -1.2
   },
   "spectrum": {
-    "slopeDbPerOct": -4.52,
-    "harshnessDb": -9.63,
-    "mudDb": -4.07,
-    "boxinessDb": 2.48,
-    "voicePocketDb": 0.52,
-    "centroidHz": 850.0
+    "slopeDbPerOct": -4.68,
+    "harshnessDb": -8.9,
+    "mudDb": -2.11,
+    "boxinessDb": 2.29,
+    "voicePocketDb": 0.34,
+    "centroidHz": 743.0
   },
   "checks": {
     "pass": true,
@@ -112,6 +112,6 @@
     "VSCO 2 strings",
     "VCSL bass drum, cymbal, glockenspiel"
   ],
-  "selfReview": "A harp and string shimmer rises from frame 6, and the lydian motif on celesta and vibes lands on the logo hit (frame 54) with an F-add9 bloom. Two celesta notes sit under the wordmark and tag (frames 70 and 78), and it fades with the picture. It is the most cinematic cue and quite dark (harshness -9.6). The MuseScore celesta is the weakest sample in it. Listen for whether the reversed piano bloom reads as intended or as a swoosh.",
+  "selfReview": "A harp and string shimmer rises from frame 6, and the lydian motif on celesta and vibes lands on the logo hit (frame 54) with an F-add9 bloom. Two celesta notes sit under the wordmark and tag (frames 70 and 78), and it fades with the picture. It is the most cinematic cue and quite dark (harshness -8.9). The MuseScore celesta is the weakest sample in it. Listen for whether the reversed piano bloom reads as intended or as a swoosh.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

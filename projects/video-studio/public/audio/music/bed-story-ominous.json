@@ -71,19 +71,19 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -25.9,
+    "integratedLufs": -26.0,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -24.7,
+    "shortTermMaxLufs": -24.6,
     "lraLu": 1.8,
-    "truePeakDbtp": -7.8
+    "truePeakDbtp": -8.1
   },
   "spectrum": {
-    "slopeDbPerOct": -6.02,
-    "harshnessDb": -12.61,
-    "mudDb": 0.48,
-    "boxinessDb": -0.5,
-    "voicePocketDb": -6.92,
-    "centroidHz": 213.0
+    "slopeDbPerOct": -6.13,
+    "harshnessDb": -12.02,
+    "mudDb": 0.22,
+    "boxinessDb": 0.6,
+    "voicePocketDb": -6.46,
+    "centroidHz": 164.0
   },
   "checks": {
     "pass": true,
@@ -96,7 +96,7 @@
   },
   "file": "audio/music/bed-story-ominous.flac",
   "format": "flac-16bit",
-  "bytes": 4962973,
+  "bytes": 4769457,
   "description": "Bass drones and a muted frame-drum heartbeat, low piano octaves with the tritone, bowed-vibes dissonances, the motif four times slower on low piano.",
   "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [

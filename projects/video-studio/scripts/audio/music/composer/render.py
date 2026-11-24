@@ -164,7 +164,7 @@ def _score_with(score: Score, part, instrument) -> Score:
 
 # ------------------------------------------------------------------------------------------ rendering
 
-CACHE_VERSION = "1"
+CACHE_VERSION = "2"  # 2: VCSL octave/tuning correction (roots are part of the sampler key)
 
 
 def _source_key(src) -> str:
@@ -174,7 +174,7 @@ def _source_key(src) -> str:
     if hasattr(src, "pieces"):  # Kit
         return "Kit(" + ",".join(f"{k}:{_source_key(v)}" for k, v in sorted(src.pieces.items())) + f";{src.chokes})"
     if hasattr(src, "bank") and hasattr(src, "velocity_power"):  # Sampler
-        zones = sorted(str(z.path.name) for z in src.bank.zones)
+        zones = sorted(f"{z.path.name}@{z.root}" for z in src.bank.zones)
         h = hashlib.sha256("|".join(zones).encode()).hexdigest()[:16]
         return (f"Sampler({src.seed},{h},{src.velocity_power},{src.normalize_layers},{src.damper},{src.release_gain_db},"
                 f"{src.one_shot},{src.gain_db},{src.pedal_bank is not None},{src.release_bank is not None})")

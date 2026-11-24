@@ -231,24 +231,26 @@
   "loudness": {
     "profile": "standalone",
     "integratedLufs": -14.0,
-    "shortTermMedianLufs": -14.3,
-    "shortTermMaxLufs": -12.4,
-    "lraLu": 3.6,
+    "shortTermMedianLufs": -14.1,
+    "shortTermMaxLufs": -12.3,
+    "lraLu": 3.7,
     "truePeakDbtp": -1.3
   },
   "spectrum": {
-    "slopeDbPerOct": -4.57,
-    "harshnessDb": -4.73,
-    "mudDb": -0.62,
-    "boxinessDb": -0.43,
-    "voicePocketDb": 1.17,
-    "centroidHz": 764.0
+    "slopeDbPerOct": -4.74,
+    "harshnessDb": -4.82,
+    "mudDb": 0.33,
+    "boxinessDb": 0.34,
+    "voicePocketDb": 0.3,
+    "centroidHz": 696.0
   },
   "checks": {
     "pass": true,
     "failures": 0,
-    "warnings": 0,
-    "failed": []
+    "warnings": 1,
+    "failed": [
+      "noise.humDb"
+    ]
   },
   "file": "audio/music/theme-15s.wav",
   "format": "wav-24bit",

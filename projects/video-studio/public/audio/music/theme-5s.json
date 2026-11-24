@@ -152,24 +152,26 @@
   "loudness": {
     "profile": "sting",
     "integratedLufs": -16.0,
-    "shortTermMedianLufs": -17.3,
-    "shortTermMaxLufs": -15.4,
+    "shortTermMedianLufs": -16.9,
+    "shortTermMaxLufs": -15.1,
     "lraLu": 4.2,
     "truePeakDbtp": -1.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.28,
-    "harshnessDb": -6.61,
-    "mudDb": 0.18,
-    "boxinessDb": -1.66,
-    "voicePocketDb": 2.7,
-    "centroidHz": 607.0
+    "slopeDbPerOct": -5.5,
+    "harshnessDb": -6.75,
+    "mudDb": 1.14,
+    "boxinessDb": -0.28,
+    "voicePocketDb": 1.77,
+    "centroidHz": 519.0
   },
   "checks": {
     "pass": true,
     "failures": 0,
-    "warnings": 0,
-    "failed": []
+    "warnings": 1,
+    "failed": [
+      "noise.humDb"
+    ]
   },
   "file": "audio/music/theme-5s.wav",
   "format": "wav-24bit",

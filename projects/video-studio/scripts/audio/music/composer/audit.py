@@ -14,10 +14,10 @@ from audiolib.core import note_name
 UNPITCHED = ("kit", "kick")
 
 RANGES = {  # comfortable written ranges (MIDI) for the parts we use
-    "bass": (28, 60), "sub": (24, 50), "celli": (36, 76), "violas": (48, 84), "violins": (55, 100), "pizz": (48, 84),
+    "bass": (28, 60), "sub": (24, 50), "celli": (36, 76), "violas": (48, 84), "violins": (55, 100), "pizz": (48, 91),
     "celli_pizz": (36, 72), "basses_pizz": (28, 60), "vibes": (53, 89), "piano": (21, 108), "ep": (40, 84), "brass": (48, 84),
     "gtr": (40, 76), "pulse": (36, 84), "pad": (36, 84), "harp": (24, 103), "marimba": (36, 96), "glock": (67, 108),
-    "celesta": (60, 108), "kalimba": (47, 81), "bells": (60, 77), "bowed": (45, 76),
+    "celesta": (60, 108), "kalimba": (59, 84), "bells": (60, 77), "bowed": (57, 91),
 }
 
 

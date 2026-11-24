@@ -156,17 +156,19 @@ def correction() -> Arrangement:
     # the motif backwards (F Ab A D D), calm and even, resolving on D
     motif.place(P["piano"], 1.5, "D5", form="retro", vel=70, rhythm=[(0, 0.5), (0.5, 0.5), (1.0, 0.5), (1.5, 0.5), (2.0, 2.2)], staccato=0.98)
     # light voicings above the celli's roots: the low-mid stays clear (the first mix read boxy)
-    th.chord("piano", 0, 1.5, "F3 A3 D4", 0.5, 52)
-    th.chord("piano", 0, 2.0, "Ab3 D4", 0.5, 50)
-    th.chord("piano", 0, 2.5, "G3 D4", 0.5, 50)
-    th.chord("piano", 0, 3.0, "A3 C4 F4", 2.0, 54, roll=0.03)
+    th.chord("piano", 0, 1.5, "A3 D4", 0.5, 50)
+    th.chord("piano", 0, 2.0, "Ab3 D4", 0.5, 48)
+    th.chord("piano", 0, 2.5, "G3 D4", 0.5, 48)
+    th.chord("piano", 0, 3.0, "C4 F4", 2.0, 52, roll=0.03)
     P["piano"].sustain(3.05, 5.0)
     for n, (s, d) in (("Bb2", (1.5, 1.0)), ("A2", (2.5, 0.5)), ("D3", (3.0, 2.2))):
         P["celli"].note(n, s, d, 64)
     swell(P["celli"], 1.5, 1.6, 0, 56)
     swell(P["celli"], 3.2, 5.0, 60, 24)
     P["bass"].note("D2", 3.0, 1.6, 64)
-    return _arr("bumper-correction", th, 3.4, fade=0.7, faders={"piano": -1.0})
+    arr = _arr("bumper-correction", th, 3.4, fade=0.7, faders={"piano": -1.0})
+    arr.bus_eq = [*BUMPER_BUS, C.PK(700, -3.0, 1.0)]  # soft piano in the 4th octave reads boxy (+5 dB at 500-1000 Hz)
+    return arr
 
 
 # ------------------------------------------------------------------------------------------ intro sting

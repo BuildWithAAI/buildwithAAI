@@ -10,6 +10,7 @@ files skip cleanly when those are absent.
 from __future__ import annotations
 
 import json
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -209,6 +210,37 @@ class AuditTests(unittest.TestCase):
         s.part("bass").note("C1", 0, 1, 80)
         r = audit.ranges(s)
         self.assertFalse(r[0]["ok"])
+
+
+def _pitch_midi(audio, expected_midi: float) -> float:
+    """Strongest spectral peak within +-7 semitones of the expected note (so an octave error shows)."""
+    m = np.asarray(audio).mean(axis=0)
+    i = int(np.argmax(np.abs(m) > 0.05 * np.abs(m).max()))
+    seg = m[i + int(0.05 * SR): i + int(0.85 * SR)]
+    n = 1 << 17
+    spec = np.abs(np.fft.rfft(seg * np.hanning(seg.size), n))
+    f = np.fft.rfftfreq(n, 1.0 / SR)
+    f0 = 440.0 * 2 ** ((expected_midi - 69) / 12)
+    band = (f > f0 * 2 ** (-7 / 12)) & (f < f0 * 2 ** (7 / 12))
+    lowest_strong = f[band][np.argmax(spec[band] > 0.3 * spec[band].max())]
+    return 69 + 12 * math.log2(lowest_strong / 440.0)
+
+
+@unittest.skipUnless(VCSL_OK, "VCSL samples not installed (scripts/audio/setup.sh)")
+class PitchTests(unittest.TestCase):
+    """VCSL file names mix octave conventions (the Kawai, upright, vibraphone, marimba, glockenspiel
+    and kalimba name middle C "C3"). composer.instruments corrects them; a written A4 must sound
+    at 440 Hz, not 880 Hz."""
+
+    def test_written_pitch_is_sounding_pitch(self):
+        from composer import instruments as I
+
+        for name, sampler, note in (("kawai", I.piano("kawai"), 69), ("vibes", I.vibes(), 69), ("marimba", I.marimba(), 69),
+                                    ("harp", I.harp(), 69), ("glock", I.glock(), 84), ("bowed vibes", I.vibes_bowed(), 69),
+                                    ("kalimba", I.kalimba(), 69)):
+            a = sampler.render_events([(note, 0.0, 1.0, 90)], 1.5)
+            got = _pitch_midi(a, note)
+            self.assertAlmostEqual(got, note, delta=0.3, msg=f"{name}: written {note} sounds {got:.2f}")
 
 
 @unittest.skipUnless(VCSL_OK, "VCSL samples not installed (scripts/audio/setup.sh)")

@@ -38,7 +38,7 @@
         "form": "retro",
         "mode": "minor",
         "part": "piano",
-        "startSec": 0.916,
+        "startSec": 0.915,
         "pitches": [
           77,
           80,
@@ -54,18 +54,18 @@
   "loudness": {
     "profile": "sting",
     "integratedLufs": -16.0,
-    "shortTermMedianLufs": -16.6,
-    "shortTermMaxLufs": -16.6,
+    "shortTermMedianLufs": -16.4,
+    "shortTermMaxLufs": -16.4,
     "lraLu": 0.0,
-    "truePeakDbtp": -3.5
+    "truePeakDbtp": -3.2
   },
   "spectrum": {
-    "slopeDbPerOct": -5.37,
-    "harshnessDb": -10.02,
-    "mudDb": -0.36,
-    "boxinessDb": 3.66,
-    "voicePocketDb": 6.28,
-    "centroidHz": 670.0
+    "slopeDbPerOct": -5.26,
+    "harshnessDb": -8.56,
+    "mudDb": 0.75,
+    "boxinessDb": 3.43,
+    "voicePocketDb": 3.21,
+    "centroidHz": 554.0
   },
   "checks": {
     "pass": true,
@@ -87,6 +87,6 @@
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "Sober: a reversed piano swell (the rewind) runs straight into the motif played backwards, calm, resolving to D minor. It is the quietest and darkest bumper (harshness -10) and it is normalised to the same -16 LUFS-I as the others, so check that it does not feel louder than its mood.",
+  "selfReview": "Sober: a reversed piano swell (the rewind) runs straight into the motif played backwards, calm, resolving to D minor. It is the darkest bumper (harshness -8.6). Its piano voicings were thinned and 700 Hz cut after the first render read boxy. It is normalised to the same -16 LUFS-I as the others, so check that it does not feel louder than its mood.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

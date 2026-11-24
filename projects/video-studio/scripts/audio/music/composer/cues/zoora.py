@@ -103,7 +103,7 @@ def _bed(cid: str, st: Story, faders: dict, bus_eq=None) -> Arrangement:
     # story beds are warm by nature (harp, low strings, pad): the bus takes 2.5 dB out of 300 Hz (the first
     # renders read +6 dB mud), a little more pocket at 2.5 kHz, and air above 6 kHz so warm never reads muffled
     return Arrangement(cid, st.s, LENGTH, st.tracks(faders), preset="bed", loop=True, tail=10.0, wrap=8.0, reverbs=C.reverbs(),
-                       bus_eq=bus_eq or [C.PK(300, -2.5, 0.8), C.PK(550, -2.5, 0.9), C.PK(2500, -4.0, 0.7), C.HS(6000, 3.0)])
+                       bus_eq=bus_eq or [C.PK(300, -3.5, 0.8), C.PK(550, -2.5, 0.9), C.PK(2500, -4.0, 0.7), C.HS(6000, 3.0)])
 
 
 def _arp(part, t: float, notes: str, step: float, vel: int, dur: float | None = None, accent: int = 6, transpose: int = 0):
@@ -114,12 +114,12 @@ def _arp(part, t: float, notes: str, step: float, vel: int, dur: float | None = 
 
 # ------------------------------------------------------------------------------------------ curious
 
-CURIOUS = [  # per 2 bars: harp arpeggio (8ths), bowed note, root
-    ("F3 C4 G4 A4 B4 A4 G4 C4", "A4", "F2"),
-    ("D3 A3 F4 C5 E5 C5 F4 A3", "C5", "D2"),
-    ("Bb2 F3 C4 D4 E4 D4 C4 F3", "D5", "Bb1"),
-    ("C3 G3 Bb3 D4 F4 D4 Bb3 G3", "D5", "C2"),
-]
+CURIOUS = [  # per 2 bars: harp arpeggio (8ths, played an octave up), bowed note, root
+    ("F3 C4 G4 A4 B4 A4 G4 C4", "A5", "F2"),
+    ("D3 A3 F4 C5 E5 C5 F4 A3", "C6", "D2"),
+    ("Bb2 F3 C4 D4 E4 D4 C4 F3", "D6", "Bb1"),
+    ("C3 G3 Bb3 D4 F4 D4 Bb3 G3", "D6", "C2"),
+]  # bowed vibes sit high and glassy, clear of the narration's body
 
 
 def curious() -> Arrangement:
@@ -148,7 +148,7 @@ def curious() -> Arrangement:
             st.drums(bar, {"fmute": "x.......o.o....." if bar % 2 == 0 else "x.....o.........", "shaker": "....x.......x..." if sec == 2 else "................"},
                      vel={"x": 54, "o": 38})
         if sec == 2 and bar < 19:
-            for j, n in enumerate({"F2": "F4 C5 A5 C5", "C2": "C4 G4 Bb4 D5"}[root].split()):
+            for j, n in enumerate({"F2": "F5 A5 F5 A5", "C2": "C5 G5 Bb5 D6"}[root].split()):  # no C6 near the motif's B5
                 P["marimba"].note(n, t + j * 1.0 + 0.5, 0.8, 50)
     motif.place(P["celesta"], st.b(0), "F5", mode="major", vel=70, stretch=2.0, last_dur=4.0)
     motif.place(P["celesta"], st.b(8), "F5", mode="major", vel=72, stretch=2.0, last_dur=4.0)

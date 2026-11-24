@@ -110,12 +110,12 @@
     "truePeakDbtp": -1.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.71,
-    "harshnessDb": -8.95,
-    "mudDb": -0.73,
-    "boxinessDb": -3.67,
-    "voicePocketDb": 0.68,
-    "centroidHz": 481.0
+    "slopeDbPerOct": -5.79,
+    "harshnessDb": -8.46,
+    "mudDb": 0.52,
+    "boxinessDb": -3.23,
+    "voicePocketDb": -0.08,
+    "centroidHz": 424.0
   },
   "checks": {
     "pass": true,

@@ -29,10 +29,18 @@ _NOTE = re.compile(r"^([A-Ga-g])(#|b)?(-?\d)$")
 
 
 def bank(rel, include: str | None = None, exclude: str | None = None, layer_words: dict | None = None,
-         keep_layers=None) -> SampleBank:
+         keep_layers=None, octave: int = 0, tune: bool = False) -> SampleBank:
     """Index a VCSL folder. With `layer_words` ({"soft": 1, "med": 2, "loud": 3}), a word token sets
     the velocity layer and a bare number token is the round robin. `keep_layers` drops other layers
-    (use it when only some layers cover every root, or the sampler would jump between distant roots)."""
+    (use it when only some layers cover every root, or the sampler would jump between distant roots).
+
+    `octave` corrects the file-name convention: several VCSL sets name middle C "C3" (the Yamaha
+    convention), so their samples sound an octave above the label. Measured here (harmonic product
+    spectrum, every sample): Kawai grand +11.98, Yamaha upright +12.00, vibraphone +12.00, bowed
+    vibraphone +12.00, marimba +11.99, glockenspiel +12.12, kalimba +12 (strongest partial) semitones;
+    the Steinway B and the concert harp use the standard convention (0). `tune=True` also measures
+    each sample's actual pitch near its corrected root and uses that (fractional) root, for sets that
+    are not tuned to A440 equal temperament (the kalimba's tines are up to 40 cents off)."""
     folder = paths.vcsl_dir(*rel) if isinstance(rel, (tuple, list)) else paths.vcsl_dir(rel)
     files = sorted(folder.rglob("*.wav"))
     if include:
@@ -68,7 +76,45 @@ def bank(rel, include: str | None = None, exclude: str | None = None, layer_word
         zones.append(Zone(f, root, layer, rr, "_".join(art)))
     if keep_layers is not None:
         zones = [z for z in zones if z.layer in set(keep_layers)]
+    if octave or tune:
+        fixed = []
+        for z in zones:
+            if z.root is None:
+                fixed.append(z)
+                continue
+            root = z.root + octave
+            if tune:
+                root = measured_root(str(z.path), root)
+            fixed.append(Zone(z.path, root, z.layer, z.rr, z.articulation))
+        zones = fixed
     return SampleBank(zones)
+
+
+@lru_cache(maxsize=None)
+def measured_root(path: str, nominal: float, search_semitones: float = 1.0) -> float:
+    """The sample's actual pitch (fractional MIDI), from the strongest spectral peak within
+    +-`search_semitones` of `nominal`, over 1 s after the onset; `nominal` when nothing is found."""
+    import numpy as np
+    import soundfile as sf
+
+    x, sr = sf.read(path, always_2d=True)
+    m = x.mean(axis=1)
+    if not np.any(m):
+        return float(nominal)
+    i = int(np.argmax(np.abs(m) > 0.05 * np.abs(m).max()))
+    seg = m[i + int(0.03 * sr): i + int(1.03 * sr)]
+    if seg.size < sr // 4:
+        return float(nominal)
+    n = 1 << 17
+    spec = np.abs(np.fft.rfft(seg * np.hanning(seg.size), n))
+    f = np.fft.rfftfreq(n, 1.0 / sr)
+    f0 = 440.0 * 2 ** ((nominal - 69) / 12)
+    lo, hi = f0 * 2 ** (-search_semitones / 12), f0 * 2 ** (search_semitones / 12)
+    band = (f >= lo) & (f <= hi)
+    if not band.any() or spec[band].max() <= 0:
+        return float(nominal)
+    fp = float(f[band][np.argmax(spec[band])])
+    return round(69 + 12 * np.log2(fp / 440.0), 3)
 
 
 ZITH = ("Chordophones", "Zithers")
@@ -82,7 +128,7 @@ MEMB = ("Membranophones", "Struck Membranophones")
 def piano(kind: str = "kawai") -> Sampler:
     if kind == "kawai":
         root = (*ZITH, "Grand Piano, Kawai")
-        return Sampler(bank((*root, "Sustains")), release_bank=bank((*root, "Releases")), normalize_layers="per_zone",
+        return Sampler(bank((*root, "Sustains"), octave=12), release_bank=bank((*root, "Releases"), octave=12), normalize_layers="per_zone",
                        velocity_power=1.6, release_gain_db=-22.0, damper=(0.5, 0.12, 88), seed="kawai")
     if kind == "steinway":
         root = (*ZITH, "Grand Piano, Steinway B")
@@ -90,7 +136,7 @@ def piano(kind: str = "kawai") -> Sampler:
                        normalize_layers="per_zone", velocity_power=1.6, release_gain_db=-24.0, damper=(0.55, 0.12, 88), seed="steinway")
     if kind == "upright":
         root = (*ZITH, "Upright Piano, Yamaha")
-        return Sampler(bank((*root, "Sustains")), release_bank=bank((*root, "Releases")), normalize_layers="per_zone",
+        return Sampler(bank((*root, "Sustains"), octave=12), release_bank=bank((*root, "Releases"), octave=12), normalize_layers="per_zone",
                        velocity_power=1.5, release_gain_db=-20.0, damper=(0.4, 0.1, 88), seed="upright")
     raise ValueError(f"unknown piano {kind!r}")
 
@@ -99,24 +145,24 @@ def piano(kind: str = "kawai") -> Sampler:
 def vibes(mallet: str = "soft") -> Sampler:
     folder = {"soft": "Soft Mallets", "hard": "Hard Mallets"}[mallet]
     # motor off (VCSL "Main" mic); a long natural ring, so a short damper release keeps lines clean
-    return Sampler(bank((*STRUCK, "Vibraphone", folder)), normalize_layers="per_zone", velocity_power=1.5,
+    return Sampler(bank((*STRUCK, "Vibraphone", folder), octave=12), normalize_layers="per_zone", velocity_power=1.5,
                    damper=(0.35, 0.25, 127), seed=f"vibes-{mallet}")
 
 
 @lru_cache(maxsize=None)
 def vibes_bowed() -> Sampler:
-    return Sampler(bank((*STRUCK, "Vibraphone", "Bowed")), velocity_power=1.2, damper=(1.2, 1.0, 127), seed="vibes-bowed")
+    return Sampler(bank((*STRUCK, "Vibraphone", "Bowed"), octave=12), velocity_power=1.2, damper=(1.2, 1.0, 127), seed="vibes-bowed")
 
 
 @lru_cache(maxsize=None)
 def marimba() -> Sampler:
-    return Sampler(bank((*STRUCK, "Marimba"), layer_words={"soft": 1, "med": 2, "loud": 3}), normalize_layers="per_zone",
+    return Sampler(bank((*STRUCK, "Marimba"), layer_words={"soft": 1, "med": 2, "loud": 3}, octave=12), normalize_layers="per_zone",
                    velocity_power=1.5, damper=(0.6, 0.4, 127), seed="marimba")
 
 
 @lru_cache(maxsize=None)
 def glock() -> Sampler:
-    return Sampler(bank((*STRUCK, "Glockenspiel"), layer_words={"soft": 1, "medium": 2, "loud": 3}), normalize_layers="per_zone",
+    return Sampler(bank((*STRUCK, "Glockenspiel"), layer_words={"soft": 1, "medium": 2, "loud": 3}, octave=12, tune=True), normalize_layers="per_zone",
                    velocity_power=1.5, damper=(1.5, 1.5, 0), seed="glock")
 
 
@@ -129,12 +175,12 @@ def harp() -> Sampler:
 
 @lru_cache(maxsize=None)
 def bells() -> Sampler:
-    return Sampler(bank((*STRUCK, "Tubular Bells 2")), normalize_layers="per_zone", velocity_power=1.4, damper=(3.0, 3.0, 0), seed="bells")
+    return Sampler(bank((*STRUCK, "Tubular Bells 2"), octave=12), normalize_layers="per_zone", velocity_power=1.4, damper=(3.0, 3.0, 0), seed="bells")
 
 
 @lru_cache(maxsize=None)
 def kalimba() -> Sampler:
-    return Sampler(bank(("Idiophones", "Plucked Idiophones", "Kalimba, Kenya")), velocity_power=1.5, damper=(0.8, 0.6, 127), seed="kalimba")
+    return Sampler(bank(("Idiophones", "Plucked Idiophones", "Kalimba, Kenya"), octave=12, tune=True), velocity_power=1.5, damper=(0.8, 0.6, 127), seed="kalimba")
 
 
 # ------------------------------------------------------------------------------------------ MuseScore (fluidsynth)

@@ -85,19 +85,19 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.0,
-    "shortTermMedianLufs": -26.0,
+    "integratedLufs": -26.1,
+    "shortTermMedianLufs": -26.1,
     "shortTermMaxLufs": -25.1,
-    "lraLu": 1.1,
-    "truePeakDbtp": -6.3
+    "lraLu": 1.0,
+    "truePeakDbtp": -6.2
   },
   "spectrum": {
-    "slopeDbPerOct": -4.2,
-    "harshnessDb": -11.88,
-    "mudDb": 1.97,
-    "boxinessDb": 3.87,
-    "voicePocketDb": -8.14,
-    "centroidHz": 772.0
+    "slopeDbPerOct": -4.45,
+    "harshnessDb": -12.37,
+    "mudDb": 2.54,
+    "boxinessDb": 3.68,
+    "voicePocketDb": -7.91,
+    "centroidHz": 762.0
   },
   "checks": {
     "pass": true,
@@ -109,7 +109,7 @@
   },
   "file": "audio/music/bed-story-curious.flac",
   "format": "flac-16bit",
-  "bytes": 4709522,
+  "bytes": 4904234,
   "description": "A harp ostinato, bowed-vibes sustains and the motif augmented on celesta; kalimba, pizzicato and a muted frame drum from bar 8; marimba from bar 16.",
   "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -122,6 +122,6 @@
     "VCSL frame drum, shaker",
     "analog pad"
   ],
-  "selfReview": "F lydian: a harp ostinato an octave up, bowed-vibes sustains and the motif augmented on celesta; kalimba and pizzicato from bar 8, marimba from 16. The first mix had a +9 dB hump at 250-1000 Hz that would have masked narration; moving the harp up an octave and a bus scoop fixed it (mud now within limits). It stays warm and dark above 2 kHz, which helps the voice but may read soft on its own.",
+  "selfReview": "F lydian: a harp ostinato an octave up, high bowed-vibes sustains and the motif augmented on celesta; kalimba and pizzicato from bar 8, marimba from 16. The first mix had a +9 dB hump at 250-1000 Hz that would have masked narration; moving the harp up an octave and a bus scoop fixed it (mud now within limits). It stays warm and dark above 2 kHz, which helps the voice but may read soft on its own.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }
