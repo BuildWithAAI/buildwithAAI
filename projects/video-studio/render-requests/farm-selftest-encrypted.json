@@ -6,6 +6,6 @@
   "retentionDays": 1,
   "jobs": [
     {"composition": "TestCard", "kind": "video", "output": "out/farm-selftest-encrypted/testcard.mp4", "props": {"title": "Encrypted self-test", "subtitle": "Only ciphertext leaves the runner"}},
-    {"composition": "TestCard", "kind": "audio", "output": "out/farm-selftest-encrypted/testcard.m4a", "props": {"title": "Encrypted self-test", "subtitle": "audio only"}}
+    {"composition": "TestCard", "kind": "audio", "output": "out/farm-selftest-encrypted/testcard.m4a", "props": {"title": "Encrypted self-test", "subtitle": "audio only (AAC)"}}
   ]
 }

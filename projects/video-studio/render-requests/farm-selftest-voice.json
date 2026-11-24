@@ -11,6 +11,6 @@
   "jobs": [
     {"composition": "TestCard", "kind": "video", "output": "out/farm-selftest-voice/es/testcard.mp4", "props": {"channel": "_farm", "slug": "voice-selftest", "lang": "es", "title": "Voice hand-off", "subtitle": "only the es dub, fitted to en"}},
     {"composition": "TestCard", "kind": "audio", "output": "out/farm-selftest-voice/pt-br/dub-track.wav", "props": {"channel": "_farm", "slug": "voice-selftest", "lang": "pt-br", "title": "Dub track", "subtitle": "audio only"}},
-    {"composition": "TestCard", "kind": "still", "frame": 45, "output": "out/farm-selftest-voice/all/testcard.png", "props": {"title": "Voice hand-off", "subtitle": "en master, es and pt-br dubs unpacked"}}
+    {"composition": "TestCard", "kind": "still", "frame": 45, "output": "out/farm-selftest-voice/all/testcard.png", "props": {"title": "Voice hand-off", "subtitle": "en master, es and pt-br dubs fitted to it"}}
   ]
 }
