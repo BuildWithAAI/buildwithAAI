@@ -388,8 +388,15 @@ test audio only.
 
 ## Measured on GitHub (2026-11-24)
 
-Run [45430445337](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/45430445337) (commit `5f7e796`, the
-public-key and dub version): all 10 jobs passed, 2 min 53 s from push to summary.
+Run [45436420098](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/45436420098) (commit `dfc964d`, all three
+self-tests on the final farm code): all 15 jobs passed, 4 min 8 s from push to summary: plan 21 s; the en master 41 s;
+the es and pt-br dubs 75 s and 52 s; 10 render jobs 27-52 s each (TestCard video and still, ChartTest and ChartLight
+stills, ChartShort at 1080x1920, the es dub video, the pt-br dub WAV track at 48 kHz stereo, and the encrypted MP4 and
+M4A, each "3 file(s) staged, all encrypted to the "selftest" public key"); summary 21 s.
+
+Run [45430445337](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/45430445337) (commit `5f7e796`, the first
+run of the public-key and dub version, voice and encrypted self-tests only): all 10 jobs passed, 2 min 53 s from push
+to summary.
 
 | Job | Time |
 | --- | --- |
