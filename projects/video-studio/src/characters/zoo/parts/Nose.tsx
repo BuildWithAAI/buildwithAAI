@@ -8,7 +8,7 @@
 import React from 'react';
 import {LINE, ZOO_COLORS} from '../../palette';
 import {smooth, tapered, type Pt} from '../geometry';
-import {ZOO_LINE} from '../lines';
+import {featureScale, ZOO_LINE} from '../lines';
 import {useLineScale} from './Shape';
 
 const SIDE_PLANE = smooth([
@@ -26,14 +26,15 @@ export const bridgeWidth = (w: number) => (t: number) => w * (0.35 + 0.65 * Math
 export const nostrilWidth = (w: number) => (t: number) => w * (1.15 - 0.85 * t);
 
 export const Nose: React.FC = () => {
-	const ls = useLineScale();
+	// Feature shapes keep their drawn size at close-ups (ZOO-L2): bridge up to ~1.7 u, nostril commas ~1.9 u at the outer end.
+	const fs = featureScale(useLineScale());
 	return (
 		<g data-part="nose">
 			<path d={SIDE_PLANE} fill={ZOO_COLORS.skinShadow} />
 			<path d={UNDER_TIP} fill={ZOO_COLORS.skinShadow} />
-			<path data-part="noseBridge" d={tapered(BRIDGE, bridgeWidth(ZOO_LINE.fine * ls))} fill={ZOO_COLORS.noseLine} />
-			<path data-part="nostrilR" d={tapered(NOSTRIL_SL, nostrilWidth(ZOO_LINE.feature * ls))} fill={LINE.color} />
-			<path data-part="nostrilL" d={tapered(NOSTRIL_SR, nostrilWidth(ZOO_LINE.feature * ls))} fill={LINE.color} />
+			<path data-part="noseBridge" d={tapered(BRIDGE, bridgeWidth(ZOO_LINE.fine * 1.2 * fs))} fill={ZOO_COLORS.noseLine} />
+			<path data-part="nostrilR" d={tapered(NOSTRIL_SL, nostrilWidth(ZOO_LINE.feature * fs))} fill={LINE.color} />
+			<path data-part="nostrilL" d={tapered(NOSTRIL_SR, nostrilWidth(ZOO_LINE.feature * fs))} fill={LINE.color} />
 		</g>
 	);
 };

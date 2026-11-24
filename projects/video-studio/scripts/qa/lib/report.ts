@@ -113,6 +113,8 @@ export type ReportMeta = {
 	ignoredBadges: string[];
 	/** Per scouted frame: [frame, mean luma difference vs previous, changed-pixel fraction] (1/8-size frames). */
 	scoutMotion: Array<[number, number, number]>;
+	/** In-page measurement time of the probe per frame (ms): median and maximum, per pass. */
+	probeMs?: Record<string, {median: number; max: number}>;
 };
 
 const SEV_LABEL: Record<Severity, string> = {error: 'ERROR', warn: 'warn', info: 'info'};

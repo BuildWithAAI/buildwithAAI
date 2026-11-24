@@ -124,7 +124,8 @@ describe('analysis opportunities', () => {
 	const tracker = () => {
 		const {root, cleanup} = tempRoot();
 		writeJsonFile(join(root, 'c.json'), defillamaCache());
-		const r = loadTrackerRows(join(root, 'c.json'), win.from, win.to);
+		// the window plus the 30 days before it, as prepare loads them
+		const r = loadTrackerRows(join(root, 'c.json'), '2026-09-26', win.to);
 		cleanup();
 		return r;
 	};
@@ -134,7 +135,12 @@ describe('analysis opportunities', () => {
 		assert.equal(r.opp.basis, 'own-data');
 		assert.match(r.opp.detail ?? '', /^DefiLlama lists 7 incidents in the 30 days from Oct 26 to Nov 24\./);
 		assert.match(r.opp.detail ?? '', /As listed by DefiLlama, FixtureSwap's \$4,200,000 loss is the second-largest of the 6 with a stated loss\./);
-		assert.match(r.opp.detail ?? '', /3 of the 7 share its DefiLlama classification \(key compromise\)\./);
+		// a change against the 30 days before: 3 key compromises now, none in Sep 26 to Oct 25 (the cache reaches back)
+		assert.match(r.opp.detail ?? '', /3 of the 7 share its DefiLlama classification \(key compromise\), up from none in the 30 days before that\./);
+		assert.equal(r.opp.strength, 'strong', 'a doubling against the previous 30 days is not obvious from the headline');
+		assert.equal(r.opp.template, true, 'still the same comparison every day');
+		assert.equal(r.opp.numbers?.previousSameClassification, 0);
+		assert.match(r.opp.method ?? '', /Counted rows dated 2026-09-26 to 2026-10-25 \(the 30 days before\) with the same classification: 0\./);
 		assert.doesNotMatch(r.opp.detail ?? '', /average|total|sum/i);
 		assert.equal(r.sources[0].id, 'defillama-30d');
 		assert.equal(r.facts.length, 7);

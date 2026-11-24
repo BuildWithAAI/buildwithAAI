@@ -21,6 +21,25 @@ test('shots: outlines 3-6 px; faces inside the safe area, above the captions, cl
 	assert.ok(STAGE.landscape.badger.x > 0.9 * SIZE_COMPARISON.spacingUnits, 'landscape keeps about the size panel spacing');
 });
 
+test('the cold-open kicker never covers the ON AIR sign (review 2026-11-24: vertical kicker over the sign)', () => {
+	const card = SEGMENT_BOXES.vertical.coldOpen.card as Box;
+	const sign = {...STAGE.vertical.onAir};
+	const h = card.h;
+	try {
+		// the old geometry (kicker 96 px tall, sign at -1362) must be caught, at rest and pushed in
+		Object.assign(STAGE.vertical.onAir, {y: -1362, h: 66});
+		card.h = 96;
+		const found = checkShot('vertical', 'two');
+		assert.ok(found.some((x) => /kicker card covers the ON AIR sign$/.test(x)), found.join('\n'));
+		assert.ok(found.some((x) => /kicker card covers the ON AIR sign \(pushed in\)/.test(x)));
+	} finally {
+		Object.assign(STAGE.vertical.onAir, sign);
+		card.h = h;
+	}
+	assert.deepEqual(checkShot('vertical', 'two'), []);
+	assert.deepEqual(checkShot('landscape', 'wide'), []);
+});
+
 test('segments: text never covers a face and keeps one head width clear of Zoo\'s', () => {
 	for (const f of FORMATS)
 		for (const seg of SHOW_SEGMENTS) {

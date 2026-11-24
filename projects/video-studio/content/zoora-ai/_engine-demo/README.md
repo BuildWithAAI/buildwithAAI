@@ -44,3 +44,9 @@ python3 scripts/voice/build.py content/zoora-ai/_engine-demo --lang es --fit-to 
 # the audio-track dub is fitted sentence by sentence (the master needs its `sentences`, written since 2026-11-24);
 # the natural Spanish here is too long for that: each long sentence is listed with the % to cut
 ```
+
+Audio-track fit, measured 2026-11-24 (per-sentence fit, es over the en master of 59.0 s): the committed natural Spanish
+overflows 6 of 7 scenes even at speed 1.15 (68.5 s, exit 3; its sentences are 13-38% too long, each named with the % to
+cut). A length-aware rewrite of the same claims (kept in the scratchpad, not here) fits 7 of 7 at exactly 59.0 s, with 5
+sentences still 3-29% longer than their English ones (reported). So an es audio track needs a length-aware script;
+the native es and pt-br renders keep the natural translation.

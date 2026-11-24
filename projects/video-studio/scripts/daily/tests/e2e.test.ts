@@ -12,7 +12,7 @@ import {realExec, type Exec} from '../lib/exec.ts';
 import {episodePaths} from '../lib/paths.ts';
 import {runPrepare} from '../lib/prepare.ts';
 import type {DailyBrief, PacketSummary} from '../lib/types.ts';
-import {fakeExec, goodStoryboard, NOW, seedRadarDay, SLUG, tempRoot, toolOf, touch, writeJsonFile} from './helpers.ts';
+import {fakeExec, goodStoryboard, NOW, patternOf, seedRadarDay, SLUG, tempRoot, toolOf, touch, writeJsonFile} from './helpers.ts';
 
 describe('end to end with the real news gate', () => {
 	it('a WRITER.md-style storyboard passes the gate and the packet is ready', async () => {
@@ -25,7 +25,7 @@ describe('end to end with the real news gate', () => {
 			const brief = JSON.parse(readFileSync(ep.brief, 'utf8')) as DailyBrief;
 			const opp = brief.analysisOpportunities.find((o) => o.id === 'tracker-30d');
 			assert.ok(opp?.available && opp.detail && opp.method);
-			writeJsonFile(ep.storyboard, goodStoryboard(opp.detail, opp.method));
+			writeJsonFile(ep.storyboard, goodStoryboard(opp.detail, opp.method, patternOf(brief)));
 			touch(join(root, 'scripts', 'voice', 'build.py'));
 			touch(join(root, 'src', 'show', 'index.ts'));
 			const fake = fakeExec({
@@ -61,7 +61,7 @@ describe('end to end with the real news gate', () => {
 			runPrepare({root, radar: 'reuse', exec: fakeExec().exec, now: () => NOW});
 			const ep = episodePaths(root, SLUG);
 			const brief = JSON.parse(readFileSync(ep.brief, 'utf8')) as DailyBrief;
-			const sb = goodStoryboard(brief.analysisOpportunities.find((o) => o.id === 'tracker-30d')?.detail ?? '');
+			const sb = goodStoryboard(brief.analysisOpportunities.find((o) => o.id === 'tracker-30d')?.detail ?? '', undefined, patternOf(brief));
 			sb.scenes[1].narration = sb.scenes[1].narration.replace('{$4,200,000|four point two million dollars}', '{$9,900,000|nine point nine million dollars}');
 			writeJsonFile(ep.storyboard, sb);
 			const fake = fakeExec();

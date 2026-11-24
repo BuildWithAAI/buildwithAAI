@@ -170,10 +170,40 @@ export const defillamaCache = (fetchedUtc = '2026-11-24T10:41:00Z') => ({
 	],
 });
 
-/** A radar day with all four incidents, written where prepare reads it, plus the DefiLlama cache. */
-export const seedRadarDay = (root: string, incidents: RadarIncident[] = [fixtureSwap(), fixtureBridge(), fixtureLend(), fixturePhish()], cache: unknown = defillamaCache()): void => {
+/** An earlier day's incident: one DefiLlama row, typed like the radar types it. */
+export const historyIncident = (date: string, protocol: string, type: string, classification: string, technique: string): RadarIncident => {
+	const url = dl(protocol, date);
+	const excerpt = `${protocol} · ${date} · reported loss $1,000,000 · ${classification} / ${technique} · target: DeFi Protocol · chains: Ethereum`;
+	return incident({
+		id: `${date}-${protocol.toLowerCase()}`,
+		protocol,
+		type,
+		dateUtc: date,
+		title: `${protocol}: ${type.replace(/-/g, ' ')}`,
+		sources: [{id: 'defillama-hacks', url, title: `DefiLlama hacks: ${protocol} (${date})`, excerpt, publishedUtc: null, tier: 'A', publisher: 'DefiLlama', kind: 'structured', tracker: true}],
+		facts: [{text: `DefiLlama classifies it as ${classification} / ${technique}.`, sourceId: 'defillama-hacks', url, quote: `${classification} / ${technique}`, field: 'excerpt'}],
+	});
+};
+
+const KEY_PROTOCOLS = ['Alphaswap', 'Betavault', 'Gammalend', 'Deltadex', 'Epsilonpool', 'Zetaperps', 'Etamarket'];
+const BRIDGE_PROTOCOLS = ['Thetabridge', 'Iotaport', 'Kappalink', 'Lambdagate', 'Muhop', 'Nupass', 'Xicross'];
+
+/**
+ * Seven earlier live radar days (Nov 17 to 23), each with one key-compromise and one bridge incident: enough history
+ * for the radar pattern (7 or more daily files, 3 or more same-type incidents), the analysis that is not a template.
+ */
+export const seedRadarHistory = (root: string): void => {
+	for (let i = 1; i <= 7; i++) {
+		const d = `2026-11-${String(24 - i).padStart(2, '0')}`;
+		writeJsonFile(join(root, 'content', 'zoora-security', 'radar', `${d}.json`), radarFile([historyIncident(d, KEY_PROTOCOLS[i - 1], 'key-compromise', 'Key Compromise', 'Private Key Compromised'), historyIncident(d, BRIDGE_PROTOCOLS[i - 1], 'bridge', 'Bridge & Cross-Chain', 'Message Spoofing')], d));
+	}
+};
+
+/** A radar day with all four incidents, written where prepare reads it, plus the DefiLlama cache and (by default) a week of radar history. */
+export const seedRadarDay = (root: string, incidents: RadarIncident[] = [fixtureSwap(), fixtureBridge(), fixtureLend(), fixturePhish()], cache: unknown = defillamaCache(), o: {history?: boolean} = {}): void => {
 	writeJsonFile(join(root, 'content', 'zoora-security', 'radar', `${DATE}.json`), radarFile(incidents));
 	if (cache) writeJsonFile(join(root, '.cache', 'radar', 'sources', 'defillama-hacks.json'), cache);
+	if (o.history !== false) seedRadarHistory(root);
 };
 
 // ---- a recording fake runner ----
@@ -220,8 +250,14 @@ export const argAfter = (req: ExecRequest, flag: string): string | undefined => 
 
 export const SLUG = '2026-11-24-fixtureswap';
 
-export const goodStoryboard = (analysisDetail: string, analysisMethod = 'Counted the stored DefiLlama rows of the window (brief.json, facts t1..t7).') => {
-	const waiver = {rule: 'factual', reason: 'Own-data analysis a1 (method in storyboard.analysis), checked by the news gate R7.'};
+/** The real analysis of a brief (the radar pattern), for goodStoryboard. */
+export type PatternOpp = {id: string; kind: string; basis: string; detail: string | null; method: string | null; sourceIds: string[]; numbers?: Record<string, number | string>};
+export const patternOf = (brief: {analysisOpportunities: PatternOpp[]}): PatternOpp | undefined => brief.analysisOpportunities.find((o) => o.id === 'radar-30d');
+
+export const goodStoryboard = (analysisDetail: string, analysisMethod = 'Counted the stored DefiLlama rows of the window (brief.json, facts t1..t7).', pattern?: PatternOpp) => {
+	const waiver = {rule: 'factual', reason: 'Own-data analysis a1 (method in storyboard.analysis): the news gate (R7) checks its figures against the counts brief.json computed (analysisOpportunities numbers).'};
+	const incidents = Number(pattern?.numbers?.incidents ?? 0);
+	const runs = Number(pattern?.numbers?.radarFiles ?? 0);
 	return {
 		version: 1,
 		channel: 'zoora-security',
@@ -246,13 +282,14 @@ export const goodStoryboard = (analysisDetail: string, analysisMethod = 'Counted
 				id: 's04',
 				type: 'talk',
 				segment: 'desk',
-				narration: "Our check: DefiLlama lists 7 incidents in the 30 days from October 26 to November 24. As listed by DefiLlama, FixtureSwap's loss is the second-largest of the 6 with a stated figure.",
-				onScreen: {title: 'Our check', bullets: ['7 incidents in 30 days', 'Second-largest of 6']},
+				narration: `Our check: DefiLlama lists 7 incidents in the 30 days from October 26 to November 24. As listed by DefiLlama, FixtureSwap's loss is the second-largest of the 6 with a stated figure.${pattern ? ` Our radar logged ${incidents} key compromise incidents in its last ${runs} daily runs.` : ''}`,
+				onScreen: {title: 'Our check', bullets: ['7 incidents in 30 days', 'Second-largest of 6', ...(pattern ? [`${incidents} key compromise incidents on our radar`] : [])]},
 				badger: {present: true},
 				badgerBeats: [{reaction: 'shocked'}],
 				claimWaivers: [
-					{match: 'DefiLlama lists 7 incidents', ...waiver},
-					{match: 'second-largest of the 6', ...waiver},
+					{match: '7 incidents', ...waiver},
+					{match: 'econd-largest of', ...waiver},
+					...(pattern ? [{match: 'key compromise incidents', ...waiver}] : []),
 				],
 			},
 			{id: 's05', type: 'talk', segment: 'badgerRedFlag', narration: "Badger's red flag: one key that can change a contract on its own.", onScreen: {flag: 'One key that can change a contract'}, badgerBeats: [{reaction: 'judge'}]},
@@ -265,7 +302,10 @@ export const goodStoryboard = (analysisDetail: string, analysisMethod = 'Counted
 			{id: 'examplewire', title: 'FixtureSwap says attackers drained $4.5 million (Example Wire)', url: 'https://news.example.com/fixtureswap', accessed: DATE, status: 'verified'},
 			{id: 'defillama-30d', title: 'DefiLlama hacks: incidents dated 2026-10-26 to 2026-11-24 (DefiLlama)', url: 'https://api.llama.fi/hacks', accessed: DATE, status: 'verified'},
 		],
-		analysis: [{id: 'a1', kind: 'comparison', basis: 'own-data', detail: analysisDetail, sourceIds: ['defillama-30d'], sceneIds: ['s04'], method: analysisMethod}],
+		analysis: [
+			{id: 'a1', opportunity: 'tracker-30d', kind: 'comparison', basis: 'own-data', detail: analysisDetail, sourceIds: ['defillama-30d'], sceneIds: ['s04'], method: analysisMethod},
+			...(pattern ? [{id: 'a2', opportunity: pattern.id, kind: pattern.kind, basis: pattern.basis, detail: pattern.detail ?? '', sourceIds: pattern.sourceIds, sceneIds: ['s04'], method: pattern.method ?? ''}] : []),
+		],
 		shorts: [{id: 'short1', sceneIds: ['s01', 's02', 's03', 's04', 's05', 's06', 's07'], title: 'DefiLlama lists FixtureSwap among November hacks'}],
 		thumbnails: [
 			{id: 't1', text: 'One key,\nwhole pool', expression: 'worried', badger: true, badgerReaction: 'worried'},

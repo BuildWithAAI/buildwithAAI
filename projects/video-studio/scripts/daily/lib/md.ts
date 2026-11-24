@@ -1,5 +1,6 @@
 /** approval.md: the same packet as Markdown, for reading in the Claude app. Feed text goes through md() (no links/HTML). */
 import {md, safeUrl} from './escape.ts';
+import {UNTRUSTED_NOTE} from './html.ts';
 import type {PacketModel} from './packet.ts';
 
 const fence = (s: string): string => {
@@ -13,7 +14,22 @@ export const renderMd = (m: PacketModel): string => {
 	o.push(`# Approve ${m.slug}: ${md(m.title)}`, '');
 	o.push(`**${m.ready ? 'READY TO APPROVE' : 'NOT READY'}** · **${m.developing ? 'DEVELOPING' : 'CONFIRMED'}** · ${md(m.format)} · ${md(m.incident.protocol)} (${md(m.incident.type)}, ${md(m.incident.dateUtc)}) · built ${md(m.builtAtLocal)}`, '');
 	o.push(m.ready ? `> Reply \`${m.reply}\` (or your edits) in the Claude app.` : '> Not ready to approve yet: fix the items below first.', '');
+	o.push(`> ${UNTRUSTED_NOTE}`, '');
 	if (!m.ready) o.push('## Fix before approving', '', ...m.blockers.map((b) => `- ${md(b)}`), '');
+	const openCorrections = m.corrections.filter((c) => !c.recorded || !c.pinned);
+	if (openCorrections.length) {
+		o.push(`## Corrections to pin (${openCorrections.length})`, '');
+		for (const c of openCorrections) {
+			o.push(`- **${c.recorded ? 'Recorded, not pinned yet' : c.severity === 'correction' ? 'PIN A CORRECTION' : 'Update worth pinning'}** on \`${md(c.slug)}\`: ${md(c.change)}`);
+			if (!c.recorded) o.push('', fence(c.command), '');
+		}
+		o.push('');
+	}
+	if (m.names.length) {
+		o.push(`## Names the gate flagged (R4): ${m.names.length}`, '', 'No individual\'s name may appear unless a cited law-enforcement or regulator release names them. Check every line.', '');
+		for (const f of m.names) o.push(`- ${f.severity.toUpperCase()} · ${md([f.where.scene, f.where.surface].filter(Boolean).join(' '))}: ${md(f.message)}`);
+		o.push('');
+	}
 	o.push('## At a glance', '');
 	const g = m.gate;
 	if (!m.steps.some((s) => s.id === 'news-gate')) o.push(`- News gate: ${g ? `${g.verdict.toUpperCase()}, ${g.counts.claimsOk}/${g.counts.claims} claims traced` : 'did not run'}`);
@@ -53,7 +69,7 @@ export const renderMd = (m: PacketModel): string => {
 	if (c.kitFailing.length) o.push('Publish-kit checks to look at:', '', ...c.kitFailing.map((k) => `- \`${md(k.id)}\`: ${md(k.detail)}`), '');
 	o.push('After you approve:', '', ...c.upload.map((u, i) => `${i + 1}. ${md(u)}`), '');
 	if (g) {
-		o.push('## News gate rules', '', '| Rule | Result |', '| --- | --- |', ...g.rules.map((r) => `| ${md(r.rule)} | ${r.status === 'fail' ? `FAIL (${r.errors})` : r.status === 'warn' ? `pass, ${r.warnings} warning(s)` : 'pass'} |`), '');
+		o.push('## News gate rules', '', '| Rule | Result |', '| --- | --- |', ...g.rules.map((r) => `| ${md(r.rule)} | ${r.status === 'fail' ? `FAIL (${Number(r.errors) || 0})` : r.status === 'warn' ? `pass, ${Number(r.warnings) || 0} warning(s)` : 'pass'} |`), '');
 		const errs = g.findings.filter((f) => f.severity === 'error');
 		if (errs.length) o.push('Errors:', '', ...errs.map((f) => `- [${md(f.rule)}] ${md([f.where.scene, f.where.surface].filter(Boolean).join(' '))}: ${md(f.message)} Fix: ${md(f.fix)}`), '');
 	}

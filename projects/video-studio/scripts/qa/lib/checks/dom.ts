@@ -12,7 +12,6 @@ import {outside, type Zones} from '../zones.ts';
 
 const r0 = (n: number) => Math.round(n);
 const q = (s: string, n = 60) => (s.length > n ? `${s.slice(0, n - 3)}...` : s);
-const bucket = (r: Rect) => `${Math.round(r.x / 40)}:${Math.round(r.y / 40)}`;
 export const charName = (c: Pick<CharacterFact, 'kind'>) => (c.kind === 'zoo' ? 'Zoo' : 'Badger');
 export const charLabel = (c: CharacterFact, i: number) => `${charName(c)} #${i + 1}`;
 
@@ -56,20 +55,44 @@ export const textFindings = (f: FrameFacts): Finding[] => {
 				elementKey,
 			});
 		} else if (t.overflow) {
+			// the plate the text sits on: letters over its border are sloppy, letters past its edge are broken
 			const o = t.overflow;
 			const worst = Math.max(o.left, o.right, o.top, o.bottom);
-			if (worst > T.text.overflowPx)
+			if (worst > T.text.overflowPx) {
+				const off = o.beyondPlate > T.text.offPlatePx;
 				out.push({
 					check: 'text-overflow',
-					severity: 'warn',
+					severity: off ? 'error' : 'warn',
 					frame: f.frame,
 					box: t.box,
 					subject,
 					key,
-					message: `text extends ${r0(worst)} px beyond its box (left ${r0(o.left)}, right ${r0(o.right)}, top ${r0(o.top)}, bottom ${r0(o.bottom)})`,
+					message: off
+						? `text hangs ${r0(o.beyondPlate)} px off the edge of its plate (left ${r0(o.left)}, right ${r0(o.right)}, top ${r0(o.top)}, bottom ${r0(o.bottom)} px past its padding)`
+						: `text runs into the edge of its plate by ${r0(worst)} px (left ${r0(o.left)}, right ${r0(o.right)}, top ${r0(o.top)}, bottom ${r0(o.bottom)})`,
+					measured: {left: r0(o.left), right: r0(o.right), top: r0(o.top), bottom: r0(o.bottom), beyondPlate: r0(o.beyondPlate)},
+					related: [{rect: o.box, label: 'plate'}],
+					score: worst + o.beyondPlate,
+					elementKey,
+				});
+			}
+		} else if (t.blockOverflow) {
+			// no plate: only the layout box is exceeded (nothing is cut; the frame, safe-area and collision checks
+			// cover where the letters land). Information, and only beyond a descender's worth.
+			const o = t.blockOverflow;
+			const worst = Math.max(o.left, o.right, o.top, o.bottom);
+			if (worst > T.text.layoutOverflowEm * Math.max(1, t.fontPx))
+				out.push({
+					check: 'text-overflow',
+					severity: 'info',
+					frame: f.frame,
+					box: t.box,
+					subject,
+					key,
+					message: `text extends ${r0(worst)} px beyond its layout box (no plate behind it, nothing is cut)`,
 					measured: {left: r0(o.left), right: r0(o.right), top: r0(o.top), bottom: r0(o.bottom)},
-					related: [{rect: o.box, label: 'box'}],
-					score: worst,
+					related: [{rect: o.box, label: 'layout box'}],
+					score: 0,
 					elementKey,
 				});
 		}
@@ -122,6 +145,55 @@ export const textFindings = (f: FrameFacts): Finding[] => {
 	return out;
 };
 
+/** Ink area two texts share (their line rects intersected pairwise). */
+const sharedInk = (a: TextFact, b: TextFact): number => {
+	let s = 0;
+	for (const ra of a.rects) for (const rb of b.rects) s += rectArea(intersectRect(ra, rb));
+	return s;
+};
+
+/**
+ * Two different texts painted over each other: unreadable whatever their colours (a long dubbed title running
+ * into a source line, a label pushed into a caption). Adjacent words of one line touch by a pixel or two, so the
+ * shared ink must be a real share of the smaller text; a text drawn twice on purpose (an outline layer under a
+ * fill layer: same string, same box) is not a collision.
+ */
+export const collisionFindings = (f: FrameFacts): Finding[] => {
+	const out: Finding[] = [];
+	const texts = liveTexts(f).filter((t) => t.visibleFrac > 0.5);
+	for (let i = 0; i < texts.length; i++)
+		for (let j = i + 1; j < texts.length; j++) {
+			const a = texts[i];
+			const b = texts[j];
+			if (!intersectRect(a.box, b.box)) continue;
+			const shared = sharedInk(a, b);
+			const small = Math.min(rectArea(a.box), rectArea(b.box));
+			if (shared < T.text.collisionMinPx || shared < T.text.collisionFrac * small) continue;
+			const ab = intersectRect(a.box, b.box) as Rect;
+			const iou = rectArea(ab) / (rectArea(a.box) + rectArea(b.box) - rectArea(ab));
+			if (a.text === b.text && iou > 0.9) continue;
+			const [first, second] = textKey(a) < textKey(b) ? [a, b] : [b, a];
+			out.push({
+				check: 'text-collision',
+				severity: 'error',
+				frame: f.frame,
+				box: unionRect([a.box, b.box]) as Rect,
+				subject: `"${q(first.text, 40)}" and "${q(second.text, 40)}"`,
+				key: `${textKey(first)}||${textKey(second)}`,
+				message: `two texts are painted over each other (${r0(shared)} px² of shared ink, ${Math.round((shared / Math.max(1, small)) * 100)}% of the smaller one)`,
+				measured: {sharedPx: r0(shared), sharedPercent: Math.round((shared / Math.max(1, small)) * 100)},
+				related: [
+					{rect: a.box, label: 'text'},
+					{rect: b.box, label: 'text'},
+				],
+				score: shared,
+				elementKey: textKey(first),
+				elementKey2: textKey(second),
+			});
+		}
+	return out;
+};
+
 /** Safe area (both formats) and the Shorts UI zones (9:16). Captions are merged per frame. */
 export const zoneFindings = (f: FrameFacts, z: Zones): Finding[] => {
 	const out: Finding[] = [];
@@ -140,7 +212,13 @@ export const zoneFindings = (f: FrameFacts, z: Zones): Finding[] => {
 		if (!vis) return;
 		// a head mostly outside the frame is an entrance or exit: still reported, as a warning
 		items.push({box: c.headBox, subject: `${charLabel(c, i)} face${c.kind === 'badger' ? ' and ears' : ''}`, key: `face|${c.key}`, kind: 'face', sev: offFrac > 0.6 ? 'warn' : 'error', offFrac, elementKey: charKey(c)});
-		for (const h of c.hands) if (intersectRect(h, frameRect)) items.push({box: h, subject: `${charLabel(c, i)} hand`, key: `hand|${c.key}|${bucket(h)}`, kind: 'hand', sev: 'warn', elementKey: charKey(c)});
+		c.hands.forEach((h, k) => {
+			// a hand behind other artwork (Zoo's hands below the show desk) is not on screen at all
+			const vis = c.handsVisible?.[k] ?? -1;
+			if (vis >= 0 && vis < T.faces.handVisibleMin) return;
+			// one issue per character and side, however the hands move
+			if (intersectRect(h, frameRect)) items.push({box: h, subject: `${charLabel(c, i)} hand`, key: `hand|${c.key}`, kind: 'hand', sev: 'warn', elementKey: charKey(c)});
+		});
 	});
 	for (const it of items) {
 		const o = outside(it.box, z.safe);

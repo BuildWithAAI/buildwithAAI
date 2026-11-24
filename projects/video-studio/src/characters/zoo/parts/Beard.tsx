@@ -38,10 +38,12 @@ const beardShadow = (jawDrop: number) =>
  * pointed drooping tips. Flat fill in ZOO_COLORS.moustache (darker than the chin beard, decision ZOO-C3).
  */
 export const MOUSTACHE: Pt[] = [
-	[0, -781.2, 'c'], [3.4, -783], [8, -783.2], [13.6, -782], [19, -779.4], [23.4, -775.4], [26.4, -771.2], [27.6, -767.4, 'c'],
+	// Repair round 2: the philtrum notch is a shallow 0.6 u dip with its top at -784 (round 1: a 2 u notch at -781.2 split the
+	// moustache into two handlebar lobes; the sheet measures 9.5 u thick at x=0 with the top at -784.5).
+	[0, -784, 'c'], [3.4, -784.6], [8, -784.2], [13.6, -782.4], [19, -779.4], [23.4, -775.4], [26.4, -771.2], [27.6, -767.4, 'c'],
 	[25.2, -768.4], [21.6, -771], [16, -772.8], [9, -773.6], [3.2, -774.4], [0, -775.6, 'c'], [-3.2, -774.4], [-9, -773.6],
 	[-16, -772.8], [-21.6, -771], [-25.2, -768.4], [-27.6, -767.4, 'c'], [-26.4, -771.2], [-23.4, -775.4], [-19, -779.4],
-	[-13.6, -782], [-8, -783.2], [-3.4, -783],
+	[-13.6, -782.4], [-8, -784.2], [-3.4, -784.6],
 ];
 /** v1 moustache shadow band (kept for reference; the moustache is now drawn flat). */
 export const MOUSTACHE_SHADOW: Pt[] = [[-27, -769], [-18, -772.4], [-6, -774.2], [0, -775.4], [6, -774.2], [18, -772.4], [27, -769], [26, -763], [-26, -763]];

@@ -33,7 +33,19 @@ export type SideRig = {
 	readonly tail: TailGeom;
 };
 
-export type HeadMount = {readonly neck: number; readonly dx: number; readonly dy: number; readonly rot: number};
+/**
+ * Where a replaceable head sits on a side rig's neck: neck rotation (SVG deg about the neck base), head pivot offset from the
+ * neck's head mount and extra head rotation. `nape` (optional, neck-local): for a head turned back over the shoulder, a
+ * replacement for the top of the neck's back line plus the fill between the two, so the crest of the neck runs from behind
+ * the far ear past the muzzle instead of meeting the face's far contour (round-2 repair, decision BADGER-D37).
+ */
+export type HeadMount = {
+	readonly neck: number;
+	readonly dx: number;
+	readonly dy: number;
+	readonly rot: number;
+	readonly nape?: {readonly fill: string; readonly stroke: string};
+};
 
 export type LegKey = 'frontNear' | 'frontFar' | 'hindNear' | 'hindFar';
 
@@ -88,6 +100,17 @@ const NeckSide: React.FC<{geom: SideRig['neck']; uid: string; spots: readonly Ba
 		<SpotShapes spots={spots} />
 	</PartShape>
 );
+
+/** A head mount's replacement nape (neck-local): coat fill over the old back line, then the new back line. */
+const NapeSide: React.FC<{nape: NonNullable<HeadMount['nape']>}> = ({nape}) => {
+	const L = useStrokes();
+	return (
+		<g>
+			<path d={nape.fill} fill={BADGER_COLORS.coat} />
+			<path d={nape.stroke} {...L.stroke} />
+		</g>
+	);
+};
 
 /** Collar + tag for a side rig; the tag counter-rotates about its ring so it always hangs plumb. */
 const CollarSide: React.FC<{geom: SideRig['neck']; worldAngle: number}> = ({geom, worldAngle}) => {
@@ -166,11 +189,14 @@ export const SideBody: React.FC<{
 			<Tail geom={R.tail} mount={M.tail} wag={wag} bend={bend} uid={uid} />
 			<g transform={neckT}>
 				<NeckSide geom={R.neck} uid={uid} spots={spots.neck} />
+				{hm.nape ? <NapeSide nape={hm.nape} /> : null}
 			</g>
-			{/* the near thigh's top edge, under the torso: outlined only where a swing pushes it out past the rump (D35) */}
+			{/* the near thigh's and near upper foreleg's top edges, under the torso: outlined only where a swing pushes them out
+			    past the rump or the chest (D35) */}
 			{hindNearOverride ? null : (
 				<Leg geom={R.legHind} mount={mnt('hindNear', M.legHindNear)} angles={svgLeg(L.hindNear, dir)} uid={`${uid}-hnu`} pass="underlay" />
 			)}
+			<Leg geom={R.legFront} mount={mnt('frontNear', M.legFrontNear)} angles={svgLeg(L.frontNear, dir)} uid={`${uid}-fnu`} pass="underlay" />
 			<g transform={breathT}>
 				<PartShape geom={R.torso} clipId={`${uid}-torso`}>
 					<SpotShapes spots={spots.torso} />

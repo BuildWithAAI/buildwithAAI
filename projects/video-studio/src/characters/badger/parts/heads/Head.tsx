@@ -12,6 +12,9 @@ type EarGeom = {
 	readonly pivot: P;
 	readonly backRot: number;
 	readonly backSx: number;
+	/** Lengthwise stretch at earsBack 1 along `axis` (deg, head-local; root to tip): the worried flap splays out. */
+	readonly stretch?: number;
+	readonly axis?: number;
 	readonly fills: readonly Fill[];
 	readonly strokes: readonly string[];
 	readonly details: readonly string[];
@@ -40,7 +43,7 @@ export type HeadViewGeom = {
 	readonly skull: {readonly fill: string; readonly strokes: readonly string[]; readonly details: readonly string[]};
 	readonly shadows: readonly Fill[];
 	readonly markings: readonly {readonly id: string; readonly d: string}[];
-	readonly nose: {readonly d: string};
+	readonly nose: {readonly d: string; readonly details?: readonly string[]};
 	readonly philtrum: string | null;
 	readonly eyes: readonly EyeGeom[];
 	readonly brows: readonly BrowGeom[];
@@ -50,6 +53,8 @@ export type HeadViewGeom = {
 	readonly clipMouth: boolean;
 	/** 3/4 views: the lower-jaw contour. */
 	readonly chin: string | null;
+	/** 3/4 views: the bridge line from below the far eye to the nose (full outline weight, as on badger_turn_34.png). */
+	readonly bridge?: string | null;
 };
 
 const COLORS: Record<ColorKey, string> = {
@@ -196,7 +201,10 @@ const Ear: React.FC<{ear: EarGeom; earsBack: number; lift?: number; uid: string}
 	const L = useStrokes();
 	const a = ear.backRot * (earsBack - 0.35 * lift);
 	const sx = 1 - (1 - ear.backSx) * earsBack;
-	const t = `translate(${f1(ear.pivot.x)} ${f1(ear.pivot.y)}) rotate(${f1(a)}) scale(${f1(sx)} 1) translate(${f1(-ear.pivot.x)} ${f1(-ear.pivot.y)})`;
+	const st = 1 + ((ear.stretch ?? 1) - 1) * earsBack;
+	const ax = ear.axis ?? 0;
+	const stretchT = st !== 1 ? ` rotate(${f1(ax)}) scale(${f1(st)} 1) rotate(${f1(-ax)})` : '';
+	const t = `translate(${f1(ear.pivot.x)} ${f1(ear.pivot.y)}) rotate(${f1(a)})${stretchT} scale(${f1(sx)} 1) translate(${f1(-ear.pivot.x)} ${f1(-ear.pivot.y)})`;
 	const clip = `${uid}-ear${ear.side}`;
 	const base = ear.fills.find((x) => !x.clip);
 	return (
@@ -285,6 +293,7 @@ export const Head: React.FC<{view: BadgerHead; state: HeadState}> = ({view, stat
 				<path key={`d${i}`} d={d} {...L.detail} />
 			))}
 			{g.chin ? <path d={g.chin} {...L.stroke} /> : null}
+			{g.bridge ? <path d={g.bridge} {...L.stroke} /> : null}
 			<g clipPath={g.clipMouth ? `url(#${skullClip})` : undefined}>
 				{m.fills.map((x, i) => (
 					<path key={`mf${i}`} d={x.d} fill={col(x.color)} />
@@ -298,6 +307,9 @@ export const Head: React.FC<{view: BadgerHead; state: HeadState}> = ({view, stat
 				))}
 			</g>
 			<path d={g.nose.d} fill={BADGER_COLORS.nose} {...{stroke: LINE.color, strokeWidth: LINE.width * L.k, strokeLinejoin: 'round' as const}} />
+			{(g.nose.details ?? []).map((d, i) => (
+				<path key={`nd${i}`} d={d} {...L.detail} />
+			))}
 			{g.eyes.map((e) => (
 				<Eye key={e.side} e={e} st={state} uid={uid} />
 			))}

@@ -8,6 +8,7 @@ Outputs in public/generated/<channel>/<slug>/<lang>/:
 """
 
 import json
+import math
 import os
 import re
 import shutil
@@ -124,14 +125,22 @@ def stress_onset(phonemes: str, span: tuple[int, int], ct: list[tuple[float, flo
 
 
 def translation_warning(sb: dict, lang: str) -> str | None:
-    """types.ts: a storyboard whose lang differs from sourceLang counts as machine translation unless
-    translation.status is 'native-reviewed'."""
-    reviewed = isinstance(sb.get("translation"), dict) and sb["translation"].get("status") == "native-reviewed"
+    """types.ts: a storyboard whose lang differs from sourceLang counts as machine translation until the owner has
+    recorded a native review. Since 2026-11-24 (review) that needs the whole record, as dub validate and the claim gate
+    require: status 'native-reviewed', reviewed true, a reviewer (initials or a role) and a date. A half-set record
+    (e.g. status native-reviewed with reviewed false) still warns."""
+    tr = sb.get("translation") if isinstance(sb.get("translation"), dict) else {}
+    reviewed = tr.get("status") == "native-reviewed" and tr.get("reviewed") is True and bool(tr.get("reviewer")) and bool(tr.get("date"))
     if not sb.get("sourceLang") or sb["sourceLang"] == lang or reviewed:
         return None
+    if tr.get("status") == "native-reviewed":
+        return (
+            f"machine translation: needs native review ({lang}): the translation record says native-reviewed but is incomplete; "
+            "the owner sets reviewed: true, reviewer (initials or a role) and date together with the status"
+        )
     return (
-        f"machine translation: needs native review ({lang}, translated from {sb['sourceLang']}; "
-        "set translation.status to 'native-reviewed' in the storyboard once a native speaker has checked it)"
+        f"machine translation: needs native review ({lang}, translated from {sb['sourceLang']}; once a native speaker has "
+        "checked it, the owner sets translation {status: 'native-reviewed', reviewed: true, reviewer, date} in the storyboard)"
     )
 
 
@@ -219,7 +228,7 @@ def _fit_scene(synth: Synth, phonemes: str, voice: str, base_speed: float, maste
 
 SENTENCE_BREAK = re.compile(r"(?<=[.!?…])\s+")
 SENTENCE_GAP_S = 0.12  # a dubbed sentence never starts closer than this to the end of the previous one
-SENTENCE_WARN_MS = 100  # warn when a dubbed sentence ends this much after its master sentence
+SENTENCE_WARN_MS = 100  # warn when a dubbed sentence is this much longer than its master sentence, or starts or ends this far off it
 
 
 def sentence_spans(tokens: list[tuple[str, float, float]]) -> list[tuple[float, float]]:
@@ -253,22 +262,28 @@ def _phone_span(take: Take) -> tuple[float, float]:
 
 
 def _fit_sentences(synth: Synth, phonemes: str, voice: str, base_speed: float, master_scene: dict, min_tail: float) -> tuple[Take, int, list, list[dict]] | None:
-    """Fit a dubbed scene sentence by sentence: each sentence is synthesized on its own, at the Kokoro speed (0.85-1.15)
-    that makes its speech as long as the master sentence's, and placed where the master sentence starts. So the
-    sentence starts and ends, and the pauses between them, line up with the master picture (talking vs closed mouth),
-    not just the scene's total length. None when the sentence count differs from the master's (the caller then fits
-    the whole scene)."""
+    """Fit a dubbed scene sentence by sentence (an audio track plays over the master picture, so talking vs closed mouth
+    must line up per sentence, not just in the scene's total length; docs/research/dubbing-and-regions-2026-11-24.md).
+
+    1. Each sentence is synthesized on its own, at the Kokoro speed (0.85-1.15) that makes its speech as long as the
+       master sentence's (secant search, at most FIT_MAX_ITERS takes, plus a 1.15 take when none fits).
+    2. Placement: a sentence that fits starts where its master sentence starts. One still longer at 1.15 starts where
+       its excess shows least against the master mouth track (talking into a short master pause is invisible, past a
+       phrase end it is not); without a mouth track, half its excess goes each side. (2026-11-24 re-check: starting it on
+       time put the whole excess after the master's mouth had closed and pushed every later sentence back.) A sentence
+       never starts closer than SENTENCE_GAP_S to the previous one's end, and the first keeps its take's lead pad.
+    3. If the scene would overflow, the pauses are shortened from the end backwards (down to SENTENCE_GAP_S) before the
+       caller lengthens the scene: an overflow shifts every later scene against the master video.
+    None when the sentence count differs from the master's (the caller then fits the whole scene)."""
     import numpy as np
 
     chunks = sentence_chunks(phonemes)
     master = master_scene.get("sentences")
     if not master or len(master) != len(chunks):
         return None
-    parts: list[tuple[Take, float, tuple[float, float]]] = []
-    detail: list[dict] = []
+    chosen: list[tuple[Take, tuple[float, float], float]] = []  # (take, phone span s, speed)
     tries: list[tuple[float, float]] = []
-    prev_end = 0.0
-    for k, (chunk, m) in enumerate(zip(chunks, master)):
+    for chunk, m in zip(chunks, master):
         target = float(m["endMs"] - m["startMs"])
         cands: dict[float, tuple[Take, tuple[float, float]]] = {}
         samples: list[tuple[float, float]] = []
@@ -295,29 +310,76 @@ def _fit_sentences(synth: Synth, phonemes: str, voice: str, base_speed: float, m
         pool = fitting or samples
         best = min(pool, key=lambda x: (abs(x[1] - target), abs(x[0] - 1.0))) if fitting else min(pool, key=lambda x: x[1])
         take, span = cands[best[0]]
-        start = m["startMs"] / 1000.0
-        if parts:
-            start = max(start, prev_end + SENTENCE_GAP_S)
+        tries.extend(samples)
+        chosen.append((take, span, best[0]))
+
+    def length(k: int) -> float:
+        return chosen[k][1][1] - chosen[k][1][0]
+
+    def lowest_start(k: int, starts: list[float]) -> float:
+        return chosen[0][1][0] if k == 0 else starts[k - 1] + length(k - 1) + SENTENCE_GAP_S
+
+    # 2. placement. The master mouth track, when present, decides where an overlong sentence spills: talking into a
+    # short master pause costs nothing (pauses under 11 frames show a slightly open mouth), talking past a phrase end
+    # (the mouth closes) is visible. Each candidate start is scored by the frames where the dub's talking or silence
+    # disagrees with the master mouth; ties go to the centred start.
+    mouth = master_scene.get("mouth") or []
+    fps = len(mouth) * 1000.0 / master_scene["durationMs"] if mouth and master_scene.get("durationMs") else 0.0
+    is_open = [sh != "closed" for sh in mouth]
+
+    def mismatch(t: float, ln: float, w0: float, w1: float) -> int:
+        f0, f1 = max(0, int(w0 * fps)), min(len(is_open), int(math.ceil(w1 * fps)))
+        return sum(1 for f in range(f0, f1) if (t <= (f + 0.5) / fps < t + ln) != is_open[f])
+
+    starts: list[float] = []
+    for k, m in enumerate(master):
+        m_start, m_end = m["startMs"] / 1000.0, m["endMs"] / 1000.0
+        lo = lowest_start(k, starts)
+        excess = length(k) - (m_end - m_start)
+        centred = max(m_start - max(0.0, excess) / 2.0, lo)
+        if excess <= timing.close_tolerance(m_end * 1000.0 - m_start * 1000.0) / 1000.0 or not fps or lo >= m_start:
+            starts.append(centred)
+            continue
+        nxt = master[k + 1]["startMs"] / 1000.0 if k + 1 < len(master) else master_scene["durationMs"] / 1000.0
+        w0 = starts[-1] + length(k - 1) if k else 0.0
+        w1 = max(nxt, m_start + length(k))
+        cands = [lo + i * 0.01 for i in range(int((m_start - lo) / 0.01) + 1)]
+        starts.append(min(cands, key=lambda t: (mismatch(t, length(k), w0, w1), abs(t - centred))))
+    # 3. the scene must fit: shorten pauses from the end backwards (a 5 ms margin keeps sample rounding inside the room)
+    room = (master_scene["durationMs"] - min_tail) / 1000.0
+    last_take, last_span, _ = chosen[-1]
+    need = starts[-1] - last_span[0] + len(last_take.audio) / SAMPLE_RATE + 0.005 - room
+    for k in range(len(chosen) - 1, -1, -1):
+        if need <= 0:
+            break
+        d = min(need, max(0.0, starts[k] - lowest_start(k, starts)))
+        for j in range(k, len(chosen)):
+            starts[j] -= d
+        need -= d
+    parts: list[tuple[Take, float, tuple[float, float]]] = []
+    detail: list[dict] = []
+    for k, ((take, span, sp), m, start) in enumerate(zip(chosen, master, starts)):
         offset = start - span[0]
         if offset < 0:
             offset, start = 0.0, span[0]
-        end = start + (span[1] - span[0])
+        end = start + length(k)
+        m_start, m_end = m["startMs"] / 1000.0, m["endMs"] / 1000.0
         detail.append(
             {
                 "sentence": k + 1,
-                "speed": best[0],
+                "speed": sp,
                 "masterStartMs": m["startMs"],
                 "masterEndMs": m["endMs"],
                 "startMs": round(start * 1000),
                 "endMs": round(end * 1000),
-                "overrunMs": max(0, round((end - m["endMs"] / 1000.0) * 1000)),
-                "longerMs": max(0, round(((span[1] - span[0]) - (m["endMs"] - m["startMs"]) / 1000.0) * 1000)),
-                "shortMs": max(0, round((m["endMs"] / 1000.0 - end) * 1000)),
+                "earlyMs": max(0, round((m_start - start) * 1000)),
+                "lateMs": max(0, round((start - m_start) * 1000)),
+                "overrunMs": max(0, round((end - m_end) * 1000)),
+                "longerMs": max(0, round((length(k) - (m_end - m_start)) * 1000)),
+                "shortMs": max(0, round((m_end - end) * 1000)),
             }
         )
-        tries.extend(samples)
         parts.append((take, offset, span))
-        prev_end = end
     total = max(int(round(off * SAMPLE_RATE)) + len(t.audio) for t, off, _ in parts)
     buf = np.zeros(total, dtype=np.float32)
     timings_out: list[tuple[str, float, float]] = []
@@ -391,6 +453,21 @@ def says_unnegated(pattern: str, text: str, lang: str) -> bool:
         if not any(neg.search(w) for w in before):
             return True
     return False
+
+
+def with_master_flags(sb: dict, content_dir: str) -> dict:
+    """The dub with the video's fiction flag and offers taken from the master storyboard too (storyboard.json), so a
+    translation that dropped them cannot pass the audio-track refusal (2026-11-24 re-check)."""
+    path = os.path.join(content_dir, "storyboard.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            master = json.load(fh)
+    except (OSError, ValueError):
+        return sb
+    if not isinstance(master, dict) or master.get("lang") == sb.get("lang"):
+        return sb
+    offers = [o for o in (sb.get("offers") or []) + (master.get("offers") or []) if isinstance(o, str)]
+    return {**sb, "fiction": sb.get("fiction") is True or master.get("fiction") is True, "offers": list(dict.fromkeys(offers))}
 
 
 def audio_track_problems(sb: dict, lang: str) -> list[str]:
@@ -491,7 +568,7 @@ def build(opts: Options) -> Result:
         ids, mids = [sc["id"] for sc in sb["scenes"]], [sc["id"] for sc in master["scenes"]]
         if ids != mids:
             raise BuildError(f"scene ids differ from the {opts.fit_to} master: {ids} vs {mids}")
-        refused = audio_track_problems(sb, opts.lang)
+        refused = audio_track_problems(with_master_flags(sb, content_dir), opts.lang)
         if refused:
             raise BuildError(
                 "refusing --fit-to (an audio track over the master picture): "
@@ -551,17 +628,22 @@ def build(opts: Options) -> Result:
                 if by_sentence is not None:
                     take, over, tries, fit_detail = by_sentence
                     for d in fit_detail:
-                        if d["overrunMs"] > SENTENCE_WARN_MS:
-                            own = d["longerMs"]
+                        own = d["longerMs"]
+                        if own > SENTENCE_WARN_MS:
                             warnings.append(
-                                f"{sid}: sentence {d['sentence']} ends {d['overrunMs']} ms after the {opts.fit_to} sentence at speed {d['speed']} "
-                                f"(the {opts.fit_to} picture's mouth closes while the {opts.lang} voice still talks). "
-                                + (
-                                    f"It is {own} ms longer than the {opts.fit_to} sentence: shorten it by about "
-                                    f"{max(1, round(100 * own / max(1, d['endMs'] - d['startMs'])))}%, even if the scene fits"
-                                    if own > SENTENCE_WARN_MS
-                                    else "It starts late because an earlier sentence ran over: shorten that one"
-                                )
+                                f"{sid}: sentence {d['sentence']} is {own} ms longer than the {opts.fit_to} sentence even at speed {d['speed']}: "
+                                f"it starts {d['earlyMs']} ms before and ends {d['overrunMs']} ms after it, while the {opts.fit_to} picture's "
+                                f"mouth is closed. Shorten it by about {max(1, round(100 * own / max(1, d['endMs'] - d['startMs'])))}%, even if the scene fits"
+                            )
+                        elif d["overrunMs"] > SENTENCE_WARN_MS or d["lateMs"] > SENTENCE_WARN_MS:
+                            warnings.append(
+                                f"{sid}: sentence {d['sentence']} starts {d['lateMs']} ms late and ends {d['overrunMs']} ms after the {opts.fit_to} "
+                                "sentence because an earlier sentence ran over: shorten that one"
+                            )
+                        elif d["earlyMs"] > SENTENCE_WARN_MS:
+                            warnings.append(
+                                f"{sid}: sentence {d['sentence']} starts {d['earlyMs']} ms before the {opts.fit_to} sentence: the pauses were "
+                                "shortened so the scene fits; shorten the sentences after it"
                             )
                 else:
                     msent = mscenes[sid].get("sentences")

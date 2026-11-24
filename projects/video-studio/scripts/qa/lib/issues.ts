@@ -11,10 +11,11 @@ export const CHECKS = {
 	// 1. text overflow and clipping (plus legibility and the host-name rule)
 	'text-clipped': {area: 'text', title: 'Text clipped by its container'},
 	'text-offframe': {area: 'text', title: 'Text cut by the frame edge'},
-	'text-overflow': {area: 'text', title: 'Text spills out of its box'},
+	'text-overflow': {area: 'text', title: 'Text runs into or off its plate'},
 	'text-truncated': {area: 'text', title: 'Text shortened with an ellipsis or line clamp'},
 	'text-small': {area: 'text', title: 'Text smaller than 24 px on screen'},
 	'text-name': {area: 'text', title: 'Host name in capitals ("ZOO")'},
+	'text-collision': {area: 'text', title: 'Text painted over other text'},
 	// 2. safe zones
 	'safe-area': {area: 'safe', title: 'Outside the safe area'},
 	'shorts-ui': {area: 'safe', title: 'Under the Shorts player UI'},
@@ -79,6 +80,8 @@ export type Finding = {
 	charIndex?: number;
 	/** The DOM element the finding is about (text "path|text", "char:<key>"), for the animation filter. */
 	elementKey?: string;
+	/** A second element (a collision is about two): the finding is transient when either one moves. */
+	elementKey2?: string;
 };
 
 export type Issue = {

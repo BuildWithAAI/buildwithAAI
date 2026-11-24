@@ -21,7 +21,8 @@ const RANK: Record<Severity, number> = {info: 1, warn: 2, error: 3};
 /** What each fixture must report (check, minimum severity) and what else it may report. */
 export const EXPECTATIONS: Expect[] = [
 	{comp: 'QaFxClean', must: []},
-	{comp: 'QaFxText', must: [['text-clipped', 'error'], ['text-overflow', 'warn'], ['text-offframe', 'error'], ['text-small', 'warn'], ['text-name', 'error']], allow: ['safe-area']},
+	// overlapping texts also lower each other's contrast where they cross
+	{comp: 'QaFxText', must: [['text-clipped', 'error'], ['text-overflow', 'error'], ['text-offframe', 'error'], ['text-small', 'warn'], ['text-name', 'error'], ['text-collision', 'error']], allow: ['safe-area', 'contrast']},
 	{comp: 'QaFxSafe', must: [['safe-area', 'error']], allow: ['text-face-zone']},
 	{comp: 'QaFxShorts', must: [['shorts-ui', 'error']], allow: ['safe-area']},
 	{comp: 'QaFxFaces', must: [['caption-face', 'error'], ['text-face', 'error']], allow: ['face-occluded', 'text-face-zone']},
@@ -36,6 +37,10 @@ export const EXPECTATIONS: Expect[] = [
 	{comp: 'QaFxBanding', must: [['banned', 'error'], ['gradient', 'error'], ['texture', 'warn']]},
 	// the one-frame white flash also covers both faces for that frame
 	{comp: 'QaFxFlicker', must: [['one-frame-state', 'error'], ['flicker', 'error'], ['flash', 'error']], allow: ['face-occluded']},
+	// pixels only: the label exists on every frame, it is drawn 14 px lower on one of them
+	{comp: 'QaFxJump', must: [['flicker', 'error']]},
+	// false-positive guard: a fast card drop over a wall of its own colour, hands hidden behind a desk
+	{comp: 'QaFxMotion', must: []},
 ];
 
 const main = async () => {

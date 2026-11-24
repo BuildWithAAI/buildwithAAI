@@ -82,7 +82,7 @@ all six languages (`tests/test_normalize.py`).
 - Since 2026-11-24 (review): multi-character currency prefixes with or without a space (`US$40,000`, `R$ 40 mil`,
   `A$5`, `C$10`, `MX$200`) and a sign before a separate number (`€ 200`); percent ranges (`5-10%` → "five to ten
   percent", "cinco a diez por ciento", never "five minus ten"); `#1` / `nº 1` → "number one"; es/pt-br/it `10h30`
-  ("dez e trinta", feminine "duas horas"); fractions up to tenths (`1/3` → "one third", "un tercio", "um terço").
+  ("dez e trinta", feminine "duas horas"), also spaced (`10 h` → "diez horas", never "diez hache"); fractions up to tenths (`1/3` → "one third", "un tercio", "um terço").
   Every case the review found is in `tests/test_normalize.py` (`ReviewCases`).
 - The build **warns** when a spoken token still holds a digit or one of `$ % # € £ ¥ ₹ /` after normalization
   (espeak would read it as written); write such a case as `{display|spoken}`.
@@ -92,8 +92,10 @@ all six languages (`tests/test_normalize.py`).
 Applied to each written token before G2P (captions keep the written form): en `memecoins` → "meme coins" (espeak said
 MEM-ih-coins), `DeFi` → "dee fye", `CEX` → "C E X", `KOL(s)` → "K O L('s)", `Pump.fun` → "Pump dot fun" (espeak read
 the dot as a sentence break), plus `NFTs`, `ATH`, `DYOR`, `KYC`, `AML`, `degen(s)`; es `on-chain` → "onchéin", pt-br
-"onchêin" (espeak es said "on-cháin"), `Pump.fun` respellings. A `{display|spoken}` pair still wins. The es/pt-br
-entries are machine-made respellings for the native reviewer.
+"onchêin" (espeak es said "on-cháin"), `Pump.fun` respellings, and the dub glossary's other single-word respellings
+(`memecoin(s)` → "mimcoins" / "mímcoins", `CoinGecko`, `Bubblemaps`; `tests/test_normalize.py` keeps the two lists equal),
+so a dub that forgets the markup is read the same way. A `{display|spoken}` pair still wins. The es/pt-br entries are
+machine-made respellings for the native reviewer.
 
 ## Word timings
 
@@ -162,14 +164,22 @@ An audio-track dub plays over the master picture: Zoo's mouth shapes and every o
 since 2026-11-24 the fit is **per sentence**: every build records each scene's sentence spans (`sentences`, below), and
 a dub synthesizes each sentence on its own, at the Kokoro speed (0.85–1.15, secant search, at most 5 takes) that makes
 its speech as long as the master sentence, then places it where the master sentence starts (never closer than 120 ms
-to the previous one). Talking and pauses line up with the master's mouth. A sentence that ends more than 100 ms after
-its master sentence is reported even when the scene fits ("It is N ms longer than the en sentence: shorten it by
-about X%"). When the sentence count differs from the master's, or the master has no `sentences` (built before this
-change), the scene is fitted as a whole, with a warning. Each scene keeps the master's `durationMs` and leaves 150 ms
-of air; if it still overflows, it is lengthened, reported (`overflowMs`), and `build.py` exits 3.
+to the previous one). Talking and pauses line up with the master's mouth. A sentence still longer than its master
+sentence at 1.15 starts where its excess shows least against the master's mouth track (each 10 ms start between the
+previous sentence's end + 120 ms and the master start is scored by the frames where the dub's talking or silence
+disagrees with the master mouth): talking into a short master pause is invisible (pauses under 11 frames show a
+slightly open mouth), talking past a phrase end is not. Without a mouth track, half the excess goes each side. If the
+scene would still overflow, the pauses are shortened from the end backwards (down to 120 ms) before the scene is
+lengthened. Every sentence more than 100 ms longer than its master sentence is reported even when the scene fits
+("sentence 2 is 225 ms longer than the en sentence even at speed 1.15: it starts 122 ms before and ends 103 ms after it
+... Shorten it by about 13%"), and so is one pushed late or pulled early by its neighbours. When the sentence count
+differs from the master's, or the master has no `sentences` (built before this change), the scene is fitted as a whole,
+with a warning. Each scene keeps the master's `durationMs` and leaves 150 ms of air; if it still overflows, it is
+lengthened, reported (`overflowMs`), and `build.py` exits 3.
 
 `--fit-to` is refused for a storyboard with `offers` or `fiction: true` unless the dub SAYS the disclosure and the
 fiction notice in its language (the master picture shows them in English only); otherwise publish a native upload.
+The master's `storyboard.json` flags count too, so a translation that lost them is still refused.
 
 ## Loudness
 
@@ -198,7 +208,8 @@ count and alignment (verified with clicks), so scene cuts stay sample-exact.
 ## Warnings the step writes
 
 - Translated storyboards (`lang != sourceLang`): `machine translation: needs native review ...`, until the
-  storyboard says `translation: {status: 'native-reviewed'}` (the rule in `src/episode/types.ts`).
+  storyboard carries the whole review record `translation: {status: 'native-reviewed', reviewed: true, reviewer, date}`
+  (since 2026-11-24 the same rule as dub validate and the claim gate; a half-set record still warns).
 - zh/ja: the pronunciation comes from misaki and has not been checked by a native speaker.
 - A proportional word-timing fallback, dropped letters, loudness off target, and fit overflows.
 - Digits or symbols left in the spoken text; a lip-sync check outside its tolerance; a dub sentence longer than its

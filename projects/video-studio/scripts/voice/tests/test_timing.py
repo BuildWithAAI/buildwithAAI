@@ -126,8 +126,9 @@ class FitScene(unittest.TestCase):
 
 
 class FitSentences(unittest.TestCase):
-    """pipeline._fit_sentences: each dubbed sentence fitted to its master sentence and placed where it starts
-    (2026-11-24, VCD fix: the scene-level fit let sentence pauses fall at other times than in the master picture)."""
+    """pipeline._fit_sentences: each dubbed sentence fitted to its master sentence and placed where it starts, an
+    overlong one centred on it, the pauses shortened before the scene overflows (2026-11-24, VCD fix: the scene-level fit
+    let sentence pauses fall at other times than in the master picture)."""
 
     class FakeSynth:
         """A take of one sentence: 150 ms lead, then phones lasting a / speed ms (a per sentence, by its first
@@ -173,6 +174,43 @@ class FitSentences(unittest.TestCase):
         self.assertGreater(detail[0]["overrunMs"], 100)
         self.assertGreater(detail[0]["longerMs"], 100)
 
+    @unittest.skipUnless(__import__("importlib").util.find_spec("numpy"), "numpy not installed")
+    def test_an_overlong_sentence_spills_evenly_around_its_master_sentence(self):
+        """2026-11-24 re-check: starting an overlong sentence on time put its whole excess after the master's mouth closed
+        (the A/B on the demo: 14 frames closed while the dub spoke in s04) and pushed every later sentence back."""
+        _, over, _, detail = self.fit(self.FakeSynth({"a": 2700, "b": 5000}))  # b: 4348 ms at 1.15 vs 4000 ms
+        self.assertEqual(over, 0)
+        b = detail[1]
+        self.assertEqual(b["speed"], T.SPEED_MAX)
+        self.assertAlmostEqual(b["longerMs"], 348, delta=5)
+        self.assertAlmostEqual(b["earlyMs"], b["overrunMs"], delta=2)  # half before, half after
+        self.assertAlmostEqual(b["earlyMs"], 174, delta=5)
+
+    @unittest.skipUnless(__import__("importlib").util.find_spec("numpy"), "numpy not installed")
+    def test_pauses_shrink_before_the_scene_overflows(self):
+        master = {"durationMs": 6900, "speechMs": 6700, "sentences": [{"startMs": 150, "endMs": 2650}, {"startMs": 3150, "endMs": 6650}]}
+        take, over, _, detail = self.fit(self.FakeSynth({"a": 2700, "b": 4300}), master)  # b: 3739 ms at 1.15 vs 3500 ms
+        self.assertEqual(over, 0, detail)  # 120 ms of excess spill + the pause shortened by about 120 ms
+        self.assertGreater(detail[1]["earlyMs"], 200)
+        self.assertGreaterEqual(detail[1]["startMs"] - detail[0]["endMs"], round(1000 * __import__("voicelib.pipeline", fromlist=["x"]).SENTENCE_GAP_S) - 1)
+        self.assertLessEqual(take.ms + T.FIT_MIN_TAIL_MS, master["durationMs"])
+
+    @unittest.skipUnless(__import__("importlib").util.find_spec("numpy"), "numpy not installed")
+    def test_the_master_mouth_decides_where_an_overlong_sentence_spills(self):
+        """A short master pause shows a slightly open mouth (talking there is invisible); after the last phrase the mouth
+        closes. So an overlong last sentence moves into the pause before it rather than past the phrase end."""
+        mouth = ["closed"] * 5 + ["ah"] * 75 + ["slightlyOpen"] * 9 + ["ah"] * 45 + ["closed"] * 46  # 180 frames, 6 s
+        master = {"durationMs": 6000, "speechMs": 4700, "sentences": [{"startMs": 150, "endMs": 2650}, {"startMs": 2950, "endMs": 4450}], "mouth": mouth}
+        _, over, _, detail = self.fit(self.FakeSynth({"a": 2700, "b": 2000}), master)  # b: 1739 ms at 1.15 vs 1500 ms
+        self.assertEqual(over, 0)
+        b = detail[1]
+        self.assertEqual(b["speed"], T.SPEED_MAX)
+        self.assertGreater(b["earlyMs"], b["overrunMs"])  # spilled into the pause, not past the phrase end
+        self.assertLessEqual(b["startMs"] - detail[0]["endMs"], 130)  # as early as the 120 ms gap allows
+        # without a mouth track the same sentence is centred
+        _, _, _, centred = self.fit(self.FakeSynth({"a": 2700, "b": 2000}), {k: v for k, v in master.items() if k != "mouth"})
+        self.assertAlmostEqual(centred[1]["earlyMs"], centred[1]["overrunMs"], delta=2)
+
     def test_a_different_sentence_count_falls_back(self):
         from voicelib.pipeline import _fit_sentences
 
@@ -191,6 +229,23 @@ class AudioTrackRefusal(unittest.TestCase):
         ok = {"fiction": True, "offers": ["x"], "scenes": [{"narration": "Una historia ficticia: te despiertas como caller."}, {"narration": "Enlace de afiliado: puedo ganar una comisión."}]}
         self.assertEqual(audio_track_problems(ok, "es"), [])
         self.assertEqual(audio_track_problems({"fiction": False, "scenes": [{"narration": "Hola."}]}, "es"), [])
+
+    def test_a_dub_that_dropped_the_flags_is_still_refused(self):
+        """The master's fiction flag and offers count even when the translation lost them (2026-11-24 re-check)."""
+        import json
+        import os
+        import tempfile
+
+        from voicelib.pipeline import audio_track_problems, with_master_flags
+
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "storyboard.json"), "w", encoding="utf-8") as fh:
+                json.dump({"lang": "en", "fiction": True, "offers": ["hardware-wallet"], "scenes": []}, fh)
+            dub = {"lang": "es", "fiction": False, "scenes": [{"narration": "Te despiertas como caller."}]}
+            merged = with_master_flags(dub, d)
+            self.assertEqual((merged["fiction"], merged["offers"]), (True, ["hardware-wallet"]))
+            self.assertEqual(len(audio_track_problems(merged, "es")), 2)
+            self.assertIs(with_master_flags(dub, os.path.join(d, "missing")), dub)
 
     def test_sentences(self):
         from voicelib.pipeline import sentence_chunks, sentence_spans

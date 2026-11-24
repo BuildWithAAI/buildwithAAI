@@ -79,13 +79,40 @@ export const DEFAULT_HEAD: Record<BadgerView, BadgerHead> = {
 };
 
 /**
+ * Round-2 repair (decision BADGER-D37): the 3/4-right head on the left-facing body looks back over the shoulder, so its
+ * muzzle lies over the neck's back line. The neck's crest now runs from behind the far (dark) ear, past the muzzle with a
+ * clear gap (about 10 units at the nose), into the original back line above the collar; a coat fill covers the old line
+ * between the two. Neck-local units of rigLeft.ts (head pivot at headMount + (-8, 16)). KEEP IN SYNC with the 3/4 head in
+ * dev/trace/gen_heads.py (TQ_SKULL_TOP_FAR) if either changes.
+ */
+const LEFT_NAPE_34R = {
+	stroke: 'M 14 -122 C 19 -114 23 -104 24.6 -94 C 26 -84 26.6 -74 28 -64 C 29.4 -55 33 -45 38.5 -37.6',
+	fill:
+		'M 14 -122 C 19 -114 23 -104 24.6 -94 C 26 -84 26.6 -74 28 -64 C 29.4 -55 33 -45 38.5 -37.6 ' +
+		'L 35.5 -34.2 L 33.2 -36.3 L 31 -38.3 L 28.9 -40.3 L 26.8 -42.5 L 24.7 -44.9 L 22.6 -47.6 L 20 -51.3 L 17.4 -55.1 ' +
+		'L 14.8 -59 L 12.2 -62.9 L 9.6 -66.8 L 7 -70.7 L 4.5 -74.6 L 1.9 -78.5 L -0.7 -82.4 L -3.3 -86.2 L -5.8 -89.9 ' +
+		'L -8.4 -93.6 L -2 -112 Z',
+} as const;
+
+/** The same repair on the right-facing body with the 3/4-left head (neck-local units of rigRight.ts, head at headMount + (8, 16)). */
+const RIGHT_NAPE_34L = {
+	stroke: 'M -12 -117 C -17 -110 -22 -100 -23.6 -90 C -25.2 -80 -26 -70 -27.4 -60 C -28.8 -51 -32 -40.5 -37 -33.9',
+	fill:
+		'M -12 -117 C -17 -110 -22 -100 -23.6 -90 C -25.2 -80 -26 -70 -27.4 -60 C -28.8 -51 -32 -40.5 -37 -33.9 ' +
+		'L -34.3 -30.3 L -30.9 -32.7 L -26.8 -36.1 L -24.7 -39 L -23 -42 L -21.7 -44.7 L -20.4 -47.1 L -18.9 -49.5 ' +
+		'L -17.2 -51.9 L -15.4 -54.5 L -13.6 -57.3 L -12.3 -59.8 L -11 -62.2 L -9.9 -64.5 L -8.7 -66.8 L -7.5 -69.1 ' +
+		'L -6.2 -71.5 L -5 -73.8 L -3.8 -76.1 L -2.6 -78.5 L -1.5 -80.9 L -0.4 -83 L 0.8 -84.8 L 2 -86.3 L 3.6 -87.9 ' +
+		'L 5.3 -89.6 L 7.1 -91.4 L 1 -108 Z',
+} as const;
+
+/**
  * Where each replaceable head sits on the LEFT-view neck: neck rotation (SVG deg, about the neck base) and
  * the head pivot offset from the neck's head mount (neck-local units). Tuned against the sheet panels.
  */
 export const LEFT_HEAD_MOUNT: Record<BadgerHead, HeadMount> = {
 	front: {neck: 7, dx: -13, dy: 25, rot: 0},
 	threeQuarterLeftScreen: {neck: 7, dx: -17, dy: 25, rot: 0},
-	threeQuarterRightScreen: {neck: 7, dx: -8, dy: 16, rot: 0},
+	threeQuarterRightScreen: {neck: 7, dx: -8, dy: 16, rot: 0, nape: LEFT_NAPE_34R},
 	profileLeftScreen: {neck: 0, dx: 0, dy: 0, rot: 0},
 	profileRightScreen: {neck: 9, dx: 12, dy: 4, rot: 0},
 	upLeftScreen: {neck: 20, dx: 0, dy: 0, rot: 0},
@@ -96,7 +123,7 @@ export const LEFT_HEAD_MOUNT: Record<BadgerHead, HeadMount> = {
 export const RIGHT_HEAD_MOUNT: Record<BadgerHead, HeadMount> = {
 	front: {neck: -7, dx: 13, dy: 25, rot: 0},
 	threeQuarterRightScreen: {neck: -7, dx: 17, dy: 25, rot: 0},
-	threeQuarterLeftScreen: {neck: -7, dx: 8, dy: 16, rot: 0},
+	threeQuarterLeftScreen: {neck: -7, dx: 8, dy: 16, rot: 0, nape: RIGHT_NAPE_34L},
 	profileRightScreen: {neck: 0, dx: 0, dy: 0, rot: 0},
 	profileLeftScreen: {neck: -9, dx: -12, dy: 4, rot: 0},
 	upRightScreen: {neck: -12, dx: -7, dy: 1, rot: 0},

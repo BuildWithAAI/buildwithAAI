@@ -49,14 +49,14 @@ export const settledAt = (geo: GeoMap, key: string, frame: number): boolean | nu
 	return seen ? true : null;
 };
 
-const SENSITIVE = new Set(['text-clipped', 'text-offframe', 'text-overflow', 'text-small', 'safe-area', 'shorts-ui', 'shorts-ads', 'text-face-zone', 'caption-face', 'text-face']);
+const SENSITIVE = new Set(['text-clipped', 'text-offframe', 'text-overflow', 'text-small', 'text-collision', 'safe-area', 'shorts-ui', 'shorts-ads', 'text-face-zone', 'caption-face', 'text-face']);
 
 /** Geometry findings on animating elements become information (faces/captions overlaps become warnings). */
 export const demoteTransient = (findings: Finding[], geo: GeoMap): number => {
 	let n = 0;
 	for (const f of findings) {
 		if (!SENSITIVE.has(f.check) || !f.elementKey) continue;
-		if (settledAt(geo, f.elementKey, f.frame) !== false) continue;
+		if (settledAt(geo, f.elementKey, f.frame) !== false && (!f.elementKey2 || settledAt(geo, f.elementKey2, f.frame) !== false)) continue;
 		n++;
 		if (f.check === 'caption-face' || f.check === 'text-face') {
 			if (f.severity === 'error') f.severity = 'warn';

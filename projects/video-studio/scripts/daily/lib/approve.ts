@@ -113,7 +113,8 @@ export const runApprove = async (o: ApproveOptions): Promise<ApproveResult> => {
 		writeJson(ep.approvalJson, record);
 		log(`Approved ${o.dateSlug} (version ${vh.slice(0, 12)}): ${rel(o.root, ep.approvalJson)}`);
 
-		// post-approval drafts: only approved text, sources and links
+		// post-approval drafts: only approved text, sources and links. The hub tools are the only children that get the
+		// full environment (their posting credentials); approve runs nothing else.
 		const sbRead = readJson(ep.storyboard);
 		const {sb} = readStoryboard(sbRead.ok ? sbRead.data : null);
 		const briefRead = readJson<DailyBrief>(ep.brief);
@@ -128,7 +129,7 @@ export const runApprove = async (o: ApproveOptions): Promise<ApproveResult> => {
 			const tb = buildThreatBrief(input);
 			const videoKnown = !!record.upload.youtubeVideoId;
 			results.push(
-				runPostApproval({tool: 'announcer', outDir: ep.postApproval, hubRoot: ep.hubRoot, root: o.root, files: {'x.txt': `${ann.x}\n`, 'telegram.txt': `${ann.telegram}\n`, 'youtube-community.txt': `${ann.community}\n`}, input: {...input, posts: ann}, credentialEnv: channel.announcerCredentialEnv, videoKnown, exec: o.exec, env}),
+				runPostApproval({tool: 'announcer', outDir: ep.postApproval, hubRoot: ep.hubRoot, root: o.root, files: {'x.txt': `${ann.x}\n`, 'telegram.txt': `${ann.telegram}\n`, 'youtube-community.txt': `${ann.community}\n`}, input: {...input, posts: ann}, credentialEnv: channel.announcerCredentialSets, videoKnown, exec: o.exec, env}),
 			);
 			results.push(
 				runPostApproval({tool: 'threat-brief', outDir: ep.postApproval, hubRoot: ep.hubRoot, root: o.root, files: {'threat-brief.md': `${tb.md}\n`, 'threat-brief.html': tb.html, 'threat-brief.txt': `${tb.text}\n`}, input: {...input, email: {subject: tb.subject, preview: tb.preview}}, credentialEnv: channel.threatBriefCredentialEnv, videoKnown, exec: o.exec, env}),

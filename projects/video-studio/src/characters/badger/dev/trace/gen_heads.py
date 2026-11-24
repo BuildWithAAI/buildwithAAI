@@ -109,30 +109,41 @@ FRONT = {
     # pale ANATOMICAL RIGHT ear (screen left in the front view): flap + pink ribbon + small spot
     'earR': {
         # worried / earsBack: the flap swings down and out about its base (~20 deg) and keeps its width (round-1 repair)
-        'pivot': (126, 66), 'backRot': -20, 'backSx': 0.96,
+        # round-2 repair (BADGER-D38): worried / earsBack splays the flap out and down as on badger_expr_worried.png: a
+        # smaller swing (-11.5 deg at full) plus a lengthwise stretch along the root-to-tip axis (1.36 at full; at the worried
+        # 0.7: about 10 units out and 10 down at the tip)
+        'pivot': (126, 66), 'backRot': -11.5, 'backSx': 0.96, 'stretch': 1.36, 'tip': (40, 80),
         'fills': [
             ('M 158 31 C 150 25 136 17 122 17 C 109 17 97 26 86 35 C 72 45 52 55 40 66 C 34 72 35 86 42 93 '
              'C 50 102 60 113 70 116 C 77 117 83 111 89 104 C 96 107 104 111 113 113 C 114 100 118 82 124 66 '
              'C 129 56 135 50 141 47 C 147 42 153 36 158 31 Z', 'coat', False),
-            ('M 92 102 C 96 85 100 68 106 55 C 110 45 116 37 123 35 C 128 34 133 38 136 45 C 132 52 127 59 124 66 '
-             'C 118 80 115 92 113 106 C 105 104 98 103 92 102 Z', 'earPaleInner', True),
+            # round-2 repair (BADGER-D38): the pink band runs to the flap's inner edge and bottom (clipped to the flap), so no
+            # white sliver shows under it or beside the fold
+            ('M 91.4 105 C 91.6 104 91.8 103 92 102 C 96 85 100 68 106 55 C 110 45 116 37 123 35 C 128 34 133 38 136 45 '
+             'C 137 46.2 138.4 47 139.8 47.6 L 150 48 L 122 120 L 88 112 Z', 'earPaleInner', True),
             (ellipse_path(88, 51, 4.6, 9.0, 28), 'spot', True),
         ],
+        # round-2 repair (BADGER-D38): ONE closed flap outline (it used to stop at the root and beside the band, leaving a
+        # shelf stub at the base and a tick at the top of the fold) plus the band's free edge; the interior tick is gone
         'strokes': [
             'M 158 31 C 150 25 136 17 122 17 C 109 17 97 26 86 35 C 72 45 52 55 40 66 C 34 72 35 86 42 93 '
-            'C 50 102 60 113 70 116 C 77 117 83 111 89 104 C 96 107 104 111 113 113',
-            'M 92 102 C 96 85 100 68 106 55 C 110 45 116 37 123 35 C 128 34 133 38 136 45',
-            'M 141 47 C 135 52 128 58 124 66 C 118 80 115 92 113 106',
+            'C 50 102 60 113 70 116 C 77 117 83 111 89 104 C 96 107 104 111 113 113 C 114 100 118 82 124 66 '
+            'C 129 56 135 50 141 47 C 147 42 153 36 158 31 Z',
+            'M 91.4 105 C 91.6 104 91.8 103 92 102 C 96 85 100 68 106 55 C 110 45 116 37 123 35 C 128 34 133 38 136 45 '
+            'C 137 46.2 138.4 47 139.8 47.6',
         ],
-        'details': ['M 121 62 C 122 66 122 70 122 74'],
+        'details': [],
         'spot': (88, 51, 4.6, 9.0, 28),
     },
     # dark-capped ANATOMICAL LEFT ear (screen right in the front view)
     'earL': {
-        'pivot': (285, 60), 'backRot': 20, 'backSx': 0.96,
+        # round-2 repair (BADGER-D38): with the stretch the dark tip drops about 14 units at the worried 0.7
+        'pivot': (285, 60), 'backRot': 20, 'backSx': 0.96, 'stretch': 1.21, 'tip': (355, 100),
         'fills': [
-            ('M 296 104 C 297 92 299 80 303 70 C 310 60 325 58 334 64 C 337 68 338 72 337 75 '
-             'C 330 84 316 94 303 106 C 300 108 297 107 296 104 Z', 'earPaleInner', False),
+            # round-2 repair (BADGER-D38): the pale inner runs on under the cap's hollow edge (a white sliver of skull showed
+            # between them)
+            ('M 295 104 C 289 94 288 80 294 68 C 301 57 322 54 335 62 C 339 66 340 72 337 75 '
+             'C 330 84 316 94 303 106 C 300 108 297 108 295 104 Z', 'earPaleInner', False),
             ('M 254 33 C 264 24 278 17 292 17 C 312 19 335 38 352 52 C 362 60 366 72 365 84 C 364 94 360 101 354 101 '
              'C 349 100 345 93 341 86 C 338 79 336 70 332 65 C 324 58 310 57 301 63 C 294 68 291 78 291 88 '
              'C 291 94 292 98 293 101 C 288 90 280 70 272 55 C 266 45 260 38 254 33 Z', 'earCap', False),
@@ -149,9 +160,15 @@ FRONT = {
 
 
 def build_ear(src, f, side, sx_extra=1.0):
-    return {'side': side, 'pivot': pt(*src['pivot'], f), 'backRot': src['backRot'], 'backSx': src['backSx'] * sx_extra,
-            'fills': [{'d': mp(d, f), 'color': c, **({'clip': True} if clip else {})} for (d, c, clip) in src['fills']],
-            'strokes': [mp(d, f) for d in src['strokes']], 'details': [mp(d, f) for d in src['details']]}
+    piv = pt(*src['pivot'], f)
+    out = {'side': side, 'pivot': piv, 'backRot': src['backRot'], 'backSx': src['backSx'] * sx_extra,
+           'fills': [{'d': mp(d, f), 'color': c, **({'clip': True} if clip else {})} for (d, c, clip) in src['fills']],
+           'strokes': [mp(d, f) for d in src['strokes']], 'details': [mp(d, f) for d in src['details']]}
+    if src.get('stretch'):
+        tip = pt(*src['tip'], f)
+        out['stretch'] = src['stretch']
+        out['axis'] = round(math.degrees(math.atan2(tip['y'] - piv['y'], tip['x'] - piv['x'])), 2)
+    return out
 
 
 def build_from_front(src, fFace, fSkull, fEarR, fEarL, view, eye_w=(1.0, 1.0), ears_behind=()):
@@ -192,6 +209,29 @@ def build_from_front(src, fFace, fSkull, fEarR, fEarL, view, eye_w=(1.0, 1.0), e
 
 
 heads['front'] = build_from_front(FRONT, F, F, F, F, 'front')
+# Round-2 repair (BADGER-D38), front head:
+#  * the skull's top corners under the ears are rounded and the skull outline is ONE stroke from the left jaw over the top
+#    to the right jaw (it used to stop at the ear roots, so folding an ear opened a gap in the outline);
+#  * the neutral mouth is the sheet's closed mouth: the jaw lines run into the gull-wing upper lip at the corners
+#    (badger_expr_neutral.png: corners about 33 px either side of the philtrum) and the lower lip joins it there (it was a
+#    floating dash and the right jaw ended in a stub below the corner). The sheet draws no chin outline; neither do we;
+#  * two nostril curls on the nose (line colour only; no highlight tone).
+FRONT_SKULL_ROUND = ('M 141 31 C 165 23 245 22 262 29 C 274.2 34.3 283.6 43.3 287.2 57.3 C 290.4 69.9 290.4 81.8 289 92 '
+                     'C 293 118 294 148 288 162 C 284 170 280 174 277 177 C 271 192 262 205 252 216 C 244 230 228 243 208 244 '
+                     'C 188 243 172 230 164 216 C 154 205 145 192 139 177 C 135 173 131 169 127 162 C 120 148 115 125 116 100 '
+                     'C 116.7 81.1 120.9 62 127.7 48.7 C 133.5 37.9 138.5 33.6 141 31 Z')
+FRONT_OUTLINE = ('M 129 175 C 125 170 122 165 119 158 C 114 145 112 125 113 104 C 113.8 85.1 118.4 63 126.6 48.7 '
+                 'C 133.3 37.4 144.3 35.9 158 31 C 175 25 195 22 207 22 C 225 22 245 26 258 32 C 271 37.9 282.2 46.2 287.6 59.1 '
+                 'C 293 72.1 291.5 85.9 293 100 C 295 120 294 145 289 158 C 286 165 282 171 278 176')
+FRONT_NEUTRAL_MOUTH = ['M 129 175 C 138 191 156 210 174.5 220 C 186 214 198 210 208 209 C 218 210 230 214 241.5 220 '
+                       'C 260 210 270 193 278 176',
+                       'M 174.5 220 C 186 228 197 230.5 208 230.5 C 219 230.5 230 228 241.5 220']
+FRONT_NOSTRILS = ['M 205 173.5 C 201.5 172.8 199 175.2 199.5 178.2 C 200 180.6 203 181.6 205.5 180.2',
+                  'M 216 173.5 C 219.5 172.8 222 175.2 221.5 178.2 C 221 180.6 218 181.6 215.5 180.2']
+heads['front']['skull']['fill'] = mp(FRONT_SKULL_ROUND, F)
+heads['front']['skull']['strokes'] = [mp(FRONT_OUTLINE, F)]
+heads['front']['mouth']['neutral'] = {'strokes': [mp(d, F) for d in FRONT_NEUTRAL_MOUTH], 'details': [], 'fills': []}
+heads['front']['nose']['details'] = [mp(d, F) for d in FRONT_NOSTRILS]
 
 # ------------------------------------------------------------------------------- 3/4 via depth-field turn
 R_DEPTH = 85.0   # head depth radius in NF px; with 36 deg this puts near eye / nose at 0.43 / 0.88 of the
@@ -403,6 +443,105 @@ for view, theta in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen'
     del chin
     fix_three_quarter(view, theta, fFace)
 
+# ------------------------------------------------------------------------------- 3/4 lower face, round-2 repair
+# Round-2 repair (decision BADGER-D36), measured on badger_turn_34.png warped into head-local units (eyes aligned:
+# 50 crop px = 46.4 units): the muzzle projects past the far eye with the nose at its tip (nose centre 7 units beyond the
+# far eye, 32 units below the eye line; it used to sit under the far eye, 9 units lower), the far silhouette runs from
+# under the far ear straight to the nose, the mouth rises to the far lip corner under the nose, the chin line is outlined
+# and sits about 15 units higher than the front head's (the sheet's 3/4 lower face is shorter), a bridge line runs from
+# below the far eye to the nose, and the far upper lip under the nose is in shadow left of the philtrum.
+# The skull outline is ONE stroke: over the top, round the (rounded) far-top corner behind the far ear, down the far
+# temple, round the muzzle behind the nose, down the far muzzle side and along the chin line, so nothing shows between the
+# far ear and the skull at any ear fold. The far ear is one solid silhouette with one outline (its front-view inner and fold
+# fills and strokes are gone, they left a white crescent and a black needle at the ear root).
+# Authored for the screen-right turn; the screen-left turn uses the same UNMARKED outline, nose and mouth geometry with
+# x -> -x (as INT-B1 already did for the far outline). Ears, eyes and every marking keep their own per-side construction.
+TQ_SKULL_TOP_FAR = ('M -29.4 -102.2 C -19.4 -105.6 -7.6 -107.2 -0.6 -107.2 C 7.5 -107.2 15.5 -105.8 21.5 -103.2 '
+                    'C 28 -100.4 33.2 -94.6 36.6 -87.2 C 39.8 -80.4 41.8 -72.4 42.4 -64.6 C 42.6 -60.6 42.6 -57 43.2 -53.5 '
+                    'C 44.8 -48.8 47.8 -44.6 50.4 -41.2 C 51.6 -39.2 52.1 -35.5 52.2 -31.5 C 52.3 -27.5 52.4 -24.2 52.9 -21.6 '
+                    'C 53.5 -18.5 53.2 -14.6 51.6 -11.2 C 50 -7.8 47 -4.4 42.6 -2.3 C 37.5 0 30 0.7 23.5 0.3 '
+                    'C 17.5 -0.1 12 -1.6 8 -3.4')
+TQ_SKULL_NEAR_BOTTOM = ('C 9.4 0.2 9.6 4.4 7.2 7.6 C 3.6 10 -3.4 9.9 -9.6 7.6 C -16.6 4.6 -21.6 -1 -25.6 -6.6 '
+                        'C -30 -12.6 -34.4 -16.6 -38.6 -21.1 C -41.2 -23.3 -43.8 -25.6 -46.5 -29.4 '
+                        'C -51.3 -37.2 -54.6 -50 -54.1 -63.9 L -50.6 -97.2 C -47 -100.2 -43.4 -101.8 -39.4 -102.2 Z')
+TQ_SKULL_FILL = TQ_SKULL_TOP_FAR + ' ' + TQ_SKULL_NEAR_BOTTOM
+TQ_NEAR_CHEEK = 'M -55.9 -61.7 C -56.4 -50 -54.9 -38.9 -51.4 -31.7 C -49.3 -27.8 -47.2 -25 -44.6 -22.2 C -43 -20 -41.6 -18.2 -40.2 -16.6'
+TQ_BRIDGE = 'M 31.6 -55 C 36.4 -51.4 41.6 -47 46.6 -42.4 C 47.6 -41.4 48.4 -40.4 49 -39.4'
+TQ_NOSE = ('M 39 -38.8 C 45.3 -39 50.6 -37.6 52.6 -33.8 C 54.1 -30.4 53.2 -26.1 50.2 -23.7 C 47.5 -21.7 44 -21 41.2 -21.3 '
+           'C 37.8 -21.6 33.1 -23.2 30.3 -26.4 C 27.9 -29.2 28.1 -33.6 30.7 -36.2 C 32.9 -38.2 35.8 -38.8 39 -38.8 Z')
+TQ_PHILTRUM = 'M 41.3 -21.6 C 41 -17.7 40.6 -14.3 40.3 -11.2'
+TQ_MOUTH = {
+    'neutral': {'strokes': ['M -17.5 -11.5 C -12.5 -7 -6.5 -4.6 1 -4.3 C 10 -4 21 -6 31 -7.8 C 37 -8.9 42 -9.8 45.6 -10.6'],
+                'details': [], 'fills': []},
+    'happy': {'strokes': ['M -18.6 -14.2 C -13.6 -7.2 -6.6 -3.8 1.6 -3.3 C 12.2 -2.6 24.2 -4.8 33.6 -7.4 C 38.6 -8.8 42.6 -10.4 46.2 -12.4'],
+              'details': ['M -18.6 -14.2 C -20.3 -16 -20.9 -18.4 -20.3 -20.8'], 'fills': []},
+    'worried': {'strokes': ['M -16.2 -5.2 C -12.6 -7.4 -7 -6.8 0 -6.2 C 9 -5.6 19 -7.2 29 -8.4 C 35.6 -9.1 41 -9.8 45.6 -10.6'],
+                'details': [], 'fills': []},
+    'shocked': {'strokes': ['M 29.4 -12 C 34.4 -13.6 43.6 -13.8 47.8 -11.6 C 48.2 -7.6 44.6 -4.4 38.6 -4.4 C 32.6 -4.4 28.9 -7.4 29.4 -12 Z'],
+                'details': [],
+                'fills': [{'d': 'M 29.4 -12 C 34.4 -13.6 43.6 -13.8 47.8 -11.6 C 48.2 -7.6 44.6 -4.4 38.6 -4.4 C 32.6 -4.4 28.9 -7.4 29.4 -12 Z', 'color': 'mouth'},
+                          {'d': 'M 32 -6.6 C 35 -8.3 43 -8.3 45.6 -6.8 C 43.6 -4.8 34.6 -4.8 32 -6.6 Z', 'color': 'tongue'}]},
+}
+TQ_SHADOWS = [
+    # underside of the jaw below the mouth (soft-edged grey on the sheet), clipped to the skull
+    {'d': 'M -14 -8.8 C -8 -5.4 0 -4.6 8.6 -4.8 C 11.6 -1.6 12.6 2.6 11.6 6.6 C 6 9.8 -1 10 -7.6 8.2 C -11.6 4 -13.6 -2 -14 -8.8 Z',
+     'color': 'coatShadow'},
+    # far upper lip under the nose, left of the philtrum
+    {'d': 'M 30.4 -25 C 33.6 -22.2 37.2 -21.2 41 -21.3 C 40.8 -17.6 40.6 -14.2 40.3 -11 C 36.8 -10.4 33.4 -10.2 30.6 -10 C 29 -14.8 29 -20 30.4 -25 Z',
+     'color': 'coatShadow'},
+]
+TQ_CHEEK_NEAR = (-30.6, -29.6)   # near cheek spot centre (badger_turn_34.png), head-local units, screen-right turn
+EAR_L_UNION = ('M 254 33 C 264 24 278 17 292 17 C 312 19 335 38 352 52 C 362 60 366 72 365 84 C 364 94 360 101 354 101 '
+               'C 349 100 345 93 341 86 C 339.5 82.5 338.3 78.6 337 75 C 330 84 316 94 303 106 C 300 108 297 107 296 104 '
+               'C 295 103 294 102 293 101 C 288 90 280 70 272 55 C 266 45 260 38 254 33 Z')
+EAR_R_FLAP = FRONT['earR']['fills'][0][0]
+
+
+def _mx(d):
+    return map_path(d, lambda x, y: (-x, y))
+
+
+def rebuild_three_quarter(view, theta):
+    right = theta > 0
+    g = heads[view]
+    m = (lambda d: d) if right else _mx
+    g['skull']['fill'] = m(TQ_SKULL_FILL)
+    g['skull']['strokes'] = [m(TQ_SKULL_TOP_FAR), m(TQ_NEAR_CHEEK)]
+    g['skull']['details'] = []
+    g['bridge'] = m(TQ_BRIDGE)
+    g['chin'] = None
+    g['nose'] = {'d': m(TQ_NOSE)}
+    g['philtrum'] = m(TQ_PHILTRUM)
+    g['mouth'] = {k: {'strokes': [m(d) for d in v['strokes']], 'details': [m(d) for d in v['details']],
+                      'fills': [{'d': m(f['d']), 'color': f['color']} for f in v['fills']]} for k, v in TQ_MOUTH.items()}
+    g['shadows'] = [{'d': m(x['d']), 'color': x['color']} for x in TQ_SHADOWS]
+    g['clipMouth'] = True
+    # markings: the near cheek spot sits where the sheet draws it; the far cheek spot is hidden behind the muzzle (as the
+    # profiles hide both, D05). Each spot keeps its own side: the near cheek is the anatomical RIGHT one in the screen-right
+    # turn and the anatomical LEFT one in the screen-left turn.
+    near_id, far_id = ('H-CHEEK-R', 'H-CHEEK-L') if right else ('H-CHEEK-L', 'H-CHEEK-R')
+    cx, cy = TQ_CHEEK_NEAR
+    src = FRONT['cheekR'] if right else FRONT['cheekL']
+    spot = me(0, 0, src[2] * S_NF * 0.92, src[3] * S_NF, src[4], lambda x, y: (x + (cx if right else -cx), y + cy))
+    g['markings'] = [{'id': near_id, 'd': spot}]
+    markings[near_id][view] = spot
+    markings[far_id].pop(view, None)
+    # far ear: one solid silhouette with one outline, behind the skull
+    fEar = compose(turn_ear(theta, 'L' if right else 'R'), F)
+    for e in g['earsBehind']:
+        if right:
+            e['fills'] = [{'d': mp(EAR_L_UNION, fEar), 'color': 'earCap'}]
+            e['strokes'] = [mp(EAR_L_UNION, fEar)]
+        else:
+            flap = mp(EAR_R_FLAP, fEar)
+            e['fills'] = [{'d': flap, 'color': 'coat'}, {'d': me(*FRONT['earR']['spot'], fEar), 'color': 'spot', 'clip': True}]
+            e['strokes'] = [flap]
+        e['details'] = []
+
+
+for _v, _t in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen', -36.0)):
+    rebuild_three_quarter(_v, _t)
+
 # =============================================================================== PROFILE LEFT (CL)
 # Retraced 2026-11-24 (round-1 repair) on reference/crops/badger_coat_left.png at 5x: deeper stop at the eye, muzzle
 # underside 2.5 px lower, a nose the sheet's size (outer 20 x 21 px once outlined) shaped as the rounded tip of the muzzle,
@@ -596,7 +735,7 @@ def _unit(v):
     return (v[0] / L, v[1] / L)
 
 
-def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=None):
+def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=None, cheek=None):
     pitch = sign * UP_PITCH
     fp = compose(base, rotate_about(pitch))
     if inner_band:
@@ -637,9 +776,7 @@ def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=Non
             continue
         nxt = tp[min(idx + 1, len(tp) - 1)]
         tL = _unit((nxt[0] - L1[0], nxt[1] - L1[1]))
-        k0 = math.hypot(L1[0] - J[0], L1[1] - J[1]) * 0.42
-        c1 = (J[0] + tJ[0] * k0, J[1] + tJ[1] * k0)
-        c2 = (L1[0] - tL[0] * k0, L1[1] - tL[1] * k0)
+        c1, c2 = _throat_ctrl(J, tJ, L1, tL)
         br = [_bez(J, c1, c2, L1, k / 30) for k in range(31)]
         old = tp[:idx]
         crosses = any(_seg_x(br[i], br[i + 1], old[k], old[k + 1]) for i in range(len(br) - 3) for k in range(len(old) - 1))
@@ -654,8 +791,8 @@ def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=Non
         L1 = tp[0]
         nxt = tp[1]
         tL = _unit((nxt[0] - L1[0], nxt[1] - L1[1]))
-        k0 = math.hypot(L1[0] - J[0], L1[1] - J[1]) * 0.42
-        best = (L1, (J[0] + tJ[0] * k0, J[1] + tJ[1] * k0), (L1[0] - tL[0] * k0, L1[1] - tL[1] * k0), 0)
+        c1, c2 = _throat_ctrl(J, tJ, L1, tL)
+        best = (L1, c1, c2, 0)
     L1, c1, c2, idx = best
     stroke = 'M %s C %s %s %s' % (q(J), q(c1), q(c2), q(L1))
     # band: bridge, then back up the old throat line offset 6 units toward the nape, then into the head
@@ -671,25 +808,77 @@ def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=Non
     tail = [(J[0] + inward[0] * 8.0, J[1] - 4.0)]
     fill = stroke + ''.join(' L %s' % q(p) for p in back_pts + tail) + ' Z'
     g['throat'] = {'fill': fill, 'stroke': stroke}
+    # Round-2 repair (BADGER-D39), badger_pose_looking_up.png: the mouth is a lip line INSIDE the muzzle, parallel to its
+    # lower contour, from just under the nose back over about 60% of the muzzle (the lower contour itself is the underside
+    # of the jaw in a raised head); no commissure hook at the jaw/throat junction; the cheek mark is a short diagonal curve
+    # below the ear that follows the jaw (the profile's cheek line, pitched, read as a smile on the throat).
+    cont = _samples(mp(lip_cut, fp), 40)
+    acc = [0.0]
+    for a_, b_ in zip(cont, cont[1:]):
+        acc.append(acc[-1] + math.hypot(b_[0] - a_[0], b_[1] - a_[1]))
+    eye_c = (g['eyes'][0]['c']['x'], g['eyes'][0]['c']['y'])
+    def lip_pts(t0, t1, offs):
+        out = []
+        for i, p_ in enumerate(cont):
+            u = acc[i] / acc[-1]
+            if u < t0 or u > t1:
+                continue
+            a_, b_ = cont[max(0, i - 1)], cont[min(len(cont) - 1, i + 1)]
+            t_ = _unit((b_[0] - a_[0], b_[1] - a_[1]))
+            n_ = (-t_[1], t_[0])
+            if (eye_c[0] - p_[0]) * n_[0] + (eye_c[1] - p_[1]) * n_[1] < 0:
+                n_ = (-n_[0], -n_[1])
+            out.append((p_[0] + n_[0] * offs, p_[1] + n_[1] * offs))
+        return out
+    lip_line = _smooth(lip_pts(0.07, 0.62, 4.5))
+    ends = lip_pts(0.55, 0.62, 4.5)
+    e0, e1 = ends[0], ends[-1]
+    te = _unit((e1[0] - e0[0], e1[1] - e0[1]))
+    toward_eye = _unit((eye_c[0] - e1[0], eye_c[1] - e1[1]))
+    def curl(k_up):
+        tip = (e1[0] + te[0] * 3.0 + toward_eye[0] * k_up, e1[1] + te[1] * 3.0 + toward_eye[1] * k_up)
+        return 'M %.1f %.1f C %.1f %.1f %.1f %.1f %.1f %.1f' % (e1[0], e1[1], e1[0] + te[0] * 2.2, e1[1] + te[1] * 2.2,
+                                                                tip[0] - toward_eye[0] * k_up * 0.4, tip[1] - toward_eye[1] * k_up * 0.4,
+                                                                tip[0], tip[1])
+    g['mouth']['neutral'] = {'strokes': [lip_line], 'details': [], 'fills': []}
+    g['mouth']['happy'] = {'strokes': [lip_line], 'details': [curl(3.2)], 'fills': []}
+    g['mouth']['worried'] = {'strokes': [lip_line], 'details': [curl(-2.6)], 'fills': []}
+    if cheek:
+        ex, ey = eye_c
+        g['skull']['details'] = [map_path(cheek, lambda x, y: (x + ex, y + ey))]
     return g
+
+
+def _throat_ctrl(J, tJ, L1, tL):
+    """Round-2 repair (BADGER-D39): the throat leaves the jaw along the chord to its landing point (a soft jaw angle) and
+    arrives along the neck's throat line, so it is one smooth concave curve; following the jaw's own tangent made it an S
+    with a bump whenever the jaw end sat straight above the landing."""
+    d = math.hypot(L1[0] - J[0], L1[1] - J[1])
+    ch = _unit((L1[0] - J[0], L1[1] - J[1]))
+    u = _unit((ch[0] * 0.8 + tJ[0] * 0.2, ch[1] * 0.8 + tJ[1] * 0.2))
+    k0 = d * 0.36
+    return (J[0] + u[0] * k0, J[1] + u[1] * k0), (L1[0] - tL[0] * k0, L1[1] - tL[1] * k0)
 
 
 heads['upLeftScreen'] = build_up(
     'upLeftScreen', PROFILE_L, C, 1, 'rigLeft.ts',
     lip_cut='M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 115 119.3 117 119.6 118.5 120',
     back_path='M 142 37 C 165 37 185 43 192 57 C 196 65 194 76 186 84 C 182 89 177 95 171 101',
-    inner_band='M 139 39 C 140 44 141 50 141 56 C 143 68 147 80 152 86 C 153 80 151 70 149 60 C 147 52 144 45 139 39 Z')
+    inner_band='M 139 39 C 140 44 141 50 141 56 C 143 68 147 80 152 86 C 153 80 151 70 149 60 C 147 52 144 45 139 39 Z',
+    cheek='M 30 42.6 C 26 48.1 20 51.8 13 53.2')
 heads['upRightScreen'] = build_up(
     'upRightScreen', PROFILE_R, CRF, -1, 'rigRight.ts',
     lip_cut='M 588 95 C 585 102 578 107 568 110 C 552 113 532 113 520 114 C 518 114.2 516 114.6 514.5 115',
     back_path='M 498 35 C 474 35 452 40 443 52 C 437 62 439 76 447 84 C 451 90 456 96 462 102',
     # the hanging pale ear shows its pink inner over the front half of the flap (badger_pose_looking_up.png)
-    inner_band='M 496 42 C 490 48 485 56 481 64 C 478 71 475 78 471 83 C 466 77 464 69 466 61 C 468 52 474 45 482 40 C 488 37 493 38 496 42 Z')
+    inner_band='M 496 42 C 490 48 485 56 481 64 C 478 71 475 78 471 83 C 466 77 464 69 466 61 C 468 52 474 45 482 40 C 488 37 493 38 496 42 Z',
+    cheek='M -30 42.6 C -26 48.1 -20 51.8 -13 53.2')
 for v in ('front', 'threeQuarterLeftScreen', 'threeQuarterRightScreen'):
     heads[v]['throat'] = None
 for v in heads:
     heads[v].setdefault('clipMouth', False)
     heads[v].setdefault('chin', None)
+    heads[v].setdefault('bridge', None)
 
 # =============================================================================== FRONT NECK (bust)
 FN = lin(208, 250, S_NF, S_NF)

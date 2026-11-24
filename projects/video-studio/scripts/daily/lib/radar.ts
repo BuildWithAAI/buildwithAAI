@@ -83,7 +83,9 @@ export const readRadarFile = (path: string, date: string, mode: RadarMode): Rada
 		top: pick('top'),
 		alsoSeen: pick('alsoSeen'),
 		unclustered: Array.isArray(d.unclustered) ? (d.unclustered as RadarFile['unclustered']) : [],
-		corrections: Array.isArray(d.corrections) ? d.corrections : [],
+		corrections: (Array.isArray(d.corrections) ? d.corrections : [])
+			.filter((c): c is Record<string, unknown> => isRecord(c) && typeof c.incidentId === 'string' && Array.isArray(c.changes))
+			.map((c) => ({incidentId: String(c.incidentId), protocol: String(c.protocol ?? ''), previousRadarDate: String(c.previousRadarDate ?? ''), changes: (c.changes as unknown[]).filter((x): x is string => typeof x === 'string')})),
 		sources: Array.isArray(d.sources) ? (d.sources as RadarFile['sources']) : [],
 		counts: isRecord(d.counts) ? (d.counts as Record<string, number>) : {},
 	};
@@ -100,6 +102,11 @@ const normalizeIncident = (x: RadarIncident): RadarIncident => ({
 	notes: Array.isArray(x.notes) ? x.notes.filter((n) => typeof n === 'string') : [],
 	evergreenTopic: typeof x.evergreenTopic === 'string' ? x.evergreenTopic : null,
 	dateUtc: isDate(x.dateUtc) ? x.dateUtc : '',
+	firstSeenUtc: isDate(x.firstSeenUtc) ? x.firstSeenUtc : undefined,
+	mechanismStatus: x.mechanismStatus === 'stated' || x.mechanismStatus === 'suspected' || x.mechanismStatus === 'unknown' ? x.mechanismStatus : undefined,
+	mechanismNote: isRecord(x.mechanismNote) && typeof x.mechanismNote.sourceId === 'string' && typeof x.mechanismNote.url === 'string' ? x.mechanismNote : undefined,
+	userSide: x.userSide === true,
+	dateNote: typeof x.dateNote === 'string' ? x.dateNote : undefined,
 	type: typeof x.type === 'string' ? x.type : 'other',
 	shortReady: {ready: x.shortReady.ready === true, missing: Array.isArray(x.shortReady.missing) ? x.shortReady.missing.filter((m) => typeof m === 'string') : []},
 });

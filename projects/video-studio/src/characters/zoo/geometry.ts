@@ -71,6 +71,24 @@ const bez = (s: [Vec, Vec, Vec, Vec], t: number): Vec => {
 	];
 };
 
+/**
+ * Part of the CLOSED smooth path through `pts`: the curve from key point `from` forward (wrapping) to key point `to`,
+ * with exactly the tangents `smooth(pts)` uses, so it lies on the closed outline. Used to stroke one stretch of a
+ * silhouette at a different weight (e.g. the inside of a narrow notch at the detail width).
+ */
+export const smoothRange = (pts: readonly Pt[], from: number, to: number): string => {
+	const n = pts.length;
+	const segs = segments(pts, true);
+	const start = ((from % n) + n) % n;
+	const count = ((((to - from) % n) + n) % n) || n;
+	let d = `M${f(pts[start][0])} ${f(pts[start][1])}`;
+	for (let i = 0; i < count; i++) {
+		const [, c1, c2, p] = segs[(start + i) % n];
+		d += ` C${f(c1[0])} ${f(c1[1])} ${f(c2[0])} ${f(c2[1])} ${f(p[0])} ${f(p[1])}`;
+	}
+	return d;
+};
+
 /** Points sampled along the open smooth curve through `pts` (`per` samples per segment). */
 export const sampleLine = (pts: readonly Pt[], per = 8): Vec[] => {
 	const segs = segments(pts, false);

@@ -41,9 +41,12 @@ const HAIRLINE_LEFT: Pt[] = [
 	[-36, -844.6], [-30, -845.8], [-24.4, -847.2], [-19.6, -849.2], [-16.2, -852.2], [-14, -855.6], [-12.6, -859.6, 'c'],
 ];
 /** The forelock: left edge from the wedge apex down to the tip, then the concave right edge up to the forehead. */
+// Repair round 2 (grid-measured on zoo_expr_neutral.png): ~11.6 u wide at y -850 (sheet ~12, round 1 ~8): the concave
+// right edge sits ~2.5 u further right (the sheet's hugs the forehead down to x ~-1.5 at -850) and the left edge ~1 u
+// further left; the tip stays at (-17,-842) and the skin wedge above it stays open.
 const FORELOCK: Pt[] = [
-	[-12, -855.6], [-12.2, -851.6], [-13.2, -847.8], [-15, -844.6], [-17, -842, 'c'],
-	[-13.6, -842.6], [-9.8, -844.6], [-6.2, -847.4], [-3.4, -851], [-1.4, -855.2], [-0.2, -860], [0.4, -865.4],
+	[-12.2, -855.6], [-13, -851.4], [-14.4, -847.6], [-16, -844.6], [-17, -842, 'c'],
+	[-12.6, -842.4], [-8.2, -843.8], [-4.2, -846.4], [-1.8, -850], [-0.6, -855], [-0.2, -860], [0.4, -865.4],
 ];
 /** Forehead top and right temple down to the right ear top. */
 const HAIRLINE_RIGHT: Pt[] = [

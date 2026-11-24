@@ -9,7 +9,7 @@ cd projects/video-studio
 node scripts/news/gate.ts <slug>                     # content/zoora-security/<slug>/{storyboard,brief}.json
 node scripts/news/gate.ts <slug> --brief content/zoora-security/radar/2026-11-24.json --incident 2026-11-21-chainflip
 node scripts/news/corrections.ts pinned <id>          # the pinned-comment text for a correction
-node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/news/tests/*.test.ts   # 112 tests
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/news/tests/*.test.ts   # 131 tests
 ```
 
 Exit codes: **0** pass, **1** fail (every failure has a fix hint), **2** usage error. Reports: `out/claims/news-<slug>.md` (for the owner) and `out/claims/news-<slug>.json` (for the approval page and the publish kit; it carries the sha256 of every input, so an approval can be tied to exactly the storyboard that passed).
@@ -92,7 +92,7 @@ The date defaults to the owner's calendar day in **America/Chicago**. `add` refu
 
 ## General claim gate (`scripts/claims`)
 
-When `scripts/claims` exists, the gate runs the first entry point it finds: `{gate,check,cli,index,run,main,claims}.ts` (with node) or `{gate,check,cli,run,main,claims}.py` / `__main__.py` (with python3), with one argument `zoora-security/<slug>`, from the video-studio folder, with a 180 s timeout. Exit 0 = passed; anything else fails the news gate (its output tail is in the report). If the general gate settles on another interface, set `NEWS_GENERAL_GATE_CMD` to a JSON argv, e.g. `["node","scripts/claims/check.ts","--storyboard","{storyboard}"]` (placeholders `{channel} {slug} {storyboard} {brief} {root}`). `--general-gate require` makes a missing general gate an error; `off` skips it. A run started by another gate sets `NEWS_GATE_PARENT` so the two never call each other in a loop.
+When `scripts/claims/check.ts` exists, the gate runs it the way its `--help` says (read 2026-11-24): `node scripts/claims/check.ts <the storyboard's folder> --out-dir <this gate's --out> --names data/private/names.txt`, or `--no-names` when that gitignored list is not on the machine (a fresh cloud checkout never has it; the result's note says so, and R4 still refuses every unknown personal name). The language is the storyboard's own. Other entry points (`{gate,cli,index,run,main,claims}.ts` with node, `{gate,check,cli,run,main,claims}.py` / `__main__.py` with python3) get one argument, `zoora-security/<slug>`. Runs are from the video-studio folder, with a 180 s timeout. Exit 0 = passed; anything else fails the news gate (its output tail is in the report). `NEWS_GENERAL_GATE_CMD` overrides discovery with a JSON argv, e.g. `["node","scripts/claims/check.ts","{storyboard}"]` (placeholders `{channel} {slug} {storyboard} {brief} {root}`). `--general-gate require` makes a missing general gate an error; `off` skips it. A run started by another gate sets `NEWS_GATE_PARENT` so the two never call each other in a loop.
 
 ## Files
 

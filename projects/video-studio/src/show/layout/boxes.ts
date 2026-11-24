@@ -62,7 +62,8 @@ export const SEGMENT_BOXES: Record<Format, Record<ShowSegment, SegmentBoxes>> = 
 		desk: {card: L_LEFT, source: L_SRC_LEFT, from: 'left'},
 	},
 	vertical: {
-		coldOpen: {card: {x: 54, y: 300, w: 972, h: 96}, source: null, from: 'top'},
+		// the kicker slate: 80 px tall so the ON AIR sign (stage.ts) clears it below, push-in included (checks.ts)
+		coldOpen: {card: {x: 54, y: 300, w: 972, h: 80}, source: null, from: 'top'},
 		headline: {card: V_TWO, source: vsrc(V_TWO), from: 'top'},
 		howItWorked: {card: V_FULL, source: {x: 54, y: 1252, w: 972, h: 44}, from: 'top'},
 		badgerRedFlag: {card: V_BADGER, source: vsrc(V_BADGER), from: 'top'},

@@ -9,6 +9,8 @@ node scripts/qa/check.ts --entry src/index.ts --comp Preview10s
 node scripts/qa/check.ts --entry src/charts/dev/index.ts --comp ChartShort
 node scripts/qa/check.ts --entry src/episode/index.ts --comp EpisodeShort --props '{"channel":"_dev","slug":"engine-demo","lang":"en"}'
 node scripts/qa/check.ts --entry src/episode/index.ts --comp Episode --props content/zoora-ai/<slug>/props.json
+node scripts/qa/check.ts --entry src/show/index.ts --comp ShowShort --props '{"channel":"_dev","slug":"zoo-badger-demo","lang":"en"}'
+node scripts/qa/check.ts --entry src/show/index.ts --comp ShowEpisode --props '{"channel":"zoora-security","slug":"<slug>","lang":"en"}'
 
 # options
 --frames auto|<list>      auto (default) or e.g. 0,95-105,299
@@ -29,19 +31,19 @@ Exit code 0 = no errors, 1 = errors (or warnings with `--fail-on warn`), 2 = bad
 A run that cannot finish (the composition's own metadata step throws, the browser dies) still writes `report.md`
 and `report.json` with the verdict **ERROR** and the reason, so an older report is never mistaken for this run.
 
-Tests: `node --test scripts/qa/tests/*.test.ts` (58 unit tests) and `node scripts/qa/selftest.ts` (14 planted-defect
-fixtures rendered end to end, about 2 minutes).
+Tests: `node --test scripts/qa/tests/*.test.ts` (63 unit tests) and `node scripts/qa/selftest.ts` (16 fixtures rendered
+end to end: 14 planted defects, a clean control and a motion control that must stay clean; 3-5 minutes).
 
 ## The six check areas
 
 | Area | Checks | How |
 | --- | --- | --- |
-| 1. Text: overflow, clipping, size, host name | `text-clipped`, `text-offframe`, `text-overflow`, `text-truncated`, `text-small`, `text-name` | DOM: every text node's glyph boxes (Range line boxes narrowed to the glyph ink with canvas `TextMetrics`), intersected with the frame, every `overflow` container, SVG viewport and clip path (CSS `inset()`/`polygon()`/`circle()`/`ellipse()` parsed). Overflow = ink outside the nearest block's padding box. Text under 24 px on screen (ART_GUIDE SL10). The painted text (after CSS `text-transform`) must not spell the host's name in capitals, "ZOO", "ZOO'S" or "$ZOO" (owner rule in CLAUDE.md: "Zoo", never "ZOO"; an uppercased title counts, "ZOORA" does not). |
-| 2. Safe zones | `safe-area`, `shorts-ui`, `shorts-ads` | DOM boxes of text, captions, faces (head groups incl. Badger's ears) and hands against the zones below. |
+| 1. Text: overflow, clipping, collisions, size, host name | `text-clipped`, `text-offframe`, `text-overflow`, `text-collision`, `text-truncated`, `text-small`, `text-name` | DOM: every text node's glyph boxes (Range line boxes narrowed to the glyph ink with canvas `TextMetrics`), intersected with the frame, every `overflow` container, SVG viewport and clip path (CSS `inset()`/`polygon()`/`circle()`/`ellipse()` parsed). Overflow is judged against the text's **plate**, the nearest ancestor that paints a background or a border (not a full-frame fill): letters running into its border are a warning, letters hanging past its edge an error. Text with no plate that exceeds its layout box (a tight line-height leaves descenders outside it) is information only. A collision is two different texts whose ink overlaps by >= 15% of the smaller one (adjacent caption words and a text drawn twice on purpose, outline under fill, are not). Text under 24 px on screen (ART_GUIDE SL10). The painted text (after CSS `text-transform`) must not spell the host's name in capitals, "ZOO", "ZOO'S" or "$ZOO" (owner rule in CLAUDE.md: "Zoo", never "ZOO"; an uppercased title counts, "ZOORA" does not). |
+| 2. Safe zones | `safe-area`, `shorts-ui`, `shorts-ads` | DOM boxes of text, captions, faces (head groups incl. Badger's ears) and hands against the zones below. Hands are hit-tested (`document.elementsFromPoint` on a 3x3 grid; a point is covered when something that paints sits above the hand there): a hand hidden behind a desk is not on screen and is not checked. One issue per character and side, however the hands move. |
 | 3. Captions and faces | `caption-face`, `text-face`, `text-face-zone`, `face-occluded` | Head boxes from the characters' own `data-part="head"` / `data-head` groups (exact, every view and transform). Clear zone per ART_GUIDE CV4c (information only). Faces painted over: scene frame vs the characters-only frame. |
 | 4. Contrast | `contrast` | Pixels: each frame is rendered as is and with every text paint transparent (same layout). Their difference is exactly the text's pixels, whatever is behind. WCAG ratio of glyph cores vs the pixels behind them and vs the 2-3 px ring around them (outlines count), per 1.5-em strip, worst strip reported. Minimum 4.5:1 (symbol-only text such as a decorative quote mark is information). |
 | 5. Off-model | `model-transform`, `model-effect`, `model-component`, `model-view`, `model-ssim`, `model-palette`, `model-pin`, `model-earcap`, `model-spots` | See below. |
-| 6. Banding, blotches, flicker | `banned`, `gradient`, `texture`, `flicker`, `flash`, `one-frame-state` | DOM: gradients, patterns, blur/glow/noise filters, shadows, blend modes, masks. Pixels: per-32-px-block plane fit (slope with a dither-sized residual and no edge steps = gradient; tolerant of Chrome's gradient dithering); non-flat, non-edge 16-px blocks outside text and characters = texture; one-frame pops between consecutive frames with a motion test (an arm swing is not flicker); mean-brightness A-B-A = flash; DOM entities that exist for exactly one frame. |
+| 6. Banding, blotches, flicker | `banned`, `gradient`, `texture`, `flicker`, `flash`, `one-frame-state` | DOM: gradients, patterns, blur/glow/noise filters, shadows, blend modes, masks. Pixels: per-32-px-block plane fit (slope with a dither-sized residual and no edge steps = gradient; tolerant of Chrome's gradient dithering); non-flat, non-edge 16-px blocks outside text and characters = texture; one-frame pops between consecutive frames, motion-compensated (below); mean-brightness A-B-A = flash; DOM entities that exist for exactly one frame. |
 
 ### Off-model detection
 
@@ -70,6 +72,28 @@ committed fiber copy the way React's `findCurrentFiberUsingSlowPath` does). Then
   in a view that hides it, wrong side, moved). The palette check catches recolouring (a hue filter); a plain
   darkening of dark artwork can land on other approved colours, and the SSIM check catches that instead.
 
+### Flicker versus motion
+
+A pop is a patch of frame t that differs from both neighbours while they agree with each other. Fast motion makes
+the same pattern: a card that drops in 200 px per frame over a wall of its own colour leaves its text where both
+neighbours show plain wall. So a pop region counts only when its content is in neither neighbour
+(`scripts/qa/lib/motionmatch.ts`):
+
+1. Fragments within 8 px join into one region (glyph pieces into words and lines); a region where the neighbours
+   differ all around it (an arm swing) is motion, as before; so is a region on a head or hand that the probe saw
+   move across the three frames (a fast, turning hand is somewhere else on every frame).
+2. Each region's changed pixels plus 6 px of context are searched for in each neighbour: a luma pyramid, an
+   exhaustive search at the finest level that fits about 8M pixel comparisons, a +-1 refinement per level, an
+   exact search of small moves (<= 16 px), then a full-resolution test that tolerates sub-pixel motion (a pixel
+   matches inside the other frame's 3x3 min-max envelope, +-12 levels). Found = 80% of the region and 80% of its
+   changed pixels match. Repeated content (identical rows) matches at several places: the nearest one is the motion.
+3. Displacements known from elsewhere are tested first and need only 65%, because moving content often passes under
+   a static overlay (a segment tag, a badge): every text and character box the probe saw move between the frames,
+   and the motion of all the frame's popped content taken together (a card's text and edges move as one).
+4. Found in neither neighbour: a one-frame state (error). Found in both at the same displacement of >= 3 px while
+   the neighbours agree around it: the element jumps away for one frame and returns (error, with the jump size).
+   Anything else is motion.
+
 ## Safe zones (verified 2026-11-24)
 
 | Format | Zone | Source |
@@ -92,7 +116,7 @@ check.ts ─ bundle the target entry unchanged; webpack swaps `import ... from '
            techniques) plus tiny frames for cut, transition and pop detection
   plan     scene starts/ends, mid-scene flicker triplets, every Nth frame, the first frame of every DOM finding,
            the 12 strongest pop candidates (capped at --max-samples)
-  pixels   sampled frames at full size, as PNG (lossless), with DOM facts again
+  pixels   sampled frames at full size, as PNG (lossless), with DOM facts again (and hands hit-tested)
   textoff  same frames, every text paint transparent
   solo     same frames, characters only, transparent background
   ref      one canonical render per character instance
@@ -159,6 +183,13 @@ Planted copies of the real compositions (scratch, not committed), 15 planted def
 - Pixel checks (contrast, off-model, gradient, texture, flicker) run on sampled frames only; DOM checks run on every
   scouted frame. A one-frame pixel glitch between samples is caught only if the scout's 1/8-size pop detector or
   the DOM one-frame check sees it.
+- The flicker test treats a pop on a head or hand that moves across the three frames as animation, so a one-frame
+  glitch drawn on a swinging hand is not reported by it (the canonical comparison still checks the hand on sampled
+  frames). Motion matching assumes translation; content that scales or turns fast is recognised through the
+  probe's own boxes (texts, heads, hands) rather than by pixels.
+- Overlaps between a plate and set dressing that is not text (the Show's cold-open kicker bar over the ON AIR sign,
+  fixed by the Show workflow on 2026-11-24) are not detected: the checker knows texts, plates, faces and hands, not
+  which props matter.
 - The canonical reference is rendered by the current character code, so drift *inside* `src/characters` is caught
   through the frozen manifest facts (spot ids, pin and ear-cap conventions, palette), not by SSIM.
 - Characters with non-serialisable visual props (`between`, e.g. a desk drawn inside Zoo's typing pose) skip the

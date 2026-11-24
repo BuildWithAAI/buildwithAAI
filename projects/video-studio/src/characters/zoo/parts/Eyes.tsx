@@ -11,7 +11,7 @@
 import React, {useId} from 'react';
 import {LINE, ZOO_COLORS} from '../../palette';
 import {clamp, clamp01, lerp, lerpPts, line, safeId, smooth, tapered, type Pt} from '../geometry';
-import {ZOO_LINE} from '../lines';
+import {featureScale, LID_MIN_SCALE, ZOO_LINE} from '../lines';
 import {PIVOTS, type EyePose} from '../rig';
 import {useLineScale} from './Shape';
 
@@ -65,7 +65,7 @@ const Eye: React.FC<EyeProps> = ({side, pose, blink, lookX, lookY}) => {
 	const iy = c.y + IRIS.y * s + clamp(lookY, -1, 1) * 1.8;
 	const r = IRIS.r * s * pose.iris;
 	const crease: Pt[] = [W([-5, -7.4 - pose.lidTop * 0.6]), W([1.5, -8.2 - pose.lidTop * 0.6]), W([7, -6.6 - pose.lidTop * 0.6])];
-	const lidW = ZOO_LINE.lid * 1.1 * ls;
+	const lidW = ZOO_LINE.lid * 1.1 * featureScale(ls, LID_MIN_SCALE);
 	return (
 		<g data-part={side === 1 ? 'eyeL' : 'eyeR'}>
 			{b < 0.97 ? (

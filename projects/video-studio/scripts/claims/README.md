@@ -46,12 +46,13 @@ every waiver (for the owner's review), and the research rules the gate could not
 | `persona` | Zoo presented as a human financial adviser or expert, in any language (YouTube AI-persona policy). "I'm not a financial adviser" passes. |
 | `holdings-disclosure`, `holdings-mismatch` | An opinion on a named token ("this coin is undervalued"), or holding one, without a spoken holdings disclosure (MiCA Art. 91); `holdings: "none"` contradicting "I hold ...". |
 | `onscreen-unsourced`, `onscreen-figure-uncited` | An on-screen figure in a scene that cites nothing; in a citing scene, an on-screen figure no cited sentence of that scene says (digits or words: "90 days" is backed by "Ninety days later"). |
-| `title-unsourced` | The title, a Short title or a thumbnail makes a figure or superlative claim no cited sentence makes. |
+| `title-unsourced` | The title, a Short title or a thumbnail makes a figure or superlative claim no cited sentence makes. A figure may round a cited one at its own written precision (capped at 6%: "69%" or "nearly 70%" for 68.67%) but never move it ("73%" for 69% fails), and a percentage needs a cited percentage ("90%" is not "ninety days"); the same matching applies to on-screen figures. |
 | `disclosure-negated`, `disclosure-relationship` | A "disclosure" that denies the relationship ("not sponsored, no commission"); a translation that does not name the same relationship as the master. |
 | `dub-offers` | A translation carries offers (until a geo-aware link router exists; `dubOffersWaiver` records the owner's decision for non-exchange offers) or any exchange/token offer or token promotion (never in a dub). |
 | `mica-statement` | es/it token promotion without the MiCA Art. 7(1)(e) statement, spoken and on screen. |
 | `asci-disclaimer`, `asci-ai-persona`, `asci-banned-word`, `asci-fiu-ind` | hi promotion featuring crypto: the ASCI disclaimer in the last scene (and the first, 6+ scenes), "animated character, AI voice", no currency/securities/custodian/depositories, FIU-IND-registered exchanges only. |
 | `dub-translation-record`, `dub-numbers`, `dub-spoken-numbers`, `dub-claim-tags` | A translation fails the dub validator's record, number or tag checks (scripts/dub), so this one report covers them. |
+| `dub-structure` | A translation does not carry the master's `offers`, `fiction`, `tokenPromotion` or `holdings` (added 2026-11-24). The offer, fiction, MiCA and ASCI rules then use the master's values, so dropping them never skips a rule. |
 | `no-research`, `no-must-not-say` | The episode has no `research.md`, or it has no "Must not say" section (`- (none)` is fine). |
 
 Warnings (never fail): on-screen text that looks factual (no figure) in a scene that cites nothing, short (one or

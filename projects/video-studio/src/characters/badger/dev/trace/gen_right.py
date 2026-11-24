@@ -163,6 +163,9 @@ ff = until('fl_front', ymax=397) + [(420.8, 398, 'c')]
 fr = until('fl_rear', ymax=397) + [(388.2, 398, 'c')]
 fu_fill = [(381, 250, 'c'), (396, 238), (425, 236), (447, 250, 'c')] + ff + [(388.2, 398, 'c')] + rev(fr)
 front_upper = seg(fu_fill, [ff, fr], FRONT_SHOULDER)
+# Round-2 repair (D35): the top of the upper leg (above the traced edges, hidden in the chest at rest) is outlined in the
+# under-torso 'underlay' pass, so a fore leg swung forward in the walk never shows an unoutlined wedge at the elbow
+front_upper['underlay'] = [map_path(closed_run(fu_fill, fr[0][:2], ff[0][:2]), local(FRONT_SHOULDER))]
 # lower (pastern): round top centred on the wrist pivot (hidden under the upper at rest), flat bottom at the paw cut
 fl_rear = [(395, 408, 'c'), (392, 404), (388.2, 398, 'c')]
 fl_front = [(420.8, 398, 'c'), (422, 403), (423, 408, 'c')]
@@ -231,16 +234,19 @@ spot('R-NECK', 'neck', None, (460.2, 124.4, 6.5, 3.8, -73.2), NECK_O, (460, 124)
 spot('R-06', 'legHindNear', 'upper', (189.9, 253.4, 11.0, 6.8, -69.0), HIND_HIP, (190, 253), 'front of the right thigh (stifle)')
 spot('R-07', 'legHindNear', 'upper', (115.9, 347.1, 10.5, 5.8, -57.4), HIND_HIP, (116, 347), 'right gaskin, just above the hock')
 spot('R-08', 'legFrontNear', 'upper', (408.0, 313.8, 12.2, 8.0, 88.5), FRONT_SHOULDER, (408, 314), 'forearm of the near (right) front leg')
-# The withers patch L-WITHERS seen from the right (decision BADGER-D16, revised 2026-11-24): the top coat map shows the
-# FRONT half of the patch straddling the spine almost symmetrically (lateral extent 0.84 of the half-width on the right,
-# 0.86 on the left) and its right lobe ending ~70 px further back, so from the right side the patch shows as a wedge at
-# the front of the withers, deepest just behind the collar (~24 units on a rounded back section) and tapering to the top
-# line ~78 units back. coat_right's thickened top line is that wedge's upper edge; turnaround side, walking and
-# looking-up draw the same marking larger. Authored on coat_right's top line; never mirrored from the left record.
+# The withers patch L-WITHERS seen from the right (decision BADGER-D16, revised in round 2, 2026-11-24). The three coat maps
+# disagree here: coat_right draws only a thickened top line, coat_top puts the front half of the patch across the spine
+# (0.84 of the right half-width, which a level side view sees as a deep lobe below the top line). The turnaround (which
+# controls identity and anatomy) breaks the tie, with the walking and looking-up panels: traced from badger_turn_side.png's
+# rounded irregular lens (about 82 x 38 units below the top line, its front about 22 px behind the collar as on the sheet)
+# and mapped into coat_right space by the collar's back edge on the top line (turn_side (424, 137) -> coat_right (407, 125))
+# and the D17 / D14 scales (x 0.976, depth 0.924). The previous pointed wedge (a compromise that no drawing shows) is gone.
+# The part above the top line is clipped by the torso. Authored on its own; never mirrored from the left record.
+# OWNER CONFIRMATION REQUESTED: the alternative is coat_right's thin edge.
 spot('L-WITHERS', 'torso', None,
-     [(399, 124, 'c'), (393, 141), (386, 153), (377, 163), (366, 168.5), (354, 167), (343, 162), (333, 156), (324, 150),
-      (316, 146, 'c'), (330, 140), (350, 138), (370, 134), (386, 128)],
-     TORSO_O, (366, 152), 'right lobe of the withers patch L-WITHERS (it straddles the spine at the withers, top coat map), seen from the right', side='left')
+     [(387, 137, 'c'), (385.5, 146), (381.5, 158), (376, 169.5), (368, 179), (357.5, 185.5), (344.5, 187), (331.5, 185),
+      (319.5, 179.5), (309.5, 171), (302.5, 161), (299, 151), (298, 141, 'c'), (320, 138), (345, 137.5), (368, 137)],
+     TORSO_O, (343, 165), 'right lobe of the withers patch L-WITHERS (it straddles the spine at the withers), seen from the right as badger_turn_side.png draws it', side='left')
 
 tw = W(*TORSO_O)
 

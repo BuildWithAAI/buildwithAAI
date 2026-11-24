@@ -18,14 +18,26 @@ export const cell = (s: string): string =>
 
 export const WORDS_PER_SECOND = 2.5;
 
+/** Older briefs have no `template` flag: they count as templates (the cautious reading). */
+export const isTemplate = (o: Opportunity): boolean => o.template !== false;
+/** Real analysis on its own: available, strong and not the same comparison every day. */
+export const isRealAnalysis = (o: Opportunity): boolean => o.available && o.strength === 'strong' && !isTemplate(o);
+
 const oppBlock = (o: Opportunity): string[] => {
-	const lines = [`### ${o.available ? 'AVAILABLE' : 'not available'}: \`${o.id}\` (${o.kind}, ${o.basis}, ${o.strength})`, '', `${o.title}. ${o.why}`];
-	if (o.detail) lines.push('', `Proposed \`detail\`: ${o.detail}`);
-	if (o.method) lines.push('', `\`method\`: ${o.method}`);
+	const lines = [`### ${o.available ? 'AVAILABLE' : 'not available'}: \`${o.id}\` (${o.kind}, ${o.basis}, ${o.strength}${isTemplate(o) ? ', daily template' : ''})`, '', `${cell(o.title)}. ${cell(o.why)}`];
+	if (o.detail) lines.push('', `Proposed \`detail\`: ${cell(o.detail)}`);
+	if (o.method) lines.push('', `\`method\`: ${cell(o.method)}`);
 	if (o.sourceIds.length) lines.push('', `\`sourceIds\`: ${o.sourceIds.map((s) => `\`${s}\``).join(', ')}${o.factIds.length ? ` · supporting facts: ${o.factIds.join(', ')}` : ''}`);
 	if (o.instructions?.length) lines.push('', ...o.instructions.map((s, i) => `${i + 1}. ${s}`));
 	return [...lines, ''];
 };
+
+/** The analysis the skeleton starts from: a real one if there is one, else the best strong one, else any available. */
+export const leadOpportunity = (b: DailyBrief): Opportunity | undefined =>
+	b.analysisOpportunities.find(isRealAnalysis) ?? b.analysisOpportunities.find((o) => o.available && o.strength === 'strong') ?? b.analysisOpportunities.find((o) => o.available);
+
+/** The claimWaivers reason for own-data sentences and bullets: what the news gate really checks. */
+export const OWN_DATA_WAIVER_REASON = 'Own-data analysis a1 (method in storyboard.analysis): the news gate (R7) checks its figures against the counts brief.json computed (analysisOpportunities numbers).';
 
 /**
  * The cold open's kicker. No date in it: the news gate reads an on-screen date as a figure that needs a source
@@ -53,9 +65,9 @@ const sourceEntry = (b: DailyBrief, id: string) => {
 /** The show-native skeleton (src/show/types.ts): segments, Rekt Meter data, the concept diagram, Badger's beats. */
 export const skeleton = (b: DailyBrief, ch: ChannelConfig): Record<string, unknown> => {
 	const developing = b.status === 'developing';
-	const strong = b.analysisOpportunities.find((o) => o.available && o.strength === 'strong');
+	const strong = leadOpportunity(b);
 	const rekt = rektFor(b);
-	const waiver = {match: 'TODO a few words of each own-data sentence', rule: 'factual', reason: 'Own-data analysis a1 (method in storyboard.analysis), checked by the news gate R7.'};
+	const waiver = {match: 'TODO a few words that appear in each own-data sentence AND each on-screen bullet with a figure (e.g. "52 incidents")', rule: 'factual', reason: OWN_DATA_WAIVER_REASON};
 	const cited = [...new Set([...(rekt ? [rekt.source, ...(rekt.alt ? [rekt.alt.source] : [])] : []), ...(strong?.sourceIds ?? [])])];
 	const sources = cited.map((id) => sourceEntry(b, id)).filter((x) => !!x);
 	return {
@@ -111,7 +123,7 @@ export const skeleton = (b: DailyBrief, ch: ChannelConfig): Record<string, unkno
 		sources: sources.length ? sources : [{id: 'TODO', title: 'TODO', url: 'https://TODO', accessed: b.date, status: 'verified'}],
 		analysis: [
 			strong
-				? {id: 'a1', kind: strong.kind, basis: strong.basis, detail: strong.detail ?? 'TODO', sourceIds: strong.sourceIds, sceneIds: ['s04'], method: strong.method ?? 'TODO'}
+				? {id: 'a1', opportunity: strong.id, kind: strong.kind, basis: strong.basis, detail: strong.detail ?? 'TODO', sourceIds: strong.sourceIds, sceneIds: ['s04'], method: strong.method ?? 'TODO'}
 				: {id: 'a1', kind: 'comparison', basis: 'own-data', detail: 'TODO', sourceIds: [], sceneIds: ['s04'], method: 'TODO'},
 		],
 		shorts: [{id: 'short1', sceneIds: ['s01', 's02', 's03', 's04', 's05', 's06', 's07'], title: `${developing ? '(developing) ' : ''}TODO the same as or close to the title`}],
@@ -141,13 +153,19 @@ export const renderWriterMd = (b: DailyBrief, ch: ChannelConfig): string => {
 		'',
 	);
 	out.push('## The story', '');
-	out.push(`- **Incident:** ${b.incident.protocol} · ${b.incident.type} · dated ${b.incident.dateUtc || 'unknown'}${b.incident.chains.length ? ` · chains: ${b.incident.chains.join(', ')}` : ''}`);
-	out.push(`- **Status: ${developing ? 'DEVELOPING' : 'CONFIRMED'}.** ${b.incident.statusReason ?? ''}`);
+	out.push(`- **Incident:** ${cell(b.incident.protocol)} · ${cell(b.incident.type)} · dated ${cell(b.incident.dateUtc || 'unknown')}${b.incident.dateNote ? ` (${cell(b.incident.dateNote)})` : ''}${b.incident.chains.length ? ` · chains: ${cell(b.incident.chains.join(', '))}` : ''}`);
+	out.push(`- **Status: ${developing ? 'DEVELOPING' : 'CONFIRMED'}.** ${cell(b.incident.statusReason ?? '')}`);
+	const mech = b.incident.mechanismStatus ?? (b.incident.mechanismKnown ? 'stated' : 'unknown');
+	if (mech !== 'stated') {
+		const n = b.incident.mechanismNote;
+		out.push(`- **Mechanism: ${mech === 'suspected' ? 'SUSPECTED only' : 'NOT STATED by any source'}.**${n ? ` ${cell(n.publisher)} (\`${n.sourceId}\`): "${cell(n.text)}"` : ''} Never state it as fact or put it in a title, label or thumbnail; say only what the source says, attributed, with its hedge.`);
+	}
+	if (b.incident.userSide) out.push(`- **User-side incident:** the sources describe users' or traders' own keys, devices or software, not ${cell(b.incident.protocol)}'s own systems. Never say ${cell(b.incident.protocol)} was hacked.`);
 	out.push(`- **Format:** ${b.format}, ${minS}–${maxS} seconds (${minW}–${maxW} words of narration in total at about ${WORDS_PER_SECOND} words a second; the build measures the real length from the voice).`);
 	out.push(`- **Evergreen topic:** ${b.evergreen ? `${b.evergreen.topic}: "${b.evergreen.title}"${b.evergreen.url ? ` (${b.evergreen.url})` : ' (not published yet: the CTA does not mention it)'}` : 'none fits; the One Fix stands on its own'}.`);
-	if (b.incident.postMortemUrl) out.push(`- **Post-mortem:** ${b.incident.postMortemUrl}`);
-	if (b.selection.picked) out.push(`- **Picked by hand** (--pick ${b.selection.picked}).`);
-	for (const n of b.notes) out.push(`- Note: ${n}`);
+	if (b.incident.postMortemUrl) out.push(`- **Post-mortem:** ${cell(b.incident.postMortemUrl)}`);
+	if (b.selection.picked) out.push(`- **Picked by hand** (--pick ${cell(b.selection.picked)}).`);
+	for (const n of b.notes) out.push(`- Note: ${cell(n)}`);
 	out.push('');
 
 	out.push('## Facts you may use, and nothing else', '');
@@ -178,20 +196,25 @@ export const renderWriterMd = (b: DailyBrief, ch: ChannelConfig): string => {
 
 	out.push('## Reported losses (never average them)', '');
 	if (!b.reportedLosses.length) out.push('No source states a loss figure. Say no number.');
-	for (const l of b.reportedLosses) out.push(`- ${usdExact(l.amountUsd)}: reported by ${l.publisher} as "${cell(l.quote)}" (\`${l.sourceId}\`, tier ${l.tier})`);
+	for (const l of b.reportedLosses) out.push(`- ${usdExact(l.amountUsd)}: reported by ${cell(l.publisher)} as "${cell(l.quote)}" (\`${cell(l.sourceId)}\`, tier ${cell(l.tier)})`);
 	out.push('', 'Say a figure the way its excerpt writes it, or with an honest qualifier ("about $6.4 billion"). Always "according to X" / "X reports" / "as listed by X".', '');
 
 	out.push('## The analysis this video adds (required)', '');
+	const real = b.analysisOpportunities.filter(isRealAnalysis);
 	out.push(
-		'Owner rule: no daily video without real analysis. Copy one AVAILABLE strong opportunity into `storyboard.analysis` (kind, basis, detail, sourceIds, method, `sceneIds: ["s04"]`), present it in the Rekt Meter scene, and say its numbers exactly as the detail does. A supporting one may sit next to it, never alone. If none is available, stop: no video today.',
+		'Owner rule: no daily video without real analysis. A daily template (the DefiLlama 30-day comparison, the figures side by side) is the same comparison every day: it may support a real analysis, never replace it. Copy an AVAILABLE strong analysis that is **not** a daily template into `storyboard.analysis` (keep its `opportunity` id, and kind, basis, detail, sourceIds, method, `sceneIds: ["s04"]`), present it in the "Our check" scene, and say its numbers exactly as the detail does. A template or a supporting one may sit next to it, never alone.',
 		'',
-		'Own-data sentences (our count or ranking) carry **no** `[src:...]` tag: the news gate checks them against `storyboard.analysis` (R7), and a tag would make it look for the count in a source excerpt. Start them with "Our Rekt Meter:" or "Our check of ...", keep the source name in the sentence ("as listed by DefiLlama"), and give that scene one `claimWaivers` entry per such sentence so the general claim gate knows the figures are ours: `{"match": "<a few words of the sentence>", "rule": "factual", "reason": "Own-data analysis a1 (method in storyboard.analysis), checked by the news gate R7."}`.',
+		real.length
+			? `Real analysis available: ${real.map((o) => `\`${o.id}\``).join(', ')}. The build blocks a storyboard that presents none of them.`
+			: `**No real analysis is available for this story** (${b.selection.picked ? 'it was picked by hand, so this is the owner\'s call: the approval packet says so at the top' : 'stop: no video today'}). An explained disagreement between sources counts only if a cited source itself explains why the figures differ.`,
+		'',
+		`Own-data sentences (our count or ranking) carry **no** \`[src:...]\` tag: the news gate checks their figures against \`storyboard.analysis\` and the counts brief.json computed (R7), and a tag would make it look for the count in a source excerpt. Start them with "Our check:", keep the source name in the sentence ("as listed by DefiLlama"), and give that scene \`claimWaivers\` entries so the general claim gate knows the figures are ours. Each entry's \`match\` must appear word for word in the narration sentence **and** in every on-screen bullet that shows the figure (for example \`"52 incidents"\` covers "DefiLlama lists 52 incidents in the 30 days ..." and the bullet "52 incidents in 30 days"): \`{"match": "<words in both>", "rule": "factual", "reason": "${OWN_DATA_WAIVER_REASON}"}\`.`,
 		'',
 	);
 	for (const o of [...b.analysisOpportunities].sort((x, y) => Number(y.available) - Number(x.available))) out.push(...oppBlock(o));
 
 	out.push('## Must not say', '');
-	for (const m of b.mustNotSay) out.push(`- **${m.rule}:** ${m.text}`);
+	for (const m of b.mustNotSay) out.push(`- **${cell(m.rule)}:** ${cell(m.text)}`);
 	out.push('');
 
 	out.push('## Segment order and timing', '');
@@ -261,7 +284,7 @@ export const renderWriterMd = (b: DailyBrief, ch: ChannelConfig): string => {
 		'- Any number on screen, including number words ("two sources") and dates, must be a figure the narration states with a source, or an own-data analysis figure.',
 		'- Capitalised word pairs that are not names ("Fake Interview", "Frontend & Infrastructure") read as possible personal names: write them in lower case.',
 		'- "U.S." right before a capitalised word ends a sentence for the splitter ("the U.S. Justice Department" splits in two): write "the Justice Department".',
-		'- Own-data sentences with a `[src:...]` tag fail the news gate; own-data sentences without a `claimWaivers` entry fail the general claim gate.',
+		'- Own-data sentences with a `[src:...]` tag fail the news gate; own-data sentences or bullets without a `claimWaivers` entry whose `match` appears in them fail the general claim gate.',
 		'',
 	);
 	out.push('## Title, Short title and thumbnails', '');

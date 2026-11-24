@@ -4,9 +4,9 @@
   "slug": "2026-11-24-binance",
   "lang": "en",
   "titleOptions": [
-    "DOJ moves to recover Binance hack funds"
+    "DOJ moves to recover USDC tied to Binance hack"
   ],
-  "title": "DOJ moves to recover Binance hack funds",
+  "title": "DOJ moves to recover USDC tied to Binance hack",
   "summary": "According to The Block, the Justice Department is seeking to recover about $1.17 billion in USDC tied to the October 29 Binance hack. DefiLlama lists the loss at $6,360,000,000. Chainalysis puts it at $6.4 billion.",
   "youtubeVideoId": null,
   "scenes": [
@@ -45,8 +45,8 @@
       "url": "https://www.theblock.co/news/regulation/2026-11-23-doj-1-17-billion-usdc-binance-hack-circle-replacement-tokens-445398"
     },
     {
-      "title": "DefiLlama hacks: Binance CEX (2026-10-29) (DefiLlama)",
-      "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29"
+      "title": "DefiLlama hacks list (defillama.com/hacks), entry Binance CEX, 2026-10-29",
+      "url": "https://defillama.com/hacks"
     },
     {
       "title": "The $6.4 Billion Binance Hack: Tracing the North Korea Link (Chainalysis)",
@@ -57,8 +57,8 @@
       "url": "https://rekt.news/binance-rekt"
     },
     {
-      "title": "DefiLlama hacks: incidents dated 2026-10-26 to 2026-11-24 (DefiLlama)",
-      "url": "https://api.llama.fi/hacks"
+      "title": "DefiLlama hacks list (defillama.com/hacks), incidents dated 2026-09-26 to 2026-11-24",
+      "url": "https://defillama.com/hacks"
     }
   ],
   "offers": [],
@@ -74,9 +74,7 @@
     "The Zoo and Badger Show"
   ],
   "cta": "Subscribe for tomorrow's Threat Brief.",
-  "disclosures": [
-    "News and education only. Not financial advice."
-  ],
+  "disclosures": [],
   "madeForKids": {
     "value": false,
     "reason": "Adult crypto and AI security news; not child-directed (studio default, docs/research/platform-facts-2026-11-23.md)."
@@ -94,7 +92,7 @@
       "id": "short1",
       "from": "s01",
       "to": "s07",
-      "title": "DOJ moves to recover Binance hack funds"
+      "title": "DOJ moves to recover USDC tied to Binance hack"
     }
   ],
   "render": {

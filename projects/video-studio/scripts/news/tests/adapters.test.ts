@@ -149,8 +149,24 @@ describe('general claim gate adapter (scripts/claims)', () => {
 		assert.equal(runGeneralGate(root, call(root), 'require', {}).status, 'error');
 		assert.equal(runGeneralGate(root, call(root), 'off', {}).status, 'skipped');
 	});
-	test('a TS entry point is run with <channel>/<slug>; its exit code decides', () => {
-		const pass = studioWith('check.ts', "if (process.argv[2] !== 'zoora-security/ep') process.exit(3); console.log('general ok');\n");
+	test('scripts/claims/check.ts gets the episode folder, the report folder and an explicit names choice', () => {
+		const root = tmp();
+		mkdirSync(join(root, 'scripts', 'claims'), {recursive: true});
+		const ep = join(root, 'content', 'zoora-security', 'ep');
+		const want = JSON.stringify([ep, '--out-dir', join(root, 'reports'), '--no-names']);
+		writeFileSync(join(root, 'scripts', 'claims', 'check.ts'), `if (JSON.stringify(process.argv.slice(2)) !== ${JSON.stringify(want)}) { console.error(process.argv.slice(2).join(' ')); process.exit(3); } console.log('general ok');\n`);
+		const c = {...call(root), storyboard: join(ep, 'storyboard.json'), outDir: join(root, 'reports')};
+		const r = runGeneralGate(root, c, 'auto', {});
+		assert.equal(r.status, 'passed', r.outputTail ?? '');
+		assert.match(r.note, /--no-names: the private names list/);
+		// with the private names list on the machine, it is passed explicitly
+		mkdirSync(join(root, 'data', 'private'), {recursive: true});
+		writeFileSync(join(root, 'data', 'private', 'names.txt'), '# none\n');
+		const argv = discoverGeneralGate(root, c, {}).argv ?? [];
+		assert.deepEqual(argv.slice(-2), ['--names', join(root, 'data', 'private', 'names.txt')]);
+	});
+	test('another TS entry point is run with <channel>/<slug>; its exit code decides', () => {
+		const pass = studioWith('gate.ts', "if (process.argv[2] !== 'zoora-security/ep') process.exit(3); console.log('general ok');\n");
 		const r = runGeneralGate(pass, call(pass), 'auto', {});
 		assert.equal(r.status, 'passed', r.outputTail ?? '');
 		assert.match(r.outputTail ?? '', /general ok/);

@@ -127,8 +127,8 @@ export const QaProbe: React.FC<{charactersOnly?: boolean}> = ({charactersOnly = 
 			};
 			const root = document.getElementById('remotion-canvas') ?? document.body;
 			const rr = root.getBoundingClientRect();
-			const ctx: MeasureContext = {root, ox: rr.left, oy: rr.top, width, height, compId: id, durationInFrames, absoluteFrame: frame, canonical: {zoo: ZooRig, badger: Badger}};
 			const measureText = env.pass === 'scout' || env.pass === 'pixels';
+			const ctx: MeasureContext = {root, ox: rr.left, oy: rr.top, width, height, compId: id, durationInFrames, absoluteFrame: frame, canonical: {zoo: ZooRig, badger: Badger}, visibility: measureText};
 			const run = <T,>(name: string, fn: () => T, fallback: T): T => {
 				try {
 					return fn();

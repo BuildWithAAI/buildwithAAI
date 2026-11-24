@@ -13,7 +13,7 @@ import React, {useId} from 'react';
 import {LINE, ZOO_COLORS} from '../../../palette';
 import type {Expression, MouthShape} from '../../../types';
 import {clamp, clamp01, lerp, lerpPts, line, safeId, smooth, tapered, type Pt} from '../../geometry';
-import {ZOO_LINE} from '../../lines';
+import {featureScale, LID_MIN_SCALE, ZOO_LINE} from '../../lines';
 import {EXPRESSIONS, type BrowPose, type EyePose} from '../../rig';
 import {BEARD_BASE, MOUSTACHE, moustachePts} from '../../parts/Beard';
 import {BROW_L, BROW_R, browTopIn, posed} from '../../parts/Brows';
@@ -170,7 +170,7 @@ const Eye34: React.FC<EyeProps> = ({which, pose, blink, lookX, lookY}) => {
 			{b > 0.001 ? <path data-part="upperLid" d={smooth(lidFill)} fill={ZOO_COLORS.skin} /> : null}
 			<path d={line([W([-5.5, lower[1][1] - 0.3]), W([0.5, lower[1][1] + 0.4]), W([6, lower[2][1] + 0.1])])} fill="none" stroke={ZOO_COLORS.skinShadow} strokeWidth={ZOO_LINE.fine * ls} strokeLinecap="round" />
 			{which === 'near' ? <path d={line(crease)} fill="none" stroke={ZOO_COLORS.skinShadow} strokeWidth={ZOO_LINE.fine * 0.9 * ls} strokeLinecap="round" /> : null}
-			<path data-part="lidLine" d={tapered(lidEdge, (t) => ZOO_LINE.lid * 1.1 * ls * lidProfile(t))} fill={LINE.color} />
+			<path data-part="lidLine" d={tapered(lidEdge, (t) => ZOO_LINE.lid * 1.1 * featureScale(ls, LID_MIN_SCALE) * lidProfile(t))} fill={LINE.color} />
 		</g>
 	);
 };
@@ -307,9 +307,9 @@ export const Head34: React.FC<Head34Props> = ({expression, mouth, blink, browLif
 			<path data-part="jawOutline" d={jaw34Outline(jaw)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />
 			<g data-part="nose">
 				<path d={UNDER_TIP} fill={ZOO_COLORS.skinShadow} />
-				<path data-part="noseBridge" d={tapered(BRIDGE, bridgeWidth(ZOO_LINE.fine * ls))} fill={ZOO_COLORS.noseLine} />
+				<path data-part="noseBridge" d={tapered(BRIDGE, bridgeWidth(ZOO_LINE.fine * 1.2 * featureScale(ls)))} fill={ZOO_COLORS.noseLine} />
 				<Stroke d={line(TIP_TURN)} width={ZOO_LINE.fine * 0.9} color={ZOO_COLORS.noseLine} />
-				<path data-part="nostril" d={tapered(NOSTRIL, nostrilWidth(ZOO_LINE.feature * ls))} fill={LINE.color} />
+				<path data-part="nostril" d={tapered(NOSTRIL, nostrilWidth(ZOO_LINE.feature * featureScale(ls)))} fill={LINE.color} />
 			</g>
 			<g data-part="eyes">
 				<Eye34 which="far" pose={spec.eyes} blink={blink} lookX={lookX} lookY={lookY} />

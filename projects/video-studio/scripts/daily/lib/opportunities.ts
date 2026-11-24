@@ -7,7 +7,8 @@
 import type {RadarHistory, TrackerData, TrackerRow} from './history.ts';
 import {defillamaKey} from './history.ts';
 import type {BriefFact, BriefIncident, BriefSource, Opportunity, RadarIncident} from './types.ts';
-import {daysBetween, shortDate, unique, usdExact} from './util.ts';
+import {sameIncident} from './match.ts';
+import {addDays, daysBetween, shortDate, unique, usdExact} from './util.ts';
 
 export type OppResult = {opp: Opportunity; sources: BriefSource[]; facts: BriefFact[]; entities: string[]; incidents: BriefIncident[]};
 
@@ -30,16 +31,33 @@ const MAX_ROWS = 80;
 const rowFactText = (r: TrackerRow): string =>
 	`DefiLlama lists ${r.name}: ${r.date}, ${r.amountUsd ? `reported loss ${usdExact(r.amountUsd)}` : 'loss not stated'}${r.classification ? `, ${r.classification}${r.technique ? ` / ${r.technique}` : ''}` : ''}.`;
 
+/** Words a source uses when it has already ranked the incident ("the new record for the largest crypto theft"). */
+const ALREADY_RANKED = /\b(?:record|largest|biggest|costliest|worst)\b/i;
+
+/** The comparison window before the 30 days: a change counts only when the cache reaches back that far. */
+export const PREVIOUS_DAYS = 30;
+
+/** A finding that is not obvious from the headline (each makes the comparison "strong"). */
+const MIN_PATTERN = 3;
+
 /**
  * Own-data comparison with DefiLlama's list for the 30 days to the run date: the incident's rank by DefiLlama's own
- * figure among the incidents with a stated loss, and how many share its classification.
+ * figure among the incidents with a stated loss, how many share its classification (and how that compares with the
+ * 30 days before), and how many share its technique.
+ *
+ * It is the same comparison every day, so it is a template (owner rule: real analysis in every video; YouTube's
+ * inauthentic-content policy names templated videos). It is rated "supporting" unless it finds something a viewer
+ * would not expect: 3 or more incidents with the same DefiLlama technique, a classification count at least double
+ * the 30 days before, or a top-3 rank that no stored source already states. Even then it never qualifies a daily Short
+ * on its own: selection also needs an analysis that is not a template (select.ts).
  */
 export const trackerComparison = (inc: RadarIncident, tracker: TrackerData, win: {from: string; to: string}): OppResult => {
 	const base: Opportunity = {
 		id: 'tracker-30d',
 		kind: 'comparison',
 		basis: 'own-data',
-		strength: 'strong',
+		strength: 'supporting',
+		template: true,
 		available: false,
 		title: `Rekt Meter: this incident against DefiLlama's list for ${shortDate(win.from)} to ${shortDate(win.to)}`,
 		detail: null,
@@ -60,14 +78,23 @@ export const trackerComparison = (inc: RadarIncident, tracker: TrackerData, win:
 	const pool = inside ? inWindow : [...inWindow, self];
 	const withLoss = pool.filter((r) => r.amountUsd);
 	const sameClass = self.classification ? pool.filter((r) => r.classification === self.classification) : [];
+	const technique = self.technique && !/^unknown$/i.test(self.technique.trim()) ? self.technique : null;
+	const sameTech = technique ? pool.filter((r) => r.technique === technique) : [];
+	// the 30 days before the window, only when the cache reaches back that far
+	const prevFrom = addDays(win.from, -PREVIOUS_DAYS);
+	const prevTo = addDays(win.from, -1);
+	const prevCovered = !!tracker.earliest && tracker.earliest <= prevFrom;
+	const prevSameClass = self.classification && prevCovered ? tracker.rows.filter((r) => r !== self && r.date >= prevFrom && r.date <= prevTo && r.classification === self.classification) : null;
 	const parts: string[] = [];
 	const numbers: Record<string, number | string> = {incidentsListed: pool.length, withStatedLoss: withLoss.length};
+	const notable: string[] = [];
 	const range = `in the ${daysBetween(win.from, win.to) + 1} days from ${shortDate(win.from)} to ${shortDate(win.to)}`;
 	// the incident's own name (the protocol), which DefiLlama's row name contains ("Binance" in "Binance CEX")
 	const name = self.name.toLowerCase().includes(inc.protocol.toLowerCase()) ? inc.protocol : self.name;
 	if (inside) parts.push(`DefiLlama lists ${pool.length} incidents ${range}.`);
+	let rank: number | null = null;
 	if (self.amountUsd) {
-		const rank = 1 + withLoss.filter((r) => (r.amountUsd ?? 0) > (self.amountUsd ?? 0)).length;
+		rank = 1 + withLoss.filter((r) => (r.amountUsd ?? 0) > (self.amountUsd ?? 0)).length;
 		numbers.rankByDefiLlamaFigure = rank;
 		if (inside) {
 			const where = rank <= 3 ? `is the ${ORDINAL[rank]}` : `ranks ${ordinal(rank)}`;
@@ -83,26 +110,41 @@ export const trackerComparison = (inc: RadarIncident, tracker: TrackerData, win:
 					: `As listed by DefiLlama, ${name}'s ${usdExact(self.amountUsd)} loss (dated ${shortDate(self.date)}) is larger than ${smaller} of the ${others.length} stated losses it lists ${range}.`,
 			);
 		}
+		const ranked = inc.sources.some((s) => ALREADY_RANKED.test(`${s.title ?? ''} ${s.excerpt ?? ''}`));
+		if (inside && rank <= 3 && withLoss.length >= 10 && !ranked) notable.push(`it ranks ${ordinal(rank)} of ${withLoss.length} by DefiLlama's figure, which no stored source already says`);
 	} else parts.push(`DefiLlama states no loss figure for ${name}${inside ? '' : ` (dated ${shortDate(self.date)})`}.`);
+	const change = !!prevSameClass && sameClass.length >= MIN_PATTERN && sameClass.length >= 2 * Math.max(1, prevSameClass.length);
 	if (self.classification) {
 		numbers.sameClassification = sameClass.length;
+		if (change && prevSameClass) {
+			numbers.previousSameClassification = prevSameClass.length;
+			notable.push(`${sameClass.length} incidents share its classification, up from ${prevSameClass.length || 'none'} in the ${PREVIOUS_DAYS} days before`);
+		}
 		parts.push(
 			sameClass.length > 1
-				? `${sameClass.length} of the ${pool.length} share its DefiLlama classification (${label(self.classification)}).`
+				? `${sameClass.length} of the ${pool.length} share its DefiLlama classification (${label(self.classification)})${change && prevSameClass ? `, up from ${prevSameClass.length || 'none'} in the ${PREVIOUS_DAYS} days before that` : ''}.`
 				: `It is the only one of the ${pool.length} that DefiLlama classifies as ${label(self.classification)}.`,
 		);
 	}
-	// keep the rows the analysis rests on: every row in the window (rank and counts need them all), capped
+	if (technique && sameTech.length >= MIN_PATTERN) {
+		numbers.sameTechnique = sameTech.length;
+		notable.push(`${sameTech.length} incidents share its DefiLlama technique (${label(technique)})`);
+		parts.push(`${sameTech.length} of the ${pool.length} share its DefiLlama technique (${label(technique)}).`);
+	}
+	// keep the rows the analysis rests on: every row in the window (rank and counts need them all), capped, plus the
+	// earlier rows behind a stated change
 	const rows = pool.slice(0, MAX_ROWS);
 	if (pool.length > MAX_ROWS && !rows.includes(self)) rows[rows.length - 1] = self;
+	if (change && prevSameClass) for (const r of prevSameClass) if (!rows.includes(r)) rows.push(r);
 	const source: BriefSource = {
 		id: TRACKER_SOURCE_ID,
 		feed: 'defillama-hacks',
 		url: 'https://api.llama.fi/hacks',
-		title: `DefiLlama hacks: incidents dated ${win.from} to ${win.to}`,
+		title: `DefiLlama hacks: incidents dated ${change ? prevFrom : win.from} to ${win.to}`,
 		publisher: 'DefiLlama',
 		kind: 'tracker',
 		tier: 'A',
+		tracker: true,
 		publishedAt: tracker.fetchedUtc,
 		excerpts: rows.map((r) => r.head),
 		note: `Structured rows only (name · date · loss · classification · target · chains), from the radar's cache fetched ${tracker.fetchedUtc}. ${pool.length > MAX_ROWS ? `${pool.length - MAX_ROWS} more rows exist; counts use all ${pool.length}.` : ''}`.trim(),
@@ -114,11 +156,29 @@ export const trackerComparison = (inc: RadarIncident, tracker: TrackerData, win:
 		`Kept the ${inWindow.length} rows dated ${win.from} to ${win.to}${inside ? '' : `, plus this incident's own row (${self.date})`}.`,
 		self.amountUsd ? `Ranked the ${withLoss.length} rows with a stated loss by DefiLlama's own figure (one source, no averaging); this incident is number ${numbers.rankByDefiLlamaFigure}.` : 'This incident has no DefiLlama loss figure, so it is not ranked.',
 		self.classification ? `Counted rows whose classification is "${self.classification}": ${sameClass.length}.` : '',
+		change && prevSameClass ? `Counted rows dated ${prevFrom} to ${prevTo} (the ${PREVIOUS_DAYS} days before) with the same classification: ${prevSameClass.length}.` : '',
+		technique && sameTech.length >= MIN_PATTERN ? `Counted rows whose technique is "${technique}": ${sameTech.length}.` : '',
 	]
 		.filter(Boolean)
 		.join(' ');
+	const strong = notable.length > 0;
+	const factIds = unique(
+		[selfFact?.id ?? '', ...facts.filter((f, i) => rows[i].classification === self.classification || (technique !== null && rows[i].technique === technique)).map((f) => f.id)].filter(Boolean),
+	).slice(0, 12);
 	return {
-		opp: {...base, available: true, detail: parts.join(' '), method, sourceIds: [TRACKER_SOURCE_ID], factIds: unique([selfFact?.id ?? '', ...facts.filter((f, i) => rows[i].classification === self.classification).map((f) => f.id)].filter(Boolean)).slice(0, 12), numbers, why: `DefiLlama lists this incident and ${inWindow.length} incident(s) in the window.`},
+		opp: {
+			...base,
+			strength: strong ? 'strong' : 'supporting',
+			available: true,
+			detail: parts.join(' '),
+			method,
+			sourceIds: [TRACKER_SOURCE_ID],
+			factIds,
+			numbers,
+			why: strong
+				? `DefiLlama lists ${pool.length} incident(s) in the window${inside ? ', this one included' : ', plus this one'}. Not obvious from the headline: ${notable.join('; ')}. It is still the daily template, so it never qualifies a Short on its own.`
+				: `DefiLlama lists ${pool.length} incident(s) in the window${inside ? ', this one included' : ', plus this one'}, but the comparison shows nothing a viewer would not expect (no technique shared by ${MIN_PATTERN} or more, no doubling against the ${PREVIOUS_DAYS} days before, no unstated top-3 rank). It can only support another analysis.`,
+		},
 		sources: [source],
 		facts,
 		entities: unique(rows.map((r) => r.name)),
@@ -126,13 +186,18 @@ export const trackerComparison = (inc: RadarIncident, tracker: TrackerData, win:
 	};
 };
 
-/** Same-type incidents in the radar's own daily files for the window. Needs at least 7 daily files to mean anything. */
+/**
+ * Same-type incidents in the radar's own daily files for the window. Needs at least 7 daily files to mean anything,
+ * and 3 or more incidents of the type (this one included) to be a pattern ("strong"); fewer is supporting only. It is
+ * not a daily template: it comes from our own accumulated radar history, which no outlet has.
+ */
 export const radarComparison = (inc: RadarIncident, hist: RadarHistory, minFiles = 7): OppResult => {
 	const base: Opportunity = {
 		id: 'radar-30d',
 		kind: 'pattern',
 		basis: 'own-data',
-		strength: 'strong',
+		strength: 'supporting',
+		template: false,
 		available: false,
 		title: `Pattern: ${inc.type} incidents on our radar, ${shortDate(hist.from)} to ${shortDate(hist.to)}`,
 		detail: null,
@@ -143,7 +208,11 @@ export const radarComparison = (inc: RadarIncident, hist: RadarHistory, minFiles
 	};
 	if (hist.files.length < minFiles)
 		return {opp: {...base, why: `The radar has ${hist.files.length} live daily file(s) from ${hist.from} to ${hist.to}; this comparison needs at least ${minFiles} (history builds up with every live run).`}, sources: [], facts: [], entities: [], incidents: []};
-	const same = [...hist.incidents.values()].map((x) => x.incident).filter((x) => x.id !== inc.id && x.type === inc.type);
+	// the same story can carry another id on another day (match.ts): never count it, or a story twice
+	const ref = (x: RadarIncident) => ({id: x.id, protocol: x.protocol, date: x.dateUtc || null});
+	const same: RadarIncident[] = [];
+	for (const x of [...hist.incidents.values()].map((v) => v.incident))
+		if (x.type === inc.type && !sameIncident(ref(x), ref(inc)) && !same.some((y) => sameIncident(ref(x), ref(y)))) same.push(x);
 	// each counted incident must be citable: its DefiLlama or SlowMist classification fact, else its best-tier fact
 	const sources: BriefSource[] = [];
 	const facts: BriefFact[] = [];
@@ -169,13 +238,14 @@ export const radarComparison = (inc: RadarIncident, hist: RadarHistory, minFiles
 	return {
 		opp: {
 			...base,
+			strength: n >= 3 ? 'strong' : 'supporting',
 			available: true,
 			detail,
 			method: `Read the radar's live daily files for ${hist.from} to ${hist.to} (${hist.files.length} files), took the union of their shortlisted incidents (top and also-seen) and counted those the radar typed "${inc.type}" (${n}). Each counted incident is cited by its own classification fact (facts h1..h${facts.length}). The radar shortlists about 11 incidents a day, so this counts what the radar surfaced, not every incident.`,
 			sourceIds: sources.map((s) => s.id),
 			factIds: facts.map((f) => f.id),
 			numbers: {incidents: n, radarFiles: hist.files.length},
-			why: `${hist.files.length} radar files in the window.`,
+			why: n >= 3 ? `${hist.files.length} radar files in the window; ${n} ${label} incidents make a pattern.` : `${hist.files.length} radar files in the window, but only ${n} ${label} incident(s): not a pattern yet (3 or more), so it can only support another analysis.`,
 		},
 		sources,
 		facts,
@@ -186,7 +256,9 @@ export const radarComparison = (inc: RadarIncident, hist: RadarHistory, minFiles
 
 /** Sources disagree on the loss: list each figure with its source (a supporting comparison, never an average). */
 export const figuresComparison = (inc: RadarIncident, sourceIdFor: (feed: string, url: string) => string | undefined, publisherOf: (id: string) => string): OppResult => {
-	const base: Opportunity = {id: 'figures', kind: 'comparison', basis: 'source', strength: 'supporting', available: false, title: 'Rekt Meter: what each source reports', detail: null, method: null, sourceIds: [], factIds: [], why: ''};
+	// supporting only: listing figures side by side is the same every day. An EXPLAINED disagreement (a source says why
+	// the figures differ) is real analysis, but no rule can find that explanation; the writer adds it by hand, cited.
+	const base: Opportunity = {id: 'figures', kind: 'comparison', basis: 'source', strength: 'supporting', template: true, available: false, title: 'Rekt Meter: what each source reports', detail: null, method: null, sourceIds: [], factIds: [], why: ''};
 	// publisher -> its figures (at most 2), each with the source id and the words its excerpt uses
 	const seen = new Map<string, Array<{id: string; quote: string; amount: number; tracker: boolean}>>();
 	for (const l of inc.reportedLosses.filter((x) => x.tier !== 'C')) {
@@ -216,7 +288,7 @@ export const figuresComparison = (inc: RadarIncident, sourceIdFor: (feed: string
 export const fundFlowOpportunity = (inc: RadarIncident, dateSlug: string): OppResult => {
 	const solana = inc.chains.some((c) => /^solana$/i.test(c.trim()));
 	const tierA = inc.sources.filter((s) => s.tier === 'A');
-	const base: Opportunity = {id: 'fund-flow', kind: 'fund-flow', basis: 'own-data', strength: 'strong', available: false, title: 'Fund flow on Solana (RPC trace)', detail: null, method: null, sourceIds: [], factIds: [], why: ''};
+	const base: Opportunity = {id: 'fund-flow', kind: 'fund-flow', basis: 'own-data', strength: 'strong', template: false, available: false, title: 'Fund flow on Solana (RPC trace)', detail: null, method: null, sourceIds: [], factIds: [], why: ''};
 	if (!solana) return {opp: {...base, why: `Not a Solana incident (chains: ${inc.chains.join(', ') || 'none listed'}); the RPC trace covers Solana only.`}, sources: [], facts: [], entities: [], incidents: []};
 	if (!tierA.length) return {opp: {...base, why: 'A Solana incident, but no tier-A source covers it, so no published addresses can be trusted.'}, sources: [], facts: [], entities: [], incidents: []};
 	return {

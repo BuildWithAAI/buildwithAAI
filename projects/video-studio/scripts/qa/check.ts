@@ -23,7 +23,7 @@ import {fileURLToPath} from 'node:url';
 import {openBrowser, type HeadlessBrowser} from '@remotion/renderer';
 import {qaRefId, type FrameFacts, type RefItem} from '../../src/qa/protocol.ts';
 import {browserExecutable, bundleForQa, PROJECT_ROOT, relToRoot} from './lib/bundle.ts';
-import {bannedFindings, characterDomFindings, decompose, faceFindings, oneFrameFindings, textFindings, textKey, zoneFindings} from './lib/checks/dom.ts';
+import {bannedFindings, characterDomFindings, collisionFindings, decompose, faceFindings, oneFrameFindings, textFindings, textKey, zoneFindings} from './lib/checks/dom.ts';
 import {contrastFindings} from './lib/checks/contrast.ts';
 import {modelPixelFindings, type CharRef, type ModelStats} from './lib/checks/model.ts';
 import {gradientFindings, prepareFrame, textureFindings} from './lib/checks/banding.ts';
@@ -227,7 +227,7 @@ const runChecks = async (args: Args, shared: Shared, outDir: string): Promise<Ru
 		const D = comp.durationInFrames;
 		const zones = zonesFor(W, H, args.shortsZone);
 		log(`  ${W}x${H} ${zones.format}, ${comp.fps} fps, ${D} frames`);
-		const domFindingsOf = (f: FrameFacts): Finding[] => [...textFindings(f), ...zoneFindings(f, zones), ...faceFindings(f), ...characterDomFindings(f, manifest), ...bannedFindings(f)];
+		const domFindingsOf = (f: FrameFacts): Finding[] => [...textFindings(f), ...collisionFindings(f), ...zoneFindings(f, zones), ...faceFindings(f), ...characterDomFindings(f, manifest), ...bannedFindings(f)];
 
 		// ---- scout: DOM facts on every (k-th) frame + 1/8-size frames for cuts and pops ----
 		let domFacts = new Map<number, FrameFacts>();
@@ -402,7 +402,7 @@ const runChecks = async (args: Args, shared: Shared, outDir: string): Promise<Ru
 					const a = scene(fr - 1);
 					const b = scene(fr + 1);
 					const c = scene(fr);
-					if (a && b && c) findings.push(...timed('flicker', () => flickerFindings(fr, a, c, b, facts)));
+					if (a && b && c) findings.push(...timed('flicker', () => flickerFindings(fr, a, c, b, facts, {prev: pFacts.get(fr - 1), next: pFacts.get(fr + 1)})));
 				}
 			}
 			timings.analysis = Date.now() - ta;
@@ -468,6 +468,7 @@ const runChecks = async (args: Args, shared: Shared, outDir: string): Promise<Ru
 				errors,
 				ignoredBadges: [...badges],
 				scoutMotion: scoutStats,
+				probeMs: {scout: probeCost([...domFacts.values()]), pixels: probeCost([...pFacts.values()])},
 			},
 			issues,
 		);
@@ -482,6 +483,12 @@ const runChecks = async (args: Args, shared: Shared, outDir: string): Promise<Ru
 	} finally {
 		if (!shared.browser) await browser.close({silent: true} as never).catch(() => undefined);
 	}
+};
+
+/** Median and maximum in-page measurement time of the probe (ms) over a pass's frames. */
+export const probeCost = (fs: FrameFacts[]): {median: number; max: number} => {
+	const ms = fs.map((f) => f.ms).sort((a, b) => a - b);
+	return ms.length ? {median: ms[Math.floor(ms.length / 2)], max: ms[ms.length - 1]} : {median: 0, max: 0};
 };
 
 /** Each character appears once per scene; two Zoos (or two Badgers) mean two scenes overlap mid-transition. */

@@ -4,7 +4,7 @@
   "slug": "2026-11-24-binance",
   "lang": "en",
   "sourceLang": "en",
-  "title": "DOJ moves to recover Binance hack funds",
+  "title": "DOJ moves to recover USDC tied to Binance hack",
   "fiction": false,
   "news": {
     "format": "daily-short",
@@ -20,7 +20,7 @@
       "narration": "According to The Block, the Justice Department is seeking to recover about {$1.17 billion|one point one seven billion dollars} in USDC tied to the October 29 Binance hack [src:theblock].",
       "onScreen": {
         "kicker": "Threat Brief",
-        "title": "DOJ moves on Binance hack funds"
+        "title": "DOJ seeks USDC tied to hack"
       },
       "zoo": {
         "expression": "neutral"
@@ -82,12 +82,13 @@
       "id": "s04",
       "type": "talk",
       "segment": "desk",
-      "narration": "Our check: DefiLlama lists 52 incidents in the 30 days from October 26 to November 24. As listed by DefiLlama, Binance's loss is the largest of the 39 with a stated figure.",
+      "narration": "Our check: DefiLlama lists 52 incidents in the 30 days to November 24. 14 of them share Binance's DefiLlama classification, frontend and infrastructure, up from 2 in the 30 days before that.",
       "onScreen": {
         "title": "Our check",
         "bullets": [
           "52 incidents in 30 days",
-          "Binance: largest of 39"
+          "14 frontend and infrastructure",
+          "Up from 2 the 30 days before"
         ]
       },
       "badger": {
@@ -100,14 +101,19 @@
       ],
       "claimWaivers": [
         {
-          "match": "DefiLlama lists 52 incidents",
+          "match": "52 incidents",
           "rule": "factual",
-          "reason": "Own-data analysis a1 (method in storyboard.analysis), checked by the news gate R7."
+          "reason": "Own-data analysis a1 (method in storyboard.analysis): the news gate (R7) checks its figures against the counts brief.json computed (analysisOpportunities numbers)."
         },
         {
-          "match": "largest of the 39",
+          "match": "frontend and infrastructure",
           "rule": "factual",
-          "reason": "Own-data analysis a1 (method in storyboard.analysis), checked by the news gate R7."
+          "reason": "Own-data analysis a1 (method in storyboard.analysis): the news gate (R7) checks its figures against the counts brief.json computed (analysisOpportunities numbers)."
+        },
+        {
+          "match": "from 2",
+          "rule": "factual",
+          "reason": "Own-data analysis a1 (method in storyboard.analysis): the news gate (R7) checks its figures against the counts brief.json computed (analysisOpportunities numbers)."
         }
       ]
     },
@@ -186,7 +192,7 @@
     },
     {
       "id": "defillama-30d",
-      "title": "DefiLlama hacks: incidents dated 2026-10-26 to 2026-11-24 (DefiLlama)",
+      "title": "DefiLlama hacks: incidents dated 2026-09-26 to 2026-11-24 (DefiLlama)",
       "url": "https://api.llama.fi/hacks",
       "publisher": "DefiLlama",
       "accessed": "2026-11-24",
@@ -198,16 +204,17 @@
   "analysis": [
     {
       "id": "a1",
+      "opportunity": "tracker-30d",
       "kind": "comparison",
       "basis": "own-data",
-      "detail": "DefiLlama lists 52 incidents in the 30 days from Oct 26 to Nov 24. As listed by DefiLlama, Binance's $6,360,000,000 loss is the largest of the 39 with a stated loss. 14 of the 52 share its DefiLlama classification (frontend and infrastructure).",
+      "detail": "DefiLlama lists 52 incidents in the 30 days from Oct 26 to Nov 24. As listed by DefiLlama, Binance's $6,360,000,000 loss is the largest of the 39 with a stated loss. 14 of the 52 share its DefiLlama classification (frontend and infrastructure), up from 2 in the 30 days before that. 7 of the 52 share its DefiLlama technique (key leaked via infrastructure).",
       "sourceIds": [
         "defillama-30d"
       ],
       "sceneIds": [
         "s04"
       ],
-      "method": "Read the DefiLlama /hacks rows the radar cached at 2026-11-24T06:44:26Z (source \"defillama-30d\" in brief.json, facts t1..t52). Kept the 52 rows dated 2026-10-26 to 2026-11-24. Ranked the 39 rows with a stated loss by DefiLlama's own figure (one source, no averaging); this incident is number 1. Counted rows whose classification is \"Frontend & Infrastructure\": 14."
+      "method": "Read the DefiLlama /hacks rows the radar cached at 2026-11-24T16:32:49Z (source \"defillama-30d\" in brief.json, facts t1..t54). Kept the 52 rows dated 2026-10-26 to 2026-11-24. Ranked the 39 rows with a stated loss by DefiLlama's own figure (one source, no averaging); this incident is number 1. Counted rows whose classification is \"Frontend & Infrastructure\": 14. Counted rows dated 2026-09-26 to 2026-10-25 (the 30 days before) with the same classification: 2. Counted rows whose technique is \"Key Leaked via Infrastructure\": 7."
     }
   ],
   "shorts": [
@@ -222,7 +229,7 @@
         "s06",
         "s07"
       ],
-      "title": "DOJ moves to recover Binance hack funds"
+      "title": "DOJ moves to recover USDC tied to Binance hack"
     }
   ],
   "thumbnails": [

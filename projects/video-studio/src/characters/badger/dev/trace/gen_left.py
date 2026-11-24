@@ -110,6 +110,9 @@ fu_strokes = [
 # the top of each front-leg contour runs INSIDE the leg up into the chest (elbow / brisket creases): drawn on top of the
 # fill at full outline width, in traced (un-inset) coordinates, so it joins the inset edge stroke seamlessly
 fu_creases = ['M 199 250 C 194 262 191 276 190 292', 'M 239 263 C 240 272 240 282 240 290']
+# Round-2 repair (D35): the top of the upper leg (above the visible edges, hidden in the chest at rest) is outlined in the
+# under-torso 'underlay' pass, so a fore leg swung forward in the walk never shows an unoutlined wedge at the elbow
+fu_underlay = 'M 190 292 C 188 270 184 248 190 236 C 204 226 234 228 247 240 C 247 256 244 272 240 290'
 # Joints are round cut-out joints (Leg.tsx): parent and child meet on a flat cut through the joint pivot and a
 # disk of the joint radius behind them closes the outline when the joint bends (walk). Visible edges unchanged.
 fl_fill = 'M 188 413 C 193 410 196 404 197 398 L 231 398 C 230 405 228 410 224 416 L 222.5 416.5 L 191.5 416.5 Z'
@@ -216,7 +219,8 @@ rig = {
              'tagRing': P(tag_ring, NECK_O), 'tag': tag, 'tagShadow': P(tag_shadow, NECK_O),
              'tagAnchor': rnd(sub(W(146, 186), W(*NECK_O)))},
     'legFront': {
-        'upper': {**erode_seg(seg(fu_fill, fu_strokes, FRONT_SHOULDER), INSET), 'creases': [P(c, FRONT_SHOULDER) for c in fu_creases]},
+        'upper': {**erode_seg({**seg(fu_fill, fu_strokes, FRONT_SHOULDER), 'underlay': [P(fu_underlay, FRONT_SHOULDER)]}, INSET),
+                  'creases': [P(c, FRONT_SHOULDER) for c in fu_creases]},
         'lowerPivot': rnd(sub(W(*FRONT_WRIST), W(*FRONT_SHOULDER))),
         'lower': erode_seg(seg(fl_fill, fl_strokes, FRONT_WRIST), INSET),
         'pawPivot': rnd(sub(W(*FRONT_PAW), W(*FRONT_WRIST))),

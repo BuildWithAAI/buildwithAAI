@@ -19,11 +19,20 @@ import {Clipped, Outline, Shape, Stroke, useLineScale} from '../../parts/Shape';
 // ---------------------------------------------------------------- neck and collar
 // Repair round 1: every point above the collar line moved down ~7 u (full at y <= -705, none below -685) so the tee
 // neckline, collar and shoulder line sit where zoo_turn_34.png has them (as in the front view).
+// Repair round 2: the throat's top edge tucks UNDER the jaw (0.5-1.5 u above Head34's jaw line, so the face covers it);
+// round 1 stopped it ~6 u below the jaw, which left a sliver of background and a second outline under the chin.
 const NECK: Pt[] = [
 	[-28, -773], [-31.6, -761], [-33.8, -747], [-34.8, -733], [-35.6, -721], [-30, -712], [-12, -704.6], [6, -703.4],
-	[22, -707], [24, -717], [21.2, -726], [17, -731], [6, -735], [-8, -743],
+	[22, -707], [26, -724], [24, -734], [18, -739], [6, -743], [-8, -750],
 ];
-const NECK_SHADOW = smooth([[-36, -755], [-16, -748], [2, -739], [18, -732], [26, -731], [26, -719], [4, -721], [-20, -727], [-37, -731]]);
+/**
+ * Jaw shadow (repair round 2): a crescent ~5 u deep under Head34's jaw line plus a thin strip under the hair at the nape;
+ * round 1's 12-20 u diagonal band read as a strap across the neck.
+ */
+const NECK_SHADOW = smooth([
+	[50, -790], [50, -735], [35.6, -731.6], [27, -731], [18.4, -732.4], [10, -735.4], [1.4, -739.8], [-7.6, -745.4], [-15.2, -751.6],
+	[-22, -758.6], [-30, -760], [-40, -758], [-40, -790],
+]);
 const COLLAR_BACK = smooth([[-48, -713], [-46.6, -724], [-40, -730], [-26, -732.6], [-6, -731.6], [12, -728], [26, -722], [32, -714], [20, -706], [-30, -709]]);
 
 export const Neck34: React.FC = () => <Shape name="neck" d={smooth(NECK)} fill={ZOO_COLORS.skin} shadow={{d: NECK_SHADOW, fill: ZOO_COLORS.skinShadow}} />;

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {describe, it} from 'node:test';
 import {applyTextTransform, type CharacterFact, type FrameFacts, type TextFact} from '../../../src/qa/protocol.ts';
-import {bannedFindings, characterDomFindings, decompose, faceFindings, oneFrameFindings, textFindings, zoneFindings} from '../lib/checks/dom.ts';
+import {bannedFindings, characterDomFindings, collisionFindings, decompose, faceFindings, oneFrameFindings, textFindings, zoneFindings} from '../lib/checks/dom.ts';
 import {measureContrast} from '../lib/checks/contrast.ts';
 import {modelPixelFindings, type ModelStats} from '../lib/checks/model.ts';
 import {fitBlock, gradientFindings, isGradientBlock, prepareFrame, textureFindings} from '../lib/checks/banding.ts';
@@ -74,16 +74,36 @@ describe('text checks', () => {
 			frame({
 				texts: [
 					text({text: 'Edge', box: {x: 1800, y: 100, w: 300, h: 40}, visibleFrac: 0.4, clippedBy: ['frame']}),
-					text({text: 'Spill', box: {x: 100, y: 300, w: 400, h: 40}, overflow: {left: 0, right: 80, top: 0, bottom: 0, box: {x: 100, y: 300, w: 320, h: 40}}}),
+					text({text: 'Spill', box: {x: 100, y: 300, w: 400, h: 40}, overflow: {left: 0, right: 80, top: 0, bottom: 0, box: {x: 100, y: 300, w: 320, h: 40}, beyondPlate: 74}}),
+					text({text: 'Rim', box: {x: 100, y: 600, w: 300, h: 40}, overflow: {left: 0, right: 0, top: 0, bottom: 5, box: {x: 90, y: 590, w: 320, h: 55}, beyondPlate: 0}}),
+					text({text: 'Descender', box: {x: 100, y: 700, w: 300, h: 44}, blockOverflow: {left: 0, right: 0, top: 0, bottom: 6, box: {x: 100, y: 700, w: 300, h: 38}}}),
+					text({text: 'Runaway', box: {x: 100, y: 800, w: 600, h: 40}, blockOverflow: {left: 0, right: 300, top: 0, bottom: 0, box: {x: 100, y: 800, w: 300, h: 40}}}),
 					text({text: 'Tiny', box: {x: 100, y: 400, w: 100, h: 16}, effPx: 16}),
 					text({text: '0', box: {x: 100, y: 500, w: 10, h: 14}, effPx: 14, script: true}),
 				],
 			}),
 		);
 		assert.ok(out.some((x) => x.check === 'text-offframe'));
-		assert.ok(out.some((x) => x.check === 'text-overflow' && x.severity === 'warn'));
+		assert.equal(out.find((x) => x.check === 'text-overflow' && x.subject === '"Spill"')?.severity, 'error', 'letters past the edge of their plate');
+		assert.equal(out.find((x) => x.check === 'text-overflow' && x.subject === '"Rim"')?.severity, 'warn', 'letters over the plate border');
+		assert.ok(!out.some((x) => x.subject === '"Descender"'), 'a descender below a tight line box, with no plate, is not a defect');
+		assert.equal(out.find((x) => x.subject === '"Runaway"')?.severity, 'info', 'layout box exceeded with no plate: information');
 		assert.ok(out.some((x) => x.check === 'text-small' && x.subject === '"Tiny"'));
 		assert.ok(!out.some((x) => x.check === 'text-small' && x.subject === '"0"'), 'subscripts are exempt');
+	});
+	it('flags two texts painted over each other, not adjacent words or a deliberate double draw', () => {
+		const title = text({text: 'Bridge drained overnight', box: {x: 100, y: 100, w: 600, h: 50}, path: 'div>h1'});
+		const source = text({text: 'Source: Example Wire', box: {x: 400, y: 120, w: 420, h: 36}, path: 'div>p'});
+		const c = collisionFindings(frame({texts: [title, source]}));
+		assert.equal(c[0]?.check, 'text-collision');
+		assert.equal(c[0]?.severity, 'error');
+		const w1 = text({text: 'One', box: {x: 100, y: 300, w: 90, h: 40}, path: 'span:1'});
+		const w2 = text({text: 'leaked', box: {x: 188, y: 300, w: 150, h: 40}, path: 'span:2'});
+		assert.equal(collisionFindings(frame({texts: [w1, w2]})).length, 0, 'caption words side by side');
+		const outline = text({text: 'HEADLINE', box: {x: 100, y: 500, w: 400, h: 80}, path: 'div>span:1'});
+		const fill = text({text: 'HEADLINE', box: {x: 101, y: 500, w: 400, h: 80}, path: 'div>span:2'});
+		assert.equal(collisionFindings(frame({texts: [outline, fill]})).length, 0, 'an outline layer under its fill');
+		assert.equal(collisionFindings(frame({texts: [title, {...source, role: 'badge'}]})).length, 0, 'review badges never count');
 	});
 	it('ignores review badges', () => {
 		assert.equal(textFindings(frame({texts: [text({text: 'SILENT PREVIEW', box: {x: 0, y: 0, w: 10, h: 10}, visibleFrac: 0.2, clippedBy: ['frame'], role: 'badge'})]})).length, 0);
@@ -115,6 +135,15 @@ describe('safe zones', () => {
 		const out = zoneFindings(frame({texts: [text({text: 'Corner', box: {x: 20, y: 20, w: 200, h: 40}})], chars: [char({kind: 'zoo', headBox: {x: 30, y: 100, w: 140, h: 170}})]}), zonesFor(1920, 1080));
 		assert.ok(out.some((x) => x.check === 'safe-area' && x.subject === '"Corner"' && x.severity === 'error'));
 		assert.ok(out.some((x) => x.check === 'safe-area' && x.subject.includes('face')));
+	});
+	it('checks visible hands only, one issue per character and side', () => {
+		const low = (x: number) => ({x, y: 1000, w: 60, h: 70});
+		const behindDesk = zoneFindings(frame({chars: [char({kind: 'zoo', hands: [low(700), low(900)], handsVisible: [0, 0.1]})]}), zonesFor(1920, 1080));
+		assert.equal(behindDesk.filter((x) => x.subject.includes('hand')).length, 0, 'hands hidden behind a desk are not on screen');
+		const shown = zoneFindings(frame({chars: [char({kind: 'zoo', hands: [low(700), low(900)], handsVisible: [1, -1]})]}), zonesFor(1920, 1080));
+		const hands = shown.filter((x) => x.check === 'safe-area' && x.subject.includes('hand'));
+		assert.equal(hands.length, 2, 'visible (and unknown) hands are checked');
+		assert.equal(new Set(hands.map((x) => x.key)).size, 1, 'both hands below the safe area are one issue');
 	});
 	it('flags captions under the Shorts bottom overlay and marks the ads zone as information', () => {
 		const f = frame({width: 1080, height: 1920, texts: [text({text: 'Caption', role: 'caption', box: {x: 200, y: 1650, w: 600, h: 60}})]});
@@ -359,6 +388,63 @@ describe('flicker', () => {
 		assert.equal(flickerFindings(5, square(20), square(20), square(20), undefined).length, 0, 'a still frame');
 		const flash = flickerFindings(5, empty, blank(W, H, [255, 255, 255, 255]), empty, undefined);
 		assert.deepEqual(flash.map((x) => x.check), ['flash']);
+	});
+	// A card the colour of the wall it slides over, with a dark border and "text" bars: the 3-frame test alone
+	// sees one-frame states where the text passes over wall-coloured pixels in both neighbours.
+	const CW = 400;
+	const CH = 600;
+	const WALL = 244;
+	const card = (top: number | null, left = 60, extra?: (im: Image) => void): Image => {
+		const im = blank(CW, CH, [WALL, WALL, WALL, 255]);
+		for (let y = 0; y < CH; y++) for (const x of [30, 31, 370, 371]) im.data.set([20, 20, 20, 255], (y * CW + x) * 4); // panel seams
+		if (top !== null) {
+			const px = (x: number, y: number, v: number) => {
+				if (y >= 0 && y < CH && x >= 0 && x < CW) im.data.set([v, v, v, 255], (y * CW + x) * 4);
+			};
+			for (let y = top; y < top + 220; y++)
+				for (let x = left; x < left + 280; x++) {
+					const edge = y < top + 3 || y >= top + 217 || x < left + 3 || x >= left + 277;
+					px(x, y, edge ? 15 : WALL);
+				}
+			// three lines of "text": dark bars with gaps, like words
+			for (let line = 0; line < 3; line++)
+				for (let y = top + 40 + line * 50; y < top + 70 + line * 50; y++)
+					for (let x = left + 30; x < left + 250; x++) if (Math.floor((x - left) / 37) % 3 !== 2 && (x + y) % 7 !== 0) px(x, y, 18);
+		}
+		extra?.(im);
+		return im;
+	};
+	it('keeps a card that drops in fast over a wall of its own colour (motion, not flicker)', () => {
+		assert.equal(flickerFindings(5, card(null), card(40), card(95), undefined).length, 0, 'enters: found in the next frame, displaced');
+		assert.equal(flickerFindings(5, card(20), card(75), card(110), undefined).length, 0, 'mid-drop: found in both, along a path');
+		assert.equal(flickerFindings(5, card(80, 20), card(80, 70), card(80, 140), undefined).length, 0, 'a fast horizontal slide');
+	});
+	it('treats a pop on a swinging hand as animation, but not on a still one', () => {
+		const W2 = 300;
+		const H2 = 200;
+		const scene = (handX: number | null) => {
+			const im = blank(W2, H2, [230, 232, 235, 255]);
+			if (handX !== null) for (let y = 80; y < 140; y++) for (let x = handX; x < handX + 50; x++) im.data.set([243, 190, 155, 255], (y * W2 + x) * 4);
+			return im;
+		};
+		const facts = (f: number, handX: number) => frame({frame: f, width: W2, height: H2, chars: [char({kind: 'zoo', box: {x: 0, y: 0, w: 300, h: 200}, headBox: {x: 10, y: 10, w: 40, h: 40}, hands: [{x: handX, y: 80, w: 50, h: 60}]})]});
+		// the hand is far away in both neighbours (a fast swing): only the probe knows it moved
+		const swing = flickerFindings(5, scene(null), scene(120), scene(null), facts(5, 120), {prev: facts(4, 10), next: facts(6, 240)});
+		assert.equal(swing.length, 0, 'a fast, turning hand is somewhere else on every frame');
+		const still = flickerFindings(5, scene(null), scene(120), scene(null), facts(5, 120), {prev: facts(4, 120), next: facts(6, 120)});
+		assert.equal(still[0]?.check, 'flicker', 'a hand that does not move but shows for one frame');
+	});
+	it('still reports content found in neither neighbour, and an element that jumps away and back', () => {
+		const label = (im: Image) => {
+			for (let y = 400; y < 440; y++) for (let x = 90; x < 330; x++) if ((x >> 3) % 2 === 0) im.data.set([20, 20, 20, 255], (y * CW + x) * 4);
+		};
+		const f = flickerFindings(5, card(80), card(80, 60, label), card(80), undefined);
+		assert.equal(f[0]?.check, 'flicker', 'a one-frame label on a still card');
+		const g = flickerFindings(5, card(20), card(75, 60, label), card(110), undefined);
+		assert.equal(g[0]?.check, 'flicker', 'a one-frame label on a moving card');
+		const j = flickerFindings(5, card(80), card(92), card(80), undefined);
+		assert.equal(j[0]?.check, 'flicker', 'the card jumps 12 px for one frame and returns');
+		assert.ok(Math.abs(Number(j[0]?.measured.jumpPx) - 12) <= 2, `jump of about 12 px, measured ${j[0]?.measured.jumpPx}`);
 	});
 	it('finds cuts, transition spans and pop candidates in scout frames', () => {
 		const frames = new Map<number, LumaFrame>();

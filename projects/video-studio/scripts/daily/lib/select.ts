@@ -1,9 +1,10 @@
 /**
  * Picks today's story: the primary candidate plus two alternates (for when the primary fails a gate). Pure: the
- * caller supplies the candidates, our previous episodes and a function that says which strong analyses each
- * candidate has.
+ * caller supplies the candidates, our previous episodes and a function that says which real (strong, not template)
+ * analyses each candidate has. "No video today" is the normal outcome whenever nothing qualifies.
  */
 import type {PreviousEpisode} from './history.ts';
+import {sameIncident} from './match.ts';
 import type {CandidateSummary, RadarIncident, Selection} from './types.ts';
 import {slugify} from './util.ts';
 
@@ -11,7 +12,8 @@ export const COVERED_DAYS = 14;
 
 export const POLICY = [
 	"Candidates are the radar's top and also-seen incidents, best score first.",
-	"A daily Short needs all of: confirmed status; the radar's short-ready check (2 or more independent sources, a stated mechanism, a strong evergreen fix); no approved episode about the same incident in the last 14 days; and at least one strong analysis available (the 30-day DefiLlama comparison, the 30-day radar pattern, or a Solana fund-flow trace with published addresses).",
+	"A daily Short needs all of: confirmed status; the radar's sourcing check (2 or more independent sources, a mechanism a source states, a strong evergreen fix); no approved episode about the same incident (same radar id, or the same protocol within 3 days) in the last 14 days; and at least one strong analysis that is not a daily template: a pattern from our own radar history (3 or more same-type incidents in 7 or more daily radar files), or a Solana fund-flow trace from published addresses. The DefiLlama 30-day comparison and the side-by-side figures are templates: they may support a real analysis, never replace it.",
+	'An explained disagreement between sources (a source says why the figures differ) is real analysis too, but only a person can find that explanation: the owner can pick such a story by hand.',
 	'The primary is the best-scoring eligible incident; the alternates are the next two eligible ones.',
 	'If nothing is eligible, there is no video today. Developing stories are listed for the owner but never picked automatically (a "what we know" Short needs his call: prepare --pick <id>).',
 	'Only one daily video per day: once a video for the date is approved, prepare picks nothing new unless --pick is given.',
@@ -33,10 +35,12 @@ export const summarize = (inc: RadarIncident, rank: number, ctx: SelectContext):
 	const reasons: string[] = [];
 	if (inc.status !== 'confirmed') reasons.push('developing: not confirmed by an unhedged tier-A source or two tier-B outlets');
 	if (!inc.shortReady.ready) for (const m of inc.shortReady.missing) if (m !== 'not confirmed') reasons.push(`radar short check: ${m}`);
-	const covered = ctx.previous.find((p) => p.approved && p.incidentId === inc.id && p.date !== ctx.date);
+	const covered = ctx.previous.find(
+		(p) => p.approved && p.date !== ctx.date && sameIncident({id: p.incidentId, protocol: p.protocol ?? null, date: p.incidentDate ?? null}, {id: inc.id, protocol: inc.protocol, date: inc.dateUtc || inc.firstSeenUtc || null}),
+	);
 	if (covered) reasons.push(`already covered: ${covered.slug} was approved within ${COVERED_DAYS} days`);
 	const a = ctx.strongAnalysis(inc);
-	if (!a.available.length) reasons.push(`no strong analysis available (${a.why.join('; ') || 'none found'})`);
+	if (!a.available.length) reasons.push(`no real analysis: no strong analysis that is not a daily template (${a.why.join('; ') || 'none found'})`);
 	return {
 		rank,
 		incidentId: inc.id,

@@ -6,7 +6,7 @@
  * Vertical (ShowShort): a card naming the explainer and pointing down to the Short's related-video link.
  */
 import React from 'react';
-import {boxesOf, CardIn, SceneStage, type SceneCtx} from './common';
+import {boxesOf, SceneStage, type SceneCtx} from './common';
 import {HeaderRow, PanelCard, Pill} from './cards';
 import {str} from '../segments';
 import {FitText, t} from '../graphics/text';
@@ -24,7 +24,8 @@ const DownArrow: React.FC<{x: number; y: number; size: number}> = ({x, y, size})
 export const OutroEndScreen: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const {sc, sb, lang, format} = ctx;
 	const card = boxesOf(ctx).card!;
-	const r = ctx.plan.scenes[ctx.k].reveals;
+	// the end-screen card is at its final layout from the cut: a slide-in would cross the header row (and the
+	// DEVELOPING badge) for its first frames
 	const explainer = str(sc, 'explainer') ?? '';
 	const title = str(sc, 'title');
 	if (format === 'vertical') {
@@ -32,14 +33,14 @@ export const OutroEndScreen: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		return (
 			<>
 				<SceneStage ctx={ctx} />
-				<CardIn ctx={ctx} box={card} at={r.card}>
+				<>
 					<PanelCard box={card} lang={lang} format={format}>
 						<Pill text={showLabel(sb, 'explainer')} x={card.x + pad} y={card.y + pad} lang={lang} h={44} tone="slate" />
 						<FitText text={explainer} spec={t('heading', 900, 60, 34, 3, 1.08, {balance: true})} lang={lang} box={{x: card.x + pad, y: card.y + pad + 60, w: card.w - 2 * pad, h: card.h - 2 * pad - 60 - 70}} color={G.ink} valign="center" what="outro explainer" />
 						<DownArrow x={card.x + pad} y={card.y + card.h - pad - 56} size={56} />
 						<FitText text={showLabel(sb, 'linkedBelow')} spec={t('heading', 800, 36, 24, 1, 1.0)} lang={lang} box={{x: card.x + pad + 70, y: card.y + card.h - pad - 56, w: card.w - 2 * pad - 70, h: 56}} color={G.ink} valign="center" what="outro linked below" />
 					</PanelCard>
-				</CardIn>
+				</>
 				<HeaderRow ctx={ctx} />
 			</>
 		);
@@ -51,7 +52,7 @@ export const OutroEndScreen: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		<>
 			<SceneStage ctx={ctx} />
 			{title ? <FitText text={title} spec={t('heading', 900, 60, 36, 2, 1.08, {balance: true})} lang={lang} box={{x: 96, y: 70, w: 880, h: 180}} color={G.ink} valign="center" what="outro line" /> : null}
-			<CardIn ctx={ctx} box={card} at={r.card}>
+			<>
 				<div style={{position: 'absolute', left: card.x, top: card.y, width: card.w, height: card.h, backgroundColor: G.slate, border: `${OUTLINE}px solid ${G.ink}`, borderRadius: R.l, boxSizing: 'border-box'}} />
 				<FitText text={`${showLabel(sb, 'explainer')}: ${explainer}`} spec={t('heading', 800, 34, 24, 1, 1.0, {ellipsis: true})} lang={lang} box={{x: s1.x, y: s1.y - 62, w: s1.w, h: 50}} color={G.onDark} valign="bottom" what="end screen explainer label" />
 				<div data-zone="endscreen-video" style={zone(s1)} />
@@ -60,7 +61,7 @@ export const OutroEndScreen: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 				<div data-zone="endscreen-video" style={zone(s2)} />
 				<div data-zone="endscreen-subscribe" style={{position: 'absolute', left: sub.cx - sub.r, top: sub.cy - sub.r, width: 2 * sub.r, height: 2 * sub.r, borderRadius: sub.r, boxSizing: 'border-box', border: `${OUTLINE}px solid ${G.silver}`, backgroundColor: G.slate}} />
 				<FitText text={showLabel(sb, 'subscribe')} spec={t('heading', 800, 28, 24, 1, 1.0)} lang={lang} box={{x: sub.cx - 120, y: sub.cy + sub.r + 10, w: 240, h: 40}} color={G.onDarkMuted} align="center" what="end screen subscribe label" />
-			</CardIn>
+			</>
 			<HeaderRow ctx={ctx} />
 		</>
 	);

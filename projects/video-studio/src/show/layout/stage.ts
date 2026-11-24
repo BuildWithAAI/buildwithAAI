@@ -12,6 +12,7 @@
  * dark clothes keep a light shape behind them (CV4b).
  */
 import type {Format} from '../types.ts';
+import {SHOW_LOGO} from '../../branding/layout.ts';
 
 export type Rect = {x: number; y: number; w: number; h: number};
 
@@ -71,7 +72,8 @@ export const STAGE: Record<Format, StageSpec> = {
 		badgerChair: {x: 380 - 150, y: -900, w: 300, h: 390, r: 70},
 		zooMic: {x: -178, base: DESK_TOP, height: 150, tilt: 22, size: 1},
 		badgerMic: {x: 380 + 158, base: DESK_TOP, height: 104, tilt: -20, size: 0.82},
-		onAir: {x: 190, y: -1362, h: 66},
+		// between the cold-open kicker card above and the wall logo below, clear of both with the push-in (checks.ts)
+		onAir: {x: 190, y: -1338, h: 62},
 		// vertical: the desk front sits under the captions and the Shorts UI, so the logo hangs on the wall above them
 		logo: {x: 190, y: -1160, scale: 0.86},
 		panels: [
@@ -97,6 +99,14 @@ export const ZOO_EYES = {x: 0, y: -816.5};
 export const BADGER_EYES = {x: 1.3, y: -382.1};
 
 /** The ON AIR sign's plate (stage units), as set/props.tsx draws it: lamp, gap and "ON AIR" at half the plate height. */
+/** The show logo plate's rect in stage units (its size follows the branding kit's SHOW_LOGO; the plate is about 600 wide). */
+export const logoRect = (format: Format): Rect => {
+	const {x, y, scale} = STAGE[format].logo;
+	const h = (2 * SHOW_LOGO.padY + SHOW_LOGO.the + SHOW_LOGO.main * 1.02 + SHOW_LOGO.show + 2 * SHOW_LOGO.gap) * scale;
+	const w = 700 * scale;
+	return {x: x - w / 2, y: y - h / 2, w, h};
+};
+
 export const onAirRect = (format: Format): Rect => {
 	const {x, y, h} = STAGE[format].onAir;
 	const w = h * 0.38 * 2 + h * 0.2 * 2 + h * 0.3 + h * 0.5 * 4.05;

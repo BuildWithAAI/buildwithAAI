@@ -55,6 +55,11 @@ export const indexSources = (inc: RadarIncident): SourceIndex => {
 		used.add(id);
 		ids.set(key, id);
 		const excerpt = typeof s.excerpt === 'string' && s.excerpt.trim() ? clip(s.excerpt.trim(), EXCERPT_MAX) : undefined;
+		// the sentence that qualifies the mechanism ("remains under investigation") is stored on its own by the radar,
+		// because it often lies past the first 280 characters: it goes in as a second excerpt, so the writer sees it and
+		// the news gate's hedge rules (R6) read it
+		const qualifier = typeof s.qualifier === 'string' && s.qualifier.trim() ? clip(s.qualifier.trim(), EXCERPT_MAX) : undefined;
+		const extra = qualifier && !(excerpt ?? '').includes(qualifier) ? [qualifier] : [];
 		sources.push({
 			id,
 			feed: s.id,
@@ -66,7 +71,10 @@ export const indexSources = (inc: RadarIncident): SourceIndex => {
 			publishedAt: s.publishedUtc ?? null,
 			eventDate: s.eventDate ?? null,
 			...(excerpt ? {excerpt} : {}),
+			...(extra.length ? {excerpts: extra} : {}),
 			...(s.hedge ? {hedge: s.hedge} : {}),
+			...(s.tracker ? {tracker: true} : {}),
+			...(s.unverified ? {unverified: true} : {}),
 			...(s.redacted?.names ? {redactedNames: s.redacted.names} : {}),
 			...(s.referenceUrl ? {note: `${s.referenceNote ?? 'Cited by the source; not fetched.'} (${s.referenceUrl})`} : {}),
 		});
@@ -83,7 +91,8 @@ export const buildFacts = (inc: RadarIncident, idx: SourceIndex): {facts: BriefF
 	for (const f of inc.facts) {
 		const sid = idx.idFor(f.sourceId, f.url);
 		const src = sid ? idx.byId.get(sid) : undefined;
-		const stored = src ? (f.field === 'title' ? src.title : src.excerpt ?? '') : '';
+		// the stored text the quote must be in: the title, the excerpt, or the mechanism's qualifying sentence
+		const stored = !src ? '' : f.field === 'title' ? src.title : f.field === 'qualifier' ? ((src.excerpts ?? []).find((q) => q.includes(f.quote)) ?? '') : src.excerpt ?? '';
 		if (!src || !stored || !stored.includes(f.quote)) {
 			dropped.push(`"${clip(f.text, 80)}" (${f.sourceId}): its quote is not in the stored ${f.field}`);
 			continue;
@@ -93,6 +102,8 @@ export const buildFacts = (inc: RadarIncident, idx: SourceIndex): {facts: BriefF
 	}
 	idx.sources.forEach((s, i) => {
 		if (s.excerpt) facts.push({id: `e${i + 1}`, text: s.excerpt, sourceIds: [s.id], excerpts: [{sourceId: s.id, text: s.excerpt}], incidentId: inc.id, quote: s.excerpt, kind: 'excerpt'});
+		// the mechanism's qualifying sentence (see indexSources)
+		(s.excerpts ?? []).forEach((q, k) => facts.push({id: `q${i + 1}${k ? `-${k + 1}` : ''}`, text: q, sourceIds: [s.id], excerpts: [{sourceId: s.id, text: q}], incidentId: inc.id, quote: q, kind: 'excerpt'}));
 	});
 	return {facts, dropped};
 };
@@ -118,6 +129,21 @@ export const mustNotSayFor = (inc: RadarIncident, idx: SourceIndex, developing: 
 	} else out.push({rule: 'figures', text: 'Every loss figure is "reported by" or "according to" its source, word for word or with an honest "about".'});
 	for (const s of idx.sources.filter((x) => x.hedge))
 		out.push({rule: 'hedge', text: `${s.publisher} hedges ("${s.hedge}") in "${clip(s.title, 90)}": repeat it only attributed and with the hedge, or leave it out. Never state it as fact.`});
+	// a mechanism no source states as fact: the radar read the full text (not just the 280-character excerpt)
+	if (inc.mechanismStatus === 'suspected' || inc.mechanismStatus === 'unknown') {
+		const note = inc.mechanismNote;
+		const sid = note ? idx.idFor(note.sourceId, note.url) : undefined;
+		const who = (sid && idx.byId.get(sid)?.publisher) || note?.publisher || 'the sources';
+		out.push({
+			rule: 'hedge',
+			text: `The mechanism is ${inc.mechanismStatus === 'suspected' ? 'only suspected' : 'not stated by any source'} (${who}${sid ? `, source ${sid}` : ''}). Never state it as fact, and never put it in a title, label or thumbnail. Say only what that source says, attributed and with its hedge, and label the mechanism developing.`,
+		});
+	}
+	if (inc.userSide)
+		out.push({rule: 'user-side', text: `The sources describe a user-side incident (a user's or trader's own key, device, API key or unofficial software), not a breach of ${inc.protocol}'s own systems. Never say ${inc.protocol} was hacked or breached; say whose keys or devices were affected, attributed.`});
+	const unverified = idx.sources.filter((x) => x.unverified);
+	if (unverified.length)
+		out.push({rule: 'unverified', text: `${unique(unverified.map((x) => x.publisher)).join(', ')} cite${unverified.length === 1 ? 's' : ''} only a post on X that nobody here could read: never carry a claim on that entry alone.`});
 	const allText = idx.sources.map((s) => `${s.title} ${s.excerpt ?? ''}`).join(' ');
 	if (groupWords.test(allText))
 		out.push({rule: 'attribution', text: 'A source links this to a state or threat group. Name the group only as "according to <source>" in the same sentence, never in a title, thumbnail or on its own. Do not add attributions the sources do not make.'});
@@ -133,6 +159,15 @@ export const mustNotSayFor = (inc: RadarIncident, idx: SourceIndex, developing: 
 	if (tierC.length) out.push({rule: 'tier-c', text: `Aggregators (${tierC.join(', ')}) never carry a claim or a figure alone; cite a tier-A or tier-B source for it.`});
 	if (developing) out.push({rule: 'developing', text: 'Developing story: say "This is a developing story." before the first claim, put DEVELOPING in the first scene\'s title, the video title, the Short title and the thumbnails, and set news.developing.'});
 	return out;
+};
+
+/** The source and sentence behind a suspected or unknown mechanism, with the brief's source id. */
+const mechanismNote = (inc: RadarIncident, idx: SourceIndex): {sourceId: string; publisher: string; text: string} | null => {
+	const n = inc.mechanismNote;
+	if (!n || (inc.mechanismStatus !== 'suspected' && inc.mechanismStatus !== 'unknown')) return null;
+	const sid = idx.idFor(n.sourceId, n.url);
+	const src = sid ? idx.byId.get(sid) : undefined;
+	return src ? {sourceId: src.id, publisher: src.publisher, text: clip(String(n.text ?? ''), EXCERPT_MAX)} : null;
 };
 
 export type BriefInput = {
@@ -191,7 +226,11 @@ export const buildBrief = (b: BriefInput): DailyBrief => {
 			status: inc.status,
 			statusReason: inc.statusReason ?? null,
 			typeReason: inc.typeReason ?? null,
-			mechanismKnown: inc.mechanismKnown === true,
+			mechanismKnown: inc.mechanismStatus ? inc.mechanismStatus === 'stated' : inc.mechanismKnown === true,
+			mechanismStatus: inc.mechanismStatus ?? (inc.mechanismKnown === true ? 'stated' : 'unknown'),
+			mechanismNote: mechanismNote(inc, idx),
+			userSide: inc.userSide === true,
+			dateNote: inc.dateNote ?? null,
 			score: inc.score.total,
 			scoreReasons: Object.fromEntries(Object.entries(inc.score.factors ?? {}).map(([k, v]) => [k, v.reason])),
 			shortReady: inc.shortReady,

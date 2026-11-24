@@ -62,7 +62,7 @@ export const runGate = (o: GateOptions): GateRun => {
 	// a brief that exists but does not parse is reported once (above), not again as "missing"
 	const findings = [...pre, ...rules.findings.filter((f) => !(f.code === 'INPUT.brief-missing' && !br.ok && !br.missing))];
 
-	const generalGate = runGeneralGate(root, {channel: CHANNEL, slug: o.slug, storyboard: storyboardPath, brief: briefPath, root}, o.generalGate ?? 'auto', env);
+	const generalGate = runGeneralGate(root, {channel: CHANNEL, slug: o.slug, storyboard: storyboardPath, brief: briefPath, root, outDir: o.outDir === undefined ? join(root, 'out', 'claims') : o.outDir}, o.generalGate ?? 'auto', env);
 	if (generalGate.status === 'failed' || generalGate.status === 'error')
 		findings.push({rule: 'GEN', code: `GEN.${generalGate.status}`, severity: 'error', where: {surface: 'general-gate'}, message: `The general claim gate ${generalGate.status === 'failed' ? 'failed' : 'could not run'}: ${generalGate.note}`, fix: 'Fix what its report lists (its output is at the end of this report), or see README "General claim gate".'});
 	else if (generalGate.status === 'not-found' || generalGate.status === 'skipped')

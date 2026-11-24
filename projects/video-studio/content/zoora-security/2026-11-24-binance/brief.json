@@ -4,7 +4,7 @@
   "channel": "zoora-security",
   "slug": "2026-11-24-binance",
   "date": "2026-11-24",
-  "generatedAt": "2026-11-24T07:55:17.767Z",
+  "generatedAt": "2026-11-24T16:35:25.453Z",
   "status": "confirmed",
   "format": "daily-short",
   "incident": {
@@ -23,17 +23,21 @@
       "Base"
     ],
     "status": "confirmed",
-    "statusReason": "confirmed: unhedged tier-A source(s): chainalysis-blog, defillama-hacks, rekt-news",
+    "statusReason": "confirmed: unhedged primary statement, post-mortem or security-firm research: chainalysis-blog, rekt-news",
     "typeReason": "text 'Fake Interview' via chainalysis-blog; tier-A votes: key-compromise (chainalysis-blog), key-compromise (defillama-hacks), social-engineering (chainalysis-blog), social-engineering (rekt-news)",
     "mechanismKnown": true,
-    "score": 91,
+    "mechanismStatus": "stated",
+    "mechanismNote": null,
+    "userSide": false,
+    "dateNote": null,
+    "score": 90.5,
     "scoreReasons": {
       "loss": "lowest tier-A figure $6B (chainalysis-blog); 4 figure(s) from 3 source(s), range $6B to $6.4B",
-      "recency": "freshest source 2026-11-24T05:40:00Z (theblock), 18 h before the end of 2026-11-24",
-      "sources": "12 independent publisher(s): Ax3 (Chainalysis, DefiLlama, rekt.news); Bx6 (CoinDesk, Cointelegraph, DL News, Decrypt, The Block, The Defiant); Cx3 (Coin Edition, Web3 is Going Just Great, crypto.news)",
+      "recency": "freshest source 2026-11-24T14:13:03Z (decrypt), 10 h before the end of 2026-11-24",
+      "sources": "11 independent publisher(s): Ax3 (Chainalysis, DefiLlama, rekt.news); Bx6 (CoinDesk, Cointelegraph, DL News, Decrypt, The Block, The Defiant); Cx2 (Web3 is Going Just Great, crypto.news)",
       "novelty": "follow-up to an incident from 2026-10-29 (26 days ago); 0 other social-engineering incident(s) in the 14 days before 2026-11-24",
       "evergreen": "social-engineering -> fake-job-malware (direct: the incident is the topic)",
-      "audience": "target CEX (base 0.85); retail cues: account, users"
+      "audience": "target CEX (base 0.85); retail cues: account"
     },
     "shortReady": {
       "ready": true,
@@ -41,8 +45,10 @@
     },
     "postMortemUrl": "https://rekt.news/binance-rekt",
     "notes": [
+      "Also reported as: Justice Department, U.S.",
       "Sources state different figures (3 distinct). Quote each with its source; never average.",
-      "Legal matter (allegedly, forfeiture, freezing order, plaintiffs, prosecutors, seize): allegations and filings are not findings; name no individuals."
+      "Legal matter (forfeiture, freezing order, plaintiffs, prosecutors, seize, seized): allegations and filings are not findings; name no individuals.",
+      "Personal names were redacted from source text."
     ]
   },
   "evergreenTopic": "fake-job-malware",
@@ -79,7 +85,11 @@
       "tier": "A",
       "publishedAt": null,
       "eventDate": "2026-10-29",
-      "excerpt": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+      "excerpt": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…",
+      "excerpts": [
+        "Binance’s preliminary investigation identified a potentially compromised DevOps engineer’s laptop that allowed access to a service container, with no evidence of wallet private key leakage."
+      ],
+      "tracker": true
     },
     {
       "id": "chainalysis-blog",
@@ -127,8 +137,9 @@
       "tier": "B",
       "publishedAt": "2026-11-23T15:29:01Z",
       "eventDate": null,
-      "excerpt": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
-      "hedge": "potential"
+      "excerpt": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called [named person] during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
+      "hedge": "potential",
+      "redactedNames": 1
     },
     {
       "id": "thedefiant",
@@ -140,7 +151,8 @@
       "tier": "B",
       "publishedAt": "2026-11-23T16:07:46Z",
       "eventDate": null,
-      "excerpt": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds."
+      "excerpt": "Elliptic says almost all of the theft-linked coinjoins were coordinated by [named person], which organizes transactions without taking custody of users’ funds.",
+      "redactedNames": 1
     },
     {
       "id": "thedefiant-2",
@@ -236,19 +248,32 @@
       "tier": "B",
       "publishedAt": "2026-11-24T05:40:00Z",
       "eventDate": null,
-      "excerpt": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more."
+      "excerpt": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as [named person] says 'the dots aren't done'; and more.",
+      "redactedNames": 1
     },
     {
-      "id": "coinedition",
-      "feed": "coinedition",
-      "url": "https://coinedition.com/crypto-live-news/us-doj-moves-to-recover-1-1-billion-in-usdc-linked-to-6-3-billion-binance-hack/",
-      "title": "US DOJ Moves to Recover $1.1 Billion in USDC Linked to $6.3 Billion Binance Hack",
-      "publisher": "Coin Edition",
+      "id": "coindesk-2",
+      "feed": "coindesk",
+      "url": "https://www.coindesk.com/policy/2026/11/24/u-s-seeks-usd1-1-billion-seized-in-binance-hack-as-north-korean-funds-keep-moving",
+      "title": "U.S. seeks $1.1 billion seized in Binance hack as North Korean funds keep moving",
+      "publisher": "CoinDesk",
       "kind": "news",
-      "tier": "C",
-      "publishedAt": "2026-11-23T19:25:49Z",
-      "eventDate": "2026-10-29",
-      "excerpt": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…"
+      "tier": "B",
+      "publishedAt": "2026-11-24T10:58:51Z",
+      "eventDate": null,
+      "excerpt": "U.S. seeks to recover $1.1 billion in frozen USDC as billions more from the Binance hack remain unaccounted for."
+    },
+    {
+      "id": "decrypt-2",
+      "feed": "decrypt",
+      "url": "https://decrypt.co/383874/justice-department-moves-to-forfeit-1-1b-in-usdc-from-north-koreas-binance-hack",
+      "title": "Justice Department Moves to Forfeit $1.1B in USDC From North Korea's Binance Hack",
+      "publisher": "Decrypt",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-24T14:13:03Z",
+      "eventDate": null,
+      "excerpt": "U.S. authorities say they've now helped freeze, seize or return more than $2.9 billion of the crypto stolen from Binance in October."
     },
     {
       "id": "web3isgoinggreat",
@@ -271,30 +296,31 @@
       "kind": "news",
       "tier": "C",
       "publishedAt": "2026-11-23T19:30:00Z",
-      "eventDate": "2026-11-23",
+      "eventDate": null,
       "excerpt": "The U.S. Justice Department has filed a civil forfeiture complaint seeking about $1 billion in USDC tied to the October hack of Binance, a theft federal investigators have attributed to North Korean hackers. The verified complaint, filed Nov. 23 in…"
     },
     {
-      "id": "coinedition-2",
-      "feed": "coinedition",
-      "url": "https://coinedition.com/crypto-live-news/doj-moves-to-seize-1b-in-usdc-linked-to-binance-hack/",
-      "title": "DOJ Targets $1B in USDC Tied to North Korea’s Binance Hack",
-      "publisher": "Coin Edition",
+      "id": "cryptonews-2",
+      "feed": "cryptonews",
+      "url": "https://crypto.news/binance-doj-recover-stolen-crypto-1-billion-usdc/",
+      "title": "Binance works with US authorities to recover stolen funds as DOJ seeks $1.1B in crypto",
+      "publisher": "crypto.news",
       "kind": "news",
       "tier": "C",
-      "publishedAt": "2026-11-23T20:36:44Z",
-      "eventDate": "2026-11-23",
-      "excerpt": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…"
+      "publishedAt": "2026-11-24T12:56:25Z",
+      "eventDate": null,
+      "excerpt": "Binance confirms cooperation with the US Justice Department to recover stolen crypto as federal prosecutors seek forfeiture of more than $1.1 billion in USDC."
     },
     {
       "id": "defillama-30d",
       "feed": "defillama-hacks",
       "url": "https://api.llama.fi/hacks",
-      "title": "DefiLlama hacks: incidents dated 2026-10-26 to 2026-11-24",
+      "title": "DefiLlama hacks: incidents dated 2026-09-26 to 2026-11-24",
       "publisher": "DefiLlama",
       "kind": "tracker",
       "tier": "A",
-      "publishedAt": "2026-11-24T06:44:26Z",
+      "tracker": true,
+      "publishedAt": "2026-11-24T16:32:49Z",
       "excerpts": [
         "Bloom Trading Bot · 2026-10-26 · reported loss $953,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet · chains: Solana",
         "Myriad Markets · 2026-10-26 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: BSC",
@@ -347,9 +373,11 @@
         "Wagyu (XMR1) · 2026-11-20 · reported loss $13,510,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Hyperliquid L1",
         "Chainflip AMM · 2026-11-21 · reported loss $11,960,000 · Key Compromise / Validator Key Compromised · target: DeFi Protocol · chains: Ethereum, Bitcoin · bridge hack: yes",
         "CyberConnect · 2026-11-21 · reported loss $968,000 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Solana, Ethereum · bridge hack: yes",
-        "Endurance Bridge · 2026-11-22 · reported loss $1,040,000 · Bridge & Cross-Chain / Unbacked Cross-Chain Mint · target: DeFi Protocol · chains: BSC · bridge hack: yes"
+        "Endurance Bridge · 2026-11-22 · reported loss $1,040,000 · Bridge & Cross-Chain / Unbacked Cross-Chain Mint · target: DeFi Protocol · chains: BSC · bridge hack: yes",
+        "Ledger (Supply Chain) · 2026-10-09 · reported loss $93,000,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet",
+        "Gamdom · 2026-10-13 · reported loss $4,208,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Gambling Platform · chains: Ethereum, BSC, Polygon, Arbitrum, Optimism, Solana, TRON, Bitcoin"
       ],
-      "note": "Structured rows only (name · date · loss · classification · target · chains), from the radar's cache fetched 2026-11-24T06:44:26Z."
+      "note": "Structured rows only (name · date · loss · classification · target · chains), from the radar's cache fetched 2026-11-24T16:32:49Z."
     }
   ],
   "facts": [
@@ -435,6 +463,22 @@
     },
     {
       "id": "f6",
+      "text": "DefiLlama only suspects the mechanism: \"Binance’s preliminary investigation identified a potentially compromised DevOps engineer’s laptop that allowed access to a service container, with no evidence of wallet private key leakage.\"",
+      "sourceIds": [
+        "defillama-hacks"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-hacks",
+          "text": "Binance’s preliminary investigation identified a potentially compromised DevOps engineer’s laptop that allowed access to a service container, with no evidence of wallet private key leakage."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Binance’s preliminary investigation identified a potentially compromised DevOps engineer’s laptop that allowed access to a service container, with no evidence of wallet private key leakage.",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f7",
       "text": "Chainalysis headline, 2026-10-30: \"The $6.4 Billion Binance Hack: Tracing the North Korea Link\"",
       "sourceIds": [
         "chainalysis-blog"
@@ -450,7 +494,7 @@
       "kind": "radar-fact"
     },
     {
-      "id": "f7",
+      "id": "f8",
       "text": "Chainalysis states a figure of $6,400,000,000.",
       "sourceIds": [
         "chainalysis-blog"
@@ -466,7 +510,7 @@
       "kind": "radar-fact"
     },
     {
-      "id": "f8",
+      "id": "f9",
       "text": "Chainalysis headline, 2026-11-03: \"DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance\"",
       "sourceIds": [
         "chainalysis-blog-2"
@@ -482,7 +526,7 @@
       "kind": "radar-fact"
     },
     {
-      "id": "f9",
+      "id": "f10",
       "text": "Chainalysis states a figure of $6,000,000,000.",
       "sourceIds": [
         "chainalysis-blog-2"
@@ -498,7 +542,7 @@
       "kind": "radar-fact"
     },
     {
-      "id": "f10",
+      "id": "f11",
       "text": "rekt.news post-mortem, 2026-11-06: \"Binance - Rekt\"",
       "sourceIds": [
         "rekt-news"
@@ -514,7 +558,7 @@
       "kind": "radar-fact"
     },
     {
-      "id": "f11",
+      "id": "f12",
       "text": "CoinDesk headline, 2026-11-23: \"Binance hackers push $247 million through transactions designed to cloud the source\"",
       "sourceIds": [
         "coindesk"
@@ -530,7 +574,7 @@
       "kind": "radar-fact"
     },
     {
-      "id": "f12",
+      "id": "f13",
       "text": "The Defiant headline, 2026-11-23: \"Elliptic Traces About $247M in Binance Theft-Linked Bitcoin to Coinjoins\"",
       "sourceIds": [
         "thedefiant"
@@ -546,7 +590,7 @@
       "kind": "radar-fact"
     },
     {
-      "id": "f13",
+      "id": "f14",
       "text": "The Defiant headline, 2026-11-23: \"US Court Extends Binance Account Freeze to Dec. 17\"",
       "sourceIds": [
         "thedefiant-2"
@@ -559,22 +603,6 @@
       ],
       "incidentId": "2026-10-29-binance",
       "quote": "US Court Extends Binance Account Freeze to Dec. 17",
-      "kind": "radar-fact"
-    },
-    {
-      "id": "f14",
-      "text": "The Defiant headline, 2026-11-23: \"DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack\"",
-      "sourceIds": [
-        "thedefiant-3"
-      ],
-      "excerpts": [
-        {
-          "sourceId": "thedefiant-3",
-          "text": "DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack"
-        }
-      ],
-      "incidentId": "2026-10-29-binance",
-      "quote": "DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack",
       "kind": "radar-fact"
     },
     {
@@ -591,6 +619,22 @@
       ],
       "incidentId": "2026-10-29-binance",
       "quote": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…",
+      "kind": "excerpt"
+    },
+    {
+      "id": "q1",
+      "text": "Binance’s preliminary investigation identified a potentially compromised DevOps engineer’s laptop that allowed access to a service container, with no evidence of wallet private key leakage.",
+      "sourceIds": [
+        "defillama-hacks"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-hacks",
+          "text": "Binance’s preliminary investigation identified a potentially compromised DevOps engineer’s laptop that allowed access to a service container, with no evidence of wallet private key leakage."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Binance’s preliminary investigation identified a potentially compromised DevOps engineer’s laptop that allowed access to a service container, with no evidence of wallet private key leakage.",
       "kind": "excerpt"
     },
     {
@@ -643,34 +687,34 @@
     },
     {
       "id": "e5",
-      "text": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
+      "text": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called [named person] during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
       "sourceIds": [
         "coindesk"
       ],
       "excerpts": [
         {
           "sourceId": "coindesk",
-          "text": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers."
+          "text": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called [named person] during fixed daily hours, suggesting potential handoffs to China-based money launderers."
         }
       ],
       "incidentId": "2026-10-29-binance",
-      "quote": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
+      "quote": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called [named person] during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
       "kind": "excerpt"
     },
     {
       "id": "e6",
-      "text": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds.",
+      "text": "Elliptic says almost all of the theft-linked coinjoins were coordinated by [named person], which organizes transactions without taking custody of users’ funds.",
       "sourceIds": [
         "thedefiant"
       ],
       "excerpts": [
         {
           "sourceId": "thedefiant",
-          "text": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds."
+          "text": "Elliptic says almost all of the theft-linked coinjoins were coordinated by [named person], which organizes transactions without taking custody of users’ funds."
         }
       ],
       "incidentId": "2026-10-29-binance",
-      "quote": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds.",
+      "quote": "Elliptic says almost all of the theft-linked coinjoins were coordinated by [named person], which organizes transactions without taking custody of users’ funds.",
       "kind": "excerpt"
     },
     {
@@ -787,38 +831,54 @@
     },
     {
       "id": "e14",
-      "text": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more.",
+      "text": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as [named person] says 'the dots aren't done'; and more.",
       "sourceIds": [
         "theblock-2"
       ],
       "excerpts": [
         {
           "sourceId": "theblock-2",
-          "text": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more."
+          "text": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as [named person] says 'the dots aren't done'; and more."
         }
       ],
       "incidentId": "2026-10-29-binance",
-      "quote": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more.",
+      "quote": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as [named person] says 'the dots aren't done'; and more.",
       "kind": "excerpt"
     },
     {
       "id": "e15",
-      "text": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…",
+      "text": "U.S. seeks to recover $1.1 billion in frozen USDC as billions more from the Binance hack remain unaccounted for.",
       "sourceIds": [
-        "coinedition"
+        "coindesk-2"
       ],
       "excerpts": [
         {
-          "sourceId": "coinedition",
-          "text": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…"
+          "sourceId": "coindesk-2",
+          "text": "U.S. seeks to recover $1.1 billion in frozen USDC as billions more from the Binance hack remain unaccounted for."
         }
       ],
       "incidentId": "2026-10-29-binance",
-      "quote": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…",
+      "quote": "U.S. seeks to recover $1.1 billion in frozen USDC as billions more from the Binance hack remain unaccounted for.",
       "kind": "excerpt"
     },
     {
       "id": "e16",
+      "text": "U.S. authorities say they've now helped freeze, seize or return more than $2.9 billion of the crypto stolen from Binance in October.",
+      "sourceIds": [
+        "decrypt-2"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "decrypt-2",
+          "text": "U.S. authorities say they've now helped freeze, seize or return more than $2.9 billion of the crypto stolen from Binance in October."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "U.S. authorities say they've now helped freeze, seize or return more than $2.9 billion of the crypto stolen from Binance in October.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e17",
       "text": "Binance has confirmed that an attacker exploited the exchange, stealing around $6.3 billion from multiple hot wallets. The theft has set the new record for the largest crypto theft. Luckily for Binance, Tether and Circle quickly began freezing some of the exploiter's wallets.…",
       "sourceIds": [
         "web3isgoinggreat"
@@ -834,7 +894,7 @@
       "kind": "excerpt"
     },
     {
-      "id": "e17",
+      "id": "e18",
       "text": "The U.S. Justice Department has filed a civil forfeiture complaint seeking about $1 billion in USDC tied to the October hack of Binance, a theft federal investigators have attributed to North Korean hackers. The verified complaint, filed Nov. 23 in…",
       "sourceIds": [
         "cryptonews"
@@ -850,19 +910,19 @@
       "kind": "excerpt"
     },
     {
-      "id": "e18",
-      "text": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…",
+      "id": "e19",
+      "text": "Binance confirms cooperation with the US Justice Department to recover stolen crypto as federal prosecutors seek forfeiture of more than $1.1 billion in USDC.",
       "sourceIds": [
-        "coinedition-2"
+        "cryptonews-2"
       ],
       "excerpts": [
         {
-          "sourceId": "coinedition-2",
-          "text": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…"
+          "sourceId": "cryptonews-2",
+          "text": "Binance confirms cooperation with the US Justice Department to recover stolen crypto as federal prosecutors seek forfeiture of more than $1.1 billion in USDC."
         }
       ],
       "incidentId": "2026-10-29-binance",
-      "quote": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…",
+      "quote": "Binance confirms cooperation with the US Justice Department to recover stolen crypto as federal prosecutors seek forfeiture of more than $1.1 billion in USDC.",
       "kind": "excerpt"
     },
     {
@@ -1696,6 +1756,38 @@
       "incidentId": "defillama-30d",
       "quote": "Endurance Bridge · 2026-11-22 · reported loss $1,040,000 · Bridge & Cross-Chain / Unbacked Cross-Chain Mint · target: DeFi Protocol · chains: BSC · bridge hack: yes",
       "kind": "tracker-row"
+    },
+    {
+      "id": "t53",
+      "text": "DefiLlama lists Ledger (Supply Chain): 2026-10-09, reported loss $93,000,000, Frontend & Infrastructure / Supply Chain Attack.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Ledger (Supply Chain) · 2026-10-09 · reported loss $93,000,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Ledger (Supply Chain) · 2026-10-09 · reported loss $93,000,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t54",
+      "text": "DefiLlama lists Gamdom: 2026-10-13, reported loss $4,208,000, Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Gamdom · 2026-10-13 · reported loss $4,208,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Gambling Platform · chains: Ethereum, BSC, Polygon, Arbitrum, Optimism, Solana, TRON, Bitcoin"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Gamdom · 2026-10-13 · reported loss $4,208,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Gambling Platform · chains: Ethereum, BSC, Polygon, Arbitrum, Optimism, Solana, TRON, Bitcoin",
+      "kind": "tracker-row"
     }
   ],
   "reportedLosses": [
@@ -1758,6 +1850,10 @@
       "kind": "protocol"
     },
     {
+      "name": "Bisq 2",
+      "kind": "protocol"
+    },
+    {
       "name": "BitMart",
       "kind": "protocol"
     },
@@ -1798,10 +1894,6 @@
       "kind": "protocol"
     },
     {
-      "name": "DCENT",
-      "kind": "protocol"
-    },
-    {
       "name": "DeFiChain",
       "kind": "protocol"
     },
@@ -1818,7 +1910,15 @@
       "kind": "protocol"
     },
     {
+      "name": "Flags Suspected",
+      "kind": "protocol"
+    },
+    {
       "name": "Fluidkey",
+      "kind": "protocol"
+    },
+    {
+      "name": "Gamdom",
       "kind": "protocol"
     },
     {
@@ -1855,6 +1955,10 @@
     },
     {
       "name": "LUKSO",
+      "kind": "protocol"
+    },
+    {
+      "name": "Ledger (Supply Chain)",
       "kind": "protocol"
     },
     {
@@ -1946,6 +2050,10 @@
       "kind": "protocol"
     },
     {
+      "name": "Trains Interpol Investigators",
+      "kind": "protocol"
+    },
+    {
       "name": "Trezor and Exodus",
       "kind": "protocol"
     },
@@ -1955,6 +2063,10 @@
     },
     {
       "name": "Wagyu (XMR1)",
+      "kind": "protocol"
+    },
+    {
+      "name": "Was Ansem",
       "kind": "protocol"
     },
     {
@@ -1976,10 +2088,11 @@
       "kind": "comparison",
       "basis": "own-data",
       "strength": "strong",
+      "template": true,
       "available": true,
       "title": "Rekt Meter: this incident against DefiLlama's list for Oct 26 to Nov 24",
-      "detail": "DefiLlama lists 52 incidents in the 30 days from Oct 26 to Nov 24. As listed by DefiLlama, Binance's $6,360,000,000 loss is the largest of the 39 with a stated loss. 14 of the 52 share its DefiLlama classification (frontend and infrastructure).",
-      "method": "Read the DefiLlama /hacks rows the radar cached at 2026-11-24T06:44:26Z (source \"defillama-30d\" in brief.json, facts t1..t52). Kept the 52 rows dated 2026-10-26 to 2026-11-24. Ranked the 39 rows with a stated loss by DefiLlama's own figure (one source, no averaging); this incident is number 1. Counted rows whose classification is \"Frontend & Infrastructure\": 14.",
+      "detail": "DefiLlama lists 52 incidents in the 30 days from Oct 26 to Nov 24. As listed by DefiLlama, Binance's $6,360,000,000 loss is the largest of the 39 with a stated loss. 14 of the 52 share its DefiLlama classification (frontend and infrastructure), up from 2 in the 30 days before that. 7 of the 52 share its DefiLlama technique (key leaked via infrastructure).",
+      "method": "Read the DefiLlama /hacks rows the radar cached at 2026-11-24T16:32:49Z (source \"defillama-30d\" in brief.json, facts t1..t54). Kept the 52 rows dated 2026-10-26 to 2026-11-24. Ranked the 39 rows with a stated loss by DefiLlama's own figure (one source, no averaging); this incident is number 1. Counted rows whose classification is \"Frontend & Infrastructure\": 14. Counted rows dated 2026-09-26 to 2026-10-25 (the 30 days before) with the same classification: 2. Counted rows whose technique is \"Key Leaked via Infrastructure\": 7.",
       "sourceIds": [
         "defillama-30d"
       ],
@@ -1997,19 +2110,22 @@
         "t46",
         "t47"
       ],
-      "why": "DefiLlama lists this incident and 52 incident(s) in the window.",
+      "why": "DefiLlama lists 52 incident(s) in the window, this one included. Not obvious from the headline: 14 incidents share its classification, up from 2 in the 30 days before; 7 incidents share its DefiLlama technique (key leaked via infrastructure). It is still the daily template, so it never qualifies a Short on its own.",
       "numbers": {
         "incidentsListed": 52,
         "withStatedLoss": 39,
         "rankByDefiLlamaFigure": 1,
-        "sameClassification": 14
+        "sameClassification": 14,
+        "previousSameClassification": 2,
+        "sameTechnique": 7
       }
     },
     {
       "id": "radar-30d",
       "kind": "pattern",
       "basis": "own-data",
-      "strength": "strong",
+      "strength": "supporting",
+      "template": false,
       "available": false,
       "title": "Pattern: social-engineering incidents on our radar, Oct 26 to Nov 24",
       "detail": null,
@@ -2023,6 +2139,7 @@
       "kind": "fund-flow",
       "basis": "own-data",
       "strength": "strong",
+      "template": false,
       "available": false,
       "title": "Fund flow on Solana (RPC trace)",
       "detail": null,
@@ -2036,6 +2153,7 @@
       "kind": "comparison",
       "basis": "source",
       "strength": "supporting",
+      "template": true,
       "available": true,
       "title": "Rekt Meter: what each source reports",
       "detail": "The sources do not agree on the loss: DefiLlama lists $6,360,000,000; Chainalysis reports $6.4 Billion and $6 billion; Decrypt reports $6.4 billion. We quote each figure with its source and never average them.",
@@ -2057,7 +2175,7 @@
   "mustNotSay": [
     {
       "rule": "names",
-      "text": "No individual's name, handle, likeness or hint (suspects, victims, founders, investigators). Organisations, protocols and agencies are fine; an official only when a cited law-enforcement or regulator release names them."
+      "text": "No individual's name, handle, likeness or hint (suspects, victims, founders, investigators). The radar redacted 3 name(s) as \"[named person]\"; never fill them in or describe who they are. Organisations, protocols and agencies are fine; an official only when a cited law-enforcement or regulator release names them."
     },
     {
       "rule": "figures",
@@ -2093,58 +2211,15 @@
     },
     {
       "rule": "tier-c",
-      "text": "Aggregators (Coin Edition, Web3 is Going Just Great, crypto.news) never carry a claim or a figure alone; cite a tier-A or tier-B source for it."
+      "text": "Aggregators (Web3 is Going Just Great, crypto.news) never carry a claim or a figure alone; cite a tier-A or tier-B source for it."
     }
   ],
-  "alternates": [
-    {
-      "rank": 3,
-      "incidentId": "2026-11-16-lighter",
-      "dateSlug": "2026-11-24-lighter",
-      "title": "Lighter: key compromise",
-      "protocol": "Lighter",
-      "status": "confirmed",
-      "type": "key-compromise",
-      "evergreenTopic": "key-management",
-      "score": 68.9,
-      "shortReady": true,
-      "missing": [],
-      "eligible": true,
-      "reasons": [],
-      "strongAnalysis": [
-        "tracker-30d"
-      ],
-      "chains": [
-        "zkLighter",
-        "Ethereum"
-      ]
-    },
-    {
-      "rank": 4,
-      "incidentId": "2026-11-22-endurance-bridge",
-      "dateSlug": "2026-11-24-endurance-bridge",
-      "title": "Endurance Bridge: key compromise",
-      "protocol": "Endurance Bridge",
-      "status": "confirmed",
-      "type": "key-compromise",
-      "evergreenTopic": "key-management",
-      "score": 68.9,
-      "shortReady": true,
-      "missing": [],
-      "eligible": true,
-      "reasons": [],
-      "strongAnalysis": [
-        "tracker-30d"
-      ],
-      "chains": [
-        "BNB Chain"
-      ]
-    }
-  ],
+  "alternates": [],
   "selection": {
     "policy": [
       "Candidates are the radar's top and also-seen incidents, best score first.",
-      "A daily Short needs all of: confirmed status; the radar's short-ready check (2 or more independent sources, a stated mechanism, a strong evergreen fix); no approved episode about the same incident in the last 14 days; and at least one strong analysis available (the 30-day DefiLlama comparison, the 30-day radar pattern, or a Solana fund-flow trace with published addresses).",
+      "A daily Short needs all of: confirmed status; the radar's sourcing check (2 or more independent sources, a mechanism a source states, a strong evergreen fix); no approved episode about the same incident (same radar id, or the same protocol within 3 days) in the last 14 days; and at least one strong analysis that is not a daily template: a pattern from our own radar history (3 or more same-type incidents in 7 or more daily radar files), or a Solana fund-flow trace from published addresses. The DefiLlama 30-day comparison and the side-by-side figures are templates: they may support a real analysis, never replace it.",
+      "An explained disagreement between sources (a source says why the figures differ) is real analysis too, but only a person can find that explanation: the owner can pick such a story by hand.",
       "The primary is the best-scoring eligible incident; the alternates are the next two eligible ones.",
       "If nothing is eligible, there is no video today. Developing stories are listed for the owner but never picked automatically (a \"what we know\" Short needs his call: prepare --pick <id>).",
       "Only one daily video per day: once a video for the date is approved, prepare picks nothing new unless --pick is given."
@@ -2158,14 +2233,14 @@
       "status": "confirmed",
       "type": "social-engineering",
       "evergreenTopic": "fake-job-malware",
-      "score": 91,
+      "score": 90.5,
       "shortReady": true,
       "missing": [],
-      "eligible": true,
-      "reasons": [],
-      "strongAnalysis": [
-        "tracker-30d"
+      "eligible": false,
+      "reasons": [
+        "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base); the RPC trace covers Solana only.)"
       ],
+      "strongAnalysis": [],
       "chains": [
         "Ethereum",
         "Bitcoin",
@@ -2186,14 +2261,14 @@
         "status": "confirmed",
         "type": "social-engineering",
         "evergreenTopic": "fake-job-malware",
-        "score": 91,
+        "score": 90.5,
         "shortReady": true,
         "missing": [],
-        "eligible": true,
-        "reasons": [],
-        "strongAnalysis": [
-          "tracker-30d"
+        "eligible": false,
+        "reasons": [
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base); the RPC trace covers Solana only.)"
         ],
+        "strongAnalysis": [],
         "chains": [
           "Ethereum",
           "Bitcoin",
@@ -2208,23 +2283,26 @@
         "rank": 2,
         "incidentId": "2026-11-21-chainflip",
         "dateSlug": "2026-11-24-chainflip",
-        "title": "Chainflip: key compromise",
+        "title": "Chainflip: reported key compromise (suspected, per SlowMist) (developing)",
         "protocol": "Chainflip",
-        "status": "confirmed",
+        "status": "developing",
         "type": "key-compromise",
         "evergreenTopic": "key-management",
-        "score": 69.9,
+        "score": 70.9,
         "shortReady": false,
         "missing": [
+          "not confirmed",
+          "mechanism not stated by any source",
           "no strong 'one fix' explainer link"
         ],
         "eligible": false,
         "reasons": [
-          "radar short check: no strong 'one fix' explainer link"
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: mechanism not stated by any source",
+          "radar short check: no strong 'one fix' explainer link",
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Ethereum, Bitcoin); the RPC trace covers Solana only.)"
         ],
-        "strongAnalysis": [
-          "tracker-30d"
-        ],
+        "strongAnalysis": [],
         "chains": [
           "Ethereum",
           "Bitcoin"
@@ -2234,7 +2312,7 @@
         "rank": 3,
         "incidentId": "2026-11-16-lighter",
         "dateSlug": "2026-11-24-lighter",
-        "title": "Lighter: key compromise",
+        "title": "Lighter users: key compromise",
         "protocol": "Lighter",
         "status": "confirmed",
         "type": "key-compromise",
@@ -2242,11 +2320,11 @@
         "score": 68.9,
         "shortReady": true,
         "missing": [],
-        "eligible": true,
-        "reasons": [],
-        "strongAnalysis": [
-          "tracker-30d"
+        "eligible": false,
+        "reasons": [
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: zkLighter, Ethereum); the RPC trace covers Solana only.)"
         ],
+        "strongAnalysis": [],
         "chains": [
           "zkLighter",
           "Ethereum"
@@ -2254,101 +2332,64 @@
       },
       {
         "rank": 4,
-        "incidentId": "2026-11-22-endurance-bridge",
-        "dateSlug": "2026-11-24-endurance-bridge",
-        "title": "Endurance Bridge: key compromise",
-        "protocol": "Endurance Bridge",
-        "status": "confirmed",
-        "type": "key-compromise",
-        "evergreenTopic": "key-management",
-        "score": 68.9,
-        "shortReady": true,
-        "missing": [],
-        "eligible": true,
-        "reasons": [],
-        "strongAnalysis": [
-          "tracker-30d"
-        ],
-        "chains": [
-          "BNB Chain"
-        ]
-      },
-      {
-        "rank": 5,
         "incidentId": "2026-11-21-cyber-bridge",
         "dateSlug": "2026-11-24-cyber-bridge",
-        "title": "Cyber Bridge: bridge exploit",
+        "title": "Cyber Bridge: reported bridge exploit (mechanism unknown, per DefiLlama) (developing)",
         "protocol": "Cyber Bridge",
-        "status": "confirmed",
+        "status": "developing",
         "type": "bridge",
         "evergreenTopic": "bridge-security",
         "score": 68.3,
-        "shortReady": true,
-        "missing": [],
-        "eligible": true,
-        "reasons": [],
-        "strongAnalysis": [
-          "tracker-30d"
+        "shortReady": false,
+        "missing": [
+          "not confirmed",
+          "mechanism not stated by any source"
         ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: mechanism not stated by any source",
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: A Solana incident with tier-A coverage (DefiLlama, SlowMist), but the radar stores no addresses (it redacts them), so the trace waits for addresses that a tier-A source itself publishes.)"
+        ],
+        "strongAnalysis": [],
         "chains": [
           "Solana",
           "Ethereum"
         ]
       },
       {
-        "rank": 6,
-        "incidentId": "2026-11-23-moldyroost",
-        "dateSlug": "2026-11-24-moldyroost",
-        "title": "MoldyRoost: phishing",
-        "protocol": "MoldyRoost",
-        "status": "confirmed",
-        "type": "phishing",
-        "evergreenTopic": "phishing",
-        "score": 60.5,
-        "shortReady": true,
-        "missing": [],
-        "eligible": false,
-        "reasons": [
-          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
-        ],
-        "strongAnalysis": [],
-        "chains": []
-      },
-      {
-        "rank": 7,
-        "incidentId": "2026-11-19-fluidkey",
-        "dateSlug": "2026-11-24-fluidkey",
-        "title": "Fluidkey: exploit",
-        "protocol": "Fluidkey",
-        "status": "confirmed",
-        "type": "exploit",
-        "evergreenTopic": null,
-        "score": 57.5,
+        "rank": 5,
+        "incidentId": "2026-11-22-endurance-bridge",
+        "dateSlug": "2026-11-24-endurance-bridge",
+        "title": "Endurance Bridge: reported key compromise (mechanism unknown, per DefiLlama) (developing)",
+        "protocol": "Endurance Bridge",
+        "status": "developing",
+        "type": "key-compromise",
+        "evergreenTopic": "key-management",
+        "score": 57.2,
         "shortReady": false,
         "missing": [
+          "not confirmed",
+          "mechanism not stated by any source",
           "no strong 'one fix' explainer link"
         ],
         "eligible": false,
         "reasons": [
-          "radar short check: no strong 'one fix' explainer link"
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: mechanism not stated by any source",
+          "radar short check: no strong 'one fix' explainer link",
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: BNB Chain); the RPC trace covers Solana only.)"
         ],
-        "strongAnalysis": [
-          "tracker-30d"
-        ],
+        "strongAnalysis": [],
         "chains": [
-          "Ethereum",
-          "Base",
-          "BNB Chain",
-          "Polygon",
-          "Optimism",
-          "Arbitrum"
+          "BNB Chain"
         ]
       },
       {
-        "rank": 8,
+        "rank": 6,
         "incidentId": "2026-11-23-trezor-and-exodus",
         "dateSlug": "2026-11-24-trezor-and-exodus",
-        "title": "Trezor and Exodus users: reported theft (developing)",
+        "title": "Trezor and Exodus users: reported exploit (mechanism unknown) (developing)",
         "protocol": "Trezor and Exodus",
         "status": "developing",
         "type": "exploit",
@@ -2358,44 +2399,105 @@
         "missing": [
           "not confirmed",
           "fewer than 2 independent sources",
+          "mechanism not stated by any source",
           "no strong 'one fix' explainer link"
         ],
         "eligible": false,
         "reasons": [
           "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
           "radar short check: fewer than 2 independent sources",
+          "radar short check: mechanism not stated by any source",
           "radar short check: no strong 'one fix' explainer link",
-          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
         ],
         "strongAnalysis": [],
         "chains": []
       },
       {
-        "rank": 9,
-        "incidentId": "2026-11-23-dcent",
-        "dateSlug": "2026-11-24-dcent",
-        "title": "DCENT: reported exploit (developing)",
-        "protocol": "DCENT",
+        "rank": 7,
+        "incidentId": "2026-11-24-bisq-2",
+        "dateSlug": "2026-11-24-bisq-2",
+        "title": "Bisq 2: reported security incident (mechanism not classified) (developing)",
+        "protocol": "Bisq 2",
         "status": "developing",
-        "type": "exploit",
+        "type": "other",
         "evergreenTopic": null,
-        "score": 44.5,
+        "score": 43.8,
         "shortReady": false,
         "missing": [
           "not confirmed",
+          "fewer than 2 independent sources",
+          "mechanism not stated by any source",
           "no strong 'one fix' explainer link"
         ],
         "eligible": false,
         "reasons": [
           "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: fewer than 2 independent sources",
+          "radar short check: mechanism not stated by any source",
           "radar short check: no strong 'one fix' explainer link",
-          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Bitcoin, Ethereum); the RPC trace covers Solana only.)"
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": []
+      },
+      {
+        "rank": 8,
+        "incidentId": "2026-11-24-flags-suspected",
+        "dateSlug": "2026-11-24-flags-suspected",
+        "title": "Flags Suspected: reported exploit (mechanism unknown) (developing)",
+        "protocol": "Flags Suspected",
+        "status": "developing",
+        "type": "exploit",
+        "evergreenTopic": null,
+        "score": 43.8,
+        "shortReady": false,
+        "missing": [
+          "not confirmed",
+          "fewer than 2 independent sources",
+          "mechanism not stated by any source",
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: fewer than 2 independent sources",
+          "radar short check: mechanism not stated by any source",
+          "radar short check: no strong 'one fix' explainer link",
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Arbitrum); the RPC trace covers Solana only.)"
         ],
         "strongAnalysis": [],
         "chains": [
-          "Bitcoin",
-          "Ethereum"
+          "Arbitrum"
         ]
+      },
+      {
+        "rank": 9,
+        "incidentId": "2026-11-24-trains-interpol-investigators",
+        "dateSlug": "2026-11-24-trains-interpol-investigators",
+        "title": "Trains Interpol Investigators: reported exploit (mechanism unknown) (developing)",
+        "protocol": "Trains Interpol Investigators",
+        "status": "developing",
+        "type": "exploit",
+        "evergreenTopic": null,
+        "score": 43.8,
+        "shortReady": false,
+        "missing": [
+          "not confirmed",
+          "fewer than 2 independent sources",
+          "mechanism not stated by any source",
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: fewer than 2 independent sources",
+          "radar short check: mechanism not stated by any source",
+          "radar short check: no strong 'one fix' explainer link",
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": []
       },
       {
         "rank": 10,
@@ -2420,42 +2522,103 @@
           "radar short check: fewer than 2 independent sources",
           "radar short check: mechanism not stated by any source",
           "radar short check: no strong 'one fix' explainer link",
-          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
         ],
         "strongAnalysis": [],
         "chains": []
       },
       {
         "rank": 11,
-        "incidentId": "2026-10-28-cysic",
+        "incidentId": "2026-11-23-moldyroost",
+        "dateSlug": "2026-11-24-moldyroost",
+        "title": "MoldyRoost: reported security incident (mechanism not classified) (developing)",
+        "protocol": "MoldyRoost",
+        "status": "developing",
+        "type": "other",
+        "evergreenTopic": null,
+        "score": 42.7,
+        "shortReady": false,
+        "missing": [
+          "not confirmed",
+          "fewer than 2 independent sources",
+          "mechanism not stated by any source",
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: fewer than 2 independent sources",
+          "radar short check: mechanism not stated by any source",
+          "radar short check: no strong 'one fix' explainer link",
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": []
+      },
+      {
+        "rank": 12,
+        "incidentId": "2026-11-24-was-ansem",
+        "dateSlug": "2026-11-24-was-ansem",
+        "title": "Was Ansem: reported exploit (mechanism unknown) (developing)",
+        "protocol": "Was Ansem",
+        "status": "developing",
+        "type": "exploit",
+        "evergreenTopic": null,
+        "score": 41,
+        "shortReady": false,
+        "missing": [
+          "not confirmed",
+          "fewer than 2 independent sources",
+          "mechanism not stated by any source",
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: fewer than 2 independent sources",
+          "radar short check: mechanism not stated by any source",
+          "radar short check: no strong 'one fix' explainer link",
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Arbitrum); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": [
+          "Arbitrum"
+        ]
+      },
+      {
+        "rank": 13,
+        "incidentId": "2026-11-22-cysic",
         "dateSlug": "2026-11-24-cysic",
         "title": "Cysic: reported bridge exploit (developing)",
         "protocol": "Cysic",
         "status": "developing",
         "type": "bridge",
         "evergreenTopic": "bridge-security",
-        "score": 31.6,
+        "score": 35.5,
         "shortReady": false,
         "missing": [
-          "not confirmed"
+          "not confirmed",
+          "fewer than 2 independent sources"
         ],
         "eligible": false,
         "reasons": [
           "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
-          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: BNB Chain); the RPC trace covers Solana only.)"
+          "radar short check: fewer than 2 independent sources",
+          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: BNB Chain); the RPC trace covers Solana only.)"
         ],
         "strongAnalysis": [],
         "chains": [
           "BNB Chain"
         ]
       }
-    ]
+    ],
+    "picked": "2026-10-29-binance"
   },
   "radar": {
     "path": "content/zoora-security/radar/2026-11-24.json",
-    "sha256": "ba7dadea3359768bd78f8fb739f471501d84b5a3523975df1333eda41707ef30",
+    "sha256": "db3e19716efccdfc2bfe842214dc0b8672d5ddcb527c816ca11265ceab4832ff",
     "runDate": "2026-11-24",
-    "generatedUtc": "2026-11-24T06:46:54Z",
+    "generatedUtc": "2026-11-24T16:32:49Z",
     "mode": "live"
   },
   "history": {
@@ -2463,7 +2626,7 @@
     "radarFrom": "2026-10-26",
     "radarTo": "2026-11-24",
     "trackerRows": 52,
-    "trackerFetchedUtc": "2026-11-24T06:44:26Z",
+    "trackerFetchedUtc": "2026-11-24T16:32:49Z",
     "previousEpisodes": [
       {
         "slug": "2026-11-24-binance",
@@ -2484,7 +2647,10 @@
     "X/Twitter and Telegram were not read: never reconstruct or quote their content."
   ],
   "notes": [
+    "Also reported as: Justice Department, U.S.",
     "Sources state different figures (3 distinct). Quote each with its source; never average.",
-    "Legal matter (allegedly, forfeiture, freezing order, plaintiffs, prosecutors, seize): allegations and filings are not findings; name no individuals."
+    "Legal matter (forfeiture, freezing order, plaintiffs, prosecutors, seize, seized): allegations and filings are not findings; name no individuals.",
+    "Personal names were redacted from source text.",
+    "Picked by hand although: no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base); the RPC trace covers Solana only.)."
   ]
 }

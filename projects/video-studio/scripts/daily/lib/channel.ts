@@ -23,7 +23,10 @@ export type ChannelConfig = {
 	hashtags: string[];
 	madeForKids: {value: boolean; reason: string};
 	containsSyntheticMedia: {value: boolean; reason: string};
+	/** Every credential name the announcer reads (for scrubbing other steps' environments). */
 	announcerCredentialEnv: string[];
+	/** Per platform (telegram, x): the names that must ALL be set for that platform to post. */
+	announcerCredentialSets: Record<string, string[]>;
 	threatBriefCredentialEnv: string[];
 	ownerRules: string[];
 	accuracyRules: string[];
@@ -36,6 +39,21 @@ export type ChannelConfig = {
 export class ChannelError extends Error {}
 
 const strList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x.trim()) : []);
+
+/** credentialEnv as {platform: [names]} (all names of a platform needed), or a plain list (all needed, one set). */
+const credentialSets = (v: unknown): Record<string, string[]> => {
+	if (Array.isArray(v)) {
+		const all = strList(v);
+		return all.length ? {all} : {};
+	}
+	if (!isRecord(v)) return {};
+	const out: Record<string, string[]> = {};
+	for (const [k, x] of Object.entries(v)) {
+		const names = strList(x);
+		if (names.length) out[k] = names;
+	}
+	return out;
+};
 
 const pair = (v: unknown, fallback: [number, number]): [number, number] =>
 	Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === 'number' && n > 0) && v[0] <= v[1] ? [v[0], v[1]] : fallback;
@@ -101,7 +119,8 @@ export const parseChannel = (raw: unknown): ChannelConfig => {
 		hashtags: strList(raw.hashtags).map((h) => h.replace(/^#/, '')).filter((h) => /^[\p{L}\p{N}_]+$/u.test(h)),
 		madeForKids,
 		containsSyntheticMedia: decision(publish.containsSyntheticMedia, {value: false, reason: 'Clearly animated show with a generic synthetic voice for a fictional host.'}),
-		announcerCredentialEnv: strList(ann.credentialEnv),
+		announcerCredentialEnv: [...new Set(Object.values(credentialSets(ann.credentialEnv)).flat())],
+		announcerCredentialSets: credentialSets(ann.credentialEnv),
 		threatBriefCredentialEnv: strList(tb.credentialEnv),
 		ownerRules: strList(rules.owner),
 		accuracyRules: strList(rules.accuracy),

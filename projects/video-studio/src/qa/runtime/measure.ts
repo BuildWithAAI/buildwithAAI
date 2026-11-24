@@ -19,6 +19,8 @@ export type MeasureContext = {
 	absoluteFrame: number;
 	/** Canonical character components: identity is checked against these. */
 	canonical: {zoo: unknown; badger: unknown};
+	/** Hit-test how much of each hand is visible (scene passes only; meaningless in the reference render). */
+	visibility?: boolean;
 };
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -245,6 +247,48 @@ const clippersOf = (el: Element, ctx: MeasureContext): Clipper[] => {
 
 const BLOCKISH = /^(block|flex|grid|inline-block|inline-flex|inline-grid|table|table-cell|list-item|flow-root)$/;
 
+/** True when an HTML element paints a visible container: an opaque-ish background or a visible border. */
+const paintsContainer = (cs: CSSStyleDeclaration): boolean => {
+	if (Number(cs.opacity) < 0.05) return false;
+	const bg = parseColor(cs.backgroundColor);
+	if (bg && bg[3] >= 0.5) return true;
+	if (cs.backgroundImage && cs.backgroundImage !== 'none') return true;
+	for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const) {
+		const w = parseFloat(cs.getPropertyValue(`border-${side.toLowerCase()}-width`)) || 0;
+		const c = parseColor(cs.getPropertyValue(`border-${side.toLowerCase()}-color`));
+		const st = cs.getPropertyValue(`border-${side.toLowerCase()}-style`);
+		if (w >= 1 && c && c[3] >= 0.5 && st !== 'none' && st !== 'hidden') return true;
+	}
+	return false;
+};
+
+/**
+ * The text's plate: the nearest ancestor (the element itself included) that paints a visible container, excluding
+ * full-frame backgrounds (a scene's fill is not a plate). Null when the text sits directly on the scene.
+ */
+const plateOf = (el: Element, ctx: MeasureContext): Element | null => {
+	const frameArea = ctx.width * ctx.height;
+	for (let n: Element | null = el; n && n !== ctx.root; n = n.parentElement) {
+		if (isSvg(n)) continue;
+		if (!paintsContainer(getComputedStyle(n))) continue;
+		const r = n.getBoundingClientRect();
+		if (r.width * r.height >= 0.9 * frameArea) return null;
+		return n;
+	}
+	return null;
+};
+
+/** How far a rect sticks out of a box on each side (px, >= 0), or null when it stays within `tol`. */
+const sticksOut = (r: Rect, box: Rect, tol: number): {left: number; right: number; top: number; bottom: number} | null => {
+	const o = {
+		left: Math.max(0, box.x - r.x),
+		right: Math.max(0, r.x + r.w - (box.x + box.w)),
+		top: Math.max(0, box.y - r.y),
+		bottom: Math.max(0, r.y + r.h - (box.y + box.h)),
+	};
+	return Math.max(o.left, o.right, o.top, o.bottom) > tol ? {left: r1(o.left), right: r1(o.right), top: r1(o.top), bottom: r1(o.bottom)} : null;
+};
+
 const roleOf = (el: Element, chain: string[], text: string): TextRole => {
 	const marked = el.closest('[data-qa-role],[data-qa-ignore],[data-part="caption"],[data-caption]');
 	if (marked) {
@@ -361,26 +405,32 @@ export const measureTexts = (ctx: MeasureContext): TextFact[] => {
 			}
 			visible += area(v);
 		}
-		// overflow of the nearest block box (HTML only)
+		// overflow (HTML only): of the plate the text sits on (visible), and of its nearest block box (layout only)
 		let overflow: TextFact['overflow'] = null;
+		let blockOverflow: TextFact['blockOverflow'] = null;
 		let truncated: TextFact['truncated'] = null;
 		if (!svg) {
 			let blk: Element | null = el;
 			while (blk && blk !== ctx.root && !BLOCKISH.test(getComputedStyle(blk).display)) blk = blk.parentElement;
 			if (blk && blk !== ctx.root && (blk as HTMLElement).clientWidth > 0 && (blk as HTMLElement).clientHeight > 0) {
 				const pb = paddingBox(blk, ctx);
-				const o = {
-					left: Math.max(0, pb.x - box.x),
-					right: Math.max(0, box.x + box.w - (pb.x + pb.w)),
-					top: Math.max(0, pb.y - box.y),
-					bottom: Math.max(0, box.y + box.h - (pb.y + pb.h)),
-				};
-				if (Math.max(o.left, o.right, o.top, o.bottom) > 1.5) overflow = {left: r1(o.left), right: r1(o.right), top: r1(o.top), bottom: r1(o.bottom), box: pb};
+				const o = sticksOut(box, pb, 1.5);
+				if (o) blockOverflow = {...o, box: pb};
 				const bcs = getComputedStyle(blk);
 				const h = blk as HTMLElement;
 				if (bcs.textOverflow === 'ellipsis' && h.scrollWidth > h.clientWidth + 1) truncated = 'ellipsis';
 				const clamp = (bcs as unknown as {webkitLineClamp?: string}).webkitLineClamp;
 				if (clamp && clamp !== 'none' && h.scrollHeight > h.clientHeight + 1) truncated = 'line-clamp';
+			}
+			const plate = plateOf(el, ctx);
+			if (plate) {
+				const pb = paddingBox(plate, ctx);
+				const o = sticksOut(box, pb, 1.5);
+				if (o) {
+					const border = rectOf(plate.getBoundingClientRect(), ctx.ox, ctx.oy);
+					const off = sticksOut(box, border, 0);
+					overflow = {...o, box: pb, beyondPlate: off ? r1(Math.max(off.left, off.right, off.top, off.bottom)) : 0};
+				}
 			}
 		}
 		const chain = componentChain(el, 6);
@@ -416,6 +466,7 @@ export const measureTexts = (ctx: MeasureContext): TextFact[] => {
 			visibleFrac: total > 0 ? Math.round((visible / total) * 1000) / 1000 : 0,
 			clippedBy: [...clippedBy],
 			overflow,
+			blockOverflow,
 			truncated,
 			script: isScript(el),
 			components: chain.slice(0, 4),
@@ -454,6 +505,46 @@ const effectsOf = (el: Element, ctx: MeasureContext): CharacterFact['effects'] =
 	return fx;
 };
 
+/** True when `el`, hit at some point, actually paints there: a filled or stroked SVG shape, an opaque HTML box, an image. */
+const paintsAt = (el: Element): boolean => {
+	const cs = getComputedStyle(el);
+	if (cs.visibility !== 'visible' || Number(cs.opacity) < 0.05) return false;
+	if (isSvg(el)) {
+		const tag = el.tagName.toLowerCase();
+		if (tag === 'svg' || tag === 'g' || tag === 'foreignobject' || tag === 'a') return false;
+		const visiblePaint = (paint: string, opacity: string) => {
+			if (!paint || paint === 'none') return false;
+			const o = Number(opacity);
+			const c = parseColor(paint);
+			return (c ? c[3] : 1) * (Number.isFinite(o) ? o : 1) >= 0.3; // url(#...) paint servers count as painted
+		};
+		return visiblePaint(cs.fill, cs.fillOpacity) || (visiblePaint(cs.stroke, cs.strokeOpacity) && (parseFloat(cs.strokeWidth) || 0) >= 2);
+	}
+	if (/^(img|canvas|video|picture)$/i.test(el.tagName)) return true;
+	return paintsContainer(cs);
+};
+
+/**
+ * Share of `target`'s painted area inside `r` (frame px) that is on top, from a 3x3 grid of hit tests: a point
+ * counts when the target is hit there, and is covered when something that paints is above it (a desk in front of
+ * the hands). -1 when no grid point lands on the target (unknown).
+ */
+const visibleShare = (target: Element, r: Rect, ctx: MeasureContext): number => {
+	let on = 0;
+	let top = 0;
+	for (const fy of [1 / 6, 1 / 2, 5 / 6])
+		for (const fx of [1 / 6, 1 / 2, 5 / 6]) {
+			const x = ctx.ox + r.x + fx * r.w;
+			const y = ctx.oy + r.y + fy * r.h;
+			const hits = document.elementsFromPoint(x, y);
+			const at = hits.findIndex((h) => target.contains(h));
+			if (at < 0) continue;
+			on++;
+			if (!hits.slice(0, at).some((h) => !target.contains(h) && paintsAt(h))) top++;
+		}
+	return on ? Math.round((top / on) * 100) / 100 : -1;
+};
+
 /** Every character instance ([data-character]) with geometry, identity facts, props and local frame. */
 export const measureCharacters = (ctx: MeasureContext): CharacterFact[] => {
 	const els = Array.from(ctx.root.querySelectorAll('[data-character]'));
@@ -464,12 +555,15 @@ export const measureCharacters = (ctx: MeasureContext): CharacterFact[] => {
 		const box = rectOf(el.getBoundingClientRect(), ctx.ox, ctx.oy);
 		const headEl = kind === 'zoo' ? el.querySelector('[data-part="head"]') : el.querySelector('[data-head]');
 		const headBox = headEl ? rectOf(headEl.getBoundingClientRect(), ctx.ox, ctx.oy) : null;
-		const hands =
-			kind === 'zoo'
-				? Array.from(el.querySelectorAll('[data-part="hand"],[data-part="handL"],[data-part="handR"]'))
-						.map((h) => rectOf(h.getBoundingClientRect(), ctx.ox, ctx.oy))
-						.filter((r) => r.w > 0 && r.h > 0)
-				: [];
+		const hands: Rect[] = [];
+		const handsVisible: number[] = [];
+		if (kind === 'zoo')
+			for (const h of Array.from(el.querySelectorAll('[data-part="hand"],[data-part="handL"],[data-part="handR"]'))) {
+				const r = rectOf(h.getBoundingClientRect(), ctx.ox, ctx.oy);
+				if (r.w <= 0 || r.h <= 0) continue;
+				hands.push(r);
+				handsVisible.push(ctx.visibility ? visibleShare(h, r, ctx) : -1);
+			}
 		const pinEl = kind === 'zoo' ? el.querySelector('[data-part="pin"]') : null;
 		const pin = pinEl ? rectOf(pinEl.getBoundingClientRect(), ctx.ox, ctx.oy) : null;
 		const spots = kind === 'badger' ? Array.from(el.querySelectorAll('[data-spot]')).map((s) => s.getAttribute('data-spot') ?? '') : [];
@@ -505,6 +599,7 @@ export const measureCharacters = (ctx: MeasureContext): CharacterFact[] => {
 			box,
 			headBox,
 			hands,
+			handsVisible,
 			pin,
 			spots,
 			effects: effectsOf(el, ctx),

@@ -15,7 +15,7 @@ import React, {useId} from 'react';
 import {LINE, ZOO_COLORS} from '../../../palette';
 import type {Expression, MouthShape} from '../../../types';
 import {clamp, clamp01, lerpPts, line, safeId, smooth, tapered, type Pt} from '../../geometry';
-import {ZOO_LINE} from '../../lines';
+import {featureScale, LID_MIN_SCALE, ZOO_LINE} from '../../lines';
 import {MOUTHS} from '../../mouth';
 import {EXPRESSIONS, type BrowPose, type EyePose, type MouthMod} from '../../rig';
 import {BROW_R, posed} from '../../parts/Brows';
@@ -79,7 +79,14 @@ const NECK: Pt[] = [
 	[-14, -782], [-17, -770], [-22, -760], [-30, -752], [-33, -746], [-35, -736], [-36.4, -726], [-10, -718], [10, -714], [21, -717.6],
 	[22.6, -730], [24.8, -742], [20, -750], [8, -762], [2, -778],
 ];
-const NECK_SHADOW = smooth([[-40, -760], [-18, -756], [4, -752], [20, -748], [28, -744], [28, -730], [0, -736], [-40, -742]]);
+/**
+ * Jaw shadow (repair round 2): a crescent <= 6 u deep hugging the underside of the jaw (LOWER_PROFILE offset ~5 u down) and a
+ * ~4 u strip under the hair at the nape. Round 1's 14-18 u band across the neck read as a collar or strap.
+ */
+const NECK_SHADOW = smooth([
+	[44, -800], [44, -741], [34, -735.6], [26, -739.4], [18, -745.2], [11, -752.2], [6.4, -760.4], [2.8, -768], [-8, -764], [-20, -755.6],
+	[-30, -749], [-44, -748], [-44, -800],
+]);
 
 export const NeckSide: React.FC = () => <Shape name="neck" d={smooth(NECK)} fill={ZOO_COLORS.skin} shadow={{d: NECK_SHADOW, fill: ZOO_COLORS.skinShadow}} />;
 
@@ -168,19 +175,27 @@ const beardSide = (hole: number, jawDrop: number, corner: Pt): Pt[] => {
 	return dropLower(pts, jawDrop);
 };
 const BEARD_SHADOW = (jawDrop: number) => smooth([[2, -790], [8, -776], [12, -762], [24, -752 + jawDrop * 0.6], [40, -745.6 + jawDrop], [58, -744 + jawDrop], [64, -730], [0, -730]]);
+/**
+ * Profile moustache (repair round 2): its back end tapers down and back INTO the cheek beard at the mouth corner (ending
+ * ~2 u inside the beard's upper edge, blunt), as on zoo_turn_side.png. Round 1 ended it in a pointed 'c' tip hanging over
+ * skin above the beard, which read as a handlebar curl.
+ */
 const MOUSTACHE: Pt[] = [
-	[63.8, -781], [58, -782.4], [49, -781.6], [42.4, -778.6], [38.6, -773.4], [37.4, -767.4, 'c'], [41, -769.8], [46, -771.6], [53, -772],
-	[59, -771.4], [62.6, -770, 'c'],
+	[63.8, -781], [58, -782.4], [49, -781.6], [42.4, -778.6], [37.2, -774.2], [33.6, -769], [32.2, -763.8], [34.8, -763],
+	[38.4, -765.6], [42.4, -768.8], [47, -771.2], [53, -772], [59, -771.4], [62.6, -770, 'c'],
 ];
 
 // ---------------------------------------------------------------- eye and brow (anatomical right)
 // Repair round 1: the eye sits ~3 u further back so ~7 u of nasal bridge shows in front of it, as on zoo_turn_side.png.
+// Repair round 2: the sheet's profile eye is a mostly DARK almond (~25-30% white): the white behind the iris is shortened
+// (back corner -7.4 -> -4.5) and the iris widened (rx 0.55r -> 0.8r) with a smaller highlight; round 1's ~60% white with a
+// round iris read as a front eye pasted onto the profile.
 export const EYE_C = {x: 45.5, y: -812.6};
 const E_FRONT: Pt = [5, 0.4, 'c'];
-const E_BACK: Pt = [-7.4, -0.6, 'c'];
-const E_UPPER: Pt[] = [[3.6, -3.8], [-1.6, -4.4]]; // front -> back
-const E_LOWER: Pt[] = [[-3.6, 2.8], [2.6, 3.4]]; // back -> front
-const E_CLOSED: Pt[] = [[3.6, 2.2], [-1.6, 2.4]];
+const E_BACK: Pt = [-4.5, -0.4, 'c'];
+const E_UPPER: Pt[] = [[3.4, -3.8], [-1.2, -4.1]]; // front -> back
+const E_LOWER: Pt[] = [[-2.4, 2.5], [2.6, 3.3]]; // back -> front
+const E_CLOSED: Pt[] = [[3.4, 2.2], [-1.2, 2.2]];
 
 const EyeSide: React.FC<{pose: EyePose; blink: number; lookX: number; lookY: number}> = ({pose, blink, lookX, lookY}) => {
 	const clipId = safeId(useId(), 'eyeS');
@@ -195,7 +210,7 @@ const EyeSide: React.FC<{pose: EyePose; blink: number; lookX: number; lookY: num
 	const lidEdge = [E_FRONT, ...lid, E_BACK].map(W);
 	const lidFill = [W([E_FRONT[0] + 1.2, E_FRONT[1]]), ...lid.map(W), W([E_BACK[0] - 1.2, E_BACK[1]]), ...upper.slice().reverse().map((p) => W([p[0], p[1] - 1.8]))];
 	// the iris sits at the front of the eye; looking back (lookX < 0) moves it toward the back corner
-	const ix = EYE_C.x + (2.6 + clamp(lookX, -1, 1) * 2.2) * s;
+	const ix = EYE_C.x + (1.6 + clamp(lookX, -1, 1) * 1.6) * s;
 	const iy = EYE_C.y + (0.2 + clamp(lookY, -1, 1) * 1.4) * s;
 	const r = 4.4 * s * pose.iris;
 	return (
@@ -207,15 +222,15 @@ const EyeSide: React.FC<{pose: EyePose; blink: number; lookX: number; lookY: num
 					</clipPath>
 					<path d={smooth(shape)} fill={ZOO_COLORS.eyeWhite} />
 					<g clipPath={`url(#${clipId})`}>
-						<ellipse data-part="iris" cx={ix} cy={iy} rx={r * 0.55} ry={r} fill={ZOO_COLORS.eyeIris} />
-						<ellipse data-part="pupil" cx={ix + 0.5} cy={iy} rx={r * 0.24} ry={r * 0.42} fill={ZOO_COLORS.pupil} />
-						<circle data-part="highlight" cx={ix + HIGHLIGHT.dx * 0.45 * s} cy={iy + HIGHLIGHT.dy * s} r={HIGHLIGHT.r * 0.9 * s} fill={ZOO_COLORS.eyeWhite} />
+						<ellipse data-part="iris" cx={ix} cy={iy} rx={r * 0.8} ry={r} fill={ZOO_COLORS.eyeIris} />
+						<ellipse data-part="pupil" cx={ix + 0.5} cy={iy} rx={r * 0.3} ry={r * 0.42} fill={ZOO_COLORS.pupil} />
+						<circle data-part="highlight" cx={ix + HIGHLIGHT.dx * 0.45 * s} cy={iy + HIGHLIGHT.dy * s} r={HIGHLIGHT.r * 0.54 * s} fill={ZOO_COLORS.eyeWhite} />
 					</g>
 				</>
 			) : null}
 			{b > 0.001 ? <path data-part="upperLid" d={smooth(lidFill)} fill={ZOO_COLORS.skin} /> : null}
-			<path d={line([W([-5, lower[0][1] + 0.2]), W([3, lower[1][1] + 0.4])])} fill="none" stroke={ZOO_COLORS.skinShadow} strokeWidth={ZOO_LINE.fine * ls} strokeLinecap="round" />
-			<path data-part="lidLine" d={tapered(lidEdge, (t) => ZOO_LINE.lid * 1.05 * ls * lidProfile(1 - t))} fill={LINE.color} />
+			<path d={line([W([-3.4, lower[0][1] + 0.2]), W([3, lower[1][1] + 0.4])])} fill="none" stroke={ZOO_COLORS.skinShadow} strokeWidth={ZOO_LINE.fine * ls} strokeLinecap="round" />
+			<path data-part="lidLine" d={tapered(lidEdge, (t) => ZOO_LINE.lid * 1.05 * featureScale(ls, LID_MIN_SCALE) * lidProfile(1 - t))} fill={LINE.color} />
 		</g>
 	);
 };
@@ -293,7 +308,7 @@ export const HeadSide: React.FC<HeadSideProps> = ({expression, mouth, blink, bro
 			{g.notch ? <Stroke name="lipFront" d={line([g.top, g.bottom])} width={ZOO_LINE.fine} /> : null}
 			<g data-part="nose">
 				<path d={NOSE_UNDER} fill={ZOO_COLORS.skinShadow} />
-				<path data-part="nostril" d={tapered(NOSTRIL, nostrilWidth(ZOO_LINE.feature * ls))} fill={LINE.color} />
+				<path data-part="nostril" d={tapered(NOSTRIL, nostrilWidth(ZOO_LINE.feature * featureScale(ls)))} fill={LINE.color} />
 			</g>
 			<EyeSide pose={spec.eyes} blink={blink} lookX={lookX} lookY={lookY} />
 			<g data-part="hairFront">

@@ -64,7 +64,20 @@ class EndToEnd(unittest.TestCase):
         cls.fit_root = tempfile.mkdtemp(prefix="voice-e2e-fit-")
         master_rel = os.path.join("generated", "zoora-ai", "voice-smoke", "en")
         shutil.copytree(os.path.join(cls.out_root, master_rel), os.path.join(cls.fit_root, master_rel))
-        cls.fit = pipeline.build(pipeline.Options(FIXTURE, "es", fit_to="en", out_root=cls.fit_root, model_dir=MODEL_DIR, log=lambda _m: None))
+        # The fixture is a fiction story, and an audio track plays over the master picture, whose fiction card is English:
+        # --fit-to needs the dub's opening scene to SAY it (pipeline.audio_track_problems; test_fit_to_refusal). The dub is
+        # built from a copy whose es s01 says so, in the same single sentence, so every scene still fits sentence by sentence.
+        cls.fit_src = tempfile.mkdtemp(prefix="voice-e2e-fitsrc-")
+        fit_dir = os.path.join(cls.fit_src, "zoora-ai", "voice-smoke")
+        shutil.copytree(FIXTURE, fit_dir)
+        es_path = os.path.join(fit_dir, "storyboard.es.json")
+        with open(es_path, encoding="utf-8") as fh:
+            es = json.load(fh)
+        first = es["scenes"][0]["narration"]
+        es["scenes"][0]["narration"] = "En esta historia ficticia, e" + first[1:] if first.startswith("El ") else "En esta historia ficticia: " + first
+        with open(es_path, "w", encoding="utf-8") as fh:
+            json.dump(es, fh, ensure_ascii=False, indent=2)
+        cls.fit = pipeline.build(pipeline.Options(fit_dir, "es", fit_to="en", out_root=cls.fit_root, model_dir=MODEL_DIR, log=lambda _m: None))
         samples = os.environ.get("VOICE_SAMPLES_DIR")
         if samples:
             os.makedirs(samples, exist_ok=True)
@@ -80,6 +93,7 @@ class EndToEnd(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.out_root, ignore_errors=True)
         shutil.rmtree(cls.fit_root, ignore_errors=True)
+        shutil.rmtree(cls.fit_src, ignore_errors=True)
 
     def test_schema_and_files(self):
         import soundfile as sf
@@ -203,6 +217,20 @@ class EndToEnd(unittest.TestCase):
                     self.assertLessEqual(sc["speechMs"] + timing.FIT_MIN_TAIL_MS, sc["durationMs"])
         if not self.fit.overflow:
             self.assertEqual(t["totalMs"], master["totalMs"])
+        # the scenes with speech were fitted sentence by sentence (same sentence count as the master), not as a whole
+        fitted = [sid for sid, d in self.fit.debug.items() if d.get("fitSentences")]
+        self.assertGreaterEqual(len(fitted), 2, self.fit.warnings)
+        self.assertFalse([w for w in t["warnings"] if "sentence-by-sentence alignment skipped" in w])
+
+    def test_fit_to_refusal(self):
+        """The fixture's own es dub never says the story is fictional: as an audio track over the English picture it is
+        refused before any synthesis (the review: the dub viewer never sees the fiction card in their language)."""
+        from voicelib import pipeline
+
+        with self.assertRaises(pipeline.BuildError) as cm:
+            pipeline.build(pipeline.Options(FIXTURE, "es", fit_to="en", out_root=self.fit_root, model_dir=MODEL_DIR, log=lambda _m: None))
+        self.assertIn("refusing --fit-to", str(cm.exception))
+        self.assertIn("fictional", str(cm.exception))
 
     def test_typescript_contract(self):
         tsc = os.path.join(PROJECT, "node_modules", ".bin", "tsc")

@@ -7,7 +7,7 @@ import React from 'react';
 import {LINE, PROP_COLORS} from '../../palette';
 import type {Placement} from '../../types';
 import {line, smooth, type Pt} from '../geometry';
-import {Shape, Stroke} from '../parts/Shape';
+import {Shape, useLineScale} from '../parts/Shape';
 
 export const CHAIR = {seatTop: -236, columnX: 0} as const;
 
@@ -31,16 +31,24 @@ const LEGS: [Pt, Pt][] = [
 ];
 const WHEELS: Pt[] = [[-134, -16], [10, -14], [72, -32]];
 
-export const Chair: React.FC<Placement> = ({x = 0, y = 0, scale = 1}) => (
+/** Base leg bar width (world units); its outline follows lineScale like every other outline. */
+const LEG_BAR = 9;
+const LEG_OUTLINE = 3;
+
+export const Chair: React.FC<Placement> = ({x = 0, y = 0, scale = 1}) => {
+	// Repair round 2: the wheel outlines and the leg-bar outlines follow lineScale (the wheels ignored it, so on the asset
+	// sheet they were thinner than every other outline); the bar itself keeps its drawn width.
+	const ls = useLineScale();
+	return (
 	<g data-prop="chair" transform={`translate(${x} ${y}) scale(${scale})`}>
 		{LEGS.map(([a, b], i) => (
 			<g key={i}>
-				<Stroke d={line([a, b])} width={15} color={LINE.color} />
-				<Stroke d={line([a, b])} width={9} color={PROP_COLORS.chairBase} />
+				<path d={line([a, b])} fill="none" stroke={LINE.color} strokeWidth={LEG_BAR + 2 * LEG_OUTLINE * ls} strokeLinecap="round" />
+				<path d={line([a, b])} fill="none" stroke={PROP_COLORS.chairBase} strokeWidth={LEG_BAR} strokeLinecap="round" />
 			</g>
 		))}
 		{WHEELS.map(([wx, wy], i) => (
-			<circle key={i} cx={wx} cy={wy} r={14} fill={PROP_COLORS.chairBase} stroke={LINE.color} strokeWidth={LINE.width} />
+			<circle key={i} cx={wx} cy={wy} r={14} fill={PROP_COLORS.chairBase} stroke={LINE.color} strokeWidth={LINE.width * ls} />
 		))}
 		<Shape name="column" d={COLUMN} fill={PROP_COLORS.chairBase} />
 		<Shape name="support" d={smooth(SUPPORT)} fill={PROP_COLORS.chairBase} />
@@ -48,4 +56,5 @@ export const Chair: React.FC<Placement> = ({x = 0, y = 0, scale = 1}) => (
 		<Shape name="mechanism" d={MECH} fill={PROP_COLORS.chairBase} />
 		<Shape name="seat" d={smooth(SEAT)} fill={PROP_COLORS.chair} shadow={{d: SEAT_SHADOW, fill: PROP_COLORS.chairShadow}} />
 	</g>
-);
+	);
+};

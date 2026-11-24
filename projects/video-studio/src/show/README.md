@@ -59,7 +59,7 @@ All on-screen copy is in `onScreen` (so the claim gate checks it against the sto
 
 | Segment | Required | Optional | Screen |
 | --- | --- | --- | --- |
-| `coldOpen` | | `kicker` | wide two-shot, ON AIR lights; Zoo's dry one-liner; Badger's slow blink after it |
+| `coldOpen` | | `kicker` | wide two-shot, ON AIR lights; Zoo's dry one-liner; Badger's slow blink after it. In a Short the kicker slate sits above the ON AIR sign and the wall logo, all three clear of each other at rest and pushed in (`layout/checks.ts`) |
 | `headline` | `title` | `developing`, `loss` (+ `rekt`), `lossAlt` (+ `rekt.alt`) | incident card + **Rekt Meter**: log dial $100K-$10B, the figure as reported, "reported by <outlet>"; a different second report is shown beside it, never averaged |
 | `howItWorked` | `nodes[]` (+ `diagram.nodes`) | `links[]`, `cues[]`, `title` | concept diagram (wallet, contract, bridge, mixer, key, site, message, approval, agent, plugin, phone, exchange, funds, attacker = an unknown address, never a person); nodes land on the words that name them; Zoo points at it (landscape) |
 | `badgerRedFlag` | `flag` | `title` | Badger's close-up; he judges as the card lands |
@@ -67,7 +67,7 @@ All on-screen copy is in `onScreen` (so the claim gate checks it against the sto
 | `scamOfTheWeek` | `title` | `how`, `tell`, `fix` | the week's scam pattern as a case file |
 | `correction` | `correct`, `date` | `wrong`, `ref` | the pinned correction card: what we said (struck through) and what is correct |
 | `sources` | | `title` | every cited outlet with its date and title (paged if long) |
-| `outroEndScreen` | `explainer` | `title` | landscape: end-screen guide zones (explainer slot, latest slot, subscribe circle); Short: "Explainer: ... Linked below". Must be the last scene; hold it 5-20 s (`minDurationSec`) for YouTube's end screen |
+| `outroEndScreen` | `explainer` | `title` | landscape: end-screen guide zones (explainer slot, latest slot, subscribe circle); Short: "Explainer: ... Linked below". The card is at its final layout from the cut (no slide-in across the header row). Must be the last scene; hold it 5-20 s (`minDurationSec`) for YouTube's end screen |
 | `beat` | | | the punchline's reaction shot (see below) |
 | `desk` | | `title`, `bullets[]`, `steps[]`, `quote`, `attribution` | plain desk talk; any news storyboard renders |
 

@@ -14,10 +14,11 @@ export const HELP = `Daily orchestrator for channel 2 (zoora-security). Run from
 
   node scripts/daily/run.ts prepare [--date YYYY-MM-DD] [--radar live|reuse|offline] [--pick <incident id>]
                                     [--format daily-short|what-we-know] [--force]
-      Runs the radar, picks today's story and 2 alternates, writes
-      content/zoora-security/<date>-<slug>/brief.json and WRITER.md, and out/daily/<date>/prepare.{json,md}.
+      Runs the radar (for the UTC day), picks today's story and 2 alternates, writes
+      content/zoora-security/<date>-<slug>/brief.json and WRITER.md, out/daily/<date>/prepare.{json,md} (with any
+      corrections to pin) and the day's Threat Brief draft from the radar (out/daily/<date>/threat-brief/).
       --date defaults to today in America/Chicago. --radar reuse reads the file an earlier run wrote (no fetches).
-      Exit 0 brief ready, 3 no video today, 1 error.
+      Exit 0 brief ready, 3 no video today (the normal outcome without real analysis), 1 error.
 
   node scripts/daily/run.ts build <date-slug> [--only gates] [--skip voice,render,thumbnails,publish-kit]
       Runs the general claim gate (if present), the news gate, the voice (im_nicola), the ShowShort render, the
@@ -26,8 +27,9 @@ export const HELP = `Daily orchestrator for channel 2 (zoora-security). Run from
 
   node scripts/daily/run.ts approve <date-slug> --reply "APPROVE <date-slug>" [--by owner] [--youtube-id <id>]
       Records content/zoora-security/<date-slug>/approval.json (who, when, version hashes) after checking the reply
-      and that nothing changed since the packet was built, then writes the announcer and Threat Brief drafts
-      (dry-run unless the hub tools and their credentials exist). Never uploads: uploads stay manual in YouTube Studio.
+      and that nothing changed since the packet was built, then writes the announcer and Threat Brief drafts and
+      calls the creator-hub tools (a dry run unless the owner opted in: see docs/DAILY_BRIEF.md step 7).
+      Never uploads: uploads stay manual in YouTube Studio.
       Later, --youtube-id <id> (without --reply) records the id of the manual upload and refreshes the drafts.
 
   node scripts/daily/run.ts status <date-slug>

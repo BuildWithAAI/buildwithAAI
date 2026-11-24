@@ -54,7 +54,12 @@ class TranslationWarning(unittest.TestCase):
         self.assertIsNone(translation_warning(sb, "en"))
         self.assertTrue(translation_warning(sb, "es").startswith("machine translation: needs native review"))
         self.assertTrue(translation_warning({**sb, "translation": {"status": "machine"}}, "es"))
-        self.assertIsNone(translation_warning({**sb, "translation": {"status": "native-reviewed", "reviewer": "x"}}, "es"))
+        done = {"status": "native-reviewed", "reviewed": True, "reviewer": "x", "date": "2026-11-24"}
+        self.assertIsNone(translation_warning({**sb, "translation": done}, "es"))
+        # 2026-11-24 review: a half-set record (status alone, reviewed false, no reviewer or date) is still machine translation
+        for k, v in (("reviewed", False), ("reviewer", ""), ("date", None)):
+            with self.subTest(missing=k):
+                self.assertTrue(translation_warning({**sb, "translation": {**done, k: v}}, "es").startswith("machine translation: needs native review"))
 
 
 class TimelineWords(unittest.TestCase):

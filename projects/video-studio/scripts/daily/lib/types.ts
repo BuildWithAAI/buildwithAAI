@@ -29,6 +29,15 @@ export type RadarSource = {
 	redacted?: {names?: number; code?: number};
 	referenceUrl?: string | null;
 	referenceNote?: string;
+	/** An incident database (DefiLlama, SlowMist): it seeds, dates and sizes an incident but never confirms it alone. */
+	tracker?: boolean;
+	/** A tracker entry whose only reference is a post on X: nobody here could read it. */
+	unverified?: boolean;
+	/** What this source says about the mechanism, and the sentence that says it (280 characters or fewer). */
+	mechanismStatus?: 'stated' | 'suspected' | 'unknown';
+	qualifier?: string | null;
+	/** A source from an earlier radar run that has rotated out of its feed (still counts, never a retraction). */
+	carried?: boolean;
 };
 
 export type RadarFact = {text: string; sourceId: string; url: string; quote: string; field: string};
@@ -51,6 +60,15 @@ export type RadarIncident = {
 	notes?: string[];
 	typeReason?: string;
 	mechanismKnown?: boolean;
+	/** stated: a source states the mechanism; suspected: only hedged; unknown: no source states it. */
+	mechanismStatus?: 'stated' | 'suspected' | 'unknown';
+	/** The source and sentence behind a suspected or unknown mechanism. */
+	mechanismNote?: {sourceId: string; url: string; publisher?: string; status?: string; text?: string | null};
+	/** A user-side incident (a trader's or user's key, device or API key), not the platform's own systems. */
+	userSide?: boolean;
+	/** Why the incident date is missing or bounded ("incident date not stated"). */
+	dateNote?: string;
+	firstSeenUtc?: string;
 	facts: RadarFact[];
 	score: {total: number; factors?: Record<string, {value: number; weight: number; points: number; reason: string}>};
 	shortReady: {ready: boolean; missing: string[]};
@@ -65,10 +83,13 @@ export type RadarFile = {
 	top: RadarIncident[];
 	alsoSeen: RadarIncident[];
 	unclustered?: Array<{sourceId: string; tier: string; title: string; url: string; publishedUtc?: string | null; excerpt?: string; reason?: string}>;
-	corrections?: unknown[];
+	corrections?: RadarCorrection[];
 	sources?: Array<{id: string; name?: string; tier?: string; status?: string; httpStatus?: number | null; fetchedUtc?: string | null; items?: number; warnings?: string[]}>;
 	counts?: Record<string, number>;
 };
+
+/** The radar's correction candidate: what changed for an incident since an earlier radar run. */
+export type RadarCorrection = {incidentId: string; protocol: string; previousRadarDate: string; changes: string[]};
 
 // ---------------------------------------------------------------------------------------------------------------
 // brief.json (content/zoora-security/<date>-<slug>/brief.json)
@@ -92,6 +113,10 @@ export type BriefSource = {
 	hedge?: string;
 	redactedNames?: number;
 	note?: string;
+	/** An incident database: seeds and sizes an incident, never confirms it alone. */
+	tracker?: boolean;
+	/** A tracker entry whose only reference is an X post nobody here could read. */
+	unverified?: boolean;
 };
 
 export type FactKind = 'radar-fact' | 'excerpt' | 'tracker-row';
@@ -117,6 +142,12 @@ export type Opportunity = {
 	basis: 'own-data' | 'source';
 	/** strong: real analysis on its own. supporting: may sit next to a strong one, never alone. */
 	strength: 'strong' | 'supporting';
+	/**
+	 * The same comparison every day (the DefiLlama 30-day list, the figures side by side). A daily Short needs at
+	 * least one strong analysis that is NOT a template: a pattern from our radar history, a fund flow, or a
+	 * disagreement between sources that a source explains. Older briefs without the field count as templates.
+	 */
+	template?: boolean;
 	available: boolean;
 	title: string;
 	/** A proposed storyboard.analysis[].detail. The writer may reword it but keeps its numbers and meaning. */
@@ -180,6 +211,12 @@ export type DailyBrief = {
 		statusReason: string | null;
 		typeReason: string | null;
 		mechanismKnown: boolean;
+		/** stated, suspected or unknown (the radar's mechanismStatus); older briefs: from mechanismKnown. */
+		mechanismStatus?: 'stated' | 'suspected' | 'unknown';
+		/** The source and its sentence behind a suspected or unknown mechanism. */
+		mechanismNote?: {sourceId: string; publisher: string; text: string} | null;
+		userSide?: boolean;
+		dateNote?: string | null;
 		score: number;
 		scoreReasons: Record<string, string>;
 		shortReady: {ready: boolean; missing: string[]};

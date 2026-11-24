@@ -5,14 +5,17 @@
  *
  * Discovery, in order:
  *   1. NEWS_GENERAL_GATE_CMD: a JSON array of argv, with placeholders {channel} {slug} {storyboard} {brief} {root}.
- *   2. scripts/claims/{gate,check,cli,index,run,main,claims}.ts   -> node <file> <channel>/<slug>
- *   3. scripts/claims/{gate,check,cli,run,main,claims}.py or __main__.py -> python3 <file|dir> <channel>/<slug>
- * The call convention <channel>/<slug> follows the planned `npm run make -- <channel>/<slug>`. If the general gate
- * settles on another one, set NEWS_GENERAL_GATE_CMD (see README) until this adapter is updated.
+ *   2. scripts/claims/check.ts (its settled interface, --help read 2026-11-24):
+ *        node scripts/claims/check.ts <episode folder> --out-dir <the news gate's report folder> [--names <list> | --no-names]
+ *      The episode folder is the storyboard's own folder (absolute), the language is the storyboard's own. Without the
+ *      private names list (data/private/names.txt, gitignored, never in a fresh checkout) it runs with --no-names, and
+ *      the result says so: this gate's R4 still refuses every unknown personal name.
+ *   3. scripts/claims/{gate,cli,index,run,main,claims}.ts   -> node <file> <channel>/<slug>
+ *   4. scripts/claims/{gate,check,cli,run,main,claims}.py or __main__.py -> python3 <file|dir> <channel>/<slug>
  */
 import {spawnSync} from 'node:child_process';
 import {existsSync} from 'node:fs';
-import {join} from 'node:path';
+import {dirname, join} from 'node:path';
 import type {GeneralGateResult} from './types.ts';
 
 export type GeneralGateMode = 'auto' | 'require' | 'off';
@@ -22,9 +25,11 @@ const PY_NAMES = ['gate', 'check', 'cli', 'run', 'main', 'claims'];
 export const RECURSION_ENV = 'NEWS_GATE_PARENT';
 const TIMEOUT_MS = 180_000;
 
-export type GateCall = {channel: string; slug: string; storyboard: string; brief: string; root: string};
+export type GateCall = {channel: string; slug: string; storyboard: string; brief: string; root: string; outDir?: string | null};
 
-export const discoverGeneralGate = (root: string, call: GateCall, env: NodeJS.ProcessEnv = process.env): {argv: string[] | null; looked: string[]; problem?: string} => {
+export const namesListPath = (root: string): string => join(root, 'data', 'private', 'names.txt');
+
+export const discoverGeneralGate = (root: string, call: GateCall, env: NodeJS.ProcessEnv = process.env): {argv: string[] | null; looked: string[]; problem?: string; namesNote?: string} => {
 	const looked: string[] = [];
 	const override = env.NEWS_GENERAL_GATE_CMD;
 	if (override) {
@@ -33,13 +38,24 @@ export const discoverGeneralGate = (root: string, call: GateCall, env: NodeJS.Pr
 			const arr = JSON.parse(override) as unknown;
 			if (!Array.isArray(arr) || !arr.length || arr.some((x) => typeof x !== 'string')) throw new Error('not an array of strings');
 			const fill = (s: string) =>
-				s.replace(/\{(channel|slug|storyboard|brief|root)\}/g, (_, k: keyof GateCall) => call[k]);
+				s.replace(/\{(channel|slug|storyboard|brief|root)\}/g, (_, k: 'channel' | 'slug' | 'storyboard' | 'brief' | 'root') => call[k]);
 			return {argv: (arr as string[]).map(fill), looked};
 		} catch (err) {
 			return {argv: null, looked, problem: `NEWS_GENERAL_GATE_CMD must be a JSON array of strings (${err instanceof Error ? err.message : String(err)})`};
 		}
 	}
 	const dir = join(root, 'scripts', 'claims');
+	const check = join(dir, 'check.ts');
+	looked.push('scripts/claims/check.ts');
+	if (existsSync(check)) {
+		const names = namesListPath(root);
+		const hasNames = existsSync(names);
+		return {
+			argv: [process.execPath, '--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', check, dirname(call.storyboard), ...(call.outDir ? ['--out-dir', call.outDir] : []), ...(hasNames ? ['--names', names] : ['--no-names'])],
+			looked,
+			...(hasNames ? {} : {namesNote: 'Run with --no-names: the private names list (data/private/names.txt, gitignored) is not on this machine; R4 still refuses every unknown personal name.'}),
+		};
+	}
 	for (const n of TS_NAMES) {
 		const f = join(dir, `${n}.ts`);
 		looked.push(`scripts/claims/${n}.ts`);
@@ -82,18 +98,19 @@ export const runGeneralGate = (root: string, call: GateCall, mode: GeneralGateMo
 	});
 	const durationMs = Date.now() - started;
 	const output = tail(`${res.stdout ?? ''}${res.stderr ? `\n${res.stderr}` : ''}`.trim());
+	const namesNote = found.namesNote ? ` ${found.namesNote}` : '';
 	if (res.error) {
 		const timedOut = (res.error as NodeJS.ErrnoException).code === 'ETIMEDOUT';
 		return {status: 'error', command: found.argv, exitCode: res.status, durationMs, outputTail: output, note: timedOut ? `Timed out after ${TIMEOUT_MS / 1000} s.` : `Could not run it: ${res.error.message}`, looked: found.looked};
 	}
-	if (res.status === 0) return {status: 'passed', command: found.argv, exitCode: 0, durationMs, outputTail: output, note: 'Passed.', looked: found.looked};
+	if (res.status === 0) return {status: 'passed', command: found.argv, exitCode: 0, durationMs, outputTail: output, note: `Passed.${namesNote}`, looked: found.looked};
 	return {
 		status: 'failed',
 		command: found.argv,
 		exitCode: res.status,
 		durationMs,
 		outputTail: output,
-		note: res.signal ? `Stopped by signal ${res.signal}.` : `Exited with code ${res.status}. Its own report has the details.`,
+		note: res.signal ? `Stopped by signal ${res.signal}.` : `Exited with code ${res.status}. Its own report has the details.${namesNote}`,
 		looked: found.looked,
 	};
 };

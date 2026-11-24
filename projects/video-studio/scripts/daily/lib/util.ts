@@ -141,3 +141,23 @@ export const tail = (s: string, n = 2000): string => (s.length <= n ? s : `…${
 
 /** "$6,360,000,000" for 6360000000; the exact figure the source stored, never rounded. */
 export const usdExact = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
+
+// ---------------------------------------------------------------------------------------------------------------
+// Credentials. Only the hub's posting tools (announcer, Threat Brief) need the posting credentials; every other step
+// (the radar parsing untrusted feeds, the voice, the render with its npm dependencies and Chromium, the thumbnails,
+// the publish kit, both gates) runs with them removed, so a bad dependency or a parser bug cannot read them.
+
+/** Names that hold posting credentials or other secrets. */
+export const SECRET_PREFIXES = ['TELEGRAM_', 'X_API_', 'X_ACCESS_', 'KIT_', 'ANNOUNCER_', 'THREAT_BRIEF_'];
+export const SECRET_SUFFIX = /(?:_TOKEN|_SECRET|_API_KEY|_PASSWORD|_PRIVATE_KEY)$/i;
+
+/** A copy of env without posting credentials or other secrets (and without the names in `extra`). */
+export const scrubEnv = (env: NodeJS.ProcessEnv, extra: string[] = []): NodeJS.ProcessEnv => {
+	const drop = new Set(extra);
+	const out: NodeJS.ProcessEnv = {};
+	for (const [k, v] of Object.entries(env)) {
+		if (v === undefined || drop.has(k) || SECRET_SUFFIX.test(k) || SECRET_PREFIXES.some((p) => k.toUpperCase().startsWith(p))) continue;
+		out[k] = v;
+	}
+	return out;
+};

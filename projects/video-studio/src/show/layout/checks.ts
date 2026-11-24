@@ -8,8 +8,8 @@
  */
 import type {Format, ShowSegment} from '../types.ts';
 import type {Box} from '../diagram/layout.ts';
-import {FRAME, outlinePx, rectToScreen, SAFE, SHORTS_BUTTONS, shotFor, type Shot, type ShotName} from './shots.ts';
-import {onAirRect, stageHeads} from './stage.ts';
+import {FRAME, outlinePx, pushRect, rectToScreen, SAFE, SHORTS_BUTTONS, shotFor, type Shot, type ShotName} from './shots.ts';
+import {logoRect, onAirRect, stageHeads} from './stage.ts';
 import {CAPTION_BAND, headerSlots, SEGMENT_BOXES} from './boxes.ts';
 import {SEGMENT_SPECS} from '../segments.ts';
 
@@ -44,6 +44,16 @@ export const checkShot = (format: Format, name: ShotName): string[] => {
 			{x: h.badge.right - 360, y: h.badge.y, w: 360, h: 84},
 		];
 		for (const b of header) if (overlap(sign, b)) out.push(`${format}/${name}: the ON AIR sign is under the header row`);
+		// the cold open (a two-shot with the wall dressing) may carry a kicker card: the sign stays fully visible below
+		// or beside it and clear of the wall logo, at rest and pushed in
+		const kicker = SEGMENT_BOXES[format].coldOpen.card;
+		const logo = shot.dressing.logo ? rectToScreen(shot, logoRect(format)) : null;
+		for (const k of [1, shot.push]) {
+			const s = pushRect(shot, sign, k);
+			const at = k > 1 ? ' (pushed in)' : '';
+			if (kicker && overlap(grow(s, 8), kicker)) out.push(`${format}/${name}: the cold-open kicker card covers the ON AIR sign${at}`);
+			if (logo && overlap(grow(s, 8), pushRect(shot, logo, k))) out.push(`${format}/${name}: the ON AIR sign touches the logo plate${at}`);
+		}
 		for (const f of faces(format, shot)) if (f.who === 'zoo' && overlap(grow(f.box, f.box.w), sign)) out.push(`${format}/${name}: the ON AIR sign is inside Zoo's face clear zone`);
 		if (!inside(sign, {left: 0, right: FRAME[format].width, top: 0, bottom: FRAME[format].height})) out.push(`${format}/${name}: the ON AIR sign leaves the frame`);
 	}

@@ -293,19 +293,27 @@
         "telegram",
         "youtube-community"
       ],
-      "credentialEnv": [
-        "ANNOUNCER_X_TOKEN",
-        "ANNOUNCER_TELEGRAM_TOKEN"
-      ],
-      "mode": "dry-run unless the tool exists, its credentials are set and the video is public",
-      "credentialEnvNote": "Proposed names: the hub announcer does not exist yet (2026-11-24); its own README decides the real ones."
+      "credentialEnv": {
+        "telegram": [
+          "TELEGRAM_BOT_TOKEN",
+          "TELEGRAM_CHAT_ID"
+        ],
+        "x": [
+          "X_API_KEY",
+          "X_API_SECRET",
+          "X_ACCESS_TOKEN",
+          "X_ACCESS_TOKEN_SECRET"
+        ]
+      },
+      "mode": "Dry run unless the owner opts in: the hub announcer posts only with --apply, which the daily passes only through DAILY_ANNOUNCER_CMD (creator-hub/tools/announcer/README.md), and then only for platforms whose credentials are all set, with the video id recorded and the owner's approval on file.",
+      "credentialEnvNote": "The names the hub announcer reads (creator-hub/tools/announcer/README.md, 'Credentials'). A platform counts as ready only when every one of its names is set."
     },
     "threatBrief": {
       "tool": "../creator-hub/tools/threat-brief",
       "credentialEnv": [
         "KIT_API_KEY"
       ],
-      "mode": "draft only: never sent or scheduled by a tool; the owner sends it from Kit"
+      "mode": "Kit DRAFT only, never sent or scheduled by a tool; the owner sends it from Kit. A draft is created only with KIT_API_KEY and THREAT_BRIEF_KIT_FILTER (or --all-subscribers) set, after APPROVE and with the video id recorded. On days with no video, prepare writes a local radar-only draft (out/daily/<date>/threat-brief/)."
     }
   },
   "rules": {

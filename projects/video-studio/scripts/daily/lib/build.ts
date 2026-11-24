@@ -10,6 +10,7 @@ import {join} from 'node:path';
 import {loadChannel, type ChannelConfig} from './channel.ts';
 import type {Exec} from './exec.ts';
 import {minutes, outputTail} from './exec.ts';
+import {correctionCandidates, correctionLines, type CorrectionCandidate} from './corrections.ts';
 import {renderHtml} from './html.ts';
 import {beatsOf, episodeForKit, isDeveloping, KIT_NOT_APPLICABLE, readStoryboard, summaryOf, type SbLite} from './kit-adapter.ts';
 import {acquireLock} from './lock.ts';
@@ -18,8 +19,10 @@ import {displayOf, loadSplitter, type Splitter} from './narration.ts';
 import {buildModel, readGate, type GateJson, type Thumb} from './packet.ts';
 import {CHANNEL, episodePaths, type Paths} from './paths.ts';
 import type {PostInput, RadarMention} from './postapproval.ts';
-import type {DailyBrief, PacketSummary, StepResult} from './types.ts';
-import {fileSize, isRecord, localTime, parseDateSlug, readJson, rel, sha256, sha256File, writeAtomic, writeJson} from './util.ts';
+import {readRadarFile} from './radar.ts';
+import type {DailyBrief, Opportunity, PacketSummary, StepResult} from './types.ts';
+import {fileSize, isRecord, localTime, parseDateSlug, readJson, rel, scrubEnv, sha256, sha256File, writeAtomic, writeJson} from './util.ts';
+import {isRealAnalysis} from './writer.ts';
 
 export type BuildOptions = {
 	root: string;
@@ -37,13 +40,28 @@ export type BuildResult = {exitCode: 0 | 1; packet: PacketSummary | null; error?
 
 const GENERAL_NAMES_TS = ['gate', 'check', 'cli', 'index', 'run', 'main', 'claims'];
 
-/** The general claim gate's command, found the same way the news gate finds it (scripts/news/lib/general-gate.ts). */
-export const findGeneralGate = async (root: string, call: {channel: string; slug: string; storyboard: string; brief: string; root: string}, env: NodeJS.ProcessEnv): Promise<{argv: string[] | null; problem?: string}> => {
-	// scripts/claims/check.ts takes the episode folder (its --help, read 2026-11-24):
-	//   node scripts/claims/check.ts content/<channel>/<slug> [--lang <lang>] [--out-dir <dir>]
-	// NEWS_GENERAL_GATE_CMD still overrides everything.
+/** The private names list the general claim gate reads (gitignored: a fresh cloud checkout never has it). */
+export const namesListPath = (root: string): string => join(root, 'data', 'private', 'names.txt');
+
+/**
+ * The general claim gate's command, found the same way the news gate finds it (scripts/news/lib/general-gate.ts).
+ * scripts/claims/check.ts takes the episode folder (its --help, read 2026-11-24):
+ *   node scripts/claims/check.ts <episode dir> [--lang <lang>] [--out-dir <dir>] [--names <file> | --no-names]
+ * The episode folder and the report folder are absolute, under `root`, so a run with --root writes its report there
+ * and not into this checkout. Without the private names list (data/private/names.txt, gitignored, so never in a fresh
+ * cloud checkout) it runs with --no-names, explicitly, and the packet says so: the news gate's name rule (R4) still
+ * refuses every unknown personal name. NEWS_GENERAL_GATE_CMD still overrides everything.
+ */
+export const findGeneralGate = async (root: string, call: {channel: string; slug: string; storyboard: string; brief: string; root: string}, env: NodeJS.ProcessEnv): Promise<{argv: string[] | null; problem?: string; namesNote?: string}> => {
 	const check = join(root, 'scripts', 'claims', 'check.ts');
-	if (!env.NEWS_GENERAL_GATE_CMD && existsSync(check)) return {argv: [process.execPath, check, `content/${call.channel}/${call.slug}`, '--lang', 'en']};
+	if (!env.NEWS_GENERAL_GATE_CMD && existsSync(check)) {
+		const names = namesListPath(root);
+		const hasNames = existsSync(names);
+		return {
+			argv: [process.execPath, check, join(root, 'content', call.channel, call.slug), '--lang', 'en', '--out-dir', join(root, 'out', 'claims'), ...(hasNames ? ['--names', names] : ['--no-names'])],
+			...(hasNames ? {} : {namesNote: `The general claim gate ran with --no-names: the private names list (${rel(root, names)}, gitignored) is not on this machine. The news gate's name rule (R4) still refuses every unknown personal name.`}),
+		};
+	}
 	try {
 		const mod = (await import('../../news/lib/general-gate.ts')) as {discoverGeneralGate: (r: string, c: typeof call, e: NodeJS.ProcessEnv) => {argv: string[] | null; problem?: string}};
 		const found = mod.discoverGeneralGate(root, call, env);
@@ -90,8 +108,15 @@ export const preChecks = (sb: SbLite, brief: DailyBrief | null, dateSlug: string
 	if (!brief) blockers.push('brief.json is missing: run prepare first.');
 	if (developing) {
 		if (!/developing/i.test(sb.title)) blockers.push('Developing story: the title must say "developing".');
-		if (sb.shorts[0] && !/developing/i.test(sb.shorts[0].title)) blockers.push('Developing story: the Short title must say "developing".');
-		if (sb.thumbnails[0] && !/developing/i.test(sb.thumbnails[0].text)) warnings.push('Developing story: the first thumbnail does not say DEVELOPING.');
+		for (const sh of sb.shorts) if (!/developing/i.test(sh.title)) blockers.push(`Developing story: the Short title of "${sh.id}" must say "developing".`);
+		// any variant may be the one viewers see
+		for (const th of sb.thumbnails) if (!/developing/i.test(th.text)) blockers.push(`Developing story: thumbnail "${th.id}" must say DEVELOPING.`);
+	}
+	if (brief) {
+		// only a hand pick with no real analysis at all is the owner's call (a warning); a real analysis the brief
+		// offers and the storyboard leaves out always blocks
+		const a = realAnalysisCheck(sb, brief);
+		if (!a.ok) (a.handPicked && !a.realAvailable ? warnings : blockers).push(a.message);
 	}
 	const ids = sb.scenes.map((s) => s.id);
 	const short = sb.shorts[0];
@@ -112,6 +137,33 @@ export const preChecks = (sb: SbLite, brief: DailyBrief | null, dateSlug: string
 	if (brief?.evergreen && !brief.evergreen.url) warnings.push(`The evergreen explainer "${brief.evergreen.title}" is not published yet, so the CTA links nothing.`);
 	if (channel.displayNameTbd) warnings.push(`The channel's display name is still TBD (placeholder "${channel.displayName}").`);
 	return {blockers, warnings};
+};
+
+/** The figures of a text (commas dropped), for matching an analysis to the brief's opportunity. */
+const figures = (t: string): string[] => (t.match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map((x) => x.replace(/,/g, ''));
+
+/**
+ * Owner rule: real analysis in every video. When the brief offers a real analysis (strong and not a daily template),
+ * the storyboard must present one: an analysis entry with its `opportunity` id, or of its kind and basis whose figures
+ * all come from it. A story the owner picked by hand without one is shown as a warning at the top of the packet.
+ */
+export const realAnalysisCheck = (sb: SbLite, brief: DailyBrief): {ok: boolean; handPicked: boolean; realAvailable: boolean; message: string; matched: string[]} => {
+	const real = brief.analysisOpportunities.filter(isRealAnalysis);
+	const handPicked = !!brief.selection?.picked;
+	const presents = (o: Opportunity) =>
+		sb.analysis.some((a) => {
+			if (!Array.isArray(a.sceneIds) || !a.sceneIds.length) return false;
+			if (a.opportunity === o.id) return true;
+			const mine = figures(String(a.detail ?? ''));
+			const theirs = new Set([...figures(o.detail ?? ''), ...Object.values(o.numbers ?? {}).map(String)]);
+			return a.kind === o.kind && a.basis === o.basis && mine.length > 0 && mine.every((n) => theirs.has(n));
+		});
+	const matched = real.filter(presents).map((o) => o.id);
+	const realAvailable = real.length > 0;
+	if (matched.length) return {ok: true, handPicked, realAvailable, message: '', matched};
+	if (!realAvailable)
+		return {ok: false, handPicked, realAvailable, matched, message: `No real analysis: this story has no strong analysis that is not a daily template (owner rule: real analysis in every video).${handPicked ? ' It was picked by hand, so this is the owner\'s call.' : ''}`};
+	return {ok: false, handPicked, realAvailable, matched, message: `The storyboard presents none of the real analyses the brief found (${real.map((o) => o.id).join(', ')}): a daily template alone is not real analysis. Copy one into storyboard.analysis with its "opportunity" id and present it.`};
 };
 
 /** Other radar stories for the Threat Brief: name, status and up to two tier-A/B links. No claims. */
@@ -210,7 +262,7 @@ const thumbView = (file: string, rel: string, label: string): Thumb => {
 
 export const runBuild = async (o: BuildOptions): Promise<BuildResult> => {
 	const log = o.log ?? (() => {});
-	const env = o.env ?? process.env;
+	const rawEnv = o.env ?? process.env;
 	const skip = o.skip ?? new Set<string>();
 	const ds = parseDateSlug(o.dateSlug);
 	if (!ds) return {exitCode: 1, packet: null, error: `"${o.dateSlug}" is not a <date>-<slug>`};
@@ -227,6 +279,8 @@ export const runBuild = async (o: BuildOptions): Promise<BuildResult> => {
 	if (!sb) return {exitCode: 1, packet: null, error: problems.join('; ')};
 	const lock = acquireLock(ep.lock, o.now);
 	if (!lock.ok) return {exitCode: 1, packet: null, error: lock.reason};
+	// no build step posts anything, so none of them gets the posting credentials (util.ts scrubEnv)
+	const env = scrubEnv(rawEnv, [...channel.announcerCredentialEnv, ...channel.threatBriefCredentialEnv]);
 	try {
 		return await buildLocked(o, {ep, channel, sb, sbSha: sbRead.sha256, problems, env, skip, log});
 	} finally {
@@ -261,6 +315,7 @@ const buildLocked = async (
 
 	// 1. the general claim gate
 	const gg = await findGeneralGate(root, {channel: CHANNEL, slug: o.dateSlug, storyboard: ep.storyboard, brief: ep.brief, root}, env);
+	if (gg.namesNote) pre.warnings.unshift(gg.namesNote);
 	if (gg.problem) say(step({id: 'general-gate', title: 'General claim gate', status: 'failed', blocking: true, note: gg.problem}));
 	else if (!gg.argv) say(step({id: 'general-gate', title: 'General claim gate', status: 'missing', blocking: false, note: 'scripts/claims has no entry point yet; the news gate enforces the news rules on its own.'}));
 	else {
@@ -408,7 +463,11 @@ const buildLocked = async (
 		} else say(step({id: 'publish-kit', title: 'Publish kit', status: 'failed', blocking: false, note: `It refused the episode file (exit ${r.status ?? 'none'}); the checklist below stands in.`, command: [process.execPath, ...args], exitCode: r.status, durationMs: r.durationMs, outputTail: outputTail(r, 1200)}));
 	}
 
-	// 7. the packet
+	// 7. corrections to pin on episodes already approved (from the brief's radar file), then the packet
+	const corrections = pendingCorrections(root, brief, o.dateSlug, date);
+	const cl = correctionLines(corrections);
+	pre.blockers.push(...cl.blockers);
+	pre.warnings.push(...cl.warnings);
 	const renderOk = existsSync(ep.render) && steps.some((s) => s.id === 'render' && s.status === 'passed');
 	const renderSha = renderOk ? sha256File(ep.render) : null;
 	const gateSha = existsSync(ep.gateJson) ? sha256(readFileSync(ep.gateJson)) : null;
@@ -440,6 +499,7 @@ const buildLocked = async (
 		kit,
 		post: postInput({sb, brief, gate, split, channel, developing, youtubeId: null, date, mentions: radarMentions(root, brief)}),
 		versions,
+		corrections,
 	});
 	const html = renderHtml(model);
 	const mdText = renderMd(model);
@@ -464,6 +524,15 @@ const buildLocked = async (
 	writeJson(ep.buildLog, {startedAt: started.toISOString(), finishedAt: now().toISOString(), ready: model.ready, steps});
 	log(`Approval packet: ${rel(root, ep.approvalHtml)} (${model.ready ? 'READY TO APPROVE' : `NOT READY: ${model.blockers.length} blocker(s)`}).`);
 	return {exitCode: model.ready ? 0 : 1, packet, paths: {html: ep.approvalHtml, md: ep.approvalMd, packet: ep.packetJson}};
+};
+
+/** Correction candidates against the brief's radar file (none without a brief or a readable radar file). */
+const pendingCorrections = (root: string, brief: DailyBrief | null, slug: string, date: string): CorrectionCandidate[] => {
+	if (!brief?.radar?.path) return [];
+	const r = readRadarFile(join(root, brief.radar.path), brief.radar.runDate, brief.radar.mode === 'live' ? 'live' : 'offline');
+	if (!r.ok) return [];
+	const cp = episodePaths(root, slug);
+	return correctionCandidates({contentRoot: cp.contentRoot, correctionsPath: cp.corrections, radar: r.file, date, exceptSlug: slug});
 };
 
 /** A thumbnail from an earlier full build counts only if it was made from this exact storyboard. */

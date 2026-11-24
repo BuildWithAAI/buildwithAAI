@@ -24,5 +24,7 @@ export const QaFixturesRoot: React.FC = () => (
 		<Composition id="QaFxForgery" component={F.QaFxForgery} durationInFrames={10} {...L} />
 		<Composition id="QaFxBanding" component={F.QaFxBanding} durationInFrames={10} {...L} />
 		<Composition id="QaFxFlicker" component={F.QaFxFlicker} durationInFrames={30} {...L} />
+		<Composition id="QaFxJump" component={F.QaFxJump} durationInFrames={30} {...L} />
+		<Composition id="QaFxMotion" component={F.QaFxMotion} durationInFrames={30} {...L} />
 	</>
 );

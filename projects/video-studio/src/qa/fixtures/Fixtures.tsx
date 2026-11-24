@@ -51,7 +51,7 @@ export const QaFxClean: React.FC = () => (
 );
 
 /**
- * Text: a clipped headline, a spilling label, a label off the frame edge, tiny text, and the host's name painted
+ * Text: a clipped headline, a label running off its card, a label off the frame edge, tiny text, and the host's name painted
  * in capitals by a CSS uppercase style (the source string is title case).
  */
 export const QaFxText: React.FC = () => (
@@ -59,12 +59,16 @@ export const QaFxText: React.FC = () => (
 		<div style={{position: 'absolute', left: 160, top: 160, width: 320, height: 70, overflow: 'hidden'}}>
 			<div style={label({position: 'static', fontSize: 52, whiteSpace: 'nowrap'})}>This headline is far too long</div>
 		</div>
-		<div style={{position: 'absolute', left: 160, top: 360, width: 300}}>
-			<div style={label({position: 'static', fontSize: 44, whiteSpace: 'nowrap'})}>Spills out of its box</div>
+		{/* a fixed-width card whose label runs off its right edge */}
+		<div style={{position: 'absolute', left: 160, top: 340, width: 300, padding: '12px 20px', boxSizing: 'border-box', backgroundColor: BRAND.offWhite, border: `3px solid ${BRAND.nearBlack}`, borderRadius: 8}}>
+			<div style={label({position: 'static', fontSize: 44, whiteSpace: 'nowrap'})}>Spills off its card</div>
 		</div>
 		<div style={label({left: 1640, top: 560, fontSize: 56, whiteSpace: 'nowrap'})}>Cut by the edge</div>
 		<div style={label({left: 160, top: 760, fontSize: 16, fontFamily: FONTS.body, fontWeight: 600})}>Tiny legal line nobody can read</div>
 		<div style={label({left: 160, top: 880, fontSize: 44, textTransform: 'uppercase'})}>Hosted by Zoo</div>
+		{/* a title and its source line laid out on top of each other */}
+		<div style={label({left: 760, top: 300, fontSize: 56, whiteSpace: 'nowrap'})}>Bridge drained overnight</div>
+		<div style={label({left: 980, top: 318, fontSize: 40, fontFamily: FONTS.body, fontWeight: 600, whiteSpace: 'nowrap'})}>Source: Example Wire</div>
 	</Stage>
 );
 
@@ -194,6 +198,45 @@ export const QaFxBanding: React.FC = () => (
 		</svg>
 	</AbsoluteFill>
 );
+
+/** Card top per frame: hidden above the frame, a fast drop (up to 170 px per frame) from frame 6, settled at 12. */
+const CARD_TOPS = [-420, -420, -420, -420, -420, -420, -250, -80, 60, 140, 180, 196, 200];
+const cardTop = (f: number) => CARD_TOPS[Math.min(f, CARD_TOPS.length - 1)];
+
+/**
+ * Clean control for motion (must report nothing): the talk-show staging that once produced false positives.
+ *  - A card the colour of the wall behind it drops in fast (frames 6-12): the 3-frame flicker test alone sees
+ *    one-frame states where its text passes over wall-coloured pixels.
+ *  - Zoo stands behind a desk with his hands below the bottom safe margin: hidden hands are not on screen.
+ */
+export const QaFxMotion: React.FC = () => {
+	const f = useCurrentFrame();
+	return (
+		<Stage>
+			<svg width={1920} height={1080} viewBox="0 0 1920 1080" style={{position: 'absolute', left: 0, top: 0}}>
+				<rect x={900} y={0} width={1020} height={930} fill={BRAND.offWhite} />
+				<rect x={1400} y={0} width={4} height={930} fill={BRAND.nearBlack} />
+				<ZooRig x={520} y={1340} scale={PAIR_SCALE} view="front" />
+				<rect x={0} y={930} width={1920} height={150} fill={BRAND.nearBlack} />
+			</svg>
+			<div style={{position: 'absolute', left: 980, top: cardTop(f), width: 820, height: 300, boxSizing: 'border-box', padding: '48px 56px', backgroundColor: BRAND.offWhite, border: `4px solid ${BRAND.nearBlack}`, borderRadius: 16}}>
+				<div style={{fontFamily: FONTS.heading, fontWeight: 800, fontSize: 56, lineHeight: '64px', color: BRAND.nearBlack}}>One key can upgrade the contract</div>
+			</div>
+		</Stage>
+	);
+};
+
+/** Flicker by a jump: a label sits still but is drawn 14 px lower on exactly one frame (15). */
+export const QaFxJump: React.FC = () => {
+	const f = useCurrentFrame();
+	return (
+		<Stage>
+			<Pair />
+			{/* top right, clear of both faces */}
+			<div style={label({left: 1150, top: f === 15 ? 124 : 110, fontSize: 56})}>Holds still, mostly</div>
+		</Stage>
+	);
+};
 
 /** Flicker: a label shown for exactly one frame (15) and a one-frame white flash (frame 22). */
 export const QaFxFlicker: React.FC = () => {

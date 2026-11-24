@@ -90,20 +90,24 @@ export const plantLegs = (R: SideRig, dir: 1 | -1, body: SidePose['body'], offse
 /** BADGER's walk: a 4-beat lateral-sequence gait (LH, LF, RH, RF), lateral pairs close together as drawn on the sheet. */
 export const WALK = {
 	/** Body travel per gait cycle at scale 1 (world units). Move the root by exactly this much per cycle. */
-	stride: 215 / 0.6,
+	stride: 225 / 0.6,
 	/** Fraction of the cycle each paw is on the ground. */
 	duty: 0.6,
 	/**
 	 * Stance sweep of each paw pivot, relative to its own shoulder / hip (units, + = forward): it lands at `land`
-	 * and lifts at `lift`. Both sweeps are 215 units (= stride * duty), so planted paws never slide. Measured on
+	 * and lifts at `lift`. Both sweeps are 225 units (= stride * duty), so planted paws never slide. Measured on
 	 * badger_pose_walking.png (normalised by body length): the far fore paw lands well ahead of the chest and the
 	 * near hind paw leaves the ground behind the hip.
 	 */
-	front: {land: 124, lift: -91},
-	hind: {land: 92, lift: -123},
+	// Round-2 repair (decision BADGER-D25, revised): the fore lands 3% further ahead and the hind lifts 5% further back (and
+	// each stays planted a little longer), so the phase-0 paw spread is closer to badger_pose_walking.png at equal height (it
+	// was about 10% short); the shoulder glide cap rose 22 -> 26 so the far fore still reaches. Sweeps 225 = stride * duty;
+	// dev/walkCheck.ts: no paw below the ground, no stance drift, both facings.
+	front: {land: 128, lift: -97},
+	hind: {land: 96, lift: -129},
 	/** Shoulder glide (scapula) of the front legs, fraction of the paw offset, capped (hidden inside the chest). */
 	glide: 0.3,
-	glideMax: 22,
+	glideMax: 26,
 	/**
 	 * Stance legs keep their reach (pivot-to-paw distance / full leg length) inside these bands; the shoulder or
 	 * hip slides up/down inside the body to do so (scapula / pelvis movement, hidden by the torso). Front legs stay

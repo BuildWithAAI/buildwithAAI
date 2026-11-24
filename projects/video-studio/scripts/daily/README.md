@@ -20,18 +20,20 @@ node --test scripts/daily/tests/*.test.ts
 | --- | --- |
 | `run.ts` | Entry point. It hides one Node warning, then runs `lib/cli.ts`. |
 | `lib/cli.ts` | Arguments, commands and exit codes. |
-| `lib/prepare.ts`, `lib/radar.ts`, `lib/select.ts` | The radar step, reading the radar's file, and the story pick with alternates. |
-| `lib/history.ts`, `lib/opportunities.ts` | The data for the "real analysis":<br>• DefiLlama rows from the radar's cache (structured fields only);<br>• the radar's own history;<br>• our earlier episodes.<br>From these it builds the 30-day comparison, the radar pattern, the source figures and the Solana fund-flow check. |
+| `lib/prepare.ts`, `lib/radar.ts`, `lib/select.ts` | The radar step (the radar's run date is the UTC day), reading the radar's file, the story pick with alternates, and the day's Threat Brief draft from the radar (every day, video or not). |
+| `lib/history.ts`, `lib/opportunities.ts` | The data for the "real analysis":<br>• DefiLlama rows from the radar's cache (structured fields only), the window and the 30 days before it;<br>• the radar's own history;<br>• our earlier episodes.<br>From these it builds the 30-day comparison (a daily template: strong only when it finds something non-obvious), the radar pattern (real analysis with 3 or more same-type incidents in 7 or more daily files), the source figures (a template) and the Solana fund-flow check. A daily Short needs a strong analysis that is not a template. |
+| `lib/match.ts` | "Same incident?": the same radar id, or the protocol's aliases match and the dates are within 3 days (a port of the radar's own matching). Coverage and corrections use it. |
+| `lib/corrections.ts` | Corrections to pin: every episode approved in the last 30 days against today's radar view of the same incident (status, type, mechanism, figures). A correction blocks the next packet until `corrections.ts add --id <key>` records it. |
 | `lib/brief.ts`, `lib/writer.ts`, `lib/research.ts` | `brief.json` (in the news gate's curated-brief shape), `WRITER.md` (with a skeleton in the show's format) and `research.md` (the general gate's "Must not say"). |
 | `lib/build.ts`, `lib/kit-adapter.ts` | The build steps in order, plus the thin adapter to the publish kit (`episode.json` for a Short). |
 | `lib/packet.ts`, `lib/html.ts`, `lib/md.ts`, `lib/escape.ts` | The approval packet: its model, the mobile page (no scripts, everything escaped) and the Markdown version. |
-| `lib/approve.ts`, `lib/postapproval.ts` | The approval record, and the drafts plus calls to the creator-hub tools when those tools exist. |
+| `lib/approve.ts`, `lib/postapproval.ts` | The approval record, and the drafts plus the calls to the creator-hub tools (the only steps that get the posting credentials). |
 | `lib/narration.ts` | Sentences and claims. It uses the news gate's own splitter, with a local fallback. |
-| `lib/status.ts`, `lib/lock.ts`, `lib/exec.ts`, `lib/util.ts`, `lib/paths.ts`, `lib/channel.ts`, `lib/types.ts` | Small helpers and the contracts. |
+| `lib/status.ts`, `lib/lock.ts`, `lib/exec.ts`, `lib/util.ts`, `lib/paths.ts`, `lib/channel.ts`, `lib/types.ts` | Small helpers and the contracts. The lock appears with its content in one step and is released only by its holder; `util.ts scrubEnv` removes posting credentials from every non-posting step. |
 | `tests/` | `node:test` suites with fictional fixtures on reserved example domains. Every other step is mocked; `e2e.test.ts` runs the real news gate. |
 
-## Adapters for tools that are not finished
+## Adapters to the other workflows' tools
 
-- `creator-hub/tools/announcer` and `creator-hub/tools/threat-brief` do not exist yet. Until they do, `lib/postapproval.ts` writes local drafts and sends nothing. Once they exist, it calls `node <hub>/tools/<tool>/cli.ts --input <json> --out <dir> [--dry-run]`; `DAILY_ANNOUNCER_CMD` and `DAILY_THREAT_BRIEF_CMD` override that call.
+- `creator-hub/tools/announcer` and `creator-hub/tools/threat-brief`: `lib/postapproval.ts` writes local previews, then calls `node <hub>/tools/<tool>/cli.ts --input <json> --out <dir> [--dry-run]` (`DAILY_ANNOUNCER_CMD` and `DAILY_THREAT_BRIEF_CMD` override the call; `{input}`, `{out}`, `{dryRun}` are filled in). The announcer posts only with `--apply`, which the daily never adds: the owner opts in by putting it in `DAILY_ANNOUNCER_CMD`, and it then posts only to the platforms whose credentials (`channel.json` postApproval.announcer.credentialEnv: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID; X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN and X_ACCESS_TOKEN_SECRET) are all set, once the video id is recorded. The Threat Brief tool creates a Kit draft (never a send) without `--dry-run` when KIT_API_KEY is set. `approval.json` records `hub-live` only when the tool reports a post or a created draft.
 - The publish kit models long-form episodes with Shorts cut from them. `lib/kit-adapter.ts` writes one Short that covers every scene. The kit's chapter check is reported as not applicable to a Short.
-- The general claim gate (`scripts/claims/check.ts`) takes the episode folder as its argument. `NEWS_GENERAL_GATE_CMD` overrides that call, as it does for the news gate.
+- The general claim gate (`scripts/claims/check.ts`) is called with the absolute episode folder, `--out-dir <root>/out/claims`, and `--names data/private/names.txt` when that gitignored list exists, else `--no-names` with a warning in the packet (the news gate's R4 still refuses unknown names). `NEWS_GENERAL_GATE_CMD` overrides that call, as it does for the news gate.

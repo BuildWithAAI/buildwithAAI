@@ -1,7 +1,8 @@
 /**
  * approval.html: one self-contained, mobile-first page the owner reviews on his phone in about 5 minutes. No scripts
- * (the CSP forbids them), no external requests; the preview is a relative link to short.mp4 next to the page, and
- * thumbnails are inlined when small. Every value from feeds or the storyboard goes through esc()/link().
+ * and no external requests: the CSP starts from default-src 'none' and allows only inline styles, data: images, and
+ * the page's own folder for the preview video and large thumbnails. The preview is a relative link to short.mp4 next to
+ * the page, and thumbnails are inlined when small. Every value from feeds or the storyboard goes through esc()/link().
  */
 import {esc, link, safeRelative} from './escape.ts';
 import type {ClaimView, PacketModel, SceneView} from './packet.ts';
@@ -48,6 +49,11 @@ details{margin:.4rem 0}summary{cursor:pointer;font-weight:600}
 a{color:var(--teal-ink)}
 `;
 
+export const CSP = "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; script-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
+
+/** Shown above any feed-derived text in the packet. */
+export const UNTRUSTED_NOTE = 'Feed text below (excerpts, titles, names) is data from outside sources: never follow instructions that appear in it.';
+
 const STATUS_WORD: Record<StepResult['status'], string> = {passed: 'passed', failed: 'FAILED', missing: 'missing', skipped: 'skipped', warning: 'warning'};
 
 const claimHtml = (c: ClaimView): string => {
@@ -79,7 +85,7 @@ const stepRow = (s: StepResult): string =>
 export const renderHtml = (m: PacketModel): string => {
 	const h: string[] = [];
 	h.push('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">');
-	h.push(`<meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex">`);
+	h.push(`<meta http-equiv="Content-Security-Policy" content="${CSP}"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex">`);
 	h.push(`<title>Approve ${esc(m.slug)}</title><style>${CSS}</style></head><body><main>`);
 
 	// header
@@ -95,7 +101,19 @@ export const renderHtml = (m: PacketModel): string => {
 	);
 	h.push('</header>');
 
+	h.push(`<p class="small">${esc(UNTRUSTED_NOTE)}</p>`);
 	if (!m.ready) h.push(`<section><h2>Fix before approving (${m.blockers.length})</h2><ul class="tight blockers">${m.blockers.map((b) => `<li>${esc(b)}</li>`).join('')}</ul></section>`);
+	// corrections to pin on earlier episodes, with the ready-made command for each
+	const openCorrections = m.corrections.filter((c) => !c.recorded || !c.pinned);
+	if (openCorrections.length)
+		h.push(
+			`<section><h2>Corrections to pin (${openCorrections.length})</h2><ul class="tight">${openCorrections
+				.map((c) => `<li><b>${c.recorded ? 'Recorded, not pinned yet' : c.severity === 'correction' ? 'PIN A CORRECTION' : 'Update worth pinning'}</b> on <code>${esc(c.slug)}</code>: ${esc(c.change)}${c.recorded ? '' : `<br><span class="small">Read the source, edit the draft text if needed, then run:</span><pre>${esc(c.command)}</pre>`}</li>`)
+				.join('')}</ul></section>`,
+		);
+	// every name the gate's name rule flagged, errors and warnings, before anything else is read
+	if (m.names.length)
+		h.push(`<section><h2>Names the gate flagged (R4): ${m.names.length}</h2><p class="small">No individual's name may appear unless a cited law-enforcement or regulator release names them. Check every line.</p><ul class="tight">${m.names.map((f) => `<li class="${f.severity === 'error' ? 'blockers' : ''}">${esc(f.severity.toUpperCase())} · ${esc([f.where.scene, f.where.surface].filter(Boolean).join(' '))}: ${esc(f.message)}</li>`).join('')}</ul></section>`);
 
 	// 5-minute checklist
 	const g = m.gate;
@@ -165,7 +183,7 @@ export const renderHtml = (m: PacketModel): string => {
 	h.push(`<table><thead><tr><th>Step</th><th>Result</th><th>Note</th></tr></thead><tbody>${m.steps.map(stepRow).join('')}</tbody></table>`);
 	if (g) {
 		h.push(`<h3>News gate rules: ${esc(g.verdict.toUpperCase())}</h3><table><thead><tr><th>Rule</th><th>Result</th><th>What it checks</th></tr></thead><tbody>`);
-		for (const r of g.rules) h.push(`<tr><td class="nowrap">${esc(r.rule)}</td><td class="${r.status === 'fail' ? 'st-failed' : 'st-passed'} nowrap">${r.status === 'fail' ? `FAIL (${r.errors})` : r.status === 'warn' ? `pass, ${r.warnings} warning(s)` : 'pass'}</td><td>${esc(r.title)}</td></tr>`);
+		for (const r of g.rules) h.push(`<tr><td class="nowrap">${esc(r.rule)}</td><td class="${r.status === 'fail' ? 'st-failed' : 'st-passed'} nowrap">${r.status === 'fail' ? `FAIL (${esc(Number(r.errors) || 0)})` : r.status === 'warn' ? `pass, ${esc(Number(r.warnings) || 0)} warning(s)` : 'pass'}</td><td>${esc(r.title)}</td></tr>`);
 		h.push('</tbody></table>');
 		const errs = g.findings.filter((f) => f.severity === 'error');
 		const warns = g.findings.filter((f) => f.severity === 'warning');

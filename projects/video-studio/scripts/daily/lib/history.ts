@@ -27,7 +27,12 @@ export type TrackerRow = {
 	head: string; // the structured head of the stored excerpt (a prefix of it), 280 characters or fewer
 };
 
-export type TrackerData = {ok: true; rows: TrackerRow[]; fetchedUtc: string; skipped: number; notes: string[]} | {ok: false; reason: string};
+/**
+ * `rows` are the rows dated from the loader's `from` to `to` (prepare loads the 30-day window plus the 30 days before
+ * it); `earliest` is the oldest event date anywhere in the cache, so a comparison with the 30 days before the window
+ * knows whether the cache reaches back that far.
+ */
+export type TrackerData = {ok: true; rows: TrackerRow[]; fetchedUtc: string; skipped: number; notes: string[]; earliest?: string | null} | {ok: false; reason: string};
 
 const EXPECTED_ORDER = (r: Record<string, unknown>, date: string, name: string) => {
 	const classification = str(r.classification) ?? null;
@@ -80,6 +85,7 @@ export const loadTrackerRows = (cachePath: string, from: string, to: string): Tr
 		return {ok: false, reason: `The DefiLlama cache was fetched ${fetchedUtc || 'at an unknown time'}, not within 36 hours of ${to}; run the radar live for ${to} first.`};
 	const rows: TrackerRow[] = [];
 	let skipped = 0;
+	let earliest: string | null = null;
 	const notes: string[] = [];
 	for (const it of d.items) {
 		if (!isRecord(it) || !isRecord(it.record)) {
@@ -89,6 +95,7 @@ export const loadTrackerRows = (cachePath: string, from: string, to: string): Tr
 		const rec = it.record;
 		const date = str(it.eventDate) ?? '';
 		const name = str(rec.name) ?? '';
+		if (isDate(date) && (!earliest || date < earliest)) earliest = date;
 		if (!isDate(date) || !name || date < from || date > to) continue;
 		const target = str(rec.targetType) ?? null;
 		if (target && PERSONAL_TARGET.test(target)) {
@@ -106,7 +113,7 @@ export const loadTrackerRows = (cachePath: string, from: string, to: string): Tr
 	}
 	if (skipped) notes.push(`${skipped} cached DefiLlama record(s) were left out (unexpected shape or a target type that could be a person).`);
 	rows.sort((a, b) => (a.date === b.date ? a.name.localeCompare(b.name) : a.date < b.date ? -1 : 1));
-	return {ok: true, rows, fetchedUtc, skipped, notes};
+	return {ok: true, rows, fetchedUtc, skipped, notes, earliest};
 };
 
 /** The DefiLlama key of an incident, from its radar source URL (https://api.llama.fi/hacks#<name>@<date>). */
@@ -156,7 +163,11 @@ export const loadRadarHistory = (radarDir: string, from: string, to: string): Ra
 	return {files, incidents, from, to};
 };
 
-export type PreviousEpisode = {slug: string; date: string; incidentId: string | null; approved: boolean};
+/**
+ * One of our own episodes. `protocol` and `incidentDate` come from its brief, so a story is recognised even when the
+ * radar's id for it changes between days (see match.ts).
+ */
+export type PreviousEpisode = {slug: string; date: string; incidentId: string | null; approved: boolean; protocol?: string | null; incidentDate?: string | null};
 
 /** Our own episodes from `from` to `to`, from their brief.json and approval.json. */
 export const previousEpisodes = (contentRoot: string, from: string, to: string, exceptSlug?: string): PreviousEpisode[] => {
@@ -166,8 +177,11 @@ export const previousEpisodes = (contentRoot: string, from: string, to: string, 
 		const ds = parseDateSlug(name);
 		if (!ds || name === exceptSlug || ds.date < from || ds.date > to) continue;
 		const b = readJson(join(contentRoot, name, 'brief.json'));
-		const incidentId = b.ok && isRecord(b.data) && isRecord(b.data.incident) && typeof b.data.incident.id === 'string' ? b.data.incident.id : null;
-		out.push({slug: name, date: ds.date, incidentId, approved: existsSync(join(contentRoot, name, 'approval.json'))});
+		const inc = b.ok && isRecord(b.data) && isRecord(b.data.incident) ? b.data.incident : null;
+		const incidentId = inc && typeof inc.id === 'string' ? inc.id : null;
+		const protocol = inc && typeof inc.protocol === 'string' && inc.protocol.trim() ? inc.protocol.trim() : null;
+		const incidentDate = inc && isDate(inc.dateUtc) ? inc.dateUtc : null;
+		out.push({slug: name, date: ds.date, incidentId, approved: existsSync(join(contentRoot, name, 'approval.json')), ...(protocol ? {protocol} : {}), ...(incidentDate ? {incidentDate} : {})});
 	}
 	return out;
 };

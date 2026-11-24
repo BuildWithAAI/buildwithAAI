@@ -11,7 +11,7 @@ import {buildAnnouncements, buildThreatBrief, PLACEHOLDER_LINK, xLength, type Po
 import {runPrepare} from '../lib/prepare.ts';
 import type {ApprovalRecord, DailyBrief, PacketSummary} from '../lib/types.ts';
 import {sha256File} from '../lib/util.ts';
-import {fakeExec, goodStoryboard, NOW, seedRadarDay, SLUG, tempRoot, touch, writeJsonFile} from './helpers.ts';
+import {fakeExec, goodStoryboard, NOW, patternOf, seedRadarDay, SLUG, tempRoot, touch, writeJsonFile} from './helpers.ts';
 
 /** A built, READY packet in a temp studio (every tool faked). */
 const ready = async () => {
@@ -22,7 +22,7 @@ const ready = async () => {
 	const ep = episodePaths(root, SLUG);
 	const brief = JSON.parse(readFileSync(ep.brief, 'utf8')) as DailyBrief;
 	const detail = brief.analysisOpportunities.find((x) => x.id === 'tracker-30d')?.detail ?? '';
-	writeJsonFile(ep.storyboard, goodStoryboard(detail));
+	writeJsonFile(ep.storyboard, goodStoryboard(detail, undefined, patternOf(brief)));
 	for (const f of ['scripts/news/gate.ts', 'scripts/voice/build.py', 'src/show/index.ts']) touch(join(root, f));
 	const fx = fakeExec({
 		'news-gate': () => {
@@ -118,21 +118,40 @@ describe('approve', () => {
 		}
 	});
 
-	it('calls the hub tools when they exist: dry-run without credentials, live with credentials and a video id', async () => {
+	it('calls the hub tools when they exist, and records "hub-live" only when a tool really posted or drafted', async () => {
 		const s = await ready();
 		try {
 			const hub = episodePaths(s.root, SLUG).hubRoot;
 			touch(join(hub, 'tools', 'announcer', 'cli.ts'));
 			touch(join(hub, 'tools', 'threat-brief', 'cli.ts'));
+			const rec = () => JSON.parse(readFileSync(s.ep.approvalJson, 'utf8')) as ApprovalRecord;
+			// no credentials: both tools are told --dry-run
 			const dry = fakeExec();
 			await runApprove({root: s.root, dateSlug: SLUG, reply: APPROVE, by: 'owner', exec: dry.exec, now: () => NOW, env: {}});
 			assert.deepEqual(dry.calls.map((c) => c.tool), ['announcer', 'threat-brief']);
 			assert.ok(dry.calls.every((c) => c.args.includes('--dry-run')));
-			const live = fakeExec();
-			await runApprove({root: s.root, dateSlug: SLUG, by: 'owner', youtubeId: 'abcDEF12345', exec: live.exec, now: () => NOW, env: {ANNOUNCER_X_TOKEN: 't', ANNOUNCER_TELEGRAM_TOKEN: 't', KIT_API_KEY: 'k'}});
-			assert.ok(live.calls.every((c) => !c.args.includes('--dry-run')));
-			const rec = JSON.parse(readFileSync(s.ep.approvalJson, 'utf8')) as ApprovalRecord;
-			assert.deepEqual(rec.postApproval.map((p) => p.mode), ['hub-live', 'hub-live']);
+			assert.deepEqual(rec().postApproval.map((p) => p.mode), ['hub-dry-run', 'hub-dry-run']);
+			// the old proposed names are not the announcer's: they count for nothing
+			const old = fakeExec();
+			await runApprove({root: s.root, dateSlug: SLUG, by: 'owner', youtubeId: 'abcDEF12345', exec: old.exec, now: () => NOW, env: {ANNOUNCER_X_TOKEN: 't', ANNOUNCER_TELEGRAM_TOKEN: 't'}});
+			assert.ok(old.calls.find((c) => c.tool === 'announcer')?.args.includes('--dry-run'));
+			// the real names and a video id: no --dry-run, only the ready platform, but still no --apply, so nothing posts
+			const realEnv = {TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHAT_ID: '@example', KIT_API_KEY: 'k'};
+			const live = fakeExec({announcer: () => ({stdout: 'DRY RUN: nothing was posted.'}), 'threat-brief': () => ({stdout: 'Kit draft skipped: KIT_API_KEY is not set.'})});
+			await runApprove({root: s.root, dateSlug: SLUG, by: 'owner', youtubeId: 'abcDEF12345', exec: live.exec, now: () => NOW, env: realEnv});
+			const ann = live.calls.find((c) => c.tool === 'announcer');
+			assert.ok(ann && !ann.args.includes('--dry-run') && !ann.args.includes('--apply'), 'the daily never adds --apply by itself');
+			assert.equal(ann?.args[ann.args.indexOf('--targets') + 1], 'telegram', 'only the platform whose credentials are all set');
+			assert.equal(ann?.env?.TELEGRAM_BOT_TOKEN, 't', 'the hub tools are the only children that get the credentials');
+			assert.deepEqual(rec().postApproval.map((p) => p.mode), ['hub-dry-run', 'hub-dry-run']);
+			assert.match(rec().postApproval[0].note, /never posts by itself/);
+			// the owner's opt-in (--apply in DAILY_ANNOUNCER_CMD) and tools that report a post and a draft: hub-live
+			const optIn = fakeExec({announcer: () => ({stdout: '[telegram] posted (id 42)'}), 'threat-brief': () => ({stdout: '  created Kit broadcast draft 7 for subscribers with tag 1. It has NOT been sent or scheduled.'})});
+			const cmd = JSON.stringify(['node', join(hub, 'tools', 'announcer', 'cli.ts'), '--input', '{input}', '--out', '{out}', '{dryRun}', '--apply']);
+			await runApprove({root: s.root, dateSlug: SLUG, by: 'owner', youtubeId: 'abcDEF12345', exec: optIn.exec, now: () => NOW, env: {...realEnv, DAILY_ANNOUNCER_CMD: cmd}});
+			assert.ok(optIn.calls.find((c) => c.tool === 'announcer')?.args.includes('--apply'));
+			assert.deepEqual(rec().postApproval.map((p) => p.mode), ['hub-live', 'hub-live']);
+			assert.match(rec().postApproval[0].note, /\[telegram\] posted/);
 		} finally {
 			s.cleanup();
 		}

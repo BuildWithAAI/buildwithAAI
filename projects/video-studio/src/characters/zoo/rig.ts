@@ -76,13 +76,16 @@ export const PIVOTS: Record<PivotName, {x: number; y: number; parent: PivotName 
  * Arm joint angles are DELTAS from the rest pose in degrees (SVG rotate convention: negative turns
  * counter-clockwise on screen). Values are for the anatomical LEFT arm (screen right). The
  * anatomical right arm uses the negated values about its mirrored pivots.
- * Point (repair round 1, decision ZOO-P2): zoo_pose_point.png measures upper arm ~42 deg out from vertical, forearm
- * rising ~52 deg, index ~25 deg up and ~45 u above the shoulder. On the turnaround body (shorter arm than the panel,
- * ZOO-P1) the end key below gives upper arm 43 deg, forearm 57 deg, index ~22 deg up, index tip at h ~720 (v1: 691).
+ * Point (repair round 2, decision ZOO-P4; measured on zoo_pose_point.png with a world grid): the panel's elbow is an OPEN
+ * bend (~95 deg inside), the forearm rises ~42 deg, the index points almost horizontally (~3 deg up) and its tip is at
+ * h ~733, ~55 u above the cuff, because the index rides on top of an upright fist. Round 1 bent the elbow to an acute
+ * V (~67 deg) and tilted the index 26 deg up to reach that height, which read as an upward jab. On the turnaround arm
+ * (longer than the panel's) this end key gives upper arm 49 deg out from vertical, forearm rising 48 deg, elbow ~91 deg
+ * inside, index ~6 deg up and the fingertip at h ~719 with the panel-shaped pointing hand (parts/Hand.tsx).
  */
 export type ArmAngles = {shoulder: number; elbow: number; wrist: number};
 export const ARM_REST: ArmAngles = {shoulder: 0, elbow: 0, wrist: 0};
-export const ARM_POINT: ArmAngles = {shoulder: -34, elbow: -117, wrist: 14};
+export const ARM_POINT: ArmAngles = {shoulder: -44, elbow: -93, wrist: 22};
 /**
  * Anticipation for the point (optional prop `pointWindup` 0..1, added for the v1 preview): before the
  * arm swings out, the hand draws in slightly toward the hip and the wrist cocks. Deltas at windup 1.
@@ -90,17 +93,23 @@ export const ARM_POINT: ArmAngles = {shoulder: -34, elbow: -117, wrist: 14};
  */
 export const ARM_POINT_WINDUP: ArmAngles = {shoulder: 3, elbow: 6, wrist: -8};
 /**
- * In-between key of the point gesture at poseAmount 0.5 (INT-Z3, revised in repair round 1 as ZOO-P2): the elbow stays
- * tucked at the side and the forearm lifts the hand up in front of the chest with a moderate wrist drag (38 deg; v1's
- * 75 deg read as a limp "chicken wing"), then the upper arm opens and the hand extends into the point. Checked on the
- * joint chain against the proof staging (Badger 560 u away, his head front at x ~300 for h 400-465): the hand stays
- * at x <= 283 in that band (v1: 256), so it never reaches his head.
+ * In-between key of the point gesture at poseAmount 0.5 (repair round 2, ZOO-P4; was INT-Z3/ZOO-P2's elbow-tucked key
+ * {10, -146, 38}): the upper arm is already abducted 20 deg, so the elbow sits ~70 u OUTSIDE the overshirt's side, the
+ * forearm rises ~23 deg above horizontal and the wrist is nearly straight. Round 1 kept the elbow behind the torso, so
+ * only a forearm stub stuck out of the side at waist height (the "chicken wing") with the open hand drooping 45-60 deg.
+ * With the monotone interpolation and POINT_OVERLAP timing in armAnglesFor the hand travels up and out without reversing.
  */
-export const ARM_POINT_MID: ArmAngles = {shoulder: 10, elbow: -146, wrist: 38};
-/** poseAmount at which the hand swaps to the pointer: mid-swing, where the motion is fastest (v1: 0.75). */
-export const POINT_HAND_SWITCH = 0.5;
-/** poseAmount from which the relaxed hand is replaced by the loose fist until POINT_HAND_SWITCH (ZOO-P2). */
-export const POINT_HAND_CURL = 0.28;
+export const ARM_POINT_MID: ArmAngles = {shoulder: -20, elbow: -92, wrist: 5};
+/**
+ * poseAmount at which the loose fist opens into the pointer: the forearm is then ~12 deg above horizontal at chest height
+ * and the index ~13 deg below horizontal, so it extends almost along the line to the target (v1: 0.75, round 1: 0.5).
+ */
+export const POINT_HAND_SWITCH = 0.4;
+/**
+ * poseAmount from which the relaxed hand is replaced by the loose fist until POINT_HAND_SWITCH (round 2: 0.08, while the
+ * forearm is still ~50 deg below horizontal, so no open hand dangles on the way out; round 1: 0.28).
+ */
+export const POINT_HAND_CURL = 0.08;
 /**
  * pose="point" defaults (used only when the caller does not pass lookX / headTilt): the eyes and head lean toward the
  * point, scaled by poseAmount (zoo_pose_point.png angles the head toward the hand).
@@ -118,15 +127,57 @@ export const SHOULDER_FOLLOW = 1;
 export const POINT_HAND_FRAME = 110;
 
 /**
- * Joint angles along the gesture. With an in-between key (ARM_POINT_MID for ARM_POINT) the angles follow a quadratic
- * Bezier from rest through the key at 0.5 to the target: one smooth arc with a small elbow overshoot and wrist
- * follow-through and no stop at the key. Without one: a slightly overlapping blend (shoulder leads, wrist last).
+ * Shape-preserving (monotone, C1) cubic through (0, 0), (0.5, m) and (1, t): Fritsch-Carlson / PCHIP tangents. Unlike a
+ * quadratic through the key, it never overshoots when the key already holds most of the motion, so a joint that reaches
+ * its pose early (the elbow) does not bend past it and back (repair round 2: the quadratic arc took the elbow 11 deg
+ * past the end key and swung the hand out, in and out again).
+ */
+const monotoneThrough = (m: number, t: number, a: number): number => {
+	const d0 = 2 * m;
+	const d1 = 2 * (t - m);
+	const sign = Math.sign;
+	const mid = d0 * d1 <= 0 ? 0 : (2 * d0 * d1) / (d0 + d1);
+	const end = (d: number, other: number) => {
+		const v = (3 * d - other) / 2;
+		if (sign(v) !== sign(d)) return 0;
+		if (sign(d) !== sign(other) && Math.abs(v) > 3 * Math.abs(d)) return 3 * d;
+		return v;
+	};
+	const [x0, y0, y1, m0, m1] = a <= 0.5 ? [0, 0, m, end(d0, d1), mid] : [0.5, m, t, mid, end(d1, d0)];
+	const s = (a - x0) / 0.5;
+	const s2 = s * s;
+	const s3 = s2 * s;
+	return (2 * s3 - 3 * s2 + 1) * y0 + (s3 - 2 * s2 + s) * 0.5 * m0 + (-2 * s3 + 3 * s2) * y1 + (s3 - s2) * 0.5 * m1;
+};
+
+/**
+ * Overlapping action on the first half of a keyed gesture (repair round 2, ZOO-P4). The elbow LEADS (its curve runs on
+ * 0.5 x (2a)^elbowLead, ahead of poseAmount), the shoulder LAGS (0.5 x (2a)^shoulderLag) and first gathers the elbow in by
+ * up to `tuck` deg (sin^2 bump, gone by `tuckUntil`), so the forearm lifts before the upper arm opens and the hand rises
+ * before it travels out. Both warps meet poseAmount at 0.5, so ARM_POINT_MID is still exactly the pose at 0.5. Why: in
+ * the proof staging (decision INT-P2, Badger 560 u away) an arm that opens while the forearm is still low sweeps the fist
+ * past Badger's forehead (6 u in a test render); with this timing the closest approach is ~31 u (27 px) and the elbow stays
+ * outside the overshirt (x >= 101), so the upper arm is visible throughout (no chicken wing).
+ */
+export const POINT_OVERLAP = {elbowLead: 0.65, shoulderLag: 2.5, tuck: 6, tuckUntil: 0.4} as const;
+const leadLag = (a: number, p: number) => (a >= 0.5 ? a : 0.5 * Math.pow(2 * a, p));
+
+/**
+ * Joint angles along the gesture. With an in-between key (ARM_POINT_MID for ARM_POINT) each joint follows a monotone
+ * cubic from rest through the key at 0.5 to the target (monotoneThrough): one smooth arc, no stop at the key and no
+ * overshoot, with POINT_OVERLAP timing on the first half. Without one: a slightly overlapping blend (shoulder leads,
+ * wrist last).
  */
 export const armAnglesFor = (target: ArmAngles, amount: number, mid: ArmAngles | null = target === ARM_POINT ? ARM_POINT_MID : null): ArmAngles => {
 	const a = clamp01(amount);
 	if (mid) {
-		const q = (m: number, t: number) => 2 * a * (1 - a) * (2 * m - t / 2) + a * a * t;
-		return {shoulder: q(mid.shoulder, target.shoulder), elbow: q(mid.elbow, target.elbow), wrist: q(mid.wrist, target.wrist)};
+		const o = POINT_OVERLAP;
+		const tuck = a < o.tuckUntil ? o.tuck * Math.pow(Math.sin((Math.PI * a) / o.tuckUntil), 2) : 0;
+		return {
+			shoulder: monotoneThrough(mid.shoulder, target.shoulder, leadLag(a, o.shoulderLag)) + tuck,
+			elbow: monotoneThrough(mid.elbow, target.elbow, leadLag(a, o.elbowLead)),
+			wrist: monotoneThrough(mid.wrist, target.wrist, a),
+		};
 	}
 	const s = smoothstep(a / 0.85);
 	const e = smoothstep((a - 0.05) / 0.85);
@@ -183,7 +234,9 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 		browR: {lift: 2.2, inner: 0.4, outer: 0, arch: 0.4},
 		eyes: {lidTop: 0.2, lidBottom: 2.4, scale: 1, iris: 1},
 		mouth: 'closed',
-		mod: {...MOD0, cornerL: 3.2, cornerR: 6.4, moustacheLiftR: 3.6},
+		// Repair round 2: both corners lift more (cornerL 3.2 -> 4.5, moustache 3.6 -> 4) so the smile reads at bust size
+		// without the panel's head turn (ZOO-E2).
+		mod: {...MOD0, cornerL: 4.5, cornerR: 6.4, moustacheLiftR: 4},
 		crease: 0,
 	},
 	// Worried (zoo_expr_worried.png): both inner ends rise ~6-7.5 u with a sharp upturn (curl), the screen-right brow's

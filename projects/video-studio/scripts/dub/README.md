@@ -13,8 +13,10 @@ Node 22; no dependencies; no translation API (an agent in the workflow or a pers
 An audio-track dub is fitted **sentence by sentence**: each sentence is synthesized at the Kokoro speed (0.85-1.15)
 that makes it as long as the English sentence, and starts where the English sentence starts, so Zoo talks while the
 dub talks and pauses where it pauses (docs/research/dubbing-and-regions-2026-11-24.md §1.11). A sentence still longer
-than its English sentence at 1.15 is reported even when the scene fits; a translation with a different number of
-sentences falls back to the scene-level fit, with a warning. The voice step refuses `--fit-to` for a storyboard with
+than its English sentence at 1.15 is placed where its excess shows least against Zoo's English mouth (into a short
+pause rather than past a phrase end) and is reported, with the % to cut, even when the scene fits; a translation with a
+different number of sentences falls back to the scene-level fit, with a warning. Write audio-track translations to
+length: measured on the engine demo, a natural Spanish translation overflows 6 of 7 scenes, a length-aware one fits. The voice step refuses `--fit-to` for a storyboard with
 offers or `fiction: true` unless the dub itself SAYS the disclosure and the fiction notice in its language (the
 master picture shows them in English only); otherwise publish a native upload.
 

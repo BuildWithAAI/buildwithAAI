@@ -77,8 +77,14 @@ export type TextFact = {
 	visibleFrac: number;
 	/** What clips the text, when visibleFrac < 1. */
 	clippedBy: Array<'frame' | 'overflow' | 'svg-viewport' | 'clip-path'>;
-	/** Text overflows its nearest block box (px beyond the padding box on each side), or null. */
-	overflow: {left: number; right: number; top: number; bottom: number; box: Rect} | null;
+	/**
+	 * Ink outside the padding box of the text's plate (the nearest ancestor that paints a background or a border,
+	 * not a full-frame fill), px per side, and how far it hangs past the plate's outer edge; null when it fits or
+	 * the text sits directly on the scene. This is the visible defect: letters on or off the edge of their card.
+	 */
+	overflow: {left: number; right: number; top: number; bottom: number; box: Rect; beyondPlate: number} | null;
+	/** Ink outside the nearest block box (layout only: a tight line-height leaves descenders outside it). */
+	blockOverflow?: {left: number; right: number; top: number; bottom: number; box: Rect} | null;
 	/** Truncated on purpose (text-overflow: ellipsis or -webkit-line-clamp) and actually cut. */
 	truncated: 'ellipsis' | 'line-clamp' | null;
 	/** True when an ancestor or the element is a sub/superscript (a smaller tspan or <sub>/<sup>). */
@@ -103,6 +109,11 @@ export type CharacterFact = {
 	box: Rect;
 	headBox: Rect | null;
 	hands: Rect[];
+	/**
+	 * Per hand (same order): the share of hit-test points on the hand that nothing painted covers, 0..1; -1 when
+	 * unknown (no point landed on it, or not measured). A hand behind a desk is near 0.
+	 */
+	handsVisible?: number[];
 	pin: Rect | null; // Zoo's pin group (front view only carries the marker)
 	spots: string[]; // Badger: data-spot ids in document order
 	/** Ancestor effects that change how the character looks. */

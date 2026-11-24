@@ -4,6 +4,7 @@
  * it. Readiness is decided here: any blocker means NOT READY, and approve refuses a packet that is not ready.
  */
 import type {ChannelConfig} from './channel.ts';
+import type {CorrectionCandidate} from './corrections.ts';
 import {beatsOf, type SbLite} from './kit-adapter.ts';
 import type {Sentence, Splitter} from './narration.ts';
 import type {PostInput} from './postapproval.ts';
@@ -36,7 +37,8 @@ export const readGate = (raw: unknown): GateJson | null => {
 	return {
 		verdict: raw.verdict,
 		counts: {errors: Number(counts.errors ?? 0), warnings: Number(counts.warnings ?? 0), claims: Number(counts.claims ?? 0), claimsOk: Number(counts.claimsOk ?? 0)},
-		rules: arr(raw.rules),
+		// numbers coerced: the report is a file on disk, and these end up in HTML
+		rules: arr<Record<string, unknown>>(raw.rules).map((r) => ({rule: String(r.rule ?? ''), title: String(r.title ?? ''), status: r.status === 'fail' ? 'fail' : r.status === 'warn' ? 'warn' : 'pass', errors: Number(r.errors) || 0, warnings: Number(r.warnings) || 0})),
 		findings: arr<GateFinding>(raw.findings).map((f) => ({...f, where: isRecord(f.where) ? f.where : {}})),
 		claims: arr(raw.claims),
 		developing: {incidents: Array.isArray(dev.incidents) ? (dev.incidents as string[]) : [], label: (dev.label as string) ?? null, labelVia: (dev.labelVia as string) ?? null, spokenIn: (dev.spokenIn as string) ?? null},
@@ -92,6 +94,10 @@ export type PacketModel = {
 	versions: PacketSummary['versions'];
 	reply: string;
 	splitter: string;
+	/** Every finding of the news gate's name rule (R4), errors and warnings: shown at the top of the packet. */
+	names: GateFinding[];
+	/** Corrections to pin on episodes already approved (corrections.ts). */
+	corrections: CorrectionCandidate[];
 };
 
 /** Each sentence of a scene with its claims, the gate's verdict per claim and the stored excerpts that back it. */
@@ -176,6 +182,7 @@ export type ModelInput = {
 	kit: {pinned: string | null; description: string | null; failing: Array<{id: string; detail: string}>; notApplicable: Array<{id: string; why: string}>} | null;
 	post: PostInput;
 	versions: PacketSummary['versions'];
+	corrections?: CorrectionCandidate[];
 };
 
 export const buildModel = (m: ModelInput): PacketModel => {
@@ -240,5 +247,7 @@ export const buildModel = (m: ModelInput): PacketModel => {
 		versions: m.versions,
 		reply: `APPROVE ${m.slug}`,
 		splitter: m.splitter,
+		names: (gate?.findings ?? []).filter((f) => f.rule === 'R4'),
+		corrections: m.corrections ?? [],
 	};
 };

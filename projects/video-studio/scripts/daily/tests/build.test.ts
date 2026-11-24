@@ -9,7 +9,7 @@ import {episodePaths} from '../lib/paths.ts';
 import {runPrepare} from '../lib/prepare.ts';
 import type {DailyBrief, PacketSummary} from '../lib/types.ts';
 import {sha256File} from '../lib/util.ts';
-import {fakeExec, goodStoryboard, type Handler, NOW, seedRadarDay, SLUG, tempRoot, touch, writeJsonFile} from './helpers.ts';
+import {fakeExec, goodStoryboard, type Handler, NOW, patternOf, seedRadarDay, SLUG, tempRoot, touch, writeJsonFile} from './helpers.ts';
 
 type Opts = {tools?: Partial<Record<'news' | 'voice' | 'show' | 'thumbs' | 'kit' | 'claims', boolean>>; gateVerdict?: 'pass' | 'fail'; storyboard?: (sb: ReturnType<typeof goodStoryboard>) => void; voiceSec?: number};
 
@@ -23,7 +23,7 @@ const setup = (o: Opts = {}) => {
 	const ep = episodePaths(root, SLUG);
 	const brief = JSON.parse(readFileSync(ep.brief, 'utf8')) as DailyBrief;
 	const detail = brief.analysisOpportunities.find((x) => x.id === 'tracker-30d')?.detail ?? 'missing';
-	const sb = goodStoryboard(detail);
+	const sb = goodStoryboard(detail, undefined, patternOf(brief));
 	o.storyboard?.(sb);
 	writeJsonFile(ep.storyboard, sb);
 	const tools = {news: true, voice: true, show: true, thumbs: true, kit: true, claims: false, ...o.tools};
@@ -89,8 +89,12 @@ describe('build', () => {
 			const gate = s.fx.calls.find((c) => c.tool === 'news-gate') as ExecRequest;
 			assert.ok(gate.args.includes('--general-gate') && gate.args[gate.args.indexOf('--general-gate') + 1] === 'off', 'the general gate runs once, as its own step');
 			const general = s.fx.calls.find((c) => c.tool === 'general-gate') as ExecRequest;
-			assert.equal(general.args[1], `content/zoora-security/${SLUG}`);
+			// the episode folder and the report folder are under --root (absolute), never this checkout
+			assert.equal(general.args[1], join(s.root, 'content', 'zoora-security', SLUG));
+			assert.equal(general.args[general.args.indexOf('--out-dir') + 1], join(s.root, 'out', 'claims'));
+			assert.ok(general.args.includes('--no-names'), 'no private names list here: --no-names, explicitly');
 			assert.equal(general.env?.NEWS_GATE_PARENT, '1');
+			assert.match(packetOf(s.root).warnings.join(' '), /--no-names/, 'the packet says the names list was not checked');
 			const render = s.fx.calls.find((c) => c.tool === 'render') as ExecRequest;
 			assert.deepEqual(render.args.slice(0, 4), ['remotion', 'render', 'src/show/index.ts', 'ShowShort']);
 			const props = JSON.parse(readFileSync(s.ep.renderProps, 'utf8'));

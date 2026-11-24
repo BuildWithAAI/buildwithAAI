@@ -95,7 +95,8 @@ def render_markdown(doc):
         out.append("")
     for rank, inc in enumerate(doc["top"], 1):
         status = inc["status"].upper()
-        out.append(f"### {rank}. {md(inc['title'])} ({status}) score {inc['score']['total']}")
+        # the status is the incident's, never the mechanism's: the title carries the mechanism's own hedge
+        out.append(f"### {rank}. {md(inc['title'])} · incident {status} · score {inc['score']['total']}")
         out.append("")
         out.append(f"- **Incident date (UTC):** {_date_cell(inc)} | **Type:** {md(TYPE_LABEL[inc['type']])} | "
                    f"**Chains:** {md(', '.join(inc['chains']) or 'not stated')} | "

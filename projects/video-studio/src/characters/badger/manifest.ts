@@ -242,7 +242,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			"In view 'left' the near legs are the anatomical LEFT legs (legFrontNear, legHindNear); the far legs are the RIGHT legs, drawn behind in coatShadow with no visible markings.",
 			"view 'right': the dog faces SCREEN RIGHT and its ANATOMICAL RIGHT side faces the camera (badger_coat_right.png). Near legs are the anatomical RIGHT legs; the far (LEFT) legs are drawn behind in coatShadow. The near ear is the PALE right ear.",
 			"view 'front': anatomical LEFT = SCREEN RIGHT (dark ear on screen right). view 'back': anatomical LEFT = SCREEN LEFT (dark ear on screen left). view 'threeQuarter': the dog's right flank faces the camera, the head turned to screen right (badger_turn_34.png).",
-			"Every view and pose body is its own trace with its own marking records. Two drawings reuse an UNMARKED, bilaterally symmetric outline mirrored about the root: the far skull outline of the screen-left 3/4 head, and the silhouette of the left-facing sit and lie bodies (decision BADGER-D23). Their markings are authored for their own side; no marking, ear colour or spot path is ever flipped.",
+			"Every view and pose body is its own trace with its own marking records. Two drawings reuse UNMARKED, bilaterally symmetric geometry mirrored about their origin: the skull outline, nose, mouths and lower-face shadows of the screen-left 3/4 head (decision BADGER-D36; its ears, eyes and markings are its own), and the silhouette of the left-facing sit and lie bodies (decision BADGER-D23, owner acceptance pending). Their markings are authored for their own side; no marking, ear colour or spot path is ever flipped.",
 			"Front head: anatomical left = screen right. The DARK-capped ear is the anatomical LEFT ear in every head view (screen right in 'front'; the near ear in left-facing views; the far ear in right-facing views).",
 			'The pale anatomical RIGHT ear carries the small spot H-EAR-R-SPOT.',
 			'No view is produced by horizontally flipping the character or any marking (see decisions D-08, D-09, D-23). The right profile head is traced on coat_right, not mirrored (D-09, revised).',
@@ -314,7 +314,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		rootMotion:
 			'walkPhase is in gait cycles. Move the root by WALK.stride * scale per cycle along the facing (badgerWalkDistance(cycles) in parts/gait.ts) and planted paws stay fixed on the ground.',
 		verification:
-			'Numerically checked with src/characters/badger/dev/walkCheck.ts (esbuild + node; 3 cycles x 400 = 1201 samples per facing, all four legs, root moving WALK.stride per cycle), measured on the DRAWN paw and pastern curves: the traced sole never goes below the ground line (max 0.000 units, both facings; the outline reaches LINE.width / 2 below it exactly as in the stand), a planted paw keeps a fixed contact (drift 0.000), paws are planted 60.3% of the time (duty 0.6), swing clearance up to 28.4 units, and a swinging paw pitches toes-down at most 28 deg.',
+			'Numerically checked with src/characters/badger/dev/walkCheck.ts (esbuild + node; 3 cycles x 400 = 1201 samples per facing, all four legs, root moving WALK.stride per cycle), measured on the DRAWN paw and pastern curves: the traced sole never goes below the ground line (max 0.000 units, both facings; the outline reaches LINE.width / 2 below it exactly as in the stand), a planted paw keeps a fixed contact (drift 0.000), paws are planted 60.3% of the time (duty 0.6), swing clearance up to 28.4 units, and a swinging paw pitches toes-down at most 28 deg. Re-run after the round-2 stride change (cycle 375 units): both facings pass with the same numbers.',
 	},
 	markings: {
 		leftBodySpotCount: LEFT_SPOT_COUNT,
@@ -388,9 +388,8 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			id: 'BADGER-D09-right-profile',
 			sheetShowed:
 				'badger_coat_right.png: right profile with the pale right ear (a rose flap with a small dark spot) as the near ear; badger_turn_side.png shows the ear\'s pink inner at the fold.',
-			chosen:
-				'REVISED in round-1 repair: profileRightScreen is traced directly on coat_right (skull, stop, nose, eye, lip line, ear outline, fold line, pink inner band at the fold from turn_side, spot H-EAR-R-SPOT). v1.0.0 built it by mirroring the left profile; that is removed. Look-up heads are the profiles pitched 40 deg and joined to the rig necks (D27).',
-			why: 'Opposite views carry their own drawing and markings; the reviewers measured the old right ear as an exact mirror of the left one.',
+			chosen: 'REVISED in round-1 repair and corrected in round 2: profileRightScreen\'s skull outline, stop, nose, muzzle underside and the pale ear (outline, fold line, pink band at the fold from turn_side, spot H-EAR-R-SPOT) are traced on coat_right; its eye, brow and the four expression mouth paths are the left profile\'s, mirrored about the head and re-fitted to coat_right (these are unmarked, symmetric features; nothing marked is mirrored). v1.0.0 mirrored the whole left profile, ear included; that is removed. Look-up heads are the profiles pitched 40 deg and joined to the rig necks (D27, D39).',
+			why: 'Opposite views carry their own drawing and markings; the reviewers measured the old right ear as an exact mirror of the left one. The round-2 review found the round-1 text overstated what was retraced; this wording is what gen_heads.py does.',
 		},
 		{
 			id: 'BADGER-D10-pale-ear-tone',
@@ -436,9 +435,8 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			id: 'BADGER-D16-withers-patch-right-facing',
 			sheetShowed:
 				'Six of the seven right-facing drawings (turnaround side, 3/4, walking, looking-up, sitting, lying) draw the large patch on the visible right side; coat_right shows only its top-line edge; the top map shows the front of the patch straddling the spine.',
-			chosen:
-				'REVISED in round-1 repair (2026-11-24): right-facing level views (right stand, right walk, right look-up) show the right lobe implied by the top map, a wedge at the front of the withers about 78 x 24 units (RIGHT_SPOTS L-WITHERS), deepest just behind the collar and tapering to the top line; the elevated 3/4 and the sit and lie bodies show the dorsal patch traced from their panels (about 50 x 36, 24 x 75 and 48 x 28 units). Authored per view, never mirrored from the left record. OWNER CONFIRMATION REQUESTED: the alternatives are coat_right\'s thin edge (v1.0.0) or the turnaround side\'s full patch.',
-			why: 'The top coat map, a binding coat map, puts the front of the patch across the spine, so it must show from the right; projecting its right lobe onto a rounded back gives about 15-27 units of depth at the front. This keeps the signature marking visible in every right-facing shot without inventing a second patch, and stays closer to coat_right than the pose panels do.',
+			chosen: 'REVISED in round 2 (2026-11-24): right-facing level views (right stand, right walk, right look-up) show the right lobe of L-WITHERS as badger_turn_side.png draws it: a rounded irregular lens about 82 x 38 units hanging from the top line, its front about 22 sheet px behind the collar, traced on turn_side and mapped into coat_right space by the collar\'s back edge on the top line (dev/trace/gen_right.py). The round-1 pointed wedge (a compromise no drawing shows) is removed. The 3/4, sit and lie bodies keep the dorsal patch traced from their own panels. Same id, side left, authored per view, never mirrored. OWNER CONFIRMATION STILL REQUESTED: the alternative is coat_right\'s thin top-line edge (v1.0.0).',
+			why: 'The three labelled coat maps disagree here (coat_right: a thickened top line; coat_top: the front half of the patch straddles the spine and covers 0.84 of the right half-width, which a level side camera sees as a deep lobe). The turnaround, which controls identity and anatomy, breaks the tie, and the walking and looking-up panels agree with it: seven of the eight right-facing drawings show the lens. The reviewers rejected both coat_right\'s edge (round 1) and the wedge (round 2).',
 		},
 		{
 			id: 'BADGER-D17-turnaround-scale',
@@ -490,7 +488,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 				'The sitting, lying, walking and looking-up panels all face screen right. Episodes stage Badger to the right of Zoo facing left, so a sit or lie beat must be able to face left.',
 			chosen:
 				'REVISED in round-1 repair: sit and lie exist in both facings. view right (or front/back/3/4) uses the traced right-facing bodies with right-side markings. view left uses the same UNMARKED silhouette mirrored about the root (outline, collar and tag are bilaterally symmetric, the same approach as the 3/4-left skull) carrying the LEFT coat map\'s own markings authored for it (L-WITHERS as the full patch, L-01..L-09, L-NECK, R-08 on the far forearm edge, M-CHEST) and head threeQuarterLeftScreen (dark ear near). walk and lookUp are built on both side rigs as before.',
-			why: 'v1.0.0 silently rendered the right-facing body for view left, turning Badger away from Zoo and swapping his visible markings mid-scene. Only symmetric anatomy is reused; no marking is flipped.',
+			why: 'v1.0.0 silently rendered the right-facing body for view left, turning Badger away from Zoo and swapping his visible markings mid-scene. Only symmetric anatomy is reused; no marking is flipped. Round-2 note: the sheet has no left-facing sit or lie panel to trace, so a dedicated left trace would be an invented drawing; the mirrored unmarked silhouette stays and still NEEDS THE OWNER\'S EXPLICIT ACCEPTANCE under the no-flip rule (the reviewers\' static scan found no scale(-1) anywhere and no asymmetric element leaking).',
 		},
 		{
 			id: 'BADGER-D24-pose-scale-and-markings',
@@ -504,8 +502,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			id: 'BADGER-D25-walk',
 			sheetShowed:
 				'badger_pose_walking.png: one walking frame, far front paw landing well ahead of the chest, near hind leg extended back at toe-off, near fore planted under the chest, head carried up and forward, tail swept back.',
-			chosen:
-				'REVISED in round-1 repair: 4-beat lateral-sequence gait (duty 0.6, 358.3 units per cycle, stance sweep 215 units), lateral pairs close together so walkPhase 0 is the sheet frame (far fore landing, far hind just planted, near hind at toe-off, near fore in late stance). Paws are solved on their DRAWN outline: the end-of-stance roll is heel-up about the toe point that is lowest at full roll, a ground clamp keeps the traced sole on the ground line in stance and above it in swing, the swinging fore leg raises its scapula (the rig has no elbow joint), and the paw pitches toes-down at most 28 deg. Neck +2 deg, tail +34 deg while walking. Verified by dev/walkCheck.ts (see walk.verification).',
+			chosen: 'REVISED in round 2: 4-beat lateral-sequence gait (duty 0.6, 375 units per cycle, stance sweep 225 units: fore lands 128 ahead and lifts 97 behind its shoulder, hind lands 96 ahead and lifts 129 behind its hip; shoulder glide capped at 26), lateral pairs close together so walkPhase 0 is the sheet frame (far fore landing, far hind just planted, near hind at toe-off, near fore in late stance). The round-1 stride (358.3, sweep 215) left the phase-0 paw spread about 10% short of the panel; the far fore of the right rig cannot reach further than 128 without the paw sliding, so the extra spread comes mostly from the hind. Paws are solved on their DRAWN outline: heel-up roll about the lowest toe point, a ground clamp keeps the traced sole on the ground line in stance and above it in swing, the swinging fore leg raises its scapula, the paw pitches toes-down at most 28 deg. Neck +2 deg, tail +34 deg while walking. Verified by dev/walkCheck.ts (see walk.verification).',
 			why: 'v1.0.0 rolled the paw heel-down and pivoted on control points, pushing paws up to 22 units into the floor; its stride was short and the head low against the sheet frame.',
 		},
 		{
@@ -528,8 +525,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			id: 'BADGER-INT-B1-three-quarter-heads',
 			sheetShowed:
 				'badger_turn_34.png: the far contour runs OUTSIDE the far eye, the muzzle projects past the far cheek with the nose at its tip, the mouth is a long gently curved line under the nose, the far dark ear is solid, the chin is closed.',
-			chosen:
-				'Revised in round-1 repair (gen_heads.py fix_three_quarter): one far contour from the far temple, pulled in at the far cheek below the far eye, round the far side of the muzzle and the nose and on round the chin (the chin is now outlined); the near cheek stops at the jaw (it curled into the lip and read as a grin); the neutral / worried lip line ends under the nose; the far ear shows its outer side only (solid dark cap); the nose sits 3 units further toward the far side; irises 15% larger; the front head\'s lower-lip detail is dropped. The screen-left turn reuses the far outline of the unmarked symmetric skull as before; no marking is mirrored.',
+			chosen: 'Superseded in round 2 by BADGER-D36 (the lower face, far contour and far ear of both 3/4 heads are re-authored from badger_turn_34.png). Round-1 text: one far contour from the far temple, pulled in at the far cheek, round the muzzle and the chin; near cheek stops at the jaw; far ear solid; irises 15% larger; lower-lip detail dropped.',
 			why: 'Turnaround views control identity; the reviewers found the open chin and grin-like mouth on screen for 100 frames of the proof.',
 		},
 		{
@@ -554,7 +550,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 				'badger_expr_happy.png: a wide smile inside the face with raised corners, a notch at the philtrum and a lower-lip arc. badger_expr_shocked.png: a small open mouth (about nose width, 0.45 of the nose height) under a kept philtrum, jaw intact. badger_expr_worried.png: ear flaps lower and splayed. Eye lines are level on all four panels (measured tilt 0.0-0.6 deg).',
 			chosen:
 				'Happy and shocked retraced from their panels (front and 3/4); shocked in profile and look-up heads is a closed, outlined open-mouth wedge inside the head silhouette. Worried / earsBack swings each front ear about 20 deg down and out without narrowing it. Judge lowers the lids at most to 0.86 open and folds the ears back slightly (eyes stay open between blinks); a closed eye is a nearly flat lid line. No default head tilt for happy or worried: the panels\' eye lines are level, so tilt stays a composition choice.',
-			why: 'Expression drawings show how the same character performs; the reviewers found happy indistinguishable from neutral and shocked twice the panel\'s size with the jaw open.',
+			why: 'Expression drawings show how the same character performs; the reviewers found happy indistinguishable from neutral and shocked twice the panel\'s size with the jaw open. Round-2 note on head angle: the happy, worried and shocked panels also turn the head about 15 deg to screen right; the front bust stays frontal and the turn is a staging choice made with the replacement heads (threeQuarterRightScreen carries all four expressions) plus headTilt, so one bust never mixes two head views.',
 		},
 		{
 			id: 'BADGER-D31-mouth-open',
@@ -595,6 +591,46 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			chosen:
 				'Traces repaired, nothing redrawn: front R-08 / L-09 contours straight past the spots (the spots stay inside the leg clip); the front hind strip line ends in the leg contour (no U-hook); sit / lie back-of-neck lines extended up under the ear with the neck fill closing the nape; lie throat joined to the chest line; sit chest line starts under the collar; collar front ends seated on the neck-front line (sit trimmed 4.5 px, lie extended 6.5 px, panel px); lie belly underline joined to the elbow line. The left-facing sit / lie reuse the same unmarked silhouette, so they carry the same repairs.',
 			why: 'The reviewers found V-notches with spots bulging outside the front legs, a stepped hind strip, orphan neck strokes and open contours in the pose bodies.',
+		},
+		{
+			id: 'BADGER-D35-closed-outlines',
+			sheetShowed:
+				'badger_pose_walking.png and badger_turn_side.png outline every edge a moving part uncovers: the tail\'s underside down to the rump, the buttock behind a raised tail, the thigh\'s top and front when the leg swings, and soft concave curves on the inside of a bent hock or wrist.',
+			chosen:
+				'Round 2 (gen_left.py, gen_right.py, erode.py, parts/Leg.tsx, parts/SideBody.tsx): the tail is one closed, fully stroked shape whose root stays inside the torso; the torso\'s rump runs on as a stroked buttock and flank fold where the thigh hides it at rest; the near thigh\'s top and back edges are stroked in an \'underlay\' pass drawn under the torso, so only what a swing pushes outside the body shows; a bent wrist, hock or pastern gets a fillet tangent to both edges where they cross (radius 9 units); every leg fill carries a fill-coloured halo (0.3 x LINE.width) with the under-strokes widened to match, closing the anti-aliasing seams that showed as hairline ticks at the paws; short straight tracing nubs at segment cuts are no longer eroded as edges (they left ears outside the outline).',
+			why: 'The round-2 review found unoutlined tail roots and rump / thigh wedges in every walk frame and the happy side views, a sharp kink at the far hock and hairline ticks at the front paws.',
+		},
+		{
+			id: 'BADGER-D36-three-quarter-heads',
+			sheetShowed:
+				'badger_turn_34.png (eyes aligned, 50 crop px = 46.4 units): the nose sits about 7 units beyond the far eye and 32 below the eye line, the far silhouette runs from under the far ear straight to the nose, a bridge line runs from below the far eye to the nose, the mouth rises to the far lip corner under the nose, the chin line is outlined about 15 units higher than the front head\'s, the far upper lip is shaded left of the philtrum, the far cheek spot is hidden by the muzzle, and the far dark ear is one solid shape.',
+			chosen:
+				'Round 2 (gen_heads.py rebuild_three_quarter): the screen-right 3/4 head\'s skull outline, nose, bridge line, philtrum, four mouths, jaw and lip shadows and near cheek spot are re-authored on those measurements; the skull outline is one stroke over the top, round a rounded far-top corner behind the far ear, round the muzzle behind the nose and along the chin line; the far ear is one silhouette with one outline (the front-view inner and fold fills and strokes are gone). The screen-left head uses the same unmarked outline, nose and mouth geometry with x -> -x (as INT-B1 did); its ears, eyes and markings keep their own construction (pale far ear with its spot H-EAR-R-SPOT; near cheek spot H-CHEEK-L; far cheek spot hidden).',
+			why: 'Turnaround views control identity. The reviewers found the nose under the far eye and 9 units low, a short muzzle, a white crescent in the far dark ear and a black needle and white nick at the far pale ear\'s root.',
+		},
+		{
+			id: 'BADGER-D37-nape-for-turned-heads',
+			sheetShowed:
+				'No panel shows a head turned back over the shoulder; on the left-facing body the 3/4-right head\'s far contour ran straight into the neck\'s back line beside the nose, so head and neck read as fused.',
+			chosen:
+				'Round 2 (Badger.tsx LEFT_NAPE_34R / RIGHT_NAPE_34L, SideBody HeadMount.nape): when a side body carries the 3/4 head turned toward its back, the crest of the neck runs from behind the far ear past the muzzle (about 8-12 units clear) into the original back line above the collar, over a coat fill that hides the old line. Other head mounts are unchanged, so the proof\'s swaps keep their cranium positions.',
+			why: 'The reviewers measured this as the proof\'s main Badger beat (about 3 s, f97-189).',
+		},
+		{
+			id: 'BADGER-D38-front-head',
+			sheetShowed:
+				'badger_expr_neutral.png: the skull outline is continuous where the ears attach; the pale ear\'s pink band reaches its fold and bottom; the mouth is closed (gull-wing upper lip with the lower lip joined at the corners, about 33 sheet px either side of the philtrum); two nostril curls; no chin outline. badger_expr_worried.png: the flaps splay out and down (pale tip about 10 units out and 10 down, dark tip about 14 down at the worried amount).',
+			chosen:
+				'Round 2 (gen_heads.py, parts/heads/Head.tsx): rounded skull corners under the ears and ONE skull outline from jaw to jaw, so folding an ear never opens it; the pale ear is one closed flap outline plus the band\'s free edge (no interior tick, no shelf stub, no white sliver); the dark ear\'s pale inner runs under the cap\'s hollow edge; the neutral mouth is the sheet\'s closed mouth; two nostril curls in line colour (no highlight tone); earsBack combines a smaller swing (pale -11.5, dark +20 deg at full) with a lengthwise stretch along the root-to-tip axis (pale 1.36, dark 1.21 at full; ear props stretch / axis).',
+			why: 'Expression drawings show how the same character performs; the reviewers found an outline gap at the folded pale ear on the worried bust and the judge hold, a dangling jaw stub, a floating lower lip and worried ears that drooped instead of splaying.',
+		},
+		{
+			id: 'BADGER-D39-look-up-heads',
+			sheetShowed:
+				'badger_pose_looking_up.png: a long lip line inside the muzzle from just under the nose back over about 60% of the muzzle, parallel to the jaw\'s lower contour; a short diagonal cheek mark below the ear; one smooth throat line from the jaw angle to the collar.',
+			chosen:
+				'Round 2 (gen_heads.py build_up): each look-up head draws the lip line 4.5 units inside the pitched jaw contour from 7% to 62% of its length (happy curls its end up, worried down; shocked keeps its open wedge), no commissure hook, a cheek mark placed from the eye as on the panel, and a throat that leaves the jaw along its chord and lands tangent to the neck\'s throat line (no S-curve). The throat still bows slightly forward where it meets the neck: the side rigs\' neck front line sits forward of the raised jaw, so a fully concave throat needs a dedicated look-up neck pose.',
+			why: 'The reviewers found no lip line, a cheek dash that read as a smile on the throat, a commissure hook and an S-shaped throat with a bump.',
 		},
 	],
 };
