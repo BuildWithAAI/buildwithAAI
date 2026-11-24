@@ -1,0 +1,26 @@
+[project]
+name = "aai"
+version = "0.1.0"
+description = "AAI unified research + paper-trading pipeline (read-only data, paper only)"
+requires-python = ">=3.11"
+dependencies = ["flask>=3.0", "requests>=2.31", "jsonschema>=4"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+aai = "aai.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["aai*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["network: hits public internet APIs (deselect with -m 'not network')"]
+
+[tool.setuptools.package-data]
+aai = ["schemas/*.sql", "schemas/*.json"]
