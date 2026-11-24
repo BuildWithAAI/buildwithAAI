@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aai/agent_report/v1-proposal-2040",
+  "title": "AAI agent report (base trading fields + optional longterm extension)",
+  "description": "PROPOSAL from 2040 Future Agent. Base fields mirror what AAI Terminal asked for; `longterm` is an optional block for long-horizon agents (2040 Future, Stocks). AAI Terminal owns the final schema in /workspace/aai.",
+  "type": "object",
+  "required": ["report_version", "agent", "generated_at", "status_line", "no_trades_placed"],
+  "properties": {
+    "report_version": {"const": "1.0"},
+    "agent": {"type": "string", "enum": ["aai_terminal","stocks","forex","perps","billy_style","solana_meme_risk","security","2040_future"]},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "kind": {"type": "string", "enum": ["daily","weekly","monthly_review","alert","adhoc"]},
+    "capital_bucket": {"type": "string", "enum": ["trading","longterm","none"]},
+    "regime": {"type": "string"},
+    "status_line": {"type": "string", "maxLength": 280},
+    "ideas": {"type": "array", "items": {"$ref": "#/$defs/idea"}},
+    "open_paper_positions": {"type": "array", "items": {"type": "object"}},
+    "flags": {"type": "array", "items": {"$ref": "#/$defs/flag"}},
+    "no_trades_placed": {"const": true, "description": "Must be true. Agents never trade; a report claiming otherwise is rejected."},
+    "longterm": {"$ref": "#/$defs/longterm"},
+    "sources": {"type": "array", "items": {"type": "string", "format": "uri"}}
+  },
+  "$defs": {
+    "idea": {
+      "type": "object",
+      "required": ["instrument","side","entry","stop","risk_pct","reason"],
+      "properties": {
+        "instrument": {"type": "string"}, "side": {"enum": ["long","short"]},
+        "entry": {"type": ["number","string"]}, "stop": {"type": "number"}, "target": {"type": "number"},
+        "rr": {"type": "number"}, "risk_pct": {"type": "number", "minimum": 0, "maximum": 3},
+        "confidence": {"enum": ["low","medium","high"]}, "reason": {"type": "string"}
+      }
+    },
+    "flag": {
+      "type": "object", "required": ["severity","text"],
+      "properties": {"severity": {"enum": ["info","warn","block"]}, "text": {"type": "string"}, "code": {"type": "string"}}
+    },
+    "longterm": {
+      "type": "object",
+      "required": ["holdings_source","weights","thesis_status","accumulation_plan","caps_check"],
+      "properties": {
+        "accounts_covered": {"type": "array", "items": {"type": "string"}},
+        "holdings_source": {"enum": ["none","manual","plaid","exchange_readonly_api","onchain_public","mixed"], "description": "'none' means actual weights are unknown and must be null."},
+        "holdings_as_of": {"type": ["string","null"], "format": "date-time"},
+        "holdings": {"type": "array", "items": {
+          "type": "object", "required": ["account_id","symbol","quantity","source"],
+          "properties": {"account_id": {"type":"string"}, "symbol": {"type":"string"}, "quantity": {"type":"number"},
+                         "value_usd": {"type":["number","null"]}, "cost_basis_usd": {"type":["number","null"]}, "source": {"type":"string"}}}},
+        "weights": {"type": "array", "items": {
+          "type": "object", "required": ["key","scope","target_pct","actual_pct","breach"],
+          "properties": {"key": {"type":"string"}, "scope": {"enum": ["sleeve","symbol","speculative_total"]},
+                         "target_pct": {"type":"number"}, "actual_pct": {"type":["number","null"]},
+                         "band": {"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2},
+                         "breach": {"enum": ["none","below","above","cap_stop_add","cap_trim","unknown"]}}}},
+        "thesis_status": {"type": "array", "items": {
+          "type": "object", "required": ["symbol","status"],
+          "properties": {"symbol": {"type":"string"}, "status": {"enum": ["intact","watch","weakened","broken"]},
+                         "change": {"enum": ["none","upgraded","downgraded"]}, "next_catalyst": {"type":"string"}, "next_catalyst_date": {"type":"string"}}}},
+        "material_developments": {"type": "array", "items": {
+          "type": "object", "required": ["symbol","date","summary","source_url"],
+          "properties": {"symbol": {"type":"string"}, "date": {"type":"string"}, "summary": {"type":"string"},
+                         "impact": {"enum": ["positive","neutral","negative","unknown"]}, "source_url": {"type":"string","format":"uri"}}}},
+        "crypto_core": {"type": "object", "properties": {
+          "cycle_phase": {"enum": ["bear_accumulation","neutral","strength_recover_initials"]},
+          "action": {"enum": ["accumulate","hold","recover_initials_partial"]},
+          "coins": {"type": "array", "items": {"type": "object", "required": ["symbol"],
+            "properties": {"symbol": {"type":"string"}, "month_change_pct": {"type":["number","null"]}, "price_usd": {"type":["number","null"]},
+                           "custody": {"type":"array","items":{"type":"string"}}, "floor_respected": {"type":["boolean","null"]}}}}}},
+        "accumulation_plan": {"type": "object", "required": ["account_order","split_pct"], "properties": {
+          "account_order": {"type":"array","items":{"type":"string"}},
+          "monthly_amount_usd": {"type":["number","null"]},
+          "split_pct": {"type":"object","additionalProperties":{"type":"number"}},
+          "priority_buys": {"type":"array","items":{"type":"string"}},
+          "changes_vs_last": {"type":"string"}}},
+        "caps_check": {"type": "object", "required": ["speculative_total_pct","per_name_breaches"], "properties": {
+          "speculative_total_pct": {"type":["number","null"]}, "speculative_cap_pct": {"type":"number"},
+          "per_name_breaches": {"type":"array","items":{"type":"string"}}}},
+        "draft_tickets": {"type": "array", "items": {"type": "object",
+          "required": ["ticket_id","account_id","symbol","side","status"],
+          "properties": {"ticket_id":{"type":"string"},"account_id":{"type":"string"},"symbol":{"type":"string"},
+                         "side":{"enum":["buy","sell","transfer_to_cold"]},"amount_usd":{"type":["number","null"]},
+                         "status":{"const":"draft"},"rationale":{"type":"string"}}}}
+      }
+    }
+  }
+}
