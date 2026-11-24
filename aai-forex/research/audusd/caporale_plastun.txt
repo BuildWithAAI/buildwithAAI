@@ -1,0 +1,621 @@
+                         The current issue and full text archive of this journal is available on Emerald Insight at:
+                         https://www.emerald.com/insight/0144-3585.htm
+
+
+
+
+ Daily abnormal price changes and                                                                                           Abnormal
+                                                                                                                        price changes
+  trading strategies in the FOREX                                                                                      in the FOREX
+                                  Guglielmo Maria Caporale
+                         Brunel University London, London, UK, and
+                                                                                                                                            211
+                                             Alex Plastun
+                             Sumy State University, Sumy, Ukraine                                                      Received 6 November 2019
+                                                                                                                        Revised 4 February 2020
+                                                                                                                         Accepted 22 March 2020
+Abstract
+Purpose – This paper explores abnormal price changes in the FOREX by using both daily and intraday data on
+the EURUSD, USDJPY, USDCAD, AUDUSD and EURJPY exchange rates over the period 01.01.2008–31.12.2018.
+Design/methodology/approach – It applies a dynamic trigger approach to detect abnormal price changes
+and then various statistical methods, including cumulative abnormal returns analysis, to test the following
+hypotheses: the intraday behaviour of hourly returns on overreaction days is different from that on normal
+days (H1), there are detectable patterns in intraday price dynamics on days with abnormal price changes (H2)
+and on the following days (H3).
+Findings – The results suggest that there are statistically significant differences between intraday dynamics
+on days with abnormal price changes and normal days respectively; also, prices tend to change in the direction
+of the abnormal change during that day, but move in the opposite direction on the following day. Finally, there
+exist trading strategies that generate abnormal profits by exploiting the detected anomalies, which can be seen
+as evidence of market inefficiency.
+Originality/value – New evidence on abnormal price changes and related trading strategies in the FOREX.
+Keywords FOREX, Anomalies, Overreactions, Abnormal returns, Patterns, Abnormal price changes
+Paper type Research paper
+
+
+1. Introduction
+Abnormal price changes in financial markets are of interest to both academics and
+practitioners. According to the Efficient Market Hypothesis (EMH) (Fama, 1965; Samuelson,
+1965) prices should follow a random walk and there should be no detectable pattern; they
+should fully reflect all available information and be unpredictable. The main implication of
+the EMH is that traders should not be able to “beat” the market and make abnormal profits.
+   However, since the 1980 a number of papers have been published reporting against the
+EMH, specifically showing that there exist market anomalies that can be exploited through
+appropriate trading strategies (Lehmann, 1990; Jegadeesh and Titman, 1993; Pritamani and
+Singhal, 2001; Caporale et al., 2018 and many others). The existing literature has tried to gain
+a deeper understanding of such anomalies by analysing their drivers (Mynhardt and Plastun,
+2013), the existence of market overreactions (De Bondt and Thaler, 1985), possible patterns in
+price behaviour resulting from them (Bremer et al., 1997; Ferri and Min, 1996; Caporale et al.,
+2018) and their effects on market participants (Savor, 2012; Feldman et al., 2012). The latter
+seek to exploit them by developing profitable trading strategies (Lehmann, 1990; Jegadeesh
+and Titman, 1993; Pritamani and Singhal, 2001; Caporale et al., 2018).
+
+JEL Classification — C63, G12, G17
+    © Guglielmo Maria Caporale and Alex Plastun. Published by Emerald Publishing Limited. This
+article is published under the Creative Commons Attribution (CC BY 4.0) licence. Anyone may
+reproduce, distribute, translate and create derivative works of this article (for both commercial and non-
+commercial purposes), subject to full attribution to the original publication and authors. The full terms of              Journal of Economic Studies
+                                                                                                                                    Vol. 48 No. 1, 2021
+this licence may be seen at http://creativecommons.org/licences/by/4.0/legalcode                                                           pp. 211-222
+    Alex Plastun gratefully acknowledges financial support from the Ministry of Education and Science                     Emerald Publishing Limited
+                                                                                                                                             0144-3585
+of Ukraine (0117U003936).                                                                                                DOI 10.1108/JES-11-2019-0503
+JES        The aim of the present paper is to examine whether daily abnormal price changes create
+48,1   market anomalies and are exploitable by means of suitable trading strategies in the case of
+       the Foreign Exchange market (FOREX), focusing in particular on the EURUSD, USDJPY,
+       USDCAD, AUDUSD and EURJPY exchange rates over the period 01.01.2008–31.12.2018 and
+       using both daily and intraday data. The FOREX is normally thought to be one of the most
+       efficient financial markets and therefore it is particularly interesting to examine whether
+       there is any evidence against its efficiency. Moreover, it is open round the clock. Finally, most
+212    of the previous literature focuses on overreactions in the stock market whilst there are hardly
+       any studies about their presence in the FOREX.
+           Our analysis provides a deeper understanding of and new insights into market behaviour
+       in the presence of daily abnormal price changes, which are defined by using a dynamic trigger
+       approach (Wong, 1997) and are classified as positive and negative. Then various hypotheses of
+       interest are tested to establish whether or not the intraday behaviour of hourly returns on days
+       with abnormal price changes differs from that on normal days, and whether or not there are
+       detectable patterns in intraday price dynamics on days with abnormal price changes and on
+       the following days. For this purpose a variety of statistical methods are used, including
+       cumulative abnormal returns. Finally, a trading simulation approach is used to establish
+       whether or not any detected anomalies can be exploited to generate profits by designing
+       appropriate trading strategies. This type of analysis recognises that trading is an integral part
+       of the process through which exchange rates are determined and evolve and provides crucial
+       information for understanding asset price dynamics and the degree of market efficiency.
+           The results indicate strong momentum effect on the days with abnormal price changes
+       and contrarian effect on the days after them. By specifying timing parameters for these
+       effects it is possible to design profitable trading strategies based on the detected anomalies.
+       Their presence in a market normally considered one of the most efficient is a very interesting
+       finding. Future research could examine the same issue in less efficient markets such as stock
+       markets, cryptocurrency and commodity markets.
+           The remainder of the paper is organised as follows. Section 2 contains a brief review of the
+       literature on price overreactions and abnormal price changes in financial markets. Section 3
+       describes the methodology. Section 4 discusses the empirical results. Section 5 provides some
+       concluding remarks.
+
+
+       2. Literature review
+       Abnormal price changes in financial markets were examined by De Bondt and Thaler (1985),
+       who showed that the best (worst) performing portfolios in the NYSE over a three-year period
+       tended to under(over)-perform in the following three years. Subsequently, numerous papers
+       have analysed overreactions in different markets (stock market, FOREX, commodities etc.) and
+       different countries (both developed and emerging), at different frequencies (daily, weekly,
+       monthly etc.) and for different assets (exchange rates, stocks, oil, gold and many others). This led
+       to developing the so-called overreaction hypothesis according to which if investors overreact in a
+       given period, they will move in the opposite direction in the following period. A lot of empirical
+       evidence supports this view – see, for instance, Brown et al. (1988), Atkins and Dyl (1990) and
+       Ferri and Min (1996) for the US stock market, and Fung (1999) for the Hong Kong stock market.
+           More specifically, Brown et al. (1988) analysed NYSE data for the period 1946–1983 and
+       found evidence of contrarian effect after large price movements. Atkins and Dyl (1990)
+       examined daily price changes and detected contrarian effect after significant price changes,
+       especially in the case of falling prices. Ferri and Min (1996) confirmed the presence of
+       contrarian effect using S&P 500 data for the period 1962–1991. Fung (1999) used data from 33
+       stocks in the Hang Seng Index and found that “loser” portfolios on average outperform the
+       “winner” portfolios by 9.9% 1 year after the formation periods.
+    Gunaratne and Yonesawa (1997) analysed return reversals after overreactions in the Tokyo             Abnormal
+stock exchange and reported that the extreme losers outperform the extreme winners by 11%            price changes
+per annum; Lobe and Rieks (2011) found evidence of overreaction in the Frankfurt stock
+exchange; Maher and Anokhi (2011) detected abnormal volatility patterns in the Indian stock
+                                                                                                    in the FOREX
+market; Lerskullawat and Teerapan (2018) reported evidence of stock price overreaction in the
+Thai stock market; Cutler et al. (1991) found overreactions in the Gold market; and Larson and
+Madura (2001) in the case of the FOREX. Jegadeesh and Titman (1995) used the bid-ask bounce
+to explain price reversals. Not all studies provide evidence of price reversals after                        213
+overreactions. For instance, Cox and Peterson (1994) did not find a negative correlation
+between abnormal returns on the day prices fall and the following three days.
+    Overreactions have been investigated much less in the case of the FOREX market.
+Andersen et al. (2003) found that the market reacts to news in an asymmetric fashion: bad news
+have a greater impact than good news. Kocenda and Moravcova (2018) provided evidence that
+exchange rates react not only after but also before the news release, but these reactions differ
+according to the origin, type and quality of the news. Wan and Kao (2009) explored the
+existence and price impact of contrarian behaviour in the foreign exchange markets and
+detected contrarian trading in the case of the British pound and the Japanese yen. Parikakis
+and Syriopoulos (2008) investigated patterns following excess 1-day fluctuations for various
+currencies and found that a contrarian strategy is profitable in all those markets.
+    Possible reasons for abnormal price changes include emotions and the herd effects (Griffin
+and Tversky, 1992; Madura and Richie, 2004), the existence of “noise” traders (Aiyagari and
+Gertler, 1999; Hong and Stein, 1999), overconfidence and other behavioural patterns (Barberis
+et al., 1998; Daniel et al., 1998), the use of technical and fundamental analysis by investors in
+making decisions (Duran and Caginalp, 2007), the degree of liquidity in the market (Jegadeesh and
+Titman, 1993), macroeconomic news announcements (Kocenda and Moravcova, 2018) and others.
+    Lehmann (1990), Jegadeesh and Titman (1993), Pritamani and Singhal (2001) and Caporale
+et al. (2018) showed that it is possible to generate abnormal returns adopting trading
+strategies based on abnormal price changes. More specifically, Jegadeesh and Titman (1993)
+tested the following trading strategy at the monthly data frequency: open positions in the
+direction, opposite to the previous movement. Profitability of such strategy is 2% per month.
+A similar strategy based on weekly data was analysed by Lehmann (1990), who also found
+2% returns in a week.
+    Daily data were used by Caporale et al. (2018), who applied a trading robot approach to
+various financial markets including the United States showed that the reversal effect is
+exploitable in the stock market, whilst the momentum effect produces profits in the case of the
+FOREX and commodity markets.
+    By contrast, Cox and Peterson (1994) concluded that it is doubtful that large one-day price
+falls provide the opportunity for a short-term profitable trading strategy based on stock
+market overreaction given the relatively small size of price reversals and the presence of
+trading costs. Abnormal price changes and overreactions can also be used as a crisis
+identifier and a price predictor (Sandoval and Franca, 2012; Plastun et al., 2018).
+    Overall, there is plenty of evidence against the EMH, especially its weak form (Fama,
+1970). It is therefore particularly interesting to investigate its empirical relevance in the
+FOREX market, which is often considered to be one of the most efficient. None of the existing
+studies investigates intraday market behaviour during days with abnormal price changes
+and the following ones, and the related issue of whether detected anomalies can be exploited
+to generate profits in the specific case of the FOREX. Our study fills this gap and provides
+evidence on whether or not the intraday behaviour of hourly returns is different on days with
+abnormal price changes compared to normal days, and on whether there exist any detectable
+patterns (momentum or contrarian effects) in intraday price dynamics on days with abnormal
+price changes and on those following them.
+JES    3. Methodology
+48,1   Our sample includes daily and hourly data from the FOREX for the following exchange rates:
+       EURUSD, USDJPY, USDCAD, AUDUSD and EURJPY; the sample period is 01.01.2008-
+       31.12.2018, and the data source is MetaQuotes Software Corp. The selected currencies are the
+       most traded in the world. The sample period has been chosen to include a sufficient number of
+       abnormal price changes to be able to construct a dataset suitable for performing t-tests as well
+       as conducting trading simulations whilst avoiding data snooping.
+214       To detect days with abnormal price changes we use a dynamic trigger approach (Wong,
+       1997; Caporale et al., 2018) and define abnormal price changes on the basis of the number of
+       standard deviations to be added to the average return.
+          In order to avoid distortions caused by price gaps, returns (Ri) are computed as follows:
+                                                         
+                                                Closei
+                                         Ri ¼           1 3100%;                                   (1)
+                                                Openi
+
+       where Ri– returns on the ith day in %;
+          Openi – open price on the ith day;
+          Closei – close price on the ith day.
+       Having calculated returns as in (1), a positive abnormal price change is defined by the
+       following inequality:
+                                              Ri > ðRn þ k3δn Þ                                       (2)
+
+       and a negative abnormal price change is defined as:
+                                              Ri < ðRn  k3δn Þ                                       (3)
+
+       where k is the number of standard deviations used to identify the abnormal price changes
+       (specifically, k 5 2); Rn is the average size of daily returns for period n and δn is the standard
+       deviation of daily returns for period n.
+          Then the following hypotheses are tested:
+          H1. The intraday behaviour of hourly returns is different on days with abnormal price
+              changes from that on normal days.
+          H2. There are detectable patterns in intraday price dynamics on days with abnormal
+              price changes.
+          H3. There are detectable patterns in intraday price dynamics on the days following days
+              with abnormal price changes.
+       To test these hypotheses we use the following methods:
+          (1) Visual inspection and average analysis;
+          (2) Student’s t-tests;
+          (3) A cumulative abnormal returns approach;
+          (4) A trading simulation approach.
+
+       The reasons for choosing these methods are the following. Average analysis provides
+       preliminary but not conclusive evidence on whether there are differences between returns
+       on days with abnormal price changes and those on normal days. To establish whether or
+not the detected differences are statistically significant Student’s t-tests are carried out for           Abnormal
+Hypothesis 1, the null (H0) being that both sets of data (hourly returns on the days with              price changes
+abnormal price changes and in the full sample respectively) belong to the same population,
+a rejection of the null suggesting the presence of a statistical anomaly in the price behaviour
+                                                                                                      in the FOREX
+on the days with abnormal price changes. The test is carried out at the 95% confidence
+level, and the degrees of freedom are N – 1 (N being equal to N1 þ N2). Given the size of our
+dataset, it is legitimate to argue that normality holds, and therefore these are valid
+statistical tests.                                                                                             215
+    The cumulative abnormal returns approach is based on MacKinlay (1997) and is standard
+for event studies. Abnormal returns are defined as follows:
+                                       ARt ¼ Rt  EðRt Þ                                        (4)
+
+where Rt is the return at time t and EðRt Þ is corresponding average return computed over the
+whole sample period as follows:
+                                                 X   T
+                                                  1
+                                     EðRt Þ ¼            Ri                                (5)
+                                                  T i¼1
+
+where T is the sample size.
+   The cumulative abnormal return denoted as CARi is simply the sum of the abnormal
+returns:
+                                                 X
+                                                 24
+                                        CARi ¼          ARi                                     (6)
+                                                  i¼1
+
+
+Extreme values of CAR correspond to the biggest anomalies in price behaviour. A change of
+direction represents evidence of the appearance (disappearance) of an anomaly.
+    To establish whether the detected anomalies can be exploited to generate abnormal profits
+a trading simulation approach is used which replicates the actions of a representative trader
+according to a given algorithm determining when a buy/sell position should be opened and
+then closed. It should be mentioned that the approach used here does not incorporate
+transaction costs (spread, fees to the broker or bank, swaps, etc.) and is only a proxy for actual
+trading. Nevertheless, it is informative about real trading given the fact that nowadays
+transaction costs are less and less important. Thanks to the development of Internet and high-
+frequency trading spreads tend to be small (at least in liquid markets such as FOREX),
+typically ranging between 0.01 and 0.02%. Banking and broker fees can affect profitability in
+the case of a small number of trades, but when there are dozens of trades (just like in our case)
+they become insignificant (this is the so-called scale effect in trading). Therefore our analysis
+can shed light on the profitability of the trading strategy based on detected anomaly despite
+the fact that it overlooks transaction costs.
+    The percentage result of the individual deal is computed as follows:
+                                               100%3Pclose
+                                 % result ¼                  1                                 (7)
+                                                   Popen
+
+where Popen – opening price for the trade
+   (1) Pclose – closing price for the trade
+
+   Equation 9 holds in the case of long (buy) positions. For short (sell) ones Popen and Pclose are
+reversed.
+JES       The sum of the results from each trade is the total financial result of trading. A strategy
+48,1   producing positive total profits implies that there exists an exploitable market anomaly.
+          Another important indicator of the degree of success of the trading strategy is the
+       percentage of successful trades:
+                                                100%3number of successful trades
+                    % successful trades ¼                                                          (8)
+                                                      overall number of trades
+216
+       If the trading strategy generates 50% or more profitable trades it can be considered
+       profitable.
+
+
+       4. Empirical results
+       We start with the EURUSD series. The results are presented in Appendix A. Figures A1 and
+       A2 show that returns on overreaction days differ from those on normal days; the t-test
+       statistics confirm that these differences are statistically significant. This holds in the case of
+       positive abnormal price changes for almost all the European and US trading sessions and half
+       of the Asian session (the t-statistic is higher than the relevant critical value (Table A2)). As for
+       negative abnormal price changes, the US session appears to be the most volatile (Table A3).
+           The cumulative abnormal returns analysis (Table A4 and Figure A3) indicates a stable
+       pattern during the entire day of the abnormal price changes, since returns increase till 11.00
+       p.m. We also identify the average timing of the abnormal price changes (when the current
+       daily return can be seen as an abnormal price change according to our definition): it is 7.00
+       p.m. in the case of positive abnormal price changes and 5.00 p.m. in the case of negative ones.
+           Concerning price behaviour on the day after the abnormal price change, average hourly
+       returns after a positive abnormal price changes are much lower than on normal days during
+       the first hours of the following day (Figure A4), and these differences are statistically
+       significant (Table A5); the negative abnormal price changes results also provide evidence of
+       contrarian movement (Figure A5 and Table A6).
+           The cumulative abnormal returns analysis suggests contrarian movements at specific
+       times, namely from the start of the day till the beginning of the European session (Table A7).
+       This is true for the both positive and negative abnormal price changes (see Figure A6).
+           The same type of analysis is carried out for USDJPY (Appendixes C and D), USDCAD
+       (Appendixes E and F), AUDUSD (Appendices G and H) and EURJPY (Appendixes I and J).
+       These results are presented in a supplementary file.
+           The complete set of results is summarised in Table 1 (for positive abnormal price changes)
+       and Table 2 (for negative abnormal price changes). Differences in returns are treated as
+       significant on the basis of the results from the average analysis. This confirms the presence of
+       a price anomaly if the mean return on days with abnormal price changes is higher (lower)
+       than that on normal days. Differences in returns are considered as statistically significant on
+       the basis of the results of the Student’s t-test. A rejection of the null hypothesis (data on
+       overreaction days and normal days respectively belong to the same population) implies that
+       the price anomaly is statistically significant. Patterns in cumulative abnormal returns
+       dynamics are detected using the CAR measure, an increase of which suggests the existence of
+       an anomaly. As for the timing of the abnormal price changes, this depends on when
+       cumulative returns during the day exceed the abnormal price change threshold.
+           As can be seen, the results for the other exchange rates are generally very similar to those
+       for EURUSD.
+           On the basis of the results presented in Tables 1 and 2 the following strategies are
+       developed:
+           Strategy 1: when it becomes clear that the current day is a day with abnormal price change
+       (see the timing of abnormal price change parameter in Tables 1 and 2) a position in the
+Parameter/
+                                                                                                                       Abnormal
+Exchange rate       EURUSD             USDJPY           USDCAD              AUDUSD            EURJPY               price changes
+                                                                                                                  in the FOREX
+Day of the abnormal price changes
+Are there          Yes                 Yes              Yes                 Yes               Yes
+significant
+differences in
+returns (day with                                                                                                                217
+abnormal price
+changes vs usual
+day)?
+Are these          Yes. Observed       Yes.             Yes. Observed       Yes.              Yes. Observed
+differences        during almost       Observed         during almost       Observed          during almost
+statistically      all the             during           all the             during almost     all the European
+significant?       European and        almost the       European and        the whole day     and US trading
+                   US trading          whole day        US trading                            sessions and
+                   sessions and                         sessions and                          half of the Asian
+                   half of the                          half of the                           session
+                   Asian session                        Asian session
+Any patterns in    Yes. CAR            Yes. CAR         Yes. CAR            Yes. CAR          Yes. CAR
+cumulative         increase till the   increase till    increase till the   increase till     increase till the
+abnormal           end of the day      the end of the   end of the day      the end of the    end of the day
+returns                                day                                  day
+dynamics?
+Timing of          19:00               16:00            17:00               17:00             16:00
+abnormal price
+change
+Day after the abnormal price changes
+Are there          Yes                 Yes              No                  Yes               Yes
+contrarian price
+movement on the
+day after the day
+with abnormal
+price changes?
+Are these          Yes. At 00:00       Yes. At 01:00    No                  Yes. At 0:00,     Yes. At 1:00,
+differences        and 2:00            and 4:00                             1:00 and 3:00     2:00
+statistically
+significant?
+Timing             Since the start     Since the        Not detected        Since the start   CAR reaches
+parameters of      of the day till     start of the                         of the day till   maximum at the
+contrarian         the start of the    day till the                         the start of      start of the
+movements          European            start of                             the European      European                        Table 1.
+                   session (9:00)      European                             session (9:00)    session (7:00),     Overall results for the
+                                       session (7:00)                                         but stay there            case of positive
+                                                                                              for the whole             abnormal price
+                                                                                              day                               changes
+
+
+
+direction of abnormal price change should be opened. This position should then be closed at
+the end of the day.
+    Strategy 2: at the beginning of the day after the day with abnormal price change a position
+in the opposite direction to the abnormal price change should be opened. This position should
+then be closed according to the timing displayed in Tables 1 and 2 (see the timing parameters
+for the contrarian movements).
+    To establish whether or not the results obtained are statistically different from the random
+trading ones t-tests are carried out. They compare the means from two samples to see whether
+JES                       Parameter/
+48,1                      Exchange rate        EURUSD               USDJPY          USDCAD            AUDUSD            EURJPY
+
+                          Day of the overreaction
+                          Are there            Yes                  Yes             Yes               Yes               Yes
+                          significant
+                          differences in
+218                       returns (day with
+                          abnormal price
+                          changes vs usual
+                          day)?
+                          Do these             Yes. Observed        Yes.            Yes. Observed     Yes.              Yes. Observed
+                          differences          during almost all    Observed        during almost     Observed          during almost all
+                          statistically        the European         during          all the           during almost     the European
+                          significant?         and US trading       almost the      European and      all the Asian     and US trading
+                                               sessions and a       whole day       US trading        trading           sessions and a
+                                               half of the Asian                    sessions          session           half of the Asian
+                                               session                                                                  session
+                          Any patterns in      Yes. CAR             Yes. CAR        Yes. CAR          Yes. CAR          Yes. CAR
+                          cumulative           increase till the    increase till   increase till     increase till     increase till the
+                          abnormal returns end of the day           the end of      the end of the    the end of the    end of the day
+                          dynamics?                                 the day         day               day
+                          Timing of            17:00                17:00           19:00             16:00             16:00
+                          abnormal price
+                          change
+                          Day after the overreaction
+                          Are there            Yes                  Yes             Yes               Yes               Yes
+                          contrarian price
+                          movement on the
+                          day after the day
+                          with abnormal
+                          price changes?
+                          Do these             Yes. At 00:00        Yes. At         Yes. At 00:00     No                No
+                          differences                               00:00, 1:00,    and 6:00
+                          statistically                             3:00 and
+                          significant?                              14:00
+Table 2.                  Timing               Since the start of   CAR             Since the start   Since the start   CAR increase till
+Overall results for the   parameters of        the day till the     increase till   of the day till   of the day till   the end of the
+case of negative          contrarian           start of the         the end of      the start of      the start of      day
+abnormal price            movements            European             the day         European          European
+changes                                        session (8:00)                       session (9:00)    session (8:00)
+
+
+
+
+                          or not they come from the same population. The first sample consists of the trading results
+                          from the trading strategy, and the second one of random trading results. The null hypothesis
+                          (H0) is that the mean is the same in both samples, and the alternative (H1) that it is not. The
+                          computed values of the t-test are compared with the critical ones at the 5% significance level.
+                          Failure to reject H0 implies that there are no advantages from exploiting the trading strategy
+                          being considered since the trading results do not differ from the random ones, whilst a
+                          rejection suggests that the adopted strategy can generate abnormal profits since the trading
+                          results are not random and therefore it is possible to “beat the market”. As an example, the
+                          t-test results for EURJPY in the case of Strategy 1 are shown in Table 3.
+                              The trading simulation results for the two strategies are presented in Table 4 (for positive
+                          abnormal price changes) and Table 5 (for negative abnormal price changes).
+   As can be seen, the detected anomalies in most of cases can be exploited to generate                 Abnormal
+abnormal profits from trading and “beat the market”. These results are relevant to both             price changes
+academics interested in market efficiency and practitioners aiming to develop profitable
+strategies. Daily abnormal price changes can generate very specific patterns in price
+                                                                                                   in the FOREX
+
+
+Parameter                                                                                Value                    219
+Number of the trades                                                                    59                     Table 3.
+Total profit                                                                            45.50%     t-Test for evaluating
+Average profit per trade                                                                 0.77%        the success of the
+Standard deviation                                                                       1.02%         trading strategy:
+t-test                                                                                   5.81         EURJPY, positive
+t critical value (0.95%)                                                                 1.78            abnormal price
+Null hypothesis                                                                         Rejected    changes, Strategy 1
+
+
+
+
+              Number of     Number of      Number of              Profit      t-test
+               trades.       successful    successful   Profit.   % per    calculated   t-test
+Instrument      Units      trades. Units   trades. %      %       year       value      status
+
+Strategy 1
+EURUSD            67            47            70        31.59      3.16       5.87      Passed
+USDJPY            58            54            93        35.07      3.51       7.62      Passed
+USDCAD            76            49            64        42.71      4.27       9.17      Passed
+AUDUSD            55            48            87        47.83      4.78       5.63      Passed
+EURJPY            59            53            90        45.50      4.55       5.81      Passed
+Strategy 2
+EURUSD            67            44            66         7.74      0.77      2.45       Passed                  Table 4.
+USDJPY            58            38            66        13.70      1.37      2.60       Passed       Trading simulation
+USDCAD             –             –             –         –         –         –             –       results for the case of
+AUDUSD            55            37            67        22.95      2.29      3.03       Passed        positive abnormal
+EURJPY            59            37            63        21.14      2.11      2.39       Passed              price changes
+
+
+
+
+              Number of     Number of      Number of              Profit      t-test
+               trades.       successful    successful   Profit.   % per    calculated   t-test
+Instrument      Units      trades. Units   trades. %      %       year       value      status
+
+Strategy 1
+EURUSD            79            68            86        30.83      3.08       8.98      Passed
+USDJPY            63            56            89        42.91      4.29       7.53      Passed
+USDCAD            61            51            84        26.84      2.68       5.17      Passed
+AUDUSD            66            60            91        73.83      7.38       8.54      Passed
+EURJPY            77            64            83        54.76      5.48       7.38      Passed
+Strategy 2
+EURUSD            79            40            50.6       5.1       0.5        1.23      Failed                  Table 5.
+USDJPY            62            38            61.3      20.2       2.0        2.49      Passed       Trading simulation
+USDCAD            61            37            60.7       5.6       0.6        1.25      Failed     results for the case of
+AUDUSD            66            36            54.5      16.9       1.7        2.12      Passed        negative abnormal
+EURJPY            62            36            58.1      18.0       1.8        1.37      Failed              price changes
+JES    behaviour. On the day when they occur there is a strong momentum effect, whilst on the
+48,1   following day there is a contrarian effect.
+
+       5. Conclusions
+       This paper examines daily abnormal price changes in the FOREX using daily and intraday
+       data on the EURUSD, USDJPY, USDCAD, AUDUSD and EURJPY exchange rates over the
+220    period 01.01.2008-31.12.2018. Positive and negative daily abnormal price changes are
+       detected by means of a dynamic trigger approach. Intraday price behaviour during days with
+       abnormal price changes and the following one is analysed applying various statistical
+       methods such as cumulative abnormal returns analysis; market efficiency is then
+       investigated applying a trading simulation approach. The intraday dimension of our
+       analysis and the microstructure aspect of our trading analysis are both original contributions
+       to this area of the literature.
+           To sum up, there are (in most cases statistically significant) differences between intraday
+       dynamics on normal and days with abnormal price changes respectively. In particular, there
+       is a strong momentum effect on days with abnormal price changes, i.e. prices tend to change
+       only in the direction of the abnormal price changes during the whole day; in addition, usually
+       the presence of a abnormal price movements becomes clear at the start of the US trading
+       session. The overreaction hypothesis is supported by the evidence produced by our analysis:
+       during the Asian trading session a strong contrarian pattern is present (i.e. on the day after
+       the overreaction prices tend to go in the opposite direction). Contrarian movement is limited in
+       time, since usually it lasts only till the start of the European session. Finally, there exist
+       profitable trading strategies based on these anomalies, which represents evidence against
+       market efficiency in the case of the analysed exchange rates.
+           The existence of detectable price patterns and of profitable trading strategies exploiting
+       them is of interest not only to academics examining market efficiency but also to practitioners
+       such as individual traders, institutional investors, hedge funds etc.: in an era of high-
+       frequency trading and trading robots it is increasingly hard to spot arbitrage opportunities,
+       and our analysis suggests that there might be some in the FOREX market. Future research
+       could carry out a similar type of investigation in the case of other markets (cryptocurrency,
+       commodity and stock markets), especially for the emerging economies.
+
+       References
+       Aiyagari, S.R. and Gertler, M. (1999), “Overreaction of asset prices in general equilibrium”, Review of
+            Economic Dynamics, Vol. 2 No. 1, pp. 3-35.
+       Andersen, T.G., Bollerslev, T., Diebold, F.X. and Vega, C. (2003), “Micro effects of macro
+            announcements: real-time price discovery in foreign exchange”, The American Economic
+            Review, Vol. 93 No. 1, pp. 38-62.
+       Atkins, A.B. and Dyl, E.A. (1990), “Price reversals, bid-ask spreads, and market efficiency”, Journal of
+             Financial and Quantitative Analysis, Vol. 25, pp. 535-547.
+       Barberis, N., Shleifer, A. and Vishny, R.W. (1998), “A model of investor sentiment”, Journal of
+             Financial Economics, Vol. 49, pp. 307-343.
+       Bremer, M., Hiraki, T. and Sweeney, R.J. (1997), “Predictable patterns after large stock price changes
+            on the Tokyo Stock Exchange”, Journal of Financial and Quantitative Analysis, Vol. 33,
+            pp. 345-365.
+       Brown, K.C., Harlow, W.V. and Tinic, S.M. (1988), “Risk aversion, uncertain information, and market
+            efficiency”, Journal of Financial Economics, Vol. 22, pp. 355-385.
+       Caporale, G.M., Gil-Alana, L. and Plastun, A. (2018), “Short-term price overreactions: identification,
+            testing, exploitation”, Computational Economics, Vol. 51 No. 4, pp. 913-940.
+Cox, D. and Peterson, D. (1994), “Stock returns following large one-day declines: evidence on short-             Abnormal
+      term reversals and longer-term performance”, The Journal of Finance, Vol. 49 No. 1, pp. 255-267.
+                                                                                                             price changes
+Cutler, D., Poterba, J. and Summers, L. (1991), “Speculative dynamics”, The Review of Economic
+       Studies, Vol. 58, pp. 529-546.
+                                                                                                            in the FOREX
+Daniel, K., Hirshleifer, D. and Subrahmanyam, A. (1998), “Investor psychology and security market
+      under- and overreactions”, The Journal of Finance, Vol. 53, pp. 1839-1886.
+De Bondt, W. and Thaler, R. (1985), “Does the stock market overreact?”, The Journal of Finance,                      221
+     Vol. 40, pp. 793-808.
+Duran, A. and Caginalp, G. (2007), “Overreaction diamonds: precursors and aftershocks for significant
+     price changes”, Quantitative Finance, Vol. 7 No. 3, pp. 321-342.
+Fama, E.F. (1965), “The behavior of stock-market prices”, Journal of Business, Vol. 38 No. 1, pp. 34-105.
+Fama, E. (1970), “Efficient capital markets: a review of theory and empirical work”, The Journal of
+     Finance, Vol. 25, pp. 383-417.
+Feldman, R., Livnat, J. and Zhang, Y. (2012), “Analysts’ earnings forecast, recommendation and target
+     price revisions”, Journal of Portfolio Management, Vol. 38 No. 3, pp. 120-132.
+Ferri, M. and Min, C. (1996), “Evidence that the stock market overreacts and adjusts”, Journal of
+       Portfolio Management, Vol. 22, pp. 71-76.
+Fung, M. (1999), “Overreaction in the Hong Kong stock market”, Global Finance Journal, Vol. 10 No. 2,
+      pp. 223-230.
+Griffin, D. and Tversky, A. (1992), “The weighing of evidence and the determinants of confidence”,
+       Cognitive Psychology, Vol. 24, pp. 411-435.
+Gunaratne, P. and Yonesawa, Y. (1997), “Return reversals in the Tokyo stock exchange: a test of stock
+     market overreaction”, Japan and the World Economy, Vol. 9, pp. 363-384.
+Hong, H. and Stein, J.C. (1999), “A unified theory of underreaction, momentum trading and
+     overreaction in asset markets”, The Journal of Finance, Vol. 54, pp. 2143-2184.
+Jegadeesh, N. and Titman, S. (1993), “Returns to buying winners and selling losers: implications for
+      stock market efficiency”, The Journal of Finance, Vol. 48, pp. 65-91.
+Jegadeesh, N. and Titman, S. (1995), “Short-horizon return reversals and the bid-ask spread”, Journal
+      of Financial Intermediation, Vol. 4, pp. 116-132.
+Kocenda, E. and Moravcova, M. (2018), “Intraday effect of news on emerging European FOREX
+     markets: intraday effect of news on emerging European FOREX markets”, Economic Systems,
+     Vol. 42 No. 4, pp. 597-615.
+Larson, S. and Madura, J. (2001), “Overreaction and underreaction in the foreign exchange market”,
+      Global Finance Journal, Vol. 12 No. 2, pp. 153-177.
+Lehmann, B. (1990), “Fads, martingales, and market efficiency”, Quarterly Journal of Economics,
+     Vol. 105, pp. 1-28.
+Lerskullawat, P. and Teerapan, U. (2018), “Does overreaction still exist in Thailand?”, Kasetsart
+      Journal of Social Sciences. doi: 10.1016/j.kjss.2018.02.001.
+Lobe, S. and Rieks, J. (2011), “Short-term market overreaction on the Frankfurt stock exchange”, The
+      Quarterly Review of Economics and Finance, Vol. 51 No. 2, pp. 113-123.
+MacKinlay, A. (1997), “Event studies in economics and finance”, Journal of Economic Literature,
+     Vol. 35, pp. 13-39.
+Madura, J. and Richie, N. (2004), “Overreaction of exchange traded funds during the bubble of 1998-
+     2002”, The Journal of Behavioral Finance, Vol. 5 No. 2, pp. 91-104.
+Maher, D. and Anokhi, P. (2011), “Short-term under/overreaction, anticipation or uncertainty
+     avoidance? Evidence from India”, Journal of International Financial Markets, Institutions and
+     Money, Vol. 21 No. 4, pp. 560-584.
+JES    Mynhardt, R.H. and Plastun, A. (2013), “The Overreaction Hypothesis: the case of Ukrainian stock
+           market”, Corporate Ownership and Control, Vol. 11, pp. 406-423.
+48,1
+       Parikakis, G. and Syriopoulos, T. (2008), “Contrarian strategy and overreaction in foreign exchange
+             markets”, Research in International Business and Finance, Vol. 22, pp. 319-324.
+       Plastun, A., Makarenko, I., Khomutenko, L., Belinska, Y. and Domashenko, M. (2018), “Exploring
+             frequency of price overreactions in the Ukrainian stock market”, Investment Management and
+             Financial Innovations, Vol. 15 No. 3, pp. 157-168.
+222
+       Pritamani, M. and Singal, V., (2001), “Return predictability following large price changes and
+             information releases”, Journal of Banking and Finance, Vol. 25, pp. 631-656.
+       Samuelson, P. (1965), “Proof that properly anticipated prices fluctuate randomly”, Industrial
+            Management Review, Vol. 6 No. 2, pp. 41-49.
+       Sandoval, L. and Franca, I. (2012), “Correlation of financial markets in times of crisis”, Physica A:
+            Statistical Mechanics and Its Applications, Vol. 391 Nos 1-2, pp. 187-208.
+       Savor, P. (2012), “Stock returns after major price shocks: the impact of information”, Journal of
+             Financial Economics, Vol. 106 No. 3, pp. 635-659.
+       Wan, J.-Y. and Kao, C.-W. (2009), “Evidence on the contrarian trading in foreign exchange markets”,
+            Economic Modelling, Vol. 26, pp. 1420-1431.
+       Wong, M. (1997), “Abnormal stock returns following large one-day advances and declines: evidence
+            from Asian-Pacific markets”, Financial Engineering and the Japanese Markets, Vol. 4,
+            pp. 171-177.
+
+
+       Appendix
+       The supplementary material is available online for this article.
+
+
+
+       Corresponding author
+       Guglielmo Maria Caporale can be contacted at: Guglielmo-Maria.Caporale@brunel.ac.uk
+
+
+
+
+       For instructions on how to order reprints of this article, please visit our website:
+       www.emeraldgrouppublishing.com/licensing/reprints.htm
+       Or contact us for further details: permissions@emeraldinsight.com
+
