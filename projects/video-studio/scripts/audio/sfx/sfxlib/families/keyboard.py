@@ -55,19 +55,29 @@ RIG = {"source": rig.SOURCE, "period": rig.RIG_PERIOD, "startRigFrameMod36": 1,
        "note": "Start this file on a typing-pose frame f with f % 36 == 1 and every key lands on a frame where one of Zoo's fingers comes down; started anywhere else, every key still lands exactly on a frame boundary."}
 
 
+def _texture_modes(kind: str, pos: int, n: int = 10):
+    """A cloud of short, dense high modes (the keycap shell and stem): the "clack" detail that
+    keeps a few main modes from sounding like a tuned block. Fixed per key position."""
+    g = rng("key-texture", kind, pos)
+    f = np.exp(g.uniform(np.log(900.0), np.log(7000.0), n))
+    env = 1.0 / (1.0 + (f / 2600.0) ** 2)  # rolls off above 2.6 kHz
+    return [(float(fi), float(g.uniform(0.0015, 0.006)), float(0.28 * e * g.uniform(0.5, 1.0))) for fi, e in zip(f, env)]
+
+
 def _modes_for(kind: str, pos: int, strike_seed: str):
     base = BASE[kind]
     cap = prims.jitter_modes(base["cap"], f"key-{kind}-{pos}", freq_pct=6.0, t60_pct=15.0, amp_db=2.0)  # fixed per key
+    cap = cap + _texture_modes(kind, pos)
     case = prims.jitter_modes(base["case"], f"case-{kind}-{pos}", freq_pct=3.0, t60_pct=10.0, amp_db=1.0)
     cap = prims.jitter_modes(cap, strike_seed, freq_pct=0.8, t60_pct=6.0, amp_db=1.0)  # this strike
     return cap, case
 
 
-def _impact(cap, case, vel: float, seed: str, click_db: float = -14.0, scale: float = 1.0) -> np.ndarray:
+def _impact(cap, case, vel: float, seed: str, click_db: float = -10.0, scale: float = 1.0) -> np.ndarray:
     hard = 0.00026 - 0.0001 * vel  # 0.16 ms (hard) .. 0.21 ms (soft)
     dur = 0.09
     body = prims.strike([(f * scale, t, a) for f, t, a in cap], dur, hard) + prims.strike([(f * scale, t, a) for f, t, a in case], dur, hard * 1.6)
-    click = prims.bandpass(prims.noise_burst(0.0012, 0.0006, seed + "-click"), 2000, 7000)
+    click = prims.bandpass(prims.noise_burst(0.0015, 0.0005, seed + "-click"), 1500, 9000)
     n = body.size
     out = body / max(np.max(np.abs(body)), 1e-12)
     c = np.zeros(n)
@@ -92,13 +102,13 @@ def keystroke(kind: str, pos: int, vel: float, dwell_frames: int, seed: str) -> 
     out[k0 : k0 + press.size] += press[: n - k0]
     if base["stab"]:
         dt, amp = base["stab"]
-        far = _impact(cap, case, vel * 0.85, seed + "-far", click_db=-18.0, scale=1.03)
+        far = _impact(cap, case, vel * 0.85, seed + "-far", click_db=-14.0, scale=1.03)
         k = prims.n_samples(CONTACT_LEAD_S + dt)
         out[k : k + far.size] += amp * far[: n - k]
     # release: upstroke into the top housing, lighter and higher
     rel_cap = [(f * 1.22, t * 0.7, a) for f, t, a in cap]
     rel_case = [(f * 1.1, t * 0.6, a * 0.5) for f, t, a in case]
-    rel = _impact(rel_cap, rel_case, 0.6, seed + "-rel", click_db=-16.0)
+    rel = _impact(rel_cap, rel_case, 0.6, seed + "-rel", click_db=-12.0)
     kr = prims.n_samples(CONTACT_LEAD_S + dwell)
     g = prims.db(-11.0 if kind == "alpha" else -12.0)
     out[kr : kr + rel.size] += g * rel[: n - kr]
@@ -187,13 +197,23 @@ def loop(sid: str, seed: str, desc: str, frames: int = 4 * rig.RIG_PERIOD) -> So
         words += 4
         if words > 80:
             break
+    # rotate the loop so its seam falls in the middle of the widest gap between keys (a key on the
+    # seam would be a sharp transient there, which reads as a click to any seam check); the rig
+    # phase moves with it, so alignment is kept
+    fr = sorted(ev["frame"] for ev in plan)
+    gaps = [((fr[(i + 1) % len(fr)] - fr[i]) % frames or frames, fr[i]) for i in range(len(fr))]
+    width, after = max(gaps)
+    shift = (after + width // 2) % frames  # this frame becomes frame 0
+    plan = [dict(ev, frame=(ev["frame"] - shift) % frames) for ev in plan]
+    plan.sort(key=lambda ev: ev["frame"])
+    rig_info = dict(RIG, startRigFrameMod36=(RIG["startRigFrameMod36"] + shift) % rig.RIG_PERIOD)
     length = frames / FPS
     st = _with_room(render_events(plan, length, seed, wrap=True), wrap_n=prims.n_samples(length))
     events = [{"t": ev["frame"] / FPS, "kind": "press", "key": ev["key"], "vel": ev["vel"]} for ev in plan]
     _ = g
     return Sound(id=sid, group="typing_loop", category="keyboard", role="foley", audio=st, description=desc,
                  tags=["keyboard", "mechanical", "typing", "loop", "rig-synced"], events=events, sources=[SYNTH_SOURCE], loop=True,
-                 sync="start", sync_s=0.0, hp_hz=90.0, lp_hz=12000.0, rig=RIG, extra={"keys": len(plan), "loopFrames": frames})
+                 sync="start", sync_s=0.0, hp_hz=90.0, lp_hz=12000.0, rig=rig_info, extra={"keys": len(plan), "loopFrames": frames, "seamGapFrames": width})
 
 
 def render() -> list:
@@ -212,7 +232,7 @@ def render() -> list:
         out.append(one_key(f"key_enter_{i:02d}", "key_enter", "enter", 200 + i, vel, dwell, f"enter{i}",
                            f"Enter: a firm stabilised press; release on frame {dwell}.", ["enter", "return"]))
     bursts = [(2, False, 4.0, "Two quick words (about 1 s)."), (3, False, 4.2, "Three words."), (4, True, 4.2, "Four words, then Enter."),
-              (6, False, 4.4, "Six words with a thinking pause."), (8, True, 4.2, "Eight words and Enter (about 4 s)."), (3, False, 3.6, "Three words, typed fast.")]
+              (6, False, 4.4, "Six words with a thinking pause."), (6, True, 4.0, "Six words and Enter."), (3, False, 3.6, "Three words, typed fast.")]
     for i, (w, enter, iki, desc) in enumerate(bursts, 1):
         out.append(burst(f"typing_burst_{i:02d}", "typing_burst", w, f"burst{i}", enter, desc + " Every key on a frame (rig-synced: see rig).", iki))
     for i in range(1, 4):
