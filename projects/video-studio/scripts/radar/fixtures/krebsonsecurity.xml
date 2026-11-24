@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Krebs on Security</title>
+  <link>https://krebsonsecurity.com/</link>
+  <description>Trimmed fixture (2026-11-24): selected items, excerpts of at most 280 characters, names redacted, no author names.</description>
+  <item>
+    <title><![CDATA[CTO of ‘RansomwareHelp’ Indicted for Wire Fraud]]></title>
+    <link>https://krebsonsecurity.com/2026/11/cto-of-ransomwarehelp-indicted-for-wire-fraud/</link>
+    <guid isPermaLink="false">https://krebsonsecurity.com/?p=74696</guid>
+    <pubDate>Sat, 21 Nov 2026 00:36:39 +0000</pubDate>
+    <description><![CDATA[The chief technology officer and co-founder of ransomwarehelp.com, a six year old Florida business that claimed to use "advanced cryptographic tools" to restore data locked by ransomware, has been charged with wire fraud after an FBI sting operation found the company was simply…]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Attackers Used Optimizely to A/B Test Malware on Top Websites]]></title>
+    <link>https://krebsonsecurity.com/2026/11/attackers-used-optimizely-to-a-b-test-malware-on-top-websites/</link>
+    <guid isPermaLink="false">https://krebsonsecurity.com/?p=74672</guid>
+    <pubDate>Wed, 18 Nov 2026 02:52:04 +0000</pubDate>
+    <description><![CDATA[At least 178 top web destinations unwittingly served a variety of malware exploits against visitors over the past 24 hours thanks to a security vulnerability involving Optimizely, a company that helps websites customize user experiences and test out new features. Experts say…]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Microsoft Fixes Nearly 1,100 Security Vulnerabilities]]></title>
+    <link>https://krebsonsecurity.com/2026/11/microsoft-fixes-nearly-1100-security-vulnerabilities/</link>
+    <guid isPermaLink="false">https://krebsonsecurity.com/?p=74619</guid>
+    <pubDate>Tue, 10 Nov 2026 21:55:03 +0000</pubDate>
+    <description><![CDATA[Microsoft did another four-digit patch drop today, releasing updates to fix almost 1,100 security vulnerabilities in its Windows operating systems and supported software. This month's Patch Tuesday addresses 63 critical flaws -- including a zero-day in Microsoft Outlook -- and…]]></description>
+  </item>
+</channel>
+</rss>

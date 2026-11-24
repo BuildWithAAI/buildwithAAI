@@ -28,10 +28,14 @@ export type RadarSource = {
 export type RadarLoss = {amountUsd: number; by: string; url: string; quote: string; tier: Tier};
 export type RadarFact = {text: string; sourceId: string; url: string; quote: string; field: string};
 
+/** The radar's lanes: crypto security, AI security, or both (older radar files: crypto). */
+export type Lane = 'crypto' | 'ai' | 'both';
+
 export type RadarIncident = {
 	id: string;
 	title: string;
 	protocol: string;
+	lane: Lane;
 	chains: string[];
 	type: string;
 	dateUtc: string;
@@ -144,6 +148,7 @@ const readIncident = (raw: unknown, where: string, warnings: string[]): RadarInc
 		id,
 		title,
 		protocol,
+		lane: raw.lane === 'ai' || raw.lane === 'both' ? raw.lane : 'crypto',
 		chains: strList(raw.chains),
 		type: str(raw.type) || 'other',
 		dateUtc: DATE.test(str(raw.dateUtc)) ? str(raw.dateUtc) : '',

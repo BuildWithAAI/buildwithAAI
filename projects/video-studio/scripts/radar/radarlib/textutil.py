@@ -192,8 +192,9 @@ _MULT = {
     "trillion": 1e12, "tn": 1e12, "billion": 1e9, "bn": 1e9, "b": 1e9, "million": 1e6,
     "mn": 1e6, "mln": 1e6, "m": 1e6, "thousand": 1e3, "k": 1e3,
 }
+# "$" alone is USD; "NT$", "HK$", "A$", "C$" and "R$" are other currencies and never a USD figure
 MONEY_RE = re.compile(
-    r"(?:US\$|USD\s?\$?|\$)\s?(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"
+    r"(?:US\$|USD\s?\$?|(?<![A-Za-z])\$)\s?(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"
     r"(?:\s?(trillion|billion|million|thousand|bn|tn|mln|mn|b|m|k)\b)?",
     re.IGNORECASE,
 )

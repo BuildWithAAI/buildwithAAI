@@ -15,7 +15,9 @@
     "Reuters", "Bloomberg", "Associated Press", "Financial Times", "The Wall Street Journal", "Wall Street Journal",
     "The New York Times", "New York Times", "The Verge", "TechCrunch", "Ars Technica", "404 Media", "Fortune",
     "Forbes", "CNBC", "BBC", "CNN", "The Guardian", "Yonhap", "Nikkei", "South China Morning Post", "Axios",
-    "Politico", "The Information", "Dark Reading", "SecurityWeek", "The Register", "CyberScoop", "KrebsOnSecurity"
+    "Politico", "The Information", "Dark Reading", "SecurityWeek", "The Register", "CyberScoop", "KrebsOnSecurity",
+    "Embrace The Red", "AI Incident Database", "Microsoft Security", "Microsoft Security Blog", "CSO Online",
+    "Hacker News", "Help Net Security", "SC Media"
   ],
   "securityFirms": [
     "Chainalysis", "Elliptic", "TRM Labs", "TRM", "CertiK", "SlowMist", "MistTrack", "PeckShield", "PeckShieldAlert",
@@ -32,7 +34,10 @@
     "Dedaub", "Decurity", "SolidityScan", "ZeroShadow", "ChainArgos", "Global Ledger", "Match Systems", "Cyfrin",
     "Consensys Diligence", "Sigma Prime", "Runtime Verification", "Certora", "ChainSecurity", "Kudelski Security",
     "Ackee Blockchain", "Neodyme", "Sec3", "Asymmetric Research", "Chaos Labs", "Gauntlet", "LlamaRisk", "Chainabuse",
-    "T3 Financial Crime Unit", "T3 FCU", "Beacon Network"
+    "T3 Financial Crime Unit", "T3 FCU", "Beacon Network",
+    "GitGuardian", "Apiiro", "Radware", "Token Security", "Cisco Talos", "Talos", "Microsoft AI Red Team",
+    "AI Red Team", "Zscaler", "F-Secure", "Noma Security", "Pillar Security", "Prompt Security", "Legit Security",
+    "Aim Security", "Straiker", "Cato Networks", "Palo Alto Networks Unit 42"
   ],
   "organisations": [
     "Binance", "Coinbase", "Kraken", "OKX", "Bybit", "Bitget", "KuCoin", "Gate.io", "HTX", "Huobi", "Upbit", "Bithumb",
@@ -65,7 +70,15 @@
     "Parity", "Interchain Foundation", "Blockstream", "Lightning Labs", "MicroStrategy", "Galaxy Digital", "Jump Crypto",
     "Jump Trading", "Wintermute", "Cumberland", "DWF Labs", "Amber Group", "GSR", "a16z", "Andreessen Horowitz",
     "Paradigm", "Pantera", "Polychain", "Multicoin", "Dragonfly", "Electric Capital", "Binance Labs", "YZi Labs",
-    "Coinbase Ventures", "Pump.fun"
+    "Coinbase Ventures", "Pump.fun",
+    "OpenRouter", "LiteLLM", "Codex", "OpenAI Codex", "Codex CLI", "Gemini CLI", "Gemini Code Assist",
+    "Google Gemini", "Google Jules", "Antigravity", "Google Antigravity", "Amazon Q", "Amazon Q Developer", "Kiro",
+    "AWS Kiro", "Amazon Bedrock", "Azure OpenAI", "Azure AI Foundry", "Vertex AI", "Copilot Studio", "Copilot Chat",
+    "Microsoft 365 Copilot", "M365 Copilot", "Security Copilot", "Visual Studio Copilot", "Claude Desktop",
+    "Claude Opus", "Claude Sonnet", "Claude Haiku", "ChatGPT Atlas", "ChatGPT Operator", "OpenAI Sora",
+    "Perplexity Comet", "OpenClaw", "Clawdbot", "Moltbot", "Cline", "Roo Code", "LangGraph", "Fireworks AI",
+    "Together AI", "Cohere", "Gemma", "Veo", "Manus AI", "Epoch AI", "Trajectory Labs", "123 Reg",
+    "Hugging Face Hub", "Docker Hub"
   ],
   "protocols": [
     "Uniswap", "Curve", "Curve Finance", "Aave", "Compound", "MakerDAO", "Maker", "Sky", "Lido", "EigenLayer", "Pendle",
@@ -145,7 +158,8 @@
     "LINK", "UNI", "AAVE", "LDO", "USDC", "USDT", "DAI", "USDe", "PYUSD", "FDUSD", "TUSD", "BUSD", "GHO", "crvUSD",
     "FRAX", "LUSD", "WETH", "WBTC", "stETH", "wstETH", "rETH", "cbETH", "cbBTC", "tBTC", "mETH", "cmETH", "weETH",
     "ezETH", "rsETH", "JitoSOL", "mSOL", "bSOL", "JUP", "RAY", "BONK", "WIF", "HYPE", "LTC", "BCH", "XMR", "ZEC", "XLM",
-    "ALGO", "HBAR", "ATOM", "FTM", "BERA", "TAO", "RUNE", "CRV", "CVX", "MKR", "ENA", "ether", "Ether"
+    "ALGO", "HBAR", "ATOM", "FTM", "BERA", "TAO", "RUNE", "CRV", "CVX", "MKR", "ENA", "ether", "Ether",
+    "AIID", "MCP server", "MCP servers", "GenAI", "LLMOps"
   ],
   "attributedGroups": [
     "Lazarus Group", "Lazarus", "TraderTraitor", "APT38", "BlueNoroff", "Kimsuky", "Andariel", "Famous Chollima",

@@ -5,6 +5,7 @@
  * Feed text never goes inside quotes here, so a headline can never become a ban or an instruction.
  */
 import type {DailyBrief} from './types.ts';
+import {isAiStory} from './types.ts';
 
 const MD_UNSAFE = /[`*_[\]<>#|!~"'“”‘’]/g;
 /** Feed text in research.md: no quotes (they would become bans), no markup. */
@@ -41,6 +42,8 @@ export const renderResearchMd = (b: DailyBrief): string => {
 		const s = b.sources.find((x) => m.text.startsWith(x.publisher));
 		if (s?.hedge) o.push(`- ${flat(s.publisher)}'s hedged wording (${flat(s.hedge)}) stated as fact. Repeat it only attributed, with the hedge.`);
 	}
+	if (isAiStory(b.incident))
+		o.push('- AI story: any prompt, injected instruction, jailbreak text, payload, malicious skill or plugin, or the wording or setting that got past a safeguard, quoted or paraphrased. Name products and companies, never the researchers, employees or victims.');
 	if (b.status === 'developing') o.push('- Any claim about this incident before the line that says it is a developing story.');
 	o.push('');
 	return o.join('\n');

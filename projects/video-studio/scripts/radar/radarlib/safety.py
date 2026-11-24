@@ -91,9 +91,27 @@ _ORG_WORDS = frozenset(
     islands creek hill park road global international digital technologies technology tech systems
     solutions industries energy mining pay payments studio studios games gaming club fc act bill
     law rule index ai treasury commerce live core cash bitcoin ethereum solana crypto swap defi
-    dex nft web3 stake protocol perps lend""".split()
+    dex nft web3 stake protocol perps lend centre center""".split()
 )
+ORG_WORDS = _ORG_WORDS
 _ORG_PHRASES = frozenset({"morgan stanley", "charles schwab", "grant thornton", "paul hastings", "kelly services"})
+# AI products are not people: "Claude Code", "Claude Opus 5", "Gemini CLI", "Copilot Studio" (the AI lane). A product
+# word followed by a product word or a version number is never a personal name; "Claude Dupont" still is.
+AI_PRODUCT_HEADS = frozenset(
+    """claude gemini copilot grok llama codex cursor windsurf cline kiro qwen deepseek chatgpt mistral perplexity sora
+    jules devin manus comet antigravity openclaw""".split()
+)
+AI_PRODUCT_TAILS = frozenset(
+    """code desktop opus sonnet haiku ai cli chrome agent agents skills studio enterprise pro max team teams app apps
+    extension extensions plugin plugins browser assistant model models api flash ultra nano advanced live mobile chat
+    atlas operator for users user cowork connectors memory projects artifacts""".split()
+)
+# AI products and companies that say things ("Claude says", "OpenRouter said"): never a lone surname
+AI_NAMES = frozenset(
+    """claude chatgpt gemini copilot grok llama codex cursor windsurf cline kiro qwen deepseek mistral perplexity
+    ollama langchain llamaindex litellm openrouter anthropic openai xai huggingface midjourney elevenlabs sora
+    antigravity openclaw clawdbot moltbot replit lovable""".split()
+)
 _PLACES = frozenset(
     """korea china russia america states kingdom york francisco kong arabia emirates africa europe
     asia japan iran israel india brazil argentina mexico canada australia singapore dubai abu dhabi
@@ -179,6 +197,10 @@ _PSEUDONYM = re.compile(
     r"nicknamed|a\.?k\.?a\.?|alias|goes by|going by|under the (?:name|alias|handle|moniker|pseudonym))"
     r"\s+[\"'“‘]?(@?[A-Za-z0-9_][A-Za-z0-9_.-]{1,30})"
 )
+# "A man surnamed Huang (黃)": a name given by its surname alone (court and police reports in translation)
+_SURNAMED = re.compile(r"\b(?i:surnamed|surname|family name|whose name is)\s+([A-Z][\w'’-]+)")
+# the name in its own script right after a redaction: "[named person] (黃)"
+_NATIVE_NAME_AFTER = re.compile(r"\[named person\]\s*\(\s*[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]{1,6}\s*\)")
 _COMMON_CAPITALISED = frozenset(
     """he she it they we i you this that these those there here who which what someone everyone nobody one some many
     most few several both each others another police officials official prosecutors investigators investigator
@@ -223,6 +245,8 @@ def _looks_like_person(tokens, need_first_name=False):
     if len(tokens) < 2:
         return False
     plain = [_plain(t) for t in tokens]
+    if plain[0] in AI_PRODUCT_HEADS and (plain[1] in AI_PRODUCT_TAILS or plain[1][:1].isdigit()):
+        return False
     if " ".join(plain) in _ORG_PHRASES or any(p in _ORG_WORDS for p in plain):
         return False
     if plain[0] in _PLACES or plain[-1] in _PLACES:
@@ -284,7 +308,7 @@ def _title_case(text):
 def _known_word(word, known):
     plain = _plain(word).lstrip("@")
     return (plain in known or plain in SAFE_HANDLES or plain in _ORG_WORDS or plain in _PLACES
-            or plain in _COMMON_CAPITALISED or plain in _NAME_STOP)
+            or plain in _COMMON_CAPITALISED or plain in _NAME_STOP or plain in AI_NAMES)
 
 
 _PERSONAL_PRONOUN = re.compile(r"\b(?:he|she|him|his|her|hers|himself|herself)\b", re.IGNORECASE)
@@ -368,9 +392,38 @@ def redact_people(text, known=None, found=None):
     total += n
     text, n = _replace_lone(_PSEUDONYM, text, known, need_shape=True, found=found, strong=True)
     total += n
+    text, n = _replace_lone(_SURNAMED, text, known, need_shape=True, found=found, strong=True)
+    total += n
+    text = _NATIVE_NAME_AFTER.sub(PERSON, text)
+    text, n = _absorb_given_names(text, known)
+    total += n
     text = re.sub(r"(?:\[named person\]\s*){2,}", PERSON + " ", text)
     text = re.sub(r"\[named person\] (?=[.,;:!?)])", PERSON, text)
     return text, total
+
+
+_DESCRIPTORS = frozenset(
+    """former late alleged suspected accused convicted jailed fugitive disgraced ex then acting deputy senior chief
+    young old elderly anonymous unnamed""".split()
+)
+_BEFORE_PLACEHOLDER = re.compile(rf"(?<![\w\[\]'’@-])({_NAME_TOKEN})\s+(?=\[named person\])")
+
+
+def _absorb_given_names(text, known):
+    """A given name left in front of a redacted surname ("Ioan [named person] says", from a Title Case headline whose
+    given name is not on the list) is part of that name: it goes too, unless it is a known word or organisation."""
+    out, pos, count = [], 0, 0
+    for match in _BEFORE_PLACEHOLDER.finditer(text):
+        word = match.group(1)
+        # a role or a description stays: "Plaintiff [named person]", "Former [named person]"
+        if (_known_word(word, known) or len(word) < 3 or re.fullmatch(rf"(?i:{_ROLE_CUES})", word)
+                or word.lower() in _DESCRIPTORS):
+            continue
+        out.append(text[pos:match.start(1)])
+        pos = match.end()
+        count += 1
+    out.append(text[pos:])
+    return "".join(out), count
 
 
 def _replace_first_names(text, found=None):

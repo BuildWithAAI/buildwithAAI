@@ -59,6 +59,7 @@ class Mention:
         "institutional", "follow_up", "incident", "security", "redactions", "record",
         "reference_url", "key", "relevance_reason", "surfaces", "tracker", "origin", "new_incident",
         "user_side", "mech_status", "qualifier", "month_bound", "possible", "retraction", "roundup",
+        "lane", "ref", "listed",
     )
 
     def __init__(self, **kw):
@@ -275,24 +276,31 @@ def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_
             for field in ("title", "excerpt", "lead", "qualifier"):
                 safety.redact_people(item.get(field) or "", known, found=found)
     people = safety.People(safety.person_tokens(found, known))
+    # organisations the run knows by their full names (source names and publishers), for AI subjects
+    orgs = {n.lower() for s in sources_by_id.values() for n in (s.get("name"), s.get("publisher")) if n}
     for sid, result in source_results.items():
         source = sources_by_id[sid]
         stats = counts.setdefault(sid, {"relevant": 0, "incident": 0, "excluded": 0})
         for item in result.get("items", []):
-            security, incident, why = classify.relevance(item, source)
-            if not security:
+            found_lane = classify.assess(item, source)
+            if not found_lane["security"]:
                 stats["excluded"] += 1
                 continue
-            mention = _mention(item, source, run_date, seen_keys or set(), has_history, incident, why, known, people)
+            incident, why = found_lane["incident"], found_lane["reason"]
+            mention = _mention(item, source, run_date, seen_keys or set(), has_history, incident, why, known, people,
+                               lane=found_lane["lane"], ai_vote=found_lane["aiVote"], orgs=orgs)
             if mention is None:
                 continue
             stats["relevant"] += 1
             stats["incident"] += 1 if incident else 0
+            stats.setdefault("lanes", {}).setdefault(mention.lane, 0)
+            stats["lanes"][mention.lane] += 1
             mentions.append(mention)
     return mentions, counts
 
 
-def _mention(item, source, run_date, seen_keys, has_history, incident, why, known=frozenset(), people=None):
+def _mention(item, source, run_date, seen_keys, has_history, incident, why, known=frozenset(), people=None,
+             lane="crypto", ai_vote=None, orgs=frozenset()):
     published = parse_iso(item.get("publishedUtc")) if item.get("publishedUtc") else None
     end_of_run = day_start(run_date) + dt.timedelta(days=1)
     if published and published >= end_of_run:
@@ -335,7 +343,11 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         subject, method = item["subject"], "post-mortem title"
     elif incident:
         own = {(source.get("publisher") or "").lower(), source["name"].lower()}
-        subject, method = classify.extract_subject(item.get("title") or "", exclude=own)
+        if lane != "ai":
+            subject, method = classify.extract_subject(item.get("title") or "", exclude=own)
+        if lane in ("ai", "both") and not subject:
+            # AI incidents are about products and companies; a name that could be a person is never used
+            subject, method = classify.extract_ai_subject(item.get("title") or "", exclude=own, known=set(known) | set(orgs))
     if subject:
         redacted_subject, n = safety.redact_people(subject, known)
         if n or people.mentioned(subject):
@@ -343,6 +355,8 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
     lead_for_names = (item.get("lead") or "") if kind == "structured" else ""
     aliases = aliases_for(subject, lead_for_names) if subject else set()
     surfaces = surfaces_for(subject, lead_for_names) if subject else set()
+    # reports an incident database groups under one incident ("aiid:1846") belong together
+    ref = item.get("incidentRef") if isinstance(item.get("incidentRef"), str) else None
     amounts = []
     if kind == "structured" and record and record.get("amount"):
         amounts.append((float(record["amount"]), f"reported loss {format_usd_exact(record['amount'])}", "excerpt"))
@@ -365,14 +379,19 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
             vote = text_vote
     elif kind == "structured":
         vote = classify.type_from_slowmist(record.get("method")) or classify.type_from_text(raw_text)
+    elif lane == "ai":
+        vote = ai_vote or classify.ai_type_from_text(raw_text)
     else:
         vote = classify.type_from_text(raw_text)
+        if lane == "both":
+            vote = classify.ai_lane_vote(vote, ai_vote)
     chains = []
     if record and record.get("chains"):
         chains = [classify.normalize_chain(c) for c in record["chains"]]
-    for chain in classify.chains_in_text(raw_text):
-        if chain not in chains:
-            chains.append(chain)
+    if lane != "ai":  # chains are crypto context; an AI item has none ("Knowledge Base, ..." is not Base)
+        for chain in classify.chains_in_text(raw_text):
+            if chain not in chains:
+                chains.append(chain)
     hedge_text = lead if kind == "structured" else f"{title}. {lead}"
     # what the source says about the mechanism, read by the parser from the FULL text before it was cut to an excerpt
     mech_status, qualifier = item.get("mechanismStatus"), item.get("qualifier")
@@ -406,6 +425,7 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         possible=classify.includes_possible_losses(f"{title}. {excerpt}"),
         retraction=bool(RETRACT_RE.search(f"{title}. {excerpt}")),
         roundup=bool(ROUNDUP_RE.search(item.get("url") or "") or ROUNDUP_RE.search(title)),
+        lane=lane or "crypto", ref=ref, listed=bool(item.get("listedReport")),
     )
 
 
@@ -489,6 +509,11 @@ def cluster_mentions(mentions):
 
     leftovers = []
     for m in others:
+        if m.lane == "ai":
+            # the seeds are crypto incident databases: an AI-only item never joins one ("National Cyber Security
+            # Centre" in an AI story is not the Cyber Bridge hack)
+            leftovers.append(m)
+            continue
         best, best_key = None, None
         for index, (aliases, surfaces, seed_date, figures, chains) in enumerate(seed_info):
             hit = alias_hit(surfaces, m.title, m.excerpt)
@@ -520,7 +545,7 @@ def cluster_mentions(mentions):
     for m in sorted(news, key=lambda x: (_item_date(x), x.url or "")):
         target = None
         for members in news_clusters:
-            if all(names_match(m.aliases, x.aliases) and _news_dates_close(m, x) for x in members) and not (
+            if all(_same_name(m, x) and _news_dates_close(m, x) for x in members) and not (
                     m.new_incident and min(_item_date(x) for x in members) < _item_date(m) - dt.timedelta(days=1)):
                 target = members
                 break
@@ -537,6 +562,8 @@ def cluster_mentions(mentions):
         for index, members in enumerate(news_clusters):
             surfaces = set().union(*(x.surfaces for x in members))
             hit = alias_hit(surfaces, m.title, m.excerpt)
+            if m.ref and any(x.ref == m.ref for x in members):
+                hit = max(hit, 2)  # the incident database files both reports under one incident
             if not hit or not all(_news_dates_close(m, x) for x in members):
                 continue
             key = (hit, len(members))
@@ -547,6 +574,11 @@ def cluster_mentions(mentions):
         else:
             news_clusters[best].append(m)
     return seeds + news_clusters, unclustered
+
+
+def _same_name(a, b):
+    """Two news items name the same subject, or an incident database files them under one incident."""
+    return names_match(a.aliases, b.aliases) or bool(a.ref and a.ref == b.ref)
 
 
 def _item_date(m):
@@ -637,7 +669,19 @@ DEFAULT_TOPIC = {
     "drainer": "drainers", "phishing": "phishing", "rug": "rug-pulls",
     "key-compromise": "key-management", "social-engineering": "social-engineering",
     "bridge": "bridge-security", "oracle": "oracle-manipulation",
+    # the AI lane's explainers (channel.json evergreen): agents, prompt injection and malicious tools; AI-made scams
+    "prompt-injection": "ai-security", "ai-agent-exploit": "ai-security", "malicious-ai-tool": "ai-security",
+    "model-supply-chain": "ai-security", "ai-data-exposure": "ai-security", "deepfake-fraud": "ai-scams",
+    "ai-phishing": "ai-scams",
 }
+
+
+def incident_lane(members):
+    """crypto, ai or both: the lanes the incident's sources put it in."""
+    lanes = {m.lane or "crypto" for m in members}
+    crypto = bool(lanes & {"crypto", "both"})
+    ai = bool(lanes & {"ai", "both"})
+    return "both" if crypto and ai else "ai" if ai else "crypto"
 
 
 class Carried:
@@ -745,6 +789,14 @@ def _source_entry(m):
         entry["origin"] = m.origin
     if m.roundup:
         entry["roundup"] = True
+    entry["lane"] = m.lane or "crypto"
+    if m.listed:
+        # the title, excerpt and link are another outlet's report, listed by an incident database: discovery only
+        entry["listedReport"] = True
+        if m.item.get("trackerUrl"):
+            entry["trackerUrl"] = m.item["trackerUrl"]
+        entry["listedNote"] = (f"listed by {m.publisher}; the link is the original report, which the radar did not "
+                               "read: take facts from it, never from the listing")
     if m.redactions["names"] or m.redactions["code"]:
         entry["redacted"] = dict(m.redactions)
     return entry
@@ -782,6 +834,11 @@ def build_facts(members, limit=14):
                 facts.append(_fact(f"{m.name} lists the attack method as {rec['method']}.", m,
                                    f"attack method: {rec['method']}", "excerpt"))
             facts.append(_fact(f"{m.name} dates it {m.event_date.isoformat()}.", m, m.event_date.isoformat(), "excerpt"))
+        elif m.listed:
+            # an incident database's listing of another outlet's report: it says that the report exists, nothing more
+            when = (m.published or m.fresh).date().isoformat()
+            facts.append(_fact(f"{m.name} lists a report (discovery only), {when}:", m, m.title, "title"))
+            continue
         else:
             when = (m.published or m.fresh).date().isoformat()
             label = "post-mortem" if m.kind == "postmortem" or POSTMORTEM_TITLE.search(m.title) else "headline"
@@ -889,6 +946,10 @@ def build_incident(members, run_date, carried=(), previous_id=None):
         notes.append("Personal names were redacted from source text.")
     if any(m.redactions["code"] for m in members):
         notes.append("Addresses or code identifiers were removed from source text (concept level only).")
+    listed = sorted({m.publisher for m in members if m.listed})
+    if listed:
+        notes.append(", ".join(listed) + " lists other outlets' reports (discovery only): read the original report at "
+                     "each link before using any fact, and cite that outlet, never the listing.")
     unverified = sorted({m.sid for m in members if m.tracker and m.reference_url
                          and re.search(r"^https?://(?:www\.|mobile\.)?(?:x|twitter)\.com/", m.reference_url, re.I)})
     if unverified:
@@ -912,10 +973,15 @@ def build_incident(members, run_date, carried=(), previous_id=None):
         title = f"{subject}: reported {label} (developing)"
     else:
         title = f"{subject}: {label}"
+    lane = incident_lane(members)
+    if lane != "crypto" and kind in classify.AI_TYPES:
+        notes.append("AI security: explain the mechanism at concept level only (no prompts, payloads or steps), "
+                     "attribute every claim to the vendor, researcher or outlet, and give users one fix.")
     incident = {
         "id": previous_id or f"{(date or first_seen).isoformat()}-{slugify(name)}",
         "title": title,
         "protocol": name,
+        "lane": lane,
         "chains": chains,
         "type": kind,
         "dateUtc": date.isoformat() if date else None,
@@ -946,6 +1012,7 @@ def build_incident(members, run_date, carried=(), previous_id=None):
 def unclustered_entry(m):
     return {
         "sourceId": m.sid,
+        "lane": m.lane or "crypto",
         "tier": m.tier,
         "title": m.title,
         "url": m.url,

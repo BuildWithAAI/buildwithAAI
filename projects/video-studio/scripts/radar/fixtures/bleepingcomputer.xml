@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>BleepingComputer</title>
+  <link>https://www.bleepingcomputer.com/</link>
+  <description>Trimmed fixture (2026-11-24): selected items, excerpts of at most 280 characters, names redacted, no author names.</description>
+  <item>
+    <title><![CDATA[From Vulnerability Noise to Resilience: Rethinking Security in the AI Era]]></title>
+    <link>https://www.bleepingcomputer.com/news/security/from-vulnerability-noise-to-resilience-rethinking-security-in-the-ai-era/</link>
+    <guid isPermaLink="true">https://www.bleepingcomputer.com/news/security/from-vulnerability-noise-to-resilience-rethinking-security-in-the-ai-era/</guid>
+    <pubDate>Tue, 24 Nov 2026 10:01:11 -0500</pubDate>
+    <dc:creator><![CDATA[Sponsored by RapidFort]]></dc:creator>
+    <category><![CDATA[Security]]></category>
+    <description><![CDATA[AI-driven development is adding complexity to software supply chains, leaving security teams overwhelmed by vulnerabilities that may pose little actual risk. RapidFort explains how runtime visibility, container hardening, and automated remediation can reduce vulnerability noise…]]></description>
+  </item>
+  <item>
+    <title><![CDATA[New Shirudo tool uses AI to shield unpatched Linux systems from exploits]]></title>
+    <link>https://www.bleepingcomputer.com/news/security/new-shirudo-tool-uses-ai-to-shield-unpatched-linux-systems-from-exploits/</link>
+    <guid isPermaLink="true">https://www.bleepingcomputer.com/news/security/new-shirudo-tool-uses-ai-to-shield-unpatched-linux-systems-from-exploits/</guid>
+    <pubDate>Tue, 24 Nov 2026 08:34:23 -0500</pubDate>
+    <category><![CDATA[Security]]></category>
+    <category><![CDATA[Artificial Intelligence]]></category>
+    <category><![CDATA[Linux]]></category>
+    <description><![CDATA[OpenAI and Cisco launched an open-source Linux security tool named Shirudo that deploys temporary runtime protections to block vulnerability exploitation while administrators prepare and roll out patches, without restarting services. [...]]]></description>
+  </item>
+  <item>
+    <title><![CDATA[OpenRouter drops AI providers over leaked prompts and secrets]]></title>
+    <link>https://www.bleepingcomputer.com/news/security/openrouter-drops-ai-providers-over-leaked-prompts-and-secrets/</link>
+    <guid isPermaLink="true">https://www.bleepingcomputer.com/news/security/openrouter-drops-ai-providers-over-leaked-prompts-and-secrets/</guid>
+    <pubDate>Mon, 23 Nov 2026 15:00:20 -0500</pubDate>
+    <category><![CDATA[Security]]></category>
+    <category><![CDATA[Artificial Intelligence]]></category>
+    <description><![CDATA[OpenRouter removed three AI providers from its platform after discovering that they had violated their stated data-handling policies and exposed sensitive data. [...]]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Microsoft Azure flaw exploited to steal customers' API credentials]]></title>
+    <link>https://www.bleepingcomputer.com/news/security/microsoft-azure-flaw-exploited-to-steal-customers-api-credentials/</link>
+    <guid isPermaLink="true">https://www.bleepingcomputer.com/news/security/microsoft-azure-flaw-exploited-to-steal-customers-api-credentials/</guid>
+    <pubDate>Mon, 23 Nov 2026 14:42:20 -0500</pubDate>
+    <category><![CDATA[Security]]></category>
+    <description><![CDATA[Microsoft is warning customers that a security vulnerability in Azure API Management (APIM) Classic tiers was exploited to steal stored API credentials, with Norwegian authorities linking the flaw to cyberattacks against energy companies. [...]]]></description>
+  </item>
+  <item>
+    <title><![CDATA[AI Agents Are Creating a Shared Responsibility Gap]]></title>
+    <link>https://www.bleepingcomputer.com/news/security/ai-agents-are-creating-a-shared-responsibility-gap/</link>
+    <guid isPermaLink="true">https://www.bleepingcomputer.com/news/security/ai-agents-are-creating-a-shared-responsibility-gap/</guid>
+    <pubDate>Mon, 23 Nov 2026 10:00:10 -0500</pubDate>
+    <dc:creator><![CDATA[Sponsored by Token Security]]></dc:creator>
+    <category><![CDATA[Security]]></category>
+    <description><![CDATA[AI agents operate across multiple platforms, creating security gaps when no single vendor can see or control their actions. Token Security examines the shared responsibility problem and explains how organizations can better manage agent identities, permissions, and…]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Hackers compromise Check Point Servers in 22 organizations]]></title>
+    <link>https://www.bleepingcomputer.com/news/security/hackers-compromise-check-point-servers-in-22-organizations/</link>
+    <guid isPermaLink="true">https://www.bleepingcomputer.com/news/security/hackers-compromise-check-point-servers-in-22-organizations/</guid>
+    <pubDate>Tue, 24 Nov 2026 11:15:23 -0500</pubDate>
+    <category><![CDATA[Security]]></category>
+    <description><![CDATA[Threat actors have exploited multiple vulnerabilities to compromise two dozen Check Point Security management servers in an ongoing campaign targeting 22 organizations. [...]]]></description>
+  </item>
+</channel>
+</rss>

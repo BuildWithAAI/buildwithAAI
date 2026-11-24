@@ -15,6 +15,15 @@ second going down and `depth_db / release` going up (straight ramps in dB, inter
 sample, so there is no zipper noise). Each duck starts `lookahead` early, so it is complete when the
 first word lands, and releases only after the speech ends. Starting values (150 ms attack, 500 ms release, 120 ms lookahead, 6 dB) follow common
 broadcast practice; tune them by ear per show.
+
+Band-split ducking (`split_duck`, the default of scripts/audio/duck.py): the bed is split into
+low / mid / high bands (zero-phase Linkwitz-Riley magnitude, crossovers at 700 Hz and 5 kHz; the
+mid band is the remainder, so the three bands sum back to the input exactly) and each band is
+ducked by its own depth under speech: VOICE_DEPTHS = 2 / 12 / 4 dB. Why: a broadband 6 dB duck
+turns the whole bed down although only the consonant band masks the narration. Measured with
+Kokoro im_nicola (Zoo; F0 68-119 Hz, a 1-2.5 kHz spectrum 18-26 dB under its peak) on the music
+package's beds (critic round 1, 2026-11-24): the band-audibility index under speech rose from
+0.70-0.72 to 0.75-0.80 while the bed stayed 2-3 LU MORE present than with the broadband duck.
 """
 
 from __future__ import annotations
@@ -24,6 +33,9 @@ import math
 import numpy as np
 
 from .core import SR, as_channels
+
+VOICE_CROSSOVERS = (700.0, 5000.0)  # Hz: low | mid (the voice's consonant band) | high
+VOICE_DEPTHS = (2.0, 12.0, 4.0)  # dB under speech for the low, mid and high bands
 
 
 def voice_activity(voice, sr: int = SR, hop: float = 0.01, window: float = 0.03, range_db: float = 30.0, floor_dbfs: float = -55.0, min_gap: float = 0.35, min_speech: float = 0.08) -> np.ndarray:
@@ -99,6 +111,47 @@ def apply_gain(audio, gain_db: np.ndarray) -> np.ndarray:
     if gain_db.shape[0] != a.shape[1]:
         raise ValueError("gain curve and audio lengths differ")
     return a * np.power(10.0, gain_db / 20.0)
+
+
+def split_bands(audio, crossovers=VOICE_CROSSOVERS, sr: int = SR) -> list:
+    """Split audio into len(crossovers) + 1 bands that sum back to the input exactly.
+
+    Each band edge is a zero-phase (forward-backward) 2nd-order Butterworth, i.e. a Linkwitz-Riley
+    4th-order magnitude (-6 dB at the crossover) with no phase shift; the bands between two edges
+    are the remainder (input minus the bands below and above), so nothing is lost or smeared when
+    no band is ducked. Offline use (it is non-causal)."""
+    from .dsp import apply_sos, butter
+
+    a = as_channels(audio).astype(np.float64)
+    xs = [float(f) for f in crossovers]
+    if any(f <= 0 or f >= sr / 2 for f in xs) or any(b <= a_ for a_, b in zip(xs, xs[1:])):
+        raise ValueError("crossovers must rise strictly between 0 and Nyquist")
+    if not xs:
+        return [a]
+    lows = [apply_sos(a, butter("lowpass", f, 2, sr), zero_phase=True) for f in xs]
+    bands = [lows[0]]
+    for k in range(1, len(xs)):
+        bands.append(lows[k] - lows[k - 1])
+    bands.append(a - lows[-1])
+    return bands
+
+
+def split_duck_gains(activity: np.ndarray, depths=VOICE_DEPTHS, attack: float = 0.15, release: float = 0.5, lookahead: float = 0.12, sr: int = SR) -> list:
+    """Per-band gain curves (dB per sample), one `duck_gain` per band depth."""
+    return [duck_gain(activity, float(d), attack, release, lookahead, sr) if d > 0 else np.zeros(np.asarray(activity).shape[0]) for d in depths]
+
+
+def split_duck(bed, activity: np.ndarray, depths=VOICE_DEPTHS, crossovers=VOICE_CROSSOVERS, attack: float = 0.15, release: float = 0.5,
+               lookahead: float = 0.12, sr: int = SR) -> tuple:
+    """Duck each band of `bed` by its own depth under speech. Returns (ducked, [gain curves dB])."""
+    if len(depths) != len(crossovers) + 1:
+        raise ValueError(f"{len(crossovers)} crossovers make {len(crossovers) + 1} bands; got {len(depths)} depths")
+    bands = split_bands(bed, crossovers, sr)
+    gains = split_duck_gains(activity, depths, attack, release, lookahead, sr)
+    out = np.zeros_like(bands[0])
+    for b, g in zip(bands, gains):
+        out += apply_gain(b, g)
+    return out, gains
 
 
 def frame_gains(gain_db: np.ndarray, fps: int = 30, sr: int = SR) -> list:

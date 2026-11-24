@@ -54,6 +54,33 @@ def _when(source):
     return (source.get("publishedUtc") or source.get("eventDate") or "")[:16].replace("T", " ")
 
 
+def _ai_lane_section(doc, names):
+    """The AI-security lane's best incidents (top 5 by score), whether or not they made the overall top 5."""
+    ids = (doc.get("laneTop") or {}).get("ai") or []
+    if "laneTop" not in doc:
+        return []
+    out = ["## AI security lane", ""]
+    if not ids:
+        out += ["No AI-security incident in the fresh window.", ""]
+        return out
+    by_id = {inc["id"]: (group, rank) for group in ("top", "alsoSeen") for rank, inc in enumerate(doc[group], 1)}
+    incidents = {inc["id"]: inc for inc in doc["top"] + doc["alsoSeen"]}
+    out.append("| Score | Incident | Lane | Status | Type | Harm or loss | Sources | In the brief |")
+    out.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
+    for iid in ids:
+        inc = incidents.get(iid)
+        if inc is None:
+            continue
+        group, rank = by_id[iid]
+        where = f"top 5, #{rank}" if group == "top" else "also seen"
+        sources = ", ".join(sorted({f"{names.get(s['id'], s['id'])} ({s['tier']})" for s in inc["sources"]}))
+        harm = inc["score"]["factors"]["loss"]["reason"]
+        out.append(f"| {inc['score']['total']} | {md(inc['title'])} | {inc.get('lane', 'crypto')} | {inc['status']} | "
+                   f"{md(TYPE_LABEL.get(inc['type'], inc['type']))} | {md(harm)} | {md(sources)} | {where} |")
+    out.append("")
+    return out
+
+
 def render_markdown(doc):
     names = {s["id"]: s["name"] for s in doc["sources"]}
     out = []
@@ -82,6 +109,13 @@ def render_markdown(doc):
         "system and the owner judge later."
     )
     out.append("")
+    by_lane = doc["counts"].get("candidatesByLane") or {}
+    if by_lane:
+        out.append(f"**Lanes:** {by_lane.get('crypto', 0)} crypto, {by_lane.get('ai', 0)} AI and {by_lane.get('both', 0)} "
+                   "crypto + AI candidate incident(s). AI-security incidents are scored on concrete harm when no "
+                   "source states a dollar figure (exploited in real attacks, users or data affected, a fix or "
+                   "advisory shipped).")
+        out.append("")
     if doc.get("corrections"):
         out.append("## Correction candidates (pin if already published)")
         out.append("")
@@ -96,7 +130,7 @@ def render_markdown(doc):
     for rank, inc in enumerate(doc["top"], 1):
         status = inc["status"].upper()
         # the status is the incident's, never the mechanism's: the title carries the mechanism's own hedge
-        out.append(f"### {rank}. {md(inc['title'])} · incident {status} · score {inc['score']['total']}")
+        out.append(f"### {rank}. {md(inc['title'])} · incident {status} · score {inc['score']['total']} · lane {inc.get('lane', 'crypto')}")
         out.append("")
         out.append(f"- **Incident date (UTC):** {_date_cell(inc)} | **Type:** {md(TYPE_LABEL[inc['type']])} | "
                    f"**Chains:** {md(', '.join(inc['chains']) or 'not stated')} | "
@@ -140,6 +174,8 @@ def render_markdown(doc):
                 marks.append("unverified: cites only an X post")
             if src.get("roundup"):
                 marks.append("round-up: not counted")
+            if src.get("listedReport"):
+                marks.append("listed report: discovery only, read the original")
             if src.get("carried"):
                 marks.append(f"carried over from the {md(src.get('carriedFrom') or 'previous')} radar")
             extra = f" ({'; '.join(marks)})" if marks else ""
@@ -153,15 +189,16 @@ def render_markdown(doc):
         out.append("")
         out.append("</details>")
         out.append("")
+    out.extend(_ai_lane_section(doc, names))
     out.append("## Also seen")
     out.append("")
     if doc["alsoSeen"]:
-        out.append("| Score | Incident | Status | Date | Reported losses | Sources |")
-        out.append("| --- | --- | --- | --- | --- | --- |")
+        out.append("| Score | Incident | Lane | Status | Date | Reported losses | Sources |")
+        out.append("| --- | --- | --- | --- | --- | --- | --- |")
         for inc in doc["alsoSeen"]:
             ids = sorted({names.get(s["id"], s["id"]) for s in inc["sources"]})
             figures = ", ".join(sorted({format_usd(e["amountUsd"]) + " (" + names.get(e["by"], e["by"]) + ")" for e in inc["reportedLosses"]})) or "none stated"
-            out.append(f"| {inc['score']['total']} | {md(inc['title'])} | {inc['status']} | {_date_cell(inc)} | {md(figures)} | {md(', '.join(ids))} |")
+            out.append(f"| {inc['score']['total']} | {md(inc['title'])} | {inc.get('lane', 'crypto')} | {inc['status']} | {_date_cell(inc)} | {md(figures)} | {md(', '.join(ids))} |")
     else:
         out.append("Nothing else in the window.")
     out.append("")
@@ -170,17 +207,17 @@ def render_markdown(doc):
     if doc["unclustered"]:
         for item in doc["unclustered"]:
             out.append(f"- {link(item['title'], item['url'])} ({md(names.get(item['sourceId'], item['sourceId']))}, "
-                       f"tier {item['tier']}, {(item.get('publishedUtc') or '')[:10]}): {md(item['reason'])}")
+                       f"tier {item['tier']}, lane {item.get('lane', 'crypto')}, {(item.get('publishedUtc') or '')[:10]}): {md(item['reason'])}")
     else:
         out.append("None.")
     out.append("")
     out.append("## Source health")
     out.append("")
-    out.append("| Source | Tier | Result | Items | Security-relevant | Note |")
-    out.append("| --- | --- | --- | --- | --- | --- |")
+    out.append("| Source | Tier | Lane | Result | Items | Security-relevant | Note |")
+    out.append("| --- | --- | --- | --- | --- | --- | --- |")
     for src in doc["sources"]:
         note = "; ".join(src.get("warnings", [])[:2])
-        out.append(f"| {md(src['name'])} | {src['tier']} | {src['status']} | {src['items']} | {src['relevant']} | {md(note)} |")
+        out.append(f"| {md(src['name'])} | {src['tier']} | {src.get('lane', 'crypto')} | {src['status']} | {src['items']} | {src['relevant']} | {md(note)} |")
     out.append("")
     out.append("## Method")
     out.append("")
@@ -192,6 +229,8 @@ def render_markdown(doc):
                  "origin. Incident databases (DefiLlama, SlowMist) never confirm alone; tier C never confirms; "
                  "newsletter round-ups do not count. The mechanism has its own status (stated, suspected or "
                  "unknown). Clustering: exact subject or alias match plus a date window, never a chain of "
-                 "near-matches. See scripts/radar/README.md.")
+                 "near-matches. AI lane: AI context and an AI-security incident or topic (vendor marketing never "
+                 "counts); its incidents are scored on concrete harm when no dollar figure is stated. See "
+                 "scripts/radar/README.md.")
     out.append("")
     return "\n".join(out)

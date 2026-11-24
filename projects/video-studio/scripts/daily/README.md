@@ -2,6 +2,8 @@
 
 Radar → story pick and brief → the writer's storyboard → claim gates → voice, render, thumbnails and publish kit → an approval packet the owner reviews on his phone → his `APPROVE` → the announcer and Threat Brief drafts. **It never uploads.** The upload stays a manual step in YouTube Studio.
 
+Both radar lanes (crypto and AI security) compete on the same rules; `prepare.md` shows each candidate's lane, and an AI story's brief and `WRITER.md` carry the AI rules (safe mechanism, attribution, a user fix, a hidden Rekt Meter when no loss is reported; `tests/ai-lane.test.ts`).
+
 The runbook, with the schedule, every step and the failure handling, is [`docs/DAILY_BRIEF.md`](../../docs/DAILY_BRIEF.md).
 
 ```bash

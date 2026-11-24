@@ -56,6 +56,13 @@ export const SEGMENT_SPECS: Record<ShowSegment, SegmentSpec> = {
 	desk: {required: [], optional: ['title', 'bullets', 'steps', 'quote', 'attribution', 'button'], lists: ['bullets', 'steps'], tag: null, defaultReaction: null},
 };
 
+/**
+ * The tag a scene shows in its header row. A headline without a reported loss (no scene.rekt: most AI-security
+ * stories) draws no Rekt Meter, so it shows no "Rekt Meter" tag either: the card is the title alone, never a $0 or an
+ * invented figure.
+ */
+export const segmentTag = (seg: ShowSegment, sc: Pick<ShowScene, 'rekt'>): SegmentSpec['tag'] => (seg === 'headline' && !sc.rekt ? null : SEGMENT_SPECS[seg].tag);
+
 /** Every onScreen string of a scene, with its key ("bullets[1]"), for the text checks. */
 export const onScreenStrings = (sc: Pick<ShowScene, 'onScreen'>): Array<{key: string; value: string}> => {
 	const out: Array<{key: string; value: string}> = [];

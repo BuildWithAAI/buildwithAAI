@@ -112,6 +112,34 @@ const TYPE_LABEL: Record<string, string> = {
 	oracle: 'oracle manipulation',
 	governance: 'governance attack',
 	other: 'other',
+	'prompt-injection': 'prompt injection',
+	'ai-agent-exploit': 'AI agent exploit',
+	'malicious-ai-tool': 'malicious AI tool',
+	'model-supply-chain': 'AI model supply-chain attack',
+	'ai-data-exposure': 'data exposure through an AI tool',
+	'ai-assisted-attack': 'AI-assisted attack',
+	'deepfake-fraud': 'deepfake or voice-clone fraud',
+	'ai-phishing': 'AI-generated phishing',
+	'ai-washing': 'AI-washing fraud',
+};
+
+const inLane = (incident: RadarIncident, lane: 'crypto' | 'ai'): boolean => incident.lane === lane || incident.lane === 'both';
+
+/**
+ * The incidents the brief shows: the radar's order (top, then also seen), but when the radar has incidents in both
+ * lanes and the first `count` miss one lane, the last place goes to that lane's best incident, so an AI-security
+ * story never disappears behind crypto ones (or the other way round). Each incident still keeps its own status.
+ */
+export const pickIncidents = (pool: readonly RadarIncident[], count: number): RadarIncident[] => {
+	const picked = pool.slice(0, count);
+	if (count < 2) return picked;
+	for (const lane of ['ai', 'crypto'] as const) {
+		if (picked.some((i) => inLane(i, lane))) continue;
+		const best = pool.find((i) => inLane(i, lane));
+		// only one lane can be missing, so the last place never holds the other lane's only incident
+		if (best) picked[picked.length - 1] = best;
+	}
+	return pool.filter((i) => picked.includes(i));
 };
 
 export const joinAnd = (items: readonly string[]): string =>
@@ -281,7 +309,7 @@ const CLASSIFIES = /^(.{2,60}?) classifies it as (.+)\.$/;
 const METHOD = /^(.{2,60}?) lists the attack method as (.+)\.$/;
 const HEADLINE = /^(.{2,60}?) (headline|post-mortem), (\d{4}-\d{2}-\d{2}):$/;
 const MECHANISM =
-	/\b(?:hack(?:s|ed|ers?)?|exploit(?:s|ed)?|drain(?:s|ed|er|ers)?|phish(?:ing)?|malware|infect\w*|keys?|bridge|compromis\w*|attack(?:s|ed|ers?)?|stolen|theft|thieves|breach(?:ed|es)?|scam\w*|social engineering|fake|poison\w*|oracle|governance|leak(?:s|ed)?|vulnerab\w*|flaw\w*|bug|backdoor\w*|supply[- ]chain|injection|deepfake\w*|impersonat\w*|minted|unbacked)\b/i;
+	/\b(?:hack(?:s|ed|ers?)?|exploit(?:s|ed)?|drain(?:s|ed|er|ers)?|phish(?:ing)?|malware|infect\w*|keys?|bridge|compromis\w*|attack(?:s|ed|ers?)?|stolen|theft|thieves|breach(?:ed|es)?|scam\w*|social engineering|fake|poison\w*|oracle|governance|leak(?:s|ed)?|vulnerab\w*|flaw\w*|bug|backdoor\w*|supply[- ]chain|injection|deepfake\w*|impersonat\w*|minted|unbacked|hijack\w*|jailbr\w*|exfiltrat\w*|expos(?:ed|es|ing|ure)|spill\w*|voice[- ]clon\w*|sleeper agents?|malicious)\b/i;
 
 /** Words that show a headline supports the radar's incident type (the heading names that type). */
 const TYPE_WORDS: Record<string, RegExp> = {
@@ -440,7 +468,7 @@ export const buildBrief = (radar: Radar, options: BuildOptions): BuildResult => 
 		brandName,
 	]);
 
-	const incidents: BriefIncident[] = pool.slice(0, count).map((incident) => {
+	const incidents: BriefIncident[] = pickIncidents(pool, count).map((incident) => {
 		const {losses, note} = lossesOf(incident, radar, notes);
 		const how = howItWorked(incident, allow);
 		const sources = sourcesOf(incident, allow);

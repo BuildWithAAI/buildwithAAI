@@ -15,10 +15,17 @@ with a reason string. Total is out of 100.
                  (0.1).
   evergreen  10  how directly the incident illustrates an explainer topic.
   audience   10  are retail users affected (target type, mechanism, text cues).
+
+AI-security incidents (an AI type, in the "ai" or "both" lane) rarely have a dollar figure, so their "loss" factor is
+concrete harm instead (harm_factor): exploited or used in real attacks, users or data affected, a fix, advisory or
+takedown shipped, each counted from the best tier that states it, plus corroboration; a reported USD figure still
+counts when it is higher. Crypto incidents are scored exactly as before.
 """
 
 import datetime as dt
+import re
 
+from .classify import AI_TYPES, _first_unnegated
 from .textutil import day_start, format_usd, iso_z, log_scale
 
 WEIGHTS = {"loss": 25, "recency": 20, "sources": 20, "novelty": 15, "evergreen": 10, "audience": 10}
@@ -51,6 +58,70 @@ def loss_factor(incident):
     spread = f"{format_usd(min(amounts))}" if min(amounts) == max(amounts) else f"{format_usd(min(amounts))} to {format_usd(max(amounts))}"
     reason = (f"lowest tier-{tier} figure {format_usd(basis['amountUsd'])} ({basis['by']}); "
               f"{len(losses)} figure(s) from {len(publishers)} source(s), range {spread}")
+    return value, reason
+
+
+# Concrete harm in an AI-security report: (cue, weight, pattern). A hedged source ("suspected") counts half.
+HARM_CUES = (
+    ("exploited or used in real attacks", 0.45, re.compile(
+        r"\b(?:exploited in the wild|actively exploited|active exploitation|in the wild|used in (?:real )?attacks|"
+        r"(?:attackers?|hackers?|threat actors?|actors?|criminals?|scammers?|gangs?)\b[^.;]{0,40}?\b(?:used|exploited|"
+        r"abused|breached|compromised|stole|hijacked|targeted|deployed)|(?:breached|compromised|hacked|penetrated|"
+        r"hit|targeted)\s+(?:\w+\s+){0,3}?(?:organi[sz]ations|companies|servers|systems|firms|victims|targets|"
+        r"universities|agencies|users)|(?:was|were|been) (?:breached|hacked|compromised|penetrated)|campaigns?|"
+        r"intrusions?|cyber[- ]?attacks?|stole|stolen|exfiltrated|defrauded|indicted|charged)\b", re.IGNORECASE)),
+    ("users or data affected", 0.3, re.compile(
+        r"\b(?:\d[\d,.]*\s*(?:million|thousand|k)?\s+(?:distinct\s+|valid\s+|exposed\s+)?(?:users?|customers?|"
+        r"people|victims?|organi[sz]ations|companies|repositories|repos|accounts|records|secrets|credentials|keys|"
+        r"patients|developers|downloads|installs)|(?:users?|customers?|patients?|victims?|donors?)['’]?\s+(?:\w+\s+)?"
+        r"(?:data|information|details|credentials|secrets|chats?|conversations?|keys)|(?:data|secrets|credentials|keys|"
+        r"tokens|prompts|chats?|conversations|records|information|names|addresses|emails?|users|customers|patients|"
+        r"accounts)\b[^.;]{0,40}?\b(?:were|was|are|is|been|being)\s+(?:exposed|leaked|stolen|spilled|exfiltrated|"
+        r"accessed|compromised)|(?:exposed|exposing|leaked|stole|stolen|exfiltrated|spilled|spilling)\s+(?:\w+\s+){0,3}?"
+        r"(?:data|information|details|records|secrets|credentials|keys|prompts|chats?|conversations|names|addresses|"
+        r"emails?)|exposing|leaked)\b", re.IGNORECASE)),
+    ("a fix, advisory or takedown shipped", 0.25, re.compile(
+        r"\b(?:patch(?:ed|es)?|fix(?:ed|es)?|hotfix|mitigat(?:ed|ion|ions)|advisory|cve-\d{4}-\d+|security update|"
+        r"revok(?:ed|es)|rotat(?:ed|es)|removed|took down|taken down|pulled|disabled|dropped|drops|banned|blocked|"
+        r"shut down|restored)\b", re.IGNORECASE)),
+)
+HARM_TIER = {"A": 1.0, "B": 0.85, "C": 0.4}
+
+
+def ai_scored(incident):
+    """An AI-security incident (an AI type in the ai or both lane): scored on concrete harm, not only on dollars."""
+    return incident.get("type") in AI_TYPES and incident.get("lane", "crypto") != "crypto"
+
+
+def harm_factor(incident, members):
+    """Concrete harm for an AI-security incident, so a report without a dollar figure is not buried: each cue counts
+    once, at the best tier (A 1.0, B 0.85, C 0.4; a hedged source half) that states it; +0.1 when two or more
+    independent publishers state harm. A reported USD figure (the loss factor's rule) wins when it is higher."""
+    total, parts, publishers = 0.0, [], set()
+    for cue, weight, pattern in HARM_CUES:
+        best, who = 0.0, None
+        for m in members:
+            if m.roundup:
+                continue
+            text = f"{m.title}. {m.excerpt}"
+            if not _first_unnegated(pattern, text):
+                continue
+            value = HARM_TIER.get(m.tier, 0.4) * (0.5 if m.hedge else 1.0)
+            publishers.add(m.publisher)
+            if value > best:
+                best, who = value, f"{m.publisher}, tier {m.tier}{', hedged' if m.hedge else ''}"
+        if best:
+            total += weight * best
+            parts.append(f"{cue} ({who})")
+    if len(publishers) >= 2:
+        total += 0.1
+        parts.append(f"{len(publishers)} publishers state harm")
+    value = min(1.0, total)
+    reason = ("AI security, harm instead of a dollar figure: " + "; ".join(parts)) if parts else \
+        "AI security: no concrete harm stated yet (no exploitation in the wild, no affected users or data, no fix or advisory)"
+    loss_value, loss_reason = loss_factor(incident)
+    if loss_value > value:
+        return loss_value, loss_reason + "; " + reason
     return value, reason
 
 
@@ -111,6 +182,14 @@ def evergreen_factor(incident, members):
         return 0.7, f"{kind} -> {topic} (direct mechanism, but it is protocol risk rather than a user action)"
     if topic == "drainers":
         return 0.6, f"{kind} -> {topic} (related: approvals or a hijacked front end expose users to drainers)"
+    if topic in ("ai-security", "ai-scams"):
+        # what a viewer can do about it: a fake call or a malicious plugin is theirs to spot; a poisoned model is a
+        # developer's supply chain
+        strength = {"deepfake-fraud": 1.0, "ai-phishing": 1.0, "malicious-ai-tool": 1.0, "prompt-injection": 1.0,
+                    "ai-data-exposure": 0.7, "ai-agent-exploit": 0.7, "model-supply-chain": 0.6}.get(kind, 0.5)
+        how = "direct: the incident is the topic" if strength == 1.0 else "users of AI tools can act on it" \
+            if strength == 0.7 else "related: developers' supply chain" if strength == 0.6 else "related"
+        return strength, f"{kind} -> {topic} ({how})"
     if topic == "key-management":
         # A strong "one fix" needs keys a viewer holds or trusts directly: the users' own keys (user-side theft), or
         # the custody keys of a wallet or exchange. A protocol's, bridge's or validator's signing key is not one,
@@ -125,6 +204,14 @@ def evergreen_factor(incident, members):
     return 0.5, f"{kind} -> {topic}"
 
 
+# Who an AI-security incident reaches: everyone (scams, phishing, malicious apps), users of AI tools, or companies
+AI_AUDIENCE = {
+    "deepfake-fraud": 0.85, "ai-phishing": 0.85, "malicious-ai-tool": 0.85, "prompt-injection": 0.6,
+    "ai-data-exposure": 0.6, "ai-agent-exploit": 0.6, "ai-washing": 0.5, "model-supply-chain": 0.4,
+    "ai-assisted-attack": 0.4,
+}
+
+
 def audience_factor(incident, members):
     targets = sorted({m.record.get("targetType") for m in members if m.record and m.record.get("targetType")})
     base = max([TARGET_AUDIENCE.get(t, 0.4) for t in targets] or [0.4])
@@ -133,6 +220,8 @@ def audience_factor(incident, members):
         base = max(base, 0.85)
     elif kind == "rug":
         base = max(base, 0.7)
+    elif kind in AI_AUDIENCE:
+        base = max(base, AI_AUDIENCE[kind])
     retail = sorted({c for m in members for c in m.retail})
     institutional = sorted({c for m in members for c in m.institutional})
     value = _clamp(base + min(0.3, 0.1 * len(retail)) - min(0.2, 0.1 * len(institutional)), 0.05, 1.0)
@@ -147,7 +236,7 @@ def audience_factor(incident, members):
 def score(incident, members, run_date, window_start, previous, type_counts):
     factors = {}
     for name, (value, reason) in (
-        ("loss", loss_factor(incident)),
+        ("loss", harm_factor(incident, members) if ai_scored(incident) else loss_factor(incident)),
         ("recency", recency_factor(members, run_date)),
         ("sources", sources_factor(members)),
         ("novelty", novelty_factor(incident, previous, run_date, window_start, type_counts)),
@@ -161,6 +250,8 @@ def score(incident, members, run_date, window_start, previous, type_counts):
             "points": round(value * weight, 1),
             "reason": reason,
         }
+    if ai_scored(incident):
+        factors["loss"]["basis"] = "harm"  # AI lane: concrete harm, not only a dollar figure
     total = round(sum(f["value"] * f["weight"] for f in factors.values()), 1)
     return {"total": total, "factors": factors}
 

@@ -9,7 +9,7 @@ cd projects/video-studio
 node scripts/news/gate.ts <slug>                     # content/zoora-security/<slug>/{storyboard,brief}.json
 node scripts/news/gate.ts <slug> --brief content/zoora-security/radar/2026-11-24.json --incident 2026-11-21-chainflip
 node scripts/news/corrections.ts pinned <id>          # the pinned-comment text for a correction
-node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/news/tests/*.test.ts   # 131 tests
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/news/tests/*.test.ts   # 147 tests
 ```
 
 Exit codes: **0** pass, **1** fail (every failure has a fix hint), **2** usage error. Reports: `out/claims/news-<slug>.md` (for the owner) and `out/claims/news-<slug>.json` (for the approval page and the publish kit; it carries the sha256 of every input, so an approval can be tied to exactly the storyboard that passed).
@@ -69,6 +69,8 @@ The checks are English-first heuristics. They are built to fail closed: an unkno
 ## Allowlist (`allowlist.json`)
 
 Lists: `show`, `publishers`, `securityFirms`, `organisations`, `protocols`, `chains`, `agencies` (agencies and courts), `places`, `terms` (tickers and acronyms), `attributedGroups` (threat groups: R3 requires an attribution wherever one is named), `blocked` (handles and nicknames of individuals, always flagged; listing implies nothing about anyone), `aliases` (spellings that count as the same name, e.g. FBI / Federal Bureau of Investigation), optional `tickers`, and `officials`. The brief's incident names, publishers and organisation entities are added automatically for each run.
+
+AI products and companies are organisations here (Claude, Claude Code, Claude Opus, Gemini, Gemini CLI, Copilot, Copilot Studio, ChatGPT, Codex, Grok, Llama, OpenRouter...), so R4 never reads them as unknown personal names in the AI-security lane, while a person next to them ("Claude Dupont said", a researcher's name or handle) is still refused (`tests/ai-names.test.ts`). The radar also reads this file to accept an AI incident's subject as an organisation.
 
 Officials (empty by default): add one only from a law-enforcement or regulator release, for example
 

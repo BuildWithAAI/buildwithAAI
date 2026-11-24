@@ -41,6 +41,11 @@ export const FIXES: Readonly<Record<string, string>> = {
 	'rug-pulls': "If one wallet can change a token's rules or move its funds, treat that token as unsafe.",
 	'social-engineering': 'Verify every request to install software, share your screen or sign something through a second channel you already trust.',
 	'fake-job-malware': 'No real employer needs you to install software or run code from a stranger to get through an interview. Refuse, and verify the company through its official site.',
+	// the AI-security lane (radar evergreen topics "ai-security" and "ai-scams", and two type-only fixes)
+	'ai-security': 'Give AI agents, plugins and coding tools only the access they need, install them only from publishers you can verify, and never paste passwords or keys into an AI tool.',
+	'ai-scams': 'If a call, video or message asks for money or a code, hang up and call back on a number you already trust, even when the voice or face looks right.',
+	'ai-attacks': 'Install security updates promptly and turn on multi-factor authentication for every account that offers it.',
+	'ai-washing': "Treat 'AI-powered' as a sales claim until the company shows evidence, and never pay up front for a promised result.",
 };
 
 /** The fix when no topic fits. */
@@ -55,6 +60,15 @@ export const TYPE_TOPIC: Readonly<Record<string, string>> = {
 	bridge: 'bridge-security',
 	oracle: 'oracle-manipulation',
 	rug: 'rug-pulls',
+	'prompt-injection': 'ai-security',
+	'ai-agent-exploit': 'ai-security',
+	'malicious-ai-tool': 'ai-security',
+	'model-supply-chain': 'ai-security',
+	'ai-data-exposure': 'ai-security',
+	'ai-assisted-attack': 'ai-attacks',
+	'deepfake-fraud': 'ai-scams',
+	'ai-phishing': 'ai-scams',
+	'ai-washing': 'ai-washing',
 };
 
 /** Plain-language source kinds for link labels. */

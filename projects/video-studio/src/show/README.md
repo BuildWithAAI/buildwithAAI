@@ -60,7 +60,7 @@ All on-screen copy is in `onScreen` (so the claim gate checks it against the sto
 | Segment | Required | Optional | Screen |
 | --- | --- | --- | --- |
 | `coldOpen` | | `kicker` | wide two-shot, ON AIR lights; Zoo's dry one-liner; Badger's slow blink after it. In a Short the kicker slate sits above the ON AIR sign and the wall logo, all three clear of each other at rest and pushed in (`layout/checks.ts`) |
-| `headline` | `title` | `developing`, `loss` (+ `rekt`), `lossAlt` (+ `rekt.alt`) | incident card + **Rekt Meter**: log dial $100K-$10B, the figure as reported, "reported by <outlet>"; a different second report is shown beside it, never averaged |
+| `headline` | `title` | `developing`, `loss` (+ `rekt`), `lossAlt` (+ `rekt.alt`) | incident card + **Rekt Meter**: log dial $100K-$10B, the figure as reported, "reported by <outlet>"; a different second report is shown beside it, never averaged. With no reported loss (no `rekt`, most AI-security stories) the card is the title alone, with no meter and no "Rekt Meter" tag: never $0 or a guess |
 | `howItWorked` | `nodes[]` (+ `diagram.nodes`) | `links[]`, `cues[]`, `title` | concept diagram (wallet, contract, bridge, mixer, key, site, message, approval, agent, plugin, phone, exchange, funds, attacker = an unknown address, never a person); nodes land on the words that name them; Zoo points at it (landscape) |
 | `badgerRedFlag` | `flag` | `title` | Badger's close-up; he judges as the card lands |
 | `zooOneFix` | `fix` | `detail`, `title` | one actionable tip; Zoo gestures to it |

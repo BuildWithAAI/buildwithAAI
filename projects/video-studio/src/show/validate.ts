@@ -10,7 +10,7 @@
  */
 import type {Issue, ShowScene, ShowStoryboard, ShowUiLabels, Timeline} from './types.ts';
 import {BADGER_REACTIONS, DIAGRAM_KINDS} from './types.ts';
-import {list, onScreenStrings, SEGMENT_SPECS, segmentOf, str} from './segments.ts';
+import {list, onScreenStrings, SEGMENT_SPECS, segmentOf, segmentTag, str} from './segments.ts';
 import {lossAgrees} from './money.ts';
 import {conceptProblems} from './concept.ts';
 import {citedSourceIds, sceneSourceIds} from './sources.ts';
@@ -65,8 +65,8 @@ export const neededLabels = (sb: ShowStoryboard): Array<keyof ShowUiLabels> => {
 		} catch {
 			continue;
 		}
-		const spec = SEGMENT_SPECS[seg];
-		if (spec.tag) need.add(spec.tag);
+		const tag = segmentTag(seg, sc);
+		if (tag) need.add(tag);
 		if (sceneSourceIds(sc).length && seg !== 'sources') need.add('source');
 		if (seg === 'headline') {
 			if (sc.rekt) {

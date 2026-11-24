@@ -36,6 +36,8 @@ def load_sources(path=DEFAULT_SOURCES):
             raise ValueError(f"source {source['id']!r} has invalid tier {source['tier']!r}")
         if source["kind"] not in ("json-api", "rss", "atom", "html"):
             raise ValueError(f"source {source['id']!r} has invalid kind {source['kind']!r}")
+        if source.get("lane", "crypto") not in ("crypto", "ai", "both"):
+            raise ValueError(f"source {source['id']!r} has invalid lane {source.get('lane')!r} (crypto, ai or both)")
         seen.add(source["id"])
     return config
 
@@ -168,6 +170,10 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
     candidates.sort(key=lambda inc: (-inc["score"]["total"], -max_loss(inc), inc["protocol"].lower()))
     top = candidates[:TOP_N]
     also = candidates[TOP_N:]
+    # each lane's best incidents (an incident in both lanes counts in each), so an AI story is never lost below the
+    # crypto ones in the human brief, and the daily step can see both
+    lane_top = {lane: [inc["id"] for inc in candidates if inc.get("lane", "crypto") in (lane, "both")][:TOP_N]
+                for lane in ("crypto", "ai")}
     # Market stories that only mention a hack in passing are not listed (no price talk).
     loose = [cluster.unclustered_entry(m) for m in unclustered
              if fresh_from <= m.fresh < fresh_to and not safety.price_talk(m.title)]
@@ -185,6 +191,7 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
             "id": source["id"],
             "name": source["name"],
             "tier": source["tier"],
+            "lane": source.get("lane", "crypto"),
             "kind": source["kind"],
             "url": source["url"],
             "status": result.get("status"),
@@ -192,6 +199,7 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
             "fetchedUtc": result.get("fetchedUtc"),
             "items": len(result.get("items", [])),
             "relevant": stats["relevant"],
+            "relevantByLane": dict(sorted(stats.get("lanes", {}).items())),
             "incidentItems": stats["incident"],
             "warnings": [safety.sanitize(w)[0] for w in result.get("warnings", [])],
         })
@@ -214,6 +222,7 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
             "No suspect or individual names; names in source text are redacted.",
             "Mechanisms at concept level only: no code, function names, addresses or step lists.",
             "No price or investment talk.",
+            "Two lanes: crypto security and AI security; every incident and item carries its lane (crypto, ai or both).",
         ],
         "history": {"files": hist["files"], "previousIncidents": len(hist["incidents"])},
         "counts": {
@@ -224,8 +233,11 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
             "incidentsBuilt": len(built),
             "candidates": len(candidates),
             "unclustered": len(loose),
+            "candidatesByLane": {lane: sum(1 for inc in candidates if inc.get("lane", "crypto") == lane)
+                                 for lane in ("crypto", "ai", "both")},
         },
         "sources": source_rows,
+        "laneTop": lane_top,
         "top": top,
         "alsoSeen": also,
         "unclustered": loose,

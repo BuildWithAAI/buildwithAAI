@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>The Record by Recorded Future</title>
+  <link>https://therecord.media/</link>
+  <description>Trimmed fixture (2026-11-24): selected items, excerpts of at most 280 characters, names redacted, no author names.</description>
+  <item>
+    <title>Carnegie Endowment for International [named person] says third-party breach leaked donation info</title>
+    <link>https://therecord.media/carnegie-endowment-data-breach</link>
+    <guid isPermaLink="true">https://therecord.media/carnegie-endowment-data-breach</guid>
+    <pubDate>Tue, 24 Nov 2026 16:00:00 GMT</pubDate>
+    <category><![CDATA[News]]></category>
+    <category><![CDATA[Cybercrime]]></category>
+    <category><![CDATA[Privacy]]></category>
+    <description>Some donors to the Carnegie Endowment for International Peace had their information leaked due to a cyberattack on a third-party vendor named Soapbox Engage.</description>
+  </item>
+  <item>
+    <title>UK cyber agency seeing ‘marked rise’ in AI-driven attacks</title>
+    <link>https://therecord.media/cyberattacks-uk-artificial-intelligence</link>
+    <guid isPermaLink="true">https://therecord.media/cyberattacks-uk-artificial-intelligence</guid>
+    <pubDate>Tue, 24 Nov 2026 13:45:00 GMT</pubDate>
+    <category><![CDATA[News]]></category>
+    <category><![CDATA[Government]]></category>
+    <category><![CDATA[Cybercrime]]></category>
+    <category><![CDATA[Technology]]></category>
+    <description>Britain’s National Cyber Security Centre said it has observed “a marked rise” since September in cyberattacks assisted by artificial intelligence and warned the technology was increasing attackers’ speed, scale and persistence.</description>
+  </item>
+  <item>
+    <title>McDonald’s Japan discloses breach exposing customer purchase and location data</title>
+    <link>https://therecord.media/japan-mcdonalds-cyberattack-breach</link>
+    <guid isPermaLink="true">https://therecord.media/japan-mcdonalds-cyberattack-breach</guid>
+    <pubDate>Tue, 24 Nov 2026 13:00:00 GMT</pubDate>
+    <category><![CDATA[News]]></category>
+    <category><![CDATA[News Briefs]]></category>
+    <category><![CDATA[Cybercrime]]></category>
+    <description>McDonald’s Japan disclosed a cybersecurity breach that exposed customers’ purchase histories and mobile device location data.</description>
+  </item>
+</channel>
+</rss>

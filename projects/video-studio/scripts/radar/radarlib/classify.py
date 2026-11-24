@@ -66,11 +66,20 @@ SECURITY_TOPIC_RE = re.compile(
     re.IGNORECASE,
 )
 CRYPTO_RE = re.compile(
-    r"\b(crypto\w*|bitcoin|btc|ethereum|eth|ether|solana|sol|stablecoins?|usdc|usdt|tether|"
+    # "cryptography" and "cryptographic keys" are not cryptocurrency (general security outlets write about both)
+    r"\b(crypto(?!graph)\w*|bitcoin|btc|ethereum|eth|ether|solana|sol|stablecoins?|usdc|usdt|tether|"
     r"defi|blockchain|on-?chain|nfts?|web3|smart contracts?|seed phrases?|recovery phrases?|"
     r"memecoins?|airdrops?|tornado cash|monero|xmr|dex|cex|binance|coinbase|kraken|bybit|okx|"
     r"wallets?|tokens?|bridges?|validators?|staking|liquidity|lending|vaults?|dao|mixers?|"
     r"exchanges?|protocols?|layer[- ]?2|rollups?|hyperliquid|tron|bnb|polygon|arbitrum|base)\b",
+    re.IGNORECASE,
+)
+# General security outlets write "access tokens", "Microsoft Exchange", "Apple Wallet" and "protocol": for a source
+# with "cryptoContext": "strict" only unambiguous crypto words count as crypto context.
+STRICT_CRYPTO_RE = re.compile(
+    r"\b(crypto(?!graph)\w*|bitcoin|btc|ethereum|solana|stablecoins?|usdc|usdt|tether|defi|blockchains?|on-?chain|"
+    r"nfts?|web3|smart contracts?|seed phrases?|recovery phrases?|memecoins?|airdrops?|tornado cash|monero|binance|"
+    r"coinbase|kraken|bybit|okx|hyperliquid|metamask|wallet drainers?|crypto wallets?|hardware wallets?|exchange hack)\b",
     re.IGNORECASE,
 )
 PROMO_RE = re.compile(
@@ -166,7 +175,10 @@ def _crypto_relevance(item, source):
     forced = any(p in url for p in source.get("securityUrlPatterns", []))
     path = urllib.parse.urlsplit(url).path  # not the host: every crypto.news URL says "crypto"
     context = f"{text} {' '.join(cats)} {re.sub(r'[^A-Za-z0-9]+', ' ', path)}"
-    crypto = CRYPTO_RE.search(context) or re.search(r"\b0x[0-9a-fA-F]{40}\b", text)
+    # strict on general security outlets and on AI-only sources ("access tokens" there are not crypto)
+    strict = source.get("cryptoContext") == "strict" or (source.get("lane") or "crypto") != "crypto"
+    words = STRICT_CRYPTO_RE if strict else CRYPTO_RE
+    crypto = words.search(context) or re.search(r"\b0x[0-9a-fA-F]{40}\b", text)
     if not crypto and not forced:
         return False, False, "no crypto context"
     if item.get("kind") == "postmortem" and (incident or item.get("subject")):
@@ -220,7 +232,8 @@ AI_CONTEXT_RE = re.compile(
     r"\bopen[- ]weights?\b|\bneural networks?\b|\bmachine learning\b",
     re.IGNORECASE,
 )
-# an AI product named in the lane only ("Gemini" is the crypto exchange elsewhere)
+# what an AI agent exploit targets: an AI agent, assistant, tool, MCP server or named product (bare "Gemini" counts
+# here, because these rules only run once an item has AI context)
 _AGENTISH = (
     r"(?:\b(?:AI|coding|autonomous|computer[- ]use) agents?\b|\bAI (?:assistants?|IDEs?|browsers?|tools?|apps?|"
     r"platforms?|gateways?|models?|systems?|services?|features?|chatbots?)\b|\bagentic (?:\w+ )?(?:tools?|systems?|"
@@ -230,7 +243,8 @@ _AGENTISH = (
 _VULN = (
     r"(?:vulnerab\w+|flaws?|bugs?|CVE-\d{4}-\d{3,7}|RCE|remote code execution|(?:arbitrary )?code execution|"
     r"command injection|sandbox (?:escapes?|bypass\w*)|privilege escalation|auth(?:entication|orization)? bypass\w*|"
-    r"zero[- ]click|zero[- ]day|exploit\w*|hijack\w*|takeovers?|compromis\w+|exfiltrat\w+)"
+    r"zero[- ]click|zero[- ]day|exploit\w*|hijack\w*|hack(?:s|ed|ing)?|takeovers?|compromis\w+|exfiltrat\w+|"
+    r"insecure|unauthenticated|missing (?:security )?(?:controls|checks|authentication))"
 )
 _TOOL_NOUN = (
     r"(?:apps?|extensions?|plugins?|add-ons?|skills?|servers?|tools?|packages?|libraries|browsers?|installers?|"
@@ -251,20 +265,22 @@ _AI_TYPE_RULES = (
      r"\bAI[- ](?:generated|made|created)\s+(?:\w+\s+){0,2}?(?:videos?|voices?|images?|photos?|likeness\w*|personas?|"
      r"profiles?|celebrit\w+|endorsements?|ads?)\b|"
      r"(?-i:\b(?:AI|A\.I\.))[- ]?(?:(?:powered|driven|generated|enabled)\s)?(?:romance |investment |crypto |"
-     r"impersonation |voice )?(?:scams?|fraud\w*|swindles?)\b", False),
+     r"impersonation |voice )?(?:scams?|fraud\w*|swindles?)\b(?!\s+(?:detection|prevention|protection|tools?|"
+     r"platforms?|teams?|filters?|models?|systems?|solutions?|checks?|scores?|controls?|defen[cs]es?))", False),
     ("ai-washing", None,
      r"\bAI[- ]washing\b|\bOperation AI Comply\b|"
      r"\b(?:false(?:ly)?|misleading(?:ly)?|deceptive(?:ly)?|bogus|inflated|exaggerat\w+|overstat\w+|unsubstantiated)"
      r"\b[^.;]{0,40}?\b(?:claim\w*|statements?|representations?|marketing|advertis\w+|promises?|touted|said|says)\b"
      r"[^.;]{0,40}?" + _AI_X + r"|\bmisle\w*\b[^.;]{0,40}?\babout\b[^.;]{0,40}?" + _AI_X, False),
     ("ai-phishing", "ai-scams",
-     r"\bphish\w*\b[^.;]{0,50}?" + _AI_X + r"|" + _AI_X + r"[^.;]{0,50}?\bphish\w*\b|"
+     r"\bphish\w*\b[^.;]{0,100}?" + _AI_X + r"|" + _AI_X + r"[^.;]{0,60}?\bphish\w*\b|"
      r"\b(?:AI|LLM)[- ](?:generated|written|crafted|powered|personali[sz]ed)\s+(?:\w+\s+){0,2}?"
      r"(?:emails?|messages?|lures?|texts?|spam)\b", False),
     ("prompt-injection", "ai-security",
      r"\bprompt[- ]injection\w*|\bpromptware\b|\b(?:indirect|invisible|hidden|cross[- ]agent|zero[- ]click)\s+"
      r"(?:prompts?|instructions?)\b|\binjected (?:prompts?|instructions?)\b|\bhidden (?:unicode |text )?"
-     r"instructions?\b|\bmalicious (?:prompts?|instructions?)\b|\bjailbr(?:eak|oke|eaking|eaks|oken)\w*", True),
+     r"instructions?\b|\bmalicious (?:prompts?|instructions?)\b", False),
+    ("prompt-injection", "ai-security", r"\bjailbr(?:eak|oke|eaking|eaks|oken)\w*", True),
     ("malicious-ai-tool", "ai-security",
      r"\b(?:malicious|fake|rogue|trojani[sz]ed|backdoored|counterfeit|look-?alike|impostor|imposter|typosquatt\w*|"
      r"weaponi[sz]ed|bogus|copycat|spoofed)\s+(?:[\w.-]+\s+){0,3}?" + _AI_X + r"\s+(?:[\w.-]+\s+){0,2}?"
@@ -283,7 +299,7 @@ _AI_TYPE_RULES = (
     ("ai-assisted-attack", None,
      r"(?:(?-i:\b(?:AI|A\.I\.))|\bLLM)[- ]?(?:(?:assisted|driven|powered|enabled|orchestrated|fu[e]?led|generated|"
      r"written|based|led|automated)[- ])?(?:[\w-]+\s){0,2}?(?:attacks?|cyber[- ]?attacks?|campaigns?|intrusions?|"
-     r"breach\w*|hacking|hacks?|operations?|espionage|exploitation|malware|ransomware|threats?|heists?)\b|"
+     r"breach\w*|hacking|hacks?|espionage|exploitation|malware|ransomware)\b|"
      r"\b(?:attackers?|hackers?|threat actors?|actors?|criminals?|cybercriminals?|crooks|gangs?|groups?|APTs?|"
      r"operators?|adversar(?:y|ies)|scammers?|fraudsters?|spies)\b[^.;]{0,60}?\b(?:use[sd]?|using|leverag\w+|"
      r"deploy\w*|harness\w*|turn(?:ed|s|ing)? to|abus\w+|weaponi[sz]\w+|rel(?:y|ied|ies) on|tapp\w+|enlist\w*|"
@@ -294,9 +310,9 @@ _AI_TYPE_RULES = (
      r"(?-i:\b(?:AI|LLM))\b[^.;]{0,40}?\b(?:tools?|agents?|models?|frameworks?|pen[- ]?test\w*)\b[^.;]{0,40}?"
      r"\b(?:weaponi[sz]\w+|turned into (?:a |an )?weapons?|abused by|misused by)\b", False),
     ("ai-agent-exploit", "ai-security",
-     _AGENTISH + r"(?:['’]s)?\s+(?:[\w.-]+\s+){0,4}?" + _VULN + r"|\b" + _VULN + r"\b\s+(?:\w+\s+){0,1}?"
-     r"(?:in|affecting|impacting|of|against|targeting|on|via)\s+(?:the\s+|an?\s+)?(?:[\w.'’-]+\s+){0,3}?" + _AGENTISH
-     + r"|\b" + _VULN + r"\s+(?:the\s+)?" + _AGENTISH, False),
+     _AGENTISH + r"(?:['’]s)?[\s(:,!-]+(?:[\w.!:,'’-]+\s+){0,4}?\(?" + _VULN + r"|\b" + _VULN
+     + r"\b\s+(?:\w+\s+){0,1}?(?:in|affecting|impacting|of|against|targeting|on|via)\s+(?:the\s+|an?\s+)?"
+     r"(?:[\w.'’-]+\s+){0,3}?" + _AGENTISH + r"|\b" + _VULN + r"\s+(?:[\w'’-]+\s+){0,4}?" + _AGENTISH, False),
     ("ai-data-exposure", "ai-security",
      r"\b(?:leak\w*|expos\w+|spill\w*|exfiltrat\w+|stole|stolen|steal\w*|dump\w*)\b[^.;]{0,40}?\b" + _DATA + r"\b|"
      r"\b" + _DATA + r"\b[^.;]{0,40}?\b(?:leak\w*|expos\w+|spill\w*|exfiltrat\w+)\b|"
@@ -312,7 +328,7 @@ _AI_EVENT_RE = re.compile(
     r"scam(?:s|med)?|fraud\w*|defraud\w*|indict\w*|charg(?:ed|es)|sued|sues|lawsuit|fined|settle(?:d|s|ment)|"
     r"arrest\w*|malicious|hijack\w*|poisoned|backdoor(?:ed|s)?|abus(?:ed|ing)|misus(?:ed|ing)|impersonat\w+|"
     r"exfiltrat\w+|vulnerab\w+|flaws?|cve-\d{4}-\d+|rce|patch(?:ed|es)|campaigns?|intrusions?|penetrated|"
-    r"drop(?:s|ped)|removed|pulled|disclos(?:es|ed))\b",
+    r"drop(?:s|ped)|removed|pulled|disclos(?:es|ed)|attempt\w* to (?:access|hack|exploit|steal|breach))\b",
     re.IGNORECASE,
 )
 # vendor marketing and other noise: never an AI-security item (titles), and excerpt cues of a video, event or ad
@@ -330,14 +346,27 @@ _AI_NOISE_TITLE = re.compile(
     re.IGNORECASE,
 )
 _AI_NOISE_TEXT = re.compile(
-    r"\b(?:in this video|this installment|video series|webinar|sponsored|register (?:now|today|here)|on-demand|"
-    r"press release|(?:era|age) of ai(?:-driven)?)\b",
+    r"\b(?:in this video|this installment|video series|webinar|sponsored (?:by|content|post|article)|paid post|"
+    r"register (?:now|today|here)|(?:era|age) of ai(?:-driven)?)\b",
     re.IGNORECASE,
 )
 
 
-def _near_ai(text, match, window=160):
-    return bool(_AI_ANCHOR_RE.search(text[max(0, match.start() - window): match.end() + window]))
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"“‘'(\[])")
+
+
+def _near_ai(text, match):
+    """An AI word in the same sentence as the match ("Stolen secrets. AI claims ..." is two sentences; the dots in
+    "settings.local.json" end none)."""
+    start = 0
+    for brk in _SENTENCE_BREAK.finditer(text):
+        if brk.start() >= match.start():
+            end = brk.start()
+            break
+        start = brk.end()
+    else:
+        end = len(text)
+    return bool(_AI_ANCHOR_RE.search(text[start:max(end, match.end())]))
 
 
 def ai_type_from_text(text):
@@ -421,7 +450,11 @@ _TEXT_TYPE_RULES = tuple((t, e, re.compile(p, re.IGNORECASE)) for t, e, p in _TE
 # Priority when sources disagree: the most specific / most user-relevant mechanism wins.
 TYPE_PRIORITY = (
     "social-engineering", "drainer", "phishing", "rug", "key-compromise", "oracle", "governance",
-    "bridge", "exploit", "other",
+    "bridge",
+    # AI types rank after every specific crypto mechanism and before a generic exploit (the crypto order is unchanged)
+    "deepfake-fraud", "ai-phishing", "prompt-injection", "malicious-ai-tool", "model-supply-chain",
+    "ai-data-exposure", "ai-agent-exploit", "ai-assisted-attack", "ai-washing",
+    "exploit", "other",
 )
 
 # A type vote that only rests on a bare incident word ("hack", "theft", "exploit") states no mechanism.
@@ -1096,30 +1129,53 @@ _AI_TRAIL = {
 _AI_SUBJECT_STOP = {
     w for w in """prosecutors police authorities officials regulators researchers experts lawmakers judge court
     scammers fraudsters criminals attackers hackers users companies firms agencies agency government vendors
-    developers employees customers incident report inside recent new rogue cyber study survey""".split()
+    developers employees customers incident report inside recent new rogue cyber study survey use uses using how
+    why what when the a an""".split()
+}
+_AI_GENERIC = {
+    w for w in """ai llm llms genai autonomous agentic agent agents generative artificial intelligence model models bot
+    bots chatbot chatbots coding assistant assistants""".split()
 }
 _ALLOWLIST = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "news",
                           "allowlist.json")
-_KNOWN_ORGS = None
+_ALLOWLIST_CACHE = {}
 
 
-def known_org_names(path=_ALLOWLIST):
-    """Lower-case names the news claim gate's allowlist (scripts/news/allowlist.json) treats as organisations, not
-    people: publishers, security firms, organisations, protocols and agencies. Empty when the file is missing."""
-    global _KNOWN_ORGS
-    if _KNOWN_ORGS is None or path != _ALLOWLIST:
+def _allowlist_names(keys, path=_ALLOWLIST):
+    """Lower-case names from lists of the news claim gate's allowlist (scripts/news/allowlist.json); empty when the
+    file is missing or unreadable."""
+    cache_key = (path, keys)
+    if cache_key not in _ALLOWLIST_CACHE:
         names = set()
         try:
             with open(path, encoding="utf-8") as fh:
                 data = json.load(fh)
-            for key in ("publishers", "securityFirms", "organisations", "protocols", "agencies"):
+            for key in keys:
                 names.update(n.lower() for n in data.get(key) or [] if isinstance(n, str))
         except (OSError, ValueError, AttributeError):
             names = set()
-        if path != _ALLOWLIST:
-            return frozenset(names)
-        _KNOWN_ORGS = frozenset(names)
-    return _KNOWN_ORGS
+        _ALLOWLIST_CACHE[cache_key] = frozenset(names)
+    return _ALLOWLIST_CACHE[cache_key]
+
+
+def known_org_names(path=_ALLOWLIST):
+    """Names the news gate's allowlist treats as organisations, not people: publishers, security firms,
+    organisations, protocols and agencies."""
+    return _allowlist_names(("publishers", "securityFirms", "organisations", "protocols", "agencies"), path)
+
+
+def reporter_names(path=_ALLOWLIST):
+    """Publishers and security firms: when a headline has one of them say or find something, it is the reporter."""
+    return _allowlist_names(("publishers", "securityFirms"), path)
+
+
+# "Cisco Talos finds ...", "Wiz says ...": the firm reports the incident, it is not its subject
+_REPORTING_VERB = re.compile(
+    r"^\s*(?:says|said|warns|warned|finds|found|reports|reported|uncovers|uncovered|traces|traced|detects|detected|"
+    r"flags|flagged|spots|spotted|observes|observed|tracks|tracked|links|linked|attributes|details|explains|reveals|"
+    r"revealed|discovers|discovered|identifies|identified|analyzes|analyses|exposes|exposed|sees|saw)\b",
+    re.IGNORECASE,
+)
 
 
 def _ai_subject_ok(subject, known=()):
@@ -1144,7 +1200,7 @@ def _trim_ai_subject(subject):
         words.pop(0)
     while len(words) > 1 and words[-1].lower() in _AI_TRAIL:
         words.pop()
-    if not words or (len(words) == 1 and words[0].lower() in _AI_TRAIL | _AI_SUBJECT_STOP):
+    if not words or all(w.lower() in _AI_TRAIL | _AI_SUBJECT_STOP | _AI_GENERIC for w in words):
         return None
     return " ".join(words)
 
@@ -1171,6 +1227,10 @@ def extract_ai_subject(title, exclude=(), known=()):
         return None, None
     if not _ai_subject_ok(subject, {k.lower() for k in known}):
         return None, None
+    if subject.lower() in reporter_names():
+        after = text[text.find(subject) + len(subject):] if subject in text else ""
+        if _REPORTING_VERB.match(after):
+            return None, None  # the reporting firm, not the incident's subject
     return subject, method
 
 

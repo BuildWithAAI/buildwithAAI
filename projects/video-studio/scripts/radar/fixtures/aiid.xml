@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>AI Incident Database RSS Feed</title>
+  <link>https://incidentdatabase.ai</link>
+  <description>Trimmed fixture (2026-11-24): selected items, excerpts of at most 280 characters, names redacted, no author names.</description>
+  <item>
+    <title><![CDATA[Claude Code settings.local.json Secrets: 17 months of exposure on GitHub, & Docker Hub]]></title>
+    <link>https://blog.gitguardian.com/claude-code-settings-local-json-secrets-docker-hub/</link>
+    <guid isPermaLink="false">8dc75d36-7441-5136-aeb7-a1d568c6fe7e</guid>
+    <pubDate>Mon, 23 Nov 2026 00:00:00 GMT</pubDate>
+    <description><![CDATA[TL;DR 31,088 secrets, 5,343 valid: GitGuardian found 31,088 distinct secrets in Claude Code’s .claude/settings.local.json on public GitHub, across 23,276 repositories, and 5,343 of them worked when we detected them. “Yes, and… ... (https://incidentdatabase.ai/cite/1846#8384)]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Coding Agents Copy Your Secrets to a Hidden File. Thousands Are on GitHub]]></title>
+    <link>https://apiiro.com/blog/coding-agents-leaking-secrets-github-dont-ask-again</link>
+    <guid isPermaLink="false">d4671c9c-fd95-5c03-9b90-d4915d634a9a</guid>
+    <pubDate>Mon, 23 Nov 2026 00:00:00 GMT</pubDate>
+    <description><![CDATA[Update, November 8: Anthropic's Head of Claude Code responds. [named person] responded on Hacker News on November 7 and took part in the discussion through the weekend. He said the team is "looking into what we can do to prevent… ... (https://incidentdatabase.ai/cite/1846#8385)]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Claude Code’s ‘don’t ask again’ button has a secrets-spilling problem]]></title>
+    <link>https://www.csoonline.com/article/4247336/claude-codes-dont-ask-again-button-has-a-secrets-spilling-problem.html</link>
+    <guid isPermaLink="false">328a0a72-103c-53af-a58e-705fac88635f</guid>
+    <pubDate>Mon, 23 Nov 2026 00:00:00 GMT</pubDate>
+    <description><![CDATA[A configuration file meant to store local command permissions on Anthropic’s Claude Code is exposing thousands of API keys, database credentials and other secrets, according to findings by GitGuardian. The code security firm… ... (https://incidentdatabase.ai/cite/1846#8386)]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Waymo pauses robotaxi service amid San Francisco storms: ‘We were kind of just stuck there’]]></title>
+    <link>https://www.sfchronicle.com/sf/article/waymo-service-paused-storm-rain-22537988.php</link>
+    <guid isPermaLink="false">1a62dc76-bb87-5267-ac55-7d2642349cb2</guid>
+    <pubDate>Sat, 21 Nov 2026 00:00:00 GMT</pubDate>
+    <description><![CDATA[Waymo suspended its autonomous ride-hail service Wednesday morning, provoking complaints that ripped through social media with nearly as much ferocity as a super El Niño pummeling the Bay Area. “We’ve paused for now due to… ... (https://incidentdatabase.ai/cite/1835#8357)]]></description>
+  </item>
+  <item>
+    <title><![CDATA[123 Reg discloses 'AI cyberattack' on customer data, suspects China nexus]]></title>
+    <link>https://www.theregister.com/cyber-crime/2026/10/28/123-reg-discloses-ai-cyberattack-on-customer-data-suspects-china-nexus/5305936</link>
+    <guid isPermaLink="false">1dcf2634-e3f2-5139-8e68-40579e0ad8f7</guid>
+    <pubDate>Wed, 18 Nov 2026 00:00:00 GMT</pubDate>
+    <description><![CDATA[UK domain registrar 123 Reg (no relation – Ed) says it was the victim of an “AI-driven cyberattack” that exposed customer data. Customers began receiving their notification emails this week, informing them that their contact… ... (https://incidentdatabase.ai/cite/1834#8354)]]></description>
+  </item>
+  <item>
+    <title><![CDATA[United Airlines Is Banning AI Bots From Booking Flights]]></title>
+    <link>https://www.wsj.com/tech/ai/united-airlines-is-banning-ai-bots-from-booking-flights-5b514b38</link>
+    <guid isPermaLink="false">a636f815-d052-5fe6-a8e4-9b37add9e305</guid>
+    <pubDate>Sun, 15 Nov 2026 00:00:00 GMT</pubDate>
+    <description><![CDATA[United Airlines doesn’t want to deal with your AI agent. The airline said Wednesday that it will prevent personal artificial-intelligence assistants from accessing its systems to book tickets. United cited concerns that the third-party ag ... (report_number: 8335)]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Weill Cornell patient data entered into AI tools without authorization]]></title>
+    <link>https://www.beckershospitalreview.com/healthcare-information-technology/ai/weill-cornell-patient-data-entered-into-ai-tools-without-authorization/</link>
+    <guid isPermaLink="false">6adf4577-375c-5d3a-80de-221426f7d199</guid>
+    <pubDate>Sat, 14 Nov 2026 00:00:00 GMT</pubDate>
+    <description><![CDATA[New York City-based Weill Cornell Medicine disclosed that patient health information was entered into AI tools and processed using machine learning without authorization as part of a radiology research study. Weill Cornell… ... (https://incidentdatabase.ai/cite/1823#8310)]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Prosecutors indict 57 over AI-powered romance scam]]></title>
+    <link>https://www.taipeitimes.com/News/front/archives/2026/09/03/2003863596</link>
+    <guid isPermaLink="false">bd1a7d86-23b0-50c6-ae52-108f4996a969</guid>
+    <pubDate>Sat, 14 Nov 2026 00:00:00 GMT</pubDate>
+    <description><![CDATA[Taipei prosecutors yesterday indicted 57 people over alleged involvement in a romance scam ring, seeking a 25-year sentence for one. A man surnamed [named person] and his wife, surnamed [named person], allegedly set up a romance scam ring… ... (https://incidentdatabase.ai/cite/1824#8315)]]></description>
+  </item>
+</channel>
+</rss>

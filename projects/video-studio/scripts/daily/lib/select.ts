@@ -17,6 +17,7 @@ export const POLICY = [
 	'The primary is the best-scoring eligible incident; the alternates are the next two eligible ones.',
 	'If nothing is eligible, there is no video today. Developing stories are listed for the owner but never picked automatically (a "what we know" Short needs his call: prepare --pick <id>).',
 	'Only one daily video per day: once a video for the date is approved, prepare picks nothing new unless --pick is given.',
+	"Both lanes compete on the same rules: an AI-security incident (prompt injection, a malicious AI tool, deepfake fraud...) needs the same confirmation, sourcing and real analysis as a crypto one; the radar scores it on concrete harm when no source states a dollar figure.",
 ];
 
 export const dateSlugFor = (date: string, inc: RadarIncident): string => {
@@ -57,6 +58,7 @@ export const summarize = (inc: RadarIncident, rank: number, ctx: SelectContext):
 		reasons,
 		strongAnalysis: a.available,
 		chains: inc.chains,
+		lane: inc.lane ?? 'crypto',
 	};
 };
 

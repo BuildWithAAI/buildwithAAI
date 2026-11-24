@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Embrace The Red</title>
+  <link>https://embracethered.com/blog/</link>
+  <description>Trimmed fixture (2026-11-24): selected items, excerpts of at most 280 characters, names redacted, no author names.</description>
+  <item>
+    <title>Visual Studio Copilot and SSMS Remote Code Execution (CVE-2026-103572)</title>
+    <link>https://embracethered.com/blog/posts/2026/visual-studio-copilot-remote-code-execution/</link>
+    <guid isPermaLink="true">https://embracethered.com/blog/posts/2026/visual-studio-copilot-remote-code-execution/</guid>
+    <pubDate>Tue, 13 Oct 2026 15:00:40 -0700</pubDate>
+    <description>A . is all you need! Today Microsoft shipped the patch for a vulnerability in Visual Studio Copilot that I reported in August. Microsoft classified it as Important severity Remote Code Execution vulnerability. At the root cause it allows Copilot in Visual Studio or SQL Server…</description>
+  </item>
+  <item>
+    <title>Breaking Claude Code Opus 5 Auto Mode</title>
+    <link>https://embracethered.com/blog/posts/2026/breaking-claude-code-opus-5-and-automode/</link>
+    <guid isPermaLink="true">https://embracethered.com/blog/posts/2026/breaking-claude-code-opus-5-and-automode/</guid>
+    <pubDate>Wed, 26 Aug 2026 21:00:00 -0700</pubDate>
+    <description>In this post, we explore how a simple website summary request hijacks Claude Code Opus 5 in Auto Mode and achieves code execution with 60-80% attack success rate using a small sample size. This is interesting because a third-party evaluation commissioned by Anthropic showed a…</description>
+  </item>
+  <item>
+    <title>LLM Heist: Hijacking LiteLLM for Traffic Interception, Key Theft, and Tool-Call Injection</title>
+    <link>https://embracethered.com/blog/posts/2026/hijacking-litellm-for-fun-and-profit/</link>
+    <guid isPermaLink="true">https://embracethered.com/blog/posts/2026/hijacking-litellm-for-fun-and-profit/</guid>
+    <pubDate>Mon, 03 Aug 2026 09:00:00 -0700</pubDate>
+    <description>LiteLLM is a popular AI gateway. It provides a unified interface to LLMs and simplifies governance. It also has access to the backend LLM provider keys. All of that makes it a high-value target. Not only for IP and data theft, but also for response modification and tool…</description>
+  </item>
+  <item>
+    <title>Escaping Linux Sandboxes via PipeWire (CVE-2026-5674)</title>
+    <link>https://embracethered.com/blog/posts/2026/pipewire-flatpak-linux-sandbox-escape-cve-2026-5674/</link>
+    <guid isPermaLink="true">https://embracethered.com/blog/posts/2026/pipewire-flatpak-linux-sandbox-escape-cve-2026-5674/</guid>
+    <pubDate>Thu, 30 Jul 2026 09:00:00 -0700</pubDate>
+    <description>This post walks through a sandbox escape from a Flatpak application via PipeWire. The vulnerability was discovered using my automated research pipeline with Claude Code and Opus 4.6 back in April 2026. It was an exciting find, as this was the first bug I submitted to Red Hat.…</description>
+  </item>
+</channel>
+</rss>

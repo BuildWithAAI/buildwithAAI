@@ -15,6 +15,15 @@
 
 export type Tier = 'A' | 'B' | 'C';
 
+/** The radar's lanes: crypto security, AI security, or both. Older radar files have none (crypto). */
+export type Lane = 'crypto' | 'ai' | 'both';
+
+/** The radar's AI-security incident types (scripts/radar/radarlib/classify.py AI_TYPES). */
+export const AI_TYPES = ['prompt-injection', 'ai-agent-exploit', 'malicious-ai-tool', 'model-supply-chain', 'ai-data-exposure', 'ai-assisted-attack', 'deepfake-fraud', 'ai-phishing', 'ai-washing'] as const;
+
+/** An AI-security story: an AI type in the ai or both lane (a crypto mechanism keeps the crypto rules). */
+export const isAiStory = (x: {type?: string; lane?: string}): boolean => (AI_TYPES as readonly string[]).includes(x.type ?? '') && x.lane !== 'crypto';
+
 export type RadarSource = {
 	id: string; // the radar FEED id: two articles from one feed share it
 	url: string;
@@ -38,6 +47,12 @@ export type RadarSource = {
 	qualifier?: string | null;
 	/** A source from an earlier radar run that has rotated out of its feed (still counts, never a retraction). */
 	carried?: boolean;
+	/** The lane this item is in (crypto, ai or both). */
+	lane?: Lane;
+	/** Another outlet's report listed by an incident database (the AI Incident Database): discovery only. */
+	listedReport?: boolean;
+	/** The database's own page for the listed report (never fetched). */
+	trackerUrl?: string;
 };
 
 export type RadarFact = {text: string; sourceId: string; url: string; quote: string; field: string};
@@ -48,6 +63,8 @@ export type RadarIncident = {
 	id: string;
 	title: string;
 	protocol: string;
+	/** crypto, ai or both (older radar files: crypto). */
+	lane?: Lane;
 	chains: string[];
 	type: string;
 	dateUtc: string;
@@ -117,6 +134,8 @@ export type BriefSource = {
 	tracker?: boolean;
 	/** A tracker entry whose only reference is an X post nobody here could read. */
 	unverified?: boolean;
+	/** Another outlet's report listed by an incident database: discovery only (read the original, never the listing). */
+	listedReport?: boolean;
 };
 
 export type FactKind = 'radar-fact' | 'excerpt' | 'tracker-row';
@@ -178,6 +197,7 @@ export type CandidateSummary = {
 	reasons: string[];
 	strongAnalysis: string[];
 	chains: string[];
+	lane?: Lane;
 };
 
 export type Selection = {
@@ -222,6 +242,8 @@ export type DailyBrief = {
 		shortReady: {ready: boolean; missing: string[]};
 		postMortemUrl: string | null;
 		notes: string[];
+		/** crypto, ai or both (the radar's lane). */
+		lane?: Lane;
 	};
 	evergreenTopic: string | null;
 	evergreen: {topic: string; title: string; url: string | null; status: string} | null;

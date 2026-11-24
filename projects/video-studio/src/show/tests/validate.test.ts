@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {developingOf, neededLabels, validateProps, validateShowStoryboard, validateShowTimeline, ZOO_VOICE} from '../validate.ts';
+import {segmentTag} from '../segments.ts';
 import type {ShowScene, ShowStoryboard} from '../types.ts';
 import {clone, codes, fixture, mock, voiced} from './helpers.ts';
 
@@ -46,6 +47,30 @@ test('validate: the Rekt Meter shows exactly the reported figure and names who r
 	// an unreadable display string is a warning (not machine-checked), not a silent pass
 	const unread = check(broken((sb) => ((scene(sb, 's02').onScreen as Record<string, string>).loss = 'a lot of money')));
 	assert.ok(codes(unread, 'warning').includes('rekt.unchecked'));
+});
+
+test('validate: a story with no reported loss hides the Rekt Meter, never $0 or a guessed figure', () => {
+	// no source states a loss (most AI-security stories): no onScreen.loss and no rekt is valid, and shows no meter or tag
+	const none = broken((sb) => {
+		delete scene(sb, 's02').rekt;
+		delete (scene(sb, 's02').onScreen as Record<string, string>).loss;
+		delete (scene(sb, 's02').onScreen as Record<string, string>).lossAlt;
+	});
+	assert.ok(!codes(check(none)).some((c) => c.startsWith('rekt.')), codes(check(none)).join());
+	assert.equal(segmentTag('headline', scene(none, 's02')), null);
+	assert.equal(segmentTag('headline', scene(fixture(), 's02')), 'rektMeter');
+	assert.equal(segmentTag('zooOneFix', scene(none, 's02')), 'oneFix', 'other segments keep their tag');
+	const es = clone(none);
+	es.lang = 'es';
+	for (const k of ['rektMeter', 'reportedBy', 'logScale', 'alsoReported'] as const) assert.ok(!neededLabels(es).includes(k), k);
+	// a $0 meter is refused, whatever the display says
+	const zero = broken((sb) => {
+		(scene(sb, 's02').rekt as {usd: number}).usd = 0;
+		delete (scene(sb, 's02').rekt as {alt?: unknown}).alt;
+		delete (scene(sb, 's02').onScreen as Record<string, string>).lossAlt;
+		(scene(sb, 's02').onScreen as Record<string, string>).loss = '$0';
+	});
+	assert.ok(codes(check(zero)).includes('rekt.usd'));
 });
 
 test('validate: diagrams stay concept-level (2-5 nodes, labelled, no code or numbered steps)', () => {

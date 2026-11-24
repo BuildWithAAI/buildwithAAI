@@ -78,7 +78,7 @@
         12
       ],
       "required": true,
-      "what": "What happened: who, when and the reported loss. onScreen.title and onScreen.loss (as the source writes it) with scene.rekt {usd, source}; a second outlet's different figure goes in lossAlt + rekt.alt, never merged."
+      "what": "What happened: who, when and the reported loss. onScreen.title and onScreen.loss (as the source writes it) with scene.rekt {usd, source}; a second outlet's different figure goes in lossAlt + rekt.alt, never merged. No source states a loss (most AI-security stories): leave out loss and rekt, and the meter is hidden; never $0 or a guess."
     },
     {
       "id": "how-it-worked",
@@ -261,6 +261,11 @@
     },
     "ai-security": {
       "title": "AI agents, prompt injection and malicious plugins",
+      "url": null,
+      "status": "planned"
+    },
+    "ai-scams": {
+      "title": "Deepfakes, cloned voices and AI phishing: check before you pay or click",
       "url": null,
       "status": "planned"
     }

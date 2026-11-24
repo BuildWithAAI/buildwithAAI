@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Microsoft Security Blog</title>
+  <link>https://www.microsoft.com/en-us/security/blog/</link>
+  <description>Trimmed fixture (2026-11-24): selected items, excerpts of at most 280 characters, names redacted, no author names.</description>
+  <item>
+    <title><![CDATA[Microsoft named a Leader in the 2026 Gartner® Magic Quadrant™ for SIEM]]></title>
+    <link>https://www.microsoft.com/en-us/security/blog/2026/11/20/microsoft-named-a-leader-in-the-2026-gartner-magic-quadrant-for-siem/</link>
+    <guid isPermaLink="false">https://www.microsoft.com/en-us/security/blog/?p=151039</guid>
+    <pubDate>Fri, 20 Nov 2026 17:00:00 +0000</pubDate>
+    <category><![CDATA[Gartner Magic Quadrant]]></category>
+    <description><![CDATA[We're honored that Microsoft has once again been recognized as a Leader in the 2026 Gartner® Magic Quadrant™ for Security Information and Event Management… The post Microsoft named a Leader in the 2026 Gartner® Magic Quadrant™ for SIEM appeared first on Microsoft Security Blog .]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Security for the agentic era, powered by Microsoft Perception]]></title>
+    <link>https://www.microsoft.com/en-us/security/blog/2026/11/17/security-for-the-agentic-era-powered-by-microsoft-perception/</link>
+    <guid isPermaLink="false">https://www.microsoft.com/en-us/security/blog/?p=150973</guid>
+    <pubDate>Tue, 17 Nov 2026 18:14:00 +0000</pubDate>
+    <description><![CDATA[Read about updates to Microsoft Perception and the new Microsoft Security cyber stack to defend against threats, secure agents, and protect your digital estate. The post Security for the agentic era, powered by Microsoft Perception appeared first on Microsoft Security Blog .]]></description>
+  </item>
+  <item>
+    <title><![CDATA[The risks of device code authentication for AI coding agents]]></title>
+    <link>https://www.microsoft.com/en-us/security/blog/2026/11/17/the-risks-of-device-code-authentication-for-ai-coding-agents/</link>
+    <guid isPermaLink="false">https://www.microsoft.com/en-us/security/blog/?p=151026</guid>
+    <pubDate>Tue, 17 Nov 2026 15:00:00 +0000</pubDate>
+    <category><![CDATA[CI/CD]]></category>
+    <category><![CDATA[Phishing]]></category>
+    <category><![CDATA[Social engineering]]></category>
+    <category><![CDATA[Token theft]]></category>
+    <description><![CDATA[Lab research shows how device code phishing, a technique that applies to any device-flow client, can extend to AI coding agents, using GitHub Copilot CLI as an… The post The risks of device code authentication for AI coding agents appeared first on Microsoft Security Blog .]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Trained to betray: How post-training supply chain attacks hijack coding agents]]></title>
+    <link>https://www.microsoft.com/en-us/security/blog/2026/11/12/trained-to-betray-how-post-training-supply-chain-attacks-hijack-coding-agents/</link>
+    <guid isPermaLink="false">https://www.microsoft.com/en-us/security/blog/?p=150951</guid>
+    <pubDate>Thu, 12 Nov 2026 17:00:00 +0000</pubDate>
+    <category><![CDATA[Supply chain attack]]></category>
+    <description><![CDATA[Microsoft Defender Research and the AI Red Team discuss how poisoned datasets and poisoned model checkpoints can trigger remote code execution and… The post Trained to betray: How post-training supply chain attacks hijack coding agents appeared first on Microsoft Security Blog .]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Detecting sleeper agents hiding in AI model neurons]]></title>
+    <link>https://www.microsoft.com/en-us/security/blog/2026/11/10/detecting-sleeper-agents-hiding-in-ai-model-neurons/</link>
+    <guid isPermaLink="false">https://www.microsoft.com/en-us/security/blog/?p=150905</guid>
+    <pubDate>Tue, 10 Nov 2026 23:00:00 +0000</pubDate>
+    <description><![CDATA[Microsoft Research has released new threat research detailing how a capable agent model could be turned into a sleeper agent by editing fewer than ten neurons to inject a… The post Detecting sleeper agents hiding in AI model neurons appeared first on Microsoft Security Blog .]]></description>
+  </item>
+</channel>
+</rss>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Dark Reading</title>
+  <link>https://www.darkreading.com/</link>
+  <description>Trimmed fixture (2026-11-24): selected items, excerpts of at most 280 characters, names redacted, no author names.</description>
+  <item>
+    <title><![CDATA[CrowdStrike Makes AI Security Push With Blockbuster Zscaler Deal]]></title>
+    <link>https://www.darkreading.com/endpoint-security/crowdstrike-ai-security-push-zscaler-deal</link>
+    <guid isPermaLink="false">https://www.darkreading.com/endpoint-security/crowdstrike-ai-security-push-zscaler-deal</guid>
+    <pubDate>Mon, 23 Nov 2026 21:21:42 GMT</pubDate>
+    <dc:creator><![CDATA[Dark Reading staff]]></dc:creator>
+    <description><![CDATA[CrowdStrike's $44 billion acquisition of Zscaler would unite endpoint protection and zero-trust network security to obtain greater control over AI agents.]]></description>
+  </item>
+  <item>
+    <title><![CDATA[AI Agents Zip From Flaw Discovery to Root Access in 11 Minutes]]></title>
+    <link>https://www.darkreading.com/cyberattacks-data-breaches/ai-agents-flaw-discovery-root-access-11-minutes</link>
+    <guid isPermaLink="false">https://www.darkreading.com/cyberattacks-data-breaches/ai-agents-flaw-discovery-root-access-11-minutes</guid>
+    <pubDate>Mon, 23 Nov 2026 16:17:21 GMT</pubDate>
+    <dc:creator><![CDATA[Dark Reading staff]]></dc:creator>
+    <description><![CDATA[A China-nexus actor used the Cairn penetration testing tool in attacks against East Asian universities, exploiting a zero-day in a medical imaging app.]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Microsoft Debuts Offensive, Defensive Security Tools for the AI Era]]></title>
+    <link>https://www.darkreading.com/endpoint-security/microsoft-offense-defense-ai-security-tools</link>
+    <guid isPermaLink="false">https://www.darkreading.com/endpoint-security/microsoft-offense-defense-ai-security-tools</guid>
+    <pubDate>Fri, 20 Nov 2026 13:51:30 GMT</pubDate>
+    <dc:creator><![CDATA[Dark Reading staff]]></dc:creator>
+    <description><![CDATA[At its Ignite technical conference, Microsoft announced AI agent security tools and transparency standards to protect enterprise systems.]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Navigating Vulnerability Hysteria in the AI Era]]></title>
+    <link>https://www.darkreading.com/vulnerabilities-threats/navigating-vulnerability-hysteria-ai-era</link>
+    <guid isPermaLink="false">https://www.darkreading.com/vulnerabilities-threats/navigating-vulnerability-hysteria-ai-era</guid>
+    <pubDate>Thu, 19 Nov 2026 19:46:44 GMT</pubDate>
+    <dc:creator><![CDATA[Dark Reading staff]]></dc:creator>
+    <description><![CDATA[This installment of the Reporters' Notebook video series examines the fallout from recent high-severity flaw disclosures, exploring how fears of AI-assisted exploits trigger widespread panic, operational disruptions, and growing warning fatigue.]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Strike Graph Launches Integration AI to Automate Continuous Compliance Evidence Using Any Existing Tool]]></title>
+    <link>https://www.darkreading.com/cyber-risk/strike-graph-launches-integration-ai-to-automate-continuous-compliance-evidence-using-any-existing-tool</link>
+    <guid isPermaLink="false">https://www.darkreading.com/cyber-risk/strike-graph-launches-integration-ai-to-automate-continuous-compliance-evidence-using-any-existing-tool</guid>
+    <pubDate>Wed, 18 Nov 2026 20:45:49 GMT</pubDate>
+    <description><![CDATA[New agentic AI solution leverages APIs to collect compliance evidence from systems and applies it to over 30 frameworks with no duplicate work.]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Cursor Traces Malicious Claude Code Extensions to Third-Party Breach]]></title>
+    <link>https://www.darkreading.com/application-security/cursor-malicious-claude-code-extension-third-party-breach</link>
+    <guid isPermaLink="false">https://www.darkreading.com/application-security/cursor-malicious-claude-code-extension-third-party-breach</guid>
+    <pubDate>Tue, 17 Nov 2026 18:38:37 GMT</pubDate>
+    <dc:creator><![CDATA[Dark Reading staff]]></dc:creator>
+    <description><![CDATA[A compromised key issued to AI infrastructure provider Fireworks was used by threat actors to access Cursor data and credentials.]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Attackers in Binance Breach Targeted Known Weakness, Missing Controls]]></title>
+    <link>https://www.darkreading.com/cybersecurity-operations/attackers-binance-breach-targeted-weakness-missing-controls</link>
+    <guid isPermaLink="false">https://www.darkreading.com/cybersecurity-operations/attackers-binance-breach-targeted-weakness-missing-controls</guid>
+    <pubDate>Fri, 13 Nov 2026 13:00:00 GMT</pubDate>
+    <dc:creator><![CDATA[Dark Reading staff]]></dc:creator>
+    <description><![CDATA[Blockchain complexities, such as attacker-deployed sweepers, hobble security controls designed to limit the damage of an exchange compromise.]]></description>
+  </item>
+  <item>
+    <title><![CDATA[AI Coding Agents Leak Thousands of Secrets to GitHub]]></title>
+    <link>https://www.darkreading.com/cyber-risk/ai-coding-agents-leak-secrets-github</link>
+    <guid isPermaLink="false">https://www.darkreading.com/cyber-risk/ai-coding-agents-leak-secrets-github</guid>
+    <pubDate>Tue, 10 Nov 2026 18:46:22 GMT</pubDate>
+    <dc:creator><![CDATA[Dark Reading staff]]></dc:creator>
+    <description><![CDATA[A command in Claude Code inadvertently saves files with credentials and other sensitive data to public Git repositories, creating security gaps for organizations.]]></description>
+  </item>
+</channel>
+</rss>

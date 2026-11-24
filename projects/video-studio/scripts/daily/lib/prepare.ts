@@ -89,8 +89,8 @@ const prepareMd = (date: string, sel: Selection, brief: DailyBrief | null, files
 		out.push(`Real analysis available: ${real.map((o) => `\`${o.id}\``).join(', ') || 'none'}${strong.length > real.length ? ` (strong daily templates, which only support: ${strong.filter((o) => !real.includes(o)).map((o) => `\`${o.id}\``).join(', ')})` : ''}.`, '');
 		if (sel.alternates.length) out.push(`Alternates: ${sel.alternates.map((a) => `\`${a.incidentId}\``).join(', ')}.`, '');
 	}
-	out.push('| # | Incident | Status | Score | Eligible | Why not |', '| --- | --- | --- | --- | --- | --- |');
-	for (const c of sel.considered) out.push(`| ${c.rank} | ${cell(c.title)} | ${c.status} | ${c.score} | ${c.eligible ? 'yes' : 'no'} | ${cell(c.reasons.join('; ') || '-')} |`);
+	out.push('| # | Incident | Lane | Status | Score | Eligible | Why not |', '| --- | --- | --- | --- | --- | --- | --- |');
+	for (const c of sel.considered) out.push(`| ${c.rank} | ${cell(c.title)} | ${c.lane ?? 'crypto'} | ${c.status} | ${c.score} | ${c.eligible ? 'yes' : 'no'} | ${cell(c.reasons.join('; ') || '-')} |`);
 	out.push('');
 	if (files.length) out.push('Files:', '', ...files.map((f) => `- ${f}`), '');
 	out.push('Policy:', '', ...sel.policy.map((p) => `- ${p}`), '');

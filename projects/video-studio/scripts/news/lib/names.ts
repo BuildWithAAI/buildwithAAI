@@ -98,7 +98,8 @@ could can may might did does do said says told found traced flagged posted wrote
 thinks first also later then now group's firm's interface experience error side end base behavior behaviour education
 protection safety security support onboarding agreement consent identity address email phone password session flow
 journey portal forum crew gang collective campaign kit playbook tactic technique toolkit dashboard desk feed post
-thread channel blog note alert profile handle page site`.split(/\s+/),
+thread channel blog note alert profile handle page site say warn note find show argue believe think suspect agree explain
+confirm estimate`.split(/\s+/),
 );
 
 export type PersonReason =

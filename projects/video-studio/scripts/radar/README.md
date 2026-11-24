@@ -1,7 +1,9 @@
-# News radar (channel 2: crypto security, working slug `zoora-security`)
+# News radar (channel 2: crypto and AI security, working slug `zoora-security`)
 
 Step 1 of the channel-2 pipeline in `projects/video-studio/CLAUDE.md`: watch incident
 trackers, security-firm research, post-mortems and news, then write a sourced daily brief.
+It has two lanes, **crypto security** and **AI security** (the owner's scope in
+`content/zoora-security/channel.json`), and every incident and item says which lane it is in.
 The claim gate (step 2) and the owner's review (step 3) come after it, so the radar
 drafts research and never a script. Python 3 standard library only.
 
@@ -9,13 +11,13 @@ drafts research and never a script. Python 3 standard library only.
 cd projects/video-studio
 python3 scripts/radar/radar.py collect --date 2026-11-24                     # live
 python3 scripts/radar/radar.py collect --date 2026-11-24 --offline-fixtures  # recorded fixtures
-python3 -m unittest discover -s scripts/radar/tests -t scripts/radar         # 118 tests, about 8 s
+python3 -m unittest discover -s scripts/radar/tests -t scripts/radar         # 159 tests, about 5 s
 ```
 
 | Output | Where |
 | --- | --- |
-| Machine brief | `content/zoora-security/radar/<date>.json` (live runs) |
-| Human brief | `content/zoora-security/radar/<date>.md`: top 5 with sources, status and score reasons, "also seen", unclustered items, source health |
+| Machine brief | `content/zoora-security/radar/<date>.json` (live runs): `top`, `alsoSeen`, `laneTop` (each lane's best 5 ids), `counts.candidatesByLane`, and a `lane` on every incident, source entry, unclustered item and source row |
+| Human brief | `content/zoora-security/radar/<date>.md`: top 5 with sources, status, lane and score reasons, the AI security lane's best 5, "also seen", unclustered items, source health |
 | Polite cache | `.cache/radar/` (gitignored): parsed items (titles, links, dates, excerpts of 280 characters or fewer), ETag/Last-Modified, robots.txt |
 | Offline runs | `.cache/radar/offline-out/` unless `--out-dir` is given, so fixture output never replaces a real brief |
 
@@ -50,7 +52,10 @@ least one source was read, 1 when none was, and 2 for bad input.
    excerpt and qualifier of the run, and can never be a subject or an outlet's origin, so "Was X
    hacked?" and "X-linked wallet" from other outlets cannot make X an incident's id, title or
    protocol (2026-11-24 live run). A firm that only "says" things ("Glassnode said") is not spread
-   this way. The redaction is heuristic, so the claim gate stays responsible.
+   this way. AI products ("Claude Code", "Claude Opus 5", "Gemini CLI") are never taken for people,
+   but "Claude Dupont said" still is; a name given by its surname alone ("a man surnamed X", with
+   the name in its own script after it) is redacted, and a given name left in front of a redacted
+   surname goes with it. The redaction is heuristic, so the claim gate stays responsible.
 5. **No exploit how-tos.** `safety.redact_code` removes addresses, hashes, code spans, function
    calls and identifiers (`[code]`, `[address]`). Generated text uses only labels such as
    "key compromise" or "Bridge & Cross-Chain / Cross-Chain Message Spoofing". It contains no
@@ -77,6 +82,27 @@ speculation. The end-to-end tests run it on every title and fact.
 | `blockworks` | rss | B | **Unverified.** blockworks.co was refused by this session's network proxy, so it reports "skipped". |
 | `web3isgoinggreat` | atom | C | Aggregator, CC BY-SA 3.0. Its entry times can be catch-up times. |
 | `cryptonews`, `coinedition` | rss | C | Mixed original, sponsored and price content. |
+
+AI-security lane (added 2026-11-24; `"lane"` is `ai` or `both`, every crypto source above is `crypto`):
+
+| id | Kind | Tier | Lane | Notes |
+| --- | --- | --- | --- | --- |
+| `unit42-blog` | rss | A | both | Palo Alto Networks' research (AI-agent attacks and crypto drainers). Promotional posts and the "Threat Intelligence Highlights" digests are excluded. |
+| `msft-security-blog` | rss | A | both | Microsoft Threat Intelligence and AI Red Team research. Product, award and analyst-ranking posts are excluded. |
+| `embracethered-blog` | rss | A | ai | A researcher's primary AI-agent and prompt-injection research, low volume; attributed to the blog, never to a person. |
+| `bleepingcomputer` | rss | B | both | Sponsored posts (author line "Sponsored by ...") and deals are excluded. |
+| `therecord` | rss | B | both | Recorded Future News. Podcasts excluded. |
+| `securityweek` | rss | B | both | The main feed (the AI-category feed is behind a Cloudflare challenge and is not used). Funding, M&A, people moves, webinars and round-ups are excluded. |
+| `darkreading` | rss | B | both | Wire press releases (no author line) are excluded; the check switches itself off with a warning if most items lose their byline. |
+| `krebsonsecurity` | rss | B | both | Crawl-delay 35 s (obeyed). Its tags name people, so no categories are kept. |
+| `aiid` | rss (`aiid_rss`) | C | ai | The AI Incident Database: each item is ANOTHER outlet's report (the link is the original). Tracker, tier C, discovery only: never confirms, and facts come from the original report. Its citation link becomes the report's incident reference (`aiid:<n>`), which groups reports of one incident. |
+
+- The general security outlets (`"cryptoContext": "strict"`) and every source outside the crypto lane need
+  unambiguous crypto words for the crypto lane ("access tokens", "Microsoft Exchange" or "protocol" are not crypto
+  there). "Cryptography" is never crypto context.
+- Per-source rules in `sources.json`: `excludeUrlPatterns`, `excludeCategories`, `excludeTitlePatterns` (regex),
+  `excludeSponsored`, `bylineRequired`, `stripFeedFooter` (WordPress "The post ... appeared first on" lines),
+  `dropCategories`. The parser reads author lines only for these flags and never stores a name.
 
 - **Tier A:** primary or official incident data, security-firm research and post-mortems.
   **Tier B:** established outlets. **Tier C:** aggregators. Tier C never counts toward confirmation.
@@ -143,11 +169,20 @@ with a warning.
 
 ## How a brief is built
 
-1. **Relevance.** An item needs crypto context (in the text, categories or URL) and either an
-   incident term (hack, exploit, drained, stolen, phishing, rug pull, compromise...) or a
-   security topic (vulnerability, post-mortem, private keys, frozen funds...). Negated mentions
-   such as "no evidence of a security breach" do not count. Per-source URL and category
-   exclusions apply, and vendor blogs drop promotional posts.
+1. **Relevance, in two lanes.** A source carries the lanes its `lane` names, and keeps an item that a
+   lane it carries accepts. The item's own lane is `both` when it passes both rules.
+   - **Crypto:** crypto context (in the text, categories or URL) and either an incident term (hack,
+     exploit, drained, stolen, phishing, rug pull, compromise...) or a security topic (vulnerability,
+     post-mortem, private keys, frozen funds...).
+   - **AI:** AI context (an LLM, generative AI, a chatbot, an AI agent or coding agent, an MCP server,
+     model weights, a deepfake or cloned voice, a named AI product such as Claude Code, Copilot, Gemini or
+     ChatGPT) AND an AI-security incident or topic: prompt injection or a jailbreak, data or secrets exposed
+     through an AI tool, a malicious or poisoned model, package, extension or MCP server, an AI-assisted
+     intrusion or campaign, deepfake or voice-clone fraud, AI-generated phishing, AI-washing charges.
+     Product launches, deals, funding, earnings, webinars, video round-ups, awards, "AI era" opinion and
+     sponsored posts never count, and neither does AI used for defence or research ("discovered using AI").
+   - Negated mentions such as "no evidence of a security breach" or "no evidence AI was used" do not
+     count. Per-source exclusions apply, and vendor blogs drop promotional posts.
 2. **Mentions.** Titles and excerpts are sanitised. Each mention gets dates, a subject, aliases,
    loss figures, chains, a type vote, a hedge flag ("suspected", "apparent", "investigating"...),
    legal terms and audience cues.
@@ -173,6 +208,14 @@ with a warning.
    - The remaining incident news clusters by subject and date with complete linkage: every pair in
      a cluster must agree, so items days apart never chain into one incident. Items without a
      confident subject are listed as unclustered and never guessed.
+   - AI incidents have no database seeds, and an AI-only item never joins a crypto seed ("National
+     Cyber Security Centre" is not the Cyber Bridge hack). Their subject is the first AI product or
+     company the headline names (a product over its own vendor: "Anthropic says ... Claude Code" is
+     about Claude Code), else a headline subject that cannot be a person: a name the news gate's
+     allowlist knows as an organisation, one with a digit ("123 Reg"), a distinctive token ("GoDaddy")
+     or an organisation word at its end ("European Commission"). A two-word name that could be a person
+     is never a subject. Reports that the AI Incident Database files under one incident cluster
+     together through their `aiid:<n>` reference.
 4. **Incident.** Each incident gets:
    - `{id, title, protocol, chains, type, dateUtc, reportedLosses, status, sources, postMortemUrl, evergreenTopic, notes}`
    - plus `statusReason`, `typeReason`, `mechanismStatus`, `mechanismKnown`, `userSide`, `facts`, `score`
@@ -182,12 +225,20 @@ with a warning.
      ("..., months after a $1 million exploit"). Qualifiers stay with figures ("almost $1 million"),
      and a figure that includes amounts a source says "may have" been lost is flagged.
    - **type** is one of exploit, phishing, drainer, rug, key-compromise, social-engineering,
-     bridge, oracle, governance, other. It is taken from the highest tier that states a
-     mechanism, with priority social-engineering > drainer > phishing > rug > key-compromise >
-     oracle > governance > bridge > exploit > other.
+     bridge, oracle, governance, other, or an AI type: prompt-injection, ai-agent-exploit,
+     malicious-ai-tool, model-supply-chain, ai-data-exposure, ai-assisted-attack, deepfake-fraud,
+     ai-phishing, ai-washing. It is taken from the highest tier that states a mechanism, with priority
+     social-engineering > drainer > phishing > rug > key-compromise > oracle > governance > bridge >
+     (the AI types: deepfake-fraud > ai-phishing > prompt-injection > malicious-ai-tool >
+     model-supply-chain > ai-data-exposure > ai-agent-exploit > ai-assisted-attack > ai-washing) >
+     exploit > other. An item in both lanes keeps a crypto mechanism a source states; a bare "hack", a
+     generic exploit or "other" gives way to its AI type. Crypto-only items never get an AI type.
    - **evergreenTopic** is one of drainers, address-poisoning, phishing, key-management,
      bridge-security, oracle-manipulation, rug-pulls, social-engineering, fake-job-malware,
-     or null when none fits.
+     ai-security (agents, prompt injection, malicious tools, model supply chain, data exposure) and
+     ai-scams (deepfakes, cloned voices, AI phishing), or null when none fits (AI-assisted attacks,
+     AI-washing).
+   - **lane** is crypto, ai or both, from its sources' lanes.
 5. **Status.** `confirmed` needs one of: an unhedged tier-A primary statement that is not an
    incident database (the project, a post-mortem, a security firm, a law-enforcement release); the
    project's own statement relayed by an unhedged tier-B outlet; or two unhedged tier-B outlets that
@@ -206,12 +257,12 @@ is out of 100.
 
 | Factor | Weight | Rule |
 | --- | --- | --- |
-| loss | 25 | log10 of the lowest figure from the best tier: $10K gives 0, $1B gives 1 |
+| loss | 25 | log10 of the lowest figure from the best tier: $10K gives 0, $1B gives 1. **AI-security incidents** (an AI type in the ai or both lane) score concrete harm instead (`"basis": "harm"`): exploited or used in real attacks 0.45, users or data affected 0.3, a fix, advisory or takedown shipped 0.25, each at the best tier that states it (A 1.0, B 0.85, C 0.4; a hedged source half), +0.1 when two or more publishers state harm; a reported dollar figure still counts when it is higher |
 | recency | 20 | Freshest tier-A/B source: 1 up to 24 h before the end of the run date, then linear down to 0 at 96 h |
 | sources | 20 | Independent publishers weighted A 1.0, B 0.6, C 0.25, saturating at 2.5. Round-ups do not count |
 | novelty | 15 | 1.0 if new in the window; 0.6 for a recent incident with new coverage; 0.4 for a follow-up to an incident more than 14 days old; 0.5 or 0.1 if already in a live radar of the last 14 days, with or without new items. The reason also counts same-type incidents in those 14 days |
-| evergreen | 10 | 1.0 when the incident *is* the explainer topic (phishing, drainer, rug, social engineering, address poisoning, fake job). 0.7 for bridge or oracle, for users' own keys (user-side), or for custody keys of a wallet or exchange with no institutional cues. 0.6 for drainer exposure through approvals or front ends. 0.4 for protocol infrastructure keys |
-| audience | 10 | Base from the target type (Wallet 0.9, CEX 0.8, DeFi Protocol 0.35...). Retail mechanisms are raised to 0.85. Retail cues add 0.1 each (up to +0.3) and institutional cues subtract 0.1 each (down to -0.2) |
+| evergreen | 10 | 1.0 when the incident *is* the explainer topic (phishing, drainer, rug, social engineering, address poisoning, fake job; deepfake fraud, AI phishing, prompt injection, malicious AI tools). 0.7 for bridge or oracle, for users' own keys (user-side), for custody keys of a wallet or exchange with no institutional cues, and for AI data exposure or AI agent exploits. 0.6 for drainer exposure through approvals or front ends, and for AI model supply chain. 0.4 for protocol infrastructure keys |
+| audience | 10 | Base from the target type (Wallet 0.9, CEX 0.8, DeFi Protocol 0.35...). Retail mechanisms are raised to 0.85 (and deepfake fraud, AI phishing and malicious AI tools; 0.6 for prompt injection, AI data exposure and agent exploits; 0.4 for model supply chain and AI-assisted attacks). Retail cues add 0.1 each (up to +0.3) and institutional cues subtract 0.1 each (down to -0.2) |
 
 **Sourcing check for a daily Short** (`score.sourcing_bar`, still exported as `analysis_bar`).
 `shortReady.ready` needs all of: confirmed status, 2 or more independent publishers, a mechanism a
@@ -232,9 +283,12 @@ owner on the approval page.
 
 ## Fixtures and tests
 
-- `fixtures/` holds trimmed recordings of every source from 2026-11-24 (2 to 6 items each,
-  excerpts of at most 280 characters, no author fields). `tools/build_fixtures.py` rebuilt
-  them from raw probe payloads, which are not committed.
+- `fixtures/` holds trimmed recordings of every source from 2026-11-24 (2 to 8 items each,
+  excerpts of at most 280 characters, no author fields). `tools/build_fixtures.py` rebuilt the
+  crypto ones and `tools/build_ai_fixtures.py` the AI lane's (AI-security positives and the day's
+  hard negatives: sponsored posts, launches, deals, a press release, opinion, AI incidents that are
+  not security), both from raw payloads that are not committed. Names in the AI fixtures are redacted
+  with the radar's own rules and author names are replaced.
 - `fixtures/negative/` holds an entity bomb, a non-feed, broken XML, redesigned pages and a
   JSON error object.
 - `fixtures/synthetic/` is invented data (people, a handle, an address, a function name) that
@@ -247,6 +301,11 @@ owner on the approval page.
   unlisted hosts and a slow drip against a real local server, entity declarations in UTF-16 and
   padded XML, hostile HTML, rate-limited robots.txt, surname and pseudonym redaction, and a
   person's name spread from one outlet's headline to every other outlet's text in the run.
+- `tests/test_ai_lane.py` covers the AI lane: relevance on the day's titles (positives and hard
+  negatives), types, exclusions (sponsored, press releases, digests, strict crypto context), subjects
+  (products, never a person), redaction next to AI product names ("Claude Code" is not a person,
+  "Claude Dupont said" still is), the AI Incident Database parser, harm scoring, lanes on every output,
+  and the offline run with the crypto ranking unchanged.
 
 ## Known limits
 
@@ -262,3 +321,10 @@ owner on the approval page.
   "surfaced since the last live run" once history exists.
 - **Shallow pages.** The first SlowMist page and the rekt.news home page are the only pages
   read, which is enough for a daily run but not for backfills.
+- **AI lane heuristics.** The AI rules are regexes tuned on the 2026-11-24 feeds. General security
+  outlets often report an AI-assisted incident without saying "AI" in the stored excerpt (BleepingComputer's
+  Check Point and European Commission items did not), so those reports cannot corroborate the AI
+  incident and most AI incidents start as developing on one outlet. Subjects are conservative: an AI story
+  whose headline names no product or known organisation stays unclustered.
+- **AI Incident Database dates** are when a report was added. A report whose text states no date looks
+  fresh on that day; it stays tier C (developing, small weight).

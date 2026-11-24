@@ -95,6 +95,7 @@ export const readRadarFile = (path: string, date: string, mode: RadarMode): Rada
 /** Fill optional fields so the rest of the code never meets undefined arrays. */
 const normalizeIncident = (x: RadarIncident): RadarIncident => ({
 	...x,
+	lane: x.lane === 'ai' || x.lane === 'both' ? x.lane : 'crypto',
 	chains: Array.isArray(x.chains) ? x.chains.filter((c) => typeof c === 'string') : [],
 	reportedLosses: Array.isArray(x.reportedLosses) ? x.reportedLosses.filter((l) => isRecord(l) && typeof l.amountUsd === 'number' && typeof l.by === 'string') : [],
 	sources: x.sources.filter((s) => isRecord(s) && typeof s.id === 'string' && typeof s.url === 'string' && /^https?:\/\//.test(s.url)),

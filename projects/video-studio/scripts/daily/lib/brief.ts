@@ -10,6 +10,7 @@
 import type {ChannelConfig} from './channel.ts';
 import type {OppResult} from './opportunities.ts';
 import type {BriefFact, BriefIncident, BriefSource, CandidateSummary, DailyBrief, MustNotSay, Opportunity, RadarFile, RadarIncident, RadarSource, Selection, SourceKind} from './types.ts';
+import {isAiStory} from './types.ts';
 import {clip, unique, usdExact} from './util.ts';
 
 export const EXCERPT_MAX = 280;
@@ -29,7 +30,7 @@ const STATE_ACTOR = /\b(north korea(?:n)?|dprk|lazarus|tradertraitor|bluenoroff|
 const LEGAL = /\b(indict\w*|charg\w+|lawsuit|sued|plaintiff\w*|prosecutor\w*|forfeit\w*|seiz\w+|arrest\w*|court|freez\w+ order|allege\w*)\b/i;
 
 export const kindOf = (s: RadarSource): SourceKind => {
-	if (s.kind === 'structured') return 'tracker';
+	if (s.kind === 'structured' || s.listedReport) return 'tracker';
 	if (s.kind === 'postmortem') return 'post-mortem';
 	if (s.id === 'slowmist-hacked' || s.id === 'defillama-hacks') return 'tracker';
 	if (s.kind === 'blog' || (s.tier === 'A' && /-blog$/.test(s.id))) return 'security-firm';
@@ -75,6 +76,7 @@ export const indexSources = (inc: RadarIncident): SourceIndex => {
 			...(s.hedge ? {hedge: s.hedge} : {}),
 			...(s.tracker ? {tracker: true} : {}),
 			...(s.unverified ? {unverified: true} : {}),
+			...(s.listedReport ? {listedReport: true} : {}),
 			...(s.redacted?.names ? {redactedNames: s.redacted.names} : {}),
 			...(s.referenceUrl ? {note: `${s.referenceNote ?? 'Cited by the source; not fetched.'} (${s.referenceUrl})`} : {}),
 		});
@@ -150,6 +152,14 @@ export const mustNotSayFor = (inc: RadarIncident, idx: SourceIndex, developing: 
 	if (LEGAL.test(allText) || (inc.notes ?? []).some((n) => /legal matter/i.test(n)))
 		out.push({rule: 'legal', text: 'Court, prosecution and freezing items are filings and allegations, not findings: "prosecutors say", "the filing says". Never "guilty", "stole" or "criminal" as our words.'});
 	out.push({rule: 'how-to', text: 'No code, addresses, transaction hashes, function or contract names, payloads or step-by-step attack sequences, on screen or spoken. One or two concept-level sentences for the mechanism. Defensive checklists are fine.'});
+	if (isAiStory(inc))
+		out.push({
+			rule: 'ai-how-to',
+			text: 'AI story: never quote or paraphrase a prompt, an injected instruction, a jailbreak text, a malicious skill or plugin, a model file or a tool call, and never say which wording or setting got past a safeguard. Say what kind of attack it was and what it reached ("hidden instructions on a web page made the coding agent read secrets"), attributed to the vendor, researcher or outlet. Product names (Claude, Copilot, Gemini, ChatGPT...) are fine; researchers are described by role, never named.',
+		});
+	const listed = unique(idx.sources.filter((s) => s.listedReport).map((s) => s.publisher));
+	if (listed.length)
+		out.push({rule: 'listed-report', text: `${listed.join(', ')} only lists other outlets' reports (discovery only): its title and excerpt are the original outlet's words, not checked here. Never cite the listing for a claim; a claim needs a tier-A or tier-B source in this brief.`});
 	out.push({rule: 'price', text: 'No prices, token moves, market talk, "buy/sell/hold", returns or income claims. "Price oracle" as a mechanism name is fine.'});
 	out.push({rule: 'speculation', text: 'No "probably", "likely", "rumoured", "insiders say", "must have been", or question headlines about causes. Only what the sources confirm.'});
 	out.push({rule: 'others-material', text: "No screenshots, redrawn charts, logos or images of other people's posts or dashboards. Describe the finding and attribute it."});
@@ -236,6 +246,7 @@ export const buildBrief = (b: BriefInput): DailyBrief => {
 			shortReady: inc.shortReady,
 			postMortemUrl: inc.postMortemUrl ?? null,
 			notes: inc.notes ?? [],
+			lane: inc.lane ?? 'crypto',
 		},
 		evergreenTopic: topic,
 		evergreen: topic ? {topic, title: ev?.title ?? topic, url: ev?.url ?? null, status: ev?.status ?? 'not in channel.json'} : null,

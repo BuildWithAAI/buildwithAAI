@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>SecurityWeek</title>
+  <link>https://www.securityweek.com/</link>
+  <description>Trimmed fixture (2026-11-24): selected items, excerpts of at most 280 characters, names redacted, no author names.</description>
+  <item>
+    <title><![CDATA[European Commission Uncovers Data Breach in Cyberattack Investigation]]></title>
+    <link>https://www.securityweek.com/european-commission-uncovers-data-breach-in-cyberattack-investigation/</link>
+    <guid isPermaLink="false">https://www.securityweek.com/?p=51042</guid>
+    <pubDate>Tue, 24 Nov 2026 14:49:59 +0000</pubDate>
+    <category><![CDATA[Data Breaches]]></category>
+    <category><![CDATA[AI]]></category>
+    <category><![CDATA[cyberattack]]></category>
+    <category><![CDATA[data breach]]></category>
+    <description><![CDATA[Names and email addresses of EU Academy users were exposed in the AI-assisted cyberattack the European Commission detected in October. The post European Commission Uncovers Data Breach in Cyberattack Investigation appeared first on SecurityWeek .]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Check Point Security Management Servers Hacked in AI-Assisted Campaign]]></title>
+    <link>https://www.securityweek.com/check-point-security-management-servers-hacked-in-ai-assisted-campaign/</link>
+    <guid isPermaLink="false">https://www.securityweek.com/?p=51040</guid>
+    <pubDate>Tue, 24 Nov 2026 14:21:56 +0000</pubDate>
+    <category><![CDATA[Vulnerabilities]]></category>
+    <category><![CDATA[AI]]></category>
+    <category><![CDATA[Check Point]]></category>
+    <description><![CDATA[The attacks were launched from 99 IP addresses and targeted organizations across multiple industries and countries. The post Check Point Security Management Servers Hacked in AI-Assisted Campaign appeared first on SecurityWeek .]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Anthropic Expands Enterprise Safeguards for Detecting AI Misuse]]></title>
+    <link>https://www.securityweek.com/anthropic-expands-enterprise-safeguards-for-detecting-ai-misuse/</link>
+    <guid isPermaLink="false">https://www.securityweek.com/?p=51031</guid>
+    <pubDate>Tue, 24 Nov 2026 13:30:23 +0000</pubDate>
+    <category><![CDATA[Artificial Intelligence]]></category>
+    <category><![CDATA[Data Protection]]></category>
+    <category><![CDATA[AI]]></category>
+    <category><![CDATA[Anthropic]]></category>
+    <description><![CDATA[EFS helps zero-retention customers spot Claude misuse spread across many requests while keeping conversation data in their own cloud. The post Anthropic Expands Enterprise Safeguards for Detecting AI Misuse appeared first on SecurityWeek .]]></description>
+  </item>
+  <item>
+    <title><![CDATA[OpenAI, Cisco Unveil Open Source Tool to Shield Unpatched Linux Systems]]></title>
+    <link>https://www.securityweek.com/openai-cisco-unveil-open-source-tool-to-shield-unpatched-linux-systems/</link>
+    <guid isPermaLink="false">https://www.securityweek.com/?p=51029</guid>
+    <pubDate>Tue, 24 Nov 2026 12:20:41 +0000</pubDate>
+    <category><![CDATA[Artificial Intelligence]]></category>
+    <category><![CDATA[agentic AI]]></category>
+    <category><![CDATA[AI]]></category>
+    <category><![CDATA[Cisco]]></category>
+    <description><![CDATA[OpenAI and Cisco’s Shirudo uses AI-generated shields to block Linux exploits while patches are prepared, but it’s not yet production-ready. The post OpenAI, Cisco Unveil Open Source Tool to Shield Unpatched Linux Systems appeared first on SecurityWeek .]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Azure Flaw Exploited to Target Secrets at Norwegian Energy Firms]]></title>
+    <link>https://www.securityweek.com/azure-flaw-exploited-to-target-secrets-at-norwegian-energy-firms/</link>
+    <guid isPermaLink="false">https://www.securityweek.com/?p=51013</guid>
+    <pubDate>Mon, 23 Nov 2026 15:47:40 +0000</pubDate>
+    <category><![CDATA[Cloud Security]]></category>
+    <category><![CDATA[APIM]]></category>
+    <category><![CDATA[Azure]]></category>
+    <category><![CDATA[data leak]]></category>
+    <description><![CDATA[Microsoft closed an Azure API Management flaw exploited to target secrets at Norwegian energy companies, with other sectors also affected. The post Azure Flaw Exploited to Target Secrets at Norwegian Energy Firms appeared first on SecurityWeek .]]></description>
+  </item>
+</channel>
+</rss>

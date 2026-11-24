@@ -10,7 +10,7 @@ import {G, OUTLINE, R} from '../graphics/theme';
 import {useFit} from '../graphics/text';
 import {fontFor} from '../../episode/i18n/fonts';
 import {headerSlots} from '../layout/boxes';
-import {SEGMENT_SPECS} from '../segments';
+import {segmentTag} from '../segments';
 import {showLabel} from '../ui';
 import {developingOf} from '../validate';
 import {formatAsOf} from '../sources';
@@ -65,7 +65,7 @@ export const Pill: React.FC<{text: string; x: number; y: number; lang: Lang; h?:
 export const HeaderRow: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const shot = ctx.plan.scenes[ctx.k].shot;
 	const slots = headerSlots(ctx.format, shot);
-	const key = SEGMENT_SPECS[ctx.seg].tag;
+	const key = segmentTag(ctx.seg, ctx.sc);
 	const dev = developingOf(ctx.sb);
 	return (
 		<>
