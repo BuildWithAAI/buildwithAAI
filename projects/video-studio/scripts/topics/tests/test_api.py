@@ -153,6 +153,15 @@ class ChannelsAndUploads(unittest.TestCase):
         self.assertEqual(rec["uploadsPlaylistId"], "UU" + hidden["id"][2:])
         self.assertNotIn("maxResults", t.calls[0][1])
 
+    def test_a_paged_id_list_is_reported(self):
+        class Paging:
+            def get(self, method, params):
+                return {"nextPageToken": "x", "items": [{"id": params["id"].split(",")[0], "snippet": {"title": "t"}}]}
+        c = YouTubeClient(Paging(), quota.QuotaBudget(table(), {"default": 10, "search": 0}))
+        out = c.channels(["UCa", "UCb", "UCc"])
+        self.assertEqual(len(out), 1)
+        self.assertEqual(c.errors[0]["kind"], "paged-id-list")
+
     def test_uploads_and_missing_playlist(self):
         chans = {ch["key"]: ch for ch in helpers.db()["channels"]}
         c, t, b, _ = client()

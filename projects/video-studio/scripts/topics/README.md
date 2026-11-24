@@ -16,7 +16,7 @@ python3 scripts/topics/topics.py plan                       # what a live run wo
 YOUTUBE_API_KEY=... python3 scripts/topics/topics.py find   # live run -> out/topics/<date>.md, .json, exports
 python3 scripts/topics/topics.py prune                      # delete YouTube data older than 30 days
 python3 scripts/topics/topics.py quota                      # units this tool charged today (Pacific Time)
-python3 -m unittest discover -s scripts/topics/tests -t scripts/topics   # 165 tests, about 4 s
+python3 -m unittest discover -s scripts/topics/tests -t scripts/topics   # 166 tests, about 5 s
 ```
 
 Exit codes: 0 done (a capped run is still 0; the report says what was cut), 1 the run failed, 2 bad input,
@@ -188,6 +188,9 @@ the live API itself (no key; the one recorded answer is the 403 for a request wi
 - **View counts are public view counts**: since 2026-08-27 they count from the first frame, including autoplay and
   hover, and since 2026-11-16 they include TV co-views. They are not engaged views or watch time, which the API does
   not give for other people's videos.
+- **channels.list id lists are assumed unpaged.** The reference documents a default page size of 5 for channels.list
+  and says nothing about id lists (videos.list says id lists are not paged). The client sends up to 50 ids without
+  maxResults, as is common practice, and reports any answer that comes back paged ("paged-id-list" in Warnings).
 - **Shorts detection** needs YouTube to know the aspect ratio; without it only videos of 60 s or less count as Shorts
   (flagged "format assumed").
 - **Topics are keyword-based** (`taxonomy.json`, English, Spanish and Portuguese phrases). Titles phrased outside the
@@ -213,4 +216,4 @@ the live API itself (no key; the one recorded answer is the 403 for a request wi
 | `topiclib/fake_api.py`, `fields.py` | The stand-in API for tests and `--fixtures`; the `fields` selector |
 | `fixtures/` | Synthetic database and error envelopes (see `fixtures/README.md`) |
 | `tools/build_fixtures.py` | Rebuilds the synthetic database |
-| `tests/` | 165 unittest tests, including the batch-parser conformance check (needs node) |
+| `tests/` | 166 unittest tests, including the batch-parser conformance check (needs node) |

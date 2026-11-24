@@ -263,7 +263,14 @@ class YouTubeClient:
                     self._record(err, "channels.list")
                     break
                 raise
-            for item in data.get("items") or []:
+            items = data.get("items") or []
+            if data.get("nextPageToken") and len(items) < len(chunk):
+                # Not expected for an id list (videos.list documents that id lists are not paged); recorded so the
+                # first live runs show it if channels.list ever pages one.
+                self.errors.append({"method": "channels.list", "kind": "paged-id-list", "status": None, "reason": None,
+                                    "message": f"{len(items)} of {len(chunk)} channels came back with a nextPageToken; the rest were not read",
+                                    "context": "channels.list id list"})
+            for item in items:
                 rec = normalize_channel(item)
                 if rec:
                     out[rec["id"]] = rec
