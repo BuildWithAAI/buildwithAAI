@@ -64,7 +64,8 @@ jobs:
           FARM_BEFORE: ${{ github.event.before }}
           FARM_HEAD: ${{ github.sha }}
           FARM_DISPATCH_REQUEST: ${{ inputs.request }}
-          FARM_KEY_SET: ${{ secrets.RENDER_ARTIFACT_KEY != '' }}
+          # Only checked (set, no stray whitespace, at least 32 characters) when a request must be encrypted.
+          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts plan
 
   voice:

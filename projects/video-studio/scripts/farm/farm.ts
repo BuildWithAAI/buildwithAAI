@@ -343,10 +343,10 @@ export const cmdPlan = (ctx: Ctx): void => {
 		}
 		requests.push(v.request);
 	}
+	// The key is checked here too, so a missing or weak key stops the run before any runner time is spent.
 	const encrypted = requests.filter((r) => r.encrypt).map((r) => r.id);
-	if (encrypted.length && env.FARM_KEY_SET !== 'true') {
-		errors.push(`${encrypted.join(', ')} must be encrypted, but ${keyProblem(undefined)}`);
-	}
+	const keyIssue = encrypted.length ? keyProblem(env.RENDER_ARTIFACT_KEY) : null;
+	if (keyIssue) errors.push(`${encrypted.join(', ')} must be encrypted, but ${keyIssue}`);
 	const {plan, errors: planErrors} = buildPlan(requests);
 	errors.push(...planErrors);
 	let kokoroKey = '';

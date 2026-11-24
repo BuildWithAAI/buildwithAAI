@@ -119,8 +119,10 @@ The farm encrypts with a passphrase stored as the repository secret `RENDER_ARTI
 Never commit the key, paste it into chat, or put it in a request. To rotate it, replace the secret; artifacts made
 before the change still need the old key (they expire after `retentionDays` anyway).
 
-If the secret is missing, the plan fails with "the repository secret RENDER_ARTIFACT_KEY is not set" before anything
-renders; the render and voice jobs check again before they start and before they upload. Plaintext of an encrypted
+If the secret is missing, shorter than 32 characters, or padded with spaces or line breaks, a push that holds an
+encrypted request fails at the plan, before anything renders ("the repository secret RENDER_ARTIFACT_KEY is not set",
+"RENDER_ARTIFACT_KEY is shorter than 32 characters"); the render and voice jobs check again before they start and
+before they upload. The key is never printed. Plaintext of an encrypted
 request is never uploaded: the upload folder is checked file by file (`.enc` name and openssl's `Salted__` header),
 and a folder holding anything else is deleted and the job fails.
 
@@ -227,7 +229,8 @@ commits at least a month old.
 - `render-requests/farm-selftest.json`: TestCard video and still, ChartTest still (PNG), ChartLight still (JPEG),
   ChartShort 1080x1920 video. Unencrypted.
 - `render-requests/farm-selftest-voice.json`: Zoo's voice-check line voiced in en, es and pt-br in parallel from
-  `scripts/farm/fixtures/_farm/voice-selftest/`, all three handed to a TestCard render job. Unencrypted.
+  `scripts/farm/fixtures/_farm/voice-selftest/`; one TestCard job names the es narration in its props and receives
+  only that track, the other receives all three. Unencrypted.
 - `render-requests/farm-selftest-encrypted.json`: the same path with encryption on (one es narration, one TestCard
   video): the narration travels encrypted between jobs, and the artifact holds only ciphertext. It needs
   `RENDER_ARTIFACT_KEY`.
@@ -241,6 +244,7 @@ machine translations (`translation.status: "machine"`), so the voice step warns 
 | --- | --- |
 | Plan: "The plan failed; nothing was rendered" | The run summary lists each problem by file and field. Fix the request and push again. |
 | "RENDER_ARTIFACT_KEY is not set" | Set the key (above). Test requests do not need it. |
+| "RENDER_ARTIFACT_KEY is shorter than 32 characters" | Replace the secret with the output of `openssl rand -base64 48`, then push a change to `render-requests/farm-selftest-encrypted.json` to check the encrypted path. |
 | "the entry src/show/index.ts does not exist in this commit" | The show entry has not landed on this branch yet. |
 | "the narration voice_<id>_<n> is missing" | That voice job failed; open it in the same run. Encrypted voice logs are in its artifact under `logs/`. |
 | Render failed | For test requests the log is in the job. For encrypted requests, download the artifact and decrypt `logs/<artifact>.log.enc`. |

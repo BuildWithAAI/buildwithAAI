@@ -145,14 +145,23 @@ const quiet = async <T,>(fn: () => T | Promise<T>): Promise<T> => {
 };
 
 test('plan: an encrypted request without RENDER_ARTIFACT_KEY fails the whole plan before anything runs', async () => {
-	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: base, FARM_HEAD: head, FARM_KEY_SET: 'false'});
+	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: base, FARM_HEAD: head});
 	await quiet(() => assert.throws(() => cmdPlan(h.ctx), /problem\(s\) in the render requests/));
 	assert.match(h.summary(), /The plan failed; nothing was rendered[\s\S]*ep-secret must be encrypted, but the repository secret RENDER_ARTIFACT_KEY is not set/);
 	assert.deepEqual(h.outputs(), {});
 });
 
+test('plan: a key shorter than 32 characters also stops the plan, and the key never appears in the summary', async () => {
+	const weak = 'zoora-2026-weak';
+	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: base, FARM_HEAD: head, [KEY_ENV]: weak});
+	await quiet(() => assert.throws(() => cmdPlan(h.ctx)));
+	assert.match(h.summary(), /ep-secret must be encrypted, but RENDER_ARTIFACT_KEY is shorter than 32 characters/);
+	assert.ok(!h.summary().includes(weak));
+	assert.deepEqual(h.outputs(), {});
+});
+
 test('plan: matrices for the push, props and narration never in the outputs or the summary', () => {
-	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: base, FARM_HEAD: head, FARM_KEY_SET: 'true'});
+	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: base, FARM_HEAD: head, [KEY_ENV]: KEY});
 	cmdPlan(h.ctx);
 	const o = h.outputs();
 	const render = JSON.parse(o.render_matrix).include;
@@ -171,7 +180,7 @@ test('plan: invalid requests and missing entries are reported by field, never by
 	put('render-requests/no-entry.json', {id: 'no-entry', entry: 'src/show/index.ts', jobs: [{composition: 'Show', props: {}, output: 'out/s.mp4', kind: 'video'}]});
 	git('add', '-A');
 	git('commit', '-q', '-m', 'broken');
-	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: head, FARM_HEAD: git('rev-parse', 'HEAD'), FARM_KEY_SET: 'true'});
+	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: head, FARM_HEAD: git('rev-parse', 'HEAD'), [KEY_ENV]: KEY});
 	await quiet(() => assert.throws(() => cmdPlan(h.ctx)));
 	const s = h.summary();
 	assert.match(s, /broken\.json: jobs\[0\]\.composition must be 1-64 characters/);

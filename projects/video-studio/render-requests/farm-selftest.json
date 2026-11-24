@@ -2,7 +2,7 @@
   "id": "farm-selftest",
   "entry": "src/index.ts",
   "encrypt": false,
-  "retentionDays": 3,
+  "retentionDays": 5,
   "jobs": [
     {"composition": "TestCard", "kind": "video", "output": "out/farm-selftest/testcard.mp4", "props": {"title": "Render farm", "subtitle": "Self-test on a free GitHub runner"}},
     {"composition": "TestCard", "kind": "still", "frame": 45, "output": "out/farm-selftest/testcard.png", "props": {"title": "Render farm", "subtitle": "Self-test still, frame 45"}},

@@ -59,8 +59,8 @@ test('triggers: pushes of request files on any branch, and manual dispatch', () 
 
 test('secrets are only read into step env, and only by steps that encrypt or decrypt', () => {
 	const uses = lines.flatMap((l, i) => (l.includes('secrets.') ? [{l: l.trim(), i}] : []));
-	for (const {l} of uses) assert.match(l, /^(RENDER_ARTIFACT_KEY: \$\{\{ secrets\.RENDER_ARTIFACT_KEY \}\}|FARM_KEY_SET: \$\{\{ secrets\.RENDER_ARTIFACT_KEY != '' \}\})$/);
-	assert.equal(uses.length, 6, 'plan (is it set?), voice preflight + pack, render preflight + unpack + pack');
+	for (const {l} of uses) assert.equal(l, 'RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}');
+	assert.equal(uses.length, 6, 'plan (key check), voice preflight + pack, render preflight + unpack + pack');
 	// Steps that run third-party code (Remotion, the voice build, npm) never see the key.
 	for (const name of ['Render', 'Build the narration', 'Install dependencies', 'Set up Kokoro']) {
 		const start = lines.findIndex((l) => l.includes(`name: ${name}`));
