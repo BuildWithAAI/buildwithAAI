@@ -293,11 +293,16 @@ def end_screen(voice: bool = True) -> Arrangement:
     swell(P["celli"], t + 3.0, t + 5.2, 60, 10)
     if voice:
         th.finish("endscreen", comp_velocity=8.0)
-        return Arrangement("endscreen-bed", th.s, 20.0, th.tracks({"vibes": -10.0, "ep": -5.0, "piano": -6.0, "hats": -10.0, "perc": -16.0, "pulse": -15.0}),
+        # hats -13 dB (critic round 2: 117-137 bed onsets per speech-minute within 15 dB of the voice, the hats
+        # at 6.3 and 8 kHz as loud as his sibilants)
+        return Arrangement("endscreen-bed", th.s, 20.0, th.tracks({"vibes": -10.0, "ep": -5.0, "piano": -6.0, "hats": -13.0, "perc": -16.0, "pulse": -15.0}),
                            preset="bed", reverbs=C.reverbs(), fade_in=0.4, fade_out=1.4,
                            bus_eq=[C.PK(250, -1.0, 0.9), *C.VOICE_POCKET, C.HS(7000, 3.0), C.LS(150, -2.5)])  # the shelf: as the show beds (show_beds.BED_BUS_LOW)
     th.finish("endscreen-music", comp_velocity=8.0)
-    return Arrangement("endscreen-music", th.s, 20.0, th.tracks({"vibes": -8.0, "ep": -5.0, "piano": -6.0, "hats": -8.0, "perc": -14.0, "pulse": -12.0}),
+    # the bass 1.5 dB under the theme's (critic round 2: with nobody speaking it was the loudest stem, -4.0 dB
+    # of the mix, and its static timbre was exposed for 20 s; FingerBass now decays like a plucked string)
+    return Arrangement("endscreen-music", th.s, 20.0, th.tracks({"vibes": -8.0, "ep": -5.0, "piano": -6.0, "hats": -8.0, "perc": -14.0, "pulse": -12.0,
+                                                                  "bass": -3.5}),
                        preset="endscreen", reverbs=C.reverbs(), fade_in=0.4, fade_out=1.4,
                        bus_eq=[C.PK(250, -1.0, 0.9), C.PK(1000, -1.0, 1.0), C.HS(7000, 2.0)])
 

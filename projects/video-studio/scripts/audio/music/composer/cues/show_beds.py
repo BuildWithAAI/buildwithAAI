@@ -44,9 +44,9 @@ def _cid(base: str, underscore: bool) -> str:
     return f"{base}-underscore" if underscore else base
 
 
-def _arr(cid: str, th: Theme, faders: dict, bus_eq=None, swing: bool = True) -> Arrangement:
+def _arr(cid: str, th: Theme, faders: dict, bus_eq=None, swing: bool = True, reverbs: dict | None = None) -> Arrangement:
     th.finish(cid, swing=swing, comp_velocity=8.0)  # wider EP and bass velocity spread (the comping repeats for a minute)
-    return Arrangement(cid, th.s, LENGTH, th.tracks(faders), preset="bed", loop=True, tail=8.0, wrap=8.0, reverbs=C.reverbs(),
+    return Arrangement(cid, th.s, LENGTH, th.tracks(faders), preset="bed", loop=True, tail=8.0, wrap=8.0, reverbs=reverbs or C.reverbs(),
                        bus_eq=bus_eq or BED_BUS)
 
 
@@ -118,7 +118,10 @@ def neutral(underscore: bool = False) -> Arrangement:
     swell(P["violas"], th.b(16), th.b(17), 0, 42)
     swell(P["celli"], th.b(21), th.b(22), 46, 0)
     swell(P["violas"], th.b(21), th.b(22), 42, 0)
-    arr = _arr(_cid("bed-show-neutral", underscore), th, {"ep": -4.0, "vibes": -9.0, "pulse": -14.0, "celli": -10.0, "violas": -11.0, "perc": -13.0, "hats": -10.0},
+    # under speech the shaker and hats come down 3 dB (critic round 2: at 6.3 and 8 kHz they sat at -0.7 to
+    # -3.4 dB SNR against the voice, as loud as his fricatives)
+    arr = _arr(_cid("bed-show-neutral", underscore), th, {"ep": -4.0, "vibes": -9.0, "pulse": -14.0, "celli": -10.0, "violas": -11.0,
+                                                          "perc": -16.0 if underscore else -13.0, "hats": -13.0 if underscore else -10.0},
                bus_eq=BED_BUS_LOW)
     # the FM EP carries this bed: brighter bark, less box (critic round 1: 98 % of its power was at 150 Hz-1 kHz)
     _retune(arr, "ep", eq_extra=[C.PK(400, -2.0, 1.0)], brightness=1.1)
@@ -127,6 +130,23 @@ def neutral(underscore: bool = False) -> Arrangement:
 
 # ------------------------------------------------------------------------------------------ tension
 
+# Critic round 2: the EP and sub repeated one 8-bar cycle three times (5 unique EP bars of 24; the round-1
+# re-voicing alternated inside that cycle). Each 8-bar section now has its own progression (the second
+# moves to E-flat early and walks G-A-A into the third) and its own EP voicing set (the third set is
+# higher and open), so no two sections repeat.
+TENSION_HARMONY = (["D", "D", "D", "Eb", "Bb", "Bb", "G", "A"]
+                   + ["D", "D", "Eb", "Eb", "Bb", "G", "A", "A"]
+                   + ["D", "D", "Bb", "Eb", "Bb", "Bb", "G", "A"])
+TENSION_EP = (
+    {"D": "F3 A3 E4", "Eb": "G3 Bb3 D4", "Bb": "F3 A3 D4", "G": "F3 Bb3 D4", "A": "G3 C#4 E4"},
+    {"D": "A3 C4 F4", "Eb": "Bb3 D4 G4", "Bb": "A3 D4 F4", "G": "Bb3 D4 F4", "A": "A3 C#4 G4"},
+    {"D": "D4 F4 A4", "Eb": "D4 G4 Bb4", "Bb": "D4 F4 A4", "G": "D4 F4 Bb4", "A": "C#4 E4 A4"},
+)
+# Bus dips at 500 and 700 Hz (critic round 2): the tension bed's 630 and 800 Hz bands sat only 3.7-3.9 and
+# 1.0-1.4 dB under Zoo's voice; measured with the dips, the band-audibility index rose 0.7585 -> 0.7839
+LOW_MID_DIP = (C.PK(700, -4.5, 1.0), C.PK(500, -2.0, 1.2))
+
+
 def tension(underscore: bool = False) -> Arrangement:
     """D minor, phrygian edges: a muted 3-3-2 pulse (two octaves over the bass: 196-311 Hz, above Zoo's
     F0), low strings with an Eb neighbour, a half-time kit with ticking hats; the motif on soft vibes
@@ -134,13 +154,11 @@ def tension(underscore: bool = False) -> Arrangement:
     walks into each 4-bar phrase, so no two 4-bar blocks repeat exactly."""
     th = Theme(bpm=BPM, pocket=True)
     P = th.p
-    harm = ["D", "D", "D", "Eb", "Bb", "Bb", "G", "A"]  # bass roots, one per bar, repeating every 8 bars
-    ep = {"D": "F3 A3 E4", "Eb": "G3 Bb3 D4", "Bb": "F3 A3 D4", "G": "F3 Bb3 D4", "A": "G3 C#4 E4"}
-    ep_alt = {"D": "A3 C4 F4", "Eb": "Bb3 D4 G4", "Bb": "A3 D4 F4", "G": "Bb3 D4 F4", "A": "A3 C#4 G4"}  # every other 4 bars
+    harm = TENSION_HARMONY  # bass roots, one per bar: each 8-bar section has its own progression
     for bar in range(BARS):
         t = th.b(bar)
         sec = bar // 8
-        root = harm[bar % 8]
+        root = harm[bar]
         rn = {"D": "D2", "Eb": "Eb2", "Bb": "Bb1", "G": "G1", "A": "A1"}[root]
         # pulse: 16ths, accents in 3-3-2
         for j in range(16):
@@ -152,10 +170,11 @@ def tension(underscore: bool = False) -> Arrangement:
         else:
             P["bass"].note(rn, t, 3.6, 76)
         P["sub"].note(rn, t, 3.8, 64)
+        voicing = TENSION_EP[sec][root]  # one voicing set per section, so the three 8-bar sections differ
         if (bar // 4) % 2 == 0:
-            C.chord(P["ep"], t + 1.5, 1.0, ep[root], 44, roll=0.03)
+            C.chord(P["ep"], t + 1.5, 1.0, voicing, 44, roll=0.03)
         else:
-            C.chord(P["ep"], t + 2.5, 0.9, ep_alt[root], 42, roll=0.03)
+            C.chord(P["ep"], t + 2.5, 0.9, voicing, 42, roll=0.03)
         rows = {"kick": "X.......X.x....." if bar % 2 == 0 else "X.........x.....", "rim": "........x.......",
                 "hat": "o.x.o.x.o.x.o.x." if sec != 1 else "x.o.x.o.x.o.x.o."}
         if bar % 8 == 7:
@@ -171,14 +190,14 @@ def tension(underscore: bool = False) -> Arrangement:
     for bar in range(8, BARS, 4):
         P["violas_trem"].note("D3" if bar < 16 else "F3", th.b(bar), 15.8, 52)
     for bar in range(0, BARS, 2):
-        P["celli"].note("D3" if harm[bar % 8] != "Eb" else "Eb3", th.b(bar), 7.8, 54)
+        P["celli"].note("D3" if harm[bar] != "Eb" else "Eb3", th.b(bar), 7.8, 54)
     swell(P["celli"], th.b(0), th.b(1), 30, 50)
     for bar in range(16, 22):
         P["violins"].note("A5", th.b(bar), 3.9, 50)
     swell(P["violins"], th.b(16), th.b(18), 0, 40)
     swell(P["violins"], th.b(20), th.b(22), 40, 0)
     arr = _arr(_cid("bed-show-tension", underscore), th, {"pulse": -14.0, "ep": -10.0, "vibes": -9.0, "celli": -9.0, "violas_trem": -13.0,
-                                                         "violins": -14.0, "hats": -14.0, "sub": -12.0}, bus_eq=BED_BUS_LOW, swing=False)
+                                                         "violins": -14.0, "hats": -14.0, "sub": -12.0}, bus_eq=[*BED_BUS_LOW, *LOW_MID_DIP], swing=False)
     # a muted pulse: two octaves up it reached into 1-4 kHz, where its 16ths (with the hats and the
     # kick's beater) made most of the bed's onsets under Zoo's consonants
     _retune(arr, "pulse", eq_extra=(C.LP(1500, 4),))
@@ -238,7 +257,15 @@ def light(underscore: bool = False) -> Arrangement:
         P["celli"].note(celli_line[bar % 8], th.b(bar), 3.9, 52)
     swell(P["celli"], th.b(16), th.b(17), 0, 44)
     swell(P["celli"], th.b(21), th.b(22), 44, 0)
-    return _arr(_cid("bed-show-light", underscore), th, {"ep": -6.0, "vibes": -9.0, "pizz": -9.0, "celli": -11.0, "hats": -11.0})
+    # Critic round 2: on a phone this bed lost 1.2-1.7 dB less than Zoo's voice (3.5-4.4 dB less on a 600 Hz
+    # speaker), so it played more forward there than on headphones: the bus adds weight under 250 Hz (which
+    # a phone drops, as it drops his) and takes 2 dB out of 800 Hz (which a phone keeps). The hall return
+    # is 2 dB down and narrower (its 200 ms correlation reached -0.45 on its own at 3.6 s).
+    rv = C.reverbs()
+    rv["hall"].return_db -= 2.0
+    rv["hall"].width = 0.8
+    return _arr(_cid("bed-show-light", underscore), th, {"ep": -6.0, "vibes": -9.0, "pizz": -9.0, "celli": -11.0, "hats": -11.0},
+                bus_eq=[*BED_BUS, C.LS(250, 2.0), C.PK(800, -2.0, 1.0)], reverbs=rv)
 
 
 def _n(m: int) -> str:

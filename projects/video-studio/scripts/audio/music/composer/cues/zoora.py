@@ -128,12 +128,22 @@ def _cid(base: str, underscore: bool) -> str:
     return f"{base}-underscore" if underscore else base
 
 
-def _bed(cid: str, st: Story, faders: dict, bus_eq=None, widths: dict | None = None, post_finish=None, tail: float = 10.0) -> Arrangement:
+# Critic round 2: on a phone speaker the curious bed lost 2.7-5.3 dB less than Zoo's voice does (its harp,
+# kalimba and mallets sit where a phone is loudest; his voice's weight is under 300 Hz), so there it played
+# 3-5 dB more forward against him than on headphones. It masters 1.5 LU under the other beds.
+QUIET_BED_LUFS = -27.5
+# Bus dips at 500 and 700 Hz for the beds whose low mids crowd Zoo's 630-800 Hz bands (critic round 2:
+# the tension beds' 630/800 Hz SNR was 3.0-4.4 dB; with these the band-audibility index rose 0.023)
+LOW_MID_DIP = (C.PK(700, -4.5, 1.0), C.PK(500, -2.0, 1.2))
+
+
+def _bed(cid: str, st: Story, faders: dict, bus_eq=None, widths: dict | None = None, post_finish=None, tail: float = 10.0,
+         target_lufs: float | None = None) -> Arrangement:
     st.finish(cid)
     if post_finish is not None:
         post_finish(st)
     return Arrangement(cid, st.s, LENGTH, st.tracks(faders, widths), preset="bed", loop=True, tail=tail, wrap=8.0, reverbs=C.reverbs(),
-                       bus_eq=bus_eq or STORY_BUS)
+                       bus_eq=bus_eq or STORY_BUS, target_lufs=target_lufs)
 
 
 def _arp(part, t: float, notes: str, step: float, vel: int, dur: float | None = None, accent: int = 6, transpose: int = 0):
@@ -186,10 +196,18 @@ def curious(underscore: bool = False) -> Arrangement:
         motif.place(P["vibes"], st.b(0), "F5", mode="major", vel=62, stretch=2.0, last_dur=4.0)
         motif.place(P["vibes"], st.b(8), "F5", mode="major", vel=64, stretch=2.0, last_dur=4.0)
         motif.place(P["vibes"], st.b(16), "F5", mode="major", vel=58, stretch=2.0, last_dur=3.0)
+    else:
+        # critic round 2: the underscore kept the bowed-vibes A5-D6 sustains, 70 % of their note-time at
+        # 1-4 kHz, under the voice (the weakest voice margin of all beds); the pad carries the sustain alone
+        P["bowed"].notes = []
     P["glock"].note("A6", st.b(4), 2.0, 50)
     P["glock"].note("E6", st.b(12) + 2.0, 2.0, 46)
-    return _bed(_cid("bed-story-curious", underscore), st, {"bowed": -16.0}, widths={"marimba": 0.5, "harp": 0.7, "pad": 0.8},
-                bus_eq=[C.PK(300, -3.5, 0.8), C.PK(550, -2.5, 0.9), C.PK(700, -2.0, 1.0), *C.VOICE_POCKET, C.HS(6000, 3.0)])
+    # the harp narrowed (critic round 2: its A5 and G5 samples are decorrelated, 0.01-0.12 L/R correlation,
+    # the motif version reached -0.26 in a 200 ms window) and, under speech, 3 dB quieter
+    faders = {"bowed": -16.0, **({"harp": -8.0} if underscore else {})}
+    return _bed(_cid("bed-story-curious", underscore), st, faders, widths={"marimba": 0.5, "harp": 0.3, "pad": 0.8},
+                bus_eq=[C.PK(300, -3.5, 0.8), C.PK(550, -2.5, 0.9), C.PK(700, -2.0, 1.0), *C.VOICE_POCKET, C.HS(6000, 3.0)],
+                target_lufs=QUIET_BED_LUFS)
 
 
 # ------------------------------------------------------------------------------------------ tension
@@ -207,8 +225,14 @@ def tension(underscore: bool = False) -> Arrangement:
         t = st.b(bar)
         sec = 0 if bar < 8 else (1 if bar < 16 else 2)
         root = prog[bar % 8] if bar < 16 else ["D", "D", "Bb", "A"][bar - 16]
-        _arp(P["celli_fast"], t, ost[root], 0.5, 58, dur=0.35, accent=10)
-        _arp(P["violas_fast"], t, ost[root], 0.5, 50, dur=0.3, accent=8, transpose=12)  # the upper ostinato: phone presence
+        if underscore:
+            # critic round 2: the celli's G2-F3 eighths sat in Zoo's F0 band (39 % of their note-time in
+            # 68-119 Hz, all of it in 85-180 Hz) for the whole loop; under speech the celli take the
+            # ostinato an octave up (G3-F4), where the violas doubled it, and the violas rest
+            _arp(P["celli_fast"], t, ost[root], 0.5, 56, dur=0.35, accent=10, transpose=12)
+        else:
+            _arp(P["celli_fast"], t, ost[root], 0.5, 58, dur=0.35, accent=10)
+            _arp(P["violas_fast"], t, ost[root], 0.5, 50, dur=0.3, accent=8, transpose=12)  # the upper ostinato: phone presence
         if bar % 2 == 0:
             P["basses"].note({"D": "D2", "Bb": "Bb1", "G": "G1", "A": "A1"}[root], t, 7.8, 60)
             P["piano"].note({"D": "D2", "Bb": "Bb1", "G": "G1", "A": "A1"}[root], t, 3.0, 62)
@@ -238,7 +262,8 @@ def tension(underscore: bool = False) -> Arrangement:
         motif.place(P["violins"], st.b(8), "D5", vel=56, stretch=2.0, last_dur=6.0)
         swell(P["violins"], st.b(8), st.b(8.5), 0, 52)
         swell(P["violins"], st.b(11), st.b(12), 52, 0)
-    return _bed(_cid("bed-story-tension", underscore), st, {"piano": -4.0, "celli_fast": -6.0, "violas_fast": -8.0, "vibes": -10.0})
+    return _bed(_cid("bed-story-tension", underscore), st, {"piano": -4.0, "celli_fast": -6.0, "violas_fast": -8.0, "vibes": -10.0},
+                bus_eq=[*STORY_BUS, *LOW_MID_DIP])
 
 
 # ------------------------------------------------------------------------------------------ ominous
@@ -396,6 +421,7 @@ def resolve(underscore: bool = False) -> Arrangement:
 ZOORA_HIT = 54 / 30.0  # src/branding ZooraSting: the nodes pop, the teal accent lands (frame 54)
 ZOORA_WORD = 70 / 30.0  # the wordmark draws (frame 70)
 ZOORA_TAG = 78 / 30.0  # the tag line (frame 78)
+ZOORA_STING_SEC = 4.5  # the jingle's length (the sting's duration follows it, 3-5 s)
 
 
 def zoora_intro_sting() -> Arrangement:
@@ -417,28 +443,37 @@ def zoora_intro_sting() -> Arrangement:
     motif.place(P["vibes_hard"], hit - 2.0, "F5", mode="major", vel=80, last_dur=2.2)
     motif.place(P["harp"], hit - 2.0, "F5", mode="major", vel=72, last_dur=2.2, statement="sting-harp")
     motif.place(P["vibes"], hit - 2.0, "F5", mode="major", vel=70, last_dur=2.2)
-    # the hit: Fmaj9#11 bloom
+    # the hit: Fmaj9#11 bloom. Critic round 2: at 4.0 s every band was still at -25 to -35 dB and the last
+    # 0.25 s faded it out (a truncation), so the bloom is released by 3.3 s (pedal, strings, sub) and the
+    # file runs 4.5 s (the sting allows 3-5 s; its picture holds and fades to black with the jingle)
     for n in ("F2", "C3", "A3", "G4"):  # Fadd9: no E under the celesta's F6
-        P["piano"].note(n, hit, 3.0, 72)
-    P["piano"].sustain(hit + 0.03, hit + 3.6)
+        P["piano"].note(n, hit, 2.4, 72)
+    P["piano"].sustain(hit + 0.03, hit + 2.5)
     for n in ("F2", "C3"):
-        P["celli"].note(n, hit, 3.2, 70)
+        P["celli"].note(n, hit, 2.6, 70)
     for n in ("A3", "C4"):
-        P["violas"].note(n, hit, 3.2, 64)
-    P["violins"].note("A5", hit, 3.2, 60)
+        P["violas"].note(n, hit, 2.6, 64)
+    P["violins"].note("A5", hit, 2.6, 60)
     swell(P["celli"], hit, hit + 0.05, 0, 72)
     swell(P["violas"], hit, hit + 0.05, 0, 64)
     swell(P["violins"], hit, hit + 0.3, 0, 58)
     for name in ("celli", "violas", "violins"):
-        swell(P[name], hit + 1.2, hit + 3.2, 70, 0)
-    P["sub"].note("F1", hit, 2.4, 70)
+        swell(P[name], hit + 1.0, hit + 2.5, 70, 0)
+    P["sub"].note("F1", hit, 2.2, 70)
     P["kit"].hit(K["bdrum"], hit, 72)
     P["kit"].hit(K["sus_soft"], hit, 70)
     P["glock"].note("A6", hit, 1.5, 60)
-    # under the wordmark and the tag line (hard vibes and harp: instant attacks, on frames 70 and 78)
-    for n, at, d, v in (("C6", ZOORA_WORD, 1.2, 64), ("F6", ZOORA_TAG, 1.6, 60)):
+    # under the wordmark and the tag line (hard vibes and harp: instant attacks, on frames 70 and 78). The
+    # frame-70 C6 is 12 velocity firmer (critic round 2: it did not rise in its own band, -1.4 dB at
+    # 0.9-1.6 kHz, while frame 78's F6 rose 11.5 dB)
+    for n, at, d, v in (("C6", ZOORA_WORD, 1.2, 76), ("F6", ZOORA_TAG, 1.2, 60)):
         P["vibes_hard"].note(n, at / 0.6, d, v)
         P["harp"].note(n, at / 0.6, d, v - 6)
     st.finish("intro-sting-zoora")
-    return Arrangement("intro-sting-zoora", st.s, 4.0, st.tracks({"vibes_hard": -5.0, "vibes": -8.0, "harp": -6.0}), preset="sting",
-                       reverbs=C.reverbs(), fade_out=0.6, bus_eq=[C.PK(300, -1.0, 0.9), C.PK(4500, 1.5, 0.7), C.HS(9000, 1.5)])
+    from composer.render import STING_CEILING_DBTP
+
+    # the harp at width 0.3 (critic round 2: its A5 and F6 samples are decorrelated, 0.09 and 0.03 L/R
+    # correlation, and lost up to 3.7 dB in mono)
+    return Arrangement("intro-sting-zoora", st.s, ZOORA_STING_SEC, st.tracks({"vibes_hard": -5.0, "vibes": -8.0, "harp": -6.0}, widths={"harp": 0.3}),
+                       preset="sting", reverbs=C.reverbs(), fade_out=0.3, bus_eq=[C.PK(300, -1.0, 0.9), C.PK(4500, 1.5, 0.7), C.HS(9000, 1.5)],
+                       ceiling_dbtp=STING_CEILING_DBTP)
