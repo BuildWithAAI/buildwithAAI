@@ -140,9 +140,13 @@ def _voice_summary(v: dict | None) -> dict | None:
     if not v:
         return None
     s, b, n = v["split"], v["broadband6"], v["ssnAtSplitLoudness"]
-    return {"index": v["index"], "ssnIndex": n["index"], "indexMinusSsn": v["indexMinusSsn"], "broadbandIndex": b["index"],
-            "duck": v["duck"], "voiceOverBedLu": s["voiceOverBedLu"], "snr1to4kMedianDb": s["snr1to4kMedianDb"],
-            "framesUnder3dB": s["framesUnder3dB"], "narrowestBand": s["narrowestBand"], "reference": v["reference"]}
+    out = {"index": v["index"], "ssnIndex": n["index"], "indexMinusSsn": v["indexMinusSsn"], "broadbandIndex": b["index"],
+           "duck": v["duck"], "voiceOverBedLu": s["voiceOverBedLu"], "snr1to4kMedianDb": s["snr1to4kMedianDb"],
+           "framesUnder3dB": s["framesUnder3dB"], "narrowestBand": s["narrowestBand"], "reference": v["reference"]}
+    if "byNarration" in v:  # since critic round 2 the gate is the worst of several narrations
+        out["worstNarration"] = v["worstNarration"]
+        out["byNarration"] = v["byNarration"]
+    return out
 
 
 def manifest_entry(meta: dict) -> dict:

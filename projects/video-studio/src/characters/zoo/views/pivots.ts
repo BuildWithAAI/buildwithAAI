@@ -4,6 +4,7 @@
  * authored in its view's root space, so a part's own space equals the view's root space at rest and
  * these pivots are valid in both. Names ending in L / R are ANATOMICAL.
  */
+import {PIVOTS} from '../rig';
 import {HEAD34_PIVOT} from './threeQuarter/Head34';
 import {PIN34, WRIST34} from './threeQuarter/Body34';
 import {TQ_EYES, TQ_MID_X} from './threeQuarter/tq';
@@ -26,7 +27,8 @@ export const PIVOTS_34: Table = {
 	pin: P(PIN34.x, PIN34.y, 'torso', 'rides on torso; anatomical LEFT chest = far panel (screen right)'),
 	neck: P(-6, -712, 'torso', 'breathe (translate)'),
 	head: P(HEAD34_PIVOT.x, HEAD34_PIVOT.y, 'neck', 'headTilt (deg)'),
-	jaw: P(TQ_MID_X, -768.3, 'head', 'mouth anchor; mouth library mapped by tqX (views/threeQuarter/tq.ts)'),
+	// repair round 4: the 3/4 mouth is drawn at the front rig's jaw height (tqMouth uses PIVOTS.jaw.y, -769.6); this row said -768.3
+	jaw: P(TQ_MID_X, PIVOTS.jaw.y, 'head', 'mouth anchor at the front jaw height; mouth library mapped by tqX (views/threeQuarter/tq.ts)'),
 	eyeR: P(TQ_EYES.near.x, TQ_EYES.near.y, 'head', 'near eye: blink, lookX/lookY, expression'),
 	eyeL: P(TQ_EYES.far.x, TQ_EYES.far.y, 'head', 'far eye (x0.55 width): blink, lookX/lookY, expression'),
 	browR: P(8, -830, 'head', 'near brow: expression, browLift'),

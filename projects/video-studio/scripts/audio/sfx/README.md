@@ -48,7 +48,8 @@ is deterministic: the same code renders the same files, bit for bit.
 | `ding` | 4 | notification: D5-A5, A5, the motif head D5-D5-A5, A4-D5 (VCSL vibraphone) | transient | notify |
 | `success` | 4 | small, dry marimba "ta-da"s on D, G and A | transient | notify |
 | `error` | 4 | soft comedic buzzes falling E-flat to D | transient | notify |
-| `developing_pulse` | 4 | DEVELOPING blips on D4 with their octave and twelfth (single, double, ticker) | transient | notify |
+| `developing_pulse` | 4 | DEVELOPING blips: four single D4 pulses with their octave and twelfth, micro-varied (safe for `pick()`: one pitch, one rhythm) | transient | notify |
+| `developing_double` | 3 | the DEVELOPING "du-dum": D4 on frames 0 and 4, micro-varied | transient | notify |
 | `developing_loop` | 3 | seamless 90 BPM DEVELOPING loops (the show-bed tempo) | start | notify |
 | `rekt_needle` | 4 | Rekt Meter needle to 1/4, 1/2, 3/4 and the full dial, on the Show's 24-frame ease | start | meter |
 | `rekt_alarm` | 4 | rounded alarm rises with an octave-up layer (24, 36, 48 frames; one stepped D-G-A-D) | end (the top) | meter |

@@ -56,6 +56,13 @@ export type HeadViewGeom = {
 	/** 3/4 views: the bridge line from below the far eye to the nose (detail weight since round 4: at full weight it
 	 * boxed the far eye in with the far contour; badger_turn_34.png draws it thin). */
 	readonly bridge?: string | null;
+	/**
+	 * Look-up heads (round 4): a dedicated look-up neck for the head's own side rig, in NECK-local units. Its back stroke
+	 * is the nape fillet (the head's back contour lands tangent on the neck's back line) plus the back line below it; its
+	 * throat is one concave curve from the jaw angle to the collar; its fill's front edge is that curve. SideBody draws it
+	 * in place of the rig's neck when the head is mounted on that rig.
+	 */
+	readonly neckUp?: {readonly rig: 'left' | 'right'; readonly fill: string; readonly strokes: readonly string[]} | null;
 };
 
 const COLORS: Record<ColorKey, string> = {

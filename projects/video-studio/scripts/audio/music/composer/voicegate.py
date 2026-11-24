@@ -17,13 +17,21 @@ Method (the critic's, reproduced exactly; scripts/audio/music/voiceref/README.md
 - the reference: speech-shaped noise (the narration's own long-term spectrum on seeded noise) at
   the same loudness under speech as the ducked bed, through the same measurement.
 
-The narration itself is not in the repository (public/generated/ is rebuilt by the voice step), so
-`voiceref/zoo-im_nicola.json` holds what the gate needs: the voice's band levels per frame (0.25 dB
-steps), its speech-frame mask, its activity spans, its loudness under speech, its 1-4 kHz level per
-frame and its long-term spectrum. `make_profile()` writes it from a narration WAV.
+The narrations themselves are not in the repository (public/generated/ is rebuilt by the voice step),
+so each `voiceref/*.json` holds what the gate needs from one narration: the voice's band levels per
+frame (0.25 dB steps), its speech-frame mask, its activity spans, its loudness under speech, its
+1-4 kHz level per frame and its long-term spectrum. `make_profile()` writes one from a narration WAV.
 
-Gate (scripts/audio/music/build.py, profile `bed`): index with the planned duck >= 0.75, and not
-below speech-shaped noise at the same loudness.
+Critic round 2: the round-1 reference (the engine demo's narration) gave the highest index of the six
+im_nicola narrations measured, so the gate passed beds 0.010-0.035 under what the show's own narration
+measured. The gate now runs every profile in voiceref/ (the engine demo, the show's 2026-11-24 Short,
+the Zoo & Badger demo and the Spanish dub of the Zoora demo) and takes the MINIMUM index; the planned
+duck uses the split duck's own timing (pauses under 0.8 s filled, a 1.2 s release: audiolib.duck).
+
+Gate (scripts/audio/music/build.py, profile `bed`): the minimum index over the narrations, with the
+planned duck, >= 0.75. Speech-shaped noise at the same loudness is reported for information only:
+with a split duck it is structurally easy to beat (the noise puts its energy in the speech band, the
+ducked bed has moved its energy under 700 Hz), so it adds no assurance (critic round 2).
 """
 
 from __future__ import annotations
@@ -38,7 +46,8 @@ import numpy as np
 from audiolib import duck, loudness
 from audiolib.core import SR, as_stereo
 
-PROFILE = Path(__file__).resolve().parents[1] / "voiceref" / "zoo-im_nicola.json"
+VOICEREF = Path(__file__).resolve().parents[1] / "voiceref"
+PROFILE = VOICEREF / "zoo-im_nicola.json"  # the round-1 reference (the engine demo's English narration)
 SCHEMA = 1
 NPERSEG, HOP = 1536, 768
 STEP_DB = 0.25
@@ -85,6 +94,11 @@ def _quantise(db: np.ndarray):
     return codes, off
 
 
+def profiles() -> list:
+    """Every voice profile in voiceref/ (sorted by file name)."""
+    return sorted(VOICEREF.glob("*.json"))
+
+
 def make_profile(narration_path, out_path=PROFILE, label: str = "Kokoro im_nicola (Zoo)") -> dict:
     """Measure a narration WAV and write the voice profile JSON the gate reads."""
     from scipy.signal import resample_poly
@@ -124,10 +138,12 @@ def make_profile(narration_path, out_path=PROFILE, label: str = "Kokoro im_nicol
         elif not a and on is not None:
             spans.append([int(on), int(i)])
             on = None
+    parts = Path(str(narration_path)).parts
     doc = {
         "schema": SCHEMA,
         "about": "Zoo's reference narration for the bed gate (composer/voicegate.py): band levels per 32 ms frame, no audio.",
         "voice": label,
+        "narration": "/".join(parts[-3:-1]) if len(parts) >= 3 else Path(str(narration_path)).stem,
         "source": {"file": str(narration_path).split("projects/video-studio/")[-1], "sha256": hashlib.sha256(Path(narration_path).read_bytes()).hexdigest(),
                    "sampleRate": int(sr), "durationSec": round(n / SR, 3)},
         "analysis": {"sampleRate": SR, "nperseg": NPERSEG, "hop": HOP, "window": "hann", "bandsHz": list(SII_FC), "weights": list(SII_W),
@@ -219,19 +235,46 @@ def _measure(ref: VoiceRef, bed: np.ndarray) -> dict:
             "narrowestBand": {"hz": int(narrow[0]), "snrDb": narrow[1]}, "bandSnrDb": lt_snr, "bedLufsUnderSpeech": round(float(bl), 2)}
 
 
-def evaluate(bed_audio, ref: VoiceRef | None = None) -> dict:
-    """The gate's numbers for a bed (stereo, 48 kHz, as delivered): index with the planned (band-split)
-    duck, with the broadband 6 dB duck, and for speech-shaped noise at the planned bed's loudness."""
-    ref = ref or voice()
+def evaluate_one(bed_audio, ref: VoiceRef) -> dict:
+    """The gate's numbers for a bed (stereo, 48 kHz, as delivered) under one narration: the index with
+    the planned (band-split) duck, with the broadband 6 dB duck, and for speech-shaped noise at the
+    planned bed's loudness."""
     b = as_stereo(bed_audio)
     reps = int(np.ceil(ref.n / b.shape[1]))
     bed = np.tile(b, (1, reps))[:, : ref.n]
-    split, _ = duck.split_duck(bed, ref.act)
+    split, _ = duck.split_duck(bed, duck.widen(ref.act, duck.SPLIT_MIN_GAP), release=duck.SPLIT_RELEASE)
     broad = duck.apply_gain(bed, duck.duck_gain(ref.act, 6.0))
-    out = {"duck": {"plannedMode": "split", "crossoversHz": list(duck.VOICE_CROSSOVERS), "depthsDb": list(duck.VOICE_DEPTHS)},
+    out = {"duck": {"plannedMode": "split", "crossoversHz": list(duck.VOICE_CROSSOVERS), "depthsDb": list(duck.VOICE_DEPTHS),
+                    "minGapS": duck.SPLIT_MIN_GAP, "releaseS": duck.SPLIT_RELEASE},
            "split": _measure(ref, split), "broadband6": _measure(ref, broad)}
     out["ssnAtSplitLoudness"] = _measure(ref, _ssn(ref, out["split"]["bedLufsUnderSpeech"]))
     out["index"] = out["split"]["index"]
     out["indexMinusSsn"] = round(out["split"]["index"] - out["ssnAtSplitLoudness"]["index"], 4)
     out["reference"] = {"voice": ref.doc["voice"], "source": ref.doc["source"]["file"], "sha256": ref.doc["source"]["sha256"][:16]}
+    return out
+
+
+def label_of(ref: VoiceRef) -> str:
+    return ref.doc.get("narration") or Path(ref.doc["source"]["file"]).parts[-3]
+
+
+def evaluate(bed_audio, ref: VoiceRef | None = None) -> dict:
+    """The gate for a bed: evaluate_one under one narration (`ref`) or, by default, under every profile
+    in voiceref/, gated on the worst. The result carries the worst narration's numbers at the top
+    level (index, split, broadband6, ssnAtSplitLoudness, reference) and every narration's index in
+    `byNarration`."""
+    if ref is not None:
+        return evaluate_one(bed_audio, ref)
+    per = {}
+    for path in profiles():
+        r = voice(path)
+        per[label_of(r)] = evaluate_one(bed_audio, r)
+    if not per:
+        raise FileNotFoundError(f"no voice profiles in {VOICEREF}")
+    worst = min(per, key=lambda k: per[k]["index"])
+    out = dict(per[worst])
+    out["worstNarration"] = worst
+    out["byNarration"] = {k: {"index": v["index"], "indexMinusSsn": v["indexMinusSsn"], "broadbandIndex": v["broadband6"]["index"],
+                              "snr1to4kMedianDb": v["split"]["snr1to4kMedianDb"], "framesUnder3dB": v["split"]["framesUnder3dB"]}
+                          for k, v in sorted(per.items())}
     return out

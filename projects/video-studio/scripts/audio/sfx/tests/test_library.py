@@ -17,7 +17,7 @@ PUBLIC = paths.PUBLIC_AUDIO / "sfx" / "manifest.json"
 REQUIRED_GROUPS = {
     "whoosh_short", "whoosh_medium", "whoosh_long", "whoosh_reverse", "pop", "pop_rise", "plop", "tick", "swipe",
     "key", "key_space", "key_enter", "typing_burst", "typing_loop", "mouse_click", "mouse_double",
-    "ding", "success", "error", "developing_pulse", "developing_loop", "rekt_needle", "rekt_alarm",
+    "ding", "success", "error", "developing_pulse", "developing_double", "developing_loop", "rekt_needle", "rekt_alarm",
     "mug", "chair_creak", "badger_paw", "badger_tail",
 }
 VOCAL_WORDS = re.compile(r"\b(bark|barks|growl|whine|whimper|howl|yelp|woof|vocal|voice)\b", re.I)
@@ -89,9 +89,14 @@ class Library(unittest.TestCase):
                 self.assertGreaterEqual(e["loudness"]["phoneLossDb"], lim, e["id"])
             self.assertEqual(e["underSpeechTrimDb"], ROLES[e["role"]].get("underSpeechTrimDb", 0.0), e["id"])
             by_group.setdefault(e["group"], []).append(e)
-        for g in ("pop", "plop"):
+        for g in ("pop", "plop", "developing_pulse", "developing_double"):
             self.assertEqual(len({e["pitch"] for e in by_group[g]}), 1, g)
         self.assertEqual([e["pitch"] for e in sorted(by_group["pop_rise"], key=lambda e: e["id"])], ["D5", "G5", "A5", "D6"])
+        # critic round 2: a pick() group keeps one rhythm too (the DEVELOPING group mixed singles, a double
+        # and a ticker): every file of the group has the same number of hits on the same frames
+        for g in ("developing_pulse", "developing_double"):
+            rhythms = {tuple(ev["frame"] for ev in e["events"]) for e in by_group[g]}
+            self.assertEqual(len(rhythms), 1, f"{g}: {rhythms}")
 
     def test_sources_are_permissive_and_there_is_no_dog_voice(self):
         for e in self.m["sounds"]:

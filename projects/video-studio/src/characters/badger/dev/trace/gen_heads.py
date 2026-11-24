@@ -1037,7 +1037,139 @@ def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=Non
     if cheek:
         ex, ey = eye_c
         g['skull']['details'] = [map_path(cheek, lambda x, y: (x + ex, y + ey))]
+    # round 4: nape fillet + one concave throat on a dedicated look-up neck (see _neck_up)
+    rig = _rig(rig_name)
+    hm = rig['neck']['headMount']
+    dx, dy = UP_MOUNT[view]
+    head_back, head_throat, neck_up = _neck_up(g, view, rig, hm['x'] + dx, hm['y'] + dy, bk, nb, J, tJ, throat_line,
+                                               'left' if base is C else 'right')
+    g['skull']['strokes'] = [g['skull']['strokes'][0], g['skull']['strokes'][1], head_back, head_throat]
+    g['throat'] = None
+    g['neckUp'] = neck_up
     return g
+
+
+def _poly_inside(p, poly):
+    x, y = p
+    c = False
+    for i in range(len(poly)):
+        a, b = poly[i], poly[i - 1]
+        if (a[1] > y) != (b[1] > y) and x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]:
+            c = not c
+    return c
+
+
+def _poly_dist(p, poly):
+    best = 1e9
+    for i in range(len(poly)):
+        a, b = poly[i], poly[i - 1]
+        vx, vy = b[0] - a[0], b[1] - a[1]
+        L2 = vx * vx + vy * vy
+        t = max(0.0, min(1.0, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / L2)) if L2 else 0.0
+        best = min(best, math.hypot(p[0] - a[0] - vx * t, p[1] - a[1] - vy * t))
+    return best
+
+
+def _walk(pts, i0, dist, step):
+    """From index i0 along a sampled polyline (step +1 / -1), the point dist units away, its index and unit tangent."""
+    acc = 0.0
+    i = i0
+    while 0 <= i + step < len(pts):
+        a, b = pts[i], pts[i + step]
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if acc + L >= dist:
+            t = (dist - acc) / L
+            p = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+            return p, i, _unit((b[0] - a[0], b[1] - a[1]) if step > 0 else (a[0] - b[0], a[1] - b[1]))
+        acc += L
+        i += step
+    a, b = pts[i - step], pts[i]
+    return pts[i], i, _unit((b[0] - a[0], b[1] - a[1]))
+
+
+NAPE_EAR_COVER = 3.5   # the look-up nape leaves the skull this far inside the hanging ear's fill (its join stays hidden)
+NAPE_HANDLE = (0.40, 0.30)   # nape cubic handles, as fractions of its chord (ear end, collar end)
+
+
+def _neck_up(g, view, rig, ox, oy, bk, nb, J, tJ, throat_line, rig_side):
+    """Round-4 repair (R3 review minor, look-up heads): ONE nape line from under the ear to the collar and ONE concave
+    throat from the jaw angle to the collar, carried by a dedicated look-up neck for the head's own rig.
+
+    * Nape: the skull's back contour used to end in a round-capped stub that jutted past the neck's back line (a 'Z' step
+      behind the ear). Below the hanging ear the pitched skull's back contour runs FORWARD (toward the throat) while the
+      neck's back line runs back to the shoulders, so any join of the two near their crossing is an S: the occiput bulges
+      out under the ear and the neck dents in under it (a fillet there, tried first, still read as a knob). The look-up
+      panel draws neither: one smooth, nearly straight nape from under the ear down to the collar. So the nape is now ONE
+      cubic from A, the last point of the skull's back contour that is still NAPE_EAR_COVER units inside the hanging ear's
+      fill (its join with the contour is hidden by the ear, drawn later), leaving along the contour's own tangent, to Q,
+      where the neck's back line goes under the collar, arriving along that line. It lies behind the skull's lower back
+      contour, and the look-up neck's fill fills the wedge between them.
+    * Throat: the head's bridge kinked at the jaw and bowed convex toward the collar (the side rigs' neck front sits
+      forward of the raised jaw). badger_pose_looking_up.png draws one concave line from the jaw angle to the collar, so the
+      look-up neck carries that line: one cubic from the jaw angle J (the end of the jaw underside) to the point where the
+      rig's throat line enters the collar, bowing toward the nape. The neck fill's front edge IS that curve (the old neck
+      fill no longer sticks out in front of it).
+    The head draws the top of each line, where it runs along / under the skull fill's edge, on top of the skull (so the
+    line keeps its full weight there); the neck draws each whole line under the collar.
+    Returned geometry is NECK-local (the neck part's space): neck = head + (ox, oy)."""
+    q = lambda p: '%.2f %.2f' % p
+    collar = [p for poly in [_samples(map_path(rig['neck']['collar'], lambda x, y: (x - ox, y - oy)), 12)] for p in poly]
+    skull = [p for poly in [_samples(g['skull']['fill'], 12)] for p in poly]
+    # --- nape (head-local): A under the ear -> Q under the collar's top edge
+    ear = _samples(g['earsFront'][0]['fills'][0]['d'], 12)
+    under = [i for i, p in enumerate(bk) if _poly_inside(p, ear) and _poly_dist(p, ear) >= NAPE_EAR_COVER]
+    iA = under[-1]
+    A = bk[iA]
+    tA = _unit((bk[min(iA + 1, len(bk) - 1)][0] - bk[iA - 1][0], bk[min(iA + 1, len(bk) - 1)][1] - bk[iA - 1][1]))
+    iQ = next(k for k, p in enumerate(nb) if _poly_inside(p, collar))
+    Q = nb[iQ]
+    tQ = _unit((nb[min(iQ + 1, len(nb) - 1)][0] - nb[iQ - 1][0], nb[min(iQ + 1, len(nb) - 1)][1] - nb[iQ - 1][1]))
+    dn = math.hypot(Q[0] - A[0], Q[1] - A[1])
+    f1 = (A[0] + tA[0] * dn * NAPE_HANDLE[0], A[1] + tA[1] * dn * NAPE_HANDLE[0])
+    f2 = (Q[0] - tQ[0] * dn * NAPE_HANDLE[1], Q[1] - tQ[1] * dn * NAPE_HANDLE[1])
+    nape = [_bez(A, f1, f2, Q, k / 80) for k in range(81)]
+    # the nape must stay outside the skull fill (no coat poking out behind it); report the worst incursion
+    inc = max((_poly_dist(p, skull) for p in nape[8:] if _poly_inside(p, skull)), default=0.0)
+    if inc > 0.6:
+        raise SystemExit('%s: look-up nape runs %.2f units inside the skull fill' % (view, inc))
+    kN = next((k for k, p in enumerate(nape) if not _poly_inside(p, skull) and _poly_dist(p, skull) > 3.0
+               and not _poly_inside(p, ear)), 30)
+    (n0, n1, n2, n3), _ = _split(A, f1, f2, Q, kN / 80)
+    head_back = _smooth(bk[:iA + 1]) + ' C %s %s %s' % (q(n1), q(n2), q(n3))
+    # --- throat (head-local): J -> C, C where the rig's throat line enters the collar
+    tp = _samples(throat_line, 80)
+    iC = next(i for i, p in enumerate(tp) if _poly_inside(p, collar))
+    Cp = tp[iC]
+    tC = _unit((tp[min(iC + 2, len(tp) - 1)][0] - tp[max(iC - 2, 0)][0], tp[min(iC + 2, len(tp) - 1)][1] - tp[max(iC - 2, 0)][1]))
+    Cx = (Cp[0] + tC[0] * 2.5, Cp[1] + tC[1] * 2.5)     # end 2.5 units under the collar
+    ch = _unit((Cp[0] - J[0], Cp[1] - J[1]))
+    d = math.hypot(Cp[0] - J[0], Cp[1] - J[1])
+    u0 = _unit((tJ[0] * 0.55 + ch[0] * 0.45, tJ[1] * 0.55 + ch[1] * 0.45))
+    t1 = (J[0] + u0[0] * d * 0.36, J[1] + u0[1] * d * 0.36)
+    t2 = (Cp[0] - tC[0] * d * 0.36, Cp[1] - tC[1] * d * 0.36)
+    thr = [_bez(J, t1, t2, Cp, k / 80) for k in range(81)]
+    # the head draws the top of the throat, where it runs along / under the skull fill's edge, up to 3 units past it
+    kP = next((k for k, p in enumerate(thr) if not _poly_inside(p, skull) and _poly_dist(p, skull) > 3.0), 20)
+    (a0, a1, a2, a3), _ = _split(J, t1, t2, Cp, kP / 80)
+    head_throat = 'M %s C %s %s %s' % (q(a0), q(a1), q(a2), q(a3))
+    # --- neck-local outputs
+    N = lambda p: (p[0] + ox, p[1] + oy)
+    back_rest = nb[iQ + 1:]
+    neck_back = 'M %s C %s %s %s' % (q(N(A)), q(N(f1)), q(N(f2)), q(N(Q)))
+    if len(back_rest) > 1:
+        neck_back += ' ' + _smooth([N(Q)] + [N(p) for p in back_rest])[len('M %.1f %.1f' % N(Q)):]
+    neck_throat = 'M %s C %s %s %s L %s' % (q(N(J)), q(N(t1)), q(N(t2)), q(N(Cp)), q(N(Cx)))
+    # fill: the nape, down the neck's back line under the collar, round the original fill's bottom (under torso and
+    # collar), up to the collar point, the new throat back up to the jaw, and across the head (inside the skull) to A
+    of = [p for poly in [_samples(rig['neck']['fill'], 12)] for p in poly]
+    nb_end = N(nb[-1])
+    iB = min(range(len(of)), key=lambda i: math.hypot(of[i][0] - nb_end[0], of[i][1] - nb_end[1]))
+    iF = min(range(len(of)), key=lambda i: math.hypot(of[i][0] - N(Cx)[0], of[i][1] - N(Cx)[1]))
+    bottom = of[iB:iF + 1] if iB <= iF else of[iB:] + of[:iF + 1]
+    pts = [N(p) for p in back_rest] + bottom + [N(Cx), N(Cp)]
+    fill = ('M %s C %s %s %s L ' % (q(N(A)), q(N(f1)), q(N(f2)), q(N(Q))) + ' L '.join(q(p) for p in pts)
+            + ' C %s %s %s L %s Z' % (q(N(t2)), q(N(t1)), q(N(J)), q(N(A))))
+    return head_back, head_throat, {'rig': rig_side, 'fill': fill, 'strokes': [neck_back, neck_throat]}
 
 
 def _throat_ctrl(J, tJ, L1, tL):
@@ -1072,6 +1204,7 @@ heads['upRightScreen'] = build_up(
 for v in ('front', 'threeQuarterLeftScreen', 'threeQuarterRightScreen'):
     heads[v]['throat'] = None
 for v in heads:
+    heads[v].setdefault('neckUp', None)
     heads[v].setdefault('clipMouth', False)
     heads[v].setdefault('chin', None)
     heads[v].setdefault('bridge', None)

@@ -2,7 +2,7 @@ import React from 'react';
 import {BADGER_COLORS, BRAND, LINE} from '../../palette';
 import type {BadgerHead} from '../../types';
 import type {BadgerSpot} from '../spots';
-import {Head, HeadState} from './heads/Head';
+import {Head, HeadState, headGeom} from './heads/Head';
 import {Leg, LegAngles, LegGeom} from './Leg';
 import {PartShape, Pt, ShapeGeom, tr, useStrokes, useUid} from './shared';
 import {SpotShapes} from './SpotShapes';
@@ -165,6 +165,10 @@ export const SideBody: React.FC<{
 }> = ({rig: R, dir, spots, backLineY, head, headMount: hm, headState, headTilt, tailWag, breath, neckTurn, pose, hindNearOverride, hindFarOverride, uidPrefix}) => {
 	const uid = useUid(uidPrefix);
 	const M = R.mounts;
+	// a look-up head brings its own look-up neck for its own rig (round 4: nape fillet, one concave throat)
+	const neckUp = headGeom(head).neckUp;
+	const neckGeom: SideRig['neck'] =
+		neckUp && neckUp.rig === (dir === -1 ? 'left' : 'right') ? {...R.neck, fill: neckUp.fill, strokes: neckUp.strokes, details: []} : R.neck;
 	const pitchSvg = -dir * pose.body.pitch;
 	const neckAngle = hm.neck - dir * (neckTurn + pose.neck);
 	const neckT = `${tr(M.neck, neckAngle)} translate(0 ${(-breath * 0.6).toFixed(2)})`;
@@ -194,7 +198,7 @@ export const SideBody: React.FC<{
 			<Leg geom={R.legFront} mount={mnt('frontFar', M.legFrontFar)} angles={svgLeg(L.frontFar, dir)} uid={`${uid}-ff`} far spots={spots.legFrontFar} />
 			<Tail geom={R.tail} mount={M.tail} wag={wag} bend={bend} uid={uid} />
 			<g transform={neckT}>
-				<NeckSide geom={R.neck} uid={uid} spots={spots.neck} />
+				<NeckSide geom={neckGeom} uid={uid} spots={spots.neck} />
 				{hm.nape ? <NapeSide nape={hm.nape} /> : null}
 			</g>
 			{/* the near thigh's and near upper foreleg's top edges, under the torso: outlined only where a swing pushes them out

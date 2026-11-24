@@ -2,8 +2,10 @@
 
 - bed: the voice-referenced gate replaces `spectrum.voicePocketDb` as the fail check (critic round 1:
   the pocket was measured against the bed's own tilt and passed beds that masked Zoo's voice more than
-  speech-shaped noise does). `voice.index` (>= 0.75) and `voice.indexMinusSsn` (>= 0) come from
-  composer/voicegate.py; the pocket number stays as a warning.
+  speech-shaped noise does). `voice.index` (>= 0.75, the minimum over several narrations since critic
+  round 2) comes from composer/voicegate.py; `voice.indexMinusSsn` is reported (severity "info") and
+  the pocket number stays as a warning. The bed loudness window opens to -28 LUFS-S for the beds that
+  master 1.5 LU under the others (phone balance).
 - endscreen: the end-screen music with nobody speaking, -18 LUFS-I (the standalone checks, at -18).
 - standalone and endscreen: `aac.truePeak128k` <= -1.0 dBTP after an AAC 128 kb/s encode (critic round
   1: the theme mastered at -1.3 dBTP read -0.3 after AAC); stings report it as a warning (-0.5).
@@ -17,19 +19,21 @@ from __future__ import annotations
 
 import copy
 import json
-import shutil
-import subprocess
-import tempfile
 from pathlib import Path
 
 from audiolib import paths
+# the AAC check lives in the engine (audiolib/codec.py; metrics.py computes it when a profile asks for
+# aac.truePeak128k): these names stay for the music package's callers
+from audiolib.codec import AAC_VARIANTS, aac_true_peak, aac_true_peak_stats  # noqa: F401
 
 VOICE_CHECKS = [
     {"id": "voice.index", "min": 0.75, "severity": "fail",
-     "why": "band-audibility index of Zoo's reference narration over the bed with the planned band-split duck (composer/voicegate.py)"},
-    {"id": "voice.indexMinusSsn", "min": 0.0, "severity": "fail",
-     "why": "the bed must not mask the voice more than speech-shaped noise at the same loudness"},
+     "why": "band-audibility index of Zoo's narration over the bed with the planned band-split duck: the minimum over the narrations in "
+            "voiceref/ (composer/voicegate.py)"},
+    {"id": "voice.indexMinusSsn", "min": 0.0, "severity": "info",
+     "why": "information only: against speech-shaped noise at the same loudness (critic round 2: structurally easy with a split duck)"},
 ]
+QUIET_BED_MIN_LUFS = -28.0  # the engine's bed window is -27 to -25 LUFS-S; the curious bed masters at -27.5 (phone balance)
 AAC_FAIL = {"id": "aac.truePeak128k", "max": -1.0, "severity": "fail", "why": "true peak after AAC 128 kb/s (YouTube re-encodes): lossy overshoot must stay under -1 dBTP"}
 AAC_WARN = {"id": "aac.truePeak128k", "max": -0.5, "severity": "warn", "why": "true peak after AAC 128 kb/s (YouTube re-encodes)"}
 
@@ -45,6 +49,10 @@ def music_targets(engine: dict | None = None) -> dict:
             c["severity"] = "warn"
             c["why"] = "1-4 kHz against the bed's own tilt; reported only: the voice gate (voice.index) is the fail check"
     prof["bed"]["checks"] += copy.deepcopy(VOICE_CHECKS)
+    for c in prof["bed"]["checks"]:
+        if c["id"] == "loudness.shortTermMedian":
+            c["min"] = QUIET_BED_MIN_LUFS
+            c["why"] = "-26 LUFS-S, or -27.5 for a bed that a phone speaker would otherwise push forward (composer/cues/zoora.py QUIET_BED_LUFS)"
     end = copy.deepcopy(prof["standalone"])
     end["description"] = "end-screen music with nobody speaking (-18 LUFS-I)"
     for c in end["checks"]:
@@ -64,60 +72,3 @@ def write_targets(path: Path) -> Path:
     path.write_text(json.dumps(music_targets(), indent=2) + "\n", encoding="utf-8")
     return path
 
-
-AAC_VARIANTS = 9  # extra encodes of last-bit dither variants, on top of the file itself (10 in all; critic round 2: 5 was seed-dependent)
-
-
-def _encode_peak(exe: str, wav: Path, bitrate: str) -> float | None:
-    with tempfile.TemporaryDirectory() as d:
-        m4a = Path(d) / "x.m4a"
-        enc = subprocess.run([exe, "-hide_banner", "-loglevel", "error", "-y", "-i", str(wav), "-c:a", "aac", "-b:a", bitrate, str(m4a)],
-                             capture_output=True, text=True)
-        if enc.returncode != 0:
-            return None
-        r = subprocess.run([exe, "-hide_banner", "-nostats", "-i", str(m4a), "-af", "ebur128=peak=true", "-f", "null", "-"], capture_output=True, text=True)
-    peak = None
-    for line in r.stderr.splitlines():
-        s = line.strip()
-        if s.startswith("Peak:"):
-            try:
-                peak = float(s.split()[1])
-            except (IndexError, ValueError):
-                peak = None
-    return peak
-
-
-def aac_true_peak_stats(wav: Path, bitrate: str = "128k", variants: int = AAC_VARIANTS) -> dict | None:
-    """True peak (dBTP, ebur128) after an ffmpeg AAC encode at `bitrate`, for the file itself and
-    `variants` copies with fresh TPDF dither in their last bit (same format and bit depth).
-    Returns {"worst", "median", "values"}, or None without ffmpeg."""
-    import numpy as np
-    import soundfile as sf
-
-    exe = shutil.which("ffmpeg")
-    if not exe:
-        return None
-    wav = Path(wav)
-    vals = [_encode_peak(exe, wav, bitrate)]
-    if variants > 0:
-        info = sf.info(str(wav))
-        bits = {"PCM_16": 16, "PCM_24": 24}.get(info.subtype, 24)
-        x, sr = sf.read(str(wav), always_2d=True, dtype="float64")
-        lsb = 2.0 ** (1 - bits)
-        with tempfile.TemporaryDirectory() as d:
-            for k in range(1, variants + 1):
-                g = np.random.default_rng(1000 + k)
-                y = np.clip(x + (g.random(x.shape) - g.random(x.shape)) * lsb, -1.0, 1.0 - lsb)
-                v = Path(d) / f"v{k}.wav"
-                sf.write(str(v), y, sr, subtype=f"PCM_{bits}")
-                vals.append(_encode_peak(exe, v, bitrate))
-    ok = [v for v in vals if v is not None]
-    if not ok:
-        return None
-    return {"worst": max(ok), "median": float(np.median(ok)), "values": ok}
-
-
-def aac_true_peak(wav: Path, bitrate: str = "128k", variants: int = AAC_VARIANTS) -> float | None:
-    """The worst true peak (dBTP) over the AAC encodes of aac_true_peak_stats."""
-    st = aac_true_peak_stats(wav, bitrate, variants)
-    return None if st is None else st["worst"]

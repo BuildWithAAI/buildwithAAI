@@ -270,6 +270,15 @@
         "developing_pulse_04"
       ]
     },
+    "developing_double": {
+      "category": "notify",
+      "role": "notify",
+      "ids": [
+        "developing_double_01",
+        "developing_double_02",
+        "developing_double_03"
+      ]
+    },
     "developing_loop": {
       "category": "notify",
       "role": "notify",
@@ -7369,9 +7378,174 @@
         "ticker",
         "tonal"
       ],
-      "description": "DEVELOPING double pulse ('du-dum', frames 0 and 4).",
-      "durationMs": 601.5,
+      "description": "DEVELOPING pulse on D4, a touch shorter (the same brand blip).",
+      "durationMs": 481.9,
       "onsetMs": 0.17,
+      "transientMs": 2.79,
+      "peakMs": 3.8,
+      "loudPeakMs": 27.5,
+      "syncKind": "transient",
+      "syncMs": 0.0,
+      "syncFrame30": 0,
+      "suggestedGainDb": -2.0,
+      "suggestedVolume": 0.7943,
+      "underSpeechTrimDb": 0.0,
+      "loudness": {
+        "samplePeakDbfs": -6.0,
+        "truePeakDbtp": -6.0,
+        "lufs200Max": -19.0,
+        "lufsMomentaryMax": -22.0,
+        "lufs100Max": -16.06,
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": -2.9
+      },
+      "pitch": "D4",
+      "loop": false,
+      "events": [
+        {
+          "ms": 0.0,
+          "frame": 0,
+          "kind": "pulse",
+          "note": "D4"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "synthesis",
+          "by": "scripts/audio/sfx (this repo)",
+          "licence": "original work, owned"
+        }
+      ],
+      "sha256": "cd0861c0b706ad5118b795ec0b9cde0c1b7e2d29aefe128d89f8d28d670e293e"
+    },
+    {
+      "id": "developing_pulse_03",
+      "file": "audio/sfx/notify/developing_pulse_03.wav",
+      "group": "developing_pulse",
+      "variation": 3,
+      "category": "notify",
+      "role": "notify",
+      "tags": [
+        "developing",
+        "pulse",
+        "news",
+        "ticker",
+        "tonal"
+      ],
+      "description": "DEVELOPING pulse on D4, a touch longer (the same brand blip).",
+      "durationMs": 504.0,
+      "onsetMs": 0.12,
+      "transientMs": 2.77,
+      "peakMs": 3.8,
+      "loudPeakMs": 27.7,
+      "syncKind": "transient",
+      "syncMs": 0.0,
+      "syncFrame30": 0,
+      "suggestedGainDb": -2.5,
+      "suggestedVolume": 0.7499,
+      "underSpeechTrimDb": 0.0,
+      "loudness": {
+        "samplePeakDbfs": -6.0,
+        "truePeakDbtp": -6.0,
+        "lufs200Max": -18.46,
+        "lufsMomentaryMax": -21.46,
+        "lufs100Max": -15.56,
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": -2.6
+      },
+      "pitch": "D4",
+      "loop": false,
+      "events": [
+        {
+          "ms": 0.0,
+          "frame": 0,
+          "kind": "pulse",
+          "note": "D4"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "synthesis",
+          "by": "scripts/audio/sfx (this repo)",
+          "licence": "original work, owned"
+        }
+      ],
+      "sha256": "e55b094ebc79a5bb46c1eff3ef4915d555da5e00c87137b4a3259da6d5307f8f"
+    },
+    {
+      "id": "developing_pulse_04",
+      "file": "audio/sfx/notify/developing_pulse_04.wav",
+      "group": "developing_pulse",
+      "variation": 4,
+      "category": "notify",
+      "role": "notify",
+      "tags": [
+        "developing",
+        "pulse",
+        "news",
+        "ticker",
+        "tonal"
+      ],
+      "description": "DEVELOPING pulse on D4 with a fresh attack tick (the same brand blip).",
+      "durationMs": 494.2,
+      "onsetMs": 0.1,
+      "transientMs": 2.79,
+      "peakMs": 3.8,
+      "loudPeakMs": 27.5,
+      "syncKind": "transient",
+      "syncMs": 0.0,
+      "syncFrame30": 0,
+      "suggestedGainDb": -2.3,
+      "suggestedVolume": 0.7674,
+      "underSpeechTrimDb": 0.0,
+      "loudness": {
+        "samplePeakDbfs": -6.0,
+        "truePeakDbtp": -6.0,
+        "lufs200Max": -18.71,
+        "lufsMomentaryMax": -21.72,
+        "lufs100Max": -15.79,
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": -2.8
+      },
+      "pitch": "D4",
+      "loop": false,
+      "events": [
+        {
+          "ms": 0.0,
+          "frame": 0,
+          "kind": "pulse",
+          "note": "D4"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "synthesis",
+          "by": "scripts/audio/sfx (this repo)",
+          "licence": "original work, owned"
+        }
+      ],
+      "sha256": "fe4d84be749a939de381e5e0f91d6714b9675c46d01bab1b8fa87b58e8ce795a"
+    },
+    {
+      "id": "developing_double_01",
+      "file": "audio/sfx/notify/developing_double_01.wav",
+      "group": "developing_double",
+      "variation": 1,
+      "category": "notify",
+      "role": "notify",
+      "tags": [
+        "developing",
+        "pulse",
+        "news",
+        "ticker",
+        "tonal"
+      ],
+      "description": "DEVELOPING double pulse ('du-dum', D4 on frames 0 and 4).",
+      "durationMs": 601.5,
+      "onsetMs": 0.12,
       "transientMs": 2.79,
       "peakMs": 3.8,
       "loudPeakMs": 32.5,
@@ -7414,13 +7588,13 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "6f840d1c1f1eacf7f0f6ebdbb444e412e6380acb8856344afecc5a99849a14b6"
+      "sha256": "a376a6cc41aabe4990a2f3341442a52a7698141c7d665ca8380a729f2c626f49"
     },
     {
-      "id": "developing_pulse_03",
-      "file": "audio/sfx/notify/developing_pulse_03.wav",
-      "group": "developing_pulse",
-      "variation": 3,
+      "id": "developing_double_02",
+      "file": "audio/sfx/notify/developing_double_02.wav",
+      "group": "developing_double",
+      "variation": 2,
       "category": "notify",
       "role": "notify",
       "tags": [
@@ -7430,82 +7604,27 @@
         "ticker",
         "tonal"
       ],
-      "description": "DEVELOPING pulse, higher and lighter (D5).",
-      "durationMs": 512.7,
-      "onsetMs": 0.12,
-      "transientMs": 1.85,
-      "peakMs": 3.6,
-      "loudPeakMs": 27.4,
-      "syncKind": "transient",
-      "syncMs": 0.0,
-      "syncFrame30": 0,
-      "suggestedGainDb": -4.3,
-      "suggestedVolume": 0.6095,
-      "underSpeechTrimDb": 0.0,
-      "loudness": {
-        "samplePeakDbfs": -6.0,
-        "truePeakDbtp": -5.99,
-        "lufs200Max": -16.74,
-        "lufsMomentaryMax": -19.74,
-        "lufs100Max": -13.88,
-        "targetLufs": -21.0,
-        "gainCapped": false,
-        "phoneLossDb": 0.2
-      },
-      "pitch": "D5",
-      "loop": false,
-      "events": [
-        {
-          "ms": 0.0,
-          "frame": 0,
-          "kind": "pulse",
-          "note": "D5"
-        }
-      ],
-      "sources": [
-        {
-          "kind": "synthesis",
-          "by": "scripts/audio/sfx (this repo)",
-          "licence": "original work, owned"
-        }
-      ],
-      "sha256": "f15c08aaa8db807245ccce51c0ecf63502b915b2f4fab9f273790cac97aef7ab"
-    },
-    {
-      "id": "developing_pulse_04",
-      "file": "audio/sfx/notify/developing_pulse_04.wav",
-      "group": "developing_pulse",
-      "variation": 4,
-      "category": "notify",
-      "role": "notify",
-      "tags": [
-        "developing",
-        "pulse",
-        "news",
-        "ticker",
-        "tonal"
-      ],
-      "description": "DEVELOPING ticker: four D4 pulses a sixteenth apart at 90 BPM (5 frames), fading.",
-      "durationMs": 939.0,
+      "description": "DEVELOPING double pulse ('du-dum', D4 on frames 0 and 4), shorter first blip.",
+      "durationMs": 616.0,
       "onsetMs": 0.1,
       "transientMs": 2.79,
       "peakMs": 3.8,
-      "loudPeakMs": 47.4,
+      "loudPeakMs": 33.3,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -1.8,
-      "suggestedVolume": 0.8128,
+      "suggestedGainDb": -3.2,
+      "suggestedVolume": 0.6918,
       "underSpeechTrimDb": 0.0,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -19.19,
-        "lufsMomentaryMax": -21.15,
-        "lufs100Max": -17.97,
+        "lufs200Max": -17.78,
+        "lufsMomentaryMax": -20.65,
+        "lufs100Max": -17.07,
         "targetLufs": -21.0,
         "gainCapped": false,
-        "phoneLossDb": -2.7
+        "phoneLossDb": -2.9
       },
       "pitch": "D4",
       "loop": false,
@@ -7517,20 +7636,8 @@
           "note": "D4"
         },
         {
-          "ms": 166.67,
-          "frame": 5,
-          "kind": "pulse",
-          "note": "D4"
-        },
-        {
-          "ms": 333.33,
-          "frame": 10,
-          "kind": "pulse",
-          "note": "D4"
-        },
-        {
-          "ms": 500.0,
-          "frame": 15,
+          "ms": 133.33,
+          "frame": 4,
           "kind": "pulse",
           "note": "D4"
         }
@@ -7542,7 +7649,68 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "72f9b7e89c21cc14f07ee2804def6d21b15755ce27956c4c71674e5da2c4cc51"
+      "sha256": "f9658a8148d4a4d63d54f1cd787ca72fdeec5729bf249cbc55ae7cea5c8cdc5d"
+    },
+    {
+      "id": "developing_double_03",
+      "file": "audio/sfx/notify/developing_double_03.wav",
+      "group": "developing_double",
+      "variation": 3,
+      "category": "notify",
+      "role": "notify",
+      "tags": [
+        "developing",
+        "pulse",
+        "news",
+        "ticker",
+        "tonal"
+      ],
+      "description": "DEVELOPING double pulse ('du-dum', D4 on frames 0 and 4), firmer answer.",
+      "durationMs": 601.5,
+      "onsetMs": 0.23,
+      "transientMs": 2.77,
+      "peakMs": 3.8,
+      "loudPeakMs": 32.2,
+      "syncKind": "transient",
+      "syncMs": 0.0,
+      "syncFrame30": 0,
+      "suggestedGainDb": -3.5,
+      "suggestedVolume": 0.6683,
+      "underSpeechTrimDb": 0.0,
+      "loudness": {
+        "samplePeakDbfs": -6.0,
+        "truePeakDbtp": -6.0,
+        "lufs200Max": -17.48,
+        "lufsMomentaryMax": -20.39,
+        "lufs100Max": -16.62,
+        "targetLufs": -21.0,
+        "gainCapped": false,
+        "phoneLossDb": -2.6
+      },
+      "pitch": "D4",
+      "loop": false,
+      "events": [
+        {
+          "ms": 0.0,
+          "frame": 0,
+          "kind": "pulse",
+          "note": "D4"
+        },
+        {
+          "ms": 133.33,
+          "frame": 4,
+          "kind": "pulse",
+          "note": "D4"
+        }
+      ],
+      "sources": [
+        {
+          "kind": "synthesis",
+          "by": "scripts/audio/sfx (this repo)",
+          "licence": "original work, owned"
+        }
+      ],
+      "sha256": "99a51a73f0f503cc8375d2a6a1ed8af6f60dfbe8a571ebfbf3528136f72c1347"
     },
     {
       "id": "developing_loop_01",

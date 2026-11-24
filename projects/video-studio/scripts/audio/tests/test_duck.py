@@ -87,6 +87,8 @@ class DuckTest(unittest.TestCase):
             summaries = [json.loads(line) for line in out_buf.getvalue().splitlines() if line.startswith("{")]
             self.assertEqual([s["mode"] for s in summaries], ["broadband", "split"])
             self.assertEqual(summaries[1]["gainUnderSpeechDb"], [-2.0, -12.0, -4.0])
+            self.assertEqual((summaries[0]["releaseS"], summaries[0]["minGapS"]), (0.5, 0.35))  # broadband keeps its timing
+            self.assertEqual((summaries[1]["releaseS"], summaries[1]["minGapS"]), (1.2, 0.8))  # the split duck's
             self.assertEqual(bad, 2)
 
 
@@ -102,7 +104,7 @@ class SplitDuckTest(unittest.TestCase):
             duck.split_bands(x, (700.0, 30000.0))
 
     def test_each_band_ducks_by_its_own_depth(self):
-        t = np.arange(4 * SR) / SR
+        t = np.arange(5 * SR) / SR
         act = np.zeros(t.size, dtype=bool)
         act[SR : 3 * SR] = True
         for f, want in ((150.0, -2.0), (2000.0, -12.0), (12000.0, -4.0)):
@@ -111,11 +113,28 @@ class SplitDuckTest(unittest.TestCase):
             seg = slice(int(1.6 * SR), int(2.6 * SR))  # fully ducked, away from the ramps
             got = 20 * np.log10(np.sqrt(np.mean(out[:, seg] ** 2)) / np.sqrt(np.mean(tone[:, seg] ** 2)))
             self.assertAlmostEqual(got, want, delta=0.25, msg=f"{f} Hz")
-            rest = slice(int(3.8 * SR), 4 * SR)  # released again after the speech
+            rest = slice(int(4.4 * SR), 5 * SR)  # released again after the speech (the split release takes 1.2 s)
             self.assertAlmostEqual(float(np.sqrt(np.mean(out[:, rest] ** 2))), float(np.sqrt(np.mean(tone[:, rest] ** 2))), delta=1e-3)
         self.assertEqual(len(gains), 3)
         with self.assertRaises(ValueError):
             duck.split_duck(tone, act, depths=(2.0, 12.0))
+
+    def test_split_timing_does_not_bloom_on_short_pauses(self):
+        # critic round 2: the split duck fills pauses under 0.8 s and releases over 1.2 s, so the 12 dB mid
+        # band does not come back up between phrases a fraction of a second apart
+        self.assertEqual((duck.SPLIT_MIN_GAP, duck.SPLIT_RELEASE), (0.8, 1.2))
+        act = np.zeros(6 * SR, dtype=bool)
+        for a, b in ((0.5, 1.5), (2.1, 3.0), (4.5, 5.5)):  # a 0.6 s pause, then a 1.5 s one
+            act[int(a * SR): int(b * SR)] = True
+        wide = duck.widen(act, duck.SPLIT_MIN_GAP)
+        self.assertTrue(wide[int(1.8 * SR)])  # the 0.6 s pause stays ducked
+        self.assertFalse(wide[int(3.8 * SR)])  # the 1.5 s pause opens
+        mid = duck.split_duck_gains(wide)[1]
+        self.assertLess(mid[int(1.8 * SR)], -11.9)
+        self.assertGreater(mid[int(4.2 * SR)], -1.0)  # 1.2 s after the phrase, released
+        self.assertLess(mid[int(3.4 * SR)], -6.0)  # but slowly: 0.4 s in, still more than 6 dB down
+        old = duck.duck_gain(duck.widen(act, 0.35), 12.0, release=0.5)
+        self.assertGreater(old[int(1.9 * SR)], -7.0)  # the old timing let the mids up in the short pause
 
 
 if __name__ == "__main__":

@@ -16,10 +16,12 @@ Sources:
 - success: VCSL marimba (CC0), dry and short (damped after 60 ms).
 - error: a band-limited pulse and saw (2x oversampled), low-passed at 1.6 kHz with a nasal bump
   at 650 Hz and a 28 Hz buzz flutter: present but small, never a game-show buzzer.
-- DEVELOPING: a sine D4 with its octave and twelfth (D5 at -4 dB, A5 at -12 dB), a soft sonar-like
+- DEVELOPING: a sine D4 with its octave and twelfth (D5 at -2 dB, A5 at -10 dB), a soft sonar-like
   bloom in the air room, and a tiny band-passed tick on the attack. Critic round 1: with only a
   -12 dB octave the body sat at D4 (294 Hz, under a phone speaker's range) and the blip lost
-  4.6-6.2 dB on a phone, so the tick carried it; the partials keep the loss within 3 dB.
+  4.6-6.2 dB on a phone, so the tick carried it; the partials keep the loss within 3 dB. Critic
+  round 2: the `developing_pulse` pick group is four single D4 blips (one pitch, one rhythm); the
+  double "du-dum" is its own group, `developing_double`.
 """
 
 from __future__ import annotations
@@ -173,19 +175,19 @@ def pulse_voice(note: str, t60: float, octave_db: float = DEVELOPING_OCTAVE_DB, 
     return x
 
 
-def developing(sid: str, hits: list, desc: str, room_db: float = -16.0) -> Sound:
+def developing(sid: str, hits: list, desc: str, room_db: float = -16.0, group: str = "developing_pulse", octave_db: float = DEVELOPING_OCTAVE_DB) -> Sound:
     """hits: [(frame, note, t60, gain)]."""
     length = max(f / FPS + t for f, _, t, _ in hits) + 0.05
     n = prims.n_samples(length)
     mono = np.zeros(n)
     events = []
     for i, (frame, note, t60, gain) in enumerate(hits):
-        x = pulse_voice(note, t60, seed=f"{sid}-{i}") * gain
+        x = pulse_voice(note, t60, octave_db=octave_db, seed=f"{sid}-{i}") * gain
         k = frame * FRAME
         mono[k : k + x.size] += x[: n - k]
         events.append({"t": frame / FPS, "kind": "pulse", "note": note})
     st = space.add_room(prims.dual(mono), "air", room_db)
-    return Sound(id=sid, group="developing_pulse", category="notify", role="notify", audio=st, description=desc,
+    return Sound(id=sid, group=group, category="notify", role="notify", audio=st, description=desc,
                  tags=["developing", "pulse", "news", "ticker", "tonal"], events=events, pitch=hits[0][1], sources=[SYNTH_SOURCE], hp_hz=120.0, lp_hz=10000.0)
 
 
@@ -230,10 +232,20 @@ def render() -> list:
         error("error_02", [(0, "Eb3", "D3", 0.24, 1.0)], "A single falling 'bzzt' from Eb3 to D3."),
         error("error_03", [(0, "D3", "D3", 0.08, 1.0), (4, "D3", "D3", 0.08, 0.85)], "Two short, soft D3 buzzes: a quiet 'nope'."),
         error("error_04", [(0, "Eb3", "Eb3", 0.07, 1.0), (3, "D3", "D3", 0.07, 0.9), (6, "D3", "Db3", 0.12, 0.85)], "Three quick buzzes stepping down: 'nuh-uh-uh'."),
+        # critic round 2: pick() on this group returned a D4 single, a D4 double, a D5 pulse or a 4-pulse ticker,
+        # so the DEVELOPING alert changed pitch and rhythm between uses. The pick group is now four single D4
+        # pulses that differ only in their ring (t60), octave blend and attack tick: one sonic brand.
         developing("developing_pulse_01", [(0, "D4", 0.40, 1.0)], "DEVELOPING pulse: one soft tonal blip on D4 with a sonar-like bloom."),
-        developing("developing_pulse_02", [(0, "D4", 0.30, 1.0), (4, "D4", 0.40, 0.7)], "DEVELOPING double pulse ('du-dum', frames 0 and 4)."),
-        developing("developing_pulse_03", [(0, "D5", 0.45, 1.0)], "DEVELOPING pulse, higher and lighter (D5)."),
-        developing("developing_pulse_04", [(0, "D4", 0.22, 1.0), (5, "D4", 0.22, 0.75), (10, "D4", 0.22, 0.6), (15, "D4", 0.30, 0.5)], "DEVELOPING ticker: four D4 pulses a sixteenth apart at 90 BPM (5 frames), fading."),
+        developing("developing_pulse_02", [(0, "D4", 0.37, 0.98)], "DEVELOPING pulse on D4, a touch shorter (the same brand blip).", octave_db=-2.5),
+        developing("developing_pulse_03", [(0, "D4", 0.43, 0.97)], "DEVELOPING pulse on D4, a touch longer (the same brand blip).", octave_db=-1.5),
+        developing("developing_pulse_04", [(0, "D4", 0.40, 0.99)], "DEVELOPING pulse on D4 with a fresh attack tick (the same brand blip).", octave_db=-2.2),
+        # the double pulse ('du-dum', frames 0 and 4) is its own fixed group: pick() never mixes it with the single
+        developing("developing_double_01", [(0, "D4", 0.30, 1.0), (4, "D4", 0.40, 0.7)], "DEVELOPING double pulse ('du-dum', D4 on frames 0 and 4).",
+                   group="developing_double"),
+        developing("developing_double_02", [(0, "D4", 0.28, 0.98), (4, "D4", 0.42, 0.68)], "DEVELOPING double pulse ('du-dum', D4 on frames 0 and 4), shorter first blip.",
+                   group="developing_double", octave_db=-2.5),
+        developing("developing_double_03", [(0, "D4", 0.32, 1.0), (4, "D4", 0.38, 0.72)], "DEVELOPING double pulse ('du-dum', D4 on frames 0 and 4), firmer answer.",
+                   group="developing_double", octave_db=-1.5),
         developing_loop("developing_loop_01", [("D4", 0.40, 1.0), ("D4", 0.30, 0.55), ("D4", 0.30, 0.65), ("D4", 0.30, 0.55)], "Seamless DEVELOPING loop: a pulse on every beat at 90 BPM (beat 1 accented), first beat on frame 10."),
         developing_loop("developing_loop_02", [("D4", 0.40, 1.0), ("A4", 0.30, 0.45), ("D4", 0.30, 0.6), ("A4", 0.30, 0.45)], "Seamless DEVELOPING loop alternating D4 and a softer A4 at 90 BPM, first beat on frame 10."),
         developing_loop("developing_loop_03", [("D4", 0.45, 0.9), ("D4", 0.30, 0.45)], "Seamless, sparser DEVELOPING loop: two pulses per bar at 90 BPM (half-time feel), first beat on frame 10.", beats=2, frames_per_beat=40),

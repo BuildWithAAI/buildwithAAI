@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {existsSync, readFileSync, statSync} from 'node:fs';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {cueById, framesPerBar, framesPerBeat, loopFrames, nextBarFrame, parseManifest, type MusicCue} from '../manifest.ts';
+import {cueById, downbeatStartFrame, framesPerBar, framesPerBeat, loopFrames, nextBarFrame, parseManifest, underNarration, type MusicCue} from '../manifest.ts';
 
 const STUDIO = fileURLToPath(new URL('../../../../', import.meta.url));
 const DELIVERED = join(STUDIO, 'public', 'audio', 'music', 'manifest.json');
@@ -59,4 +59,21 @@ test('the delivered manifest is valid and its files exist', {skip: !existsSync(D
 		assert.ok(existsSync(join(STUDIO, 'public', c.metadata)), `${c.id}: metadata missing`);
 		if (c.loop) assert.equal(Number.isInteger(loopFrames(c)), true);
 	}
+});
+
+test('music under narration must be a ducked render, never a raw cue', () => {
+	// critic round 2: no renderer plays music yet; when one does, a raw bed under Zoo's voice fails the gate
+	for (const raw of ['audio/music/bed-show-neutral-underscore.flac', '/audio/music/endscreen-bed.wav', 'audio/music/theme-full.flac']) {
+		assert.throws(() => underNarration(raw), /raw music cue under narration/, raw);
+	}
+	assert.throws(() => underNarration('generated/zoora-ai/x/en/bed.wav'), /not a ducked bed/);
+	assert.equal(underNarration('generated/zoora-ai/x/en/bed.ducked.wav'), 'generated/zoora-ai/x/en/bed.ducked.wav');
+	assert.equal(underNarration('generated/zoora-security/y/en/bed-show-tension.ducked.flac'), 'generated/zoora-security/y/en/bed-show-tension.ducked.flac');
+});
+
+test('bumpers start two frames early so their downbeat lands on the cut', () => {
+	const bumper = bed({id: 'bumper-red-flag', cueType: 'bumper', loop: null, durationSec: 3.2, durationSamples: 153600, downbeatSec: 2 / 30,
+		file: 'audio/music/bumper-red-flag.wav', profile: 'sting', metadata: 'audio/music/bumper-red-flag.json'});
+	assert.equal(downbeatStartFrame(bumper, 120), 118);
+	assert.equal(downbeatStartFrame(bed(), 120), 120);
 });

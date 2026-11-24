@@ -114,6 +114,26 @@ export const loopFrames = (c: MusicCue, fps = 30): number => {
 /** The frame to start a cue on so its first downbeat lands on `alignFrame` (theme-5s has a 2-frame pre-roll). */
 export const downbeatStartFrame = (c: MusicCue, alignFrame: number, fps = 30): number => alignFrame - Math.round((c.downbeatSec ?? 0) * fps);
 
+/**
+ * The file to play under Zoo's narration, checked. Music under speech must be a bed DUCKED for that
+ * episode by scripts/audio/duck.py (the band-split duck: a Remotion volume callback applies one gain to
+ * every band and cannot reproduce it, and critic round 2 measured a raw or broadband-ducked bed under
+ * the 0.75 voice gate on 6 of 15 beds). So this refuses any delivered cue (`audio/music/...`) and any file
+ * not named `<name>.ducked.wav|flac`; it returns `src` unchanged otherwise. Every renderer that plays
+ * music under narration must pass the path through it:
+ *   <Audio src={staticFile(underNarration('generated/zoora-ai/<slug>/en/bed.ducked.wav'))} />
+ */
+export const underNarration = (src: string): string => {
+	const path = src.replace(/^\/+/, '');
+	if (/(^|\/)audio\/music\//.test(path)) {
+		throw new Error(`${src}: a raw music cue under narration; duck it for this episode first (scripts/audio/duck.py --out <name>.ducked.wav)`);
+	}
+	if (!/\.ducked\.(wav|flac)$/.test(path)) {
+		throw new Error(`${src}: not a ducked bed; music under narration must come from scripts/audio/duck.py as <name>.ducked.wav`);
+	}
+	return src;
+};
+
 /** The first bar line at or after `frame` (counting from the cue's start), for in-time cuts and cross-fades. */
 export const nextBarFrame = (c: MusicCue, frame: number, fps = 30): number => {
 	const bar = framesPerBar(c.bpm, fps);

@@ -16,7 +16,8 @@ sample, so there is no zipper noise). Each duck starts `lookahead` early, so it 
 first word lands, and releases only after the speech ends. Starting values (150 ms attack, 500 ms release, 120 ms lookahead, 6 dB) follow common
 broadcast practice; tune them by ear per show.
 
-Band-split ducking (`split_duck`, the default of scripts/audio/duck.py): the bed is split into
+Band-split ducking (`split_duck`, the default of scripts/audio/duck.py; its timing is SPLIT_MIN_GAP
+and SPLIT_RELEASE, slower than the broadband defaults): the bed is split into
 low / mid / high bands (zero-phase, Linkwitz-Riley 8th-order magnitude from a forward-backward
 4th-order Butterworth, crossovers at 700 Hz and 5 kHz; the mid band is the remainder, so the three
 bands sum back to the input exactly) and each band is
@@ -37,6 +38,14 @@ from .core import SR, as_channels
 
 VOICE_CROSSOVERS = (700.0, 5000.0)  # Hz: low | mid (the voice's consonant band) | high
 VOICE_DEPTHS = (2.0, 12.0, 4.0)  # dB under speech for the low, mid and high bands
+# The band-split duck's timing (critic round 2, measured on Zoo's narrations): with the broadband
+# defaults (pauses under 0.35 s filled, a 0.5 s release) the 12 dB mid band came back up by about
+# 10 dB 8-10 times a minute, so the bed's mids bloomed every 6 s. Filling pauses under 0.8 s and
+# releasing over 1.2 s halves that (4.9-6.1 blooms a minute) at an identical band-audibility index
+# (0.7626 -> 0.7626 on the show's narration). Use them for the split duck (scripts/audio/duck.py
+# does); voice_activity's and duck_gain's own defaults stay the broadband ones.
+SPLIT_MIN_GAP = 0.8
+SPLIT_RELEASE = 1.2
 
 
 def voice_activity(voice, sr: int = SR, hop: float = 0.01, window: float = 0.03, range_db: float = 30.0, floor_dbfs: float = -55.0, min_gap: float = 0.35, min_speech: float = 0.08) -> np.ndarray:
@@ -61,6 +70,13 @@ def voice_activity(voice, sr: int = SR, hop: float = 0.01, window: float = 0.03,
     for i in np.nonzero(speech)[0]:
         mask[i * h : i * h + w] = True
     return mask
+
+
+def widen(activity: np.ndarray, min_gap: float, sr: int = SR) -> np.ndarray:
+    """A speech mask with every pause shorter than `min_gap` seconds filled (e.g. a mask made with the
+    broadband 0.35 s, widened to the split duck's SPLIT_MIN_GAP)."""
+    act = np.asarray(activity, dtype=bool)
+    return _fill_gaps(act, int(round(min_gap * sr)))
 
 
 def activity_from_intervals(intervals, n: int, sr: int = SR, min_gap: float = 0.35) -> np.ndarray:
@@ -138,14 +154,15 @@ def split_bands(audio, crossovers=VOICE_CROSSOVERS, sr: int = SR, order: int = 4
     return bands
 
 
-def split_duck_gains(activity: np.ndarray, depths=VOICE_DEPTHS, attack: float = 0.15, release: float = 0.5, lookahead: float = 0.12, sr: int = SR) -> list:
+def split_duck_gains(activity: np.ndarray, depths=VOICE_DEPTHS, attack: float = 0.15, release: float = SPLIT_RELEASE, lookahead: float = 0.12, sr: int = SR) -> list:
     """Per-band gain curves (dB per sample), one `duck_gain` per band depth."""
     return [duck_gain(activity, float(d), attack, release, lookahead, sr) if d > 0 else np.zeros(np.asarray(activity).shape[0]) for d in depths]
 
 
-def split_duck(bed, activity: np.ndarray, depths=VOICE_DEPTHS, crossovers=VOICE_CROSSOVERS, attack: float = 0.15, release: float = 0.5,
+def split_duck(bed, activity: np.ndarray, depths=VOICE_DEPTHS, crossovers=VOICE_CROSSOVERS, attack: float = 0.15, release: float = SPLIT_RELEASE,
                lookahead: float = 0.12, sr: int = SR) -> tuple:
-    """Duck each band of `bed` by its own depth under speech. Returns (ducked, [gain curves dB])."""
+    """Duck each band of `bed` by its own depth under speech. Returns (ducked, [gain curves dB]).
+    `activity` should be made with min_gap=SPLIT_MIN_GAP (voice_activity, or widen() an existing mask)."""
     if len(depths) != len(crossovers) + 1:
         raise ValueError(f"{len(crossovers)} crossovers make {len(crossovers) + 1} bands; got {len(depths)} depths")
     bands = split_bands(bed, crossovers, sr)

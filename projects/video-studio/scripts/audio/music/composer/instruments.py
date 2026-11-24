@@ -97,13 +97,14 @@ def bank(rel, include: str | None = None, exclude: str | None = None, layer_word
     return SampleBank(zones)
 
 
-# measured_root(method="harmonic"): the partials that set the pitch. Under C3 a piano's or harp's
-# fundamental is weak (the Kawai's C1 and C2 strings: 25-40 dB under their 2nd-4th partials), so the
-# pitch comes from partials 2-4, as the ear hears it (critic round 2); from C3 up, from partials 1-3.
-LOW_REGISTER_MIDI = 48
-PARTIALS_LOW = (2, 3, 4)
-PARTIALS_HIGH = (1, 2, 3)
-PARTIAL_RANGE_DB = 15.0  # partials more than this under the strongest one are not used
+# measured_root(method="harmonic"): the partials that set the pitch, over the first half second (what a
+# listener hears of a plucked or struck note, and the window the critic measures). Partials 1-4 within
+# PARTIAL_RANGE_DB of the strongest of them count, weighted by power. Under C3 that drops the Kawai's
+# weak fundamentals (its C1 and C2 strings: 25-40 dB under their 2nd-4th partials), as the critic's
+# "partials 2-4" rule would, and it keeps a harp's strong low fundamental (E1: 9 dB under its 5th).
+PARTIALS = (1, 2, 3, 4)
+PARTIAL_RANGE_DB = 10.0  # partials more than this under the strongest one are not used
+WINDOW_S = (0.04, 0.5)  # from the onset: start, length
 SEARCH_CENTS = 150.0  # coarse search half-width: a sample a semitone off its label is still found
 
 
@@ -140,14 +141,14 @@ def _peak(f, spec, fc: float, half_cents: float):
 
 
 def harmonic_cents(path: str, nominal: float):
-    """The sample's pitch in cents relative to `nominal` (MIDI), or None. Two stages:
+    """The sample's pitch in cents relative to `nominal` (MIDI), or None. Two stages, over WINDOW_S:
     1. coarse: the f0 within +-SEARCH_CENTS whose first eight harmonics (each within +-20 cents, so a
        piano's stretched partials still count) carry the most level (dB above a -60 dB floor);
-    2. fine: partials 2-4 (under C3) or 1-3 at that f0, each located to a fraction of a cent; those
-       within PARTIAL_RANGE_DB of the strongest are averaged, weighted by power."""
+    2. fine: PARTIALS at that f0, each located to a fraction of a cent; those within PARTIAL_RANGE_DB of
+       the strongest are averaged, weighted by power."""
     import numpy as np
 
-    sp = _spectrum(path)
+    sp = _spectrum(path, WINDOW_S[0], WINDOW_S[1])
     if sp is None:
         return None
     f, spec = sp
@@ -168,9 +169,8 @@ def harmonic_cents(path: str, nominal: float):
         if best is None or score > best[0]:
             best = (score, c)
     f0 = f_nom * 2 ** (best[1] / 1200)
-    ks = PARTIALS_LOW if nominal < LOW_REGISTER_MIDI else PARTIALS_HIGH
     found = []
-    for k in ks:
+    for k in PARTIALS:
         pk = _peak(f, spec, k * f0, 25.0)
         if pk is not None:
             found.append((1200 * np.log2(pk[0] / (k * f_nom)), pk[1]))

@@ -170,12 +170,13 @@ def errors(gm, pairs, save: bool = True) -> dict:
         return {(k, v): table.get(f"{k}:{v}") for k, v in pairs}
 
 
-def corrections(gm, notes) -> dict:
+def corrections(gm, notes, save: bool = True) -> dict:
     """{key: cents to add} for a part's notes on a GM preset: minus the median measured error of each
-    key over its notes' velocity buckets; errors under MIN_CORRECTION_CENTS are left alone."""
+    key over its notes' velocity buckets; errors under MIN_CORRECTION_CENTS are left alone. `save`:
+    add newly measured entries to gm_tuning.json."""
     if getattr(gm, "drums", False) or not notes:
         return {}
-    err = errors(gm, [(n.pitch, n.vel) for n in notes])
+    err = errors(gm, [(n.pitch, n.vel) for n in notes], save=save)
     per_key = {}
     for n in notes:
         e = err.get((n.pitch, vel_bucket(n.vel)))

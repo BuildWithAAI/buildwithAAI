@@ -13,8 +13,10 @@ indicators, loop-seam discontinuity (--loop), noise floor and silence/onset timi
 spectrogram PNG (log frequency, 120 dB range) and a waveform PNG unless --no-png.
 
 Output: JSON on stdout (or --json FILE) with "metrics", "checks" and "pass". A human summary goes
-to stderr unless --quiet. Exit codes: 0 every fail-level check passed, 1 a fail-level check failed,
-2 bad arguments or an unreadable file.
+to stderr unless --quiet. Severities: "fail" sets the exit code, "warn" is counted, "info" is
+reported only. When a profile's targets check `aac.truePeak128k` (the music package's), the true peak
+after an AAC 128 kb/s encode is measured too (worst of 10 dither variants; needs ffmpeg). Exit codes:
+0 every fail-level check passed, 1 a fail-level check failed, 2 bad arguments or an unreadable file.
 """
 
 from __future__ import annotations
@@ -110,9 +112,23 @@ def pictures(wav: Path, base: Path) -> dict:
     return {"spectrogram": str(spec), "waveform": str(wave)}
 
 
+def wants(targets: dict, profile: str, prefix: str) -> bool:
+    """True when the profile (or the common checks) has a check whose id starts with `prefix`."""
+    checks = targets["common"] + targets["profiles"].get(profile, {}).get("checks", [])
+    return any(c["id"].startswith(prefix) for c in checks)
+
+
 def run(wav, profile: str = "none", loop: bool = False, png_base=None, targets_path=None) -> dict:
     targets = load_targets(targets_path)
     metrics = analysis.analyse(wav, loop=loop)
+    if wants(targets, profile, "aac.") and get_path(metrics, "aac.truePeak128k") is None:
+        # the music package's standalone, end-screen and sting targets check the true peak after an AAC
+        # 128 kb/s encode (worst of 10 dither variants, audiolib/codec.py); it needs ffmpeg
+        from audiolib import codec
+
+        st = codec.aac_true_peak_stats(Path(wav))
+        metrics["aac"] = {"truePeak128k": st["worst"] if st else None, "truePeak128kMedian": st["median"] if st else None,
+                          "encodes": len(st["values"]) if st else 0}
     checks = evaluate(metrics, targets, profile, loop)
     fails = [c for c in checks if not c["pass"] and c["severity"] == "fail"]
     warns = [c for c in checks if not c["pass"] and c["severity"] == "warn"]

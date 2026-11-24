@@ -96,7 +96,7 @@ def measure(path: Path, cue, png_base: Path | None, targets_path: Path) -> dict:
     m = res["metrics"]
     if cue.profile == "bed":
         m["voice"] = voicegate.evaluate(io.read(path))
-    else:
+    elif m.get("aac", {}).get("truePeak128k") is None:  # metrics.py measures it when the profile asks for it
         st = targets.aac_true_peak_stats(Path(path))
         m["aac"] = {"truePeak128k": st["worst"] if st else None, "truePeak128kMedian": st["median"] if st else None,
                     "encodes": len(st["values"]) if st else 0}

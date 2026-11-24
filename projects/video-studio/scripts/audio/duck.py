@@ -9,9 +9,14 @@ Modes:
 - `split` (default): the band-split duck for the voice. The bed is split at 700 Hz and 5 kHz
   (zero-phase Linkwitz-Riley magnitude; the bands sum back to the bed exactly) and each band is
   ducked by its own depth under speech, 2 / 12 / 4 dB (`--depths`). Only the consonant band goes
-  far down, so the voice stays clear while the music keeps its body (audiolib/duck.py).
-- `broadband`: the whole bed by `--depth` dB (default 6). Passing `--depth` without `--mode`
-  selects it, as before.
+  far down, so the voice stays clear while the music keeps its body (audiolib/duck.py). Pauses
+  under 0.8 s stay ducked and the release takes 1.2 s (critic round 2: with 0.35 s and 0.5 s the
+  bed's mids bloomed back about 10 dB every 6 s).
+- `broadband`: the whole bed by `--depth` dB (default 6), with pauses under 0.35 s filled and a
+  0.5 s release. Passing `--depth` without `--mode` selects it, as before.
+
+Name the output `<name>.ducked.wav` and put it under public/generated/ for Remotion: the music
+manifest's `underNarration()` (scripts/audio/music/manifest.ts) refuses any other file under speech.
 
 The bed is looped or cut to the narration's length (looping assumes a seamless loop: master it
 with loop=True). Writes the ducked bed (24-bit WAV) and prints a summary: speech share, gain under
@@ -50,10 +55,16 @@ def fit_length(bed: np.ndarray, n: int) -> np.ndarray:
     return np.tile(bed, (1, reps))[:, :n]
 
 
-def run(bed_path, voice_path, out_path, depth=6.0, attack=0.15, release=0.5, lookahead=0.12, min_gap=0.35, frames_path=None, fps=30,
+def run(bed_path, voice_path, out_path, depth=6.0, attack=0.15, release=None, lookahead=0.12, min_gap=None, frames_path=None, fps=30,
         mode: str = "split", depths=duck.VOICE_DEPTHS, crossovers=duck.VOICE_CROSSOVERS) -> dict:
+    """release / min_gap None: the mode's defaults (split: duck.SPLIT_RELEASE / duck.SPLIT_MIN_GAP;
+    broadband: 0.5 s / 0.35 s)."""
     if mode not in ("split", "broadband"):
         raise ValueError(f"mode must be split or broadband, not {mode!r}")
+    if release is None:
+        release = duck.SPLIT_RELEASE if mode == "split" else 0.5
+    if min_gap is None:
+        min_gap = duck.SPLIT_MIN_GAP if mode == "split" else 0.35
     voice = io.read(voice_path)
     bed = as_stereo(io.read(bed_path))
     n = voice.shape[1]
@@ -67,7 +78,8 @@ def run(bed_path, voice_path, out_path, depth=6.0, attack=0.15, release=0.5, loo
         gains = [ref]
         out = duck.apply_gain(bed, ref)
     io.write(out_path, out)
-    res = {"out": str(out_path), "mode": mode, "durationS": round(n / SR, 3), "speechShare": round(float(act.mean()), 3)}
+    res = {"out": str(out_path), "mode": mode, "durationS": round(n / SR, 3), "speechShare": round(float(act.mean()), 3),
+           "releaseS": float(release), "minGapS": float(min_gap)}
     if mode == "split":
         res["crossoversHz"] = [float(f) for f in crossovers]
         res["depthsDb"] = [float(d) for d in depths]
@@ -115,9 +127,9 @@ def main(argv=None) -> int:
     ap.add_argument("--crossovers", type=lambda s: _floats(s, 2, "--crossovers"), default=duck.VOICE_CROSSOVERS, help="split mode: band edges in Hz (default 700,5000)")
     ap.add_argument("--depth", type=float, help="broadband mode: dB of ducking under speech (default 6; given alone, it selects broadband)")
     ap.add_argument("--attack", type=float, default=0.15, help="seconds to reach full depth (default 0.15)")
-    ap.add_argument("--release", type=float, default=0.5, help="seconds to recover (default 0.5)")
+    ap.add_argument("--release", type=float, help="seconds to recover (default: 1.2 split, 0.5 broadband)")
     ap.add_argument("--lookahead", type=float, default=0.12, help="seconds the duck starts early (default 0.12)")
-    ap.add_argument("--min-gap", type=float, default=0.35, help="pauses shorter than this stay ducked (default 0.35)")
+    ap.add_argument("--min-gap", type=float, help="pauses shorter than this stay ducked (default: 0.8 split, 0.35 broadband)")
     ap.add_argument("--frames", help="write the per-frame linear gains as JSON here")
     ap.add_argument("--fps", type=int, default=30)
     try:

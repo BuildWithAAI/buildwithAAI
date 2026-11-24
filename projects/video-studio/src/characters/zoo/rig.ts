@@ -171,22 +171,36 @@ export const POINT_OVERLAP = {elbowLead: 0.6, shoulderLag: 1.5, tuck: 6, tuckUnt
 const leadLag = (a: number, p: number) => (a >= 0.5 ? a : 0.5 * Math.pow(2 * a, p));
 
 /**
- * Upper-arm lead (repair round 4, decision ZOO-P6). Once the forearm has swung more than ~`from` deg away from the hang, the
- * upper arm is abducted at least `ratio` x that swing (eased in between `from` and `full`), whatever the shoulder curve,
- * the anticipation tuck or the wind-up would give. The R3 review measured the proof's in-betweens with the elbow still at
- * the waist (abduction -1.7 / -0.9 deg) under a forearm swung 44-62 deg (f95-f96) and 42-57 deg on the way down (f188-f189):
- * a tray-carry. The swing is the forearm's rotation from the hang (shoulder + elbow), so the rule holds on the raise and
- * on the lowering alike; it never acts at rest or in the end pose (the end key is far above it).
+ * Upper-arm lead (repair round 4, decision ZOO-P6). Once the forearm has swung `full` deg (20) or more away from the hang,
+ * the upper arm is abducted at least `ratio` (0.3) x that swing, whatever the shoulder curve, the anticipation tuck or the
+ * wind-up would give; below `full` the floor eases in (leadSwing). The R3 review measured the proof's in-betweens with the
+ * elbow still at the waist (abduction -1.7 / -0.9 deg) under a forearm swung 44-62 deg (f95-f96) and 42-57 deg on the way
+ * down (f188-f189): a tray-carry. The swing is the forearm's rotation from the hang (shoulder + elbow), so the rule holds
+ * on the raise and on the lowering alike; it never acts at rest or in the end pose (ARM_POINT has 44 deg for a 137 deg
+ * swing). It also lifts ARM_POINT_MID's 24 deg to ~38.5 deg (0.3 x its 114-128 deg swing): the upper arm is almost out
+ * by mid-raise and the forearm finishes the reach. Cost, in the proof staging (INT-P2, PAIR_SPACING 570): the elbow is
+ * out ~11 deg sooner, so on Zoo-only and Badger-only renders the fist passes Badger's pale ear 1.0 px apart at f96 and
+ * 10.4 px at f187 (round 3: 27.2 / 29.1 px). Shifting Badger's frames right, ~600 u (+30 u) keeps every raise and
+ * lowering frame >= 24 px; the integrator widens the spacing and re-checks.
  */
-export const POINT_LEAD = {ratio: 0.3, from: 10, full: 20} as const;
-/** Lowest abduction (deg, >= 0) the lead allows for elbow flexion `flex` (deg, >= 0): solves A >= ratio x ramp(F) x F, F = A + flex. */
+export const POINT_LEAD = {ratio: 0.3, full: 20} as const;
+/**
+ * The lead's swing measure: the swing itself from `full` up; below it full x (2u^2 - u^3), u = swing / full, which meets
+ * the swing with the same value and slope at `full` and starts flat at the hang. Its slope never exceeds 4/3, so the
+ * floor's slope (ratio x 4/3 = 0.4) stays well below 1 and the abduction follows the elbow smoothly (a steeper ramp makes
+ * A = ratio x g(A + flex) amplify small elbow changes into a snap of the upper arm near the hang).
+ */
+const leadSwing = (swing: number): number => {
+	const {full} = POINT_LEAD;
+	if (swing >= full) return swing;
+	const u = Math.max(0, swing) / full;
+	return full * u * u * (2 - u);
+};
+/** Lowest abduction (deg, >= 0) the lead allows for elbow flexion `flex` (deg, >= 0): the least A >= `abduction` with A >= ratio x leadSwing(A + flex). */
 export const leadAbduction = (abduction: number, flex: number): number => {
-	const {ratio, from, full} = POINT_LEAD;
 	let a = abduction;
-	for (let i = 0; i < 6; i++) {
-		const swing = Math.max(0, a + flex);
-		a = Math.max(abduction, ratio * swing * smoothstep((swing - from) / (full - from)));
-	}
+	// a contraction (slope <= 0.4), monotone from below: 16 steps leave < 1e-5 deg
+	for (let i = 0; i < 16; i++) a = Math.max(abduction, POINT_LEAD.ratio * leadSwing(a + flex));
 	return a;
 };
 /** Applies the upper-arm lead to a left-arm angle set (shoulder < 0 abducts; elbow < 0 flexes). */

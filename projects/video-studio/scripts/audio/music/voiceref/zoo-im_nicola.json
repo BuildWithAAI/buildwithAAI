@@ -2,6 +2,7 @@
  "schema": 1,
  "about": "Zoo's reference narration for the bed gate (composer/voicegate.py): band levels per 32 ms frame, no audio.",
  "voice": "Kokoro im_nicola (Zoo)",
+ "narration": "engine-demo/en",
  "source": {
   "file": "public/generated/_dev/engine-demo/en/narration.wav",
   "sha256": "021b3f141cdf3237264a19365ac9d66e1845ca5465a9dc894f5c7fbef8998d86",
