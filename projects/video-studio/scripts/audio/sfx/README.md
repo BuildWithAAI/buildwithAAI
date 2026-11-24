@@ -11,6 +11,7 @@ code (modal bodies, filtered noise, friction models) or built from processed VCS
 cd projects/video-studio
 python3 scripts/audio/sfx/build.py --export     # render, finish, measure, review, copy to public/audio/sfx (about 30 s)
 python3 scripts/audio/sfx/sync_check.py         # render a sync check through Remotion and measure it (about 50 s)
+python3 scripts/audio/sfx/build.py --audition   # one listening reel at the suggested gains + cue sheet (out/audio/sfx/audition/)
 python3 scripts/audio/sfx/build.py --only keyboard --no-metrics   # iterate on one family (no export)
 .venv-audio/bin/python -m unittest discover -s scripts/audio/sfx/tests -t scripts/audio/sfx   # 44 tests, about 3 s
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/audio/sfx/sfx.test.ts    # TS helper, 7 tests
@@ -155,10 +156,11 @@ E-flat is the one deliberate "wrong" note.
 - **Keyboard:** a lubed, "thocky" board, premium and much less fatiguing under narration than a
   clicky one. Each keystroke has a quiet finger-contact tap; a bottom-out that rings the keycap
   and plate modes (8-25 ms, inharmonic, plus a cloud of short texture modes up to 7 kHz) and the
-  case "thock" (380-650 Hz); a band-passed click; and a lighter, higher release 2-4 frames later.
-  Spacebar and Enter have stabiliser double hits. Each keyboard position has a fixed timbre
-  (repeated letters match) plus a little per-strike variation, and positions are panned slightly
-  like the hands. Measured: -30 dB in 9-24 ms per octave band, as real plastic keys decay. The
+  case "thock" (380-650 Hz); a band-passed click; the keycap skirt rebounding 2.5-5 ms later (a
+  quieter second impact); and a lighter, higher release 2-4 frames later. Spacebar and Enter have
+  stabiliser double hits. Each keyboard position has a fixed timbre (repeated letters match) plus
+  a little per-strike variation, and positions are panned slightly like the hands. Measured:
+  -30 dB within 24 ms in every octave band (the top octaves in 1-13 ms), as real plastic keys decay. The
   rhythm (`rig.py`) uses log-normal intervals around 4.2 frames (about 70 words a minute) with a
   2-frame minimum, a later start on each word, spaces between words, thinking pauses of 8-14
   frames and Enter at line ends. The low case and desk modes (136-215 Hz) sit between mains
@@ -236,8 +238,8 @@ Per-group measurements (`out/audio/sfx/report.json`):
 | whoosh reverse | 575-1273 | 910-1380 | -11 to -7 dB | darkest: the swell opens toward the cut |
 | pop / plop | 129-143 / 156-174 | 586-1172 / 288-578 | -61 to -33 dB | pure, in tune (tests: within 15 cents) |
 | tick / swipe | 124-141 / 271-416 | 1660-2170 / 1860-2230 | -15 to -1 dB | |
-| keys (alpha, space, Enter) | 170-245 | 700-1570 | -17 to -3.5 dB | thocky; -30 dB in 9-24 ms per band |
-| typing bursts / loops | 1587-5702 / 4800 | 820-940 | -14 to -12 dB | 6.6-10.4 keys a second over a burst |
+| keys (alpha, space, Enter) | 170-245 | 700-1570 | -17 to -3.5 dB | thocky; -30 dB within 24 ms in every band |
+| typing bursts / loops | 1587-5702 / 4800 | 800-940 | -14 to -12 dB | 6.6-10.4 keys a second over a burst |
 | mouse / mug / chair | 183-322 / 176-278 / 496-1014 | 1270-1470 / 490-610 / 640-1050 | -20 to -6.5 dB | |
 | ding / success / error | 1077-1161 / 487-525 / 322-436 | 560-1080 / 370-430 | -56 to -21 dB | softest top in the library |
 | DEVELOPING pulse / loop | 518-942 / 2667 | 295-593 | -59 to -43 dB | |

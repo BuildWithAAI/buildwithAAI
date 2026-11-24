@@ -7,7 +7,8 @@ sit between the mains harmonics (100/120/150/180 Hz), so repeated keys never rea
 - finger contact: a quiet low tap 1.8 ms before the bottom-out (the finger meeting the keycap);
 - bottom-out: the stem hits the housing, ringing the keycap and plate modes (inharmonic, 8-25 ms)
   and the case "thock" (380-650 Hz), with a short click of band-passed noise; harder strikes get a
-  shorter contact pulse, so they are brighter as well as louder;
+  shorter contact pulse, so they are brighter as well as louder; 2.5-5 ms later the keycap skirt
+  touches down and rebounds (a second, quieter impact, -14 to -18 dB, slightly higher);
 - release: the upstroke hitting the top housing, a lighter and higher click 2-4 frames later.
 Spacebar and Enter are longer stabilised keys: lower modes, and the far end of the bar lands a few
 milliseconds after the near end (the stabiliser double hit), on the press and on the release.
@@ -101,6 +102,12 @@ def keystroke(kind: str, pos: int, vel: float, dwell_frames: int, seed: str) -> 
     press = _impact(cap, case, vel, seed)
     k0 = prims.n_samples(CONTACT_LEAD_S)
     out[k0 : k0 + press.size] += press[: n - k0]
+    # the keycap skirt touching down and rebounding a few ms after the stem bottoms out: real
+    # keystrokes are a cluster of micro-impacts, not one clean strike
+    g = rng("rebound", seed)
+    rb = _impact(cap, case, vel * 0.5, seed + "-rebound", click_db=-12.0, scale=float(g.uniform(1.03, 1.09)))
+    kr0 = k0 + prims.n_samples(float(g.uniform(0.0025, 0.005)))
+    out[kr0 : kr0 + rb.size] += float(g.uniform(0.12, 0.2)) * rb[: n - kr0]
     if base["stab"]:
         dt, amp = base["stab"]
         far = _impact(cap, case, vel * 0.85, seed + "-far", click_db=-14.0, scale=1.03)

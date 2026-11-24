@@ -4,6 +4,7 @@
     python3 scripts/audio/sfx/build.py                     # everything -> out/audio/sfx/
     python3 scripts/audio/sfx/build.py --only whoosh,ui    # some families (no export)
     python3 scripts/audio/sfx/build.py --export            # full build, then copy to public/audio/sfx/
+    python3 scripts/audio/sfx/build.py --audition          # also one listening reel + cue sheet (out/audio/sfx/audition/)
 
 Writes out/audio/sfx/wav/<category>/<id>.wav, manifest.json (the public manifest's content),
 report.json (every measurement, QA check and the engine's `metrics.py --profile sfx` result per
@@ -30,6 +31,7 @@ import datetime  # noqa: E402
 import importlib.util  # noqa: E402
 import json  # noqa: E402
 import shutil  # noqa: E402
+import subprocess  # noqa: E402
 import time  # noqa: E402
 
 from audiolib import analysis, io, paths  # noqa: E402
@@ -151,12 +153,43 @@ def export(man: dict) -> list:
     return removed
 
 
+def audition(man: dict, gap_s: float = 0.6, group_gap_s: float = 1.4) -> dict:
+    """One reel of every sound at its suggested gain (the intended mix balance), group by group,
+    for listening on headphones and a phone: out/audio/sfx/audition/sfx_audition.wav, an AAC copy
+    (.m4a, 256 kb/s) and a cue sheet with the start time of every sound."""
+    import numpy as np
+
+    from audiolib.core import SR
+
+    parts, cues, t = [], [], 0.0
+    for group, info in man["groups"].items():
+        for sid in info["ids"]:
+            e = next(s for s in man["sounds"] if s["id"] == sid)
+            a = io.read(OUT / "wav" / e["category"] / f"{sid}.wav") * (10 ** (e["suggestedGainDb"] / 20))
+            cues.append({"start": round(t, 3), "id": sid, "group": group, "gainDb": e["suggestedGainDb"], "description": e["description"]})
+            parts += [a, np.zeros((2, int(round(gap_s * SR))))]
+            t += a.shape[1] / SR + gap_s
+        parts.append(np.zeros((2, int(round(group_gap_s * SR)))))
+        t += group_gap_s
+    reel = np.concatenate(parts, axis=1)
+    d = OUT / "audition"
+    wav = io.write(d / "sfx_audition.wav", reel, subtype="PCM_24", seed=7)
+    m4a = d / "sfx_audition.m4a"
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(wav), "-c:a", "aac", "-b:a", "256k", str(m4a)], check=True)
+    lines = ["# SFX audition reel", "", f"{len(cues)} sounds at their suggested gain, {t / 60:.1f} min. Listen on headphones and on a phone speaker.", "",
+             "| Start | Sound | Gain | What |", "| --- | --- | --- | --- |"]
+    lines += [f"| {int(c['start'] // 60)}:{c['start'] % 60:06.3f} | `{c['id']}` | {c['gainDb']:+.1f} dB | {c['description']} |" for c in cues]
+    (d / "cues.md").write_text("\n".join(lines) + "\n")
+    return {"wav": str(wav), "m4a": str(m4a), "cues": str(d / "cues.md"), "minutes": round(t / 60, 2)}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Build the SFX library (scripts/audio/sfx).")
     ap.add_argument("--only", help=f"comma-separated families ({', '.join(families.NAMES)})")
     ap.add_argument("--no-metrics", action="store_true", help="skip the engine's metrics.py run per file")
     ap.add_argument("--no-review", action="store_true", help="skip the review sheets")
     ap.add_argument("--export", action="store_true", help="copy to public/audio/sfx/ and write its manifest (full builds only)")
+    ap.add_argument("--audition", action="store_true", help="also write out/audio/sfx/audition/ (one reel at the suggested gains + cue sheet; full builds only)")
     ap.add_argument("-q", "--quiet", action="store_true")
     try:
         args = ap.parse_args(argv)
@@ -168,8 +201,8 @@ def main(argv=None) -> int:
         if bad:
             print(f"build: unknown families {bad}; known: {families.NAMES}", file=sys.stderr)
             return 2
-        if args.export:
-            print("build: --export needs a full build (no --only), so the public manifest is complete", file=sys.stderr)
+        if args.export or args.audition:
+            print("build: --export and --audition need a full build (no --only)", file=sys.stderr)
             return 2
     res = build(only, run_metrics=not args.no_metrics, sheets=not args.no_review, quiet=args.quiet)
     if args.export:
@@ -179,6 +212,10 @@ def main(argv=None) -> int:
         removed = export(res["manifest"])
         if not args.quiet:
             print(f"exported {len(res['manifest']['sounds'])} files to {PUBLIC} ({len(removed)} stale removed)", file=sys.stderr)
+    if args.audition:
+        a = audition(res["manifest"])
+        if not args.quiet:
+            print(f"audition reel: {a['m4a']} ({a['minutes']} min), cue sheet {a['cues']}", file=sys.stderr)
     return 0 if res["ok"] else 1
 
 

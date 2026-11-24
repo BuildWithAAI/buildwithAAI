@@ -2028,9 +2028,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -31.78,
-        "lufsMomentaryMax": -34.79,
-        "lufs100Max": -29.05,
+        "lufs200Max": -31.73,
+        "lufsMomentaryMax": -34.74,
+        "lufs100Max": -29.0,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2057,7 +2057,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "d4f85b89855e06980376c535fec38100ca90071b8131ee4c049dfead207fcd7b"
+      "sha256": "2577ee5fe2292f9375d7b958bc6cf7a1b4af29d90507396ae2e11773bb7df2cd"
     },
     {
       "id": "key_02",
@@ -2087,9 +2087,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -31.22,
-        "lufsMomentaryMax": -34.23,
-        "lufs100Max": -28.49,
+        "lufs200Max": -31.17,
+        "lufsMomentaryMax": -34.18,
+        "lufs100Max": -28.44,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2116,7 +2116,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "48227dbc2e99b2b40a157018c08988173e807333b84e5489cc366326eda6ef0e"
+      "sha256": "1f685776833df07c22e84ca9c824d2b06709e13f85b8afd131488dbe48a5d3ef"
     },
     {
       "id": "key_03",
@@ -2146,9 +2146,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -30.96,
-        "lufsMomentaryMax": -33.97,
-        "lufs100Max": -27.95,
+        "lufs200Max": -30.91,
+        "lufsMomentaryMax": -33.92,
+        "lufs100Max": -27.9,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2175,7 +2175,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "d0bbb6d5eab6fad15a0db246aec73d8f7e421c0f0e1b9bcd266cf8ee4dd5f6be"
+      "sha256": "914495bcd0e983fe50126f913f601c0b4157e19d4a308c093a088032c42bd3f7"
     },
     {
       "id": "key_04",
@@ -2205,9 +2205,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.87,
-        "lufs200Max": -29.61,
-        "lufsMomentaryMax": -32.63,
-        "lufs100Max": -26.9,
+        "lufs200Max": -29.66,
+        "lufsMomentaryMax": -32.67,
+        "lufs100Max": -26.95,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2234,7 +2234,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "d469c217bd35e0883dd0b957a31628c7ff2c36d6cda272ae3d81eb5818e6a5ed"
+      "sha256": "c12f80f6c63b5056c3cd559f3e07e5f127cbfd0b72d582e957cd0ab59d032890"
     },
     {
       "id": "key_05",
@@ -2264,9 +2264,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.94,
-        "lufs200Max": -28.63,
-        "lufsMomentaryMax": -31.64,
-        "lufs100Max": -25.89,
+        "lufs200Max": -28.74,
+        "lufsMomentaryMax": -31.75,
+        "lufs100Max": -26.01,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2293,7 +2293,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "2bb892c040ebb3d625358807b3f0b0dfab77021b675be847936285186bdb3fe6"
+      "sha256": "667266af6a167540f22f58234cf31136b431d04795d166b0e484624dd8204513"
     },
     {
       "id": "key_06",
@@ -2323,9 +2323,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.9,
-        "lufs200Max": -30.47,
-        "lufsMomentaryMax": -33.48,
-        "lufs100Max": -27.46,
+        "lufs200Max": -30.13,
+        "lufsMomentaryMax": -33.14,
+        "lufs100Max": -27.12,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2352,7 +2352,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "3d8da6e9df65631cc48c05ed58d9942fcd43e6657675b0b9dd5f070a0cdef4ba"
+      "sha256": "3e03a5e5de46cdeb6885b667b61aa7959e9f514421fc6b83de593044ec0184a7"
     },
     {
       "id": "key_07",
@@ -2382,9 +2382,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -30.3,
-        "lufsMomentaryMax": -33.31,
-        "lufs100Max": -27.59,
+        "lufs200Max": -30.24,
+        "lufsMomentaryMax": -33.25,
+        "lufs100Max": -27.53,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2411,7 +2411,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "f9c323dcf9f405c3c4d5b297e66d5837d14c5761280489ec658189e0aed4c65c"
+      "sha256": "1ca50d02066c851bea5916edf2b5c92063369a9357d060e59e48c80b4337962a"
     },
     {
       "id": "key_08",
@@ -2441,9 +2441,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.91,
-        "lufs200Max": -29.52,
-        "lufsMomentaryMax": -32.53,
-        "lufs100Max": -26.78,
+        "lufs200Max": -28.92,
+        "lufsMomentaryMax": -31.93,
+        "lufs100Max": -26.14,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2470,7 +2470,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "f09913c895d1585670e3426b978725ecb48c8e95402537dbd3eaf9bfac89d880"
+      "sha256": "1304d9b97842cef1f81e4ec04af3b02595d893103d431d3dedd46e950a478b85"
     },
     {
       "id": "key_09",
@@ -2500,9 +2500,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.89,
-        "lufs200Max": -29.61,
-        "lufsMomentaryMax": -32.62,
-        "lufs100Max": -26.6,
+        "lufs200Max": -29.55,
+        "lufsMomentaryMax": -32.56,
+        "lufs100Max": -26.54,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2529,7 +2529,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "0d7755e7b3863ec6a611eb310b82efa48bc7a9bb3641c9e5b6d349e068a04074"
+      "sha256": "4c34b51a2d169f6c60479926ef0904acb13710f9685e6d051e180435b28b026c"
     },
     {
       "id": "key_10",
@@ -2559,9 +2559,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.85,
-        "lufs200Max": -31.39,
-        "lufsMomentaryMax": -34.4,
-        "lufs100Max": -28.66,
+        "lufs200Max": -31.2,
+        "lufsMomentaryMax": -34.21,
+        "lufs100Max": -28.46,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2588,7 +2588,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "8426a24e2d9778b8d2b07408388a9e467760d484aaa5a9cc25d62ca8a6033353"
+      "sha256": "5b1a3dbb2120eb8d8eecaf0ec351cc4354c9b2045377f3ae3cc6291273ce0e74"
     },
     {
       "id": "key_space_01",
@@ -2618,9 +2618,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.95,
-        "lufs200Max": -31.01,
-        "lufsMomentaryMax": -34.02,
-        "lufs100Max": -28.31,
+        "lufs200Max": -31.21,
+        "lufsMomentaryMax": -34.22,
+        "lufs100Max": -28.51,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2647,7 +2647,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "b18eafd8be73fa2d5098a3d90be77d080001c8accf56643dc7951acf4d0afd8a"
+      "sha256": "63f9cfef861a26861edc92d3b95ae3f691c28b7c1c144777f9777b663adc6a65"
     },
     {
       "id": "key_space_02",
@@ -2677,9 +2677,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.92,
-        "lufs200Max": -29.96,
-        "lufsMomentaryMax": -32.98,
-        "lufs100Max": -27.23,
+        "lufs200Max": -29.84,
+        "lufsMomentaryMax": -32.85,
+        "lufs100Max": -27.1,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2706,7 +2706,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "78655597dd867fc6826c888d0979f7c29349b7c66fc7d9e4bed3a4a1c4d8752b"
+      "sha256": "8cd8bfc2f25e5418e1526190af49c6aea386900d503a4a2eb376fd7231487032"
     },
     {
       "id": "key_space_03",
@@ -2723,7 +2723,7 @@
         "spacebar"
       ],
       "description": "Spacebar: deeper, with the stabiliser double hit; release on frame 2.",
-      "durationMs": 181.5,
+      "durationMs": 176.6,
       "onsetMs": 0.06,
       "transientMs": 0.17,
       "peakMs": 0.2,
@@ -2731,14 +2731,14 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -0.4,
-      "suggestedVolume": 0.955,
+      "suggestedGainDb": -0.9,
+      "suggestedVolume": 0.9016,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.81,
-        "lufs200Max": -27.58,
-        "lufsMomentaryMax": -30.59,
-        "lufs100Max": -24.57,
+        "lufs200Max": -27.11,
+        "lufsMomentaryMax": -30.12,
+        "lufs100Max": -24.1,
         "targetLufs": -28.0,
         "gainCapped": false
       },
@@ -2765,7 +2765,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "dc2e3a8121bbf5dacb91d91e9777e996c84d3957e9eca54a5b9fcb47029592a0"
+      "sha256": "55ee49ffb09838b2dd34af46b8d40383e9fd64ada500c3d79ea2151e2a2ea691"
     },
     {
       "id": "key_space_04",
@@ -2790,14 +2790,14 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -0.3,
-      "suggestedVolume": 0.9661,
+      "suggestedGainDb": -0.8,
+      "suggestedVolume": 0.912,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.95,
-        "lufs200Max": -27.66,
-        "lufsMomentaryMax": -30.67,
-        "lufs100Max": -24.98,
+        "lufs200Max": -27.16,
+        "lufsMomentaryMax": -30.17,
+        "lufs100Max": -24.44,
         "targetLufs": -28.0,
         "gainCapped": false
       },
@@ -2824,7 +2824,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "3baae3091b1a10f4e97de81025c8eb2fa3856c1b7dda260793d6af8b7ef7f49c"
+      "sha256": "88f7260ebf7c6f0be701c0ad3c4e8e69e463dd6ca0fd42fda96192e1526660f9"
     },
     {
       "id": "key_enter_01",
@@ -2855,9 +2855,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -30.09,
-        "lufsMomentaryMax": -33.11,
-        "lufs100Max": -27.28,
+        "lufs200Max": -30.12,
+        "lufsMomentaryMax": -33.13,
+        "lufs100Max": -27.31,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2884,7 +2884,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "fc25e43221f0fbafad8bbe05653b413ea0dcccd5bd3fbba19337650d5fc6690b"
+      "sha256": "3956c2de08dd6dac9f138a34218f853b551cda6d0668d4e371bbc0d3e381a96b"
     },
     {
       "id": "key_enter_02",
@@ -2915,9 +2915,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -30.64,
-        "lufsMomentaryMax": -33.65,
-        "lufs100Max": -27.83,
+        "lufs200Max": -30.15,
+        "lufsMomentaryMax": -33.16,
+        "lufs100Max": -27.31,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -2944,7 +2944,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "d2d527e9638f9751f6444b1e93f1ba337aaee446a38023dc78ee2f5d1f9e5946"
+      "sha256": "20dacbe665d7a33c39a4811c1aff1b98f035bed1b4736b02ebbca481d225a0da"
     },
     {
       "id": "key_enter_03",
@@ -2962,7 +2962,7 @@
         "return"
       ],
       "description": "Enter: a firm stabilised press; release on frame 3.",
-      "durationMs": 205.8,
+      "durationMs": 205.9,
       "onsetMs": 0.06,
       "transientMs": 0.17,
       "peakMs": 0.3,
@@ -2970,14 +2970,14 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -0.5,
-      "suggestedVolume": 0.9441,
+      "suggestedGainDb": -0.9,
+      "suggestedVolume": 0.9016,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -27.46,
-        "lufsMomentaryMax": -30.47,
-        "lufs100Max": -24.68,
+        "lufs200Max": -27.09,
+        "lufsMomentaryMax": -30.1,
+        "lufs100Max": -24.29,
         "targetLufs": -28.0,
         "gainCapped": false
       },
@@ -3004,7 +3004,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "1daf86997f6ceb4aa341383750c03321d7741a75ee1211106fb445e2b47b01c6"
+      "sha256": "d3b87ccc5e0ff31f1ca591e2e4e30a4de68b3d69f354d3c630c0d838d4add928"
     },
     {
       "id": "key_enter_04",
@@ -3035,9 +3035,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.83,
-        "lufs200Max": -30.24,
-        "lufsMomentaryMax": -33.25,
-        "lufs100Max": -27.45,
+        "lufs200Max": -30.1,
+        "lufsMomentaryMax": -33.11,
+        "lufs100Max": -27.31,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -3064,7 +3064,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "76bd24f89c9a406f3bb845f25e40934c40c1af21222715f82c1d4d203b42886b"
+      "sha256": "b6ee630dac9bc02c3420ef623612c1846daa83b299b139062e5f94a2623e18c6"
     },
     {
       "id": "typing_burst_01",
@@ -3094,9 +3094,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.99,
-        "lufs200Max": -28.36,
-        "lufsMomentaryMax": -29.42,
-        "lufs100Max": -26.62,
+        "lufs200Max": -28.51,
+        "lufsMomentaryMax": -29.51,
+        "lufs100Max": -26.77,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -3202,7 +3202,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "31ddcc1a416bcb84eba4fe3a108d93618d68ec0fbc0411d0179a2f6fa9e1f3a0",
+      "sha256": "30eab570a39c69bda05f7ed1b4f71e062fdc18b2d519b1b356142dc02ba92d89",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
@@ -3234,20 +3234,20 @@
       "onsetMs": 0.06,
       "transientMs": 0.19,
       "peakMs": 866.9,
-      "loudPeakMs": 706.8,
+      "loudPeakMs": 1673.7,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -0.2,
-      "suggestedVolume": 0.9772,
+      "suggestedGainDb": -0.4,
+      "suggestedVolume": 0.955,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.85,
-        "lufs200Max": -28.07,
-        "lufsMomentaryMax": -29.49,
-        "lufs100Max": -26.56,
+        "lufs200Max": -27.56,
+        "lufsMomentaryMax": -29.38,
+        "lufs100Max": -25.86,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": false
       },
       "pitch": null,
       "loop": false,
@@ -3351,7 +3351,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "f1e933ddb40f718f1053c734e58860db77f6e03c6817ac6696d7607cddc17387",
+      "sha256": "f3dcbd0d5e8f13203ee658dc9a6f1d18050345de529c065ff4f27d85ee0ae48e",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
@@ -3383,7 +3383,7 @@
       "onsetMs": 0.06,
       "transientMs": 0.17,
       "peakMs": 2866.9,
-      "loudPeakMs": 373.4,
+      "loudPeakMs": 906.7,
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
@@ -3392,9 +3392,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -29.67,
-        "lufsMomentaryMax": -31.45,
-        "lufs100Max": -27.23,
+        "lufs200Max": -29.48,
+        "lufsMomentaryMax": -31.21,
+        "lufs100Max": -27.06,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -3542,7 +3542,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "dc294c25c2c3f17cae61fe073da359bb61333754873682db4b53dba38d13d46d",
+      "sha256": "233e51cfee45bba2c3b1b4d75eb4c1d4c857db0d2835f1f94f95ea4666338698",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
@@ -3583,9 +3583,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.79,
-        "lufs200Max": -28.98,
-        "lufsMomentaryMax": -30.44,
-        "lufs100Max": -26.99,
+        "lufs200Max": -29.02,
+        "lufsMomentaryMax": -30.23,
+        "lufs100Max": -27.06,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -3789,7 +3789,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "eb6efc4883c4c2d176ab4ccdb156d39da718a2905510204192b19e9edbb50a88",
+      "sha256": "4aab434d56cbe6ead315861503ed54b664f65d0207673b93dd7d46b7e85ce649",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
@@ -3825,14 +3825,14 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -0.5,
-      "suggestedVolume": 0.9441,
+      "suggestedGainDb": -0.9,
+      "suggestedVolume": 0.9016,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -27.51,
-        "lufsMomentaryMax": -29.96,
-        "lufs100Max": -26.29,
+        "lufs200Max": -27.12,
+        "lufsMomentaryMax": -29.6,
+        "lufs100Max": -26.22,
         "targetLufs": -28.0,
         "gainCapped": false
       },
@@ -4148,7 +4148,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "7c5318a4a427e2681daea7410872b1bb92ef6ce696859feabde9b450aee9fb94",
+      "sha256": "a8d2cfddf69fabb644584486aa081dc564ff4023db5f57436c265fec45274556",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
@@ -4184,16 +4184,16 @@
       "syncKind": "transient",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -0.1,
-      "suggestedVolume": 0.9886,
+      "suggestedGainDb": -0.4,
+      "suggestedVolume": 0.955,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.87,
-        "lufs200Max": -28.08,
-        "lufsMomentaryMax": -29.34,
-        "lufs100Max": -25.87,
+        "lufs200Max": -27.63,
+        "lufsMomentaryMax": -29.0,
+        "lufs100Max": -25.91,
         "targetLufs": -28.0,
-        "gainCapped": true
+        "gainCapped": false
       },
       "pitch": null,
       "loop": false,
@@ -4332,7 +4332,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "0a36603a96aaf5a9a62f585b902b595c74c487f5b9948a015bfa616b1f83dbd7",
+      "sha256": "369e9e434af444dbd1b1f0c818b49c8226209ab9dc2b5a4f82659ed865f117a1",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
@@ -4373,9 +4373,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.9,
-        "lufs200Max": -28.4,
-        "lufsMomentaryMax": -29.29,
-        "lufs100Max": -26.96,
+        "lufs200Max": -28.08,
+        "lufsMomentaryMax": -29.21,
+        "lufs100Max": -26.66,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -4621,7 +4621,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "563974e25337aee2d675ca58ef134c1512180b448378b5a0b4a54263c8de4343",
+      "sha256": "f8ff8aed29eb41fe5c110264ea85a039fd8fe5903d37e68ca34352487458a6b5",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
@@ -4662,9 +4662,9 @@
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -5.91,
-        "lufs200Max": -28.17,
-        "lufsMomentaryMax": -29.64,
-        "lufs100Max": -26.42,
+        "lufs200Max": -27.98,
+        "lufsMomentaryMax": -29.51,
+        "lufs100Max": -26.63,
         "targetLufs": -28.0,
         "gainCapped": true
       },
@@ -4931,7 +4931,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "b11725393c2710df2b3a3f4b9b5a04d18b4ad2b8bda43d0b7e4d5cfcd8797f9f",
+      "sha256": "5b94fd4af1d8bc58afffb3e0d955831d4908f392dc4c96f5863ac8cce90e528a",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
@@ -4967,14 +4967,14 @@
       "syncKind": "start",
       "syncMs": 0.0,
       "syncFrame30": 0,
-      "suggestedGainDb": -0.8,
-      "suggestedVolume": 0.912,
+      "suggestedGainDb": -0.9,
+      "suggestedVolume": 0.9016,
       "loudness": {
         "samplePeakDbfs": -6.0,
         "truePeakDbtp": -6.0,
-        "lufs200Max": -27.24,
-        "lufsMomentaryMax": -27.96,
-        "lufs100Max": -24.89,
+        "lufs200Max": -27.09,
+        "lufsMomentaryMax": -27.91,
+        "lufs100Max": -24.7,
         "targetLufs": -28.0,
         "gainCapped": false
       },
@@ -5248,7 +5248,7 @@
           "licence": "original work, owned"
         }
       ],
-      "sha256": "31c071ee714f752825bf53f1a64f093ee4cb54e61a759323ff70d1adffefa9c7",
+      "sha256": "f924e45c791361f2a25024d45b39fe5ec465b94c3a4be4d4661fb04f381770bd",
       "rig": {
         "source": "src/characters/zoo/views/Typing.tsx fingerLift (read 2026-11-24)",
         "period": 36,
