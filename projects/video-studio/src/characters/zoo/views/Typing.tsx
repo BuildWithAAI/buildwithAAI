@@ -17,7 +17,7 @@ import {useCurrentFrame} from 'remotion';
 import {ZOO_COLORS} from '../../palette';
 import {line, smooth, type Pt} from '../geometry';
 import {ZOO_LINE} from '../lines';
-import {Shape, Stroke} from '../parts/Shape';
+import {Clipped, Shape, Stroke} from '../parts/Shape';
 import {HandDrawing} from '../parts/Hand';
 import {Head34} from './threeQuarter/Head34';
 import {CollarBack34, FarShoe34, Neck34, NearShoe34, Torso34} from './threeQuarter/Body34';
@@ -46,9 +46,13 @@ export const TYPING_LAYOUT = {
 } as const;
 
 // ---------------------------------------------------------------- seated legs
-/** Far leg (anatomical LEFT): thigh forward to the knee, shin down to the 3/4 far sneaker. */
+/**
+ * Far leg (anatomical LEFT): thigh forward to the knee, shin down to the 3/4 far sneaker. Repair round 4 (ZOO-T5): the lap
+ * rises to the desk's front face (y ~-322 from x -236 to -80, hidden by the desk) and slopes down to the round-3 thigh line
+ * from x ~-50, so with the overshirt cut at the desk edge the lap fills the space under the desk as on the sheet.
+ */
 const LEG_FAR: Pt[] = [
-	[-236, -300], [-150, -305], [-80, -305], [-20, -301], [26, -295], [50, -287], [59, -273], [57.6, -255], [50, -236], [44, -210],
+	[-236, -318], [-150, -323], [-80, -322], [-50, -315], [-20, -301], [26, -295], [50, -287], [59, -273], [57.6, -255], [50, -236], [44, -210],
 	[42, -170], [41, -130], [40, -95], [39.6, -64], [39, -57.4, 'c'], [30.4, -53.4], [20, -48], [8, -44], [-4, -42.4], [-15.2, -43.2, 'c'], [-15.6, -60], [-15.4, -80], [-14, -120],
 	[-12, -160], [-10, -200], [-14, -230], [-60, -236], [-120, -238], [-190, -240], [-236, -252],
 ];
@@ -85,33 +89,36 @@ const CUFF_FAR: Pt[] = [[-52.6, -407.8, 'c'], [-21, -406, 'c'], [-19.6, -388.4],
 
 // ---------------------------------------------------------------- typing hand (wrist-local: +x forward, +y down)
 /**
- * One typing hand as ONE silhouette (repair round 2, zoo_pose_typing.png): the back of the hand rises from the wrist to the
- * knuckles and the four fingers arc down and forward onto the keys; their tips are rounded lobes stepping back from the
- * front finger, parted by ~6 u notches. Warm-brown separations follow the finger arcs. Round 1 drew four separately
- * outlined hooked fingers whose tips folded back under their knuckles; the stacked outlines read as black knuckle-dusters.
- * Repair round 3: the four finger arcs are ~4.5 u longer (tips at y ~27-28, round 2: ~23), the notches drop with them so
- * each lobe reads as a fingertip rather than a short paddle "toe", the skin shadow no longer reaches under the lobes, and
- * the separations are tapered creases at ZOO_LINE.detail. Unscaled units (TYPING_LAYOUT.handScale applies).
+ * One typing hand as ONE silhouette (repair round 2, zoo_pose_typing.png): the back of the hand and four fingertip lobes on
+ * the keys, with warm-brown separations along the fingers. Round 1 drew four separately outlined hooked fingers whose tips
+ * folded back under their knuckles; the stacked outlines read as black knuckle-dusters.
+ * Repair round 4 (decision ZOO-T5; both sheet hands row-scanned): the sheet's hands lie FLAT on the keyboard: a long back
+ * that rises only ~4 u from the cuff to the knuckles, the palm's lower edge level with the fingertips (no hollow under the
+ * palm), and the fingers reaching ~16-18 u further toward the screen (near tip at world x ~0, far tip ~77, as on the sheet;
+ * round 3: -16 / 62). The hand is ~48 u tall at the near scale (round 3: ~53 with a 20 u arch), the lobes are parted by
+ * soft ~3 u notches (round 3: 5.6 u corners), and the separations are long creases from each notch up and back to the
+ * knuckle line. Unscaled units (TYPING_LAYOUT.handScale applies).
  */
 type TPt = {p: Pt; f?: number; w?: number};
 /** Silhouette clockwise from the wrist; `f` = finger index whose tap lifts the point (0 = front finger), w = weight. */
 const T_HAND: TPt[] = [
-	{p: [-4, -11]}, {p: [10, -14]}, {p: [24, -15.6]}, {p: [36, -14]}, {p: [46, -9.6]}, {p: [54, -2.6]},
-	{p: [59.6, 6], f: 0, w: 0.3}, {p: [62.4, 15], f: 0, w: 0.8}, {p: [62.2, 22.4], f: 0}, {p: [59.4, 26.8], f: 0}, {p: [55.6, 26.2], f: 0},
-	{p: [53.4, 21.2, 'c'], f: 0, w: 0.5}, {p: [51.8, 25.6], f: 1}, {p: [48.2, 27.8], f: 1}, {p: [44.8, 26.6], f: 1},
-	{p: [43.4, 21.6, 'c'], f: 1, w: 0.5}, {p: [41.6, 26.4], f: 2}, {p: [37.8, 28], f: 2}, {p: [34.4, 26.4], f: 2},
-	{p: [33.2, 21.8, 'c'], f: 2, w: 0.5}, {p: [31.4, 26.4], f: 3}, {p: [27.6, 27.2], f: 3}, {p: [24.2, 24.4], f: 3, w: 0.7},
-	{p: [18, 17.6]}, {p: [8, 11.4]}, {p: [0, 7.6]}, {p: [-4, 3]},
+	{p: [-4, -9.8]}, {p: [8, -11.4]}, {p: [20, -12.4]}, {p: [32, -12.8]}, {p: [42, -12.2]}, {p: [50.6, -10.4]},
+	{p: [58.4, -6.4], f: 0, w: 0.2}, {p: [65, -0.8], f: 0, w: 0.5}, {p: [70, 6], f: 0, w: 0.8}, {p: [73, 12.8], f: 0}, {p: [74, 18.4], f: 0},
+	{p: [72.8, 21.8], f: 0}, {p: [70.2, 23.2], f: 0}, {p: [67.8, 22.6], f: 0, w: 0.6},
+	{p: [66.4, 20.6], f: 0, w: 0.5}, {p: [64.8, 22.8], f: 1}, {p: [62.2, 23.6], f: 1}, {p: [59.6, 22.8], f: 1, w: 0.6},
+	{p: [58.4, 20.8], f: 1, w: 0.5}, {p: [56.8, 22.9], f: 2}, {p: [54.2, 23.8], f: 2}, {p: [51.6, 23], f: 2, w: 0.6},
+	{p: [50.4, 21], f: 2, w: 0.5}, {p: [48.8, 22.9], f: 3}, {p: [46, 23.6], f: 3}, {p: [43.2, 22.8], f: 3, w: 0.6},
+	{p: [40.4, 21.6], f: 3, w: 0.2}, {p: [30, 21.6]}, {p: [18, 21.2]}, {p: [6, 20.4]}, {p: [-4, 19.4]},
 ];
-/** Separations: from each tip notch diagonally up and back along the finger arcs toward the knuckles. */
+/** Separations: from each notch up and back along the fingers to the knuckle line. */
 const T_SEPARATIONS: {pts: Pt[]; f: number}[] = [
-	{pts: [[53.4, 21.2], [52.4, 9], [47.4, -1], [40.4, -7.4]], f: 0},
-	{pts: [[43.4, 21.6], [42.6, 10], [38, 0.4], [31.4, -5.6]], f: 1},
-	{pts: [[33.2, 21.8], [32.6, 11], [28.6, 2.6], [22.6, -2.4]], f: 2},
+	{pts: [[66.4, 20.6], [64.8, 12], [61.8, 3.4], [57.4, -4.4]], f: 0},
+	{pts: [[58.4, 20.8], [56.8, 12.2], [53.8, 3.6], [49.4, -4.8]], f: 1},
+	{pts: [[50.4, 21], [48.8, 12.4], [45.8, 3.8], [41.4, -5]], f: 2},
 ];
-/** The underside of the palm behind the fingers (it stops short of the fingertip lobes). */
-const T_SHADOW: Pt[] = [[-8, 3], [8, 9.2], [17, 14.6], [22, 20], [22, 34], [-8, 34]];
-/** Thumb, tucked under the palm toward the space bar (skin, outlined; the hand covers its root, only its tip peeks out). */
+/** The underside of the palm: a thin band along its lower edge, short of the fingertip lobes. */
+const T_SHADOW: Pt[] = [[-8, 15.6], [10, 16.6], [26, 17], [38, 17.2], [40, 30], [-8, 30]];
+/** Thumb, tucked under the flat palm toward the space bar (skin, outlined; the hand covers it at rest, as on the sheet). */
 const THUMB: Pt[] = [[10, 6], [20, 9], [27, 12.6], [29.6, 16.4], [27, 18.8], [19, 16.6], [12, 12.4]];
 
 /** Lift angle (deg) of one finger at a frame: short taps on a per-finger rhythm (deterministic). */
@@ -151,6 +158,18 @@ const torsoT = (sy: number) => {
 	return `translate(${TYPING_LAYOUT.upper.dx} ${TYPING_LAYOUT.upper.dy}) translate(0 ${y0}) scale(1 ${TYPING_LAYOUT.seatedTorso * sy}) translate(0 ${-y0})`;
 };
 
+/**
+ * Seated overshirt hem (repair round 4, decision ZOO-T5). On zoo_pose_typing.png the overshirt ends at the desk's front edge:
+ * above the desk it is slate, right under it the lap shows (no slate below y ~-316). The seated torso is cut at torso-local
+ * y SEATED_HEM_Y, which lands at world y -326, inside the desk's front face (DESK y -338..-320), and closed with its own hem
+ * line, so it also reads as a hem resting on the lap when no desk is drawn. Round 3 hung the standing hem ~45 u below the desk.
+ */
+const SEATED_HEM_WORLD_Y = -326;
+const SEATED_HEM_Y = TYPING_LAYOUT.shoulderY34 + (SEATED_HEM_WORLD_Y - TYPING_LAYOUT.upper.dy - TYPING_LAYOUT.shoulderY34) / TYPING_LAYOUT.seatedTorso;
+const SEATED_CLIP = `M -400 -1200 H 400 V ${SEATED_HEM_Y} H -400 Z`;
+/** The hem line spans the seated torso at that height: the near panel's side (x -99) to the far panel's side (x 81.6). */
+const SEATED_HEM_LINE = line([[-99, SEATED_HEM_Y], [81.4, SEATED_HEM_Y]]);
+
 /** Body behind the desk: legs, torso, head. */
 const TypingBack: React.FC<{head: ViewHeadProps; breath: number}> = ({head, breath}) => (
 	<g data-part="typingBack">
@@ -166,7 +185,10 @@ const TypingBack: React.FC<{head: ViewHeadProps; breath: number}> = ({head, brea
 			<Neck34 />
 		</g>
 		<g transform={`translate(0 ${breath * 0.6}) ${torsoT(1)}`}>
-			<Torso34 />
+			<Clipped clip={SEATED_CLIP}>
+				<Torso34 />
+			</Clipped>
+			<Stroke name="seatedHem" d={SEATED_HEM_LINE} width={ZOO_LINE.outline} />
 		</g>
 		<g transform={upperT(breath)}>
 			<Head34 {...head} />
