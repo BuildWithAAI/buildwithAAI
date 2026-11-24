@@ -16,6 +16,7 @@ import {Legs} from './parts/Legs';
 import {Neck} from './parts/Neck';
 import {CollarBack, Torso} from './parts/Torso';
 import {ZooThreeQuarter} from './views/ThreeQuarter';
+import {ZooSide} from './views/Side';
 import type {ViewHeadProps} from './views/types';
 
 export type ZooExtraProps = {
@@ -67,6 +68,7 @@ const OtherView: React.FC<{view: Exclude<ZooProps['view'], 'front' | undefined>;
 	const {fps} = useVideoConfig();
 	const breath = breathe ? breathOffset(breathFrame ?? frame, fps) : 0;
 	if (view === 'threeQuarter') return <ZooThreeQuarter head={head} breath={breath} />;
+	if (view === 'side') return <ZooSide head={head} breath={breath} />;
 	return null;
 };
 

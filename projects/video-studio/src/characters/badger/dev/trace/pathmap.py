@@ -56,3 +56,23 @@ def ellipse_path(cx, cy, rx, ry, rot_deg=0.0):
     for c, ps in pts:
         s += c + ' ' + ', '.join('%.2f %.2f' % p for p in ps) + ' '
     return s + 'Z'
+
+
+def arc_path(cx, cy, rx, ry, a0, a1, move=False):
+    """Elliptical arc from angle a0 to a1 (degrees, y-down space: 270 = top) as cubic segments of <= 45 deg.
+    Returns ' C ...' pieces (or 'M .. C ..' when move=True) in the same space as the centre."""
+    import math
+    n = max(1, int(math.ceil(abs(a1 - a0) / 45.0)))
+    out = []
+    for i in range(n):
+        t0 = math.radians(a0 + (a1 - a0) * i / n)
+        t1 = math.radians(a0 + (a1 - a0) * (i + 1) / n)
+        k = 4.0 / 3.0 * math.tan((t1 - t0) / 4.0)
+        p0 = (cx + rx * math.cos(t0), cy + ry * math.sin(t0))
+        p3 = (cx + rx * math.cos(t1), cy + ry * math.sin(t1))
+        c1 = (p0[0] - k * rx * math.sin(t0), p0[1] + k * ry * math.cos(t0))
+        c2 = (p3[0] + k * rx * math.sin(t1), p3[1] - k * ry * math.cos(t1))
+        if i == 0 and move:
+            out.append('M %.2f %.2f' % p0)
+        out.append('C %.2f %.2f %.2f %.2f %.2f %.2f' % (c1 + c2 + p3))
+    return ' '.join(out)

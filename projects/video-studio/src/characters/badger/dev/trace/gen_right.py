@@ -16,7 +16,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from pathmap import map_path
-from spline import spline, blob
+from spline import spline, blob, arc_over
 
 HERE = os.path.dirname(__file__)
 T = json.load(open(os.path.join(HERE, 'traces', 'right.json')))
@@ -83,11 +83,11 @@ TORSO_O = (282, 215)
 NECK_O = (443, 164)          # neck base pivot (inside the chest, under the collar)
 HEAD_MOUNT = (477, 100)      # top of the neck; the right profile head was traced with this origin
 FRONT_SHOULDER = (412, 262)
-FRONT_WRIST = (404, 398)
-FRONT_PAW = (409, 416)
+FRONT_WRIST = (404.5, 398)   # centre of the leg at the upper segment's bottom cut (half-width 16.3)
+FRONT_PAW = (409, 408)       # centre of the pastern at the paw cut (half-width 14)
 HIND_HIP = (165, 228)
-HIND_HOCK = (107, 368)
-HIND_PAW = (107, 418)
+HIND_HOCK = (108, 368)       # half-width 16
+HIND_PAW = (106.5, 410)      # half-width 13.5
 TAIL_ROOT = (126, 186)
 TAG_ANCHOR = (477, 180)
 
@@ -126,29 +126,34 @@ neck = {
 }
 
 # ---------------------------------------------------------------- front leg (near = anatomical RIGHT; far reuses it)
-ff = until('fl_front', ymax=399)
-fr = until('fl_rear', ymax=399)
-fu_fill = [(381, 250, 'c'), (396, 238), (425, 236), (447, 250, 'c')] + ff + [(420, 399, 'c'), (388, 399, 'c')] + rev(fr)
+ff = until('fl_front', ymax=397) + [(420.8, 398)]
+fr = until('fl_rear', ymax=397) + [(388.2, 398)]
+fu_fill = [(381, 250, 'c'), (396, 238), (425, 236), (447, 250, 'c')] + ff + [(388.2, 398, 'c')] + rev(fr)
 front_upper = seg(fu_fill, [ff, fr], FRONT_SHOULDER)
-fl_fill = [(391, 388, 'c'), (419, 388, 'c'), (420, 398), (422, 404), (426, 411, 'c'), (396, 412, 'c'), (392, 405), (388, 398)]
-front_lower = seg(fl_fill, [[(420, 396), (422, 404), (426, 411)], [(388, 396), (392, 405), (396, 410)]], FRONT_WRIST)
+# lower (pastern): round top centred on the wrist pivot (hidden under the upper at rest), flat bottom at the paw cut
+fl_rear = [(395, 408), (392, 404), (388.2, 398)]
+fl_front = [(420.8, 398), (422, 403), (423, 408)]
+fl_cap = arc_over(404.5, 398, 16.3)[1:-1]
+fl_line = fl_rear + fl_cap + fl_front
+front_lower = seg(fl_line, [fl_line], FRONT_WRIST)
 fp = pts('fp_outline')
-fp_vis = [p for p in fp if p[1] >= 408]
-fp_fill = fp + [(414, 404, 'c'), (394, 404, 'c')]
-front_paw = seg(fp_fill, [fp_vis], FRONT_PAW, [[(437, 431), (437, 436), (438, 440)], [(447, 432), (447, 436), (448, 439)]])
+fp_vis = [(395, 408), (397, 412)] + [p for p in fp if p[1] >= 414] + [(424, 412), (423, 408)]
+fp_line = fp_vis + arc_over(409, 408, 14)[::-1][1:-1]
+front_paw = seg(fp_line, [fp_line], FRONT_PAW, [[(437, 431), (437, 436), (438, 440)], [(447, 432), (447, 436), (448, 439)]])
 
 # ---------------------------------------------------------------- hind leg
-hr = until('hl_rear', ymax=371)
-hf = until('hl_front', ymax=371)
-hu_fill = ([(220, 244, 'c'), (206, 222), (176, 210), (146, 208), (124, 214), (113, 232)] + hr
-           + [(92, 371, 'c'), (124, 371, 'c')] + rev(hf))
+hr = until('hl_rear', ymax=366) + [(92, 368)]
+hf = until('hl_front', ymax=366) + [(124, 368)]
+hu_fill = ([(220, 244, 'c'), (206, 222), (176, 210), (146, 208), (124, 214), (113, 232)] + hr + [(124, 368, 'c')] + rev(hf))
 hind_upper = seg(hu_fill, [hr, hf], HIND_HIP)
-hl_fill = [(95, 360, 'c'), (122, 360, 'c'), (124, 370), (121, 392), (120, 408), (121, 413, 'c'), (93, 418, 'c'), (93, 395), (92, 370)]
-hind_lower = seg(hl_fill, [[(92, 366), (92, 392), (93, 418)], [(124, 366), (121, 392), (120, 408)]], HIND_HOCK)
+hl_rear = [(93, 410), (92.5, 390), (92, 368)]
+hl_front = [(124, 368), (122.5, 382), (120.5, 396), (120, 410)]
+hl_line = hl_rear + arc_over(108, 368, 16)[1:-1] + hl_front
+hind_lower = seg(hl_line, [hl_line], HIND_HOCK)
 hp = pts('hp_outline')
-hp_vis = [p for p in hp if p[1] >= 410 or p[0] < 100]
-hp_fill = hp + [(110, 408, 'c'), (95, 410, 'c')]
-hind_paw = seg(hp_fill, [hp_vis], HIND_PAW, [[(125, 431), (125, 436), (126, 440)], [(133, 432), (133, 436), (134, 440)]])
+hp_vis = [(93, 410)] + [p for p in hp if p[1] >= 418 or p[0] < 100] + [(121, 413), (120, 410)]
+hp_line = hp_vis + arc_over(106.5, 410, 13.5)[::-1][1:-1]
+hind_paw = seg(hp_line, [hp_line], HIND_PAW, [[(125, 431), (125, 436), (126, 440)], [(133, 432), (133, 436), (134, 440)]])
 
 # ---------------------------------------------------------------- tail (behind the torso and near thigh)
 tt = pts('tail_top')

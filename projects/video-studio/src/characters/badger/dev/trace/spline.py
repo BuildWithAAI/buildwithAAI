@@ -76,3 +76,16 @@ def blob(cx, cy, rx, ry, rot=0.0, wob=()):
         x, y = rx * math.cos(t) * k[i], ry * math.sin(t) * k[i]
         pts.append((cx + x * ca - y * sa, cy + x * sa + y * ca))
     return pts
+
+
+def arc_over(cx, cy, r, step=30):
+    """Points of the upper half circle around a joint pivot, from its rear/left side (angle 180) over the top
+    to the other side (angle 360), in y-down space. Used for round joint caps that stay hidden under the
+    parent segment at rest and close the outline when the joint bends."""
+    out = []
+    a = 180
+    while a <= 360 + 1e-6:
+        t = math.radians(a)
+        out.append((cx + r * math.cos(t), cy + r * math.sin(t)))
+        a += step
+    return out

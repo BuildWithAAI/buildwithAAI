@@ -64,6 +64,25 @@ export const ZooMouths34Dev: React.FC = () => (
 	</Bg>
 );
 
+/** Side heads: the six mouth shapes, then the four expressions (profile facing screen right). */
+const SIDE_HEAD_VB = '-30 -860 125 125';
+export const ZooSideHeadsDev: React.FC = () => (
+	<Bg>
+		<div style={{display: 'flex', flexWrap: 'wrap', width: '100%', height: '100%'}}>
+			{MOUTHS.map((m) => (
+				<svg key={m} width={300} height={300} viewBox={SIDE_HEAD_VB}>
+					<ZooRig view="side" mouth={m} />
+				</svg>
+			))}
+			{EXPRS.map((e) => (
+				<svg key={e} width={300} height={300} viewBox={SIDE_HEAD_VB}>
+					<ZooRig view="side" expression={e} />
+				</svg>
+			))}
+		</div>
+	</Bg>
+);
+
 export const ZooFrontDev: React.FC = () => (
 	<Bg>
 		<svg width="100%" height="100%" viewBox={FRONT_VB}>
@@ -158,6 +177,7 @@ export const ZooDevRoot: React.FC = () => (
 		<Composition id="ZooMatrix" component={ZooMatrixDev} durationInFrames={1} fps={30} width={1600} height={800} />
 		<Composition id="ZooExpressions34" component={ZooExpressions34Dev} durationInFrames={1} fps={30} width={1600} height={400} />
 		<Composition id="ZooMouths34" component={ZooMouths34Dev} durationInFrames={1} fps={30} width={1020} height={440} />
+		<Composition id="ZooSideHeads" component={ZooSideHeadsDev} durationInFrames={1} fps={30} width={1500} height={600} />
 		<Composition id="Zoo34" component={ZooViewDev} durationInFrames={1} fps={30} width={640} height={1320} defaultProps={{view: 'threeQuarter' as const}} />
 		<Composition id="ZooSide" component={ZooViewDev} durationInFrames={1} fps={30} width={560} height={1320} defaultProps={{view: 'side' as const}} />
 		<Composition id="ZooBack" component={ZooViewDev} durationInFrames={1} fps={30} width={640} height={1320} defaultProps={{view: 'back' as const}} />
