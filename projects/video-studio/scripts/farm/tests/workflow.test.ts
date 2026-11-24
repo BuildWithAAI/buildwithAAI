@@ -52,9 +52,14 @@ test('the token is read-only and checkouts do not persist credentials', () => {
 	assert.ok(!/pull_request_target|workflow_run/.test(text));
 });
 
-test('triggers: pushes of request files on any branch, and manual dispatch', () => {
-	assert.match(text, /^on:\n {2}push:\n {4}paths:\n {6}- "projects\/video-studio\/render-requests\/\*\*"\n {2}workflow_dispatch:/m);
+test('triggers: pushes of request files on any branch, and manual dispatch; a push of gate receipts alone starts no run', () => {
+	assert.match(text, /^on:\n {2}push:\n {4}paths:\n {6}- "projects\/video-studio\/render-requests\/\*\*"\n {6}- "!projects\/video-studio\/render-requests\/receipts\/\*\*"\n {2}workflow_dispatch:/m);
 	assert.ok(!/^[ \t]+branches:/m.test(text), 'pushes are limited to some branches');
+});
+
+test('the plan job holds no names list: nothing in the workflow writes or reads data/private', () => {
+	assert.ok(!/data\/private\/names\.txt[^\n]*(?:>|tee|cp |echo)/.test(text));
+	for (const b of runBlocks()) assert.ok(!b.body.includes('data/private'), `line ${b.line} touches the private names list`);
 });
 
 /** The lines of one job (from its key to the next top-level job key). */
@@ -163,7 +168,9 @@ test('the workflow parses as YAML when js-yaml is available', async (t) => {
 		t.skip('js-yaml is not installed');
 		return;
 	}
-	const doc = yaml.load(text) as {jobs: Record<string, {needs?: string | string[]; strategy?: {matrix: string}}>};
+	const doc = yaml.load(text) as {on: {push: {paths: string[]}}; permissions: unknown; jobs: Record<string, {needs?: string | string[]; strategy?: {matrix: string}}>};
+	assert.deepEqual(doc.on.push.paths, ['projects/video-studio/render-requests/**', '!projects/video-studio/render-requests/receipts/**'], 'a negative pattern after the positive one leaves receipts out');
+	assert.deepEqual(doc.permissions, {contents: 'read'});
 	assert.deepEqual(Object.keys(doc.jobs), ['plan', 'voice', 'voice-dub', 'render', 'summary']);
 	assert.deepEqual(doc.jobs['voice-dub'].needs, ['plan', 'voice']);
 	assert.deepEqual(doc.jobs.render.needs, ['plan', 'voice', 'voice-dub']);

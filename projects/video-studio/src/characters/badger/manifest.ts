@@ -11,6 +11,7 @@ import {RIGHT_RIG} from './parts/rigRight';
 import {VIEW_RIGS} from './parts/viewRigs';
 import {POSE_RIGS} from './parts/poseRigs';
 import {WALK} from './parts/gait';
+import {BADGER_PROVISIONAL_DECISION, BADGER_PROVISIONAL_POSES, type BadgerViewPose} from './provisional';
 import {
 	LEFT_SPOT_COUNT,
 	LEFT_SPOTS,
@@ -51,6 +52,8 @@ export type BadgerManifest = {
 		readonly rigCheck: Record<string, number>;
 	};
 	readonly anatomy: {readonly conventions: readonly string[]};
+	/** Drawings that still need the owner's explicit OK; tools should warn when a scene uses them. */
+	readonly provisional: {readonly decision: string; readonly status: string; readonly poses: readonly BadgerViewPose[]};
 	readonly views: {
 		readonly implemented: readonly string[];
 		readonly headViews: readonly BadgerHead[];
@@ -242,11 +245,16 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			"In view 'left' the near legs are the anatomical LEFT legs (legFrontNear, legHindNear); the far legs are the RIGHT legs, drawn behind in coatShadow with no visible markings.",
 			"view 'right': the dog faces SCREEN RIGHT and its ANATOMICAL RIGHT side faces the camera (badger_coat_right.png). Near legs are the anatomical RIGHT legs; the far (LEFT) legs are drawn behind in coatShadow. The near ear is the PALE right ear.",
 			"view 'front': anatomical LEFT = SCREEN RIGHT (dark ear on screen right). view 'back': anatomical LEFT = SCREEN LEFT (dark ear on screen left). view 'threeQuarter': the dog's right flank faces the camera, the head turned to screen right (badger_turn_34.png).",
-			"Every view and pose body is its own trace with its own marking records. Two drawings reuse UNMARKED, bilaterally symmetric geometry mirrored about their origin: the skull outline, nose, mouths and lower-face shadows of the screen-left 3/4 head (decision BADGER-D36; its ears, eyes and markings are its own), and the silhouette of the left-facing sit and lie bodies (decision BADGER-D23, owner acceptance pending). Their markings are authored for their own side; no marking, ear colour or spot path is ever flipped.",
+			"Every view and pose body is its own trace with its own marking records. Two drawings reuse UNMARKED geometry mirrored about their origin: the skull outline, nose, mouths and lower-face shadows of the screen-left 3/4 head (decision BADGER-D36; bilaterally symmetric features; its ears, eyes and markings are its own), and the outline, collar and tag of the left-facing sit and lie bodies (decision BADGER-D23). That sit / lie silhouette is itself asymmetric (head and neck turn, folded haunch, tail curl), so both left-facing poses are PROVISIONAL until the owner explicitly accepts D23 (BADGER_PROVISIONAL_POSES; tools warn, sheets label them). Every marking is authored for its own side from its own coat map: no marking or ear colour is flipped, and no spot path is the x-mirror of another record except a midline M- mark in the two facings of one pose (round 3 removed the one exception, SIT_LEFT_SPOTS R-08, which was L-09 mirrored; src/characters/badger/tests/spotsNoMirror.test.ts enforces it).",
 			"Front head: anatomical left = screen right. The DARK-capped ear is the anatomical LEFT ear in every head view (screen right in 'front'; the near ear in left-facing views; the far ear in right-facing views).",
 			'The pale anatomical RIGHT ear carries the small spot H-EAR-R-SPOT.',
-			'No view is produced by horizontally flipping the character or any marking (see decisions D-08, D-09, D-23). The right profile head is traced on coat_right, not mirrored (D-09, revised).',
+			'No view is produced by horizontally flipping the character or any marking (see decisions D-08, D-09). The one mirrored silhouette, the left-facing sit and lie (D-23), is PROVISIONAL pending the owner. The right profile head is traced on coat_right, not mirrored (D-09, revised).',
 		],
+	},
+	provisional: {
+		decision: BADGER_PROVISIONAL_DECISION,
+		status: "PROVISIONAL, pending the owner's explicit OK (asked by the coordinator after repair round 3): the left-facing sit and lie keep working, but their silhouette is the right-facing pose outline mirrored about the root.",
+		poses: BADGER_PROVISIONAL_POSES,
 	},
 	views: {
 		implemented: ['left', 'right', 'front', 'back', 'threeQuarter'],
@@ -266,8 +274,8 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			stand: 'all five views',
 			lookUp: "side views: head 'upLeftScreen' / 'upRightScreen' + raised neck (the sheet faces right; front/back/3/4 requests render the right view)",
 			walk: 'side views, both facings: 4-beat lateral-sequence gait from walkPhase, IK legs, planted stance paws (front/back/3/4 requests render the right view)',
-			sit: "traced pose body (badger_pose_sitting.png), screen-right facing with right-side markings; view 'left' faces screen left with the LEFT markings on the unmarked mirrored silhouette (decision BADGER-D23)",
-			lie: "traced pose body (badger_pose_lying.png), screen-right facing with right-side markings; view 'left' faces screen left with the LEFT markings on the unmarked mirrored silhouette (decision BADGER-D23)",
+			sit: "traced pose body (badger_pose_sitting.png), screen-right facing with right-side markings; view 'left' faces screen left with the LEFT markings on the unmarked mirrored silhouette (decision BADGER-D23, PROVISIONAL pending the owner)",
+			lie: "traced pose body (badger_pose_lying.png), screen-right facing with right-side markings; view 'left' faces screen left with the LEFT markings on the unmarked mirrored silhouette (decision BADGER-D23, PROVISIONAL pending the owner)",
 		},
 	},
 	pivots: {
@@ -485,10 +493,10 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		{
 			id: 'BADGER-D23-pose-facing',
 			sheetShowed:
-				'The sitting, lying, walking and looking-up panels all face screen right. Episodes stage Badger to the right of Zoo facing left, so a sit or lie beat must be able to face left.',
+				'The sitting, lying, walking and looking-up panels all face screen right. Episodes stage Badger to the right of Zoo facing left, so a sit or lie beat must be able to face left. The sheet has no left-facing sit or lie panel.',
 			chosen:
-				'REVISED in round-1 repair: sit and lie exist in both facings. view right (or front/back/3/4) uses the traced right-facing bodies with right-side markings. view left uses the same UNMARKED silhouette mirrored about the root (outline, collar and tag are bilaterally symmetric, the same approach as the 3/4-left skull) carrying the LEFT coat map\'s own markings authored for it (L-WITHERS as the full patch, L-01..L-09, L-NECK, R-08 on the far forearm edge, M-CHEST) and head threeQuarterLeftScreen (dark ear near). walk and lookUp are built on both side rigs as before.',
-			why: 'v1.0.0 silently rendered the right-facing body for view left, turning Badger away from Zoo and swapping his visible markings mid-scene. Only symmetric anatomy is reused; no marking is flipped. Round-2 note: the sheet has no left-facing sit or lie panel to trace, so a dedicated left trace would be an invented drawing; the mirrored unmarked silhouette stays and still NEEDS THE OWNER\'S EXPLICIT ACCEPTANCE under the no-flip rule (the reviewers\' static scan found no scale(-1) anywhere and no asymmetric element leaking).',
+				"PROVISIONAL, pending the owner's explicit OK (status recorded in round 3; the coordinator asks the owner). Sit and lie exist in both facings: view right (or front/back/3/4) uses the traced right-facing bodies with right-side markings; view left uses the right-facing pose's UNMARKED outline, collar and tag mirrored about the root, carrying the LEFT coat map's own markings authored for it (L-WITHERS as the full patch, L-01..L-09, L-NECK, M-CHEST, and R-08 on the far forearm's edge) and head threeQuarterLeftScreen (dark ear near). Round 3: R-08 used to be the right-facing sit's L-09 record x-mirrored (to 0.1 unit), a flipped marking; it is now authored from badger_coat_right.png's own R-08 (35.2% down the forearm, coat_right's own size and tilt, on the far leg's front edge) and src/characters/badger/tests/spotsNoMirror.test.ts fails on any record that is the x-mirror of another (midline M- marks in the two facings of one pose excepted). Both poses keep working; BADGER_PROVISIONAL_POSES (src/characters/badger/provisional.ts, exported from the badger index) lists them so tools can warn, and the sheets should label them provisional until the owner accepts. walk and lookUp are built on both side rigs as before.",
+			why: "v1.0.0 silently rendered the right-facing body for view left, turning Badger away from Zoo and swapping his visible markings mid-scene. A dedicated left trace would be an invented drawing (no panel exists). The mirrored silhouette is not symmetric anatomy: the head and neck turn, the folded haunch and the tail curl are asymmetric, so under the binding rule 'never horizontally flip an asymmetric character' it needs the owner's acceptance before it is final. The markings are never flipped (round-3 test).",
 		},
 		{
 			id: 'BADGER-D24-pose-scale-and-markings',

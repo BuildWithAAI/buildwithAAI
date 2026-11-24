@@ -6,6 +6,12 @@
 import {ID_RE, type Kind, type RenderRequest} from './request.ts';
 
 export const REQUESTS_DIR = 'render-requests';
+/**
+ * Gate receipts (receipt.ts): render-requests/receipts/<id>.json, written by `farm.ts validate`. Never a request: the
+ * planner lists them apart from request files, so a receipt alone never starts a render (and the workflow's push
+ * trigger leaves this folder out).
+ */
+export const RECEIPTS_DIR = `${REQUESTS_DIR}/receipts`;
 
 export const PLAN_LIMITS = {
 	requestsPerRun: 16,
@@ -117,16 +123,24 @@ export type ChangeInput = {
 	listRequestFiles: () => string[]; // file names directly in render-requests/
 };
 
-export type Changes = {ids: string[]; badNames: string[]; ignored: string[]; how: string; errors: string[]};
+/** receipts: gate receipts the push changed (render-requests/receipts/...); listed for the summary, never rendered. */
+export type Changes = {ids: string[]; badNames: string[]; ignored: string[]; receipts: string[]; how: string; errors: string[]};
 
 const SHA_RE = /^[0-9a-f]{40}$/;
 
-/** Sorts changed paths (relative to the project, e.g. render-requests/x.json) into request ids, bad names and others. */
-export const classifyPaths = (paths: string[]): Pick<Changes, 'ids' | 'badNames' | 'ignored'> => {
+const noChanges = (how: string, errors: string[]): Changes => ({ids: [], badNames: [], ignored: [], receipts: [], how, errors});
+
+/** Sorts changed paths (relative to the project, e.g. render-requests/x.json) into request ids, bad names, receipts and others. */
+export const classifyPaths = (paths: string[]): Pick<Changes, 'ids' | 'badNames' | 'ignored' | 'receipts'> => {
 	const ids = new Set<string>();
 	const badNames: string[] = [];
 	const ignored: string[] = [];
+	const receipts: string[] = [];
 	for (const p of paths) {
+		if (p.startsWith(`${RECEIPTS_DIR}/`)) {
+			receipts.push(p); // a gate receipt is evidence for a request, never a request itself
+			continue;
+		}
 		const rest = p.startsWith(`${REQUESTS_DIR}/`) ? p.slice(REQUESTS_DIR.length + 1) : null;
 		if (rest === null || rest.includes('/') || !rest.endsWith('.json')) {
 			ignored.push(p);
@@ -136,7 +150,7 @@ export const classifyPaths = (paths: string[]): Pick<Changes, 'ids' | 'badNames'
 		if (ID_RE.test(id)) ids.add(id);
 		else badNames.push(rest);
 	}
-	return {ids: [...ids].sort(), badNames: badNames.sort(), ignored: ignored.sort()};
+	return {ids: [...ids].sort(), badNames: badNames.sort(), ignored: ignored.sort(), receipts: receipts.sort()};
 };
 
 const splitZ = (s: string): string[] => s.split('\0').filter(Boolean);
@@ -149,12 +163,12 @@ export const detectChanges = (input: ChangeInput, git: Git): Changes => {
 	const errors: string[] = [];
 	if (input.event === 'workflow_dispatch') {
 		const id = input.dispatchRequest.trim().replace(/\.json$/, '');
-		if (!ID_RE.test(id)) return {ids: [], badNames: [], ignored: [], how: 'workflow_dispatch', errors: ['the request input must be a request id: the file name in render-requests/ without .json']};
-		if (!input.listRequestFiles().includes(`${id}.json`)) return {ids: [], badNames: [], ignored: [], how: 'workflow_dispatch', errors: [`${REQUESTS_DIR}/${id}.json does not exist on this branch`]};
-		return {ids: [id], badNames: [], ignored: [], how: 'workflow_dispatch', errors};
+		if (!ID_RE.test(id)) return noChanges('workflow_dispatch', ['the request input must be a request id: the file name in render-requests/ without .json']);
+		if (!input.listRequestFiles().includes(`${id}.json`)) return noChanges('workflow_dispatch', [`${REQUESTS_DIR}/${id}.json does not exist on this branch`]);
+		return {...noChanges('workflow_dispatch', errors), ids: [id]};
 	}
-	if (input.event !== 'push') return {ids: [], badNames: [], ignored: [], how: input.event, errors: [`unsupported event "${input.event.replace(/[^a-z_]/g, '')}"`]};
-	if (!SHA_RE.test(input.head)) return {ids: [], badNames: [], ignored: [], how: 'push', errors: ['the head commit sha is missing or malformed']};
+	if (input.event !== 'push') return noChanges(input.event, [`unsupported event "${input.event.replace(/[^a-z_]/g, '')}"`]);
+	if (!SHA_RE.test(input.head)) return noChanges('push', ['the head commit sha is missing or malformed']);
 
 	const diff = (from: string): string[] | null => {
 		const r = git(['diff', '--no-renames', '--name-only', '--diff-filter=AM', '-z', '--relative', from, input.head, '--', REQUESTS_DIR]);
@@ -181,6 +195,6 @@ export const detectChanges = (input: ChangeInput, git: Git): Changes => {
 			how = 'every request file (root commit)';
 		}
 	}
-	if (paths === null) return {ids: [], badNames: [], ignored: [], how, errors: ['git diff failed']};
+	if (paths === null) return noChanges(how, ['git diff failed']);
 	return {...classifyPaths(paths), how, errors};
 };

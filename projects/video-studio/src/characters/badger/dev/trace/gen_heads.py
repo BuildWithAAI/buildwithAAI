@@ -62,6 +62,42 @@ def rotate_about(deg, cx=0.0, cy=0.0):
 heads = {}
 markings = {'H-EAR-R-SPOT': {}, 'H-CHEEK-L': {}, 'H-CHEEK-R': {}}
 
+# =============================================================================== SHOCKED MOUTH (round 3)
+# Round-3 repair (R2 final review, major): the shocked mouth was drawn upside down: a nearly flat top over a deep round
+# bowl, a 'D' on its side, so with the wide eyes it read as an open-mouthed grin (and so did every sound-clip mouthOpen,
+# which grows this shape). Re-traced from badger_expr_shocked.png by column scans of its outline, mapped into NF px by the
+# nose (the panel's nose is 56 x 47 px, NF's 51 x 44: k 0.92, nose bottoms aligned, centred on the philtrum). It is a
+# gasp: the top edge arches up from the corners to an apex under the philtrum (15.8 NF px = 8.8 units above the corners),
+# the corners are pointed and drop steeply, the bottom is a shallow curve 3.1 px (1.7 units) below the corners, and a thin
+# pink tongue crescent lies on the bottom edge (about 6.5 x 30 px). Width 45.6 px = 25.3 units (0.89 of the nose width),
+# height 19 px = 10.5 units (0.43 of the nose height). The panel draws it a little off-centre (that head is tilted); the
+# rig's front head is symmetric, so each half takes the averaged half-profile, fitted with one cubic (least squares on
+# the scanned drops 2.3 / 3.7 / 6.0 / 8.7 / 12.0 / 15.8 px at 0.33 / 0.5 / 0.67 / 0.84 / 0.95 / 1 of the half-width).
+# The template is in apex-relative NF px; each head maps it with its own point map (front: NF px; 3/4: foreshortened,
+# in head-local units).
+SHOCK_TOP = [(-22.8, 15.8), (-22.5, 7.0), (-5.0, 0.0), (0.0, 0.0), (5.0, 0.0), (22.5, 7.0), (22.8, 15.8)]
+SHOCK_BOTTOM = [(22.8, 15.8), (16.0, 20.2), (-16.0, 20.2), (-22.8, 15.8)]
+# the tongue: a thin pink lens low in the opening, as the panel draws it (scanned: 27.6 px wide, from 9.9 px below the apex
+# to 15.9 px, just above the bottom outline at 18 px); its tips sit 14.6 px below the apex, 13.8 px either side
+SHOCK_TONGUE = [(13.8, 14.6), (6.0, 9.6), (-6.0, 9.6), (-13.8, 14.6), (-6.0, 17.3), (6.0, 17.3)]
+
+
+def shocked_mouth(T):
+    """(opening, tongue) paths of the shocked mouth, every template point mapped by T(x, y)."""
+    q = lambda p: '%.2f %.2f' % T(*p)
+    t = SHOCK_TOP
+    b = SHOCK_BOTTOM
+    opening = ('M %s C %s %s %s C %s %s %s C %s %s %s Z'
+               % (q(t[0]), q(t[1]), q(t[2]), q(t[3]), q(t[4]), q(t[5]), q(t[6]), q(b[1]), q(b[2]), q(b[3])))
+    g = SHOCK_TONGUE
+    tongue = 'M %s C %s %s %s C %s %s %s Z' % (q(g[0]), q(g[1]), q(g[2]), q(g[3]), q(g[4]), q(g[5]), q(g[0]))
+    return opening, tongue
+
+
+SHOCK_APEX_NF = (208.0, 210.4)   # under the philtrum ('M 208 197 L 208 211' ends inside the outline)
+SHOCK_OPEN_NF, SHOCK_TONGUE_NF = shocked_mouth(lambda x, y: (SHOCK_APEX_NF[0] + x, SHOCK_APEX_NF[1] + y))
+
+
 # =============================================================================== FRONT source (NF px)
 S_NF = 0.5556
 F = lin(208, 215, S_NF, S_NF)
@@ -97,14 +133,12 @@ FRONT = {
                               'M 178 226 C 193 235 223 235 238 226'], 'fills': []},
         'worried': {'strokes': ['M 129 175 C 137 190 147 205 161 215 C 176 216 192 222 208 217 C 222 213 238 220 252 215 C 261 204 270 191 278 176'],
                     'details': ['M 190 231 C 200 228 216 228 226 231'], 'fills': []},
-        # shocked (retraced from badger_expr_shocked.png): a small open mouth, about nose width and 0.45 of the nose height,
-        # directly under the philtrum (which stays), with a pink lower lip; the jaw contour stays continuous below it
+        # shocked: the round-3 gasp (SHOCKED MOUTH above) under the philtrum; the jaw contour stays continuous below it
         'shocked': {'strokes': ['M 129 175 C 138 196 152 216 172 230 C 186 239 198 243 208 243 C 220 243 233 238 245 230 '
                                 'C 263 217 272 196 278 176',
-                                'M 185 214 C 195 210.5 221 210.5 231 214 C 233 223 223 233 208 233 C 193 233 183 223 185 214 Z'],
+                                SHOCK_OPEN_NF],
                     'details': [],
-                    'fills': [('M 185 214 C 195 210.5 221 210.5 231 214 C 233 223 223 233 208 233 C 193 233 183 223 185 214 Z', 'mouth'),
-                              ('M 192 227 C 198 222.5 218 222.5 224 227 C 220 232 196 232 192 227 Z', 'tongue')]},
+                    'fills': [(SHOCK_OPEN_NF, 'mouth'), (SHOCK_TONGUE_NF, 'tongue')]},
     },
     # pale ANATOMICAL RIGHT ear (screen left in the front view): flap + pink ribbon + small spot
     'earR': {
@@ -456,20 +490,31 @@ for view, theta in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen'
 # fills and strokes are gone, they left a white crescent and a black needle at the ear root).
 # Authored for the screen-right turn; the screen-left turn uses the same UNMARKED outline, nose and mouth geometry with
 # x -> -x (as INT-B1 already did for the far outline). Ears, eyes and every marking keep their own per-side construction.
-TQ_SKULL_TOP_FAR = ('M -29.4 -102.2 C -19.4 -105.6 -7.6 -107.2 -0.6 -107.2 C 7.5 -107.2 15.5 -105.8 21.5 -103.2 '
+# Round-3 repair (R2 final review, major): the crown stroke used to start at (-29.4,-102.2), 3.8 units right of the near pale
+# ear's root corner (-33.2,-102.2), so a notch of unstroked skull top showed between them (and on the screen-left turn's
+# mirrored construction). The crown now STARTS UNDER THE EAR: TQ_CROWN_UNDER_EAR continues the dome's first segment backward
+# (G1 at (-29.4,-102.2), on the dome's own osculating circle, R 73.3 units, 10.5 units of arc) down to E (-39.1,-98.1). The
+# ear is drawn after the skull strokes (earsFront), so its fill hides the overlap and the crown emerges from under the ear's
+# outline. The fill's top-left corner follows the same curve (it had a flat shoulder under the ear), so the outline stays on
+# the fill's edge when the ear swings back.
+TQ_CROWN_UNDER_EAR = 'M -39.1 -98.1 C -36 -99.7 -32.7 -101.07 '
+TQ_SKULL_TOP_FAR = (TQ_CROWN_UNDER_EAR + '-29.4 -102.2 C -19.4 -105.6 -7.6 -107.2 -0.6 -107.2 C 7.5 -107.2 15.5 -105.8 21.5 -103.2 '
                     'C 28 -100.4 33.2 -94.6 36.6 -87.2 C 39.8 -80.4 41.8 -72.4 42.4 -64.6 C 42.6 -60.6 42.6 -57 43.2 -53.5 '
                     'C 44.8 -48.8 47.8 -44.6 50.4 -41.2 C 51.6 -39.2 52.1 -35.5 52.2 -31.5 C 52.3 -27.5 52.4 -24.2 52.9 -21.6 '
                     'C 53.5 -18.5 53.2 -14.6 51.6 -11.2 C 50 -7.8 47 -4.4 42.6 -2.3 C 37.5 0 30 0.7 23.5 0.3 '
                     'C 17.5 -0.1 12 -1.6 8 -3.4')
 TQ_SKULL_NEAR_BOTTOM = ('C 9.4 0.2 9.6 4.4 7.2 7.6 C 3.6 10 -3.4 9.9 -9.6 7.6 C -16.6 4.6 -21.6 -1 -25.6 -6.6 '
                         'C -30 -12.6 -34.4 -16.6 -38.6 -21.1 C -41.2 -23.3 -43.8 -25.6 -46.5 -29.4 '
-                        'C -51.3 -37.2 -54.6 -50 -54.1 -63.9 L -50.6 -97.2 C -47 -100.2 -43.4 -101.8 -39.4 -102.2 Z')
+                        'C -51.3 -37.2 -54.6 -50 -54.1 -63.9 L -51.57 -88 C -50.98 -93.66 -44.17 -95.52 -39.1 -98.1 Z')
 TQ_SKULL_FILL = TQ_SKULL_TOP_FAR + ' ' + TQ_SKULL_NEAR_BOTTOM
 TQ_NEAR_CHEEK = 'M -55.9 -61.7 C -56.4 -50 -54.9 -38.9 -51.4 -31.7 C -49.3 -27.8 -47.2 -25 -44.6 -22.2 C -43 -20 -41.6 -18.2 -40.2 -16.6'
 TQ_BRIDGE = 'M 31.6 -55 C 36.4 -51.4 41.6 -47 46.6 -42.4 C 47.6 -41.4 48.4 -40.4 49 -39.4'
 TQ_NOSE = ('M 39 -38.8 C 45.3 -39 50.6 -37.6 52.6 -33.8 C 54.1 -30.4 53.2 -26.1 50.2 -23.7 C 47.5 -21.7 44 -21 41.2 -21.3 '
            'C 37.8 -21.6 33.1 -23.2 30.3 -26.4 C 27.9 -29.2 28.1 -33.6 30.7 -36.2 C 32.9 -38.2 35.8 -38.8 39 -38.8 Z')
 TQ_PHILTRUM = 'M 41.3 -21.6 C 41 -17.7 40.6 -14.3 40.3 -11.2'
+TQ_SHOCK_APEX = (40.4, -11.8)
+TQ_SHOCK_OPEN, TQ_SHOCK_TONGUE = (map_path(d, lambda x, y: (x, y)) for d in shocked_mouth(
+    lambda x, y: (TQ_SHOCK_APEX[0] + x * S_NF * (0.86 if x < 0 else 0.59), TQ_SHOCK_APEX[1] + y * S_NF * 0.76)))
 TQ_MOUTH = {
     'neutral': {'strokes': ['M -17.5 -11.5 C -12.5 -7 -6.5 -4.6 1 -4.3 C 10 -4 21 -6 31 -7.8 C 37 -8.9 42 -9.8 45.6 -10.6'],
                 'details': [], 'fills': []},
@@ -477,10 +522,10 @@ TQ_MOUTH = {
               'details': ['M -18.6 -14.2 C -20.3 -16 -20.9 -18.4 -20.3 -20.8'], 'fills': []},
     'worried': {'strokes': ['M -16.2 -5.2 C -12.6 -7.4 -7 -6.8 0 -6.2 C 9 -5.6 19 -7.2 29 -8.4 C 35.6 -9.1 41 -9.8 45.6 -10.6'],
                 'details': [], 'fills': []},
-    'shocked': {'strokes': ['M 29.4 -12 C 34.4 -13.6 43.6 -13.8 47.8 -11.6 C 48.2 -7.6 44.6 -4.4 38.6 -4.4 C 32.6 -4.4 28.9 -7.4 29.4 -12 Z'],
-                'details': [],
-                'fills': [{'d': 'M 29.4 -12 C 34.4 -13.6 43.6 -13.8 47.8 -11.6 C 48.2 -7.6 44.6 -4.4 38.6 -4.4 C 32.6 -4.4 28.9 -7.4 29.4 -12 Z', 'color': 'mouth'},
-                          {'d': 'M 32 -6.6 C 35 -8.3 43 -8.3 45.6 -6.8 C 43.6 -4.8 34.6 -4.8 32 -6.6 Z', 'color': 'tongue'}]},
+    # round 3: the same gasp, foreshortened for the turn (near half 0.86, far half 0.59 of the front's width, height 0.76 so
+    # it stays about 0.45 of this view's smaller nose), its apex at the end of the philtrum
+    'shocked': {'strokes': [TQ_SHOCK_OPEN], 'details': [],
+                'fills': [{'d': TQ_SHOCK_OPEN, 'color': 'mouth'}, {'d': TQ_SHOCK_TONGUE, 'color': 'tongue'}]},
 }
 TQ_SHADOWS = [
     # underside of the jaw below the mouth (soft-edged grey on the sheet), clipped to the skull
@@ -548,6 +593,27 @@ def rebuild_three_quarter(view, theta):
 for _v, _t in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen', -36.0)):
     rebuild_three_quarter(_v, _t)
 
+def _crown_under_ear(seg, x_to):
+    """Round-3 repair (R2 final review, major): a profile's crown stroke starts UNDER the ear. seg is the skull fill's top
+    cubic that leaves the visible crown at its first point P0 and runs on under the ear; the stroke takes that cubic from
+    where it reaches x = x_to back to P0 (de Casteljau), so it lies exactly on the fill's edge, the ear (drawn later, in
+    earsFront) hides it, and the crown line emerges from under the ear's outline instead of stopping short of it with a
+    round cap (that left a white notch between the ear's corner and the crown). Returns 'M .. C .. P0'."""
+    p0, p1, p2, p3 = seg
+    def x_at(t):
+        u = 1 - t
+        return u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0]
+    lo, hi = 0.0, 1.0
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if (x_at(mid) - x_to) * (p0[0] - x_to) > 0:
+            lo = mid
+        else:
+            hi = mid
+    (a0, a1, a2, a3), _ = _split(p0, p1, p2, p3, (lo + hi) / 2)
+    return 'M %.2f %.2f C %.2f %.2f %.2f %.2f %.2f %.2f' % (a3 + a2 + a1 + a0)
+
+
 # =============================================================================== PROFILE LEFT (CL)
 # Retraced 2026-11-24 (round-1 repair) on reference/crops/badger_coat_left.png at 5x: deeper stop at the eye, muzzle
 # underside 2.5 px lower, a nose the sheet's size (outer 20 x 21 px once outlined) shaped as the rounded tip of the muzzle,
@@ -560,7 +626,7 @@ PROFILE_L = {
     'skull_fill': ('M 50 76 C 64 71 79 66 86 60 C 90 55 94 49 101 45 C 112 40 127 37 142 37 C 165 37 185 43 192 57 '
                    'C 196 65 194 76 186 84 C 178 96 168 108 152 116 C 140 120 132 122 126 122 C 118 119 108 118 96 118 '
                    'C 80 119 64 117 54 112 C 47 108 45 100 46 92 C 46 85 47 79 50 76 Z'),
-    'skull_strokes': ['M 141 37 C 127 37 112 40 101 45 C 94 49 90 55 86 60 C 79 66 64 71 49 77',
+    'skull_strokes': [_crown_under_ear(((142, 37), (165, 37), (185, 43), (192, 57)), 152) + ' C 127 37 112 40 101 45 C 94 49 90 55 86 60 C 79 66 64 71 49 77',
                       'M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 119 120 123 122 127 124'],
     'details': ['M 154 101 C 151 107 146 111 139 114'],
     'nose': 'M 49 77.5 C 44 76.5 38 77.5 35 80.5 C 32.5 83.5 32.5 89 35.5 92 C 38 94.5 42 95 45 93.5 C 48 92 49.5 89 49.5 85.5 C 49.5 82 49.5 79.5 49 77.5 Z',
@@ -591,11 +657,14 @@ EAR_PR = ('M 496 42 C 491 36 480 31 468 32 C 456 34 444 42 437 51 C 433 56 433 6
 EAR_PR_FOLD = 'M 491 38 C 487 46 482 56 478 67 C 476 74 473 80 471 83'
 EAR_PR_INNER = ('M 491 38 C 493 39 495 40 496 42 C 493 47 489 51 485 57 C 482 62 480 67 478 71 '
                 'C 478.5 69 478 68 478 67 C 482 56 487 46 491 38 Z')
+# Round-3 repair: the crown stroke starts under the pale ear (_crown_under_ear) and the fill's crown control at x 514 sits
+# on y 35 (was 36), so the top contour is tangent-continuous at (500, 35) where the crown runs on under the ear (the 4 deg
+# corner there showed as a jog on the pitched look-up head).
 PROFILE_R = {
-    'skull_fill': ('M 583 76 C 571 70 557 65 549 61 C 543 57 539 52 534 47 C 527 41 514 36 500 35 C 474 35 452 40 443 52 '
+    'skull_fill': ('M 583 76 C 571 70 557 65 549 61 C 543 57 539 52 534 47 C 527 41 514 35 500 35 C 474 35 452 40 443 52 '
                    'C 437 62 439 76 447 84 C 455 96 465 108 481 116 C 492 120 499 121 504 121 C 512 115 522 113 534 113 '
                    'C 550 114 566 112 578 107 C 585 103 589 97 589 90 C 589 84 587 79 583 76 Z'),
-    'skull_strokes': ['M 498 35 C 514 36 527 41 534 47 C 539 52 543 57 549 61 C 557 65 571 70 584 76',
+    'skull_strokes': [_crown_under_ear(((500, 35), (474, 35), (452, 40), (443, 52)), 470) + ' C 514 35 527 41 534 47 C 539 52 543 57 549 61 C 557 65 571 70 584 76',
                       'M 588 95 C 585 102 578 107 568 110 C 552 113 532 113 520 114 C 512 115 508 117 504 121'],
     'details': ['M 477 99 C 480 104 485 108 492 111'],
     'nose': 'M 581 77 C 585.5 76 590.5 77 593.5 80 C 595.5 83 595 88 592 91 C 589.5 93.5 585.5 93.5 583.5 91.5 C 581.5 89.5 580.5 86 580.5 83 C 580.5 80.5 580.5 78.5 581 77 Z',
@@ -753,7 +822,10 @@ def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=Non
     back_line, throat_line = _neck_lines_head_local(_rig(rig_name), view)
     # lip line ends at the commissure; the skull's back contour is outlined (the hanging ear no longer covers it) down to
     # where it crosses the neck's back line, plus a short overlap; below that the neck's own back line carries the nape
-    bk = _samples(mp(back_path, fp), 60)
+    # round 3: the back contour starts exactly at back_path's first point (where the crown stroke, now extended under the
+    # ear along the same edge, passes), not 1/60 of a segment in, so the two strokes coincide and leave no step
+    _bp = mp(back_path, fp)
+    bk = [tuple(float(v) for v in _bp[2:].split(' C ')[0].split()[:2])] + _samples(_bp, 60)
     nb = _samples(back_line, 60)
     cut = len(bk) - 1
     for i in range(len(bk) - 1):
@@ -875,7 +947,7 @@ heads['upLeftScreen'] = build_up(
 heads['upRightScreen'] = build_up(
     'upRightScreen', PROFILE_R, CRF, -1, 'rigRight.ts',
     lip_cut='M 588 95 C 585 102 578 107 568 110 C 552 113 532 113 520 114 C 518 114.2 516 114.6 514.5 115',
-    back_path='M 498 35 C 474 35 452 40 443 52 C 437 62 439 76 447 84 C 451 90 456 96 462 102',
+    back_path='M 500 35 C 474 35 452 40 443 52 C 437 62 439 76 447 84 C 451 90 456 96 462 102',
     # the hanging pale ear shows its pink inner over the front half of the flap (badger_pose_looking_up.png)
     inner_band='M 496 42 C 490 48 485 56 481 64 C 478 71 475 78 471 83 C 466 77 464 69 466 61 C 468 52 474 45 482 40 C 488 37 493 38 496 42 Z',
     cheek='M -30 42.6 C -26 48.1 -20 51.8 -13 53.2')

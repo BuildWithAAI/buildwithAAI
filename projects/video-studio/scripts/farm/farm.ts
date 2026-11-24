@@ -2,7 +2,8 @@
  * Render farm CLI (docs/RENDER_FARM.md). Each step of .github/workflows/video-render.yml runs one subcommand:
  *
  *   plan                 read the request files the push changed, validate them, run the claim gates on every script
- *                        they voice or render, emit the voice, dub and render matrices
+ *                        they voice or render (with --no-names: CI never has the private names list), require each
+ *                        request's gate receipt (receipt.ts), emit the voice, dub and render matrices
  *   voice-preflight      voice job: check the request, the voice entry and (when encrypting) the keys
  *   voice-master-unpack  dub job: decrypt and unpack the master narration a dub is fitted to
  *   voice-build          voice job: scripts/voice/build.py for one channel/slug/lang (Zoo = im_nicola; --fit-to for dubs)
@@ -16,7 +17,9 @@
  *
  * and locally, BEFORE pushing (a pushed storyboard is public for good, so the claim gate must already pass):
  *
- *   validate [render-requests/<id>.json ...]
+ *   validate [render-requests/<id>.json ...]   the same checks WITH the private names list (data/private/names.txt);
+ *                                              writes the gate receipt render-requests/receipts/<id>.json to commit
+ *                                              with the request (a request that fails loses its receipt)
  *
  * Run from projects/video-studio:  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts <command>
  * Inputs arrive in environment variables (FARM_*), never interpolated into shell commands. Props, narration and keys
@@ -35,6 +38,7 @@ import {
 	mkdirSync,
 	readdirSync,
 	readFileSync,
+	realpathSync,
 	renameSync,
 	rmSync,
 	writeFileSync,
@@ -55,8 +59,9 @@ import {
 	requireHandoffKey,
 	type Recipient,
 } from './crypto.ts';
-import {checkGates, spawnGateRunner, type GateRunner} from './gates.ts';
+import {checkGates, gateTargets, NAMES_LIST, spawnGateRunner, targetLabel, type GateRunner} from './gates.ts';
 import {kokoroCacheKey} from './kokoro.ts';
+import {buildReceipt, claimGateVersion, receiptPath, removeReceipt, verifyReceipt, writeReceipt, type ClaimGateVersion} from './receipt.ts';
 import {
 	REQUESTS_DIR,
 	buildPlan,
@@ -356,13 +361,15 @@ export const cmdPlan = (ctx: Ctx): void => {
 		errors.push(`${REQUESTS_DIR}/${JSON.stringify(name)}: a request file must be named <id>.json, with an id of 1-64 lowercase letters, digits and dashes`);
 	}
 	const requests: RenderRequest[] = [];
+	const receipts: string[] = [];
 	for (const id of changes.ids) {
 		const path = requestPath(ctx, id);
 		if (!existsSync(path)) {
 			errors.push(`${REQUESTS_DIR}/${id}.json is not in this commit`);
 			continue;
 		}
-		const v = parseRequest(readFileSync(path, 'utf8'), id);
+		const bytes = readFileSync(path);
+		const v = parseRequest(bytes.toString('utf8'), id);
 		if (!v.ok) {
 			errors.push(...v.errors.map((e) => `${REQUESTS_DIR}/${id}.json: ${e}`));
 			continue;
@@ -372,11 +379,21 @@ export const cmdPlan = (ctx: Ctx): void => {
 			errors.push(...cp.map((e) => `${REQUESTS_DIR}/${id}.json: ${e}`));
 			continue;
 		}
-		// gate before push: every script the request voices or renders must pass its claim gate (gates.ts)
-		const gates = checkGates(ctx.project, v.request, gateRunner(ctx));
+		// gate before push: every script the request voices or renders must pass its claim gate (gates.ts). CI never
+		// has the private names list, so the gate runs with --no-names here, and the receipt that local validate wrote
+		// with the list must match this request and these scripts exactly (receipt.ts).
+		const gates = checkGates(ctx.project, v.request, gateRunner(ctx), 'skip');
 		if (gates.problems.length) {
 			errors.push(...gates.problems.map((e) => `${REQUESTS_DIR}/${id}.json: ${e}`));
 			continue;
+		}
+		if (gates.targets.length) {
+			const r = verifyReceipt(ctx.project, id, bytes, gates.targets);
+			if (!r.ok) {
+				errors.push(`${REQUESTS_DIR}/${id}.json: ${r.problem}. CI checks scripts without the private names list, so run "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts validate ${REQUESTS_DIR}/${id}.json" on your computer (it needs ${NAMES_LIST}) and commit the ${receiptPath(id)} it writes with the request`);
+				continue;
+			}
+			receipts.push(`${id} (${r.receipt.targets.length} script(s), validated ${r.receipt.validatedAt})`);
 		}
 		requests.push(v.request);
 	}
@@ -397,6 +414,8 @@ export const cmdPlan = (ctx: Ctx): void => {
 
 	const md = [`## Render farm plan`, '', `Source: ${changes.how}.`, ''];
 	if (changes.ignored.length) md.push(`Ignored (not request files): ${changes.ignored.length} path(s).`, '');
+	if (changes.receipts.length) md.push(`Gate receipts changed: ${changes.receipts.length} (a receipt is not a request: it never starts a render).`, '');
+	if (receipts.length) md.push(`Private names were checked on the owner's computer before the push (gate receipts match): ${receipts.join('; ')}.`, '');
 	if (errors.length) {
 		for (const e of errors) reportError(ctx, e);
 		md.push('**The plan failed; nothing was rendered.**', '', ...errors.map((e) => `- ${e}`), '');
@@ -757,31 +776,86 @@ export const cmdSummary = (ctx: Ctx): void => {
 // ---------------------------------------------------------------------------------------------------------------
 // validate (local)
 
+/** A request file directly in <project>/render-requests/: the only place a gate receipt is written for. */
+const isRequestFile = (ctx: Ctx, f: string): boolean => {
+	try {
+		return realpathSync(dirname(resolve(f))) === realpathSync(join(ctx.project, REQUESTS_DIR));
+	} catch {
+		return false;
+	}
+};
+
+/**
+ * Local, before the push. The same checks as the plan job, but the claim gate runs WITH the private names list. When a
+ * request in render-requests/ passes and voices or renders a script, validate writes its gate receipt (receipt.ts),
+ * which the plan job requires; one that still matches is left as it is. A request that fails loses its receipt, so a
+ * pass from before (an older names list, an older script) can never be pushed. On a computer without the names list
+ * a request with scripts fails, and its receipt is left alone.
+ */
 export const cmdValidate = (ctx: Ctx, files: string[]): void => {
+	if (inActions(ctx)) throw new FarmError(`validate runs on your own computer before the push: it checks scripts against the private names list (${NAMES_LIST}), which never goes to CI; the plan job checks the receipt it writes`);
 	const reqDir = join(ctx.project, REQUESTS_DIR);
-	const targets = files.length ? files : existsSync(reqDir) ? readdirSync(reqDir).filter((f) => f.endsWith('.json')).map((f) => join(reqDir, f)) : [];
+	const targets = files.length ? files : existsSync(reqDir) ? readdirSync(reqDir, {withFileTypes: true}).filter((d) => d.isFile() && d.name.endsWith('.json')).map((d) => join(reqDir, d.name)) : [];
+	const hasNames = existsSync(join(ctx.project, NAMES_LIST));
+	let claimGate: ClaimGateVersion | null = null;
+	let emptyNames = false;
 	let bad = 0;
 	for (const f of targets) {
+		if (!existsSync(f)) {
+			bad++;
+			console.error(`${f}: no such file`);
+			continue;
+		}
 		const id = basename(f).replace(/\.json$/, '');
-		const v = parseRequest(readFileSync(f, 'utf8'), id);
+		const inRequests = isRequestFile(ctx, f);
+		const bytes = readFileSync(f);
+		const v = parseRequest(bytes.toString('utf8'), id);
 		let errors = v.ok ? checkoutProblems(ctx, v.request) : v.errors;
+		let revoke = true;
 		let gated = 0;
+		let receiptNote = '';
 		if (v.ok && !errors.length) {
-			const g = checkGates(ctx.project, v.request, gateRunner(ctx));
-			errors = g.problems;
-			gated = g.verdicts.length;
+			if (!hasNames && gateTargets(v.request).targets.length) {
+				// not a verdict on the request: this computer cannot check names, so it changes no receipt
+				errors = [`${NAMES_LIST} is not on this computer: validate checks every script against the private names list before it writes the gate receipt CI requires. Create the list (gitignored; scripts/claims/README.md) or validate where it exists; receipts were left as they are`];
+				revoke = false;
+			} else {
+				const g = checkGates(ctx.project, v.request, gateRunner(ctx), 'check');
+				errors = g.problems;
+				gated = g.verdicts.length;
+				if (!errors.length) {
+					errors = g.verdicts.filter((x) => x.gate === 'claims' && x.names === 'unchecked').map((x) => `${targetLabel(x.target)}: the claim gate passed without reporting that it checked ${NAMES_LIST}, so no receipt was written`);
+					if (g.verdicts.some((x) => x.names === 'checked-empty')) emptyNames = true;
+				}
+				if (!errors.length && g.targets.length) {
+					if (inRequests) {
+						claimGate ??= claimGateVersion(ctx.project);
+						try {
+							const written = writeReceipt(ctx.project, buildReceipt({project: ctx.project, id, requestBytes: bytes, targets: g.targets, claimGate, now: new Date()}));
+							receiptNote = `; gate receipt ${receiptPath(id)} ${written === 'written' ? 'written: commit it with the request' : 'unchanged'}`;
+						} catch (e) {
+							if (!(e instanceof FarmError)) throw e;
+							errors = [e.message]; // a script folder the receipt cannot bind (a link): the request does not pass
+						}
+					} else {
+						receiptNote = `; no gate receipt (only ${REQUESTS_DIR}/<id>.json gets one): copy the file there and validate it there before you commit it`;
+					}
+				}
+			}
 		}
 		if (errors.length) {
 			bad++;
 			console.error(`${f}:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
+			if (revoke && inRequests && removeReceipt(ctx.project, id)) console.error(`  - removed ${receiptPath(id)}: this request no longer passes; do not push it until validate passes again`);
 		} else if (v.ok) {
 			const r = v.request;
 			const dubs = r.voice.filter((x) => x.fitTo).length;
-			ctx.log(`${f}: ok (${r.jobs.length} job(s), ${r.voice.length} voice${dubs ? ` incl. ${dubs} dub(s)` : ''}, ${r.encrypt ? `encrypted to "${r.recipient}"` : 'NOT encrypted (test)'}, kept ${r.retentionDays} days; ${gated ? `${gated} gate check(s) pass` : 'no episode or show script to gate'})`);
+			ctx.log(`${f}: ok (${r.jobs.length} job(s), ${r.voice.length} voice${dubs ? ` incl. ${dubs} dub(s)` : ''}, ${r.encrypt ? `encrypted to "${r.recipient}"` : 'NOT encrypted (test)'}, kept ${r.retentionDays} days; ${gated ? `${gated} gate check(s) pass, private names checked` : 'no episode or show script to gate'})${receiptNote}`);
 		}
 	}
+	if (emptyNames) ctx.log(`warning: ${NAMES_LIST} lists no names, so the private-name check compared nothing; add the real names and handles behind every "[named person]" and validate again`);
 	if (!targets.length) ctx.log('no request files');
-	if (bad) throw new FarmError(`${bad} invalid request file(s): do not push them (a pushed storyboard is public for good)`);
+	if (bad) throw new FarmError(`${bad} request file(s) did not pass: do not push them (a pushed storyboard is public for good)`);
 };
 
 // ---------------------------------------------------------------------------------------------------------------

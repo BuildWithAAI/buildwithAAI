@@ -30,7 +30,7 @@ from .textutil import (
     parse_any_date, parse_iso, parse_rfc822, truncate,
 )
 
-PARSER_VERSION = "2026-11-24.2"
+PARSER_VERSION = "2026-11-24.3"
 MAX_ITEMS = 200
 
 
@@ -231,7 +231,25 @@ def _elem_text(elem):
     return elem.text or ""
 
 
-def parse_feed(body, source, ctx):
+# "Sponsored by RapidFort" in an item's author line (BleepingComputer): only this flag is kept, never the name
+_SPONSORED_BYLINE = re.compile(r"\b(?:sponsored|partner content|brought to you by|paid (?:post|content)|advertorial)\b", re.IGNORECASE)
+# WordPress feeds end every summary with "The post <title> appeared first on <site>." (opt-in per source: stripFeedFooter)
+_FEED_FOOTER = re.compile(r"\s*The post\s.{1,400}?\sappeared first on\s[^.]{1,80}?\s?\.?\s*(?:…)?\s*$", re.DOTALL)
+# a byline check is skipped when most of a feed has no author line at all (the feed changed, not every post is a release)
+BYLINE_MIN_SHARE = 0.2
+
+
+def _byline_text(entry):
+    """The author line of an entry (dc:creator, RSS author, Atom author/name), for flags only: never stored."""
+    parts = []
+    for el in _children(entry, "creator", "author"):
+        parts.append(clean_ws(" ".join(el.itertext())))
+    return " ".join(p for p in parts if p)
+
+
+def parse_feed(body, source, ctx, on_summary=None):
+    """RSS/Atom items. on_summary(summary) -> (summary, extra fields) lets a source-specific parser read the FULL
+    summary before it is cut to an excerpt (the AI Incident Database's citation link sits at its very end)."""
     if isinstance(body, str):
         body = body.encode("utf-8")
     _refuse_dtd(body)
@@ -280,12 +298,18 @@ def parse_feed(body, source, ctx):
             if not summary:
                 content_el = _child(entry, "encoded", "content")
                 summary = html_to_text(_elem_text(content_el))
+            if source.get("stripFeedFooter"):
+                summary = _FEED_FOOTER.sub("", summary).strip()
+            extra = {}
+            if on_summary is not None:
+                summary, extra = on_summary(summary)
             categories = []
-            for cat in _children(entry, "category", "subject"):
-                label = clean_ws(cat.get("term") or cat.text or "")
-                if label and label not in categories:
-                    categories.append(label)
-            items.append(_qualify({
+            if not source.get("dropCategories"):  # a feed whose tags name people keeps none (nothing to cache)
+                for cat in _children(entry, "category", "subject"):
+                    label = clean_ws(cat.get("term") or cat.text or "")
+                    if label and label not in categories:
+                        categories.append(label)
+            item = _qualify({
                 "kind": "news",
                 "key": f"{source['id']}:{url}",
                 "title": truncate(title, 300),
@@ -295,12 +319,59 @@ def parse_feed(body, source, ctx):
                 "excerpt": truncate(summary, EXCERPT_MAX),
                 "lead": first_sentence(summary) if summary else "",
                 "categories": categories[:12],
-            }, f"{title}. {summary}", source.get("publisher") or source.get("name") or ""))
+            }, f"{title}. {summary}", source.get("publisher") or source.get("name") or "")
+            byline = _byline_text(entry)
+            if byline and _SPONSORED_BYLINE.search(byline):
+                item["sponsored"] = True
+            if source.get("bylineRequired"):
+                item["byline"] = bool(byline)
+            item.update(extra)
+            items.append(item)
         except Exception as err:  # one bad entry must not lose the feed
             skipped += 1
             warnings.append(f"entry skipped: {type(err).__name__}")
     if skipped:
         warnings.append(f"{skipped} entr(y/ies) without title or link skipped")
+    if source.get("bylineRequired") and items:
+        with_byline = sum(1 for it in items if it.get("byline"))
+        if with_byline < BYLINE_MIN_SHARE * len(items):
+            # most items have no author line: the feed changed, so the press-release check would drop everything
+            for it in items:
+                it.pop("byline", None)
+            warnings.append(f"byline check skipped: only {with_byline} of {len(items)} items have an author line")
+    return items, warnings
+
+
+# ------------------------------------------------------------------ AI Incident Database (RSS)
+
+# every report's description ends with " ... (https://incidentdatabase.ai/cite/<incident>#<report>)", or with
+# "(report_number: <n>)" while the report is not yet attached to an incident
+_AIID_CITE = re.compile(r"\s*(?:\.\.\.|…)?\s*\((https://incidentdatabase\.ai/cite/(\d{1,7})(?:#\d{1,9})?)\)\s*$")
+_AIID_REPORT_NO = re.compile(r"\s*(?:\.\.\.|…)?\s*\(report_number:\s*\d{1,9}\)\s*$")
+
+
+def parse_aiid_feed(body, source, ctx):
+    """The AI Incident Database's feed: every item is a report from ANOTHER outlet (its link is that original article).
+    The citation link at the end of the description becomes the item's incident reference ("aiid:<n>": reports of one
+    incident share it) and its trackerUrl; it is never fetched. Discovery only: facts come from the original report."""
+
+    def on_summary(summary):
+        extra = {}
+        match = _AIID_CITE.search(summary)
+        if match:
+            extra = {"trackerUrl": match.group(1), "incidentRef": f"aiid:{int(match.group(2))}"}
+        else:
+            match = _AIID_REPORT_NO.search(summary)
+        if match:
+            cut = match.group(0)
+            summary = summary[: match.start()].rstrip()
+            if re.match(r"\s*(?:\.\.\.|…)", cut):
+                summary += "…"  # the database cut the report's text: keep the sign that it is cut
+        return summary, extra
+
+    items, warnings = parse_feed(body, source, ctx, on_summary=on_summary)
+    for item in items:
+        item["listedReport"] = True  # the title and excerpt are the original outlet's, listed by the database
     return items, warnings
 
 
@@ -497,6 +568,7 @@ PARSERS = {
     "defillama_hacks": parse_defillama_hacks,
     "rss": parse_feed,
     "atom": parse_feed,
+    "aiid_rss": parse_aiid_feed,
     "rekt_news": parse_rekt,
     "slowmist_hacked": parse_slowmist,
     "blog_cards": parse_blog_cards,

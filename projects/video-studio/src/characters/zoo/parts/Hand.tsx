@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import {LINE, ZOO_COLORS} from '../../palette';
-import {line, smooth, smoothRange, type Pt} from '../geometry';
+import {line, smooth, smoothRange, tapered, type Pt} from '../geometry';
 import {POINT_HAND_FRAME} from '../rig';
 import {ZOO_LINE} from '../lines';
 import {Clipped, Outline, Shape, Stroke, useLineScale} from './Shape';
@@ -15,34 +15,47 @@ import {Clipped, Outline, Shape, Stroke, useLineScale} from './Shape';
 export type HandShape = 'relaxed' | 'point' | 'curl';
 
 /**
- * Relaxed front hand (repair round 2, row-scanned on zoo_turn_front.png in hand-local units, wrist at the cuff centre).
- * ONE silhouette: the back of the hand is as wide as the cuff, the four fingers hang and curl in toward the thigh, their
- * tips stepping down from the little finger (outer, y ~69) to the index (inner, y ~93), and the thumb is a slender lobe
- * on the inner side (tip y ~68). Between the thumb and the fingers the sheet shows an OPEN gap ~6 u wide below a short
- * dark apex at y ~43; here the notch's path gap is ~6.4 u and its two edges are stroked at the detail width
- * (RELAXED_THIN), so background shows in it at every lineScale. Round 1's notch was 3 u, narrower than the 3.5 u
- * outline, so it filled solid black and read as a hooked talon (5.6 u wide at the asset sheet's lineScale).
+ * Relaxed front hand (repair round 3; silhouette row-scanned on zoo_turn_front.png in hand-local units, wrist at the cuff
+ * centre, both sheet hands compared in this frame). ONE silhouette: the back of the hand is as wide as the cuff, the four
+ * fingers hang and curl in toward the thigh, and their tips step down from the little finger (outer, y ~70) to the index
+ * (inner, y ~93) as four rounded lobes parted by ~3 u notches (round 2's notches were corner flags on one smooth diagonal,
+ * < 0.5 u deep, so the tips read as one "sock toe"). The thumb is a slender lobe on the inner side (tip y ~69). As on the
+ * sheet, the thumb and the index are CLOSED from the web down to y ~62 (a crease, RELAXED_CREASES) and part only in a
+ * small V below it (open from y ~65): round 2 left a 4-5 u open slot from y ~46, so the thumb read as a separate prong
+ * and the hand as a mitten; round 1's 3 u black notch read as a talon.
  */
 const RELAXED: Pt[] = [
-	[-17, -8], [12, -8], [12.4, 6], [12.8, 20], [14, 31], [14.8, 40], [14.4, 48], [13.2, 55], [12, 60.5], [10.8, 65], [9.4, 68.6],
-	[7.4, 71.2, 'c'], [6.6, 74.2], [4.6, 77.2], [2.4, 79.4, 'c'], [0.6, 81.6], [-2.2, 83.8], [-5.4, 85.4, 'c'], [-8.6, 87.2],
-	[-12.4, 89.6], [-16.4, 92], [-20.2, 93.4], [-23.4, 91.8], [-25, 87.6], [-24.6, 83], [-22.8, 79], [-20.4, 75.4], [-18.2, 72.4],
-	[-16.4, 69.2], [-14.4, 64.6], [-13.4, 59], [-13.2, 53.6], [-13.8, 48.6], [-15.4, 44.6], [-17.6, 43.2, 'c'], [-19.4, 47.4],
-	[-19.8, 53], [-20, 58.4], [-20.8, 63], [-22.4, 66.6], [-25.2, 68.6], [-28.2, 68], [-30, 64.6], [-30.4, 57], [-30, 47],
-	[-29.4, 37], [-28.2, 28.6], [-26, 21], [-22.6, 14], [-19.2, 7.6], [-17.6, 0],
+	[-17, -8], [12, -8], [12.4, 6], [12.8, 20], [14, 31], [14.8, 40], [14.4, 48], [13.2, 55], [12, 60.5],
+	// little finger
+	[11, 64.8], [10.1, 68.3], [8.4, 70.4], [6.1, 68.9, 'c'],
+	// ring finger
+	[6, 72.4], [5.2, 76], [3.6, 78.4], [1.6, 79.2], [-0.3, 77.8, 'c'],
+	// middle finger
+	[-1, 81], [-2.4, 84.2], [-4.6, 86.4], [-7.4, 87.3], [-10.1, 85.7, 'c'],
+	// index finger, round its tip and up its inner side to the web notch
+	[-11, 88.2], [-13.2, 90.8], [-16.4, 92.6], [-20.2, 93.4], [-23.4, 91.8], [-25, 87.6], [-24.6, 83], [-22.8, 79], [-20.6, 75],
+	[-19, 70.8], [-18, 66.2], [-17.6, 61.2, 'c'],
+	// thumb: tip, then its outer edge back up to the wrist
+	[-21.2, 63.6], [-24, 67], [-26.4, 69.4], [-28.6, 68.4], [-30, 64.6], [-30.4, 57], [-30, 47], [-29.4, 37], [-28.2, 28.6],
+	[-26, 21], [-22.6, 14], [-19.2, 7.6], [-17.6, 0],
 ];
-/** The inside of the notch between the thumb and the index (key points 28..39 of RELAXED): drawn at the detail width. */
-const RELAXED_THIN = {from: 28, to: 39} as const;
+/** The small V between the thumb tip and the index (key points 32..35 of RELAXED): drawn at the detail width. */
+const RELAXED_THIN = {from: 32, to: 35} as const;
 /**
- * Finger separations (repair round 2): ~12 u fine warm-brown lines from the three tip notches up ALONG the fingers, which
- * lean in toward the thigh, so each line rises toward the outer edge ("/" on the screen-right hand, as on the sheet).
- * Round 1's lines ran across the fingers.
+ * Finger separations and the thumb crease (repair round 3), as on zoo_turn_front.png: tapered warm-brown creases at
+ * ZOO_LINE.detail from each tip notch up ALONG the fingers, which lean in toward the thigh ("/" on the screen-right hand),
+ * ~15 / 23 / 31 u long (sheet ~11-31 u; round 2's were 8-12 u at the fine width, 1.2 px in the proof, and only one read).
+ * The last line is the thumb/index seam from the web notch up to the web (sheet: a mid-tone crease from y ~43 to ~62).
  */
 const RELAXED_SEPARATIONS: Pt[][] = [
-	[[7.4, 71.2], [8.2, 67], [8.8, 63]],
-	[[2.4, 79.4], [3.8, 73.6], [4.8, 68]],
-	[[-5.4, 85.4], [-3.4, 79.4], [-2, 73.6]],
+	[[6.1, 68.9], [8.6, 62.2], [10.6, 55]],
+	[[-0.3, 77.8], [3, 66.8], [6.6, 56]],
+	[[-10.1, 85.7], [-4.2, 71], [0.6, 56.4]],
+	// the thumb seam runs the other way: full width at the web (where the fold is deepest), easing toward the V notch
+	[[-17.3, 46], [-17.8, 53.4], [-17.6, 61.2]],
 ];
+/** The shadowed web at the top of the thumb crease: a small near-black teardrop (the sheet's dark apex at y ~42-48). */
+const RELAXED_WEB = {pts: [[-17, 42.6], [-17.2, 45.2], [-17.3, 48.2]] as Pt[], width: 2.4};
 /** One flat skin-shadow plane on the index finger, under the thumb (thumb-side terminator). */
 const RELAXED_SHADOW: Pt[] = [[-36, 66], [-26, 72], [-21.6, 77.4], [-19.4, 82.6], [-17, 88.4], [-13.6, 94], [-24, 100], [-36, 96]];
 
@@ -147,30 +160,67 @@ export const HAND_LINE = Math.round(((ZOO_LINE.fine + ZOO_LINE.detail) / 2) * 10
 /**
  * `thin`: optional stretch of the outline (key point `from` forward to `to`) stroked at ZOO_LINE.detail instead of the
  * full outline width, for the inside of a narrow notch, so the notch stays open at small scales.
+ * `taper` (repair round 3): draw the interior lines as tapered creases (filled, ART_GUIDE SL7) instead of even strokes:
+ * full `lineWidth` at each line's FIRST point (the notch it rises from) easing to `taper` x that width at its last point,
+ * so the separations read as folds that start at the silhouette and fade into the back of the hand.
+ * `accents`: small near-black teardrops (round end at the first point, tapering to the last), e.g. the shadowed web at the
+ * top of a thumb crease. Width in world units at lineScale 1.
  */
-export type HandDrawingSpec = {outline: Pt[]; shadow?: Pt[]; lines?: Pt[][]; lineColor?: string; lineWidth?: number; thin?: {from: number; to: number}};
+export type HandDrawingSpec = {
+	outline: Pt[];
+	shadow?: Pt[];
+	lines?: Pt[][];
+	lineColor?: string;
+	lineWidth?: number;
+	thin?: {from: number; to: number};
+	taper?: number;
+	accents?: {pts: Pt[]; width: number}[];
+};
 export const HandDrawing: React.FC<{hand: HandDrawingSpec; map?: (p: Pt) => Pt; name?: string}> = ({hand, map, name}) => {
+	const ls = useLineScale();
 	const m = (pts: Pt[]) => (map ? pts.map(map) : pts);
 	const pts = m(hand.outline);
 	const d = smooth(pts);
 	const shadow = hand.shadow ? {d: smooth(m(hand.shadow)), fill: ZOO_COLORS.skinShadow} : undefined;
+	const lw = hand.lineWidth ?? HAND_LINE;
+	const color = hand.lineColor ?? ZOO_COLORS.noseLine;
+	const taper = hand.taper;
 	return (
 		<g data-part={name ?? 'handShape'}>
-			<Shape d={d} fill={ZOO_COLORS.skin} shadow={shadow} stroke={hand.thin ? 0 : ZOO_LINE.outline} />
+			{/* Fill and shadow first, then the interior lines, then the outline on top (repair round 3), so each line's end
+			    tucks under the silhouette at its notch instead of sitting on the outline as a brown nub. */}
+			<Shape d={d} fill={ZOO_COLORS.skin} shadow={shadow} stroke={0} />
+			{(hand.lines ?? []).map((l, i) =>
+				taper === undefined ? (
+					<Stroke key={i} d={line(m(l))} width={lw} color={color} />
+				) : (
+					<path key={i} data-part="crease" d={tapered(m(l), (t) => lw * ls * (1 - (1 - taper) * Math.pow(t, 2.2)))} fill={color} />
+				),
+			)}
+			{(hand.accents ?? []).map((a, i) => (
+				<path key={i} data-part="accent" d={tapered(m(a.pts), (t) => a.width * ls * Math.pow(Math.max(0.03, Math.cos((Math.min(1, t) * Math.PI) / 2)), 0.6))} fill={LINE.color} />
+			))}
 			{hand.thin ? (
 				<>
 					<Outline d={smoothRange(pts, hand.thin.to, hand.thin.from)} />
 					<Outline d={smoothRange(pts, hand.thin.from, hand.thin.to)} width={ZOO_LINE.detail} />
 				</>
-			) : null}
-			{(hand.lines ?? []).map((l, i) => (
-				<Stroke key={i} d={line(m(l))} width={hand.lineWidth ?? HAND_LINE} color={hand.lineColor ?? ZOO_COLORS.noseLine} />
-			))}
+			) : (
+				<Outline d={d} />
+			)}
 		</g>
 	);
 };
 
-export const RELAXED_HAND: HandDrawingSpec = {outline: RELAXED, shadow: RELAXED_SHADOW, lines: RELAXED_SEPARATIONS, lineWidth: ZOO_LINE.fine, thin: RELAXED_THIN};
+export const RELAXED_HAND: HandDrawingSpec = {
+	outline: RELAXED,
+	shadow: RELAXED_SHADOW,
+	lines: RELAXED_SEPARATIONS,
+	lineWidth: ZOO_LINE.detail,
+	taper: 0.4,
+	thin: RELAXED_THIN,
+	accents: [RELAXED_WEB],
+};
 
 /** Point map for placing a view's own hand drawing: translate by (x, y), optional mirror about the drawing's x = 0 (only for
  * the other hand of a pair inside the same view), uniform scale s. */

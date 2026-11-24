@@ -9,14 +9,21 @@ import urllib.parse
 from . import safety
 from .textutil import MONEY_RE, clean_ws, core_name, money_value
 
-TYPES = (
+CRYPTO_TYPES = (
     "exploit", "phishing", "drainer", "rug", "key-compromise", "social-engineering", "bridge",
     "oracle", "governance", "other",
 )
+# AI-security incident types (the AI lane). They never replace a crypto mechanism a source states.
+AI_TYPES = (
+    "prompt-injection", "ai-agent-exploit", "malicious-ai-tool", "model-supply-chain", "ai-data-exposure",
+    "ai-assisted-attack", "deepfake-fraud", "ai-phishing", "ai-washing",
+)
+TYPES = CRYPTO_TYPES + AI_TYPES
+AI_EVERGREEN = ("ai-security", "ai-scams")
 EVERGREEN = (
     "drainers", "address-poisoning", "phishing", "key-management", "bridge-security",
     "oracle-manipulation", "rug-pulls", "social-engineering", "fake-job-malware",
-)
+) + AI_EVERGREEN
 TYPE_LABEL = {
     "exploit": "exploit",
     "phishing": "phishing",
@@ -28,7 +35,17 @@ TYPE_LABEL = {
     "oracle": "oracle manipulation",
     "governance": "governance attack",
     "other": "security incident (mechanism not classified)",
+    "prompt-injection": "prompt injection",
+    "ai-agent-exploit": "AI agent exploit",
+    "malicious-ai-tool": "malicious AI tool",
+    "model-supply-chain": "AI model supply-chain attack",
+    "ai-data-exposure": "data exposure through an AI tool",
+    "ai-assisted-attack": "AI-assisted attack",
+    "deepfake-fraud": "deepfake or voice-clone fraud",
+    "ai-phishing": "AI-generated phishing",
+    "ai-washing": "AI-washing fraud",
 }
+LANES = ("crypto", "ai", "both")
 
 # ---------------------------------------------------------------- relevance
 
@@ -76,22 +93,71 @@ def _first_unnegated(pattern, text):
     return None
 
 
-def relevance(item, source):
-    """(security: bool, incident: bool, reason: str) for one parsed item."""
+def source_lanes(source):
+    """The lanes a source carries: "crypto" (the default), "ai" or "both"."""
+    lane = source.get("lane") or "crypto"
+    return {"crypto", "ai"} if lane == "both" else {lane}
+
+
+def _exclusion(item, source):
+    """Why a source's own rules drop an item (URL, category, title pattern, promotional or sponsored post, a press
+    release without a byline), or None."""
     title = item.get("title") or ""
-    excerpt = item.get("excerpt") or ""
     url = item.get("url") or ""
     cats = [c.lower() for c in item.get("categories") or []]
     for pattern in source.get("excludeUrlPatterns", []):
         if pattern in url:
-            return False, False, f"excluded: URL matches {pattern!r}"
+            return f"excluded: URL matches {pattern!r}"
     excluded = {c.lower() for c in source.get("excludeCategories", [])}
     if excluded & set(cats):
-        return False, False, "excluded: category " + ", ".join(sorted(excluded & set(cats)))
+        return "excluded: category " + ", ".join(sorted(excluded & set(cats)))
+    for pattern in source.get("excludeTitlePatterns", []):
+        if re.search(pattern, title, re.IGNORECASE):
+            return f"excluded: title matches {pattern!r}"
     if source.get("role") == "vendor-blog" and PROMO_RE.search(title):
-        return False, False, "excluded: promotional post"
+        return "excluded: promotional post"
+    if source.get("excludeSponsored") and item.get("sponsored"):
+        return "excluded: sponsored post"
+    if source.get("bylineRequired") and item.get("byline") is False:
+        return "excluded: no author line (a wire press release)"
+    return None
+
+
+def assess(item, source):
+    """Relevance in both lanes for one parsed item: {security, incident, reason, lane, aiVote}.
+
+    A source carries the lanes its "lane" names (crypto when absent). An item is kept when a lane its source carries
+    accepts it; its own lane is "both" when it passes both rules, whatever the source carries."""
+    why = _exclusion(item, source)
+    if why:
+        return {"security": False, "incident": False, "reason": why, "lane": None, "aiVote": None}
     if item.get("kind") == "structured":
-        return True, True, "incident database record"
+        return {"security": True, "incident": True, "reason": "incident database record", "lane": "crypto", "aiVote": None}
+    lanes = source_lanes(source)
+    crypto = _crypto_relevance(item, source)
+    ai = ai_relevance(item)
+    crypto_ok, ai_ok = crypto[0], ai[0]
+    if not ((crypto_ok and "crypto" in lanes) or (ai_ok and "ai" in lanes)):
+        reasons = ([crypto[2]] if "crypto" in lanes else []) + ([ai[2]] if "ai" in lanes else [])
+        return {"security": False, "incident": False, "reason": "; ".join(reasons), "lane": None, "aiVote": None}
+    lane = "both" if crypto_ok and ai_ok else "crypto" if crypto_ok else "ai"
+    incident = bool((crypto_ok and crypto[1]) or (ai_ok and ai[1]))
+    reason = "; ".join(r for ok, r in ((crypto_ok, crypto[2]), (ai_ok, ai[2])) if ok)
+    return {"security": True, "incident": incident, "reason": reason, "lane": lane, "aiVote": ai[3] if ai_ok else None}
+
+
+def relevance(item, source):
+    """(security: bool, incident: bool, reason: str) for one parsed item, in every lane its source carries."""
+    found = assess(item, source)
+    return found["security"], found["incident"], found["reason"]
+
+
+def _crypto_relevance(item, source):
+    """The crypto lane: crypto context and an incident term or a security topic. (security, incident, reason)."""
+    title = item.get("title") or ""
+    excerpt = item.get("excerpt") or ""
+    url = item.get("url") or ""
+    cats = [c.lower() for c in item.get("categories") or []]
     text = f"{title}. {excerpt}"
     incident = _first_unnegated(INCIDENT_RE, text)
     topic = _first_unnegated(SECURITY_TOPIC_RE, text)
@@ -109,6 +175,212 @@ def relevance(item, source):
         why = f"security topic {topic.group(1)!r}" if topic else "security section URL"
         return True, False, why
     return False, False, "no security terms"
+
+
+# ---------------------------------------------------------------- AI lane
+#
+# An AI-security item needs AI context (an LLM, a chatbot, an AI agent or coding agent, an MCP server, model weights,
+# a deepfake or cloned voice, a named AI product) AND an AI-security incident or topic (one of the AI type rules
+# below). Negated mentions, vendor marketing, launches, deals, funding, events and opinion never count.
+
+# AI products and AI-native companies, longest first: AI context, and the subjects of AI incidents. Bare "Gemini" is
+# also a crypto exchange: it is a subject in the AI lane only, never AI context on its own.
+AI_PRODUCTS = (
+    "Claude Code", "Claude Desktop", "Claude for Chrome", "Claude Opus", "Claude Sonnet", "Claude Haiku",
+    "GitHub Copilot", "Microsoft 365 Copilot", "M365 Copilot", "Microsoft Copilot", "Copilot Studio",
+    "Security Copilot", "Visual Studio Copilot", "Copilot Chat", "Gemini CLI", "Gemini Code Assist", "Google Gemini",
+    "Google Jules", "Google Antigravity", "Amazon Q Developer", "Amazon Q", "AWS Kiro", "Amazon Bedrock",
+    "Azure OpenAI", "Vertex AI", "OpenAI Codex", "Codex CLI", "ChatGPT Atlas", "ChatGPT Operator", "Perplexity Comet",
+    "Hugging Face", "Mistral AI", "Meta AI", "Character.AI", "Stable Diffusion", "Fireworks AI", "Together AI",
+    "Google DeepMind", "Roo Code", "ChatGPT", "Claude", "Copilot", "Gemini", "Codex", "Cursor", "Windsurf", "Cline",
+    "OpenRouter", "LiteLLM", "LangChain", "LangGraph", "LlamaIndex", "Ollama", "DeepSeek", "Qwen", "Grok", "Llama",
+    "Kiro", "Antigravity", "OpenClaw", "Clawdbot", "Moltbot", "Midjourney", "ElevenLabs", "Sora", "Replit",
+    "Lovable", "Perplexity", "DeepMind", "Anthropic", "OpenAI", "xAI",
+)
+AI_PRODUCTS = tuple(sorted(AI_PRODUCTS, key=len, reverse=True))
+_AI_CONTEXT_ONLY_IN_LANE = {"Gemini"}
+# a vendor named next to one of its own products is not the subject: the product is
+_VENDOR_PRODUCTS = {
+    "Anthropic": ("Claude",), "OpenAI": ("ChatGPT", "Codex", "Sora"), "Google DeepMind": ("Gemini",),
+    "DeepMind": ("Gemini",), "xAI": ("Grok",), "Perplexity": ("Comet",), "Meta AI": ("Llama",),
+}
+_PRODUCT_ALT = "|".join(re.escape(p) for p in AI_PRODUCTS if p not in _AI_CONTEXT_ONLY_IN_LANE)
+_PRODUCTS_RE = re.compile(r"(?<![\w.-])(?:" + "|".join(re.escape(p) for p in AI_PRODUCTS) + r")(?![\w-])")
+# AI words, for the anchors inside the type rules (case-sensitive "AI"; the rest in any case)
+_AI_X = (
+    r"(?:(?-i:\bAI\b|\bA\.I\.)|\bartificial intelligence\b|\bLLMs?\b|\blarge language models?\b|\bgenerative AI\b|"
+    r"\bgen ?AI\b|\bchat ?bots?\b|\bagentic\b|\b(?:AI|coding|autonomous|computer[- ]use) agents?\b|\bMCP\b|"
+    r"\bmodel context protocol\b|(?-i:(?<![\w.-])(?:" + _PRODUCT_ALT + r")(?![\w-])))"
+)
+AI_CONTEXT_RE = re.compile(
+    _AI_X + r"|\bdeep[- ]?fakes?\b|\bvoice[- ]?clon\w*|\bclon(?:ed|ing) (?:\w+ )?voices?\b|\bface[- ]?swap\w*|"
+    r"\bsynthetic (?:voices?|videos?|media|identit\w+)\b|\bprompt[- ]injection\w*|\bpromptware\b|\bmodel weights\b|"
+    r"\bopen[- ]weights?\b|\bneural networks?\b|\bmachine learning\b",
+    re.IGNORECASE,
+)
+# an AI product named in the lane only ("Gemini" is the crypto exchange elsewhere)
+_AGENTISH = (
+    r"(?:\b(?:AI|coding|autonomous|computer[- ]use) agents?\b|\bAI (?:assistants?|IDEs?|browsers?|tools?|apps?|"
+    r"platforms?|gateways?|models?|systems?|services?|features?|chatbots?)\b|\bagentic (?:\w+ )?(?:tools?|systems?|"
+    r"browsers?|AI)\b|\bMCP(?: servers?)?\b|\bchat ?bots?\b|\bLLMs?\b|(?-i:(?<![\w.-])(?:"
+    + "|".join(re.escape(p) for p in AI_PRODUCTS) + r")(?![\w-])))"
+)
+_VULN = (
+    r"(?:vulnerab\w+|flaws?|bugs?|CVE-\d{4}-\d{3,7}|RCE|remote code execution|(?:arbitrary )?code execution|"
+    r"command injection|sandbox (?:escapes?|bypass\w*)|privilege escalation|auth(?:entication|orization)? bypass\w*|"
+    r"zero[- ]click|zero[- ]day|exploit\w*|hijack\w*|takeovers?|compromis\w+|exfiltrat\w+)"
+)
+_TOOL_NOUN = (
+    r"(?:apps?|extensions?|plugins?|add-ons?|skills?|servers?|tools?|packages?|libraries|browsers?|installers?|"
+    r"clients?|wrappers?|sites?|websites?|repos?|repositories|bots?|integrations?|versions?|downloads?|ads?|IDEs?)"
+)
+_MALWARE = r"(?:malware|infostealers?|stealers?|trojans?|backdoors?|RATs?|ransomware|spyware)"
+_DATA = (
+    r"(?:secrets?|prompts?|credentials?|api keys?|access keys?|tokens?|passwords?|chats?|chat (?:histor\w+|logs?)|"
+    r"conversations?|data|information|PII|records|files|source code|repositor\w+|memor(?:y|ies)|emails?|calendars?)"
+)
+
+# (type, explainer topic, pattern, needs an AI word within 160 characters of the match), in matching order: the
+# most specific mechanism first (a prompt injection that leaks secrets is a prompt injection)
+_AI_TYPE_RULES = (
+    ("deepfake-fraud", "ai-scams",
+     r"\bdeep[- ]?fake\w*|\bvoice[- ]?clon\w+|\bclon(?:ed|ing|es?)\s+(?:\w+\s+){0,2}voices?\b|\bvoice clones?\b|"
+     r"\bface[- ]?swap\w*|\bsynthetic (?:voices?|videos?|identit\w+)\b|"
+     r"\bAI[- ](?:generated|made|created)\s+(?:\w+\s+){0,2}?(?:videos?|voices?|images?|photos?|likeness\w*|personas?|"
+     r"profiles?|celebrit\w+|endorsements?|ads?)\b|"
+     r"(?-i:\b(?:AI|A\.I\.))[- ]?(?:(?:powered|driven|generated|enabled)\s)?(?:romance |investment |crypto |"
+     r"impersonation |voice )?(?:scams?|fraud\w*|swindles?)\b", False),
+    ("ai-washing", None,
+     r"\bAI[- ]washing\b|\bOperation AI Comply\b|"
+     r"\b(?:false(?:ly)?|misleading(?:ly)?|deceptive(?:ly)?|bogus|inflated|exaggerat\w+|overstat\w+|unsubstantiated)"
+     r"\b[^.;]{0,40}?\b(?:claim\w*|statements?|representations?|marketing|advertis\w+|promises?|touted|said|says)\b"
+     r"[^.;]{0,40}?" + _AI_X + r"|\bmisle\w*\b[^.;]{0,40}?\babout\b[^.;]{0,40}?" + _AI_X, False),
+    ("ai-phishing", "ai-scams",
+     r"\bphish\w*\b[^.;]{0,50}?" + _AI_X + r"|" + _AI_X + r"[^.;]{0,50}?\bphish\w*\b|"
+     r"\b(?:AI|LLM)[- ](?:generated|written|crafted|powered|personali[sz]ed)\s+(?:\w+\s+){0,2}?"
+     r"(?:emails?|messages?|lures?|texts?|spam)\b", False),
+    ("prompt-injection", "ai-security",
+     r"\bprompt[- ]injection\w*|\bpromptware\b|\b(?:indirect|invisible|hidden|cross[- ]agent|zero[- ]click)\s+"
+     r"(?:prompts?|instructions?)\b|\binjected (?:prompts?|instructions?)\b|\bhidden (?:unicode |text )?"
+     r"instructions?\b|\bmalicious (?:prompts?|instructions?)\b|\bjailbr(?:eak|oke|eaking|eaks|oken)\w*", True),
+    ("malicious-ai-tool", "ai-security",
+     r"\b(?:malicious|fake|rogue|trojani[sz]ed|backdoored|counterfeit|look-?alike|impostor|imposter|typosquatt\w*|"
+     r"weaponi[sz]ed|bogus|copycat|spoofed)\s+(?:[\w.-]+\s+){0,3}?" + _AI_X + r"\s+(?:[\w.-]+\s+){0,2}?"
+     + _TOOL_NOUN + r"\b|" + _AI_X + r"\s+(?:[\w.-]+\s+){0,2}?" + _TOOL_NOUN
+     + r"\b[^.;]{0,40}?\b(?:laced with|bundl\w+|deliver\w*|drop\w*|install\w*|carr\w+|hid\w*|spread\w*|push\w*|"
+     r"serv(?:e|es|ed|ing))\s+(?:\w+\s+){0,2}?" + _MALWARE + r"\b|\b" + _MALWARE
+     + r"\b[^.;]{0,40}?\b(?:posing as|disguised as|masquerad\w+ as|impersonat\w+)\s+(?:\w+\s+){0,2}?" + _AI_X, False),
+    ("model-supply-chain", "ai-security",
+     r"\b(?:poison\w*|backdoor\w*|trojan\w*|tamper\w*|booby[- ]trapped|sleeper[- ]agents?|hidden payloads?)\b"
+     r"[^.;]{0,50}?\b(?:models?|weights|checkpoints?|datasets?|training data|fine[- ]tun\w+|post[- ]training|"
+     r"open[- ]weights?|model hubs?|safetensors|pickles?|neurons?)\b|"
+     r"\b(?:models?|weights|checkpoints?|datasets?|training data|open[- ]weights?)\b[^.;]{0,50}?\b(?:poison\w*|"
+     r"backdoor\w*|payloads?|malware|sleeper[- ]agents?|tamper\w*)\b|\bslopsquat\w*|"
+     r"\bsupply[- ]chain (?:attacks?|compromises?|poisoning)\b[^.;]{0,60}?" + _AI_X + r"|"
+     + _AI_X + r"[^.;]{0,40}?\bsupply[- ]chain (?:attacks?|compromises?|poisoning)\b", True),
+    ("ai-assisted-attack", None,
+     r"(?:(?-i:\b(?:AI|A\.I\.))|\bLLM)[- ]?(?:(?:assisted|driven|powered|enabled|orchestrated|fu[e]?led|generated|"
+     r"written|based|led|automated)[- ])?(?:[\w-]+\s){0,2}?(?:attacks?|cyber[- ]?attacks?|campaigns?|intrusions?|"
+     r"breach\w*|hacking|hacks?|operations?|espionage|exploitation|malware|ransomware|threats?|heists?)\b|"
+     r"\b(?:attackers?|hackers?|threat actors?|actors?|criminals?|cybercriminals?|crooks|gangs?|groups?|APTs?|"
+     r"operators?|adversar(?:y|ies)|scammers?|fraudsters?|spies)\b[^.;]{0,60}?\b(?:use[sd]?|using|leverag\w+|"
+     r"deploy\w*|harness\w*|turn(?:ed|s|ing)? to|abus\w+|weaponi[sz]\w+|rel(?:y|ied|ies) on|tapp\w+|enlist\w*|"
+     r"employ\w*|misus\w+|with)\b[^.;]{0,40}?" + _AI_X + r"|"
+     r"\b(?:AI|autonomous|agentic)\s+agents?\b(?:\s+[\w'’-]+){0,6}?\s+(?:root access|lateral movement|"
+     r"privilege escalation|breach\w*|intrusions?|hack(?:ed|ing|s)?|compromis\w+|exfiltrat\w+|ransomware|attacks?)\b|"
+     r"\bautonomous (?:AI )?(?:attacks?|intrusions?|hacking|breach\w*|cyber[- ]?attacks?)\b|"
+     r"(?-i:\b(?:AI|LLM))\b[^.;]{0,40}?\b(?:tools?|agents?|models?|frameworks?|pen[- ]?test\w*)\b[^.;]{0,40}?"
+     r"\b(?:weaponi[sz]\w+|turned into (?:a |an )?weapons?|abused by|misused by)\b", False),
+    ("ai-agent-exploit", "ai-security",
+     _AGENTISH + r"(?:['’]s)?\s+(?:[\w.-]+\s+){0,4}?" + _VULN + r"|\b" + _VULN + r"\b\s+(?:\w+\s+){0,1}?"
+     r"(?:in|affecting|impacting|of|against|targeting|on|via)\s+(?:the\s+|an?\s+)?(?:[\w.'’-]+\s+){0,3}?" + _AGENTISH
+     + r"|\b" + _VULN + r"\s+(?:the\s+)?" + _AGENTISH, False),
+    ("ai-data-exposure", "ai-security",
+     r"\b(?:leak\w*|expos\w+|spill\w*|exfiltrat\w+|stole|stolen|steal\w*|dump\w*)\b[^.;]{0,40}?\b" + _DATA + r"\b|"
+     r"\b" + _DATA + r"\b[^.;]{0,40}?\b(?:leak\w*|expos\w+|spill\w*|exfiltrat\w+)\b|"
+     r"\b" + _DATA + r"\b[^.;]{0,60}?\b(?:without (?:\w+\s+)?(?:authori[sz]ation|consent|permission|approval)|"
+     r"improperly|unauthori[sz]ed)\b|\bdata (?:leaks?|breach\w*|exposures?)\b", True),
+)
+_AI_TYPE_RULES = tuple((t, e, re.compile(p, re.IGNORECASE), near) for t, e, p, near in _AI_TYPE_RULES)
+_AI_ANCHOR_RE = re.compile(_AI_X + r"|\bdeep[- ]?fakes?\b|\bvoice[- ]?clon\w*", re.IGNORECASE)
+# what makes an AI-security item an incident report rather than a topic (research, trends, risks)
+_AI_EVENT_RE = re.compile(
+    r"\b(?:hack(?:ed|s|ing)?|breach(?:ed|es)?|attack(?:ed|s)?|cyber[- ]?attacks?|exploit(?:ed|s|ing|ation)?|"
+    r"compromis(?:e|ed|es|ing)|leak(?:ed|s|ing)?|expos(?:ed|es|ing|ure)|spill\w*|stole|stolen|steal\w*|theft|"
+    r"scam(?:s|med)?|fraud\w*|defraud\w*|indict\w*|charg(?:ed|es)|sued|sues|lawsuit|fined|settle(?:d|s|ment)|"
+    r"arrest\w*|malicious|hijack\w*|poisoned|backdoor(?:ed|s)?|abus(?:ed|ing)|misus(?:ed|ing)|impersonat\w+|"
+    r"exfiltrat\w+|vulnerab\w+|flaws?|cve-\d{4}-\d+|rce|patch(?:ed|es)|campaigns?|intrusions?|penetrated|"
+    r"drop(?:s|ped)|removed|pulled|disclos(?:es|ed))\b",
+    re.IGNORECASE,
+)
+# vendor marketing and other noise: never an AI-security item (titles), and excerpt cues of a video, event or ad
+_AI_NOISE_TITLE = re.compile(
+    r"\b(?:launch(?:es|ed|ing)?|unveil(?:s|ed|ing)?|debut(?:s|ed|ing)?|introduc(?:es|ed|ing)|roll(?:s|ed)? out|"
+    r"rolling out|expands?|expanded|now available|generally available|general availability)\b(?:\s+[\w.'’&,-]+){0,5}?"
+    r"\s+(?:tools?|platforms?|products?|features?|services?|solutions?|programs?|initiatives?|frameworks?|suites?|"
+    r"safeguards?|protections?|capabilit\w+|offerings?|models?|agents?|apps?|integrations?|standards?|beta)\b|"
+    r"^new\s+\S+\s+(?:tool|platform|feature|service|framework)\b|"
+    r"\b(?:partners? with|partnership|acquir(?:es|ed|ing)|acquisition|to acquire|to buy|merger|deal|"
+    r"rais(?:es|ed|ing) \$|funding|series [a-e]\b|seed round|valuation|earnings|quarterly results|"
+    r"webinar|virtual (?:event|summit)|podcast|video series|livestream|magic quadrant|named a leader|"
+    r"recognized as a leader|award|appoints?|appointed|weigh in|op-ed|opinion|commentary|"
+    r"(?:in|for) the (?:age|era) of ai|ai era|era of ai|age of ai|powered by microsoft)\b",
+    re.IGNORECASE,
+)
+_AI_NOISE_TEXT = re.compile(
+    r"\b(?:in this video|this installment|video series|webinar|sponsored|register (?:now|today|here)|on-demand|"
+    r"press release|(?:era|age) of ai(?:-driven)?)\b",
+    re.IGNORECASE,
+)
+
+
+def _near_ai(text, match, window=160):
+    return bool(_AI_ANCHOR_RE.search(text[max(0, match.start() - window): match.end() + window]))
+
+
+def ai_type_from_text(text):
+    """(type, topic, reason) of the first AI type rule with an unnegated match that is not advice, or None."""
+    text = text or ""
+    for kind, topic, pattern, near in _AI_TYPE_RULES:
+        for match in pattern.finditer(text):
+            if _NEGATION.search(text[max(0, match.start() - 60): match.start()]):
+                continue
+            if _ADVICE.search(text[max(0, match.start() - 50): match.start()]):
+                continue
+            if near and not _near_ai(text, match):
+                continue
+            return (kind, topic, f"AI text {clean_ws(match.group(0))[:80]!r}")
+    return None
+
+
+def ai_relevance(item):
+    """The AI lane: (security, incident, reason, type vote). Needs AI context and an AI-security incident or topic;
+    vendor marketing, launches, deals, funding, events and opinion never count."""
+    title = item.get("title") or ""
+    excerpt = item.get("excerpt") or ""
+    if _AI_NOISE_TITLE.search(title) or _AI_NOISE_TEXT.search(excerpt):
+        return False, False, "AI lane: marketing, a launch, a deal, funding, an event or opinion", None
+    text = f"{title}. {excerpt}"
+    cats = " ".join(item.get("categories") or [])
+    context = _first_unnegated(AI_CONTEXT_RE, text) or (AI_CONTEXT_RE.search(cats) if cats else None)
+    if not context:
+        return False, False, "no AI context", None
+    vote = ai_type_from_text(text)
+    if not vote:
+        return False, False, "AI context but no AI-security incident or topic", None
+    incident = _first_unnegated(_AI_EVENT_RE, text)
+    why = f"AI context {clean_ws(context.group(0))!r} and {vote[2]}"
+    return True, bool(incident), why, vote
+
+
+def ai_lane_vote(crypto_vote, ai_vote):
+    """The type vote of an item in both lanes: a mechanism the crypto rules state wins; a bare incident word
+    ("hack"), a generic exploit or "other" gives way to the AI type."""
+    if not ai_vote:
+        return crypto_vote
+    if crypto_vote and crypto_vote[0] not in ("exploit", "other") and not GENERIC_VOTE.match(crypto_vote[2] or ""):
+        return crypto_vote
+    return ai_vote
 
 
 # ---------------------------------------------------------------- type and evergreen
@@ -720,12 +992,13 @@ def extract_subject(title, exclude=()):
     return subject, method
 
 
-def _lead_subject(tokens, ends, excluded):
+def _lead_subject(tokens, ends, excluded, verbs=None):
     """'Stake DAO Warns ...', 'Chainflip confirms ...', "Korea's DCENT to shut ..."."""
+    verbs = verbs or _HEADLINE_VERBS
     run = []
     for index, tok in enumerate(tokens[:5]):
         word = _bare(tok)
-        if word.lower() in _HEADLINE_VERBS and run:
+        if word.lower() in verbs and run:
             while run and _bare(run[-1]).lower() in _ROLE_TRAIL:
                 run.pop()
             candidate = _clean_run(run) if run else None
@@ -743,12 +1016,12 @@ def _lead_subject(tokens, ends, excluded):
     return None
 
 
-def _extract_subject(title, excluded):
+def _extract_subject(title, excluded, verbs=None):
     text = MONEY_RE.sub(" " + AMT + " ", title.replace("\u2019", "'"))
     raw = text.split()
     tokens = [t.rstrip(",:;") for t in raw]
     ends = [t.endswith((",", ":", ";")) for t in raw]
-    lead = _lead_subject(tokens, ends, excluded)
+    lead = _lead_subject(tokens, ends, excluded, verbs)
     if lead:
         return lead, "headline subject"
     for index, token in enumerate(tokens):

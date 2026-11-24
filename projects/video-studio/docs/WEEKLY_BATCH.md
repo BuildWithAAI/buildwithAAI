@@ -122,12 +122,16 @@ Each episode gets a draft request for the render farm (docs/RENDER_FARM.md), `ou
 - encrypted to the owner's public key.
 
 The tests check every draft with the farm's own validator. The weekly session copies a draft to
-`render-requests/<id>.json` and pushes it; pushing is what starts the farm, so `plan` never does it.
+`render-requests/<id>.json`, validates it there (which writes its gate receipt) and pushes both; pushing is what starts
+the farm, so `plan` never does it.
 
 - **Gate before push.** The farm needs the storyboards pushed, and the repository is public: a script becomes readable
   the moment it is pushed, before its video is published, and history is never rewritten. So every claim gate must pass
   first. `node scripts/farm/farm.ts validate render-requests/<id>.json` runs them all and refuses the request
-  otherwise, and the farm's `plan` job refuses it again on GitHub; run `validate` before every push. When a script must
+  otherwise. It needs the private names list (`data/private/names.txt`, never committed) and writes the gate receipt
+  `render-requests/receipts/<id>.json`: commit it with the request and the episode's `content/` folder. The farm's
+  `plan` job runs the gates again on GitHub without the list and refuses a request whose receipt is missing or stale
+  (docs/RENDER_FARM.md, "Gate receipts"); run `validate` last, before every push. When a script must
   not be public before its release, render locally instead (`bash out/publish/<channel>/<slug>/render-plan.sh`).
 
 ## The weekly approval page (`review`)

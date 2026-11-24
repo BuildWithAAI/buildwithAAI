@@ -12,6 +12,7 @@ import {ZOO_COLORS} from '../../../palette';
 import {line, smooth, type Pt} from '../../geometry';
 import {ZOO_LINE} from '../../lines';
 import {Button} from '../threeQuarter/Body34';
+import {HandDrawing, type HandDrawingSpec} from '../../parts/Hand';
 import {Clipped, Outline, Shape, Stroke} from '../../parts/Shape';
 
 // ---------------------------------------------------------------- shirt
@@ -67,33 +68,42 @@ export const WRIST_SIDE = {x: -6, y: -422} as const;
 export const SHOULDER_SIDE = {x: -18, y: -690} as const;
 
 /**
- * Anatomical RIGHT hand seen from its outer side (back of the hand). Repair round 2, row-scanned on zoo_turn_side.png:
- * the back of the hand widens from the cuff to ~47 u, then FOUR fingers part from the knuckle line (V tops at y -366;
- * round 1 stopped them at -357, so the fingers were only ~24% of the hand and read as a glove). The fingers lean slightly
- * back toward their rounded tips, as the sheet draws them, and the tips step: back finger -341, then -337, the third
- * lowest at -333, the front finger -337. No separate thumb lobe in this view (ZOO-V5).
+ * Anatomical RIGHT hand seen from its outer side (back of the hand). Repair round 3, row-mapped on zoo_turn_side.png at
+ * 1 u: the back of the hand widens from the cuff to ~47 u and the four fingers TOUCH all the way down. They are parted by
+ * three warm-brown creases from the knuckle line (y ~-364) to the tips (HAND_LINES), and the silhouette shows only small
+ * rounded tip lobes: the notches between them reach just 3-6 u above the tips (~-337..-343). The fingers lean slightly
+ * back toward their tips, which step: back finger ~-340, second ~-335, third lowest ~-331, front ~-336. Round 2 parted the
+ * fingers with silhouette V-notches up to -366; the 3.5 u outline filled each 1-2 u notch, so the hand read as a
+ * four-tine rake with near-black slits (6-7 u black wedges at the asset sheet's lineScale). No thumb lobe here (ZOO-V5).
  */
 const HAND: Pt[] = [
 	[-21, -424], [17, -424], [18.4, -412], [21.6, -404], [24.8, -397], [27.6, -390], [28.2, -380], [28, -366], [27.6, -356],
-	[26.8, -348], [25.4, -341.6], [22.8, -337.2], [19.4, -335.6], [16.4, -337.6], [15.6, -342], [16.4, -349], [17.6, -357.4],
-	[18.6, -366, 'c'], [17.4, -357.4], [15.8, -348.6], [13.8, -340.6], [10.8, -334.4], [6.8, -331.4], [3, -332.4], [1, -336.4],
-	[1.6, -344], [3.6, -353.6], [5.6, -366, 'c'], [3.8, -356.4], [1.2, -347.8], [-1.6, -341], [-4.8, -336], [-8.2, -334.6],
-	[-11.2, -337], [-11.8, -342], [-9.8, -351.4], [-6.6, -366, 'c'], [-9, -356.2], [-11.4, -348.4], [-14, -342.6], [-16.8, -339.4],
-	[-20.2, -340.2], [-21.8, -344.4], [-21.4, -352], [-19.4, -360], [-18.6, -368], [-19.8, -378], [-21.6, -390], [-21.8, -402],
-	[-21.4, -414],
+	[26.8, -348], [25.4, -342], [23, -338.6], [19.8, -337], [16.8, -337.8], [14.4, -340.4, 'c'],
+	// third finger (lowest tip)
+	[12.6, -336.4], [9.8, -333.4], [6.4, -332.4], [3.4, -333.4], [1.6, -335.6], [0.8, -338.6, 'c'],
+	// second finger
+	[-0.8, -336.8], [-3.6, -335.8], [-6.6, -336.6], [-8.4, -339.2], [-9.8, -343.4, 'c'],
+	// back finger, then the back edge up to the cuff
+	[-12.4, -341.8], [-14.8, -341.4], [-17.6, -342.6], [-19.2, -345.8], [-19.2, -350.4], [-17.8, -358], [-17.6, -366],
+	[-18.8, -376], [-20.6, -388], [-21.6, -402], [-21.4, -414],
 ];
 /** One flat terminator along the front edge (no full-height band). */
-const HAND_SHADOW = smooth([[21, -412], [30, -400], [30.4, -362], [27.4, -344], [24, -338], [24.4, -360], [24.8, -392]]);
-const HAND_LINES: Pt[][] = [];
+const HAND_SHADOW = [[21, -412], [30, -400], [30.4, -362], [27.4, -344], [24, -338], [24.4, -360], [24.8, -392]] as Pt[];
+/**
+ * The finger separations as interior creases (repair round 3), placed on the sheet's crease lines (x ~-5 / 7 / 19.5 at
+ * y -360, leaning back toward the tips), each drawn from its tip notch up to the knuckle line: tapered, warm brown, at
+ * ZOO_LINE.detail (HandDrawing taper). The sheet's are 2-3 u mid-tone creases with no dark slits.
+ */
+const HAND_LINES: Pt[][] = [
+	[[14.4, -340.4], [16.6, -344.6], [18.6, -351], [19.4, -358], [19.4, -364]],
+	[[0.8, -338.6], [4, -343], [6.2, -350], [7, -357.4], [7, -364]],
+	[[-9.8, -343.4], [-7.4, -349.2], [-6, -356], [-5.4, -364]],
+];
+const SIDE_HAND: HandDrawingSpec = {outline: HAND, shadow: HAND_SHADOW, lines: HAND_LINES, lineWidth: ZOO_LINE.detail, taper: 0.4};
 
 export const ArmSide: React.FC = () => (
 	<g data-part="armR">
-		<g data-part="handR">
-			<Shape d={smooth(HAND)} fill={ZOO_COLORS.skin} shadow={{d: HAND_SHADOW, fill: ZOO_COLORS.skinShadow}} />
-			{HAND_LINES.map((l, i) => (
-				<Stroke key={i} d={line(l)} width={ZOO_LINE.detail} />
-			))}
-		</g>
+		<HandDrawing hand={SIDE_HAND} name="handR" />
 		<Shape name="sleeveR" d={smooth(SLEEVE)} fill={ZOO_COLORS.overshirt} shadow={{d: SLEEVE_SHADOW, fill: ZOO_COLORS.overshirtShadow}} />
 		<Stroke d={CUFF_SEAM} width={ZOO_LINE.detail} />
 		<Stroke d={ARMHOLE} width={ZOO_LINE.fine} />

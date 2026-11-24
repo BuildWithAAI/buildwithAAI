@@ -51,10 +51,16 @@ export type ZooExtraProps = {
 	 * swings out. Default 0.
 	 */
 	pointWindup?: number;
+	/**
+	 * pose="point", front view: how much of the anticipation tuck (POINT_OVERLAP.tuck, the elbow gathering in before the
+	 * upper arm opens) to use, 0..1. Default 1, right for the RAISE. Pass 0 while LOWERING the arm (repair round 3): the
+	 * tuck acts only below poseAmount 0.4, so set it at any frame where the arm is above that (e.g. during the hold).
+	 */
+	pointTuck?: number;
 };
 
 const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | 'browLift' | 'lookX' | 'lookY' | 'headTilt' | 'poseAmount'>> &
-	Pick<ZooProps, 'mouth' | 'pose'> & {breathe: boolean; breathFrame?: number; showPivots?: boolean; pointWindup: number}> = (p) => {
+	Pick<ZooProps, 'mouth' | 'pose'> & {breathe: boolean; breathFrame?: number; showPivots?: boolean; pointWindup: number; pointTuck: number}> = (p) => {
 	const frame = useCurrentFrame();
 	const {fps} = useVideoConfig();
 	const bf = p.breathFrame ?? frame;
@@ -64,7 +70,7 @@ const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | '
 	const hem = PIVOTS.torso.y;
 	const sy = 1 + -dy / (hem - PIVOTS.shoulderL.y);
 	const pointing = p.pose === 'point';
-	const base = pointing ? armAnglesFor(ARM_POINT, p.poseAmount) : ARM_REST;
+	const base = pointing ? armAnglesFor(ARM_POINT, p.poseAmount, undefined, {tuck: p.pointTuck}) : ARM_REST;
 	const w = pointing ? p.pointWindup : 0;
 	const leftAngles = {
 		shoulder: base.shoulder + ARM_POINT_WINDUP.shoulder * w,
@@ -162,6 +168,7 @@ const ZooRigInner: React.FC<ZooProps & ZooExtraProps> = ({
 	layer = 'all',
 	between,
 	pointWindup = 0,
+	pointTuck = 1,
 }) => {
 	const head: ViewHeadProps = {
 		expression,
@@ -207,6 +214,7 @@ const ZooRigInner: React.FC<ZooProps & ZooExtraProps> = ({
 			breathFrame={breathFrame}
 			showPivots={showPivots}
 			pointWindup={clamp(pointWindup, 0, 1)}
+			pointTuck={clamp(pointTuck, 0, 1)}
 		/>
 		{layer === 'all' ? between : null}
 	</g>

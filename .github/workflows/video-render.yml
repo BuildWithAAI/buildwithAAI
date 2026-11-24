@@ -2,9 +2,13 @@
 # How to use it: projects/video-studio/docs/RENDER_FARM.md
 #
 # Push a request file, projects/video-studio/render-requests/<id>.json, on any branch (or run this workflow by hand
-# with the request id). Then:
+# with the request id), together with its gate receipt, render-requests/receipts/<id>.json. Then:
 #   plan       validates the request files the push added or changed, runs the claim gate on every script they voice
-#              or render (gate before push: a pushed script is public), and builds the job matrices;
+#              or render (gate before push: a pushed script is public) with --no-names, requires the request's gate
+#              receipt to match the request and every script folder exactly, and builds the job matrices. The receipt
+#              is written by `farm.ts validate` on the owner's computer, where the gate also checks the private names
+#              list (data/private/names.txt, gitignored: it never comes here). A push that changes only receipts starts
+#              no run (the paths filter leaves render-requests/receipts/ out, and the plan never renders a receipt);
 #   voice      voices every master language in parallel (Kokoro, Zoo = im_nicola; model files cached by their sha256);
 #   voice-dub  voices every dub after its master, fitted to the master's timeline (multi-language audio tracks);
 #   render     renders every composition x language in parallel, 8 at a time (video, still or audio only), probes it
@@ -30,6 +34,7 @@ on:
   push:
     paths:
       - "projects/video-studio/render-requests/**"
+      - "!projects/video-studio/render-requests/receipts/**"
   workflow_dispatch:
     inputs:
       request:

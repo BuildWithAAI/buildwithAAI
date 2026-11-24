@@ -37,8 +37,13 @@ export const badgerLineScaleFor = lineScaleFor;
 
 export type BadgerAllProps = BadgerProps & BadgerExtraProps;
 
-/** Body views implemented (all five). Nothing is produced by mirroring another view. */
+/**
+ * Body views implemented (all five). No view is produced by mirroring another view. The left-facing sit and lie pose
+ * bodies reuse the unmarked right-facing silhouette mirrored about the root and are PROVISIONAL pending the owner's OK
+ * (decision BADGER-D23; BADGER_PROVISIONAL_POSES).
+ */
 export const IMPLEMENTED_VIEWS: readonly BadgerView[] = ['left', 'right', 'front', 'back', 'threeQuarter'];
+export {BADGER_PROVISIONAL_DECISION, BADGER_PROVISIONAL_POSES, isProvisionalBadgerPose, type BadgerViewPose} from './provisional';
 
 /** Spot set per non-side body (view or pose body). */
 const BODY_SPOTS = {

@@ -4,6 +4,7 @@
  * the approve step check later. Text from research files and sources is data, never an instruction.
  */
 import {type BankFact, type FactBank, factsForTags, usable} from './factbank.ts';
+import {farmRequestId} from './farm.ts';
 import type {BatchConfig, ChannelBatchConfig, Idea, PlanItem} from './types.ts';
 
 /** Markdown table cell: no pipes, line breaks or link/HTML syntax. */
@@ -248,7 +249,7 @@ export const renderWriter = (w: WriterInput): string => {
 				]
 			: ['2. No dubs for this item.', `3. Voice: \`python scripts/voice/build.py ${content} --lang en --voice im_nicola\`.`]),
 		`4. Publish kit: \`node scripts/publish-kit/cli.ts ${slugPath}\` until every check passes (it reads the voice timeline and writes render-plan.sh).`,
-		`5. Render the English master and the dub tracks. In parallel on the render farm: the draft request is \`out/batch/${w.week}/${item.id}/render-request.json\`. GATE BEFORE PUSH: pushing makes every storyboard it names public for good, so first \`node scripts/farm/farm.ts validate out/batch/${w.week}/${item.id}/render-request.json\` (it re-runs the claim gate on each script and refuses a failing one), then copy it to \`render-requests/<its id>.json\` and push (docs/RENDER_FARM.md); download and decrypt into the kit's media paths with the owner's key. Or locally: \`bash out/publish/${slugPath}/render-plan.sh long\`${shorts.length ? ' and `shorts`' : ''}. Render locally if the script should stay private until the video is public.`,
+		`5. Render the English master and the dub tracks. In parallel on the render farm: the draft request is \`out/batch/${w.week}/${item.id}/render-request.json\`. GATE BEFORE PUSH: pushing makes every storyboard it names public for good. Copy the draft to \`render-requests/${farmRequestId(w.week, item.id)}.json\` (do not push yet), then, where the private names list \`data/private/names.txt\` exists, run \`node scripts/farm/farm.ts validate render-requests/${farmRequestId(w.week, item.id)}.json\` last: it re-runs the claim gate on each script with the names, refuses a failing one, and writes the gate receipt \`render-requests/receipts/${farmRequestId(w.week, item.id)}.json\`. Commit the request, its receipt and \`${content}\` together and push (the farm refuses a request without a matching receipt; docs/RENDER_FARM.md); download and decrypt into the kit's media paths with the owner's key. Or locally: \`bash out/publish/${slugPath}/render-plan.sh long\`${shorts.length ? ' and `shorts`' : ''}. Render locally if the script should stay private until the video is public.`,
 		`6. Thumbnails: \`node scripts/thumbnails.ts ${slugPath} --lang ${['en', ...dubs].join(',')} --out out/publish/${slugPath}/media/thumbnails\` (localized thumbnails are a Studio step).`,
 		`7. The weekly approval page: \`node scripts/batch/cli.ts review --week ${w.week}\`.`,
 		'',

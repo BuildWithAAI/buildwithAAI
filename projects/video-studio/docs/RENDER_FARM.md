@@ -9,6 +9,7 @@ timeline (`--fit-to en`) and exported as audio-only tracks, ready to add to the 
 | --- | --- |
 | Workflow | `.github/workflows/video-render.yml` (repository root) |
 | Requests | `projects/video-studio/render-requests/<id>.json` |
+| Gate receipts | `projects/video-studio/render-requests/receipts/<id>.json` (written by `farm.ts validate`, committed with the request; `scripts/farm/receipt.ts`) |
 | Farm CLI | `projects/video-studio/scripts/farm/farm.ts` (each workflow step runs one subcommand) |
 | Gate before push | `projects/video-studio/scripts/farm/gates.ts` (runs the claim gate and the news gate) |
 | Encryption | `projects/video-studio/scripts/farm/crypto.ts` (node:crypto only) |
@@ -41,10 +42,11 @@ push render-requests/<id>.json
 
 1. **plan** reads the request files the push added or changed (`git diff` of the push; deleted files are skipped),
    validates them strictly, checks the checkout (entry files, storyboards, the recipient's public key), runs the claim
-   gate on every script the requests voice or render ([gate before push](#gate-before-push)), and emits the job
+   gate on every script the requests voice or render with `--no-names` ([gate before push](#gate-before-push)),
+   requires each request's [gate receipt](#gate-receipts-the-private-names-check) to match it, and emits the job
    matrices. Props never enter the matrix, so they never reach job names or logs. Any invalid request, failed gate,
-   missing public key, or (for an encrypted request that hands narration over) missing hand-off secret fails the plan,
-   and nothing runs.
+   missing or stale receipt, missing public key, or (for an encrypted request that hands narration over) missing
+   hand-off secret fails the plan, and nothing runs.
 2. **voice** voices every native narration (the masters) in parallel, on Python 3.13. Before anything else runs, the
    voice packages install from the farm's hash lock (`scripts/farm/voice-lock.txt`: `--require-hashes
    --only-binary :all:`, so no package builds or runs code at install time; zh jobs add `voice-lock-cjk.txt`, see
@@ -74,17 +76,23 @@ The runner is Ubuntu 24.04, pinned on purpose: GitHub moves the `ubuntu-latest` 
 
 1. Write `projects/video-studio/render-requests/<id>.json`. The id is the file name: 1-64 lowercase letters, digits
    and dashes. The weekly batch writes a draft per episode (`out/batch/<week>/<item>/render-request.json`,
-   docs/WEEKLY_BATCH.md).
-2. Check it locally **before pushing**: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts validate render-requests/<id>.json`
+   docs/WEEKLY_BATCH.md): copy it to `render-requests/<its id>.json` first (validate checks that the id equals the
+   file name, and writes receipts only for files in `render-requests/`).
+2. Check it **before pushing**, on the computer that has the private names list `data/private/names.txt`:
+   `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts validate render-requests/<id>.json`
    (from `projects/video-studio`; with no file names it checks every request). It validates the request, checks the
-   checkout and runs the claim gate on every script the request voices or renders. Push nothing it refuses: a pushed
-   storyboard is public for good.
-3. Commit and push it, on any branch the `render-farm` environment allows. The push starts the workflow ("Video
-   render farm" in the Actions tab). To render the same request again, change something in it (for example
-   `retentionDays`) and push again.
+   checkout, runs the claim gate WITH the names list on every script the request voices or renders, and writes the
+   request's [gate receipt](#gate-receipts-the-private-names-check), `render-requests/receipts/<id>.json` ("gate
+   receipt … written: commit it with the request"; "unchanged" when the one there still matches). Push nothing it
+   refuses: a pushed storyboard is public for good. A request that fails loses its receipt.
+3. Validate **last**, after the last edit to the request or to any of its `content/<channel>/<slug>/` folders, then
+   commit the request, its receipt and those folders together, and push, on any branch the `render-farm` environment
+   allows. The push starts the workflow ("Video render farm" in the Actions tab). Any edit after validate makes the
+   receipt stale and the plan refuses the request. To render the same request again, change something in it (for
+   example `retentionDays`), validate again, commit both and push. A push that changes only receipts starts no run.
 4. Once the workflow file is on the default branch, it can also be started by hand: Actions → Video render farm →
    Run workflow, with the request id (or `gh workflow run video-render.yml --ref <branch> -f request=<id>`). GitHub
-   only offers `workflow_dispatch` for workflows on the default branch.
+   only offers `workflow_dispatch` for workflows on the default branch. The plan checks the receipt the same way.
 
 Pushes that create a new branch are compared with the head commit's parent only (GitHub gives no base for them), so
 push requests on a branch that already exists, or put them in the branch's last commit.
@@ -151,10 +159,56 @@ show the request voices or renders, as the storyboard is in that commit:
 
 A failing gate refuses the request ("the claim gate FAILS. Fix the script before pushing it"), as does a gate that is
 missing from the checkout or cannot read the storyboard. The gates run as child processes with their output captured
-and never printed: a gate report quotes the script, and the CI log is public. Only the channel, slug, language and the
-verdict are reported. Test renders and the `_farm` fixtures are not gated.
+and never printed: a gate report quotes the script, and the CI log is public. Each run's report goes to a fresh
+temporary folder that is deleted right after. Only the channel, slug, language and the verdict are reported. Test
+renders and the `_farm` fixtures are not gated.
 
 The plan's check is the backstop: once the plan runs, the push has already published the script. Run `validate` first.
+
+### Gate receipts (the private names check)
+
+The claim gate also checks every script against the private names list, `data/private/names.txt`: the real names and
+handles behind every `[named person]` in the research. That list is gitignored and must never reach the repository or
+CI, so the two runs differ:
+
+| Where | Claim gate | Then |
+| --- | --- | --- |
+| `farm.ts validate` (the owner's computer) | With the list (`--names data/private/names.txt`). The farm reads the gate's own report back (never printed) to confirm the names were checked. Without the list, a request with scripts fails ("data/private/names.txt is not on this computer") and no receipt changes. Refused inside GitHub Actions. | Writes `render-requests/receipts/<id>.json` |
+| `plan` (GitHub) | `--no-names`: every other rule still runs on the pushed commit | Requires that receipt to match |
+
+The receipt binds "every claim gate of this request passed with the private names checked" to the exact bytes:
+
+- `requestSha256`: the sha256 of the request file;
+- per gate target (`channel`, `slug`, `lang`; `null` = the storyboard's own language): `claims: "pass"`,
+  `names: "checked"` and `contentSha256`, a sha256 over every file in `content/<channel>/<slug>/` (sorted relative
+  paths, each with its own sha256), so any edit, added, removed or renamed file makes it stale. Files git ignores are
+  left out (they are never committed, so CI never has them); a symbolic link in a script folder is refused;
+- `kind`, `schema` (1), `validatedAt` (ISO time), `claimGate` (the last commit of `scripts/claims` and whether it had
+  uncommitted changes; for the record only, the plan runs the gate of the pushed commit), and `digest`, a sha256 over
+  the rest, so a hand edit shows. Key order and whitespace do not matter.
+
+It holds **no private data**: no names, no hash, size or line count of the names list (a hash of a short list can be
+found by trying names), no gate report text. Everything in it is a request id, a channel, slug or language that the
+request names anyway, or a hash of files that are public in this repository.
+
+The plan refuses the request, in one line that ends with the fix ("run … `farm.ts validate render-requests/<id>.json`
+on your computer (it needs data/private/names.txt) and commit the render-requests/receipts/<id>.json it writes with the
+request"), when the receipt is missing, is not valid JSON or not one validate writes, was changed after validate wrote
+it (digest), is for another request, is stale (the request file or a script folder changed), or does not cover every
+gate target of the request (or lists one the request does not gate).
+
+- **No diff when nothing changed.** Validating again leaves a receipt that still proves the same thing untouched; it is
+  rewritten when the request, a script folder or the claim gate's commit changes.
+- **A failing request loses its receipt.** When validate refuses a request in `render-requests/` (a script fails, a new
+  name in the list matches it, a storyboard is missing), it deletes `render-requests/receipts/<id>.json`, so an older
+  pass can never be pushed. After adding names to the list, run `farm.ts validate` (every request) again.
+- **A receipt is never a request.** The plan lists receipts apart from request files, and the workflow's push trigger
+  leaves `render-requests/receipts/**` out: a push that changes only receipts starts no run and renders nothing. To
+  render after fixing a receipt, push it together with a change to the request (validated again), or run the workflow
+  by hand with the request id.
+- **An empty names list** passes the gate (it is the gate's own rule), but compares nothing: validate warns.
+- **Line endings.** The hashes are over bytes as they are on disk. If git rewrites line endings on checkout
+  (`core.autocrlf` on Windows), validate in a checkout with LF endings, or the plan will find the receipt stale.
 
 ## Multi-language audio tracks (dubs)
 
@@ -266,6 +320,7 @@ Test requests (`encrypt: false`) upload plain files plus a plain checksum file.
 - Request ids, job numbers, composition ids, languages, output paths and the planned matrix.
 - Per output: resolution, duration, frame rate, codecs, file size, render time (the summary tables).
 - Gate failures: the channel, slug and language that failed, and the command to run locally (never the report).
+- Gate receipts: whether each matches (with the time validate wrote it), or what is wrong with it, by file and target.
 - For encrypted requests, only a heartbeat while the tool runs, with frame counts parsed from Remotion's progress
   lines (numbers only). Everything Remotion or the voice build prints goes to a log file that is encrypted into the
   artifact.
@@ -305,6 +360,10 @@ Known residual risks (accepted, stated plainly):
   build tools (setuptools, Cython) without hash checks.
 - Anyone who can push to a branch the `render-farm` environment allows can change the workflow and read the hand-off
   secret. Keep that branch list short (step 3 above).
+- A gate receipt is evidence, not a signature: anyone who can push can write one with the farm's own code without
+  having the names list. It stops the accidents (a request pushed without validate, a script edited after it, a
+  hand-edited or half-merged receipt), not a malicious pusher, who could as well change the workflow. The names check
+  is only as current as the last `validate` against the current list.
 
 ## Costs
 
@@ -382,7 +441,8 @@ commits at least a month old.
   outputs to the owner's key). Copy it into `render-requests/` once the owner's public key and `RENDER_HANDOFF_KEY` are
   set, push, then download and decrypt its artifacts with the owner's private key.
 
-All are fast and non-sensitive. Push a change to any file in `render-requests/` to run it. The Spanish and Portuguese
+All are fast and non-sensitive, and render no script, so they need no gate receipt. Push a change to any request file
+in `render-requests/` to run it. The Spanish and Portuguese
 fixture lines are machine translations (`translation.status: "machine"`), so the voice step warns about them; they are
 test audio only.
 
@@ -438,6 +498,11 @@ to summary.
 | "scripts/farm/keys/owner.pub.pem is not in this commit" | The owner's key pair is not set up yet (step 1 above). Test requests do not need it. |
 | "the secret RENDER_HANDOFF_KEY is not set" / "is shorter than 32 characters" | Set the environment secret (step 2 above), then push a change to the request. Requests without voice entries do not need it. |
 | "the claim gate FAILS" / "could not check it" | Run the printed `node scripts/claims/check.ts …` command locally, fix the script, validate again. Never push a script that fails. |
+| "no gate receipt (render-requests/receipts/<id>.json)" | The request was pushed without its receipt. Run `farm.ts validate render-requests/<id>.json` on the computer with `data/private/names.txt`, commit the receipt, and push it with a change to the request (validated again), or run the workflow by hand: a receipt alone starts no run. |
+| "the gate receipt … is stale: content/<channel>/<slug> changed" / "the request file changed" | Something changed after validate (or was not committed: validate hashes the files on disk). Validate again, commit the request, its receipt and the script folders together. |
+| "the gate receipt … does not cover …" / "was changed after validate wrote it" / "is not one validate writes" | The receipt was edited, merged by hand or made for another version of the request. Delete it, validate again and commit the new one. |
+| validate: "data/private/names.txt is not on this computer" | Validate only where the private names list exists (the owner's computer). Receipts are left as they are. |
+| validate: "removed render-requests/receipts/<id>.json" | The request no longer passes (for example a name added to the list now matches its script). Fix it and validate again before any push. |
 | "jobs[n] renders an episode or show … its props must name channel and slug" | Add `channel` and `slug` to the job's props so the farm knows which script to gate. |
 | "voice[n].fitTo is "en", but the request has no voice entry for en" | Add the native master entry of the same channel and slug to the request. |
 | "the es dub does not fit the en timeline (build.py exit 3)" | Shorten the translation of the scenes named in the (encrypted) voice log, then push again. |
@@ -447,5 +512,5 @@ to summary.
 | A job fails at once with a message that the branch is not allowed to deploy to `render-farm` | The push came from a branch the environment does not allow (step 3 above). |
 | Render failed | For test requests the log is in the job. For encrypted requests, download the artifact and decrypt `logs/<artifact>.log.enc`. |
 | A job failed for an outside reason (network) | "Re-run failed jobs" on the run page works: artifacts are uploaded with `overwrite: true` and narration artifacts live for a day. |
-| Nothing ran after a push | Only pushes that change `projects/video-studio/render-requests/**` start the workflow. |
+| Nothing ran after a push | Only pushes that change `projects/video-studio/render-requests/**` start the workflow, and `render-requests/receipts/**` does not count. |
 | `gh run download` fails with "Forbidden" in a cloud session | Artifact downloads redirect to `*.blob.core.windows.net` (for example `productionresultssa6.blob.core.windows.net`), which a restricted session network blocks. Download on your own computer, or have the host allowed. |

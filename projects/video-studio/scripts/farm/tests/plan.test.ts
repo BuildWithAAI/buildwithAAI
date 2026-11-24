@@ -5,7 +5,7 @@ import {mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync} from 'node:f
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {after, test} from 'node:test';
-import {buildPlan, classifyPaths, detectChanges, PLAN_LIMITS, voiceArtifact, voiceNeeds, type ChangeInput, type Git} from '../plan.ts';
+import {buildPlan, classifyPaths, detectChanges, PLAN_LIMITS, RECEIPTS_DIR, voiceArtifact, voiceNeeds, type ChangeInput, type Git} from '../plan.ts';
 import {validateRequest, type RenderRequest} from '../request.ts';
 
 const req = (raw: Record<string, unknown>, id = raw.id as string): RenderRequest => {
@@ -98,6 +98,15 @@ test('classifyPaths keeps <id>.json directly in render-requests/, flags bad name
 	assert.deepEqual(c.ids, ['a']);
 	assert.deepEqual(c.badNames, ['B c.json']);
 	assert.deepEqual(c.ignored, ['render-requests/README.md', 'render-requests/sub/x.json', 'src/x.ts']);
+	assert.deepEqual(c.receipts, []);
+});
+
+test('classifyPaths lists gate receipts apart: a receipt is never a request id, even one named like a request', () => {
+	const c = classifyPaths([`${RECEIPTS_DIR}/a.json`, `${RECEIPTS_DIR}/Bad Name.json`, `${RECEIPTS_DIR}/nested/x.json`, 'render-requests/receipts.json']);
+	assert.equal(RECEIPTS_DIR, 'render-requests/receipts');
+	assert.deepEqual(c.receipts, ['render-requests/receipts/Bad Name.json', 'render-requests/receipts/a.json', 'render-requests/receipts/nested/x.json']);
+	assert.deepEqual(c.ids, ['receipts'], 'render-requests/receipts.json is a request file named "receipts", not the folder');
+	assert.deepEqual([c.badNames, c.ignored], [[], []]);
 });
 
 // ---- detectChanges against a real git repository -------------------------------------------------------------
@@ -145,6 +154,14 @@ test('push: added and modified request files render; deleted ones and other file
 	assert.deepEqual(ch.ids, ['new', 'old']);
 	assert.deepEqual(ch.ignored, ['render-requests/notes.md']);
 	assert.equal(ch.how, 'files changed by this push');
+});
+
+test('push: a commit that changes only a gate receipt renders nothing; the receipt is listed apart', () => {
+	write('render-requests/receipts/old.json', '{"kind": "zoora-farm-gate-receipt"}');
+	const c = commit('receipt only');
+	const ch = detectChanges(input({before: c2, head: c}), git);
+	assert.deepEqual([ch.ids, ch.badNames, ch.ignored, ch.errors], [[], [], [], []]);
+	assert.deepEqual(ch.receipts, ['render-requests/receipts/old.json']);
 });
 
 test('push: a rename counts as a new request file', () => {

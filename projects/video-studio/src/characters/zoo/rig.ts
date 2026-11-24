@@ -151,16 +151,29 @@ const monotoneThrough = (m: number, t: number, a: number): number => {
 };
 
 /**
- * Overlapping action on the first half of a keyed gesture (repair round 2, ZOO-P4). The elbow LEADS (its curve runs on
- * 0.5 x (2a)^elbowLead, ahead of poseAmount), the shoulder LAGS (0.5 x (2a)^shoulderLag) and first gathers the elbow in by
- * up to `tuck` deg (sin^2 bump, gone by `tuckUntil`), so the forearm lifts before the upper arm opens and the hand rises
- * before it travels out. Both warps meet poseAmount at 0.5, so ARM_POINT_MID is still exactly the pose at 0.5. Why: in
- * the proof staging (decision INT-P2, Badger 560 u away) an arm that opens while the forearm is still low sweeps the fist
- * past Badger's forehead (6 u in a test render); with this timing the closest approach is ~31 u (27 px) and the elbow stays
- * outside the overshirt (x >= 101), so the upper arm is visible throughout (no chicken wing).
+ * Overlapping action on the first half of a keyed gesture (repair round 2, ZOO-P4; round 3 re-timed). The elbow LEADS
+ * (its curve runs on 0.5 x (2a)^elbowLead, ahead of poseAmount), the shoulder LAGS (0.5 x (2a)^shoulderLag) and, while the
+ * arm RISES, first gathers the elbow in by up to `tuck` deg (sin^2 bump, gone by `tuckUntil`; armAnglesFor's `tuck`
+ * option scales it), so the forearm lifts before the upper arm opens and the hand rises before it travels out. Both
+ * warps meet poseAmount at 0.5, so ARM_POINT_MID is still exactly the pose at 0.5. Why: in the proof staging (decision
+ * INT-P2, Badger 560 u away) an arm that opens while the forearm is still low sweeps the fist past Badger's forehead.
+ * Round 3: shoulderLag 2.5 -> 1.4. At 2.5 the upper arm still hung (0-7 deg) when the forearm crossed horizontal, so for
+ * 3-4 frames the elbow stayed pinned at the waist under a level forearm (a "tray-carry" in-between); now the upper arm is
+ * abducted ~13 deg there and opens with the forearm. The tuck shrinks to 4 deg so it does not cancel that early opening.
  */
-export const POINT_OVERLAP = {elbowLead: 0.65, shoulderLag: 2.5, tuck: 6, tuckUntil: 0.4} as const;
+export const POINT_OVERLAP = {elbowLead: 0.65, shoulderLag: 1.4, tuck: 4, tuckUntil: 0.4} as const;
 const leadLag = (a: number, p: number) => (a >= 0.5 ? a : 0.5 * Math.pow(2 * a, p));
+
+/** Options for armAnglesFor. */
+export type ArmAngleOptions = {
+	/**
+	 * Fraction (0..1) of the anticipation tuck (POINT_OVERLAP.tuck) to apply; default 1. The tuck belongs to the RAISE:
+	 * pass 0 while the arm comes back down (ZooRig `pointTuck`), or the elbow pulls in toward the body at the end of the
+	 * lowering (the tuck played in reverse). It only acts below poseAmount POINT_OVERLAP.tuckUntil, so switching it while
+	 * the arm is above that (e.g. during the hold) never pops.
+	 */
+	tuck?: number;
+};
 
 /**
  * Joint angles along the gesture. With an in-between key (ARM_POINT_MID for ARM_POINT) each joint follows a monotone
@@ -168,11 +181,17 @@ const leadLag = (a: number, p: number) => (a >= 0.5 ? a : 0.5 * Math.pow(2 * a, 
  * overshoot, with POINT_OVERLAP timing on the first half. Without one: a slightly overlapping blend (shoulder leads,
  * wrist last).
  */
-export const armAnglesFor = (target: ArmAngles, amount: number, mid: ArmAngles | null = target === ARM_POINT ? ARM_POINT_MID : null): ArmAngles => {
+export const armAnglesFor = (
+	target: ArmAngles,
+	amount: number,
+	mid: ArmAngles | null = target === ARM_POINT ? ARM_POINT_MID : null,
+	opts: ArmAngleOptions = {},
+): ArmAngles => {
 	const a = clamp01(amount);
 	if (mid) {
 		const o = POINT_OVERLAP;
-		const tuck = a < o.tuckUntil ? o.tuck * Math.pow(Math.sin((Math.PI * a) / o.tuckUntil), 2) : 0;
+		const k = clamp01(opts.tuck ?? 1);
+		const tuck = a < o.tuckUntil ? k * o.tuck * Math.pow(Math.sin((Math.PI * a) / o.tuckUntil), 2) : 0;
 		return {
 			shoulder: monotoneThrough(mid.shoulder, target.shoulder, leadLag(a, o.shoulderLag)) + tuck,
 			elbow: monotoneThrough(mid.elbow, target.elbow, leadLag(a, o.elbowLead)),

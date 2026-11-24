@@ -1,7 +1,8 @@
 // node --test scripts/farm/tests/farm.test.ts   (needs git, tar and bash)
-// End-to-end runs of the CLI steps in a throwaway project: plan from a real git push, the claim gates (a fake gate
-// runner), preflight, a fake Remotion and a fake voice build (so no browser or model is needed), dubs fitted to their
-// master, probe, public-key encryption of outputs, the narration hand-off, and the run summary.
+// End-to-end runs of the CLI steps in a throwaway project: validate (which writes the gate receipt) and plan from a
+// real git push, the claim gates (a fake gate runner; receipt.test.ts covers receipts and the real gate), preflight, a
+// fake Remotion and a fake voice build (so no browser or model is needed), dubs fitted to their master, probe,
+// public-key encryption of outputs, the narration hand-off, and the run summary.
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
@@ -20,6 +21,7 @@ import {
 	cmdProbe,
 	cmdRender,
 	cmdSummary,
+	cmdValidate,
 	cmdVoiceBuild,
 	cmdVoiceMasterUnpack,
 	cmdVoicePack,
@@ -109,6 +111,7 @@ const secretEpisode = {
 
 mkdirSync(project, {recursive: true});
 git('init', '-q', '-b', 'main');
+put('.gitignore', 'data/\n');
 put('src/index.ts', '');
 put('src/episode/index.ts', '');
 put('src/charts/dev/index.ts', '');
@@ -118,23 +121,23 @@ put('content/zoora-ai/ep-secret/storyboard.es.json', '{}');
 put('content/zoora-ai/ep-secret/storyboard.pt-br.json', '{}');
 put('scripts/farm/keys/owner.pub.pem', ownerKeys.publicKey.export({type: 'spki', format: 'pem'}) as string);
 put('render-requests/.keep', '');
+// The private names list (invented names): gitignored, so it is never committed, as in the real repository.
+put('data/private/names.txt', '# invented names only\nTesty McFakename\n@fakehandle123\n');
 git('add', '-A');
 git('commit', '-q', '-m', 'base');
 const base = git('rev-parse', 'HEAD');
-put('render-requests/farm-selftest.json', selftest);
-put('render-requests/ep-secret.json', secretEpisode);
-git('add', '-A');
-git('commit', '-q', '-m', 'requests');
-const head = git('rev-parse', 'HEAD');
 
 type Captured = {ctx: Ctx; logs: string[]; outputs: () => Record<string, string>; summary: () => string};
 /** The claim gates as the tests see them: every target passes unless listed in `failing` ("channel/slug/lang"). */
 const gateCalls: string[] = [];
+const gateModes: string[] = [];
 let failing = new Set<string>();
-const fakeGates: GateRunner = (gate, t: GateTarget) => {
+const fakeGates: GateRunner = (gate, t: GateTarget, names) => {
 	const key = `${t.channel}/${t.slug}/${t.lang ?? '*'}`;
 	gateCalls.push(`${gate}:${key}`);
-	return failing.has(key) ? 'fail' : 'pass';
+	gateModes.push(names);
+	const status = failing.has(key) ? 'fail' : 'pass';
+	return {status, names: gate === 'claims' && status === 'pass' && names === 'check' ? 'checked' : 'unchecked'};
 };
 let n = 0;
 const harness = (env: Record<string, string>): Captured => {
@@ -169,6 +172,19 @@ const quiet = async <T,>(fn: () => T | Promise<T>): Promise<T> => {
 		console.log = orig;
 	}
 };
+
+// The owner's step before the push: validate (with the names list) writes ep-secret's gate receipt, and the receipt is
+// committed with the request. The self-test renders no script, so it needs none.
+put('render-requests/farm-selftest.json', selftest);
+put('render-requests/ep-secret.json', secretEpisode);
+const validated = harness({});
+cmdValidate(validated.ctx, [join(project, 'render-requests/ep-secret.json'), join(project, 'render-requests/farm-selftest.json')]);
+assert.match(validated.logs.join('\n'), /ep-secret\.json: ok [^\n]*private names checked\); gate receipt render-requests\/receipts\/ep-secret\.json written/);
+assert.ok(!existsSync(join(project, 'render-requests/receipts/farm-selftest.json')), 'a request without scripts gets no receipt');
+git('add', '-A');
+git('commit', '-q', '-m', 'requests');
+const head = git('rev-parse', 'HEAD');
+assert.equal(git('ls-files', 'data'), '', 'the names list must never be committed');
 
 test('plan: an encrypted request with narration but no RENDER_HANDOFF_KEY fails the whole plan before anything runs', async () => {
 	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: base, FARM_HEAD: head});
@@ -212,8 +228,12 @@ test('plan: gate before push: a script whose claim gate fails is refused, and no
 
 test('plan: matrices for the push (masters, dubs after their master), props and narration never in the outputs or the summary', () => {
 	gateCalls.length = 0;
+	gateModes.length = 0;
 	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: base, FARM_HEAD: head, [KEY_ENV]: KEY});
 	cmdPlan(h.ctx);
+	assert.deepEqual([...new Set(gateModes)], ['skip'], 'CI runs every claim gate with --no-names');
+	assert.match(h.summary(), /Private names were checked on the owner's computer before the push \(gate receipts match\): ep-secret \(4 script\(s\), validated \d{4}-\d{2}-\d{2}T/);
+	assert.match(h.summary(), /Gate receipts changed: 1 \(a receipt is not a request: it never starts a render\)/);
 	const o = h.outputs();
 	const render = JSON.parse(o.render_matrix).include;
 	const voice = JSON.parse(o.voice_matrix).include;

@@ -8,6 +8,7 @@ import {RigCompositions} from './DevRig';
 import {Head, headGeom} from '../parts/heads/Head';
 import {NeckFront} from '../parts/Neck';
 import {LEFT_RIG} from '../parts/rigLeft';
+import {LineScaleContext} from '../parts/shared';
 import {LEFT_SPOTS, BadgerSpot} from '../spots';
 
 /**
@@ -191,24 +192,51 @@ const Anim: React.FC = () => {
 	);
 };
 
-/** One head view at a known origin/scale (for overlays against the sheet crops). */
-const HeadAt: React.FC<{view: BadgerHead; ox: number; oy: number; scale: number; expression: Expression}> = ({view, ox, oy, scale, expression}) => (
+type HeadAtProps = {
+	view: BadgerHead;
+	ox: number;
+	oy: number;
+	scale: number;
+	expression: Expression;
+	/** Optional QA controls (round 3): the sound-clip mouth, folded ears, judging look and a line-weight multiplier. */
+	mouthOpen?: number;
+	earsBack?: number;
+	judge?: number;
+	lineScale?: number;
+};
+
+/** One head view at a known origin/scale (for overlays against the sheet crops and zoomed junction checks). */
+const HeadAt: React.FC<HeadAtProps> = ({view, ox, oy, scale, expression, mouthOpen = 0, earsBack, judge = 0, lineScale = 1}) => (
 	<AbsoluteFill style={{background: BG}}>
 		<svg width="100%" height="100%" viewBox="0 0 600 500">
 			<g transform={`translate(${ox} ${oy}) scale(${scale})`}>
-				<Head view={view} state={{expression, blink: 0, judge: 0, earsBack: 0, lookX: 0, lookY: 0}} />
+				<LineScaleContext.Provider value={lineScale}>
+					<Head
+						view={view}
+						state={{
+							expression,
+							blink: 0,
+							judge,
+							earsBack: earsBack ?? (expression === 'worried' ? 0.7 : expression === 'shocked' ? 0.15 : 0),
+							lookX: 0,
+							lookY: 0,
+							mouthOpen,
+						}}
+					/>
+				</LineScaleContext.Provider>
 			</g>
 		</svg>
 	</AbsoluteFill>
 );
 
-/** mouthOpen (sound-clip control) on four head views at 0, 0.5 and 1. */
-const MOUTH_HEADS: BadgerHead[] = ['front', 'threeQuarterRightScreen', 'profileRightScreen', 'upLeftScreen'];
+/** mouthOpen (sound-clip control) on six head views at 0, 0.3, 0.6 and 1 (round 3: every amount must read as a bark or gasp). */
+const MOUTH_HEADS: BadgerHead[] = ['front', 'threeQuarterRightScreen', 'threeQuarterLeftScreen', 'profileRightScreen', 'profileLeftScreen', 'upLeftScreen'];
+const MOUTH_AMOUNTS = [0, 0.3, 0.6, 1];
 const MouthOpenGrid: React.FC = () => (
 	<AbsoluteFill style={{background: BG}}>
-		<svg width="100%" height="100%" viewBox="0 0 1500 1080">
+		<svg width="100%" height="100%" viewBox="0 0 1940 1700">
 			{MOUTH_HEADS.map((v, row) =>
-				[0, 0.5, 1].map((amt, col) => {
+				MOUTH_AMOUNTS.map((amt, col) => {
 					const c = headCentre(v);
 					return (
 						<g key={`${v}${amt}`} transform={`translate(${250 + col * 480} ${140 + row * 265}) scale(1.6) translate(${-c.x} ${-c.y})`}>
@@ -217,8 +245,8 @@ const MouthOpenGrid: React.FC = () => (
 					);
 				}),
 			)}
-			{[0, 0.5, 1].map((amt, col) => (
-				<text key={amt} x={250 + col * 480} y={1065} textAnchor="middle" fontFamily="sans-serif" fontSize={26} fill={BRAND.nearBlack}>
+			{MOUTH_AMOUNTS.map((amt, col) => (
+				<text key={amt} x={250 + col * 480} y={1685} textAnchor="middle" fontFamily="sans-serif" fontSize={26} fill={BRAND.nearBlack}>
 					{`mouthOpen ${amt}`}
 				</text>
 			))}
@@ -260,7 +288,7 @@ export const DevRoot: React.FC = () => (
 		/>
 		<Composition id="BadgerHeads" component={Heads} durationInFrames={1} fps={30} width={2450} height={440} defaultProps={{expression: 'neutral' as Expression, judge: 0}} />
 		<Composition id="BadgerExpressions" component={Expressions} durationInFrames={1} fps={30} width={2200} height={600} />
-		<Composition id="BadgerMouthOpen" component={MouthOpenGrid} durationInFrames={1} fps={30} width={1500} height={1080} />
+		<Composition id="BadgerMouthOpen" component={MouthOpenGrid} durationInFrames={1} fps={30} width={1940} height={1700} />
 		<Composition
 			id="BadgerBust"
 			component={SingleBust}
@@ -277,7 +305,7 @@ export const DevRoot: React.FC = () => (
 			fps={30}
 			width={600}
 			height={500}
-			defaultProps={{view: 'profileRightScreen' as BadgerHead, ox: 300, oy: 300, scale: 2, expression: 'neutral' as Expression}}
+			defaultProps={{view: 'profileRightScreen' as BadgerHead, ox: 300, oy: 300, scale: 2, expression: 'neutral' as Expression} as HeadAtProps}
 		/>
 		<ViewCompositions />
 		<RigCompositions />
