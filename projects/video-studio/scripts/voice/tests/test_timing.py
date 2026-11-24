@@ -80,3 +80,46 @@ class FitMaths(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FitScene(unittest.TestCase):
+    """pipeline._fit_scene with a fake Kokoro whose speech is a / speed + b ms."""
+
+    class FakeSynth:
+        def __init__(self, a, b=400.0):
+            self.a, self.b, self.calls = a, b, []
+
+        def speak(self, phonemes, voice, speed):
+            from voicelib.synth import Take
+
+            self.calls.append(speed)
+            ms = self.a / speed + self.b
+            return Take(audio=[0.0] * int(ms * 24), timings=[], speed=speed)
+
+    def fit(self, synth, master):
+        from voicelib.pipeline import _fit_scene
+
+        return _fit_scene(synth, "x", "em_alex", 1.0, master, T.FIT_MIN_TAIL_MS)
+
+    def test_speeds_up_to_fit(self):
+        synth = self.FakeSynth(5000)  # 5400 ms at 1.0; the master scene has room for 5050
+        take, over, tries = self.fit(synth, {"speechMs": 4800, "durationMs": 5200})
+        self.assertEqual(over, 0)
+        self.assertGreater(take.speed, 1.0)
+        self.assertLessEqual(take.ms + T.FIT_MIN_TAIL_MS, 5200)
+        self.assertTrue(T.close_enough(take.ms, 4800))
+        self.assertLessEqual(len(synth.calls), 3)
+
+    def test_slows_down_to_match_the_master_pacing(self):
+        take, over, _ = self.fit(self.FakeSynth(3500), {"speechMs": 4400, "durationMs": 4800})
+        self.assertEqual(over, 0)
+        self.assertLess(take.speed, 1.0)
+        self.assertGreaterEqual(take.speed, T.SPEED_MIN)
+
+    def test_overflow_is_measured_at_max_speed(self):
+        synth = self.FakeSynth(9000)  # even at 1.15: 8226 ms
+        take, over, _ = self.fit(synth, {"speechMs": 4800, "durationMs": 5200})
+        self.assertIn(T.SPEED_MAX, synth.calls)
+        self.assertEqual(take.speed, T.SPEED_MAX)
+        self.assertEqual(over, T.overflow_ms(9000 / 1.15 + 400, 5200))
+        self.assertGreater(over, 3000)

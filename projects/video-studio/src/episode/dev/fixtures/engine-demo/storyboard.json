@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "engine-demo",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "POV: You become a top caller (engine demo fixture)",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "You post one chart. Ten thousand strangers buy your coin within the hour.",
+      "onScreen": {"kicker": "POV", "title": "You become a top caller", "subtitle": "A fictional story about a very real pattern."},
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "lookUp"}
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Here is how the game works. First, you buy early and quietly. Then you post the call to your followers. They buy, the price jumps, and you sell into their buying. [src:demo-pattern]",
+      "onScreen": {
+        "title": "How the call works",
+        "bullets": ["Buy early, quietly", "Post the call", "Followers buy the jump", "You sell into them"],
+        "cues": ["buy", "post", "they", "sell"],
+        "lowerThird": ["ZOO", "Host · Zoora AI"]
+      },
+      "badger": {"present": true, "reaction": "judge"}
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "On the chart it looks like this. A slow launch, a sudden pump when you post, and then the floor disappears.",
+      "onScreen": {"pair": "$DEMO / SOL", "cues": ["pump", "floor"]},
+      "chart": {"seed": 51, "illustrative": true},
+      "zoo": {"expression": "worried"},
+      "badger": {"present": true, "reaction": "worried"},
+      "transitionIn": "fade"
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "So before you follow any caller, do three things. Check who bought before the post. Check how fast they sold. And never buy the candle everyone is screaming about.",
+      "onScreen": {
+        "title": "Before you follow a caller",
+        "steps": ["Check who bought before the post", "Check how fast they sold", "Never buy the screaming candle"],
+        "cues": ["who", "fast", "never"]
+      },
+      "badger": {"present": false}
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "As one caller put it: Nobody checks the wallet. Everybody checks the chart.",
+      "onScreen": {
+        "quote": "Nobody checks the wallet. Everybody checks the chart.",
+        "attribution": "a top caller (fictional composite)",
+        "source": "Fictional dialogue · composite character"
+      },
+      "badger": {"present": true, "reaction": "shocked"},
+      "transitionIn": "slide"
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "If this saved you from one bad trade, subscribe. Badger watches the charts so you don't have to.",
+      "onScreen": {"title": "One bad trade avoided is worth it", "cues": ["subscribe"]},
+      "badger": {"present": true, "reaction": "happy"}
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "Next time: you build an AI trading agent. What could go wrong?",
+      "onScreen": {"title": "Next: you build an AI trading agent"},
+      "badger": {"present": true, "reaction": "lookUp"},
+      "minDurationSec": 20,
+      "transitionIn": "fade"
+    }
+  ],
+  "sources": [
+    {"id": "demo-pattern", "title": "Example source (dev fixture)", "url": "https://example.com/caller-pattern", "accessed": "2026-11-24", "status": "unverified"}
+  ],
+  "shorts": [{"id": "short1", "sceneIds": ["s01", "s03", "s06"], "title": "The caller's chart"}],
+  "thumbnails": [
+    {"id": "a", "text": "TOP CALLER?", "expression": "neutral", "badger": true},
+    {"id": "b", "text": "THE FLOOR VANISHED", "expression": "worried", "badger": true},
+    {"id": "c", "text": "WHO SOLD FIRST", "expression": "shocked", "badger": false}
+  ]
+}

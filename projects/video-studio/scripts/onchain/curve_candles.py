@@ -19,6 +19,11 @@ transactions fetched one by one the index comes from the signature listing's
 transactionIndex (when the node returns it; otherwise they sort last in the slot
 and are flagged indexed=false).
 
+Curves quoted in another token (the curve's SOL does not move but one other mint
+does) are priced in that token: quote_mint is recorded per trade, and the field
+named price_sol_per_token then holds quote-per-token (sol_amount is None,
+quote_amount_native holds the quote). Normalised charts are unaffected.
+
 Output: {"trades": [...], "candles": [...], "meta": {...}}; candles come from
 candles.build_candles (t = bucket start in unix seconds, OHLC in SOL per token,
 volume in SOL, empty buckets flat at the previous close) and pass
@@ -101,6 +106,21 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
                 continue  # stablecoin-quoted pool: not comparable, skip
             pt["price_sol_per_token"] = pt.get("price_quote_per_token")
             pt["sol_amount"] = pt.get("quote_amount")
+        pt["quote_mint"] = "SOL"
+        # Some 2026 Pump.fun curves are quoted in another token (e.g. the platform's
+        # own token): the curve's SOL does not move, another mint does. Use it.
+        if not pt.get("price_sol_per_token"):
+            others = {m: v for m, v in trades.token_deltas_by_owner(tx).get(venue, {}).items()
+                      if m != mint and v[0] != 0}
+            tok_d = trades.token_deltas_by_owner(tx).get(venue, {}).get(mint, (0, 6))[0]
+            if len(others) == 1:
+                qm, (qd, qdec) = next(iter(others.items()))
+                if (qd > 0) != (tok_d > 0):
+                    q = abs(qd) / 10 ** qdec
+                    pt["quote_mint"] = qm
+                    pt["quote_amount_native"] = q
+                    pt["price_sol_per_token"] = q / pt["token_amount"] if pt["token_amount"] else None
+                    pt["sol_amount"] = None  # not SOL; see quote_amount_native
         pt["indexed"] = i is not None
         pt["signers"] = [k["pubkey"] if isinstance(k, dict) else k
                          for k in tx["transaction"]["message"]["accountKeys"]
@@ -114,9 +134,16 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
 
 
 def to_candles(trs, t_ref, before, after, bucket):
-    """5-s (or --bucket) OHLCV via candles.build_candles (shared with other cases)."""
+    """5-s (or --bucket) OHLCV via candles.build_candles (shared with other cases).
+    Only trades priced in the curve's dominant quote (SOL, or the one other token
+    the curve is quoted in) are used, so units never mix."""
+    q = collections.Counter(t.get("quote_mint", "SOL") for t in trs if t.get("price_sol_per_token"))
+    dom = q.most_common(1)[0][0] if q else "SOL"
+    trs = [t for t in trs if t.get("quote_mint", "SOL") == dom]
     rows = [{"blockTime": t["blockTime"], "slot": t["slot"], "tx_index": t.get("tx_index"),
-             "price": t.get("price_sol_per_token"), "volume": t["sol_amount"], "side": t["side"]} for t in trs]
+             "price": t.get("price_sol_per_token"),
+             "volume": t["sol_amount"] if t.get("sol_amount") is not None else t.get("quote_amount_native", 0.0),
+             "side": t["side"]} for t in trs]
     cs = candles_mod.build_candles(rows, t_ref - before, t_ref + after + 1, step=bucket)
     candles_mod.validate(cs)
     return cs
@@ -138,6 +165,9 @@ def main():
     venue = a.venue_account or bonding_curve(a.mint)
     trs, meta = collect(rpc, a.mint, venue, a.t_ref, a.before, a.after, a.dense_min)
     cs = to_candles(trs, a.t_ref, a.before, a.after, a.bucket)
+    qc = collections.Counter(t.get("quote_mint", "SOL") for t in trs if t.get("price_sol_per_token"))
+    meta["quote_dominant_is_sol"] = (qc.most_common(1)[0][0] == "SOL") if qc else True
+    meta["trades_other_quote_excluded"] = sum(qc.values()) - (qc.most_common(1)[0][1] if qc else 0)
     meta.update({"mint": a.mint, "venue_account": venue, "t_ref": a.t_ref, "before": a.before,
                  "after": a.after, "bucket": a.bucket, "n_trades": len(trs), "rpc": rpc.stats})
     with open(a.out + ".tmp", "w") as f:

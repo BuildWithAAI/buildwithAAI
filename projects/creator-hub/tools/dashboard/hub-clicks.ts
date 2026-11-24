@@ -48,7 +48,7 @@ export const readHubDb = (file: string, range: TimeRange = ALL_TIME): Result => 
 			.prepare(OUTCOMES_SQL)
 			.all(range.start, range.end)
 			.map((r) => ({offerId: String(r.offer_id), outcome: String(r.outcome), requests: Number(r.n)}));
-		return {hub: {origin: `hub database ${file}`, clicks, outcomes}, issues: []};
+		return {hub: {origin: 'hub database, counted with the hub rule', clicks, outcomes}, issues: []};
 	} catch (err) {
 		const hint = /unable to open|readonly|locked/i.test((err as Error).message)
 			? ' (copy hub.sqlite together with its -wal and -shm files, or stop the server first, or use the admin CSV export)'
@@ -95,7 +95,7 @@ export const parseHubCsv = (text: string, file: string, range: TimeRange = ALL_T
 			else clicks.push(clickCount(cell('video_id') || null, offerId, cell('source') || null, n));
 		}
 		if (range.start > ALL_TIME.start || range.end < ALL_TIME.end) issues.push({level: 'note', where: file, message: 'video-clicks.csv has no dates, so --from/--to do not apply to it; export it with ?days=N instead'});
-		hub = {origin: `hub export ${file} (counted by the hub)`, clicks, outcomes: null};
+		hub = {origin: 'video-clicks.csv export, counted by the hub', clicks, outcomes: null};
 	} else if (RAW_REQUIRED.every((name) => col(name) !== -1)) {
 		const first = new Map<string, {ts: number; videoId: string; offerId: string; source: string}>();
 		const outcomes = new Map<string, number>();
@@ -131,7 +131,7 @@ export const parseHubCsv = (text: string, file: string, range: TimeRange = ALL_T
 			else counts.set(key, parsed);
 		}
 		hub = {
-			origin: `hub click log ${file} (counted here: humans, once per visitor, offer and day)`,
+			origin: 'clicks.csv export, counted here with the hub rule',
 			clicks: [...counts.values()],
 			outcomes: [...outcomes].map(([key, requests]) => {
 				const [offerId, outcome] = key.split('\u0000') as [string, string];

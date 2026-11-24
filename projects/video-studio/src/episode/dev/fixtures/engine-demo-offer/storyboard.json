@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "engine-demo-offer",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Offer CTA with disclosure (engine demo fixture)",
+  "fiction": false,
+  "offers": ["security-checklist"],
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Most wallet drains start with one careless click.",
+      "onScreen": {"title": "One careless click"},
+      "badger": {"present": true, "reaction": "judge"}
+    },
+    {
+      "id": "s02",
+      "type": "cta",
+      "narration": "I made a free crypto security checklist. Full disclosure: I built this checklist and it is my own product. Grab it at the link, and subscribe for the next one.",
+      "onScreen": {
+        "title": "Free crypto security checklist",
+        "button": "Get the checklist",
+        "disclosure": "I built this checklist and it is my own product.",
+        "cues": ["grab"]
+      },
+      "badger": {"present": true, "reaction": "happy"}
+    },
+    {
+      "id": "s03",
+      "type": "endscreen",
+      "narration": "Stay safe out there.",
+      "onScreen": {"title": "Stay safe out there"},
+      "badger": {"present": true, "reaction": "lookUp"},
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [],
+  "shorts": [{"id": "short1", "sceneIds": ["s01", "s02"], "title": "Checklist"}]
+}

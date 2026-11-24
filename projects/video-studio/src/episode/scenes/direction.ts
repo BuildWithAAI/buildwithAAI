@@ -180,16 +180,15 @@ export const directScene = (d: DirectionInput): Direction => {
 			})
 		: null;
 	const badgerOn = !!sc.badger?.present && !!d.badgerPlace;
-	const badger = badgerOn
-		? scheduleBadger({fps, frames, seed: `${seed}:badger`, reaction: sc.badger?.reaction ?? 'neutral', at: d.badgerInsert ? 10 : reactionAt, place: d.badgerPlace as BadgerPlace})
-		: null;
-	// vertical insert: cut to Badger a little before his reaction, hold at least 1.5 s (or to the end of the scene)
+	// insert shot (vertical): cut to Badger 10 f before his reaction, hold 1.5-2.5 s (to the end when that is close)
 	let insert: Direction['insert'] = null;
 	if (badgerOn && d.badgerInsert) {
 		const len = Math.max(45, Math.min(75, frames - reactionAt + 10));
 		const from = Math.max(0, Math.min(reactionAt - 10, frames - len));
-		insert = {from, to: Math.min(frames + 1000, from + len)};
-		if (from + len >= frames - 6) insert.to = frames + 1000; // runs to the cut: no cut back for the last few frames
+		insert = {from, to: from + len >= frames - 6 ? frames + 1000 : from + len};
 	}
+	const badger = badgerOn
+		? scheduleBadger({fps, frames, seed: `${seed}:badger`, reaction: sc.badger?.reaction ?? 'neutral', at: insert ? insert.from + 10 : reactionAt, place: d.badgerPlace as BadgerPlace})
+		: null;
 	return {zoo, badger, reveals, reactionAt, press, insert, speechEnd};
 };

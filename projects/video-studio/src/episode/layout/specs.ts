@@ -201,7 +201,7 @@ export const LAYOUTS = {
 			title: t({x: 54, y: 290, w: 972, h: 220}, 'heading', 900, 64, 40, 3, 1.1, 'center', {valign: 'center', balance: true}),
 			button: {x: 190, y: 534, w: 700, h: 110},
 			buttonLabel: t({x: 190, y: 534, w: 700, h: 110}, 'heading', 900, 48, 30, 1, 1.0, 'center', {valign: 'center', uppercase: true}),
-			disclosure: t({x: 54, y: 666, w: 972, h: 170}, 'body', 700, 32, 26, 4, 1.25, 'center', {valign: 'center'}),
+			disclosure: t({x: 80, y: 678, w: 920, h: 146}, 'body', 700, 32, 26, 4, 1.25, 'center', {valign: 'center'}), // inside a 54..1026 plate
 		},
 	} satisfies Record<Format, CtaLayout>,
 	endscreen: {

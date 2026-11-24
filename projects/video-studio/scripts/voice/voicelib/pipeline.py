@@ -15,7 +15,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from . import audio, schema, timing, visemes
+from . import audio, markup, schema, timing, visemes
 from . import g2p as g2p_mod
 from .langs import spec
 from .synth import MODEL_FILE, SAMPLE_RATE, Synth, Take, char_times
@@ -228,6 +228,14 @@ def build(opts: Options) -> Result:
     if s.g2p == "misaki":
         warnings.append(f"{opts.lang}: pronunciation comes from misaki 0.7.4 G2P and has not been checked by a native speaker")
 
+    # Parse and normalize every scene before any synthesis, so a markup error fails fast.
+    scene_words: list[list[Word]] = []
+    for sc in sb["scenes"]:
+        try:
+            scene_words.append(build_words(sc["narration"], opts.lang))
+        except markup.MarkupError as e:
+            raise BuildError(f"{sb_path} scene {sc['id']}: {e}") from None
+
     model_dir = opts.model_dir or os.path.join(PROJECT_ROOT, ".cache", "kokoro")
     log(f"voice: {channel}/{slug} {opts.lang} voice={voice} speed={opts.speed}" + (f" fit-to={opts.fit_to}" if master else ""))
     synth = Synth(model_dir)
@@ -241,8 +249,7 @@ def build(opts: Options) -> Result:
     n = len(sb["scenes"])
     for idx, sc in enumerate(sb["scenes"]):
         sid = sc["id"]
-        words = build_words(sc["narration"], opts.lang)
-        ph = g.phonemize(words)
+        ph = g.phonemize(scene_words[idx])
         words = ph.words
         if ph.method == "proportional":
             warnings.append(f"{sid}: word timing is approximate (proportional by phoneme length): espeak's phoneme words could not be matched to the spoken words")
@@ -313,8 +320,9 @@ def build(opts: Options) -> Result:
         sc["startMs"] = st
     total_ms = sum(sc["durationMs"] for sc in scenes)
 
-    os.makedirs(out_root, exist_ok=True)
-    stage = tempfile.mkdtemp(prefix=".voice-", dir=out_root)
+    gen_root = os.path.join(out_root, "generated")  # gitignored, same filesystem as the outputs
+    os.makedirs(gen_root, exist_ok=True)
+    stage = tempfile.mkdtemp(prefix=".voice-", dir=gen_root)
     try:
         raw = os.path.join(stage, "raw.wav")
         audio.write_wav(raw, np.concatenate(buffers) if buffers else np.zeros(0, np.float32), SAMPLE_RATE, subtype="FLOAT")

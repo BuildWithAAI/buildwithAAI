@@ -42,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
 
     ap = argparse.ArgumentParser(prog="build.py", description=__doc__.split("\n\n")[0])
     ap.add_argument("content", help="content/<channel>/<slug> (holds storyboard.json / storyboard.<lang>.json)")
-    ap.add_argument("--lang", required=True, choices=langs.SUPPORTED)
+    ap.add_argument("--lang", required=True, choices=langs.SUPPORTED, help="language to voice (French is not supported: Kokoro v1.0 has no male French voice)")
     ap.add_argument("--fit-to", dest="fit_to", choices=langs.SUPPORTED, help="fit every scene into this language's timeline (multi-track dubbing)")
     ap.add_argument("--voice", help="Kokoro voice id (default: ZOO's voice for the language)")
     ap.add_argument("--speed", type=float, default=1.0, help="Kokoro speed (fit mode: the starting speed, clamped to 0.85-1.15)")
