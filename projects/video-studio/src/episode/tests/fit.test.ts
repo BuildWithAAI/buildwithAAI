@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fitGroup, fitText, prepText, wrapText, FEWER_LINES_TOLERANCE, type FitResult, type FitSpec, type Measure} from '../text/fit.ts';
 import {CAPTION_PAD, CAPTIONS, FICTION_CARD, LAYOUTS, LOWER_THIRD, type Format, type TextSpec} from '../layout/specs.ts';
-import {ctaBlock, hookBlock, placeBlock, quoteBlock, stackCards, stackRows} from '../layout/blocks.ts';
+import {ctaBlock, hookBlock, placeBlock, quoteBlock, stackCards, stackRows, titleLineTops} from '../layout/blocks.ts';
 import {buildPages} from '../captions/pages.ts';
 import {latinFontFile, measureFromFont} from './fontMetrics.ts';
 
@@ -118,7 +118,8 @@ for (const format of FORMATS) {
 			ok(tf, 'title', L.title);
 			const sf = L.subtitle ? fitWith(S.subtitle[k], L.subtitle, lang) : null;
 			if (sf && L.subtitle) ok(sf, 'subtitle', L.subtitle);
-			const g = hookBlock(L.column, {kicker: L.kicker.box.h, title: tf.height, subtitle: sf ? sf.height : 0});
+			const title = titleLineTops(tf.lines, tf.fontSize, tf.fontSize * tf.lineHeight).height; // the render's height (accent room)
+			const g = hookBlock(L.column, {kicker: L.kicker.box.h, title, subtitle: sf ? sf.height : 0});
 			assert.ok(g.fits, `hook block ${g.height}px > column ${L.column.bottom - L.column.top}px`);
 		});
 		test(`${format} ${lang}: talk title + 4 bullets fit`, () => {

@@ -10,6 +10,38 @@ const fitsIn = (column: Column, height: number) => height <= column.bottom - col
 /** Hook: kicker pill, title, teal rule, subtitle. */
 export const HOOK_GAP = 30;
 export const RULE_H = 8;
+
+/**
+ * Marks that sit ABOVE a letter once decomposed (NFD): grave, acute, circumflex, tilde, macron, breve, dot, diaeresis,
+ * hook, ring, double acute, caron... On a capital in the display title (Anton at line-height 1.02) they rise about
+ * 0.2 em above the cap height, which is more than the gap between two title lines.
+ */
+const MARK_ABOVE = /[̀-̛̀̕-̈́͆͊-͌͐-͒͗͛ͣ-ͯ]/;
+export const hasMarkAbove = (s: string): boolean => MARK_ABOVE.test(s.normalize('NFD'));
+
+/** Extra space above a display-title line whose capitals carry such a mark (em of the fitted size). */
+export const ACCENT_GAP_EM = 0.12;
+
+/** How far a title line's reveal mask (scenes/parts.tsx RiseClip) opens above the line box: 0.35 em, twice the 0.17 em
+ * by which it cut the top off the accent of "DÍA" (Anton at line-height 1.02). */
+export const TITLE_HEADROOM_EM = 0.35;
+
+/**
+ * Line tops of the display title, relative to the title box: `lineH` apart, plus ACCENT_GAP_EM above every line with a
+ * mark above (added 2026-11-24, final check: the es hook "MUERTAS EL / PRIMER DÍA" put the accent of Í into the E above).
+ * `height` replaces the fitted height in hookBlock.
+ */
+export const titleLineTops = (lines: string[], fontSize: number, lineH: number): {tops: number[]; height: number} => {
+	const pad = Math.ceil(ACCENT_GAP_EM * fontSize);
+	const tops: number[] = [];
+	let y = 0;
+	for (const line of lines) {
+		if (hasMarkAbove(line)) y += pad;
+		tops.push(Math.round(y));
+		y += lineH;
+	}
+	return {tops, height: y};
+};
 export const hookBlock = (column: Column, h: {kicker: number; title: number; subtitle: number}) => {
 	const kH = h.kicker ? h.kicker + HOOK_GAP : 0;
 	const sH = h.subtitle ? HOOK_GAP + Math.ceil(h.subtitle) : 0;

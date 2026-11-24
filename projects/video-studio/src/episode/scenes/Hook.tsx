@@ -7,7 +7,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {C, R} from '../theme';
 import {FRAME, LAYOUTS, type Box} from '../layout/specs';
-import {hookBlock, RULE_H} from '../layout/blocks';
+import {hookBlock, RULE_H, TITLE_HEADROOM_EM, titleLineTops} from '../layout/blocks';
 import {Lines, useFit} from '../text/FitText';
 import {CharacterLayer, entry, RiseClip, SceneBg, useDirection, type SceneCtx} from './parts';
 import {BadgerInsert, inInsert} from './Insert';
@@ -26,15 +26,17 @@ export const HookScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const sFit = useFit(subtitle, L.subtitle ?? L.kicker, ctx.lang);
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
-	// vertical rhythm: kicker, title, rule, subtitle, centred in the text column
-	const g = hookBlock(L.column, {kicker: kicker ? L.kicker.box.h : 0, title: tFit.height, subtitle: subtitle ? sFit.height : 0});
+	// vertical rhythm: kicker, title, rule, subtitle, centred in the text column; a title line whose capitals carry an
+	// accent gets extra room above it (blocks.ts titleLineTops), so the accent clears the line above
+	const lineH = tFit.fontSize * tFit.lineHeight;
+	const tLines = titleLineTops(tFit.lines, tFit.fontSize, lineH);
+	const g = hookBlock(L.column, {kicker: kicker ? L.kicker.box.h : 0, title: tLines.height, subtitle: subtitle ? sFit.height : 0});
 	if (!g.fits) throw new Error(`hook ${ctx.sc.id}: the title block needs ${g.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten the title.`);
 	const kBox: Box = {...L.kicker.box, y: g.kickerY};
-	const tBox: Box = {...L.title.box, y: g.titleY, h: Math.ceil(tFit.height)};
+	const tBox: Box = {...L.title.box, y: g.titleY, h: Math.ceil(tLines.height)};
 	const rule: Box = {x: vertical ? Math.round(FRAME.vertical.width / 2 - 48) : L.title.box.x, y: g.ruleY, w: 96, h: RULE_H};
 	const sBox: Box | null = L.subtitle ? {...L.subtitle.box, y: g.subtitleY, h: Math.ceil(sFit.height)} : null;
 
-	const lineH = tFit.fontSize * tFit.lineHeight;
 	const pillW = Math.ceil(kFit.width) + 2 * 24;
 	const pillX = vertical ? Math.round(540 - pillW / 2) : kBox.x;
 	const pk = entry(frame, 2, 8);
@@ -53,9 +55,9 @@ export const HookScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 				</div>
 			) : null}
 			{tFit.lines.map((_, i) => {
-				const lb: Box = {x: tBox.x, y: Math.round(tBox.y + i * lineH), w: tBox.w, h: Math.ceil(lineH) + 8};
+				const lb: Box = {x: tBox.x, y: Math.round(tBox.y + tLines.tops[i]), w: tBox.w, h: Math.ceil(lineH) + 8};
 				return (
-					<RiseClip key={i} box={lb} p={entry(frame, 4 + 4 * i, 10)}>
+					<RiseClip key={i} box={lb} headroom={Math.ceil(tFit.fontSize * TITLE_HEADROOM_EM)} p={entry(frame, 4 + 4 * i, 10)}>
 						<Lines fit={{...tFit, lines: [tFit.lines[i]], height: lineH}} spec={{...L.title, valign: 'top'}} lang={ctx.lang} color={C.ink} box={{...lb, h: Math.ceil(lineH)}} />
 					</RiseClip>
 				);

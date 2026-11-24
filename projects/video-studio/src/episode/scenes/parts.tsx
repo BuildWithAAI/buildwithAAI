@@ -136,10 +136,16 @@ export const Card: React.FC<{box: Box; fill?: string; radius?: number; style?: R
 /** Entry progress 0..1 of an item that appears at frame `at` over `len` frames (decelerate: text/UI entering, MO2). */
 export const entry = (frame: number, at: number, len = 10): number => (frame < at ? 0 : frame >= at + len ? 1 : EASE.decel((frame - at) / len));
 
-/** A clip-reveal wrapper: the content slides up from below its own box edge (no opacity, no blur). */
-export const RiseClip: React.FC<{box: Box; p: number; children: React.ReactNode}> = ({box, p, children}) =>
+/**
+ * A clip-reveal wrapper: the content slides up from below its own box edge (no opacity, no blur). `headroom` (px) opens
+ * the mask above the box, so glyph parts that rise above a tight line box are not cut off: an accent on a capital (Í,
+ * É, Ñ, Ã) in a display title. Added 2026-11-24 (final check): with Anton at line-height 1.02 the box cut 0.17 em off the
+ * top of "DÍA", so the accent showed as a sliver (scripts/qa: text-clipped, 16% of the line). The content starts below
+ * the box plus the headroom, so nothing peeks in before the rise.
+ */
+export const RiseClip: React.FC<{box: Box; p: number; headroom?: number; children: React.ReactNode}> = ({box, p, headroom = 0, children}) =>
 	p <= 0 ? null : (
-		<div style={{position: 'absolute', left: box.x, top: box.y, width: box.w, height: box.h, overflow: 'hidden'}}>
-			<div style={{position: 'absolute', left: -box.x, top: -box.y, width: 0, height: 0, transform: `translateY(${(1 - p) * box.h}px)`}}>{children}</div>
+		<div style={{position: 'absolute', left: box.x, top: box.y - headroom, width: box.w, height: box.h + headroom, overflow: 'hidden'}}>
+			<div style={{position: 'absolute', left: -box.x, top: -(box.y - headroom), width: 0, height: 0, transform: `translateY(${(1 - p) * (box.h + headroom)}px)`}}>{children}</div>
 		</div>
 	);

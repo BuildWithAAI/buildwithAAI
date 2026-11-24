@@ -244,3 +244,20 @@ The daily Short and the Threat Brief email for `zoora-security` follow **`docs/D
 - "No video today" is the normal outcome when no confirmed story has real analysis. The DefiLlama 30-day comparison only supports one; the radar's own pattern needs 7 or more daily radar files. Developing stories go out only on the owner's call, labelled DEVELOPING.
 - Nothing is uploaded, posted or emailed before his `APPROVE <date-slug>`, and uploads stay manual in YouTube Studio.
 - Proof run 2026-11-24: prepare decided "no video today" (no real analysis). The proof Short `2026-11-24-binance` was picked by hand to exercise the build: both gates passed, and it is not approved.
+
+## Episode engine (Zoora AI)
+
+How to make, dub and check an episode, with the owner's review steps: **`docs/EPISODE_ENGINE.md`**. Episodes render from their own entry point, `src/episode/index.ts` (never `src/Root.tsx`); contracts are in `src/episode/types.ts`. Run from `projects/video-studio/`, in this order:
+
+| Step | Command |
+| --- | --- |
+| Claim gate (per language) | `node scripts/claims/check.ts content/zoora-ai/<slug> [--lang es]` (needs `data/private/names.txt`; `--no-names` only where the list cannot exist) |
+| Dub | `node scripts/dub/cli.ts prepare\|import\|validate content/zoora-ai/<slug> --lang es` |
+| Voice (Zoo = `im_nicola`) | `.venv-voice/bin/python scripts/voice/build.py content/zoora-ai/<slug> --lang <lang>`; add `--fit-to en` for an audio track on the English video |
+| Render (bundle after the voice step) | `npx remotion bundle src/episode/index.ts --out-dir=<b>`, then `npx remotion render <b> Episode\|EpisodeShort <out.mp4> --props='{"channel":"zoora-ai","slug":"<slug>","lang":"<lang>"[,"shortId":"short1"]}'` |
+| Thumbnails | `node scripts/thumbnails.ts zoora-ai/<slug> --lang en,es,pt-br` (refuses a language without a current, passing claim report) |
+| Visual QA (every language, before review) | `node scripts/qa/check.ts --entry src/episode/index.ts --comp Episode\|EpisodeShort --props '<same props>'` (on the demo it caught 3 engine bugs that the frame review missed) |
+
+- Languages: en (master), es and pt-br (launch), hi and it (supported), zh (experimental), ja (blocked: no verified G2P), fr (excluded: no male Kokoro voice).
+- A dub is a machine translation until a native speaker reviews it and the owner records `translation: {status: "native-reviewed", reviewed: true, reviewer, date}`; never publish a render that still shows the MACHINE TRANSLATION badge. Audio tracks (`--fit-to`) need translations written to length and are refused for videos with offers or a fiction card unless the dub says them.
+- Verified end to end on 2026-11-24 from a clean `public/generated/` with `content/zoora-ai/_engine-demo` in en, es and pt-br (6 MP4s, 9 thumbnails, every suite and the typecheck): results and known limits in `docs/EPISODE_ENGINE.md` §9 and §11. Final visual QA: the Shorts pass; each episode keeps one known error (Badger's face 14 px inside the bottom margin while he looks up, §11).

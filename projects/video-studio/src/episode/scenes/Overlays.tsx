@@ -9,7 +9,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import type {Lang, Storyboard, StoryboardScene, TimelineScene} from '../types';
 import {C, OUTLINE, R} from '../theme';
-import {BADGE_AREA, FICTION_CARD, LAYOUTS, LOWER_THIRD, LOWER_THIRD_PAD, lowerThirdX, type Box, type Format, type TextSpec} from '../layout/specs';
+import {BADGE_AREA, FICTION_CARD, LAYOUTS, LOWER_THIRD, LOWER_THIRD_PAD, lowerThirdX, SAFE, type Box, type Format, type TextSpec} from '../layout/specs';
 import {Lines, useFit} from '../text/FitText';
 import type {FitResult} from '../text/fit';
 import {fontFor} from '../i18n/fonts';
@@ -20,6 +20,7 @@ import {wordIndexAtOffset} from '../cues';
 import {msToFrame, track, EASE} from '../motion';
 import {showsSources} from '../validate';
 import {domainOf} from './Quote';
+import {SOURCE_PAD_X, sourceSpanAt, sourceSpans, sourcesCardBox, sourcesFitWidth} from './sources';
 
 /** In-and-out envelope for overlays: decelerate in over 10 f, ease out over 8 f. */
 const inOut = (f: number, from: number, to: number) => (f < from || f >= to ? 0 : Math.min(entry(f, from, 10), track(f, [[to - 8, 1], [to, 0]], EASE.inOut)));
@@ -130,29 +131,30 @@ export const SourcesCard: React.FC<{format: Format; sb: Storyboard; sc: Storyboa
 	const spec = sourcesSpec(sc.type, format);
 	const on = !!spec && showsSources(sc);
 	const cues = on ? sourceCues(sc, tl, fps) : [];
-	// the most recent cited claim whose sentence has started; held until 3 s after the claim (at least 4 s)
-	const cur = [...cues].reverse().find((c) => frame >= c.from - 6);
+	// the card of the cited claim being spoken, from 6 frames before its sentence until 3 s after the claim (at least
+	// 4 s); a later claim citing the same source extends the card, a different source swaps the text in place
+	// (scenes/sources.ts: no blank frame, no second wipe)
+	const cur = sourceSpanAt(sourceSpans(cues, frames), frame);
 	const src = cur ? sb.sources.find((x) => x.id === cur.id) : undefined;
 	const label = uiLabel(sb, 'sources') ?? '';
 	const text = src ? `${label ? `${label}: ` : ''}${src.title} · ${domainOf(src.url)}` : '';
-	const fit = useFit(text || ' ', spec ?? FICTION_CARD[format], sb.lang);
+	// fitted to at most the safe width less the card's padding (scenes/sources.ts: the card never leaves the safe area)
+	const fit = useFit(text || ' ', spec ?? FICTION_CARD[format], sb.lang, spec ? {...spec.box, w: sourcesFitWidth(spec.box, SAFE[format])} : undefined);
 	const fiction = FICTION_CARD[format];
 	const fictionText = sb.fiction ? (uiLabel(sb, 'fictionDisclaimer') ?? '') : '';
 	const fictionFit = useFit(fictionText || ' ', fiction, sb.lang);
 	if (!cur || !src || !spec) return null;
-	const to = Math.min(frames, Math.max(cur.from + 120, cur.claimEnd + 90));
-	const p = inOut(frame, cur.from - 6, to);
+	const p = Math.min(cur.enter ? entry(frame, cur.from, 10) : 1, cur.exit ? track(frame, [[cur.to - 8, 1], [cur.to, 0]], EASE.inOut) : 1);
 	if (p <= 0) return null;
-	const padX = 16;
-	const w = Math.ceil(fit.width) + 2 * padX;
+	const padX = SOURCE_PAD_X;
+	const {x, w} = sourcesCardBox(spec.box, spec.align, fit.width, SAFE[format]);
 	const h = spec.box.h + 12;
-	const x = spec.align === 'right' ? spec.box.x + spec.box.w - w : spec.align === 'center' ? Math.round(spec.box.x + (spec.box.w - w) / 2) : spec.box.x;
 	const fictionBottom = fiction.box.y + Math.ceil(fictionFit.height) + 2 * FICTION_PAD_Y;
 	// the fiction plate's real width (FictionCard: text + 2 x 18 padding + 26 for the teal mark): a line beside it, not
 	// under it (landscape talk/CTA lines sit in the text column, right of a short disclaimer), keeps its own place
 	const fictionRight = fiction.box.x + Math.ceil(fictionFit.width) + 2 * 18 + 26;
 	const sharesBand = !!fictionText && spec.box.y - 6 < fictionBottom && spec.box.y + spec.box.h + 6 > fiction.box.y && x < fictionRight + 10 && x + w > fiction.box.x - 10;
-	const cueStart = startFrame + cur.from - 6;
+	const cueStart = startFrame + cur.from;
 	const top = sharesBand && cueStart < FICTION_SHOW.to ? fictionBottom + 10 : spec.box.y - 6;
 	const clip =
 		spec.align === 'right' ? `inset(0 0 0 ${(1 - p) * 100}%)` : spec.align === 'center' ? `inset(0 ${(1 - p) * 50}% 0 ${(1 - p) * 50}%)` : `inset(0 ${(1 - p) * 100}% 0 0)`;

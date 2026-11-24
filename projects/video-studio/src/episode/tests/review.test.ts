@@ -24,12 +24,15 @@ import {
 	LOWER_THIRD,
 	LOWER_THIRD_PAD,
 	lowerThirdX,
+	SAFE,
 	SHORTS_BUTTONS,
 	type Box,
 	type Format,
 	type TextSpec,
 	type ZooPlace,
 } from '../layout/specs.ts';
+import {ACCENT_GAP_EM, hasMarkAbove, TITLE_HEADROOM_EM, titleLineTops} from '../layout/blocks.ts';
+import {SOURCE_PAD_X, sourceSpanAt, sourceSpans, sourcesCardBox, sourcesFitWidth} from '../scenes/sources.ts';
 import {isJumpCut, zooFace, zooPlacement} from '../layout/faces.ts';
 import {
 	blurSampleTimes,
@@ -451,3 +454,69 @@ test('claim gate check: missing, failing, foreign or stale reports block a real 
 	assert.ok(msToFrame(1000, 30) === 30);
 	void (null as unknown as TimelineWord);
 });
+
+test('final check: an accented capital in the display title is neither cut off nor run into the line above', () => {
+	// es demo hook "MUERTAS EL / PRIMER DÍA": the reveal mask cut 0.17 em off the top of the Í accent (scripts/qa:
+	// text-clipped, 16% of the line), and with the mask opened the accent ran into the E of the line above
+	assert.ok(['PRIMER DÍA', 'AÑO', 'NÃO', 'VOCÊ', 'ÉXITO', 'ÜBER'].every(hasMarkAbove));
+	assert.ok(!['MUERTAS EL', 'DEAD ON DAY ONE', 'ÇA', 'POR QUE ELAS MORREM?'].some(hasMarkAbove), 'a cedilla sits below');
+	const size = 150;
+	const lineH = size * 1.02;
+	const plain = titleLineTops(['DEAD ON', 'DAY ONE'], size, lineH);
+	assert.deepEqual(plain.tops, [0, Math.round(lineH)]);
+	assert.equal(plain.height, 2 * lineH, 'titles without accents keep their height');
+	const es = titleLineTops(['MUERTAS EL', 'PRIMER DÍA'], size, lineH);
+	assert.equal(es.tops[1] - Math.round(lineH), Math.ceil(ACCENT_GAP_EM * size), 'room above the accented line');
+	assert.equal(es.height, 2 * lineH + Math.ceil(ACCENT_GAP_EM * size));
+	const first = titleLineTops(['ÚLTIMO DÍA'], size, lineH);
+	assert.equal(first.tops[0], Math.ceil(ACCENT_GAP_EM * size), 'a first line with an accent moves down too (the kicker is above it)');
+	assert.ok(TITLE_HEADROOM_EM * size >= 2 * 0.17 * size - 1, 'the reveal mask opens at least twice the measured overshoot');
+});
+
+test('final check: the sources line stays up across sentences that cite the same source (no one-frame blank)', () => {
+	// es demo s02: three sentences, each [src:cg-cryptonews,cg-cryptobriefing]; the card blanked for one frame and wiped
+	// in again at frames 281 and 455 (scripts/qa: one-frame-state, flicker)
+	const cues = [100, 230, 380].flatMap((from) => [
+		{id: 'a', from, claimEnd: from + 60},
+		{id: 'b', from, claimEnd: from + 60},
+	]);
+	const spans = sourceSpans(cues, 600);
+	assert.equal(spans.length, 1, JSON.stringify(spans));
+	assert.deepEqual(spans[0], {id: 'b', from: 94, to: 530, enter: true, exit: true});
+	for (let f = 94; f < 530; f++) assert.ok(sourceSpanAt(spans, f), `frame ${f}: no card`);
+	// a different source swaps the text in place: no exit fade before it, no wipe-in, no gap
+	const swap = sourceSpans([{id: 'a', from: 100, claimEnd: 150}, {id: 'c', from: 200, claimEnd: 260}], 600);
+	assert.deepEqual(swap.map((s) => [s.id, s.from, s.to, s.enter, s.exit]), [['a', 94, 194, true, false], ['c', 194, 350, false, true]]);
+	for (let f = 94; f < 350; f++) assert.ok(sourceSpanAt(swap, f), `frame ${f}: no card`);
+	// a claim long after the card ended gets a new card with its own wipe
+	const apart = sourceSpans([{id: 'a', from: 10, claimEnd: 20}, {id: 'a', from: 400, claimEnd: 420}], 600);
+	assert.deepEqual(apart.map((s) => [s.from, s.to, s.enter]), [[4, 130, true], [394, 520, true]]);
+	assert.equal(sourceSpanAt(apart, 200), null);
+});
+
+test('final check: the sources card, padding included, never leaves the safe area', () => {
+	// pt-br demo s02 (landscape talk, box x 1010-1824): "Fonte: Estudo de sobrevivência da CoinGecko ·
+	// cryptobriefing.com" filled the box, and the card's padding pushed the text 9 px past x 1824 (scripts/qa safe-area)
+	const talk = LAYOUTS.talk.landscape.sources;
+	const card = sourcesCardBox(talk.box, talk.align, 810, SAFE.landscape);
+	assert.equal(card.x + card.w, SAFE.landscape.right, 'a long line slides left to the safe edge');
+	assert.ok(card.x + SOURCE_PAD_X + 810 <= SAFE.landscape.right);
+	assert.deepEqual(sourcesCardBox(talk.box, talk.align, 690, SAFE.landscape), {x: talk.box.x, w: 690 + 2 * SOURCE_PAD_X}, 'a line that fits does not move');
+	// every template and format, every text width the fit can return
+	for (const format of ['landscape', 'vertical'] as Format[]) {
+		const safe = SAFE[format];
+		for (const [type, layouts] of Object.entries(LAYOUTS)) {
+			const spec = (layouts as Record<Format, {sources?: TextSpec}>)[format]?.sources;
+			if (!spec) continue;
+			const maxText = sourcesFitWidth(spec.box, safe);
+			assert.ok(maxText <= spec.box.w);
+			for (let tw = 0; tw <= maxText; tw += 7) {
+				const c = sourcesCardBox(spec.box, spec.align, tw, safe);
+				assert.ok(c.x >= safe.left && c.x + c.w <= safe.right, `${format} ${type}: card ${c.x}-${c.x + c.w} for a ${tw} px line`);
+				if (spec.align === 'left' && spec.box.x + c.w <= safe.right) assert.equal(c.x, spec.box.x, `${format} ${type}: a ${tw} px line moved`);
+			}
+		}
+	}
+	assert.equal(sourcesFitWidth(LAYOUTS.talk.vertical.sources.box, SAFE.vertical), 972 - 2 * SOURCE_PAD_X, 'the full-width vertical line is fitted inside the padding');
+});
+

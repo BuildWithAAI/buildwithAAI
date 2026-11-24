@@ -75,7 +75,7 @@ npm ci
 scripts/voice/setup.sh                          # .venv-voice + Kokoro model files (size and sha256 checked)
 
 # 1. claim gate, master language (exit 0 = pass). Needs data/private/names.txt; only a run that cannot have the
-#    list (CI, this cloud session) passes --no-names, and the report then says "names NOT checked"
+#    list (CI, or a machine without the private file) passes --no-names; the report then says "names NOT checked"
 node scripts/claims/check.ts content/zoora-ai/<slug>
 
 # 2. voice (Zoo's voice comes from content/zoora-ai/channel.json: im_nicola)
@@ -91,7 +91,8 @@ npx remotion render /tmp/episode-bundle EpisodeShort out/episodes/<slug>/en/shor
 # 4. thumbnails (refuses a language whose claim report is missing, failed or older than the text it checked)
 node scripts/thumbnails.ts zoora-ai/<slug> --lang en --out out/episodes/<slug>
 
-# 5. check what was made (section 8): ffprobe, loudness, frames of every scene; optional automatic QA:
+# 5. check what was made (section 8): ffprobe, loudness, frames of every scene, then the automatic visual QA of
+#    every language and format (EpisodeShort: add "shortId" to the props); it writes a report with marked frames
 node scripts/qa/check.ts --entry src/episode/index.ts --comp Episode --props '{"channel":"zoora-ai","slug":"<slug>","lang":"en"}'
 ```
 
@@ -120,13 +121,13 @@ node scripts/dub/cli.ts validate content/zoora-ai/<slug> --lang es      # any ti
 ```
 
 `import` always records `translation: {status: "machine", method, reviewed: false}`. Until the owner records a native
-review (section 7), every render and thumbnail of that language carries a **MACHINE TRANSLATION · needs native
+review (section 10), every render and thumbnail of that language carries a **MACHINE TRANSLATION · needs native
 review** badge, the voice step warns, and the claim report says so on its summary line.
 
 The sheet gives the translator each string's context, a length budget (narration at most 1.1× the English; on-screen
 text sized to its box), the claim tags, numbers and glossary terms that must survive, and the language's spoken
-respellings (es `{on-chain|onchéin}`, `{bonding curve|bóndin kerv}`; pt-br `{on-chain|onchêin}`…). Spanish copy is
-neutral Latin American (no "vosotros").
+respellings (es `{on-chain|onchéin}`, `{bonding curve|bóndin kerv}`; pt-br `{on-chain|onchêin}`…). Write Spanish in
+neutral Latin American (no "vosotros"; research §3.8).
 
 ### Native upload or audio track (`--fit-to`)?
 
@@ -218,11 +219,102 @@ count against `timeline.json`, and loudness (`ffmpeg -i x.mp4 -af ebur128=peak=t
 true peak under -1 dBTP; `narration.wav` is normalized to -14 LUFS / -1 dBTP by the voice step). Then LOOK at the
 first, middle and last frame of every scene of every language, taken from the MP4, not from stills (ART_GUIDE QA).
 The voice step checks lip sync itself (`timeline.warnings`); `scripts/voice/tests/test_demo_sync.py` re-checks the
-built demo. Thumbnails: `out/.../<lang>/check/sheet.png` shows each one at 168×94.
+built demo. Thumbnails: `out/.../<lang>/check/sheet.png` shows each one at 168×94. Then run `scripts/qa` on every
+language's Episode and Short ([README](../scripts/qa/README.md)): it checks the DOM of every frame (text clipped or
+outside the safe area, captions over faces, one-frame states) and pixel-checks sampled frames. Sampled frames miss
+what lasts one frame or a few pixels: on the demo it caught three engine bugs the frame review had passed (section 9).
 
 ## 9. The 2026-11-24 verification run
 
-RESULTS_PLACEHOLDER
+Run from a clean `public/generated/zoora-ai/_engine-demo/` (deleted first), with the commands in sections 4 and 5.
+Scratch evidence (frames, contact sheets, logs): the session scratchpad `engine/final/` (may be cleared).
+
+Gates
+- Claim gate, default run (no names list): FAIL, 1 error `no-names-list`, exit 1, as designed. With `--no-names`:
+  en PASS (0 errors, 4 warnings: names not checked, 3 sources without a quote), es and pt-br PASS (0 errors, 5
+  warnings: the same plus the English "Must not say" list shown for a human read); `--all --no-names`: 4 storyboards,
+  0 failed.
+- `dub validate`: es PASS (0 errors, 18 length warnings), pt-br PASS (0 errors, 15 length warnings).
+
+Voice (Kokoro `im_nicola`)
+- en 59.0 s, -14.15 LUFS, -1.20 dBTP, 0 warnings. es 73.7 s, -14.18 LUFS, -1.19 dBTP; pt-br 71.9 s, -14.01 LUFS,
+  -1.27 dBTP; each with 1 warning, the machine-translation notice. Against the builds made earlier the same day, every
+  speech length and word timing is identical, and 4, 4 and 9 mouth frames differ (of 1770, 2211 and 2157).
+- Lip sync by the demo test's own measure: every phrase end within 2 frames of the voice, every onset 0-2 frames
+  ahead (mbp presses 2-3 frames ahead), no 1-frame shapes, in all three languages.
+- Found and fixed during this run: the first clean build failed `test_demo_sync.py` (es s04 opened the mouth 3 frames
+  before a phrase; the build before had -1) and lost the lip press of en's first word, because Kokoro's output differs
+  slightly per build (section 11). The voice step now keeps a press right before a phrase through its silence gate and
+  moves any landmark the check finds out of tolerance (`scripts/voice/README.md`, rule 7). Two more scratch rebuilds:
+  es needed the same move at s04 (2 frames, -3 → -1) and passed; pt-br passed unchanged.
+
+Renders. The demo was rendered in four passes as the fixes below landed; the final files are the en episode and the
+three Shorts of pass 3 and the es and pt-br episodes of pass 4 (the pass-4 fix does not move the others' sources lines:
+stills from both bundles at frames that show them are pixel-identical). All H.264 High, yuv420p, BT.709, tv range, 30 fps, AAC-LC 48 kHz
+stereo; video length equals the timeline to the frame; the AAC stream runs 1-15 ms longer.
+
+| Output | Frames | Length | Loudness | True peak | Size |
+| --- | --- | --- | --- | --- | --- |
+| en `episode.mp4` 1920×1080 | 1770 | 59.0 s | -14.1 LUFS | -4.2 dBFS | 9.3 MB |
+| en `short1.mp4` 1080×1920 | 435 | 14.5 s | -14.0 LUFS | -4.2 dBFS | 2.2 MB |
+| es `episode.mp4` | 2211 | 73.7 s | -14.2 LUFS | -4.2 dBFS | 11.7 MB |
+| es `short1.mp4` | 618 | 20.6 s | -14.0 LUFS | -4.2 dBFS | 2.9 MB |
+| pt-br `episode.mp4` | 2157 | 71.9 s | -14.0 LUFS | -4.3 dBFS | 11.3 MB |
+| pt-br `short1.mp4` | 615 | 20.5 s | -13.9 LUFS | -4.3 dBFS | 2.9 MB |
+
+- Looked at: the first, middle and last frame of every scene of the six final MP4s (90 frames, taken from the MP4s),
+  full-size crops of the es hook title and of the es and pt-br sources lines before and after the fix, the 15 frames of
+  the es Short's CTA title rise, and (first pass) a 32-frame strip of the en Short's first transition. Zoo and Badger
+  on model in every frame (Badger's dark ear cap on the viewer's right, one teal tag, the withers patch), Badger in 5 of
+  7 scenes and in an insert in each Short scene; translated text and accents (PRIMER DÍA, ¿Quién tiene el
+  suministro?, sobrevivência), the "(cita traducida)" / "(citação traduzida)" attributions, "bonding curve" and the
+  MACHINE TRANSLATION badge on every es and pt-br frame; charts green up and red down with the illustrative label (and
+  the localized chip in es/pt-br). A title's first frame can show a descender cut by its rising mask ("hvpe"): that is
+  one frame of the 10-frame rise, not a defect.
+- All 12 transitions of the final files (3 per episode, 1 per Short) run in silence: the loudest frame inside any
+  transition window is -92.8 dBFS. The Shorts' button column (x ≥ 950, y ≥ 960) is empty in every 12th frame of the
+  chart scenes; only Badger's tail enters it during his inserts.
+- Thumbnails (17:45 UTC; no thumbnail, character or chart code changed after them): 9 PNGs (3 per language), every
+  check passed, 130.5-148.1 KB, headline contrast 15.9-16.1:1, letters 13.1-19.2 px tall at 168×94; the es/pt-br ones
+  carry the badge. Warning on 6 of 9: Badger's head is drawn 5-11% past the rig box in `src/thumbnails/layout.ts` (the
+  characters changed; re-run the probe).
+- Audio track (`--fit-to en`, natural es, kept out of `public/`): exit 3 as expected; 6 of 7 scenes overflow at speed
+  1.15 (68.5 s against 59.0 s) and every sentence is named with the share to cut (13-38%).
+- Automatic visual QA (`scripts/qa`: the DOM of every frame, and 108-125 frames per episode at full size) found three
+  engine bugs that the frame review had missed. All three were fixed during this run, each with a regression test
+  (`src/episode/tests/review.test.ts`, "final check"; details in `src/episode/README.md`):
+  1. es: the hook title's reveal mask cut the top 16% off "PRIMER DÍA" (the accent of Í was a sliver; an earlier
+     review had passed it), and opening the mask alone ran the accent into the E of "EL" above. A title line with an
+     accented capital now gets 0.12 em more room above it, and its mask opens 0.35 em above the line.
+  2. es Episode s02, which cites one study in three sentences: the sources line blanked for one frame and wiped in
+     again at each sentence (frames 281 and 455). A claim citing the source on screen now extends the line; a
+     different source swaps the text in place.
+  3. pt-br Episode s02: the sources card's padding pushed a long line 9 px past the right safe edge (the es card
+     crossed it by 16 px). The card, padding included, now stays inside the safe area; such a line slides left and ends
+     flush with the review badge.
+
+  Final QA, run on the code that made the final files (18:37-18:46 UTC): the three Shorts PASS (0 errors, 0
+  warnings); each episode FAILS on one error, Badger's face up to 14 px inside the bottom margin (section 11), and has
+  0 warnings. The 45-66 notes per file "for information" (not counted) were read: text inside a reveal mask while it
+  builds, chart labels crossing faces only during the s03 → s04 slide, the decorative quote mark at 2.27:1, and in the
+  Shorts Google's stricter vertical-ads zone. Two are worth a look in the art review: a step line (en "Who is paid to hype
+  it?", es and pt-br the second step) and the pt-br end-screen title sit inside the clear zone around Badger's and
+  Zoo's faces (ART_GUIDE CV4c).
+
+Tests (all re-run after the last code change, 18:37-18:44 UTC)
+
+| Suite | Command | Result |
+| --- | --- | --- |
+| Typecheck, whole project | `npx tsc --noEmit` | exit 0 |
+| Engine | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/episode/tests/run.ts` | 68/68 |
+| Thumbnails | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/thumbnails/test/thumbnails.test.ts` | 16/16 |
+| Claim gate + dub tools | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/claims/tests/claims.test.ts scripts/dub/tests/dub.test.ts` | 107/107 |
+| Back-translation | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/backtranslate/tests/*.test.ts` | 120/120 |
+| Show, branding (use engine parts) | `node … src/show/tests/run.ts`, `node … src/branding/tests/run.ts` | 35/35, 34/34 |
+| QA tool, unit | `node … --test scripts/qa/tests/*.test.ts` | 63/63 |
+| Charts (read-only here; drawn by the chart scene) | `npm run test:charts` | exit 0: 10,000 seeds with 0 issues, 9/9 bad series caught |
+| Voice, unit | `python3 -m unittest discover -s scripts/voice/tests -t scripts/voice` | 134 run, OK (12 synthesis tests skipped) |
+| Voice, with real synthesis in 7 languages and the built demo | `.venv-voice/bin/python -m unittest discover -s scripts/voice/tests -t scripts/voice` | 134/134 (284 s) |
 
 ## 10. Owner review steps (before anything is published)
 
@@ -242,7 +334,7 @@ RESULTS_PLACEHOLDER
    - fixes go through the sheet (`dub prepare` carries the rest over, then `dub import`), never by hand-editing only
      the storyboard;
    - then only the owner sets, in `storyboard.<lang>.json`, the full record
-     `"translation": {"status": "native-reviewed", "method": "machine", "reviewed": true, "reviewer": "<initials or role>", "date": "YYYY-MM-DD"}`
+     `"translation": {"status": "native-reviewed", "method": "<machine or human, as imported>", "reviewed": true, "reviewer": "<initials or role>", "date": "YYYY-MM-DD"}`
      (never a private full name: the repository is public);
    - re-run `dub validate`, the claim gate, the voice step and the renders; the badge then disappears. Never publish a
      render that still shows the badge.
@@ -299,5 +391,12 @@ Picture
   text there). Vertical cuts between templates whose Zoo scale differs 7-15% are hard cuts.
 - Captions can still start a page with a one-word line in Spanish where the only alternative ends a line on an
   article; zh and ja have no phrase rules.
+- Landscape hook and steps: while Badger looks up at the end of those scenes, his face and ears sit up to 14 px inside
+  the 54 px bottom margin (ART_GUIDE MO18) for 1.5-1.7 s (es: frames 122-173 and 1154-1199). `scripts/qa` reports it as an error in every
+  episode; the engine's own face test allows landscape faces down to the frame edge (y 1080) on purpose, since Badger
+  stands in the bottom corner, cropped by the frame. A placement call for the art review, not changed here.
+- Only the hook title has room for accented capitals. The wipe reveals of the talk, steps and end-screen titles still
+  clip at their box top, which could shave the tip of an accent on a capital at the start of a title (none in the demo).
+  Run `scripts/qa` on every dubbed render: it reports such clipping as `text-clipped`.
 - Zoo and Badger are being repaired in parallel (repair round 2): renders use the character code present at bundle
   time, and the thumbnail rig boxes (`src/thumbnails/layout.ts` RIG) need a probe re-run after character changes.
