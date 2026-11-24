@@ -8,10 +8,18 @@ Code-driven pipeline: topic → research → script → storyboard JSON → voic
 | --- | --- | --- |
 | 0 | Environment, Remotion + skills, 3 s test render, this file | **Done 2026-11-23** |
 | 1 | `brand.json`, host character, 7 scene templates, transitions, lower third | Not started |
-| 2 | Pilot: 60–90 s video, 1 Short, 3 thumbnails, `publish.md` | Blocked on owner inputs (see below) |
+| 2 | Pilot: 60–90 s video, 1 Short, 3 thumbnails, `publish.md` | Inputs partly in (see Owner decisions) |
 | 3 | One-command hardening, `channels.md` (10 niches), 4-week calendar | Not started |
 
 Stop for owner review at the end of every phase.
+
+## Owner decisions (2026-11-24)
+
+- **Channel:** Zoora AI, @ZooraTechnologies. Profile in `content/zoora-ai/CHANNEL.md`.
+- **Format:** second-person life-story videos, modelled on a reference the owner supplied (`content/zoora-ai/REFERENCE.md`). Genre only: we never copy that creator's character, art or scripts.
+- **Voice:** Kokoro (free, local, via kokoro-onnx).
+- **Host:** a new original character. Three concepts are being built in `src/styleframes/` for the owner to pick from.
+- **Pilot product:** not stated yet ("look at the link"). Confirm with the owner.
 
 ## Commands (exist now)
 
