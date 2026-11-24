@@ -8,3 +8,6 @@ public/generated/
 # Voice step: local Python env (Kokoro) and model cache
 .venv-voice/
 __pycache__/
+
+# In-progress temp files written by tools
+*.tmp
