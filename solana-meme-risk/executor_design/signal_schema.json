@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "smr.signal/1",
+  "title": "smr trade signal v1 (untrusted input to the executor)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "signal_id", "nonce", "created_at_ms", "expires_at_ms", "book", "mint", "side", "size",
+               "max_slippage_bps", "venue_hint", "risk", "reason", "source_agent", "tag"],
+  "properties": {
+    "schema": {"const": "smr.signal/1"},
+    "signal_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "nonce": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "created_at_ms": {"type": "integer", "minimum": 0},
+    "expires_at_ms": {"type": "integer", "minimum": 0},
+    "book": {"enum": ["experiment100"]},
+    "mint": {"type": "string", "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"},
+    "side": {"enum": ["BUY", "SELL"]},
+    "size": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "usd": {"type": "number", "exclusiveMinimum": 0},
+        "sol": {"type": "number", "exclusiveMinimum": 0},
+        "fraction_bps": {"type": "integer", "minimum": 1, "maximum": 10000}
+      },
+      "minProperties": 1, "maxProperties": 1
+    },
+    "max_slippage_bps": {"type": "integer", "minimum": 1, "maximum": 5000},
+    "venue_hint": {"enum": ["auto", "pump_curve", "pumpswap", "jupiter"]},
+    "risk": {
+      "type": "object", "additionalProperties": false, "required": ["score", "decision", "mayhem", "quality"],
+      "properties": {
+        "score": {"type": "number", "minimum": 0, "maximum": 100},
+        "decision": {"enum": ["NORMAL", "REDUCED", "SKIP"]},
+        "mayhem": {"type": ["boolean", "null"]},
+        "quality": {"enum": ["CLEAR", "FLAG", "UNKNOWN"]}
+      }
+    },
+    "observed": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"mcap_usd": {"type": "number", "minimum": 0}, "liq_usd": {"type": "number", "minimum": 0},
+                     "price_usd": {"type": "number", "minimum": 0}}
+    },
+    "reason": {"type": "string", "maxLength": 200},
+    "source_agent": {"enum": ["smr_experiment100"]},
+    "tag": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$comment": "BUY requires size.usd or size.sol; SELL requires size.fraction_bps. tag = HMAC-SHA256(secret, canonical JSON of all other fields). Enforced in signal.py."
+}
