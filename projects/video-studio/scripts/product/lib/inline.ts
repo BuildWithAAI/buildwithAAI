@@ -2,6 +2,7 @@
  * Inline syntax of the content dialect and its HTML rendering. Pure functions.
  *
  *   **strong**   *emphasis*   `code`   [link text](https://...)   [@source-id]   [@id-one; @id-two]
+ *   [#section-id]   a cross-reference: "Chapter 3, p. 8", linked, with the page number from the contents pass
  *   \*  \[  \`  \\   escape a markup character
  *
  * Typography is applied to text runs only (never inside code or URLs): straight quotes become curly quotes,
@@ -15,7 +16,8 @@ export type InlineNode =
 	| {t: 'em'; c: InlineNode[]}
 	| {t: 'code'; v: string}
 	| {t: 'link'; href: string; c: InlineNode[]}
-	| {t: 'cite'; ids: string[]};
+	| {t: 'cite'; ids: string[]}
+	| {t: 'xref'; id: string};
 
 export class InlineError extends Error {}
 
@@ -76,6 +78,16 @@ export const parseInline = (s: string): InlineNode[] => {
 			if (!ids.length) throw new InlineError(`empty citation in "${s}"`);
 			flush();
 			out.push({t: 'cite', ids});
+			i = end + 1;
+			continue;
+		}
+		if (s.startsWith('[#', i)) {
+			const end = s.indexOf(']', i);
+			if (end < 0) throw new InlineError(`unclosed cross-reference in "${s}"`);
+			const id = s.slice(i + 2, end).trim();
+			if (!CITE_ID.test(id)) throw new InlineError(`bad cross-reference id "${id}" in "${s}"`);
+			flush();
+			out.push({t: 'xref', id});
 			i = end + 1;
 			continue;
 		}
@@ -148,6 +160,8 @@ export const keepTogether = (escaped: string): string =>
 export type InlineContext = {
 	/** Renders a citation group (ids in order) to HTML. */
 	cite: (ids: string[]) => string;
+	/** Renders a cross-reference to a section. Absent where the text has no sections to point at. */
+	xref?: (id: string) => string;
 };
 
 const lastChar = (s: string): string => (s ? s[s.length - 1] : '');
@@ -184,14 +198,23 @@ export const renderInline = (nodes: InlineNode[], ctx: InlineContext, prev = '')
 				html = html.replace(/ $/, NBSP);
 				html += ctx.cite(n.ids);
 				break;
+			case 'xref':
+				if (!ctx.xref) throw new InlineError(`cross-reference [#${n.id}] is not available here`);
+				html += ctx.xref(n.id);
+				before = 'x';
+				break;
 		}
 	}
 	return html;
 };
 
-/** Text content without markup or citations (for lint, ids and alt text). */
+/** Text content without markup, citations or cross-references (for lint, ids and alt text). */
 export const plainText = (nodes: InlineNode[]): string =>
-	nodes.map((n) => (n.t === 'text' || n.t === 'code' ? n.v : n.t === 'cite' ? '' : plainText(n.c))).join('');
+	nodes.map((n) => (n.t === 'text' || n.t === 'code' ? n.v : n.t === 'cite' || n.t === 'xref' ? '' : plainText(n.c))).join('');
+
+/** Cross-reference targets (section ids) in order of appearance. */
+export const xrefsOf = (nodes: InlineNode[]): string[] =>
+	nodes.flatMap((n) => (n.t === 'xref' ? [n.id] : n.t === 'strong' || n.t === 'em' || n.t === 'link' ? xrefsOf(n.c) : []));
 
 /** Citation ids in order of appearance. */
 export const citationsOf = (nodes: InlineNode[]): string[] =>

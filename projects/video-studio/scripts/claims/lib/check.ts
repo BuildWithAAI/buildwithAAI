@@ -29,7 +29,7 @@ import {parseMustNotSay, scanMustNotSay, type MnsList} from './mustnotsay.ts';
 import {findNames, loadNames, redactNames, type NameList} from './names.ts';
 import {loadBacktranslation, scanBacktranslation} from './backtranslation.ts';
 import {regionalFindings, type RegionalFields} from './regional.ts';
-import {extractQuantities, type Quantity} from '../../dub/lib/numbers.ts';
+import {DECIMAL_SEP, extractQuantities, parseNum, type Quantity} from '../../dub/lib/numbers.ts';
 import {relDiff, wordQuantities} from '../../dub/lib/numwords.ts';
 import {validateDub} from '../../dub/lib/validate.ts';
 import {readdirSync} from 'node:fs';
@@ -89,11 +89,31 @@ const CUE_FIELD = /^onScreen\.(?:cues|badgerCue)(?:\[|$)/;
 const FIGURE_KINDS = new Set(['number', 'percent', 'currency', 'scale']);
 /** Quantities of a text: written in digits and in words. */
 const quantitiesOf = (text: string, lang: Lang): Quantity[] => [...extractQuantities(text, lang), ...wordQuantities(text, lang)];
+/**
+ * How far a shown figure may sit from the cited one: half a unit in its last written digit ("73" 0.5, "70" 5, "4.55"
+ * 0.005, "18.67M" 5,000), capped at 6% of the figure. So a title or on-screen figure may ROUND a cited figure ("nearly
+ * 70%" or "69%" for 68.67%) but never move it ("73%" for 69%: the 2026-11-24 re-check found the old flat 6% let that through).
+ */
+const roundingTolerance = (f: Quantity, lang: Lang): number => {
+	const digits = /\d+(?:[.,]\d+)*/.exec(f.raw); // raw comes from ASCII-digit text (extractQuantities)
+	const parsed = digits ? parseNum(digits[0], DECIMAL_SEP[lang]) : null;
+	if (!parsed) return 0; // a CJK numeral: exact only
+	const [int, frac] = parsed;
+	const base = Number(`${int}.${frac ?? '0'}`);
+	const scale = base ? Math.abs(f.value / base) : 1;
+	const sig = int.replace(/^0+/, '');
+	const zeros = frac ? 0 : Math.min(/0+$/.exec(sig)?.[0].length ?? 0, Math.max(0, sig.length - 1));
+	const unit = (frac ? 10 ** -frac.length : 10 ** zeros) * scale;
+	return Math.min(unit / 2, 0.06 * Math.abs(f.value));
+};
+/** Does cited quantity `q` back shown figure `f`? Same kind (a percent needs a percent: "90%" is not "ninety days"), same value up to rounding. */
+const backs = (q: Quantity, f: Quantity, lang: Lang): boolean =>
+	q.pct === f.pct && (relDiff(q.value, f.value) <= 0.005 || Math.abs(q.value - f.value) <= roundingTolerance(f, lang) + 1e-9 * Math.max(1, Math.abs(f.value)));
 /** Is every digit figure of `text` (on screen, a title) said in one of `cited` (cited sentences, display and spoken)? */
 const figuresBacked = (text: string, cited: string[], lang: Lang): {ok: boolean; missing: string[]} => {
 	const figures = extractQuantities(text, lang).filter((q) => !q.month);
 	const pool = cited.flatMap((c) => quantitiesOf(c, lang));
-	const missing = figures.filter((f) => !pool.some((q) => relDiff(q.value, f.value) <= 0.005 || (q.pct === f.pct && relDiff(q.value, f.value) <= 0.06)));
+	const missing = figures.filter((f) => !pool.some((q) => backs(q, f, lang)));
 	return {ok: !missing.length, missing: missing.map((m) => m.raw)};
 };
 const STOP = new Set(
@@ -154,6 +174,35 @@ export const checkEpisode = (input: CheckInput): ClaimReport => {
 			fix: 'Create data/private/names.txt (gitignored) with the real names and handles behind every "[named person]" in the research files, one per line. Only a run that cannot have the list (CI) skips it, explicitly, with --no-names.',
 		});
 	const isTranslation = sb.lang !== sb.sourceLang;
+	// A translation inherits the video's offers, fiction flag, token promotion and holdings from its master: a dub that
+	// drops them must not skip the disclosure, fiction, dub-offers, MiCA or ASCI rules (2026-11-24 re-check; dub validate
+	// reports the same mismatch as "structure", which the claim report did not carry).
+	let masterSb: (Storyboard & RegionalFields) | null = null;
+	if (isTranslation) {
+		const p = sourceStoryboardFile(dir, sb.sourceLang);
+		try {
+			masterSb = p ? (loadStoryboard(p) as Storyboard & RegionalFields) : null;
+		} catch {
+			masterSb = null; // the translation block below reports a missing or broken master
+		}
+	}
+	if (masterSb) {
+		const own = sb as Storyboard & RegionalFields;
+		const ids = (x: unknown) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === 'string') : []);
+		const differs: string[] = [];
+		if (ids(masterSb.offers).join('|') !== ids(own.offers).join('|')) differs.push(`offers (${ids(masterSb.offers).join(', ') || 'none'} in the master, ${ids(own.offers).join(', ') || 'none'} here)`);
+		if ((masterSb.fiction === true) !== (own.fiction === true)) differs.push(`fiction (${String(masterSb.fiction)} in the master)`);
+		if ((masterSb.tokenPromotion === true) !== (own.tokenPromotion === true)) differs.push(`tokenPromotion (${String(masterSb.tokenPromotion === true)} in the master)`);
+		if (JSON.stringify(masterSb.holdings ?? null) !== JSON.stringify(own.holdings ?? null)) differs.push('holdings');
+		if (differs.length)
+			push({
+				level: 'error',
+				rule: 'dub-structure',
+				where: 'dub · storyboard',
+				message: `this translation does not carry the master's ${differs.join('; ')}: the rules below use the master's values`,
+				fix: 'A translation changes text only; copy these fields from the source storyboard (node scripts/dub/cli.ts import does this).',
+			});
+	}
 
 	// --- research.md: Must not say
 	const researchPath = input.researchPath === undefined ? join(dir, 'research.md') : input.researchPath;
@@ -390,10 +439,10 @@ export const checkEpisode = (input: CheckInput): ClaimReport => {
 			push({level: 'error', rule: 'referral-link', where: it.where, scene: it.scene, text: it.show, message: 'contains a Telegram/Discord invite or a referral link', fix: 'No invite or referral links in the video; offers go through the hub link with a disclosure.'});
 	}
 
-	const offerIds = Array.isArray(sb.offers) ? sb.offers.filter((x): x is string => typeof x === 'string') : [];
+	const offerIds = [...new Set([...(Array.isArray(sb.offers) ? sb.offers : []), ...(Array.isArray(masterSb?.offers) ? masterSb.offers : [])])].filter((x): x is string => typeof x === 'string');
 
 	// --- fiction disclaimer
-	if (sb.fiction === true) {
+	if (sb.fiction === true || masterSb?.fiction === true) {
 		const label = (typeof sb.ui?.fictionDisclaimer === 'string' ? sb.ui.fictionDisclaimer.trim() : '') || (lang === 'en' ? EN_UI.fictionDisclaimer : '');
 		// a negated fiction word ("no ficticia") does not count, and only the card or the OPENING scene does: a
 		// "made-up coin" chart line in scene 3 does not tell the viewer the story is fictional
@@ -478,7 +527,9 @@ export const checkEpisode = (input: CheckInput): ClaimReport => {
 	{
 		const offersPath = input.offersPath === undefined ? defaultOffersPath() : input.offersPath;
 		const registry = offerIds.length ? (loadOffers(offersPath) as RegionalRegistry) : null;
-		for (const f of regionalFindings({sb: sb as Storyboard & RegionalFields, lang, isTranslation, offerIds, registry})) push(f);
+		const own = sb as Storyboard & RegionalFields;
+		const effective: Storyboard & RegionalFields = masterSb ? {...own, tokenPromotion: own.tokenPromotion === true || masterSb.tokenPromotion === true, holdings: own.holdings ?? masterSb.holdings} : own;
+		for (const f of regionalFindings({sb: effective, lang, isTranslation, offerIds, registry})) push(f);
 	}
 
 	// --- translations: the claim tags must survive 1:1 per scene

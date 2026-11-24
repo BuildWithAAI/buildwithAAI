@@ -283,6 +283,12 @@ class SpacedNormalizer:
                         return 2, [pre, self.signed(sign, self.money(core, num, scale)) + npost]
                     except ValueError:
                         return None
+            # "10 h" (es, pt-br, it): a spaced hour mark reads like "10h", never "diez hache" (2026-11-24 re-check)
+            if ncore in ("h", "H") and not post and not npre and re.fullmatch(r"\d{1,2}", core) and int(core) <= 24:
+                said = self.hours(int(core), None)
+                if said is not None:
+                    head, _, tail = said.rpartition(" ")
+                    return 2, [pre + head, tail + npost]
             # "5-10 %"
             if ncore == "%" and not npre:
                 m = re.fullmatch(rf"({NUM})%?\s?[-–]\s?({NUM})", core)

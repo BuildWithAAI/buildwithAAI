@@ -199,6 +199,25 @@ def _offset_sub(sub, exterior, poly, dist):
             disp.append((0.0, 0.0))
     if closed:
         disp[n] = disp[0]
+    # Round-2 repair (D35): a corner between two cut segments stays put, so when its neighbour on a SHORT cut (a tracing
+    # nub at the bottom of a pastern or the top of a paw) slides along that cut past it, the fill grew a tiny ear outside the
+    # eroded edge (it notched the outline at every wrist / hock / pastern). Such a corner now moves with that neighbour.
+    seg_len = lambda k: math.hypot(segs[k][1][-1][0] - starts[k][0], segs[k][1][-1][1] - starts[k][1])
+    for _ in range(2):
+        for k in range(n + 1):
+            if disp[k] != (0.0, 0.0):
+                continue
+            cands = []
+            if k > 0 and not norms[k - 1] and seg_len(k - 1) < 3.0 and disp[k - 1] != (0.0, 0.0):
+                cands.append(disp[k - 1])
+            if k < n and not norms[k] and seg_len(k) < 3.0 and disp[k + 1] != (0.0, 0.0):
+                cands.append(disp[k + 1])
+            if k == 0 and closed and not norms[n - 1] and seg_len(n - 1) < 3.0 and disp[n - 1] != (0.0, 0.0):
+                cands.append(disp[n - 1])
+            if cands:
+                disp[k] = cands[0]
+        if closed:
+            disp[n] = disp[0]
     mv = lambda p, d: (p[0] + d[0], p[1] + d[1])
     out = {'start': mv(sub['start'], disp[0]), 'segs': [], 'closed': sub['closed']}
     for k, (c, ps) in enumerate(segs):
@@ -268,7 +287,11 @@ def erode_part(fill, strokes, dist, tol=0.8):
     exterior = []
     for k, s in enumerate(sub['segs']):
         pts = seg_points(starts[k], s, 4)[1:-1]
-        exterior.append(all(near_any(p, spts, tol) for p in pts))
+        end = s[1][-1]
+        # a short straight nub next to a stroke end lies within `tol` of that end and used to count as exterior; it is a
+        # cut (round-2 repair, D35: treating it as an edge pushed the corner after it up and left an ear outside the edge)
+        nub = s[0] == 'L' and math.hypot(end[0] - starts[k][0], end[1] - starts[k][1]) < 3.0
+        exterior.append(not nub and all(near_any(p, spts, tol) for p in pts))
     moved = _offset_sub(sub, exterior, poly, dist)
     new_fill = emit(moved)
     anchors = [(starts[k], (moved['segs'][k - 1][1][-1] if k else moved['start'])) for k in range(len(starts))]

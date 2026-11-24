@@ -248,6 +248,7 @@ class ReviewCases(unittest.TestCase):
             "Taxas de 5-10%.": "Taxas de cinco a dez por cento.",  # was 'five MINUS ten'
             "Às 10h30": "Às dez e trinta",  # was 'dez aga trinta'
             "às 2h": "às duas horas",
+            "Às 10 h.": "Às dez horas.",  # a spaced hour mark (2026-11-24 re-check: was 'dez h')
             "Perdeu € 200.": "Perdeu duzentos euros.",  # was 'euro duzentos'
             "#1": "número um",
             "nº 1": "número um",
@@ -263,6 +264,8 @@ class ReviewCases(unittest.TestCase):
             "MX$200": "doscientos pesos mexicanos",
             "1/3": "un tercio",
             "10h30": "diez y treinta",
+            "A las 10 h.": "A las diez horas.",  # was 'diez h' (2026-11-24 re-check)
+            "a la 1 h": "a la una hora",
         },
         "en": {
             "5-10%": "five to ten percent",  # was 'five dash ten percent'
@@ -279,7 +282,7 @@ class ReviewCases(unittest.TestCase):
             "24/7": "twenty four seven",
             "50/50": "fifty fifty",
         },
-        "it": {"5-10%": "da cinque a dieci per cento", "#1": "numero uno", "US$40.000": "quarantamila dollari", "2/3": "due terzi"},
+        "it": {"alle 10 h": "alle dieci ore", "5-10%": "da cinque a dieci per cento", "#1": "numero uno", "US$40.000": "quarantamila dollari", "2/3": "due terzi"},
         "hi": {"5-10%": "पाँच से दस प्रतिशत", "#1": "नंबर एक", "1/2": "आधा", "US$40": "चालीस अमेरिकी डॉलर"},
         "zh": {"US$40": "四十美元", "#1": "一号", "5-10%": "百分之五到百分之十"},
     }
@@ -327,6 +330,28 @@ class Lexicon(unittest.TestCase):
     def test_spanish_and_portuguese_respellings(self):
         self.assertEqual(n("analistas on-chain", "es"), "analistas onchéin")  # espeak es: on-cháin
         self.assertEqual(n("analistas on-chain", "pt-br"), "analistas onchêin")
+        # the dub glossary's single-word respellings, so an unmarked dub is read the same way (es said me-ME-coins)
+        self.assertEqual(n("Las memecoins de CoinGecko.", "es"), "Las mimcoins de Coin Guecko.")
+        self.assertEqual(n("As memecoins da Bubblemaps.", "pt-br"), "As mímcoins da Bâbou maps.")
+
+    def test_lexicon_matches_the_dub_glossary(self):
+        """Every single-word respelling in scripts/dub/lib/glossary.ts RESPELL is in the voice lexicon, spelled the same."""
+        import os
+        import re
+
+        from voicelib.lexicon import PRONUNCIATIONS
+
+        with open(os.path.join(os.path.dirname(__file__), "..", "..", "dub", "lib", "glossary.ts"), encoding="utf-8") as fh:
+            src = fh.read()
+        for lang in ("es", "pt-br"):
+            block = re.search(r"\n\t%s: \[(.*?)\n\t\]" % re.escape(lang if lang == "es" else "'pt-br'"), src, re.S).group(1)
+            pairs = re.findall(r"\{term: '([^']+)', spoken: '([^']+)'", block)
+            self.assertTrue(pairs, lang)
+            for term, spoken in pairs:
+                if " " in term:
+                    continue  # the lexicon matches single tokens; multi-word terms need {term|spoken}
+                with self.subTest(lang=lang, term=term):
+                    self.assertEqual(PRONUNCIATIONS[lang].get(term.lower()), spoken)
 
     def test_captions_keep_the_written_form(self):
         from voicelib.words import build_words

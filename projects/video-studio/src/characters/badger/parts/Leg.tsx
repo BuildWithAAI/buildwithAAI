@@ -2,6 +2,7 @@ import React from 'react';
 import {BADGER_COLORS, LINE} from '../../palette';
 import {Pt, ShapeGeom, tr, useStrokes} from './shared';
 import {SpotShapes} from './SpotShapes';
+import {samplePath} from './pathSample';
 import type {BadgerSpot} from '../spots';
 
 /**
@@ -35,98 +36,141 @@ const circle = (r: number) => `M ${r} 0 A ${r} ${r} 0 1 1 ${-r} 0 A ${r} ${r} 0 
 type SegKey = 'upper' | 'lower' | 'paw';
 const SEGS: readonly SegKey[] = ['paw', 'lower', 'upper'];
 
-/** End of an edge at a joint: the point and the unit tangent pointing AWAY from the joint along the edge. */
-type EdgeEnd = {p: Pt; t: Pt};
-const NUM = /-?\d*\.?\d+(?:e-?\d+)?/g;
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
-const unit = (a: Pt, b: Pt): Pt => {
-	const l = dist(a, b) || 1;
-	return {x: (b.x - a.x) / l, y: (b.y - a.y) / l};
-};
-/** Both ends of an absolute M/C/L path with the tangent pointing into the path from each end. */
-const pathEnds = (d: string): {start: EdgeEnd; end: EdgeEnd} => {
-	const n = (d.match(NUM) ?? []).map(Number);
-	const pts: Pt[] = [];
-	for (let i = 0; i + 1 < n.length; i += 2) pts.push({x: n[i], y: n[i + 1]});
-	const next = (i0: number, step: number): Pt => {
-		let i = i0 + step;
-		while (i > 0 && i < pts.length - 1 && dist(pts[i], pts[i0]) < 1e-6) i += step;
-		return pts[Math.max(0, Math.min(pts.length - 1, i))];
-	};
-	const a = pts[0];
-	const z = pts[pts.length - 1];
-	return {start: {p: a, t: unit(a, next(0, 1))}, end: {p: z, t: unit(z, next(pts.length - 1, -1))}};
-};
-type JointPair = {upper: EdgeEnd; lower: EdgeEnd};
-const JOINT_CACHE = new WeakMap<LegGeom, JointPair[]>();
-/** The outline edges meeting at the wrist / hock, paired by side (upper-local and lower-local coordinates). */
-const jointPairs = (geom: LegGeom): JointPair[] => {
-	let out = JOINT_CACHE.get(geom);
-	if (out) return out;
-	const P = geom.lowerPivot;
-	const O = {x: 0, y: 0};
-	const near = (d: string, q: Pt): EdgeEnd => {
-		const e = pathEnds(d);
-		return dist(e.start.p, q) <= dist(e.end.p, q) ? e.start : e.end;
-	};
-	const ups = geom.upper.strokes.map((d) => near(d, P)).filter((e) => dist(e.p, P) < 30);
-	const lows = geom.lower.strokes.map((d) => near(d, O)).filter((e) => dist(e.p, O) < 30);
-	out = [];
-	for (const u of ups) {
-		const l = lows.find((q) => Math.sign(q.p.x) === Math.sign(u.p.x - P.x));
-		if (l) out.push({upper: u, lower: l});
+const f2 = (v: number) => (Math.round(v * 100) / 100).toString();
+const pt2 = (q: Pt) => `${f2(q.x)} ${f2(q.y)}`;
+
+/** An outline edge leaving a joint: sampled points ordered from the joint outward (segment-local space). */
+type EdgeRun = {pts: Pt[]; side: number};
+/** Both joints of a leg: the parent segment's edges ending at the child pivot, the child's edges starting at its origin. */
+type JointEdges = {parent: EdgeRun[]; child: EdgeRun[]};
+const RUN = 48; // units of each edge kept near the joint
+const runFrom = (pts: Pt[]): Pt[] => {
+	const out = [pts[0]];
+	let s = 0;
+	for (let i = 1; i < pts.length && s < RUN; i++) {
+		s += dist(pts[i - 1], pts[i]);
+		out.push(pts[i]);
 	}
-	JOINT_CACHE.set(geom, out);
 	return out;
 };
-const FILLET_R = 7;
-const f2 = (v: number) => (Math.round(v * 100) / 100).toString();
+/** Edges of `strokes` with an end within 30 units of `q`, as runs leaving q (both ends of a stroke may qualify). */
+const edgesAt = (strokes: readonly string[], q: Pt, axisX: number): EdgeRun[] => {
+	const out: EdgeRun[] = [];
+	for (const d of strokes) {
+		const pts = samplePath(d, 16);
+		if (pts.length < 2) continue;
+		for (const run of [pts, [...pts].reverse()]) {
+			if (dist(run[0], q) < 30) out.push({pts: runFrom(run), side: Math.sign(run[0].x - axisX)});
+		}
+	}
+	return out;
+};
+const EDGE_CACHE = new WeakMap<LegGeom, {lower: JointEdges; paw: JointEdges}>();
+const jointEdges = (geom: LegGeom) => {
+	let e = EDGE_CACHE.get(geom);
+	if (!e) {
+		const O = {x: 0, y: 0};
+		e = {
+			lower: {parent: edgesAt(geom.upper.strokes, geom.lowerPivot, geom.lowerPivot.x), child: edgesAt(geom.lower.strokes, O, 0)},
+			paw: {parent: edgesAt(geom.lower.strokes, geom.pawPivot, geom.pawPivot.x), child: edgesAt(geom.paw.strokes, O, 0)},
+		};
+		EDGE_CACHE.set(geom, e);
+	}
+	return e;
+};
+const cross = (a: Pt, b: Pt) => a.x * b.y - a.y * b.x;
+const sub = (a: Pt, b: Pt): Pt => ({x: a.x - b.x, y: a.y - b.y});
+/** First crossing of two polylines (smallest summed arc length from their starts). */
+const firstCrossing = (A: Pt[], B: Pt[]): {p: Pt; ia: number; ta: number; ib: number; tb: number} | null => {
+	let best: {p: Pt; ia: number; ta: number; ib: number; tb: number} | null = null;
+	let bestS = Infinity;
+	let sa = 0;
+	for (let i = 0; i + 1 < A.length; i++) {
+		const r = sub(A[i + 1], A[i]);
+		const la = Math.hypot(r.x, r.y);
+		let sb = 0;
+		for (let j = 0; j + 1 < B.length; j++) {
+			const q = sub(B[j + 1], B[j]);
+			const lb = Math.hypot(q.x, q.y);
+			const den = cross(r, q);
+			if (Math.abs(den) > 1e-9) {
+				const w = sub(B[j], A[i]);
+				const t = cross(w, q) / den;
+				const u = cross(w, r) / den;
+				if (t >= 0 && t <= 1 && u >= 0 && u <= 1 && sa + t * la + sb + u * lb < bestS) {
+					bestS = sa + t * la + sb + u * lb;
+					best = {p: {x: A[i].x + r.x * t, y: A[i].y + r.y * t}, ia: i, ta: t, ib: j, tb: u};
+				}
+			}
+			sb += lb;
+		}
+		sa += la;
+	}
+	return best;
+};
+/** The polyline from a crossing (segment i, fraction t) outward for `len` units: its points, end point and end tangent. */
+const walkOut = (P: Pt[], i: number, t: number, len: number): {pts: Pt[]; end: Pt; tan: Pt} | null => {
+	let cur = {x: P[i].x + (P[i + 1].x - P[i].x) * t, y: P[i].y + (P[i + 1].y - P[i].y) * t};
+	const pts = [cur];
+	let left = len;
+	for (let k = i + 1; k < P.length; k++) {
+		const d = dist(cur, P[k]);
+		if (d >= left) {
+			const f = left / d;
+			const end = {x: cur.x + (P[k].x - cur.x) * f, y: cur.y + (P[k].y - cur.y) * f};
+			pts.push(end);
+			return {pts, end, tan: {x: (P[k].x - cur.x) / d, y: (P[k].y - cur.y) / d}};
+		}
+		left -= d;
+		cur = P[k];
+		pts.push(cur);
+	}
+	return null;
+};
+const FILLET_R = 9;
+const FILLET_MAX = 15;
 /**
- * Round-2 repair (decision BADGER-D35): a strongly bent wrist / hock left a sharp V where the upper and lower outlines
- * cross on the inside of the bend. This fills the V with a small fillet (radius FILLET_R units, upper-local space): `fill`
- * goes with the segment fills, `arc` is its outline for the under-stroke pass, so the inside of the joint reads as one
- * soft curve. The outside of the bend is closed by the round joint disk as before.
+ * Round-2 repair (decision BADGER-D35): a strongly bent wrist / hock / pastern left a sharp V where the parent and child
+ * outlines cross on the inside of the bend. For each pair of edges that actually cross (sampled on the drawn curves, child
+ * edge moved into parent space), the V is filled with a fillet tangent to both edges (radius FILLET_R units, cut back at
+ * most FILLET_MAX units along each edge): `fill` goes with the segment fills, `arc` is its outline for the under-stroke
+ * pass, so the inside of the joint reads as one soft curve. The outside of the bend is closed by the round joint disk.
+ * Paths are in the PARENT segment's space (upper for the wrist / hock, lower for the pastern).
  */
-const jointFillets = (geom: LegGeom, lowerDeg: number): {fill: string; arc: string}[] => {
-	if (Math.abs(lowerDeg) < 8) return [];
-	const P = geom.lowerPivot;
-	const th = (lowerDeg * Math.PI) / 180;
+const jointFillets = (edges: JointEdges, pivot: Pt, deg: number): {fill: string; arc: string}[] => {
+	if (Math.abs(deg) < 8) return [];
+	const th = (deg * Math.PI) / 180;
 	const c = Math.cos(th);
 	const s = Math.sin(th);
-	const rotV = (v: Pt): Pt => ({x: v.x * c - v.y * s, y: v.x * s + v.y * c});
-	const axis = rotV({x: 0, y: 1}); // the lower segment's long axis (downward) in upper-local space
+	const toParent = (v: Pt): Pt => ({x: pivot.x + v.x * c - v.y * s, y: pivot.y + v.x * s + v.y * c});
 	const out: {fill: string; arc: string}[] = [];
-	for (const pair of jointPairs(geom)) {
-		const side = Math.sign(pair.upper.p.x - P.x);
-		if (side * axis.x <= 0) continue; // the lower swings AWAY from this side: outside of the bend (joint disk)
-		const u = pair.upper.t;
-		const A0 = pair.upper.p;
-		const lp0 = rotV(pair.lower.p);
-		const lp = {x: P.x + lp0.x, y: P.y + lp0.y};
-		const lt = rotV(pair.lower.t);
-		const den = u.x * lt.y - u.y * lt.x;
-		if (Math.abs(den) < 1e-4) continue;
-		const D = {x: lp.x - A0.x, y: lp.y - A0.y};
-		const a = (D.x * lt.y - D.y * lt.x) / den;
-		const b = (u.y * D.x - u.x * D.y) / den;
-		if (a < -1 || b < -1 || a > 40 || b > 40) continue;
-		const V = {x: A0.x + a * u.x, y: A0.y + a * u.y};
-		const alpha = Math.acos(Math.max(-1, Math.min(1, u.x * lt.x + u.y * lt.y)));
-		if (alpha > (170 * Math.PI) / 180) continue;
-		let r = FILLET_R;
-		let dd = r / Math.tan(alpha / 2);
-		if (dd > 12) {
-			dd = 12;
-			r = dd * Math.tan(alpha / 2);
+	for (const pe of edges.parent) {
+		for (const ce of edges.child) {
+			if (ce.side !== pe.side) continue;
+			const B = ce.pts.map(toParent);
+			const X = firstCrossing(pe.pts, B);
+			if (!X) continue;
+			// outward tangents at the crossing
+			const ta = walkOut(pe.pts, X.ia, X.ta, 1);
+			const tb = walkOut(B, X.ib, X.tb, 1);
+			if (!ta || !tb) continue;
+			const cosA = Math.max(-1, Math.min(1, ta.tan.x * tb.tan.x + ta.tan.y * tb.tan.y));
+			const alpha = Math.acos(cosA); // opening of the V between the two visible edges
+			if (alpha > (165 * Math.PI) / 180 || alpha < (10 * Math.PI) / 180) continue;
+			const dd = Math.min(FILLET_MAX, FILLET_R / Math.tan(alpha / 2));
+			const ra = walkOut(pe.pts, X.ia, X.ta, dd);
+			const rb = walkOut(B, X.ib, X.tb, dd);
+			if (!ra || !rb) continue;
+			const phi = Math.PI - alpha;
+			const h = ((4 / 3) * Math.tan(phi / 4) * dd) / Math.tan(phi / 2);
+			const c1 = {x: ra.end.x - ra.tan.x * h, y: ra.end.y - ra.tan.y * h};
+			const c2 = {x: rb.end.x - rb.tan.x * h, y: rb.end.y - rb.tan.y * h};
+			const arc = `M ${pt2(ra.end)} C ${pt2(c1)} ${pt2(c2)} ${pt2(rb.end)}`;
+			const back = [...rb.pts].reverse();
+			const fill = `M ${ra.pts.map(pt2).join(' L ')} C ${pt2(c1)} ${pt2(c2)} ${pt2(rb.end)} L ${back.map(pt2).join(' L ')} Z`;
+			out.push({fill, arc});
 		}
-		const A = {x: V.x + u.x * dd, y: V.y + u.y * dd};
-		const B = {x: V.x + lt.x * dd, y: V.y + lt.y * dd};
-		const sweep = den > 0 ? 0 : 1; // the arc bulges toward V (its centre lies on the open side of the V)
-		const pt = (q: Pt) => `${f2(q.x)} ${f2(q.y)}`;
-		out.push({
-			fill: `M ${pt(V)} L ${pt(A)} A ${f2(r)} ${f2(r)} 0 0 ${sweep} ${pt(B)} Z`,
-			arc: `M ${pt(A)} A ${f2(r)} ${f2(r)} 0 0 ${sweep} ${pt(B)}`,
-		});
 	}
 	return out;
 };
@@ -158,8 +202,12 @@ export const Leg: React.FC<{
 	const pawT = `${lowerT} ${tr(geom.pawPivot, angles.paw)}`;
 	const T: Record<SegKey, string> = {upper: upperT, lower: lowerT, paw: pawT};
 	const L0 = useStrokes();
+	// Fill-colour halo (stroke width, world units) on every leg fill: it closes the anti-aliasing seam where two fills of the
+	// same leg abut over the dark under-stroke (wrist / hock / pastern), which showed as hairline ticks. The under-strokes are
+	// widened by the same amount, so the visible outline stays LINE.width.
+	const halo = LINE.width * 0.3 * L0.k;
 	if (pass === 'underlay') {
-		const u = {...L0.stroke, strokeWidth: LINE.width * 2 * L0.k};
+		const u = {...L0.stroke, strokeWidth: LINE.width * 2 * L0.k + halo};
 		return (
 			<g>
 				{SEGS.map((s) =>
@@ -179,10 +227,13 @@ export const Leg: React.FC<{
 	const rl = geom.lowerJointR;
 	const rp = geom.pawJointR;
 	const L = L0;
-	const under = {...L.stroke, strokeWidth: LINE.width * 2 * L.k};
+	const under = {...L.stroke, strokeWidth: LINE.width * 2 * L.k + halo};
+	const fillP = {fill: color, stroke: color, strokeWidth: halo, strokeLinejoin: 'round' as const};
 	const lowerBent = Math.abs(angles.lower) > 0.25;
 	const pawBent = Math.abs(angles.paw) > 0.25;
-	const fillets = jointFillets(geom, angles.lower);
+	const E = jointEdges(geom);
+	const fillets = jointFillets(E.lower, geom.lowerPivot, angles.lower);
+	const pawFillets = jointFillets(E.paw, geom.pawPivot, angles.paw);
 	return (
 		<g>
 			{SEGS.map((s) => (
@@ -200,16 +251,22 @@ export const Leg: React.FC<{
 			{fillets.map((f, i) => (
 				<path key={`fa${i}`} d={f.arc} transform={upperT} {...under} />
 			))}
+			{pawFillets.map((f, i) => (
+				<path key={`pa${i}`} d={f.arc} transform={lowerT} {...under} />
+			))}
 			{rl && lowerBent ? <path d={circle(rl)} transform={lowerT} {...under} /> : null}
 			{rp && pawBent ? <path d={circle(rp)} transform={pawT} {...under} /> : null}
-			{rl ? <path d={circle(rl)} transform={lowerT} fill={color} /> : null}
-			{rp ? <path d={circle(rp)} transform={pawT} fill={color} /> : null}
+			{rl ? <path d={circle(rl)} transform={lowerT} {...fillP} /> : null}
+			{rp ? <path d={circle(rp)} transform={pawT} {...fillP} /> : null}
 			{fillets.map((f, i) => (
-				<path key={`ff${i}`} d={f.fill} transform={upperT} fill={color} />
+				<path key={`ff${i}`} d={f.fill} transform={upperT} {...fillP} />
+			))}
+			{pawFillets.map((f, i) => (
+				<path key={`pf${i}`} d={f.fill} transform={lowerT} {...fillP} />
 			))}
 			{SEGS.map((s) => (
 				<g key={s} transform={T[s]}>
-					<path d={geom[s].fill} fill={color} />
+					<path d={geom[s].fill} {...fillP} />
 					{bySeg(s).length ? (
 						<>
 							<clipPath id={`${uid}-c${s}`}>

@@ -12,11 +12,12 @@
  *    not brands; a brand may appear only as a cited source or incident);
  *  - promises a security product must never make ("100% safe", "unhackable", "guaranteed protection"...),
  *    outside quotation marks (the phrasebook quotes scam lines on purpose);
- *  - spot ids that the spot catalog does not define.
+ *  - spot ids that the spot catalog does not define;
+ *  - cross-references ([#id]) to a section that does not exist, or in text that has no sections (the copy).
  * Warnings: chapters that don't end with a red-flag box and a one-fix box, sources never cited.
  */
 import {blockTexts, walkBlocks, type Block, type Structured} from './markdown.ts';
-import {citationsOf, InlineError, linksOf, parseInline, plainText} from './inline.ts';
+import {citationsOf, InlineError, linksOf, parseInline, plainText, xrefsOf} from './inline.ts';
 
 export type Finding = {level: 'error' | 'warning'; line: number; rule: string; message: string};
 
@@ -60,7 +61,12 @@ const PLACEHOLDER_RE = /\b(TODO|TBD|FIXME|REPLACE|lorem ipsum)\b|example\.(com|o
 /** Removes text inside quotation marks (straight or curly), so quoted scam lines are not read as our claims. */
 export const stripQuoted = (s: string): string => s.replace(/"[^"]*"|“[^”]*”/g, ' ');
 
-const checkText = (text: string, line: number, out: Finding[], opts: {knownIds: Set<string>; spotIds?: Set<string>}): {cites: string[]; links: string[]} => {
+const checkText = (
+	text: string,
+	line: number,
+	out: Finding[],
+	opts: {knownIds: Set<string>; spotIds?: Set<string>; sectionIds?: Set<string>},
+): {cites: string[]; links: string[]} => {
 	let nodes;
 	try {
 		nodes = parseInline(text);
@@ -70,6 +76,10 @@ const checkText = (text: string, line: number, out: Finding[], opts: {knownIds: 
 	}
 	const cites = citationsOf(nodes);
 	for (const id of cites) if (!opts.knownIds.has(id)) out.push({level: 'error', line, rule: 'unknown-source', message: `no source with id "${id}" in sources.json`});
+	for (const id of xrefsOf(nodes)) {
+		if (!opts.sectionIds) out.push({level: 'error', line, rule: 'xref', message: `cross-reference [#${id}] needs a document with sections`});
+		else if (!opts.sectionIds.has(id)) out.push({level: 'error', line, rule: 'xref', message: `cross-reference [#${id}] points at no section`});
+	}
 	for (const href of linksOf(nodes)) {
 		if (!/^(https:\/\/|mailto:|#)/.test(href)) out.push({level: 'error', line, rule: 'link', message: `link must be https, mailto or #anchor: ${href}`});
 	}
@@ -92,8 +102,10 @@ export const lintStructured = (doc: Structured, opts: {knownIds: Set<string>; sp
 	const out: Finding[] = [];
 	const all: Block[] = [...doc.preamble, ...doc.sections.flatMap((s) => s.blocks)];
 	const ledes = doc.sections.filter((s) => s.lede).map((s) => ({text: s.lede as string, line: s.line}));
+	// cross-references may point at any section; the free edition has none, so it may not use them
+	const textOpts = {...opts, sectionIds: doc.sections.length ? new Set(doc.sections.map((s) => s.id)) : undefined};
 	const checkUnit = (u: {text: string; line: number}) => {
-		const {cites} = checkText(u.text, u.line, out, opts);
+		const {cites} = checkText(u.text, u.line, out, textOpts);
 		const plain = (() => {
 			try {
 				return plainText(parseInline(u.text));

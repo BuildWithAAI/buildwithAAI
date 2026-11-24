@@ -402,6 +402,33 @@ describe('VCD review: statistics, on-screen figures, titles', () => {
 		assert.ok(errs(r).some((f) => f.rule === 'title-unsourced' && f.where === 'title'));
 		assert.ok(errs(r).some((f) => f.rule === 'title-unsourced' && f.where.startsWith('shorts[')));
 	});
+	test('a title may round a cited figure but never move it; a percent is not a count (re-check on the demo, 2026-11-24)', () => {
+		// the demo cites 68.67% and "ninety days": "73% ..." and "90% ARE RUGS" passed under the old flat 6% tolerance
+		const cite = (f: Record<string, Sb>) =>
+			(scene(f['storyboard.json'], 's02').narration =
+				'A study tracked 18.67 million tokens. [src:callout-terms] Nearly 68.67% made their last trade on launch day. [src:callout-terms] Ninety days later, few were left. [src:callout-terms]');
+		const titled = (title: string) =>
+			rules(
+				check(
+					scratch('good-episode', (f) => {
+						cite(f);
+						f['storyboard.json'].title = title;
+					}),
+				),
+			);
+		assert.ok(titled('73% of new tokens die on day one').includes('title-unsourced'));
+		assert.ok(!titled('69% of new tokens die on day one').includes('title-unsourced'));
+		assert.ok(!titled('Nearly 70% of new tokens die on day one').includes('title-unsourced'));
+		assert.ok(!titled('19M tokens tracked').includes('title-unsourced'));
+		assert.ok(titled('25M tokens tracked').includes('title-unsourced'));
+		const thumb = check(
+			scratch('good-episode', (f) => {
+				cite(f);
+				f['storyboard.json'].thumbnails[0].text = '90% ARE RUGS';
+			}),
+		);
+		assert.ok(errs(thumb).some((x) => x.rule === 'title-unsourced' && x.where.startsWith('thumbnails[')), JSON.stringify(rules(thumb)));
+	});
 });
 
 describe('VCD review: the translation record and numbers reach the claim report', () => {
@@ -446,6 +473,19 @@ describe('VCD review: offers in dubs, MiCA, ASCI', () => {
 		assert.ok(rules(check(offersIn('es', 'hardware-wallet'), {lang: 'es', offersPath: wallet})).includes('dub-offers'));
 		const waived = check(offersIn('es', 'hardware-wallet', {reason: 'hub routes es viewers to an EU-licensed shop', approvedBy: 'owner', date: '2026-11-24'}), {lang: 'es', offersPath: wallet});
 		assert.ok(!rules(waived).includes('dub-offers'), JSON.stringify(rules(waived)));
+	});
+	test('a dub that drops the master\'s offers or token promotion still gets the dub rules (2026-11-24 re-check)', () => {
+		const dropped = scratch('good-episode', (f) => {
+			f['storyboard.json'].offers = ['bybit'];
+			scene(f['storyboard.json'], 's06').narration = 'Referral link: I may earn a commission. If it saved you one bad trade, subscribe.';
+			delete f['storyboard.es.json'].offers;
+		});
+		const r = rules(check(dropped, {lang: 'es', offersPath: exchange}));
+		assert.ok(r.includes('dub-structure'), r.join(', '));
+		assert.ok(r.includes('dub-offers'), r.join(', '));
+		const promo = scratch('good-episode', (f) => (f['storyboard.json'].tokenPromotion = true));
+		const p = rules(check(promo, {lang: 'es'}));
+		assert.ok(p.includes('dub-structure') && p.includes('dub-offers'), p.join(', '));
 	});
 	test('an exchange offer in a dub always fails, waiver or not', () => {
 		const r = check(offersIn('es', 'bybit', {reason: 'owner decision recorded here', approvedBy: 'owner', date: '2026-11-24'}), {lang: 'es', offersPath: exchange});

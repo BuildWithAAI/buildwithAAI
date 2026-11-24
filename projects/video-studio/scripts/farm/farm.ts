@@ -68,7 +68,7 @@ import {
 	voiceProbeArtifact,
 	type Git,
 } from './plan.ts';
-import {isProbe, jobSummary, parseProbe, runSummary, wavInfo, type AnyProbe, type ProbeInfo, type RenderProbe, type VoiceProbe} from './probe.ts';
+import {isProbe, jobSummary, parseProbe, probeLine, runSummary, wavInfo, type AnyProbe, type ProbeInfo, type RenderProbe, type VoiceProbe} from './probe.ts';
 import {
 	COMPOSITION_RE,
 	ID_RE,
@@ -692,11 +692,7 @@ export const cmdProbe = (ctx: Ctx): void => {
 	writeFileSync(join(dir, `${renderProbeArtifact(st.request, st.index)}.json`), JSON.stringify(rec));
 	addSummary(ctx, jobSummary(rec));
 	if (ok && !info) reportError(ctx, 'ffprobe could not read the output');
-	ctx.log(
-		ok && info
-			? `probe: ${info.width}x${info.height}${info.durationSec !== null ? `, ${info.durationSec} s` : ''}${info.fps !== null ? `, ${info.fps} fps` : ''}, ${info.sizeBytes} bytes`
-			: 'probe: no output to measure',
-	);
+	ctx.log(ok && info ? `probe: ${probeLine(info)}` : 'probe: no output to measure');
 };
 
 export const cmdPack = async (ctx: Ctx): Promise<void> => {

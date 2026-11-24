@@ -153,6 +153,18 @@ export const wavInfo = (path: string): ProbeInfo | null => {
 	}
 };
 
+/** One log line for a measured output: only the facts it has (an audio-only render has no picture size or frame rate). */
+export const probeLine = (i: ProbeInfo): string =>
+	[
+		i.width && i.height ? `${i.width}x${i.height}` : null,
+		i.durationSec !== null ? `${i.durationSec} s` : null,
+		i.fps !== null ? `${i.fps} fps` : null,
+		!i.videoCodec && i.audioCodec ? `${i.audioCodec}${i.sampleRate ? ` ${i.sampleRate} Hz` : ''}${i.channels ? ` ${i.channels} ch` : ''}` : null,
+		i.sizeBytes !== null ? `${i.sizeBytes} bytes` : null,
+	]
+		.filter((x): x is string => x !== null)
+		.join(', ') || 'no measurements';
+
 export const fmtSeconds = (sec: number | null): string => {
 	if (sec === null) return '-';
 	if (sec < 60) return `${sec.toFixed(sec < 10 ? 2 : 1)} s`;

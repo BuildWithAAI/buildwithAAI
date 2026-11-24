@@ -7,7 +7,7 @@
  *  - free: a two-page sheet (header band, checklist groups in two columns, "if something goes wrong", sources).
  */
 import {blockTexts, ContentError, walkBlocks, type Block, type Section, type Structured} from './markdown.ts';
-import {escapeHtml, inline, parseInline, plainText, renderInline, type InlineContext, type InlineNode} from './inline.ts';
+import {escapeHtml, inline, parseInline, plainText, renderInline, smartQuotes, type InlineContext, type InlineNode} from './inline.ts';
 import {chapterIcon, icon, type IconName} from './icons.ts';
 import {CitationRegistry, formatDate, type Source, type SourceFile} from './sources.ts';
 import {cssString} from './styles.ts';
@@ -59,6 +59,8 @@ type Ctx = {
 	warnings: string[];
 	section: Section | null;
 	structured: Structured;
+	/** The page tag for a cross-reference that ends a checklist item (absent where there are no sections). */
+	xrefTag?: (id: string) => string;
 };
 
 const PRIORITY: Record<string, {cls: string; icon: IconName}> = {
@@ -80,6 +82,29 @@ const prioMark = (p: string): string => `<span class="prio-mark" aria-hidden="tr
 
 const md = (s: string, ctx: Ctx): string => inline(s, ctx.inl);
 
+/** Plain text set with the house typography (curly quotes), escaped: for strings that never pass through md(). */
+export const typeset = (s: string): string => escapeHtml(smartQuotes(s));
+
+/** Ends a title as a sentence without doubling its own punctuation ("Why?" stays "Why?", not "Why?."). */
+export const asSentence = (s: string): string => (/[.!?…]["'”’)]?$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+
+/**
+ * A display URL with line-break opportunities where a reader expects them (Chicago style: before a slash, period,
+ * hyphen, underscore, query or fragment), so a long link never splits mid-word ("ht ml").
+ */
+export const breakableUrl = (display: string): string =>
+	display
+		.split(/(?=[/.\-_?#=&%~])/)
+		.map(escapeHtml)
+		.join('<wbr>');
+
+/** The words a cross-reference prints for a section: "Chapter 3", "Appendix B" or the section title. */
+export const xrefLabel = (s: Section): string => {
+	if (s.kind === 'chapter') return `Chapter ${Number(s.number)}`;
+	if (s.kind === 'appendix') return `Appendix ${s.number}`;
+	return plainText(parseInline(s.title));
+};
+
 /** Splits "**Title.** rest" into a title (no trailing period) and the rest of the nodes. */
 export const splitLeadStrong = (nodes: InlineNode[]): {title: InlineNode[] | null; rest: InlineNode[]} => {
 	const [first, ...rest] = nodes;
@@ -94,9 +119,24 @@ export const splitLeadStrong = (nodes: InlineNode[]): {title: InlineNode[] | nul
 
 // ------------------------------------------------------------------------------------------ blocks
 
+/**
+ * A cross-reference that ends a checklist item becomes a page tag in its own column ("Ch 7 · p 12"), so a list of
+ * actions doubles as an index into the chapters. Anywhere else a cross-reference reads inline: "Chapter 3, p. 8".
+ */
 const renderChecklist = (b: Extract<Block, {type: 'checklist'}>, ctx: Ctx): string =>
 	`<ul class="checklist">${b.items
-		.map((it) => `<li class="check"><span class="box${it.checked ? ' done' : ''}" aria-hidden="true"></span><div class="check-text">${md(it.text, ctx)}</div></li>`)
+		.map((it) => {
+			const nodes = parseInline(it.text);
+			const last = nodes[nodes.length - 1];
+			let tag = '';
+			if (last?.t === 'xref' && ctx.xrefTag) {
+				nodes.pop();
+				const prev = nodes[nodes.length - 1];
+				if (prev?.t === 'text') nodes[nodes.length - 1] = {t: 'text', v: prev.v.replace(/\s+$/, '')};
+				tag = ctx.xrefTag(last.id);
+			}
+			return `<li class="check${tag ? ' has-ref' : ''}"><span class="box${it.checked ? ' done' : ''}" aria-hidden="true"></span><div class="check-text">${renderInline(nodes, ctx.inl)}</div>${tag}</li>`;
+		})
 		.join('')}</ul>`;
 
 const renderTable = (b: Extract<Block, {type: 'table'}>, ctx: Ctx): string => {
@@ -201,8 +241,8 @@ const renderFill = (b: Extract<Block, {type: 'fence'}>, ctx: Ctx): string => {
 
 const renderCallout = (b: Extract<Block, {type: 'fence'}>, ctx: Ctx): string => {
 	const body = renderBlocks(b.body, ctx);
-	if (b.kind === 'redflag') return `<aside class="callout redflag"><div class="callout-title">${icon('flag', '13pt', 'currentColor', 2.2)}${b.title ? md(b.title, ctx) : "Badger's Red Flag"}</div>${body}</aside>`;
-	if (b.kind === 'fix') return `<aside class="callout fix"><div class="callout-title">${icon('wrench', '13pt', 'currentColor', 2.2)}${b.title ? md(b.title, ctx) : "Zoo's One Fix"}</div>${body}</aside>`;
+	if (b.kind === 'redflag') return `<aside class="callout redflag"><div class="callout-title">${icon('flag', '13pt', 'currentColor', 2.2)}${md(b.title || "Badger's Red Flag", ctx)}</div>${body}</aside>`;
+	if (b.kind === 'fix') return `<aside class="callout fix"><div class="callout-title">${icon('wrench', '13pt', 'currentColor', 2.2)}${md(b.title || "Zoo's One Fix", ctx)}</div>${body}</aside>`;
 	if (b.kind === 'steps') {
 		const items = listItemsOf(b.body, 'steps', b.line);
 		const title = b.title ? `<div class="note-title">${icon('list', '11pt')}${md(b.title, ctx)}</div>` : '';
@@ -420,13 +460,13 @@ const renderSourcesList = (ctx: Ctx): string => {
 	if (ctx.opts.edition === 'free') {
 		const items = cited.map(
 			({n, source: s}) =>
-				`<li class="src" id="src-${escapeHtml(s.id)}"><span class="src-n">${n}</span><span>${escapeHtml(s.publisher)}: <a href="${escapeHtml(s.url)}">${escapeHtml(s.title)}</a> (${escapeHtml(formatDate(s.date))}). <span class="src-host">${escapeHtml(hostOf(s.url))}</span></span></li>`,
+				`<li class="src" id="src-${escapeHtml(s.id)}"><span class="src-n">${n}</span><span>${typeset(s.publisher)}: <a href="${escapeHtml(s.url)}">${typeset(s.title)}</a> (${escapeHtml(formatDate(s.date))}). <span class="src-host">${escapeHtml(hostOf(s.url))}</span></span></li>`,
 		);
 		return `<ol class="sources-list">${items.join('')}</ol><p class="src-note">All sources checked ${escapeHtml(checked)}. Every title is a link.</p>`;
 	}
 	const items = cited.map(({n, source: s}) => {
 		const tag = s.method === 'search-extract' ? ' <span class="src-tag">(search extract)</span>' : '';
-		return `<li class="src" id="src-${escapeHtml(s.id)}"><span class="src-n">${n}</span><span><span class="src-title">${escapeHtml(s.title)}.</span> ${escapeHtml(s.publisher)}, ${escapeHtml(formatDate(s.date))}.${tag} <a class="src-url" href="${escapeHtml(s.url)}">${escapeHtml(displayUrl(s.url))}</a></span></li>`;
+		return `<li class="src" id="src-${escapeHtml(s.id)}"><span class="src-n">${n}</span><span><span class="src-title">${typeset(asSentence(s.title))}</span> ${typeset(s.publisher)}, ${escapeHtml(formatDate(s.date))}.${tag} <a class="src-url" href="${escapeHtml(s.url)}">${breakableUrl(displayUrl(s.url))}</a></span></li>`;
 	});
 	void checked;
 	return `<ol class="sources-list">${items.join('')}</ol>`;
@@ -444,7 +484,7 @@ const SOURCES_PLACEHOLDER = '<!--@@SOURCES@@-->';
 const colophon = (ctx: Ctx): string => {
 	const p = ctx.opts.product;
 	const contact = p.contact ? ` Corrections and questions: <a href="mailto:${escapeHtml(p.contact)}">${escapeHtml(p.contact)}</a>.` : '';
-	return `<p class="colophon">${escapeHtml(meta(ctx, 'title'))}, ${escapeHtml(meta(ctx, 'editionLabel', 'Full edition'))}, version ${escapeHtml(meta(ctx, 'version'))} (${escapeHtml(formatDate(meta(ctx, 'date')))}). © ${escapeHtml(meta(ctx, 'date').slice(0, 4))} ${escapeHtml(p.copyrightHolder)}. ${escapeHtml(p.licence.full)}${contact}</p>`;
+	return `<p class="colophon">${typeset(meta(ctx, 'title'))}, ${typeset(meta(ctx, 'editionLabel', 'Full edition'))}, version ${escapeHtml(meta(ctx, 'version'))} (${escapeHtml(formatDate(meta(ctx, 'date')))}). © ${escapeHtml(meta(ctx, 'date').slice(0, 4))} ${typeset(p.copyrightHolder)}. ${typeset(p.licence.full)}${contact}</p>`;
 };
 
 const renderFull = (ctx: Ctx): {body: string; pages: {name: string; label: string}[]; tocTargets: string[]} => {
@@ -497,7 +537,7 @@ const renderFree = (ctx: Ctx): string => {
 		throw new ContentError(`unexpected ${b.type} in the free edition`, b.line);
 	}
 	const independence = meta(ctx, 'independence');
-	const legal = `<p class="free-legal">General security education, not financial, legal or tax advice.${independence ? ` ${escapeHtml(independence)}.` : ''} ${escapeHtml(ctx.opts.product.licence.free)} © ${escapeHtml(meta(ctx, 'date').slice(0, 4))} ${escapeHtml(ctx.opts.product.copyrightHolder)}.</p>`;
+	const legal = `<p class="free-legal">General security education, not financial, legal or tax advice.${independence ? ` ${typeset(asSentence(independence))}` : ''} ${typeset(ctx.opts.product.licence.free)} © ${escapeHtml(meta(ctx, 'date').slice(0, 4))} ${typeset(ctx.opts.product.copyrightHolder)}.</p>`;
 	const src = sources ? `<section class="free-sources"><h3>Sources</h3>${SOURCES_PLACEHOLDER}</section>` : '';
 	const body = pages
 		.filter((p) => p.length)
@@ -509,7 +549,35 @@ const renderFree = (ctx: Ctx): string => {
 export const renderDocument = (structured: Structured, opts: RenderOptions, css: (pages: {name: string; label: string}[], footer: string) => string): Rendered => {
 	const registry = new CitationRegistry(opts.sources.sources as Source[]);
 	const warnings: string[] = [];
-	const ctx: Ctx = {opts, registry, warnings, section: null, structured, inl: {cite: (ids) => registry.marker(ids)}};
+	// Cross-references take their page numbers from the contents pass, like the contents page ("00" on the first
+	// pass, so both passes lay out the same widths).
+	const sectionsById = new Map(structured.sections.map((s) => [s.id, s]));
+	const missingXrefs = new Set<string>();
+	const pageOf = (id: string): string | null => {
+		if (!opts.tocPages) return '00';
+		const p = opts.tocPages[id];
+		return p === undefined ? null : String(p);
+	};
+	const xref = (id: string): string => {
+		const s = sectionsById.get(id);
+		if (!s) {
+			missingXrefs.add(id);
+			return escapeHtml(id);
+		}
+		const page = pageOf(id);
+		return `<a class="xref" href="#${escapeHtml(id)}">${typeset(xrefLabel(s))}${page ? `, p.&nbsp;${page}` : ''}</a>`;
+	};
+	const xrefTag = (id: string): string => {
+		const s = sectionsById.get(id);
+		if (!s) {
+			missingXrefs.add(id);
+			return '';
+		}
+		const short = s.kind === 'chapter' ? `Ch.&nbsp;${Number(s.number)}` : s.kind === 'appendix' ? `App.&nbsp;${escapeHtml(s.number)}` : typeset(xrefLabel(s));
+		const page = pageOf(id);
+		return `<a class="xref-tag" href="#${escapeHtml(id)}" title="${escapeHtml(xrefLabel(s))}"><span class="xt-sec">${short}</span>${page ? `<span class="xt-page">p.&nbsp;${page}</span>` : ''}</a>`;
+	};
+	const ctx: Ctx = {opts, registry, warnings, section: null, structured, inl: {cite: (ids) => registry.marker(ids), xref}, xrefTag};
 	const edition = opts.edition;
 	const title = structured.meta.title ?? opts.product.title;
 	const footer = `${title} · ${structured.meta.editionLabel ?? (edition === 'full' ? 'Full edition' : 'Free edition')}`;
@@ -528,6 +596,7 @@ export const renderDocument = (structured: Structured, opts: RenderOptions, css:
 	body = body.replace(SOURCES_PLACEHOLDER, () => renderSourcesList(ctx));
 	const missing = [...registry.missing];
 	if (missing.length) throw new Error(`unknown source id(s): ${missing.join(', ')}`);
+	if (missingXrefs.size) throw new Error(`cross-reference(s) to no section: ${[...missingXrefs].join(', ')}`);
 	const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(title)}${edition === 'free' ? ' (Free edition)' : ''}</title>
 <meta name="author" content="Zoo &amp; Badger"><meta name="description" content="${escapeHtml(structured.meta.subtitle ?? '')}">

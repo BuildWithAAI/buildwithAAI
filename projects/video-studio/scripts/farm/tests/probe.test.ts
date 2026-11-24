@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {after, test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {fmtBytes, fmtSeconds, isProbe, jobSummary, parseProbe, parseRate, runSummary, wavInfo, type RenderProbe, type VoiceProbe} from '../probe.ts';
+import {fmtBytes, fmtSeconds, isProbe, jobSummary, parseProbe, parseRate, probeLine, runSummary, wavInfo, type RenderProbe, type VoiceProbe} from '../probe.ts';
 
 const FIX = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const fixture = (name: string): unknown => JSON.parse(readFileSync(join(FIX, name), 'utf8'));
@@ -26,6 +26,15 @@ test('parseProbe: a PNG still reports its size but no duration or frame rate', (
 test('parseProbe: narration WAV (24 kHz mono, from the voice step)', () => {
 	const i = parseProbe(fixture('ffprobe-narration-wav.json'), 'audio');
 	assert.deepEqual([i.width, i.durationSec, i.audioCodec, i.sampleRate, i.channels, i.sizeBytes], [null, 7.4, 'pcm_s16le', 24000, 1, 355278]);
+});
+
+test('probeLine names only what was measured: an audio-only render has no picture size', () => {
+	const audio = parseProbe({streams: [{codec_type: 'audio', codec_name: 'aac', sample_rate: '48000', channels: 2}], format: {duration: '3.008', size: '122462', format_name: 'mov,mp4,m4a,3gp,3g2,mj2'}}, 'audio');
+	assert.equal(probeLine(audio), '3.008 s, aac 48000 Hz 2 ch, 122462 bytes');
+	assert.doesNotMatch(probeLine(audio), /null/);
+	const video = parseProbe(JSON.parse(readFileSync(join(FIX, 'ffprobe-testcard-mp4.json'), 'utf8')), 'video');
+	assert.match(probeLine(video), /^1920x1080, 3(\.\d+)? s, 30 fps, \d+ bytes$/);
+	assert.equal(probeLine(parseProbe({}, 'still')), 'no measurements');
 });
 
 test('parseProbe tolerates garbage', () => {

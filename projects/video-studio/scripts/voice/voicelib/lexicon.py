@@ -28,13 +28,23 @@ PRONUNCIATIONS: dict[str, dict[str, str]] = {
         "degen": "dee jen",
         "degens": "dee jens",
     },
+    # es / pt-br: the dub glossary's single-word respellings (scripts/dub/lib/glossary.ts RESPELL), so a dub that forgets
+    # the {term|spoken} markup is still read the same way (espeak es said "memecoins" as me-ME-coins).
     "es": {
         "on-chain": "onchéin",
         "pump.fun": "Pamp punto fan",
+        "memecoin": "mimcoin",
+        "memecoins": "mimcoins",
+        "coingecko": "Coin Guecko",
+        "bubblemaps": "Bábol maps",
     },
     "pt-br": {
         "on-chain": "onchêin",
         "pump.fun": "Pâmp ponto fân",
+        "memecoin": "mímcoin",
+        "memecoins": "mímcoins",
+        "coingecko": "Côin Guéco",
+        "bubblemaps": "Bâbou maps",
     },
     "it": {
         "pump.fun": "Pamp punto fan",

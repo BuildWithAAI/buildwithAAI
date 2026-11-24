@@ -8,8 +8,9 @@
  *    are never mistaken for flicker.
  */
 import type {FrameFacts} from '../../../../src/qa/protocol.ts';
-import {components, type Image} from '../image.ts';
+import {components, dilate, type Image} from '../image.ts';
 import type {Finding} from '../issues.ts';
+import {findDisplaced, Searchable, type Box} from '../motionmatch.ts';
 import {THRESHOLDS as T} from '../thresholds.ts';
 
 export type LumaFrame = {w: number; h: number; y: Uint8Array};

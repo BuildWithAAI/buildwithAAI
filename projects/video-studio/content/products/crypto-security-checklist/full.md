@@ -47,16 +47,16 @@ This is general security education, not financial, legal or tax advice, and it n
 
 > Short on time? Start with these ten actions. The chapters explain each one, and why it matters.
 
-- [ ] **Get your seed phrase off every device.** If it exists as a photo, screenshot, note, email draft or cloud file, treat that wallet as exposed and move to a new one (Chapter 1). [@kaspersky-sparkcat-2025]
-- [ ] **Replace text-message codes with a security key or passkey** on your email and exchange accounts. An authenticator app is the minimum. (Chapter 7) [@cisa-mfa-2022]
-- [ ] **Ask your mobile carrier for SIM-change and port-out protection.** (Chapter 7) [@fcc-simswap-2023]
-- [ ] **Review your token approvals and revoke the ones you don't need.** (Chapter 3) [@ms-ice-phishing-2022]
-- [ ] **Turn on your exchange's withdrawal allowlist** with the longest waiting period you can live with. (Chapter 8) [@binance-whitelist]
-- [ ] **Bookmark the real sites you use** and only ever arrive through the bookmark. (Chapter 4) [@ic3-search-ads-2022]
-- [ ] **Agree a code word with your family,** in person, for any urgent request for money. (Chapter 10) [@ic3-genai-2024]
-- [ ] **Split your crypto into a vault, a spending wallet and a burner.** (Chapter 2)
-- [ ] **Send only to addresses from your address book,** never from your transaction history. (Chapter 5) [@cmu-address-poisoning]
-- [ ] **Read Chapter 11 now,** before you ever need it.
+- [ ] **Get your seed phrase off every device.** If it exists as a photo, screenshot, note, email draft or cloud file, treat that wallet as exposed and move to a new one. [@kaspersky-sparkcat-2025] [#seed-phrases]
+- [ ] **Replace text-message codes with a security key or passkey** on your email and exchange accounts. An authenticator app is the minimum. [@cisa-mfa-2022] [#sim-2fa]
+- [ ] **Ask your mobile carrier for SIM-change and port-out protection.** [@fcc-simswap-2023] [#sim-2fa]
+- [ ] **Review your token approvals and revoke the ones you don't need.** [@ms-ice-phishing-2022] [#approvals]
+- [ ] **Turn on your exchange's withdrawal allowlist** with the longest waiting period you can live with. [@binance-whitelist] [#exchanges]
+- [ ] **Bookmark the real sites you use** and only ever arrive through the bookmark. [@ic3-search-ads-2022] [#phishing]
+- [ ] **Agree a code word with your family,** in person, for any urgent request for money. [@ic3-genai-2024] [#ai-threats]
+- [ ] **Split your crypto into a vault, a spending wallet and a burner.** [#hardware-wallets]
+- [ ] **Send only to addresses from your address book,** never from your transaction history. [@cmu-address-poisoning] [#address-poisoning]
+- [ ] **Read the incident plan now,** before you ever need it. [#incident-response]
 
 :::fix
 If you do only one thing today: find and delete every digital copy of your seed phrase. If one existed, move your funds to a new wallet.
@@ -166,7 +166,7 @@ Before you approve anything, read the device screen. If it says something differ
 - [ ] **Approve only what you are about to spend:** set a custom spending cap for this transaction, not unlimited. [@ethereum-security]
 - [ ] **Treat signature requests as permissions, not logins.** A message mentioning "permit", "approve", "setApprovalForAll" or "increaseAllowance", or one your wallet labels as a token approval, hands over spending power. [@scamsniffer-2025]
 - [ ] **Accept account upgrades only from your wallet itself.** Since Ethereum's 2025 upgrade (EIP-7702), an ordinary account can be set to run contract code. A website asking you to "upgrade" or "secure" your account is a red flag. [@theblock-wintermute-7702]
-- [ ] **Repeat the review monthly,** and after any scare. Revoking stops future spending; it can't undo a theft or fix an exposed seed phrase (Chapter 1).
+- [ ] **Repeat the review monthly,** and after any scare. Revoking stops future spending; it can't undo a theft or fix an exposed seed phrase ([#seed-phrases]).
 
 :::redflag
 A "claim", "mint" or "verify" page asking for a signature you don't understand, especially one that costs nothing.
@@ -188,7 +188,7 @@ Ten minutes, once a month: review your approvals and revoke the stale ones.
 
 ## Habits {priority=habit}
 
-- [ ] **Never connect your vault to a new site.** Use a burner holding only what that site needs (Chapter 2).
+- [ ] **Never connect your vault to a new site.** Use a burner holding only what that site needs ([#hardware-wallets]).
 - [ ] **Read the whole request before you sign.** If your wallet shows a warning or a preview of what will leave your wallet, read it, then decide.
 - [ ] **Ignore tokens and NFTs that turn up uninvited.** A surprise airdrop that sends you to a "claim" page is bait. [@ethereum-security]
 - [ ] **Doubt official-looking announcements,** even from verified accounts. Accounts get hijacked: in January 2024 the US Securities and Exchange Commission's own account on X posted a false announcement after a SIM swap. [@sec-x-account-2024]
@@ -225,7 +225,7 @@ Researchers at Carnegie Mellon counted about 270 million poisoning attempts on t
 - [ ] **Get addresses from the source:** ask the recipient on a second channel, or scan their code in person.
 - [ ] **For large amounts, send a small test first,** and wait for the recipient to confirm it arrived. A test proves the address works, not that it is the right one, so the confirmation is the point.
 - [ ] **Compare after you paste.** Some malware swaps a copied address on your clipboard for the attacker's. [@kaspersky-clipboard-2023]
-- [ ] **Withdraw from exchanges only to allowlisted addresses** (Chapter 8).
+- [ ] **Withdraw from exchanges only to allowlisted addresses** ([#exchanges]).
 
 :::redflag
 An unexpected zero or tiny transfer from an address that looks like one you know.
@@ -291,7 +291,7 @@ Your crypto lives on a device that never runs a stranger's code.
 ## This week {priority=week}
 
 - [ ] **Get two FIDO2 security keys,** one for your keyring and one stored safely, and register both.
-- [ ] **Write down each account's backup codes** and keep them with your records (Chapter 12).
+- [ ] **Write down each account's backup codes** and keep them with your records ([#record-keeping]).
 
 ## Habits {priority=habit}
 
@@ -314,7 +314,7 @@ A security key on your email and your exchange. Text-message codes are a last re
 
 - [ ] **Use an email address (or alias) only for financial accounts,** protected with a security key.
 - [ ] **Use a long, unique password** from a password manager.
-- [ ] **Use a security key or passkey for 2FA** (Chapter 7). [@coinbase-2sv]
+- [ ] **Use a security key or passkey for 2FA** ([#sim-2fa]). [@coinbase-2sv]
 - [ ] **Turn on the withdrawal allowlist** (also called a whitelist or address book lock), with the longest waiting period for new addresses that you can tolerate. A thief who gets in can't send to their own address until the wait is over. [@binance-whitelist]
 - [ ] **Turn on the settings lock if your exchange has one.** It blocks changes to withdrawal addresses, API keys and 2FA, and starts a delay with an email alert when someone tries to unlock it. [@kraken-gsl]
 - [ ] **Set an anti-phishing code if it's offered:** a word you choose that appears in the exchange's genuine emails, so a fake email stands out.
@@ -415,7 +415,7 @@ A code word that nobody can clone.
 
 | What happened | Assume | Do now |
 | --- | --- | --- |
-| You signed an approval or permit on a bad site | They can spend that token | Revoke the approval (Chapter 3), then move what's left of that token to a fresh wallet. |
+| You signed an approval or permit on a bad site | They can spend that token | Revoke the approval ([#approvals]), then move what's left of that token to a fresh wallet. |
 | You typed or shared your seed phrase or a private key | The wallet is gone | On a clean device, create a new wallet and move everything, largest first. Speed beats revoking. |
 | You ran a file, app, script or pasted command | The device and every secret on it are compromised | From a different, clean device, move funds from every wallet that device touched, then change passwords and 2FA, starting with email. Wipe and reinstall the infected device. [@ms-clickfix-2025] |
 | You gave a password or a login code | Someone can take over the account | From a clean device, reset the password, sign out all sessions, delete API keys and re-register 2FA. |
@@ -431,7 +431,7 @@ A code word that nobody can clone.
 ## Step 4: Report and record (same day)
 
 - [ ] **Report it.** In the US: the FBI's Internet Crime Complaint Center (ic3.gov), the FTC (ReportFraud.ftc.gov) and your local police. Elsewhere, your national police cybercrime reporting service. [@ftc-crypto-scams]
-- [ ] **Include the details:** transaction IDs, addresses, amounts, dates and times, website addresses and screenshots of the messages (Appendix C).
+- [ ] **Include the details:** transaction IDs, addresses, amounts, dates and times, website addresses and screenshots of the messages ([#incident-log]).
 - [ ] **Know what real reporting looks like.** The real IC3 has no social media accounts and doesn't recover funds through social platforms. Type the address yourself. [@ic3-impersonation-2026]
 
 :::note What to put in a report
@@ -457,7 +457,7 @@ Read this page before you need it. Panic is when scams work best.
 
 ## Do today {priority=today}
 
-- [ ] **Start an inventory** (Appendix B): each wallet, which device or app it lives on, which networks, and its public addresses. Never the seed phrase.
+- [ ] **Start an inventory** ([#inventory]): each wallet, which device or app it lives on, which networks, and its public addresses. Never the seed phrase.
 - [ ] **Record where each backup lives:** the location, not the words.
 - [ ] **List your exchange accounts:** the platform, the login email, the type of 2FA and where the backup codes are.
 
@@ -469,7 +469,7 @@ Read this page before you need it. Panic is when scams work best.
 
 ## Habits {priority=habit}
 
-- [ ] **Keep an incident log** (Appendix C) whenever something odd happens: dates, transaction IDs, screenshots, report numbers.
+- [ ] **Keep an incident log** ([#incident-log]) whenever something odd happens: dates, transaction IDs, screenshots, report numbers.
 - [ ] **Write a letter for your family:** what exists, where the records are, who to call, and a warning that no genuine helper will ever ask for the seed phrase.
 - [ ] **Review everything every three months,** and after any change.
 
@@ -530,7 +530,9 @@ Never type your seed phrase anywhere but the wallet itself, never read out a cod
 
 # Sources {#sources kind=back}
 
-> Every fact in this checklist comes from these sources, checked on 24 November 2026. Some official pages could not be opened from our build machine; those were checked through search-engine extracts of the page and are marked "(search extract)". Open the link before you quote one word for word.
+> Every fact in this checklist comes from one of these sources. We checked them all on 24 November 2026.
+
+Where an official page could not be opened directly when we checked it, we confirmed the fact through a search engine's copy of that page instead, and the entry says "(search extract)". Open the link before you quote any source word for word.
 
 @sources
 
