@@ -1,0 +1,716 @@
+{
+  "$defs": {
+    "AuditInfo": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "records": {
+          "title": "Records",
+          "type": "integer"
+        },
+        "chain_ok": {
+          "title": "Chain Ok",
+          "type": "boolean"
+        },
+        "message": {
+          "default": "",
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "records",
+        "chain_ok"
+      ],
+      "title": "AuditInfo",
+      "type": "object"
+    },
+    "DataProvenance": {
+      "properties": {
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "timeframe": {
+          "title": "Timeframe",
+          "type": "string"
+        },
+        "pairs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Pairs",
+          "type": "array"
+        },
+        "first_bar": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "First Bar"
+        },
+        "last_bar": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Bar"
+        },
+        "bars_per_pair": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Bars Per Pair",
+          "type": "object"
+        },
+        "validation": {
+          "additionalProperties": true,
+          "title": "Validation",
+          "type": "object"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "provider",
+        "timeframe",
+        "pairs",
+        "first_bar",
+        "last_bar",
+        "bars_per_pair"
+      ],
+      "title": "DataProvenance",
+      "type": "object"
+    },
+    "Metrics": {
+      "additionalProperties": true,
+      "properties": {
+        "trade_count": {
+          "title": "Trade Count",
+          "type": "integer"
+        },
+        "cagr_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cagr Pct"
+        },
+        "sharpe": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sharpe"
+        },
+        "sortino": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sortino"
+        },
+        "max_drawdown_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Drawdown Pct"
+        },
+        "win_rate_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Win Rate Pct"
+        },
+        "profit_factor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profit Factor"
+        },
+        "expectancy_r": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expectancy R"
+        },
+        "total_return_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Return Pct"
+        },
+        "starting_equity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starting Equity"
+        },
+        "ending_equity": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ending Equity"
+        }
+      },
+      "required": [
+        "trade_count"
+      ],
+      "title": "Metrics",
+      "type": "object"
+    },
+    "ScanResult": {
+      "properties": {
+        "generated_at": {
+          "title": "Generated At",
+          "type": "string"
+        },
+        "strategies": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Strategies",
+          "type": "array"
+        },
+        "signals": {
+          "items": {
+            "$ref": "#/$defs/ScanSignal"
+          },
+          "title": "Signals",
+          "type": "array"
+        },
+        "market_state": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Market State",
+          "type": "array"
+        },
+        "paper_positions": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Paper Positions",
+          "type": "array"
+        },
+        "kill_switch_engaged": {
+          "title": "Kill Switch Engaged",
+          "type": "boolean"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "generated_at",
+        "strategies",
+        "signals",
+        "market_state",
+        "paper_positions",
+        "kill_switch_engaged"
+      ],
+      "title": "ScanResult",
+      "type": "object"
+    },
+    "ScanSignal": {
+      "properties": {
+        "pair": {
+          "title": "Pair",
+          "type": "string"
+        },
+        "strategy": {
+          "title": "Strategy",
+          "type": "string"
+        },
+        "timeframe": {
+          "title": "Timeframe",
+          "type": "string"
+        },
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "bar_close_ts": {
+          "title": "Bar Close Ts",
+          "type": "string"
+        },
+        "ref_price": {
+          "title": "Ref Price",
+          "type": "number"
+        },
+        "stop": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Stop"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Target"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "risk": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Risk"
+        },
+        "paper_order_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Paper Order Id"
+        }
+      },
+      "required": [
+        "pair",
+        "strategy",
+        "timeframe",
+        "action",
+        "bar_close_ts",
+        "ref_price",
+        "stop",
+        "target",
+        "reason"
+      ],
+      "title": "ScanSignal",
+      "type": "object"
+    },
+    "SplitResult": {
+      "properties": {
+        "split_ts": {
+          "title": "Split Ts",
+          "type": "string"
+        },
+        "in_sample": {
+          "$ref": "#/$defs/Metrics"
+        },
+        "out_of_sample": {
+          "$ref": "#/$defs/Metrics"
+        }
+      },
+      "required": [
+        "split_ts",
+        "in_sample",
+        "out_of_sample"
+      ],
+      "title": "SplitResult",
+      "type": "object"
+    },
+    "StrategyResult": {
+      "properties": {
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "strategy": {
+          "title": "Strategy",
+          "type": "string"
+        },
+        "timeframe": {
+          "title": "Timeframe",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        },
+        "period_start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Period Start"
+        },
+        "period_end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Period End"
+        },
+        "metrics": {
+          "$ref": "#/$defs/Metrics"
+        },
+        "per_pair": {
+          "additionalProperties": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Per Pair",
+          "type": "object"
+        },
+        "signals": {
+          "title": "Signals",
+          "type": "integer"
+        },
+        "approved_entries": {
+          "title": "Approved Entries",
+          "type": "integer"
+        },
+        "rejections": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Rejections",
+          "type": "object"
+        },
+        "kill_switch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Kill Switch"
+        },
+        "drawdown_kill_enforced": {
+          "default": true,
+          "title": "Drawdown Kill Enforced",
+          "type": "boolean"
+        },
+        "first_drawdown_breach": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Drawdown Breach"
+        },
+        "spread_slippage_cost": {
+          "title": "Spread Slippage Cost",
+          "type": "number"
+        },
+        "is_oos": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SplitResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "walk_forward": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WalkForwardSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "artifacts": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Artifacts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "run_id",
+        "strategy",
+        "timeframe",
+        "params",
+        "period_start",
+        "period_end",
+        "metrics",
+        "per_pair",
+        "signals",
+        "approved_entries",
+        "rejections",
+        "kill_switch",
+        "spread_slippage_cost"
+      ],
+      "title": "StrategyResult",
+      "type": "object"
+    },
+    "WalkForwardSummary": {
+      "properties": {
+        "train_bars": {
+          "title": "Train Bars",
+          "type": "integer"
+        },
+        "test_bars": {
+          "title": "Test Bars",
+          "type": "integer"
+        },
+        "grid_size": {
+          "title": "Grid Size",
+          "type": "integer"
+        },
+        "objective": {
+          "title": "Objective",
+          "type": "string"
+        },
+        "windows": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Windows",
+          "type": "array"
+        },
+        "oos_metrics": {
+          "$ref": "#/$defs/Metrics"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "train_bars",
+        "test_bars",
+        "grid_size",
+        "objective",
+        "windows",
+        "oos_metrics"
+      ],
+      "title": "WalkForwardSummary",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "aai-fx/report/v1",
+      "default": "aai-fx/report/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "report_id": {
+      "title": "Report Id",
+      "type": "string"
+    },
+    "generated_at": {
+      "title": "Generated At",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "backtest",
+        "scan",
+        "combined"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "producer": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Producer",
+      "type": "object"
+    },
+    "config_fingerprint": {
+      "title": "Config Fingerprint",
+      "type": "string"
+    },
+    "mode": {
+      "const": "paper",
+      "default": "paper",
+      "title": "Mode",
+      "type": "string"
+    },
+    "live_trading": {
+      "const": false,
+      "default": false,
+      "title": "Live Trading",
+      "type": "boolean"
+    },
+    "account": {
+      "additionalProperties": true,
+      "title": "Account",
+      "type": "object"
+    },
+    "risk_limits": {
+      "additionalProperties": true,
+      "title": "Risk Limits",
+      "type": "object"
+    },
+    "backtests": {
+      "items": {
+        "$ref": "#/$defs/StrategyResult"
+      },
+      "title": "Backtests",
+      "type": "array"
+    },
+    "scan": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScanResult"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "audit": {
+      "items": {
+        "$ref": "#/$defs/AuditInfo"
+      },
+      "title": "Audit",
+      "type": "array"
+    },
+    "disclaimers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Disclaimers",
+      "type": "array"
+    }
+  },
+  "required": [
+    "report_id",
+    "generated_at",
+    "kind",
+    "producer",
+    "config_fingerprint",
+    "account",
+    "risk_limits"
+  ],
+  "title": "AAIReport",
+  "type": "object"
+}
