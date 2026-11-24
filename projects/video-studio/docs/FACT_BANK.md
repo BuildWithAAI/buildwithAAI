@@ -10,7 +10,7 @@ Built 2026-11-24 (owner request 5, "Reusable fact bank"). TypeScript runs direct
 | `content/facts/hosts.json` | The hosts `verify` may fetch: the news hosts the owner allowed in this environment, with what each returned on 2026-11-24. |
 | `content/facts/SEED.md` | Where the first 39 facts came from, what was left out, and why. |
 | `scripts/facts/cli.ts` | The CLI (entry point). The code is in `scripts/facts/lib/`. |
-| `scripts/facts/tests/facts.test.ts` | Tests: 50 cases, no network. |
+| `scripts/facts/tests/facts.test.ts` | Tests: 52 cases, no network. |
 
 ## A fact
 
@@ -64,7 +64,8 @@ Built 2026-11-24 (owner request 5, "Reusable fact bank"). TypeScript runs direct
 | --- | --- |
 | Find a fact to cite | `node scripts/facts/cli.ts search pump.fun graduation` (prints the `[fact:<id>]` to paste; `--tag`, `--entity`, `--status usable`, `--lang es`, `--json`) |
 | Read one fact | `node scripts/facts/cli.ts show <id>` |
-| Resolve a storyboard | `node scripts/facts/cli.ts to-storyboard content/<channel>/<slug> --write` (`--lang es` for `storyboard.es.json`; `--check` only reports; without either it prints the result) |
+| Resolve a storyboard | `node scripts/facts/cli.ts to-storyboard content/<channel>/<slug> --all-langs --write` (every `storyboard*.json` of the episode, all or none; or one file: `--lang es` for `storyboard.es.json`; `--check` only reports; with neither it prints the result) |
+| Pre-render gate | `node scripts/facts/cli.ts to-storyboard content/<channel>/<slug> --all-langs --check --strict` (exit 1 while any `[fact:]` tag is unresolved or any cited fact is unverified or stale) |
 | Facts due for a recheck | `node scripts/facts/cli.ts stale` (`--within 14` adds those going stale in the next 14 days) |
 | Re-verify | `node scripts/facts/cli.ts verify --all-due` (or `verify <id>...`, or `verify --all`; `--dry-run` writes nothing) |
 | Record a browser read | `node scripts/facts/cli.ts confirm <id> --source 1 --by owner` |
@@ -77,16 +78,16 @@ Common options: `--bank <file>`, `--today YYYY-MM-DD` (default: today in America
 ### The writer's loop
 
 1. `search` the bank and paste the tag after the claim: `CoinGecko found that 68.67% of 18.67 million Pump.fun tokens made their last bonding-curve trade on launch day [fact:pumpfun-coingecko-launch-day-deaths].` A tag can list several facts, `[fact:a,b]`, and works only in `scenes[].narration`, outside `{display|spoken}` markup.
-2. `to-storyboard <episode> --write`. Each tag becomes `[src:<id>]`, and `sources[]` gets one entry per fact: its best source (read directly first, then the stronger tier, then the latest read), `quote` = the excerpt, `status: "verified"`. Everything else in the file keeps its formatting. Nothing is written when anything is refused:
+2. `to-storyboard <episode> --all-langs --write`. Each tag becomes `[src:<id>]`, and `sources[]` gets one entry per fact: its best source (read directly first, then the stronger tier, then the latest read), `quote` = the excerpt, `status: "verified"`. Everything else in the file keeps its formatting. Nothing is written when anything is refused:
    - unknown ids;
    - facts that fail validation, are unverified, or are stale;
    - tags outside narration or inside `{…|…}`;
    - an existing source with the same id that points elsewhere.
    A `search-extract` fact is a warning ("nobody has opened the page"), and an error with `--require-direct`.
 3. Run the claim gate as usual: `node scripts/claims/check.ts content/<channel>/<slug>`.
-4. Re-run `to-storyboard` before voice and render. It refreshes the sources it wrote and fails on any fact that went stale since.
+4. Right before voice and render, run `to-storyboard <episode> --all-langs --check --strict`. It fails while a tag is unresolved, because an unresolved tag would reach the captions as text. It also fails when a fact cited earlier has gone stale. `--write` refreshes the sources it wrote.
 
-Translations keep the same tags (the claim gate checks that). Run `to-storyboard` on each `storyboard.<lang>.json` too. A fact without a statement in that language is a warning, because the translator should compare against the English claim.
+Translations keep the same tags (the claim gate checks that), and `--all-langs` resolves them together with the English. A fact without a statement in that language is a warning, because the translator should compare against the English claim.
 
 ### How `verify` decides
 

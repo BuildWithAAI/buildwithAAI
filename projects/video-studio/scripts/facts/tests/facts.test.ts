@@ -5,6 +5,7 @@
  */
 import test, {describe} from 'node:test';
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, writeFileSync, mkdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -552,6 +553,44 @@ describe('CLI', () => {
 		code = (await run(['verify', '--all', ...common], async () => ({ok: false, reason: 'not called'}))).code;
 		assert.equal(code, 2, 'changing a bank with malformed facts is refused');
 		assert.equal((await run(['validate', ...common])).code, 1);
+	});
+	test('interactive add reads piped answers through the real CLI entry point', () => {
+		const bank = join(mkdtempSync(join(tmpdir(), 'facts-cli-')), 'facts.jsonl');
+		const answers = ['pumpfun-launch-day-deaths', fact().statement, 'CoinGecko; Pump.fun', '', 'pump-fun', 'historical', CN_URL, CN_TITLE, 'crypto.news', 'secondary', CN_EXCERPT, '', 'n', ''].join('\n');
+		const cli = join(HERE, '..', 'cli.ts');
+		const r = spawnSync(process.execPath, [cli, 'add', '--bank', bank, '--today', TODAY, '--no-names'], {input: `${answers}\n`, encoding: 'utf8'});
+		assert.equal(r.status, 0, r.stderr + r.stdout);
+		assert.equal(loadBank(bank).facts[0].id, 'pumpfun-launch-day-deaths');
+		const short = spawnSync(process.execPath, [cli, 'add', '--bank', bank, '--today', TODAY, '--no-names'], {input: 'just-one-line\n', encoding: 'utf8'});
+		assert.equal(short.status, 2, 'input that ends early is bad input, not a hang');
+		assert.match(short.stderr, /input ended/);
+	});
+	test('--all-langs resolves every language or none, and --check --strict is the pre-render gate', async () => {
+		const dir = mkdtempSync(join(tmpdir(), 'facts-cli-'));
+		const bank = join(dir, 'facts.jsonl');
+		writeFileSync(bank, serializeBank([fact({verification: 'direct-read', sources: [source({checks: [{at: TODAY, by: 'verify', result: 'found'}]})]})]));
+		const ep = join(dir, 'zoora-test', 'fact-demo');
+		mkdirSync(ep, {recursive: true});
+		const sb = (lang: string, narration: string) => `${JSON.stringify({version: 1, channel: 'zoora-test', slug: 'fact-demo', lang, sourceLang: 'en', title: 't', fiction: false, scenes: [{id: 's01', type: 'talk', narration}], sources: []}, null, 2)}\n`;
+		writeFileSync(join(ep, 'storyboard.json'), sb('en', 'Claim [fact:pumpfun-launch-day-deaths].'));
+		writeFileSync(join(ep, 'storyboard.es.json'), sb('es', 'Afirmación [fact:no-such-fact].'));
+		const common = ['--bank', bank, '--today', TODAY, '--no-names'];
+		let r = await run(['to-storyboard', ep, '--all-langs', '--write', ...common]);
+		assert.equal(r.code, 1, 'one bad language refuses the whole episode');
+		assert.match(readFileSync(join(ep, 'storyboard.json'), 'utf8'), /\[fact:pumpfun-launch-day-deaths\]/, 'nothing was written');
+		r = await run(['to-storyboard', ep, '--all-langs', '--check', '--strict', ...common]);
+		assert.equal(r.code, 1);
+		writeFileSync(join(ep, 'storyboard.es.json'), sb('es', 'Afirmación [fact:pumpfun-launch-day-deaths].'));
+		assert.equal((await run(['to-storyboard', ep, '--all-langs', '--check', '--strict', ...common])).code, 1, 'unresolved tags fail --strict');
+		r = await run(['to-storyboard', ep, '--all-langs', '--write', ...common]);
+		assert.equal(r.code, 0, r.err);
+		for (const f of ['storyboard.json', 'storyboard.es.json']) assert.match(readFileSync(join(ep, f), 'utf8'), /\[src:pumpfun-launch-day-deaths\]/);
+		assert.deepEqual(loadBank(bank).facts[0].usage, ['zoora-test/fact-demo']);
+		assert.equal((await run(['to-storyboard', ep, '--all-langs', '--check', '--strict', ...common])).code, 0, 'resolved and fresh');
+		r = await run(['to-storyboard', ep, '--all-langs', '--check', '--strict', ...common, '--today', '2027-11-25']);
+		assert.equal(r.code, 1, 'a cited fact that went stale fails the gate');
+		assert.match(r.err, /fact-stale/);
+		assert.equal((await run(['to-storyboard', ep, '--all-langs', ...common])).code, 2, '--all-langs needs --write or --check');
 	});
 	test('bad input exits 2', async () => {
 		assert.equal((await run(['verify'])).code, 2);

@@ -2,7 +2,7 @@
  * node scripts/facts/cli.ts <command> [options]   (the entry point is scripts/facts/cli.ts; see docs/FACT_BANK.md)
  * Exit codes: 0 ok · 1 refused or failed (the output says why) · 2 bad input (usage, missing files, bad JSON).
  */
-import {existsSync, readFileSync, statSync, writeFileSync} from 'node:fs';
+import {existsSync, readdirSync, readFileSync, statSync, writeFileSync} from 'node:fs';
 import {join, relative, resolve} from 'node:path';
 import {createInterface} from 'node:readline/promises';
 import {EMPTY_NAMES, loadNames, type NameList} from '../../claims/lib/names.ts';
@@ -38,10 +38,12 @@ Usage: node scripts/facts/cli.ts <command> [options]
   show <id>              Print one fact.
   stale [--within <days>]
         Facts due for a recheck: unverified, stale, and (with --within) those going stale soon.
-  to-storyboard <storyboard.json | content/<channel>/<slug>> [--lang <l>] [--write | --out <file> | --check]
-        [--require-direct] [--no-usage]
-        Resolve [fact:<id>] tags into [src:<id>] + sources[] for the claim gate. Refuses unknown,
-        unverified and stale facts. Prints the storyboard unless --write, --out or --check.
+  to-storyboard <storyboard.json | content/<channel>/<slug>> [--lang <l> | --all-langs]
+        [--write | --out <file> | --check [--strict]] [--require-direct] [--no-usage]
+        Resolve [fact:<id>] tags into [src:<id>] + sources[] for the claim gate, and re-check the facts
+        it cited before. Refuses unknown, unverified and stale facts; with --all-langs, every language
+        of the episode or none. Prints the storyboard unless --write, --out or --check.
+        --check --strict is the pre-render gate: it also fails while any [fact:] tag is unresolved.
   validate               Check every fact in the bank.
 
 Common options: --bank <file> (default content/facts/facts.jsonl) · --today YYYY-MM-DD (default: today in
@@ -52,7 +54,7 @@ Exit codes: 0 ok, 1 refused or failed, 2 bad input.`;
 type Args = {cmd: string; pos: string[]; flags: Map<string, string | true>};
 
 const VALUE_FLAGS = new Set(['--json-file', '--bank', '--today', '--names', '--hosts', '--timeout', '--source', '--by', '--tag', '--entity', '--status', '--lang', '--limit', '--within', '--out']);
-const BOOL_FLAGS = new Set(['--search-extract', '--replace', '--all-due', '--all', '--any-host', '--dry-run', '--no-names', '--write', '--check', '--require-direct', '--no-usage', '--json', '-h', '--help']);
+const BOOL_FLAGS = new Set(['--search-extract', '--replace', '--all-due', '--all', '--any-host', '--dry-run', '--no-names', '--write', '--check', '--strict', '--all-langs', '--require-direct', '--no-usage', '--json', '-h', '--help']);
 
 export const parseArgs = (argv: string[]): Args => {
 	const [first = 'help', ...rest] = argv;
@@ -215,11 +217,20 @@ const cmdAdd = async (ctx: Ctx): Promise<number> => {
 		let ask = ctx.ask;
 		let rl: ReturnType<typeof createInterface> | undefined;
 		if (!ask) {
-			rl = createInterface({input: process.stdin, output: process.stderr});
-			ask = (q) => (rl as ReturnType<typeof createInterface>).question(q);
+			// read answers through the line iterator, which buffers: piped answers that arrive early are not lost
+			rl = createInterface({input: process.stdin, crlfDelay: Infinity});
+			const lines = rl[Symbol.asyncIterator]();
+			ask = async (q) => {
+				process.stderr.write(q);
+				const next = await lines.next();
+				if (next.done) throw new InputError('the input ended before every question was answered');
+				return String(next.value);
+			};
 		}
 		try {
 			inputs = [await promptFact(ask, ctx.today)];
+		} catch (e) {
+			throw e instanceof InputError ? e : new InputError((e as Error).message);
 		} finally {
 			rl?.close();
 		}
@@ -355,54 +366,86 @@ export const storyboardPath = (arg: string, lang: string | undefined, cwd = proc
 	throw new InputError(`no storyboard at "${arg}"`);
 };
 
+/** Every storyboard of an episode folder: storyboard.json first, then storyboard.<lang>.json in name order. */
+const episodeStoryboards = (arg: string): string[] => {
+	for (const p of [resolve(process.cwd(), arg), resolve(STUDIO, arg)]) {
+		if (!existsSync(p) || !statSync(p).isDirectory()) continue;
+		const files = readdirSync(p).filter((f) => /^storyboard(?:\.[a-z]{2}(?:-[a-z]{2})?)?\.json$/.test(f)).sort((x, y) => (x === 'storyboard.json' ? -1 : y === 'storyboard.json' ? 1 : x.localeCompare(y)));
+		if (!files.length) throw new InputError(`no storyboard*.json in ${p}`);
+		return files.map((f) => join(p, f));
+	}
+	throw new InputError(`--all-langs needs an episode folder (got "${arg}")`);
+};
+
+type Job = {path: string; text: string; sb: Record<string, unknown>; result: ReturnType<typeof resolveStoryboard>};
+
 const cmdToStoryboard = (ctx: Ctx): number => {
 	const a = ctx.args;
 	if (!a.pos[0]) throw new InputError('to-storyboard needs a storyboard file or an episode folder');
-	const lang = str(a, '--lang');
-	const path = storyboardPath(a.pos[0], lang);
-	const text = readFileSync(path, 'utf8');
-	let sb: unknown;
-	try {
-		sb = JSON.parse(text);
-	} catch (e) {
-		throw new InputError(`${path} is not valid JSON: ${(e as Error).message}`);
-	}
-	if (!sb || typeof sb !== 'object' || Array.isArray(sb)) throw new InputError(`${path} is not a storyboard object`);
+	const all = has(a, '--all-langs');
+	const out = str(a, '--out');
+	const write = has(a, '--write');
+	const check = has(a, '--check');
+	if ([write, check, Boolean(out)].filter(Boolean).length > 1) throw new InputError('use one of --write, --out or --check');
+	if (all && (out || (!write && !check))) throw new InputError('--all-langs works with --write or --check');
+	if (has(a, '--strict') && !check) throw new InputError('--strict goes with --check');
+	const paths = all ? episodeStoryboards(a.pos[0]) : [storyboardPath(a.pos[0], str(a, '--lang'))];
 	const bank = loadValidBank(ctx);
-	const result = resolveStoryboard(sb as Record<string, unknown>, bank.facts, {today: ctx.today, names: ctx.names, requireDirect: has(a, '--require-direct')});
-	const errors = errorsOf(result.findings);
-	const shown = relative(process.cwd(), path) || path;
-	if (ctx.json && (has(a, '--check') || has(a, '--write') || has(a, '--out')))
-		ctx.out(JSON.stringify({file: path, pass: !errors.length, tags: result.tags, used: result.used, added: result.added, refreshed: result.refreshed, findings: result.findings}, null, 2));
-	else for (const f of result.findings) ctx.err(fmtFinding(f));
-	if (errors.length) {
-		ctx.err(`to-storyboard: ${shown} REFUSED: ${errors.length} error${errors.length === 1 ? '' : 's'}; nothing was written`);
+	const jobs: Job[] = paths.map((path) => {
+		const text = readFileSync(path, 'utf8');
+		let sb: unknown;
+		try {
+			sb = JSON.parse(text);
+		} catch (e) {
+			throw new InputError(`${path} is not valid JSON: ${(e as Error).message}`);
+		}
+		if (!sb || typeof sb !== 'object' || Array.isArray(sb)) throw new InputError(`${path} is not a storyboard object`);
+		const result = resolveStoryboard(sb as Record<string, unknown>, bank.facts, {today: ctx.today, names: ctx.names, requireDirect: has(a, '--require-direct')});
+		return {path, text, sb: sb as Record<string, unknown>, result};
+	});
+	const shownOf = (p: string) => relative(process.cwd(), p) || p;
+	// --strict: a pipeline gate before voice and render, so a tag nobody resolved fails here instead of reaching captions
+	for (const j of jobs)
+		if (has(a, '--strict') && j.result.tags)
+			j.result.findings.push({level: 'error', rule: 'unresolved-tags', where: 'narration', message: `${j.result.tags} [fact:] tag${j.result.tags === 1 ? ' is' : 's are'} not resolved yet; run to-storyboard with --write`});
+	const failed = jobs.filter((j) => errorsOf(j.result.findings).length);
+	if (ctx.json && (check || write || out))
+		ctx.out(JSON.stringify(jobs.map((j) => ({file: j.path, pass: !errorsOf(j.result.findings).length, tags: j.result.tags, used: j.result.used, added: j.result.added, refreshed: j.result.refreshed, findings: j.result.findings})), null, 2));
+	else for (const j of jobs) for (const f of j.result.findings) ctx.err(`${jobs.length > 1 ? `${shownOf(j.path)}: ` : ''}${fmtFinding(f).trimStart()}`);
+	if (failed.length) {
+		for (const j of failed) ctx.err(`to-storyboard: ${shownOf(j.path)} REFUSED: ${errorsOf(j.result.findings).length} error${errorsOf(j.result.findings).length === 1 ? '' : 's'}`);
+		ctx.err(`to-storyboard: nothing was written`);
 		return 1;
 	}
-	const outText = rewriteText(text, result, sb as Record<string, unknown>);
-	const out = str(a, '--out');
-	if (has(a, '--check')) {
-		/* report only */
-	} else if (has(a, '--write') || out) {
-		const target = out ? resolve(out) : path;
-		if (result.changed || target !== path) writeFileSync(target, outText);
-		if (!has(a, '--no-usage') && result.used.length) {
-			const s = sb as {channel?: unknown; slug?: unknown};
-			if (typeof s.channel === 'string' && typeof s.slug === 'string') {
-				const key = `${s.channel}/${s.slug}`;
-				let touched = false;
-				const facts = bank.facts.map((f) => {
-					if (!result.used.includes(f.id) || f.usage.includes(key)) return f;
-					touched = true;
-					return {...f, usage: [...f.usage, key].sort()};
-				});
-				if (touched) saveBank(ctx.bankPath, facts);
-			}
+	if (write || out) {
+		for (const j of jobs) {
+			const target = out ? resolve(out) : j.path;
+			if (j.result.changed || target !== j.path) writeFileSync(target, rewriteText(j.text, j.result, j.sb));
 		}
-	} else ctx.out(outText.replace(/\n$/, ''));
-	ctx.err(
-		`to-storyboard: ${shown} OK · ${result.tags} [fact:] tag${result.tags === 1 ? '' : 's'} · ${result.used.length} fact${result.used.length === 1 ? '' : 's'} cited (${result.added.length} source${result.added.length === 1 ? '' : 's'} added, ${result.refreshed.length} refreshed)${has(a, '--write') ? ' · written' : out ? ` · written to ${out}` : has(a, '--check') ? ' · check only' : ''} · next: node scripts/claims/check.ts <episode folder>`,
-	);
+		if (!has(a, '--no-usage')) {
+			const keys = new Map<string, Set<string>>(); // fact id -> episode keys
+			for (const j of jobs) {
+				const s = j.sb as {channel?: unknown; slug?: unknown};
+				if (typeof s.channel !== 'string' || typeof s.slug !== 'string') continue;
+				for (const id of j.result.used) keys.set(id, new Set([...(keys.get(id) ?? []), `${s.channel}/${s.slug}`]));
+			}
+			let touched = false;
+			const facts = bank.facts.map((f) => {
+				const add = [...(keys.get(f.id) ?? [])].filter((k) => !f.usage.includes(k));
+				if (!add.length) return f;
+				touched = true;
+				return {...f, usage: [...f.usage, ...add].sort()};
+			});
+			if (touched) saveBank(ctx.bankPath, facts);
+		}
+	} else if (!check) ctx.out(rewriteText(jobs[0].text, jobs[0].result, jobs[0].sb).replace(/\n$/, ''));
+	for (const j of jobs) {
+		const r = j.result;
+		ctx.err(
+			`to-storyboard: ${shownOf(j.path)} OK · ${r.tags} [fact:] tag${r.tags === 1 ? '' : 's'} · ${r.used.length} fact${r.used.length === 1 ? '' : 's'} cited (${r.added.length} source${r.added.length === 1 ? '' : 's'} added, ${r.refreshed.length} refreshed)${write ? ' · written' : out ? ` · written to ${out}` : check ? ' · check only' : ''}`,
+		);
+	}
+	if (write || out) ctx.err('to-storyboard: next: node scripts/claims/check.ts <episode folder>');
 	return 0;
 };
 
