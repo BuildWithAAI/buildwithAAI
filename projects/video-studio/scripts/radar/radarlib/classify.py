@@ -3,6 +3,8 @@ extraction and reported-loss extraction. Rules are explicit regexes so every
 decision can be printed as a reason.
 """
 
+import json
+import os
 import re
 import urllib.parse
 
@@ -1070,6 +1072,106 @@ _GENERIC_TRAIL = {
     "bridge", "vault", "vaults", "exchange", "protocol", "wallet", "wallets", "token", "network",
     "hack", "exploit", "users", "user", "platform", "app", "pool", "contract", "hackers", "loot",
 }
+
+
+# ---------------------------------------------------------------- AI subjects
+#
+# AI incidents are about products and companies ("Claude Code", "OpenRouter", "Copilot"), and the AI lane's sources
+# (the AI Incident Database above all) also write about people. A subject is a known AI product or company, an
+# organisation the news gate's allowlist knows, or a name that cannot be a person (a digit, an org word at its end, a
+# distinctive token). Anything else stays unclustered rather than risk a person's name as an incident's protocol.
+
+_AI_HEADLINE_VERBS = _HEADLINE_VERBS | {
+    w for w in """uncovers unveils traces drops removes pulls bans blocks sues settles detects finds flags exposes
+    leaks spills penetrated abused hijacked tricked poisoned disclosed notifies notified investigates probes revokes
+    rotates indict indicts charges""".split()
+}
+_AI_TRAIL = {
+    w for w in """servers server systems system users user customers customer tool tools extensions extension plugins
+    plugin apps app models model agents agent bots bot management security data platform platforms products product
+    services service instances accounts account portal website site api apis cloud network networks devices
+    repositories repos packages package library libraries skills integration integrations endpoints infrastructure
+    breach hack attack attacks campaign""".split()
+}
+_AI_SUBJECT_STOP = {
+    w for w in """prosecutors police authorities officials regulators researchers experts lawmakers judge court
+    scammers fraudsters criminals attackers hackers users companies firms agencies agency government vendors
+    developers employees customers incident report inside recent new rogue cyber study survey""".split()
+}
+_ALLOWLIST = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "news",
+                          "allowlist.json")
+_KNOWN_ORGS = None
+
+
+def known_org_names(path=_ALLOWLIST):
+    """Lower-case names the news claim gate's allowlist (scripts/news/allowlist.json) treats as organisations, not
+    people: publishers, security firms, organisations, protocols and agencies. Empty when the file is missing."""
+    global _KNOWN_ORGS
+    if _KNOWN_ORGS is None or path != _ALLOWLIST:
+        names = set()
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+            for key in ("publishers", "securityFirms", "organisations", "protocols", "agencies"):
+                names.update(n.lower() for n in data.get(key) or [] if isinstance(n, str))
+        except (OSError, ValueError, AttributeError):
+            names = set()
+        if path != _ALLOWLIST:
+            return frozenset(names)
+        _KNOWN_ORGS = frozenset(names)
+    return _KNOWN_ORGS
+
+
+def _ai_subject_ok(subject, known=()):
+    """A subject that cannot be a person's name: a known AI product or organisation, a name with a digit, a
+    distinctive token (CamelCase, all caps, a dot) or an organisation word at its end."""
+    if subject in AI_PRODUCTS:
+        return True
+    low = subject.lower()
+    if low in known or low in known_org_names():
+        return True
+    words = subject.split()
+    if any(any(ch.isdigit() for ch in w) for w in words):
+        return True
+    if any(re.search(r"[a-z][A-Z]|^[A-Z]{2,}$|\w\.\w", w) for w in words):
+        return True
+    return len(words) >= 2 and words[-1].lower() in safety.ORG_WORDS
+
+
+def _trim_ai_subject(subject):
+    words = subject.split()
+    while words and words[0].lower() in _AI_SUBJECT_STOP:
+        words.pop(0)
+    while len(words) > 1 and words[-1].lower() in _AI_TRAIL:
+        words.pop()
+    if not words or (len(words) == 1 and words[0].lower() in _AI_TRAIL | _AI_SUBJECT_STOP):
+        return None
+    return " ".join(words)
+
+
+def extract_ai_subject(title, exclude=(), known=()):
+    """Subject of an AI-security headline: the first AI product or company it names (a product rather than its own
+    vendor: "Anthropic says ... Claude Code" is about Claude Code), else a headline subject that cannot be a person.
+    Returns (subject, method) or (None, None)."""
+    if not title:
+        return None, None
+    excluded = {e.lower() for e in exclude}
+    text = title.replace("’", "'")
+    found = [(m.start(), m.group(0)) for m in _PRODUCTS_RE.finditer(text) if m.group(0).lower() not in excluded]
+    if found:
+        names = {n for _, n in found}
+        own_product = lambda vendor: any(n.startswith(p) for p in _VENDOR_PRODUCTS.get(vendor, ()) for n in names)  # noqa: E731
+        keep = [(pos, n) for pos, n in found if not own_product(n)] or found
+        return min(keep)[1], "AI product or company"
+    subject, method = _extract_subject(title, excluded, verbs=_AI_HEADLINE_VERBS)
+    subject = _trim_ai_subject(subject) if subject else None
+    if subject and _MODIFIER_SUFFIX.search(subject):
+        subject = subject[: subject.rfind("-")]
+    if not subject or subject.lower() in excluded or core_name(subject) in excluded or subject.lower() in _STOPWORDS:
+        return None, None
+    if not _ai_subject_ok(subject, {k.lower() for k in known}):
+        return None, None
+    return subject, method
 
 
 # ---------------------------------------------------------------- chains
