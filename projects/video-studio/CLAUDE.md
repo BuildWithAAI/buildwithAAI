@@ -210,3 +210,21 @@ The publish kit connects each episode to them. Run it from `projects/video-studi
 - Offer links go only through the hub. Offers come from `../creator-hub/config/offers.json` (gitignored), else `offers.example.json`, where every offer is inactive.
 - Every scene that promotes an offer says the disclosure out loud and shows it on screen. Region-restricted offers are never named in titles, posts or narration.
 - Details: `scripts/publish-kit/README.md`. CI: `.github/workflows/creator-hub.yml`.
+
+## Media multipliers
+
+One episode becomes the video in three languages, its Shorts and thumbnails, the platform texts and six more assets (article, podcast, X thread, Telegram, LinkedIn, newsletter), and its retention data feeds back into the templates. The end-to-end map, with every command, the steps that need the owner and the owner-inputs checklist, is `docs/MEDIA_PIPELINE.md`.
+
+| Tool | What it does | Doc |
+| --- | --- | --- |
+| `node scripts/facts/cli.ts` | Fact bank: verify a fact once, cite it in every episode and language | `docs/FACT_BANK.md` |
+| `node scripts/batch/cli.ts` | Weekly batch: plan, writer packets, farm drafts, one review page, the uploader's approval records | `docs/WEEKLY_BATCH.md` |
+| `render-requests/<id>.json` + `node scripts/farm/farm.ts validate` | Render farm on GitHub Actions: every language and format in parallel, outputs encrypted to the owner's key | `docs/RENDER_FARM.md` |
+| `creator-hub/tools/uploader` | Upload by API after the owner's approval: always private, scheduled for the approved slot | its `README.md` |
+| `node scripts/assets/make.ts <channel>/<slug>` | 6+ assets per episode, drafts only | `docs/ASSETS.md` |
+| `creator-hub/tools/retention` | Scene-level retention; proposals for template rules | its `README.md` |
+
+- Agents prepare; the owner approves and publishes. A session relays an approval only as the owner's own reply, verbatim (`batch approve --reply`, `daily/run.ts approve --reply`). Agents never run `uploader approve --confirm`, `upload --apply` or `announcer post --apply` for him; the daily posts announcements only if the owner himself puts `--apply` in `DAILY_ANNOUNCER_CMD`.
+- "Manual upload for now" (Platform rules above) now means: manual unless the owner asks for API uploads. The uploader always sends `private`, never schedules a video with paid promotion, and settles the quota conflict: `videos.insert` costs 1 call of a separate 100-a-day bucket (its README, verified facts read 2026-11-24).
+- A pushed storyboard is public for good: run the claim gate (`farm.ts validate`) before pushing a render request, or render locally. YouTube sign-ins stay on the owner's computer, never in repository secrets. The farm reads only `RENDER_HANDOFF_KEY` from the `render-farm` environment; `RENDER_ARTIFACT_KEY` is retired.
+- Open blocker (2026-11-24): the farm's `plan` job refuses every real episode or show request on GitHub, because the claim gate fails without the gitignored `data/private/names.txt` and the farm does not pass `--no-names` in CI. Until the farm is fixed, render real episodes locally (`docs/MEDIA_PIPELINE.md`, gap 1).
