@@ -13,6 +13,8 @@
   "durationSec": 4.0,
   "durationSamples": 192000,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": null,
   "hits": [
     {
@@ -98,6 +100,15 @@
     ],
     "badger": [
       {
+        "part": "badger_mid",
+        "startSec": 1.5,
+        "pitches": [
+          63,
+          62
+        ],
+        "ok": true
+      },
+      {
         "part": "basses_pizz",
         "startSec": 1.5,
         "pitches": [
@@ -128,27 +139,31 @@
   },
   "loudness": {
     "profile": "sting",
-    "integratedLufs": -16.0,
-    "shortTermMedianLufs": -16.9,
-    "shortTermMaxLufs": -15.9,
-    "lraLu": 2.6,
+    "integratedLufs": -16.1,
+    "shortTermMedianLufs": -17.1,
+    "shortTermMaxLufs": -16.5,
+    "lraLu": 1.6,
     "truePeakDbtp": -1.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.32,
-    "harshnessDb": -6.25,
-    "mudDb": 0.95,
-    "boxinessDb": -0.16,
-    "voicePocketDb": 1.86,
-    "centroidHz": 539.0
+    "slopeDbPerOct": -5.08,
+    "harshnessDb": -6.02,
+    "mudDb": 2.17,
+    "boxinessDb": -1.49,
+    "voicePocketDb": -1.33,
+    "centroidHz": 553.0
+  },
+  "voice": null,
+  "aac": {
+    "truePeak128k": -1.1,
+    "truePeak128kMedian": -1.2,
+    "encodes": 5
   },
   "checks": {
     "pass": true,
     "failures": 0,
-    "warnings": 1,
-    "failed": [
-      "noise.humDb"
-    ]
+    "warnings": 0,
+    "failed": []
   },
   "file": "audio/music/intro-sting-show.wav",
   "format": "wav-24bit",
@@ -159,10 +174,10 @@
     "VCSL Kawai piano",
     "VCSL vibraphone",
     "VSCO 2 strings",
-    "plucked-string bass",
+    "finger-plucked bass",
     "VCSL drums",
     "brass stab"
   ],
-  "selfReview": "Locked to the ShowSting frames: SHOW on frame 30 and Badger's D on frame 58, within a few ms of humanising. The motif runs faster here (about 138 BPM) than in the theme so it fits before the ampersand hit. The music is out before the 4.0 s hard cut. The hum warning is a false positive from short, bass-heavy material (A1/D2 partials near 55-60 Hz); there is no mains hum in any source.",
+  "selfReview": "Locked to the ShowSting frames: SHOW on frame 30 and Badger's D on frame 58. Critic round 1 (2026-11-24): the kick came down 3 dB and its beater sits 5 dB under it, the snare is 2 dB up and the piano octaves on SHOW 2 dB firmer: on the hit the piano now leads (5.1 dB under the mix) and the kick is 12.9 dB under it (it was the loudest element). Measured onsets: the SHOW hit's snare, cymbal and brass start between -2 and +5 ms of frame 30, within half a frame; Badger's D lands 7-15 ms after frame 58. Badger, now on the finger-plucked bass with the celli double and his cross-stick, sits 0.9 dB over the motif on full range and 1.3 dB on the phone model. The hum warning (if shown) is a false positive from short, bass-heavy material.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

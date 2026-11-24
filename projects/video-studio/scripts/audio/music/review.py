@@ -7,10 +7,12 @@ Writes:
 - review-reel.m4a: every cue in order with 1.5 s gaps, each lifted to -16 LUFS-I so beds and
   stings can be compared on one volume setting (beds play 10 dB louder than they will in a video);
   review-reel.txt lists the start time of each cue;
-- under-voice/<bed>.m4a: each bed looped under the engine demo narration (Kokoro im_nicola,
+- under-voice/<bed>.m4a: each bed meant for speech (the -underscore beds and the end-screen bed)
+  looped under the engine demo narration (Kokoro im_nicola,
   public/generated/_dev/engine-demo/en/narration.wav), ducked with scripts/audio/duck.py's defaults
-  (-6 dB under speech) and mixed and mastered at -14 LUFS-I, as it would sit in an episode;
-  under-voice/summary.json: the voice-over-bed gap under speech for each bed.
+  (the band-split duck: -2 / -12 / -4 dB under speech, split at 700 Hz and 5 kHz) and mixed and
+  mastered at -14 LUFS-I, as it would sit in an episode;
+  under-voice/summary.json: duck.py's report (the voice-over-bed gap under speech) for each bed.
 Reads the 24-bit masters in out/audio/music/<id>/<id>.wav (run build.py first).
 """
 
@@ -36,9 +38,11 @@ from composer.cues import REGISTRY  # noqa: E402
 
 OUT = paths.OUT / "music"
 VOICE = paths.STUDIO / "public" / "generated" / "_dev" / "engine-demo" / "en" / "narration.wav"
+BEDS = ["bed-show-neutral", "bed-show-tension", "bed-show-light", "bed-story-curious", "bed-story-tension", "bed-story-ominous", "bed-story-resolve"]
 ORDER = ["theme-full", "theme-15s", "theme-5s", "intro-sting-show", "intro-sting-zoora", "bumper-rekt-meter", "bumper-red-flag",
-         "bumper-one-fix", "bumper-scam-of-the-week", "bumper-developing", "bumper-correction", "endscreen-bed",
-         "bed-show-neutral", "bed-show-tension", "bed-show-light", "bed-story-curious", "bed-story-tension", "bed-story-ominous", "bed-story-resolve"]
+         "bumper-one-fix", "bumper-scam-of-the-week", "bumper-developing", "bumper-correction", "endscreen-bed", "endscreen-music", *BEDS]
+# under the voice: what an episode puts under speech (critic round 1: the motif versions are for gaps)
+UNDER_VOICE = ["endscreen-bed", *(f"{b}-underscore" for b in BEDS)]
 
 
 def _m4a(wav: Path, m4a: Path) -> None:
@@ -87,10 +91,7 @@ def under_voice(out: Path) -> dict:
     summary = {}
     d = out / "under-voice"
     d.mkdir(parents=True, exist_ok=True)
-    for cid in ORDER:
-        cue = REGISTRY[cid]
-        if not (cue.loop or cue.cue_type == "endscreen"):
-            continue
+    for cid in UNDER_VOICE:
         bed = OUT / cid / f"{cid}.wav"
         if not bed.exists():
             continue

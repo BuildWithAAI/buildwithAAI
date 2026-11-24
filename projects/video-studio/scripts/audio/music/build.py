@@ -11,6 +11,12 @@ Per cue, in out/audio/music/<id>/: <id>.wav (24-bit 48 kHz master), <id>.m4a (AA
 (and --stems: post-fader stems as FLAC). Delivery (unless --no-export): public/audio/music/<id>.wav or
 .flac (see composer/spec.py), <id>.json metadata, manifest.json.
 
+Checks: the engine's metrics.py profiles with the music package's changes (composer/targets.py):
+beds are gated by Zoo's voice (composer/voicegate.py: the band-audibility index of the reference
+narration over the bed with the planned band-split duck, >= 0.75 and not below speech-shaped noise),
+the standalone theme and the end-screen music must stay under -1 dBTP after AAC 128 kb/s, and the
+end-screen music has its own profile (-18 LUFS-I).
+
 Exit codes: 0 every cue rendered and every fail-level metric passed; 1 a cue failed its metrics;
 2 bad arguments.
 """
@@ -35,7 +41,7 @@ import numpy as np  # noqa: E402
 
 from audiolib import io, master, paths  # noqa: E402
 from audiolib.core import SR, seed_from  # noqa: E402
-from composer import motif, render, spec  # noqa: E402
+from composer import motif, render, spec, targets, voicegate  # noqa: E402
 from composer.cues import REGISTRY  # noqa: E402
 
 OUT = paths.OUT / "music"
@@ -81,8 +87,27 @@ def save_midi(score, path: Path) -> list:
     return out
 
 
-def build_one(cue, out_root: Path, public: Path | None, metrics_on: bool, stems: bool, reviews: dict, cache: bool = True) -> dict:
+def measure(path: Path, cue, png_base: Path | None, targets_path: Path) -> dict:
+    """metrics.py with the music targets, plus the music package's own measurements: the voice gate
+    (beds) and the true peak after AAC 128 kb/s (everything else)."""
     import metrics as metrics_cli
+
+    res = metrics_cli.run(Path(path), cue.profile, cue.loop, png_base, targets_path=targets_path)
+    m = res["metrics"]
+    if cue.profile == "bed":
+        m["voice"] = voicegate.evaluate(io.read(path))
+    else:
+        st = targets.aac_true_peak_stats(Path(path))
+        m["aac"] = {"truePeak128k": st["worst"] if st else None, "truePeak128kMedian": st["median"] if st else None,
+                    "encodes": len(st["values"]) if st else 0}
+    checks = metrics_cli.evaluate(m, metrics_cli.load_targets(targets_path), cue.profile, cue.loop)
+    fails = [c for c in checks if not c["pass"] and c["severity"] == "fail"]
+    warns = [c for c in checks if not c["pass"] and c["severity"] == "warn"]
+    res.update({"checks": checks, "pass": not fails, "failures": len(fails), "warnings": len(warns)})
+    return res
+
+
+def build_one(cue, out_root: Path, public: Path | None, metrics_on: bool, stems: bool, reviews: dict, cache: bool = True) -> dict:
 
     t0 = time.time()
     out = out_root / cue.id
@@ -100,8 +125,9 @@ def build_one(cue, out_root: Path, public: Path | None, metrics_on: bool, stems:
             pk = float(np.max(np.abs(a)))
             render.write_flac(out / "stems" / f"{name}.flac", a * (0.98 / pk if pk > 0.98 else 1.0), bits=24)
     res = None
+    tpath = targets.write_targets(out_root / "_targets.json")
     if metrics_on:
-        res = metrics_cli.run(Path(files["wav"]), cue.profile, cue.loop, out / cue.id)
+        res = measure(Path(files["wav"]), cue, out / cue.id, tpath)
         render.save_json(out / f"{cue.id}.metrics.json", res)
     delivered = {"file": None, "format": None, "bytes": None}
     sts = [dict(s, startSec=round(arr.score.seconds(s["starts"][0]), 3)) for s in motif.statements(arr.score, "zoo")]
@@ -110,7 +136,7 @@ def build_one(cue, out_root: Path, public: Path | None, metrics_on: bool, stems:
     if public is not None:
         delivered = deliver(cue, r, public)
         if metrics_on:
-            delivered_metrics = metrics_cli.run(Path(delivered["path"]), cue.profile, cue.loop, None)
+            delivered_metrics = measure(Path(delivered["path"]), cue, None, tpath)
             render.save_json(out / f"{cue.id}.delivered.metrics.json", delivered_metrics)
     meta = spec.metadata(cue, r, delivered, delivered_metrics, sts, bad, reviews.get(cue.id))
     meta["render"] = {"timings": {**r.timings, "totalS": round(time.time() - t0, 1)}, "mix": r.mix_report,
@@ -147,8 +173,11 @@ def summary_line(meta: dict) -> str:
     ch = meta["checks"] or {}
     sp = meta.get("spectrum") or {}
     lufs = lo["shortTermMedianLufs"] if lo["profile"] == "bed" else lo["integratedLufs"]
-    return (f"{meta['id']:24s} {meta['durationSec']:7.2f}s {lo['profile']:10s} {lufs if lufs is not None else float('nan'):7.2f} LUFS "
-            f"TP {lo['truePeakDbtp']} harsh {sp.get('harshnessDb')} mud {sp.get('mudDb')} box {sp.get('boxinessDb')} pocket {sp.get('voicePocketDb')} "
+    v = meta.get("voice") or {}
+    extra = (f"voice index {v.get('index')} (noise {v.get('ssnIndex')}, broadband {v.get('broadbandIndex')})" if v
+             else f"AAC TP {(meta.get('aac') or {}).get('truePeak128k')}")
+    return (f"{meta['id']:30s} {meta['durationSec']:7.2f}s {lo['profile']:10s} {lufs if lufs is not None else float('nan'):7.2f} LUFS "
+            f"TP {lo['truePeakDbtp']} harsh {sp.get('harshnessDb')} mud {sp.get('mudDb')} box {sp.get('boxinessDb')} {extra} "
             f"{'PASS' if ch.get('pass') else 'FAIL'} w{ch.get('warnings')} {ch.get('failed')}")
 
 

@@ -13,6 +13,8 @@
   "durationSec": 68.4,
   "durationSamples": 3283200,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": null,
   "hits": [
     {
@@ -412,6 +414,15 @@
     ],
     "badger": [
       {
+        "part": "badger_mid",
+        "startSec": 2.4,
+        "pitches": [
+          63,
+          62
+        ],
+        "ok": true
+      },
+      {
         "part": "basses_pizz",
         "startSec": 2.4,
         "pitches": [
@@ -457,6 +468,15 @@
         "ok": true
       },
       {
+        "part": "badger_mid",
+        "startSec": 64.802,
+        "pitches": [
+          63,
+          62
+        ],
+        "ok": true
+      },
+      {
         "part": "bass",
         "startSec": 64.806,
         "pitches": [
@@ -471,17 +491,23 @@
     "profile": "standalone",
     "integratedLufs": -14.0,
     "shortTermMedianLufs": -14.0,
-    "shortTermMaxLufs": -12.2,
-    "lraLu": 3.1,
-    "truePeakDbtp": -1.3
+    "shortTermMaxLufs": -11.9,
+    "lraLu": 4.8,
+    "truePeakDbtp": -2.5
   },
   "spectrum": {
-    "slopeDbPerOct": -4.5,
-    "harshnessDb": -4.53,
-    "mudDb": 0.52,
-    "boxinessDb": 0.22,
-    "voicePocketDb": -0.28,
-    "centroidHz": 1051.0
+    "slopeDbPerOct": -4.96,
+    "harshnessDb": -6.12,
+    "mudDb": 1.2,
+    "boxinessDb": -1.19,
+    "voicePocketDb": -2.7,
+    "centroidHz": 730.0
+  },
+  "voice": null,
+  "aac": {
+    "truePeak128k": -1.2,
+    "truePeak128kMedian": -1.2,
+    "encodes": 5
   },
   "checks": {
     "pass": true,
@@ -491,14 +517,14 @@
   },
   "file": "audio/music/theme-full.flac",
   "format": "flac-16bit",
-  "bytes": 8419496,
+  "bytes": 8355305,
   "description": "The full theme: intro, A, B, A', coda; Zoo's motif in every section and Badger's figure as the bookends.",
   "usage": "Cold opens, trailers, the channel trailer's music, end of season. -14 LUFS-I: plays on its own, not under narration.",
   "instruments": [
     "VCSL Kawai piano",
     "VCSL vibraphone",
     "VSCO 2 strings (MuseScore_General)",
-    "plucked-string bass",
+    "finger-plucked bass (our synthesis)",
     "sine sub",
     "synth kick + MuseScore kick",
     "VCSL drums",
@@ -508,6 +534,6 @@
     "brass stab",
     "muted guitar model"
   ],
-  "selfReview": "The strongest piece. Intro, A, B, A' and coda with Zoo's motif in every section and Badger's figure as the bookends. The voicings are audited: no held semitone or minor-ninth rubs outside the deliberate A7(b9) colour. It passes the standalone profile. Risks a producer may hear, unverified by ear: the FM tine piano and the synth brass are our own synthesis and may read slightly synthetic where exposed (the A' hits). The stop-time bar before B (about 1 s of near silence at 22.5 s) is meant as a late-night band stop but could feel like a dropout. The VSCO string swells in B are soft-attack samples and may smear the faster chord changes.",
+  "selfReview": "The strongest piece: intro, A, B, A' and coda with Zoo's motif in every section and Badger's figure as the bookends. Critic round 1 (2026-11-24): the arc now measures A -14.1, B -16.2 and A' -12.5 LUFS (B 2.1 LU under A, A' 1.6 LU over it; it measured B louder than A before). B lost its snare and hats (cross-stick and shaker only) and came down in the arrangement; A' gained a sustained pad and violas, more brass and claps; the glue compresses less, and a bus ride of a dB or less finishes what the master limiter flattens. The bass is our finger-plucked string, dark (it was clavinet-bright), the kick is short and tuned to the bass under it, the muted guitar is low-passed at 2.5 kHz and 6 dB down, and Badger's figure has a cross-stick and an octave-up celli double, with his transients shaved so the limiter stops pulling the band down on his notes: his button now sits 1.8 dB under the coda motif on full range and 2.9 dB on the phone model (2.8 and 4.5 before). Mastered with a -2.2 dBTP ceiling and 2 dB less air above 9 kHz: -1.2 dBTP after AAC 128 kb/s, the worst of five encodes (-0.3 before). Risks a producer may hear, unverified by ear: the FM tine piano and synth brass are our own synthesis; the stop-time bar before B is meant as a band stop.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

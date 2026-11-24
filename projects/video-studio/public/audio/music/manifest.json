@@ -13,6 +13,7 @@
       "bpm": 90,
       "durationSec": 64.0,
       "durationSamples": 3072000,
+      "downbeatSec": 0.0,
       "loop": {
         "seamless": true,
         "startSample": 0,
@@ -24,11 +25,39 @@
       "hits": [],
       "file": "audio/music/bed-show-light.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.0,
+      "integratedLufs": -25.8,
       "shortTermMedianLufs": -26.0,
       "truePeakDbtp": -6.3,
       "profile": "bed",
       "metadata": "audio/music/bed-show-light.json"
+    },
+    {
+      "id": "bed-show-light-underscore",
+      "title": "Show bed: light (underscore)",
+      "channel": "zoora-security",
+      "cueType": "bed",
+      "mood": "light, witty, upbeat",
+      "key": "F major (lydian)",
+      "bpm": 90,
+      "durationSec": 64.0,
+      "durationSamples": 3072000,
+      "downbeatSec": 0.0,
+      "loop": {
+        "seamless": true,
+        "startSample": 0,
+        "endSample": 3072000,
+        "startSec": 0.0,
+        "endSec": 64.0,
+        "frames30": 1920.0
+      },
+      "hits": [],
+      "file": "audio/music/bed-show-light-underscore.flac",
+      "format": "flac-16bit",
+      "integratedLufs": -25.7,
+      "shortTermMedianLufs": -26.0,
+      "truePeakDbtp": -6.3,
+      "profile": "bed",
+      "metadata": "audio/music/bed-show-light-underscore.json"
     },
     {
       "id": "bed-show-neutral",
@@ -40,6 +69,7 @@
       "bpm": 90,
       "durationSec": 64.0,
       "durationSamples": 3072000,
+      "downbeatSec": 0.0,
       "loop": {
         "seamless": true,
         "startSample": 0,
@@ -51,11 +81,39 @@
       "hits": [],
       "file": "audio/music/bed-show-neutral.flac",
       "format": "flac-16bit",
-      "integratedLufs": -25.6,
+      "integratedLufs": -25.8,
       "shortTermMedianLufs": -26.0,
       "truePeakDbtp": -6.3,
       "profile": "bed",
       "metadata": "audio/music/bed-show-neutral.json"
+    },
+    {
+      "id": "bed-show-neutral-underscore",
+      "title": "Show bed: neutral (underscore)",
+      "channel": "zoora-security",
+      "cueType": "bed",
+      "mood": "calm, curious, confident",
+      "key": "D dorian",
+      "bpm": 90,
+      "durationSec": 64.0,
+      "durationSamples": 3072000,
+      "downbeatSec": 0.0,
+      "loop": {
+        "seamless": true,
+        "startSample": 0,
+        "endSample": 3072000,
+        "startSec": 0.0,
+        "endSec": 64.0,
+        "frames30": 1920.0
+      },
+      "hits": [],
+      "file": "audio/music/bed-show-neutral-underscore.flac",
+      "format": "flac-16bit",
+      "integratedLufs": -25.7,
+      "shortTermMedianLufs": -26.0,
+      "truePeakDbtp": -6.3,
+      "profile": "bed",
+      "metadata": "audio/music/bed-show-neutral-underscore.json"
     },
     {
       "id": "bed-show-tension",
@@ -67,6 +125,7 @@
       "bpm": 90,
       "durationSec": 64.0,
       "durationSamples": 3072000,
+      "downbeatSec": 0.0,
       "loop": {
         "seamless": true,
         "startSample": 0,
@@ -78,11 +137,39 @@
       "hits": [],
       "file": "audio/music/bed-show-tension.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.0,
+      "integratedLufs": -26.1,
       "shortTermMedianLufs": -26.0,
       "truePeakDbtp": -6.3,
       "profile": "bed",
       "metadata": "audio/music/bed-show-tension.json"
+    },
+    {
+      "id": "bed-show-tension-underscore",
+      "title": "Show bed: tension (underscore)",
+      "channel": "zoora-security",
+      "cueType": "bed",
+      "mood": "tense, investigative, restrained",
+      "key": "D minor (phrygian)",
+      "bpm": 90,
+      "durationSec": 64.0,
+      "durationSamples": 3072000,
+      "downbeatSec": 0.0,
+      "loop": {
+        "seamless": true,
+        "startSample": 0,
+        "endSample": 3072000,
+        "startSec": 0.0,
+        "endSec": 64.0,
+        "frames30": 1920.0
+      },
+      "hits": [],
+      "file": "audio/music/bed-show-tension-underscore.flac",
+      "format": "flac-16bit",
+      "integratedLufs": -26.0,
+      "shortTermMedianLufs": -26.0,
+      "truePeakDbtp": -6.3,
+      "profile": "bed",
+      "metadata": "audio/music/bed-show-tension-underscore.json"
     },
     {
       "id": "bed-story-curious",
@@ -94,6 +181,7 @@
       "bpm": 75,
       "durationSec": 64.0,
       "durationSamples": 3072000,
+      "downbeatSec": 0.0,
       "loop": {
         "seamless": true,
         "startSample": 0,
@@ -106,10 +194,38 @@
       "file": "audio/music/bed-story-curious.flac",
       "format": "flac-16bit",
       "integratedLufs": -26.1,
-      "shortTermMedianLufs": -26.1,
+      "shortTermMedianLufs": -26.0,
       "truePeakDbtp": -6.2,
       "profile": "bed",
       "metadata": "audio/music/bed-story-curious.json"
+    },
+    {
+      "id": "bed-story-curious-underscore",
+      "title": "Story bed: curious (underscore)",
+      "channel": "zoora-ai",
+      "cueType": "bed",
+      "mood": "curious, wondering, light",
+      "key": "F lydian",
+      "bpm": 75,
+      "durationSec": 64.0,
+      "durationSamples": 3072000,
+      "downbeatSec": 0.0,
+      "loop": {
+        "seamless": true,
+        "startSample": 0,
+        "endSample": 3072000,
+        "startSec": 0.0,
+        "endSec": 64.0,
+        "frames30": 1920.0
+      },
+      "hits": [],
+      "file": "audio/music/bed-story-curious-underscore.flac",
+      "format": "flac-16bit",
+      "integratedLufs": -26.1,
+      "shortTermMedianLufs": -26.1,
+      "truePeakDbtp": -6.2,
+      "profile": "bed",
+      "metadata": "audio/music/bed-story-curious-underscore.json"
     },
     {
       "id": "bed-story-ominous",
@@ -121,6 +237,7 @@
       "bpm": 75,
       "durationSec": 64.0,
       "durationSamples": 3072000,
+      "downbeatSec": 0.0,
       "loop": {
         "seamless": true,
         "startSample": 0,
@@ -134,9 +251,37 @@
       "format": "flac-16bit",
       "integratedLufs": -26.0,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -8.1,
+      "truePeakDbtp": -10.5,
       "profile": "bed",
       "metadata": "audio/music/bed-story-ominous.json"
+    },
+    {
+      "id": "bed-story-ominous-underscore",
+      "title": "Story bed: ominous (underscore)",
+      "channel": "zoora-ai",
+      "cueType": "bed",
+      "mood": "ominous, dark, slow",
+      "key": "D phrygian",
+      "bpm": 75,
+      "durationSec": 64.0,
+      "durationSamples": 3072000,
+      "downbeatSec": 0.0,
+      "loop": {
+        "seamless": true,
+        "startSample": 0,
+        "endSample": 3072000,
+        "startSec": 0.0,
+        "endSec": 64.0,
+        "frames30": 1920.0
+      },
+      "hits": [],
+      "file": "audio/music/bed-story-ominous-underscore.flac",
+      "format": "flac-16bit",
+      "integratedLufs": -26.1,
+      "shortTermMedianLufs": -26.0,
+      "truePeakDbtp": -10.8,
+      "profile": "bed",
+      "metadata": "audio/music/bed-story-ominous-underscore.json"
     },
     {
       "id": "bed-story-resolve",
@@ -148,6 +293,7 @@
       "bpm": 75,
       "durationSec": 64.0,
       "durationSamples": 3072000,
+      "downbeatSec": 0.0,
       "loop": {
         "seamless": true,
         "startSample": 0,
@@ -161,9 +307,37 @@
       "format": "flac-16bit",
       "integratedLufs": -26.5,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -11.2,
+      "truePeakDbtp": -11.1,
       "profile": "bed",
       "metadata": "audio/music/bed-story-resolve.json"
+    },
+    {
+      "id": "bed-story-resolve-underscore",
+      "title": "Story bed: resolve / uplift (underscore)",
+      "channel": "zoora-ai",
+      "cueType": "bed",
+      "mood": "warm, hopeful, resolved",
+      "key": "D major",
+      "bpm": 75,
+      "durationSec": 64.0,
+      "durationSamples": 3072000,
+      "downbeatSec": 0.0,
+      "loop": {
+        "seamless": true,
+        "startSample": 0,
+        "endSample": 3072000,
+        "startSec": 0.0,
+        "endSec": 64.0,
+        "frames30": 1920.0
+      },
+      "hits": [],
+      "file": "audio/music/bed-story-resolve-underscore.flac",
+      "format": "flac-16bit",
+      "integratedLufs": -26.6,
+      "shortTermMedianLufs": -26.0,
+      "truePeakDbtp": -10.8,
+      "profile": "bed",
+      "metadata": "audio/music/bed-story-resolve-underscore.json"
     },
     {
       "id": "bed-story-tension",
@@ -175,6 +349,7 @@
       "bpm": 75,
       "durationSec": 64.0,
       "durationSamples": 3072000,
+      "downbeatSec": 0.0,
       "loop": {
         "seamless": true,
         "startSample": 0,
@@ -186,11 +361,39 @@
       "hits": [],
       "file": "audio/music/bed-story-tension.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.1,
+      "integratedLufs": -26.0,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -8.6,
+      "truePeakDbtp": -8.9,
       "profile": "bed",
       "metadata": "audio/music/bed-story-tension.json"
+    },
+    {
+      "id": "bed-story-tension-underscore",
+      "title": "Story bed: tension (underscore)",
+      "channel": "zoora-ai",
+      "cueType": "bed",
+      "mood": "tense, pressing, restrained",
+      "key": "D minor",
+      "bpm": 75,
+      "durationSec": 64.0,
+      "durationSamples": 3072000,
+      "downbeatSec": 0.0,
+      "loop": {
+        "seamless": true,
+        "startSample": 0,
+        "endSample": 3072000,
+        "startSec": 0.0,
+        "endSec": 64.0,
+        "frames30": 1920.0
+      },
+      "hits": [],
+      "file": "audio/music/bed-story-tension-underscore.flac",
+      "format": "flac-16bit",
+      "integratedLufs": -26.1,
+      "shortTermMedianLufs": -26.0,
+      "truePeakDbtp": -8.4,
+      "profile": "bed",
+      "metadata": "audio/music/bed-story-tension-underscore.json"
     },
     {
       "id": "bumper-correction",
@@ -202,6 +405,7 @@
       "bpm": 100,
       "durationSec": 3.4,
       "durationSamples": 163200,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -238,6 +442,7 @@
       "bpm": 100,
       "durationSec": 3.4,
       "durationSamples": 163200,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -269,11 +474,12 @@
       "title": "Bumper: Zoo's One Fix",
       "channel": "zoora-security",
       "cueType": "bumper",
-      "mood": "helpful, resolved: the major motif clicks into Dmaj9",
+      "mood": "helpful, resolved: the major motif clicks into D6/9",
       "key": "D major",
       "bpm": 100,
       "durationSec": 3.0,
       "durationSamples": 144000,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -284,14 +490,14 @@
         {
           "sec": 1.2,
           "frame30": 36,
-          "what": "the fix clicks into place (Dmaj9, harp lift)"
+          "what": "the fix clicks into place (D6/9, harp lift)"
         }
       ],
       "file": "audio/music/bumper-one-fix.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.0,
-      "shortTermMedianLufs": -16.3,
-      "truePeakDbtp": -1.1,
+      "integratedLufs": -16.1,
+      "shortTermMedianLufs": -16.4,
+      "truePeakDbtp": -1.3,
       "profile": "sting",
       "metadata": "audio/music/bumper-one-fix.json"
     },
@@ -305,6 +511,7 @@
       "bpm": 100,
       "durationSec": 3.2,
       "durationSamples": 153600,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -326,7 +533,7 @@
       "file": "audio/music/bumper-red-flag.wav",
       "format": "wav-24bit",
       "integratedLufs": -16.0,
-      "shortTermMedianLufs": -16.4,
+      "shortTermMedianLufs": -16.6,
       "truePeakDbtp": -1.3,
       "profile": "sting",
       "metadata": "audio/music/bumper-red-flag.json"
@@ -341,6 +548,7 @@
       "bpm": 100,
       "durationSec": 3.2,
       "durationSamples": 153600,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -366,7 +574,7 @@
       ],
       "file": "audio/music/bumper-rekt-meter.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.0,
+      "integratedLufs": -16.1,
       "shortTermMedianLufs": -16.2,
       "truePeakDbtp": -1.3,
       "profile": "sting",
@@ -382,6 +590,7 @@
       "bpm": 100,
       "durationSec": 3.4,
       "durationSamples": 163200,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -415,7 +624,7 @@
     },
     {
       "id": "endscreen-bed",
-      "title": "End-screen bed, 20 s",
+      "title": "End-screen bed, 20 s (under Zoo's voice-over)",
       "channel": "zoora-security",
       "cueType": "endscreen",
       "mood": "light, confident, wrapping up",
@@ -423,6 +632,7 @@
       "bpm": 100,
       "durationSec": 20.0,
       "durationSamples": 960000,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -445,9 +655,46 @@
       "format": "wav-24bit",
       "integratedLufs": -26.1,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -6.3,
+      "truePeakDbtp": -6.9,
       "profile": "bed",
       "metadata": "audio/music/endscreen-bed.json"
+    },
+    {
+      "id": "endscreen-music",
+      "title": "End-screen music, 20 s (no voice-over)",
+      "channel": "zoora-security",
+      "cueType": "endscreen",
+      "mood": "light, confident, wrapping up",
+      "key": "D minor",
+      "bpm": 100,
+      "durationSec": 20.0,
+      "durationSamples": 960000,
+      "downbeatSec": 0.0,
+      "loop": null,
+      "hits": [
+        {
+          "sec": 16.8,
+          "frame30": 504,
+          "what": "last motif"
+        },
+        {
+          "sec": 18.0,
+          "frame30": 540,
+          "what": "SHOW lands on D minor"
+        },
+        {
+          "sec": 20.0,
+          "frame30": 600,
+          "what": "end"
+        }
+      ],
+      "file": "audio/music/endscreen-music.wav",
+      "format": "wav-24bit",
+      "integratedLufs": -18.1,
+      "shortTermMedianLufs": -18.0,
+      "truePeakDbtp": -2.3,
+      "profile": "endscreen",
+      "metadata": "audio/music/endscreen-music.json"
     },
     {
       "id": "intro-sting-show",
@@ -459,6 +706,7 @@
       "bpm": 138.5,
       "durationSec": 4.0,
       "durationSamples": 192000,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -484,8 +732,8 @@
       ],
       "file": "audio/music/intro-sting-show.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.0,
-      "shortTermMedianLufs": -16.9,
+      "integratedLufs": -16.1,
+      "shortTermMedianLufs": -17.1,
       "truePeakDbtp": -1.3,
       "profile": "sting",
       "metadata": "audio/music/intro-sting-show.json"
@@ -500,6 +748,7 @@
       "bpm": 100,
       "durationSec": 4.0,
       "durationSamples": 192000,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -510,29 +759,29 @@
         {
           "sec": 0.6,
           "frame30": 18,
-          "what": "motif starts"
+          "what": "the motif starts"
         },
         {
           "sec": 1.8,
           "frame30": 54,
-          "what": "SHOW lands on the logo hit (frame 54)"
+          "what": "the motif lands on the logo hit (frame 54)"
         },
         {
           "sec": 2.333,
           "frame30": 70,
-          "what": "celesta C under the wordmark (frame 70)"
+          "what": "vibes and harp C under the wordmark (frame 70)"
         },
         {
           "sec": 2.6,
           "frame30": 78,
-          "what": "celesta F under the tag line (frame 78)"
+          "what": "vibes and harp F under the tag line (frame 78)"
         }
       ],
       "file": "audio/music/intro-sting-zoora.wav",
       "format": "wav-24bit",
       "integratedLufs": -16.0,
       "shortTermMedianLufs": -15.7,
-      "truePeakDbtp": -1.2,
+      "truePeakDbtp": -2.7,
       "profile": "sting",
       "metadata": "audio/music/intro-sting-zoora.json"
     },
@@ -546,6 +795,7 @@
       "bpm": 100,
       "durationSec": 15.0,
       "durationSamples": 720000,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -561,7 +811,7 @@
         {
           "sec": 4.8,
           "frame30": 144,
-          "what": "band in: motif on G"
+          "what": "band in: the vibes answer on G"
         },
         {
           "sec": 7.2,
@@ -591,9 +841,9 @@
       ],
       "file": "audio/music/theme-15s.wav",
       "format": "wav-24bit",
-      "integratedLufs": -14.0,
-      "shortTermMedianLufs": -14.1,
-      "truePeakDbtp": -1.3,
+      "integratedLufs": -14.1,
+      "shortTermMedianLufs": -14.3,
+      "truePeakDbtp": -2.5,
       "profile": "standalone",
       "metadata": "audio/music/theme-15s.json"
     },
@@ -607,33 +857,34 @@
       "bpm": 100,
       "durationSec": 5.0,
       "durationSamples": 240000,
+      "downbeatSec": 0.066667,
       "loop": null,
       "hits": [
         {
-          "sec": 0.0,
-          "frame30": 0,
-          "what": "motif starts (band unison)"
+          "sec": 0.067,
+          "frame30": 2,
+          "what": "motif starts (band unison): the sync point"
         },
         {
-          "sec": 1.2,
-          "frame30": 36,
+          "sec": 1.267,
+          "frame30": 38,
           "what": "SHOW lands (crash)"
         },
         {
-          "sec": 2.4,
-          "frame30": 72,
+          "sec": 2.467,
+          "frame30": 74,
           "what": "Badger: E-flat"
         },
         {
-          "sec": 3.0,
-          "frame30": 90,
+          "sec": 3.067,
+          "frame30": 92,
           "what": "Badger: D (the button)"
         }
       ],
       "file": "audio/music/theme-5s.wav",
       "format": "wav-24bit",
       "integratedLufs": -16.0,
-      "shortTermMedianLufs": -16.9,
+      "shortTermMedianLufs": -16.2,
       "truePeakDbtp": -1.3,
       "profile": "sting",
       "metadata": "audio/music/theme-5s.json"
@@ -648,6 +899,7 @@
       "bpm": 100,
       "durationSec": 68.4,
       "durationSamples": 3283200,
+      "downbeatSec": 0.0,
       "loop": null,
       "hits": [
         {
@@ -700,7 +952,7 @@
       "format": "flac-16bit",
       "integratedLufs": -14.0,
       "shortTermMedianLufs": -14.0,
-      "truePeakDbtp": -1.3,
+      "truePeakDbtp": -2.5,
       "profile": "standalone",
       "metadata": "audio/music/theme-full.json"
     }

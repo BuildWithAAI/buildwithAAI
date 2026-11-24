@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "endscreen-bed",
-  "title": "End-screen bed, 20 s",
+  "title": "End-screen bed, 20 s (under Zoo's voice-over)",
   "channel": "zoora-security",
   "cueType": "endscreen",
   "mood": "light, confident, wrapping up",
@@ -13,6 +13,8 @@
   "durationSec": 20.0,
   "durationSamples": 960000,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": null,
   "hits": [
     {
@@ -50,62 +52,6 @@
       {
         "form": "full",
         "mode": "minor",
-        "part": "vibes",
-        "startSec": 0.0,
-        "pitches": [
-          74,
-          74,
-          81,
-          80,
-          77
-        ],
-        "ok": true
-      },
-      {
-        "form": "full",
-        "mode": "minor",
-        "part": "vibes",
-        "startSec": 4.795,
-        "pitches": [
-          67,
-          67,
-          74,
-          73,
-          70
-        ],
-        "ok": true
-      },
-      {
-        "form": "full",
-        "mode": "minor",
-        "part": "vibes",
-        "startSec": 9.582,
-        "pitches": [
-          74,
-          74,
-          81,
-          80,
-          77
-        ],
-        "ok": true
-      },
-      {
-        "form": "full",
-        "mode": "minor",
-        "part": "vibes",
-        "startSec": 16.787,
-        "pitches": [
-          74,
-          74,
-          81,
-          80,
-          77
-        ],
-        "ok": true
-      },
-      {
-        "form": "full",
-        "mode": "minor",
         "part": "piano",
         "startSec": 16.8,
         "pitches": [
@@ -116,6 +62,20 @@
           65
         ],
         "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 16.8,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
       }
     ],
     "badger": []
@@ -124,18 +84,49 @@
     "profile": "bed",
     "integratedLufs": -26.1,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -25.4,
-    "lraLu": 1.0,
-    "truePeakDbtp": -6.3
+    "shortTermMaxLufs": -25.5,
+    "lraLu": 0.6,
+    "truePeakDbtp": -6.9
   },
   "spectrum": {
-    "slopeDbPerOct": -4.41,
-    "harshnessDb": -8.15,
-    "mudDb": 1.02,
-    "boxinessDb": 0.53,
-    "voicePocketDb": -7.99,
-    "centroidHz": 2032.0
+    "slopeDbPerOct": -5.03,
+    "harshnessDb": -8.5,
+    "mudDb": 2.61,
+    "boxinessDb": -1.11,
+    "voicePocketDb": -10.22,
+    "centroidHz": 1324.0
   },
+  "voice": {
+    "index": 0.826,
+    "ssnIndex": 0.6918,
+    "indexMinusSsn": 0.1342,
+    "broadbandIndex": 0.7909,
+    "duck": {
+      "plannedMode": "split",
+      "crossoversHz": [
+        700.0,
+        5000.0
+      ],
+      "depthsDb": [
+        2.0,
+        12.0,
+        4.0
+      ]
+    },
+    "voiceOverBedLu": 15.38,
+    "snr1to4kMedianDb": 22.57,
+    "framesUnder3dB": 0.0784,
+    "narrowestBand": {
+      "hz": 800,
+      "snrDb": 15.3
+    },
+    "reference": {
+      "voice": "Kokoro im_nicola (Zoo)",
+      "source": "public/generated/_dev/engine-demo/en/narration.wav",
+      "sha256": "021b3f141cdf3237"
+    }
+  },
+  "aac": null,
   "checks": {
     "pass": true,
     "failures": 0,
@@ -145,16 +136,16 @@
   "file": "audio/music/endscreen-bed.wav",
   "format": "wav-24bit",
   "bytes": 5760044,
-  "description": "The theme's groove, light, under the end screen; the motif lands on D minor at 18.0 s and the cue ends at exactly 20.0 s.",
-  "usage": "End-aligned: place it so it ends with the video; for a shorter end screen, start later and fade in. Bed level (-26 LUFS-S) for Zoo's voice-over; raise 6-8 dB if nobody speaks.",
+  "description": "The theme's groove, light, under the end screen's voice-over: no vibes until the motif lands on D minor at 18.0 s; ends at exactly 20.0 s.",
+  "usage": "End-aligned, under Zoo's voice-over: place it so it ends with the video (for a shorter end screen, start later and fade in) and duck it with scripts/audio/duck.py. Bed level (-26 LUFS-S). With nobody speaking, use endscreen-music.",
   "instruments": [
     "VCSL vibraphone",
     "FM tine piano",
-    "plucked-string bass",
+    "finger-plucked bass",
     "VCSL percussion",
     "pulse",
     "VSCO 2 celli"
   ],
-  "selfReview": "Six bars of light groove, a turnaround, then the motif lands on D minor at 18.0 s and rings out to exactly 20.0 s. It is a bed level (-26 LUFS-S) with a deep voice pocket for Zoo's call to action. Played without a voice-over it will feel quiet: raise it 6-8 dB.",
+  "selfReview": "Six bars of light groove, a turnaround, then the motif lands on D minor at 18.0 s and rings out to exactly 20.0 s, at bed level (-26 LUFS-S) for Zoo's call to action. Critic round 1 (2026-11-24): it was the worst bed under his voice (band-audibility index 0.67-0.69, under speech-shaped noise at 0.76). The vibes now rest until the bar-7 motif, the hats and pulse came down (-10 and -15 dB, the pulse an octave up), the bass is the dark finger-plucked one, the bus dips 1.25 and 2 kHz and takes 2.5 dB off below 150 Hz, and the kick's beater is quieter. With the band-split duck the index is 0.83 (speech-shaped noise at the same loudness: 0.69), the 1-4 kHz median SNR 22.6 dB and 8 % of speech frames under 3 dB there (28-29 % before); on the phone model it loses 5.3 LU, about what Zoo loses. With nobody speaking use `endscreen-music` (-18 LUFS-I).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

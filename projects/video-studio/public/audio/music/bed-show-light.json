@@ -13,6 +13,8 @@
   "durationSec": 64.0,
   "durationSamples": 3072000,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": {
     "seamless": true,
     "startSample": 0,
@@ -85,43 +87,72 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.0,
+    "integratedLufs": -25.8,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -25.3,
-    "lraLu": 0.9,
+    "shortTermMaxLufs": -24.8,
+    "lraLu": 1.3,
     "truePeakDbtp": -6.3
   },
   "spectrum": {
-    "slopeDbPerOct": -4.4,
-    "harshnessDb": -6.8,
-    "mudDb": 2.66,
-    "boxinessDb": 1.26,
-    "voicePocketDb": -7.37,
-    "centroidHz": 1176.0
+    "slopeDbPerOct": -4.62,
+    "harshnessDb": -6.38,
+    "mudDb": 2.36,
+    "boxinessDb": -1.74,
+    "voicePocketDb": -9.77,
+    "centroidHz": 1061.0
   },
+  "voice": {
+    "index": 0.8295,
+    "ssnIndex": 0.6886,
+    "indexMinusSsn": 0.1409,
+    "broadbandIndex": 0.8004,
+    "duck": {
+      "plannedMode": "split",
+      "crossoversHz": [
+        700.0,
+        5000.0
+      ],
+      "depthsDb": [
+        2.0,
+        12.0,
+        4.0
+      ]
+    },
+    "voiceOverBedLu": 15.24,
+    "snr1to4kMedianDb": 23.69,
+    "framesUnder3dB": 0.0938,
+    "narrowestBand": {
+      "hz": 800,
+      "snrDb": 15.3
+    },
+    "reference": {
+      "voice": "Kokoro im_nicola (Zoo)",
+      "source": "public/generated/_dev/engine-demo/en/narration.wav",
+      "sha256": "021b3f141cdf3237"
+    }
+  },
+  "aac": null,
   "checks": {
     "pass": true,
     "failures": 0,
-    "warnings": 3,
+    "warnings": 1,
     "failed": [
-      "noise.humDb",
-      "noise.hfFloorDbfs",
       "loop.levelStepDb"
     ]
   },
   "file": "audio/music/bed-show-light.flac",
   "format": "flac-16bit",
-  "bytes": 6242483,
-  "description": "Swung pizzicato, a two-feel bass, soft taps and hats; the major motif (F F C B A) on vibes every 8 bars.",
-  "usage": "Loops seamlessly (sample 0 to the end). -26 LUFS-S with a 1-4 kHz pocket: run scripts/audio/duck.py under Zoo's narration. Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
+  "bytes": 5506776,
+  "description": "Swung pizzicato in quarter notes (eighths in bars 16-21), a two-feel bass, soft taps and quarter-note hats; the major motif (F F C B A) on vibes every 8 bars.",
+  "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly (sample 0 to the end). -26 LUFS-S with a voice pocket at 1.25-2 kHz: duck it under Zoo's narration with scripts/audio/duck.py (the band-split duck, its default). Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
   "instruments": [
     "VSCO 2 pizzicato",
-    "plucked-string bass",
+    "finger-plucked bass",
     "VCSL drums",
     "VCSL vibraphone",
     "FM tine piano",
     "VSCO 2 celli"
   ],
-  "selfReview": "Swung pizzicato, a two-feel bass and soft taps and hats, with the major motif on vibes every 8 bars (the lydian B is the wink). Anticipation chords cross every 8-bar line so the loop flows. Some pizzicato-arpeggio weight sits around 500 Hz; it passes but is the busiest show bed in the voice's body range.",
+  "selfReview": "Pizzicato, a two-feel bass, soft taps and hats, with the major motif on vibes every 8 bars (the lydian B is the wink). Critic round 1 (2026-11-24): it was the busiest masker in the set, so the pizzicato plays quarter notes (8ths only in bars 16-21) 3 dB lower, the hats play quarters and the claps are gone. Under Zoo with the band-split duck its index is 0.83 (0.72 before, with the broadband duck), and the onsets that come within 15 dB of his voice in 1-4 kHz fell from about 147 to 82 a minute. Its share of 1-4 kHz modulation at syllable rate is still the highest of the beds (0.45, was 0.53): if it still reads as a stock 'quirky explainer' after a listen, re-arrange it on brushes, walking bass and vibes comping, keeping tempo, key and form. The -underscore version mutes the motif and lead lines; use it under speech.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

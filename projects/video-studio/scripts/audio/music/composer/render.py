@@ -61,11 +61,30 @@ def safe(comp):
     return SafeCompressor(**asdict(comp))
 
 
-def safe_preset(name: str):
+# critic round 1: at -1.0 the theme read -0.3 dBTP after AAC 128 kb/s. The critic asked for -2.0; with the
+# worst of five AAC encodes (composer/targets.py) the 16-bit theme-full read -1.0 there, so -2.2 leaves margin
+STANDALONE_CEILING_DBTP = -2.2
+
+# Presets the music package adds to the engine's (audiolib.master.PRESETS):
+# - endscreen: the end-screen music with nobody speaking, -18 LUFS-I (4 LU under -14 narration).
+MUSIC_PRESETS = {
+    "endscreen": master.Preset(
+        "endscreen", -18.0, "integrated", -2.0, eq=(master.RUMBLE,),
+        comp=Compressor(threshold_db=-22.0, ratio=1.5, attack_ms=30.0, release_ms=250.0, knee_db=8.0, detector="rms", rms_ms=30.0, sidechain_hp_hz=90.0),
+        release_ms=120.0, notes="end screens with no voice-over: music on its own, under the -14 LUFS programme"),
+}
+
+
+def safe_preset(name: str, ceiling_dbtp: float | None = None):
+    """An engine (or music) preset with the NaN-safe compressor; `ceiling_dbtp` overrides the
+    true-peak ceiling (the standalone theme masters at -2.2 dBTP, see STANDALONE_CEILING_DBTP)."""
     from dataclasses import replace
 
-    p = master.PRESETS[name]
-    return replace(p, comp=safe(p.comp))
+    p = MUSIC_PRESETS[name] if name in MUSIC_PRESETS else master.PRESETS[name]
+    p = replace(p, comp=safe(p.comp))
+    if ceiling_dbtp is not None:
+        p = replace(p, ceiling_dbtp=float(ceiling_dbtp))
+    return p
 
 
 DEFAULT_GLUE = dict(threshold_db=-22.0, ratio=2.0, attack_ms=30.0, release_ms=200.0, knee_db=6.0, detector="rms", rms_ms=25.0, sidechain_hp_hz=90.0)
@@ -99,6 +118,8 @@ class Track:
     sends: dict = field(default_factory=dict)
     stage_lufs: float | None = -20.0
     gm_gain: float = fluid.DEFAULT_GAIN
+    # take the stem's highest peaks down before the strip (see shave_peaks): {"shave_db": 8.0, "kind": "limit"}
+    peak_shave: dict | None = None
 
 
 @dataclass
@@ -119,6 +140,11 @@ class Arrangement:
     fade_in: float = 0.0
     fade_out: float = 0.0
     fade_curve: str = "sine"
+    ceiling_dbtp: float | None = None  # overrides the preset's true-peak ceiling
+    pre_roll: float = 0.0  # seconds of digital silence before the first downbeat (non-loops)
+    # mix automation on the bus, after the bus EQ and before the glue: (seconds, dB) breakpoints,
+    # linear in dB between them and held beyond the ends (non-loops only)
+    bus_ride: list = field(default_factory=list)
 
 
 # ------------------------------------------------------------------------------------------ helpers for writing
@@ -184,9 +210,12 @@ def _source_key(src) -> str:
     return repr(src)
 
 
+RENDER_META = ("tune_hz",)  # note meta that changes how a source renders (SynthKick's per-hit tuning)
+
+
 def _stem_key(arr: Arrangement, tr: Track, total: float) -> str:
     part = arr.score.parts[tr.part or tr.name]
-    notes = [(n.pitch, round(n.start, 6), round(n.dur, 6), n.vel) for n in part.notes]
+    notes = [(n.pitch, round(n.start, 6), round(n.dur, 6), n.vel, *[n.meta[k] for k in RENDER_META if k in n.meta]) for n in part.notes]
     payload = json.dumps([CACHE_VERSION, _source_key(tr.source), sorted(tr.only) if tr.only else None, tr.gm_gain, round(total, 6),
                           arr.score._beats, arr.score._bpm, notes, sorted(part.ccs), sorted(part.bends)], default=str)
     return hashlib.sha256(payload.encode()).hexdigest()[:24]
@@ -285,6 +314,38 @@ def _process_strips(engine: Mix, strips: list) -> list:
     return [(out, rep) for _, out, rep in res]
 
 
+def shave_peaks(audio, shave_db: float, kind: str = "limit", release_ms: float = 60.0, lookahead_ms: float = 3.0) -> np.ndarray:
+    """Take `shave_db` off a stem's highest peaks, relative to its own peak (so it does not depend on
+    the stem's level); the strip's gain staging then restores the stem's loudness. Used where a sparse
+    part's transients, stacked on a hit, would otherwise drive the master limiter and pull the whole
+    mix down on that hit (critic round 1: Badger's figure).
+
+    kind "limit": a true-peak look-ahead limiter (pedalboard BrickwallLimiter), for pitched parts;
+    "clip": oversampled tanh soft clipping (dsp.saturate), for clicks too short for a limiter to
+    catch without dulling them. The clip takes the peak down by about `shave_db` (on broadband clicks
+    its anti-alias filter rings back up to about 1.5 dB)."""
+    a = np.asarray(audio, dtype=np.float64)
+    pk = float(np.max(np.abs(a))) if a.size else 0.0
+    if shave_db <= 0 or pk <= 0:
+        return a
+    if kind == "clip":
+        return dsp.saturate(a / pk, drive_db=shave_db, kind="tanh") * pk
+    if kind == "limit":
+        import pedalboard
+
+        lim = pedalboard.BrickwallLimiter(ceiling_db=float(20 * np.log10(pk)) - shave_db, release_ms=release_ms, lookahead_ms=lookahead_ms, true_peak=True)
+        return lim(a.astype(np.float32), SR).astype(np.float64)
+    raise ValueError(f"unknown peak_shave kind {kind!r}")
+
+
+def ride_gain(points, n: int, offset: int = 0) -> np.ndarray:
+    """Linear gain for `n` samples from (seconds, dB) breakpoints (linear in dB, held beyond the ends);
+    sample `offset` is time 0."""
+    pts = sorted(points)
+    t = (np.arange(n) - offset) / SR
+    return db_to_lin(np.interp(t, [p[0] for p in pts], [p[1] for p in pts]))
+
+
 def mix(arr: Arrangement, stems: dict):
     """Returns (premaster, report, post_fader_stems). For loops the stems must already be folded."""
     L = int(round(arr.length * SR))
@@ -298,6 +359,8 @@ def mix(arr: Arrangement, stems: dict):
     strips = []
     for tr in arr.tracks:
         a = stems[tr.name]
+        if tr.peak_shave:
+            a = shave_peaks(a, **tr.peak_shave)
         a = _wrap(a[:, :L], pad) if arr.loop else pad_to(a, N)
         if not np.any(a):
             continue
@@ -327,6 +390,8 @@ def mix(arr: Arrangement, stems: dict):
         report["reverbs"][name] = {"rt60": room.rt60, "returnLufs": round(float(loudness.integrated(wet[:, pad : pad + L])), 2)}
     if arr.bus_eq:
         bus = dsp.eq(bus, arr.bus_eq, SR)
+    if arr.bus_ride and not arr.loop:
+        bus = bus * ride_gain(arr.bus_ride, N)[None, :]
     if arr.glue is not None:
         i = loudness.integrated(bus[:, pad : pad + L])
         stage = (arr.glue_stage_lufs - i) if np.isfinite(i) else 0.0
@@ -363,9 +428,17 @@ def render(arr: Arrangement, workdir: Path, cache: Path | None = None) -> Render
     stems = fold(raw, arr.length) if arr.loop else raw
     pre, mrep, post = mix(arr, stems)
     t2 = time.time()
-    out, rep = master.master(pre, safe_preset(arr.preset), loop=arr.loop)
+    out, rep = master.master(pre, safe_preset(arr.preset, arr.ceiling_dbtp), loop=arr.loop)
     if not np.all(np.isfinite(out)):
         raise RuntimeError(f"{arr.cue_id}: the master contains NaN or Inf")
+    if arr.pre_roll > 0 and not arr.loop:
+        # silence before the downbeat, so a placement a frame early never clips the attack; the
+        # loudness is measured on the music (silence is gated out of BS.1770 integrated loudness)
+        k = int(round(arr.pre_roll * SR))
+        out = np.concatenate([np.zeros((2, k)), out], axis=1)
+        pre = np.concatenate([np.zeros((2, k)), pre], axis=1)
+        post = {name: np.concatenate([np.zeros((2, k)), a], axis=1) for name, a in post.items()}
+        rep["preRollSec"] = round(k / SR, 6)
     t3 = time.time()
     return Rendered(arr, pre, out, rep, mrep, post, {"stemsS": round(t1 - t0, 1), "mixS": round(t2 - t1, 1), "masterS": round(t3 - t2, 1)})
 

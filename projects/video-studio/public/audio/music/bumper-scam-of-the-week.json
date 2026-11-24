@@ -13,6 +13,8 @@
   "durationSec": 3.4,
   "durationSamples": 163200,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": null,
   "hits": [
     {
@@ -88,17 +90,23 @@
     "profile": "sting",
     "integratedLufs": -16.0,
     "shortTermMedianLufs": -16.4,
-    "shortTermMaxLufs": -15.7,
-    "lraLu": 1.1,
+    "shortTermMaxLufs": -15.6,
+    "lraLu": 1.2,
     "truePeakDbtp": -1.3
   },
   "spectrum": {
-    "slopeDbPerOct": -3.96,
-    "harshnessDb": -3.45,
-    "mudDb": -0.25,
-    "boxinessDb": -2.15,
-    "voicePocketDb": -2.18,
-    "centroidHz": 1110.0
+    "slopeDbPerOct": -4.34,
+    "harshnessDb": -3.7,
+    "mudDb": -0.48,
+    "boxinessDb": -3.85,
+    "voicePocketDb": -3.25,
+    "centroidHz": 979.0
+  },
+  "voice": null,
+  "aac": {
+    "truePeak128k": -0.7,
+    "truePeak128kMedian": -1.4,
+    "encodes": 5
   },
   "checks": {
     "pass": true,
@@ -117,11 +125,11 @@
     "VCSL Kawai piano",
     "VCSL vibraphone",
     "VSCO 2 strings",
-    "plucked-string bass",
+    "finger-plucked bass",
     "VCSL drums",
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "Low and sly: the motif in piano octaves and pizzicato over a cymbal scrape. It lands unresolved on Bb7(b9), and a vibes tritone glint (E then Bb) follows. It is the most character-driven bumper and leans towards the noir spy idiom; I kept the minor-major Bond chord out on purpose.",
+  "selfReview": "Low and sly: the motif in piano octaves and pizzicato over a cymbal scrape, landing unresolved on Bb7(b9), then a vibes tritone glint (E then Bb). Critic round 1 (2026-11-24): the kick is tuned to the bass under it (on the landing it no longer beats against B-flat) and sits 12.4 dB under the mix there; the bass is the dark finger-plucked one. It leans towards the noir spy idiom; the minor-major Bond chord stays out on purpose.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

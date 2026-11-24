@@ -13,6 +13,8 @@
   "durationSec": 3.4,
   "durationSamples": 163200,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": null,
   "hits": [
     {
@@ -60,12 +62,18 @@
     "truePeakDbtp": -3.2
   },
   "spectrum": {
-    "slopeDbPerOct": -5.26,
-    "harshnessDb": -8.56,
-    "mudDb": 0.75,
-    "boxinessDb": 3.43,
-    "voicePocketDb": 3.21,
-    "centroidHz": 554.0
+    "slopeDbPerOct": -6.67,
+    "harshnessDb": -11.96,
+    "mudDb": -0.6,
+    "boxinessDb": 0.7,
+    "voicePocketDb": 1.81,
+    "centroidHz": 370.0
+  },
+  "voice": null,
+  "aac": {
+    "truePeak128k": -3.4,
+    "truePeak128kMedian": -3.4,
+    "encodes": 5
   },
   "checks": {
     "pass": true,
@@ -82,11 +90,11 @@
     "VCSL Kawai piano",
     "VCSL vibraphone",
     "VSCO 2 strings",
-    "plucked-string bass",
+    "finger-plucked bass",
     "VCSL drums",
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "Sober: a reversed piano swell (the rewind) runs straight into the motif played backwards, calm, resolving to D minor. It is the darkest bumper (harshness -8.6). Its piano voicings were thinned and 700 Hz cut after the first render read boxy. It is normalised to the same -16 LUFS-I as the others, so check that it does not feel louder than its mood.",
+  "selfReview": "Sober: a reversed piano swell (the rewind) runs straight into the motif played backwards, resolving to D minor. Critic round 1 (2026-11-24): the bus cut moved to 650 Hz (-4.5 dB) and the rewind is narrower (width 0.7): boxiness 0.7 dB (3.4 before), mono loss 1.0 dB and a windowed correlation minimum of +0.20 (1.5 dB and -0.05 before). It is still normalised to the same -16 LUFS-I as the other bumpers (the critic's optional -17 was not applied: the set stays level-matched); it loses 5.5 LU on the phone model, about what Zoo's voice loses.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

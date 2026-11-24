@@ -5,7 +5,7 @@ theme's writer, so the instruments, mix and motif are the same family.
 Bumpers (sting profile, -16 LUFS-I, clean tails), each built from the motif:
     rekt-meter       the meter fills (taps, rising pizzicato, air), then the motif's tail falls: A, Ab, F
     red-flag         motif head (D D A), a deadpan rest, Badger's figure (Eb, D); room after for a dog huff
-    one-fix          the major motif (D D A G# F#) on vibes and piano, a click and a harp lift into Dmaj9
+    one-fix          the major motif (D D A G# F#) on vibes and piano, a click and a harp lift into D6/9
     scam-of-the-week the motif low and sly over a cymbal scrape; lands on Bb7(b9); a tritone glint on vibes
     developing       the tonic becomes a 16th ticker under a tremolo swell; the head lands on Dsus4(add9), unresolved
     correction       a reversed piano swell ("rewind"), then the motif backwards, calm, resolving to D minor
@@ -17,7 +17,7 @@ from composer import instruments as I
 from composer import motif
 from composer import synths as S
 from composer.cues import common as C
-from composer.cues.theme import Theme
+from composer.cues.theme import BADGER_KICK, BADGER_XSTICK, STING_FADERS, Theme
 from composer.instruments import K
 from composer.render import Arrangement, swell
 
@@ -26,7 +26,13 @@ BUMPER_BUS = [C.PK(250, -1.0, 0.9), C.PK(1000, -1.0, 1.0), C.PK(4500, 2.0, 0.7),
 
 def _arr(cid: str, th: Theme, length: float, preset: str = "sting", fade: float = 0.5, faders: dict | None = None, swing: bool = True) -> Arrangement:
     th.finish(cid, swing=swing)
-    return Arrangement(cid, th.s, length, th.tracks(faders), preset=preset, reverbs=C.reverbs(), fade_out=fade, bus_eq=BUMPER_BUS)
+    return Arrangement(cid, th.s, length, th.tracks({**STING_FADERS, **(faders or {})}), preset=preset, reverbs=C.reverbs(), fade_out=fade, bus_eq=BUMPER_BUS)
+
+
+def _add_eq(arr: Arrangement, track: str, *bands) -> None:
+    for t in arr.tracks:
+        if t.name == track:
+            t.eq = [*t.eq, *bands]
 
 
 def _hits(th: Theme, beats, vel=(110,), snare: bool = True):
@@ -53,15 +59,19 @@ def rekt_meter() -> Arrangement:
     motif.place(P["vibes"], 2.0, "D5", form="tail", vel=82, last_dur=2.0)
     for b, v in ((2.0, "Dm9"), (2.5, "Bb9")):
         th.chord("brass", 0, b, v, 0.35, 92)
+        th.chord("violas_fast", 0, b, v, 0.35, 96)
         th.chord("ep", 0, b, v, 0.35, 80)
     th.chord("brass", 0, 3.0, "A3 D4 F4 A4", 1.6, 100)
+    th.chord("violas_fast", 0, 3.0, "A3 D4 F4 A4", 1.0, 104)
     th.chord("ep", 0, 3.0, "A3 C4 F4", 1.8, 76)
     P["celli"].note("D3", 3.0, 1.8, 80)
     swell(P["celli"], 3.0, 3.05, 0, 90)
     swell(P["celli"], 3.4, 4.8, 90, 30)
     _hits(th, (2.0, 2.5, 3.0), (108, 100, 118))
     P["kit"].hit(K["crash"], 3.0, 104)
-    return _arr("bumper-rekt-meter", th, 3.2 / 1.0, fade=0.5)
+    # critic round 1: the landing's synth brass sat only 8.4 dB under the mix (an 80s-TV risk on the
+    # payoff); it comes down to -9 dB and real violas (VSCO 2, fast bowing) double the stab
+    return _arr("bumper-rekt-meter", th, 3.2 / 1.0, fade=0.5, faders={"brass": -9.0, "violas_fast": -6.0})
 
 
 def red_flag() -> Arrangement:
@@ -97,7 +107,9 @@ def one_fix() -> Arrangement:
     P["kick"].hit(36, 2.0, 88)
     P["kit"].hit(K["rim"], 2.0, 92)
     P["kit"].hit(K["sus_soft"], 2.0, 70)
-    return _arr("bumper-one-fix", th, 3.0, fade=0.5)
+    arr = _arr("bumper-one-fix", th, 3.0, fade=0.5)
+    _add_eq(arr, "ep", C.PK(400, -2.0, 1.0))  # the exposed 2.6-beat FM-EP chord: less box under the D6/9
+    return arr
 
 
 def scam_of_the_week() -> Arrangement:
@@ -124,10 +136,9 @@ def scam_of_the_week() -> Arrangement:
 def developing() -> Arrangement:
     th = Theme()
     P = th.p
-    for k in range(12):  # the ticker: three beats of 16ths, rising
+    for k in range(12):  # the ticker: three beats of 16ths, rising (pulse and hats; the piano only states the head)
         v = 44 + 4 * k
         P["pulse"].note("D5" if k % 4 else "D4", 0.25 * k, 0.15, v)
-        P["piano"].note("D5", 0.25 * k, 0.12, 40 + 3 * k)
         P["kit"].hit(K["hat"], 0.25 * k, 50 + (16 if k % 4 == 0 else 0) + 2 * k)
     for n in ("D4", "A4"):
         P["violins_trem"].note(n, 0.0, 4.6, 70)
@@ -144,7 +155,7 @@ def developing() -> Arrangement:
     P["kick"].hit(36, 3.0, 92)
     _hits(th, (4.0,), (112,))
     P["kit"].hit(K["crash"], 4.0, 88)
-    return _arr("bumper-developing", th, 3.4, fade=0.5)
+    return _arr("bumper-developing", th, 3.4, fade=0.5, faders={"brass": -8.5})  # brass 3 dB under the theme's
 
 
 def correction() -> Arrangement:
@@ -152,7 +163,7 @@ def correction() -> Arrangement:
     P = th.p
     src = S.sampled_chord(I.piano("kawai"), ["D3", "A3", "C4", "F4", "E5"], 1.5, vel=80, length_s=4.0)
     rev = S.reverse_swell(src, 0.93, room="hall", curve=1.8)  # ends 30 ms into the first note: no gap before the hit
-    th.clips.append(("rewind", rev, -10.0, None))
+    th.clips.append(("rewind", rev, -10.0, None))  # width 0.7 below (the reversed hall tail was decorrelated)
     # the motif backwards (F Ab A D D), calm and even, resolving on D
     motif.place(P["piano"], 1.5, "D5", form="retro", vel=70, rhythm=[(0, 0.5), (0.5, 0.5), (1.0, 0.5), (1.5, 0.5), (2.0, 2.2)], staccato=0.98)
     # light voicings above the celli's roots: the low-mid stays clear (the first mix read boxy)
@@ -167,7 +178,10 @@ def correction() -> Arrangement:
     swell(P["celli"], 3.2, 5.0, 60, 24)
     P["bass"].note("D2", 3.0, 1.6, 64)
     arr = _arr("bumper-correction", th, 3.4, fade=0.7, faders={"piano": -1.0})
-    arr.bus_eq = [*BUMPER_BUS, C.PK(700, -3.0, 1.0)]  # soft piano in the 4th octave reads boxy (+5 dB at 500-1000 Hz)
+    arr.bus_eq = [*BUMPER_BUS, C.PK(650, -4.5, 1.2)]  # soft piano in the 4th octave reads boxy (critic round 1: 3.43 dB at 500-1000 Hz)
+    for t in arr.tracks:
+        if t.name == "rewind":
+            t.width = 0.7
     return arr
 
 
@@ -186,6 +200,9 @@ def show_intro_sting() -> Arrangement:
     t0 = STING_START
     stretch = (STING_HIT1 - t0) / 2.0  # ZOO -> SHOW is two motif beats
     motif.place(P["piano"], t0, "D4", vel=94, octaves=(0, 12, -12), stretch=stretch, last_dur=0.45)
+    for n in P["piano"].notes:  # the piano octaves on SHOW 2 dB firmer (velocity x1.155 through the Kawai's 1.6 curve)
+        if abs(n.start - STING_HIT1) < 1e-6:
+            n.vel = min(127, round(n.vel * 1.155))
     motif.place(P["vibes"], t0, "D5", vel=80, stretch=stretch, last_dur=0.8)
     motif.place(P["bass"], t0, "D2", vel=104, stretch=stretch, staccato=0.8, last_dur=0.4)
     motif.place(P["pizz"], t0, "D4", vel=88, stretch=stretch, staccato=0.6, last_dur=0.3)
@@ -201,10 +218,11 @@ def show_intro_sting() -> Arrangement:
     spacing = 0.433
     motif.place_badger(P["bass"], STING_HIT2 - spacing, "D2", vel=104, spacing=spacing)
     motif.place_badger(P["celli_pizz"], STING_HIT2 - spacing, "D3", vel=98, spacing=spacing)
+    motif.place_badger(P["badger_mid"], STING_HIT2 - spacing, "D4", vel=84, spacing=spacing)  # the mid-register double (as in the theme)
     motif.place_badger(P["basses_pizz"], STING_HIT2 - spacing, "D2", vel=92, spacing=spacing)
     for k, tt in enumerate((STING_HIT2 - spacing, STING_HIT2)):
-        P["kick"].hit(36, tt, 76 - 6 * k)
-        P["kit"].hit(K["xstick"], tt, 70 - 4 * k)
+        P["kick"].hit(36, tt, BADGER_KICK[k])
+        P["badger_xstick"].hit(K["xstick"], tt, BADGER_XSTICK[k])  # his own cross-stick track (see theme.BADGER_XSTICK)
     P["piano"].note("D1", STING_HIT2, 1.6, 66)
     P["piano"].note("D2", STING_HIT2, 1.6, 66)
     P["piano"].sustain(STING_HIT2 + 0.02, 3.6)
@@ -213,13 +231,20 @@ def show_intro_sting() -> Arrangement:
 
 # ------------------------------------------------------------------------------------------ end screen
 
-def end_screen() -> Arrangement:
+def end_screen(voice: bool = True) -> Arrangement:
     """20 s, end-aligned: 6 bars of light groove, a turnaround, the motif lands on D minor at 18.0 s and
-    rings out to exactly 20.0 s. Mastered as a bed (Zoo may talk over the end screen)."""
+    rings out to exactly 20.0 s.
+
+    voice=True (`endscreen-bed`): mastered as a bed for Zoo's voice-over. Critic round 1 measured it the
+    worst bed under his voice, so the vibes sit out bars 0-5 (the motif lands only in bar 7), the
+    hats and pulse come down (-10 and -15 dB), the bass is low-passed for the voice, and the bus
+    carries the voice pocket.
+    voice=False (`endscreen-music`): the same music for an end screen with nobody speaking: the vibes
+    motif and its answers in bars 0-5, no pocket EQ, mastered at -18 LUFS-I."""
     from composer.cues.theme import A_BASS, A_CHORDS, REPLIES
     from composer.notation import line
 
-    th = Theme(pocket=True)
+    th = Theme(pocket=voice)
     P = th.p
     for i in range(7):
         t = th.b(i)
@@ -229,16 +254,17 @@ def end_screen() -> Arrangement:
             span = (ch[j + 1][0] if j + 1 < len(ch) else 4.0) - beat
             th.chord("ep", i, beat, c, min(span - 0.1, 1.4), 58, roll=0.02)
         line(P["bass"], t, A_BASS[src], vel=82, staccato=0.85)
-        if src in (0, 4):
-            motif.place(P["vibes"], t, "D5", vel=72)
-        elif src == 2:
-            motif.place(P["vibes"], t, "G4", vel=70)
-        if src in REPLIES and i != 6:
-            line(P["vibes"], t, REPLIES[src], vel=64, staccato=0.95)
+        if not voice:
+            if src in (0, 4):
+                motif.place(P["vibes"], t, "D5", vel=72)
+            elif src == 2:
+                motif.place(P["vibes"], t, "G4", vel=70)
+            if src in REPLIES and i != 6:
+                line(P["vibes"], t, REPLIES[src], vel=64, staccato=0.95)
         th.drums(i, {"kick": "X.........x.....", "xstick": "....x.......x...", "hat": "x.o.x.o.x.o.x.o." if i % 2 == 0 else "x.o.x.o.x.o.x.oo",
                      "shaker": "x...x...x...x..."}, vel={"X": 86, "x": 62, "o": 40})
         if i < 6:
-            th.pulse_bar(i, ["D", "A", "G", "E", "D", "Bb"][i], 38)
+            th.pulse_bar(i, ["D", "A", "G", "E", "D", "Bb"][i], 38, octave=12 if voice else 0)
     # bar 7: the motif lands on D minor, the band stops, a soft cymbal and the ring-out
     t = th.b(7)
     motif.place(P["vibes"], t, "D5", vel=76, last_dur=3.0)
@@ -253,10 +279,19 @@ def end_screen() -> Arrangement:
         P["celli"].note(n, t + 2.0, 3.2, 64)
     swell(P["celli"], t + 2.0, t + 2.1, 0, 60)
     swell(P["celli"], t + 3.0, t + 5.2, 60, 10)
-    th.finish("endscreen")
-    return Arrangement("endscreen-bed", th.s, 20.0, th.tracks({"vibes": -10.0, "ep": -5.0, "piano": -6.0, "hats": -6.0, "perc": -16.0}),
-                       preset="bed", reverbs=C.reverbs(), fade_in=0.4, fade_out=1.4,
-                       bus_eq=[C.PK(250, -1.0, 0.9), C.PK(2500, -4.0, 0.7), C.HS(7000, 3.0)])
+    if voice:
+        th.finish("endscreen", comp_velocity=8.0)
+        return Arrangement("endscreen-bed", th.s, 20.0, th.tracks({"vibes": -10.0, "ep": -5.0, "piano": -6.0, "hats": -10.0, "perc": -16.0, "pulse": -15.0}),
+                           preset="bed", reverbs=C.reverbs(), fade_in=0.4, fade_out=1.4,
+                           bus_eq=[C.PK(250, -1.0, 0.9), *C.VOICE_POCKET, C.HS(7000, 3.0), C.LS(150, -2.5)])  # the shelf: as the show beds (show_beds.BED_BUS_LOW)
+    th.finish("endscreen-music", comp_velocity=8.0)
+    return Arrangement("endscreen-music", th.s, 20.0, th.tracks({"vibes": -8.0, "ep": -5.0, "piano": -6.0, "hats": -8.0, "perc": -14.0, "pulse": -12.0}),
+                       preset="endscreen", reverbs=C.reverbs(), fade_in=0.4, fade_out=1.4,
+                       bus_eq=[C.PK(250, -1.0, 0.9), C.PK(1000, -1.0, 1.0), C.HS(7000, 2.0)])
+
+
+def end_screen_music() -> Arrangement:
+    return end_screen(voice=False)
 
 
 BUMPERS = {
@@ -264,8 +299,8 @@ BUMPERS = {
                           [(0.0, "meter starts filling"), (1.2, "A: the fall begins"), (1.5, "A-flat"), (1.8, "F lands (crash)")]),
     "bumper-red-flag": (red_flag, "Badger's Red Flag", "deadpan: motif head, a rest, Badger's two notes", 3.2,
                         [(0.0, "motif head"), (1.5, "Badger: E-flat"), (2.1, "Badger: D (the button)")]),
-    "bumper-one-fix": (one_fix, "Zoo's One Fix", "helpful, resolved: the major motif clicks into Dmaj9", 3.0,
-                       [(0.0, "major motif"), (1.2, "the fix clicks into place (Dmaj9, harp lift)")]),
+    "bumper-one-fix": (one_fix, "Zoo's One Fix", "helpful, resolved: the major motif clicks into D6/9", 3.0,
+                       [(0.0, "major motif"), (1.2, "the fix clicks into place (D6/9, harp lift)")]),
     "bumper-scam-of-the-week": (scam_of_the_week, "Scam of the Week", "sly and low; lands unresolved on Bb7(b9)", 3.4,
                                 [(0.0, "motif, low"), (1.2, "lands on Bb7(b9)"), (1.95, "vibes glint: E"), (2.25, "B-flat")]),
     "bumper-developing": (developing, "DEVELOPING", "news alert, not alarm: a ticker, the motif head, left open (Dsus4)", 3.4,

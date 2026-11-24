@@ -40,7 +40,7 @@ Derived forms (each cue states which it uses):
 - **Augmentation.** 2x to 4x longer, for the Zoora AI story beds.
 - **Ticker.** The repeated tonic becomes a 16th-note pulse, for DEVELOPING.
 
-**Badger's figure.** Badger is nonverbal, so his musical voice is a reply: two dry low notes, a falling semitone (♭2 to 1: E♭2 to D2), on pizzicato bass, the plucked bass and a muted kick. It is the musical side-eye. Leave room after it for the owner's real dog sounds; never write anything that imitates a dog.
+**Badger's figure.** Badger is nonverbal, so his musical voice is a reply: two dry low notes, a falling semitone (♭2 to 1: E♭2 to D2), on pizzicato bass, the plucked bass and a muted kick. It is the musical side-eye. Leave room after it for the owner's real dog sounds; never write anything that imitates a dog. Since critic round 1 the celli double it an octave up (E♭4 to D4) and a dry cross-stick on its own track marks each note, because a phone speaker plays nothing of the low octaves.
 
 ## 3. Harmony and writing rules
 
@@ -52,7 +52,9 @@ Derived forms (each cue states which it uses):
 
 ## 4. Keys and tempos (justified)
 
-Everything is centred on **D** (D minor, D major, F major/lydian), so any two cues can be cut together without a key clash. D minor is a natural key for the string sections (open D and A strings) and puts the bass's low D at 36.7/73.4 Hz, under a male voice's fundamental (Zoo, Kokoro `im_nicola`, about 100-160 Hz).
+Everything is centred on **D** (D minor, D major, F major/lydian), so any two cues can be cut together without a key clash. D minor is a natural key for the string sections (open D and A strings).
+
+**Zoo's voice, measured (critic round 1, 2026-11-24; this replaces the first estimate of "about 100-160 Hz").** Four Kokoro `im_nicola` narrations: F0 median 81-88 Hz, P5-P95 68-119 Hz, the strongest one-third-octave band at 80 Hz, a 1-2.5 kHz band 18-26 dB under the spectrum's peak and a presence peak near 5 kHz. So the bass's D2-A2 notes sit inside his F0 range, and his consonants are weak exactly where a bed's mids live. Under his voice: the bass is dark (it may share his register, not his consonant band), pulses and motif statements stay above about 180 Hz (out of his F0 band), the bed bus dips 1.25 and 2 kHz, beds are ducked by band (2 / 12 / 4 dB at 700 Hz and 5 kHz), and every bed has an UNDERSCORE version without the motif.
 
 Every tempo has an **integer number of video frames per beat at 30 fps** (BPM = 1800 / frames). Cuts land exactly on beats, and loop lengths are whole frames and whole samples.
 
@@ -71,19 +73,21 @@ Every tempo has an **integer number of video frames per beat at 30 fps** (BPM = 
 | Piano (motif, comping) | VCSL Kawai grand, levelled velocity layers, pedal and releases (CC0) |
 | Noir colour | VCSL vibraphone, soft and hard mallets; bowed vibraphone for textures (CC0) |
 | Strings | MuseScore_General VSCO 2 sections (violins, violas, celli, basses: slow, fast, pizzicato, tremolo; the CC2 "Expr." banks for swells) (MIT; the samples are CC0) |
-| Bass | The engine's plucked-string model (fingered electric bass) plus a sine sub layer |
-| Drums | Synth kick (engine) layered with the MuseScore kit kick; VCSL snares, cross-stick, hi-hats, claps, shaker, cymbals, toms, frame drum, concert bass drum, timpani (CC0/MIT) |
-| Mallets and sparkle | VCSL marimba, glockenspiel (sparingly), tubular bells, concert harp, kalimba; MuseScore celesta (soft) |
+| Bass | Our finger-plucked string (`FingerBass`: a Karplus-Strong string with a triangle-and-noise finger excitation, harmonics rolling off from the note's own fundamental) plus a sine sub layer. It replaced the engine's plucked string in critic round 1: that one put 44 % of its power at 1-4 kHz and read clavinet-bright |
+| Drums | Synth kick (engine; 0.11 s body, tuned per hit to the bass note above it) layered with the MuseScore kit kick; VCSL snares, cross-stick, hi-hats, claps, shaker, cymbals, toms, frame drum, concert bass drum, timpani (CC0/MIT) |
+| Mallets and sparkle | VCSL marimba, glockenspiel (sparingly), tubular bells, concert harp, kalimba, vibraphone (soft, hard and bowed). The MuseScore celesta is no longer used (weak sample credit, a slow attack) |
 | Tech edge | Our own synthesis: FM tine electric piano, analog pad, pulse arpeggiator, brass stab, sub drone, risers and reverse swells |
 
 ## 6. Mix and master rules
 
-- **Beds leave the voice pocket.** Keep 1-4 kHz sparse in the arrangement: no busy mid melodies, soft mallets, hats tucked, EQ dips of 2-4 dB around 2-3 kHz on mid instruments. The bed master adds a broad dip, and `metrics.py --profile bed` must read a voice pocket of -1.5 dB or lower.
+- **Beds are judged by Zoo's voice.** Keep 1-4 kHz sparse in the arrangement: no busy mid melodies, soft mallets, hats tucked, EQ dips on mid instruments, and the bed bus pocket at 1.25 and 2 kHz (-3 dB each). The gate is voice-referenced (`composer/voicegate.py`): with the planned band-split duck, the band-audibility index of the reference narration over the bed must be 0.75 or more and not below speech-shaped noise at the same loudness. (The old gate, a 1-4 kHz pocket against the bed's own tilt, passed beds that masked his voice more than noise does.)
+- **Underscore.** Every bed ships twice: with the motif (for intros, outros and gaps) and as `-underscore`, with the motif and lead lines muted, for use under speech.
 - **Low end.** Mono below about 120 Hz, the kick and bass in separate bands, no 200-500 Hz build-up (mud of 3 dB or less), and reverb returns high-passed at about 200 Hz.
 - **Loudness** (engine presets):
-  - theme full and 15 s: `standalone` (-14 LUFS-I, -1 dBTP);
+  - theme full and 15 s: `standalone` (-14 LUFS-I) with a -2.2 dBTP ceiling and 2 dB less air above 9 kHz, so they stay under -1 dBTP after AAC 128 kb/s (the worst of five encodes);
   - 5 s sting, bumpers and intro stings: `sting` (-16 LUFS-I, -1 dBTP, clean tail);
-  - beds and the end-screen bed: `bed` (-26 LUFS-S median, -6 dBTP; loops mastered with `loop=True`).
+  - beds and the end-screen bed: `bed` (-26 LUFS-S median, -6 dBTP; loops mastered with `loop=True`);
+  - the end-screen music with nobody speaking: `endscreen` (-18 LUFS-I, -2 dBTP).
 - **Loops are seamless by construction.** One cycle is rendered with its tail. The tail is folded onto the start, so the release and reverb from the last bar ring into bar 1. The cycle is mixed with wrap-around padding, so the reverb and compressors see the seam, then mastered with `loop=True`. Each bed is checked with `metrics.py --loop`.
 - **Every cue is measured.** Loudness, true peak, spectrum balance, stereo and mono, noise, and the tail or loop seam. The spectrogram is looked at, and each cue gets a short honest self-review in the README.
 
@@ -96,17 +100,17 @@ Every tempo has an **integer number of video frames per beat at 30 fps** (BPM = 
 | Theme, 5 s sting | 5 s | Pickup, motif, button by 2.4 s, ring-out |
 | Bumper: Headline / Rekt Meter | about 3 s | The meter fills (snare roll and rising pizzicato), then the motif's tail lands as a punchy stab |
 | Bumper: Badger's Red Flag | about 2.5 s | Motif head, a deadpan rest, Badger's figure. Room left after it for a real dog huff |
-| Bumper: Zoo's One Fix | about 3 s | Major-mode motif on vibes and piano; resolves to Dmaj9 with a harp sparkle |
+| Bumper: Zoo's One Fix | about 3 s | Major-mode motif on vibes and piano; resolves to D6/9 (no major 7th under the tonic) with a harp sparkle |
 | Bumper: Scam of the Week | about 3 s | Low, sly motif (piano and pizzicato) with a brushed swish; ends unresolved (B♭7♯11) |
 | Bumper: DEVELOPING | about 3 s | The tonic turns into a 16th-note ticker that rises; the motif head in tremolo strings; ends suspended (Dsus) |
 | Bumper: Correction | about 3 s | Reverse swell ("rewind"), then the motif's retrograde, calm on piano and soft strings, resolving to D |
 | Show bed, neutral | 64 s loop | D dorian over a D pedal; EP, bass, soft kick, cross-stick and shaker; motif fragments on vibes every 8 bars |
-| Show bed, tension | 64 s loop | D minor and phrygian; muted 16th pulse, low string drone with an E♭ neighbour, timpani, ticking; the motif low on piano |
+| Show bed, tension | 64 s loop | D minor and phrygian; muted 16th pulse (two octaves over the bass, out of Zoo's register), low string drone with an E♭ neighbour, ticking; the motif slow on soft vibes at D5 |
 | Show bed, light | 64 s loop | F major (lydian wink); pizzicato, swung brushes-style hats, short bass, vibes; the major motif |
 | Story bed, curious | 64 s loop | F lydian; harp, kalimba or celesta ostinato, pizzicato, marimba, bowed-vibes sustains; the motif augmented |
-| Story bed, tension | 64 s loop | D minor; low string ostinato, pulse, ticking, cymbal swells; motif fragments in the low strings |
+| Story bed, tension | 64 s loop | D minor; low string ostinato doubled an octave up by violas, pulse, ticking, cymbal swells; motif fragments on vibes and violins |
 | Story bed, ominous | 64 s loop | D phrygian; drones, sparse low piano with the tritone, gong and bass-drum swells; the motif very slow |
 | Story bed, resolve/uplift | 64 s loop | D major; piano arpeggios, string swells, a gentle pulse; the major motif resolving |
-| End-screen bed | 20 s | Theme groove, light; the motif and a button at 16.8 s, ending at exactly 20.0 s (end-aligned) |
-| Zoora AI intro sting | 4 s | A rising harp, celesta and string shimmer; the lydian motif lands on the logo hit at 1.80 s; two soft notes under the wordmark (2.33 s and 2.6 s); out by 4.0 s |
+| End-screen bed | 20 s | Theme groove, light; under Zoo's voice-over the vibes rest until the motif and button at 16.8 s, ending at exactly 20.0 s (end-aligned). A second version, `endscreen-music`, keeps the vibes answers for an end screen with nobody speaking (-18 LUFS-I) |
+| Zoora AI intro sting | 4 s | A rising harp and string shimmer; the lydian motif on hard-mallet vibes doubled by the harp lands on the logo hit at 1.80 s; two soft notes under the wordmark (2.33 s and 2.6 s); out by 4.0 s |
 | Show intro sting | 4 s | A drum pickup; the motif with SHOW on the ampersand hit (1.00 s); Badger's figure on his judging look (1.93 s); out cleanly by 4.0 s (the sting hard-cuts) |

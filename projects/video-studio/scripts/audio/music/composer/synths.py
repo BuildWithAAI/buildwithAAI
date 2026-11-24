@@ -8,7 +8,8 @@ Track source. Everything is seeded and deterministic.
     Pulse       plucky pulse/saw arpeggiator voice with a per-note filter envelope (SVF)
     BrassStab   detuned saw stack with a fast filter envelope and saturation (late-night hits)
     Sub         sine sub bass with glide (engine sub_bass)
-    SynthKick   tuned kick per hit (engine kick), velocity-scaled
+    SynthKick   tuned kick per hit (engine kick), velocity-scaled; kick_tuning() tunes each hit to the bass
+    FingerBass  the bass: a finger-plucked string (Karplus-Strong loop, triangle + noise excitation shaped per note)
     MutedGuitar plucked-string model voiced as a palm-muted electric guitar
 Audio helpers (not Part-based): reverse_swell, noise_swell, place.
 """
@@ -247,33 +248,77 @@ class Sub:
 
 @dataclass
 class SynthKick:
-    """A tuned kick per hit. f_end is the body pitch (Hz): 55 (A1) sits under a D-minor bass line."""
+    """A tuned kick per hit. f_end is the body pitch (Hz): 55 (A1) sits under a D-minor bass line.
+    A hit whose note carries meta `tune_hz` (see `kick_tuning`) is tuned to that pitch instead, so
+    the kick's body never beats against the bass note above it.
+
+    Critic round 1 (KICK-FIX): the body decays in 0.11 s (was 0.2 s, an 808-style boom that rang
+    into the bass and beat against B-flat, A-flat and G roots at 3-6 Hz) with 2 dB of drive (was 4)."""
 
     f_start: float = 150.0
     f_end: float = 55.0
     pitch_decay: float = 0.032
-    amp_decay: float = 0.2
+    amp_decay: float = 0.11
     click: float = 0.22
-    drive_db: float = 4.0
+    drive_db: float = 2.0
     seed: str = "kick"
     _cache: dict = field(default_factory=dict, repr=False)
 
-    def hit(self, sr: int = SR) -> np.ndarray:
-        if "x" not in self._cache:
-            self._cache["x"] = synth.kick(0.7, sr, self.f_start, self.f_end, self.pitch_decay, self.amp_decay, self.click, self.drive_db, seed=self.seed)[0]
-        return self._cache["x"]
+    def hit(self, sr: int = SR, f_end: float | None = None) -> np.ndarray:
+        f = round(float(self.f_end if f_end is None else f_end), 3)
+        if f not in self._cache:
+            self._cache[f] = synth.kick(0.7, sr, self.f_start, f, self.pitch_decay, self.amp_decay, self.click, self.drive_db, seed=self.seed)[0]
+        return self._cache[f]
 
     def render(self, part, score, length: float, sr: int = SR) -> np.ndarray:
         n = int(round(length * sr))
         out = np.zeros(n)
-        h = self.hit(sr)
         for n_ in part.notes:
             s0 = int(round(score.seconds(n_.start) * sr))
             if s0 >= n:
                 continue
+            h = self.hit(sr, n_.meta.get("tune_hz"))
             k = min(n - s0, h.shape[0])
             out[s0 : s0 + k] += h[:k] * (n_.vel / 127.0) ** 1.5
         return np.vstack([out, out])
+
+
+KICK_RANGE_HZ = (45.0, 62.0)
+
+
+def kick_pitch_for(bass_midi: int, default_hz: float = 55.0, lo: float = KICK_RANGE_HZ[0], hi: float = KICK_RANGE_HZ[1]) -> float:
+    """The kick body pitch that agrees with a bass note: its own pitch class in 45-62 Hz (G1, A1,
+    B-flat 1, B1, ...), else its fifth in 45-66 Hz (D -> A1, E-flat -> B-flat 1, F -> C2), else
+    `default_hz`. A kick a semitone or a tone from the bass beats at 3-6 Hz in the sub."""
+    for interval, top in ((0, hi), (7, hi + 4.0)):
+        pc = (bass_midi + interval) % 12
+        for octave in range(0, 4):
+            m = pc + 12 * octave
+            f = float(midi_to_hz(m))
+            if lo <= f <= top:
+                return round(f, 3)
+    return default_hz
+
+
+def kick_tuning(score, kick: str = "kick", bass: str = "bass", default_hz: float = 55.0) -> int:
+    """Tune every hit in `kick` to the bass note sounding with it (meta `tune_hz`): the note held
+    at the hit, else the next one starting within half a beat. Run before humanising (it reads
+    the written beats). Returns how many hits were tuned away from `default_hz`."""
+    if kick not in score.parts or bass not in score.parts:
+        return 0
+    notes = sorted(score.parts[bass].notes, key=lambda x: x.start)
+    changed = 0
+    for h in score.parts[kick].notes:
+        held = [b for b in notes if b.start <= h.start + 1e-6 < b.start + b.dur]
+        if not held:
+            held = [b for b in notes if 0.0 <= b.start - h.start <= 0.5]
+        if not held:
+            continue
+        b = min(held, key=lambda x: x.pitch)
+        f = kick_pitch_for(b.pitch, default_hz)
+        h.meta["tune_hz"] = f
+        changed += abs(f - default_hz) > 1e-6
+    return changed
 
 
 def muted_guitar(seed: str = "mgtr"):
@@ -282,10 +327,113 @@ def muted_guitar(seed: str = "mgtr"):
                              body=(220.0, 3.0), mono=False, gain_db=0.0, seed=seed)
 
 
+def finger_pluck(midi: float, dur: float, vel: float = 0.8, sr: int = SR, t60: float = 3.5, damping: float = 0.55, pick_pos: float = 0.22,
+                 release: float = 0.06, tail: float = 0.25, harm_cut: float = 6.0, noise_mix: float = 0.5, seed: str = "finger") -> np.ndarray:
+    """One finger-plucked string note, mono: the engine's extended Karplus-Strong loop
+    (audiolib.synth.pluck: the same 3-tap loss and tuning filter, so the pitch and decay are exact)
+    with a different excitation.
+
+    The engine's excitation is a burst of noise low-passed at 600 Hz or more, whatever the note: for
+    a 55 Hz string that is 11-30 harmonics at equal strength, which reads mid-heavy and clavinet-like
+    (critic round 1: 44 % of the bass's power at 1-4 kHz, only 11 % under 150 Hz). A finger pushes
+    the string into a smooth triangle (its harmonics fall as 1/n^2), and the contact adds a little
+    noise. So the excitation here is a triangle peaked at the pick position, mixed (`noise_mix`) with
+    noise that is low-passed at `harm_cut` times the fundamental and comb-filtered at the pick
+    position; harder plucks open that cut a little. Measured on the theme's bass line, after the
+    bass strip (critic round 1 acceptance: <= -15 dB of the power at 1-4 kHz, >= -4 dB under 150 Hz):
+    -16.3 dB and -0.6 dB with the band strip's 2.5 kHz low-pass, -19.0 dB and -0.6 dB with the
+    beds' 1.5 kHz."""
+    from scipy.signal import lfilter
+
+    f0 = float(midi_to_hz(midi))
+    period = sr / f0
+    s = float(np.clip(damping, 0.0, 0.95))
+    target = period - s
+    L = int(np.floor(target))
+    frac = target - L
+    if L < 3:
+        raise ValueError("pitch too high for this string model at this sample rate")
+    g = 10 ** (-3.0 / (f0 * max(t60, 0.01)))
+    c0 = g * (1 - frac) * (1 - s)
+    c1 = g * ((1 - frac) * s + frac * (1 - s))
+    c2 = g * frac * s
+    n = int(round((dur + release + tail) * sr))
+    y = np.zeros(n + L + 2)
+    off = L + 2
+    v = float(np.clip(vel, 0.0, 1.0))
+    p = float(np.clip(pick_pos, 0.05, 0.95))
+    x = np.arange(L) / L
+    tri = np.where(x < p, x / p, (1.0 - x) / (1.0 - p))
+    tri = tri - tri.mean()
+    tri /= max(float(np.max(np.abs(tri))), 1e-12)
+    nz = rng("finger", seed, midi, round(dur, 4), round(v, 4)).uniform(-1, 1, L)
+    cut = min(harm_cut * f0 * (0.5 + 0.8 * v), 0.45 * sr)
+    a = math.exp(-2 * math.pi * cut / sr)
+    nz = lfilter([1 - a], [1, -a], np.concatenate([nz, nz]))[L:]  # settled one-pole low-pass
+    k = max(1, int(round(p * L)))
+    nz = nz - np.concatenate([np.zeros(k), nz[:-k]])
+    nz /= max(float(np.max(np.abs(nz))), 1e-12)
+    exc = (1.0 - noise_mix) * tri + noise_mix * nz
+    exc -= exc.mean()
+    exc *= v / max(float(np.max(np.abs(exc))), 1e-12)
+    y[off : off + L] = exc
+    pos = off
+    while pos < off + n:
+        end = min(pos + L, off + n)
+        y[pos:end] += c0 * y[pos - L : end - L] + c1 * y[pos - L - 1 : end - L - 1] + c2 * y[pos - L - 2 : end - L - 2]
+        pos = end
+    out = y[off : off + n]
+    m0 = int(round(dur * sr))
+    if m0 < n:
+        rt = np.arange(n - m0)
+        out[m0:] *= np.exp(-6.907755 * rt / max(1.0, release * sr))
+    return dsp.dc_block(out)[0]
+
+
+@dataclass
+class FingerBass:
+    """A fingered bass line on `finger_pluck` (one string: a new note mutes the previous one), with
+    a body resonance (Hz, dB). Same interface as the engine's PluckString."""
+
+    t60: float = 3.5
+    damping: float = 0.55
+    pick_pos: float = 0.22
+    release: float = 0.06
+    harm_cut: float = 6.0
+    noise_mix: float = 0.5
+    body: tuple | None = (100.0, 2.0)
+    seed: str = "bass"
+
+    def render_events(self, events, length: float, sr: int = SR) -> np.ndarray:
+        n = int(round(length * sr))
+        out = np.zeros(n)
+        evs = sorted(events, key=lambda e: e[1])
+        for i, (m, start, end, vel) in enumerate(evs):
+            dur = max(0.02, end - start)
+            if i + 1 < len(evs):
+                dur = min(dur, max(0.02, evs[i + 1][1] - start))
+            s0 = int(round(start * sr))
+            if s0 >= n:
+                continue
+            v = (max(1, vel) / 127.0) ** 1.4
+            note = finger_pluck(m, dur, v, sr, self.t60, self.damping, self.pick_pos, self.release, harm_cut=self.harm_cut,
+                                noise_mix=self.noise_mix, seed=f"{self.seed}-{i}")
+            k = min(n - s0, note.shape[0])
+            out[s0 : s0 + k] += note[:k]
+        if self.body:
+            out = dsp.apply_sos(out, dsp.biquad("peak", self.body[0], sr, 1.2, self.body[1]))[0]
+        return np.vstack([out, out])
+
+    def render(self, part, score, length: float, sr: int = SR) -> np.ndarray:
+        return self.render_events([(n.pitch, score.seconds(n.start), score.seconds(n.end), n.vel) for n in part.notes], length, sr)
+
+
 def fingered_bass(seed: str = "bass", t60: float = 3.5):
-    """The engine's fingered-bass voicing of the plucked string (measured clean, see docs/AUDIO.md)."""
-    return synth.PluckString(t60=t60, damping=0.55, brightness=0.45, pick_pos=0.22, release=0.06, tone_hz=2800.0,
-                             body=(100.0, 2.0), mono=True, seed=seed)
+    """The composer's bass voice (BASS-FIX, critic round 1): `FingerBass`, a finger-plucked string
+    whose harmonics roll off from the note's own fundamental. It replaces the engine's plucked
+    string (PluckString, brightness 0.45, tone 2.8 kHz), which put 44 % of the bass's power at
+    1-4 kHz and made the bass the beds' main masker of Zoo's consonants."""
+    return FingerBass(t60=t60, seed=seed)
 
 
 # ------------------------------------------------------------------------------------------ audio helpers

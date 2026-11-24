@@ -13,6 +13,8 @@
   "durationSec": 64.0,
   "durationSamples": 3072000,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": {
     "seamless": true,
     "startSample": 0,
@@ -41,38 +43,38 @@
       {
         "form": "tail",
         "mode": "minor",
-        "part": "piano",
-        "startSec": 4.819,
+        "part": "vibes",
+        "startSec": 4.8,
         "pitches": [
-          57,
-          56,
-          53
+          81,
+          80,
+          77
         ],
         "ok": true
       },
       {
         "form": "full",
         "mode": "minor",
-        "part": "celli",
+        "part": "violins",
         "startSec": 25.6,
         "pitches": [
-          50,
-          50,
-          57,
-          56,
-          53
+          74,
+          74,
+          81,
+          80,
+          77
         ],
         "ok": true
       },
       {
         "form": "tail",
         "mode": "minor",
-        "part": "piano",
-        "startSec": 30.419,
+        "part": "vibes",
+        "startSec": 30.395,
         "pitches": [
-          57,
-          56,
-          53
+          81,
+          80,
+          77
         ],
         "ok": true
       }
@@ -81,20 +83,51 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.1,
+    "integratedLufs": -26.0,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -25.1,
-    "lraLu": 2.1,
-    "truePeakDbtp": -8.6
+    "shortTermMaxLufs": -24.8,
+    "lraLu": 1.9,
+    "truePeakDbtp": -8.9
   },
   "spectrum": {
-    "slopeDbPerOct": -6.31,
-    "harshnessDb": -11.2,
-    "mudDb": 2.2,
-    "boxinessDb": 0.68,
-    "voicePocketDb": -3.35,
-    "centroidHz": 229.0
+    "slopeDbPerOct": -5.99,
+    "harshnessDb": -8.69,
+    "mudDb": 1.69,
+    "boxinessDb": 0.25,
+    "voicePocketDb": -1.96,
+    "centroidHz": 266.0
   },
+  "voice": {
+    "index": 0.7897,
+    "ssnIndex": 0.6872,
+    "indexMinusSsn": 0.1025,
+    "broadbandIndex": 0.7335,
+    "duck": {
+      "plannedMode": "split",
+      "crossoversHz": [
+        700.0,
+        5000.0
+      ],
+      "depthsDb": [
+        2.0,
+        12.0,
+        4.0
+      ]
+    },
+    "voiceOverBedLu": 15.18,
+    "snr1to4kMedianDb": 17.75,
+    "framesUnder3dB": 0.1251,
+    "narrowestBand": {
+      "hz": 800,
+      "snrDb": 12.7
+    },
+    "reference": {
+      "voice": "Kokoro im_nicola (Zoo)",
+      "source": "public/generated/_dev/engine-demo/en/narration.wav",
+      "sha256": "021b3f141cdf3237"
+    }
+  },
+  "aac": null,
   "checks": {
     "pass": true,
     "failures": 0,
@@ -105,15 +138,16 @@
   },
   "file": "audio/music/bed-story-tension.flac",
   "format": "flac-16bit",
-  "bytes": 4197363,
-  "description": "A celli ostinato, a ticking woodblock and low piano octaves; the pulse, violas tremolo and the motif's tail from bar 8; high violins, tom rolls and a swell from bar 16.",
-  "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
+  "bytes": 4412099,
+  "description": "A celli ostinato doubled an octave up by violas, a ticking woodblock and low piano octaves; the pulse, violas tremolo and the motif's tail (vibes, violins) from bar 8; high violins, tom rolls and a swell from bar 16.",
+  "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
-    "VSCO 2 celli (fast), basses, violas tremolo, violins",
+    "VSCO 2 celli and violas (fast), basses, violas tremolo, violins",
     "VCSL Kawai piano",
+    "VCSL vibraphone",
     "pulse",
     "VCSL woodblock, toms, bass drum, cymbal swell"
   ],
-  "selfReview": "A celli ostinato with phrygian Eb neighbours, a woodblock clock and low piano octaves; the pulse, violas tremolo and the motif's tail from bar 8; high violins and tom rolls from bar 16. The short Eb-over-D rubs are the intended tension. It passes with a modest voice pocket.",
+  "selfReview": "A celli ostinato with phrygian Eb neighbours, a woodblock clock and the motif's fragments on vibes and violins. Critic round 1 (2026-11-24): for phone presence violas (VSCO 2, fast bowing) double the ostinato an octave up, the woodblock is softer, and the motif left the low piano and celli. Phone loss 6.6-6.7 LU (7.9 before; Zoo 5.4). The trade-off: the upper layer adds 1-4 kHz onsets, so its index under Zoo with the band-split duck is 0.79 (0.83 for the first build with the same duck), still above the 0.75 gate and speech-shaped noise (0.69). The -underscore version mutes the motif and lead lines; use it under speech.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

@@ -31,6 +31,7 @@ LP = lambda f, order=2: {"kind": "lowpass", "f": f, "order": order}  # noqa: E73
 PK = lambda f, db, q=1.0: {"kind": "peak", "f": f, "q": q, "db": db}  # noqa: E731
 HS = lambda f, db, q=0.7: {"kind": "highshelf", "f": f, "q": q, "db": db}  # noqa: E731
 LS = lambda f, db, q=0.7: {"kind": "lowshelf", "f": f, "q": q, "db": db}  # noqa: E731
+LS = lambda f, db, q=0.7: {"kind": "lowshelf", "f": f, "q": q, "db": db}  # noqa: E731
 
 
 def piano(name="piano", part=None, kind="kawai", fader=0.0, pan=0.0, plate=-11.0, hall=None, bright=2.5, width=1.0, eq_extra=(), pocket=False):
@@ -53,9 +54,9 @@ def vibes(name="vibes", part=None, mallet="soft", fader=-2.0, pan=0.25, plate=No
                  width=1.0, sends=sends)
 
 
-def ep(name="ep", part=None, fader=-3.0, pan=-0.2, plate=-12.0, brightness=0.9, drive=3.0, tremolo=0.16, pocket=False):
+def ep(name="ep", part=None, fader=-3.0, pan=-0.2, plate=-12.0, brightness=0.9, drive=3.0, tremolo=0.16, pocket=False, eq_extra=()):
     return Track(name, S.TineEP(brightness=brightness, drive_db=drive, tremolo_depth=tremolo, seed=f"ep-{name}"), part=part, fader_db=fader, pan=pan,
-                 eq=[HP(150 if pocket else 90), PK(300, -1.5, 1.0), PK(2500, -2.5 if pocket else 0.0, 1.0), HS(9000, -1.5 if pocket else 0.5)],
+                 eq=[HP(150 if pocket else 90), PK(300, -1.5, 1.0), PK(2500, -2.5 if pocket else 0.0, 1.0), HS(9000, -1.5 if pocket else 0.5), *eq_extra],
                  comp=Compressor(threshold_db=-24, ratio=2.0, attack_ms=15, release_ms=160, knee_db=6, detector="rms"),
                  width=0.9, sends={"plate": plate})
 
@@ -89,24 +90,36 @@ def guitar(name="gtr", part=None, fader=-10.0, pan=0.45, plate=-16.0, seed="gtr"
                  comp=Compressor(threshold_db=-14, ratio=2.5, attack_ms=8, release_ms=90, knee_db=6), width=0.8, sends={"plate": plate})
 
 
-def bass(name="bass", part=None, fader=-1.0, t60=3.5, seed="bass", drive=6.0):
+BASS_LP_BED = 1500.0  # under narration (beds, the end screen): nothing of the bass reaches Zoo's consonants
+BASS_LP_BAND = 2500.0  # everything else: enough finger and string for definition on a phone
+
+
+def bass(name="bass", part=None, fader=-1.0, t60=3.5, seed="bass", drive=2.5, lp=BASS_LP_BAND):
+    """The plucked bass (BASS-FIX, critic round 1): a 24 dB/octave low-pass at `lp` (1.5 kHz under the
+    voice, 2.5 kHz elsewhere; it was a 12 dB/octave 4.8 kHz with an 850 Hz lift) and light
+    saturation (2.5 dB, 30 % wet; it was 6 dB, 50 %). Before the fix the bass alone matched a show
+    bed's whole 1-4 kHz level."""
     return Track(name, S.fingered_bass(seed, t60), part=part, fader_db=fader,
-                 eq=[HP(32, 4), PK(70, 1.5, 1.0), PK(240, -2.5, 1.2), PK(850, 1.5, 1.0), LP(4800)],
+                 eq=[HP(32, 4), PK(70, 1.5, 1.0), PK(240, -2.5, 1.2), LP(lp, 4)],
                  comp=Compressor(threshold_db=-20, ratio=3.0, attack_ms=15, release_ms=120, knee_db=6),
-                 sat={"drive_db": drive, "kind": "asym", "mix": 0.5}, width=0.0)
+                 sat={"drive_db": drive, "kind": "asym", "mix": 0.3}, width=0.0)
 
 
 def sub(name="sub", part=None, fader=-8.0):
     return Track(name, S.Sub(), part=part, fader_db=fader, eq=[HP(28, 4), LP(140, 4)], width=0.0)
 
 
-def kick(name="kick", part="kick", fader=-1.5, f_end=55.0, gm_layer_db: float | None = -9.0):
+def kick(name="kick", part="kick", fader=-1.5, f_end=55.0, gm_layer_db: float | None = -5.0, pocket: bool = False):
+    """The synth kick and (optionally) the MuseScore kick as a beater layer `gm_layer_db` under it
+    (KICK-FIX: -5 dB, was -9, so the attack carries on phones while the shorter body stays low).
+    pocket=True (beds, under the voice): the beater's 3.2 kHz click is cut 2 dB instead of lifted 2
+    dB; measured on bed-show-tension, the beater made a fifth of the bed's 1-4 kHz onsets."""
     out = [Track(name, S.SynthKick(f_end=f_end, seed=name), part=part, fader_db=fader,
                  eq=[HP(28, 4), PK(60, 1.0, 1.2), PK(320, -4.0, 1.2), PK(3500, 1.5, 1.0)],
                  comp=Compressor(threshold_db=-16, ratio=2.5, attack_ms=12, release_ms=90, knee_db=4), width=0.0)]
     if gm_layer_db is not None:
         out.append(Track(f"{name}_beater", I.GM_KIT, part=part, fader_db=fader + gm_layer_db,
-                         eq=[HP(120, 2), PK(330, -3.0, 1.2), PK(3200, 2.0, 1.0)], width=0.0))
+                         eq=[HP(120, 2), PK(330, -3.0, 1.2), PK(3200, -2.0 if pocket else 2.0, 1.0)], width=0.0))
     return out
 
 
@@ -135,9 +148,17 @@ def strings(name, section, articulation="slow", expressive=False, part=None, fad
                  width=width, bass_mono_hz=160, sends={"hall": hall}, gm_gain=0.6)
 
 
-def mallets(name, sampler, part=None, fader=-6.0, pan=0.0, hall=-10.0, hp=200.0, pocket=False):
-    return Track(name, sampler, part=part, fader_db=fader, pan=pan, eq=[HP(hp), PK(2800, -2.5 if pocket else 0.0, 1.0), HS(8000, -1.0 if pocket else 0.5)],
-                 width=1.0, sends={"hall": hall})
+def mallets(name, sampler, part=None, fader=-6.0, pan=0.0, hall=-10.0, hp=200.0, pocket=False, width=1.0, eq_extra=()):
+    return Track(name, sampler, part=part, fader_db=fader, pan=pan, eq=[HP(hp), PK(2800, -2.5 if pocket else 0.0, 1.0), HS(8000, -1.0 if pocket else 0.5), *eq_extra],
+                 width=width, sends={"hall": hall})
+
+
+# ------------------------------------------------------------------------------------------ bed bus
+
+# POCKET-FIX (critic round 1): Zoo's consonants live at 1-2.5 kHz, where his voice is 18-26 dB under
+# its own peak, so the bed bus dips 1.25 and 2 kHz by 3 dB each (Q 1); the old single dip at 2.5 kHz
+# (-4 dB, Q 0.7) sat above his weakest band.
+VOICE_POCKET = (PK(1250, -3.0, 1.0), PK(2000, -3.0, 1.0))
 
 
 def audio(name, clip, fader=-6.0, hall=None, eq=None, width=1.0, pan=0.0):

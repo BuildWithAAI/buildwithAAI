@@ -13,6 +13,8 @@
   "durationSec": 64.0,
   "durationSamples": 3072000,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": {
     "seamless": true,
     "startSample": 0,
@@ -87,18 +89,49 @@
     "profile": "bed",
     "integratedLufs": -26.5,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -25.1,
-    "lraLu": 3.2,
-    "truePeakDbtp": -11.2
+    "shortTermMaxLufs": -25.0,
+    "lraLu": 3.4,
+    "truePeakDbtp": -11.1
   },
   "spectrum": {
-    "slopeDbPerOct": -5.43,
-    "harshnessDb": -13.87,
-    "mudDb": 1.13,
-    "boxinessDb": 0.96,
-    "voicePocketDb": -8.63,
-    "centroidHz": 575.0
+    "slopeDbPerOct": -5.5,
+    "harshnessDb": -14.36,
+    "mudDb": 0.82,
+    "boxinessDb": -0.84,
+    "voicePocketDb": -11.3,
+    "centroidHz": 552.0
   },
+  "voice": {
+    "index": 0.8345,
+    "ssnIndex": 0.7143,
+    "indexMinusSsn": 0.1202,
+    "broadbandIndex": 0.802,
+    "duck": {
+      "plannedMode": "split",
+      "crossoversHz": [
+        700.0,
+        5000.0
+      ],
+      "depthsDb": [
+        2.0,
+        12.0,
+        4.0
+      ]
+    },
+    "voiceOverBedLu": 16.39,
+    "snr1to4kMedianDb": 21.65,
+    "framesUnder3dB": 0.0826,
+    "narrowestBand": {
+      "hz": 800,
+      "snrDb": 9.8
+    },
+    "reference": {
+      "voice": "Kokoro im_nicola (Zoo)",
+      "source": "public/generated/_dev/engine-demo/en/narration.wav",
+      "sha256": "021b3f141cdf3237"
+    }
+  },
+  "aac": null,
   "checks": {
     "pass": true,
     "failures": 0,
@@ -109,19 +142,19 @@
   },
   "file": "audio/music/bed-story-resolve.flac",
   "format": "flac-16bit",
-  "bytes": 5334071,
+  "bytes": 5305685,
   "description": "Piano arpeggios and the major motif; strings, a soft kick and shaker from bar 8; violins and a harp lift in bars 16-19.",
-  "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
+  "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
     "VCSL Kawai piano",
     "VCSL vibraphone",
     "VSCO 2 strings",
-    "plucked-string bass",
+    "finger-plucked bass",
     "synth kick",
     "VCSL shaker",
     "VCSL harp",
     "analog pad"
   ],
-  "selfReview": "D major: piano arpeggios an octave up, the major motif on vibes and violins, strings, a soft kick and shaker from bar 8, and a harp lift at bar 16. It is warm and open; the A7sus4 at the loop end leads back to D. Its true peak sits far under the ceiling because it is soft, sustained material.",
+  "selfReview": "D major: piano arpeggios an octave up, the major motif on vibes and violins, strings, a soft kick and shaker from bar 8, and a harp lift at bar 16; the A7sus4 at the loop end leads back to D. Critic round 1 (2026-11-24): the piano (width 0.6; its stem was uncorrelated left to right) and harp (0.7) are narrower: stereo correlation 0.61 and mono loss 1.1 dB, with no anti-phase window (0.43, 1.7 dB and a windowed minimum of -0.39 before). The bass is the dark finger-plucked one. Under Zoo with the band-split duck its index is 0.83 (0.77 before with the broadband duck, just under speech-shaped noise); the narrowest band, 800 Hz, has 10-11 dB of margin (7.5 before). The -underscore version mutes the motif and lead lines; use it under speech.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

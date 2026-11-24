@@ -13,6 +13,8 @@
   "durationSec": 64.0,
   "durationSamples": 3072000,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": {
     "seamless": true,
     "startSample": 0,
@@ -41,42 +43,42 @@
       {
         "form": "full",
         "mode": "minor",
-        "part": "piano",
-        "startSec": 0.017,
+        "part": "vibes",
+        "startSec": 0.0,
         "pitches": [
-          50,
-          50,
-          57,
-          56,
-          53
+          74,
+          74,
+          81,
+          80,
+          77
         ],
         "ok": true
       },
       {
         "form": "full",
         "mode": "minor",
-        "part": "piano",
-        "startSec": 21.352,
+        "part": "vibes",
+        "startSec": 21.327,
         "pitches": [
-          50,
-          50,
-          57,
-          56,
-          53
+          74,
+          74,
+          81,
+          80,
+          77
         ],
         "ok": true
       },
       {
         "form": "full",
         "mode": "minor",
-        "part": "piano",
-        "startSec": 42.678,
+        "part": "vibes",
+        "startSec": 42.676,
         "pitches": [
-          50,
-          50,
-          57,
-          56,
-          53
+          74,
+          74,
+          81,
+          80,
+          77
         ],
         "ok": true
       }
@@ -85,20 +87,51 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.0,
+    "integratedLufs": -26.1,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -25.5,
-    "lraLu": 0.9,
+    "shortTermMaxLufs": -25.2,
+    "lraLu": 1.3,
     "truePeakDbtp": -6.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.41,
-    "harshnessDb": -9.47,
-    "mudDb": -0.98,
-    "boxinessDb": -0.6,
-    "voicePocketDb": -6.93,
-    "centroidHz": 622.0
+    "slopeDbPerOct": -5.4,
+    "harshnessDb": -8.74,
+    "mudDb": -0.14,
+    "boxinessDb": -2.0,
+    "voicePocketDb": -8.54,
+    "centroidHz": 638.0
   },
+  "voice": {
+    "index": 0.7856,
+    "ssnIndex": 0.6907,
+    "indexMinusSsn": 0.0949,
+    "broadbandIndex": 0.7412,
+    "duck": {
+      "plannedMode": "split",
+      "crossoversHz": [
+        700.0,
+        5000.0
+      ],
+      "depthsDb": [
+        2.0,
+        12.0,
+        4.0
+      ]
+    },
+    "voiceOverBedLu": 15.33,
+    "snr1to4kMedianDb": 20.04,
+    "framesUnder3dB": 0.0901,
+    "narrowestBand": {
+      "hz": 800,
+      "snrDb": 10.8
+    },
+    "reference": {
+      "voice": "Kokoro im_nicola (Zoo)",
+      "source": "public/generated/_dev/engine-demo/en/narration.wav",
+      "sha256": "021b3f141cdf3237"
+    }
+  },
+  "aac": null,
   "checks": {
     "pass": true,
     "failures": 0,
@@ -111,18 +144,18 @@
   },
   "file": "audio/music/bed-show-tension.flac",
   "format": "flac-16bit",
-  "bytes": 6093283,
-  "description": "A muted 3-3-2 pulse, low strings with an E-flat neighbour, a half-time kit with ticking hats; the motif low and slow on piano every 8 bars.",
-  "usage": "Loops seamlessly (sample 0 to the end). -26 LUFS-S with a 1-4 kHz pocket: run scripts/audio/duck.py under Zoo's narration. Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
+  "bytes": 6096569,
+  "description": "A muted 3-3-2 pulse, low strings with an E-flat neighbour, a half-time kit with ticking hats; the motif slow on soft vibes at D5 every 8 bars.",
+  "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly (sample 0 to the end). -26 LUFS-S with a voice pocket at 1.25-2 kHz: duck it under Zoo's narration with scripts/audio/duck.py (the band-split duck, its default). Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
   "instruments": [
     "pulse",
-    "plucked-string bass",
+    "finger-plucked bass",
     "sine sub",
-    "VCSL Kawai piano",
+    "VCSL vibraphone",
     "VSCO 2 strings (celli, violas tremolo, violins)",
     "VCSL drums",
     "FM tine piano"
   ],
-  "selfReview": "A muted 3-3-2 pulse, low strings with an Eb neighbour, a half-time kit with ticking hats, and the motif low on piano every 8 bars. It is the bed with the most low end; the sub and bass were pulled down after the first mix read +8 dB at 63 Hz. The hum warning is a false positive (sustained D/A bass partials).",
+  "selfReview": "D minor with phrygian edges: a muted 3-3-2 pulse, low strings with an Eb neighbour, a half-time kit with ticking hats; the motif slow on soft vibes at D5. Critic round 1 (2026-11-24): the pulse sat in Zoo's F0 and second-harmonic range (98-156 Hz) and the motif on low piano at D3+D2. The pulse is now two octaves over the bass (196-311 Hz), low-passed at 1.5 kHz and 3 dB down; the motif moved to D5 and is absent from the underscore; the EP re-voices every 4 bars and the bass walks into each phrase (it repeated bar for bar); every kick is tuned to the bass (it beat against the B-flat and G roots); hats and the kick's beater are quieter and the bus takes 2.5 dB off below 150 Hz. With the band-split duck its index is 0.78-0.79 (0.71 before with the broadband duck; speech-shaped noise 0.69); the onsets that reach within 15 dB of his voice in 1-4 kHz are back to the first build's rate (30-35 a minute) and it loses 5.9 LU on the phone model, as before. The -underscore version mutes the motif and lead lines; use it under speech.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

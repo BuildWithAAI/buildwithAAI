@@ -22,7 +22,7 @@ from audiolib.core import SR
 MAX_BYTES = 10_000_000
 CHANNELS = ("zoora-security", "zoora-ai", "both")
 CUE_TYPES = ("theme", "sting", "bumper", "bed", "endscreen", "intro-sting")
-PROFILES = ("standalone", "sting", "bed")
+PROFILES = ("standalone", "sting", "bed", "endscreen")
 SCHEMA_VERSION = 1
 
 
@@ -46,6 +46,7 @@ class Cue:
     usage: str = ""
     instruments: list = field(default_factory=list)
     builder: Callable | None = None
+    downbeat_sec: float = 0.0  # where the music's first downbeat is (the sync point); > 0 when the file has a pre-roll
 
     def __post_init__(self):
         if self.build is None:
@@ -101,6 +102,8 @@ def metadata(cue: Cue, rendered, delivered: dict, metrics: dict | None, statemen
         "durationSec": round(n / SR, 6),
         "durationSamples": n,
         "sampleRate": SR,
+        "downbeatSec": round(cue.downbeat_sec, 6),
+        "downbeatFrame30": int(round(cue.downbeat_sec * 30)),
         "loop": loop,
         "hits": [{"sec": round(s, 3), "frame30": int(round(s * 30)), "what": w} for s, w in cue.hits],
         "sections": [{"sec": round(s, 3), "name": w} for s, w in cue.sections],
@@ -117,6 +120,8 @@ def metadata(cue: Cue, rendered, delivered: dict, metrics: dict | None, statemen
             "truePeakDbtp": lou.get("truePeak", rep.get("truePeak")),
         },
         "spectrum": {k: spec.get(k) for k in ("slopeDbPerOct", "harshnessDb", "mudDb", "boxinessDb", "voicePocketDb", "centroidHz")} if spec else None,
+        "voice": _voice_summary(m.get("voice")) if m else None,
+        "aac": m.get("aac") if m else None,
         "checks": {"pass": metrics.get("pass"), "failures": metrics.get("failures"), "warnings": metrics.get("warnings"),
                    "failed": [c["id"] for c in metrics.get("checks", []) if not c["pass"]]} if metrics else None,
         "file": delivered["file"],
@@ -130,8 +135,18 @@ def metadata(cue: Cue, rendered, delivered: dict, metrics: dict | None, statemen
     }
 
 
+def _voice_summary(v: dict | None) -> dict | None:
+    """The bed gate's headline numbers for the metadata (the full result stays in out/)."""
+    if not v:
+        return None
+    s, b, n = v["split"], v["broadband6"], v["ssnAtSplitLoudness"]
+    return {"index": v["index"], "ssnIndex": n["index"], "indexMinusSsn": v["indexMinusSsn"], "broadbandIndex": b["index"],
+            "duck": v["duck"], "voiceOverBedLu": s["voiceOverBedLu"], "snr1to4kMedianDb": s["snr1to4kMedianDb"],
+            "framesUnder3dB": s["framesUnder3dB"], "narrowestBand": s["narrowestBand"], "reference": v["reference"]}
+
+
 def manifest_entry(meta: dict) -> dict:
-    keys = ("id", "title", "channel", "cueType", "mood", "key", "bpm", "durationSec", "durationSamples", "loop", "hits", "file", "format")
+    keys = ("id", "title", "channel", "cueType", "mood", "key", "bpm", "durationSec", "durationSamples", "downbeatSec", "loop", "hits", "file", "format")
     out = {k: meta[k] for k in keys}
     out["integratedLufs"] = meta["loudness"]["integratedLufs"]
     out["shortTermMedianLufs"] = meta["loudness"]["shortTermMedianLufs"]

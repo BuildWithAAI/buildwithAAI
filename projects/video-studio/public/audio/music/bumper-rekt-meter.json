@@ -13,6 +13,8 @@
   "durationSec": 3.2,
   "durationSamples": 153600,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": null,
   "hits": [
     {
@@ -80,19 +82,25 @@
   },
   "loudness": {
     "profile": "sting",
-    "integratedLufs": -16.0,
+    "integratedLufs": -16.1,
     "shortTermMedianLufs": -16.2,
-    "shortTermMaxLufs": -16.0,
+    "shortTermMaxLufs": -16.1,
     "lraLu": 20.1,
     "truePeakDbtp": -1.3
   },
   "spectrum": {
-    "slopeDbPerOct": -4.52,
-    "harshnessDb": -4.28,
-    "mudDb": 0.88,
-    "boxinessDb": 0.06,
-    "voicePocketDb": -0.32,
-    "centroidHz": 743.0
+    "slopeDbPerOct": -4.54,
+    "harshnessDb": -4.24,
+    "mudDb": 1.63,
+    "boxinessDb": -0.55,
+    "voicePocketDb": -0.99,
+    "centroidHz": 697.0
+  },
+  "voice": null,
+  "aac": {
+    "truePeak128k": -1.1,
+    "truePeak128kMedian": -1.1,
+    "encodes": 5
   },
   "checks": {
     "pass": true,
@@ -111,11 +119,11 @@
     "VCSL Kawai piano",
     "VCSL vibraphone",
     "VSCO 2 strings",
-    "plucked-string bass",
+    "finger-plucked bass",
     "VCSL drums",
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "The meter fills (taps, rising pizzicato and air), then the motif's tail A, Ab, F falls with band stabs and a crash. The idea reads: the gauge rises and the price drops. The 1.2 s fill may feel rushed at 100 BPM; a 3.6 s version with a two-beat fill is an easy change.",
+  "selfReview": "The meter fills (taps, rising pizzicato and air), then the motif's tail A, Ab, F falls with band stabs and a crash. Critic round 1 (2026-11-24): the synth brass came down to -9 dB and VSCO 2 violas (fast bowing) double the stabs at -6 dB; on the landing the brass now sits 16.8 dB under the mix (8.4 before), the violas carry the stab (10 dB under the mix, 5.9 dB on the phone model) and the kick is 13.1 dB under (4.6 before). The 1.2 s fill may feel rushed at 100 BPM; that needs an ear.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

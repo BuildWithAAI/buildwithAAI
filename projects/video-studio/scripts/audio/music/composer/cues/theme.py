@@ -62,8 +62,17 @@ REPLIES = {  # vibes answers to the motif (A-section bar -> line)
     5: "r:.5 D5:.25 E5:.25 F5:.5 A5:.5 E5:2",
     6: "r:1 D5:.5 F5:.5 A5:1 G5:.5 E5:.5",
 }
+# The 15 s cut answers on the G bar instead of stating the motif a third time: Gm9 (D C Bb A), then
+# Eb9 (G F Db); the D-flat is the next bar's C-sharp, the third of A7.
+REPLY_ON_G = "r:.5 D6:.25 C6:.25 Bb5:.5 A5:.5 G5:.5 F5:.5 Db5:1"
 A_VIOLINS = ["D6", "C#6", "G5", "G5", "D6", "D6", "D6", "C#6"]
 A_CELLI = ["D3", "A2", "G2", "A2", "D3", "Bb2", "G2", "G2"]  # bar 7: G is in both Em7b5 and A7b13
+# A': the pad and violas hold each chord (3-note pad voicings and 2-note violas, no semitone or minor-ninth
+# rub against the EP's voicings, the strings or the motif; audited by test_no_unintended_clashes_in_the_theme)
+A_PAD = {"Dm9": "F3 A3 E4", "Bb9": "F3 Ab3 D4", "A7b13": "G3 C#4 E4", "A7b9": "G3 C#4 E4", "Gm9": "G3 D4 F4", "Eb9": "G3 Db4 F4",
+         "Em7b5": "G3 D4 E4", "Bbmaj7#11": "F3 A3 D4", "C13": "E3 G3 D4", "Em7b5low": "G3 D4 E4"}
+A_VIOLAS = {"Dm9": "A4 C5", "Bb9": "F4 Ab4", "A7b13": "G4 C#5", "A7b9": "G4 C#5", "Gm9": "F4 D5", "Eb9": "G4 Db5",
+            "Em7b5": "G4 D5", "Bbmaj7#11": "D4 A4", "C13": "E4 G4", "Em7b5low": "G4 D5"}
 
 B_EP = ["F3 A3 C4 D4", "E3 G3 C4", "G3 Bb3 D4 F4", "E3 A3 C4 G4", "G3 Bb3 D4 F4", "F3 A3 C4", "G3 Bb3 D4 E4", "G3 Bb3 C#4 E4"]
 B_PAD = ["F3 A3 D4", "E3 G3 C4", "Bb3 D4 F4", "E3 A3 C4", "G3 Bb3 D4", "F3 A3 C4", "G3 Bb3 D4", "G3 C#4 E4"]
@@ -92,17 +101,50 @@ B_CELLI = ["Bb2", "A2", "G2", "F2", "Eb3", "D3", "E3", "A2"]
 B_VIOLAS = ["D4 A4", "C4 G4", "Bb3 F4", "A3 E4", "G3 D4", "F3 C4", "G3 D4", "G3 C#4"]
 B_VIOLINS = {4: "G5", 5: "A5", 6: "Bb5", 7: "C#6"}
 
+# Badger's cross-stick: its own track (BADGER_XSTICK_DB), velocities 96 and 88. The critic asked for
+# +3 dB, but the VCSL cross-stick sample is about 16 dB quieter than the level-matched snare hits it
+# shared a track with, so on the button it sat 26-40 dB under the mix: now a dry click a phone carries
+BADGER_XSTICK = (96, 88)
+BADGER_XSTICK_DB = 1.0
+# Badger's octave-up pizzicato double (E-flat 4 to D4), its own track: fader dB
+BADGER_MID_DB = 11.0
+# Peak control on his two tracks (render.shave_peaks; the gain staging keeps their loudness). Measured
+# on theme-full: his stacked transients (cross-stick 50 %, the double 29 % of the window's peak) drove
+# the master limiter to 9.2 dB of gain reduction on his button, pulling everything down on his notes:
+# he sat 6.1 dB under the coda motif on the phone model. Soft-clipping the click by 12 dB and
+# limiting the double's attack by 8 dB leave the limiter less to do there.
+BADGER_XSTICK_SHAVE = {"shave_db": 12.0, "kind": "clip"}
+BADGER_MID_SHAVE = {"shave_db": 8.0, "kind": "limit", "release_ms": 60.0, "lookahead_ms": 3.0}
+# the kick under his notes (velocity), softer than the band's: its sub is inaudible on a phone but
+# not to the limiter
+BADGER_KICK = (44, 38)
+
 DRUM_KEYS = {"snare": K["snare"], "ghost": K["tap"], "hat": K["hat"], "ohat": K["hat_open"], "pedal": K["hat_pedal"],
              "xstick": K["xstick"], "clap": K["clap"], "shaker": K["shaker_down"], "shaker2": K["shaker_up"], "tamb": K["tamb"],
              "crash": K["crash"], "tom_hi": K["tom_high"], "tom_lo": K["tom_low"], "roll": K["snare_roll"], "swell": K["swell_short"],
              "rim": K["rim"]}
 
 
+def _badger_mid(pocket: bool):
+    """Badger's octave-up pizzicato double: compressed (fast attack) so its body, not its pluck, carries
+    on a phone speaker, and 3 dB lighter at 300 Hz (its fundamentals sit under a phone's range anyway)."""
+    from composer.render import Track
+    from audiolib.dynamics import Compressor
+
+    t = C.strings("badger_mid", "celli", "pizz", fader=BADGER_MID_DB, pan=-0.1, width=0.4, hall=-12.0, pocket=pocket)
+    t.eq = [*t.eq, C.PK(300, -3.0, 1.2)]
+    t.comp = Compressor(threshold_db=-16, ratio=2.5, attack_ms=2.0, release_ms=90, knee_db=6)  # make-up gain is in BADGER_MID_DB
+    t.peak_shave = dict(BADGER_MID_SHAVE)
+    assert isinstance(t, Track)
+    return t
+
+
 class Theme:
     """Writes the theme's sections into one Score; the full theme and its cuts reuse the same bars."""
 
     PARTS = ("piano", "vibes", "ep", "pad", "pulse", "brass", "gtr", "bass", "sub", "kick", "kit",
-             "pizz", "celli", "violas", "violins", "basses_pizz", "celli_pizz", "harp", "glock", "violins_trem", "violas_trem")
+             "pizz", "celli", "violas", "violins", "basses_pizz", "celli_pizz", "harp", "glock", "violins_trem", "violas_trem",
+             "violas_fast", "vibes_bowed", "badger_mid", "badger_xstick")
 
     def __init__(self, bpm: float = BPM, pocket: bool = False):
         self.s = Score(bpm=bpm, time_sig=(4, 4), key="Dm")
@@ -126,22 +168,28 @@ class Theme:
         if kick:
             grid(self.p["kick"], self.b(bar), {"kick": kick}, {"kick": 36}, vel)
 
-    def badger(self, bar: float, beat: float = 0.0, vel: int = 100):
-        """Badger's figure (Eb then D, a beat apart): plucked bass, celli and basses pizzicato, a muted
-        kick and a dry cross-stick under each note."""
+    def badger(self, bar: float, beat: float = 0.0, vel: int = 100, spacing: float = 1.0):
+        """Badger's figure (Eb then D, `spacing` beats apart): plucked bass, celli and basses pizzicato,
+        a muted kick and a dry cross-stick under each note. The celli also double it an octave up
+        (Eb4-D4) at velocity 84 (critic round 1: in the low octaves alone the figure fell 2.6-5.0 dB
+        under the motif on a phone speaker; the darker bass no longer carries it there), on its own
+        track so its level is set by measurement, and the cross-stick is 3 dB firmer than before."""
         t = self.b(bar) + beat
-        motif.place_badger(self.p["bass"], t, "D2", vel=vel)
-        motif.place_badger(self.p["celli_pizz"], t, "D3", vel=vel - 4)
-        motif.place_badger(self.p["basses_pizz"], t, "D2", vel=vel - 10)
+        motif.place_badger(self.p["bass"], t, "D2", vel=vel, spacing=spacing)
+        motif.place_badger(self.p["celli_pizz"], t, "D3", vel=vel - 4, spacing=spacing)
+        motif.place_badger(self.p["badger_mid"], t, "D4", vel=84, spacing=spacing)
+        motif.place_badger(self.p["basses_pizz"], t, "D2", vel=vel - 10, spacing=spacing)
         for k in range(2):
-            self.p["kick"].hit(36, t + k * 1.0, 72 - 8 * k)
-            self.p["kit"].hit(K["xstick"], t + k * 1.0, 64 - 6 * k)
+            self.p["kick"].hit(36, t + k * spacing, BADGER_KICK[k])
+            self.p["badger_xstick"].hit(K["xstick"], t + k * spacing, BADGER_XSTICK[k])
 
-    def pulse_bar(self, tb: int, root: str, vel: int, beats: int = 4):
+    def pulse_bar(self, tb: int, root: str, vel: int, beats: int = 4, octave: int = 0):
+        """A bar of 16th pulse on the root, root, fifth, octave. `octave` (semitones) lifts it: under the
+        voice the pulse sits an octave up, out of Zoo's F0 and second harmonic (68-240 Hz)."""
         t = self.b(tb)
         lo = {"D": "D3", "A": "A2", "G": "G2", "E": "E3", "Bb": "Bb2"}[root]
         from audiolib.core import note_number
-        r = note_number(lo)
+        r = note_number(lo) + octave
         pat = (0, 0, 7, 12)
         for k in range(4 * beats):
             self.p["pulse"].note(r + pat[k % 4], t + 0.25 * k, 0.18, vel + (10 if k % 4 == 0 else 0))
@@ -166,9 +214,12 @@ class Theme:
         P["kit"].hit(K["swell_short"], self.b(bar + 2) - 2.5 / SPB, 70)
 
     # ---------------------------------------------------------------- A sections
-    def a_section(self, bar: int, full: bool = False, bars=range(8), last_fill: bool = True, at: dict | None = None):
-        """Write A-section bars `bars` (0-7) at bar + i, or at at[i] when given (for the cuts)."""
+    def a_section(self, bar: int, full: bool = False, bars=range(8), last_fill: bool = True, at: dict | None = None,
+                  motif_bars=(0, 2, 4), extra_replies: dict | None = None):
+        """Write A-section bars `bars` (0-7) at bar + i, or at at[i] when given (for the cuts).
+        `motif_bars`: the A bars that state the motif; `extra_replies`: {A bar: vibes line} added answers."""
         P = self.p
+        replies = {**REPLIES, **(extra_replies or {})}
         for i in bars:
             tb = at[i] if at else bar + i
             t = self.b(tb)
@@ -186,23 +237,23 @@ class Theme:
                     self.chord("ep", tb, beat, c, span - 0.1, 66 if full else 60, roll=0.02)
             line(P["bass"], t, A_BASS[i], vel=96 if full else 92, staccato=0.88)
             # the motif and its answers
-            if i in (0, 4):
+            if i in (0, 4) and i in motif_bars:
                 motif.place(P["piano"], t, "D4", vel=88 if full else 84, octaves=(0, 12))
                 C.chord(P["piano"], t, 1.4, "D3", 60)
                 if full:
                     motif.place(P["vibes"], t, "D5", vel=74)
                     motif.place(P["pizz"], t, "D4", vel=86, staccato=0.6)
                     self.chord("brass", tb, 1.5, "Bb9", 0.5, 84)
-            elif i == 2:
+            elif i == 2 and i in motif_bars:
                 motif.place(P["piano"], t, "G3", vel=86 if full else 82, octaves=(0, 12))
                 if full:
                     motif.place(P["vibes"], t, "G4", vel=72)
                     motif.place(P["pizz"], t, "G3", vel=84, staccato=0.6)
                     self.chord("brass", tb, 1.5, "Eb9", 0.5, 82)
-            if i in REPLIES:
-                line(P["vibes"], t, REPLIES[i], vel=78 if full else 74, staccato=0.95)
+            if i in replies:
+                line(P["vibes"], t, replies[i], vel=78 if full else 74, staccato=0.95)
                 if full:
-                    line(P["piano"], t, REPLIES[i], vel=62, transpose=-12, staccato=0.9)
+                    line(P["piano"], t, replies[i], vel=62, transpose=-12, staccato=0.9)
             # drums
             if i < 7:
                 rows = {"kick": "X......x..X....." if i % 2 == 0 else "X.....x...X..x..",
@@ -212,7 +263,7 @@ class Theme:
                     rows["clap"] = "....x.......x..."
                     if i % 2 == 1:
                         rows["ohat"] = "..............x."
-                self.drums(tb, rows, vel={"X": 108, "x": 84, "o": 40})
+                self.drums(tb, rows, vel={"X": 110, "x": 86, "o": 42} if full else {"X": 108, "x": 84, "o": 40})
             else:
                 rows = {"kick": "X.....X.........", "snare": "x.....X.........", "hat": "x.....x........."}
                 if last_fill:
@@ -223,60 +274,70 @@ class Theme:
                     self.drums(tb, {"crash": "......x........."}, vel={"x": 72})
             # tech pulse: every other bar in A, every bar in A' (half a bar on the turnaround)
             if full or i % 2 == 0:
-                self.pulse_bar(tb, A_ROOTS[i], 46 if not full else 52, beats=2 if i == 7 else 4)
+                self.pulse_bar(tb, A_ROOTS[i], 46 if not full else 64, beats=2 if i == 7 else 4)
             # A': muted guitar chops on 3rd/7th shells
             if full and i < 7:
                 pat = "x.xx.x.xx.x.xx.x" if i % 2 == 0 else "x.x..xx.x.x..x.x"
                 for k, c in enumerate(pat):
                     if c == "x":
                         C.chord(P["gtr"], t + 0.25 * k, 0.12, A_GTR[i], 72 if k % 4 == 0 else 56)
-        if full:
-            P["kit"].hit(K["crash"], self.b(bar), 96)
+        if full:  # A': the pad and violas hold the harmony (more body, no new transients for the limiter)
+            for i in range(8):
+                ch = [(beat, c) for bb, beat, c in A_CHORDS if bb == i]
+                for j, (beat, c) in enumerate(ch):
+                    span = (ch[j + 1][0] if j + 1 < len(ch) else 4.0) - beat
+                    C.chord(P["pad"], self.b(bar + i) + beat, span - 0.05, A_PAD[c], 76)
+                    C.chord(P["violas"], self.b(bar + i) + beat, span - 0.05, A_VIOLAS[c], 72)
+            swell(P["violas"], self.b(bar), self.b(bar) + 1.0, 40, 70)
+            P["kit"].hit(K["crash"], self.b(bar), 104)
             for i, n in enumerate(A_CELLI):
-                P["celli"].note(n, self.b(bar + i), 3.9, 70)
-            swell(P["celli"], self.b(bar), self.b(bar) + 1.0, 40, 72)
+                P["celli"].note(n, self.b(bar + i), 3.9, 74)
+            swell(P["celli"], self.b(bar), self.b(bar) + 1.0, 50, 82)
             for i, n in enumerate(A_VIOLINS):
-                P["violins"].note(n, self.b(bar + i), 3.9, 64)
-            swell(P["violins"], self.b(bar), self.b(bar) + 2.0, 30, 64)
-            swell(P["violins"], self.b(bar + 7), self.b(bar + 8), 64, 78)
+                P["violins"].note(n, self.b(bar + i), 3.9, 76)
+            swell(P["violins"], self.b(bar), self.b(bar) + 2.0, 46, 84)
+            swell(P["violins"], self.b(bar + 7), self.b(bar + 8), 84, 96)
 
     # ---------------------------------------------------------------- B section
     def b_section(self, bar: int):
         P = self.p
         for i in range(8):
             t = self.b(bar + i)
-            C.chord(P["ep"], t, 1.6, B_EP[i], 58, roll=0.03)
-            C.chord(P["ep"], t + 2.5, 1.2, B_EP[i], 48, roll=0.02)
+            C.chord(P["ep"], t, 1.6, B_EP[i], 42, roll=0.03)
+            C.chord(P["ep"], t + 2.5, 1.2, B_EP[i], 30, roll=0.02)
             C.chord(P["pad"], t, 4.0, B_PAD[i], 52)
-            line(P["bass"], t, B_BASS[i], vel=90, staccato=0.92)
-            line(P["piano"], t, B_MELODY[i], vel=76 + (4 if i >= 4 else 0), staccato=0.96)
+            line(P["bass"], t, B_BASS[i], vel=64, staccato=0.92)
+            line(P["piano"], t, B_MELODY[i], vel=46 + (4 if i >= 4 else 0), staccato=0.96)
             P["piano"].sustain(t + 0.05, t + 3.9)
             if i < 6:
                 root, mode = B_TAILS[i]
-                motif.place(P["pizz"], t + 1.0, root, mode=mode, form="tail", vel=74, staccato=0.6, last_dur=0.5)
+                motif.place(P["pizz"], t + 1.0, root, mode=mode, form="tail", vel=52, staccato=0.6, last_dur=0.5)
             P["celli"].note(B_CELLI[i], t, 3.95, 66)
             for n in B_VIOLAS[i].split():
                 P["violas"].note(n, t, 3.95, 60)
             if i in B_VIOLINS:
                 P["violins"].note(B_VIOLINS[i], t, 3.95, 60)
-            # drums: light first half (cross-stick, shaker), backbeat from bar 5, build on bar 8
+            # drums: cross-stick and shaker only (critic round 1: the backbeat with snare and hats in
+            # bars 5-7 made B louder than A); bars 5-7 only push the kick and lift the shaker a little,
+            # and bar 8 builds into A'
             if i < 4:
                 rows = {"kick": "X.........x.....", "xstick": "....x.......x...", "shaker": "x.x.x.x.x.x.x.x.", "shaker2": ".x.x.x.x.x.x.x.x"}
-                vel = {"X": 96, "x": 66, "o": 34}
+                vel = {"X": 62, "x": 44, "o": 26}
             elif i < 7:
-                rows = {"kick": "X.........x..x..", "snare": "....x.......x...", "hat": "x.x.x.x.x.x.x.x.", "shaker": "x...x...x...x..."}
-                vel = {"X": 100, "x": 72, "o": 36}
+                rows = {"kick": "X.........x..x..", "xstick": "....x.......x...", "shaker": "x.x.x.x.x.x.x.x.", "shaker2": ".x.x.x.x.x.x.x.x"}
+                vel = {"X": 66, "x": 46, "o": 28}
             else:
                 rows = {"kick": "X...X...X...X...", "roll": "x...............", "tom_hi": "............x.x.", "tom_lo": ".............x.x"}
-                vel = {"X": 96, "x": 74, "o": 40}
+                vel = {"X": 72, "x": 54, "o": 34}
             self.drums(bar + i, rows, vel=vel)
-        swell(P["celli"], self.b(bar), self.b(bar + 1), 40, 70)
-        swell(P["violas"], self.b(bar), self.b(bar + 1), 36, 64)
-        swell(P["violins"], self.b(bar + 4), self.b(bar + 5), 20, 62)
-        swell(P["celli"], self.b(bar + 6), self.b(bar + 8), 70, 92, shape=1.6)
-        swell(P["violas"], self.b(bar + 6), self.b(bar + 8), 64, 88, shape=1.6)
-        swell(P["violins"], self.b(bar + 6), self.b(bar + 8), 62, 92, shape=1.6)
-        P["kit"].hit(K["swell_short"], self.b(bar + 8) - 2.5 / SPB, 92)
+        # B is the quiet contrast (critic round 1: it measured louder than A); the strings still swell into A'
+        swell(P["celli"], self.b(bar), self.b(bar + 1), 30, 52)
+        swell(P["violas"], self.b(bar), self.b(bar + 1), 26, 48)
+        swell(P["violins"], self.b(bar + 4), self.b(bar + 5), 14, 46)
+        swell(P["celli"], self.b(bar + 6), self.b(bar + 8), 58, 86, shape=1.8)
+        swell(P["violas"], self.b(bar + 6), self.b(bar + 8), 54, 82, shape=1.8)
+        swell(P["violins"], self.b(bar + 6), self.b(bar + 8), 52, 86, shape=1.8)
+        P["kit"].hit(K["swell_short"], self.b(bar + 8) - 2.5 / SPB, 50)  # into A': it was B's loudest element
 
     # ---------------------------------------------------------------- coda
     def coda(self, bar: int):
@@ -292,7 +353,7 @@ class Theme:
         for beat, vel in zip(motif.ONSETS, (112, 84, 110, 96, 118)):
             P["kick"].hit(36, t + beat, vel)
             P["kit"].hit(K["snare"], t + beat, vel - 12)
-        C.chord(P["brass"], t + 2.0, 1.6, "A3 D4 F4 A4", 100)
+        C.chord(P["brass"], t + 2.0, 1.6, "A3 D4 F4 A4", 90)
         C.chord(P["ep"], t + 2.0, 1.9, "A3 C4 F4", 76, roll=0.015)
         C.chord(P["piano"], t + 2.0, 1.9, "D2 A2", 84)
         P["kit"].hit(K["crash"], t + 2.0, 110)
@@ -303,23 +364,30 @@ class Theme:
         P["piano"].sustain(self.b(bar + 1) + 1.05, self.b(bar + 1) + 3.5)
 
     # ---------------------------------------------------------------- humanise and mix
-    def finish(self, seed: str, swing: bool = True):
-        """Humanise every part. swing=False for cues timed in absolute seconds (the intro sting)."""
+    def finish(self, seed: str, swing: bool = True, comp_velocity: float = 4.0):
+        """Humanise every part (after tuning the kicks to the bass). swing=False for cues timed in
+        absolute seconds (the intro sting). comp_velocity: the EP's and bass's velocity spread (beds
+        use 8: their comping repeats for a minute, and a spread of 4 measured a flat 4-7 standard
+        deviation)."""
+        from composer import synths as S
+
         s, P = self.s, self.p
+        S.kick_tuning(s)
         sw = 0.55 if swing else None
         sw_keys = 0.54 if swing else None
         humanize_part(P["piano"], s, timing_ms=6, drift_ms=3, velocity=4, seed=f"{seed}-piano", roll_ms=14)
         humanize_part(P["vibes"], s, timing_ms=6, drift_ms=3, velocity=5, seed=f"{seed}-vibes")
-        humanize_part(P["ep"], s, timing_ms=7, drift_ms=4, velocity=4, seed=f"{seed}-ep", swing=sw_keys, swing_grid=0.25)
-        humanize_part(P["bass"], s, timing_ms=4, drift_ms=3, velocity=4, seed=f"{seed}-bass", swing=sw_keys, swing_grid=0.25, lay_back_ms=7)
+        humanize_part(P["ep"], s, timing_ms=7, drift_ms=4, velocity=comp_velocity, seed=f"{seed}-ep", swing=sw_keys, swing_grid=0.25)
+        humanize_part(P["bass"], s, timing_ms=4, drift_ms=3, velocity=comp_velocity, seed=f"{seed}-bass", swing=sw_keys, swing_grid=0.25, lay_back_ms=7)
         # one drummer: kick and kit share the slow drift (same seed); each hit gets its own jitter
         humanize_part(P["kit"], s, timing_ms=3.5, drift_ms=2.5, velocity=6, seed=f"{seed}-drums", swing=sw, swing_grid=0.25)
         humanize_part(P["kick"], s, timing_ms=2.5, drift_ms=2.5, velocity=4, seed=f"{seed}-drums", swing=sw, swing_grid=0.25)
+        humanize_part(P["badger_xstick"], s, timing_ms=2.5, drift_ms=2.5, velocity=3, seed=f"{seed}-drums", swing=sw, swing_grid=0.25)
         humanize_part(P["gtr"], s, timing_ms=4, drift_ms=2, velocity=7, seed=f"{seed}-gtr", swing=sw, swing_grid=0.25)
         humanize_part(P["pulse"], s, timing_ms=1.0, drift_ms=0.5, velocity=3, seed=f"{seed}-pulse")
-        for name in ("pizz", "celli_pizz", "basses_pizz", "brass", "harp", "glock"):
+        for name in ("pizz", "celli_pizz", "basses_pizz", "brass", "harp", "glock", "violas_fast", "badger_mid"):
             humanize_part(P[name], s, timing_ms=5, drift_ms=3, velocity=4, seed=f"{seed}-{name}")
-        for name in ("celli", "violas", "violins", "pad", "violins_trem", "violas_trem"):
+        for name in ("celli", "violas", "violins", "pad", "violins_trem", "violas_trem", "vibes_bowed"):
             humanize_part(P[name], s, timing_ms=10, drift_ms=4, velocity=3, seed=f"{seed}-{name}")
 
     def tracks(self, faders: dict | None = None) -> list:
@@ -327,6 +395,8 @@ class Theme:
         from composer import instruments as I
 
         pk = self.pocket
+        gtr = C.guitar(fader=-14.0, pan=0.45, pocket=pk)
+        gtr.eq = [*gtr.eq, C.LP(2500, 4)]  # critic round 1: the muted-guitar model's 4-12 kHz read as ticks
         tr = [
             C.piano(fader=0.0, plate=-11.0, pocket=pk),
             C.vibes(fader=-6.5, pan=0.3, hall=-9.0, pocket=pk),
@@ -334,10 +404,12 @@ class Theme:
             C.pad(fader=-13.0, cutoff=1000.0, pocket=pk),
             C.pulse(fader=-11.0, pocket=pk),
             C.brass(fader=-5.5, pocket=pk),
-            C.guitar(fader=-8.0, pan=0.45, pocket=pk),
-            C.bass(fader=-5.0 if pk else -2.0),
+            gtr,
+            C.bass(fader=-5.0 if pk else -2.0, lp=C.BASS_LP_BED if pk else C.BASS_LP_BAND),
             C.sub(fader=-18.0 if pk else -10.0),
-            *C.kick(fader=-7.0 if pk else -4.5, f_end=55.0),
+            # beds keep the beater 9 dB under the kick (stings and the theme: 5 dB, KICK-FIX), so its click
+            # does not tick under Zoo's consonants
+            *C.kick(fader=-7.0 if pk else -4.5, f_end=55.0, gm_layer_db=-9.0 if pk else -5.0, pocket=pk),
             *C.kit_tracks(toms=-10.0, claps=-9.5, hats=-8.0, pocket=pk),
             C.strings("pizz", "violas", "pizz", fader=-7.0, pan=-0.35, width=0.6, hall=-10.0, pocket=pk),
             C.strings("celli_pizz", "celli", "pizz", fader=-6.0, pan=-0.1, width=0.5, hall=-12.0, pocket=pk),
@@ -349,6 +421,11 @@ class Theme:
             C.strings("violas_trem", "violas", "trem", fader=-12.0, pan=0.15, width=0.5, pocket=pk),
             C.mallets("harp", I.harp(), fader=-6.0, pan=-0.3, hall=-9.0, hp=80.0, pocket=pk),
             C.mallets("glock", I.glock(), fader=-14.0, pan=0.35, hall=-10.0, hp=400.0, pocket=pk),
+            C.strings("violas_fast", "violas", "fast", fader=-6.0, pan=0.1, width=0.6, hall=-11.0, pocket=pk),
+            _badger_mid(pk),
+            C.Track("badger_xstick", I.kit("tight"), part="badger_xstick", only={K["xstick"]}, fader_db=BADGER_XSTICK_DB, pan=0.1,
+                    eq=[C.HP(150), C.PK(650, -2.0, 1.4)], width=0.4, sends={"room": -16.0}, peak_shave=dict(BADGER_XSTICK_SHAVE)),
+            C.mallets("vibes_bowed", I.vibes_bowed(), fader=-14.0, pan=-0.15, hall=-8.0, hp=250.0, pocket=pk),
         ]
         used = {n for n, p in self.p.items() if p.notes}
         out = [t for t in tr if (t.part or t.name) in used]
@@ -360,8 +437,47 @@ class Theme:
         return out
 
 
+# theme-full: mix automation on the bus (dB per section, ramped over the beat before each section).
+# Critic round 1 asked for B at least 2 LU under A and A' at least 1.5 LU over it; the master limiter
+# keeps about 40 % of the B contrast and 60 % of the A' contrast that the arrangement writes, so the
+# arrangement does most of it and this ride the rest (measured, see the README).
+FULL_RIDE_DB = (("intro", 0, 0.0), ("A", 2, -0.4), ("B", 10, -1.1), ("A'", 18, 0.2), ("coda", 26, 0.0))
+
+
+def full_ride() -> list:
+    """(seconds, dB) breakpoints for Arrangement.bus_ride: each section's gain is reached on its first
+    downbeat, ramping over the beat before it."""
+    spb = 60.0 / BPM
+    pts = [(0.0, FULL_RIDE_DB[0][2])]
+    for (_, _, g0), (_, bar, g1) in zip(FULL_RIDE_DB, FULL_RIDE_DB[1:]):
+        t = bar * BAR * spb
+        pts += [(t - spb, g0), (t, g1)]
+    return pts
+
+
+# theme-5s: two video frames of silence before the downbeat, so a placement a frame early never
+# clips the attack (critic round 1: it started with a full-band hit at sample 0)
+PRE_ROLL_5S = 2 / 30.0
+
+# KICK-FIX for stings and bumpers (critic round 1): on every landing the 55 Hz kick was the loudest or
+# second-loudest element, which a phone speaker drops. The synth kick comes down 3 dB, its beater
+# layer sits 5 dB under it (was 9), and the snare comes up 2 dB.
+STING_FADERS = {"kick": -7.5, "kick_beater": -12.5, "snare": -1.0}
+
+# theme-full's arc (critic round 1: B measured louder than A and A' only +0.9 LU over it): B lost
+# its snare and hats, the pad and the EP's second hit came down; A' gets more brass and claps; the
+# glue compresses less (threshold -18 dB, 1.5:1; was -22 dB, 2:1, up to 4.6 dB of reduction). The
+# kick is 1 dB under the other cues': its sum with the tuned bass made the one AAC overshoot that
+# reached -0.95 dBTP (bar 21), and the master limiter works less on it.
+FULL_FADERS = {"brass": -3.0, "claps": -7.5, "pad": -12.0, "violas": -11.0, "kick": -5.5, "kick_beater": -10.5}
+FULL_GLUE = {"threshold_db": -18.0, "ratio": 1.5}
+
+
 def arrangement(cue_id: str, kind: str) -> Arrangement:
+    from composer.render import DEFAULT_GLUE, STANDALONE_CEILING_DBTP, SafeCompressor
+
     th = Theme()
+    faders, glue, ceiling, pre_roll = None, None, None, 0.0
     if kind == "full":
         th.intro(0)
         th.a_section(2)
@@ -369,17 +485,31 @@ def arrangement(cue_id: str, kind: str) -> Arrangement:
         th.a_section(18, full=True)
         th.coda(26)
         length, preset, fade = 28 * BAR * SPB + 1.2, "standalone", 1.0
+        faders, glue, ceiling = FULL_FADERS, SafeCompressor(**{**DEFAULT_GLUE, **FULL_GLUE}), STANDALONE_CEILING_DBTP
     elif kind == "15s":
-        # | motif solo | Badger + pickup | motif on G (band) | turnaround hits | motif in unison | Badger |
+        # | motif solo | Badger + pickup | the band: a vibes answer (no third motif) | turnaround hits | motif in unison | Badger |
         th.intro(0)
-        th.a_section(0, bars=[2, 7], at={2: 2, 7: 3})
+        th.a_section(0, bars=[2, 7], at={2: 2, 7: 3}, motif_bars=(), extra_replies={2: REPLY_ON_G})
         th.coda(4)
         length, preset, fade = 15.0, "standalone", 0.8
+        ceiling = STANDALONE_CEILING_DBTP
     elif kind == "5s":
         th.coda(0)
-        length, preset, fade = 5.0, "sting", 0.6
+        length, preset, fade = 5.0 - PRE_ROLL_5S, "sting", 0.6
+        pre_roll = PRE_ROLL_5S
+        faders = STING_FADERS
     else:
         raise ValueError(kind)
     th.finish(cue_id)
-    return Arrangement(cue_id, th.s, length, th.tracks(), preset=preset, reverbs=C.reverbs(), fade_out=fade,
-                       bus_eq=[C.PK(250, -1.0, 0.9), C.PK(1000, -1.0, 1.0), C.PK(4500, 2.0, 0.7), C.HS(9000, 1.5)])
+    # the standalone cuts take 2 dB less air (HS 9 kHz -0.5 instead of +1.5): their hats and cymbals made
+    # ffmpeg's AAC 128k encoder overshoot by up to 2.5 dB (measured over dither variants); with the
+    # shelf every variant stayed at -1.1 dBTP or under
+    air = -0.5 if preset == "standalone" else 1.5
+    arr = Arrangement(cue_id, th.s, length, th.tracks(faders), preset=preset, reverbs=C.reverbs(), fade_out=fade,
+                      bus_eq=[C.PK(250, -1.0, 0.9), C.PK(1000, -1.0, 1.0), C.PK(4500, 2.0, 0.7), C.HS(9000, air)],
+                      ceiling_dbtp=ceiling, pre_roll=pre_roll)
+    if glue is not None:
+        arr.glue = glue
+    if kind == "full":
+        arr.bus_ride = full_ride()
+    return arr

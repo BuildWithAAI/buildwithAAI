@@ -13,6 +13,8 @@
   "durationSec": 3.4,
   "durationSamples": 163200,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": null,
   "hits": [
     {
@@ -50,7 +52,7 @@
         "form": "head",
         "mode": "minor",
         "part": "piano",
-        "startSec": 1.821,
+        "startSec": 1.811,
         "pitches": [
           74,
           74,
@@ -65,17 +67,23 @@
     "profile": "sting",
     "integratedLufs": -16.1,
     "shortTermMedianLufs": -16.0,
-    "shortTermMaxLufs": -15.7,
-    "lraLu": 0.5,
+    "shortTermMaxLufs": -15.8,
+    "lraLu": 0.4,
     "truePeakDbtp": -1.3
   },
   "spectrum": {
-    "slopeDbPerOct": -4.25,
-    "harshnessDb": -5.64,
-    "mudDb": -3.78,
-    "boxinessDb": -3.43,
-    "voicePocketDb": -2.63,
-    "centroidHz": 1122.0
+    "slopeDbPerOct": -4.5,
+    "harshnessDb": -6.08,
+    "mudDb": -3.31,
+    "boxinessDb": -5.13,
+    "voicePocketDb": -4.67,
+    "centroidHz": 1138.0
+  },
+  "voice": null,
+  "aac": {
+    "truePeak128k": -1.1,
+    "truePeak128kMedian": -1.2,
+    "encodes": 5
   },
   "checks": {
     "pass": true,
@@ -94,11 +102,11 @@
     "VCSL Kawai piano",
     "VCSL vibraphone",
     "VSCO 2 strings",
-    "plucked-string bass",
+    "finger-plucked bass",
     "VCSL drums",
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "A news alert, not an alarm: three beats of rising 16th ticker (pulse, muted piano, hats) under a tremolo swell. The motif head then lands on Dsus4(add9) and stays open. No sirens, no risers to white noise.",
+  "selfReview": "A news alert, not an alarm: three beats of rising 16th ticker (pulse and hats) under a tremolo swell; the motif head then lands on Dsus4(add9) and stays open. Critic round 1 (2026-11-24): the piano left the ticker (one Kawai sample per note repeated twelve times read as a machine gun) and the brass is 3 dB lower. No sirens, no risers to white noise.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

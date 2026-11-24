@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "id": "endscreen-music",
+  "title": "End-screen music, 20 s (no voice-over)",
+  "channel": "zoora-security",
+  "cueType": "endscreen",
+  "mood": "light, confident, wrapping up",
+  "key": "D minor",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": null,
+  "durationSec": 20.0,
+  "durationSamples": 960000,
+  "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 16.8,
+      "frame30": 504,
+      "what": "last motif"
+    },
+    {
+      "sec": 18.0,
+      "frame30": 540,
+      "what": "SHOW lands on D minor"
+    },
+    {
+      "sec": 20.0,
+      "frame30": 600,
+      "what": "end"
+    }
+  ],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "groove with the motif and its answers"
+    },
+    {
+      "sec": 14.4,
+      "name": "turnaround"
+    },
+    {
+      "sec": 16.8,
+      "name": "motif and ring-out"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 0.0,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 4.79,
+        "pitches": [
+          67,
+          67,
+          74,
+          73,
+          70
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 9.603,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 16.8,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 16.802,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "endscreen",
+    "integratedLufs": -18.1,
+    "shortTermMedianLufs": -18.0,
+    "shortTermMaxLufs": -17.4,
+    "lraLu": 1.0,
+    "truePeakDbtp": -2.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -4.97,
+    "harshnessDb": -7.57,
+    "mudDb": -0.25,
+    "boxinessDb": -1.36,
+    "voicePocketDb": -6.09,
+    "centroidHz": 1143.0
+  },
+  "voice": null,
+  "aac": {
+    "truePeak128k": -1.9,
+    "truePeak128kMedian": -1.9,
+    "encodes": 5
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 0,
+    "failed": []
+  },
+  "file": "audio/music/endscreen-music.wav",
+  "format": "wav-24bit",
+  "bytes": 5760044,
+  "description": "The end-screen music for an end screen with nobody speaking: the same groove with the vibes motif and its answers, no voice pocket.",
+  "usage": "End-aligned, on its own: -18 LUFS-I (4 LU under -14 LUFS narration), -2 dBTP. Do not duck it; with a voice-over use endscreen-bed.",
+  "instruments": [
+    "VCSL vibraphone",
+    "VCSL Kawai piano",
+    "FM tine piano",
+    "finger-plucked bass",
+    "VCSL percussion",
+    "pulse",
+    "VSCO 2 celli"
+  ],
+  "selfReview": "New in critic round 1: the end-screen music for an end screen with nobody speaking, mastered at -18 LUFS-I (-2 dBTP; -1.9 after AAC). The same 20 s and the same button at 18.0 s as `endscreen-bed`, but with the vibes answers kept and no voice pocket. Use `endscreen-bed` under a voice-over.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

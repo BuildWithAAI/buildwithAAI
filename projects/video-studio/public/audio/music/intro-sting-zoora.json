@@ -13,6 +13,8 @@
   "durationSec": 4.0,
   "durationSamples": 192000,
   "sampleRate": 48000,
+  "downbeatSec": 0.0,
+  "downbeatFrame30": 0,
   "loop": null,
   "hits": [
     {
@@ -23,22 +25,22 @@
     {
       "sec": 0.6,
       "frame30": 18,
-      "what": "motif starts"
+      "what": "the motif starts"
     },
     {
       "sec": 1.8,
       "frame30": 54,
-      "what": "SHOW lands on the logo hit (frame 54)"
+      "what": "the motif lands on the logo hit (frame 54)"
     },
     {
       "sec": 2.333,
       "frame30": 70,
-      "what": "celesta C under the wordmark (frame 70)"
+      "what": "vibes and harp C under the wordmark (frame 70)"
     },
     {
       "sec": 2.6,
       "frame30": 78,
-      "what": "celesta F under the tag line (frame 78)"
+      "what": "vibes and harp F under the tag line (frame 78)"
     }
   ],
   "sections": [],
@@ -47,7 +49,7 @@
       {
         "form": "full",
         "mode": "major",
-        "part": "celesta",
+        "part": "vibes",
         "startSec": 0.6,
         "pitches": [
           77,
@@ -61,8 +63,22 @@
       {
         "form": "full",
         "mode": "major",
-        "part": "vibes",
+        "part": "vibes_hard",
         "startSec": 0.6,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "harp",
+        "startSec": 0.607,
         "pitches": [
           77,
           77,
@@ -80,16 +96,22 @@
     "integratedLufs": -16.0,
     "shortTermMedianLufs": -15.7,
     "shortTermMaxLufs": -15.5,
-    "lraLu": 0.6,
-    "truePeakDbtp": -1.2
+    "lraLu": 0.7,
+    "truePeakDbtp": -2.7
   },
   "spectrum": {
-    "slopeDbPerOct": -4.68,
-    "harshnessDb": -8.9,
-    "mudDb": -2.11,
-    "boxinessDb": 2.29,
-    "voicePocketDb": 0.34,
-    "centroidHz": 743.0
+    "slopeDbPerOct": -4.19,
+    "harshnessDb": -9.71,
+    "mudDb": -2.08,
+    "boxinessDb": 1.35,
+    "voicePocketDb": -2.5,
+    "centroidHz": 782.0
+  },
+  "voice": null,
+  "aac": {
+    "truePeak128k": -2.6,
+    "truePeak128kMedian": -2.6,
+    "encodes": 5
   },
   "checks": {
     "pass": true,
@@ -102,16 +124,15 @@
   "file": "audio/music/intro-sting-zoora.wav",
   "format": "wav-24bit",
   "bytes": 1152044,
-  "description": "The jingle for src/branding ZooraSting: a harp and string shimmer, the lydian motif landing on the logo hit, two notes under the wordmark; fades out by 4.0 s with the picture.",
+  "description": "The jingle for src/branding ZooraSting: a harp and string shimmer, the lydian motif on vibes and harp landing on the logo hit, two notes under the wordmark and tag line; fades out by 4.0 s with the picture.",
   "usage": "npx remotion render src/branding/index.ts ZooraSting out/brand/zoora-ai/sting.mp4 --props='{\"jingle\":\"audio/music/intro-sting-zoora.wav\"}'",
   "instruments": [
     "VCSL concert harp",
-    "MuseScore celesta",
-    "VCSL vibraphone",
+    "VCSL vibraphone (hard and soft mallets)",
     "VCSL Kawai piano (and a reversed bloom)",
     "VSCO 2 strings",
     "VCSL bass drum, cymbal, glockenspiel"
   ],
-  "selfReview": "A harp and string shimmer rises from frame 6, and the lydian motif on celesta and vibes lands on the logo hit (frame 54) with an F-add9 bloom. Two celesta notes sit under the wordmark and tag (frames 70 and 78), and it fades with the picture. It is the most cinematic cue and quite dark (harshness -8.9). The MuseScore celesta is the weakest sample in it. Listen for whether the reversed piano bloom reads as intended or as a swoosh.",
+  "selfReview": "A harp and string shimmer rises from frame 6, and the lydian motif lands on the logo hit (frame 54) with an F-add9 bloom; two notes sit under the wordmark and tag (frames 70 and 78). Critic round 1 (2026-11-24): the MuseScore celesta (weak sample credit, a late tag note) is gone: hard-mallet vibraphone doubled by the harp carries the motif, over the soft vibes. The hit labels now use Zoora wording. It loses 2.0 LU on the phone model. Listen for whether the reversed piano bloom reads as intended or as a swoosh.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

@@ -34,6 +34,8 @@ export type MusicCue = {
 	bpm: number;
 	durationSec: number;
 	durationSamples: number;
+	/** Seconds from the file start to the music's first downbeat (the sync point); 0 unless the file has a pre-roll. */
+	downbeatSec?: number;
 	loop: MusicLoop | null;
 	hits: MusicHit[];
 	/** Path relative to public/, for staticFile(). */
@@ -42,7 +44,7 @@ export type MusicCue = {
 	integratedLufs: number | null;
 	shortTermMedianLufs: number | null;
 	truePeakDbtp: number | null;
-	profile: 'standalone' | 'sting' | 'bed';
+	profile: 'standalone' | 'sting' | 'bed' | 'endscreen';
 	/** Path relative to public/ of the cue's full metadata JSON. */
 	metadata: string;
 };
@@ -51,7 +53,7 @@ export type MusicManifest = {schema: 1; sampleRate: 48000; cues: MusicCue[]};
 
 const CUE_TYPES: readonly string[] = ['theme', 'sting', 'bumper', 'bed', 'endscreen', 'intro-sting'];
 const CHANNELS: readonly string[] = ['zoora-security', 'zoora-ai', 'both'];
-const PROFILES: readonly string[] = ['standalone', 'sting', 'bed'];
+const PROFILES: readonly string[] = ['standalone', 'sting', 'bed', 'endscreen'];
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -77,6 +79,7 @@ export const parseManifest = (json: unknown): MusicManifest => {
 		for (const k of ['bpm', 'durationSec', 'durationSamples'] as const) if (!num(c[k]) || (c[k] as number) <= 0) errors.push(`${id}: ${k} must be a positive number`);
 		if (typeof c.file !== 'string' || !/^audio\/music\/[a-z0-9-]+\.(wav|flac)$/.test(c.file)) errors.push(`${id}: file must be audio/music/<id>.wav|flac`);
 		if (num(c.durationSec) && num(c.durationSamples) && Math.abs(c.durationSec * 48000 - c.durationSamples) > 1) errors.push(`${id}: durationSec and durationSamples disagree`);
+		if (c.downbeatSec !== undefined && (!num(c.downbeatSec) || c.downbeatSec < 0 || (num(c.durationSec) && c.downbeatSec >= c.durationSec))) errors.push(`${id}: downbeatSec must be in [0, durationSec)`);
 		if (c.loop !== null) {
 			if (!isObj(c.loop)) errors.push(`${id}: loop must be null or an object`);
 			else {
@@ -107,6 +110,9 @@ export const loopFrames = (c: MusicCue, fps = 30): number => {
 	if (!c.loop) throw new Error(`${c.id} does not loop`);
 	return Math.round(((c.loop.endSample - c.loop.startSample) / 48000) * fps);
 };
+
+/** The frame to start a cue on so its first downbeat lands on `alignFrame` (theme-5s has a 2-frame pre-roll). */
+export const downbeatStartFrame = (c: MusicCue, alignFrame: number, fps = 30): number => alignFrame - Math.round((c.downbeatSec ?? 0) * fps);
 
 /** The first bar line at or after `frame` (counting from the cue's start), for in-time cuts and cross-fades. */
 export const nextBarFrame = (c: MusicCue, frame: number, fps = 30): number => {
