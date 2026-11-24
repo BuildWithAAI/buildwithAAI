@@ -60,7 +60,7 @@ export const TEXT = {
 // @fontsource/inter latin woff2 files: U+0020..U+007E, then U+00B7 (·) and U+2212 (−). Kerning is ignored. ----------
 const W600 = [252, 321, 523, 644, 650, 1004, 663, 326, 373, 373, 540, 673, 319, 465, 319, 379, 660, 423, 623, 636, 666, 612, 640, 576, 640, 640, 319, 329, 673, 673, 673, 543, 999, 728, 659, 737, 722, 605, 588, 749, 746, 277, 580, 703, 565, 922, 759, 769, 645, 773, 652, 650, 660, 736, 728, 1020, 720, 713, 652, 373, 379, 373, 481, 469, 351, 574, 624, 583, 624, 591, 389, 625, 612, 262, 262, 569, 262, 900, 612, 609, 624, 624, 397, 549, 353, 612, 587, 839, 569, 588, 566, 455, 359, 455, 673, 319, 673];
 const W700 = [237, 338, 552, 649, 655, 1016, 672, 339, 377, 377, 559, 679, 334, 468, 334, 388, 674, 431, 630, 646, 676, 622, 649, 582, 651, 649, 334, 343, 679, 679, 679, 560, 1016, 747, 662, 740, 722, 607, 587, 750, 747, 281, 584, 719, 565, 932, 762, 771, 648, 777, 657, 655, 667, 732, 747, 1038, 738, 731, 664, 377, 388, 377, 487, 476, 365, 581, 630, 588, 630, 596, 398, 632, 623, 271, 271, 580, 271, 913, 623, 613, 630, 630, 407, 560, 366, 623, 600, 850, 580, 602, 573, 469, 372, 469, 679, 334, 679];
-export const SUBSCRIPTS = '₀₁₂₃₄₅₆₇₈₉';
+export {SUBSCRIPTS};
 export const SUB_SCALE = 0.7; // subscript digits are drawn as smaller Inter digits (the latin subset has no U+2080..2089)
 /** Estimated advance width in px (+2% margin). Unknown glyphs count as 1 em, so the estimate errs wide. */
 export const textWidth = (s: string, size: number, weight: 600 | 700): number => {
@@ -105,7 +105,36 @@ export type ChartModel = {
 };
 
 const fillFor = (T: ChartTokens, d: Dir) => (d === 'up' ? T.up : d === 'down' ? T.down : T.flat);
-const volumeFillFor = (T: ChartTokens, d: Dir) => (d === 'up' ? T.volumeUp : d === 'down' ? T.volumeDown : T.flat);
+
+/**
+ * `a` of fg mixed over bg, as one flat hex colour (per channel: round(a·fg + (1−a)·bg)). This is the rule behind the
+ * spec's precomputed volume tokens: mixOver(up, surface, 0.45) === volumeUp, and the same for volumeDown, on both
+ * surfaces (scripts/test-charts.ts checks all four). tokens.ts has no doji volume colour, so it is derived by the same
+ * rule from `flat` instead of drawing doji volume at full strength (the brightest bar for the least informative candle).
+ */
+export const mixOver = (fg: string, bg: string, a: number): string => {
+	const ch = (h: string, k: number) => parseInt(h.slice(1 + 2 * k, 3 + 2 * k), 16);
+	return `#${[0, 1, 2]
+		.map((k) => Math.round(a * ch(fg, k) + (1 - a) * ch(bg, k)))
+		.map((v) => v.toString(16).toUpperCase().padStart(2, '0'))
+		.join('')}`;
+};
+export const VOLUME_MIX = 0.45;
+export const volumeFillFor = (T: ChartTokens, d: Dir) => (d === 'up' ? T.volumeUp : d === 'down' ? T.volumeDown : mixOver(T.flat, T.surface, VOLUME_MIX));
+
+/**
+ * slots() (verbatim spec code) with x0 corrected so every centre column cx(i) is EVEN (G1, G2). slots() makes x0 even,
+ * which gives an even cx only when slot/2 is even; for slot = 10, 14, 18 ... every wick would sit on an odd column and
+ * lose about a quarter of its chroma through 4:2:0 (measured by the verifiers). Then x0 is the odd column nearest the
+ * centred position, so cx = x0 + slot·i + slot/2 is even. The plot moves by at most 1 px.
+ */
+export const evenSlots = (n: number, x: number, availW: number): ReturnType<typeof slots> => {
+	const L = slots(n, x, availW);
+	const x0 = L.slot % 4 === 0 ? L.x0 : 2 * Math.floor((x + (availW - L.plotW) / 2) / 2) + 1;
+	const out = {...L, x0, cx: (i: number) => x0 + L.slot * i + L.slot / 2};
+	if (out.cx(0) % 2 !== 0 || L.slot % 2 !== 0) throw new Error(`slot ${L.slot}, x0 ${x0}: centre column ${out.cx(0)} is not even (G1)`);
+	return out;
+};
 
 /** How many candles are shown, and how many of those are complete (A8), at frame f. */
 export const revealCounts = (n: number, f: number, reveal: RevealSpec | null | undefined): {completed: number} => {
@@ -120,7 +149,7 @@ export const revealCounts = (n: number, f: number, reveal: RevealSpec | null | u
 export const calloutValue = (cs: Candle[], completed: number, candlesBack: number): number | null =>
 	completed > candlesBack ? cs[completed - 1].c / cs[completed - 1 - candlesBack].c - 1 : null;
 
-const calloutText = (r: number, label: string) => `${fmtPct(r)} ${label}`;
+const calloutText = (r: number, label: string) => `${fmtPctDisplay(r).text} ${label}`;
 
 /** The right footer label: the fictional-data label (required when illustrative) or the data attribution. */
 export const footerText = (d: ChartData, draft: boolean): string => {
