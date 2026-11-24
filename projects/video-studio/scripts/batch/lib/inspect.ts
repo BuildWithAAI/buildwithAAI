@@ -136,8 +136,8 @@ export const shortTitleOf = (text: string): string | null => {
 	return at >= 0 && lines[at + 1]?.trim() ? lines[at + 1].trim() : null;
 };
 
-const claimBlockers = (c: ClaimState, label: string): string[] => {
-	if (!c.exists) return [`${label}: the claim gate has not run (node scripts/claims/check.ts content/<channel>/<slug>${c.lang === 'en' ? '' : ` --lang ${c.lang}`}).`];
+const claimBlockers = (c: ClaimState, label: string, content: string): string[] => {
+	if (!c.exists) return [`${label}: the claim gate has not run (node scripts/claims/check.ts ${content}${c.lang === 'en' ? '' : ` --lang ${c.lang}`}).`];
 	if (c.pass === null) return [`${label}: ${c.path} is not a claim gate report.`];
 	if (!c.pass) return [`${label}: the claim gate FAILS with ${c.errors} error(s): fix them and run it again.`];
 	if (c.stale) return [`${label}: the storyboard changed after the claim gate ran: run it again.`];
@@ -193,7 +193,7 @@ export const inspectItem = async (root: string, item: PlanItem): Promise<ItemSta
 
 	// claim gate (the episode's report covers its Shorts)
 	const claims = readClaims(root, item.slug, 'en', storyboard.mtimeMs);
-	blockers.push(...claimBlockers(claims, 'English script'));
+	blockers.push(...claimBlockers(claims, 'English script', p.content));
 
 	// voice timeline
 	const timelinePath = join(root, 'public', 'generated', item.channel, item.slug, 'en', 'timeline.json');
@@ -271,7 +271,7 @@ export const inspectItem = async (root: string, item: PlanItem): Promise<ItemSta
 		const notes: string[] = [];
 		if (!sb.exists) notes.push('not translated yet (scripts/dub prepare/import)');
 		else {
-			notes.push(...claimBlockers(dc, 'gate').map((b) => b.replace(/^gate: /, '')));
+			notes.push(...claimBlockers(dc, 'gate', p.content).map((b) => b.replace(/^gate: /, '')));
 			if (!dtl.ok) notes.push('not voiced yet (voice step --fit-to en)');
 			else if (mode !== 'fit-to-master') notes.push(`voiced in "${mode ?? '?'}" mode: an audio track must fit the English picture (--fit-to en)`);
 			if (!reviewed) notes.push('machine translation: needs a native review before its track is added');

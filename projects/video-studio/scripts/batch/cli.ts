@@ -252,5 +252,10 @@ export const main = async (argv: string[], overrides: Partial<Deps> = {}): Promi
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+	// output piped into head or less that closes early is not an error
+	process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+		if (err.code === 'EPIPE') process.exit(process.exitCode ?? 0);
+		throw err;
+	});
 	process.exitCode = await main(process.argv.slice(2));
 }
