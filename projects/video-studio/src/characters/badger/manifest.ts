@@ -502,5 +502,13 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			chosen: "Right look-up uses head 'upRightScreen' on the right neck (RIGHT_HEAD_MOUNT: neck -2 deg, offset -7 / +1) and the right-side markings.",
 			why: 'Matches the panel facing and keeps right-side markings in a right-facing pose.',
 		},
+		{
+			id: 'BADGER-INT-B1-three-quarter-heads',
+			sheetShowed:
+				'badger_turn_34.png: the far contour runs OUTSIDE the far eye into the top of the nose; the nose sits at the tip of a muzzle with a short upper-lip line below it; the mouth is a long, nearly flat line starting below the near cheek spot; the far eye is narrower than the near one.',
+			chosen:
+				'Integration fix (2026-11-24, gen_heads.py fix_three_quarter): both 3/4 heads get a far outline and muzzle authored in the depth-turned space (the muzzle now wraps the turned nose and chin), a far upper-lip line instead of the snout line that crossed the far eye, a near jaw line continuing the cheek, lip lines starting low on the near cheek (the front W-line began at the cheek and read as a grin), shocked without the cheek dashes, and the far eye and brow at 0.72 of the near eye. Markings, ears, eyes and every other head view are unchanged (the head-markings output is byte-identical).',
+			why: 'Turnaround views control identity. The screen-left turn reuses the far outline of the unmarked, symmetric skull (x -> 416 - x, as the original fill34 pair did); no marking is mirrored.',
+		},
 	],
 };

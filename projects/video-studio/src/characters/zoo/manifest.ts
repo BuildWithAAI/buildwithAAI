@@ -5,7 +5,7 @@
  * docs/PROJECT_INSTRUCTIONS.md.
  */
 import {BRAND, LINE, PROP_COLORS, ZOO_COLORS} from '../palette';
-import {ARM_POINT, BREATH, EXPRESSIONS, FRONT, PIVOTS, POINT_HAND_FRAME, POINT_HAND_SWITCH} from './rig';
+import {ARM_POINT, ARM_POINT_MID, ARM_POINT_WINDUP, BREATH, EXPRESSIONS, FRONT, PIVOTS, POINT_HAND_FRAME, POINT_HAND_SWITCH} from './rig';
 import {MOUTHS} from './mouth';
 import {PIN_CENTER} from './parts/Pin';
 import {PIVOTS_34, PIVOTS_BACK, PIVOTS_SIDE, PIVOTS_TYPING, type ViewPivot} from './views/pivots';
@@ -173,7 +173,7 @@ export const ZOO_MANIFEST: ZooManifest = {
 	mouthShapes: Object.keys(MOUTHS),
 	poses: {
 		stand: 'arms relaxed at the sides',
-		point: `anatomical LEFT arm (screen right) raised to shoulder height and extended to screen right, index extended. Joint deltas at poseAmount 1: shoulder ${ARM_POINT.shoulder}, elbow ${ARM_POINT.elbow}, wrist ${ARM_POINT.wrist} deg; hand swaps at ${POINT_HAND_SWITCH}; pointing-hand frame ${POINT_HAND_FRAME} deg.`,
+		point: `anatomical LEFT arm (screen right) raised to shoulder height and extended to screen right, index extended. Joint deltas at poseAmount 1: shoulder ${ARM_POINT.shoulder}, elbow ${ARM_POINT.elbow}, wrist ${ARM_POINT.wrist} deg; hand swaps at ${POINT_HAND_SWITCH}; pointing-hand frame ${POINT_HAND_FRAME} deg. Path (INT-Z3): a quadratic joint-space arc through ARM_POINT_MID (shoulder ${ARM_POINT_MID.shoulder}, elbow ${ARM_POINT_MID.elbow}, wrist ${ARM_POINT_MID.wrist}) at poseAmount 0.5. Optional anticipation prop pointWindup 0..1 adds shoulder ${ARM_POINT_WINDUP.shoulder}, elbow ${ARM_POINT_WINDUP.elbow}, wrist ${ARM_POINT_WINDUP.wrist} deg.`,
 		typing: `seated 3/4 pose facing screen right (views/Typing.tsx), any view value; upper body = 3/4 parts offset by (${TYPING_LAYOUT.upper.dx}, ${TYPING_LAYOUT.upper.dy}); hands on the keyboard; typing=true taps fingers from the frame; layer/between props place a desk between the body and the hands`,
 	},
 	animation: {
@@ -308,6 +308,24 @@ export const ZOO_MANIFEST: ZooManifest = {
 			sheet: 'The only typing drawing is a 3/4 view facing screen right.',
 			chosen: 'pose="typing" always draws that 3/4 pose; the view prop is ignored for it.',
 			why: 'No reference exists for other typing angles; inventing one would risk drift.',
+		},
+		{
+			id: 'INT-Z1',
+			sheet: 'zoo_turn_front.png: the relaxed thumb joins the back of the hand at the top; the thumb/index notch starts about 40% down the hand, and the finger separations run about a third of the hand length.',
+			chosen: 'Integration fix (2026-11-24): the thumb is filled without a full outline; only the tip and the lower notch are stroked (THUMB_EDGE). Finger separation lines lengthened from 7 to about 18 units.',
+			why: 'The full thumb outline ran up to the cuff and read as a separate hook in the 10 s proof; front view controls anatomy.',
+		},
+		{
+			id: 'INT-Z2',
+			sheet: 'zoo_turn_front.png: the tee ends at the overshirt hem; no tee tail shows over the trousers.',
+			chosen: "Integration fix: the tee's two hem key points are corners, so the closed Catmull-Rom spline no longer overshoots ~30 units below the hem.",
+			why: 'The rounded tee tail was a spline artefact, not part of the design.',
+		},
+		{
+			id: 'INT-Z3',
+			sheet: 'zoo_pose_point.png shows only the end pose; the size-comparison panel puts Badger just beside ZOO\'s hand.',
+			chosen: 'The point blend follows a quadratic joint-space arc through ARM_POINT_MID (elbow in, forearm lifts with the hand trailing, then the upper arm opens and the hand follows through); the pointing hand swaps in at poseAmount 0.75. End pose unchanged (ARM_POINT).',
+			why: 'The old blend swung the hand through the head of a dog standing beside him (checked on the joint chain: it needed Badger 656 units away; this path clears him from 554). Overlapping action and follow-through also read as a more natural, restrained gesture.',
 		},
 	],
 	knownGaps: [
