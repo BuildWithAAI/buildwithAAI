@@ -1,0 +1,113 @@
+{
+  "v": 1,
+  "asset_id": "solana:9fs2XDSXyp3HNtGyciv7bvNtZGpCsTvActAWwS1Npump",
+  "symbol": "YE",
+  "decision": "REDUCED",
+  "score": 55,
+  "max_size_pct": 1.0,
+  "confidence": "high",
+  "hard_flags": [],
+  "top_reasons": [
+    "fresh_wallet_ratio +20: 11/16 traced early buyers were < 48.0h old at their buy (52.994% of supply)",
+    "creator_sold +15: creator sold 100.0% of the tokens it bought before as_of",
+    "fresh_deployer +10: deployer wallet age at launch: 37.34 h; primary funder FHpcNSe6tb2n15bAdq4BkeYWGyZKFD7yLYrH92ng7wCT"
+  ],
+  "as_of": "2026-11-02T01:24:23Z",
+  "valid_until": "2026-11-02T01:39:23Z",
+  "model": "aai-risk@0.1.0+smr-pumpfun-launch-risk@1.0.0+th.default",
+  "line": "YE REDUCED score=55 risk<=1.0% conf=high top=fresh_wallet_ratio",
+  "schema": "aai.risk_decision.v1",
+  "asset_class": "solana_meme",
+  "venue": "pump.fun/solana",
+  "side": "long",
+  "reasons": [
+    {
+      "code": "fresh_wallet_ratio",
+      "points": 20,
+      "severity": "warn",
+      "detail": "11/16 traced early buyers were < 48.0h old at their buy (52.994% of supply)"
+    },
+    {
+      "code": "creator_sold",
+      "points": 15,
+      "severity": "warn",
+      "detail": "creator sold 100.0% of the tokens it bought before as_of"
+    },
+    {
+      "code": "fresh_deployer",
+      "points": 10,
+      "severity": "warn",
+      "detail": "deployer wallet age at launch: 37.34 h; primary funder FHpcNSe6tb2n15bAdq4BkeYWGyZKFD7yLYrH92ng7wCT"
+    }
+  ],
+  "suggested_size": {
+    "risk_pct": 1.0,
+    "risk_pct_requested": null,
+    "tier_multiplier": null,
+    "risk_amount": 100.0,
+    "qty": null,
+    "notional": 100.0,
+    "leverage": 0.01,
+    "entry": null,
+    "stop": null,
+    "stop_distance_pct": 100.0,
+    "assumed_stop": true,
+    "bankroll": 10000.0,
+    "bankroll_assumed": false,
+    "capped_by": []
+  },
+  "metrics": {
+    "smr_score": 55,
+    "smr_decision": "REDUCED"
+  },
+  "exposure": {},
+  "guardrails": {
+    "limits": {
+      "max_total_risk_pct": 6.0,
+      "max_correlated_risk_pct": 4.0,
+      "daily_loss_limit_pct": 3.0,
+      "drawdown_reduce_pct": 10.0,
+      "drawdown_halt_pct": 20.0
+    },
+    "note": "no account state supplied (--book); guardrails not evaluated"
+  },
+  "data": {
+    "sources": [
+      "smr:python -m risk score --summary"
+    ],
+    "attempts": [
+      {
+        "venue": "smr",
+        "what": "score",
+        "ok": true
+      }
+    ],
+    "interval": null,
+    "last_candle_ts": null,
+    "candles": null
+  },
+  "warnings": [
+    "delegated to solana-meme-risk (smr); its backtest showed no demonstrated edge (held-out AUC 0.47)",
+    "memecoin positions are treated as 100% at risk (no reliable stop)"
+  ],
+  "source_summary": {
+    "v": 1,
+    "asset_id": "solana:9fs2XDSXyp3HNtGyciv7bvNtZGpCsTvActAWwS1Npump",
+    "symbol": "YE",
+    "decision": "REDUCED",
+    "score": 55,
+    "max_size_pct": 1.0,
+    "confidence": "high",
+    "hard_flags": [],
+    "top_reasons": [
+      "fresh_wallet_ratio +20: 11/16 traced early buyers were < 48.0h old at their buy (52.994% of supply)",
+      "creator_sold +15: creator sold 100.0% of the tokens it bought before as_of",
+      "fresh_deployer +10: deployer wallet age at launch: 37.34 h; primary funder FHpcNSe6tb2n15bAdq4BkeYWGyZKFD7yLYrH92ng7wCT"
+    ],
+    "as_of": "2026-11-02T01:24:23Z",
+    "valid_until": "2026-11-02T01:39:23Z",
+    "model": "smr-pumpfun-launch-risk@1.0.0+th.default",
+    "line": "YE REDUCED score=55 size<=1.0% conf=high top=fresh_wallet_ratio"
+  },
+  "disclaimer": "Risk-hygiene output only (sizing, liquidity, volatility, exposure, guardrails). It is not a trading signal and makes no claim of edge. aai-core is read-only: it never places orders, holds keys, or signs anything."
+}

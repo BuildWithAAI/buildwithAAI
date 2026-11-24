@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aai-core"
+version = "0.1.0"
+description = "Shared read-only market data + risk layer for the AAI agents (hub: AAI Terminal)"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.31", "jsonschema>=4"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+aai = "aai_core.hub.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["aai_core*", "aai"]
+
+[tool.setuptools.package-data]
+aai_core = ["schemas/*.json"]
+
+[tool.pytest.ini_options]
+markers = ["network: hits live public endpoints (deselect with -m 'not network')"]

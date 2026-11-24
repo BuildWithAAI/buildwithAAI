@@ -1,0 +1,11 @@
+{
+  "account": {"bankroll": 10000, "equity": 9850, "equity_peak": 10400, "day_start_equity": 9900},
+  "limits": {"max_total_risk_pct": 6, "max_correlated_risk_pct": 4, "daily_loss_limit_pct": 3},
+  "positions": [
+    {"agent": "perps", "asset_class": "crypto_perp", "symbol": "ETHUSDT", "side": "long", "entry": 3000, "stop": 2900, "qty": 1.5, "status": "open"},
+    {"agent": "billy_style", "asset_class": "crypto_perp", "symbol": "SOLUSDT", "side": "long", "entry": 180, "stop": 172, "qty": 20, "status": "proposed"},
+    {"agent": "forex", "asset_class": "forex", "symbol": "GBPUSD", "side": "short", "entry": 1.30, "stop": 1.31, "qty": 10000, "status": "open"},
+    {"agent": "stocks", "asset_class": "equity", "symbol": "VTI", "side": "long", "entry": 300, "qty": 5, "status": "open"},
+    {"agent": "solana_meme_risk", "asset_class": "solana_meme", "symbol": "9fs2XDSXyp3HNtGyciv7bvNtZGpCsTvActAWwS1Npump", "side": "long", "notional": 50, "status": "open"}
+  ]
+}

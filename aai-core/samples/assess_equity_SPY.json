@@ -1,0 +1,119 @@
+{
+  "v": 1,
+  "asset_id": "equity:SPY",
+  "symbol": "SPY",
+  "decision": "NORMAL",
+  "score": 15,
+  "max_size_pct": 1.0,
+  "confidence": "medium",
+  "hard_flags": [],
+  "top_reasons": [
+    "concentration +15: position would be 48.9% of bankroll"
+  ],
+  "as_of": "2026-11-02T01:24:22Z",
+  "valid_until": "2026-11-02T02:24:22Z",
+  "model": "aai-risk@0.1.0",
+  "line": "SPY NORMAL score=15 risk<=1.0% conf=medium top=concentration",
+  "schema": "aai.risk_decision.v1",
+  "asset_class": "equity",
+  "venue": "PCX",
+  "side": "long",
+  "reasons": [
+    {
+      "code": "assumed_stop",
+      "points": 0,
+      "severity": "info",
+      "detail": "no stop given: assumed 2.0x ATR14(1d) = 740.273"
+    },
+    {
+      "code": "spread",
+      "points": 0,
+      "severity": "info",
+      "detail": "spread unknown (source has no bid/ask)"
+    },
+    {
+      "code": "dollar_volume",
+      "points": 0,
+      "severity": "info",
+      "detail": "order is 0.0001% of 20d avg dollar volume"
+    },
+    {
+      "code": "concentration",
+      "points": 15,
+      "severity": "warn",
+      "detail": "position would be 48.9% of bankroll"
+    }
+  ],
+  "suggested_size": {
+    "risk_pct": 1.0,
+    "risk_amount": 500.0,
+    "entry": 755.72,
+    "stop": 740.272576251681,
+    "stop_distance_pct": 2.044067,
+    "qty": 32.36785681200789,
+    "notional": 24461.03675,
+    "leverage": 0.489221,
+    "bankroll": 50000.0,
+    "capped_by": [],
+    "risk_pct_requested": 1.0,
+    "tier_multiplier": 1.0,
+    "assumed_stop": true,
+    "bankroll_assumed": false
+  },
+  "metrics": {
+    "interval": "1d",
+    "last_price": 755.72,
+    "bid": null,
+    "ask": null,
+    "spread_bps": null,
+    "atr14": 7.723711874159505,
+    "atr14_pct": 1.022,
+    "realized_vol_annual_30": 0.11324627008898132,
+    "realized_vol_annual_100": 0.1218229686879942,
+    "vol_ratio_20_100": 0.9553805391126369,
+    "last_closed_candle_ts": 1793367000,
+    "stop_atr_multiple": 2.0,
+    "adv20_usd": 30159573987.5589,
+    "adv_fraction": 8.110537887600933e-07,
+    "position_pct_of_bankroll": 48.922,
+    "instrument_type": "ETF"
+  },
+  "exposure": {},
+  "guardrails": {
+    "limits": {
+      "max_total_risk_pct": 6.0,
+      "max_correlated_risk_pct": 4.0,
+      "daily_loss_limit_pct": 3.0,
+      "drawdown_reduce_pct": 10.0,
+      "drawdown_halt_pct": 20.0
+    },
+    "note": "no account state supplied (--book); guardrails not evaluated",
+    "max_leverage_policy": 1.0,
+    "account_type": "retirement"
+  },
+  "data": {
+    "sources": [
+      "yahoo"
+    ],
+    "attempts": [
+      {
+        "venue": "yahoo",
+        "what": "candles 1d",
+        "ok": true
+      },
+      {
+        "venue": "yahoo",
+        "what": "quote",
+        "ok": true
+      }
+    ],
+    "interval": "1d",
+    "last_candle_ts": 1793367000,
+    "candles": 300
+  },
+  "warnings": [
+    "entry not given: using current last 755.72"
+  ],
+  "source_summary": null,
+  "disclaimer": "Risk-hygiene output only (sizing, liquidity, volatility, exposure, guardrails). It is not a trading signal and makes no claim of edge. aai-core is read-only: it never places orders, holds keys, or signs anything."
+}

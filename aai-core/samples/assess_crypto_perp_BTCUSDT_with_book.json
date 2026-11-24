@@ -1,0 +1,332 @@
+{
+  "v": 1,
+  "asset_id": "crypto_perp:BTC-USDT",
+  "symbol": "BTC-USDT",
+  "decision": "REDUCED",
+  "score": 10,
+  "max_size_pct": 0.4,
+  "confidence": "medium",
+  "hard_flags": [],
+  "top_reasons": [
+    "book_depth +10: order is 26% of same-side top-20 depth"
+  ],
+  "as_of": "2026-11-02T01:24:24Z",
+  "valid_until": "2026-11-02T01:29:24Z",
+  "model": "aai-risk@0.1.0",
+  "line": "BTC-USDT REDUCED score=10 risk<=0.4% conf=medium top=book_depth",
+  "schema": "aai.risk_decision.v1",
+  "asset_class": "crypto_perp",
+  "venue": "blofin",
+  "side": "long",
+  "reasons": [
+    {
+      "code": "assumed_stop",
+      "points": 0,
+      "severity": "info",
+      "detail": "no stop given: assumed 2.0x ATR14(1h) = 78049"
+    },
+    {
+      "code": "spread",
+      "points": 0,
+      "severity": "info",
+      "detail": "spread 0.04 bps"
+    },
+    {
+      "code": "book_depth",
+      "points": 10,
+      "severity": "warn",
+      "detail": "order is 26% of same-side top-20 depth"
+    },
+    {
+      "code": "risk_budget_cap",
+      "points": 0,
+      "severity": "warn",
+      "detail": "total risk budget: 4.6% used of 6.0%; correlated risk budget: 360.00 already at risk in positions moving with this one (limit 4.0%)"
+    }
+  ],
+  "suggested_size": {
+    "risk_pct": 0.4,
+    "risk_amount": 40.0,
+    "entry": 78553.9,
+    "stop": 78049.01163673835,
+    "stop_distance_pct": 0.642729,
+    "qty": 0.07922543459230165,
+    "notional": 6223.466866,
+    "leverage": 0.622347,
+    "bankroll": 10000.0,
+    "capped_by": [
+      "total risk budget: 4.6% used of 6.0%",
+      "correlated risk budget: 360.00 already at risk in positions moving with this one (limit 4.0%)"
+    ],
+    "risk_pct_requested": 2.0,
+    "tier_multiplier": 1.0,
+    "assumed_stop": true,
+    "bankroll_assumed": false
+  },
+  "metrics": {
+    "interval": "1h",
+    "last_price": 78553.6,
+    "bid": 78553.6,
+    "ask": 78553.9,
+    "spread_bps": 0.038,
+    "atr14": 252.44418163082418,
+    "atr14_pct": 0.3232,
+    "realized_vol_annual_30": 0.17234186321637318,
+    "realized_vol_annual_100": 0.41971711991732596,
+    "vol_ratio_20_100": 0.4855334813431533,
+    "last_closed_candle_ts": 1793577600,
+    "stop_atr_multiple": 2.0,
+    "depth": {
+      "levels": 20,
+      "bid_notional": 314905.42,
+      "ask_notional": 121445.62
+    },
+    "depth_fraction": 0.25622442647169985,
+    "funding_rate": 0.00022,
+    "funding_interval_h": 8.0,
+    "funding_8h_equiv": 0.00022,
+    "funding_cost_8h_for_side": 0.00022,
+    "open_interest_usd": 345509761.47,
+    "volume_24h_quote": 98532247.06
+  },
+  "exposure": {
+    "bankroll": 10000.0,
+    "n_positions": 5,
+    "gross": 22650.0,
+    "net": -3350.0,
+    "total_risk": 460.0,
+    "long_term_notional": 1500.0,
+    "long_term_pct": 15.0,
+    "gross_pct": 226.5,
+    "net_pct": -33.5,
+    "total_risk_pct": 4.6,
+    "by_asset_class": {
+      "crypto_perp": {
+        "gross": 8100.0,
+        "net": 8100.0,
+        "risk": 310.0,
+        "n": 2,
+        "gross_pct": 81.0,
+        "net_pct": 81.0,
+        "risk_pct": 3.1
+      },
+      "forex": {
+        "gross": 13000.0,
+        "net": -13000.0,
+        "risk": 100.0,
+        "n": 1,
+        "gross_pct": 130.0,
+        "net_pct": -130.0,
+        "risk_pct": 1.0
+      },
+      "equity": {
+        "gross": 1500.0,
+        "net": 1500.0,
+        "risk": 0.0,
+        "n": 1,
+        "gross_pct": 15.0,
+        "net_pct": 15.0,
+        "risk_pct": 0.0
+      },
+      "solana_meme": {
+        "gross": 50.0,
+        "net": 50.0,
+        "risk": 50.0,
+        "n": 1,
+        "gross_pct": 0.5,
+        "net_pct": 0.5,
+        "risk_pct": 0.5
+      }
+    },
+    "by_agent": {
+      "perps": {
+        "gross": 4500.0,
+        "net": 4500.0,
+        "risk": 150.0,
+        "n": 1,
+        "gross_pct": 45.0,
+        "net_pct": 45.0,
+        "risk_pct": 1.5
+      },
+      "billy_style": {
+        "gross": 3600.0,
+        "net": 3600.0,
+        "risk": 160.0,
+        "n": 1,
+        "gross_pct": 36.0,
+        "net_pct": 36.0,
+        "risk_pct": 1.6
+      },
+      "forex": {
+        "gross": 13000.0,
+        "net": -13000.0,
+        "risk": 100.0,
+        "n": 1,
+        "gross_pct": 130.0,
+        "net_pct": -130.0,
+        "risk_pct": 1.0
+      },
+      "stocks": {
+        "gross": 1500.0,
+        "net": 1500.0,
+        "risk": 0.0,
+        "n": 1,
+        "gross_pct": 15.0,
+        "net_pct": 15.0,
+        "risk_pct": 0.0
+      },
+      "solana_meme_risk": {
+        "gross": 50.0,
+        "net": 50.0,
+        "risk": 50.0,
+        "n": 1,
+        "gross_pct": 0.5,
+        "net_pct": 0.5,
+        "risk_pct": 0.5
+      }
+    },
+    "positions": [
+      {
+        "agent": "perps",
+        "asset_class": "crypto_perp",
+        "symbol": "ETHUSDT",
+        "side": "long",
+        "status": "open",
+        "horizon": "trading",
+        "notional": 4500.0,
+        "risk_amount": 150.0
+      },
+      {
+        "agent": "billy_style",
+        "asset_class": "crypto_perp",
+        "symbol": "SOLUSDT",
+        "side": "long",
+        "status": "proposed",
+        "horizon": "trading",
+        "notional": 3600.0,
+        "risk_amount": 160.0
+      },
+      {
+        "agent": "forex",
+        "asset_class": "forex",
+        "symbol": "GBPUSD",
+        "side": "short",
+        "status": "open",
+        "horizon": "trading",
+        "notional": 13000.0,
+        "risk_amount": 100.0
+      },
+      {
+        "agent": "stocks",
+        "asset_class": "equity",
+        "symbol": "VTI",
+        "side": "long",
+        "status": "open",
+        "horizon": "long_term",
+        "notional": 1500.0,
+        "risk_amount": 0.0
+      },
+      {
+        "agent": "solana_meme_risk",
+        "asset_class": "solana_meme",
+        "symbol": "9fs2XDSXyp3HNtGyciv7bvNtZGpCsTvActAWwS1Npump",
+        "side": "long",
+        "status": "open",
+        "horizon": "trading",
+        "notional": 50.0,
+        "risk_amount": 50.0
+      }
+    ],
+    "correlated": {
+      "threshold": 0.7,
+      "members": [
+        {
+          "symbol": "ETHUSDT",
+          "agent": "perps",
+          "corr": 0.895,
+          "assumed": false,
+          "risk_amount": 150.0
+        },
+        {
+          "symbol": "SOLUSDT",
+          "agent": "billy_style",
+          "corr": 0.836,
+          "assumed": false,
+          "risk_amount": 160.0
+        },
+        {
+          "symbol": "9fs2XDSXyp3HNtGyciv7bvNtZGpCsTvActAWwS1Npump",
+          "agent": "solana_meme_risk",
+          "corr": 0.8,
+          "assumed": true,
+          "risk_amount": 50.0
+        }
+      ],
+      "existing_correlated_risk": 360.0
+    },
+    "room": {
+      "total_risk": 140.0,
+      "correlated_risk": 40.0
+    }
+  },
+  "guardrails": {
+    "limits": {
+      "max_total_risk_pct": 6.0,
+      "max_correlated_risk_pct": 4.0,
+      "daily_loss_limit_pct": 3.0,
+      "drawdown_reduce_pct": 10.0,
+      "drawdown_halt_pct": 20.0
+    },
+    "day_pnl_pct": -0.5051,
+    "drawdown_pct": 5.2885,
+    "max_leverage_policy": 5.0,
+    "account_type": "margin"
+  },
+  "data": {
+    "sources": [
+      "blofin"
+    ],
+    "attempts": [
+      {
+        "venue": "bybit",
+        "what": "candles 1h",
+        "ok": false,
+        "error": "bybit: HTTP 403: {\n    error:The Amazon CloudFront distribution is configured to block access from your country\n}"
+      },
+      {
+        "venue": "blofin",
+        "what": "candles 1h",
+        "ok": true
+      },
+      {
+        "venue": "blofin",
+        "what": "quote",
+        "ok": true
+      },
+      {
+        "venue": "blofin",
+        "what": "candles 1d",
+        "ok": true
+      },
+      {
+        "venue": "blofin",
+        "what": "candles 1d",
+        "ok": true
+      },
+      {
+        "venue": "blofin",
+        "what": "candles 1d",
+        "ok": true
+      }
+    ],
+    "interval": "1h",
+    "last_candle_ts": 1793577600,
+    "candles": 200
+  },
+  "warnings": [
+    "entry not given: using current ask 78553.9",
+    "primary venue unavailable; data from fallback venue blofin (prices/funding may differ from the user's venue)"
+  ],
+  "source_summary": null,
+  "disclaimer": "Risk-hygiene output only (sizing, liquidity, volatility, exposure, guardrails). It is not a trading signal and makes no claim of edge. aai-core is read-only: it never places orders, holds keys, or signs anything."
+}

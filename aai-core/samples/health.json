@@ -1,0 +1,141 @@
+{
+  "overall": "pass",
+  "provider": "public:bybit,blofin,okx,yahoo,frankfurter+smr",
+  "checked_at": 1793582661,
+  "checks": [
+    {
+      "check": "crypto_perp:bybit",
+      "pass": false,
+      "required": false,
+      "ms": 414,
+      "detail": "SourceBlocked: bybit: HTTP 403: {\n    error:The Amazon CloudFront distribution is configured to block access from your country\n}"
+    },
+    {
+      "check": "crypto_perp:blofin",
+      "pass": true,
+      "required": false,
+      "ms": 1234,
+      "detail": {
+        "candles": 5,
+        "last": 78564.8,
+        "spread_bps": 0.115,
+        "funding_rate": 0.00022,
+        "oi_usd": 345559023.5
+      }
+    },
+    {
+      "check": "crypto_perp:okx",
+      "pass": true,
+      "required": false,
+      "ms": 1310,
+      "detail": {
+        "candles": 5,
+        "last": 78559.5,
+        "spread_bps": 0.013,
+        "funding_rate": 0.0001,
+        "oi_usd": 2653551819.6626844
+      }
+    },
+    {
+      "check": "crypto_perp:any_venue",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": {
+        "working": [
+          "blofin",
+          "okx"
+        ],
+        "order": [
+          "bybit",
+          "blofin",
+          "okx"
+        ]
+      }
+    },
+    {
+      "check": "forex:yahoo_eurusd",
+      "pass": true,
+      "required": true,
+      "ms": 156,
+      "detail": {
+        "candles_1h": 50,
+        "last": 1.1173
+      }
+    },
+    {
+      "check": "forex:frankfurter_ecb",
+      "pass": true,
+      "required": false,
+      "ms": 49,
+      "detail": {
+        "date": "2026-10-30",
+        "rate": 1.1172
+      }
+    },
+    {
+      "check": "equity:yahoo_spy",
+      "pass": true,
+      "required": true,
+      "ms": 183,
+      "detail": {
+        "candles_1d": 300,
+        "last": 755.72
+      }
+    },
+    {
+      "check": "cache_db_rw",
+      "pass": true,
+      "required": true,
+      "ms": 3,
+      "detail": "/workspace/aai-core/data/cache.db"
+    },
+    {
+      "check": "schema:risk_decision.v1",
+      "pass": true,
+      "required": true,
+      "ms": 39,
+      "detail": "/workspace/aai-core/aai_core/schemas/risk_decision.v1.json"
+    },
+    {
+      "check": "imports",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "16 modules"
+    },
+    {
+      "check": "tests_quick",
+      "pass": true,
+      "required": true,
+      "ms": 499,
+      "detail": "49 passed, 3 deselected in 0.33s"
+    },
+    {
+      "check": "smr_health",
+      "pass": true,
+      "required": true,
+      "ms": 7170,
+      "detail": {
+        "overall": "pass",
+        "provider": "public-rpc",
+        "n_checks": 45,
+        "failed": [
+          "solscan_public_api (optional, not used)"
+        ],
+        "shape_problems": [],
+        "home": "/workspace/solana-meme-risk"
+      }
+    },
+    {
+      "check": "e2e_assess_crypto_perp",
+      "pass": true,
+      "required": true,
+      "ms": 1301,
+      "detail": {
+        "line": "BTC-USDT NORMAL score=0 risk<=1.0% conf=medium top=none",
+        "schema_valid": true
+      }
+    }
+  ]
+}

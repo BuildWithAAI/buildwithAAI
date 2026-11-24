@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aai.local/schemas/risk_decision.v1.json",
+  "title": "AAI risk_decision v1",
+  "description": "Unified per-asset risk decision for every AAI agent. The first 13 properties (v .. line) are exactly smr's orchestrator_summary v1 contract (a risk_decision projected onto those keys validates against smr's schema); the rest are additive. max_size_pct = max % of bankroll AT RISK (loss if the stop is hit; for solana_meme positions the whole position is treated as at risk).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "schema", "asset_id", "symbol", "decision", "score", "max_size_pct", "confidence", "hard_flags",
+               "top_reasons", "as_of", "valid_until", "model", "line", "asset_class", "side", "reasons",
+               "suggested_size", "metrics", "exposure", "guardrails", "data", "warnings", "disclaimer"],
+  "$defs": {
+    "decision": {"enum": ["SKIP", "REDUCED", "NORMAL"]},
+    "iso_time": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "num": {"type": ["number", "null"]},
+    "reason": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "points", "severity", "detail"],
+      "properties": {
+        "code": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "points": {"type": "integer", "minimum": 0, "maximum": 100},
+        "severity": {"enum": ["info", "warn", "hard"]},
+        "detail": {"type": "string", "maxLength": 300}
+      }
+    }
+  },
+  "properties": {
+    "v": {"const": 1},
+    "asset_id": {"type": "string", "description": "<asset_class>:<symbol>, or smr's 'solana:<mint>'"},
+    "symbol": {"type": ["string", "null"]},
+    "decision": {"$ref": "#/$defs/decision"},
+    "score": {"type": "integer", "minimum": 0, "maximum": 100, "description": "risk points (higher = riskier); SKIP>=60, REDUCED>=30"},
+    "max_size_pct": {"type": "number", "minimum": 0, "maximum": 3},
+    "confidence": {"enum": ["low", "medium", "high"]},
+    "hard_flags": {"type": "array", "items": {"type": "string"}},
+    "top_reasons": {"type": "array", "items": {"type": "string", "maxLength": 160}, "maxItems": 3},
+    "as_of": {"$ref": "#/$defs/iso_time"},
+    "valid_until": {"$ref": "#/$defs/iso_time"},
+    "model": {"type": "string"},
+    "line": {"type": "string", "maxLength": 240},
+
+    "schema": {"const": "aai.risk_decision.v1"},
+    "asset_class": {"enum": ["crypto_perp", "forex", "equity", "solana_meme"]},
+    "venue": {"type": ["string", "null"]},
+    "side": {"enum": ["long", "short"]},
+    "reasons": {"type": "array", "items": {"$ref": "#/$defs/reason"}},
+    "suggested_size": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "required": ["risk_pct", "risk_amount", "qty", "notional", "leverage", "entry", "stop", "assumed_stop", "bankroll", "bankroll_assumed", "capped_by"],
+      "properties": {
+        "risk_pct": {"type": "number", "minimum": 0, "maximum": 3},
+        "risk_pct_requested": {"$ref": "#/$defs/num"},
+        "tier_multiplier": {"$ref": "#/$defs/num"},
+        "risk_amount": {"type": "number", "minimum": 0},
+        "qty": {"$ref": "#/$defs/num"},
+        "notional": {"$ref": "#/$defs/num"},
+        "leverage": {"$ref": "#/$defs/num"},
+        "entry": {"$ref": "#/$defs/num"},
+        "stop": {"$ref": "#/$defs/num"},
+        "stop_distance_pct": {"$ref": "#/$defs/num"},
+        "assumed_stop": {"type": "boolean"},
+        "bankroll": {"type": "number", "exclusiveMinimum": 0},
+        "bankroll_assumed": {"type": "boolean"},
+        "capped_by": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "metrics": {"type": "object"},
+    "exposure": {"type": "object"},
+    "guardrails": {"type": "object"},
+    "data": {
+      "type": "object", "required": ["sources", "attempts"],
+      "properties": {"sources": {"type": "array", "items": {"type": "string"}}, "attempts": {"type": "array"}, "interval": {"type": ["string", "null"]},
+                     "last_candle_ts": {"type": ["integer", "null"]}, "candles": {"type": ["integer", "null"]}}
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "source_summary": {"type": ["object", "null"], "description": "verbatim smr orchestrator_summary when delegated"},
+    "disclaimer": {"type": "string"}
+  }
+}

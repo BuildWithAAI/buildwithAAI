@@ -1,0 +1,120 @@
+{
+  "v": 1,
+  "asset_id": "crypto_perp:BTC-USDT",
+  "symbol": "BTC-USDT",
+  "decision": "NORMAL",
+  "score": 0,
+  "max_size_pct": 1.0,
+  "confidence": "medium",
+  "hard_flags": [],
+  "top_reasons": [],
+  "as_of": "2026-11-02T01:24:21Z",
+  "valid_until": "2026-11-02T01:29:21Z",
+  "model": "aai-risk@0.1.0",
+  "line": "BTC-USDT NORMAL score=0 risk<=1.0% conf=medium top=none",
+  "schema": "aai.risk_decision.v1",
+  "asset_class": "crypto_perp",
+  "venue": "blofin",
+  "side": "long",
+  "reasons": [
+    {
+      "code": "spread",
+      "points": 0,
+      "severity": "info",
+      "detail": "spread 0.04 bps"
+    },
+    {
+      "code": "book_depth",
+      "points": 0,
+      "severity": "info",
+      "detail": "order is 3.15% of same-side top-20 depth"
+    }
+  ],
+  "suggested_size": {
+    "risk_pct": 1.0,
+    "risk_amount": 100.0,
+    "entry": 78553.9,
+    "stop": 76500.0,
+    "stop_distance_pct": 2.614638,
+    "qty": 0.048687862115974624,
+    "notional": 3824.621452,
+    "leverage": 0.382462,
+    "bankroll": 10000.0,
+    "capped_by": [],
+    "risk_pct_requested": 1.0,
+    "tier_multiplier": 1.0,
+    "assumed_stop": false,
+    "bankroll_assumed": false
+  },
+  "metrics": {
+    "interval": "1h",
+    "last_price": 78553.6,
+    "bid": 78553.6,
+    "ask": 78553.9,
+    "spread_bps": 0.038,
+    "atr14": 252.44418163082418,
+    "atr14_pct": 0.3232,
+    "realized_vol_annual_30": 0.17234186321637318,
+    "realized_vol_annual_100": 0.41971711991732596,
+    "vol_ratio_20_100": 0.4855334813431533,
+    "last_closed_candle_ts": 1793577600,
+    "stop_atr_multiple": 8.136,
+    "depth": {
+      "levels": 20,
+      "bid_notional": 314905.42,
+      "ask_notional": 121445.62
+    },
+    "depth_fraction": 0.03149246100435734,
+    "funding_rate": 0.00022,
+    "funding_interval_h": 8.0,
+    "funding_8h_equiv": 0.00022,
+    "funding_cost_8h_for_side": 0.00022,
+    "open_interest_usd": 345509761.47,
+    "volume_24h_quote": 98532247.06
+  },
+  "exposure": {},
+  "guardrails": {
+    "limits": {
+      "max_total_risk_pct": 6.0,
+      "max_correlated_risk_pct": 4.0,
+      "daily_loss_limit_pct": 3.0,
+      "drawdown_reduce_pct": 10.0,
+      "drawdown_halt_pct": 20.0
+    },
+    "note": "no account state supplied (--book); guardrails not evaluated",
+    "max_leverage_policy": 5.0,
+    "account_type": "margin"
+  },
+  "data": {
+    "sources": [
+      "blofin"
+    ],
+    "attempts": [
+      {
+        "venue": "bybit",
+        "what": "candles 1h",
+        "ok": false,
+        "error": "bybit: HTTP 403: {\n    error:The Amazon CloudFront distribution is configured to block access from your country\n}"
+      },
+      {
+        "venue": "blofin",
+        "what": "candles 1h",
+        "ok": true
+      },
+      {
+        "venue": "blofin",
+        "what": "quote",
+        "ok": true
+      }
+    ],
+    "interval": "1h",
+    "last_candle_ts": 1793577600,
+    "candles": 200
+  },
+  "warnings": [
+    "entry not given: using current ask 78553.9",
+    "primary venue unavailable; data from fallback venue blofin (prices/funding may differ from the user's venue)"
+  ],
+  "source_summary": null,
+  "disclaimer": "Risk-hygiene output only (sizing, liquidity, volatility, exposure, guardrails). It is not a trading signal and makes no claim of edge. aai-core is read-only: it never places orders, holds keys, or signs anything."
+}

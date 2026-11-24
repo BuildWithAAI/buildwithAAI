@@ -1,0 +1,3 @@
+requests>=2.31
+jsonschema>=4
+pytest>=7  # tests + health tests_quick

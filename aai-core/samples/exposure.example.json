@@ -1,0 +1,161 @@
+{
+  "bankroll": 10000,
+  "n_positions": 5,
+  "gross": 22650.0,
+  "net": -3350.0,
+  "total_risk": 460.0,
+  "long_term_notional": 1500.0,
+  "long_term_pct": 15.0,
+  "gross_pct": 226.5,
+  "net_pct": -33.5,
+  "total_risk_pct": 4.6,
+  "by_asset_class": {
+    "crypto_perp": {
+      "gross": 8100.0,
+      "net": 8100.0,
+      "risk": 310.0,
+      "n": 2,
+      "gross_pct": 81.0,
+      "net_pct": 81.0,
+      "risk_pct": 3.1
+    },
+    "forex": {
+      "gross": 13000.0,
+      "net": -13000.0,
+      "risk": 100.0,
+      "n": 1,
+      "gross_pct": 130.0,
+      "net_pct": -130.0,
+      "risk_pct": 1.0
+    },
+    "equity": {
+      "gross": 1500.0,
+      "net": 1500.0,
+      "risk": 0.0,
+      "n": 1,
+      "gross_pct": 15.0,
+      "net_pct": 15.0,
+      "risk_pct": 0.0
+    },
+    "solana_meme": {
+      "gross": 50.0,
+      "net": 50.0,
+      "risk": 50.0,
+      "n": 1,
+      "gross_pct": 0.5,
+      "net_pct": 0.5,
+      "risk_pct": 0.5
+    }
+  },
+  "by_agent": {
+    "perps": {
+      "gross": 4500.0,
+      "net": 4500.0,
+      "risk": 150.0,
+      "n": 1,
+      "gross_pct": 45.0,
+      "net_pct": 45.0,
+      "risk_pct": 1.5
+    },
+    "billy_style": {
+      "gross": 3600.0,
+      "net": 3600.0,
+      "risk": 160.0,
+      "n": 1,
+      "gross_pct": 36.0,
+      "net_pct": 36.0,
+      "risk_pct": 1.6
+    },
+    "forex": {
+      "gross": 13000.0,
+      "net": -13000.0,
+      "risk": 100.0,
+      "n": 1,
+      "gross_pct": 130.0,
+      "net_pct": -130.0,
+      "risk_pct": 1.0
+    },
+    "stocks": {
+      "gross": 1500.0,
+      "net": 1500.0,
+      "risk": 0.0,
+      "n": 1,
+      "gross_pct": 15.0,
+      "net_pct": 15.0,
+      "risk_pct": 0.0
+    },
+    "solana_meme_risk": {
+      "gross": 50.0,
+      "net": 50.0,
+      "risk": 50.0,
+      "n": 1,
+      "gross_pct": 0.5,
+      "net_pct": 0.5,
+      "risk_pct": 0.5
+    }
+  },
+  "positions": [
+    {
+      "agent": "perps",
+      "asset_class": "crypto_perp",
+      "symbol": "ETHUSDT",
+      "side": "long",
+      "status": "open",
+      "horizon": "trading",
+      "notional": 4500.0,
+      "risk_amount": 150.0
+    },
+    {
+      "agent": "billy_style",
+      "asset_class": "crypto_perp",
+      "symbol": "SOLUSDT",
+      "side": "long",
+      "status": "proposed",
+      "horizon": "trading",
+      "notional": 3600.0,
+      "risk_amount": 160.0
+    },
+    {
+      "agent": "forex",
+      "asset_class": "forex",
+      "symbol": "GBPUSD",
+      "side": "short",
+      "status": "open",
+      "horizon": "trading",
+      "notional": 13000.0,
+      "risk_amount": 100.0
+    },
+    {
+      "agent": "stocks",
+      "asset_class": "equity",
+      "symbol": "VTI",
+      "side": "long",
+      "status": "open",
+      "horizon": "long_term",
+      "notional": 1500.0,
+      "risk_amount": 0.0
+    },
+    {
+      "agent": "solana_meme_risk",
+      "asset_class": "solana_meme",
+      "symbol": "9fs2XDSXyp3HNtGyciv7bvNtZGpCsTvActAWwS1Npump",
+      "side": "long",
+      "status": "open",
+      "horizon": "trading",
+      "notional": 50.0,
+      "risk_amount": 50.0
+    }
+  ],
+  "limits": {
+    "max_total_risk_pct": 6.0,
+    "max_correlated_risk_pct": 4.0,
+    "daily_loss_limit_pct": 3.0,
+    "drawdown_reduce_pct": 10.0,
+    "drawdown_halt_pct": 20.0
+  },
+  "guardrails": {
+    "day_pnl_pct": -0.5051,
+    "drawdown_pct": 5.2885
+  },
+  "guardrail_flags": []
+}

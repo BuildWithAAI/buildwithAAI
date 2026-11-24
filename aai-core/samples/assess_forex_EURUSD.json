@@ -1,0 +1,108 @@
+{
+  "v": 1,
+  "asset_id": "forex:EURUSD",
+  "symbol": "EURUSD",
+  "decision": "NORMAL",
+  "score": 0,
+  "max_size_pct": 1.0,
+  "confidence": "medium",
+  "hard_flags": [],
+  "top_reasons": [],
+  "as_of": "2026-11-02T01:24:22Z",
+  "valid_until": "2026-11-02T01:39:22Z",
+  "model": "aai-risk@0.1.0",
+  "line": "EURUSD NORMAL score=0 risk<=1.0% conf=medium top=none",
+  "schema": "aai.risk_decision.v1",
+  "asset_class": "forex",
+  "venue": "yahoo",
+  "side": "short",
+  "reasons": [
+    {
+      "code": "spread",
+      "points": 0,
+      "severity": "info",
+      "detail": "spread unknown (source has no bid/ask)"
+    }
+  ],
+  "suggested_size": {
+    "risk_pct": 1.0,
+    "risk_amount": 100.0,
+    "entry": 1.1173,
+    "stop": 1.125,
+    "stop_distance_pct": 0.689161,
+    "qty": 12987.012987012919,
+    "notional": 14510.38961,
+    "leverage": 1.451039,
+    "bankroll": 10000.0,
+    "capped_by": [],
+    "risk_pct_requested": 1.0,
+    "tier_multiplier": 1.0,
+    "assumed_stop": false,
+    "bankroll_assumed": false
+  },
+  "metrics": {
+    "interval": "1h",
+    "last_price": 1.1173,
+    "bid": null,
+    "ask": null,
+    "spread_bps": null,
+    "atr14": 0.0012633034224209215,
+    "atr14_pct": 0.1131,
+    "realized_vol_annual_30": 0.06825066722611212,
+    "realized_vol_annual_100": 0.053751591396274966,
+    "vol_ratio_20_100": 1.2710823548292367,
+    "last_closed_candle_ts": 1793581200,
+    "quote_to_account": 1.0,
+    "account_currency": "USD",
+    "stop_atr_multiple": 6.095,
+    "ecb_reference": {
+      "date": "2026-10-30",
+      "rate": 1.1172
+    },
+    "ecb_deviation_pct": 0.009
+  },
+  "exposure": {},
+  "guardrails": {
+    "limits": {
+      "max_total_risk_pct": 6.0,
+      "max_correlated_risk_pct": 4.0,
+      "daily_loss_limit_pct": 3.0,
+      "drawdown_reduce_pct": 10.0,
+      "drawdown_halt_pct": 20.0
+    },
+    "note": "no account state supplied (--book); guardrails not evaluated",
+    "max_leverage_policy": 20.0,
+    "account_type": "margin"
+  },
+  "data": {
+    "sources": [
+      "frankfurter",
+      "yahoo"
+    ],
+    "attempts": [
+      {
+        "venue": "yahoo",
+        "what": "candles 1h",
+        "ok": true
+      },
+      {
+        "venue": "yahoo",
+        "what": "quote",
+        "ok": true
+      },
+      {
+        "venue": "frankfurter",
+        "what": "ecb_reference",
+        "ok": true
+      }
+    ],
+    "interval": "1h",
+    "last_candle_ts": 1793581200,
+    "candles": 200
+  },
+  "warnings": [
+    "no broker feed: real MT5 spread, swap and slippage unknown"
+  ],
+  "source_summary": null,
+  "disclaimer": "Risk-hygiene output only (sizing, liquidity, volatility, exposure, guardrails). It is not a trading signal and makes no claim of edge. aai-core is read-only: it never places orders, holds keys, or signs anything."
+}
