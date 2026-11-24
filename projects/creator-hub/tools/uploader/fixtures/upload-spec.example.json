@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "categoryId": "28",
+  "tags": ["crypto security", "wallet scams"],
+  "localizations": {
+    "es": {
+      "title": "POV: el \"soporte\" te escribe primero",
+      "description": "Contiene un enlace de afiliado (aviso abajo).\n\nEl soporte real nunca te escribe primero.\n\nBilletera física: https://go.zoora.ai/go/hardware-wallet?v=uploader-fixture&s=yt\nEnlace de afiliado: puedo ganar una comisión si compras. No te cuesta nada extra.\n\nHistoria ficticia con personajes compuestos. No es asesoría financiera."
+    },
+    "pt-br": {
+      "title": "POV: o \"suporte\" te chama primeiro",
+      "description": "Contém um link de afiliado (aviso abaixo).\n\nO suporte de verdade nunca te chama primeiro.\n\nCarteira física: https://go.zoora.ai/go/hardware-wallet?v=uploader-fixture&s=yt\nLink de afiliado: posso ganhar uma comissão se você comprar. Não custa nada a mais para você.\n\nHistória fictícia com personagens compostos. Não é aconselhamento financeiro."
+    }
+  },
+  "captions": [
+    {"language": "es", "name": "Subtítulos", "file": "out/publish/zoora-ai/uploader-fixture/captions.es.srt"},
+    {"language": "pt-br", "name": "Legendas", "file": "out/publish/zoora-ai/uploader-fixture/captions.pt-br.srt"}
+  ]
+}

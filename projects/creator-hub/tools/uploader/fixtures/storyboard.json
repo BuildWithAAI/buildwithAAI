@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "uploader-fixture",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "POV: \"Support\" DMs you first",
+  "fiction": true,
+  "scenes": [
+    {"id": "s01", "type": "hook", "narration": "A stranger says he is from wallet support. Real support never messages you first."}
+  ],
+  "sources": []
+}

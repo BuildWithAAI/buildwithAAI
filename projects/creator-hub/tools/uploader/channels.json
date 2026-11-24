@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "note": "Upload settings per channel slug (tools/uploader). Not secret. categoryId is an owner decision: run 'node tools/uploader/cli.ts categories' to list YouTube's. youtubeChannelId pins the channel an approval may upload to (set it after 'auth'). Playlists null = no playlist step.",
+  "dailyLimits": {"defaultUnits": 10000, "uploadCalls": 100},
+  "maxUnitsPerRun": 3000,
+  "minLeadMinutes": 60,
+  "approvalMaxDays": 30,
+  "channels": {
+    "zoora-ai": {
+      "youtubeChannelId": null,
+      "categoryId": null,
+      "defaultLanguage": "en",
+      "playlists": {"long": null, "short": null}
+    },
+    "zoora-security": {
+      "youtubeChannelId": null,
+      "categoryId": null,
+      "defaultLanguage": "en",
+      "playlists": {"long": null, "short": null}
+    }
+  }
+}

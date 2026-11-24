@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "uploader-fixture",
+  "youtubeVideoId": null,
+  "title": "POV: \"Support\" DMs you first",
+  "titleOptions": ["POV: \"Support\" DMs you first", "The fake support agent playbook"],
+  "summary": "A stranger in your DMs says he is from wallet support and needs you to verify your wallet. We follow the trick step by step and show the one habit that stops it.",
+  "chapters": [
+    {"start": "00:00", "title": "Cold open"},
+    {"start": "00:42", "title": "Why real support never DMs you first"},
+    {"start": "02:05", "title": "The fake verification link"}
+  ],
+  "sources": [{"title": "FTC: What to know about cryptocurrency and scams", "url": "https://consumer.ftc.gov/articles/what-know-about-cryptocurrency-and-scams"}],
+  "offers": [{"id": "hardware-wallet", "hubUrl": "https://go.zoora.ai/go/hardware-wallet?v=uploader-fixture&s=yt", "disclosure": "Affiliate link: I may earn a commission if you buy. It costs you nothing extra."}],
+  "disclosures": ["Affiliate link: I may earn a commission if you buy. It costs you nothing extra.", "Fictional story with composite characters. Not financial advice."],
+  "posts": {
+    "youtube": {"text": "Contains an affiliate link (disclosure below).\n\nReal support never DMs you first. We follow a fake support scam step by step.\n\nHardware wallet: https://go.zoora.ai/go/hardware-wallet?v=uploader-fixture&s=yt\nAffiliate link: I may earn a commission if you buy. It costs you nothing extra.\n\n00:00 Cold open\n00:42 Why real support never DMs you first\n02:05 The fake verification link\n\nSources\nFTC: What to know about cryptocurrency and scams https://consumer.ftc.gov/articles/what-know-about-cryptocurrency-and-scams\n\nFictional story with composite characters. Not financial advice.\n#crypto #scams #security", "charCount": 600, "limit": 5000, "notes": []},
+    "shorts": {"text": "Real support never DMs you first.\nFull episode: tap the related video link under the channel name.\nMore links: go.zoora.ai\n#crypto #scams #security", "charCount": 140, "limit": 5000, "notes": []},
+    "tiktok": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 2200, "notes": []},
+    "reels": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 2200, "notes": []},
+    "x": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 280, "notes": []},
+    "instagram": {"text": "Real support never DMs you first.", "charCount": 33, "limit": 2200, "notes": []}
+  },
+  "captions": {"srt": "1\n00:00:00,000 --> 00:00:02,500\nReal support never DMs you first.\n\n2\n00:00:02,500 --> 00:00:05,000\nHere is how the trick works.\n", "vtt": null},
+  "renders": [
+    {"id": "long", "kind": "long", "command": "npx remotion render src/episode/index.ts Episode out/publish/zoora-ai/uploader-fixture/media/long.mp4", "output": "out/publish/zoora-ai/uploader-fixture/media/long.mp4"},
+    {"id": "short-1", "kind": "short", "command": "npx remotion render src/episode/index.ts EpisodeShort out/publish/zoora-ai/uploader-fixture/media/short-1.mp4", "output": "out/publish/zoora-ai/uploader-fixture/media/short-1.mp4"},
+    {"id": "thumb-v0", "kind": "thumbnail", "command": "node scripts/thumbnails.ts zoora-ai/uploader-fixture --lang en", "output": "out/publish/zoora-ai/uploader-fixture/media/thumbnails/en/v0.png"},
+    {"id": "thumb-v1", "kind": "thumbnail", "command": "node scripts/thumbnails.ts zoora-ai/uploader-fixture --lang en", "output": "out/publish/zoora-ai/uploader-fixture/media/thumbnails/en/v1.png"}
+  ],
+  "settings": {
+    "madeForKids": false,
+    "containsSyntheticMedia": false,
+    "paidPromotion": true,
+    "reasons": [
+      "madeForKids=false (studio default): adult crypto and AI security content.",
+      "containsSyntheticMedia=false (studio default): clearly animated, generic synthetic narrator voice.",
+      "paidPromotion=true: affiliate offer \"hardware-wallet\" (a third party pays a commission, reward or fee)."
+    ]
+  },
+  "checks": [
+    {"id": "youtube-title", "ok": true, "detail": "28/100 characters"},
+    {"id": "disclosures", "ok": true, "detail": "Every offer link has a disclosure."},
+    {"id": "offers-live", "ok": true, "detail": "every offer is active"}
+  ],
+  "generatedAt": "2026-11-24T09:00:00.000Z"
+}

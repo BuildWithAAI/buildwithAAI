@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "uploader-fixture",
+  "lang": "en",
+  "titleOptions": ["POV: \"Support\" DMs you first"],
+  "summary": "A stranger in your DMs says he is from wallet support.",
+  "scenes": [{"id": "s01", "chapter": "Cold open", "durationSec": 45}],
+  "tags": ["crypto security", "wallet scams", "zoora ai"],
+  "cta": "Subscribe for the next scam breakdown.",
+  "shortCuts": [{"from": "s01", "to": "s01", "title": "Real support never DMs you first"}]
+}

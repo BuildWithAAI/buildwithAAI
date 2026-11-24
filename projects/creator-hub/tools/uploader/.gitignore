@@ -1,0 +1,2 @@
+# Uploader state: OAuth tokens, ledger, quota counts, job files, locks and receipts. Never commit.
+.local/
