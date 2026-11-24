@@ -1169,7 +1169,47 @@ def _neck_up(g, view, rig, ox, oy, bk, nb, J, tJ, throat_line, rig_side):
     pts = [N(p) for p in back_rest] + bottom + [N(Cx), N(Cp)]
     fill = ('M %s C %s %s %s L ' % (q(N(A)), q(N(f1)), q(N(f2)), q(N(Q))) + ' L '.join(q(p) for p in pts)
             + ' C %s %s %s L %s Z' % (q(N(t2)), q(N(t1)), q(N(J)), q(N(A))))
-    return head_back, head_throat, {'rig': rig_side, 'fill': fill, 'strokes': [neck_back, neck_throat]}
+    # --- 'over': the same neck ABOVE the collar's centre line, which SideBody draws again after the torso (and before the
+    # collar). The look-up mounts turn the neck 12-20 deg about its base, which carries the collar's nape end down the back
+    # and leaves the start of the torso's back stroke (the withers, under the collar at rest) as a short stray tick inside
+    # the neck above the collar (left look-up, every frame). Everything of the torso inside the neck's silhouette above the
+    # collar belongs behind the neck, so the neck's upper part is simply drawn in front of it. Its bottom edge runs along
+    # the collar band's centre line (hidden by the collar), and its strokes stop 2.5 units under the collar's edge.
+    band = _samples(map_path(rig['neck']['collar'], lambda x, y: (x - ox, y - oy)), 24)
+    n = len(band)
+    ia, ib = max(((i, k) for i in range(0, n, 2) for k in range(i + 1, n, 2)),
+                 key=lambda ik: math.hypot(band[ik[0]][0] - band[ik[1]][0], band[ik[0]][1] - band[ik[1]][1]))
+    side1 = band[ia:ib + 1]
+    side2 = (band[ib:] + band[:ia + 1])[::-1]
+
+    def resample(poly, m):
+        acc = [0.0]
+        for a, b in zip(poly, poly[1:]):
+            acc.append(acc[-1] + math.hypot(b[0] - a[0], b[1] - a[1]))
+        out, j = [], 0
+        for k in range(m + 1):
+            s = acc[-1] * k / m
+            while j < len(acc) - 2 and acc[j + 1] < s:
+                j += 1
+            seg = (acc[j + 1] - acc[j]) or 1
+            u = (s - acc[j]) / seg
+            out.append((poly[j][0] + (poly[j + 1][0] - poly[j][0]) * u, poly[j][1] + (poly[j + 1][1] - poly[j][1]) * u))
+        return out
+    s1, s2 = resample(side1, 60), resample(side2, 60)
+    mid = [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) for a, b in zip(s1, s2)]
+    Qx = (Q[0] + tQ[0] * 2.5, Q[1] + tQ[1] * 2.5)
+    mq = min(range(len(mid)), key=lambda k: math.hypot(mid[k][0] - Q[0], mid[k][1] - Q[1]))
+    mc = min(range(len(mid)), key=lambda k: math.hypot(mid[k][0] - Cp[0], mid[k][1] - Cp[1]))
+    run = mid[mq:mc + 1] if mq <= mc else mid[mc:mq + 1][::-1]
+    for p in [Qx, Cx] + run:
+        if not _poly_inside(p, band):
+            raise SystemExit('%s: look-up neck over-layer edge leaves the collar band at %.1f %.1f' % (view, p[0], p[1]))
+    over_fill = ('M %s C %s %s %s L %s L ' % (q(N(A)), q(N(f1)), q(N(f2)), q(N(Q)), q(N(Qx)))
+                 + ' L '.join(q(N(p)) for p in run) + ' L %s L %s' % (q(N(Cx)), q(N(Cp)))
+                 + ' C %s %s %s L %s Z' % (q(N(t2)), q(N(t1)), q(N(J)), q(N(A))))
+    over_back = 'M %s C %s %s %s L %s' % (q(N(A)), q(N(f1)), q(N(f2)), q(N(Q)), q(N(Qx)))
+    return head_back, head_throat, {'rig': rig_side, 'fill': fill, 'strokes': [neck_back, neck_throat],
+                                    'over': {'fill': over_fill, 'strokes': [over_back, neck_throat]}}
 
 
 def _throat_ctrl(J, tJ, L1, tL):

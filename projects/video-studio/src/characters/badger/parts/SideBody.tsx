@@ -167,8 +167,12 @@ export const SideBody: React.FC<{
 	const M = R.mounts;
 	// a look-up head brings its own look-up neck for its own rig (round 4: nape fillet, one concave throat)
 	const neckUp = headGeom(head).neckUp;
-	const neckGeom: SideRig['neck'] =
-		neckUp && neckUp.rig === (dir === -1 ? 'left' : 'right') ? {...R.neck, fill: neckUp.fill, strokes: neckUp.strokes, details: []} : R.neck;
+	const ownNeckUp = neckUp && neckUp.rig === (dir === -1 ? 'left' : 'right') ? neckUp : null;
+	const neckGeom: SideRig['neck'] = ownNeckUp ? {...R.neck, fill: ownNeckUp.fill, strokes: ownNeckUp.strokes, details: []} : R.neck;
+	// ...and its part above the collar again in front of the torso (the turned neck exposes the torso's back-stroke start)
+	const neckOver: SideRig['neck'] | null = ownNeckUp
+		? {...R.neck, fill: ownNeckUp.over.fill, strokes: ownNeckUp.over.strokes, details: []}
+		: null;
 	const pitchSvg = -dir * pose.body.pitch;
 	const neckAngle = hm.neck - dir * (neckTurn + pose.neck);
 	const neckT = `${tr(M.neck, neckAngle)} translate(0 ${(-breath * 0.6).toFixed(2)})`;
@@ -212,6 +216,11 @@ export const SideBody: React.FC<{
 					<SpotShapes spots={spots.torso} />
 				</PartShape>
 			</g>
+			{neckOver ? (
+				<g transform={neckT}>
+					<NeckSide geom={neckOver} uid={`${uid}-over`} spots={spots.neck} />
+				</g>
+			) : null}
 			{hindNearOverride ?? (
 				<Leg geom={R.legHind} mount={mnt('hindNear', M.legHindNear)} angles={svgLeg(L.hindNear, dir)} uid={`${uid}-hn`} spots={spots.legHindNear} />
 			)}

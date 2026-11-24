@@ -41,35 +41,61 @@ const HAIR: Pt[] = [
 	[-17.6, -892.4], [-12.4, -895.6], [-7, -898.6],
 ];
 /**
- * One flat shadow tone (repair round 2, zoo_turn_back.png): the underside of the S-shaped crown lock (a thin crescent
- * under its sweep) and the nape below an edge that follows the lower ends of the locks. Round 1 used a straight band over
- * the whole lower half plus an isolated oval under the right wing, which read as a two-tone helmet. Repair round 3: the
- * nape edge is no longer one smooth U from ear to ear: four pointed lock tips hang into the shadow (at x ~-46 / -20 / 14 /
- * 44, the left locks, the S tail and the right wave) with the darker under-layer rising 8-15 u between them, so the
- * darkness follows the lock ends as on the sheet.
+ * One flat shadow tone (repair round 2, zoo_turn_back.png). Repair round 4 (decision ZOO-H5; the sheet's back hair
+ * classified into base / shadow / ink tones at 1 u): the locks read as FILLED shapes, base on top and hairShadow on the
+ * underside, instead of ink lines over a flat cap.
+ * - The nape (HAIR_SHADOW) starts under four ROUNDED lock ends of unequal length, at the sheet's positions: the far-left
+ *   lock ends short and round (~-825 at x -48), the long left lock sweeps down-right to a tip at (-4, -809), the S lock's
+ *   lower body ends at (23, -811), and the right lock ends short and round (~-825 at x 53). Between the left lock and the
+ *   S body the shadow runs up a narrow channel to -855. Round 3 had four POINTED tips at -812 / -805 / -799 / -805.
+ * - LOCK_SHADOWS: the S lock's dark band, i.e. the underside of its sweep (the curl between the core and the S body) and
+ *   the channel above and right of the core (the top lock's and right lock's undersides), ~12 u deep as on the sheet
+ *   (round 3: a 3-6 u crescent); and the top lock's underside wedge into the right wave tip (round 3 drew it as an ink line).
  */
-const HAIR_SHADOW = [
+const HAIR_SHADOW = smooth([
+	[-82, -823.4, 'c'], [-58, -823.8], [-53.4, -826.2], [-49.8, -825.3], [-46.6, -825.4], [-44.2, -827.2], [-42.8, -829.8], [-39.6, -831.4],
+	[-35.8, -831.6], [-32.6, -829.4], [-30.2, -824.8], [-26, -821], [-21, -818], [-15.4, -815], [-10.4, -812.2], [-6.8, -810], [-4.4, -808.8],
+	[-2.4, -809.4], [-2.4, -811.8], [-5.2, -815.6], [-8.6, -818.8], [-12.2, -822.8], [-15, -827.2], [-17, -832.4], [-18.4, -838.4], [-19, -845],
+	[-18.8, -851], [-17.2, -855], [-14.8, -853], [-13.6, -848], [-12.4, -842.6], [-10.8, -838], [-8.2, -834.4], [-3.6, -831.4], [2.4, -829.6],
+	[9, -827.6], [14.4, -825], [18.2, -821.2], [20.6, -816.8], [21.8, -813], [22.6, -810.6], [24.2, -810.6], [26, -812.4], [29.6, -815.6],
+	[33.4, -819.4], [35.8, -823.6], [37.2, -828], [41, -829.6], [45.4, -829.6], [48.6, -828], [50.8, -826], [53.4, -825.4], [56.4, -826],
+	[60, -827.6], [64.6, -828.8], [70, -829.4], [84, -829, 'c'], [84, -740, 'c'], [-82, -740, 'c'],
+]);
+const LOCK_SHADOWS = [
+	// the S curl: under the core, above the S lock's lower body, right of the strand that becomes the S body
 	smooth([
-		[-80, -829], [-62, -827], [-46, -812, 'c'], [-33, -823], [-20, -805, 'c'], [-4, -816], [14, -799, 'c'], [30, -813], [44, -805, 'c'],
-		[56, -823], [68, -829], [82, -825], [82, -740], [-80, -740],
+		[-7.4, -854.4], [-4.4, -851.2], [0, -848.6], [5, -846.4], [12, -844.6], [21, -843.6], [29, -841.6], [33.6, -838.8], [35.4, -836.2],
+		[32.4, -837.4], [27.6, -840.2], [21, -841.2], [15, -839.8], [10.4, -836.6], [5.4, -833.4], [0.6, -832], [-3.6, -833.4], [-6.8, -836.4],
+		[-8.6, -840.2], [-9.4, -844.4], [-9.2, -849],
 	]),
-	smooth([[-12.6, -866.6], [-2, -856.6], [14, -850.4], [30, -845.2], [38.6, -837.4], [33.4, -835.6], [22, -839], [8, -844.2], [-3.6, -850.4], [-10.4, -858]]),
-].join(' ');
+	// above and right of the core: the top lock's lower edge, then down between the S body and the right lock into the nape
+	smooth([
+		[-11.6, -868.4], [-10.6, -870.6], [-7, -866.4], [-3.6, -863], [-0.6, -860], [2.8, -857.2], [9.4, -854.2], [20, -853], [32, -852.4],
+		[38.8, -851.2], [41.2, -848.4], [43.8, -845.2], [45.8, -842], [47.4, -839], [48.6, -835.4], [49.2, -831], [49.2, -827.4], [44, -826.6],
+		[39.6, -826], [40.6, -830.4], [39.4, -835.4], [36.8, -839.4], [32.4, -842.2], [24, -844.2], [13, -845.4], [4.4, -847.4], [-0.6, -850],
+		[-4, -853], [-6.6, -856.6], [-9.2, -860.4], [-11, -864],
+	]),
+	// the top lock's underside, widening into the right wave tip
+	smooth([
+		[20.6, -876.6], [25, -873.6], [29.6, -870.6], [34.4, -868.2], [41, -867.4], [48, -867.4], [55, -867], [60, -865], [59, -861.6], [52, -861.4],
+		[44, -862], [37.4, -863.2], [32.6, -865.4], [28.4, -868.4], [24.8, -871.6], [22, -874.6],
+	]),
+];
 /**
- * The lock edges that carry the hair's identity from behind (repair round 2): the S-shaped crown lock, the top lock's
- * lower edge on the right, and the two left lock edges, as tapered dark-brown ink lines (ZOO_COLORS.brow, the hair ink
- * already used for the front crown hollow, decision ZOO-H3), up to ZOO_LINE.detail wide. Round 1 drew them in the hair
- * shadow tone at the fine width, which was invisible.
+ * Ink lines in the hair ink (ZOO_COLORS.brow, decision ZOO-H3), tapered: the S lock's core (re-traced in round 4: it runs
+ * from the crown down to (-1.5, -851), level at ~-845 to x 30, round the S body at x ~40 and curls under its tip to
+ * (21, -802)), the far-left lock's edge (it ends at ~-823 where the nape starts; round 3 ran it on into the nape) and a
+ * short stretch of the channel between the left lock and the S strand.
  */
 const LOCK_LINES: Pt[][] = [
-	[[-15, -882], [-12.4, -868], [-2.4, -857.4], [13.4, -850.6], [29.6, -845.4], [38.6, -838.4], [40, -828.6], [34.4, -818.6], [25.4, -810.4], [16.6, -803]], // the S
-	[[12, -876], [28, -869.4], [44, -866.4], [55, -869]], // top lock's lower edge, into the right wave tip
-	[[-37, -868], [-42.4, -852], [-41.6, -836], [-35.6, -823], [-25, -813]], // left lock
-	[[-19, -856], [-16.6, -843], [-10.6, -832], [0, -825], [12, -821], [20, -813]], // lower edge of the S ribbon
+	[[-15, -882], [-12.4, -869], [-11.4, -863], [-8.6, -858], [-5.4, -854], [-1.4, -851], [4, -847.8], [12, -845.8], [21, -844.8], [29.6, -842.6],
+		[34.6, -839.4], [37.6, -835.4], [39.4, -830.4], [39.8, -824], [37.6, -818], [34.2, -812.4], [29.6, -808.2], [24.4, -805], [20.6, -802.4]], // the S core
+	[[-25, -873.4], [-29.6, -869.4], [-32.6, -866], [-35, -862.6], [-37.6, -858], [-39.6, -852.6], [-40.8, -846], [-40.6, -839.4], [-38.8, -833.6],
+		[-36.4, -828], [-33.6, -823.6]], // far-left lock edge
+	[[-18.4, -848], [-17, -842.4], [-15.4, -837.4], [-13.4, -833], [-10, -829.4]], // channel between the left lock and the S strand
 ];
-/** Peak width of each lock line as a multiple of ZOO_LINE.detail (repair round 3: the S lock swells to 1.3x at its middle, a
- * broad lock edge rather than a wire, as on the sheet). */
-const LOCK_WIDTH = [1.3, 1, 1, 1];
+/** Peak width of each lock line as a multiple of ZOO_LINE.detail (the S core swells to 1.4x: a broad lock edge, as on the sheet). */
+const LOCK_WIDTH = [1.4, 1, 0.9];
 const EAR_L: Pt[] = [[-42, -806], [-49, -808.6], [-55, -804], [-56.6, -794], [-54.6, -784.6], [-49.6, -778], [-43, -776]];
 const EAR_SHADOW_L: Pt[] = [[-44, -804], [-50, -804], [-53, -794], [-51, -784], [-45, -780]];
 const NECK: Pt[] = [[-27, -764], [-26.4, -746], [-27, -732], [-20, -726], [34, -726], [35, -732], [34.4, -746], [34, -764]];
@@ -87,6 +113,9 @@ const BackHead: React.FC = () => {
 			<g data-part="hair">
 				<Shape d={hair} fill={ZOO_COLORS.hair} shadow={{d: HAIR_SHADOW, fill: ZOO_COLORS.hairShadow}} stroke={0} />
 				<Clipped clip={hair}>
+					{LOCK_SHADOWS.map((d, i) => (
+						<path key={i} data-part="lockShadow" d={d} fill={ZOO_COLORS.hairShadow} />
+					))}
 					{LOCK_LINES.map((l, i) => (
 						<path key={i} data-part="lockLine" d={tapered(l, (t) => LOCK_WIDTH[i] * ZOO_LINE.detail * ls * (0.3 + 0.7 * Math.pow(Math.sin(Math.PI * t), 0.7)))} fill={ZOO_COLORS.brow} />
 					))}

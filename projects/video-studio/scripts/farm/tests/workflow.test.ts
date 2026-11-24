@@ -17,7 +17,8 @@ const runBlocks = (): {line: number; body: string}[] => {
 		const m = /^(\s*)(?:- )?run:\s*(.*)$/.exec(l);
 		if (!m) return;
 		const indent = m[1].length;
-		if (!/^[|>][-+]?\s*$/.test(m[2])) {
+		// a block scalar header: | or >, an optional indentation digit and chomping sign in either order, an optional comment
+		if (!/^[|>](?:[1-9][-+]?|[-+][1-9]?)?(?:\s+#.*)?\s*$/.test(m[2])) {
 			blocks.push({line: i + 1, body: m[2]});
 			return;
 		}
@@ -52,14 +53,31 @@ test('the token is read-only and checkouts do not persist credentials', () => {
 	assert.ok(!/pull_request_target|workflow_run/.test(text));
 });
 
-test('triggers: pushes of request files on any branch, and manual dispatch; a push of gate receipts alone starts no run', () => {
-	assert.match(text, /^on:\n {2}push:\n {4}paths:\n {6}- "projects\/video-studio\/render-requests\/\*\*"\n {6}- "!projects\/video-studio\/render-requests\/receipts\/\*\*"\n {2}workflow_dispatch:/m);
-	assert.ok(!/^[ \t]+branches:/m.test(text), 'pushes are limited to some branches');
+test('triggers: pushes of request files on any branch (never tags), and manual dispatch; a push of gate receipts alone starts no run', () => {
+	const code = lines.filter((l) => !/^\s*#/.test(l)).join('\n');
+	assert.match(code, /^on:\n {2}push:\n {4}branches:\n {6}- "\*\*"\n {4}paths:\n {6}- "projects\/video-studio\/render-requests\/\*\*"\n {6}- "!projects\/video-studio\/render-requests\/receipts\/\*\*"\n {2}workflow_dispatch:/m);
+	// branches alone (no tags key): GitHub then starts no run for a tag push, whose paths it never checks
+	assert.ok(!/^[ \t]+(?:tags|tags-ignore|branches-ignore):/m.test(text), 'a tag filter or a branch exclusion');
+	assert.equal((text.match(/^[ \t]+branches:/gm) || []).length, 1);
+	// and the plan refuses a tag run anyway (scripts/farm/farm.ts cmdPlan)
+	assert.ok(lines.includes('          FARM_REF: ${{ github.ref }}'), 'the plan step gets the ref');
 });
 
-test('the plan job holds no names list: nothing in the workflow writes or reads data/private', () => {
-	assert.ok(!/data\/private\/names\.txt[^\n]*(?:>|tee|cp |echo)/.test(text));
+test('the plan job holds no names list: nothing outside a comment names data/private, names.txt or the data folder above them', () => {
+	const code = lines.filter((l) => !/^\s*#/.test(l)).join('\n'); // comments may explain the rule
+	assert.ok(!/data\/private|names\.txt/.test(code), 'the workflow names the private names list outside a comment');
+	assert.ok(!/(?:^|[\s"'\/{,:=])data\/?(?:\*{1,2})?(?=$|[\s"',}\]])/m.test(code), 'the workflow names the data folder that holds the private list');
 	for (const b of runBlocks()) assert.ok(!b.body.includes('data/private'), `line ${b.line} touches the private names list`);
+});
+
+test('the run: block scanner reads every block scalar form, so no body escapes the checks', () => {
+	const headers = ['|', '|-', '|+', '>', '>-', '|2', '|2-', '|-2', '| # a comment', '|2 # a comment'];
+	for (const h of headers) assert.match(h, /^[|>](?:[1-9][-+]?|[-+][1-9]?)?(?:\s+#.*)?\s*$/, h);
+	for (const h of ['|x', '|#c', 'echo |', 'node farm.ts']) assert.doesNotMatch(h, /^[|>](?:[1-9][-+]?|[-+][1-9]?)?(?:\s+#.*)?\s*$/, h);
+	const scalars = lines.filter((l) => /^\s*(?:- )?run:\s*[|>]/.test(l)).length;
+	assert.ok(scalars >= 4);
+	assert.equal(runBlocks().filter((b) => b.body.includes('\n') || b.body.trim().length > 0).length >= scalars, true);
+	assert.ok(runBlocks().some((b) => b.body.includes('imageio_ffmpeg')), 'a multi-line run: body is read');
 });
 
 /** The lines of one job (from its key to the next top-level job key). */
@@ -168,7 +186,9 @@ test('the workflow parses as YAML when js-yaml is available', async (t) => {
 		t.skip('js-yaml is not installed');
 		return;
 	}
-	const doc = yaml.load(text) as {on: {push: {paths: string[]}}; permissions: unknown; jobs: Record<string, {needs?: string | string[]; strategy?: {matrix: string}}>};
+	const doc = yaml.load(text) as {on: {push: {branches: string[]; paths: string[]; tags?: unknown}}; permissions: unknown; jobs: Record<string, {needs?: string | string[]; strategy?: {matrix: string}}>};
+	assert.deepEqual(doc.on.push.branches, ['**'], 'branches only: no tag push starts a run');
+	assert.equal(doc.on.push.tags, undefined);
 	assert.deepEqual(doc.on.push.paths, ['projects/video-studio/render-requests/**', '!projects/video-studio/render-requests/receipts/**'], 'a negative pattern after the positive one leaves receipts out');
 	assert.deepEqual(doc.permissions, {contents: 'read'});
 	assert.deepEqual(Object.keys(doc.jobs), ['plan', 'voice', 'voice-dub', 'render', 'summary']);

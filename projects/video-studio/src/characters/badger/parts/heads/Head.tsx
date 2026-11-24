@@ -58,11 +58,18 @@ export type HeadViewGeom = {
 	readonly bridge?: string | null;
 	/**
 	 * Look-up heads (round 4): a dedicated look-up neck for the head's own side rig, in NECK-local units. Its back stroke
-	 * is the nape fillet (the head's back contour lands tangent on the neck's back line) plus the back line below it; its
-	 * throat is one concave curve from the jaw angle to the collar; its fill's front edge is that curve. SideBody draws it
-	 * in place of the rig's neck when the head is mounted on that rig.
+	 * is ONE nape cubic from under the hanging ear (where it leaves the skull's back contour) to the collar, plus the back
+	 * line under the collar; its throat is one concave curve from the jaw angle to the collar; its fill's edges are those
+	 * curves. SideBody draws it in place of the rig's neck when the head is mounted on that rig, and draws `over` (the same
+	 * neck above the collar's centre line, strokes stopping under the collar) again after the torso, so the torso's back
+	 * stroke start, which the turned neck exposes above the collar, stays behind the neck.
 	 */
-	readonly neckUp?: {readonly rig: 'left' | 'right'; readonly fill: string; readonly strokes: readonly string[]} | null;
+	readonly neckUp?: {
+		readonly rig: 'left' | 'right';
+		readonly fill: string;
+		readonly strokes: readonly string[];
+		readonly over: {readonly fill: string; readonly strokes: readonly string[]};
+	} | null;
 };
 
 const COLORS: Record<ColorKey, string> = {

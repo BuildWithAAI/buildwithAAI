@@ -123,12 +123,16 @@ export type ChangeInput = {
 	listRequestFiles: () => string[]; // file names directly in render-requests/
 };
 
-/** receipts: gate receipts the push changed (render-requests/receipts/...); listed for the summary, never rendered. */
-export type Changes = {ids: string[]; badNames: string[]; ignored: string[]; receipts: string[]; how: string; errors: string[]};
+/**
+ * receipts: gate receipts the push changed (render-requests/receipts/...); listed for the summary, never rendered.
+ * headOnly: only the head commit was read (a new branch, or a base the remote no longer has): earlier commits of the
+ * push were not.
+ */
+export type Changes = {ids: string[]; badNames: string[]; ignored: string[]; receipts: string[]; how: string; errors: string[]; headOnly: boolean};
 
 const SHA_RE = /^[0-9a-f]{40}$/;
 
-const noChanges = (how: string, errors: string[]): Changes => ({ids: [], badNames: [], ignored: [], receipts: [], how, errors});
+const noChanges = (how: string, errors: string[]): Changes => ({ids: [], badNames: [], ignored: [], receipts: [], how, errors, headOnly: false});
 
 /** Sorts changed paths (relative to the project, e.g. render-requests/x.json) into request ids, bad names, receipts and others. */
 export const classifyPaths = (paths: string[]): Pick<Changes, 'ids' | 'badNames' | 'ignored' | 'receipts'> => {
@@ -178,6 +182,7 @@ export const detectChanges = (input: ChangeInput, git: Git): Changes => {
 
 	let paths: string[] | null = null;
 	let how = '';
+	let headOnly = false;
 	if (SHA_RE.test(input.before) && !/^0+$/.test(input.before)) {
 		if (!hasCommit(input.before)) git(['fetch', '--no-tags', '--quiet', '--depth=1', 'origin', input.before]);
 		if (hasCommit(input.before)) {
@@ -190,11 +195,12 @@ export const detectChanges = (input: ChangeInput, git: Git): Changes => {
 		if (git(['rev-parse', '--verify', '--quiet', `${input.head}^1`]).ok) {
 			paths = diff(`${input.head}^1`);
 			how = 'files changed by the head commit (new branch or unknown base)';
+			headOnly = true;
 		} else {
 			paths = input.listRequestFiles().map((f) => `${REQUESTS_DIR}/${f}`);
 			how = 'every request file (root commit)';
 		}
 	}
 	if (paths === null) return noChanges(how, ['git diff failed']);
-	return {...classifyPaths(paths), how, errors};
+	return {...classifyPaths(paths), how, errors, headOnly};
 };
