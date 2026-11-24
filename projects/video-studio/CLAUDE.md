@@ -1,5 +1,10 @@
 # Video Studio — 2D animated YouTube pipeline
 
+> **Binding:** read `docs/PROJECT_INSTRUCTIONS.md` first. It holds the owner's permanent project instructions (Prompt 1, adopted 2026-11-24) and overrides anything below that conflicts with it.
+> - Characters: **ZOO** and his dog **Badger**. Approved sheets are in `reference/model-sheets/`. The reusable assets live in `src/characters/` and are never redesigned per scene.
+> - Per-episode prompt: `docs/prompts/03-episode.md`. Drift repair: `docs/prompts/04-fix-drift.md`. Character build spec: `docs/prompts/02-build-characters.md`.
+> - Style: flat vector, near-black outlines, at most one flat shadow tone per colour, default background `#E6E8EB`, teal `#29B8AD` accent. No gradients, glow, texture or halftone.
+
 Code-driven pipeline: topic → research → script → storyboard JSON → voice → Remotion render (long-form + Shorts) → thumbnails → `publish.md` → QA. All art is React/SVG drawn in code. No stock footage, no copyrighted assets.
 
 ## Status
@@ -18,7 +23,7 @@ Stop for owner review at the end of every phase.
 - **Channel:** Zoora AI, @ZooraTechnologies. Profile in `content/zoora-ai/CHANNEL.md`.
 - **Format:** second-person life-story videos, modelled on a reference the owner supplied (`content/zoora-ai/REFERENCE.md`). Genre only: we never copy that creator's character, art or scripts.
 - **Voice:** Kokoro (free, local, via kokoro-onnx).
-- **Host: "Zoo".** An original adult human guy, deadpan with dry humour, appearing in every video. The owner rejected the 3 concepts in `src/styleframes/` (keep them only as references). The drawing style is not chosen yet; the owner will follow up. His deadpan comes from timing and a flat mouth, **not** half-lidded eyes: that is the reference creator's protagonist trait.
+- **Host: ZOO + Badger (superseded by docs/PROJECT_INSTRUCTIONS.md and the approved sheets).** Earlier note: An original adult human guy, deadpan with dry humour, appearing in every video. The owner rejected the 3 concepts in `src/styleframes/` (keep them only as references). The drawing style is not chosen yet; the owner will follow up. His deadpan comes from timing and a flat mouth, **not** half-lidded eyes: that is the reference creator's protagonist trait.
 - **Pilot story:** "POV: You become a top caller on Pump.fun". Cautionary, grounded in real on-chain investigations, fictional composite characters, no real names unless sources support it. Next video: "You created an autonomous AI trading agent hedge fund".
 - **Pilot CTA:** subscribe only, no product pitch.
 
