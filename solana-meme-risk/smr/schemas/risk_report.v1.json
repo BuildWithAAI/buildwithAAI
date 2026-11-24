@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smr.local/schemas/risk_report.v1.json",
+  "title": "risk_report v1",
+  "description": "Point-in-time risk report for one asset. Asset-agnostic envelope (chain/venue/asset_type) so other agents (perps, FX, equities) can emit the same shape; pump.fun specifics live under evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "model", "asset", "timestamps", "mode", "score", "recommendation",
+               "suggested_size", "confidence", "hard_flags", "flagged_rules", "rules", "evidence", "data_coverage",
+               "orchestrator_summary", "disclaimer"],
+  "$defs": {
+    "recommendation": {"enum": ["SKIP", "REDUCED", "NORMAL"]},
+    "iso_time": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "triggered", "points", "max_points", "hard", "data_available", "reason", "evidence"],
+      "properties": {
+        "rule": {"type": "string"},
+        "triggered": {"type": "boolean"},
+        "points": {"type": "integer", "minimum": 0},
+        "max_points": {"type": "integer", "minimum": 0},
+        "hard": {"type": "boolean"},
+        "data_available": {"type": "boolean"},
+        "reason": {"type": "string"},
+        "evidence": {"type": "object"}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "risk_report.v1"},
+    "report_id": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "model": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "version", "thresholds_version"],
+      "properties": {"name": {"type": "string"}, "version": {"type": "string"}, "thresholds_version": {"type": "string"},
+                     "code_commit": {"type": ["string", "null"]}}
+    },
+    "asset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["asset_id", "chain", "venue", "asset_type"],
+      "properties": {"asset_id": {"type": "string"}, "chain": {"type": "string"}, "venue": {"type": "string"},
+                     "asset_type": {"type": "string"}, "symbol": {"type": ["string", "null"]}, "name": {"type": ["string", "null"]}}
+    },
+    "timestamps": {
+      "type": "object", "additionalProperties": false,
+      "required": ["generated_at", "as_of", "asset_created_at"],
+      "properties": {"generated_at": {"$ref": "#/$defs/iso_time"}, "as_of": {"$ref": "#/$defs/iso_time"},
+                     "asset_created_at": {"$ref": "#/$defs/iso_time"}, "asset_age_s_at_as_of": {"type": ["integer", "null"]}}
+    },
+    "mode": {"enum": ["live", "point_in_time"]},
+    "score": {"type": "integer", "minimum": 0, "maximum": 100},
+    "raw_points": {"type": "integer", "minimum": 0},
+    "recommendation": {"$ref": "#/$defs/recommendation"},
+    "decision_reasons": {"type": "array", "items": {"type": "string"}},
+    "suggested_size": {
+      "type": "object", "additionalProperties": false,
+      "required": ["pct_of_bankroll_min", "pct_of_bankroll_max", "label"],
+      "properties": {"pct_of_bankroll_min": {"type": "number", "minimum": 0, "maximum": 3},
+                     "pct_of_bankroll_max": {"type": "number", "minimum": 0, "maximum": 3}, "label": {"type": "string"}}
+    },
+    "confidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["score", "label", "factors"],
+      "properties": {"score": {"type": "number", "minimum": 0, "maximum": 1}, "label": {"enum": ["low", "medium", "high"]},
+                     "factors": {"type": "object", "additionalProperties": {"type": "number"}},
+                     "rules_without_data": {"type": "array", "items": {"type": "string"}}}
+    },
+    "hard_flags": {"type": "array", "items": {"type": "string"}},
+    "flagged_rules": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": false, "required": ["rule", "points", "max_points", "hard", "reason"],
+                "properties": {"rule": {"type": "string"}, "points": {"type": "integer", "minimum": 1}, "max_points": {"type": "integer"},
+                               "hard": {"type": "boolean"}, "reason": {"type": "string"}}}
+    },
+    "rules": {"type": "array", "items": {"$ref": "#/$defs/rule"}, "minItems": 1},
+    "market_gates": {"type": "object"},
+    "evidence": {
+      "type": "object",
+      "required": ["clusters", "same_slot", "deployer", "serial_deployer", "holders", "fresh_wallets", "authorities", "liquidity", "early_buyers"],
+      "properties": {"early_buyers": {"type": "array"}, "clusters": {"type": "object"}, "holders": {"type": "object"}}
+    },
+    "data_coverage": {
+      "type": "object",
+      "required": ["warnings", "sources"],
+      "properties": {"warnings": {"type": "array", "items": {"type": "string"}}, "sources": {"type": "object"}}
+    },
+    "timings": {"type": "object", "additionalProperties": {"type": "number"}},
+    "orchestrator_summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["v", "asset_id", "decision", "score", "max_size_pct", "confidence", "hard_flags", "top_reasons", "as_of", "valid_until", "model", "line"],
+      "properties": {
+        "v": {"const": 1},
+        "asset_id": {"type": "string"},
+        "symbol": {"type": ["string", "null"]},
+        "decision": {"$ref": "#/$defs/recommendation"},
+        "score": {"type": "integer", "minimum": 0, "maximum": 100},
+        "max_size_pct": {"type": "number", "minimum": 0, "maximum": 3},
+        "confidence": {"enum": ["low", "medium", "high"]},
+        "hard_flags": {"type": "array", "items": {"type": "string"}},
+        "top_reasons": {"type": "array", "items": {"type": "string", "maxLength": 160}, "maxItems": 3},
+        "as_of": {"$ref": "#/$defs/iso_time"},
+        "valid_until": {"$ref": "#/$defs/iso_time"},
+        "model": {"type": "string"},
+        "line": {"type": "string", "maxLength": 240}
+      }
+    },
+    "disclaimer": {"type": "string"}
+  }
+}
