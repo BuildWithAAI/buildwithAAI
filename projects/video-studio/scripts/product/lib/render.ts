@@ -145,7 +145,7 @@ const renderTable = (b: Extract<Block, {type: 'table'}>, ctx: Ctx): string => {
 	const rows = b.rows.map((r) => `<tr>${r.map((c) => `<td>${c.trim() ? md(c, ctx) : '&nbsp;'}</td>`).join('')}</tr>`).join('');
 	// short tables stay on one page; long ones may break between rows (the header repeats)
 	const keep = b.rows.length <= 12 ? ' keep' : '';
-	return `<table class="${blank ? 'blank' : 'data'}${keep}">${head}<tbody>${rows}</tbody></table>`;
+	return `<div class="table-frame${keep}"><table class="${blank ? 'blank' : 'data'}">${head}<tbody>${rows}</tbody></table></div>`;
 };
 
 const listItemsOf = (body: Block[], kind: string, line: number): {text: string; line: number}[] => {
@@ -306,6 +306,7 @@ const renderBlock = (b: Block, ctx: Ctx): string => {
 			if (b.name === 'toc') return renderToc(ctx);
 			if (b.name === 'sources') return SOURCES_PLACEHOLDER;
 			if (b.name === 'pagebreak') return '<div style="break-after:page"></div>';
+			if (b.name === 'columnbreak') throw new ContentError('@columnbreak belongs to the free edition (only its pages have two columns)', b.line);
 			throw new ContentError(`@${b.name} is only allowed before the first section`, b.line);
 	}
 };
@@ -378,6 +379,21 @@ const pageNameIn = (sections: Section[], s: Section): string => {
 	return `p-${sections[Math.max(0, k)].id}`;
 };
 
+/**
+ * A section printed as cut-out cards (frame=cut): `copies=1..3` prints that many identical cards, each in its own
+ * dashed frame, and `cols=2` lays a card out in two columns (its first block, the write-in lines, on the left; the
+ * rest stacked on the right). The body is rendered once, so citations are numbered once.
+ */
+export const cutCards = (s: Pick<Section, 'values' | 'line'>, body: string): string => {
+	const copies = Number(s.values.copies ?? '1');
+	if (!Number.isInteger(copies) || copies < 1 || copies > 3) throw new ContentError('copies must be 1, 2 or 3', s.line);
+	const cols = s.values.cols ?? '1';
+	if (cols !== '1' && cols !== '2') throw new ContentError('cols must be 1 or 2', s.line);
+	const card = `<div class="cutout${cols === '2' ? ' two-col' : ''}">${body}</div>`;
+	const note = copies > 1 ? 'Cut along the dashed lines. Keep one card at home and give one to someone you trust.' : 'Cut along the dashed line. Keep one copy at home and give one to someone you trust.';
+	return `${Array.from({length: copies}, () => card).join('')}<p class="cut-note">${icon('scissors', '10pt')}${note}</p>`;
+};
+
 const renderSection = (s: Section, ctx: Ctx, first: boolean): string => {
 	ctx.section = s;
 	// Render in reading order (title, lede, then body) so citation numbers rise down the page.
@@ -392,20 +408,22 @@ const renderSection = (s: Section, ctx: Ctx, first: boolean): string => {
 				? `<div class="kicker"><span class="num">${s.number}</span>${icon(chapterIcon(s.id), '12pt', 'currentColor', 2.2)}<span>Chapter</span></div>`
 				: `<div class="kicker"><span class="num">${s.number}</span><span>Appendix</span></div>`;
 		const lede = ledeHtml === null ? '' : `<p class="lede">${ledeHtml}</p>`;
-		const framed =
-			s.values.frame === 'cut'
-				? `<div class="cutout">${body}</div><p class="cut-note">${icon('scissors', '10pt')}Cut along the dashed line. Keep one copy at home and give one to someone you trust.</p>`
-				: body;
+		const framed = s.values.frame === 'cut' ? cutCards(s, body) : body;
 		return `<section class="${s.kind}${cont}" id="${escapeHtml(s.id)}"${pageStyle}>
 <header class="chapter-head"><div class="chapter-titles">${kicker}<h1>${title}</h1>${lede}</div>${spotImg(s.spot, ctx)}</header>
 ${framed}
 </section>`;
 	}
 	const lede = ledeHtml === null ? '' : `<p class="page-lede">${ledeHtml}</p>`;
+	if (s.values.rows !== undefined && s.values.rows !== 'roomy') throw new ContentError('rows must be "roomy" (or left out)', s.line);
+	const roomy = s.values.rows === 'roomy' ? ' roomy' : '';
 	if (s.spot && (s.kind === 'back' || s.kind === 'front')) {
-		return `<section class="${s.kind}${cont}" id="${escapeHtml(s.id)}"${pageStyle}><div class="about-grid"><div><h1 class="page-title">${title}</h1>${lede}</div>${spotImg(s.spot, ctx)}</div>${body}</section>`;
+		// the chapter head, so a front or back page with art reads like the chapters: optional kicker, title, lede, rule
+		const kicker = s.values.kicker ? `<div class="kicker"><span>${typeset(s.values.kicker)}</span></div>` : '';
+		const headLede = ledeHtml === null ? '' : `<p class="lede">${ledeHtml}</p>`;
+		return `<section class="${s.kind}${cont}${roomy}" id="${escapeHtml(s.id)}"${pageStyle}><header class="chapter-head"><div class="chapter-titles">${kicker}<h1>${title}</h1>${headLede}</div>${spotImg(s.spot, ctx)}</header>${body}</section>`;
 	}
-	const cls = (s.kind === 'front' ? `front${first ? ' first' : ''}` : 'back') + cont;
+	const cls = (s.kind === 'front' ? `front${first ? ' first' : ''}` : 'back') + cont + roomy;
 	return `<section class="${cls}" id="${escapeHtml(s.id)}"${pageStyle}><h1 class="page-title">${title}</h1>${lede}${body}</section>`;
 };
 
@@ -458,11 +476,17 @@ const renderSourcesList = (ctx: Ctx): string => {
 	const cited = ctx.registry.cited();
 	const checked = formatDate(ctx.opts.sources.checked);
 	if (ctx.opts.edition === 'free') {
-		const items = cited.map(
-			({n, source: s}) =>
-				`<li class="src" id="src-${escapeHtml(s.id)}"><span class="src-n">${n}</span><span>${typeset(s.publisher)}: <a href="${escapeHtml(s.url)}">${typeset(s.title)}</a> (${escapeHtml(formatDate(s.date))}). <span class="src-host">${escapeHtml(hostOf(s.url))}</span></span></li>`,
-		);
-		return `<ol class="sources-list">${items.join('')}</ol><p class="src-note">All sources checked ${escapeHtml(checked)}. Every title is a link.</p>`;
+		const items = cited.map(({n, source: s}) => ({
+			html: `<li class="src" id="src-${escapeHtml(s.id)}"><span class="src-n">${n}</span><span>${typeset(s.publisher)}: <a href="${escapeHtml(s.url)}">${typeset(s.title)}</a> (${escapeHtml(formatDate(s.date))}). <span class="src-host">${escapeHtml(hostOf(s.url))}</span></span></li>`,
+			// whole wrapped lines at the column's measure (about 76 characters of 6.6 pt Inter), plus the entry gap
+			weight: Math.ceil((s.publisher.length + 2 + s.title.length + formatDate(s.date).length + 4 + hostOf(s.url).length) / 76) + 0.35,
+		}));
+		// Two explicit lists, numbered down the left then down the right. Not CSS columns: a balanced multi-column
+		// list inside this unbreakable block made Chromium lay the whole sheet out too wide in print, clipping the
+		// right-hand column's border on page 1 (measured 2026-11-24).
+		const [left, right] = splitColumns(items, (x) => x.weight);
+		const list = (xs: typeof items) => `<ol class="sources-list">${xs.map((x) => x.html).join('')}</ol>`;
+		return `<div class="sources-cols">${list(left)}${list(right)}</div><p class="src-note">All sources checked ${escapeHtml(checked)}. Every title is a link.</p>`;
 	}
 	const items = cited.map(({n, source: s}) => {
 		const tag = s.method === 'search-extract' ? ' <span class="src-tag">(search extract)</span>' : '';
@@ -500,34 +524,78 @@ const renderFull = (ctx: Ctx): {body: string; pages: {name: string; label: strin
 	return {body: parts.join('\n'), pages, tocTargets: tocSections(ctx).map((s) => s.id)};
 };
 
+/** One box of the free edition (a checklist group or a fenced box) and its rough height, for column balancing. */
+type FreeBox = {html: string; weight: number};
+
+/** Rough height of a block in lines: box chrome plus about 46 characters per line of text. */
+export const blockWeight = (blocks: Block[]): number =>
+	blocks.reduce((sum, b) => {
+		const texts = [...walkBlocks([b])].flatMap((x) => blockTexts(x));
+		return sum + 2.5 + texts.reduce((n, t) => n + 1 + Math.floor(plainText(parseInline(t.text)).length / 46), 0);
+	}, 0);
+
+/**
+ * Splits boxes into two columns in reading order (down the left, then down the right), at the point that best
+ * balances their weights. Used when a free-edition page gives no @columnbreak.
+ */
+export const splitColumns = <T>(items: T[], weight: (t: T) => number): [T[], T[]] => {
+	if (items.length < 2) return [items, []];
+	const w = items.map(weight);
+	const total = w.reduce((a, b) => a + b, 0);
+	let best = 1;
+	let bestDiff = Infinity;
+	let acc = 0;
+	for (let k = 1; k < items.length; k++) {
+		acc += w[k - 1];
+		const diff = Math.abs(total - 2 * acc);
+		if (diff < bestDiff) {
+			bestDiff = diff;
+			best = k;
+		}
+	}
+	return [items.slice(0, best), items.slice(best)];
+};
+
+/**
+ * The free edition: a sheet of fixed pages. Each page is a frame (data-fit-page) holding two explicit columns, not a
+ * CSS multi-column flow: Chromium's print fragmentation of multi-column boxes let the right column overrun the
+ * page edge and clip its border. The build copy-fits the frames (lib/pdf.ts fitPages) so the fullest page is full,
+ * then both columns stretch level with the page foot.
+ */
 const renderFree = (ctx: Ctx): string => {
 	if (ctx.structured.sections.length) throw new ContentError('the free edition is one sheet: use level-2 headings only', ctx.structured.sections[0].line);
 	const blocks = ctx.structured.preamble;
-	// @pagebreak splits the sheet into pages; each page flows its groups and boxes in two balanced columns
-	const pages: string[][] = [[]];
+	// @pagebreak starts a page; @columnbreak ends a page's left column (without one, the columns are balanced)
+	const pages: {cols: FreeBox[][]; line: number}[] = [{cols: [[]], line: 1}];
 	let header = '';
 	let sources = false;
 	for (let i = 0; i < blocks.length; i++) {
 		const b = blocks[i];
 		const page = pages[pages.length - 1];
+		const col = page.cols[page.cols.length - 1];
 		if (b.type === 'directive' && b.name === 'cover') {
 			const checked = formatDate(ctx.opts.sources.checked);
 			header = `<header class="free-head"><div>${plate()}<h1>${md(meta(ctx, 'title'), ctx)}</h1><p class="subtitle">${md(meta(ctx, 'subtitle'), ctx)}</p><p class="meta">${escapeHtml(meta(ctx, 'editionLabel', 'Free edition'))} · Version ${escapeHtml(meta(ctx, 'version'))} · Every fact sourced, checked ${escapeHtml(checked)}</p></div>${spotImg('free-pair', ctx, 'art')}</header>`;
 			continue;
 		}
 		if (b.type === 'directive' && b.name === 'pagebreak') {
-			pages.push([]);
+			pages.push({cols: [[]], line: b.line});
+			continue;
+		}
+		if (b.type === 'directive' && b.name === 'columnbreak') {
+			if (page.cols.length > 1) throw new ContentError('a page of the free edition has two columns: one @columnbreak per page', b.line);
+			page.cols.push([]);
 			continue;
 		}
 		if (b.type === 'heading' && b.level === 2) {
 			const list = blocks[i + 1];
 			if (!list || list.type !== 'checklist') throw new ContentError('each free-edition group heading must be followed by a checklist', b.line);
-			page.push(`<section class="group"${b.attrs.id ? ` id="${escapeHtml(b.attrs.id)}"` : ''}><h2>${md(b.text, ctx)}</h2>${renderChecklist(list, ctx)}</section>`);
+			col.push({html: `<section class="group"${b.attrs.id ? ` id="${escapeHtml(b.attrs.id)}"` : ''}><h2>${md(b.text, ctx)}</h2>${renderChecklist(list, ctx)}</section>`, weight: blockWeight([b, list])});
 			i++;
 			continue;
 		}
 		if (b.type === 'fence') {
-			page.push(`<div class="free-box">${renderFence(b, ctx)}</div>`);
+			col.push({html: `<div class="free-box">${renderFence(b, ctx)}</div>`, weight: blockWeight([b])});
 			continue;
 		}
 		if (b.type === 'directive' && b.name === 'sources') {
@@ -539,11 +607,16 @@ const renderFree = (ctx: Ctx): string => {
 	const independence = meta(ctx, 'independence');
 	const legal = `<p class="free-legal">General security education, not financial, legal or tax advice.${independence ? ` ${typeset(asSentence(independence))}` : ''} ${typeset(ctx.opts.product.licence.free)} © ${escapeHtml(meta(ctx, 'date').slice(0, 4))} ${typeset(ctx.opts.product.copyrightHolder)}.</p>`;
 	const src = sources ? `<section class="free-sources"><h3>Sources</h3>${SOURCES_PLACEHOLDER}</section>` : '';
-	const body = pages
-		.filter((p) => p.length)
-		.map((p, k) => `<div class="free-page${k ? ' next' : ''}"><div class="free-cols">${p.join('')}</div></div>`)
-		.join('');
-	return `${header}${body}${src}${legal}`;
+	const filled = pages.filter((p) => p.cols.some((c) => c.length));
+	if (!filled.length) filled.push({cols: [[]], line: 1});
+	return filled
+		.map((p, k) => {
+			const [left, right] = p.cols.length > 1 ? p.cols : splitColumns(p.cols[0], (x) => x.weight);
+			const cols = `<div class="free-cols"><div class="free-col">${left.map((x) => x.html).join('')}</div><div class="free-col">${right.map((x) => x.html).join('')}</div></div>`;
+			const last = k === filled.length - 1;
+			return `<section class="free-page${k ? ' next' : ''}" data-fit-page>${k === 0 ? header : ''}${cols}${last ? `${src}${legal}` : ''}</section>`;
+		})
+		.join('\n');
 };
 
 export const renderDocument = (structured: Structured, opts: RenderOptions, css: (pages: {name: string; label: string}[], footer: string) => string): Rendered => {

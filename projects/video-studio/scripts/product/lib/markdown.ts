@@ -4,6 +4,7 @@
  *
  *   ---                         front matter (key: value lines) at the very top
  *   @cover  @toc  @sources  @pagebreak            page directives (column 0)
+ *   @columnbreak                                  free edition: ends the left column of a page
  *   # Title {#id kind=chapter spot=seed-phrases}  headings (levels 1-3) with optional attributes
  *   > lede text                                   quote (the first one after a chapter title is its lede)
  *   - [ ] **Action.** detail [@source-id]         checklist item (indented lines continue it)
@@ -39,7 +40,7 @@ export class ContentError extends Error {
 
 export const FENCE_KINDS = ['redflag', 'fix', 'note', 'steps', 'cards', 'ladder', 'compare', 'flow', 'fill', 'upsell'] as const;
 export type FenceKind = (typeof FENCE_KINDS)[number];
-export const DIRECTIVES = ['cover', 'toc', 'sources', 'pagebreak'] as const;
+export const DIRECTIVES = ['cover', 'toc', 'sources', 'pagebreak', 'columnbreak'] as const;
 
 const ATTR_RE = /\s*\{([^{}]*)\}\s*$/;
 

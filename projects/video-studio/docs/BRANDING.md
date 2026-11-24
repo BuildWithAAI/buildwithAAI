@@ -206,6 +206,8 @@ Every one was looked at; the changes they forced are listed in section 7.
 
 OFL fonts may be used to render images and video for commercial use; the output is not the font software. The fonts are bundled from npm and loaded locally (`src/brand/fonts.ts`), and nothing is fetched at render time.
 
+The product PDFs (`scripts/product`, The Crypto Security Checklist and the sponsor media kit) also use Inter 400 and the 400 and 600 italics, from the same package and licence. Sources: https://www.npmjs.com/package/@fontsource/inter (upstream https://github.com/rsms/inter) and https://www.npmjs.com/package/@fontsource/montserrat. Chromium embeds subsets of the fonts in each PDF, which OFL 1.1 allows (fonts may be embedded in documents; they may not be sold on their own); neither font has a Reserved Font Name.
+
 The kit uses no other third-party asset. The kit contains no logos of exchanges, chains or apps; the only marks are our own. The stings contain no audio; the jingle's licence is the audio workflow's (`docs/AUDIO_LICENSES.md`).
 
 ## 7. Decisions, iterations and honest limits

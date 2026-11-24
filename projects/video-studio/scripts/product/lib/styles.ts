@@ -31,6 +31,16 @@ export const PAPER: Record<Paper, {css: string; widthIn: number; heightIn: numbe
 	a4: {css: 'A4', widthIn: 8.27, heightIn: 11.69},
 };
 
+/** Page margins of every numbered page, in inches (the running header and footer sit inside them). */
+export const PAGE_MARGIN_IN = {top: 0.8, right: 0.75, bottom: 0.75, left: 0.75} as const;
+
+/** The page content box in CSS px (96 per inch): what the copy-fit of the free edition measures against. */
+export const contentBoxPx = (paper: Paper): {widthPx: number; heightPx: number} => {
+	const P = PAPER[paper];
+	const M = PAGE_MARGIN_IN;
+	return {widthPx: (P.widthIn - M.left - M.right) * 96, heightPx: (P.heightIn - M.top - M.bottom) * 96};
+};
+
 type Face = {family: 'Inter' | 'Montserrat'; weight: number; style: 'normal' | 'italic'};
 export const FACES: readonly Face[] = [
 	{family: 'Inter', weight: 400, style: 'normal'},
@@ -76,7 +86,7 @@ export const buildCss = (o: CssOptions): string => {
 		.join('\n');
 	return `${fontFaces(o.projectRoot)}
 :root{--ink:${T.ink};--slate:${T.slate};--silver:${T.silver};--off:${T.offWhite};--teal:${T.teal};--stage:${T.stage};--stage-shadow:${T.stageShadow};--muted:${T.muted};--muted-slate:${T.mutedOnSlate};--paper:${T.paper};}
-@page{size:${P.css};margin:0.8in 0.75in 0.75in 0.75in;
+@page{size:${P.css};margin:${PAGE_MARGIN_IN.top}in ${PAGE_MARGIN_IN.right}in ${PAGE_MARGIN_IN.bottom}in ${PAGE_MARGIN_IN.left}in;
  @bottom-left{content:${cssString(o.footer)};${marginBox}vertical-align:top;padding-top:12pt;}
  @bottom-right{content:counter(page);font-family:'Montserrat';font-weight:800;font-size:8pt;color:${T.ink};vertical-align:top;padding-top:11pt;}}
 @page cover{margin:0;@bottom-left{content:none;}@bottom-right{content:none;}}
@@ -85,6 +95,8 @@ ${named}
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 body{margin:0;font-family:'Inter',sans-serif;font-size:9.1pt;line-height:1.42;color:var(--ink);background:var(--paper);font-kerning:normal;font-variant-ligatures:common-ligatures;text-rendering:geometricPrecision;}
 p{margin:0 0 6pt;text-wrap:pretty;orphans:3;widows:3;}
+/* an introducing paragraph stays with what it introduces (a heading already avoids a break after itself) */
+p:has(+ .table-frame),p:has(+ .cards),p:has(+ ul.checklist),p:has(+ .flow-title){break-after:avoid;}
 strong{font-weight:700;}
 em{font-style:italic;}
 code{font-family:'Inter',sans-serif;font-weight:600;background:var(--off);border-radius:3pt;padding:0 2pt;}
@@ -150,7 +162,11 @@ ol.rules li::before{content:counter(r);font-family:'Montserrat';font-weight:900;
 .chapter-titles{flex:1;min-width:0;}
 .kicker{display:flex;align-items:center;gap:7pt;font-family:'Montserrat';font-weight:800;font-size:7.6pt;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4pt;}
 .kicker .num{font-family:'Montserrat';font-weight:900;font-size:22pt;letter-spacing:-0.01em;line-height:0.9;color:var(--teal);}
-.chapter h1,.appendix h1{font-family:'Montserrat';font-weight:900;font-size:20pt;line-height:1.06;letter-spacing:-0.01em;margin:0 0 5pt;}
+.chapter h1,.appendix h1,.chapter-head h1{font-family:'Montserrat';font-weight:900;font-size:20pt;line-height:1.06;letter-spacing:-0.01em;margin:0 0 5pt;}
+.front .chapter-head h1,.back .chapter-head h1{font-size:22pt;}
+.front .chapter-head .kicker,.back .chapter-head .kicker{margin-bottom:6pt;color:var(--teal);}
+/* rows=roomy: a start-here list with more air between its rows */
+.roomy li.check{padding:5.4pt 0 5.8pt;}
 .lede{font-weight:600;font-size:9.8pt;line-height:1.45;margin:0;text-wrap:pretty;}
 .spot{flex:none;align-self:flex-end;margin-bottom:-9pt;}
 .spot img{display:block;}
@@ -220,18 +236,28 @@ li.check:last-child{border-bottom:none;}
 .fill-line .rule{border-bottom:1pt solid var(--ink);height:14pt;}
 
 /* ------------------------------------------------------------------ tables */
-table{width:100%;border-collapse:separate;border-spacing:0;font-size:8.3pt;line-height:1.34;margin:8pt 0 8pt;}
+/* The header's rounded corners come from a clipping frame, not from the corner cells: a rounded cell is painted as
+   an anti-aliased shape, which leaves a hairline seam where it meets its square neighbour in every PDF viewer. */
+.table-frame{border-radius:6pt 6pt 0 0;overflow:hidden;margin:8pt 0 8pt;}
+.table-frame.keep{break-inside:avoid;}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:8.3pt;line-height:1.34;margin:0;}
 thead{display:table-header-group;}
 thead th{background:var(--slate);color:var(--off);font-family:'Montserrat';font-weight:800;font-size:7.8pt;text-align:left;padding:6pt 7pt;vertical-align:bottom;}
-thead th:first-child{border-top-left-radius:6pt;}
-thead th:last-child{border-top-right-radius:6pt;}
 tbody td{padding:4.5pt 7pt;vertical-align:top;border-bottom:0.6pt solid var(--stage-shadow);text-wrap:pretty;}
 tbody tr:nth-child(even) td{background:var(--off);}
 tbody tr{break-inside:avoid;}
-table.keep{break-inside:avoid;}
+/* write-in tables: column rules to write between, matched by quiet dividers in the header */
 table.blank tbody td{height:26pt;}
 table.blank tbody tr:nth-child(even) td{background:var(--paper);}
+table.blank tbody td + td{border-left:0.6pt solid var(--stage-shadow);}
+table.blank thead th + th{border-left:0.6pt solid var(--muted);}
 td sup.cite{font-size:0.66em;}
+
+/* ------------------------------------------------------------------ cross-references */
+a.xref{text-decoration:none;font-weight:600;white-space:nowrap;}
+li.check.has-ref{grid-template-columns:12pt 1fr auto;}
+.xref-tag{align-self:start;display:inline-flex;align-items:center;gap:4pt;margin:0.2pt 0 0 10pt;padding:1.6pt 6pt 1.8pt;border-radius:4pt;background:var(--off);border:0.7pt solid var(--stage-shadow);font-family:'Inter';font-weight:700;font-size:7pt;line-height:1.25;color:var(--ink);text-decoration:none;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.xref-tag .xt-page{color:var(--muted);font-weight:600;}
 
 /* ------------------------------------------------------------------ appendices and back matter */
 .appendix,.back{break-before:page;}
@@ -246,6 +272,15 @@ td sup.cite{font-size:0.66em;}
 .about-grid{display:grid;grid-template-columns:1fr auto;gap:18pt;align-items:end;}
 .cutout{border:1.5pt dashed var(--ink);border-radius:16pt;padding:6pt 16pt 4pt;margin-top:12pt;break-inside:avoid;}
 .cutout .fill{margin-top:8pt;}
+.cutout + .cutout{margin-top:14pt;}
+/* two-column card: the write-in lines down the left, the moves and the warning stacked on the right */
+.cutout.two-col{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);column-gap:16pt;align-items:start;padding:12pt 16pt 12pt;}
+.cutout.two-col > .fill{grid-row:1 / span 2;margin:2pt 0 0;}
+.cutout.two-col > .fill .fill-line{grid-template-columns:1fr;row-gap:0;margin:0 0 12pt;}
+.cutout.two-col > .fill .fill-line .label{font-size:8.6pt;}
+.cutout.two-col > .fill .fill-line .rule{height:17pt;}
+.cutout.two-col > .steps,.cutout.two-col > .note{margin:0 0 8pt;}
+.cutout.two-col > :last-child{margin-bottom:0;}
 .cut-note{display:flex;align-items:center;gap:6pt;font-size:8pt;color:var(--muted);margin-top:6pt;}
 .cards.stats .card{background:var(--off);border:none;}
 .cards.stats .card-title{font-size:19pt;line-height:1.05;margin-bottom:3pt;color:var(--ink);}
@@ -253,7 +288,13 @@ td sup.cite{font-size:0.66em;}
 .colophon{margin-top:18pt;padding-top:8pt;border-top:0.6pt solid var(--stage-shadow);font-size:7.6pt;color:var(--muted);}
 
 /* ------------------------------------------------------------------ free edition */
-.free-head{display:grid;grid-template-columns:1fr auto;gap:12pt;align-items:end;background:var(--stage);border-radius:16pt;padding:14pt 18pt 0 18pt;margin:0 0 10pt;overflow:hidden;}
+/* Each page is a frame the build copy-fits (lib/pdf.ts fitPages): --fit scales the type and spacing of the two
+   columns (header and sources keep their size) until the fullest page is full; then the frames get the page's
+   exact height and each column's last box stretches, so both columns end level with the page foot. Every size
+   inside the columns is in em of the base size, so one variable scales them together. */
+.free-page{display:flex;flex-direction:column;}
+.free-page.next{break-before:page;}
+.free-head{flex:none;display:grid;grid-template-columns:1fr auto;gap:12pt;align-items:end;background:var(--stage);border-radius:16pt;padding:14pt 18pt 0 18pt;margin:0 0 10pt;overflow:hidden;}
 .free-head .plate{margin-bottom:9pt;padding:5pt 10pt 6pt;}
 .free-head .plate .main{font-size:11.5pt;}
 .free-head h1{font-family:'Montserrat';font-weight:900;font-size:26pt;line-height:1.02;letter-spacing:-0.01em;margin:0 0 5pt;}
@@ -261,18 +302,33 @@ td sup.cite{font-size:0.66em;}
 .free-head .meta{font-size:7.6pt;color:var(--muted);margin:0 0 12pt;font-weight:600;}
 .free-head .art{align-self:end;}
 .free-head .art img{display:block;}
-.free-page.next{break-before:page;}
-.free-cols{columns:2;column-gap:14pt;column-fill:balance;}
-.group,.free-box{break-inside:avoid;margin:0 0 9pt;display:block;}
-.group{border:1.2pt solid var(--ink);border-radius:8pt;padding:7pt 10pt 3pt;}
-.group h2{margin:0 0 1pt;font-size:10.4pt;}
-.group li.check{padding:3.4pt 0 3.8pt;font-size:8.5pt;line-height:1.37;grid-template-columns:11pt 1fr;column-gap:7pt;}
-.group .box{width:9.5pt;height:9.5pt;margin-top:1.1pt;}
-.free-box .steps,.free-box .upsell,.free-box .note{margin:0;font-size:8.5pt;}
-.free-box .upsell p{margin:0 0 4pt;}
-.free-sources{margin-top:4pt;break-inside:avoid;border-top:1.2pt solid var(--ink);padding-top:4pt;}
+.free-cols{flex:1 1 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:14pt;font-size:calc(8.5pt * var(--fit, 1));line-height:1.37;}
+/* The shorter column's spare height is shared by all of its boxes, and inside each box by its rows (centred in
+   their share), so it reads as a slightly roomier column rather than an empty band at the bottom of one box. */
+.free-col{display:flex;flex-direction:column;gap:1.06em;min-width:0;}
+.free-col > *{flex-grow:1;}
+.group{display:flex;flex-direction:column;border:1.2pt solid var(--ink);border-radius:8pt;padding:0.82em 1.18em 0.36em;}
+.group h2{margin:0 0 0.12em;font-size:1.22em;}
+.group ul.checklist{flex:1 1 auto;display:flex;flex-direction:column;margin:0;}
+.group li.check{flex:1 1 auto;align-content:center;padding:0.4em 0 0.45em;font-size:1em;line-height:1.37;grid-template-columns:1.3em 1fr;column-gap:0.82em;}
+.group .box{width:1.12em;height:1.12em;margin-top:0.14em;}
+.free-box{display:flex;flex-direction:column;}
+.free-box > *{flex:1 1 auto;margin:0;font-size:1em;display:flex;flex-direction:column;}
+.free-box > * > ol,.free-box > * > ul{flex:1 1 auto;display:flex;flex-direction:column;justify-content:space-around;}
+.free-cols .note-title{font-size:1.1em;margin-bottom:0.5em;}
+.free-cols .steps{padding:0.95em 1.3em 0.45em;}
+.free-cols .steps li{grid-template-columns:1.88em 1fr;column-gap:0.95em;margin:0 0 0.5em;}
+.free-cols .steps li::before{font-size:0.94em;width:1.88em;height:1.88em;}
+.free-cols .callout{padding:0.82em 1.18em 0.7em;}
+.free-cols .callout-title{font-size:1.15em;margin-bottom:0.3em;align-items:flex-start;}
+.free-cols ul.plain{margin:0.3em 0 0.1em;padding-left:1.45em;}
+.free-cols ul.plain li{display:list-item;margin:0 0 0.5em;padding-left:0.2em;}
+.free-cols .upsell{padding:1.1em 1.4em;justify-content:center;}
+.free-cols .upsell p{margin:0 0 0.45em;}
+.free-sources{flex:none;margin-top:10pt;break-inside:avoid;border-top:1.2pt solid var(--ink);padding-top:4pt;}
 .free-sources h3{margin:2pt 0 4pt;font-size:9pt;}
-.free-sources .sources-list{font-size:6.6pt;line-height:1.32;columns:2;column-gap:14pt;margin:0;}
+.free-sources .sources-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:14pt;}
+.free-sources .sources-list{font-size:6.6pt;line-height:1.32;columns:auto;margin:0;}
 .free-sources .src{grid-template-columns:11pt 1fr;margin-bottom:2.6pt;}
 .free-sources .src a{text-decoration:none;font-weight:700;}
 .free-sources .src-n{font-size:6.6pt;}

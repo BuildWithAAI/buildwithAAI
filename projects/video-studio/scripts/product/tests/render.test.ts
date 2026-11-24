@@ -101,7 +101,9 @@ test('full edition: citations numbered in reading order and listed once', () => 
 test('full edition: structure, pairing, escaping, components', () => {
 	const r = renderDocument(structure(parseDocument(full)), opts(), css);
 	assert.match(r.html, /<section class="cover"/);
-	assert.match(r.html, /<div class="pair"><aside class="callout redflag">.*Badger's Red Flag.*<\/aside><aside class="callout fix">.*Zoo's One Fix/s);
+	// the default box titles get the house typography (curly apostrophes), like every other line of text
+	assert.match(r.html, /<div class="pair"><aside class="callout redflag">.*Badger’s Red Flag.*<\/aside><aside class="callout fix">.*Zoo’s One Fix/s);
+	assert.ok(!/Badger's|Zoo's/.test(r.html), 'no straight apostrophes in the default titles');
 	assert.ok(!r.html.includes('<b>tag</b>'), 'content HTML is escaped');
 	assert.match(r.html, /<span class="chunk same">1111<\/span><span class="chunk">aaaa<\/span><span class="chunk same">2222<\/span>/);
 	assert.match(r.html, /<div class="bars" aria-hidden="true"><i class="on"><\/i><i class="on"><\/i><i class="on"><\/i><i class="on"><\/i><\/div><div class="level">Best/);

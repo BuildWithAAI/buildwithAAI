@@ -15,7 +15,8 @@ import {pathToFileURL} from 'node:url';
 /** The small part of Playwright's API this build uses (typed locally: playwright is not in package.json). */
 type PwPage = {
 	goto: (url: string, o?: {waitUntil?: 'load' | 'networkidle'}) => Promise<unknown>;
-	evaluate: <T>(fn: () => T | Promise<T>) => Promise<T>;
+	evaluate: <T, A = undefined>(fn: (arg: A) => T | Promise<T>, arg?: A) => Promise<T>;
+	emulateMedia: (o: {media: 'print' | 'screen'}) => Promise<void>;
 	pdf: (o: {path: string; preferCSSPageSize?: boolean; printBackground?: boolean; outline?: boolean; tagged?: boolean}) => Promise<unknown>;
 	on: (ev: 'console' | 'pageerror' | 'requestfailed', cb: (x: {text?: () => string; message?: string; url?: () => string}) => void) => void;
 	setViewportSize: (s: {width: number; height: number}) => Promise<void>;
@@ -42,14 +43,63 @@ export const loadPlaywright = (): Playwright => {
 	throw new Error(`Playwright is not installed. Install it (npm i -g playwright && npx playwright install chromium) or set PLAYWRIGHT_MODULE.\n${errors.join('\n')}`);
 };
 
-export type PrintResult = {consoleErrors: string[]; failedRequests: string[]};
+/** The page content box to copy-fit frames into (CSS px), and the allowed range of the --fit type scale. */
+export type FitBox = {widthPx: number; heightPx: number; min: number; max: number};
 
-/** Prints an HTML file to PDF with CSS page sizes, backgrounds, a tagged structure and the document outline. */
-export const printPdf = async (htmlFile: string, pdfFile: string): Promise<PrintResult> => {
+/** What the copy-fit did: the scale it chose, and how much room each frame had left at that scale (CSS px). */
+export type FitResult = {scale: number; fits: boolean; slackPx: number[]};
+
+/** Keeps the fitted frames this far inside the page box (CSS px), against sub-pixel differences between passes. */
+export const FIT_SAFETY_PX = 3;
+
+/**
+ * Runs inside the page (serialized by Playwright, so it must be self-contained): finds the largest --fit at which
+ * every [data-fit-page] frame fits the page height, laid out at the exact page content width, then pins each frame
+ * to that height so its columns can stretch to the page foot. Returns null when the page has no frames.
+ */
+export const fitPagesInPage = (o: FitBox & {safetyPx: number}): FitResult | null => {
+	const frames = Array.from(document.querySelectorAll('[data-fit-page]')) as HTMLElement[];
+	if (!frames.length) return null;
+	const root = document.documentElement;
+	const limit = o.heightPx - o.safetyPx;
+	document.body.style.width = `${o.widthPx}px`;
+	for (const f of frames) f.style.height = 'auto';
+	const tallest = (s: number): number => {
+		root.style.setProperty('--fit', String(s));
+		return Math.max(...frames.map((f) => f.getBoundingClientRect().height));
+	};
+	let lo = o.min;
+	let hi = o.max;
+	let fits = true;
+	if (tallest(lo) > limit) fits = false;
+	else if (tallest(hi) <= limit) lo = hi;
+	else {
+		for (let k = 0; k < 18; k++) {
+			const mid = (lo + hi) / 2;
+			if (tallest(mid) <= limit) lo = mid;
+			else hi = mid;
+		}
+	}
+	const scale = Math.floor(lo * 1000) / 1000;
+	root.style.setProperty('--fit', String(scale));
+	const slackPx = frames.map((f) => Math.round((limit - f.getBoundingClientRect().height) * 10) / 10);
+	if (fits) for (const f of frames) f.style.height = `${limit}px`;
+	document.body.style.width = '';
+	return {scale, fits, slackPx};
+};
+
+export type PrintResult = {consoleErrors: string[]; failedRequests: string[]; fit: FitResult | null};
+
+/**
+ * Prints an HTML file to PDF with CSS page sizes, backgrounds, a tagged structure and the document outline. With
+ * `fit`, frames marked data-fit-page are copy-fitted to the page content box first (the free edition).
+ */
+export const printPdf = async (htmlFile: string, pdfFile: string, opts: {fit?: FitBox} = {}): Promise<PrintResult> => {
 	const pw = loadPlaywright();
 	const browser = await pw.chromium.launch({headless: true});
 	const consoleErrors: string[] = [];
 	const failedRequests: string[] = [];
+	let fit: FitResult | null = null;
 	try {
 		const page = await browser.newPage();
 		page.on('pageerror', (e) => consoleErrors.push(String(e.message ?? e)));
@@ -73,11 +123,16 @@ export const printPdf = async (htmlFile: string, pdfFile: string): Promise<Print
 			return [...broken.map((b) => `image did not load: ${b}`), ...families.map((f) => `font not loaded: ${f}`)];
 		});
 		consoleErrors.push(...notReady);
+		if (opts.fit) {
+			// measure with the print stylesheet, at the exact content width the PDF will have
+			await page.emulateMedia({media: 'print'});
+			fit = await page.evaluate(fitPagesInPage, {...opts.fit, safetyPx: FIT_SAFETY_PX});
+		}
 		await page.pdf({path: pdfFile, preferCSSPageSize: true, printBackground: true, outline: true, tagged: true});
 	} finally {
 		await browser.close();
 	}
-	return {consoleErrors, failedRequests};
+	return {consoleErrors, failedRequests, fit};
 };
 
 // ------------------------------------------------------------------------------------------ poppler

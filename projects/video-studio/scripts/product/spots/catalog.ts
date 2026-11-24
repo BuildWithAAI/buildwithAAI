@@ -78,6 +78,14 @@ export type SpotDef = {
 /** Badger's footprint centre to the right of Zoo's ground point in the approved size comparison (world units). */
 export const PAIR_SPACING = 483;
 
+/**
+ * A round head-and-shoulders crop of Zoo standing at x = 0 (world units). At a chapter spot's printed size a
+ * full-length Zoo has a face about 15 pt tall, so his expressions all read alike; in this crop the face is about
+ * 45 pt tall and the expression carries the picture. The head keeps its approved size: this is a crop, never an
+ * enlarged head (ART_GUIDE CH2).
+ */
+export const ZOO_BUST: SpotFrame = {x: -185, y: -925, w: 370, h: 370, radius: 185};
+
 export const SPOTS: readonly SpotDef[] = [
 	{
 		id: 'cover-pair',
@@ -98,6 +106,15 @@ export const SPOTS: readonly SpotDef[] = [
 		],
 	},
 	{
+		id: 'quick-start',
+		alt: 'Zoo stands ready while Badger sits beside him and looks up at him.',
+		heightPt: 150,
+		characters: [
+			{kind: 'zoo', x: 0, props: {view: 'threeQuarter', expression: 'neutral', browLift: 0.3, lookX: 0.4, lookY: 0.6}},
+			{kind: 'badger', x: 390, props: {view: 'left', pose: 'sit', head: 'upLeftScreen', expression: 'neutral'}},
+		],
+	},
+	{
 		id: 'seed-phrases',
 		alt: 'Badger lies down, calm and watchful, like a guard dog on duty.',
 		heightPt: 84,
@@ -111,9 +128,10 @@ export const SPOTS: readonly SpotDef[] = [
 	},
 	{
 		id: 'approvals',
-		alt: 'Zoo turns three-quarters with a raised brow, unimpressed.',
-		heightPt: 138,
-		characters: [{kind: 'zoo', x: 0, props: {view: 'threeQuarter', expression: 'neutral', browLift: 0.8}}],
+		alt: 'Zoo, in a round close-up, gives the page a deadpan side-eye with one brow raised: unimpressed.',
+		heightPt: 104,
+		characters: [{kind: 'zoo', x: 0, props: {view: 'threeQuarter', expression: 'neutral', browLift: 0.9, lookX: -0.85}}],
+		frame: ZOO_BUST,
 	},
 	{
 		id: 'phishing',
@@ -123,15 +141,17 @@ export const SPOTS: readonly SpotDef[] = [
 	},
 	{
 		id: 'address-poisoning',
-		alt: 'Zoo looks worried.',
-		heightPt: 138,
+		alt: 'Zoo, in a round close-up, looks worried.',
+		heightPt: 104,
 		characters: [{kind: 'zoo', x: 0, props: {view: 'front', expression: 'worried'}}],
+		frame: ZOO_BUST,
 	},
 	{
 		id: 'fake-jobs',
-		alt: 'Zoo looks shocked.',
-		heightPt: 138,
+		alt: 'Zoo, in a round close-up, looks shocked.',
+		heightPt: 104,
 		characters: [{kind: 'zoo', x: 0, props: {view: 'front', expression: 'shocked'}}],
+		frame: ZOO_BUST,
 	},
 	{
 		id: 'sim-2fa',
@@ -141,9 +161,10 @@ export const SPOTS: readonly SpotDef[] = [
 	},
 	{
 		id: 'exchanges',
-		alt: 'Zoo stands three-quarters with a small smirk.',
-		heightPt: 138,
-		characters: [{kind: 'zoo', x: 0, props: {view: 'threeQuarter', expression: 'happy'}}],
+		alt: 'Zoo, in a round close-up, gives a small satisfied smirk.',
+		heightPt: 104,
+		characters: [{kind: 'zoo', x: 0, props: {view: 'front', expression: 'happy', browLift: 0.25}}],
+		frame: ZOO_BUST,
 	},
 	{
 		id: 'social-engineering',

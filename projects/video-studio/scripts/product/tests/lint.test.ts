@@ -69,3 +69,17 @@ test('helpers', () => {
 	assert.deepEqual(unusedSources(['a', 'b', 'c'], ['b']), ['a', 'c']);
 	assert.match(formatFindings([{level: 'error', line: 3, rule: 'r', message: 'm'}], 'f.md'), /^ERROR f\.md:3 \[r\] m$/);
 });
+
+test('cross-references must point at a section, and only documents with sections may use them', () => {
+	const doc = '# One {#one kind=chapter}\n\nSee [#two] and [#missing].\n\n# Two {#two kind=chapter}\n\nText.\n';
+	const fs = lint(doc).filter((f) => f.rule === 'xref');
+	assert.equal(fs.length, 1);
+	assert.match(fs[0].message, /\[#missing\] points at no section/);
+	// the free edition has no sections: nothing for a cross-reference to point at
+	assert.match(lint('## Group\n\n- [ ] **Act.** See [#one].\n').map((f) => f.message).join('\n'), /needs a document with sections/);
+	// nor does the marketing copy
+	assert.deepEqual(
+		lintCopy('Read the incident plan [#incident-response].', {knownIds}).map((f) => f.rule),
+		['xref'],
+	);
+});

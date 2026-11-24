@@ -36,8 +36,10 @@ test('sources.json is valid and every source is cited somewhere', () => {
 test('free edition: two pages of checks; the landing page counts them correctly', () => {
 	const st = structure(parseDocument(read('free.md')));
 	const checks = st.preamble.filter((b) => b.type === 'checklist').reduce((n, b) => n + (b as {items: unknown[]}).items.length, 0);
-	assert.equal(checks, 18);
-	assert.match(read('landing.md'), /Eighteen checks/);
+	assert.equal(checks, 19);
+	assert.match(read('landing.md'), /Nineteen checks/);
+	// both pages lay out as two explicit columns, so the fit can balance them
+	assert.equal(st.preamble.filter((b) => b.type === 'directive' && b.name === 'columnbreak').length, 2);
 	const redflags = st.preamble.find((b) => b.type === 'fence' && b.kind === 'redflag');
 	assert.ok(redflags);
 	const phrases = [...walkBlocks([redflags])].find((b) => b.type === 'bullets') as {items: unknown[]};
@@ -58,6 +60,10 @@ test('full edition: twelve chapters, each closing with a red flag and a fix; the
 	assert.equal(st.sections.filter((s) => s.kind === 'appendix').length, 3);
 	assert.match(read('landing.md'), /Twelve chapters/);
 	assert.match(read('kit-flow.md'), /twelve chapters/);
+	// no two chapters share a spot, and every chapter or appendix reference is a live cross-reference
+	const spots = chapters.map((c) => c.spot);
+	assert.equal(new Set(spots).size, spots.length);
+	assert.ok(!/\((?:see )?(?:Chapter|Appendix) [0-9A-C]+\)/.test(read('full.md')), 'chapter references use [#id]');
 	// the host is "Zoo", never "ZOO", anywhere in the product folder
 	for (const f of ['free.md', 'full.md', 'landing.md', 'kit-flow.md', 'product.json', 'sources.json']) assert.ok(!/\bZOO\b/.test(read(f)), f);
 });

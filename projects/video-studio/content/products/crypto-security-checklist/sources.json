@@ -104,7 +104,7 @@
       "url": "https://www.cisa.gov/sites/default/files/publications/fact-sheet-implementing-phishing-resistant-mfa-508c.pdf",
       "kind": "government",
       "method": "search-extract",
-      "supports": "FIDO/WebAuthn is the only widely available phishing-resistant MFA; SMS and voice codes are exposed to phishing, SS7 and SIM-swap attacks."
+      "supports": "CISA treats phishing-resistant MFA as the gold standard and the most secure form of MFA; FIDO/WebAuthn is the only widely available phishing-resistant MFA; SMS and voice codes are exposed to phishing, SS7 and SIM-swap attacks."
     },
     {
       "id": "nist-800-63b-4",
@@ -475,6 +475,36 @@
       "kind": "news",
       "method": "search-extract",
       "supports": "An employee made 15 transfers totalling HK$200 million (about US$25 million) after a video call in which the 'CFO' and colleagues were deepfakes."
+    },
+    {
+      "id": "colp-report-fraud-2025",
+      "title": "Report Fraud service goes live with full public launch in January 2026",
+      "publisher": "City of London Police",
+      "date": "2025-12",
+      "url": "https://www.cityoflondon.police.uk/news/city-of-london/news/2025/december/report-fraud-service-goes-live-with-full-public-launch-in-january-2026/",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Report Fraud (reportfraud.police.uk, 0300 123 2040), run by the City of London Police, replaced Action Fraud for England, Wales and Northern Ireland on 4 December 2025; in Scotland, fraud is reported to Police Scotland on 101. Cross-checked against the GOV.UK news story on the new service."
+    },
+    {
+      "id": "cafc-crypto-fraud-2025",
+      "title": "Investment and crypto investment fraud",
+      "publisher": "Canadian Anti-Fraud Centre",
+      "date": "2025-10",
+      "url": "https://antifraudcentre-centreantifraude.ca/features-vedette/2025/10/crypto-cryptomonnaie-eng.htm",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Victims of fraud or cybercrime in Canada should report to their local police and to the Canadian Anti-Fraud Centre, online or on 1-888-495-8501."
+    },
+    {
+      "id": "vic-report-cybercrime",
+      "title": "How to report cybercrime and online scams",
+      "publisher": "Victorian Government (Australia)",
+      "date": "n.d.",
+      "url": "https://www.vic.gov.au/report-cybercrime-and-online-scams",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "In Australia, cybercrime that cost money or information is reported through ReportCyber on cyber.gov.au, which routes reports to police; scams are reported to Scamwatch, run by the National Anti-Scam Centre."
     }
   ]
 }

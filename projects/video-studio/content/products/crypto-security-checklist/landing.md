@@ -23,7 +23,7 @@ Suggested path: /checklist?s=<source>&v=<video>, so the hub logs which video and
 
 - Eyebrow: Free from The Zoo & Badger Show
 - Headline: The Crypto Security Checklist
-- Subhead: Eighteen checks you can tick off today, plus what to do in the first minutes if something goes wrong. Two pages, every check sourced.
+- Subhead: Nineteen checks you can tick off today, plus what to do in the first minutes if something goes wrong. Two pages, every check sourced.
 - Email field label: Your email address
 - Button: Send me the checklist
 - Consent text, directly above the button (keep it word for word): We'll email you the checklist, then the Threat Brief, one short security email a week, and occasional news about our own products. Any affiliate link is labelled. Unsubscribe any time.
@@ -34,9 +34,9 @@ Suggested path: /checklist?s=<source>&v=<video>, so the hub logs which video and
 - **Your seed phrase:** where it may live, who may ever see it, and the one place it may be typed.
 - **Accounts and logins:** security keys, SIM-swap protection from your carrier, and your exchange's withdrawal allowlist.
 - **Signing and sending:** reading the device screen, token approvals, and the lookalike addresses hiding in your history.
-- **Links, apps and downloads:** fake sites, fake wallet extensions and the "paste this command" trick.
+- **Links, apps and downloads:** fake sites, fake wallet extensions, the "paste this command" trick and keeping your devices updated.
 - **People, scams and AI:** voice clones, "guaranteed returns" and fake recovery agents.
-- **If something goes wrong:** the first three moves, and six phrases that mean you're talking to a scammer.
+- **If something goes wrong:** the first three moves, six phrases that mean you're talking to a scammer, and Zoo's One Fix.
 
 ### Why you can trust it
 
@@ -52,7 +52,7 @@ Suggested path: /checklist?s=<source>&v=<video>, so the hub logs which video and
 - **Why do you need my email?** To send the checklist and the weekly Threat Brief. Every email has a one-click unsubscribe.
 - **Will you ever ask about my wallet?** Never. No genuine helper asks for a seed phrase, a wallet connection or a code. If someone claiming to be us does, it's a scam.
 - **Is this financial advice?** No. It's general security education. It never tells you what to buy or sell.
-- **Does it work outside the US?** The security steps work anywhere. The reporting contacts and the tax note are US-specific; elsewhere, use your national police cybercrime reporting service.
+- **Does it work outside the US?** The security steps work anywhere. The free checklist names US reporting sites; the full edition adds the UK, Canada and Australia. The tax note is US-only.
 - **Who makes it?** The Zoo & Badger Show. This is our own product.
 
 ### Footer

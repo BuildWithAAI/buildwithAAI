@@ -150,11 +150,15 @@ export const smartQuotes = (text: string, prev = ''): string => {
 
 const NBSP = ' ';
 
-/** Line-break rules applied to escaped text: units stay with their numbers; references stay with their labels. */
+/**
+ * Line-break rules applied to escaped text: units stay with their numbers; references stay with their labels;
+ * phone numbers (three or more digit groups joined by spaces or hyphens, such as "0300 123 2040") never split.
+ */
 export const keepTogether = (escaped: string): string =>
 	escaped
 		.replace(/(\d)\s+(million|billion|thousand|percent|hours|days|minutes|seconds)\b/g, `$1${NBSP}$2`)
 		.replace(/\b(Chapter|Chapters|Appendix|Step|Version|page)\s+(\d+|[A-Z])\b/g, `$1${NBSP}$2`)
+		.replace(/\b\d+(?:[ -]\d+){2,}\b/g, (m) => `<span class="nowrap">${m}</span>`)
 		.replace(/Zoo &amp; Badger/g, '<span class="nowrap">Zoo &amp; Badger</span>');
 
 export type InlineContext = {

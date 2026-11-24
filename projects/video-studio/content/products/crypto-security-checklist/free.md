@@ -25,6 +25,8 @@ date: 2026-11-24
 - [ ] **Turn on your exchange's withdrawal allowlist** with the longest waiting period you can live with. [@binance-whitelist]
 - [ ] **Use unique passwords from a password manager,** and an email address used only for financial accounts.
 
+@columnbreak
+
 ## Signing and sending {#free-signing}
 
 - [ ] **Read the hardware wallet's screen before you approve.** Never approve data it can't decode. [@certik-bybit-2025]
@@ -37,6 +39,7 @@ date: 2026-11-24
 - [ ] **Arrive through bookmarks,** never search ads or links in messages. [@ic3-search-ads-2022]
 - [ ] **Install wallets and extensions only from the maker's own site,** in a browser profile used only for crypto. [@koi-foxywallet-2025]
 - [ ] **Never run a stranger's code,** a "meeting app" they send, or a command a web page tells you to paste. [@ic3-dprk-2024; @ms-clickfix-2025]
+- [ ] **Keep your phone, computer and browser updated,** and remove apps and extensions you no longer use.
 
 @pagebreak
 
@@ -52,6 +55,8 @@ date: 2026-11-24
 3. Report it: ic3.gov and ReportFraud.ftc.gov in the US, or your national cybercrime service. Keep the transaction IDs.
 :::
 
+@columnbreak
+
 :::redflag Badger's Red Flags: hear one of these, it's a scam
 - "Move your funds to this safe wallet."
 - "Your wallet needs to be validated or synced."
@@ -59,6 +64,10 @@ date: 2026-11-24
 - "Pay a fee or tax to withdraw your profits."
 - "We can recover your stolen crypto."
 - "Read me the code we just sent you."
+:::
+
+:::fix
+If you do only one thing today: find and delete every digital copy of your seed phrase. If one existed, move your funds to a new wallet.
 :::
 
 :::upsell The full edition

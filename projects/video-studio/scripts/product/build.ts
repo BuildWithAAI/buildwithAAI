@@ -25,8 +25,8 @@ import {formatFindings, lintCopy, lintStructured, unusedSources, type Finding} f
 import {citationIds, renderDocument, type Edition, type Product} from './lib/render.ts';
 import {spotInfos} from './lib/spotfiles.ts';
 import {validateSources, type SourceFile} from './lib/sources.ts';
-import {buildCss, type Paper} from './lib/styles.ts';
-import {namedDestinations, pdfFonts, pdfInfo, pdfPageCount, pdfRasterImageCount, popplerAvailable, printPdf, rasterize} from './lib/pdf.ts';
+import {buildCss, contentBoxPx, type Paper} from './lib/styles.ts';
+import {namedDestinations, pdfFonts, pdfInfo, pdfPageCount, pdfRasterImageCount, popplerAvailable, printPdf, rasterize, type FitBox, type FitResult} from './lib/pdf.ts';
 import {setDocInfo} from './lib/pdfmeta.ts';
 import {SPOTS} from './spots/catalog.ts';
 
@@ -168,6 +168,8 @@ type EditionReport = {
 	pageRange: [number, number];
 	tocPages: Record<string, number>;
 	tocStable: boolean;
+	/** Copy-fit of the free edition's page frames: the type scale chosen and each page's spare room (CSS px). */
+	fit: FitResult | null;
 	fonts: {name: string; embedded: boolean}[];
 	rasterImages: number;
 	citedSources: number;
@@ -177,6 +179,12 @@ type EditionReport = {
 	info: Record<string, string>;
 	problems: string[];
 };
+
+/**
+ * Type-scale range for the free edition's copy-fit: its columns may grow up to 30% to fill the sheet, or shrink by
+ * at most 8% before the build reports that the content no longer fits two pages.
+ */
+export const FREE_FIT = {min: 0.92, max: 1.3} as const;
 
 const buildEdition = async (edition: Edition, loaded: Loaded, args: Args, log: (s: string) => void): Promise<EditionReport> => {
 	const doc = loaded.docs[edition] as Structured;
@@ -188,10 +196,11 @@ const buildEdition = async (edition: Edition, loaded: Loaded, args: Args, log: (
 	const problems: string[] = [];
 
 	const render = (tocPages?: Record<string, number>) => renderDocument(doc, {edition, product: loaded.product, sources: loaded.sources, spots, tocPages}, css);
+	const fitBox: FitBox | undefined = edition === 'free' ? {...contentBoxPx(args.paper), ...FREE_FIT} : undefined;
 	let r = render();
 	writeFileSync(htmlFile, r.html);
 	log(`  ${edition}: printing (pass 1)`);
-	let print = await printPdf(htmlFile, pdfFile);
+	let print = await printPdf(htmlFile, pdfFile, {fit: fitBox});
 	let tocPages: Record<string, number> = {};
 	let tocStable = true;
 	if (r.tocTargets.length) {
@@ -203,7 +212,7 @@ const buildEdition = async (edition: Edition, loaded: Loaded, args: Args, log: (
 		r = render(tocPages);
 		writeFileSync(htmlFile, r.html);
 		log(`  ${edition}: printing (pass 2, contents page numbers)`);
-		print = await printPdf(htmlFile, pdfFile);
+		print = await printPdf(htmlFile, pdfFile, {fit: fitBox});
 		const again = namedDestinations(pdfFile);
 		tocStable = r.tocTargets.every((id) => again[id] === tocPages[id]);
 		if (!tocStable) problems.push('contents page numbers moved between passes');
@@ -221,6 +230,7 @@ const buildEdition = async (edition: Edition, loaded: Loaded, args: Args, log: (
 
 	const pages = pdfPageCount(pdfFile);
 	if (pages < spec.minPages || pages > spec.maxPages) problems.push(`${pages} pages; the ${edition} edition must have ${spec.minPages}-${spec.maxPages}`);
+	if (print.fit && !print.fit.fits) problems.push(`the ${edition} edition does not fit its pages even at ${FREE_FIT.min}x type: shorten the content`);
 	const fonts = pdfFonts(pdfFile).map((f) => ({name: f.name, embedded: f.embedded}));
 	const notEmbedded = fonts.filter((f) => !f.embedded);
 	if (notEmbedded.length) problems.push(`fonts not embedded: ${notEmbedded.map((f) => f.name).join(', ')}`);
@@ -242,6 +252,7 @@ const buildEdition = async (edition: Edition, loaded: Loaded, args: Args, log: (
 		pageRange: [spec.minPages, spec.maxPages],
 		tocPages,
 		tocStable,
+		fit: print.fit,
 		fonts,
 		rasterImages,
 		citedSources: r.registry.cited().length,
@@ -303,7 +314,8 @@ export const main = async (argv: string[]): Promise<number> => {
 	let failed = false;
 	for (const r of reports) {
 		const status = r.problems.length ? 'FAIL' : 'ok  ';
-		log(`${status} ${r.edition}: ${relative(PROJECT_ROOT, r.pdf)} (${r.pages} pages, ${r.citedSources} sources, ${r.fonts.length} fonts embedded, ${r.rasterImages} raster images)`);
+		const fitNote = r.fit ? `, type ${r.fit.scale.toFixed(3)}x` : '';
+		log(`${status} ${r.edition}: ${relative(PROJECT_ROOT, r.pdf)} (${r.pages} pages, ${r.citedSources} sources, ${r.fonts.length} fonts embedded, ${r.rasterImages} raster images${fitNote})`);
 		for (const w of r.warnings) log(`     warn: ${w}`);
 		for (const p of r.problems) log(`     problem: ${p}`);
 		if (r.problems.length) failed = true;

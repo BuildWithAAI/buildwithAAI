@@ -19,7 +19,7 @@ Run these from `projects/video-studio/`.
 | `node scripts/product/build.ts` | Both editions: renders the spots, lints, prints the PDFs, checks them and writes page previews (about 30 s) |
 | `node scripts/product/build.ts --edition free` | One edition (`free`, `full` or `all`) |
 | `node scripts/product/build.ts --skip-spots` | Reuses `<out>/spots/*.svg` instead of re-rendering the art (about 10 s) |
-| `node scripts/product/build.ts --paper a4` | A4 instead of US Letter (both editions keep their page counts) |
+| `node scripts/product/build.ts --paper a4` | A4 instead of US Letter. The free edition still fits two pages (its copy-fit uses the A4 page box); the full edition runs to 24 pages instead of 23 (checked 2026-11-24) |
 | `node scripts/product/build.ts --lint` | Content lint only. No browser needed |
 | `node scripts/product/build.ts --product <id> --out <dir> --preview-dpi 72` | Another product folder, output folder, or preview resolution |
 | `node scripts/product/media-kit.ts --channel zoora-security` | The sponsor media kit: see `docs/SPONSORS.md`, section 1 |
@@ -44,7 +44,7 @@ Everything goes to `out/product/`, which is gitignored. Rebuild instead of commi
 | `free.html`, `full.html` | The pages that were printed. Open them in Chrome to inspect the layout |
 | `spots/<id>.svg`, `spots/<id>.preview.png` | The spot illustrations, plus a PNG preview of each for quick review |
 | `preview/<edition>-N.png` | One PNG per page, for review on a phone |
-| `report.json` | Per edition: pages, contents page numbers, fonts, raster-image count, warnings, problems, and the open owner inputs |
+| `report.json` | Per edition: pages, contents page numbers, the free edition's copy-fit (type scale and spare room per page), fonts, raster-image count, warnings, problems, and the open owner inputs |
 
 ## What the build checks
 
@@ -58,6 +58,7 @@ citation. The rules:
   quotation marks as a scam line;
 - "Zoo" is never written "ZOO";
 - no placeholders, no `http://` links, no unknown source or spot ids, no broken markup;
+- a cross-reference (`[#id]`) must point at a section; the free edition and the copy have none, so they may not use one;
 - `sources.json` must be valid: slug ids, `https` URLs, dates, a kind and a method for each source.
 
 **Warnings are printed, but the build carries on.** The test suite requires zero warnings for the shipped content:
@@ -69,6 +70,7 @@ citation. The rules:
 **PDF problems fail the build (exit 1) after printing:**
 
 - the page count is outside the edition's range in `product.json`;
+- the free edition's content doesn't fit its two pages even at the smallest type scale (see "The free edition's copy-fit");
 - a font isn't embedded, or a font other than Inter or Montserrat is used;
 - any raster image is present. The art must be vector;
 - the browser reported an error or a failed request. The pages load nothing from the network;
@@ -92,13 +94,37 @@ cover it.
    boxes for running headers and page numbers, and local `@fontsource` font files loaded by file URL.
 4. Print with Playwright's Chromium (`lib/pdf.ts`):
    - PDF outline (bookmarks) and tagged PDF are on;
-   - before printing, every font face is loaded and every image is decoded.
-5. Fill in the contents page. The build reads the PDF's named destinations with `pdfinfo -dests`, writes the real
-   page numbers into the contents, prints again, and checks that the numbers didn't move.
+   - before printing, every font face is loaded and every image is decoded;
+   - the free edition is copy-fitted first (next section).
+5. Fill in the contents page and the cross-references. The build reads the PDF's named destinations with
+   `pdfinfo -dests`, writes the real page numbers into the contents and every `[#id]` reference, prints again, and
+   checks that the numbers didn't move.
 6. Write the document information (title, author, subject, keywords) with an incremental update (`lib/pdfmeta.ts`):
    - Chromium's own bytes are kept;
    - the new Info object is appended with its own cross-reference section.
 7. Check the result with `pdffonts` and `pdfimages`, and write page previews with `pdftoppm`.
+
+## The free edition's copy-fit
+
+The free edition is a fixed sheet, so its layout is fitted rather than flowed:
+
+- each page is a frame (`data-fit-page`) holding two explicit columns, split by `@columnbreak` or, without one,
+  balanced automatically in reading order (`splitColumns`);
+- before printing, `fitPagesInPage` (in the page, with the print stylesheet, at the exact content width) finds the
+  largest type scale `--fit` at which the fullest page still fits, within `FREE_FIT` (0.92 to 1.3, `build.ts`);
+- every size inside the columns is in `em`, so the type, boxes and spacing scale together. The header band and the
+  sources keep their size;
+- the frames are then pinned to the page height, and the shorter column's spare room is shared by all its boxes and
+  rows, so both columns end level with the page foot.
+
+`report.json` records the scale and each page's spare room. The current content prints at 1.131x (9.6 pt body
+text). If an edit makes the content too long even at 0.92x, the build fails instead of adding a third page.
+
+Why not CSS columns: Chromium's print layout of a balanced multi-column list inside an unbreakable block laid the
+whole sheet out too wide, which clipped the right-hand column's border on page 1 (measured at 600 dpi on
+2026-11-24). The free source list is two explicit lists for the same reason. The full edition's source list still
+uses CSS columns: it spans two pages, and only CSS columns keep its numbers in order across a page break. Its pages
+measure clean.
 
 ## Requirements
 
@@ -163,6 +189,7 @@ Zoo's One Fix: the one thing to do.
 | `@toc` | The contents page, with page numbers filled in on the second print |
 | `@sources` | The numbered source list. Each entry shows the publisher, title, date, link, and "(search extract)" when the fact could not be read at the source |
 | `@pagebreak` | Starts a new page. In the free edition, it marks where the second page begins |
+| `@columnbreak` | Free edition only: ends the left column of the current page (one per page). Without it the page's boxes are balanced into two columns |
 
 **Section headings** are level 1, with attributes in braces:
 
@@ -174,6 +201,10 @@ Zoo's One Fix: the one thing to do.
 | `toc=` | The one-line summary on the contents page. Use single quotes inside it |
 | `continue=true` | Shares the previous section's page; no forced page break |
 | `frame=cut` | Prints the section inside a dashed cut-out frame, as on the emergency card |
+| `copies=` | With `frame=cut`: 1, 2 or 3 identical cards on the page (the emergency card prints two: one to keep, one to give) |
+| `cols=2` | With `frame=cut`: a two-column card, its first block (the write-in lines) on the left and the rest stacked on the right |
+| `kicker=` | A small label above the title (`kicker="Start here"`). A front or back section with a `spot` gets the chapter-style head |
+| `rows=roomy` | More space between checklist rows, for a start-here page |
 
 **Lists, groups and tables.**
 
@@ -186,6 +217,10 @@ Zoo's One Fix: the one thing to do.
 
 - `**bold**`, `*italic*`, and `[text](https://…)` links (https only).
 - Citations go in square brackets: `[@id]` or `[@id; @id2]`. They are numbered in reading order.
+- Cross-references go in square brackets with a hash: `[#approvals]` prints "Chapter 3, p. 8" as a link, with the page
+  number from the contents pass. One that ends a checklist item prints as a page tag in its own column ("Ch. 3 ·
+  p. 8"), as on the 10-minute page.
+- Phone numbers (three or more digit groups joined by spaces or hyphens) never break across lines.
 - Quotes become curly quotes automatically. Units, "Chapter N" and "Zoo & Badger" never break across lines.
 
 **Fenced blocks.** Each opens with `:::kind Optional title` and closes with `:::`:
@@ -211,11 +246,14 @@ Zoo's One Fix: the one thing to do.
 
 ## Spot illustrations
 
-`spots/catalog.ts` lists 15 spots:
+`spots/catalog.ts` lists 16 spots:
 
 - the cover pair;
 - the free edition's pair;
-- one spot per chapter;
+- the 10-minute page's pair (Badger looks up at Zoo);
+- one spot per chapter. Four of them are round head-and-shoulders crops of Zoo (`ZOO_BUST`): at chapter-spot size
+  a full-length Zoo has a face about 15 pt tall and his expressions all read alike, while in the crop the face is
+  about 45 pt tall. The head keeps its approved size: a crop, never an enlarged head (ART_GUIDE CH2);
 - the About pair, which the media kit reuses.
 
 Each entry gives the characters, their views, poses and expressions, the printed height, and the alt text. The art
@@ -227,7 +265,7 @@ any zoom.
 
 | Asset | Licence | Notes |
 | --- | --- | --- |
-| Inter, Montserrat (`@fontsource/inter` 5.3.0, `@fontsource/montserrat` 5.3.0) | SIL Open Font License 1.1 | Subsets are embedded in the PDFs, which the OFL allows. Neither font has a Reserved Font Name. Montserrat's subsets show its internal "MontserratThin-…" PostScript names |
+| Inter, Montserrat (`@fontsource/inter` 5.3.0, `@fontsource/montserrat` 5.3.0) | SIL Open Font License 1.1 | Inter 400, 600, 700, 800 and the 400 and 600 italics; Montserrat 700, 800, 900. Subsets are embedded in the PDFs, which the OFL allows. Neither font has a Reserved Font Name. Montserrat's subsets show its internal "MontserratThin-…" PostScript names. Also recorded in `docs/BRANDING.md` section 6 |
 | Zoo and Badger | The studio's own original art | Rendered from `src/characters/` |
 | Icons (`lib/icons.ts`) | Original, drawn in code | 21 line icons on a 24-unit grid |
 | Text and sources | Our own writing | Facts are cited. Nothing is copied beyond short quoted phrases, and the scam lines are paraphrased |

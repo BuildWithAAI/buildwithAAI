@@ -43,7 +43,7 @@ This is general security education, not financial, legal or tax advice, and it n
 
 @toc
 
-# The 10-minute version {#quick-start kind=front toc="The ten actions to take first."}
+# The 10-minute version {#quick-start kind=front spot=quick-start kicker="Start here" rows=roomy toc="The ten actions to take first."}
 
 > Short on time? Start with these ten actions. The chapters explain each one, and why it matters.
 
@@ -406,6 +406,13 @@ A code word that nobody can clone.
 
 > Minutes matter. Work from the top: stop the damage, secure what's left, then report and record. Use a clean device if you can.
 
+:::flow The first hour at a glance
+- **Stop.** No more signing. Close the tab, and take a device that ran anything off the internet.
+- **Assess.** Use the table below to work out what was exposed and what to assume.
+- **Secure.** From a clean device: your email first, then exchanges, then move funds.
+- **Report.** The same day, with transaction IDs, addresses and screenshots.
+:::
+
 ## Step 1: Stop (first five minutes)
 
 - [ ] **Don't sign or approve anything else.** Close the tab. If you think malware is involved, disconnect that device from the internet.
@@ -428,11 +435,24 @@ A code word that nobody can clone.
 - [ ] **Check your email for new forwarding rules** and filters you didn't create.
 - [ ] **Contact your exchange through its app** and ask it to freeze withdrawals if your account is affected.
 
+:::note What to say to your exchange
+"My account may be compromised. Please freeze withdrawals, disable my API keys and sign out every session. The suspicious activity started at [time and time zone], and here are the transaction IDs." Reach support only through the app or an address you type yourself, and never move funds because the person helping you asks you to.
+:::
+
 ## Step 4: Report and record (same day)
 
-- [ ] **Report it.** In the US: the FBI's Internet Crime Complaint Center (ic3.gov), the FTC (ReportFraud.ftc.gov) and your local police. Elsewhere, your national police cybercrime reporting service. [@ftc-crypto-scams]
+- [ ] **Report it.** In the US: the FBI's Internet Crime Complaint Center (ic3.gov), the FTC (ReportFraud.ftc.gov) and your local police. In the UK, Canada and Australia, use the table below; anywhere else, your national police cybercrime reporting service. [@ftc-crypto-scams]
 - [ ] **Include the details:** transaction IDs, addresses, amounts, dates and times, website addresses and screenshots of the messages ([#incident-log]).
 - [ ] **Know what real reporting looks like.** The real IC3 has no social media accounts and doesn't recover funds through social platforms. Type the address yourself. [@ic3-impersonation-2026]
+
+### Where to report outside the US
+
+| Where you live | Report to | How |
+| --- | --- | --- |
+| England, Wales, Northern Ireland | Report Fraud, run by the City of London Police. It replaced Action Fraud in December 2025. | reportfraud.police.uk or 0300 123 2040 [@colp-report-fraud-2025] |
+| Scotland | Police Scotland | Call 101 [@colp-report-fraud-2025] |
+| Canada | Your local police, then the Canadian Anti-Fraud Centre | antifraudcentre-centreantifraude.ca or 1-888-495-8501 [@cafc-crypto-fraud-2025] |
+| Australia | ReportCyber if you lost money or data; Scamwatch for scams | ReportCyber on cyber.gov.au, and scamwatch.gov.au [@vic-report-cybercrime] |
 
 :::note What to put in a report
 Write it as a timeline, in plain words: **when** it started (date, time, time zone); **how** they reached you (site address, app, phone number, account name); **what** you did (signed, sent, installed, shared); **every transaction** (network, transaction ID, from and to addresses, amount); and **who else** you have told (exchange ticket numbers, police reference). Keep the original messages and screenshots; don't edit them.
@@ -481,22 +501,22 @@ A "record" that includes the seed phrase. That's not a record, it's a target.
 One inventory, updated every quarter, stored offline.
 :::
 
-# Emergency card {#emergency-card kind=appendix frame=cut}
+# Emergency card {#emergency-card kind=appendix frame=cut copies=2 cols=2}
 
-> Fill this in now, print it and keep it somewhere you'll find it under stress. It contains nothing a thief can use.
+> Fill in both cards now, print them and keep them where you'll find them under stress. They contain nothing a thief can use.
 
 :::fill
 My mobile carrier's fraud line:
 My exchange's official app or web address:
 Where my clean device is:
 Who knows our code word:
-Report: ic3.gov · ReportFraud.ftc.gov · local police:
+My local police (non-emergency):
 :::
 
 :::steps The first three moves
 1. Stop signing. Close the tab. Disconnect the device if you ran anything.
 2. From a clean device, move funds out of anything exposed, into a new wallet.
-3. Change your email password and 2FA, then your exchanges. Then report it.
+3. Change your email password and 2FA, then your exchanges. Report it: in the US, ic3.gov and ReportFraud.ftc.gov.
 :::
 
 :::note Never, under any pressure
@@ -536,9 +556,11 @@ Where an official page could not be opened directly when we checked it, we confi
 
 @sources
 
-# About Zoo & Badger {#about kind=back spot=about-pair}
+# About Zoo & Badger {#about kind=back spot=about-pair kicker="The show"}
 
-**The Zoo & Badger Show** covers crypto and AI security news: what happened, how it worked, and one fix. Zoo hosts. Badger, his dog, judges quietly.
+**The Zoo & Badger Show** covers crypto and AI security news: what happened, how it worked, and one fix. Zoo hosts. Badger, his dog, judges quietly. Recurring segments include Badger's Red Flag, Zoo's One Fix, the Rekt Meter and Scam of the Week.
+
+**How we check facts.** Every figure and incident in this checklist points to a numbered source: regulators, law enforcement, official wallet and exchange documentation, security firms and peer-reviewed research. We prefer primary sources, record the date we checked each one, and mark any page we could only confirm through a search engine's copy. Advice without a number is our own summary of those sources and of long-standing security practice.
 
 **Our rules.** We attribute every fact, label developing stories, and correct mistakes in public. We never ask for your seed phrase, never message you first about your wallet, and never promise returns.
 
@@ -546,4 +568,10 @@ Where an official page could not be opened directly when we checked it, we confi
 
 **No sponsors.** No company paid for, reviewed or sponsored this checklist, and it contains no affiliate links. Companies named in it are cited as sources or as incidents, not recommended.
 
-**Corrections.** Spotted something out of date? Tell us, and we'll fix it in the next version.
+**Corrections.** Spotted something out of date? Tell us on the show's channel, and we'll fix it in the next version. Each version is listed below.
+
+## Version history
+
+| Version | Date | What changed |
+| --- | --- | --- |
+| 1.0 | 24 November 2026 | First edition: twelve chapters, three printable templates, all sources checked on this date. |
