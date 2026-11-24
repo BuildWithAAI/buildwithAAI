@@ -1,0 +1,1050 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "updated": "2026-11-24",
+  "status": "Proposal pending the owner's approval. The planner takes ideas in priority order (2 POV stories a week); pin an idea to a week with \"week\": \"2026-W50\".",
+  "rules": [
+    "Binding: docs/PROJECT_INSTRUCTIONS.md and CLAUDE.md. Zoo (title case, never \"ZOO\") hosts; Badger is nonverbal: no lines, no captions, no synthesized dog sounds.",
+    "No income or return claims, no price predictions, no buy calls. Every fictional market example uses synthetic data, labelled illustrative.",
+    "No names, handles, likenesses or voices of private individuals (the repo is public). Real organisations appear only in attributed, sourced facts.",
+    "Every factual sentence carries [src:id] with a verified source, or a fact-bank [fact:id]; research.md holds the binding \"Must not say\" list the claim gate reads.",
+    "Synthetic demo data only: no real wallets, handles, messages, contract addresses, referral links or QR codes.",
+    "No third-party logos or app UI (Pump.fun, Solana, Telegram, exchanges, AI labs) without checking their brand rules; invented brands for fictional products.",
+    "Made for kids: No. Altered or synthetic content: No (clearly animated, generic synthetic voice). Paid promotion: none planned; any offer later needs the disclosure said and shown (FTC 16 CFR 255).",
+    "Any video that promotes the AAI coin needs legal review first (none is planned here)."
+  ],
+  "ideas": [
+    {
+      "id": "pumpfun-top-caller",
+      "slug": "pumpfun-top-caller",
+      "title": "POV: You become a top caller on Pump.fun",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 1,
+      "week": null,
+      "role": "pilot (owner, 2026-11-24)",
+      "angle": "You start posting memecoin calls for fun; followers copy you and the platform's callout rewards start paying. The story follows where that money comes from: wallets that buy seconds before the calls, followers left holding, an investigator mapping the wallets. It ends with consequences and the checks a viewer can run, never a win.",
+      "evergreenTopic": "memecoin-callers",
+      "relatedTopics": [
+        "rug-pulls",
+        "social-engineering"
+      ],
+      "factTags": [
+        "pump-fun",
+        "callers",
+        "memecoins"
+      ],
+      "research": "content/zoora-ai/pumpfun-top-caller/research.md",
+      "facts": [
+        {
+          "need": "When Pump.fun launched and which company operates it",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: verdict holds (search extracts of The Block and Decrypt; no direct read)"
+        },
+        {
+          "need": "How a bonding-curve launch graduates to Pump.fun's own DEX, with fees given 'at launch' or 'as of' a date",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: PumpSwap launch holds; the 'official' current fee schedule is overstated"
+        },
+        {
+          "need": "What share of tokens stop trading on their launch day (CoinGecko study, with its method caveat)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds via secondary coverage; CoinGecko's own report was not seen"
+        },
+        {
+          "need": "How Pump.fun's paid callout rewards work and when they started, as of reporting",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: partly holds; the programme changes often, so show an 'as of' date"
+        },
+        {
+          "need": "How callout rewards were spread across callers (Sparsity Research, as reported)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds in secondary coverage only"
+        },
+        {
+          "need": "The side-wallet pattern as Bubblemaps describes it, with Bubblemaps' own caveats",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: the pattern and the caveats hold, attributed to Bubblemaps"
+        },
+        {
+          "need": "What the August 2026 ruling in the Pump.fun class action decided, and that it is not a ruling on the merits",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: overstated in parts; use only the parts that hold"
+        },
+        {
+          "need": "Regulators' advice on paid touts and single tips (Investor.gov, CFTC)",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: unsupported (sec.gov and cftc.gov were blocked); check the exact wording in a browser"
+        }
+      ],
+      "risks": [
+        "research.md 'Must not say' is binding: no real caller names, handles or likenesses, and no figures that identify their cases.",
+        "Never call Pump.fun a scam, rigged or a casino; describe documented patterns, attributed to whoever documented them.",
+        "No income framing such as '$X per call'; the arc stays cautionary and resolves with consequences.",
+        "Livestream stunts are mentioned at most as 'dangerous stunts' and never depicted (YouTube self-harm policy).",
+        "No Pump.fun, Solana or Telegram logos or UI; invented token names; synthetic charts labelled illustrative.",
+        "Fees, graduation rates and reward terms drift: show 'as of' dates on screen.",
+        "CTA: subscribe only, no product pitch (owner, pilot)."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "The head start: what investigators say side wallets do before a call",
+        "Who really pays the caller",
+        "Treat every call as an ad",
+        "The holder-map check before you copy a call"
+      ],
+      "notes": "Owner-chosen pilot (CLAUDE.md, Owner decisions 2026-11-24)."
+    },
+    {
+      "id": "ai-agent-hedge-fund",
+      "slug": "ai-agent-hedge-fund",
+      "title": "POV: You created an autonomous AI trading agent hedge fund",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 2,
+      "week": null,
+      "role": "next story after the pilot (owner, 2026-11-24)",
+      "angle": "You launch an 'autonomous AI hedge fund' token on a memefund launchpad (invented brands). The marketing says the agent decides; the public tests say most AI traders lost money; a stranger talks the agent into paying out; a regulator asks who manages the money. It ends with what AI can and cannot promise, and the registration and security basics.",
+      "evergreenTopic": "ai-trading-agents",
+      "relatedTopics": [
+        "ai-security"
+      ],
+      "factTags": [
+        "ai-agents",
+        "ai-trading",
+        "prompt-injection",
+        "ai-washing"
+      ],
+      "research": "content/zoora-ai/ai-agent-hedge-fund/research.md",
+      "facts": [
+        {
+          "need": "Alpha Arena Season 1: six AI models traded real money on crypto perpetuals with no human intervention, and four of six lost",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "FINSABER: the apparent edge of LLM trading strategies shrinks over longer, broader backtests",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "StockBench: most LLM trading agents did not beat buy-and-hold",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: the main result holds; other details unconfirmed"
+        },
+        {
+          "need": "Freysa: an AI agent guarding a prize pool was talked into paying out",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "aixbt: an attacker with dashboard access queued prompts and the agent sent ETH from its wallet",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds; use the rounded figures its Must not say section gives"
+        },
+        {
+          "need": "Memory injection can make agents built on ElizaOS send crypto (a research demonstration)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds (Princeton and Sentient paper)"
+        },
+        {
+          "need": "The SEC's first AI-washing settlements with two investment advisers (March 2024)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds; settled, neither admitting nor denying"
+        },
+        {
+          "need": "The AI-agent token sector fell fast in early 2025",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds as The Block reported it"
+        },
+        {
+          "need": "Pooling other people's money generally needs registration or an exemption (SEC and CFTC basics)",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported; keep it generic, no thresholds as advice"
+        }
+      ],
+      "risks": [
+        "Composite-character bleed: the fictional arc must not mirror the real ai16z case beat for beat (research.md, Defamation risks).",
+        "Invented fund, launchpad and agent brands; no real-person likeness, voice or fake screenshots, and no famous-investor parody that resembles a real person.",
+        "Never say any AI 'beats the market', 'can't lose' or gives 'guaranteed returns'; pair every gain with the losses and label figures company-reported or simulated.",
+        "Prompt injection and memory injection at concept level only: no payloads, function names or the winning messages.",
+        "No registration thresholds presented as advice; 'talk to a securities lawyer' framing.",
+        "Name no private individuals; 'a lawsuit alleged' wording only, and settled cases ended without a ruling on the merits."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "Four of six AI traders lost real money",
+        "The agent that paid out after one clever message",
+        "Why 'AI-powered' is not a track record",
+        "Backtests that looked great until they did not"
+      ],
+      "notes": "Owner: the next video after the pilot (CLAUDE.md)."
+    },
+    {
+      "id": "pov-free-airdrop",
+      "slug": "pov-free-airdrop",
+      "title": "POV: You claim a free airdrop and your wallet empties",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 3,
+      "week": null,
+      "role": null,
+      "angle": "A 'claim your airdrop' link, a wallet pop-up approved without reading, and a drainer that sweeps the wallet minutes later. The story slows down on the one signature that mattered, then shows the habits that stop it: read every signing request, use a separate wallet for claims, revoke old approvals.",
+      "evergreenTopic": "drainers",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "drainers",
+        "phishing",
+        "approvals"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "How wallet drainers work at concept level: a signature or approval that lets someone else move tokens",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "The recent annual scale of drainer losses from a named tracker, with its method",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "What token approvals and permit-style signatures allow, and how revoking works (wallet documentation)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Wallet makers' and regulators' guidance on airdrop phishing",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No drainer how-to: no kit names promoted, no code, no step-by-step.",
+        "No real phishing domains, addresses or project names; invented airdrop and token names.",
+        "Never blame the victim; the joke is never on people who lost money.",
+        "No endorsement of any approval-revoke tool; describe the habit, not a product."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "The signature that emptied the wallet",
+        "Free airdrops that need a signature",
+        "Revoke the approvals you forgot",
+        "One wallet for claims, one for savings"
+      ],
+      "notes": "Publishes after the security explainer on drainers, so it can link it (the channels feed each other)."
+    },
+    {
+      "id": "pov-malicious-ai-plugin",
+      "slug": "pov-malicious-ai-plugin",
+      "title": "POV: You install a free AI agent plugin that promises alpha",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 4,
+      "week": null,
+      "role": null,
+      "angle": "Your trading agent needs a 'skill' from a marketplace, and its setup asks you to run one more 'prerequisite'. That step installs a stealer, and the exchange API keys and wallet files go with it. The fix is boring and effective: verified publishers, trade-only API keys with no withdrawals, and keys kept away from the machine that runs experiments.",
+      "evergreenTopic": "ai-security",
+      "relatedTopics": [
+        "drainers",
+        "key-management"
+      ],
+      "factTags": [
+        "ai-agents",
+        "malicious-plugins",
+        "infostealers",
+        "supply-chain"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "An audit of an AI agent skills marketplace found hundreds of malicious skills (as reported in February 2026)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: the audit counts hold; the crypto-share claims are unverified"
+        },
+        {
+          "need": "Memory injection can make AI agents send crypto (a research demonstration)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "How infostealers take browser sessions, API keys and wallet files (security-firm reports)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Exchange API keys: trade-only versus withdrawal permissions (exchange documentation)",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No malware or plugin-building how-to; no real marketplace UI, logos or skill names.",
+        "Say 'hundreds of fake plugins installed password- and wallet-stealing malware', not the unverified crypto-share figures (the hedge-fund research's Must not say).",
+        "Invented agent and marketplace brands."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "The 'prerequisite' that was the malware",
+        "Trade-only API keys, always",
+        "Your agent's plugins can read your keys",
+        "Experiments and savings on different machines"
+      ],
+      "notes": "Publishes after the security explainer on AI agents and prompt injection."
+    },
+    {
+      "id": "pov-ai-trading-bot",
+      "slug": "pov-ai-trading-bot",
+      "title": "POV: You buy an AI trading bot that 'never loses'",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 5,
+      "week": null,
+      "role": null,
+      "angle": "A slick subscription bot with a dashboard full of green trades and referral tiers. The dashboard is the product; the trades are not real. The story ends with the regulators' red flags (guaranteed returns, unregistered sellers, pressure to recruit) and what an honest bot pitch would have to admit.",
+      "evergreenTopic": "trading-bot-fraud",
+      "relatedTopics": [
+        "ai-security",
+        "social-engineering"
+      ],
+      "factTags": [
+        "trading-bots",
+        "ai-washing",
+        "regulators"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "The CFTC's customer advisory on AI trading bots (January 2024)",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported; verify the exact quote on cftc.gov"
+        },
+        {
+          "need": "The SEC, NASAA and FINRA joint investor alert on AI and investment fraud",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported"
+        },
+        {
+          "need": "A CFTC case about a 'trading bot' that never traded profitably (a civil judgment)",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported; a civil default judgment is never 'convicted'"
+        },
+        {
+          "need": "The SEC's AI-washing settlements (March 2024)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        }
+      ],
+      "risks": [
+        "Scam pitches ('never loses', 'guaranteed') appear only as quoted warnings, each with a claim-gate income waiver and its reason.",
+        "Civil judgments are not convictions; settlements are 'neither admitting nor denying'.",
+        "No real bot brands; no referral links or sign-up flows on screen."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "The dashboard is the product",
+        "The words regulators flag",
+        "Why 'never loses' is the tell",
+        "Ask who is registered"
+      ],
+      "notes": null
+    },
+    {
+      "id": "pov-wrong-number",
+      "slug": "pov-wrong-number",
+      "title": "POV: A wrong-number text becomes your new best friend",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 6,
+      "week": null,
+      "role": null,
+      "angle": "A friendly stranger, weeks of chat, then a trading app that shows steady gains and a withdrawal that needs one more 'tax'. The story follows the slow build of a relationship investment scam and ends with the rule that breaks it: never invest through a platform that someone you met online introduces.",
+      "evergreenTopic": "social-engineering",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "pig-butchering",
+        "investment-fraud",
+        "fbi-ic3"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "The FBI IC3's latest annual figures for crypto investment fraud",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "FinCEN's alert on 'pig butchering' relationship investment scams",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "The fake 'withdrawal tax' pattern as regulators describe it",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Respect victims: no mockery or shame; Badger's reactions are aimed at the scam, never at the victim.",
+        "No national or ethnic stereotypes; forced-labour context only as sourced, attributed facts.",
+        "No real app names, phone numbers, messages or QR codes; synthetic chat only."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "The wrong number that was not wrong",
+        "The app that only shows gains",
+        "The withdrawal 'tax' is the tell",
+        "Never invest where a new friend points"
+      ],
+      "notes": null
+    },
+    {
+      "id": "pov-deepfake-giveaway",
+      "slug": "pov-deepfake-giveaway",
+      "title": "POV: A famous founder goes live and promises to double your coins",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 7,
+      "week": null,
+      "role": null,
+      "angle": "A hijacked channel streams a convincing deepfake of a famous (fictional) founder with a QR code and a 'send one, get two back' giveaway. You send; nothing comes back. The story shows why no real giveaway asks you to send first, and how to check a channel before trusting a live stream.",
+      "evergreenTopic": "ai-security",
+      "relatedTopics": [
+        "social-engineering",
+        "phishing"
+      ],
+      "factTags": [
+        "deepfakes",
+        "giveaway-scams",
+        "youtube-policy"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Published reports of deepfake livestream giveaway scams (security firms or regulators)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "YouTube's policies on impersonation and scams",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "FTC guidance that real giveaways never ask you to send money first",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "The 'famous founder' is fictional and must not resemble any real person; no real names, faces or voices.",
+        "No real QR codes, addresses or channel names; synthetic stream overlays only.",
+        "Our own video stays clearly animated with a generic voice and never imitates a real person, so it needs no altered-content label."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "Send one, get two: the oldest trick",
+        "The livestream that was not live",
+        "Check the channel before the giveaway",
+        "No real giveaway asks you to send first"
+      ],
+      "notes": null
+    },
+    {
+      "id": "pov-fake-job-interview",
+      "slug": "pov-fake-job-interview",
+      "title": "POV: You ace a crypto job interview and the take-home test hacks you",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 8,
+      "week": null,
+      "role": null,
+      "angle": "A recruiter message, a dream remote role, a coding test in a repository you run on your work laptop. The test installs malware and the wallet on that machine is gone. Security firms and government advisories describe these campaigns; the fix is to run any test on a throwaway machine, never where keys live.",
+      "evergreenTopic": "fake-job-malware",
+      "relatedTopics": [
+        "social-engineering"
+      ],
+      "factTags": [
+        "fake-jobs",
+        "malware",
+        "social-engineering"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Government advisories on fake recruiter campaigns that deliver malware",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Security-firm reports on malicious coding-test repositories",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Attribution of some campaigns to state-backed groups, exactly as the source states it",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "State-actor attribution only in the source's own words, never in titles or thumbnails.",
+        "No malware names as how-tos, no repository names, no step lists.",
+        "No real company or recruiter names; invented brands."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "The take-home test that took everything",
+        "Run tests on a throwaway machine",
+        "When the recruiter found you first",
+        "Your work laptop is not a wallet"
+      ],
+      "notes": null
+    },
+    {
+      "id": "pov-address-poisoning",
+      "slug": "pov-address-poisoning",
+      "title": "POV: You copy the address from your history and pay a stranger",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 9,
+      "week": null,
+      "role": null,
+      "angle": "A tiny transfer arrives from an address that looks like a friend's. A week later you copy 'the usual address' from your history and send. The story shows how look-alike addresses get into your history and why an address book and a test transfer beat memory.",
+      "evergreenTopic": "address-poisoning",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "address-poisoning"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "How address poisoning works at concept level (dust transfers from look-alike addresses)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "The measured scale of address poisoning from a published study or tracker",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Wallet guidance: address books, checking every character, test transfers",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Show no address-like strings at all (the claim gate fails on them); icons and colours stand in for addresses.",
+        "No victim or case identifiers."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "The address that looked right",
+        "Never copy from history",
+        "The test-transfer habit",
+        "Why the first and last characters are not enough"
+      ],
+      "notes": null
+    },
+    {
+      "id": "pov-exchange-freeze",
+      "slug": "pov-exchange-freeze",
+      "title": "POV: Your exchange pauses withdrawals 'for maintenance'",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 10,
+      "week": null,
+      "role": null,
+      "angle": "Withdrawals pause, the support replies get vaguer, and then the bankruptcy filing arrives. The story walks through what happens to customer balances in a collapse, using court records, and ends with what self-custody does and does not fix.",
+      "evergreenTopic": "exchange-risk",
+      "relatedTopics": [
+        "key-management"
+      ],
+      "factTags": [
+        "exchanges",
+        "custody",
+        "bankruptcy"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Court records of past exchange bankruptcies and how customer claims were treated",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "What proof-of-reserves reports show and what they leave out",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Self-custody basics and its own risks, such as lost keys",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Name real exchanges only with court-record facts; no speculation that any current exchange will fail.",
+        "No financial advice; self-custody is shown with its risks, not as a recommendation to move funds."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "'Maintenance' that never ended",
+        "'Not your keys': what it really means",
+        "What proof of reserves leaves out",
+        "Self-custody has its own risks"
+      ],
+      "notes": null
+    },
+    {
+      "id": "pov-sim-swap",
+      "slug": "pov-sim-swap",
+      "title": "POV: Your phone loses signal, then your exchange account empties",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 11,
+      "week": null,
+      "role": null,
+      "angle": "One afternoon the phone shows 'No service'. Someone has talked the carrier into moving the number, and every text-message code now goes to them. The fix: an authenticator app or security key, a carrier account PIN, and no SMS recovery on accounts that hold money.",
+      "evergreenTopic": "sim-swap",
+      "relatedTopics": [
+        "social-engineering",
+        "key-management"
+      ],
+      "factTags": [
+        "sim-swap",
+        "account-security"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "The FBI IC3's figures and warnings on SIM swapping",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "The FCC's rules on SIM changes and number port-outs",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Why text-message codes are weaker than authenticator apps or security keys (NIST or CISA guidance)",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No carrier-specific claims without a source; no attack steps.",
+        "No real phone numbers or account screens."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "'No service' was the first sign",
+        "Text-message codes are the weak link",
+        "Set a carrier PIN",
+        "Security keys beat SMS codes"
+      ],
+      "notes": null
+    },
+    {
+      "id": "pov-friends-memecoin",
+      "slug": "pov-friends-memecoin",
+      "title": "POV: You buy your friend's memecoin on day one",
+      "format": "pov-story",
+      "status": "idea",
+      "priority": 12,
+      "week": null,
+      "role": null,
+      "angle": "A friend launches a coin 'just for fun' and you buy early. Insiders hold most of the supply, the chart spikes and the liquidity disappears. The story uses published studies to show how most new tokens end, and the holder checks that would have flagged this one.",
+      "evergreenTopic": "rug-pulls",
+      "relatedTopics": [
+        "memecoin-callers"
+      ],
+      "factTags": [
+        "memecoins",
+        "rug-pulls",
+        "pump-fun"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "The share of new tokens that stop trading on their launch day (CoinGecko study)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds via secondary coverage"
+        },
+        {
+          "need": "Solidus Labs' study of rug-pull and pump-and-dump traits, with Pump.fun's rebuttal",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: unsupported; re-verify and attribute"
+        },
+        {
+          "need": "Chainalysis on pump-and-dump patterns in token launches",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: unsupported"
+        }
+      ],
+      "risks": [
+        "No launch how-to and no launchpad promotion.",
+        "No real token names unless sourced; never call a real project a rug pull.",
+        "Synthetic charts only, labelled illustrative; green candles go up, red go down (CHART_SPEC)."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "Who bought before you did",
+        "The chart that was a trap",
+        "Check the holders first",
+        "How most new tokens end"
+      ],
+      "notes": null
+    },
+    {
+      "id": "explainer-ai-traders-tested",
+      "slug": "explainer-ai-traders-tested",
+      "title": "Can an AI trade for you? What the live tests show",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 13,
+      "week": null,
+      "role": null,
+      "angle": "Zoo walks through the public tests of AI trading: a live-money contest where most models lost, academic backtests whose edge shrank under scrutiny, and why company-reported returns are not a track record. No predictions and no picks: how to read an 'AI fund' claim.",
+      "evergreenTopic": "ai-trading-agents",
+      "relatedTopics": [
+        "ai-security"
+      ],
+      "factTags": [
+        "ai-trading",
+        "llm-benchmarks"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Alpha Arena Season 1 results",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "FINSABER on longer, broader backtests",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "StockBench: most agents did not beat buy-and-hold",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: the main result holds"
+        },
+        {
+          "need": "Numerai: a real AI and crowdsourced fund whose returns are company-reported",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds as company-reported figures"
+        }
+      ],
+      "risks": [
+        "Pair every gain with the losses; label figures company-reported, short-window or simulated.",
+        "No 'AI beats the market' framing; no fund or token recommendations.",
+        "A capacity commitment is not money given: the research bans saying a bank 'gave' the fund money."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "Four of six AI traders lost real money",
+        "Company-reported is not audited",
+        "The backtest trap",
+        "How to read an AI fund pitch"
+      ],
+      "notes": "Optional explainer: the default cadence is 2 POV stories a week; pin it to a week to use a slot."
+    },
+    {
+      "id": "explainer-memecoin-odds",
+      "slug": "explainer-memecoin-odds",
+      "title": "What happens to most new memecoins? The numbers",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 14,
+      "week": null,
+      "role": null,
+      "angle": "Zoo puts the published numbers side by side: how many tokens stop trading on day one, how few reach a DEX, and how on-chain studies count the wallets that made money, each with its method caveat and date. The point is the odds, not a strategy.",
+      "evergreenTopic": "rug-pulls",
+      "relatedTopics": [
+        "memecoin-callers"
+      ],
+      "factTags": [
+        "memecoins",
+        "pump-fun",
+        "coingecko"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "CoinGecko: the share of tokens that stopped trading on launch day",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds via secondary coverage"
+        },
+        {
+          "need": "The share of tokens that graduate to a DEX, from several dated sources",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: overstated; only some of the figures hold"
+        },
+        {
+          "need": "An on-chain snapshot of wallets with realized profit (early 2025)",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: unsupported; method caveats needed"
+        }
+      ],
+      "risks": [
+        "'As of' dates and method caveats on screen; CoinGecko does not call the tokens scams, so neither do we.",
+        "No strategy or 'how to win' framing."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "Most new tokens stop trading on day one",
+        "Graduation is rare",
+        "What these studies cannot see",
+        "The odds, not a strategy"
+      ],
+      "notes": "Optional explainer (pin it to a week to use a slot)."
+    },
+    {
+      "id": "explainer-ai-washing",
+      "slug": "explainer-ai-washing",
+      "title": "AI-washing: when 'powered by AI' is the pitch",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 15,
+      "week": null,
+      "role": null,
+      "angle": "Zoo explains AI-washing through regulators' own cases: advisers who settled over AI claims they could not back, and the warning signs regulators list. How to ask what the 'AI' actually does before trusting it with money.",
+      "evergreenTopic": "ai-security",
+      "relatedTopics": [
+        "trading-bot-fraud"
+      ],
+      "factTags": [
+        "ai-washing",
+        "sec",
+        "regulators"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "The SEC's AI-washing settlements with two advisers (March 2024)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "Later AI-washing actions (a public company; criminal charges)",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported; 'charged', never 'convicted'"
+        },
+        {
+          "need": "The SEC, NASAA and FINRA investor alert on AI and investment fraud",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported"
+        }
+      ],
+      "risks": [
+        "Settled cases: 'neither admitting nor denying'.",
+        "Charged is not convicted; name people only where an official release does, and prefer not to.",
+        "No company logos."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "What 'powered by AI' should mean",
+        "The settlement that named AI-washing",
+        "Three questions for any AI pitch",
+        "Regulators already warned about this"
+      ],
+      "notes": "Optional explainer (pin it to a week to use a slot)."
+    },
+    {
+      "id": "explainer-holder-maps",
+      "slug": "explainer-holder-maps",
+      "title": "Side wallets, bundles and snipers: reading a token's holder map",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 16,
+      "week": null,
+      "role": null,
+      "angle": "Zoo explains, at concept level, what investigators mean by clusters, bundled buys and snipers, and why a cluster alone is not proof of wrongdoing. The viewer leaves with three questions to ask of any holder map, not a trading tool.",
+      "evergreenTopic": "rug-pulls",
+      "relatedTopics": [
+        "memecoin-callers"
+      ],
+      "factTags": [
+        "bubblemaps",
+        "memecoins",
+        "on-chain-analysis"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Bubblemaps' caveat that a cluster alone is not proof of wrongdoing",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds"
+        },
+        {
+          "need": "The side-wallet pattern as Bubblemaps describes it",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds, attributed"
+        },
+        {
+          "need": "Plain definitions of bundled buys, clusters and snipers",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: unsupported; keep them generic"
+        }
+      ],
+      "risks": [
+        "No manipulation how-to and no tool endorsement or referral links.",
+        "No real wallets, tokens or callers on screen; synthetic maps only."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [
+        "A cluster is not proof",
+        "What a bundled launch looks like",
+        "Snipers, explained",
+        "Three questions for any holder map"
+      ],
+      "notes": "Optional explainer (pin it to a week to use a slot)."
+    }
+  ]
+}

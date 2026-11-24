@@ -1,0 +1,932 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "updated": "2026-11-24",
+  "status": "Proposal pending the owner's approval. Evergreen explainers and Scam of the Week pieces for The Zoo & Badger Show; the daily news stays in scripts/daily. evergreenTopic is a key of content/zoora-security/channel.json \"evergreen\", so the daily Threat Brief links each explainer once it is published.",
+  "rules": [
+    "Binding: CLAUDE.md Channel 2 rules and docs/PROJECT_INSTRUCTIONS.md. Accuracy first: a strike on either channel endangers both.",
+    "Attribute every fact; do not redraw or speculate about others' material; no suspect or private names (officials named in law-enforcement or regulator releases only).",
+    "No exploit how-tos: mechanisms at concept level, with no code, function names, addresses or step lists. Defensive checklists are fine.",
+    "No price or investment talk and no income claims; scam pitches are quoted only as warnings (a claim-gate income waiver with its reason).",
+    "Badger is nonverbal and his reactions are never at a victim's expense. Respect the people who lost money.",
+    "No real wallet addresses, handles, messages, links or QR codes from scams; synthetic examples only.",
+    "Evergreen: no 'this week' framing; dates only where a fact needs them, and 'as of' for figures that move.",
+    "Made for kids: No. Altered or synthetic content: No. No offers or sponsors in these videos."
+  ],
+  "ideas": [
+    {
+      "id": "explainer-wallet-drainers",
+      "slug": "explainer-wallet-drainers",
+      "title": "How wallet drainers work, and how to spot one",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 1,
+      "week": null,
+      "role": null,
+      "angle": "The concept behind drainers: a site gets you to sign or approve something, and a contract then moves what you approved. Badger's red flag is the 'sign to claim' button; Zoo's one fix is to read what a signature allows before signing. Every news episode about a drainer links here.",
+      "evergreenTopic": "drainers",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "drainers",
+        "phishing",
+        "approvals"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "How drainers work at concept level: signatures, token approvals and permit-style signatures",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Annual drainer loss figures from a named tracker, with its method",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "How to review and revoke token approvals (wallet documentation)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "How security firms describe drainer-as-a-service operations (attributed)",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Concept level only: no kit names promoted, no code, no addresses.",
+        "No real phishing domains or project names.",
+        "Attribute every figure to its tracker and date it."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"drainers\" in channel.json."
+    },
+    {
+      "id": "explainer-ai-agents",
+      "slug": "explainer-ai-agents",
+      "title": "AI agents, prompt injection and malicious plugins",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 2,
+      "week": null,
+      "role": null,
+      "angle": "What changes when an AI agent can move money: prompt injection, memory injection, compromised dashboards and fake plugins, each shown with a documented case at concept level. Zoo's one fix: give an agent the least access it needs and keep keys out of its reach.",
+      "evergreenTopic": "ai-security",
+      "relatedTopics": [
+        "drainers",
+        "key-management"
+      ],
+      "factTags": [
+        "ai-agents",
+        "prompt-injection",
+        "malicious-plugins"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Freysa: an AI agent guarding a prize pool was talked into paying out",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "aixbt: an attacker with dashboard access queued prompts and the agent sent ETH",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "Memory injection can make ElizaOS agents send crypto (a research demonstration)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+        },
+        {
+          "need": "An audit found hundreds of malicious skills in an AI agent marketplace",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: the counts hold"
+        },
+        {
+          "need": "A chatbot was tricked into relaying a command that made a trading bot send tokens",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds with care; the permission step is only alleged"
+        },
+        {
+          "need": "OWASP or NIST guidance on prompt injection in LLM applications",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No payloads, winning prompts, encoded messages or function names.",
+        "Do not imply the AI companies or bot makers stole funds; the reports describe users exploiting the bots.",
+        "Name no attackers, winners or developers; memory injection was 'a research demonstration', not losses."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"ai-security\" in channel.json."
+    },
+    {
+      "id": "explainer-social-engineering",
+      "slug": "explainer-social-engineering",
+      "title": "Social engineering: the hack that targets people",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 3,
+      "week": null,
+      "role": null,
+      "angle": "Many big losses start with a person, not a bug: fake support, fake recruiters, fake colleagues. Zoo explains the levers (urgency, authority, a reason to skip a check) with published cases, and the habit that breaks them: verify through a channel you already trust.",
+      "evergreenTopic": "social-engineering",
+      "relatedTopics": [
+        "phishing",
+        "fake-job-malware"
+      ],
+      "factTags": [
+        "social-engineering",
+        "impersonation"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "How the FBI IC3 and the FTC describe social-engineering patterns",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Incident post-mortems that attribute a loss to social engineering (attributed)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Verification habits that CISA or the FTC recommend",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Attribute every case; no accusations beyond the source.",
+        "No impersonation scripts reproduced in full."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"social-engineering\" in channel.json."
+    },
+    {
+      "id": "explainer-phishing",
+      "slug": "explainer-phishing",
+      "title": "Crypto phishing: the signs that never change",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 4,
+      "week": null,
+      "role": null,
+      "angle": "Phishing pages change every week; the signs do not: urgency, a look-alike address, a request for a recovery phrase or a signature. Zoo walks through the pattern with a synthetic example and ends with the bookmark habit.",
+      "evergreenTopic": "phishing",
+      "relatedTopics": [
+        "drainers",
+        "social-engineering"
+      ],
+      "factTags": [
+        "phishing"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "The FTC's guidance on crypto phishing",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Phishing trend data from a named source (for example APWG)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Wallet makers' guidance on fake sites and fake ads",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Synthetic pages only; no real phishing domains or screenshots.",
+        "No recovery phrases on screen, not even fake ones that look real."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"phishing\" in channel.json."
+    },
+    {
+      "id": "explainer-address-poisoning",
+      "slug": "explainer-address-poisoning",
+      "title": "Address poisoning: the copy-paste trap",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 5,
+      "week": null,
+      "role": null,
+      "angle": "How a look-alike address gets into your transaction history and why copying from history is the mistake. Zoo shows the concept with abstract shapes, never real addresses, and the fix: an address book and a test transfer.",
+      "evergreenTopic": "address-poisoning",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "address-poisoning"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "How address poisoning works at concept level",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Measured scale from a published study or tracker",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Wallet guidance on address books and test transfers",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No address-like strings on screen (the claim gate fails on them).",
+        "No victim identifiers."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"address-poisoning\" in channel.json."
+    },
+    {
+      "id": "explainer-key-management",
+      "slug": "explainer-key-management",
+      "title": "Keys, multisigs and why one leaked key can empty a vault",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 6,
+      "week": null,
+      "role": null,
+      "angle": "What a private key is, what a multisig adds, and why one compromised key or signer device still causes most large losses in the post-mortems. Zoo ends with the separation habits a small team can copy.",
+      "evergreenTopic": "key-management",
+      "relatedTopics": [
+        "social-engineering"
+      ],
+      "factTags": [
+        "key-management",
+        "multisig"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "What private keys and multisigs are (concept level)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Post-mortems where one compromised key or signer led to a loss (attributed)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Hardware wallet and multisig practices from official documentation",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Attribute every incident to its post-mortem; no speculation about insiders.",
+        "No setup walkthrough that reads as a security guarantee."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"key-management\" in channel.json."
+    },
+    {
+      "id": "explainer-rug-pulls",
+      "slug": "explainer-rug-pulls",
+      "title": "Rug pulls: what the warning signs look like",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 7,
+      "week": null,
+      "role": null,
+      "angle": "The warning signs investigators and regulators point to: concentrated supply, liquidity that can be pulled, anonymous teams paying for promotion. Badger's red flag is the holder chart; Zoo's one fix is to check it before buying anything new.",
+      "evergreenTopic": "rug-pulls",
+      "relatedTopics": [
+        "social-engineering"
+      ],
+      "factTags": [
+        "rug-pulls",
+        "memecoins"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "The share of new tokens that stop trading on day one (CoinGecko study)",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds via secondary coverage"
+        },
+        {
+          "need": "Bubblemaps' caveat that clusters alone do not prove wrongdoing",
+          "factId": null,
+          "status": "researched",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds"
+        },
+        {
+          "need": "Chainalysis on pump-and-dump patterns",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: unsupported"
+        },
+        {
+          "need": "Regulators' advice on paid promotions and single tips",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: unsupported"
+        }
+      ],
+      "risks": [
+        "Never call a real project a rug pull unless a court or regulator has said so, attributed.",
+        "No price talk; no token names unless sourced."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"rug-pulls\" in channel.json."
+    },
+    {
+      "id": "explainer-bridges",
+      "slug": "explainer-bridges",
+      "title": "Why bridges get hacked",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 8,
+      "week": null,
+      "role": null,
+      "angle": "A bridge holds funds on one chain and releases them on another, so whoever controls its keys or its message checks controls the money. Zoo explains the concept with the diagram, then the published post-mortems, and what users can and cannot do about bridge risk.",
+      "evergreenTopic": "bridge-security",
+      "relatedTopics": [
+        "key-management"
+      ],
+      "factTags": [
+        "bridges"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "How cross-chain bridges lock and release funds (concept level)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Post-mortems of major bridge incidents (attributed)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Tracker figures for bridge losses (DefiLlama hacks data)",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Concept level only; no exploit steps or contract details.",
+        "Attribute attributions: state-actor claims only in the source's words."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"bridge-security\" in channel.json."
+    },
+    {
+      "id": "explainer-fake-job-malware",
+      "slug": "explainer-fake-job-malware",
+      "title": "Fake job interviews that install malware",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 9,
+      "week": null,
+      "role": null,
+      "angle": "Recruiter messages, a test task and a repository that installs malware: Zoo explains the campaign pattern from published advisories, and the one fix that defeats it, a throwaway machine for any test.",
+      "evergreenTopic": "fake-job-malware",
+      "relatedTopics": [
+        "social-engineering"
+      ],
+      "factTags": [
+        "fake-jobs",
+        "malware"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Government advisories on fake recruiter malware campaigns",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Security-firm reports on malicious test repositories",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Attribution exactly as the sources state it",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "State-actor attribution only in the source's words, never in titles or thumbnails.",
+        "No malware or repository names as how-tos."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"fake-job-malware\" in channel.json."
+    },
+    {
+      "id": "explainer-oracles",
+      "slug": "explainer-oracles",
+      "title": "Price oracles, explained without the jargon",
+      "format": "explainer",
+      "status": "idea",
+      "priority": 10,
+      "week": null,
+      "role": null,
+      "angle": "A smart contract cannot see prices; an oracle tells it. Zoo explains why a price that can be pushed around for a moment can drain a lending pool, using published post-mortems at concept level, and what well-built protocols do instead.",
+      "evergreenTopic": "oracle-manipulation",
+      "relatedTopics": [
+        "bridge-security"
+      ],
+      "factTags": [
+        "oracles",
+        "defi"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "What a price oracle is (concept level)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Post-mortems of oracle manipulation incidents (attributed)",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Protocol documentation on manipulation-resistant prices",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No price or trading talk; no step-by-step manipulation.",
+        "Attribute every incident."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": "Matches the planned evergreen title for \"oracle-manipulation\" in channel.json."
+    },
+    {
+      "id": "sotw-fake-support",
+      "slug": "sotw-fake-support",
+      "title": "Scam of the Week: the 'support agent' who messages you first",
+      "format": "scam-of-the-week",
+      "status": "idea",
+      "priority": 1,
+      "week": null,
+      "role": null,
+      "angle": "Real support never messages you first. The pattern: a reply to your public complaint from a 'support' account, a link to 'verify' your wallet or a request for your recovery phrase. The tell and the fix fit in one case file.",
+      "evergreenTopic": "social-engineering",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "impersonation",
+        "support-scams"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Wallet makers' and exchanges' warnings about fake support accounts",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "The FTC's guidance and data on impersonation scams",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No real brand names or handles; synthetic messages.",
+        "Never show a recovery phrase, even a fake one."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": null
+    },
+    {
+      "id": "sotw-deepfake-livestream",
+      "slug": "sotw-deepfake-livestream",
+      "title": "Scam of the Week: the deepfake giveaway livestream",
+      "format": "scam-of-the-week",
+      "status": "idea",
+      "priority": 2,
+      "week": null,
+      "role": null,
+      "angle": "A hijacked channel, a deepfaked famous face and a 'send one, get two back' QR code. The case file: how it works, the tell (any giveaway that asks you to send first) and the fix (check the channel's history before trusting a stream).",
+      "evergreenTopic": "ai-security",
+      "relatedTopics": [
+        "social-engineering"
+      ],
+      "factTags": [
+        "deepfakes",
+        "giveaway-scams"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Published reports of deepfake livestream giveaway scams",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "YouTube's impersonation and scam policies",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Consumer-protection guidance on giveaway scams",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Never depict a real person; the deepfaked face is an invented character.",
+        "No real QR codes or addresses."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": null
+    },
+    {
+      "id": "sotw-recovery-scam",
+      "slug": "sotw-recovery-scam",
+      "title": "Scam of the Week: the 'recovery expert' who can get your crypto back",
+      "format": "scam-of-the-week",
+      "status": "idea",
+      "priority": 3,
+      "week": null,
+      "role": null,
+      "angle": "People who already lost money get a second message: a recovery service that needs a fee up front. The case file shows the pattern regulators describe and the fix: legitimate recovery goes through law enforcement, and no one recovers crypto for an upfront fee.",
+      "evergreenTopic": "social-engineering",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "recovery-scams"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "FBI and FTC warnings about fund-recovery scams",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "How recovery scams target earlier victims, as regulators describe it",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Extra care: the audience includes victims; no shame, no jokes at their expense.",
+        "No real service names."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": null
+    },
+    {
+      "id": "sotw-voice-clone",
+      "slug": "sotw-voice-clone",
+      "title": "Scam of the Week: a cloned voice asks for money",
+      "format": "scam-of-the-week",
+      "status": "idea",
+      "priority": 4,
+      "week": null,
+      "role": null,
+      "angle": "A call in a family member's voice, an emergency and a payment that cannot wait. The case file explains voice cloning at concept level and the fix consumer agencies recommend: hang up and call back on a number you know, or agree a family code word.",
+      "evergreenTopic": "ai-security",
+      "relatedTopics": [
+        "social-engineering"
+      ],
+      "factTags": [
+        "voice-cloning",
+        "deepfakes"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "FTC and FBI warnings about AI voice-cloning scams",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Consumer-agency guidance on call-backs and family code words",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Never clone or imitate a real person's voice (CLAUDE.md); illustrate with on-screen text, not a synthetic victim's voice.",
+        "No real phone numbers."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": null
+    },
+    {
+      "id": "sotw-ai-investment-club",
+      "slug": "sotw-ai-investment-club",
+      "title": "Scam of the Week: the 'AI investment club' group chat",
+      "format": "scam-of-the-week",
+      "status": "idea",
+      "priority": 5,
+      "week": null,
+      "role": null,
+      "angle": "A group chat that shares 'AI-generated' trading tips, friendly 'professors' and a platform to join. The case file uses a regulator's published complaint, attributed, to show the pattern, and the tell: tips that steer you to one platform.",
+      "evergreenTopic": "ai-security",
+      "relatedTopics": [
+        "social-engineering"
+      ],
+      "factTags": [
+        "ai-washing",
+        "investment-fraud"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "An SEC complaint describing group-chat 'investment clubs' with 'AI-generated tips' (the SEC alleges)",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported; re-verify the release, date and amounts"
+        },
+        {
+          "need": "The SEC, NASAA and FINRA alert on AI and investment fraud",
+          "factId": null,
+          "status": "research needed",
+          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported"
+        }
+      ],
+      "risks": [
+        "'The SEC alleges' wording; allegations are not findings.",
+        "Name respondents only after re-verification, and prefer not to."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": null
+    },
+    {
+      "id": "sotw-fake-airdrop",
+      "slug": "sotw-fake-airdrop",
+      "title": "Scam of the Week: the free airdrop that wants a signature",
+      "format": "scam-of-the-week",
+      "status": "idea",
+      "priority": 6,
+      "week": null,
+      "role": null,
+      "angle": "A token you never bought appears in your wallet with a link to 'claim' more. The case file: the claim page asks for a signature that hands over your tokens. The tell is the unexpected token; the fix is to ignore it and never connect to its site.",
+      "evergreenTopic": "drainers",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "airdrop-scams",
+        "drainers"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Security-firm reports on fake airdrop claim pages",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Wallet guidance on unknown tokens and hidden assets",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No real token or site names; synthetic wallet screens.",
+        "Concept level: no drainer mechanics beyond the signature."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": null
+    },
+    {
+      "id": "sotw-fake-trading-app",
+      "slug": "sotw-fake-trading-app",
+      "title": "Scam of the Week: the trading app that only shows gains",
+      "format": "scam-of-the-week",
+      "status": "idea",
+      "priority": 7,
+      "week": null,
+      "role": null,
+      "angle": "An app a new online friend recommends shows steady gains, until a withdrawal needs a 'tax' first. The case file follows the pattern regulators describe, and the fix: check that a platform is registered before depositing, and never pay to withdraw.",
+      "evergreenTopic": "social-engineering",
+      "relatedTopics": [
+        "phishing"
+      ],
+      "factTags": [
+        "pig-butchering",
+        "investment-fraud"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "FinCEN's alert on relationship investment scams",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "The FBI IC3's figures on crypto investment fraud",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Regulator registration lookups that viewers can use (official tools only)",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "Respect victims; no stereotypes.",
+        "Official lookup tools only; no third-party links."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": null
+    },
+    {
+      "id": "sotw-poisoned-search-ad",
+      "slug": "sotw-poisoned-search-ad",
+      "title": "Scam of the Week: the sponsored search result for your wallet app",
+      "format": "scam-of-the-week",
+      "status": "idea",
+      "priority": 8,
+      "week": null,
+      "role": null,
+      "angle": "The top search result for a wallet app is an ad for a look-alike site. The case file shows how malicious search ads have been used to push fake wallet downloads, and the fix: install only from the official site or app store page you reached yourself.",
+      "evergreenTopic": "phishing",
+      "relatedTopics": [
+        "drainers"
+      ],
+      "factTags": [
+        "malvertising",
+        "phishing"
+      ],
+      "research": null,
+      "facts": [
+        {
+          "need": "Security-firm reports of malicious search ads impersonating wallet apps",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Google's ads policies on impersonation",
+          "factId": null,
+          "status": "research needed"
+        },
+        {
+          "need": "Wallet makers' guidance on official download sources",
+          "factId": null,
+          "status": "research needed"
+        }
+      ],
+      "risks": [
+        "No real look-alike domains or ad screenshots.",
+        "Do not imply the ad platform endorsed the scam."
+      ],
+      "languages": {
+        "master": "en",
+        "dubs": [
+          "es",
+          "pt-br"
+        ]
+      },
+      "shortIdeas": [],
+      "notes": null
+    }
+  ]
+}

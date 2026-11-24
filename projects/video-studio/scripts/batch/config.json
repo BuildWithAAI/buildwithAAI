@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "status": "PROPOSAL pending the owner's approval: slots, cadence and lengths are owner decisions. Change them here; the plan, the weekly page and docs/CONTENT_CALENDAR.md all follow.",
+  "timeZone": "America/Chicago",
+  "timeZoneSource": "CLAUDE.md, Owner decisions (2026-11-24): every schedule, the weekly batch and publishAt slots use America/Chicago.",
+  "startWeek": "2026-W49",
+  "hub": "../creator-hub",
+  "approval": {
+    "validDays": 7,
+    "note": "How long an approval record stays valid before its upload; the uploader also caps it at approvalMaxDays in its channels.json."
+  },
+  "factBank": {
+    "path": "content/facts/facts.jsonl",
+    "note": "The reusable fact bank (scripts/facts, docs/FACT_BANK.md). The writer packet lists its facts by id and by topic tag."
+  },
+  "dateNotes": {
+    "2026-12-24": "Christmas Eve",
+    "2026-12-25": "Christmas Day",
+    "2026-12-31": "New Year's Eve",
+    "2027-01-01": "New Year's Day"
+  },
+  "channels": [
+    {
+      "channel": "zoora-ai",
+      "name": "Zoora AI",
+      "prefix": "ai",
+      "backlog": "content/zoora-ai/backlog.json",
+      "cadenceSource": "CLAUDE.md, Channel 2 section: 'Zoora AI channel cadence: 2 long story episodes a week plus daily Shorts cut from them.'",
+      "long": [
+        {"day": "Mon", "time": "11:00", "formats": ["pov-story", "explainer"]},
+        {"day": "Thu", "time": "11:00", "formats": ["pov-story", "explainer"]}
+      ],
+      "shorts": {"days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], "time": "17:00", "length": "45-60 s"},
+      "formats": {
+        "pov-story": {
+          "label": "POV story",
+          "length": "6-10 min (proposal)",
+          "entry": "src/episode/index.ts",
+          "composition": "Episode",
+          "shortComposition": "EpisodeShort",
+          "fiction": true,
+          "notes": [
+            "Second person (\"you\"), a fictional composite protagonist, grounded in real, sourced investigations. The engine shows the fiction card (storyboard.fiction: true) for the first 5 s of the episode and of every Short.",
+            "A cautionary arc: it resolves with consequences and what the viewer can check, never a win or a lifestyle to copy (content/zoora-ai/REFERENCE.md rule 3: no income claims).",
+            "Genre only: never reuse the reference creator's character, art, scripts, thumbnails or title list, and give every episode its own structure (REFERENCE.md rules 1-2; inauthentic-content policy).",
+            "CTA: subscribe, no product pitch (the owner's pilot rule; it stays the default until the owner adds an offer).",
+            "Invented brands for any fictional token, fund, launchpad or app; real organisations only in attributed, sourced facts."
+          ]
+        },
+        "explainer": {
+          "label": "Explainer",
+          "length": "5-8 min (proposal)",
+          "entry": "src/episode/index.ts",
+          "composition": "Episode",
+          "shortComposition": "EpisodeShort",
+          "fiction": false,
+          "notes": [
+            "Zoo explains one idea with sourced facts, synthetic illustrative charts and a defensive checklist. The owner's cadence is 2 long story episodes a week, so explainers sit after the POV stories in the backlog: one appears only when pinned to a week (\"week\": \"2026-W50\") or when the stories run out."
+          ]
+        }
+      }
+    },
+    {
+      "channel": "zoora-security",
+      "name": "The Zoo & Badger Show",
+      "prefix": "sec",
+      "backlog": "content/zoora-security/backlog.json",
+      "cadenceSource": "CLAUDE.md, Channel 2: evergreen explainers that every news video links to; the daily news stays in scripts/daily.",
+      "long": [
+        {"day": "Tue", "time": "13:00", "formats": ["explainer"]},
+        {"day": "Sat", "time": "13:00", "formats": ["scam-of-the-week"]}
+      ],
+      "shorts": null,
+      "formats": {
+        "explainer": {
+          "label": "Evergreen explainer",
+          "length": "5-8 min (proposal)",
+          "entry": "src/show/index.ts",
+          "composition": "ShowEpisode",
+          "shortComposition": "ShowShort",
+          "fiction": false,
+          "notes": [
+            "The talk-show set (src/show): cold open, the mechanism as a concept diagram (howItWorked), Badger's Red Flag, Zoo's One Fix, sources, and the end screen.",
+            "Concept level only: no code, function names, addresses or step lists (no exploit how-tos). Every fact attributed; no suspect or private names.",
+            "Once published, its URL goes into content/zoora-security/channel.json evergreen.<topic>.url, so the daily Threat Brief links it."
+          ]
+        },
+        "scam-of-the-week": {
+          "label": "Scam of the Week",
+          "length": "3-5 min (proposal)",
+          "entry": "src/show/index.ts",
+          "composition": "ShowEpisode",
+          "shortComposition": "ShowShort",
+          "fiction": false,
+          "notes": [
+            "One recurring scam pattern as a case file (the scamOfTheWeek segment: title, how, tell, fix), built from regulators' and investigators' published descriptions, not from one victim's story.",
+            "Never at a victim's expense; never reproduce the scam's script, links, QR codes or handles."
+          ]
+        }
+      }
+    }
+  ]
+}

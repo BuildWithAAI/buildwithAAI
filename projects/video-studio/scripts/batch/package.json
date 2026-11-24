@@ -1,0 +1,6 @@
+{
+  "name": "zoora-weekly-batch",
+  "private": true,
+  "type": "module",
+  "description": "Weekly batch production (scripts/batch): plan the week, build the one weekly approval page, write the owner's upload approvals. Run with node directly (Node >= 22.18 strips the types); see docs/WEEKLY_BATCH.md. No dependencies."
+}
