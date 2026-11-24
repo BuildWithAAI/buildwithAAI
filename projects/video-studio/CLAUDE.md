@@ -18,8 +18,16 @@ Stop for owner review at the end of every phase.
 - **Channel:** Zoora AI, @ZooraTechnologies. Profile in `content/zoora-ai/CHANNEL.md`.
 - **Format:** second-person life-story videos, modelled on a reference the owner supplied (`content/zoora-ai/REFERENCE.md`). Genre only: we never copy that creator's character, art or scripts.
 - **Voice:** Kokoro (free, local, via kokoro-onnx).
-- **Host:** a new original character. Three concepts are being built in `src/styleframes/` for the owner to pick from.
-- **Pilot product:** not stated yet ("look at the link"). Confirm with the owner.
+- **Host: "Zoo".** An original adult human guy, deadpan with dry humour, appearing in every video. The owner rejected the 3 concepts in `src/styleframes/` (keep them only as references). The drawing style is not chosen yet; the owner will follow up. His deadpan comes from timing and a flat mouth, **not** half-lidded eyes: that is the reference creator's protagonist trait.
+- **Pilot story:** "POV: You become a top caller on Pump.fun". Cautionary, grounded in real on-chain investigations, fictional composite characters, no real names unless sources support it. Next video: "You created an autonomous AI trading agent hedge fund".
+- **Pilot CTA:** subscribe only, no product pitch.
+
+## Art quality rules (owner, 2026-11-24) — binding
+
+- **Charts must be accurate.** Green candles go **up** (close > open); red candles go **down** (close < open). Wicks run to high/low. Every OHLC series must pass validation (high ≥ max(open, close), low ≤ min(open, close), positive prices). No amber, cyan or red-going-up candles. All 3 current style frames break this rule.
+- **Smooth and professional, nothing blotchy.** No halftone dot patterns, no heavy SVG glow/blur filters, no muddy dark gradients that band after compression.
+- The full guide is `docs/ART_GUIDE.md` and the chart spec is `docs/CHART_SPEC.md` (being written by the art-quality study).
+- **Real market data:** this session blocks GeckoTerminal, DEX Screener, CoinGecko, Binance and the Crypto.com API. The Crypto.com connector is installed but not connected. Fictional stories use validated synthetic OHLC data.
 
 ## Commands (exist now)
 
