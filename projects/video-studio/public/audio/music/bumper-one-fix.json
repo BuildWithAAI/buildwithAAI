@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "id": "bumper-one-fix",
+  "title": "Bumper: Zoo's One Fix",
+  "channel": "zoora-security",
+  "cueType": "bumper",
+  "mood": "helpful, resolved: the major motif clicks into Dmaj9",
+  "key": "D major",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": null,
+  "durationSec": 3.0,
+  "durationSamples": 144000,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 0.0,
+      "frame30": 0,
+      "what": "major motif"
+    },
+    {
+      "sec": 1.2,
+      "frame30": 36,
+      "what": "the fix clicks into place (Dmaj9, harp lift)"
+    }
+  ],
+  "sections": [],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "vibes",
+        "startSec": 0.0,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          78
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "piano",
+        "startSec": 0.016,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          78
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "sting",
+    "integratedLufs": -16.0,
+    "shortTermMedianLufs": -16.3,
+    "shortTermMaxLufs": -16.3,
+    "lraLu": 20.0,
+    "truePeakDbtp": -1.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -5.38,
+    "harshnessDb": -8.24,
+    "mudDb": 0.05,
+    "boxinessDb": 1.19,
+    "voicePocketDb": 4.23,
+    "centroidHz": 703.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 1,
+    "failed": [
+      "noise.humDb"
+    ]
+  },
+  "file": "audio/music/bumper-one-fix.wav",
+  "format": "wav-24bit",
+  "bytes": 864044,
+  "description": "Segment bumper for Zoo's One Fix, built from Zoo's motif (3.0 s).",
+  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "instruments": [
+    "VCSL Kawai piano",
+    "VCSL vibraphone",
+    "VSCO 2 strings",
+    "plucked-string bass",
+    "VCSL drums",
+    "brass stab",
+    "FM tine piano"
+  ],
+  "selfReview": "The major motif (D D A G# F#) on vibes and piano, then a rim click and a harp lift into D6/9: helpful and resolved without cheer. It is light; the bass is kept soft after the first mix read bottom-heavy.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

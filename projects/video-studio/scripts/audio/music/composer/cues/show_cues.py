@@ -13,14 +13,11 @@ Bumpers (sting profile, -16 LUFS-I, clean tails), each built from the motif:
 
 from __future__ import annotations
 
-import numpy as np
-
-from audiolib.core import SR
 from composer import instruments as I
 from composer import motif
 from composer import synths as S
 from composer.cues import common as C
-from composer.cues.theme import BPM, SPB, Theme
+from composer.cues.theme import Theme
 from composer.instruments import K
 from composer.render import Arrangement, swell
 
@@ -217,7 +214,7 @@ def show_intro_sting() -> Arrangement:
 def end_screen() -> Arrangement:
     """20 s, end-aligned: 6 bars of light groove, a turnaround, the motif lands on D minor at 18.0 s and
     rings out to exactly 20.0 s. Mastered as a bed (Zoo may talk over the end screen)."""
-    from composer.cues.theme import A_BASS, A_CHORDS, REPLIES, V
+    from composer.cues.theme import A_BASS, A_CHORDS, REPLIES
     from composer.notation import line
 
     th = Theme(pocket=True)
@@ -257,7 +254,7 @@ def end_screen() -> Arrangement:
     th.finish("endscreen")
     return Arrangement("endscreen-bed", th.s, 20.0, th.tracks({"vibes": -10.0, "ep": -5.0, "piano": -6.0, "hats": -6.0, "perc": -16.0}),
                        preset="bed", reverbs=C.reverbs(), fade_in=0.4, fade_out=1.4,
-                       bus_eq=[C.PK(250, -1.0, 0.9), C.PK(2500, -2.0, 0.8), C.HS(7000, 3.0)])
+                       bus_eq=[C.PK(250, -1.0, 0.9), C.PK(2500, -4.0, 0.7), C.HS(7000, 3.0)])
 
 
 BUMPERS = {

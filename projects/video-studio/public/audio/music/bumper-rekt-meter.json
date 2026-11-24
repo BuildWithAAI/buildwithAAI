@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "id": "bumper-rekt-meter",
+  "title": "Bumper: Headline / Rekt Meter",
+  "channel": "zoora-security",
+  "cueType": "bumper",
+  "mood": "the meter fills, then the motif's tail falls",
+  "key": "D minor",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": null,
+  "durationSec": 3.2,
+  "durationSamples": 153600,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 0.0,
+      "frame30": 0,
+      "what": "meter starts filling"
+    },
+    {
+      "sec": 1.2,
+      "frame30": 36,
+      "what": "A: the fall begins"
+    },
+    {
+      "sec": 1.5,
+      "frame30": 45,
+      "what": "A-flat"
+    },
+    {
+      "sec": 1.8,
+      "frame30": 54,
+      "what": "F lands (crash)"
+    }
+  ],
+  "sections": [],
+  "motif": {
+    "zoo": [
+      {
+        "form": "tail",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 1.193,
+        "pitches": [
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      },
+      {
+        "form": "tail",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 1.2,
+        "pitches": [
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "tail",
+        "mode": "minor",
+        "part": "bass",
+        "startSec": 1.207,
+        "pitches": [
+          45,
+          44,
+          41
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "sting",
+    "integratedLufs": -16.1,
+    "shortTermMedianLufs": -16.4,
+    "shortTermMaxLufs": -16.2,
+    "lraLu": 20.1,
+    "truePeakDbtp": -1.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -4.35,
+    "harshnessDb": -4.42,
+    "mudDb": 0.63,
+    "boxinessDb": -0.12,
+    "voicePocketDb": 0.32,
+    "centroidHz": 852.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 1,
+    "failed": [
+      "noise.humDb"
+    ]
+  },
+  "file": "audio/music/bumper-rekt-meter.wav",
+  "format": "wav-24bit",
+  "bytes": 921644,
+  "description": "Segment bumper for Headline / Rekt Meter, built from Zoo's motif (3.2 s).",
+  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "instruments": [
+    "VCSL Kawai piano",
+    "VCSL vibraphone",
+    "VSCO 2 strings",
+    "plucked-string bass",
+    "VCSL drums",
+    "brass stab",
+    "FM tine piano"
+  ],
+  "selfReview": "The meter fills (taps, rising pizzicato and air), then the motif's tail A, Ab, F falls with band stabs and a crash. The idea reads: the gauge rises and the price drops. The 1.2 s fill may feel rushed at 100 BPM; a 3.6 s version with a two-beat fill is an easy change.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

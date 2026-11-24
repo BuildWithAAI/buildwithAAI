@@ -10,7 +10,6 @@ SHOW = "zoora-security"
 
 
 def _theme_cues() -> list:
-    bar = 4 * theme.SPB
     return [
         Cue("theme-full", "The Zoo & Badger Show: main theme", SHOW, "theme", "confident, noir, dry wit", "D minor", theme.BPM, "standalone",
             lambda: theme.arrangement("theme-full", "full"), bars=28,

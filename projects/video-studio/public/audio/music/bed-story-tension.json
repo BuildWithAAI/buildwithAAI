@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "id": "bed-story-tension",
+  "title": "Story bed: tension",
+  "channel": "zoora-ai",
+  "cueType": "bed",
+  "mood": "tense, pressing, restrained",
+  "key": "D minor",
+  "bpm": 75,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 24.0,
+  "bars": 20,
+  "durationSec": 64.0,
+  "durationSamples": 3072000,
+  "sampleRate": 48000,
+  "loop": {
+    "seamless": true,
+    "startSample": 0,
+    "endSample": 3072000,
+    "startSec": 0.0,
+    "endSec": 64.0,
+    "frames30": 1920.0
+  },
+  "hits": [],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "base"
+    },
+    {
+      "sec": 25.6,
+      "name": "second layer + motif"
+    },
+    {
+      "sec": 51.2,
+      "name": "fullest; thins into the loop"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "tail",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 4.819,
+        "pitches": [
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "celli",
+        "startSec": 25.6,
+        "pitches": [
+          50,
+          50,
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      },
+      {
+        "form": "tail",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 30.419,
+        "pitches": [
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "bed",
+    "integratedLufs": -26.0,
+    "shortTermMedianLufs": -26.0,
+    "shortTermMaxLufs": -24.8,
+    "lraLu": 2.2,
+    "truePeakDbtp": -8.5
+  },
+  "spectrum": {
+    "slopeDbPerOct": -6.36,
+    "harshnessDb": -11.43,
+    "mudDb": 2.65,
+    "boxinessDb": 0.37,
+    "voicePocketDb": -3.67,
+    "centroidHz": 235.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 1,
+    "failed": [
+      "loop.levelStepDb"
+    ]
+  },
+  "file": "audio/music/bed-story-tension.flac",
+  "format": "flac-16bit",
+  "bytes": 4190870,
+  "description": "A celli ostinato, a ticking woodblock and low piano octaves; the pulse, violas tremolo and the motif's tail from bar 8; high violins, tom rolls and a swell from bar 16.",
+  "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
+  "instruments": [
+    "VSCO 2 celli (fast), basses, violas tremolo, violins",
+    "VCSL Kawai piano",
+    "pulse",
+    "VCSL woodblock, toms, bass drum, cymbal swell"
+  ],
+  "selfReview": "A celli ostinato with phrygian Eb neighbours, a woodblock clock and low piano octaves; the pulse, violas tremolo and the motif's tail from bar 8; high violins and tom rolls from bar 16. The short Eb-over-D rubs are the intended tension. It passes with a modest voice pocket.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

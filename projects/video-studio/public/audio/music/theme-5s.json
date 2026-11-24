@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "id": "theme-5s",
+  "title": "The Zoo & Badger Show: theme sting, 5 s",
+  "channel": "zoora-security",
+  "cueType": "sting",
+  "mood": "confident button",
+  "key": "D minor",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": 2,
+  "durationSec": 5.0,
+  "durationSamples": 240000,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 0.0,
+      "frame30": 0,
+      "what": "motif starts (band unison)"
+    },
+    {
+      "sec": 1.2,
+      "frame30": 36,
+      "what": "SHOW lands (crash)"
+    },
+    {
+      "sec": 2.4,
+      "frame30": 72,
+      "what": "Badger: E-flat"
+    },
+    {
+      "sec": 3.0,
+      "frame30": 90,
+      "what": "Badger: D (the button)"
+    }
+  ],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "motif"
+    },
+    {
+      "sec": 2.4,
+      "name": "Badger"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "celli",
+        "startSec": 0.0,
+        "pitches": [
+          50,
+          50,
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "pizz",
+        "startSec": 0.0,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 0.0,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "bass",
+        "startSec": 0.007,
+        "pitches": [
+          38,
+          38,
+          45,
+          44,
+          41
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 0.007,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      }
+    ],
+    "badger": [
+      {
+        "part": "basses_pizz",
+        "startSec": 2.4,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      },
+      {
+        "part": "celli_pizz",
+        "startSec": 2.4,
+        "pitches": [
+          51,
+          50
+        ],
+        "ok": true
+      },
+      {
+        "part": "bass",
+        "startSec": 2.403,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "loudness": {
+    "profile": "sting",
+    "integratedLufs": -16.0,
+    "shortTermMedianLufs": -17.3,
+    "shortTermMaxLufs": -15.4,
+    "lraLu": 4.2,
+    "truePeakDbtp": -1.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -5.28,
+    "harshnessDb": -6.61,
+    "mudDb": 0.18,
+    "boxinessDb": -1.66,
+    "voicePocketDb": 2.7,
+    "centroidHz": 607.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 0,
+    "failed": []
+  },
+  "file": "audio/music/theme-5s.wav",
+  "format": "wav-24bit",
+  "bytes": 1440044,
+  "description": "The band plays the motif in unison and lands; Badger's two notes are the button.",
+  "usage": "Logo sting, segment outs, Shorts endings. -16 LUFS-I, ends cleanly at 5.0 s.",
+  "instruments": [
+    "VCSL Kawai piano",
+    "VCSL vibraphone",
+    "VSCO 2 strings",
+    "plucked-string bass",
+    "VCSL drums",
+    "brass stab"
+  ],
+  "selfReview": "The band plays the motif in unison from the first sample (no pickup), so it starts hard. SHOW lands at 1.2 s and Badger's button at 2.4/3.0 s, and it decays under -60 dBFS by 5.0 s. It is warm and dark (2-5 kHz well under pink), as intended for a sting under picture. The kick and bass carry a lot of the weight.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "id": "bed-story-curious",
+  "title": "Story bed: curious",
+  "channel": "zoora-ai",
+  "cueType": "bed",
+  "mood": "curious, wondering, light",
+  "key": "F lydian",
+  "bpm": 75,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 24.0,
+  "bars": 20,
+  "durationSec": 64.0,
+  "durationSamples": 3072000,
+  "sampleRate": 48000,
+  "loop": {
+    "seamless": true,
+    "startSample": 0,
+    "endSample": 3072000,
+    "startSec": 0.0,
+    "endSec": 64.0,
+    "frames30": 1920.0
+  },
+  "hits": [],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "base"
+    },
+    {
+      "sec": 25.6,
+      "name": "second layer + motif"
+    },
+    {
+      "sec": 51.2,
+      "name": "fullest; thins into the loop"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "celesta",
+        "startSec": 0.0,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "celesta",
+        "startSec": 25.606,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "vibes",
+        "startSec": 51.2,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "bed",
+    "integratedLufs": -26.0,
+    "shortTermMedianLufs": -26.0,
+    "shortTermMaxLufs": -25.1,
+    "lraLu": 1.1,
+    "truePeakDbtp": -6.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -4.2,
+    "harshnessDb": -11.88,
+    "mudDb": 1.97,
+    "boxinessDb": 3.87,
+    "voicePocketDb": -8.14,
+    "centroidHz": 772.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 1,
+    "failed": [
+      "loop.levelStepDb"
+    ]
+  },
+  "file": "audio/music/bed-story-curious.flac",
+  "format": "flac-16bit",
+  "bytes": 4709522,
+  "description": "A harp ostinato, bowed-vibes sustains and the motif augmented on celesta; kalimba, pizzicato and a muted frame drum from bar 8; marimba from bar 16.",
+  "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
+  "instruments": [
+    "VCSL concert harp",
+    "VCSL bowed vibraphone",
+    "MuseScore celesta",
+    "VCSL kalimba",
+    "VSCO 2 pizzicato",
+    "VCSL marimba",
+    "VCSL frame drum, shaker",
+    "analog pad"
+  ],
+  "selfReview": "F lydian: a harp ostinato an octave up, bowed-vibes sustains and the motif augmented on celesta; kalimba and pizzicato from bar 8, marimba from 16. The first mix had a +9 dB hump at 250-1000 Hz that would have masked narration; moving the harp up an octave and a bus scoop fixed it (mud now within limits). It stays warm and dark above 2 kHz, which helps the voice but may read soft on its own.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

@@ -63,7 +63,7 @@ REPLIES = {  # vibes answers to the motif (A-section bar -> line)
     6: "r:1 D5:.5 F5:.5 A5:1 G5:.5 E5:.5",
 }
 A_VIOLINS = ["D6", "C#6", "G5", "G5", "D6", "D6", "D6", "C#6"]
-A_CELLI = ["D3", "A2", "G2", "A2", "D3", "Bb2", "G2", "E3"]
+A_CELLI = ["D3", "A2", "G2", "A2", "D3", "Bb2", "G2", "G2"]  # bar 7: G is in both Em7b5 and A7b13
 
 B_EP = ["F3 A3 C4 D4", "E3 G3 C4", "G3 Bb3 D4 F4", "E3 A3 C4 G4", "G3 Bb3 D4 F4", "F3 A3 C4", "G3 Bb3 D4 E4", "G3 Bb3 C#4 E4"]
 B_PAD = ["F3 A3 D4", "E3 G3 C4", "Bb3 D4 F4", "E3 A3 C4", "G3 Bb3 D4", "F3 A3 C4", "G3 Bb3 D4", "G3 C#4 E4"]

@@ -25,11 +25,16 @@ BARS = 24
 SPB = 60.0 / BPM
 LENGTH = BARS * 4 * SPB  # 64.0 s
 
+# Bus EQ for every show bed. The 2.5 kHz dip deepens the master's pocket: with the engine demo
+# narration, the voice-to-bed ratio under speech measured 9-13 dB in 1-4 kHz against 18-24 dB
+# elsewhere (speech has less energy up there), so the consonant band got 4 dB more room.
+BED_BUS = [C.PK(250, -1.0, 0.9), C.PK(2500, -4.0, 0.7), C.HS(7000, 2.0)]
+
 
 def _arr(cid: str, th: Theme, faders: dict, bus_eq=None, swing: bool = True) -> Arrangement:
     th.finish(cid, swing=swing)
     return Arrangement(cid, th.s, LENGTH, th.tracks(faders), preset="bed", loop=True, tail=8.0, wrap=8.0, reverbs=C.reverbs(),
-                       bus_eq=bus_eq or [C.PK(250, -1.0, 0.9), C.HS(7000, 2.0)])
+                       bus_eq=bus_eq or BED_BUS)
 
 
 # ------------------------------------------------------------------------------------------ neutral

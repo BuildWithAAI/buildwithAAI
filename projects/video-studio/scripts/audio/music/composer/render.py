@@ -198,6 +198,7 @@ def render_stems(arr: Arrangement, workdir: Path, cache: Path | None = None) -> 
     total = arr.length + (arr.tail if arr.loop else 0.0)
     n = int(round(total * SR))
     stems = {}
+    used = set()
     for tr in arr.tracks:
         src = tr.source
         if isinstance(src, np.ndarray):
@@ -207,6 +208,11 @@ def render_stems(arr: Arrangement, workdir: Path, cache: Path | None = None) -> 
         cpath = None
         if cache is not None:
             cpath = Path(cache) / f"{tr.name}-{_stem_key(arr, tr, total)}.npy"
+            used.add(cpath.name)
+            legacy = Path(cache).parent / cpath.name  # stems cached before the cache was split per cue
+            if not cpath.exists() and legacy.exists():
+                cpath.parent.mkdir(parents=True, exist_ok=True)
+                legacy.replace(cpath)
             if cpath.exists():
                 stems[tr.name] = pad_to(np.load(cpath), n)
                 continue
@@ -221,6 +227,10 @@ def render_stems(arr: Arrangement, workdir: Path, cache: Path | None = None) -> 
         if cpath is not None:
             cpath.parent.mkdir(parents=True, exist_ok=True)
             np.save(cpath, stems[tr.name].astype(np.float32))
+    if cache is not None and Path(cache).exists():
+        for old in Path(cache).glob("*.npy"):  # one cache folder per cue: drop stems this version no longer uses
+            if old.name not in used:
+                old.unlink()
     return stems
 
 

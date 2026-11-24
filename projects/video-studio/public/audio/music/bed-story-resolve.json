@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "id": "bed-story-resolve",
+  "title": "Story bed: resolve / uplift",
+  "channel": "zoora-ai",
+  "cueType": "bed",
+  "mood": "warm, hopeful, resolved",
+  "key": "D major",
+  "bpm": 75,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 24.0,
+  "bars": 20,
+  "durationSec": 64.0,
+  "durationSamples": 3072000,
+  "sampleRate": 48000,
+  "loop": {
+    "seamless": true,
+    "startSample": 0,
+    "endSample": 3072000,
+    "startSec": 0.0,
+    "endSec": 64.0,
+    "frames30": 1920.0
+  },
+  "hits": [],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "base"
+    },
+    {
+      "sec": 25.6,
+      "name": "second layer + motif"
+    },
+    {
+      "sec": 51.2,
+      "name": "fullest; thins into the loop"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "vibes",
+        "startSec": 0.0,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          78
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "vibes",
+        "startSec": 25.59,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          78
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "violins",
+        "startSec": 32.0,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          78
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "bed",
+    "integratedLufs": -26.5,
+    "shortTermMedianLufs": -26.0,
+    "shortTermMaxLufs": -24.8,
+    "lraLu": 3.4,
+    "truePeakDbtp": -12.1
+  },
+  "spectrum": {
+    "slopeDbPerOct": -5.15,
+    "harshnessDb": -14.33,
+    "mudDb": -1.53,
+    "boxinessDb": 1.49,
+    "voicePocketDb": -6.65,
+    "centroidHz": 679.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 1,
+    "failed": [
+      "loop.levelStepDb"
+    ]
+  },
+  "file": "audio/music/bed-story-resolve.flac",
+  "format": "flac-16bit",
+  "bytes": 5505224,
+  "description": "Piano arpeggios and the major motif; strings, a soft kick and shaker from bar 8; violins and a harp lift in bars 16-19.",
+  "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
+  "instruments": [
+    "VCSL Kawai piano",
+    "VCSL vibraphone",
+    "VSCO 2 strings",
+    "plucked-string bass",
+    "synth kick",
+    "VCSL shaker",
+    "VCSL harp",
+    "analog pad"
+  ],
+  "selfReview": "D major: piano arpeggios an octave up, the major motif on vibes and violins, strings, a soft kick and shaker from bar 8, and a harp lift at bar 16. It is warm and open; the A7sus4 at the loop end leads back to D. Its true peak sits far under the ceiling because it is soft, sustained material.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "id": "endscreen-bed",
+  "title": "End-screen bed, 20 s",
+  "channel": "zoora-security",
+  "cueType": "endscreen",
+  "mood": "light, confident, wrapping up",
+  "key": "D minor",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": null,
+  "durationSec": 20.0,
+  "durationSamples": 960000,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 16.8,
+      "frame30": 504,
+      "what": "last motif"
+    },
+    {
+      "sec": 18.0,
+      "frame30": 540,
+      "what": "SHOW lands on D minor"
+    },
+    {
+      "sec": 20.0,
+      "frame30": 600,
+      "what": "end"
+    }
+  ],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "groove"
+    },
+    {
+      "sec": 14.4,
+      "name": "turnaround"
+    },
+    {
+      "sec": 16.8,
+      "name": "motif and ring-out"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 0.0,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 4.795,
+        "pitches": [
+          67,
+          67,
+          74,
+          73,
+          70
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 9.582,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 16.787,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 16.8,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "bed",
+    "integratedLufs": -26.2,
+    "shortTermMedianLufs": -26.0,
+    "shortTermMaxLufs": -25.4,
+    "lraLu": 1.2,
+    "truePeakDbtp": -6.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -4.31,
+    "harshnessDb": -8.15,
+    "mudDb": 0.59,
+    "boxinessDb": -0.55,
+    "voicePocketDb": -7.13,
+    "centroidHz": 2150.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 0,
+    "failed": []
+  },
+  "file": "audio/music/endscreen-bed.wav",
+  "format": "wav-24bit",
+  "bytes": 5760044,
+  "description": "The theme's groove, light, under the end screen; the motif lands on D minor at 18.0 s and the cue ends at exactly 20.0 s.",
+  "usage": "End-aligned: place it so it ends with the video; for a shorter end screen, start later and fade in. Bed level (-26 LUFS-S) for Zoo's voice-over; raise 6-8 dB if nobody speaks.",
+  "instruments": [
+    "VCSL vibraphone",
+    "FM tine piano",
+    "plucked-string bass",
+    "VCSL percussion",
+    "pulse",
+    "VSCO 2 celli"
+  ],
+  "selfReview": "Six bars of light groove, a turnaround, then the motif lands on D minor at 18.0 s and rings out to exactly 20.0 s. It is a bed level (-26 LUFS-S) with a deep voice pocket for Zoo's call to action. Played without a voice-over it will feel quiet: raise it 6-8 dB.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

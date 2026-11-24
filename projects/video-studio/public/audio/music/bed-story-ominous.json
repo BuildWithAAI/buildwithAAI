@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "id": "bed-story-ominous",
+  "title": "Story bed: ominous",
+  "channel": "zoora-ai",
+  "cueType": "bed",
+  "mood": "ominous, dark, slow",
+  "key": "D phrygian",
+  "bpm": 75,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 24.0,
+  "bars": 20,
+  "durationSec": 64.0,
+  "durationSamples": 3072000,
+  "sampleRate": 48000,
+  "loop": {
+    "seamless": true,
+    "startSample": 0,
+    "endSample": 3072000,
+    "startSec": 0.0,
+    "endSec": 64.0,
+    "frames30": 1920.0
+  },
+  "hits": [],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "base"
+    },
+    {
+      "sec": 25.6,
+      "name": "second layer + motif"
+    },
+    {
+      "sec": 51.2,
+      "name": "fullest; thins into the loop"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 12.808,
+        "pitches": [
+          50,
+          50,
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 38.421,
+        "pitches": [
+          50,
+          50,
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "bed",
+    "integratedLufs": -25.9,
+    "shortTermMedianLufs": -26.0,
+    "shortTermMaxLufs": -24.7,
+    "lraLu": 1.8,
+    "truePeakDbtp": -7.8
+  },
+  "spectrum": {
+    "slopeDbPerOct": -6.02,
+    "harshnessDb": -12.61,
+    "mudDb": 0.48,
+    "boxinessDb": -0.5,
+    "voicePocketDb": -6.92,
+    "centroidHz": 213.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 2,
+    "failed": [
+      "noise.humDb",
+      "loop.levelStepDb"
+    ]
+  },
+  "file": "audio/music/bed-story-ominous.flac",
+  "format": "flac-16bit",
+  "bytes": 4962973,
+  "description": "Bass drones and a muted frame-drum heartbeat, low piano octaves with the tritone, bowed-vibes dissonances, the motif four times slower on low piano.",
+  "usage": "Loops seamlessly. -26 LUFS-S with a 1-4 kHz pocket for the narration; duck it with scripts/audio/duck.py. All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
+  "instruments": [
+    "VSCO 2 basses (tremolo), violins tremolo",
+    "sine sub",
+    "analog pad",
+    "VCSL Kawai piano",
+    "VCSL bowed vibraphone",
+    "VCSL frame drum, bass drum, cymbal swell"
+  ],
+  "selfReview": "Drones, a frame-drum heartbeat, low piano octaves with the D-Ab tritone, bowed-vibes dissonances (Eb5 over the D drone is a deliberate minor ninth, quiet) and the motif four times slower on low piano. It is the most uncomfortable bed by design. Check on a phone speaker that the heartbeat and drones do not vanish (they live under 150 Hz).",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -90,7 +91,8 @@ def build_one(cue, out_root: Path, public: Path | None, metrics_on: bool, stems:
     if abs(arr.length - (cue.bars * 4 * 60 / cue.bpm if (cue.loop and cue.bars) else arr.length)) > 1e-6:
         raise ValueError(f"{cue.id}: loop length {arr.length} s is not {cue.bars} bars at {cue.bpm} BPM")
     save_midi(arr.score, out / f"{cue.id}.mid")
-    r = render.render(arr, out / "work", cache=(out_root / "_stem_cache") if cache else None)
+    r = render.render(arr, out / "work", cache=(out_root / "_stem_cache" / cue.id) if cache else None)
+    shutil.rmtree(out / "work", ignore_errors=True)  # fluidsynth's temporary MIDI and WAV files
     io.write(out / f"{cue.id}.premaster.wav", r.premaster / max(1.0, float(np.max(np.abs(r.premaster))) / 0.999), subtype="FLOAT")
     files = master.export(out / f"{cue.id}.wav", r.master, r.master_report)
     if stems:
@@ -120,6 +122,26 @@ def build_one(cue, out_root: Path, public: Path | None, metrics_on: bool, stems:
     return meta
 
 
+def refresh_reviews(ids, out_root: Path, public: Path | None, reviews: dict) -> int:
+    """Re-write each cue's metadata with the current reviews.json, without re-rendering."""
+    entries = {}
+    for cid in ids:
+        f = out_root / cid / f"{cid}.json"
+        if not f.exists():
+            print(f"{cid}: not built yet", file=sys.stderr)
+            return 1
+        meta = json.loads(f.read_text(encoding="utf-8"))
+        meta["selfReview"] = reviews.get(cid)
+        render.save_json(f, meta)
+        if public is not None and meta.get("file"):
+            slim = {k: v for k, v in meta.items() if k != "render"}
+            render.save_json(public / f"{cid}.json", slim)
+            entries[cid] = spec.manifest_entry(slim)
+    if public is not None and entries:
+        spec.write_manifest(public / "manifest.json", entries)
+    return 0
+
+
 def summary_line(meta: dict) -> str:
     lo = meta["loudness"]
     ch = meta["checks"] or {}
@@ -140,6 +162,7 @@ def main(argv=None) -> int:
     ap.add_argument("--no-metrics", action="store_true")
     ap.add_argument("--stems", action="store_true")
     ap.add_argument("--no-cache", action="store_true", help="re-render every stem (the cache keys on notes and instrument settings)")
+    ap.add_argument("--reviews-only", action="store_true", help="refresh the self-reviews in the metadata from reviews.json (no rendering)")
     args = ap.parse_args(argv)
     if args.list:
         for c in REGISTRY.values():
@@ -152,6 +175,8 @@ def main(argv=None) -> int:
     ids = args.ids or list(REGISTRY)
     reviews = json.loads(REVIEWS.read_text(encoding="utf-8")) if REVIEWS.exists() else {}
     public = None if args.no_export else Path(args.public)
+    if args.reviews_only:
+        return refresh_reviews(ids, Path(args.out), public, reviews)
     entries = {}
     ok = True
     for cid in ids:

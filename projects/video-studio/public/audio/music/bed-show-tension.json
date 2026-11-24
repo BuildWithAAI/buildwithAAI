@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "id": "bed-show-tension",
+  "title": "Show bed: tension",
+  "channel": "zoora-security",
+  "cueType": "bed",
+  "mood": "tense, investigative, restrained",
+  "key": "D minor (phrygian)",
+  "bpm": 90,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 20.0,
+  "bars": 24,
+  "durationSec": 64.0,
+  "durationSamples": 3072000,
+  "sampleRate": 48000,
+  "loop": {
+    "seamless": true,
+    "startSample": 0,
+    "endSample": 3072000,
+    "startSec": 0.0,
+    "endSec": 64.0,
+    "frames30": 1920.0
+  },
+  "hits": [],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "base"
+    },
+    {
+      "sec": 21.333,
+      "name": "second colour + motif"
+    },
+    {
+      "sec": 42.667,
+      "name": "fullest; thins into the loop"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 0.017,
+        "pitches": [
+          50,
+          50,
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 21.352,
+        "pitches": [
+          50,
+          50,
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 42.678,
+        "pitches": [
+          50,
+          50,
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "bed",
+    "integratedLufs": -26.0,
+    "shortTermMedianLufs": -26.0,
+    "shortTermMaxLufs": -25.5,
+    "lraLu": 0.8,
+    "truePeakDbtp": -6.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -5.41,
+    "harshnessDb": -9.45,
+    "mudDb": -0.89,
+    "boxinessDb": -0.87,
+    "voicePocketDb": -6.99,
+    "centroidHz": 627.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 3,
+    "failed": [
+      "noise.humDb",
+      "noise.hfFloorDbfs",
+      "loop.levelStepDb"
+    ]
+  },
+  "file": "audio/music/bed-show-tension.flac",
+  "format": "flac-16bit",
+  "bytes": 6094971,
+  "description": "A muted 3-3-2 pulse, low strings with an E-flat neighbour, a half-time kit with ticking hats; the motif low and slow on piano every 8 bars.",
+  "usage": "Loops seamlessly (sample 0 to the end). -26 LUFS-S with a 1-4 kHz pocket: run scripts/audio/duck.py under Zoo's narration. Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
+  "instruments": [
+    "pulse",
+    "plucked-string bass",
+    "sine sub",
+    "VCSL Kawai piano",
+    "VSCO 2 strings (celli, violas tremolo, violins)",
+    "VCSL drums",
+    "FM tine piano"
+  ],
+  "selfReview": "A muted 3-3-2 pulse, low strings with an Eb neighbour, a half-time kit with ticking hats, and the motif low on piano every 8 bars. It is the bed with the most low end; the sub and bass were pulled down after the first mix read +8 dB at 63 Hz. The hum warning is a false positive (sustained D/A bass partials).",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

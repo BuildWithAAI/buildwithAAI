@@ -53,3 +53,23 @@ Added 2026-11-24 by the sound designer. Every effect is either our own synthesis
 | Our synthesis (`scripts/audio/sfx/sfxlib/`: modal bodies, filtered noise, stick-slip friction, PolyBLEP oscillators) | our code | n/a | whooshes, pops, plops, swipes, keyboard, mouse, mug, chair, error, DEVELOPING, Rekt Meter, paws |
 
 Not used: soundfont presets, stock SFX libraries, AI audio, and any dog vocal: Badger's voice will come from the owner's own recordings (CLAUDE.md).
+
+## Music package (`scripts/audio/music/`, delivered to `public/audio/music/`)
+
+Added 2026-11-24 by the composer. Every cue in the package uses only the allowed sources above; no new source was added. This table is the per-asset record, so a claim can be answered with the exact sample folders and presets. The render scripts, MIDI (`out/audio/music/<id>/<id>.mid`) and stems (`build.py --stems`) are the evidence of independent creation.
+
+| Asset | Source (allowed above) | Where its licence text is | Used for |
+| --- | --- | --- | --- |
+| `Chordophones/Zithers/Grand Piano, Kawai` (Sustains, Releases) | VCSL, CC0 | `.cache/vcsl/LICENSE` | the motif, comping, arpeggios; a reversed chord as the "rewind" and "bloom" swells |
+| `Idiophones/Struck Idiophones/Vibraphone` (Soft Mallets, Bowed) | VCSL, CC0 | same | motif doublings, replies; bowed sustains in the story beds |
+| `Idiophones/Struck Idiophones/Marimba`, `Glockenspiel` | VCSL, CC0 | same | story-bed colour, sparkle |
+| `Chordophones/Composite Chordophones/Concert Harp` (mf and f layers) | VCSL, CC0 | same | ostinatos, lifts, the Zoora sting shimmer |
+| `Idiophones/Plucked Idiophones/Kalimba, Kenya` | VCSL, CC0 | same | the curious bed |
+| `Membranophones/Struck Membranophones/Snare Drum, Modern 2` (hits, taps, cross-stick, rolls), `Snare Drum, Modern 3` (rimshot), `Tom 1`, `Tom 2` (stick), `Frame Drum`, `Bass Drum 2` | VCSL, CC0 | same | the kit, fills, heartbeat, cinematic hits |
+| `Idiophones/Struck Idiophones/Hi-Hat Cymbal`, `Claps`, `Shaker, Small`, `Woodblock`, `Suspended Cymbal 1` (stick hits, roll, scrape), `Suspended Cymbal 2` (soft hits, bell, crescendo swells) | VCSL, CC0 | same | hats, claps, shakers, the clock, crashes and swells |
+| MuseScore_General VSCO 2 strings: banks 20/21 violins, 30/31 violas, 40/41 celli, 50/51 basses; programs 44 tremolo, 45 pizzicato, 48 fast, 49 slow (21/31/41/51 are the CC2 "Expr." banks) | MuseScore_General 0.2.1, MIT; these samples are VSCO 2 CE, CC0 | `/usr/share/doc/musescore-general-soundfont/copyright`; per-preset credits in `MuseScore_General_HQ_Sample_Sources.csv` (from the .deb) | every string part |
+| MuseScore_General bank 0 program 8 "Celesta" | MuseScore_General, MIT (sample credit not itemised in the CSV) | same | the motif in the curious bed and the Zoora sting |
+| MuseScore_General bank 128 program 0 "Standard" kit, kick only | MuseScore_General, MIT | same | a quiet beater layer on the synth kick |
+| Our synthesis (`composer/synths.py`): FM tine piano, analog pad, pulse, brass stab, sine sub, synth kick, plucked-string bass and muted guitar, noise and reverse swells | our code | n/a | colour, glue, bass, kick |
+
+Not used: the two weakly credited MuseScore_General presets (Trumpet 0:56, Synth Bass 2 0:39), the GM bass presets 33/34, any GM lead, choir or brass. The intro stings ship as jingles for `src/branding` (ZooraSting, ShowSting) and carry the same licence as the rest of the package.

@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "id": "bumper-correction",
+  "title": "Bumper: Correction",
+  "channel": "zoora-security",
+  "cueType": "bumper",
+  "mood": "sober: a rewind, then the motif backwards, resolving calmly",
+  "key": "D minor",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": null,
+  "durationSec": 3.4,
+  "durationSamples": 163200,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 0.0,
+      "frame30": 0,
+      "what": "rewind swell"
+    },
+    {
+      "sec": 0.9,
+      "frame30": 27,
+      "what": "motif backwards: F"
+    },
+    {
+      "sec": 2.1,
+      "frame30": 63,
+      "what": "D: resolved"
+    }
+  ],
+  "sections": [],
+  "motif": {
+    "zoo": [
+      {
+        "form": "retro",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 0.916,
+        "pitches": [
+          77,
+          80,
+          81,
+          74,
+          74
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "sting",
+    "integratedLufs": -16.0,
+    "shortTermMedianLufs": -16.6,
+    "shortTermMaxLufs": -16.6,
+    "lraLu": 0.0,
+    "truePeakDbtp": -3.5
+  },
+  "spectrum": {
+    "slopeDbPerOct": -5.37,
+    "harshnessDb": -10.02,
+    "mudDb": -0.36,
+    "boxinessDb": 3.66,
+    "voicePocketDb": 6.28,
+    "centroidHz": 670.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 0,
+    "failed": []
+  },
+  "file": "audio/music/bumper-correction.wav",
+  "format": "wav-24bit",
+  "bytes": 979244,
+  "description": "Segment bumper for Correction, built from Zoo's motif (3.4 s).",
+  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "instruments": [
+    "VCSL Kawai piano",
+    "VCSL vibraphone",
+    "VSCO 2 strings",
+    "plucked-string bass",
+    "VCSL drums",
+    "brass stab",
+    "FM tine piano"
+  ],
+  "selfReview": "Sober: a reversed piano swell (the rewind) runs straight into the motif played backwards, calm, resolving to D minor. It is the quietest and darkest bumper (harshness -10) and it is normalised to the same -16 LUFS-I as the others, so check that it does not feel louder than its mood.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

@@ -100,14 +100,16 @@ class Story:
 
 def _bed(cid: str, st: Story, faders: dict, bus_eq=None) -> Arrangement:
     st.finish(cid)
+    # story beds are warm by nature (harp, low strings, pad): the bus takes 2.5 dB out of 300 Hz (the first
+    # renders read +6 dB mud), a little more pocket at 2.5 kHz, and air above 6 kHz so warm never reads muffled
     return Arrangement(cid, st.s, LENGTH, st.tracks(faders), preset="bed", loop=True, tail=10.0, wrap=8.0, reverbs=C.reverbs(),
-                       bus_eq=bus_eq or [C.PK(250, -1.0, 0.9), C.HS(7000, 2.0)])
+                       bus_eq=bus_eq or [C.PK(300, -2.5, 0.8), C.PK(550, -2.5, 0.9), C.PK(2500, -4.0, 0.7), C.HS(6000, 3.0)])
 
 
-def _arp(part, t: float, notes: str, step: float, vel: int, dur: float | None = None, accent: int = 6):
+def _arp(part, t: float, notes: str, step: float, vel: int, dur: float | None = None, accent: int = 6, transpose: int = 0):
     ns = notes.split()
     for i, n in enumerate(ns):
-        part.note(n, t + i * step, dur or step * 1.8, vel + (accent if i % 4 == 0 else 0))
+        part.note(note_number(n) + transpose, t + i * step, dur or step * 1.8, vel + (accent if i % 4 == 0 else 0))
 
 
 # ------------------------------------------------------------------------------------------ curious
@@ -116,7 +118,7 @@ CURIOUS = [  # per 2 bars: harp arpeggio (8ths), bowed note, root
     ("F3 C4 G4 A4 B4 A4 G4 C4", "A4", "F2"),
     ("D3 A3 F4 C5 E5 C5 F4 A3", "C5", "D2"),
     ("Bb2 F3 C4 D4 E4 D4 C4 F3", "D5", "Bb1"),
-    ("C3 G3 Bb3 D4 F4 D4 Bb3 G3", "E5", "C2"),
+    ("C3 G3 Bb3 D4 F4 D4 Bb3 G3", "D5", "C2"),
 ]
 
 
@@ -131,22 +133,22 @@ def curious() -> Arrangement:
         arp, bowed, root = CURIOUS[(bar // 2) % 4] if bar < 16 else (CURIOUS[0] if bar < 18 else CURIOUS[3])
         if bar in (0, 1, 8, 9, 16, 17):
             arp = arp.replace("B4", "D5")  # the motif's C6 sounds here: no lydian B a minor ninth under it
-        _arp(P["harp"], t, arp, 0.5, 52 if sec == 0 else 56)
+        _arp(P["harp"], t, arp, 0.5, 52 if sec == 0 else 56, transpose=12)  # an octave up, out of the voice's body (first mix: +9 dB at 250-1000 Hz)
         if bar % 2 == 0:
             P["bowed"].note(bowed, t, 7.6, 60)
             P["pizz_lo"].note(root, t, 0.5, 70)
             P["pad"].note(note_number(root) + 12, t, 7.8, 40)
         if sec >= 1:
-            # kalimba: sparse off-beat plucks in the upper register (chord tones)
-            top = [n for n in arp.split() if note_number(n) >= 62]
+            # kalimba: sparse off-beat plucks, chord tones only (no 9ths or #11s against the harp)
+            top = {"F2": ["A4", "C5", "F4"], "D2": ["A4", "D5", "F4"], "Bb1": ["D5", "F4", "Bb4"], "C2": ["G4", "C5", "F4"]}[root]
             for j, beat in enumerate((0.5, 1.75, 3.0) if bar % 2 == 0 else (1.0, 2.5)):
                 P["kalimba"].note(top[j % len(top)], t + beat, 0.6, 58)
-            P["pizz"].note(arp.split()[4], t + 1.0, 0.3, 54)
-            P["pizz"].note(arp.split()[6], t + 3.0, 0.3, 50)
+            P["pizz"].note(note_number(arp.split()[4]) + 12, t + 1.0, 0.3, 54)
+            P["pizz"].note(note_number(arp.split()[6]) + 12, t + 3.0, 0.3, 50)
             st.drums(bar, {"fmute": "x.......o.o....." if bar % 2 == 0 else "x.....o.........", "shaker": "....x.......x..." if sec == 2 else "................"},
                      vel={"x": 54, "o": 38})
         if sec == 2 and bar < 19:
-            for j, n in enumerate({"F2": "F3 C4 A4 C4", "C2": "C3 G3 Bb3 D4"}[root].split()):
+            for j, n in enumerate({"F2": "F4 C5 A5 C5", "C2": "C4 G4 Bb4 D5"}[root].split()):
                 P["marimba"].note(n, t + j * 1.0 + 0.5, 0.8, 50)
     motif.place(P["celesta"], st.b(0), "F5", mode="major", vel=70, stretch=2.0, last_dur=4.0)
     motif.place(P["celesta"], st.b(8), "F5", mode="major", vel=72, stretch=2.0, last_dur=4.0)
@@ -263,7 +265,11 @@ def resolve() -> Arrangement:
         sec = 0 if bar < 8 else (1 if bar < 16 else 2)
         idx = bar % 8 if bar < 16 else [7, 4, 5, 5][bar - 16]
         arp, root, (va, vc) = RESOLVE[idx]
-        _arp(P["piano"], t, arp, 0.5, 54 if sec == 0 else 58, dur=0.9)
+        if bar in (0, 8):
+            arp = "D3 A3 E4 F#4 B4 F#4 E4 A3"  # the motif's G#5 sounds here: B instead of A on top
+        elif bar == 10:
+            arp = "B2 F#3 D4 B4 C#5 B4 D4 F#3"
+        _arp(P["piano"], t, arp, 0.5, 54 if sec == 0 else 58, dur=0.9, transpose=12)  # an octave up, clear of the narration's body
         P["piano"].sustain(t + 0.05, t + 3.9)
         P["bass"].note(root, t, 3.6, 66 if sec else 58)
         if sec >= 1:

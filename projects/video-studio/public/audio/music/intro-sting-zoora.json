@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "id": "intro-sting-zoora",
+  "title": "Zoora AI: channel intro sting",
+  "channel": "zoora-ai",
+  "cueType": "intro-sting",
+  "mood": "curious, luminous, cinematic",
+  "key": "F lydian",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": null,
+  "durationSec": 4.0,
+  "durationSamples": 192000,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 0.2,
+      "frame30": 6,
+      "what": "shimmer starts (the bell draws, frame 6)"
+    },
+    {
+      "sec": 0.6,
+      "frame30": 18,
+      "what": "motif starts"
+    },
+    {
+      "sec": 1.8,
+      "frame30": 54,
+      "what": "SHOW lands on the logo hit (frame 54)"
+    },
+    {
+      "sec": 2.333,
+      "frame30": 70,
+      "what": "celesta C under the wordmark (frame 70)"
+    },
+    {
+      "sec": 2.6,
+      "frame30": 78,
+      "what": "celesta F under the tag line (frame 78)"
+    }
+  ],
+  "sections": [],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "celesta",
+        "startSec": 0.6,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "vibes",
+        "startSec": 0.6,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "sting",
+    "integratedLufs": -16.0,
+    "shortTermMedianLufs": -15.8,
+    "shortTermMaxLufs": -15.7,
+    "lraLu": 0.6,
+    "truePeakDbtp": -2.5
+  },
+  "spectrum": {
+    "slopeDbPerOct": -4.52,
+    "harshnessDb": -9.63,
+    "mudDb": -4.07,
+    "boxinessDb": 2.48,
+    "voicePocketDb": 0.52,
+    "centroidHz": 850.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 1,
+    "failed": [
+      "noise.humDb"
+    ]
+  },
+  "file": "audio/music/intro-sting-zoora.wav",
+  "format": "wav-24bit",
+  "bytes": 1152044,
+  "description": "The jingle for src/branding ZooraSting: a harp and string shimmer, the lydian motif landing on the logo hit, two notes under the wordmark; fades out by 4.0 s with the picture.",
+  "usage": "npx remotion render src/branding/index.ts ZooraSting out/brand/zoora-ai/sting.mp4 --props='{\"jingle\":\"audio/music/intro-sting-zoora.wav\"}'",
+  "instruments": [
+    "VCSL concert harp",
+    "MuseScore celesta",
+    "VCSL vibraphone",
+    "VCSL Kawai piano (and a reversed bloom)",
+    "VSCO 2 strings",
+    "VCSL bass drum, cymbal, glockenspiel"
+  ],
+  "selfReview": "A harp and string shimmer rises from frame 6, and the lydian motif on celesta and vibes lands on the logo hit (frame 54) with an F-add9 bloom. Two celesta notes sit under the wordmark and tag (frames 70 and 78), and it fades with the picture. It is the most cinematic cue and quite dark (harshness -9.6). The MuseScore celesta is the weakest sample in it. Listen for whether the reversed piano bloom reads as intended or as a swoosh.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

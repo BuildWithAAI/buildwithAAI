@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "id": "bed-show-light",
+  "title": "Show bed: light",
+  "channel": "zoora-security",
+  "cueType": "bed",
+  "mood": "light, witty, upbeat",
+  "key": "F major (lydian)",
+  "bpm": 90,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 20.0,
+  "bars": 24,
+  "durationSec": 64.0,
+  "durationSamples": 3072000,
+  "sampleRate": 48000,
+  "loop": {
+    "seamless": true,
+    "startSample": 0,
+    "endSample": 3072000,
+    "startSec": 0.0,
+    "endSec": 64.0,
+    "frames30": 1920.0
+  },
+  "hits": [],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "base"
+    },
+    {
+      "sec": 21.333,
+      "name": "second colour + motif"
+    },
+    {
+      "sec": 42.667,
+      "name": "fullest; thins into the loop"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "vibes",
+        "startSec": 0.0,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "vibes",
+        "startSec": 21.333,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "major",
+        "part": "vibes",
+        "startSec": 42.662,
+        "pitches": [
+          77,
+          77,
+          84,
+          83,
+          81
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "bed",
+    "integratedLufs": -26.0,
+    "shortTermMedianLufs": -26.0,
+    "shortTermMaxLufs": -25.4,
+    "lraLu": 0.8,
+    "truePeakDbtp": -6.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -4.36,
+    "harshnessDb": -6.84,
+    "mudDb": 2.58,
+    "boxinessDb": 0.86,
+    "voicePocketDb": -7.18,
+    "centroidHz": 1186.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 3,
+    "failed": [
+      "noise.humDb",
+      "noise.hfFloorDbfs",
+      "loop.levelStepDb"
+    ]
+  },
+  "file": "audio/music/bed-show-light.flac",
+  "format": "flac-16bit",
+  "bytes": 6254336,
+  "description": "Swung pizzicato, a two-feel bass, soft taps and hats; the major motif (F F C B A) on vibes every 8 bars.",
+  "usage": "Loops seamlessly (sample 0 to the end). -26 LUFS-S with a 1-4 kHz pocket: run scripts/audio/duck.py under Zoo's narration. Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
+  "instruments": [
+    "VSCO 2 pizzicato",
+    "plucked-string bass",
+    "VCSL drums",
+    "VCSL vibraphone",
+    "FM tine piano",
+    "VSCO 2 celli"
+  ],
+  "selfReview": "Swung pizzicato, a two-feel bass and soft taps and hats, with the major motif on vibes every 8 bars (the lydian B is the wink). Anticipation chords cross every 8-bar line so the loop flows. Some pizzicato-arpeggio weight sits around 500 Hz; it passes but is the busiest show bed in the voice's body range.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

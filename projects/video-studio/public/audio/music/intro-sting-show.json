@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "id": "intro-sting-show",
+  "title": "The Zoo & Badger Show: channel intro sting",
+  "channel": "zoora-security",
+  "cueType": "intro-sting",
+  "mood": "confident, deadpan button",
+  "key": "D minor",
+  "bpm": 138.5,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 12.9964,
+  "bars": null,
+  "durationSec": 4.0,
+  "durationSamples": 192000,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 0.133,
+      "frame30": 4,
+      "what": "motif starts (frame 4: the plate wipes in)"
+    },
+    {
+      "sec": 1.0,
+      "frame30": 30,
+      "what": "SHOW lands: ampersand turns teal, Zoo turns (frame 30)"
+    },
+    {
+      "sec": 1.5,
+      "frame30": 45,
+      "what": "Badger: E-flat"
+    },
+    {
+      "sec": 1.933,
+      "frame30": 58,
+      "what": "Badger: D on his judging look (frame 58)"
+    }
+  ],
+  "sections": [],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "pizz",
+        "startSec": 0.133,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 0.133,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "bass",
+        "startSec": 0.14,
+        "pitches": [
+          38,
+          38,
+          45,
+          44,
+          41
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 0.142,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      }
+    ],
+    "badger": [
+      {
+        "part": "basses_pizz",
+        "startSec": 1.5,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      },
+      {
+        "part": "celli_pizz",
+        "startSec": 1.5,
+        "pitches": [
+          51,
+          50
+        ],
+        "ok": true
+      },
+      {
+        "part": "bass",
+        "startSec": 1.509,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "loudness": {
+    "profile": "sting",
+    "integratedLufs": -16.1,
+    "shortTermMedianLufs": -17.4,
+    "shortTermMaxLufs": -16.4,
+    "lraLu": 3.0,
+    "truePeakDbtp": -1.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -5.11,
+    "harshnessDb": -6.35,
+    "mudDb": 0.13,
+    "boxinessDb": -1.31,
+    "voicePocketDb": 2.68,
+    "centroidHz": 648.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 1,
+    "failed": [
+      "noise.humDb"
+    ]
+  },
+  "file": "audio/music/intro-sting-show.wav",
+  "format": "wav-24bit",
+  "bytes": 1152044,
+  "description": "The jingle for src/branding ShowSting: the motif's SHOW lands on hit 1 and Badger's D on hit 2. Music is out by 4.0 s (the sting hard-cuts).",
+  "usage": "npx remotion render src/branding/index.ts ShowSting out/brand/zoora-security/sting.mp4 --props='{\"jingle\":\"audio/music/intro-sting-show.wav\"}'",
+  "instruments": [
+    "VCSL Kawai piano",
+    "VCSL vibraphone",
+    "VSCO 2 strings",
+    "plucked-string bass",
+    "VCSL drums",
+    "brass stab"
+  ],
+  "selfReview": "Locked to the ShowSting frames: SHOW on frame 30 and Badger's D on frame 58, within a few ms of humanising. The motif runs faster here (about 138 BPM) than in the theme so it fits before the ampersand hit. The music is out before the 4.0 s hard cut. The hum warning is a false positive from short, bass-heavy material (A1/D2 partials near 55-60 Hz); there is no mains hum in any source.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

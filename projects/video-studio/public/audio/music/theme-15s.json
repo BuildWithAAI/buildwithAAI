@@ -1,0 +1,269 @@
+{
+  "schema": 1,
+  "id": "theme-15s",
+  "title": "The Zoo & Badger Show: theme, 15 s",
+  "channel": "zoora-security",
+  "cueType": "theme",
+  "mood": "confident, noir, dry wit",
+  "key": "D minor",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": 6,
+  "durationSec": 15.0,
+  "durationSamples": 720000,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 0.0,
+      "frame30": 0,
+      "what": "motif (solo piano)"
+    },
+    {
+      "sec": 2.4,
+      "frame30": 72,
+      "what": "Badger's reply"
+    },
+    {
+      "sec": 4.8,
+      "frame30": 144,
+      "what": "band in: motif on G"
+    },
+    {
+      "sec": 7.2,
+      "frame30": 216,
+      "what": "turnaround hits"
+    },
+    {
+      "sec": 9.6,
+      "frame30": 288,
+      "what": "motif in unison"
+    },
+    {
+      "sec": 10.8,
+      "frame30": 324,
+      "what": "SHOW lands (crash)"
+    },
+    {
+      "sec": 12.0,
+      "frame30": 360,
+      "what": "Badger: E-flat"
+    },
+    {
+      "sec": 12.6,
+      "frame30": 378,
+      "what": "Badger: D (the button)"
+    }
+  ],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "intro"
+    },
+    {
+      "sec": 4.8,
+      "name": "A"
+    },
+    {
+      "sec": 9.6,
+      "name": "coda"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 0.011,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 4.803,
+        "pitches": [
+          55,
+          55,
+          62,
+          61,
+          58
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "celli",
+        "startSec": 9.592,
+        "pitches": [
+          50,
+          50,
+          57,
+          56,
+          53
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "pizz",
+        "startSec": 9.6,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 9.6,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "bass",
+        "startSec": 9.604,
+        "pitches": [
+          38,
+          38,
+          45,
+          44,
+          41
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 9.607,
+        "pitches": [
+          62,
+          62,
+          69,
+          68,
+          65
+        ],
+        "ok": true
+      }
+    ],
+    "badger": [
+      {
+        "part": "basses_pizz",
+        "startSec": 2.4,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      },
+      {
+        "part": "celli_pizz",
+        "startSec": 2.4,
+        "pitches": [
+          51,
+          50
+        ],
+        "ok": true
+      },
+      {
+        "part": "bass",
+        "startSec": 2.407,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      },
+      {
+        "part": "basses_pizz",
+        "startSec": 11.997,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      },
+      {
+        "part": "bass",
+        "startSec": 12.004,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      },
+      {
+        "part": "celli_pizz",
+        "startSec": 12.007,
+        "pitches": [
+          51,
+          50
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "loudness": {
+    "profile": "standalone",
+    "integratedLufs": -14.0,
+    "shortTermMedianLufs": -14.3,
+    "shortTermMaxLufs": -12.4,
+    "lraLu": 3.6,
+    "truePeakDbtp": -1.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -4.57,
+    "harshnessDb": -4.73,
+    "mudDb": -0.62,
+    "boxinessDb": -0.43,
+    "voicePocketDb": 1.17,
+    "centroidHz": 764.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 0,
+    "failed": []
+  },
+  "file": "audio/music/theme-15s.wav",
+  "format": "wav-24bit",
+  "bytes": 4320044,
+  "description": "A 15 s cut of the theme with the same bars: motif, Badger's reply, the band, the unison motif and Badger's button.",
+  "usage": "Short opens and promos. -14 LUFS-I.",
+  "instruments": [
+    "VCSL Kawai piano",
+    "VCSL vibraphone",
+    "VSCO 2 strings",
+    "plucked-string bass",
+    "VCSL drums",
+    "brass stab",
+    "FM tine piano"
+  ],
+  "selfReview": "The same bars, recut: the motif three times and Badger twice in 15 s. That much repetition is the point of a brand stamp, but it is a lot. The button lands at 12.0-12.6 s and the tail is clean by 15.0 s.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

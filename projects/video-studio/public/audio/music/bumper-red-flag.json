@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "id": "bumper-red-flag",
+  "title": "Bumper: Badger's Red Flag",
+  "channel": "zoora-security",
+  "cueType": "bumper",
+  "mood": "deadpan: motif head, a rest, Badger's two notes",
+  "key": "D minor",
+  "bpm": 100,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 18.0,
+  "bars": null,
+  "durationSec": 3.2,
+  "durationSamples": 153600,
+  "sampleRate": 48000,
+  "loop": null,
+  "hits": [
+    {
+      "sec": 0.0,
+      "frame30": 0,
+      "what": "motif head"
+    },
+    {
+      "sec": 1.5,
+      "frame30": 45,
+      "what": "Badger: E-flat"
+    },
+    {
+      "sec": 2.1,
+      "frame30": 63,
+      "what": "Badger: D (the button)"
+    }
+  ],
+  "sections": [],
+  "motif": {
+    "zoo": [
+      {
+        "form": "head",
+        "mode": "minor",
+        "part": "celli_pizz",
+        "startSec": 0.0,
+        "pitches": [
+          50,
+          50,
+          57
+        ],
+        "ok": true
+      },
+      {
+        "form": "head",
+        "mode": "minor",
+        "part": "piano",
+        "startSec": 0.0,
+        "pitches": [
+          62,
+          62,
+          69
+        ],
+        "ok": true
+      },
+      {
+        "form": "head",
+        "mode": "minor",
+        "part": "pizz",
+        "startSec": 0.0,
+        "pitches": [
+          62,
+          62,
+          69
+        ],
+        "ok": true
+      }
+    ],
+    "badger": [
+      {
+        "part": "basses_pizz",
+        "startSec": 1.5,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      },
+      {
+        "part": "celli_pizz",
+        "startSec": 1.502,
+        "pitches": [
+          51,
+          50
+        ],
+        "ok": true
+      },
+      {
+        "part": "bass",
+        "startSec": 1.507,
+        "pitches": [
+          39,
+          38
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "loudness": {
+    "profile": "sting",
+    "integratedLufs": -16.0,
+    "shortTermMedianLufs": -16.4,
+    "shortTermMaxLufs": -15.8,
+    "lraLu": 20.5,
+    "truePeakDbtp": -1.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -5.71,
+    "harshnessDb": -8.95,
+    "mudDb": -0.73,
+    "boxinessDb": -3.67,
+    "voicePocketDb": 0.68,
+    "centroidHz": 481.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 1,
+    "failed": [
+      "noise.humDb"
+    ]
+  },
+  "file": "audio/music/bumper-red-flag.wav",
+  "format": "wav-24bit",
+  "bytes": 921644,
+  "description": "Segment bumper for Badger's Red Flag, built from Zoo's motif (3.2 s).",
+  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "instruments": [
+    "VCSL Kawai piano",
+    "VCSL vibraphone",
+    "VSCO 2 strings",
+    "plucked-string bass",
+    "VCSL drums",
+    "brass stab",
+    "FM tine piano"
+  ],
+  "selfReview": "Deadpan: the motif head (D D A) on pizzicato and piano, a beat and a half of nothing, then Badger's Eb-D in the low register with dry ticks. It works only if the rest is long enough to read as a pause rather than a mistake; I believe it is, but this one needs an ear. There is room after 2.6 s for the owner's real dog sound.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}

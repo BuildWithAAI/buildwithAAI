@@ -1,0 +1,122 @@
+{
+  "schema": 1,
+  "id": "bed-show-neutral",
+  "title": "Show bed: neutral",
+  "channel": "zoora-security",
+  "cueType": "bed",
+  "mood": "calm, curious, confident",
+  "key": "D dorian",
+  "bpm": 90,
+  "timeSignature": "4/4",
+  "framesPerBeat30": 20.0,
+  "bars": 24,
+  "durationSec": 64.0,
+  "durationSamples": 3072000,
+  "sampleRate": 48000,
+  "loop": {
+    "seamless": true,
+    "startSample": 0,
+    "endSample": 3072000,
+    "startSec": 0.0,
+    "endSec": 64.0,
+    "frames30": 1920.0
+  },
+  "hits": [],
+  "sections": [
+    {
+      "sec": 0.0,
+      "name": "base"
+    },
+    {
+      "sec": 21.333,
+      "name": "second colour + motif"
+    },
+    {
+      "sec": 42.667,
+      "name": "fullest; thins into the loop"
+    }
+  ],
+  "motif": {
+    "zoo": [
+      {
+        "form": "head",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 21.333,
+        "pitches": [
+          74,
+          74,
+          81
+        ],
+        "ok": true
+      },
+      {
+        "form": "full",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 32.004,
+        "pitches": [
+          74,
+          74,
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      },
+      {
+        "form": "tail",
+        "mode": "minor",
+        "part": "vibes",
+        "startSec": 53.988,
+        "pitches": [
+          81,
+          80,
+          77
+        ],
+        "ok": true
+      }
+    ],
+    "badger": []
+  },
+  "loudness": {
+    "profile": "bed",
+    "integratedLufs": -25.7,
+    "shortTermMedianLufs": -26.0,
+    "shortTermMaxLufs": -23.9,
+    "lraLu": 2.4,
+    "truePeakDbtp": -6.3
+  },
+  "spectrum": {
+    "slopeDbPerOct": -5.09,
+    "harshnessDb": -9.29,
+    "mudDb": 1.14,
+    "boxinessDb": -2.0,
+    "voicePocketDb": -5.84,
+    "centroidHz": 767.0
+  },
+  "checks": {
+    "pass": true,
+    "failures": 0,
+    "warnings": 2,
+    "failed": [
+      "noise.hfFloorDbfs",
+      "loop.levelStepDb"
+    ]
+  },
+  "file": "audio/music/bed-show-neutral.flac",
+  "format": "flac-16bit",
+  "bytes": 6108472,
+  "description": "D dorian over a D pedal: EP, bass, soft kick, cross-stick and shaker; the motif on soft vibes from bar 8; a quiet string pad from bar 16.",
+  "usage": "Loops seamlessly (sample 0 to the end). -26 LUFS-S with a 1-4 kHz pocket: run scripts/audio/duck.py under Zoo's narration. Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
+  "instruments": [
+    "FM tine piano",
+    "plucked-string bass",
+    "VCSL percussion",
+    "VCSL vibraphone",
+    "pulse",
+    "VSCO 2 celli and violas"
+  ],
+  "selfReview": "D dorian over a pedal: EP, bass, soft kick, cross-stick and shaker; the motif on soft vibes from bar 8 and a quiet string pad in bars 16-21. The loop is seamless (seam ratio well under 1). The level-step warning is the downbeat at the loop start versus the last 100 ms of bar 24, not a click. The 8-16 kHz floor warning is the continuous shaker, not hiss. The EP carries this bed, so if it sounds synthetic, this bed suffers most.",
+  "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
+}
