@@ -32,7 +32,7 @@
   },
   "palette": {
     "rule": "solid fills only; at most ONE flat shadow tone per colour; no gradients, filters, patterns, soft masks, texture, halftone or glow",
-    "brand": {"nearBlack": "#0B0C0F", "slate": "#161A21", "silver": "#C9CED6", "offWhite": "#F4F6F8", "teal": "#29B8AD", "background": "#E6E8EB"},
+    "brand": {"nearBlack": "#0B0C0F", "slate": "#161A21", "silver": "#C9CED6", "offWhite": "#F4F6F8", "teal": "#29B8AD", "background": "#E6E8EB", "backgroundShadow": "#CFD3D8"},
     "line": {"color": "#0B0C0F", "width": 3.5, "detailWidth": 2.25},
     "zoo": {
       "skin": "#F3BE9B",
@@ -100,7 +100,29 @@
     "measuredOn": "reference/crops/badger_size_comparison.png: Zoo 478 px = 900 units (1.8828 units/px), ground y=498",
     "sizeComparison": {"zooOriginPx": 134.5, "badgerOriginPx": 391, "spacingUnits": 482.9},
     "usage": "give both characters the SAME scale value; relative size is then exact",
-    "pairShotStaging": {"scale": 0.88, "groundYpx": 918, "spacingUnits": 560, "lineScale": 1, "note": "see decisions INT-P2 and INT-L1"},
+    "pairShotStaging": {"scale": 0.88, "groundYpx": 918, "spacingUnits": 560, "lineScale": 1, "note": "see decisions INT-P2, INT-L1 and INT-C1"},
+    "contactShadows": {
+      "colour": "#CFD3D8",
+      "rule": "decision INT-C1: one flat ellipse per figure, centred on its ground point + cx (world units, times scale), radii rx/ry; component ContactShadow in src/compositions/characters/contact.tsx",
+      "footprints": {
+        "zooFront": {"cx": -1, "rx": 121, "ry": 16},
+        "zooThreeQuarter": {"cx": -3, "rx": 118, "ry": 16},
+        "zooSide": {"cx": 4, "rx": 90, "ry": 16},
+        "zooBack": {"cx": 2, "rx": 112, "ry": 16},
+        "zooTyping": {"cx": 8, "rx": 365, "ry": 16},
+        "badgerLeft": {"cx": -1, "rx": 198, "ry": 15},
+        "badgerFront": {"cx": 1, "rx": 79, "ry": 15},
+        "badgerThreeQuarter": {"cx": -3, "rx": 124, "ry": 15},
+        "badgerRight": {"cx": -14, "rx": 187, "ry": 15},
+        "badgerBack": {"cx": 2, "rx": 91, "ry": 15},
+        "badgerSitRight": {"cx": -49, "rx": 161, "ry": 15},
+        "badgerSitLeft": {"cx": 47, "rx": 161, "ry": 15},
+        "badgerLieRight": {"cx": -28, "rx": 282, "ry": 15},
+        "badgerLieLeft": {"cx": 26, "rx": 282, "ry": 15},
+        "badgerWalkRight": {"cx": 19, "rx": 287, "ry": 15},
+        "badgerLookUpRight": {"cx": -14, "rx": 190, "ry": 15}
+      }
+    },
     "lineWeights": {
       "rule": "decision INT-L1: both rigs take lineScale (multiplier on every stroke). Full body: ART_GUIDE SL5, outline clamp(3.5 x k, 3, 6) px with k = output px per unit (fullLineScale). Close-ups: half of LINE.width in world units, clamped to 3..6 px (closeLineScale). Same value for both characters in a two-shot.",
       "zooLine": {"outline": 3.5, "detail": 2.25, "fine": 1.4, "lid": 2.45, "feature": 1.62},
@@ -114,7 +136,7 @@
       "side": "profile facing screen right; anatomical RIGHT side visible; pin, far arm and far leg hidden",
       "back": "anatomical LEFT = screen LEFT; pin, pocket and buttons hidden; big hair wings on screen right",
       "typing": "seated 3/4 facing screen right (the sheet's only typing drawing); ignores view",
-      "mirroring": "No view is ever made by flipping. Bilateral pairs without markings (ears, eyes, hands, sleeves, legs, shoes, collar leaves) are authored once and mirrored to the opposite side WITHIN a view (front, back). The 3/4 and side views reuse front FACE drawings only through non-mirroring maps (anatomical left stays anatomical left)."
+      "mirroring": "No view is ever made by flipping. Bilateral pairs without markings (ears, eyes, hands, sleeves, legs, shoes, collar leaves) are authored once and mirrored to the opposite side WITHIN one view (front, back). Every view draws its own hands (front palm-side relaxed hands, back-of-hand drawings from behind and in 3/4, a four-finger profile hand, typing hands); no view maps or mirrors another view's hand drawing (repair round 2, ZOO-V5). The 3/4 and side views reuse front FACE drawings only through non-mirroring maps (anatomical left stays anatomical left)."
     },
     "badger": {
       "left": "faces screen LEFT; anatomical LEFT side toward camera (coat_left markings L-*); default head front; the dark-capped ear is the anatomical LEFT ear",
@@ -158,11 +180,11 @@
           "parent": "torso",
           "controls": "pose point: the screen-right shoulder region of the overshirt rotates with the left arm (x1, per-point weights; ZOO-P2)"
         },
-        "forearmL": {"x": 122.5, "y": -534, "parent": "upperArmL", "controls": "pose/poseAmount"},
-        "handL": {"x": 116.4, "y": -420, "parent": "forearmL", "controls": "pose/poseAmount; hand shape relaxed -> loose fist at poseAmount >= 0.28 -> point at >= 0.5"},
+        "forearmL": {"x": 111.5, "y": -534, "parent": "upperArmL", "controls": "pose/poseAmount"},
+        "handL": {"x": 113.8, "y": -420, "parent": "forearmL", "controls": "pose/poseAmount; hand shape relaxed -> loose fist at poseAmount >= 0.08 -> point at >= 0.4"},
         "upperArmR": {"x": -100, "y": -672, "parent": "torso", "controls": "rest in v1"},
-        "forearmR": {"x": -122.5, "y": -534, "parent": "upperArmR", "controls": "rest in v1"},
-        "handR": {"x": -116.4, "y": -420, "parent": "forearmR", "controls": "rest in v1"}
+        "forearmR": {"x": -111.5, "y": -534, "parent": "upperArmR", "controls": "rest in v1"},
+        "handR": {"x": -113.8, "y": -420, "parent": "forearmR", "controls": "rest in v1"}
       },
       "threeQuarter": {
         "root": {"x": 0, "y": 0, "parent": null, "controls": "x, y, scale; origin = centre of the footprint (crop x=154 of zoo_turn_34.png)"},
@@ -178,10 +200,10 @@
         "browL": {"x": 46, "y": -831, "parent": "head", "controls": "far brow: expression, browLift (raised at rest, ZOO-F3)"},
         "shoulderR": {"x": -110, "y": -690, "parent": "torso", "controls": "near arm; static hang in v1"},
         "elbowR": {"x": -133, "y": -540, "parent": "shoulderR", "controls": "static in v1"},
-        "wristR": {"x": -95.5, "y": -418, "parent": "elbowR", "controls": "near hand hangs here"},
+        "wristR": {"x": -98.4, "y": -418, "parent": "elbowR", "controls": "near hand hangs here"},
         "shoulderL": {"x": 82, "y": -688, "parent": "torso", "controls": "far arm (behind the torso); static hang in v1"},
         "elbowL": {"x": 98, "y": -540, "parent": "shoulderL", "controls": "static in v1"},
-        "wristL": {"x": 90.8, "y": -418, "parent": "elbowL", "controls": "far hand hangs here"}
+        "wristL": {"x": 87.6, "y": -418, "parent": "elbowL", "controls": "far hand hangs here"}
       },
       "side": {
         "root": {"x": 0, "y": 0, "parent": null, "controls": "x, y, scale; origin = centre of the footprint (crop x=150 of zoo_turn_side.png)"},
@@ -202,9 +224,9 @@
         "neck": {"x": 4, "y": -730, "parent": "torso", "controls": "breathe (translate)"},
         "head": {"x": 2, "y": -748, "parent": "neck", "controls": "headTilt (deg); no face controls are visible from behind"},
         "shoulderL": {"x": -108, "y": -686, "parent": "torso", "controls": "anatomical LEFT = screen left from behind; static hang"},
-        "wristL": {"x": -118, "y": -418, "parent": "shoulderL", "controls": ""},
+        "wristL": {"x": -110, "y": -410.4, "parent": "shoulderL", "controls": "cuff bottom centre (repair round 2: forearms hang ~7 u further in, as on zoo_turn_back.png)"},
         "shoulderR": {"x": 112, "y": -686, "parent": "torso", "controls": "anatomical RIGHT = screen right; pair mirrored about x=2 inside this view"},
-        "wristR": {"x": 122, "y": -418, "parent": "shoulderR", "controls": ""}
+        "wristR": {"x": 114, "y": -410.4, "parent": "shoulderR", "controls": ""}
       },
       "typing": {
         "root": {"x": 0, "y": 0, "parent": null, "controls": "x, y, scale; origin = centre of the footprint (the feet stay where the standing 3/4 feet are)"},
@@ -515,12 +537,12 @@
       "head": [
         {"id": "H-EAR-L-CAP", "side": "left", "part": "head", "views": "ear fill (all head views)"},
         {"id": "H-EAR-R-SPOT", "side": "right", "part": "head", "views": ["front", "threeQuarterRightScreen", "threeQuarterLeftScreen", "profileRightScreen", "upRightScreen"]},
-        {"id": "H-CHEEK-R", "side": "right", "part": "head", "views": ["front", "threeQuarterRightScreen", "threeQuarterLeftScreen"]},
-        {"id": "H-CHEEK-L", "side": "left", "part": "head", "views": ["front", "threeQuarterRightScreen", "threeQuarterLeftScreen"]}
+        {"id": "H-CHEEK-R", "side": "right", "part": "head", "views": ["front", "threeQuarterRightScreen"]},
+        {"id": "H-CHEEK-L", "side": "left", "part": "head", "views": ["front", "threeQuarterLeftScreen"]}
       ]
     },
     "zoo": {
-      "pin": "Teal jellyfish pin on the anatomical LEFT chest (screen right), above the chest pocket, centre (58, -660); dome + three splayed, slightly S-curved tentacles, no casing (repair round 1).",
+      "pin": "Teal jellyfish pin on the anatomical LEFT chest (screen right), above the chest pocket, centre (58, -660); a compact badge: dome ~18 x 12 u and three short tentacles (~9.5 u) that stay inside the dome's width, each cased in near-black; every stroke follows lineScale (repair round 2, ZOO-D2).",
       "pocket": "Chest pocket on the anatomical-left panel (screen right), x 39..81, top -637, point -592.",
       "buttons": "Five small silver buttons on the anatomical-right panel (screen left) at x=-28.4, y -672/-622/-565/-508/-452 (every view; ZOO-V3). The overshirt is worn open over the tee."
     }
@@ -528,24 +550,26 @@
   "proof": {
     "composition": "Preview10s (src/compositions/characters/Preview10s.tsx), 1920x1080, 30 fps, 300 frames, silent",
     "beats": {
-      "zooBlinks": [38,186,264],
+      "zooBlinks": [38,125,186,264],
       "browLift": [60,67,74,82],
       "eyesLead": [84,89],
       "windup": [85,90,96],
       "swing": [90,106],
       "settle": [106,113],
       "hold": [113,181],
+      "zooNod": [124,131,142],
       "armDown": [181,197],
       "badgerBlink": 22,
       "badgerEarFlick": [68,70,76],
       "badgerTurn": 97,
       "badgerTurnBlink": 94,
-      "badgerHoldBlink": 150,
+      "badgerTilt": [140,152,168,180],
+      "badgerHoldBlink": 158,
       "badgerLookUp": {"eyes": [183,188], "blink": 188, "toFront": 190, "toUp": 192},
       "judge": {"blink": 236, "swap": 242, "brows": [244,254], "ears": [246,258], "tilt": [244,262]},
       "pushIn": [196,299]
     },
-    "note": "frame numbers at 30 fps; see decisions INT-T1, INT-A2 and docs/CHARACTERS.md"
+    "note": "frame numbers at 30 fps; see decisions INT-T1, INT-T2, INT-A2, INT-C1 and docs/CHARACTERS.md"
   },
   "decisions": [
     {
@@ -650,8 +674,8 @@
       "character": "zoo",
       "id": "ZOO-V5",
       "sheet": "The side view shows the back of the near hand with four separate fingers and no separate thumb; the 3/4 and back hands are the front relaxed hand seen from those angles (row scans: 3/4 near ~47 u wide, far ~27 u, back ~31 u).",
-      "chosen": "Repair round 1: a dedicated four-finger profile hand; the 3/4 and back views draw the front relaxed hand through point maps (handMap/MappedRelaxedHand in parts/Hand.tsx): 3/4 near mirrored x1.1 wide x0.92 long, 3/4 far x0.65 x0.85, back x0.75 x0.91 (left mirrored).",
-      "why": "One hand design in every view, each measured from its own turnaround panel; separate fingers and a thumb lobe, never a mitten."
+      "chosen": "Repair round 2 (supersedes round 1's point-mapped front palm drawing, which showed the front thumb hook from behind and in 3/4): every view draws its own hand with HandDrawing (parts/Hand.tsx): front = palm-side relaxed hand with an open thumb gap; back = the back of the hand with four tip lobes stepping toward the thigh and the thumb tucked out of view; 3/4 near = the back of the hand with four stepped fingertips and a shorter thumb lobe; 3/4 far = little-finger side with the fingers curled toward the body; profile = four fingers parting from y -366 (~36% of the hand; round 1 ~24%). One silhouette each with a centred near-black outline on the silhouette only and thin warm-brown separations. Pairs are mirrored only inside one view.",
+      "why": "Front and turnaround views control anatomy; at the asset sheet's lineScale (1.59) round 1's full-weight thumb hook and 18-24 u near-black finger lines read as black talons."
     },
     {
       "character": "zoo",
@@ -742,14 +766,21 @@
       "id": "ZOO-E2",
       "sheet": "zoo_expr_worried.png: inner brow ends rise 5-7.5 u with a sharp upturn, the screen-right arch inverts ~4 u, tails rise ~1.5-2 u. Shocked: brows ~8-11 u up, wide horizontal oval mouth. Happy: soft closed U-smile, lower lids up, head turned ~15 deg.",
       "chosen": "Brow pose gains `curl` (inner-end upturn); worried/happy/shocked presets re-measured (worried inner-to-tail drop >= 11 u; happy cornerL 3.2 / cornerR 6.4, lidBottom 2.4; shocked brows +7.6/+8.2 with arch 3, mouth ah x0.95 wide x0.6 open). The front head does NOT yaw for happy.",
-      "why": "Restrained adult acting that reads at video scale; a yaw on the front head would slide features over a static skull, so the turned-head happy is left to view=\"threeQuarter\" (known gap)."
+      "why": "Restrained adult acting that reads at video scale; a yaw on the front head would slide features over a static skull, so the turned-head happy is left to view=\"threeQuarter\" (known gap). Repair round 2: both corners lift more (cornerL 3.2 -> 4.5, moustacheLiftR 3.6 -> 4) so the smile reads at bust size without the turn."
     },
     {
       "character": "zoo",
       "id": "ZOO-P2",
       "sheet": "zoo_pose_point.png: upper arm ~42 deg out from vertical, forearm rising ~52 deg, index ~25 deg up and ~45 u above the shoulder; the sleeve flows out of the shoulder; the relaxed hand never shows as a flat open hand.",
-      "chosen": "End key shoulder -34 / elbow -117 / wrist 14 (upper arm 43 deg, forearm 57 deg, index ~22 deg up, tip h ~720 on the turnaround body); in-between 10/-146/38 (hand lifts in front of the chest, 38 deg wrist drag); loose fist 0.28..0.5, pointer from 0.5; the overshirt shoulder follows the arm; rounded elbow disk; head/eye bias toward the point unless animated by the caller. Clearance re-checked on the joint chain and in proof frames f93-f96 / f186-f192: the hand stays >= 18 u from Badger's head at the proof spacing (560 u).",
+      "chosen": "SUPERSEDED by ZOO-P4 (repair round 2); the shoulder follow and the rounded elbow disk remain. Round 1: end key shoulder -44 / elbow -93 / wrist 22 (upper arm 43 deg, forearm 57 deg, index ~22 deg up, tip h ~720 on the turnaround body); in-between -20/-92/5 (hand lifts in front of the chest, 38 deg wrist drag); loose fist 0.08..0.4, pointer from 0.4; the overshirt shoulder follows the arm; rounded elbow disk; head/eye bias toward the point unless animated by the caller. Clearance re-checked on the joint chain and in proof frames f93-f96 / f186-f192: the hand stays >= 18 u from Badger's head at the proof spacing (560 u).",
       "why": "Fixes the low hand, the shoulder notch, the limp chicken-wing in-between and the hand pop while keeping INT-P2 staging valid."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-P4",
+      "sheet": "zoo_pose_point.png traced on a world grid: an OPEN elbow (~95 deg inside), forearm rising ~42 deg, index ~3 deg above horizontal with its tip at (358, h733), ~55 u above the cuff because the index rides on top of an upright fist (thumb and three curled fingers stacked under it); sleeves ~40-42 u wide.",
+      "chosen": "End key shoulder -44 / elbow -93 / wrist 22: upper arm 49 deg from vertical, forearm rising 48 deg, elbow ~91 deg inside, index ~6-7 deg up, fingertip (378, h719). Pointer redrawn from the panel (upright fist, 0.92 x panel size = 13% larger than round 1). Mid key -20/-92/5 (upper arm abducted, elbow outside the overshirt, forearm 23 deg up, straight wrist). Joints follow monotone cubics through the keys with POINT_OVERLAP (elbow leads, shoulder lags and first tucks the elbow 6 deg); loose fist from 0.08, pointer from 0.4. Proof check (Preview10s at 560 u spacing, rendered): hand path monotonic out and up, elbow x >= 101 throughout, closest approach to Badger's head 30.5 u (27 px) at f96 (an outward path without the tuck came within 6 u).",
+      "why": "Fixes the acute V, the 26-deg upward jab, the thin sleeve and the waist-level chicken wing. The turnaround arm is longer than the panel's, so the panel's own angles put the fingertip ~30 u too low; the upper arm is raised 6 deg more than the panel's (49 vs ~43) to keep the tip at the round-1 height (h ~719 vs the panel's 733). Turnaround controls anatomy; the pose panel shows performance."
     },
     {
       "character": "zoo",
@@ -785,6 +816,69 @@
       "sheet": "zoo_turn_34.png / zoo_turn_side.png / zoo_turn_back.png: 3/4 nose bridge x 36 -> 44 with the nostril at ~33; 3/4 forelock a rounded lock end at (32,-840); profile forelock a C-curl hanging to (72,-839) with ~7 u of nasal bridge in front of the eye; back crown one S-shaped lock; wave strands are curved and brown.",
       "chosen": "Repair round 1: 3/4 nose +8 u with the front nose construction; 3/4 forelock rounded and liftable; profile eye moved back 3 u (front corner 5 u), nasal bridge 2-3 u forward, C-curl forelock; profile mouth interior ends at the lip fronts with a thin lip line; back crown S-curve; long crown seams replaced by short curved hair-shadow strands in every view; one ear fold line in the nose-line brown.",
       "why": "Turnaround views control identity; each change was measured on its own panel."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-A3",
+      "sheet": "zoo_turn_front.png row scan at the same world scale: below the chest the overshirt narrows to +-87..89 and the sleeves (46-48 u, cuff ~39 u) hang free with 4-7 u of background between each cuff and the hem from y -480; hem 172-178 u.",
+      "chosen": "Repair round 2: each front panel follows the shoulder line to the shoulder point, turns down an armhole seam and runs down the body side at +-86..89; sleeves widened (inner edge ~94, cuff 97.8..129.4); elbow pivots +-111.5 (sleeve centre), wrist pivots +-113.8 (cuff centre); panel shadow kept to a ~5 u band inside the side edge. Measured: sides +-87..88, gap 4-7 u, hem 172 u, cuff 39 u.",
+      "why": "Front view controls anatomy; round 1 kept the panels at +-101..103 to the hem and hid ~13 u of each sleeve, so Zoo read stockier than the lean sheet figure."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-D2",
+      "sheet": "zoo_expr_neutral.png teal rows at 0.699 u/px: dome ~17.5 x 11.2 u; three tentacles ~9.8 u long inside the dome width (~14 u spread), each cased in near-black.",
+      "chosen": "Repair round 2: dome half-width 7.8, tentacles end at +8.2 (x1 within +-5.2), near-black casing under each teal tentacle, teal width and casing both scaled by lineScale (PIN_SHAPE in parts/Pin.tsx); size 1.15, centre (58,-660).",
+      "why": "Locked design: \"one tiny teal jellyfish pin: small dome with three short tentacles\"; round 1's 15 u splayed legs read as a squid."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-F4",
+      "sheet": "Front busts and zoo_turn_front.png: each ear is a rounded C whose lobe tucks into the face at ~-785.",
+      "chosen": "Repair round 2: the ear spline closes INSIDE the face edge (lobe ... (41,-782.4), (38.2,-786), (37.6,-792)), so no pointed lobe hangs over the jaw line.",
+      "why": "Round 1 ended the closed spline outside the face and drew an elf tip."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-H3",
+      "sheet": "zoo_turn_back.png: the crown carries a dark S-shaped lock plus the top-lock and left-lock edges; the nape is shaded under wavy lock ends.",
+      "chosen": "Repair round 2: the S-lock, top-lock and left-lock edges are tapered ink lines in ZOO_COLORS.brow (the hair ink already used for the front crown hollow), up to ZOO_LINE.detail wide, clipped to the hair; one hair-shadow region = a thin crescent under the S-lock and the nape below a wavy edge; the isolated groove oval is gone.",
+      "why": "From behind, the S-lock is the hair's identity; round 1's strands in the shadow tone were invisible and the flat lower band read as a two-tone helmet."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-T7",
+      "sheet": "zoo_pose_typing.png: two soft hands whose fingers arc down and forward onto the keys with thin separations; the monitor back is a plain panel with square corners.",
+      "chosen": "Repair round 2: each typing hand is ONE silhouette (back of the hand + four tip lobes landing 5-8 u ahead of the knuckle line on the keys, thumb in skin) with thin warm-brown separations along the finger arcs; taps move the tip lobes. The monitor panel and foot are straight-edged polygons with small fillets (path extent = its corners, y -275.4..-71.6). Chair wheel and leg outlines follow lineScale.",
+      "why": "Round 1's separately outlined hooked fingers stacked into black knots; the monitor spline overshot 11.4 u past each corner."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-L2",
+      "sheet": "The sheet's close-up nostrils are ~1.7 u dark commas and the bust lid lines stay heavy, while outlines thin to ~1.6 u.",
+      "chosen": "featureScale(ls, min) in lines.ts: the nose bridge and nostrils keep their drawn size below lineScale 1 (and thicken above it); the upper-lid line floors at 0.85. Applied in the front, 3/4 and profile heads.",
+      "why": "Facial feature shapes are part of the face design, not outlines; at ls ~0.5 round 1 shrank the nostrils to ~0.9 u hairlines."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-K2",
+      "sheet": "The expression and mouth panels draw the torso ~6 u higher than the turnaround: 28.7 u of neck and the pin centroid at ~-669.8 against the turnaround's 34.3 u and -659.4.",
+      "chosen": "The turnaround neck, collar, tee and pin heights are used in every framing; the bust panels are performance references for the face only.",
+      "why": "Reference priority: front and turnaround views control anatomy; recorded so reviews do not re-flag the busts as long-necked."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-F5",
+      "sheet": "zoo_expr_neutral.png, zoo_turn_side.png, zoo_turn_34.png: shallow philtrum dip (moustache ~9.5 u thick at x=0); forelock ~12 u wide at y -850; profile eye a mostly dark almond (~25-30% white); profile moustache merging into the cheek beard; throat skin right under the 3/4 jaw; only a soft shadow tight under the jaw.",
+      "chosen": "Repair round 2: moustache notch at -784 with a 0.6 u dip; forelock 11.6 u at -850 (concave right edge ~2.5 u further right, left edge ~1 u left, tip unchanged); profile eye back corner -4.5, iris rx 0.8r, highlight 0.6x; profile moustache ends blunt ~2 u inside the beard; 3/4 throat top tucked 0.5-1.5 u above the jaw line; jaw shadows in front, 3/4, typing and profile reduced to <= 6 u crescents under the jaw.",
+      "why": "Each change measured on its own panel; turnaround views control identity."
+    },
+    {
+      "character": "zoo",
+      "id": "ZOO-S2",
+      "sheet": "zoo_turn_side.png / zoo_turn_34.png / zoo_turn_front.png: chunky low-tops whose toe box keeps its height (~31 u) to a round nose; the 3/4 near toe reaches x ~-22 over the far heel; front shoes flare slightly on the inner side too; ~55 u of shoe shows below the front hem.",
+      "chosen": "Repair round 2: side and 3/4-far toe boxes hold their top to ~8 u from the tip, then round down; 3/4 near shoe extended to a round toe at x ~-22; front inner edge flares from ~30 (y -40) to ~25 at the sole; front hem break raised 8 u (-44.6 -> -52.6), ~52 u of shoe shows.",
+      "why": "Round 1 tapered the toes into pointed slippers, cut the near 3/4 shoe into a clog and showed too little shoe in front."
     },
     {
       "character": "zoo",
@@ -867,8 +961,8 @@
       "character": "badger",
       "id": "BADGER-D09-right-profile",
       "sheet": "badger_coat_right.png: right profile with the pale right ear (a rose flap with a small dark spot) as the near ear; badger_turn_side.png shows the ear's pink inner at the fold.",
-      "chosen": "REVISED in round-1 repair: profileRightScreen is traced directly on coat_right (skull, stop, nose, eye, lip line, ear outline, fold line, pink inner band at the fold from turn_side, spot H-EAR-R-SPOT). v1.0.0 built it by mirroring the left profile; that is removed. Look-up heads are the profiles pitched 40 deg and joined to the rig necks (D27).",
-      "why": "Opposite views carry their own drawing and markings; the reviewers measured the old right ear as an exact mirror of the left one."
+      "chosen": "REVISED in round-1 repair and corrected in round 2: profileRightScreen's skull outline, stop, nose, muzzle underside and the pale ear (outline, fold line, pink band at the fold from turn_side, spot H-EAR-R-SPOT) are traced on coat_right; its eye, brow and the four expression mouth paths are the left profile's, mirrored about the head and re-fitted to coat_right (these are unmarked, symmetric features; nothing marked is mirrored). v1.0.0 mirrored the whole left profile, ear included; that is removed. Look-up heads are the profiles pitched 40 deg and joined to the rig necks (D27, D39).",
+      "why": "Opposite views carry their own drawing and markings; the reviewers measured the old right ear as an exact mirror of the left one. The round-2 review found the round-1 text overstated what was retraced; this wording is what gen_heads.py does."
     },
     {
       "character": "badger",
@@ -916,8 +1010,8 @@
       "character": "badger",
       "id": "BADGER-D16-withers-patch-right-facing",
       "sheet": "Six of the seven right-facing drawings (turnaround side, 3/4, walking, looking-up, sitting, lying) draw the large patch on the visible right side; coat_right shows only its top-line edge; the top map shows the front of the patch straddling the spine.",
-      "chosen": "REVISED in round-1 repair (2026-11-24): right-facing level views (right stand, right walk, right look-up) show the right lobe implied by the top map, a wedge at the front of the withers about 78 x 24 units (RIGHT_SPOTS L-WITHERS), deepest just behind the collar and tapering to the top line; the elevated 3/4 and the sit and lie bodies show the dorsal patch traced from their panels (about 50 x 36, 24 x 75 and 48 x 28 units). Authored per view, never mirrored from the left record. OWNER CONFIRMATION REQUESTED: the alternatives are coat_right's thin edge (v1.0.0) or the turnaround side's full patch.",
-      "why": "The top coat map, a binding coat map, puts the front of the patch across the spine, so it must show from the right; projecting its right lobe onto a rounded back gives about 15-27 units of depth at the front. This keeps the signature marking visible in every right-facing shot without inventing a second patch, and stays closer to coat_right than the pose panels do."
+      "chosen": "REVISED in round 2 (2026-11-24): right-facing level views (right stand, right walk, right look-up) show the right lobe of L-WITHERS as badger_turn_side.png draws it: a rounded irregular lens about 82 x 38 units hanging from the top line, its front about 22 sheet px behind the collar, traced on turn_side and mapped into coat_right space by the collar's back edge on the top line (dev/trace/gen_right.py). The round-1 pointed wedge (a compromise no drawing shows) is removed. The 3/4, sit and lie bodies keep the dorsal patch traced from their own panels. Same id, side left, authored per view, never mirrored. OWNER CONFIRMATION STILL REQUESTED: the alternative is coat_right's thin top-line edge (v1.0.0).",
+      "why": "The three labelled coat maps disagree here (coat_right: a thickened top line; coat_top: the front half of the patch straddles the spine and covers 0.84 of the right half-width, which a level side camera sees as a deep lobe). The turnaround, which controls identity and anatomy, breaks the tie, and the walking and looking-up panels agree with it: seven of the eight right-facing drawings show the lens. The reviewers rejected both coat_right's edge (round 1) and the wedge (round 2)."
     },
     {
       "character": "badger",
@@ -966,7 +1060,7 @@
       "id": "BADGER-D23-pose-facing",
       "sheet": "The sitting, lying, walking and looking-up panels all face screen right. Episodes stage Badger to the right of Zoo facing left, so a sit or lie beat must be able to face left.",
       "chosen": "REVISED in round-1 repair: sit and lie exist in both facings. view right (or front/back/3/4) uses the traced right-facing bodies with right-side markings. view left uses the same UNMARKED silhouette mirrored about the root (outline, collar and tag are bilaterally symmetric, the same approach as the 3/4-left skull) carrying the LEFT coat map's own markings authored for it (L-WITHERS as the full patch, L-01..L-09, L-NECK, R-08 on the far forearm edge, M-CHEST) and head threeQuarterLeftScreen (dark ear near). walk and lookUp are built on both side rigs as before.",
-      "why": "v1.0.0 silently rendered the right-facing body for view left, turning Badger away from Zoo and swapping his visible markings mid-scene. Only symmetric anatomy is reused; no marking is flipped."
+      "why": "v1.0.0 silently rendered the right-facing body for view left, turning Badger away from Zoo and swapping his visible markings mid-scene. Only symmetric anatomy is reused; no marking is flipped. Round-2 note: the sheet has no left-facing sit or lie panel to trace, so a dedicated left trace would be an invented drawing; the mirrored unmarked silhouette stays and still NEEDS THE OWNER'S EXPLICIT ACCEPTANCE under the no-flip rule (the reviewers' static scan found no scale(-1) anywhere and no asymmetric element leaking)."
     },
     {
       "character": "badger",
@@ -979,7 +1073,7 @@
       "character": "badger",
       "id": "BADGER-D25-walk",
       "sheet": "badger_pose_walking.png: one walking frame, far front paw landing well ahead of the chest, near hind leg extended back at toe-off, near fore planted under the chest, head carried up and forward, tail swept back.",
-      "chosen": "REVISED in round-1 repair: 4-beat lateral-sequence gait (duty 0.6, 358.3 units per cycle, stance sweep 215 units), lateral pairs close together so walkPhase 0 is the sheet frame (far fore landing, far hind just planted, near hind at toe-off, near fore in late stance). Paws are solved on their DRAWN outline: the end-of-stance roll is heel-up about the toe point that is lowest at full roll, a ground clamp keeps the traced sole on the ground line in stance and above it in swing, the swinging fore leg raises its scapula (the rig has no elbow joint), and the paw pitches toes-down at most 28 deg. Neck +2 deg, tail +34 deg while walking. Verified by dev/walkCheck.ts (see walk.verification).",
+      "chosen": "REVISED in round 2: 4-beat lateral-sequence gait (duty 0.6, 375 units per cycle, stance sweep 225 units: fore lands 128 ahead and lifts 97 behind its shoulder, hind lands 96 ahead and lifts 129 behind its hip; shoulder glide capped at 26), lateral pairs close together so walkPhase 0 is the sheet frame (far fore landing, far hind just planted, near hind at toe-off, near fore in late stance). The round-1 stride (358.3, sweep 215) left the phase-0 paw spread about 10% short of the panel; the far fore of the right rig cannot reach further than 128 without the paw sliding, so the extra spread comes mostly from the hind. Paws are solved on their DRAWN outline: heel-up roll about the lowest toe point, a ground clamp keeps the traced sole on the ground line in stance and above it in swing, the swinging fore leg raises its scapula, the paw pitches toes-down at most 28 deg. Neck +2 deg, tail +34 deg while walking. Verified by dev/walkCheck.ts (see walk.verification).",
       "why": "v1.0.0 rolled the paw heel-down and pivoted on control points, pushing paws up to 22 units into the floor; its stride was short and the head low against the sheet frame."
     },
     {
@@ -1000,7 +1094,7 @@
       "character": "badger",
       "id": "BADGER-INT-B1-three-quarter-heads",
       "sheet": "badger_turn_34.png: the far contour runs OUTSIDE the far eye, the muzzle projects past the far cheek with the nose at its tip, the mouth is a long gently curved line under the nose, the far dark ear is solid, the chin is closed.",
-      "chosen": "Revised in round-1 repair (gen_heads.py fix_three_quarter): one far contour from the far temple, pulled in at the far cheek below the far eye, round the far side of the muzzle and the nose and on round the chin (the chin is now outlined); the near cheek stops at the jaw (it curled into the lip and read as a grin); the neutral / worried lip line ends under the nose; the far ear shows its outer side only (solid dark cap); the nose sits 3 units further toward the far side; irises 15% larger; the front head's lower-lip detail is dropped. The screen-left turn reuses the far outline of the unmarked symmetric skull as before; no marking is mirrored.",
+      "chosen": "Superseded in round 2 by BADGER-D36 (the lower face, far contour and far ear of both 3/4 heads are re-authored from badger_turn_34.png). Round-1 text: one far contour from the far temple, pulled in at the far cheek, round the muzzle and the chin; near cheek stops at the jaw; far ear solid; irises 15% larger; lower-lip detail dropped.",
       "why": "Turnaround views control identity; the reviewers found the open chin and grin-like mouth on screen for 100 frames of the proof."
     },
     {
@@ -1022,7 +1116,7 @@
       "id": "BADGER-D30-expressions",
       "sheet": "badger_expr_happy.png: a wide smile inside the face with raised corners, a notch at the philtrum and a lower-lip arc. badger_expr_shocked.png: a small open mouth (about nose width, 0.45 of the nose height) under a kept philtrum, jaw intact. badger_expr_worried.png: ear flaps lower and splayed. Eye lines are level on all four panels (measured tilt 0.0-0.6 deg).",
       "chosen": "Happy and shocked retraced from their panels (front and 3/4); shocked in profile and look-up heads is a closed, outlined open-mouth wedge inside the head silhouette. Worried / earsBack swings each front ear about 20 deg down and out without narrowing it. Judge lowers the lids at most to 0.86 open and folds the ears back slightly (eyes stay open between blinks); a closed eye is a nearly flat lid line. No default head tilt for happy or worried: the panels' eye lines are level, so tilt stays a composition choice.",
-      "why": "Expression drawings show how the same character performs; the reviewers found happy indistinguishable from neutral and shocked twice the panel's size with the jaw open."
+      "why": "Expression drawings show how the same character performs; the reviewers found happy indistinguishable from neutral and shocked twice the panel's size with the jaw open. Round-2 note on head angle: the happy, worried and shocked panels also turn the head about 15 deg to screen right; the front bust stays frontal and the turn is a staging choice made with the replacement heads (threeQuarterRightScreen carries all four expressions) plus headTilt, so one bust never mixes two head views."
     },
     {
       "character": "badger",
@@ -1060,6 +1154,41 @@
       "why": "The reviewers found V-notches with spots bulging outside the front legs, a stepped hind strip, orphan neck strokes and open contours in the pose bodies."
     },
     {
+      "character": "badger",
+      "id": "BADGER-D35-closed-outlines",
+      "sheet": "badger_pose_walking.png and badger_turn_side.png outline every edge a moving part uncovers: the tail's underside down to the rump, the buttock behind a raised tail, the thigh's top and front when the leg swings, and soft concave curves on the inside of a bent hock or wrist.",
+      "chosen": "Round 2 (gen_left.py, gen_right.py, erode.py, parts/Leg.tsx, parts/SideBody.tsx): the tail is one closed, fully stroked shape whose root stays inside the torso; the torso's rump runs on as a stroked buttock and flank fold where the thigh hides it at rest; the near thigh's top and back edges are stroked in an 'underlay' pass drawn under the torso, so only what a swing pushes outside the body shows; a bent wrist, hock or pastern gets a fillet tangent to both edges where they cross (radius 9 units); every leg fill carries a fill-coloured halo (0.3 x LINE.width) with the under-strokes widened to match, closing the anti-aliasing seams that showed as hairline ticks at the paws; short straight tracing nubs at segment cuts are no longer eroded as edges (they left ears outside the outline).",
+      "why": "The round-2 review found unoutlined tail roots and rump / thigh wedges in every walk frame and the happy side views, a sharp kink at the far hock and hairline ticks at the front paws."
+    },
+    {
+      "character": "badger",
+      "id": "BADGER-D36-three-quarter-heads",
+      "sheet": "badger_turn_34.png (eyes aligned, 50 crop px = 46.4 units): the nose sits about 7 units beyond the far eye and 32 below the eye line, the far silhouette runs from under the far ear straight to the nose, a bridge line runs from below the far eye to the nose, the mouth rises to the far lip corner under the nose, the chin line is outlined about 15 units higher than the front head's, the far upper lip is shaded left of the philtrum, the far cheek spot is hidden by the muzzle, and the far dark ear is one solid shape.",
+      "chosen": "Round 2 (gen_heads.py rebuild_three_quarter): the screen-right 3/4 head's skull outline, nose, bridge line, philtrum, four mouths, jaw and lip shadows and near cheek spot are re-authored on those measurements; the skull outline is one stroke over the top, round a rounded far-top corner behind the far ear, round the muzzle behind the nose and along the chin line; the far ear is one silhouette with one outline (the front-view inner and fold fills and strokes are gone). The screen-left head uses the same unmarked outline, nose and mouth geometry with x -> -x (as INT-B1 did); its ears, eyes and markings keep their own construction (pale far ear with its spot H-EAR-R-SPOT; near cheek spot H-CHEEK-L; far cheek spot hidden).",
+      "why": "Turnaround views control identity. The reviewers found the nose under the far eye and 9 units low, a short muzzle, a white crescent in the far dark ear and a black needle and white nick at the far pale ear's root."
+    },
+    {
+      "character": "badger",
+      "id": "BADGER-D37-nape-for-turned-heads",
+      "sheet": "No panel shows a head turned back over the shoulder; on the left-facing body the 3/4-right head's far contour ran straight into the neck's back line beside the nose, so head and neck read as fused.",
+      "chosen": "Round 2 (Badger.tsx LEFT_NAPE_34R / RIGHT_NAPE_34L, SideBody HeadMount.nape): when a side body carries the 3/4 head turned toward its back, the crest of the neck runs from behind the far ear past the muzzle (about 8-12 units clear) into the original back line above the collar, over a coat fill that hides the old line. Other head mounts are unchanged, so the proof's swaps keep their cranium positions.",
+      "why": "The reviewers measured this as the proof's main Badger beat (about 3 s, f97-189)."
+    },
+    {
+      "character": "badger",
+      "id": "BADGER-D38-front-head",
+      "sheet": "badger_expr_neutral.png: the skull outline is continuous where the ears attach; the pale ear's pink band reaches its fold and bottom; the mouth is closed (gull-wing upper lip with the lower lip joined at the corners, about 33 sheet px either side of the philtrum); two nostril curls; no chin outline. badger_expr_worried.png: the flaps splay out and down (pale tip about 10 units out and 10 down, dark tip about 14 down at the worried amount).",
+      "chosen": "Round 2 (gen_heads.py, parts/heads/Head.tsx): rounded skull corners under the ears and ONE skull outline from jaw to jaw, so folding an ear never opens it; the pale ear is one closed flap outline plus the band's free edge (no interior tick, no shelf stub, no white sliver); the dark ear's pale inner runs under the cap's hollow edge; the neutral mouth is the sheet's closed mouth; two nostril curls in line colour (no highlight tone); earsBack combines a smaller swing (pale -11.5, dark +20 deg at full) with a lengthwise stretch along the root-to-tip axis (pale 1.36, dark 1.21 at full; ear props stretch / axis).",
+      "why": "Expression drawings show how the same character performs; the reviewers found an outline gap at the folded pale ear on the worried bust and the judge hold, a dangling jaw stub, a floating lower lip and worried ears that drooped instead of splaying."
+    },
+    {
+      "character": "badger",
+      "id": "BADGER-D39-look-up-heads",
+      "sheet": "badger_pose_looking_up.png: a long lip line inside the muzzle from just under the nose back over about 60% of the muzzle, parallel to the jaw's lower contour; a short diagonal cheek mark below the ear; one smooth throat line from the jaw angle to the collar.",
+      "chosen": "Round 2 (gen_heads.py build_up): each look-up head draws the lip line 4.5 units inside the pitched jaw contour from 7% to 62% of its length (happy curls its end up, worried down; shocked keeps its open wedge), no commissure hook, a cheek mark placed from the eye as on the panel, and a throat that leaves the jaw along its chord and lands tangent to the neck's throat line (no S-curve). The throat still bows slightly forward where it meets the neck: the side rigs' neck front line sits forward of the raised jaw, so a fully concave throat needs a dedicated look-up neck pose.",
+      "why": "The reviewers found no lip line, a cheek dash that read as a smile on the throat, a commissure hook and an S-shaped throat with a bump."
+    },
+    {
       "character": "both",
       "id": "INT-P1",
       "sheet": "badger_size_comparison.png: Zoo screen left, Badger (left side toward camera, face turned to camera with a slight lean toward Zoo) screen right, one ground line.",
@@ -1071,7 +1200,7 @@
       "id": "INT-P2",
       "sheet": "The panel stands the pair 482.9 units apart (ground point to ground point); Badger's head sits just beside Zoo's hanging hand.",
       "chosen": "When Zoo points to screen right over Badger, the pair stands 560 units apart and Badger is drawn in front of Zoo (depth), for the whole shot (no sliding). Scale and ground line stay the panel's.",
-      "why": "Re-measured on the repaired point path (ZOO-P2) in integration round 1: at the panel spacing the swinging hand overlaps Badger's pale ear at poseAmount ~0.2 (front and 3/4 heads), which reads as touching him. At 560 units the closest approach is 24.5 px at the proof scale (poseAmount ~0.26). Spacing is staging, not anatomy; relative scale is unchanged."
+      "why": "Re-measured on the repaired point path (ZOO-P2) in integration round 1: at the panel spacing the swinging hand overlaps Badger's pale ear at poseAmount ~0.2 (front and 3/4 heads), which reads as touching him. At 560 units the closest approach is 24.5 px at the proof scale (poseAmount ~0.26). Re-measured in integration round 2 on the round-2 arc (ZOO-P4 with POINT_OVERLAP) from Zoo-only and Badger-only renders of the proof: the fist passes 26.9 px (30.5 u) from the pale ear's tip at f96 on the way up and 30.9 px (35.1 u) at f188 on the way down, and Badger's eyes close as it passes (blinks f94-99 and f188-197), so the near miss reads as his reflex. A neck dip, head tilt or ear fold on Badger does not widen it (his neck pivots his head toward the hand); only a wider spacing would. Spacing is staging, not anatomy; relative scale is unchanged."
     },
     {
       "character": "both",
@@ -1084,8 +1213,22 @@
       "character": "zoo",
       "id": "INT-T1",
       "sheet": "zoo_pose_point.png shows the end pose only; Prompt 1 asks for restrained, purposeful gestures.",
-      "chosen": "The point is timed along the hand's arc, not in poseAmount: gesture.ts maps a path fraction to poseAmount through the rig's own pivots and angle function (hand path 454 units). The swing eases the path fraction with bezier(0.38,0,0.4,1) over 16 frames (f90-106), ends past the hold pose and settles back ~1-2 deg (poseAmount 1 -> 0.993), then holds with a slow ~2 deg forearm drift; the arm lowers along the same arc over 16 frames.",
-      "why": "The rig's joint path moves the hand 71% of its travel in the first half of poseAmount, so easing poseAmount directly snapped the swing (v1: 123 px in one frame). Arc-length timing peaks at ~49 px/frame, like the lowering, and puts the loose-fist swap on the fastest frame."
+      "chosen": "The point is timed along the hand's arc, not in poseAmount: gesture.ts maps a path fraction to poseAmount through the rig's own pivots and angle function (hand path 409 units). The swing eases the path fraction with bezier(0.38,0,0.4,1) over 16 frames (f90-106), ends past the hold pose and settles back ~1-2 deg (poseAmount 1 -> 0.993, f106-113), holds (decision INT-T2) and lowers along the same arc over 16 frames (f181-197).",
+      "why": "The rig's joint path (round 2: monotone cubics through ARM_POINT_MID with POINT_OVERLAP timing) moves the hand 80% of its travel in the first half of poseAmount, so easing poseAmount directly snaps the swing (v1: 123 px in one frame). Arc-length timing peaks at ~45 px/frame at the proof scale (round 2, measured 44.5), like the lowering, and the hand-shape swaps (fist at 0.08, pointer at 0.4) land on fast frames (f95, f99)."
+    },
+    {
+      "character": "zoo",
+      "id": "INT-T2",
+      "sheet": "zoo_pose_point.png shows only the end pose; Prompt 1 asks for restrained limited animation with purposeful gestures, and every hold must stay alive (the round-2 performance review: the hand moved 2 px or less over f106-181, so the gesture froze).",
+      "chosen": "A moving hold, f113-181: the raised arm sinks from poseAmount 0.993 to 0.93 on one slow sine ease (shoulder 3.2 deg, wrist 2.8 deg; the elbow is unchanged near the end key), so the hand drops 9.2 px at the proof scale, 7.6 px with breathing included (measured on the rendered frames, ~0.15 px/frame mid-hold), and the lowering starts from that pose. Part-way through, Zoo nods once toward the point: a ~1.7 deg head tilt down and back (f124-142) with a blink that starts with it (f125). Badger answers after the nod with his small curious tilt (f140-180, was f132-180) and one blink (f158), so the two moves do not overlap.",
+      "why": "The reviewer asked for ~0.05 poseAmount of drift (6-10 px at the hand) with a slow ease plus a 1-2 deg nod. On the round-2 arc the end key is carried by the shoulder, and the breathing cycle lifts the arms ~1.6 px over the same frames, so 0.063 gives a net 7.6 px; a deeper sink would read as the arm tiring. The head tilt is the rig's only head control, so the nod is a small tilt toward the point; the blink sells it as a nod."
+    },
+    {
+      "character": "both",
+      "id": "INT-C1",
+      "sheet": "The approved sheets draw no contact shadows (the size panel has only a ground line). ART_GUIDE CV4a/LS4: Badger's off-white coat (L* 4.9 from the background) and Zoo's sneakers (L* 0.4) separate from #E6E8EB only by their outline, so every shot showing feet or paws gets one flat contact shadow in backgroundShadow. The round-2 Badger review asked for it in the proof and the sheet stills.",
+      "chosen": "BRAND.backgroundShadow #CFD3D8 (ART_GUIDE CV2; the value the branding, episode and show themes already use) is added to palette.ts as the background colour's one flat shadow tone. Preview10s, ZooSheet and BadgerSheet draw one flat ellipse under each figure (src/compositions/characters/contact.tsx, FOOTPRINTS: measured sole, paw, wheel or leg extents + 10 units, e.g. Zoo front rx 121, Badger 'left' rx 198; ry 15-16 units). In the proof the shadows sit over the silver ground line (the line passes behind the feet); on the sheets the near-black baseline runs over them, so it stays unbroken. No blur, opacity or gradient.",
+      "why": "ART_GUIDE is the craft guide and PROJECT_INSTRUCTIONS allows one flat shadow tone per colour; the background stays plain #E6E8EB. ART_GUIDE asks for the owner's sign-off on the palette entry, so it is recorded here and is still pending."
     },
     {
       "character": "both",
@@ -1098,7 +1241,7 @@
       "character": "badger",
       "id": "INT-A2",
       "sheet": "Prompt 2: Badger looks toward the gesture with a small head turn, looks up at Zoo, then gives a restrained judging reaction. Prompt 1: emotion through brows, folded ears, head angle and tail; eyes open between natural blinks.",
-      "chosen": "Every head replacement in the proof happens with Badger's eyes closed: the turn to the 3/4 head under a blink (f97), the look-up swaps (3/4 -> front breakdown -> upLeftScreen, f190/192) under a blink with the eyes and the neck leading, the neck values chosen so the cranium stays put across each swap. The judging look plays on the FRONT head (eyes kept on Zoo, judge brows, ears 0.42, ~8 deg tilt) after a slow blink covers the swap from the up head, with one slow push-in (1.00 -> 1.04, f196-299, ART_GUIDE MO13) anchored on his eyes. Idle life in 0-3 s: one blink and one ear flick.",
+      "chosen": "Every head replacement in the proof happens with Badger's eyes closed: the turn to the 3/4 head under a blink (f97), the look-up swaps (3/4 -> front breakdown -> upLeftScreen, f190/192) under a blink with the eyes and the neck leading, the neck values chosen so the cranium stays close across each swap (re-measured in round 2 with the re-authored 3/4 head, BADGER-D36/D37, and unchanged from round 1: the skull top rises 9 px at f97, in the direction of the rising neck that follows, and drops 7 px at f190 and 5 px at f192, each inside the closed-eye frames; a neckTurn or headTilt correction would trade it for a 10-15 px sideways jump). The judging look plays on the FRONT head (eyes kept on Zoo, judge brows, ears 0.42, ~8 deg tilt) after a slow blink covers the swap from the up head, with one slow push-in (1.00 -> 1.04, f196-299, ART_GUIDE MO13) anchored on his eyes. Idle life in 0-3 s: one blink and one ear flick.",
       "why": "The v1 look-up swapped three silhouettes in three frames with no blink (a pop and head-bob), and the judge on the pitched profile head moved each cue by only 2-7 px. On the front head each cue moves 6-8 px and the brows and lids read."
     },
     {

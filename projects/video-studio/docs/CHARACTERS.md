@@ -2,13 +2,14 @@
 
 The reusable character assets. Build every scene from these components; never redraw the characters per scene and never put the model-sheet PNGs in a scene. Binding rules are in `docs/PROJECT_INSTRUCTIONS.md`. The machine-readable record is `src/characters/manifest.v1.json`: palette, scale, line weights, left/right conventions, pivots, Badger's spot IDs, the proof's beat timings and every continuity decision.
 
-Repair round 1 (2026-11-24) changed both rigs and the proof compositions. The manifest records each change as a decision (`ZOO-*`, `BADGER-*`, `INT-*`).
+Repair rounds 1 and 2 (2026-11-24) changed both rigs and the proof compositions. The manifest records each change as a decision (`ZOO-*`, `BADGER-*`, `INT-*`). Round 2 added flat contact shadows (`INT-C1`) and a moving hold for the point (`INT-T2`).
 
 ## Quick start
 
 ```tsx
 import {AbsoluteFill} from 'remotion';
 import {Badger, BRAND, lineScaleFor, ZooRig} from '../characters';
+import {ContactShadow, FOOTPRINTS} from '../compositions/characters/contact';
 
 const SCALE = 0.88;
 const LINES = lineScaleFor(SCALE); // ART_GUIDE SL5; give both characters the same value
@@ -16,6 +17,9 @@ const LINES = lineScaleFor(SCALE); // ART_GUIDE SL5; give both characters the sa
 export const Scene: React.FC = () => (
 	<AbsoluteFill style={{backgroundColor: BRAND.background}}>
 		<svg width={1920} height={1080} viewBox="0 0 1920 1080">
+			{/* Flat contact shadows first (decision INT-C1), then the characters. */}
+			<ContactShadow x={677} y={918} scale={SCALE} print={FOOTPRINTS.zooFront} />
+			<ContactShadow x={1170} y={918} scale={SCALE} print={FOOTPRINTS.badgerLeft} />
 			<ZooRig x={677} y={918} scale={SCALE} lineScale={LINES} expression="neutral" />
 			<Badger x={1170} y={918} scale={SCALE} lineScale={LINES} view="left" />
 		</svg>
@@ -28,6 +32,7 @@ export const Scene: React.FC = () => (
 - `<ZooRig>` and `<Badger>` render SVG `<g>` groups, so put them inside one `<svg>`. `<Zoo>` (without `embed`) and `<BadgerLayer width height>` wrap them in a full-frame `<svg>` that you can drop straight into an `AbsoluteFill`.
 - Everything is exported from `src/characters/index.ts`.
 - Idle breathing runs from `useCurrentFrame()`, and nothing else moves unless you animate a prop. Use `interpolate` with `Easing.bezier` (see `src/compositions/characters/Preview10s.tsx`).
+- **Contact shadows (decision INT-C1).** Every shot that shows feet or paws gets one flat ellipse in `BRAND.backgroundShadow` (`#CFD3D8`) under each figure: `<ContactShadow x y scale print={FOOTPRINTS.<figure>} />` from `src/compositions/characters/contact.tsx`. `FOOTPRINTS` holds measured extents for every view and pose (Zoo front, 3/4, side, back and typing; Badger left, right, front, 3/4, back, sit, lie, walk and look-up). Draw it before the figure. No blur, no opacity. The palette entry still needs the owner's sign-off.
 
 ## Line weights (decision INT-L1)
 
@@ -63,15 +68,15 @@ Give both characters the same value in a two-shot. Lines scale with a camera pus
 
 ### Point gesture (decision INT-T1)
 
-The arm follows one arc: the hand swings out with the open hand trailing, closes to a loose fist (`poseAmount` 0.28–0.5), becomes the pointer from 0.5, and ends with the index at about shoulder height. `poseAmount` is not uniform on screen: 71% of the hand's travel happens in its first half. **Time the gesture along the arc**, not in `poseAmount`:
+The arm follows one arc (decision ZOO-P4): the forearm lifts first while the upper arm opens out from the side, so the elbow stays outside the overshirt; the hand closes to a loose fist from `poseAmount` 0.08, becomes the pointer from 0.4, and ends with the index about 6 degrees above horizontal at about shoulder height. `poseAmount` is not uniform on screen: about 80% of the hand's travel happens in its first half. **Time the gesture along the arc**, not in `poseAmount`:
 
 ```ts
 import {poseAmountForPath} from '../compositions/characters/gesture';
 const u = swingEase((frame - start) / 16); // bezier(0.38, 0, 0.4, 1) over ~16 frames
-const poseAmount = poseAmountForPath(u);   // the hand moves at the ease's speed (peak ~49 px/frame at scale 0.88)
+const poseAmount = poseAmountForPath(u);   // the hand moves at the ease's speed (peak ~45 px/frame at scale 0.88)
 ```
 
-Then settle 1–2 degrees (`poseAmount` 1 → 0.993 over ~7 frames) and keep the hold moving (a slow ~0.008 drift in `poseAmount`, about 2 degrees at the elbow). Lower the arm along the same arc (`pathForPoseAmount` gives the starting fraction). `Preview10s` shows the whole gesture.
+Then settle 1–2 degrees (`poseAmount` 1 → 0.993 over ~7 frames) and keep the hold moving (decision INT-T2): let the arm sink about 0.06 `poseAmount` over the hold on one slow sine ease (the hand drops 7–8 px at scale 0.88), and give one small beat part-way, such as a 1–2 degree head tilt toward the point with a blink. Lower the arm along the same arc from wherever the hold left it (`pathForPoseAmount` gives the starting fraction). `Preview10s` shows the whole gesture.
 
 For lip-sync, `amplitudeToMouth(amplitude, previousShape)` maps a **real** narration envelope to closed / slightlyOpen / oh / ah. Without an audio track, label the preview as silent and never call it lip-synced.
 
@@ -89,7 +94,7 @@ For lip-sync, `amplitudeToMouth(amplitude, previousShape)` maps a **real** narra
 | `earsBack` | 0..1 | by expression | Worried 0.7, shocked 0.15, otherwise 0. Worried swings the flaps down and out |
 | `headTilt` | degrees | 0 | Small |
 | `tailWag` | turns | 0 | 0 = still; animate it for a restrained happy wag |
-| `walkPhase` | cycles | 0 | With `pose="walk"`, move the root by `badgerWalkDistance(walkPhase) * scale` so the paws don't slide (`BADGER_WALK.stride` = 358.3 units per cycle) |
+| `walkPhase` | cycles | 0 | With `pose="walk"`, move the root by `badgerWalkDistance(walkPhase) * scale` so the paws don't slide (`BADGER_WALK.stride` = 375 units per cycle, decision BADGER-D25) |
 | `breathe` | boolean | true | |
 | `lookX`, `lookY` | -1..1 | 0 | Iris direction |
 | `neckTurn` | degrees | 0 | Extra neck raise (+ = up). The head rides on the neck, so this also rotates the head: counter-rotate with `headTilt` to keep it level |
@@ -107,18 +112,19 @@ For lip-sync, `amplitudeToMouth(amplitude, previousShape)` maps a **real** narra
 
 ## The 10 s proof (`Preview10s`)
 
-Silent, 1920×1080, 30 fps, 300 frames, on `#E6E8EB`. The exact frames are in `BEATS` (exported, and copied to `manifest.v1.json` → `proof.beats`).
+Silent, 1920×1080, 30 fps, 300 frames, on `#E6E8EB`, with a flat contact shadow under each character. The exact frames are in `BEATS` (exported, and copied to `manifest.v1.json` → `proof.beats`); `zooTrack(frame)` and `badgerTrack(frame)` give every frame's character props.
 
 | Time | Zoo | Badger |
 | --- | --- | --- |
 | 0–3 s | Stands as in the size panel; blinks (f38); one-sided brow lift (f60–82) | Front head with the panel's slight lean toward Zoo; blinks (f22); ear flick during the brow lift (f68–76) |
-| 3–6 s | Eyes lead (f84); wind-up (f85–90); swing along the arc f90–106; settle; moving hold to f181 | Eyes follow the hand; under a blink the head turns to 3/4 right (f97); the neck and gaze rise along the point; a small curious tilt and one blink in the hold |
+| 3–6 s | Eyes lead (f84); wind-up (f85–90); swing along the arc f90–106; settle; moving hold to f181: the arm sinks ~8 px and he nods once toward the point with a blink (f124–142) | Eyes follow the hand and close as the fist passes over his head; under that blink the head turns to 3/4 right (f97); the neck and gaze rise along the point; after Zoo's nod, a small curious tilt (f140–180) and one blink (f158) |
 | 6–10 s | Lowers the arm f181–197 back to deadpan; one blink (f264) after Badger's look | Looks up at Zoo (swaps with eyes closed, f188–197), holds, then a slow blink and the judging look on the front head: eyes on Zoo, flat brows, ears folded, ~8° tilt (f236–262); one slow push-in 1.00→1.04 (f196–299) anchored on his eyes |
 
 ## Do / don't
 
 - **Do** use one `scale` and one `lineScale` for both characters, and one ground line `y`.
-- **Do** stand them 560 units apart and draw Badger after Zoo when Zoo points to screen right over Badger (decision INT-P2: at the panel's 482.9 units the swinging hand crosses his ear). Otherwise the panel spacing is 482.9 units (`SIZE_COMPARISON.spacingUnits`).
+- **Do** put a flat contact shadow under feet and paws (`ContactShadow`, decision INT-C1).
+- **Do** stand them 560 units apart and draw Badger after Zoo when Zoo points to screen right over Badger (decision INT-P2: at the panel's 482.9 units the swinging hand crosses his ear; at 560 the fist still passes 27–31 px from his pale ear, so close his eyes as it passes). Otherwise the panel spacing is 482.9 units (`SIZE_COMPARISON.spacingUnits`).
 - **Do** keep faces, hands, ears and captions clear of the frame edges, and use natural 5–6 frame blinks with the eyes open between them.
 - **Do** swap Badger's heads only under closed eyes, and time Zoo's point along its arc.
 - **Do** use the flat background `BRAND.background` (#E6E8EB) and only colours from `src/characters/palette.ts`.
@@ -148,18 +154,22 @@ npx esbuild scripts/build-character-manifest.ts --bundle --platform=node --forma
   --loader:.png=empty --loader:.woff2=empty --outfile=/tmp/bcm.cjs && node /tmp/bcm.cjs
 ```
 
-## Known limits (v1.0.0, after repair round 1)
+## Known limits (v1.0.0, after repair round 2)
 
 - **Owner decisions pending:**
-  - BADGER-D16: in right-facing views the withers patch shows a right lobe reconciled from the top coat map and the pose panels, not coat_right's thin edge.
-  - BADGER-D23: the left-facing sit and lie reuse the right-facing pose outline, mirrored about the root, with their own LEFT markings and head.
+  - BADGER-D16: in level right-facing views (right stand, walk, look-up) the withers patch shows the turnaround's rounded right lobe (about 82 x 38 units). The alternative is coat_right's thin edge.
+  - BADGER-D23: the left-facing sit and lie reuse the right-facing pose outline, mirrored about the root, with their own LEFT markings and head. BADGER-D36 reuses the unmarked outline, nose and mouths of the 3/4-right head for the 3/4-left head in the same way.
+  - INT-C1: the palette entry `BRAND.backgroundShadow` (`#CFD3D8`) for contact shadows.
 - Zoo:
   - Only the front view can point.
   - Arms in the 3/4, side and back views are fixed hangs.
   - Typing exists only as the sheet's seated 3/4 pose.
-  - The point has no contrapposto or torso turn (ZOO-P3).
+  - The point has no contrapposto or torso turn (ZOO-P3), and its upper arm is ~6 degrees higher than the panel's.
+  - Hand shapes along the point (relaxed, loose fist, pointer) are instant replacements.
   - The front "happy" has no head yaw (ZOO-E2).
 - Badger:
-  - The look-up heads are pitched profiles.
-  - On the front head, folding the ears (`earsBack` above about 0.35, or `judge`) leaves a small step in the skull outline at the pale ear's root.
+  - The look-up heads are pitched profiles; the look-up throat still bows slightly forward where it meets the neck.
+  - Head yaw for the front expressions is left to staging (the 3/4 heads plus `headTilt`, BADGER-D30).
+  - The walk's paw spread is about 5% shorter than the walking panel's.
+- Proof: the head replacements keep the skull top within 5–9 px, always with the eyes closed (INT-A2), and the pointing fist passes 27–31 px from Badger's ear (INT-P2).
 - The proof is silent. No narration asset was supplied.

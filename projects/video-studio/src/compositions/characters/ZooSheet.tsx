@@ -1,6 +1,7 @@
 /**
  * ZooSheet: a still of the reusable Zoo asset (1920x1080, #E6E8EB), rendered from the rig itself.
- * Row 1: turnaround (front, 3/4, side, back) and the two poses (point, seated typing) on one ground line.
+ * Row 1: turnaround (front, 3/4, side, back) and the two poses (point, seated typing) on one ground line, each with a
+ * flat contact shadow (decision INT-C1).
  * Row 2: the four expressions (head-and-shoulders) and the six-shape mouth library.
  * Line weights per decision INT-L1: SL5 for the full-body row, the sheet's close-up weight for busts and mouths.
  * No labels are copied from the approved model sheet.
@@ -14,16 +15,17 @@ import {TYPING_LAYOUT as L} from '../../characters/zoo/views/Typing';
 import {BRAND} from '../../characters/palette';
 import type {Expression, ZooView} from '../../characters/types';
 import {LineScaleContext} from '../../characters/zoo/parts/Shape';
+import {ContactShadow, FOOTPRINTS, type Footprint} from './contact';
 import {MOUTH_ORDER} from './MouthDemo';
 import {closeLineScale, fullLineScale} from './stage';
 
 const GROUND = 575;
 const S = 0.54;
-const TURN: readonly {view: ZooView; x: number}[] = [
-	{view: 'front', x: 150},
-	{view: 'threeQuarter', x: 372},
-	{view: 'side', x: 588},
-	{view: 'back', x: 800},
+const TURN: readonly {view: ZooView; x: number; print: Footprint}[] = [
+	{view: 'front', x: 150, print: FOOTPRINTS.zooFront},
+	{view: 'threeQuarter', x: 372, print: FOOTPRINTS.zooThreeQuarter},
+	{view: 'side', x: 588, print: FOOTPRINTS.zooSide},
+	{view: 'back', x: 800, print: FOOTPRINTS.zooBack},
 ];
 const POINT_X = 1070;
 const TYPING_X = 1585;
@@ -44,6 +46,12 @@ const CHIP_LINE = closeLineScale(CHIP.w / 139.94);
 export const ZooSheet: React.FC = () => (
 	<AbsoluteFill style={{backgroundColor: BRAND.background}}>
 		<svg width={1920} height={1080} viewBox="0 0 1920 1080">
+			{/* Contact shadows under the figures (INT-C1); the sheet's near-black baseline runs over them. */}
+			{TURN.map((t) => (
+				<ContactShadow key={`shadow-${t.view}`} x={t.x} y={GROUND} scale={S} print={t.print} />
+			))}
+			<ContactShadow x={POINT_X} y={GROUND} scale={S} print={FOOTPRINTS.zooFront} />
+			<ContactShadow x={TYPING_X} y={GROUND} scale={S} print={FOOTPRINTS.zooTyping} />
 			<line x1={40} y1={GROUND + 1.5} x2={1880} y2={GROUND + 1.5} stroke={BRAND.nearBlack} strokeWidth={2} />
 			{TURN.map((t) => (
 				<ZooRig key={t.view} view={t.view} x={t.x} y={GROUND} scale={S} breathe={false} lineScale={BODY_LINE} />

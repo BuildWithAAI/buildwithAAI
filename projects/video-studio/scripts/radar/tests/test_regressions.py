@@ -15,6 +15,7 @@ import datetime as dt
 import http.server
 import json
 import os
+import re
 import shutil
 import tempfile
 import threading
@@ -442,6 +443,62 @@ class ParsingHardening(unittest.TestCase):
 
 
 # ---------------------------------------------------------------- what the radar writes
+
+# 2026-11-24 live run: one outlet's "Crypto trader X says his wallet was hacked" was redacted, but another outlet's
+# "Was X hacked?" became the incident subject, so the pseudonym was the id, title and protocol of a candidate, and
+# "X-linked wallet" stayed in a third outlet's headline. Quorvex is a made-up handle.
+PERSON_NEWS = {
+    "coindesk": [{"title": "Crypto trader Quorvex says his wallet was hacked as $2 million in tokens were sold",
+                  "url": "https://www.coindesk.com/markets/2026/11/24/a-wallet-linked-to-trader-quorvex-was-drained",
+                  "pub": "Tue, 24 Nov 2026 12:47:49 +0000",
+                  "desc": "Quorvex suspects someone broke into his account on a trading terminal, where the wallet's private key had been imported."}],
+    "theblock": [{"title": "Quorvex denies involvement in $2.57 million wallet drain",
+                  "url": "https://www.theblock.co/news/defi/2026-11-24-quorvex-denies-involvement-2-57-million-wallet-drain",
+                  "pub": "Tue, 24 Nov 2026 16:51:21 +0000",
+                  "desc": "Quorvex said he is conducting a security review as onchain analysts try to get to the bottom of his wallet drain."}],
+    "cryptonews": [{"title": "Was Quorvex hacked? $2.15M moves to Arbitrum",
+                    "url": "https://crypto.news/quorvex-suspected-wallet-hack-arbitrum/",
+                    "pub": "Tue, 24 Nov 2026 11:02:30 +0000",
+                    "desc": "Quorvex faces a suspected wallet hack as $2.15 million in USDC moves to Arbitrum."}],
+    "thedefiant": [{"title": "Tracker Flags Suspected Hack of Quorvex-Linked Wallet",
+                    "url": "https://thedefiant.io/news/hacks/tracker-flags-suspected-hack-of-quorvex-linked-wallet",
+                    "pub": "Tue, 24 Nov 2026 10:17:30 +0000",
+                    "desc": "The tracker linked 1.55 million USDC directly to the Quorvex-associated wallet."}],
+}
+
+
+class PersonNames(Scenario):
+    def test_a_name_used_for_a_person_in_one_outlet_is_redacted_in_every_outlet(self):
+        doc = self.run_radar("2026-11-24", None, PERSON_NEWS)
+        for inc in self.incidents(doc):
+            self.assertNotIn("quorvex", f"{inc['id']} {inc['protocol']} {inc['title']}".lower())
+
+        def strip_urls(value):
+            if isinstance(value, dict):
+                return {k: strip_urls(v) for k, v in value.items() if k not in ("url", "postMortemUrl", "referenceUrl")}
+            if isinstance(value, list):
+                return [strip_urls(v) for v in value]
+            return value
+
+        text = json.dumps(strip_urls(doc), ensure_ascii=False)
+        self.assertNotIn("quorvex", text.lower())
+        self.assertIn("[named person]", text)
+        with open(os.path.join(self.tmp, "run", "out", "2026-11-24.md"), encoding="utf-8") as fh:
+            markdown = re.sub(r"\]\(https?://[^)]*\)", "]", fh.read())
+        self.assertNotIn("quorvex", markdown.lower())
+
+    def test_firms_that_say_things_keep_their_names_elsewhere(self):
+        feeds = {"coindesk": [{"title": "Examplechain says bridge exploit cost $3 million",
+                               "url": "https://www.coindesk.com/tech/2026/11/24/examplechain-bridge-exploit",
+                               "pub": "Tue, 24 Nov 2026 09:00:00 +0000",
+                               "desc": "Examplechain said it paused the bridge after the exploit."}],
+                 "theblock": [{"title": "Examplechain bridge exploited for $3 million",
+                               "url": "https://www.theblock.co/news/defi/2026-11-24-examplechain-bridge-exploited",
+                               "pub": "Tue, 24 Nov 2026 10:00:00 +0000",
+                               "desc": "The Examplechain bridge was exploited for $3 million, the team said."}]}
+        doc = self.run_radar("2026-11-24", None, feeds)
+        titles = [i["title"] for i in self.incidents(doc)]
+        self.assertTrue(any(t.startswith("Examplechain") for t in titles), titles)
 
 class OutputRules(unittest.TestCase):
     def test_lone_surnames_and_pseudonyms_are_redacted(self):

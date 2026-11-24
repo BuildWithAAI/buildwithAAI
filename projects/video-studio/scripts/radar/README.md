@@ -44,8 +44,13 @@ least one source was read, 1 when none was, and 2 for bad input.
    from the primary release. A lone capitalised word before "says", "said", "told" or after
    "according to" is taken for a surname ("Saylor says") unless it is an organisation the run has
    seen (incident-database records, source names) or a well-known firm, and pseudonyms
-   ("coordinated by Kruw", "an entity called ...") are redacted too. The redaction is heuristic,
-   so the claim gate stays responsible.
+   ("coordinated by Kruw", "an entity called ...") are redacted too. A name the run has seen used
+   for a person (a role word before it, a personal pronoun after it in the same sentence, or a
+   pseudonym cue: "Crypto trader X says his wallet was hacked") is then redacted in every title,
+   excerpt and qualifier of the run, and can never be a subject or an outlet's origin, so "Was X
+   hacked?" and "X-linked wallet" from other outlets cannot make X an incident's id, title or
+   protocol (2026-11-24 live run). A firm that only "says" things ("Glassnode said") is not spread
+   this way. The redaction is heuristic, so the claim gate stays responsible.
 5. **No exploit how-tos.** `safety.redact_code` removes addresses, hashes, code spans, function
    calls and identifiers (`[code]`, `[address]`). Generated text uses only labels such as
    "key compromise" or "Bridge & Cross-Chain / Cross-Chain Message Spoofing". It contains no
@@ -240,7 +245,8 @@ owner on the approval page.
   scenarios: new attacks versus old records, chained news, near-names, headline figures about
   other incidents, feed rotation, id stability, same-source corrections, redirects to ftp:/file:/
   unlisted hosts and a slow drip against a real local server, entity declarations in UTF-16 and
-  padded XML, hostile HTML, rate-limited robots.txt, and surname and pseudonym redaction.
+  padded XML, hostile HTML, rate-limited robots.txt, surname and pseudonym redaction, and a
+  person's name spread from one outlet's headline to every other outlet's text in the run.
 
 ## Known limits
 

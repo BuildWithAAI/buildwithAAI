@@ -10,10 +10,11 @@ import {line, mirrorX, smooth, type Pt} from '../geometry';
 import {ZOO_LINE} from '../lines';
 import {Clipped, Outline, Shape, Stroke} from './Shape';
 
-// Repair round 1: the hem drapes lower over the shoe tongue (break at -44.6 in the middle), as on zoo_turn_front.png.
+// Repair round 1: the hem drapes over the shoe tongue. Repair round 2: the break is raised 8 u (-44.6 -> -52.6 in the middle),
+// so ~52 u of sneaker shows below it as on zoo_turn_front.png (~55; round 1 showed ~46).
 const LEG: Pt[] = [
-	[0, -434], [78, -434], [78.2, -380], [77.6, -300], [79.4, -200], [80.6, -120], [81.8, -64], [81.4, -50.2, 'c'], [66, -46.2],
-	[52, -44.6], [36, -46], [26.4, -48, 'c'], [22.2, -100], [15.6, -170], [10.2, -250], [5, -320], [1.6, -372], [0, -392],
+	[0, -434], [78, -434], [78.2, -380], [77.6, -300], [79.4, -200], [80.6, -120], [81.8, -70], [81.4, -58.2, 'c'], [66, -54.2],
+	[52, -52.6], [36, -54], [26.4, -56, 'c'], [22.2, -100], [15.6, -170], [10.2, -250], [5, -320], [1.6, -372], [0, -392],
 ];
 /** Under the shirt hem, and along the inseam. */
 const LEG_SHADOWS: Pt[][] = [
@@ -26,14 +27,16 @@ const LEG_SHADOWS: Pt[][] = [
  * zoo_turn_front.png): a rounded low-top, narrow at the ankle (outer edge ~82 at y -50) with a convex toe box that
  * flares to ~109 only near the sole (v1 was a straight trapezoid, 8-13 u wider at y -50..-30).
  */
+// Repair round 2: the inner edge flares in slightly toward the sole too (x ~30 at -40 to ~24 at the sole), as on the sheet
+// (round 1's inner edge was vertical, so the shoe flared only outward).
 const SHOE: Pt[] = [
-	[34, -55.6], [58, -57.8], [79.8, -55.6], [82.6, -49], [84.4, -40], [89.6, -30.4], [96.6, -24], [102.8, -19.4], [107, -12.6],
-	[109.2, -6.4], [106.6, -2.4], [96, -1.75], [60, -1.75], [33.6, -2.2], [30.6, -7], [29.8, -22], [30.4, -40],
+	[34, -62], [58, -63.8], [79.8, -61.6], [82.6, -49], [84.4, -40], [89.6, -30.4], [96.6, -24], [102.8, -19.4], [107, -12.6],
+	[109.2, -6.4], [106.6, -2.4], [96, -1.75], [60, -1.75], [27.2, -2.2], [25, -7.6], [26.8, -22], [29.8, -40], [31.4, -52],
 ];
-const SOLE: Pt[] = [[112, -11.6], [100, -10.8], [60, -10.4], [28, -11], [28, 2], [112, 2]];
+const SOLE: Pt[] = [[112, -11.6], [100, -10.8], [60, -10.4], [22, -11], [22, 2], [112, 2]];
 /** One flat shadow tone: a narrow terminator along the inner edge (no full-height band). */
-const SHOE_SHADOW: Pt[] = [[26, -60], [37.6, -60], [36, -40], [35.2, -22], [35.6, -12], [26, -12]];
-const SOLE_LINE: Pt[] = [[108.6, -11.4], [96, -10.8], [60, -10.4], [30.4, -11]];
+const SHOE_SHADOW: Pt[] = [[20, -66], [37.6, -66], [36, -40], [33, -22], [31.6, -12], [20, -12]];
+const SOLE_LINE: Pt[] = [[108.6, -11.4], [96, -10.8], [60, -10.4], [25, -11]];
 /** Toe cap seam and three crossing lace bars on the tongue. */
 const TOE_LINE: Pt[] = [[100.6, -21.6], [86, -18.2], [66, -17], [46, -17.6]];
 const LACES: Pt[][] = [

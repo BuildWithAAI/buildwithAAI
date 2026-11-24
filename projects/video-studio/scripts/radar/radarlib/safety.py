@@ -7,6 +7,11 @@
   law-enforcement or regulator releases are the one allowed exception. The radar
   does not ingest such releases directly, so it redacts them too; the claim gate
   may restore an official's name from the primary release.
+* person_tokens / People: a name the redactor saw used for a person anywhere in a
+  run (a role word before it, a personal pronoun after it, a pseudonym cue) is
+  redacted everywhere in that run and can never be an incident's subject: "Crypto
+  trader X says his wallet was hacked" makes "Was X hacked?" and "X-linked wallet"
+  personal too, although neither has a cue of its own.
 * redact_code: removes contract addresses, hashes, code spans, function names and
   calls, so excerpts stay at concept level (no exploit how-tos).
 * price_talk / legal_terms / strong_hedge: flags used for notes and for status.
@@ -237,7 +242,7 @@ def _span_end(text, start, tokens):
     return pos
 
 
-def _replace_names(pattern, text, group, need_first_name=False, single=False):
+def _replace_names(pattern, text, group, need_first_name=False, single=False, found=None):
     out, pos, count = [], 0, 0
     for match in pattern.finditer(text):
         start = match.start(group)
@@ -258,6 +263,8 @@ def _replace_names(pattern, text, group, need_first_name=False, single=False):
         possessive = _POSSESSIVE.search(tokens[-1])
         if possessive:
             end -= len(possessive.group(0))
+        if found is not None:
+            found.append((text[start:end], True))
         out.append(text[pos:start])
         out.append(PERSON)
         pos = end
@@ -280,9 +287,25 @@ def _known_word(word, known):
             or plain in _COMMON_CAPITALISED or plain in _NAME_STOP)
 
 
-def _replace_lone(pattern, text, known, need_shape=False):
+_PERSONAL_PRONOUN = re.compile(r"\b(?:he|she|him|his|her|hers|himself|herself)\b", re.IGNORECASE)
+_ROLE_BEFORE = re.compile(rf"\b(?i:{_ROLE_CUES})\s+$")
+_SENTENCE_END = re.compile(r"(?<=[.!?;])\s")
+
+
+def _lone_evidence(text, start, end):
+    """A lone name-shaped word before "says" is a person, not a firm that says things, when a role word stands right
+    before it ("trader X says") or a personal pronoun follows it in the same sentence ("X says his wallet")."""
+    if _ROLE_BEFORE.search(text[max(0, start - 40):start]):
+        return True
+    sentence = _SENTENCE_END.split(text[end:end + 160], maxsplit=1)[0]
+    return bool(_PERSONAL_PRONOUN.search(sentence))
+
+
+def _replace_lone(pattern, text, known, need_shape=False, found=None, strong=False):
     """Replace group 1 of each match unless it is a known organisation or a common word. need_shape: the token must
-    look like a name or handle (capitalised, @, digits, underscores or mixed case), not a plain lower-case word."""
+    look like a name or handle (capitalised, @, digits, underscores or mixed case), not a plain lower-case word.
+    found: gets (name, strong) for each replacement; strong means the context shows a person (the pattern itself, or
+    _lone_evidence), not only a capitalised word before "says"."""
     out, pos, count = [], 0, 0
     for match in pattern.finditer(text):
         start = match.start(1)
@@ -296,6 +319,8 @@ def _replace_lone(pattern, text, known, need_shape=False):
         if len(raw.lstrip("@")) < 3:
             continue
         end = start + len(raw)
+        if found is not None:
+            found.append((raw, strong or _lone_evidence(text, start, end)))
         out.append(text[pos:start])
         out.append(PERSON)
         pos = end
@@ -304,16 +329,23 @@ def _replace_lone(pattern, text, known, need_shape=False):
     return "".join(out), count
 
 
-def redact_people(text, known=None):
+def redact_people(text, known=None, found=None):
     """Return (text, number_of_new_redactions). known: lower-case names of organisations and protocols seen in
-    this run (incident-database records, source publishers), never taken for a person when alone before "says"."""
+    this run (incident-database records, source publishers), never taken for a person when alone before "says".
+    found: a list that gets (name as written, strong) for every name replaced (see person_tokens)."""
     if not text:
         return text, 0
     known = frozenset(k.lower() for k in (known or ()) if k)
+
+    def record(match):
+        if found is not None:
+            found.append((match.group(0), True))
+        return PERSON
+
     total = 0
-    text, n = _KNOWN.subn(PERSON, text)
+    text, n = _KNOWN.subn(record, text)
     total += n
-    text, n = _HONORIFIC.subn(PERSON, text)
+    text, n = _HONORIFIC.subn(record, text)
     total += n
     # In a Title Case headline every word is capitalised, so a capitalised pair is
     # only taken for a name when it starts with a known given name.
@@ -325,23 +357,23 @@ def redact_people(text, known=None):
         (_SPEECH, {"need_first_name": strict}),
         (_ACCORDING, {"need_first_name": strict}),
     ):
-        text, n = _replace_names(pattern, text, 1, **kwargs)
+        text, n = _replace_names(pattern, text, 1, found=found, **kwargs)
         total += n
-    text, n = _replace_first_names(text)
+    text, n = _replace_first_names(text, found=found)
     total += n
     # lone surnames and pseudonyms: "Saylor says", "according to Saylor", "coordinated by Kruw"
-    text, n = _replace_lone(_LONE_SPEECH, text, known)
+    text, n = _replace_lone(_LONE_SPEECH, text, known, found=found)
     total += n
-    text, n = _replace_lone(_LONE_ACCORDING, text, known)
+    text, n = _replace_lone(_LONE_ACCORDING, text, known, found=found)
     total += n
-    text, n = _replace_lone(_PSEUDONYM, text, known, need_shape=True)
+    text, n = _replace_lone(_PSEUDONYM, text, known, need_shape=True, found=found, strong=True)
     total += n
     text = re.sub(r"(?:\[named person\]\s*){2,}", PERSON + " ", text)
     text = re.sub(r"\[named person\] (?=[.,;:!?)])", PERSON, text)
     return text, total
 
 
-def _replace_first_names(text):
+def _replace_first_names(text, found=None):
     out, pos, count = [], 0, 0
     for match in _FIRST_NAME.finditer(text):
         start = match.start(1)
@@ -356,12 +388,55 @@ def _replace_first_names(text):
         possessive = _POSSESSIVE.search(tokens[-1])
         if possessive:
             end -= len(possessive.group(0))
+        if found is not None:
+            found.append((text[start:end], True))
         out.append(text[pos:start])
         out.append(PERSON)
         pos = end
         count += 1
     out.append(text[pos:])
     return "".join(out), count
+
+
+_NAME_EDGE = re.compile(r"^[\s\"'“”‘’(\[@]+|[\s\"'“”‘’)\].,;:!?]+$")
+
+
+def person_tokens(found, known=None):
+    """Names to redact everywhere in a run, from redact_people's `found` list over all of the run's text: each full
+    name of two or more words as written, and each single word (a pseudonym, handle or lone surname) that was redacted
+    at least once with person evidence (strong). A single word that was only ever a capitalised word before "says"
+    is left alone ("Glassnode says" is a firm), and so are organisations seen in the run, places and common words."""
+    known = frozenset(k.lower() for k in (known or ()) if k)
+    out = set()
+    for name, strong in found or ():
+        name = _NAME_EDGE.sub("", _POSSESSIVE.sub("", (name or "").strip()))
+        if len(name) < 3 or "named person" in name.lower():
+            continue
+        if " " in name:
+            out.add(name)
+        elif strong and not _known_word(name, known):
+            out.add(name)
+    return out
+
+
+class People:
+    """The run's person tokens (person_tokens): redact(text) replaces each whole-word occurrence, as written, in
+    upper case or with an @, keeping a possessive or a "-linked" suffix outside the replacement; mentioned(text) says
+    whether text contains one (an incident subject that does is a person, never a protocol)."""
+
+    def __init__(self, tokens=()):
+        self.tokens = frozenset(t for t in tokens if t)
+        variants = sorted({v for t in self.tokens for v in (t, t.upper())}, key=len, reverse=True)
+        self._pattern = re.compile(
+            r"(?<![A-Za-z0-9_])@?(?:" + "|".join(map(re.escape, variants)) + r")(?![A-Za-z0-9_])") if variants else None
+
+    def redact(self, text):
+        if not text or self._pattern is None:
+            return text, 0
+        return self._pattern.subn(PERSON, text)
+
+    def mentioned(self, text):
+        return bool(text and self._pattern is not None and self._pattern.search(text))
 
 
 _HEX_ADDR = re.compile(r"\b0x[0-9a-fA-F]{8,}\b")
@@ -397,9 +472,13 @@ def redact_code(text):
     return text, count
 
 
-def sanitize(text, known=None):
-    """Names and code removed. Returns (text, {'names': n, 'code': n})."""
+def sanitize(text, known=None, people=None):
+    """Names and code removed. Returns (text, {'names': n, 'code': n}). people: the run's People, whose names are
+    redacted wherever they appear."""
     text, names = redact_people(text, known)
+    if people is not None:
+        text, more = people.redact(text)
+        names += more
     text, code = redact_code(text)
     return text, {"names": names, "code": code}
 
@@ -407,6 +486,7 @@ def sanitize(text, known=None):
 _PRICE = re.compile(
     r"\b(?:price|prices|priced|rall(?:y|ies|ied)|surg(?:e|es|ed|ing)|plung(?:e|es|ed|ing)|"
     r"soar(?:s|ed|ing)?|tumbl(?:e|es|ed|ing)|crash(?:es|ed|ing)?|pump(?:s|ed|ing)?(?!\.fun)|"
+    r"plummet(?:s|ed|ing)?|crater(?:s|ed|ing)|slump(?:s|ed|ing)?|nosediv(?:e|es|ed|ing)|skyrocket(?:s|ed|ing)?|"
     r"dump(?:s|ed|ing)?|bullish|bearish|buy the dip|all-time high|market cap|"
     r"collaps(?:e|es|ed)\s+\d+%|\d+(?:\.\d+)?%\s+(?:drop|fall|gain|rise|jump|slide|plunge)|"
     r"(?:fell|rose|dropped|jumped|slid|sank)\s+\d+(?:\.\d+)?%|price target|"

@@ -52,6 +52,58 @@ class RedactPeople(unittest.TestCase):
         self.assertEqual(count, 0)
 
 
+class PersonPropagation(unittest.TestCase):
+    """A name the redactor saw used for a person somewhere in the run is redacted everywhere in it (Quorvex is a
+    made-up handle)."""
+
+    def tokens(self, texts, known=None):
+        found = []
+        for text in texts:
+            safety.redact_people(text, known, found=found)
+        return safety.person_tokens(found, known)
+
+    def test_person_evidence_decides_which_lone_words_spread(self):
+        tokens = self.tokens([
+            "Crypto trader Quorvex says his wallet was hacked",      # role word before, pronoun after
+            "Glassnode said in a post that the drop was the first",  # a firm that "says": no evidence
+            "Wiz Says Attacker Mined AI Coding Histories",
+            "Exampleswap said it paused the pools",                  # "it" is not a person
+            "an entity called Kruwex moved the funds",               # a pseudonym cue is evidence on its own
+            "executive chairman Michael Saylor said on Nov. 23",      # a full name spreads as written
+        ])
+        self.assertEqual(tokens, {"Quorvex", "Kruwex", "Michael Saylor"})
+
+    def test_pronoun_must_be_in_the_same_sentence(self):
+        self.assertEqual(self.tokens(["Sonic says the supply mismatch is under review. He added nothing."]), set())
+        self.assertEqual(self.tokens(["Quorvex said he is conducting a security review."]), {"Quorvex"})
+
+    def test_known_organisations_never_spread(self):
+        # a protocol in the run's incident databases is never a person, whatever a sentence says about "his"
+        self.assertEqual(self.tokens(["Lighter said his team is reviewing it"], known={"lighter"}), set())
+
+    def test_people_redacts_every_form_and_keeps_suffixes(self):
+        people = safety.People({"Quorvex"})
+        cases = {
+            "Was Quorvex hacked? $2.15M moves to Arbitrum": "Was [named person] hacked? $2.15M moves to Arbitrum",
+            "Tracker Flags Suspected Hack of Quorvex-Linked Wallet": "Tracker Flags Suspected Hack of [named person]-Linked Wallet",
+            "Quorvex's wallet": "[named person]'s wallet",
+            "QUORVEX MOVES": "[named person] MOVES",
+            "@Quorvex posted": "[named person] posted",
+        }
+        for text, expected in cases.items():
+            self.assertEqual(people.redact(text)[0], expected)
+            self.assertTrue(people.mentioned(text))
+        for text in ("Quorvexian Labs", "https://example.com/quorvex-wallet", "no names here"):
+            self.assertEqual(people.redact(text), (text, 0))
+            self.assertFalse(people.mentioned(text))
+        self.assertEqual(safety.People().redact("Quorvex"), ("Quorvex", 0))
+
+    def test_sanitize_applies_the_run_names(self):
+        text, flags = safety.sanitize("Quorvex faces a suspected wallet hack", people=safety.People({"Quorvex"}))
+        self.assertEqual(text, "[named person] faces a suspected wallet hack")
+        self.assertEqual(flags["names"], 1)
+
+
 class RedactCode(unittest.TestCase):
     def test_identifiers_calls_and_addresses(self):
         cases = {
@@ -77,6 +129,8 @@ class Flags(unittest.TestCase):
         self.assertFalse(safety.price_talk("Chainflip confirms $12M hack"))
         self.assertFalse(safety.price_talk("Pump.fun to End External Wallet Login on Nov. 30"))
         self.assertTrue(safety.price_talk("Token pumps 300% overnight"))
+        for text in ("creator coin plummets 55%", "his namesake token cratered", "the token slumped", "a coin nosedived"):
+            self.assertTrue(safety.price_talk(text), text)
 
     def test_strong_hedge(self):
         self.assertEqual(safety.strong_hedge("amid suspected bridge exploit"), "suspected")

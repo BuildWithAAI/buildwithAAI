@@ -4,7 +4,7 @@
   "channel": "zoora-security",
   "slug": "2026-11-24-binance",
   "date": "2026-11-24",
-  "generatedAt": "2026-11-24T16:35:25.453Z",
+  "generatedAt": "2026-11-24T17:26:23.461Z",
   "status": "confirmed",
   "format": "daily-short",
   "incident": {
@@ -1990,10 +1990,6 @@
       "kind": "protocol"
     },
     {
-      "name": "MoldyRoost",
-      "kind": "protocol"
-    },
-    {
       "name": "Myriad Markets",
       "kind": "protocol"
     },
@@ -2063,10 +2059,6 @@
     },
     {
       "name": "Wagyu (XMR1)",
-      "kind": "protocol"
-    },
-    {
-      "name": "Was Ansem",
       "kind": "protocol"
     },
     {
@@ -2529,64 +2521,6 @@
       },
       {
         "rank": 11,
-        "incidentId": "2026-11-23-moldyroost",
-        "dateSlug": "2026-11-24-moldyroost",
-        "title": "MoldyRoost: reported security incident (mechanism not classified) (developing)",
-        "protocol": "MoldyRoost",
-        "status": "developing",
-        "type": "other",
-        "evergreenTopic": null,
-        "score": 42.7,
-        "shortReady": false,
-        "missing": [
-          "not confirmed",
-          "fewer than 2 independent sources",
-          "mechanism not stated by any source",
-          "no strong 'one fix' explainer link"
-        ],
-        "eligible": false,
-        "reasons": [
-          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
-          "radar short check: fewer than 2 independent sources",
-          "radar short check: mechanism not stated by any source",
-          "radar short check: no strong 'one fix' explainer link",
-          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
-        ],
-        "strongAnalysis": [],
-        "chains": []
-      },
-      {
-        "rank": 12,
-        "incidentId": "2026-11-24-was-ansem",
-        "dateSlug": "2026-11-24-was-ansem",
-        "title": "Was Ansem: reported exploit (mechanism unknown) (developing)",
-        "protocol": "Was Ansem",
-        "status": "developing",
-        "type": "exploit",
-        "evergreenTopic": null,
-        "score": 41,
-        "shortReady": false,
-        "missing": [
-          "not confirmed",
-          "fewer than 2 independent sources",
-          "mechanism not stated by any source",
-          "no strong 'one fix' explainer link"
-        ],
-        "eligible": false,
-        "reasons": [
-          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
-          "radar short check: fewer than 2 independent sources",
-          "radar short check: mechanism not stated by any source",
-          "radar short check: no strong 'one fix' explainer link",
-          "no real analysis: no strong analysis that is not a daily template (radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Arbitrum); the RPC trace covers Solana only.)"
-        ],
-        "strongAnalysis": [],
-        "chains": [
-          "Arbitrum"
-        ]
-      },
-      {
-        "rank": 13,
         "incidentId": "2026-11-22-cysic",
         "dateSlug": "2026-11-24-cysic",
         "title": "Cysic: reported bridge exploit (developing)",
@@ -2616,9 +2550,9 @@
   },
   "radar": {
     "path": "content/zoora-security/radar/2026-11-24.json",
-    "sha256": "db3e19716efccdfc2bfe842214dc0b8672d5ddcb527c816ca11265ceab4832ff",
+    "sha256": "5904fcca9127ca2c53401470f70199abbb99864f6bb67c22cea1c3591b43261f",
     "runDate": "2026-11-24",
-    "generatedUtc": "2026-11-24T16:32:49Z",
+    "generatedUtc": "2026-11-24T17:11:05Z",
     "mode": "live"
   },
   "history": {

@@ -200,11 +200,13 @@ _MONTHS = {m: i for i, m in enumerate(("january", "february", "march", "april", 
                                        "september", "october", "november", "december"), 1)}
 
 
-def _origin(title, excerpt, source, item):
+def _origin(title, excerpt, source, item, people=None):
     """Who an outlet's item relays (the parser reads it from the full text; else the stored text): an organisation,
-    never a person."""
+    never a person (nor a name the run has seen used for one)."""
+    people = people or safety.People()
     for origin in (item.get("origin"), classify.origin_of(f"{title}. {excerpt}", source.get("publisher") or source["name"])):
-        if origin and "named person" not in origin and not safety.redact_people(origin.title())[1]:
+        if (origin and "named person" not in origin and not safety.redact_people(origin.title())[1]
+                and not people.mentioned(origin) and not people.mentioned(origin.title())):
             return origin
     return None
 
@@ -264,6 +266,15 @@ def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_
             record = item.get("record") or {}
             if item.get("kind") == "structured" and record.get("name"):
                 known.update(w.lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9]+", str(record["name"])))
+    # names seen used for a person anywhere in the run (a role word before, a personal pronoun after, a pseudonym
+    # cue) are redacted everywhere and never become a subject: "Crypto trader X says his wallet was hacked" makes
+    # "Was X hacked?" and "X-linked wallet" personal too, although neither has a cue of its own
+    found = []
+    for result in source_results.values():
+        for item in result.get("items", []):
+            for field in ("title", "excerpt", "lead", "qualifier"):
+                safety.redact_people(item.get(field) or "", known, found=found)
+    people = safety.People(safety.person_tokens(found, known))
     for sid, result in source_results.items():
         source = sources_by_id[sid]
         stats = counts.setdefault(sid, {"relevant": 0, "incident": 0, "excluded": 0})
@@ -272,7 +283,7 @@ def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_
             if not security:
                 stats["excluded"] += 1
                 continue
-            mention = _mention(item, source, run_date, seen_keys or set(), has_history, incident, why, known)
+            mention = _mention(item, source, run_date, seen_keys or set(), has_history, incident, why, known, people)
             if mention is None:
                 continue
             stats["relevant"] += 1
@@ -281,14 +292,15 @@ def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_
     return mentions, counts
 
 
-def _mention(item, source, run_date, seen_keys, has_history, incident, why, known=frozenset()):
+def _mention(item, source, run_date, seen_keys, has_history, incident, why, known=frozenset(), people=None):
     published = parse_iso(item.get("publishedUtc")) if item.get("publishedUtc") else None
     end_of_run = day_start(run_date) + dt.timedelta(days=1)
     if published and published >= end_of_run:
         return None  # published after the run date: not part of this run
-    title, t_flags = safety.sanitize(item.get("title") or "", known)
-    excerpt, e_flags = safety.sanitize(item.get("excerpt") or "", known)
-    lead, _ = safety.sanitize(item.get("lead") or "", known)
+    people = people or safety.People()
+    title, t_flags = safety.sanitize(item.get("title") or "", known, people)
+    excerpt, e_flags = safety.sanitize(item.get("excerpt") or "", known, people)
+    lead, _ = safety.sanitize(item.get("lead") or "", known, people)
     raw_text = f"{item.get('title') or ''} {item.get('excerpt') or ''}"
     text = f"{title} {excerpt}"
     kind = item.get("kind") or "news"
@@ -326,7 +338,7 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         subject, method = classify.extract_subject(item.get("title") or "", exclude=own)
     if subject:
         redacted_subject, n = safety.redact_people(subject, known)
-        if n:
+        if n or people.mentioned(subject):
             subject, method = None, None
     lead_for_names = (item.get("lead") or "") if kind == "structured" else ""
     aliases = aliases_for(subject, lead_for_names) if subject else set()
@@ -367,7 +379,7 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
     if not mech_status:
         mech_status, qualifier = classify.mechanism_qualifier(f"{item.get('title') or ''}. {item.get('excerpt') or ''}")
     if qualifier:
-        qualifier = safety.sanitize(truncate(qualifier, 280), known)[0]
+        qualifier = safety.sanitize(truncate(qualifier, 280), known, people)[0]
         if qualifier.endswith(".") and qualifier[:-1] in title:
             qualifier = qualifier[:-1]  # the headline itself, without the full stop added to read it as a sentence
     if kind == "structured" and record and str(record.get("method") or "").strip().lower() in ("unknown", "other", "anomaly"):
@@ -387,7 +399,7 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         redactions={"names": t_flags["names"] + e_flags["names"], "code": t_flags["code"] + e_flags["code"]},
         record=record, reference_url=item.get("referenceUrl"), key=item.get("key"),
         relevance_reason=why, tracker=bool(source.get("tracker")),
-        origin=_origin(title, excerpt, source, item) if tier in ("B", "C") else None,
+        origin=_origin(title, excerpt, source, item, people) if tier in ("B", "C") else None,
         new_incident=bool(NEW_INCIDENT_RE.search(f"{title} {lead}")),
         user_side=classify.user_side(full_text), mech_status=mech_status, qualifier=qualifier,
         month_bound=_month_bound(raw_text, (published or end_of_run).date()) if kind != "structured" else None,

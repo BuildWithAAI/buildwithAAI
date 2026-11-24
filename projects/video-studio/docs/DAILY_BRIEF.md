@@ -129,7 +129,7 @@ It runs, in order:
    - `approval.md`: the same content, for reading in the app;
    - `packet.json`: the hashes the approval is checked against.
 
-A gate failure stops the build before the voice, so nothing unverified is voiced or rendered. The packet is still written, as NOT READY with every fix. Also NOT READY: an unrecorded correction on an earlier episode (PIN A CORRECTION), a developing story without "developing" in the title, a Short title or any thumbnail, and an automatically picked story whose storyboard presents no real analysis (a hand pick without one is a warning at the top: the owner's call).
+A gate failure stops the build before the voice, so nothing unverified is voiced or rendered. The packet is still written, as NOT READY with every fix. Also NOT READY: an unrecorded correction on an earlier episode (PIN A CORRECTION), a developing story without "developing" in the title, a Short title or any thumbnail, and a storyboard that presents no real analysis, unless the owner hand-picked a story that has none (then it is a warning at the top and the packet's "Real analysis" line shows a cross: the owner's call). A storyboard that leaves out a real analysis the brief offers always blocks, hand pick or not.
 
 | Exit | Meaning | Do |
 | --- | --- | --- |

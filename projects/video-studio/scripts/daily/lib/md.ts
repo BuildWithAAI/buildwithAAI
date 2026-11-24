@@ -1,7 +1,7 @@
 /** approval.md: the same packet as Markdown, for reading in the Claude app. Feed text goes through md() (no links/HTML). */
 import {md, safeUrl} from './escape.ts';
 import {UNTRUSTED_NOTE} from './html.ts';
-import type {PacketModel} from './packet.ts';
+import {realAnalysisLine, type PacketModel} from './packet.ts';
 
 const fence = (s: string): string => {
 	const ticks = (s.match(/`{3,}/g) ?? []).reduce((a, t) => Math.max(a, t.length + 1), 3);
@@ -34,7 +34,8 @@ export const renderMd = (m: PacketModel): string => {
 	const g = m.gate;
 	if (!m.steps.some((s) => s.id === 'news-gate')) o.push(`- News gate: ${g ? `${g.verdict.toUpperCase()}, ${g.counts.claimsOk}/${g.counts.claims} claims traced` : 'did not run'}`);
 	for (const s of m.steps) o.push(`- ${md(s.title)}: **${s.status}**${s.blocking ? ' (blocks)' : ''}. ${md(s.note)}`);
-	o.push(`- Analysis: ${m.analysis.length ? m.analysis.map((a) => `${md(a.kind)} (${md(a.basis)}) in ${md(a.presentedIn.join(', ') || 'no scene')}`).join('; ') : '**none**'}`);
+	const ra = realAnalysisLine(m);
+	o.push(`- ${md(ra.text)} (**${ra.ok ? 'yes' : 'no'}**)`);
 	if (m.developing) o.push(`- DEVELOPING label: ${md(m.developingInfo.labelVia ?? 'missing')}; said aloud in ${md(m.developingInfo.spokenIn ?? 'no scene')}`);
 	o.push(`- Preview: ${m.preview.rel ? `${md(m.preview.rel)}${m.preview.durationSec ? ` (${m.preview.durationSec.toFixed(1)} s)` : ''}` : md(m.preview.note)}`);
 	if (m.warnings.length) o.push('', '<details><summary>Warnings</summary>', '', ...m.warnings.map((w) => `- ${md(w)}`), '', '</details>');

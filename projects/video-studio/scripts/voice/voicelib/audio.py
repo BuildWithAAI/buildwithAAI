@@ -13,7 +13,10 @@ target). Chain, measured on real Kokoro output (2026-11-24):
   3. pass 2: loudnorm with the measured values and linear=true; when the peaks still do not allow a
      linear gain, ffmpeg uses its dynamic mode, and the target is re-aimed by a secant step on the
      measured error (at most twice).
-  4. a final measurement goes into timeline.loudness; build.py warns when it is more than 1 LU off.
+  4. if loudnorm's dynamic mode still let a true peak over -1 dBTP (seen on short, hard-pushed clips), a true-peak
+     limiter (alimiter at -1.4 dBFS on a 4x oversampled signal) shaves those peaks; as a last resort a static gain brings
+     the peak to -1.2 dBTP (recorded as trimDb);
+  5. a final measurement goes into timeline.loudness; build.py warns when it is more than 1 LU off.
 The limiter aims at -1.2 dBTP inside loudnorm so resampling to 24 kHz cannot creep over -1.0.
 loudnorm works at 192 kHz internally; output is resampled to 24 kHz. The whole chain was verified to
 keep the exact sample count and alignment (a click at sample n stays at sample n), so per-scene cuts
@@ -32,6 +35,8 @@ LIMIT_TP = -1.2  # what loudnorm is asked for: 0.2 dB of room for overs from res
 TARGET_LRA = 20.0  # permissive, so the linear mode is used whenever the true peak allows it
 TOLERANCE_LU = 0.3
 MAX_CORRECTIONS = 2
+TP_LIMITER_RATE = 96000  # the true-peak limiter's oversampled rate (4x the voice's 24 kHz)
+TP_LIMITER_CEILING_DB = -1.4  # its sample-peak ceiling at that rate (measured: -1.23 dBTP after resampling back)
 LIMITER_CEILING_DB = -2.0  # sample peak out of the pre-limiter
 LIMITER_BUDGET_DB = 6.0  # most gain the pre-limiter may add beyond the linear-safe gain
 WARN_LU = 1.0
@@ -168,7 +173,35 @@ def _two_pass(src: str, dst: str, sample_rate: int, first: dict) -> dict:
         if abs(TARGET_I - got) <= TOLERANCE_LU:
             break
         target = next_target(tried)
-    return {"pass1": first, "pass2": second, "type": second.get("normalization_type", "?"), "result": result, "targets": [t for t, _ in tried]}
+    out = {"pass1": first, "pass2": second, "type": second.get("normalization_type", "?"), "result": result, "targets": [t for t, _ in tried]}
+    if float(result["input_tp"]) > TARGET_TP:
+        # loudnorm's dynamic mode let a true peak over the ceiling (2026-11-24: -0.27 and -0.53 dBTP on short es/zh
+        # fixtures pushed hard). A true-peak limiter shaves only those peaks: measured on a clip at +0.11 dBTP, it gave
+        # -1.23 dBTP for 0.28 LU of loudness, with the same sample count and alignment (tightening loudnorm's own limiter
+        # instead cost up to 1.5 LU).
+        tmp = dst + ".tp.wav"
+        _ffmpeg(["-i", dst, "-af", true_peak_limiter(sample_rate), "-ac", "1", "-c:a", "pcm_s16le", tmp])
+        os.replace(tmp, dst)
+        out["result"] = result = measure(dst)
+        out["truePeakLimited"] = True
+    if float(result["input_tp"]) > TARGET_TP:
+        # last resort, so the ceiling always holds: a static gain (every sample keeps its position); build.py then
+        # reports how far below the loudness target it ended
+        trim_db = LIMIT_TP - float(result["input_tp"])
+        tmp = dst + ".trim.wav"
+        _ffmpeg(["-i", dst, "-af", f"volume={trim_db:.3f}dB", "-ar", str(sample_rate), "-ac", "1", "-c:a", "pcm_s16le", tmp])
+        os.replace(tmp, dst)
+        out["result"] = measure(dst)
+        out["trimDb"] = round(trim_db, 2)
+    return out
+
+
+def true_peak_limiter(sample_rate: int) -> str:
+    """ffmpeg filter chain: a look-ahead limiter at TP_LIMITER_CEILING_DB on a 4x oversampled signal, which approximates a
+    true-peak limiter (alimiter alone sees sample peaks only), then back to `sample_rate`. latency=1 compensates the
+    look-ahead, so samples keep their positions."""
+    ceiling = 10 ** (TP_LIMITER_CEILING_DB / 20)
+    return f"aresample={TP_LIMITER_RATE},alimiter=limit={ceiling:.5f}:attack=1:release=50:level=0:latency=1,aresample={sample_rate}"
 
 
 def next_target(tried: list[tuple[float, float]]) -> float:

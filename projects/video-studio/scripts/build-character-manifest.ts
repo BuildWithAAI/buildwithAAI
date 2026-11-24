@@ -29,8 +29,9 @@ import {
 	type BadgerSpot,
 } from '../src/characters/badger/spots';
 import {ZOO_LINE} from '../src/characters/zoo/lines';
-import {BEATS} from '../src/compositions/characters/Preview10s';
-import {POINT_PATH_LENGTH} from '../src/compositions/characters/gesture';
+import {BEATS, POINT} from '../src/compositions/characters/Preview10s';
+import {POINT_PATH_LENGTH, pathForPoseAmount} from '../src/compositions/characters/gesture';
+import {FOOTPRINTS} from '../src/compositions/characters/contact';
 import {closeLineScale, fullLineScale, GROUND_Y, FRAME, PAIR_LINE_SCALE, PAIR_SCALE, PAIR_SPACING} from '../src/compositions/characters/stage';
 
 const ROOT = process.cwd();
@@ -75,7 +76,7 @@ const integrationDecisions = [
 		id: 'INT-P2',
 		sheet: `The panel stands the pair ${SIZE_COMPARISON.spacingUnits} units apart (ground point to ground point); Badger's head sits just beside Zoo's hanging hand.`,
 		chosen: `When Zoo points to screen right over Badger, the pair stands ${PAIR_SPACING} units apart and Badger is drawn in front of Zoo (depth), for the whole shot (no sliding). Scale and ground line stay the panel's.`,
-		why: "Re-measured on the repaired point path (ZOO-P2) in integration round 1: at the panel spacing the swinging hand overlaps Badger's pale ear at poseAmount ~0.2 (front and 3/4 heads), which reads as touching him. At 560 units the closest approach is 24.5 px at the proof scale (poseAmount ~0.26). Spacing is staging, not anatomy; relative scale is unchanged.",
+		why: "Re-measured on the repaired point path (ZOO-P2) in integration round 1: at the panel spacing the swinging hand overlaps Badger's pale ear at poseAmount ~0.2 (front and 3/4 heads), which reads as touching him. At 560 units the closest approach is 24.5 px at the proof scale (poseAmount ~0.26). Re-measured in integration round 2 on the round-2 arc (ZOO-P4 with POINT_OVERLAP) from Zoo-only and Badger-only renders of the proof: the fist passes 26.9 px (30.5 u) from the pale ear's tip at f96 on the way up and 30.9 px (35.1 u) at f188 on the way down, and Badger's eyes close as it passes (blinks f94-99 and f188-197), so the near miss reads as his reflex. A neck dip, head tilt or ear fold on Badger does not widen it (his neck pivots his head toward the hand); only a wider spacing would. Spacing is staging, not anatomy; relative scale is unchanged.",
 	},
 	{
 		character: 'both',
@@ -88,8 +89,22 @@ const integrationDecisions = [
 		character: 'zoo',
 		id: 'INT-T1',
 		sheet: 'zoo_pose_point.png shows the end pose only; Prompt 1 asks for restrained, purposeful gestures.',
-		chosen: `The point is timed along the hand's arc, not in poseAmount: gesture.ts maps a path fraction to poseAmount through the rig's own pivots and angle function (hand path ${Math.round(POINT_PATH_LENGTH)} units). The swing eases the path fraction with bezier(0.38,0,0.4,1) over 16 frames (f${BEATS.swing[0]}-${BEATS.swing[1]}), ends past the hold pose and settles back ~1-2 deg (poseAmount 1 -> 0.993), then holds with a slow ~2 deg forearm drift; the arm lowers along the same arc over 16 frames.`,
-		why: "The rig's joint path moves the hand 71% of its travel in the first half of poseAmount, so easing poseAmount directly snapped the swing (v1: 123 px in one frame). Arc-length timing peaks at ~49 px/frame, like the lowering, and puts the loose-fist swap on the fastest frame.",
+		chosen: `The point is timed along the hand's arc, not in poseAmount: gesture.ts maps a path fraction to poseAmount through the rig's own pivots and angle function (hand path ${Math.round(POINT_PATH_LENGTH)} units). The swing eases the path fraction with bezier(0.38,0,0.4,1) over 16 frames (f${BEATS.swing[0]}-${BEATS.swing[1]}), ends past the hold pose and settles back ~1-2 deg (poseAmount ${POINT.overshoot} -> ${POINT.settle}, f${BEATS.settle[0]}-${BEATS.settle[1]}), holds (decision INT-T2) and lowers along the same arc over 16 frames (f${BEATS.armDown[0]}-${BEATS.armDown[1]}).`,
+		why: `The rig's joint path (round 2: monotone cubics through ARM_POINT_MID with POINT_OVERLAP timing) moves the hand ${Math.round(pathForPoseAmount(0.5) * 100)}% of its travel in the first half of poseAmount, so easing poseAmount directly snaps the swing (v1: 123 px in one frame). Arc-length timing peaks at ~45 px/frame at the proof scale (round 2, measured 44.5), like the lowering, and the hand-shape swaps (fist at 0.08, pointer at 0.4) land on fast frames (f95, f99).`,
+	},
+	{
+		character: 'zoo',
+		id: 'INT-T2',
+		sheet: 'zoo_pose_point.png shows only the end pose; Prompt 1 asks for restrained limited animation with purposeful gestures, and every hold must stay alive (the round-2 performance review: the hand moved 2 px or less over f106-181, so the gesture froze).',
+		chosen: `A moving hold, f${BEATS.hold[0]}-${BEATS.hold[1]}: the raised arm sinks from poseAmount ${POINT.settle} to ${POINT.sunk} on one slow sine ease (shoulder 3.2 deg, wrist 2.8 deg; the elbow is unchanged near the end key), so the hand drops 9.2 px at the proof scale, 7.6 px with breathing included (measured on the rendered frames, ~0.15 px/frame mid-hold), and the lowering starts from that pose. Part-way through, Zoo nods once toward the point: a ~1.7 deg head tilt down and back (f${BEATS.zooNod[0]}-${BEATS.zooNod[2]}) with a blink that starts with it (f${BEATS.zooBlinks[1]}). Badger answers after the nod with his small curious tilt (f${BEATS.badgerTilt[0]}-${BEATS.badgerTilt[3]}, was f132-180) and one blink (f${BEATS.badgerHoldBlink}), so the two moves do not overlap.`,
+		why: 'The reviewer asked for ~0.05 poseAmount of drift (6-10 px at the hand) with a slow ease plus a 1-2 deg nod. On the round-2 arc the end key is carried by the shoulder, and the breathing cycle lifts the arms ~1.6 px over the same frames, so 0.063 gives a net 7.6 px; a deeper sink would read as the arm tiring. The head tilt is the rig\'s only head control, so the nod is a small tilt toward the point; the blink sells it as a nod.',
+	},
+	{
+		character: 'both',
+		id: 'INT-C1',
+		sheet: 'The approved sheets draw no contact shadows (the size panel has only a ground line). ART_GUIDE CV4a/LS4: Badger\'s off-white coat (L* 4.9 from the background) and Zoo\'s sneakers (L* 0.4) separate from #E6E8EB only by their outline, so every shot showing feet or paws gets one flat contact shadow in backgroundShadow. The round-2 Badger review asked for it in the proof and the sheet stills.',
+		chosen: `BRAND.backgroundShadow ${BRAND.backgroundShadow} (ART_GUIDE CV2; the value the branding, episode and show themes already use) is added to palette.ts as the background colour's one flat shadow tone. Preview10s, ZooSheet and BadgerSheet draw one flat ellipse under each figure (src/compositions/characters/contact.tsx, FOOTPRINTS: measured sole, paw, wheel or leg extents + 10 units, e.g. Zoo front rx ${FOOTPRINTS.zooFront.rx}, Badger 'left' rx ${FOOTPRINTS.badgerLeft.rx}; ry 15-16 units). In the proof the shadows sit over the silver ground line (the line passes behind the feet); on the sheets the near-black baseline runs over them, so it stays unbroken. No blur, opacity or gradient.`,
+		why: 'ART_GUIDE is the craft guide and PROJECT_INSTRUCTIONS allows one flat shadow tone per colour; the background stays plain #E6E8EB. ART_GUIDE asks for the owner\'s sign-off on the palette entry, so it is recorded here and is still pending.',
 	},
 	{
 		character: 'both',
@@ -102,7 +117,7 @@ const integrationDecisions = [
 		character: 'badger',
 		id: 'INT-A2',
 		sheet: 'Prompt 2: Badger looks toward the gesture with a small head turn, looks up at Zoo, then gives a restrained judging reaction. Prompt 1: emotion through brows, folded ears, head angle and tail; eyes open between natural blinks.',
-		chosen: `Every head replacement in the proof happens with Badger's eyes closed: the turn to the 3/4 head under a blink (f${BEATS.badgerTurn}), the look-up swaps (3/4 -> front breakdown -> upLeftScreen, f${BEATS.badgerLookUp.toFront}/${BEATS.badgerLookUp.toUp}) under a blink with the eyes and the neck leading, the neck values chosen so the cranium stays put across each swap. The judging look plays on the FRONT head (eyes kept on Zoo, judge brows, ears 0.42, ~8 deg tilt) after a slow blink covers the swap from the up head, with one slow push-in (1.00 -> 1.04, f${BEATS.pushIn[0]}-${BEATS.pushIn[1]}, ART_GUIDE MO13) anchored on his eyes. Idle life in 0-3 s: one blink and one ear flick.`,
+		chosen: `Every head replacement in the proof happens with Badger's eyes closed: the turn to the 3/4 head under a blink (f${BEATS.badgerTurn}), the look-up swaps (3/4 -> front breakdown -> upLeftScreen, f${BEATS.badgerLookUp.toFront}/${BEATS.badgerLookUp.toUp}) under a blink with the eyes and the neck leading, the neck values chosen so the cranium stays close across each swap (re-measured in round 2 with the re-authored 3/4 head, BADGER-D36/D37, and unchanged from round 1: the skull top rises 9 px at f${BEATS.badgerTurn}, in the direction of the rising neck that follows, and drops 7 px at f${BEATS.badgerLookUp.toFront} and 5 px at f${BEATS.badgerLookUp.toUp}, each inside the closed-eye frames; a neckTurn or headTilt correction would trade it for a 10-15 px sideways jump). The judging look plays on the FRONT head (eyes kept on Zoo, judge brows, ears 0.42, ~8 deg tilt) after a slow blink covers the swap from the up head, with one slow push-in (1.00 -> 1.04, f${BEATS.pushIn[0]}-${BEATS.pushIn[1]}, ART_GUIDE MO13) anchored on his eyes. Idle life in 0-3 s: one blink and one ear flick.`,
 		why: 'The v1 look-up swapped three silhouettes in three frames with no blink (a pop and head-bob), and the judge on the pitched profile head moved each cue by only 2-7 px. On the front head each cue moves 6-8 px and the brows and lids read.',
 	},
 	{
@@ -174,7 +189,12 @@ const manifest = {
 		measuredOn: `${SIZE_COMPARISON.source}: Zoo ${SIZE_COMPARISON.zooHeightPx} px = 900 units (${r(SIZE_COMPARISON.unitsPerPx, 4)} units/px), ground y=498`,
 		sizeComparison: {zooOriginPx: SIZE_COMPARISON.zooOriginPx, badgerOriginPx: SIZE_COMPARISON.badgerOriginPx, spacingUnits: SIZE_COMPARISON.spacingUnits},
 		usage: 'give both characters the SAME scale value; relative size is then exact',
-		pairShotStaging: {scale: PAIR_SCALE, groundYpx: GROUND_Y, spacingUnits: PAIR_SPACING, lineScale: r(PAIR_LINE_SCALE, 3), note: 'see decisions INT-P2 and INT-L1'},
+		pairShotStaging: {scale: PAIR_SCALE, groundYpx: GROUND_Y, spacingUnits: PAIR_SPACING, lineScale: r(PAIR_LINE_SCALE, 3), note: 'see decisions INT-P2, INT-L1 and INT-C1'},
+		contactShadows: {
+			colour: BRAND.backgroundShadow,
+			rule: 'decision INT-C1: one flat ellipse per figure, centred on its ground point + cx (world units, times scale), radii rx/ry; component ContactShadow in src/compositions/characters/contact.tsx',
+			footprints: FOOTPRINTS,
+		},
 		lineWeights: {
 			rule: 'decision INT-L1: both rigs take lineScale (multiplier on every stroke). Full body: ART_GUIDE SL5, outline clamp(3.5 x k, 3, 6) px with k = output px per unit (fullLineScale). Close-ups: half of LINE.width in world units, clamped to 3..6 px (closeLineScale). Same value for both characters in a two-shot.',
 			zooLine: ZOO_LINE,
@@ -257,7 +277,7 @@ const manifest = {
 	proof: {
 		composition: 'Preview10s (src/compositions/characters/Preview10s.tsx), 1920x1080, 30 fps, 300 frames, silent',
 		beats: BEATS,
-		note: 'frame numbers at 30 fps; see decisions INT-T1, INT-A2 and docs/CHARACTERS.md',
+		note: 'frame numbers at 30 fps; see decisions INT-T1, INT-T2, INT-A2, INT-C1 and docs/CHARACTERS.md',
 	},
 	decisions: [...zooDecisions, ...badgerDecisions, ...integrationDecisions],
 };

@@ -186,6 +186,21 @@ export const radarMentions = (root: string, brief: DailyBrief | null): RadarMent
 	return out.slice(0, 4);
 };
 
+/** "Zoo's one fix:" (or "Zoo's one fix, for teams:") at the start of the scene: the drafts print their own heading. */
+const ONE_FIX_LABEL = /^\s*zoo['’]s one fix\s*[:,]\s*/i;
+
+/**
+ * Zoo's One Fix as approved text: the show's zooOneFix scene (the daily skeleton gives it onScreen.fix and no title),
+ * else an older storyboard's scene titled "One Fix". Its narration without the spoken label, first letter capitalised;
+ * a qualifier after the label ("for teams:") stays.
+ */
+export const oneFixOf = (sb: SbLite, split: Splitter): string | null => {
+	const sc = sb.scenes.find((s) => s.segment === 'zooOneFix') ?? sb.scenes.find((s) => /one fix/i.test(String(s.onScreen?.title ?? '')));
+	if (!sc) return null;
+	const text = displayOf(sc.narration, split).replace(ONE_FIX_LABEL, '').trim();
+	return text ? text[0].toUpperCase() + text.slice(1) : null;
+};
+
 /** The post-approval input: approved text only (title, claims, analysis, One Fix), sources and links. */
 export const postInput = (o: {sb: SbLite; brief: DailyBrief | null; gate: GateJson | null; split: Splitter; channel: ChannelConfig; developing: boolean; youtubeId: string | null; date: string; mentions: RadarMention[]}): PostInput => {
 	const {sb, brief, gate} = o;
@@ -209,7 +224,6 @@ export const postInput = (o: {sb: SbLite; brief: DailyBrief | null; gate: GateJs
 			});
 		});
 	}
-	const fix = sb.scenes.find((s) => /one fix/i.test(String(s.onScreen?.title ?? '')));
 	const cited = new Set(sb.scenes.flatMap((sc) => {
 		try {
 			return o.split(sc.narration).flatMap((s) => s.srcIds);
@@ -227,7 +241,7 @@ export const postInput = (o: {sb: SbLite; brief: DailyBrief | null; gate: GateJs
 		summary: summaryOf(sb, o.split),
 		whatWeKnow,
 		analysis: (sb.analysis ?? []).map((a) => String(a.detail ?? '')).filter(Boolean),
-		oneFix: fix ? displayOf(fix.narration, o.split) : null,
+		oneFix: oneFixOf(sb, o.split),
 		sources,
 		corrections: (gate?.corrections.pinnedComments ?? []).map((c) => c.text),
 		youtubeId: o.youtubeId,
@@ -500,6 +514,7 @@ const buildLocked = async (
 		post: postInput({sb, brief, gate, split, channel, developing, youtubeId: null, date, mentions: radarMentions(root, brief)}),
 		versions,
 		corrections,
+		realAnalysis: brief ? realAnalysisCheck(sb, brief) : null,
 	});
 	const html = renderHtml(model);
 	const mdText = renderMd(model);

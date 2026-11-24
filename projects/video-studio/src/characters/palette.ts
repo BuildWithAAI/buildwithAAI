@@ -12,6 +12,12 @@ export const BRAND = {
 	offWhite: '#F4F6F8',
 	teal: '#29B8AD', // the single decorative accent; use sparingly
 	background: '#E6E8EB', // default scene background (flat light grey)
+	/**
+	 * Added 2026-11-24 (integration round 2, decision INT-C1): the background's ONE flat shadow tone, for contact
+	 * shadows only (a flat ellipse under feet and paws; ART_GUIDE CV2/CV4a/LS4, L* 84.4). It is the value the branding,
+	 * episode and show themes already use. ART_GUIDE asks for the owner's sign-off on this palette entry: still pending.
+	 */
+	backgroundShadow: '#CFD3D8',
 } as const;
 
 /** Outline colour and width for BOTH characters (world units at scale 1). */

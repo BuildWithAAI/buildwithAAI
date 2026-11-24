@@ -20,7 +20,9 @@ Track rules (LP3, binding), in this order:
   2. every mbp phone of 15 ms or more gets at least one frame (a /p/ is never dropped);
   3. RMS gate: a run of 4+ frames whose audio RMS is more than 32 dB below the scene's loudest frame
      counts as a pause even if a phone is nominally there ("closed in silence"). It was 40 dB, which never
-     fired: the residual after a phrase sits 34-39 dB under the peak (the mouth stayed open 5-10 frames);
+     fired: the residual after a phrase sits 34-39 dB under the peak (the mouth stayed open 5-10 frames).
+     mbp frames inside such a run stay when they are the last 4 frames before the next sound (LP3's press ahead of
+     a phrase-initial m/b/p; rule 2 placed them); a press after a phrase's end still closes;
   4. pauses: under 4 f hold the previous shape, 4-10 f relax to slightlyOpen, 11 f or more close;
      before the first and after the last phone the mouth is closed;
   5. ah -> closed/mbp gets a slightlyOpen in-between where there is room;
@@ -28,6 +30,8 @@ Track rules (LP3, binding), in this order:
      mbp, which is extended instead, and a 1-frame opening right after a closed run (a phrase onset), which
      takes the closed frame before it: the mouth opens a frame early rather than a frame late (2026-11-24: a
      50 ms first phone, "a" or "l", was dropped and the es demo opened 1 frame after the voice).
+  7. (pipeline, after loudness normalization) fit_landmarks: a phrase onset or end that the lip-sync check
+     (sync_landmarks, on the normalized audio) finds outside its tolerance is moved onto LP3's target.
 Ties: a frame window split evenly between a pause and a phone shows the phone. Every take's first phone starts
 exactly LEAD_KEEP_S = 150 ms = 4.5 frames in, so this tie came up at every scene start and was settled by float
 rounding.
@@ -46,6 +50,7 @@ HOP_S = 0.005  # energy envelope hop for rule 0
 MIN_PHONE_S = 0.03  # a phrase-final phone keeps at least this much
 END_PAD_S = 0.015  # a phrase-final phone ends this long after its last voiced hop (half a frame: frame RMS lags hops)
 ONSET_REACH_S = 0.12  # how far back a phone may start to meet its onset
+MBP_LEAD_MAX = 4  # LP3: mbp starts 1-4 frames before the release; the RMS gate keeps a press that close to a phrase
 PHRASE_MARKS = frozenset(',.!?;:—…“”"()«»¡¿')  # punctuation ends a phrase; a space does not
 PAUSE = "pause"
 FOLD_PREV = "fold_prev"
@@ -297,7 +302,11 @@ def apply_rms_gate(track: list[str], rms: Sequence[float] | None, lead_frames: i
             g += 1
         if g - f >= min_run:
             for k in range(f, g):
-                out[k] = PAUSE
+                # pressed lips just before a phrase are LP3's lead before m/b/p (1-4 frames ahead of the release), not
+                # an open mouth: rule 2 placed them, so they stay (2026-11-24, final check: a fresh en build lost the
+                # mbp of a phrase-initial "Most"). A press left over after a phrase ("subscribe.") still closes.
+                if not (out[k] == "mbp" and g < len(out) and g - k <= MBP_LEAD_MAX):
+                    out[k] = PAUSE
         f = g
     return out
 
@@ -401,21 +410,14 @@ def changes_per_second(track: Sequence[str], fps: int = 30) -> float:
     return sum(1 for a, b in zip(track, track[1:]) if a != b) / (len(track) / fps)
 
 
-def sync_landmarks(track: Sequence[str], frame_db: Sequence[float], voiced_db: float = VOICED_DB) -> dict:
-    """Phrase-level lip-sync check against the audio (frame_db: each video frame's RMS in dB).
-
-    Voiced = within `voiced_db` of the scene's loudest frame; phrases are voiced runs, bridging gaps under 4 frames.
-    onsets: mouth-open frame minus audio-onset frame, for phrases the mouth was closed before (LP3 wants -1).
-    mbpOnsets: the same for phrases that start with m/b/p: the lips press (mbp) before the sound, and LP3 starts mbp
-    1-4 frames before the release, so these are kept apart (the review's landmarks.py counted them as onsets).
-    offsets: last open frame minus last voiced frame, for phrases followed by 11+ quiet frames (the mouth must close).
-    The same measure the 2026-11-24 review used (review-audio/landmarks.py)."""
-    n = min(len(track), len(frame_db))
-    out: dict = {"onsets": [], "mbpOnsets": [], "offsets": []}
+def voiced_phrases(frame_db: Sequence[float], voiced_db: float = VOICED_DB) -> list[list[int]]:
+    """[start, end) frame spans of the audio's phrases: frames within `voiced_db` of the loudest frame, joined across
+    gaps under 4 frames. Shared by sync_landmarks (the check) and fit_landmarks (rule 7), so both see the same phrases."""
+    n = len(frame_db)
     if not n:
-        return out
-    peak = max(frame_db[:n])
-    voiced = [v > peak - voiced_db for v in frame_db[:n]]
+        return []
+    peak = max(frame_db)
+    voiced = [v > peak - voiced_db for v in frame_db]
     ph: list[list[int]] = []
     f = 0
     while f < n:
@@ -430,14 +432,116 @@ def sync_landmarks(track: Sequence[str], frame_db: Sequence[float], voiced_db: f
         else:
             ph.append([f, g])
         f = g
+    return ph
+
+
+def _onset(track: Sequence[str], a: int, n: int) -> int | None:
+    """First non-closed frame around a phrase onset at frame a, if the mouth was closed before it (else None)."""
+    if not all(m == "closed" for m in track[max(0, a - 6) : max(0, a - 3)]):
+        return None
+    return next((i for i in range(max(0, a - 6), min(n, a + 10)) if track[i] != "closed"), None)
+
+
+def _close_start(track: Sequence[str], b: int, nxt: int, n: int) -> int | None:
+    """First frame of the first 3-frame closed run after a phrase ending at frame b (the next phrase starts at nxt)."""
+    return next((i for i in range(max(0, b - 8), min(n, nxt)) if all(m == "closed" for m in track[i : min(n, i + 3)])), None)
+
+
+def sync_landmarks(track: Sequence[str], frame_db: Sequence[float], voiced_db: float = VOICED_DB) -> dict:
+    """Phrase-level lip-sync check against the audio (frame_db: each video frame's RMS in dB).
+
+    Voiced = within `voiced_db` of the scene's loudest frame; phrases are voiced runs, bridging gaps under 4 frames.
+    onsets: mouth-open frame minus audio-onset frame, for phrases the mouth was closed before (LP3 wants -1).
+    mbpOnsets: the same for phrases that start with m/b/p: the lips press (mbp) before the sound, and LP3 starts mbp
+    1-4 frames before the release, so these are kept apart (the review's landmarks.py counted them as onsets).
+    offsets: last open frame minus last voiced frame, for phrases followed by 11+ quiet frames (the mouth must close).
+    The same measure the 2026-11-24 review used (review-audio/landmarks.py)."""
+    n = min(len(track), len(frame_db))
+    out: dict = {"onsets": [], "mbpOnsets": [], "offsets": []}
+    if not n:
+        return out
+    ph = voiced_phrases(frame_db[:n], voiced_db)
     for k, (a, b) in enumerate(ph):
-        if all(m == "closed" for m in track[max(0, a - 6) : max(0, a - 3)]):
-            mo = next((i for i in range(max(0, a - 6), min(n, a + 10)) if track[i] != "closed"), None)
-            if mo is not None:
-                out["mbpOnsets" if track[mo] == "mbp" else "onsets"].append(mo - a)
+        mo = _onset(track, a, n)
+        if mo is not None:
+            out["mbpOnsets" if track[mo] == "mbp" else "onsets"].append(mo - a)
         nxt = ph[k + 1][0] if k + 1 < len(ph) else n
         if nxt - b >= 11:
-            mc = next((i for i in range(max(0, b - 8), min(n, nxt)) if all(m == "closed" for m in track[i : min(n, i + 3)])), None)
+            mc = _close_start(track, b, nxt, n)
             if mc is not None:
                 out["offsets"].append((mc - 1) - (b - 1))
+    return out
+
+
+def fit_landmarks(
+    track: Sequence[str],
+    frame_db: Sequence[float],
+    voiced_db: float = VOICED_DB,
+    onset_range: tuple[int, int] = (-2, 0),
+    mbp_onset_range: tuple[int, int] = (-4, 0),
+    offset_tol: int = 2,
+) -> list[str]:
+    """Rule 7: move every phrase onset and end that sync_landmarks finds outside its tolerance onto LP3's target,
+    measured on `frame_db` (the build passes the normalized audio the viewer hears). Onsets and ends inside the
+    tolerance are left alone, so a track that already passes comes back unchanged.
+
+    Why (2026-11-24, final check): Kokoro's ONNX graph samples noise (RandomNormalLike, RandomUniformLike), so two
+    builds of the same text give the same lengths and word timings but not the same samples. Rules 0 and 3 judge
+    quiet frames on the raw take against the phrase peak; the check judges the normalized audio against the scene
+    peak. A fresh es build opened the mouth 3 frames before a phrase (allowed -2..0) where the previous build had -1.
+      - an onset too early: the frames before the target turn closed (target: 1 frame ahead, LP3; mbp: 2 frames).
+        Like the check, only onsets the mouth was closed 4-6 frames before are judged, so the earliest is -3;
+      - an onset too late: the first shape starts 1 frame ahead of the sound;
+      - a mouth still open more than `offset_tol` frames after a phrase's last voiced frame closes right after it
+        (keeping that last shape 2 frames); one that closes more than `offset_tol` frames early holds its last shape
+        until 1 frame before the end.
+    No 1-frame shape is created: a 1-frame remnant at an onset takes the next shape."""
+    out = list(track)
+    n = min(len(out), len(frame_db))
+    if not n:
+        return out
+    ph = voiced_phrases(frame_db[:n], voiced_db)
+    for _ in range(4):  # each pass fixes what it finds; a fix may only reveal a later landmark
+        changed = False
+        for k, (a, b) in enumerate(ph):
+            mo = _onset(out, a, n)
+            if mo is not None:
+                is_mbp = out[mo] == "mbp"
+                lo, hi = mbp_onset_range if is_mbp else onset_range
+                if mo - a < lo:
+                    target = max(0, a - (2 if is_mbp else 1))
+                    for i in range(mo, target):
+                        out[i] = "closed"
+                    end = target
+                    while end < n and out[end] == out[target]:
+                        end += 1
+                    if end - target == 1 and end < n and out[end] != "closed":
+                        out[target] = out[end]
+                    changed = True
+                elif mo - a > hi:
+                    for i in range(max(0, a - 1), mo):
+                        out[i] = out[mo]
+                    changed = True
+            nxt = ph[k + 1][0] if k + 1 < len(ph) else n
+            if nxt - b < 11 or b < 1:
+                continue
+            mc = _close_start(out, b, nxt, n)
+            if mc is None:
+                continue
+            if mc - b > offset_tol:
+                start = b - 1
+                while start > 0 and out[start - 1] == out[b - 1]:
+                    start -= 1
+                for i in range(max(b, start + 2), mc):
+                    out[i] = "closed"
+                changed = True
+            elif mc - b < -offset_tol and mc > 0:
+                last = out[mc - 1] if out[mc - 1] != "closed" else "slightlyOpen"
+                for i in range(mc, b - 1):
+                    out[i] = last
+                changed = True
+        if not changed:
+            break
+    if any(r[2] - r[1] < 2 for r in _runs(out)) and not any(r[2] - r[1] < 2 for r in _runs(track)):
+        out = enforce_min_hold(out)  # a guard: the moves above are built not to leave 1-frame shapes
     return out

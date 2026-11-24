@@ -127,12 +127,19 @@ ART_GUIDE LP2/LP3 (binding), one `MouthShape` per frame at 30 fps:
 - Per-language overrides: es/it β → mbp; hi ə → ah (a full vowel, not an English schwa); pt-br y → ee;
   zh ɨ → ee; ja ɯ/β/ɸ → oh.
 - Rules: the track leads the audio by 1 frame; every /p b m/ gets at least one frame; an RMS gate treats
-  4+ frames 32 dB under the scene peak as a pause (it was 40 dB, which never fired on the phrase-final residual).
+  4+ frames 32 dB under the scene peak as a pause (it was 40 dB, which never fired on the phrase-final residual). The
+  gate keeps mbp frames (pressed lips are closed lips): since 2026-11-24 a quiet phrase-initial /m/ ("Most") keeps its press.
 - Every build measures lip sync on the normalized audio (`visemes.sync_landmarks`, the review's method: voiced =
   within 28 dB of the scene peak): the mouth must close within 2 frames of each phrase's last voiced frame and open
   0-2 frames before each phrase; otherwise `timeline.warnings` says which scene. Measured on the demo after the fix:
   en phrase ends -2..-1 frames (were +5..+8), onsets -2..0 (mbp-initial phrases read -2: the lips press before the
   /m/); `tests/test_demo_sync.py` checks en, es and pt-br whenever the demo is built.
+- Fit to the measure (rule 7, 2026-11-24 final check): a phrase onset or end the check finds outside its tolerance is
+  moved onto LP3's target (`visemes.fit_landmarks`: an early onset closes until 1 frame ahead, a late one starts 1 frame
+  ahead, a late close closes right after the voice; no 1-frame shape is made), and only what is still outside warns.
+  Why: a fresh rebuild of the unchanged es demo opened the mouth 3 frames before a phrase in s04 (allowed -2..0;
+  the build before had -1) and failed `test_demo_sync.py`, because takes differ slightly from build to build (below).
+  `phonemes.json` records each move (`scenes[id].syncFit`).
 - Pauses: under 4 frames hold the previous shape, 4–10 frames slightlyOpen, 11 or more closed; closed before
   and after speech.
 - Every shape is held at least 2 frames (a 1-frame mbp is extended, never dropped).
@@ -150,6 +157,10 @@ first phone (of the model's 300 ms pad), silence topped up to 250 ms after a sen
 mark the model stopped on (kokoro-onnx's own defaults), inserted at the quietest millisecond inside the mark token,
 and 5 ms raised-cosine fades at every silence edge and both ends. Same input, same length and timings; no sample next
 to digital silence above -50 dBFS (`tests/test_takes.py`; the demo narration measured -90 dBFS at worst).
+The samples are NOT identical between builds: the Kokoro v1.0 ONNX graph samples noise (5 `RandomNormalLike` and 8
+`RandomUniformLike` nodes), so loudness, a quiet frame's level and therefore the mouth track can differ slightly
+(measured 2026-11-24: a rebuild of the unchanged en demo kept every speech length and word timing and changed 4 mouth
+frames). Keep the `timeline.json` and `narration.wav` of every uploaded version; never rebuild one and reuse an old render.
 
 ## Scene timing
 
@@ -191,7 +202,13 @@ Chain:
 1. A look-ahead limiter (alimiter, latency-compensated, -2 dBFS). Its gain may exceed the linear-safe
    gain by at most 6 dB, so no 10 ms frame loses more than about 6 dB (measured p99 4.4–5.4 dB).
 2. Two-pass loudnorm (`linear=true`, true-peak aim -1.2 dBTP, at most two secant corrections of the target).
-3. A final measurement, recorded in `timeline.loudness`; a warning is added when it is more than 1 LU off
+3. If loudnorm's dynamic mode still let a true peak over -1 dBTP (2026-11-24: a short es/zh fixture pushed hard came out
+   at -0.27 and -0.53 dBTP, caught by `tests/test_e2e.py`), a true-peak limiter shaves those peaks: alimiter at
+   -1.4 dBFS on a 4x oversampled (96 kHz) signal, then back to 24 kHz. Measured on a clip at +0.11 dBTP: -1.23 dBTP for
+   0.28 LU, same sample count, zero lag (tightening loudnorm's own limiter instead cost up to 1.5 LU). As a last resort
+   a static gain brings the peak to -1.2 dBTP. Both are recorded in `phonemes.json` (`truePeakLimited`, `trimDb`);
+   `tests/test_loudness_chain.py` covers them with ffmpeg faked.
+4. A final measurement, recorded in `timeline.loudness`; a warning is added when it is more than 1 LU off
    or above -1 dBTP.
 
 Fixture results: -14.1 to -14.8 LUFS, true peak at or below -1.07 dBTP. The chain keeps the exact sample

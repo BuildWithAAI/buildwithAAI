@@ -76,6 +76,8 @@ export type PacketModel = {
 	thumbnails: Thumb[];
 	scenes: SceneView[];
 	analysis: Array<{id: string; kind: string; basis: string; detail: string; method: string | null; presentedIn: string[]}>;
+	/** build.ts realAnalysisCheck: whether a real analysis (strong, not a daily template) is presented. null: no brief. */
+	realAnalysis: RealAnalysisVerdict | null;
 	steps: StepResult[];
 	gate: GateJson | null;
 	checklist: {
@@ -163,6 +165,9 @@ export const pinnedComment = (o: {corrections: GateJson['corrections']['pinnedCo
 	return parts.join('\n\n');
 };
 
+/** The real-analysis verdict the packet shows (build.ts realAnalysisCheck). */
+export type RealAnalysisVerdict = {ok: boolean; matched: string[]; message: string};
+
 export type ModelInput = {
 	slug: string;
 	date: string;
@@ -183,6 +188,19 @@ export type ModelInput = {
 	post: PostInput;
 	versions: PacketSummary['versions'];
 	corrections?: CorrectionCandidate[];
+	realAnalysis?: RealAnalysisVerdict | null;
+};
+
+/**
+ * The "Real analysis" line of the packet's checklist. It follows the real-analysis verdict: an analysis that is on
+ * screen but is only a daily template (or matches no real analysis in the brief) is not marked as real analysis.
+ */
+export const realAnalysisLine = (m: Pick<PacketModel, 'analysis' | 'realAnalysis'>): {text: string; ok: boolean} => {
+	const shown = m.analysis.filter((a) => a.presentedIn.length).map((a) => `${a.kind} (${a.basis}) in ${a.presentedIn.join(', ')}`);
+	const ra = m.realAnalysis;
+	if (ra?.ok) return {ok: true, text: `Real analysis: ${ra.matched.join(', ')}${shown.length ? ` · ${shown.join('; ')}` : ''}`};
+	const what = shown.length ? `. On screen: ${shown.join('; ')}, which is not real analysis (a daily template alone does not count)` : '';
+	return {ok: false, text: `Real analysis: ${ra ? 'NONE' : 'not checked (no brief)'}${what}`};
 };
 
 export const buildModel = (m: ModelInput): PacketModel => {
@@ -224,6 +242,7 @@ export const buildModel = (m: ModelInput): PacketModel => {
 		thumbnails: m.thumbnails,
 		scenes,
 		analysis,
+		realAnalysis: m.realAnalysis ? {ok: m.realAnalysis.ok, matched: [...m.realAnalysis.matched], message: m.realAnalysis.message} : null,
 		steps: m.steps,
 		gate,
 		checklist: {

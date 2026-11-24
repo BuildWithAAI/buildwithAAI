@@ -18,6 +18,7 @@ import {
 	POINT_HAND_FRAME,
 	POINT_HAND_SWITCH,
 	POINT_LOOK,
+	POINT_OVERLAP,
 	SHOULDER_FOLLOW,
 	TYPING_LOOK,
 } from './rig';
@@ -91,7 +92,8 @@ export const ZOO_MANIFEST: ZooManifest = {
 			shoulders: 'outer silhouette at the deltoids x=66..232 px incl. outline = 237 u; rig 246 u incl. sleeve outline',
 			hips: 'trouser band x=96..200 px at y=420 = 149 u between outline centres; rig 160 u outer edges',
 			legs: 'crotch y=365 px (-392 u) to sole: 392 u; inseam gap 0 at the crotch to 50 u at the hem; outseam +-80 to +-86 u',
-			hands: 'repair round 1, row scan of skin pixels: cuff bottom -418 to the index tip -330 (88-90 u); ~42 u wide with the thumb; outer edge ~8 u inside the cuff edge; fingers curl inward, tips under the thumb; thumb split by a narrow gap from 42 to 64 u down the hand',
+			hands: 'repair round 2, skin rows traced in hand-local units (wrist = cuff centre): the back of the hand is as wide as the cuff; fingers hang and curl in toward the thigh, tips stepping from the little finger (y ~69) to the index (y ~93); thumb a slender inner lobe (tip y ~68) parted from the fingers by an OPEN gap ~6 u wide below a dark apex at y ~43; finger separations run along the fingers (lower-inner to upper-outer)',
+			torso: 'repair round 2, row scan at the same world scale: overshirt sides +-87..88 from y -490 down (sheet +-87..89); 4-7 u of background between each cuff and the hem from y -480 (sheet 4-7); hem 172 u (sheet 172-178); cuff 39 u; sleeve 46-48 u at y -480; shoulders 239-246 u at y -640..-660 (sheet 243-249)',
 			face: 'zoo_expr_neutral.png at 0.699 u/px (hair top y=22, chin y=251): face 116 px = 81 u at the cheeks, eye shapes ~24 x 10 u, iris r ~5 u (near-black brown), iris centres -21.5 / +21 (42.5 u apart; rig 42 u: eye pivots +-22.2, iris offset 1.2 inward)',
 			features:
 				'front view heights (identity control): brow bottoms -827, eye line -816, nose bottom -786, moustache top -780, chin -740 (see ZOO-F2)',
@@ -148,13 +150,13 @@ export const ZOO_MANIFEST: ZooManifest = {
 	},
 	conventions: {
 		anatomical: 'Prop and part names ending in L/R are ANATOMICAL. In the front view anatomical LEFT is screen RIGHT (+x).',
-		pin: `Teal jellyfish pin on the anatomical LEFT chest (screen right), above the chest pocket, centre (${PIN_CENTER.x}, ${PIN_CENTER.y}); dome + three splayed, slightly S-curved tentacles, no casing (repair round 1).`,
+		pin: `Teal jellyfish pin on the anatomical LEFT chest (screen right), above the chest pocket, centre (${PIN_CENTER.x}, ${PIN_CENTER.y}); a compact badge: dome ~18 x 12 u and three short tentacles (~9.5 u) that stay inside the dome's width, each cased in near-black; every stroke follows lineScale (repair round 2, ZOO-D2).`,
 		pocket: 'Chest pocket on the anatomical-left panel (screen right), x 39..81, top -637, point -592.',
 		buttons: `Five small silver buttons on the anatomical-right panel (screen left) at x=-28.4, y ${BUTTON_Y.join('/')} (every view; ZOO-V3). The overshirt is worn open over the tee.`,
 		brows: `Anatomical-left brow (screen right) sits ~2 u higher with a soft arch at rest: the deadpan raised brow. browLift raises it ${BROW_LIFT.left} u and the other brow ${BROW_LIFT.right} u (one-sided deadpan raise). Brows draw OVER the front hair in every view.`,
 		hair: `Asymmetric: a top lock sweeps from the top-left tuft over the crown and rolls over a near-black arch-shaped hollow right of centre; a middle lock turns down into a curved forelock horn tipped at (${FORELOCK_TIP.x},${FORELOCK_TIP.y}), left of centre; lower-left wing and side lock end at the ear top (no hair below the ears). Strands are hair-shadow lines. Never mirrored. The forelock lifts when a raised brow would reach it.`,
 		mirroring:
-			'No view is ever made by flipping. Bilateral pairs without markings (ears, eyes, hands, sleeves, legs, shoes, collar leaves) are authored once and mirrored to the opposite side WITHIN a view (front, back). The 3/4 and side views reuse front FACE drawings only through non-mirroring maps (anatomical left stays anatomical left).',
+			'No view is ever made by flipping. Bilateral pairs without markings (ears, eyes, hands, sleeves, legs, shoes, collar leaves) are authored once and mirrored to the opposite side WITHIN one view (front, back). Every view draws its own hands (front palm-side relaxed hands, back-of-hand drawings from behind and in 3/4, a four-finger profile hand, typing hands); no view maps or mirrors another view\'s hand drawing (repair round 2, ZOO-V5). The 3/4 and side views reuse front FACE drawings only through non-mirroring maps (anatomical left stays anatomical left).',
 		views:
 			'threeQuarter and side face SCREEN RIGHT, so the near side is the anatomical RIGHT. The pin (anatomical left chest) shows on the far panel in 3/4, and is hidden in profile and from behind, as on the sheet. Buttons stay on the anatomical-right panel at the front-view heights; the pocket stays under the pin.',
 		layering:
@@ -197,7 +199,7 @@ export const ZOO_MANIFEST: ZooManifest = {
 	mouthShapes: Object.keys(MOUTHS),
 	poses: {
 		stand: 'arms relaxed at the sides',
-		point: `anatomical LEFT arm (screen right) in a tucked L to screen right, index tip near chin height (h ~720). Joint deltas at poseAmount 1: shoulder ${ARM_POINT.shoulder}, elbow ${ARM_POINT.elbow}, wrist ${ARM_POINT.wrist} deg; loose fist from ${POINT_HAND_CURL}, pointer from ${POINT_HAND_SWITCH}; pointing-hand frame ${POINT_HAND_FRAME} deg. Path (ZOO-P2, revising INT-Z3): a quadratic joint-space arc through ARM_POINT_MID (shoulder ${ARM_POINT_MID.shoulder}, elbow ${ARM_POINT_MID.elbow}, wrist ${ARM_POINT_MID.wrist}) at poseAmount 0.5. The overshirt's shoulder follows the arm (x${SHOULDER_FOLLOW}) and the elbow rounds as it bends. Unless lookX/headTilt are passed, they default to ${POINT_LOOK.lookX}/${POINT_LOOK.headTilt} x poseAmount. Optional anticipation prop pointWindup 0..1 adds shoulder ${ARM_POINT_WINDUP.shoulder}, elbow ${ARM_POINT_WINDUP.elbow}, wrist ${ARM_POINT_WINDUP.wrist} deg.`,
+		point: `anatomical LEFT arm (screen right) pointing to screen right with an open elbow (~91 deg inside), forearm rising ~48 deg, index ~6 deg above horizontal, fingertip at h ~719 (ZOO-P4). Joint deltas at poseAmount 1: shoulder ${ARM_POINT.shoulder}, elbow ${ARM_POINT.elbow}, wrist ${ARM_POINT.wrist} deg; loose fist from ${POINT_HAND_CURL}, pointer from ${POINT_HAND_SWITCH}; pointing-hand frame ${POINT_HAND_FRAME} deg (upright-fist pointer traced from zoo_pose_point.png). Path: each joint follows a monotone cubic through ARM_POINT_MID (shoulder ${ARM_POINT_MID.shoulder}, elbow ${ARM_POINT_MID.elbow}, wrist ${ARM_POINT_MID.wrist}) at poseAmount 0.5, with overlapping action on the first half (POINT_OVERLAP: elbow lead ${POINT_OVERLAP.elbowLead}, shoulder lag ${POINT_OVERLAP.shoulderLag}, early elbow tuck ${POINT_OVERLAP.tuck} deg until ${POINT_OVERLAP.tuckUntil}); the hand rises, then travels out, with no reversal. The overshirt's shoulder follows the arm (x${SHOULDER_FOLLOW}) and the elbow rounds as it bends. Unless lookX/headTilt are passed, they default to ${POINT_LOOK.lookX}/${POINT_LOOK.headTilt} x poseAmount. Optional anticipation prop pointWindup 0..1 adds shoulder ${ARM_POINT_WINDUP.shoulder}, elbow ${ARM_POINT_WINDUP.elbow}, wrist ${ARM_POINT_WINDUP.wrist} deg.`,
 		typing: `seated 3/4 pose facing screen right (views/Typing.tsx), any view value; upper body = 3/4 parts offset by (${TYPING_LAYOUT.upper.dx}, ${TYPING_LAYOUT.upper.dy}) (leaning toward the screen); full-size hands side by side on a ${186} u keyboard, the near hand over the far cuff; unless passed, lookX/lookY/headTilt default to ${TYPING_LOOK.lookX}/${TYPING_LOOK.lookY}/${TYPING_LOOK.headTilt}; typing=true taps fingers from the frame; layer/between props place a desk between the body and the hands`,
 	},
 	animation: {
@@ -296,8 +298,8 @@ export const ZOO_MANIFEST: ZooManifest = {
 		{
 			id: 'ZOO-V5',
 			sheet: 'The side view shows the back of the near hand with four separate fingers and no separate thumb; the 3/4 and back hands are the front relaxed hand seen from those angles (row scans: 3/4 near ~47 u wide, far ~27 u, back ~31 u).',
-			chosen: 'Repair round 1: a dedicated four-finger profile hand; the 3/4 and back views draw the front relaxed hand through point maps (handMap/MappedRelaxedHand in parts/Hand.tsx): 3/4 near mirrored x1.1 wide x0.92 long, 3/4 far x0.65 x0.85, back x0.75 x0.91 (left mirrored).',
-			why: 'One hand design in every view, each measured from its own turnaround panel; separate fingers and a thumb lobe, never a mitten.',
+			chosen: 'Repair round 2 (supersedes round 1\'s point-mapped front palm drawing, which showed the front thumb hook from behind and in 3/4): every view draws its own hand with HandDrawing (parts/Hand.tsx): front = palm-side relaxed hand with an open thumb gap; back = the back of the hand with four tip lobes stepping toward the thigh and the thumb tucked out of view; 3/4 near = the back of the hand with four stepped fingertips and a shorter thumb lobe; 3/4 far = little-finger side with the fingers curled toward the body; profile = four fingers parting from y -366 (~36% of the hand; round 1 ~24%). One silhouette each with a centred near-black outline on the silhouette only and thin warm-brown separations. Pairs are mirrored only inside one view.',
+			why: 'Front and turnaround views control anatomy; at the asset sheet\'s lineScale (1.59) round 1\'s full-weight thumb hook and 18-24 u near-black finger lines read as black talons.',
 		},
 		{
 			id: 'ZOO-V6',
@@ -375,13 +377,19 @@ export const ZOO_MANIFEST: ZooManifest = {
 			id: 'ZOO-E2',
 			sheet: 'zoo_expr_worried.png: inner brow ends rise 5-7.5 u with a sharp upturn, the screen-right arch inverts ~4 u, tails rise ~1.5-2 u. Shocked: brows ~8-11 u up, wide horizontal oval mouth. Happy: soft closed U-smile, lower lids up, head turned ~15 deg.',
 			chosen: 'Brow pose gains `curl` (inner-end upturn); worried/happy/shocked presets re-measured (worried inner-to-tail drop >= 11 u; happy cornerL 3.2 / cornerR 6.4, lidBottom 2.4; shocked brows +7.6/+8.2 with arch 3, mouth ah x0.95 wide x0.6 open). The front head does NOT yaw for happy.',
-			why: 'Restrained adult acting that reads at video scale; a yaw on the front head would slide features over a static skull, so the turned-head happy is left to view="threeQuarter" (known gap).',
+			why: 'Restrained adult acting that reads at video scale; a yaw on the front head would slide features over a static skull, so the turned-head happy is left to view="threeQuarter" (known gap). Repair round 2: both corners lift more (cornerL 3.2 -> 4.5, moustacheLiftR 3.6 -> 4) so the smile reads at bust size without the turn.',
 		},
 		{
 			id: 'ZOO-P2',
 			sheet: 'zoo_pose_point.png: upper arm ~42 deg out from vertical, forearm rising ~52 deg, index ~25 deg up and ~45 u above the shoulder; the sleeve flows out of the shoulder; the relaxed hand never shows as a flat open hand.',
-			chosen: `End key shoulder ${ARM_POINT.shoulder} / elbow ${ARM_POINT.elbow} / wrist ${ARM_POINT.wrist} (upper arm 43 deg, forearm 57 deg, index ~22 deg up, tip h ~720 on the turnaround body); in-between ${ARM_POINT_MID.shoulder}/${ARM_POINT_MID.elbow}/${ARM_POINT_MID.wrist} (hand lifts in front of the chest, 38 deg wrist drag); loose fist ${POINT_HAND_CURL}..${POINT_HAND_SWITCH}, pointer from ${POINT_HAND_SWITCH}; the overshirt shoulder follows the arm; rounded elbow disk; head/eye bias toward the point unless animated by the caller. Clearance re-checked on the joint chain and in proof frames f93-f96 / f186-f192: the hand stays >= 18 u from Badger's head at the proof spacing (560 u).`,
+			chosen: `SUPERSEDED by ZOO-P4 (repair round 2); the shoulder follow and the rounded elbow disk remain. Round 1: end key shoulder ${ARM_POINT.shoulder} / elbow ${ARM_POINT.elbow} / wrist ${ARM_POINT.wrist} (upper arm 43 deg, forearm 57 deg, index ~22 deg up, tip h ~720 on the turnaround body); in-between ${ARM_POINT_MID.shoulder}/${ARM_POINT_MID.elbow}/${ARM_POINT_MID.wrist} (hand lifts in front of the chest, 38 deg wrist drag); loose fist ${POINT_HAND_CURL}..${POINT_HAND_SWITCH}, pointer from ${POINT_HAND_SWITCH}; the overshirt shoulder follows the arm; rounded elbow disk; head/eye bias toward the point unless animated by the caller. Clearance re-checked on the joint chain and in proof frames f93-f96 / f186-f192: the hand stays >= 18 u from Badger's head at the proof spacing (560 u).`,
 			why: 'Fixes the low hand, the shoulder notch, the limp chicken-wing in-between and the hand pop while keeping INT-P2 staging valid.',
+		},
+		{
+			id: 'ZOO-P4',
+			sheet: 'zoo_pose_point.png traced on a world grid: an OPEN elbow (~95 deg inside), forearm rising ~42 deg, index ~3 deg above horizontal with its tip at (358, h733), ~55 u above the cuff because the index rides on top of an upright fist (thumb and three curled fingers stacked under it); sleeves ~40-42 u wide.',
+			chosen: `End key shoulder ${ARM_POINT.shoulder} / elbow ${ARM_POINT.elbow} / wrist ${ARM_POINT.wrist}: upper arm 49 deg from vertical, forearm rising 48 deg, elbow ~91 deg inside, index ~6-7 deg up, fingertip (378, h719). Pointer redrawn from the panel (upright fist, 0.92 x panel size = 13% larger than round 1). Mid key ${ARM_POINT_MID.shoulder}/${ARM_POINT_MID.elbow}/${ARM_POINT_MID.wrist} (upper arm abducted, elbow outside the overshirt, forearm 23 deg up, straight wrist). Joints follow monotone cubics through the keys with POINT_OVERLAP (elbow leads, shoulder lags and first tucks the elbow 6 deg); loose fist from ${POINT_HAND_CURL}, pointer from ${POINT_HAND_SWITCH}. Proof check (Preview10s at 560 u spacing, rendered): hand path monotonic out and up, elbow x >= 101 throughout, closest approach to Badger's head 30.5 u (27 px) at f96 (an outward path without the tuck came within 6 u).`,
+			why: 'Fixes the acute V, the 26-deg upward jab, the thin sleeve and the waist-level chicken wing. The turnaround arm is longer than the panel\'s, so the panel\'s own angles put the fingertip ~30 u too low; the upper arm is raised 6 deg more than the panel\'s (49 vs ~43) to keep the tip at the round-1 height (h ~719 vs the panel\'s 733). Turnaround controls anatomy; the pose panel shows performance.',
 		},
 		{
 			id: 'ZOO-P3',
@@ -414,6 +422,60 @@ export const ZOO_MANIFEST: ZooManifest = {
 			why: 'Turnaround views control identity; each change was measured on its own panel.',
 		},
 		{
+			id: 'ZOO-A3',
+			sheet: 'zoo_turn_front.png row scan at the same world scale: below the chest the overshirt narrows to +-87..89 and the sleeves (46-48 u, cuff ~39 u) hang free with 4-7 u of background between each cuff and the hem from y -480; hem 172-178 u.',
+			chosen: 'Repair round 2: each front panel follows the shoulder line to the shoulder point, turns down an armhole seam and runs down the body side at +-86..89; sleeves widened (inner edge ~94, cuff 97.8..129.4); elbow pivots +-111.5 (sleeve centre), wrist pivots +-113.8 (cuff centre); panel shadow kept to a ~5 u band inside the side edge. Measured: sides +-87..88, gap 4-7 u, hem 172 u, cuff 39 u.',
+			why: 'Front view controls anatomy; round 1 kept the panels at +-101..103 to the hem and hid ~13 u of each sleeve, so Zoo read stockier than the lean sheet figure.',
+		},
+		{
+			id: 'ZOO-D2',
+			sheet: 'zoo_expr_neutral.png teal rows at 0.699 u/px: dome ~17.5 x 11.2 u; three tentacles ~9.8 u long inside the dome width (~14 u spread), each cased in near-black.',
+			chosen: 'Repair round 2: dome half-width 7.8, tentacles end at +8.2 (x1 within +-5.2), near-black casing under each teal tentacle, teal width and casing both scaled by lineScale (PIN_SHAPE in parts/Pin.tsx); size 1.15, centre (58,-660).',
+			why: 'Locked design: "one tiny teal jellyfish pin: small dome with three short tentacles"; round 1\'s 15 u splayed legs read as a squid.',
+		},
+		{
+			id: 'ZOO-F4',
+			sheet: 'Front busts and zoo_turn_front.png: each ear is a rounded C whose lobe tucks into the face at ~-785.',
+			chosen: 'Repair round 2: the ear spline closes INSIDE the face edge (lobe ... (41,-782.4), (38.2,-786), (37.6,-792)), so no pointed lobe hangs over the jaw line.',
+			why: 'Round 1 ended the closed spline outside the face and drew an elf tip.',
+		},
+		{
+			id: 'ZOO-H3',
+			sheet: 'zoo_turn_back.png: the crown carries a dark S-shaped lock plus the top-lock and left-lock edges; the nape is shaded under wavy lock ends.',
+			chosen: 'Repair round 2: the S-lock, top-lock and left-lock edges are tapered ink lines in ZOO_COLORS.brow (the hair ink already used for the front crown hollow), up to ZOO_LINE.detail wide, clipped to the hair; one hair-shadow region = a thin crescent under the S-lock and the nape below a wavy edge; the isolated groove oval is gone.',
+			why: 'From behind, the S-lock is the hair\'s identity; round 1\'s strands in the shadow tone were invisible and the flat lower band read as a two-tone helmet.',
+		},
+		{
+			id: 'ZOO-T7',
+			sheet: 'zoo_pose_typing.png: two soft hands whose fingers arc down and forward onto the keys with thin separations; the monitor back is a plain panel with square corners.',
+			chosen: 'Repair round 2: each typing hand is ONE silhouette (back of the hand + four tip lobes landing 5-8 u ahead of the knuckle line on the keys, thumb in skin) with thin warm-brown separations along the finger arcs; taps move the tip lobes. The monitor panel and foot are straight-edged polygons with small fillets (path extent = its corners, y -275.4..-71.6). Chair wheel and leg outlines follow lineScale.',
+			why: 'Round 1\'s separately outlined hooked fingers stacked into black knots; the monitor spline overshot 11.4 u past each corner.',
+		},
+		{
+			id: 'ZOO-L2',
+			sheet: 'The sheet\'s close-up nostrils are ~1.7 u dark commas and the bust lid lines stay heavy, while outlines thin to ~1.6 u.',
+			chosen: 'featureScale(ls, min) in lines.ts: the nose bridge and nostrils keep their drawn size below lineScale 1 (and thicken above it); the upper-lid line floors at 0.85. Applied in the front, 3/4 and profile heads.',
+			why: 'Facial feature shapes are part of the face design, not outlines; at ls ~0.5 round 1 shrank the nostrils to ~0.9 u hairlines.',
+		},
+		{
+			id: 'ZOO-K2',
+			sheet: 'The expression and mouth panels draw the torso ~6 u higher than the turnaround: 28.7 u of neck and the pin centroid at ~-669.8 against the turnaround\'s 34.3 u and -659.4.',
+			chosen: 'The turnaround neck, collar, tee and pin heights are used in every framing; the bust panels are performance references for the face only.',
+			why: 'Reference priority: front and turnaround views control anatomy; recorded so reviews do not re-flag the busts as long-necked.',
+		},
+		{
+			id: 'ZOO-F5',
+			sheet: 'zoo_expr_neutral.png, zoo_turn_side.png, zoo_turn_34.png: shallow philtrum dip (moustache ~9.5 u thick at x=0); forelock ~12 u wide at y -850; profile eye a mostly dark almond (~25-30% white); profile moustache merging into the cheek beard; throat skin right under the 3/4 jaw; only a soft shadow tight under the jaw.',
+			chosen: 'Repair round 2: moustache notch at -784 with a 0.6 u dip; forelock 11.6 u at -850 (concave right edge ~2.5 u further right, left edge ~1 u left, tip unchanged); profile eye back corner -4.5, iris rx 0.8r, highlight 0.6x; profile moustache ends blunt ~2 u inside the beard; 3/4 throat top tucked 0.5-1.5 u above the jaw line; jaw shadows in front, 3/4, typing and profile reduced to <= 6 u crescents under the jaw.',
+			why: 'Each change measured on its own panel; turnaround views control identity.',
+		},
+		{
+			id: 'ZOO-S2',
+			sheet: 'zoo_turn_side.png / zoo_turn_34.png / zoo_turn_front.png: chunky low-tops whose toe box keeps its height (~31 u) to a round nose; the 3/4 near toe reaches x ~-22 over the far heel; front shoes flare slightly on the inner side too; ~55 u of shoe shows below the front hem.',
+			chosen: 'Repair round 2: side and 3/4-far toe boxes hold their top to ~8 u from the tip, then round down; 3/4 near shoe extended to a round toe at x ~-22; front inner edge flares from ~30 (y -40) to ~25 at the sole; front hem break raised 8 u (-44.6 -> -52.6), ~52 u of shoe shows.',
+			why: 'Round 1 tapered the toes into pointed slippers, cut the near 3/4 shoe into a clog and showed too little shoe in front.',
+		},
+		{
 			id: 'INT-Z1',
 			sheet: 'zoo_turn_front.png: the relaxed thumb joins the back of the hand at the top; the thumb/index notch starts about 40% down the hand, and the finger separations run about a third of the hand length.',
 			chosen: 'Integration fix (2026-11-24): the thumb is filled without a full outline; only the tip and the lower notch are stroked (THUMB_EDGE). Finger separation lines lengthened from 7 to about 18 units.',
@@ -435,7 +497,8 @@ export const ZOO_MANIFEST: ZooManifest = {
 	knownGaps: [
 		'Pose "point" exists only in the front view; threeQuarter/side/back draw the stand arms for it. The point keeps the turnaround stance (ZOO-P3).',
 		'Happy has no head yaw in the front view (ZOO-E2); use view="threeQuarter" for the turned-head smile.',
-		'The point gesture timing (ease, hold, overshoot) lives in the compositions; the rig only provides the path, the loose-fist transition and POINT_LOOK.',
+		'The point gesture timing (ease, hold, overshoot) lives in the compositions; the rig only provides the path, the loose-fist transition and POINT_LOOK. Preview10s holds at poseAmount 0.993 with a 0.008 drift, which moves the hand < 2 px over f113-181; a drift of ~0.05 (composition) gives ~1.5-2 deg of shoulder and 6-10 px of hand travel on this path.',
+		'Point end pose: the upper arm is ~6 deg more raised than on the pose panel (ZOO-P4) and the fingertip sits ~14 u lower (h ~719 vs 733); the shoulder line keeps a small corner where the raised sleeve meets it.',
 		'Pose "typing" is authored only in 3/4 facing screen right (as on the sheet); the view prop is ignored for it (ZOO-T5).',
 		'Only the anatomical-left arm can point; the right arm stays at rest.',
 		'Arms in the 3/4, side and back views are static hangs (no joint rig yet); the typing arms are fixed except finger taps and breathing.',

@@ -3,10 +3,10 @@
   "radarVersion": "0.1",
   "parserVersion": "2026-11-24.2",
   "runDate": "2026-11-24",
-  "generatedUtc": "2026-11-24T16:32:49Z",
+  "generatedUtc": "2026-11-24T17:11:05Z",
   "mode": "live",
   "userAgent": "NewsRadar/0.1",
-  "httpRequests": 18,
+  "httpRequests": 0,
   "window": {
     "freshFrom": "2026-11-22T00:00:00Z",
     "freshTo": "2026-11-25T00:00:00Z",
@@ -41,10 +41,10 @@
     "sourcesTotal": 16,
     "sourcesOk": 15,
     "items": 556,
-    "securityRelevant": 256,
-    "incidentsBuilt": 185,
-    "candidates": 13,
-    "unclustered": 6
+    "securityRelevant": 257,
+    "incidentsBuilt": 183,
+    "candidates": 11,
+    "unclustered": 7
   },
   "sources": [
     {
@@ -53,7 +53,7 @@
       "tier": "A",
       "kind": "json-api",
       "url": "https://api.llama.fi/hacks",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
       "fetchedUtc": "2026-11-24T16:32:49Z",
       "items": 167,
@@ -67,7 +67,7 @@
       "tier": "A",
       "kind": "html",
       "url": "https://hacked.slowmist.io/",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
       "fetchedUtc": "2026-11-24T16:32:49Z",
       "items": 20,
@@ -81,7 +81,7 @@
       "tier": "A",
       "kind": "html",
       "url": "https://rekt.news/",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
       "fetchedUtc": "2026-11-24T16:32:49Z",
       "items": 12,
@@ -95,7 +95,7 @@
       "tier": "A",
       "kind": "rss",
       "url": "https://www.chainalysis.com/blog/feed/",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
       "fetchedUtc": "2026-11-24T16:32:49Z",
       "items": 10,
@@ -109,7 +109,7 @@
       "tier": "A",
       "kind": "html",
       "url": "https://www.certik.com/blog",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
       "fetchedUtc": "2026-11-24T16:32:49Z",
       "items": 9,
@@ -123,7 +123,7 @@
       "tier": "A",
       "kind": "html",
       "url": "https://www.trmlabs.com/resources/blog",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
       "fetchedUtc": "2026-11-24T16:32:49Z",
       "items": 6,
@@ -137,9 +137,9 @@
       "tier": "B",
       "kind": "rss",
       "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
-      "fetchedUtc": "2026-11-24T16:32:49Z",
+      "fetchedUtc": "2026-11-24T17:03:25Z",
       "items": 25,
       "relevant": 3,
       "incidentItems": 3,
@@ -151,9 +151,9 @@
       "tier": "B",
       "kind": "rss",
       "url": "https://decrypt.co/feed",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
-      "fetchedUtc": "2026-11-24T16:32:49Z",
+      "fetchedUtc": "2026-11-24T17:03:25Z",
       "items": 37,
       "relevant": 5,
       "incidentItems": 5,
@@ -165,12 +165,12 @@
       "tier": "B",
       "kind": "rss",
       "url": "https://cointelegraph.com/rss",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
-      "fetchedUtc": "2026-11-24T16:32:49Z",
+      "fetchedUtc": "2026-11-24T17:03:25Z",
       "items": 30,
-      "relevant": 2,
-      "incidentItems": 2,
+      "relevant": 1,
+      "incidentItems": 1,
       "warnings": []
     },
     {
@@ -179,12 +179,12 @@
       "tier": "B",
       "kind": "rss",
       "url": "https://www.theblock.co/rss.xml",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
-      "fetchedUtc": "2026-11-24T16:32:49Z",
+      "fetchedUtc": "2026-11-24T17:03:25Z",
       "items": 20,
-      "relevant": 2,
-      "incidentItems": 2,
+      "relevant": 3,
+      "incidentItems": 3,
       "warnings": []
     },
     {
@@ -193,12 +193,12 @@
       "tier": "B",
       "kind": "rss",
       "url": "https://thedefiant.io/feed",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
-      "fetchedUtc": "2026-11-24T16:32:49Z",
+      "fetchedUtc": "2026-11-24T17:03:25Z",
       "items": 100,
-      "relevant": 13,
-      "incidentItems": 11,
+      "relevant": 14,
+      "incidentItems": 12,
       "warnings": []
     },
     {
@@ -207,9 +207,9 @@
       "tier": "B",
       "kind": "rss",
       "url": "https://www.dlnews.com/arc/outboundfeeds/rss/",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
-      "fetchedUtc": "2026-11-24T16:32:49Z",
+      "fetchedUtc": "2026-11-24T17:03:25Z",
       "items": 40,
       "relevant": 9,
       "incidentItems": 9,
@@ -237,7 +237,7 @@
       "tier": "C",
       "kind": "atom",
       "url": "https://www.web3isgoinggreat.com/feed.xml",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
       "fetchedUtc": "2026-11-24T16:32:49Z",
       "items": 20,
@@ -251,9 +251,9 @@
       "tier": "C",
       "kind": "rss",
       "url": "https://crypto.news/feed/",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
-      "fetchedUtc": "2026-11-24T16:32:49Z",
+      "fetchedUtc": "2026-11-24T17:03:25Z",
       "items": 50,
       "relevant": 5,
       "incidentItems": 4,
@@ -265,9 +265,9 @@
       "tier": "C",
       "kind": "rss",
       "url": "https://coinedition.com/feed/",
-      "status": "ok",
+      "status": "cached",
       "httpStatus": 200,
-      "fetchedUtc": "2026-11-24T16:32:49Z",
+      "fetchedUtc": "2026-11-24T17:03:25Z",
       "items": 10,
       "relevant": 1,
       "incidentItems": 1,
@@ -1919,7 +1919,7 @@
             "value": 1.0,
             "weight": 15,
             "points": 15.0,
-            "reason": "incident date inside the fresh window; 4 other other incident(s) in the 14 days before 2026-11-24"
+            "reason": "incident date inside the fresh window; 3 other other incident(s) in the 14 days before 2026-11-24"
           },
           "evergreen": {
             "value": 0.0,
@@ -1962,13 +1962,17 @@
         {
           "id": "thedefiant",
           "url": "https://thedefiant.io/news/hacks/lookonchain-flags-suspected-hack-of-ansem-linked-wallet",
-          "title": "Lookonchain Flags Suspected Hack of Ansem-Linked Wallet",
-          "excerpt": "The tracker reported 2.15 million USDC moved to Arbitrum. Records link 1.55 million USDC directly to the Ansem-associated wallet through Relay.",
+          "title": "Lookonchain Flags Suspected Hack of [named person]-Linked Wallet",
+          "excerpt": "The tracker reported 2.15 million USDC moved to Arbitrum. Records link 1.55 million USDC directly to the [named person]-associated wallet through Relay.",
           "publishedUtc": "2026-11-24T10:17:30Z",
           "tier": "B",
           "publisher": "The Defiant",
           "kind": "news",
-          "hedge": "suspected"
+          "hedge": "suspected",
+          "redacted": {
+            "names": 2,
+            "code": 0
+          }
         }
       ],
       "postMortemUrl": null,
@@ -1976,7 +1980,8 @@
       "notes": [
         "Label as developing. Attribute every line to its source.",
         "Incident date not stated; first coverage 2026-11-24.",
-        "Mechanism unknown: say it only with that qualifier and attribution, never as fact."
+        "Mechanism unknown: say it only with that qualifier and attribution, never as fact.",
+        "Personal names were redacted from source text."
       ],
       "typeReason": "text 'Hack' via thedefiant; tier-B votes: exploit (thedefiant)",
       "mechanismStatus": "unknown",
@@ -1987,7 +1992,7 @@
           "text": "The Defiant headline, 2026-11-24:",
           "sourceId": "thedefiant",
           "url": "https://thedefiant.io/news/hacks/lookonchain-flags-suspected-hack-of-ansem-linked-wallet",
-          "quote": "Lookonchain Flags Suspected Hack of Ansem-Linked Wallet",
+          "quote": "Lookonchain Flags Suspected Hack of [named person]-Linked Wallet",
           "field": "title"
         }
       ],
@@ -2207,7 +2212,7 @@
             "value": 1.0,
             "weight": 15,
             "points": 15.0,
-            "reason": "incident date inside the fresh window; 3 other other incident(s) in the 14 days before 2026-11-24"
+            "reason": "incident date inside the fresh window; 2 other other incident(s) in the 14 days before 2026-11-24"
           },
           "evergreen": {
             "value": 0.0,
@@ -2220,200 +2225,6 @@
             "weight": 10,
             "points": 5.0,
             "reason": "target not stated (base 0.40); retail cues: users"
-          }
-        }
-      },
-      "shortReady": {
-        "ready": false,
-        "missing": [
-          "not confirmed",
-          "fewer than 2 independent sources",
-          "mechanism not stated by any source",
-          "no strong 'one fix' explainer link"
-        ]
-      }
-    },
-    {
-      "id": "2026-11-23-moldyroost",
-      "title": "MoldyRoost: reported security incident (mechanism not classified) (developing)",
-      "protocol": "MoldyRoost",
-      "chains": [],
-      "type": "other",
-      "dateUtc": null,
-      "firstSeenUtc": "2026-11-23",
-      "reportedLosses": [],
-      "status": "developing",
-      "statusReason": "developing: only 1 unhedged tier-B outlet (cointelegraph)",
-      "sources": [
-        {
-          "id": "cointelegraph",
-          "url": "https://cointelegraph.com/news/moldyroost-malware-drain-iphone-wallets-one-tap",
-          "title": "‘MoldyRoost’ ads can steal crypto wallet recovery phrases from iPhones",
-          "excerpt": "The campaign used at least 480 ad domains to target users in more than 47 countries and could infect a vulnerable iPhone with a single tap.",
-          "publishedUtc": "2026-11-23T09:05:44Z",
-          "tier": "B",
-          "publisher": "Cointelegraph",
-          "kind": "news"
-        }
-      ],
-      "postMortemUrl": null,
-      "evergreenTopic": null,
-      "notes": [
-        "Label as developing. Attribute every line to its source.",
-        "Incident date not stated; first coverage 2026-11-23.",
-        "Mechanism unknown: say it only with that qualifier and attribution, never as fact."
-      ],
-      "typeReason": "text 'ads can steal' via cointelegraph; tier-B votes: other (cointelegraph)",
-      "mechanismStatus": "unknown",
-      "mechanismKnown": false,
-      "userSide": false,
-      "facts": [
-        {
-          "text": "Cointelegraph headline, 2026-11-23:",
-          "sourceId": "cointelegraph",
-          "url": "https://cointelegraph.com/news/moldyroost-malware-drain-iphone-wallets-one-tap",
-          "quote": "‘MoldyRoost’ ads can steal crypto wallet recovery phrases from iPhones",
-          "field": "title"
-        }
-      ],
-      "dateNote": "incident date not stated; first coverage 2026-11-23",
-      "score": {
-        "total": 42.7,
-        "factors": {
-          "loss": {
-            "value": 0.0,
-            "weight": 25,
-            "points": 0.0,
-            "reason": "no USD figure reported"
-          },
-          "recency": {
-            "value": 0.793,
-            "weight": 20,
-            "points": 15.9,
-            "reason": "freshest source 2026-11-23T09:05:44Z (cointelegraph), 39 h before the end of 2026-11-24"
-          },
-          "sources": {
-            "value": 0.24,
-            "weight": 20,
-            "points": 4.8,
-            "reason": "1 independent publisher(s): Bx1 (Cointelegraph)"
-          },
-          "novelty": {
-            "value": 1.0,
-            "weight": 15,
-            "points": 15.0,
-            "reason": "incident date inside the fresh window; 3 other other incident(s) in the 14 days before 2026-11-24"
-          },
-          "evergreen": {
-            "value": 0.0,
-            "weight": 10,
-            "points": 0.0,
-            "reason": "other: no explainer topic fits"
-          },
-          "audience": {
-            "value": 0.7,
-            "weight": 10,
-            "points": 7.0,
-            "reason": "target not stated (base 0.40); retail cues: iphone, iphones, recovery phrases, users"
-          }
-        }
-      },
-      "shortReady": {
-        "ready": false,
-        "missing": [
-          "not confirmed",
-          "fewer than 2 independent sources",
-          "mechanism not stated by any source",
-          "no strong 'one fix' explainer link"
-        ]
-      }
-    },
-    {
-      "id": "2026-11-24-was-ansem",
-      "title": "Was Ansem: reported exploit (mechanism unknown) (developing)",
-      "protocol": "Was Ansem",
-      "chains": [
-        "Arbitrum"
-      ],
-      "type": "exploit",
-      "dateUtc": null,
-      "firstSeenUtc": "2026-11-24",
-      "reportedLosses": [],
-      "status": "developing",
-      "statusReason": "developing: no unhedged primary statement or tier-B outlet; tier-C sources do not count",
-      "sources": [
-        {
-          "id": "cryptonews",
-          "url": "https://crypto.news/ansem-suspected-wallet-hack-memecoin-crash-arbitrum/",
-          "title": "Was Ansem hacked? Memecoin crashes 60% as $2.15M moves to Arbitrum",
-          "excerpt": "Ansem faces a suspected wallet hack as $2.15 million in USDC moves to Arbitrum and his associated memecoin crashes 60% amid conflicting reports.",
-          "publishedUtc": "2026-11-24T11:02:30Z",
-          "tier": "C",
-          "publisher": "crypto.news",
-          "kind": "news",
-          "hedge": "suspected"
-        }
-      ],
-      "postMortemUrl": null,
-      "evergreenTopic": null,
-      "notes": [
-        "Label as developing. Attribute every line to its source.",
-        "Incident date not stated; first coverage 2026-11-24.",
-        "Mechanism unknown: say it only with that qualifier and attribution, never as fact.",
-        "Some source text discusses token prices; do not repeat price talk."
-      ],
-      "typeReason": "text 'hacked' via cryptonews; tier-C votes: exploit (cryptonews)",
-      "mechanismStatus": "unknown",
-      "mechanismKnown": false,
-      "userSide": false,
-      "facts": [
-        {
-          "text": "crypto.news headline, 2026-11-24:",
-          "sourceId": "cryptonews",
-          "url": "https://crypto.news/ansem-suspected-wallet-hack-memecoin-crash-arbitrum/",
-          "quote": "Was Ansem hacked? Memecoin crashes 60% as $2.15M moves to Arbitrum",
-          "field": "title"
-        }
-      ],
-      "dateNote": "incident date not stated; first coverage 2026-11-24",
-      "score": {
-        "total": 41.0,
-        "factors": {
-          "loss": {
-            "value": 0.0,
-            "weight": 25,
-            "points": 0.0,
-            "reason": "no USD figure reported"
-          },
-          "recency": {
-            "value": 1.0,
-            "weight": 20,
-            "points": 20.0,
-            "reason": "freshest source 2026-11-24T11:02:30Z (cryptonews), 13 h before the end of 2026-11-24"
-          },
-          "sources": {
-            "value": 0.1,
-            "weight": 20,
-            "points": 2.0,
-            "reason": "1 independent publisher(s): Cx1 (crypto.news)"
-          },
-          "novelty": {
-            "value": 1.0,
-            "weight": 15,
-            "points": 15.0,
-            "reason": "incident date inside the fresh window; 16 other exploit incident(s) in the 14 days before 2026-11-24"
-          },
-          "evergreen": {
-            "value": 0.0,
-            "weight": 10,
-            "points": 0.0,
-            "reason": "exploit: no explainer topic fits"
-          },
-          "audience": {
-            "value": 0.4,
-            "weight": 10,
-            "points": 4.0,
-            "reason": "target not stated (base 0.40)"
           }
         }
       },
@@ -2556,7 +2367,7 @@
       "title": "Crypto trader [named person] says his wallet was hacked as $2 million in memecoins were sold",
       "url": "https://www.coindesk.com/markets/2026/11/24/a-wallet-linked-to-popular-crypto-trader-ansem-sold-usd2-million-in-memecoins-as-his-namesake-token-cratered",
       "publishedUtc": "2026-11-24T12:47:49Z",
-      "excerpt": "Ansem suspects someone broke into his account on Bullpen, the trading terminal he co-founded, where the wallet's private key had been imported.",
+      "excerpt": "[named person] suspects someone broke into his account on Bullpen, the trading terminal he co-founded, where the wallet's private key had been imported.",
       "reason": "no confident subject in the headline"
     },
     {
@@ -2566,6 +2377,15 @@
       "url": "https://thedefiant.io/news/security/coinkite-explains-why-coldcard-flaw-escaped-checks",
       "publishedUtc": "2026-11-24T14:47:49Z",
       "excerpt": "The wallet maker’s postmortem describes a missed firmware-routing error. Fixed firmware cannot repair old seeds, and customer compensation remains undecided.",
+      "reason": "no confident subject in the headline"
+    },
+    {
+      "sourceId": "thedefiant",
+      "tier": "B",
+      "title": "DOJ Details Crypto Cases in Broad Anti-Scam Crackdown",
+      "url": "https://thedefiant.io/news/regulation/doj-details-crypto-cases-in-broad-anti-scam-crackdown",
+      "publishedUtc": "2026-11-24T16:53:22Z",
+      "excerpt": "The campaign spans more than 400 cases. DOJ's claim of over $8 billion in 'intended loss' does not establish how much was seized or returned to victims.",
       "reason": "no confident subject in the headline"
     },
     {

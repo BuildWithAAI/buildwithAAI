@@ -24,6 +24,7 @@ Stop for owner review at the end of every phase.
 - **Format:** second-person life-story videos, modelled on a reference the owner supplied (`content/zoora-ai/REFERENCE.md`). Genre only: we never copy that creator's character, art or scripts.
 - **Voice:** Kokoro (free, local, via kokoro-onnx).
 - **Owner time zone:** Oklahoma, US Central Time (`America/Chicago`), set 2026-11-24. Every schedule (daily Threat Brief, weekly batch, publishAt slots) uses it. The proposed daily run starts at about 04:43 CT so the approval draft is ready by about 06:00 CT; it is created only after the daily system passes its proof run, pending the owner's OK on the time.
+- **Daily Threat Brief scheduled task:** `trig_01LJTL8SCY8N8mvLpvnCHUeX`, daily at 04:43 America/Chicago (first run 2026-11-25). Each run starts a fresh cloud session that follows docs/DAILY_BRIEF.md and sends the approval packet to the owner's phone. It has no MCP connectors (none are needed). It never uploads or posts without the owner's explicit APPROVE.
 - **Dubbing launch languages (owner, 2026-11-24): Spanish and Brazilian Portuguese first** (largest reachable YouTube regions). Other supported languages: Hindi, Italian, Chinese (experimental). Japanese is blocked until a real G2P works. French is excluded: Kokoro has no male voice.
 - **Zoo voice — DECIDED (owner, 2026-11-24): Kokoro `im_nicola` for EVERY language** (en, es, pt-br, hi, it, zh). The owner accepted the Italian accent in other languages. This is binding: the voice step and every episode use `--voice im_nicola` (the map lives in `content/zoora-ai/channel.json`). Do not use am_michael, em_alex or pm_alex for Zoo.
 - **Host: Zoo + Badger (superseded by docs/PROJECT_INSTRUCTIONS.md and the approved sheets).** Earlier note: An original adult human guy, deadpan with dry humour, appearing in every video. The owner rejected the 3 concepts in `src/styleframes/` (keep them only as references). The drawing style is not chosen yet; the owner will follow up. His deadpan comes from timing and a flat mouth, **not** half-lidded eyes: that is the reference creator's protagonist trait.
@@ -228,3 +229,18 @@ One episode becomes the video in three languages, its Shorts and thumbnails, the
 - "Manual upload for now" (Platform rules above) now means: manual unless the owner asks for API uploads. The uploader always sends `private`, never schedules a video with paid promotion, and settles the quota conflict: `videos.insert` costs 1 call of a separate 100-a-day bucket (its README, verified facts read 2026-11-24).
 - A pushed storyboard is public for good: run the claim gate (`farm.ts validate`) before pushing a render request, or render locally. YouTube sign-ins stay on the owner's computer, never in repository secrets. The farm reads only `RENDER_HANDOFF_KEY` from the `render-farm` environment; `RENDER_ARTIFACT_KEY` is retired.
 - Open blocker (2026-11-24): the farm's `plan` job refuses every real episode or show request on GitHub, because the claim gate fails without the gitignored `data/private/names.txt` and the farm does not pass `--no-names` in CI. Until the farm is fixed, render real episodes locally (`docs/MEDIA_PIPELINE.md`, gap 1).
+
+## Daily Threat Brief (channel 2)
+
+The daily Short and the Threat Brief email for `zoora-security` follow **`docs/DAILY_BRIEF.md`**, the morning runbook a scheduled session uses (proposed for 04:43 America/Chicago; the scheduled task is created only after the owner OKs the time). Run it from `projects/video-studio`:
+
+| Step | Command | Result |
+| --- | --- | --- |
+| Radar, story pick, brief | `node scripts/daily/run.ts prepare [--date] [--radar live\|reuse] [--pick <incident id>]` | `content/zoora-security/<date-slug>/brief.json` and `WRITER.md`. Exit 3 means no video today |
+| Storyboard | The writer follows that `WRITER.md` | `storyboard.json` in the show's format (`src/show`) |
+| Both claim gates, voice (`im_nicola`), ShowShort render, thumbnails, publish kit, approval packet | `node scripts/daily/run.ts build <date-slug>` | `out/approval/<date-slug>/approval.html` and `short.mp4`. Exit 0 means ready to approve |
+| The owner's approval, then the announcer and Threat Brief drafts | `node scripts/daily/run.ts approve <date-slug> --reply "<his exact reply>"` | `approval.json` and the drafts. Nothing posts unless he opts in to `--apply` himself |
+
+- "No video today" is the normal outcome when no confirmed story has real analysis. The DefiLlama 30-day comparison only supports one; the radar's own pattern needs 7 or more daily radar files. Developing stories go out only on the owner's call, labelled DEVELOPING.
+- Nothing is uploaded, posted or emailed before his `APPROVE <date-slug>`, and uploads stay manual in YouTube Studio.
+- Proof run 2026-11-24: prepare decided "no video today" (no real analysis). The proof Short `2026-11-24-binance` was picked by hand to exercise the build: both gates passed, and it is not approved.

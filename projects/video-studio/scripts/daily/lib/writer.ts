@@ -111,7 +111,7 @@ export const skeleton = (b: DailyBrief, ch: ChannelConfig): Record<string, unkno
 				type: 'talk',
 				segment: 'desk',
 				narration: 'Our check: TODO the analysis in plain words, its numbers exactly as analysis.detail says them (no [src] tag).',
-				onScreen: {title: 'Our check', bullets: ['TODO']},
+				onScreen: {title: 'Our check', bullets: ['TODO the data source first, e.g. "DefiLlama: 52 incidents in 30 days"']},
 				badger: {present: true},
 				badgerBeats: [{reaction: 'shocked'}],
 				claimWaivers: [waiver],
@@ -243,7 +243,7 @@ export const renderWriterMd = (b: DailyBrief, ch: ChannelConfig): string => {
 		'- **Rekt Meter** (`headline`): `onScreen.loss` is the figure as the source writes it and `rekt` {usd, source} names who reported it; a second outlet\'s different figure goes in `lossAlt` + `rekt.alt` (never merged, never averaged). The skeleton below is prefilled from the brief.',
 		'- **How it worked** (`howItWorked`): 2–5 nodes, each label 32 characters or fewer, one arrow label per gap (28 or fewer, "" for none), and `diagram.nodes` kinds from: attacker, wallet, contract, bridge, mixer, exchange, key, site, message, approval, agent, plugin, phone, funds. A concept, not a walkthrough.',
 		'- **Cold open** (`coldOpen`): `onScreen.kicker` stays "Threat Brief" (no date: the news gate reads on-screen dates as figures that need a source; the show name and "Threat Brief" are allowlisted names).',
-		'- **Our check** (`desk`): the analysis, titled "Our check". **Red flag** (`badgerRedFlag`): `onScreen.flag`, one line. **One Fix** (`zooOneFix`): `onScreen.fix` and an optional `detail`.',
+		'- **Our check** (`desk`): the analysis, titled "Our check". The show draws a scene\'s source line from its `[src]` tags, and own-data sentences have none, so name the data in the first bullet ("DefiLlama: 52 incidents in 30 days"): the card must say whose data it is even with the sound off. **Red flag** (`badgerRedFlag`): `onScreen.flag`, one line. **One Fix** (`zooOneFix`): `onScreen.fix` and an optional `detail`.',
 		'- Silent Badger beats are optional scenes of their own: `{"id": "s03b", "type": "talk", "segment": "beat", "narration": "", "minDurationSec": 1.3, "badgerBeats": [{"reaction": "judge"}]}` (add them to `shorts[0].sceneIds` in order). Each costs about 1.3 s of the 45–60.',
 		'',
 	);

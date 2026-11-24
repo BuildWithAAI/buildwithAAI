@@ -1,14 +1,16 @@
 /**
  * Arc-length timing for Zoo's point gesture (decision INT-T1).
  *
- * `poseAmount` is not uniform in screen space: the rig's quadratic joint path (armAnglesFor with ARM_POINT_MID) moves
- * the hand 71% of its 454-unit path in the first half of poseAmount and only 29% in the second half. Easing poseAmount
- * directly therefore front-loads the swing (v1: 123 px in one frame). This module maps a path fraction u (0..1, the
- * fraction of the hand's travel along the arc) to the poseAmount that puts the hand there, so a composition can ease
- * u with any symmetric curve and the hand's on-screen speed follows that curve exactly.
+ * `poseAmount` is not uniform in screen space. The rig's joint path (armAnglesFor: a monotone cubic per joint through
+ * ARM_POINT_MID at 0.5, with POINT_OVERLAP's elbow lead and shoulder lag on the first half; repair round 2, ZOO-P4) moves
+ * the hand about 80% of its ~410-unit path in the first half of poseAmount and only about 20% in the second half, where
+ * the arm mostly rises at the shoulder. Easing poseAmount directly therefore front-loads the swing (v1: 123 px in one
+ * frame). This module maps a path fraction u (0..1, the fraction of the hand's travel along the arc) to the poseAmount
+ * that puts the hand there, so a composition can ease u with any symmetric curve and the hand's on-screen speed follows
+ * that curve exactly (Preview10s: bezier(0.38, 0, 0.4, 1) over 16 frames peaks at ~45 px/frame at scale 0.88).
  *
  * The hand point is the centre of the hand (48 units below the wrist pivot in the hand's rest frame), driven through the
- * rig's own pivots and angle function, so the table follows any later change to the rig.
+ * rig's own pivots and angle function, so the table follows any later change to the rig (POINT_PATH_LENGTH reports it).
  */
 import {ARM_POINT, armAnglesFor, PIVOTS} from '../../characters/zoo/rig';
 

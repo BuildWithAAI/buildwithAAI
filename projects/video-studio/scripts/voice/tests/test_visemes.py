@@ -263,5 +263,69 @@ class SyncLandmarks(unittest.TestCase):
         self.assertEqual(V.sync_landmarks(late, fdb)["offsets"], [6])
 
 
+class FitLandmarks(unittest.TestCase):
+    """Rule 7 (2026-11-24, final check). Kokoro's ONNX graph samples noise, so a fresh build of the demo opened the
+    mouth 3 frames before an es phrase (allowed -2..0) where the previous build of the same text had -1, and the en
+    build lost the mbp of its first word. fit_landmarks moves only what the check finds outside its tolerance."""
+
+    FDB = [-90.0] * 10 + [-5.0] * 20 + [-90.0] * 20  # one phrase: voiced frames 10-29
+
+    def check(self, track):
+        fitted = V.fit_landmarks(track, self.FDB)
+        self.assertEqual(len(fitted), len(track))
+        self.assertTrue(all(n >= 2 for _, n in runs(fitted)), runs(fitted))
+        return fitted, V.sync_landmarks(fitted, self.FDB)
+
+    def test_in_tolerance_is_unchanged(self):
+        track = ["closed"] * 9 + ["ah"] * 20 + ["closed"] * 21
+        self.assertEqual(V.fit_landmarks(track, self.FDB), track)
+        lips = ["closed"] * 7 + ["mbp"] * 3 + ["ah"] * 19 + ["closed"] * 21  # mbp 3 frames ahead: LP3 allows 1-4
+        self.assertEqual(V.fit_landmarks(lips, self.FDB), lips)
+
+    def test_early_onset_moves_to_one_frame_ahead(self):
+        # the es s04 case: slightlyOpen 3 frames ahead of the vowel (two frames of a quiet /k/)
+        track = ["closed"] * 7 + ["slightlyOpen"] * 2 + ["ee"] * 20 + ["closed"] * 21
+        fitted, sync = self.check(track)
+        self.assertEqual(sync["onsets"], [-1])
+        self.assertEqual(fitted[:9], ["closed"] * 9)
+        self.assertEqual(fitted[9:], track[9:])
+
+    def test_early_onset_leaves_no_one_frame_shape(self):
+        track = ["closed"] * 7 + ["slightlyOpen"] * 3 + ["ee"] * 19 + ["closed"] * 21
+        fitted, sync = self.check(track)
+        self.assertEqual(sync["onsets"], [-1])
+        self.assertEqual(fitted[7:11], ["closed", "closed", "ee", "ee"])  # the 1-frame remnant takes the next shape
+
+    def test_late_onset_starts_one_frame_ahead(self):
+        track = ["closed"] * 12 + ["ah"] * 17 + ["closed"] * 21
+        fitted, sync = self.check(track)
+        self.assertEqual(sync["onsets"], [-1])
+        self.assertEqual(fitted[9:12], ["ah"] * 3)
+
+    def test_late_close_closes_after_the_voice(self):
+        track = ["closed"] * 9 + ["ah"] * 27 + ["closed"] * 14  # 6 frames late
+        fitted, sync = self.check(track)
+        self.assertTrue(all(abs(x) <= 2 for x in sync["offsets"]), sync)
+        self.assertEqual(fitted[30:], ["closed"] * 20)
+
+    def test_early_close_holds_the_shape(self):
+        track = ["closed"] * 9 + ["ah"] * 14 + ["closed"] * 27  # closes 7 frames before the voice ends
+        fitted, sync = self.check(track)
+        self.assertTrue(all(abs(x) <= 2 for x in sync["offsets"]), sync)
+
+    def test_rms_gate_keeps_mbp(self):
+        # a phrase-initial "Most": the quiet /m/ hum sits inside a 4-frame quiet run; the press stays, the rest closes
+        toks = [(" ", 0.0, 2 * F), ("m", 2 * F, 4 * F), ("o", 4 * F, 12 * F), (".", 12 * F, 13 * F), (" ", 13 * F, 30 * F)]
+        rms = [0.0] * 2 + [0.002] * 3 + [0.3] * 7 + [0.0] * 18
+        tr = V.mouth_track(toks, 30, FPS, rms=rms)
+        self.assertIn("mbp", tr[:4], runs(tr))
+        P = V.PAUSE
+        before = V.apply_rms_gate(["closed"] * 2 + ["mbp"] * 2 + ["oh"] * 4, [0.3] + [0.0] * 4 + [0.3] * 4, lead_frames=1)
+        self.assertEqual(before, [P, P, "mbp", "mbp", "oh", "oh", "oh", "oh"])
+        # a press left after the last sound ("subscribe.") is not a lead: it closes like the rest of the quiet run
+        after = V.apply_rms_gate(["oh"] * 4 + ["mbp"] * 2 + ["closed"] * 4, [0.3] * 4 + [0.0] * 7, lead_frames=1)
+        self.assertEqual(after, ["oh"] * 3 + [P] * 7)
+
+
 if __name__ == "__main__":
     unittest.main()

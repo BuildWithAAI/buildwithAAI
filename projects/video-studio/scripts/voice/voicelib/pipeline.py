@@ -29,6 +29,16 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 SYNC_OFFSET_TOL = 2
 SYNC_ONSET_RANGE = (-2, 0)
 SYNC_MBP_ONSET_RANGE = (-4, 0)  # LP3: start mbp 1-4 frames before the plosive release
+# Since 2026-11-24 (final check) a landmark outside that range is first moved onto LP3's target
+# (visemes.fit_landmarks, rule 7); the warning stays for anything the move could not fix.
+
+
+def _sync_outside(sync: dict) -> bool:
+    return (
+        any(abs(x) > SYNC_OFFSET_TOL for x in sync["offsets"])
+        or any(not SYNC_ONSET_RANGE[0] <= x <= SYNC_ONSET_RANGE[1] for x in sync["onsets"])
+        or any(not SYNC_MBP_ONSET_RANGE[0] <= x <= SYNC_MBP_ONSET_RANGE[1] for x in sync["mbpOnsets"])
+    )
 
 
 @dataclass
@@ -743,7 +753,18 @@ def build(opts: Options) -> Result:
             b = a + sc["durationMs"] * SAMPLE_RATE // 1000
             audio.write_wav(os.path.join(stage, "scenes", f"{sc['id']}.wav"), norm[a:b], SAMPLE_RATE)
             # lip-sync check on what the viewer hears (the normalized scene audio)
-            sync = visemes.sync_landmarks(sc["mouth"], audio.to_db(audio.frame_rms(norm[a:b], SAMPLE_RATE, opts.fps)))
+            fdb = audio.to_db(audio.frame_rms(norm[a:b], SAMPLE_RATE, opts.fps))
+            sync = visemes.sync_landmarks(sc["mouth"], fdb)
+            if _sync_outside(sync):
+                # rule 7 (2026-11-24, final check): Kokoro's noise makes every take a little different, so a quiet
+                # onset can land outside the tolerance in one build and not the next; move it onto LP3's target
+                fitted = visemes.fit_landmarks(sc["mouth"], fdb, onset_range=SYNC_ONSET_RANGE, mbp_onset_range=SYNC_MBP_ONSET_RANGE, offset_tol=SYNC_OFFSET_TOL)
+                moved = sum(1 for x, y in zip(sc["mouth"], fitted) if x != y)
+                if moved:
+                    debug[sc["id"]]["syncFit"] = {"before": sync, "framesMoved": moved}
+                    debug[sc["id"]]["mouthChangesPerSecond"] = round(visemes.changes_per_second(fitted, opts.fps), 2)
+                    sc["mouth"] = fitted
+                    sync = visemes.sync_landmarks(fitted, fdb)
             debug[sc["id"]]["sync"] = sync
             late = [x for x in sync["offsets"] if abs(x) > SYNC_OFFSET_TOL]
             early = [x for x in sync["onsets"] if not SYNC_ONSET_RANGE[0] <= x <= SYNC_ONSET_RANGE[1]]
@@ -778,7 +799,15 @@ def build(opts: Options) -> Result:
         schema.assert_valid(timeline)
         debug_doc = {
             "g2p": s.g2p,
-            "loudness": {"limiter": ln.get("limiter"), "loudnormType": ln["type"], "loudnormTargets": ln.get("targets"), "pass1": ln.get("pass1"), "result": ln.get("result")},
+            "loudness": {
+                "limiter": ln.get("limiter"),
+                "loudnormType": ln["type"],
+                "loudnormTargets": ln.get("targets"),
+                "truePeakLimited": ln.get("truePeakLimited", False),
+                "trimDb": ln.get("trimDb"),
+                "pass1": ln.get("pass1"),
+                "result": ln.get("result"),
+            },
             "scenes": debug,
         }
         with open(os.path.join(stage, "timeline.json"), "w", encoding="utf-8") as fh:

@@ -25,7 +25,7 @@ export const FRONT = {
 	crotch: -392,
 	legLength: 392, // crotch to sole
 	trouserHem: -54,
-	upperArm: 140, // shoulder pivot to elbow pivot
+	upperArm: 138.5, // shoulder pivot to elbow pivot (repair round 2: elbow pivot at the sleeve centre)
 	forearm: 114, // elbow pivot to wrist pivot
 	handLength: 96, // wrist pivot to fingertips (relaxed)
 	handWidth: 48, // thumb to little-finger edge (relaxed, front view)

@@ -17,7 +17,7 @@
       "id": "s01",
       "type": "hook",
       "segment": "coldOpen",
-      "narration": "According to The Block, the Justice Department is seeking to recover about {$1.17 billion|one point one seven billion dollars} in USDC tied to the October 29 Binance hack [src:theblock].",
+      "narration": "The Block reports the Justice Department is seeking to recover about {$1.17 billion|one point one seven billion dollars} in USDC tied to the Binance hack [src:theblock].",
       "onScreen": {
         "kicker": "Threat Brief",
         "title": "DOJ seeks USDC tied to hack"
@@ -30,7 +30,8 @@
       },
       "badgerBeats": [
         {
-          "reaction": "lookUp"
+          "reaction": "lookUp",
+          "after": "end"
         }
       ]
     },
@@ -38,7 +39,7 @@
       "id": "s02",
       "type": "talk",
       "segment": "headline",
-      "narration": "DefiLlama lists the loss at {$6,360,000,000|six point three six billion dollars} [src:defillama-hacks]. Chainalysis puts it at {$6.4 billion|six point four billion dollars} [src:chainalysis-blog].",
+      "narration": "DefiLlama lists Binance's October 29 loss at {$6,360,000,000|six point three six billion dollars} [src:defillama-hacks]. Chainalysis puts it at {$6.4 billion|six point four billion dollars} [src:chainalysis-blog].",
       "onScreen": {
         "title": "Binance hack, by the numbers",
         "loss": "$6,360,000,000",
@@ -82,13 +83,13 @@
       "id": "s04",
       "type": "talk",
       "segment": "desk",
-      "narration": "Our check: DefiLlama lists 52 incidents in the 30 days to November 24. 14 of them share Binance's DefiLlama classification, frontend and infrastructure, up from 2 in the 30 days before that.",
+      "narration": "Our check, in DefiLlama's public tracker: 52 incidents in the 30 days to November 24. 14 share Binance's classification there, frontend and infrastructure. The 30 days before had 2. A busy month for infrastructure.",
       "onScreen": {
         "title": "Our check",
         "bullets": [
-          "52 incidents in 30 days",
+          "DefiLlama: 52 incidents in 30 days",
           "14 frontend and infrastructure",
-          "Up from 2 the 30 days before"
+          "2 in the 30 days before"
         ]
       },
       "badger": {
@@ -96,7 +97,8 @@
       },
       "badgerBeats": [
         {
-          "reaction": "shocked"
+          "reaction": "slowBlink",
+          "after": "end"
         }
       ],
       "claimWaivers": [
@@ -111,7 +113,7 @@
           "reason": "Own-data analysis a1 (method in storyboard.analysis): the news gate (R7) checks its figures against the counts brief.json computed (analysisOpportunities numbers)."
         },
         {
-          "match": "from 2",
+          "match": "30 days before",
           "rule": "factual",
           "reason": "Own-data analysis a1 (method in storyboard.analysis): the news gate (R7) checks its figures against the counts brief.json computed (analysisOpportunities numbers)."
         }
@@ -127,7 +129,8 @@
       },
       "badgerBeats": [
         {
-          "reaction": "judge"
+          "reaction": "judge",
+          "after": "end"
         }
       ]
     },
@@ -135,7 +138,7 @@
       "id": "s06",
       "type": "talk",
       "segment": "zooOneFix",
-      "narration": "Zoo's one fix: take interviews on a separate device, never on a machine that can reach work keys.",
+      "narration": "Zoo's one fix: if you job-hunt, take interviews on a separate device, never on a machine that can reach work keys.",
       "onScreen": {
         "fix": "Use a separate device for interviews",
         "detail": "Never one that can reach work keys."
@@ -156,10 +159,10 @@
       "title": "DOJ seeks $1.17 billion in USDC tied to Binance hack; Circle could issue replacement tokens (The Block)",
       "url": "https://www.theblock.co/news/regulation/2026-11-23-doj-1-17-billion-usdc-binance-hack-circle-replacement-tokens-445398",
       "publisher": "The Block",
+      "publishedAt": "2026-11-23",
       "accessed": "2026-11-24",
       "status": "verified",
-      "quote": "The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack.",
-      "publishedAt": "2026-11-23"
+      "quote": "The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack."
     },
     {
       "id": "defillama-hacks",
@@ -175,30 +178,30 @@
       "title": "The $6.4 Billion Binance Hack: Tracing the North Korea Link (Chainalysis)",
       "url": "https://www.chainalysis.com/blog/binance-exploit-latest-findings-and-response/",
       "publisher": "Chainalysis",
+      "publishedAt": "2026-10-30",
       "accessed": "2026-11-24",
       "status": "verified",
-      "quote": "Key takeaways Around 4:20 p.m. ET on October 29, 2026, funds began leaving Binance hot wallets across multiple blockchains. Unauthorized… The post The $6.4 Billion Binance Hack: Tracing the North Korea Link appeared first on Chainalysis.",
-      "publishedAt": "2026-10-30"
+      "quote": "Key takeaways Around 4:20 p.m. ET on October 29, 2026, funds began leaving Binance hot wallets across multiple blockchains. Unauthorized… The post The $6.4 Billion Binance Hack: Tracing the North Korea Link appeared first on Chainalysis."
     },
     {
       "id": "rekt-news",
       "title": "Binance - Rekt (rekt.news)",
       "url": "https://rekt.news/binance-rekt",
       "publisher": "rekt.news",
+      "publishedAt": "2026-11-06",
       "accessed": "2026-11-24",
       "status": "verified",
-      "quote": "A fake job interview led to Binance’s signing service, and $6.43 billion left across 11 chains. About $2.85 billion was frozen or intercepted; one delegation kept sweeping after withdrawals stopped. Whose wallet is at the end of the next job interview?",
-      "publishedAt": "2026-11-06"
+      "quote": "A fake job interview led to Binance’s signing service, and $6.43 billion left across 11 chains. About $2.85 billion was frozen or intercepted; one delegation kept sweeping after withdrawals stopped. Whose wallet is at the end of the next job interview?"
     },
     {
       "id": "defillama-30d",
       "title": "DefiLlama hacks: incidents dated 2026-09-26 to 2026-11-24 (DefiLlama)",
       "url": "https://api.llama.fi/hacks",
       "publisher": "DefiLlama",
+      "publishedAt": "2026-11-24",
       "accessed": "2026-11-24",
       "status": "verified",
-      "quote": "Bloom Trading Bot · 2026-10-26 · reported loss $953,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet · chains: Solana",
-      "publishedAt": "2026-11-24"
+      "quote": "Bloom Trading Bot · 2026-10-26 · reported loss $953,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet · chains: Solana"
     }
   ],
   "analysis": [
@@ -249,7 +252,7 @@
     },
     {
       "id": "t3",
-      "text": "Don't run that file",
+      "text": "Use a spare laptop",
       "expression": "shocked",
       "badger": false
     }
