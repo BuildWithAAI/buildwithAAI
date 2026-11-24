@@ -1,8 +1,8 @@
 """Fetch helpers on top of rpc.RPC (stdlib only, no case data).
 
-get_tx(rpc, sig): getTransaction (jsonParsed) asking for version 0 first, as
-most tools do, and retrying with maxSupportedTransactionVersion 1 when the node
-answers -32015 (a version-1 transaction). Both answers are cached by RPC.
+get_tx(rpc, sig): getTransaction (jsonParsed) with maxSupportedTransactionVersion
+1, because wallets in these audits send version-1 transactions, which a
+version-0 request cannot read (-32015). Answers are cached by RPC.
 
 fetch_many(rpc, sigs, log_every=200): fetch a list of signature rows
 (getSignaturesForAddress output), skipping failed ones (row["err"]).
@@ -15,15 +15,15 @@ from rpc import RPCError
 
 
 def get_tx(rpc, sig):
+    """getTransaction (jsonParsed). Asks for maxSupportedTransactionVersion 1,
+    which returns legacy, v0 and v1 transactions alike (with 0, a v1 transaction
+    is refused with -32015, which would cost a second call). A cached answer
+    from an earlier version-0 request is reused."""
+    p0 = [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0, "commitment": "finalized"}]
     p1 = [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1, "commitment": "finalized"}]
-    # If a v1 answer is already cached, use it without a network call.
-    if os.path.exists(rpc._path("getTransaction", p1)):
-        return rpc.call("getTransaction", p1)
-    try:
-        return rpc.get_transaction(sig)
-    except RPCError as e:
-        if "-32015" not in str(e):
-            raise
+    for p in (p1, p0):
+        if os.path.exists(rpc._path("getTransaction", p)):
+            return rpc.call("getTransaction", p)
     return rpc.call("getTransaction", p1)
 
 

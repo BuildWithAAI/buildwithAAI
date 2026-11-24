@@ -9,7 +9,7 @@ import {useCurrentFrame, useVideoConfig} from 'remotion';
 import {BRAND} from '../palette';
 import type {ZooProps} from '../types';
 import {clamp} from './geometry';
-import {ARM_POINT, ARM_REST, armAnglesFor, breathOffset, PIVOTS, POINT_HAND_SWITCH} from './rig';
+import {ARM_POINT, ARM_POINT_WINDUP, ARM_REST, armAnglesFor, breathOffset, PIVOTS, POINT_HAND_SWITCH} from './rig';
 import {Arm} from './parts/Arm';
 import {Head} from './parts/Head';
 import {Legs} from './parts/Legs';
@@ -38,17 +38,29 @@ export type ZooExtraProps = {
 	layer?: TypingLayer;
 	/** Drawn in ZOO's world space between the back and front layers (e.g. a desk and keyboard). */
 	between?: React.ReactNode;
+	/**
+	 * pose="point", front view: 0..1 anticipation before the gesture (the hand draws in toward the hip and
+	 * the wrist cocks, ARM_POINT_WINDUP). Animate it up just before poseAmount starts and back to 0 as the arm
+	 * swings out. Default 0.
+	 */
+	pointWindup?: number;
 };
 
 const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | 'browLift' | 'lookX' | 'lookY' | 'headTilt' | 'poseAmount'>> &
-	Pick<ZooProps, 'mouth' | 'pose'> & {breathe: boolean; breathFrame?: number; showPivots?: boolean}> = (p) => {
+	Pick<ZooProps, 'mouth' | 'pose'> & {breathe: boolean; breathFrame?: number; showPivots?: boolean; pointWindup: number}> = (p) => {
 	const frame = useCurrentFrame();
 	const {fps} = useVideoConfig();
 	const dy = p.breathe ? breathOffset(p.breathFrame ?? frame, fps) : 0;
 	const hem = PIVOTS.torso.y;
 	const sy = 1 + -dy / (hem - PIVOTS.shoulderL.y);
 	const pointing = p.pose === 'point';
-	const leftAngles = pointing ? armAnglesFor(ARM_POINT, p.poseAmount) : ARM_REST;
+	const base = pointing ? armAnglesFor(ARM_POINT, p.poseAmount) : ARM_REST;
+	const w = pointing ? p.pointWindup : 0;
+	const leftAngles = {
+		shoulder: base.shoulder + ARM_POINT_WINDUP.shoulder * w,
+		elbow: base.elbow + ARM_POINT_WINDUP.elbow * w,
+		wrist: base.wrist + ARM_POINT_WINDUP.wrist * w,
+	};
 	const leftHand = pointing && p.poseAmount >= POINT_HAND_SWITCH ? 'point' : 'relaxed';
 	return (
 		<>
@@ -124,6 +136,7 @@ export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
 	typing = false,
 	layer = 'all',
 	between,
+	pointWindup = 0,
 }) => {
 	const head: ViewHeadProps = {
 		expression,
@@ -168,6 +181,7 @@ export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
 			breathe={breathe}
 			breathFrame={breathFrame}
 			showPivots={showPivots}
+			pointWindup={clamp(pointWindup, 0, 1)}
 		/>
 		{layer === 'all' ? between : null}
 	</g>

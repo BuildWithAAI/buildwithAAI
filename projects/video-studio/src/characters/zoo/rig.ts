@@ -82,6 +82,12 @@ export const PIVOTS: Record<PivotName, {x: number; y: number; parent: PivotName 
 export type ArmAngles = {shoulder: number; elbow: number; wrist: number};
 export const ARM_REST: ArmAngles = {shoulder: 0, elbow: 0, wrist: 0};
 export const ARM_POINT: ArmAngles = {shoulder: -36, elbow: -107, wrist: 21};
+/**
+ * Anticipation for the point (optional prop `pointWindup` 0..1, added for the v1 preview): before the
+ * arm swings out, the hand draws in slightly toward the hip and the wrist cocks. Deltas at windup 1.
+ * Positive shoulder/elbow = clockwise = toward the body for the anatomical-left arm.
+ */
+export const ARM_POINT_WINDUP: ArmAngles = {shoulder: 3, elbow: 6, wrist: -8};
 /** poseAmount at which the hand swaps from relaxed to pointing. */
 export const POINT_HAND_SWITCH = 0.35;
 /** Rotation (deg) that maps the pointing-hand drawing (index along +x) into the hand's local frame. */
