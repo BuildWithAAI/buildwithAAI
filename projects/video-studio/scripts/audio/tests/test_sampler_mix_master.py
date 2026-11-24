@@ -66,6 +66,23 @@ class SamplerTest(unittest.TestCase):
         out = s.render_events([(61, 0.0, 1.5, 100)], 1.6)
         self.assertAlmostEqual(cents(partial_hz(out[0], 277.18), 277.1826), 0.0, delta=0.1)
 
+    def test_measured_fractional_roots(self):
+        # a sample measured 4 cents sharp (root 62.04) still plays its own key, shifted down 4 cents,
+        # instead of the root below shifted up two semitones; a flat one (59.9) plays C4 shifted up
+        from audiolib.sampler import Zone
+
+        zones = [Zone(z.path, {60: 59.9, 62: 62.04}[z.root], z.layer, z.rr, z.articulation) for z in self.bank.zones]
+        tuned = SampleBank(zones)
+        s = Sampler(tuned)
+        z, shift = s.pick(tuned, 62, 100, {})
+        self.assertEqual(z.root, 62.04)
+        self.assertAlmostEqual(shift, -0.04, places=9)
+        z, shift = s.pick(tuned, 61, 100, {})
+        self.assertEqual(z.root, 59.9)
+        self.assertAlmostEqual(shift, 1.1, places=9)
+        z, shift = s.pick(tuned, 59, 100, {})  # nothing at or below: the lowest root, shifted down
+        self.assertEqual(z.root, 59.9)
+
     def test_onset_trim_puts_the_note_on_time(self):
         s = Sampler(self.bank)
         out = s.render_events([(60, 0.5, 1.0, 100)], 1.6)

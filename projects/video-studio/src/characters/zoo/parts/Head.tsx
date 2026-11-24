@@ -47,6 +47,9 @@ export const explicitMod = (m: MouthMod): MouthMod => ({
  */
 export const CHEEK_CREASE: Pt[] = [[24.2, -789.4], [27.8, -785.2], [30, -780], [30.6, -775.6]];
 
+/** How far the lip-patch edge rises beside a mouth corner lifted by `corner` u (smiles only; frowns leave it). */
+export const smileOf = (corner: number) => Math.max(0, corner) * 0.4;
+
 /** Per-side brow raise in units for browLift 0..1 (the deadpan raise is one-sided: anatomical left leads). */
 export const browLifts = (browLift: number) => {
 	const b = Math.max(0, Math.min(1, browLift));
@@ -69,7 +72,7 @@ export const Head: React.FC<HeadProps> = ({expression, mouth, blink, browLift, l
 			<Ears />
 			<FaceSkin jawDrop={jaw} />
 			<Mouth shape={shape} mod={mod} spec={mouthSpec} />
-			<Beard hole={hole} jawDrop={jaw} />
+			<Beard hole={hole} jawDrop={jaw} smileR={smileOf(mod.cornerR)} smileL={smileOf(mod.cornerL)} />
 			<Moustache liftR={mod.moustacheLiftR} liftL={mod.moustacheLiftL ?? 0} />
 			{spec.cheek ? (
 				<path data-part="cheekCrease" d={tapered(CHEEK_CREASE, (t) => ZOO_LINE.fine * 1.25 * spec.cheek! * ls * Math.sin(Math.PI * Math.min(1, Math.max(0, t * 0.96 + 0.02))))} fill={ZOO_COLORS.skinShadow} />

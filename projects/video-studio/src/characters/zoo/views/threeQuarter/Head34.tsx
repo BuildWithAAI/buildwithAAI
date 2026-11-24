@@ -15,10 +15,10 @@ import type {Expression, MouthShape} from '../../../types';
 import {clamp, clamp01, lerp, lerpPts, line, safeId, smooth, tapered, type Pt} from '../../geometry';
 import {featureScale, LID_MIN_SCALE, ZOO_LINE} from '../../lines';
 import {EXPRESSIONS, type BrowPose, type EyePose} from '../../rig';
-import {BEARD_BASE, MOUSTACHE, moustachePts} from '../../parts/Beard';
+import {BEARD_BASE, MOUSTACHE, moustachePts, smileShift} from '../../parts/Beard';
 import {BROW_L, BROW_R, browTopIn, posed} from '../../parts/Brows';
 import {CLOSED, HIGHLIGHT, INNER, IRIS, LOWER, OUTER, OUTER_EXT, UPPER, lidProfile} from '../../parts/Eyes';
-import {browLifts, explicitMod} from '../../parts/Head';
+import {browLifts, explicitMod, smileOf} from '../../parts/Head';
 import {Mouth, mouthDrops} from '../../parts/Mouth';
 import {bridgeWidth, nostrilWidth} from '../../parts/Nose';
 import {Clipped, Shape, Stroke, useLineScale} from '../../parts/Shape';
@@ -205,21 +205,26 @@ const posedFar = (pose: BrowPose, lift: number): Pt[] => posed(BROW_L, pose, lif
  * sideburn edge measured on the 3/4 sheet, so the beard meets the hair in front of the near ear.
  */
 const SIDEBURN_EDGE: Pt[] = [[-40, -812.4], [-25, -810.4], [-22.6, -801], [-19.4, -791.4]];
-const beard34 = (hole: number, jawDrop: number): Pt[] => [
+const beard34 = (hole: number, jawDrop: number, smileR = 0, smileL = 0): Pt[] => [
 	...SIDEBURN_EDGE,
 	...BEARD_BASE.slice(2).map((p) => {
+		let x = p[0];
 		let y = p[1];
 		if (Math.abs(p[0]) > 60) y = p[1] + (p[1] > -760 ? jawDrop : 0);
-		else y = p[1] + hole * clamp01((p[1] + 769) / 7);
-		return tqPt(p.length === 3 ? [p[0], y, 'c'] : [p[0], y]);
+		else {
+			const [sx, sy] = smileShift(p, smileR, smileL);
+			x += sx;
+			y = p[1] + hole * clamp01((p[1] + 769) / 7) + sy;
+		}
+		return tqPt(p.length === 3 ? [x, y, 'c'] : [x, y]);
 	}),
 ];
 /** One flat beard shadow: a band along the jaw and under the chin. */
 const BEARD_SHADOW = (jawDrop: number) =>
 	smooth([[-33, -782], [-27, -780], [-20, -768], [-9, -756 + jawDrop * 0.7], [6, -747.6 + jawDrop], [24, -743.4 + jawDrop], [40, -744.6 + jawDrop], [50, -752 + jawDrop], [50, -728], [-33, -728]]);
 
-const Beard34: React.FC<{hole: number; jawDrop: number}> = ({hole, jawDrop}) => {
-	const d = smooth(beard34(hole, jawDrop));
+const Beard34: React.FC<{hole: number; jawDrop: number; smileR?: number; smileL?: number}> = ({hole, jawDrop, smileR = 0, smileL = 0}) => {
+	const d = smooth(beard34(hole, jawDrop, smileR, smileL));
 	return (
 		<g data-part="beard">
 			<Clipped clip={face34Path(jawDrop)}>
@@ -303,7 +308,7 @@ export const Head34: React.FC<Head34Props> = ({expression, mouth, blink, browLif
 			<Ear34 />
 			<Shape name="face" d={face34Path(jaw)} fill={ZOO_COLORS.skin} shadow={{d: FACE_SHADOW, fill: ZOO_COLORS.skinShadow}} stroke={0} />
 			<Mouth shape={shape} mod={mod} project={tqMouth} spec={mouthSpec} />
-			<Beard34 hole={hole} jawDrop={jaw} />
+			<Beard34 hole={hole} jawDrop={jaw} smileR={smileOf(mod.cornerR)} smileL={smileOf(mod.cornerL)} />
 			<Moustache34 liftR={mod.moustacheLiftR} liftL={mod.moustacheLiftL ?? 0} />
 			<path data-part="jawOutline" d={jaw34Outline(jaw)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />
 			<g data-part="nose">

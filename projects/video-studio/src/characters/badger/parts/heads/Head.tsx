@@ -53,7 +53,8 @@ export type HeadViewGeom = {
 	readonly clipMouth: boolean;
 	/** 3/4 views: the lower-jaw contour. */
 	readonly chin: string | null;
-	/** 3/4 views: the bridge line from below the far eye to the nose (full outline weight, as on badger_turn_34.png). */
+	/** 3/4 views: the bridge line from below the far eye to the nose (detail weight since round 4: at full weight it
+	 * boxed the far eye in with the far contour; badger_turn_34.png draws it thin). */
 	readonly bridge?: string | null;
 };
 
@@ -295,7 +296,7 @@ export const Head: React.FC<{view: BadgerHead; state: HeadState}> = ({view, stat
 				<path key={`d${i}`} d={d} {...L.detail} />
 			))}
 			{g.chin ? <path d={g.chin} {...L.stroke} /> : null}
-			{g.bridge ? <path d={g.bridge} {...L.stroke} /> : null}
+			{g.bridge ? <path d={g.bridge} {...L.detail} /> : null}
 			<g clipPath={g.clipMouth ? `url(#${skullClip})` : undefined}>
 				{m.fills.map((x, i) => (
 					<path key={`mf${i}`} d={x.d} fill={col(x.color)} />

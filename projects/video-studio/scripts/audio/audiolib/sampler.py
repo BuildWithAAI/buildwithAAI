@@ -162,7 +162,9 @@ class Sampler:
         shift = 0.0
         if bank.pitched and key is not None:
             roots = sorted({z.root for z in cands if z.root is not None})
-            below = [r for r in roots if r <= key]
+            # "at or below" within half a semitone: a measured root (fractional, e.g. 62.04 for a
+            # sample 4 cents sharp) still plays its own key, instead of the root below shifted up
+            below = [r for r in roots if r <= key + 0.5]
             root = below[-1] if below else roots[0]
             cands = [z for z in cands if z.root == root]
             shift = float(key - root)

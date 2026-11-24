@@ -131,12 +131,25 @@ FRONT = {
         # notch, low points 8 px below it), with only a small upturn at each end; the jaw line leaves the cheek and stops
         # short, outside the smile, instead of running parallel to it (that read as a doubled cheek line and a broad double
         # smile); the lower-lip arc sits about 19 px under the smile's low points, as on the panel
-        'happy': {'strokes': ['M 129 175 C 130 179.5 131.3 183.5 133.2 187', 'M 278 176 C 277 180.5 275.7 184.5 273.8 188',
-                              'M 153 183 C 157 196 164 207 175 211 C 187 215 199 213 208 206 C 217 213 229 215 241 211 C 252 207 259 196 263 183'],
-                  'details': ['M 153 183 C 151.8 181 151.6 178.8 152.4 176.8', 'M 263 183 C 264.2 181 264.4 178.8 263.6 176.8',
-                              'M 178 224.5 C 193 233.5 223 233.5 238 224.5'], 'fills': []},
-        'worried': {'strokes': ['M 129 175 C 137 190 147 205 161 215 C 176 216 192 222 208 217 C 222 213 238 220 252 215 C 261 204 270 191 278 176'],
-                    'details': ['M 190 231 C 200 228 216 228 226 231'], 'fills': []},
+        # happy, round-4 repair (R3 review minor): the R3 jaw stubs left the face contour at the jaw corners and stopped in
+        # round caps (a thorn on each side of the face outline), and the 3.5-unit end curls, separate detail strokes folding
+        # back over the smile's end, read as knobs. badger_expr_happy.png has a smooth face contour (it runs on into the neck
+        # line) and single-line curls: the stubs are gone and each curl is the smile stroke itself, continued 9.5 px up past
+        # its end along its own curvature (tangent-continuous at (153, 183) / (263, 183), the tip leaning slightly out).
+        'happy': {'strokes': ['M 150.8 173.5 C 150.9 176.5 151.6 179.6 153 183 C 157 196 164 207 175 211 C 187 215 199 213 208 206 '
+                              'C 217 213 229 215 241 211 C 252 207 259 196 263 183 C 264.4 179.6 265.1 176.5 265.2 173.5'],
+                  'details': ['M 178 224.5 C 193 233.5 223 233.5 238 224.5'], 'fills': []},
+        # worried, round-4 repair (R3 review minor): it was a nearly straight bar right across the lower face, meeting both
+        # cheek contours at hard corners (91 NF px wide against the neutral mouth's 67) with a short frown floating 14 px
+        # below, so the lower face read as a box jaw. badger_expr_worried.png (column scans) draws the same closed LENS as
+        # the neutral panel (upper lip 10.5 px above the corners at the middle, lower lip 7.5 px below them) but narrower,
+        # with the cheek lines running steeply straight into drooping corners (no gull-wing hook). Retraced as the neutral
+        # construction with the corners 4.5 px (2.5 units) lower and 4 px further in each side (59 px wide), the lower lip
+        # 7 px under the corners, the cheek contours running into the corners; the floating frown is gone.
+        'worried': {'strokes': ['M 129 175 C 139 192 158 212 178.5 224.5 C 187 218 198 211.5 208 210.5 C 218 211.5 229 218 237.5 224.5 '
+                                'C 258 212 270 193 278 176',
+                                'M 178.5 224.5 C 188 229.5 198 231.5 208 231.5 C 218 231.5 228 229.5 237.5 224.5'],
+                    'details': [], 'fills': []},
         # shocked: the round-3 gasp (SHOCKED MOUTH above) under the philtrum; the jaw contour stays continuous below it
         'shocked': {'strokes': ['M 129 175 C 138 196 152 216 172 230 C 186 239 198 243 208 243 C 220 243 233 238 245 230 '
                                 'C 263 217 272 196 278 176',
@@ -417,8 +430,8 @@ def fix_three_quarter(view, theta, fFace):
     m['neutral']['strokes'] = [mp(drop_far(trim(src['neutral']['strokes'][0], tt)), fFace)]
     m['worried']['strokes'] = [mp(drop_far(trim(src['worried']['strokes'][0], tt)), fFace)]
     # happy: the smile only (clipped to the skull; the far end disappears behind the muzzle)
-    m['happy']['strokes'] = [mp(src['happy']['strokes'][2], fFace)]
-    m['happy']['details'] = [mp(src['happy']['details'][0 if right else 1], fFace)]
+    m['happy']['strokes'] = [mp(src['happy']['strokes'][0], fFace)]
+    m['happy']['details'] = []
     # shocked: only the open mouth; the front's jaw line would leave stray dashes beside it in a 3/4 turn
     m['shocked']['strokes'] = [mp(src['shocked']['strokes'][-1], fFace)]
     # far eye and brow: 0.72 of the near eye width (was 0.86), brow compressed toward the eye centre
@@ -510,12 +523,70 @@ TQ_SKULL_TOP_FAR = (TQ_CROWN_UNDER_EAR + '-29.4 -102.2 C -19.4 -105.6 -7.6 -107.
                     'C 44.8 -48.8 47.8 -44.6 50.4 -41.2 C 51.6 -39.2 52.1 -35.5 52.2 -31.5 C 52.3 -27.5 52.4 -24.2 52.9 -21.6 '
                     'C 53.5 -18.5 53.2 -14.6 51.6 -11.2 C 50 -7.8 47 -4.4 42.6 -2.3 C 37.5 0 30 0.7 23.5 0.3 '
                     'C 17.5 -0.1 12 -1.6 8 -3.4')
+# Round-4 repair (R3 review minor): the near cheek stroke started 3 units beside the near ear's bottom-inner corner (a
+# visible round-cap tick), and above it the skull fill's near edge ran 2-5 units inside the ear's inner edge, so a wedge of
+# background (up to 3 units, rows -78 .. -62) showed between the pale ear and the face on the screen-right head.
+# badger_turn_34.png runs the near cheek contour out from under the ear's bottom corner. Now the cheek stroke STARTS UNDER
+# THE EAR (2.5 units inside its inner edge), passes the ear's bottom-inner corner (-59.2, -56.2) and rejoins the old cheek
+# line at (-51.4, -31.7) along its own tangent; the skull fill's near edge follows the new cheek line 1.2 units inside and
+# then runs up under the ear (1.5 units inside its inner edge) to the old root at (-51.57, -88), so no background shows
+# between ear and face at any ear fold. Unmarked geometry: the screen-left head uses it with x -> -x (D36), where it lies
+# under the dark ear (checked: 3+ units inside its inner edge from row -92 to its corner).
+TQ_NEAR_CHEEK = ('M -61.2 -65 C -60.9 -60.2 -60.1 -56.2 -59.1 -52.4 C -57.6 -46.3 -55.2 -38.8 -51.4 -31.7 '
+                 'C -49.3 -27.8 -47.2 -25 -44.6 -22.2 C -43 -20 -41.6 -18.2 -40.2 -16.6')
+TQ_EAR_INNER_R = [(-58.9, -60), (-58.25, -64), (-57.5, -68), (-56.5, -72), (-55.25, -76), (-54.0, -80), (-52.25, -84), (-49.75, -88)]
+
+
+def _tq_near_edge():
+    """The skull fill's near edge from (-46.5, -29.4) up to (-51.57, -88): 1.2 units inside the (new) near cheek stroke,
+    then 1.5 units inside the near ear's inner edge (round 4). Returned as cubic segments ('C ...') through the points."""
+    segs = TQ_NEAR_CHEEK.replace('M ', '').split(' C ')
+    p0 = tuple(float(v) for v in segs[0].split())
+    c = [tuple(float(v) for v in segs[1].split()[i:i + 2]) for i in (0, 2, 4)]
+    pts = []
+    q0 = p0
+    for seg in segs[1:3]:
+        v = [float(t) for t in seg.split()]
+        a, b, e = (v[0], v[1]), (v[2], v[3]), (v[4], v[5])
+        for k in range(0, 21):
+            t = k / 20
+            u = 1 - t
+            x = u ** 3 * q0[0] + 3 * u * u * t * a[0] + 3 * u * t * t * b[0] + t ** 3 * e[0]
+            y = u ** 3 * q0[1] + 3 * u * u * t * a[1] + 3 * u * t * t * b[1] + t ** 3 * e[1]
+            dx = 3 * u * u * (a[0] - q0[0]) + 6 * u * t * (b[0] - a[0]) + 3 * t * t * (e[0] - b[0])
+            dy = 3 * u * u * (a[1] - q0[1]) + 6 * u * t * (b[1] - a[1]) + 3 * t * t * (e[1] - b[1])
+            L = math.hypot(dx, dy) or 1
+            # inside = to the right of the downward-running near cheek (+x side of its normal)
+            pts.append((x - dy / L * 1.2 * (-1), y + dx / L * 1.2 * (-1)))
+        q0 = e
+    # keep the offset curve from the old fill corner (y -29.4) up to the ear's corner, then hug the ear's inner edge
+    run = [p for p in pts if -57.5 <= p[1] <= -31.0]
+    run.sort(key=lambda p: -p[1])
+    run = run[::5] + ([run[-1]] if (len(run) - 1) % 5 else [])
+    ear = [(x - 1.5, y) for x, y in TQ_EAR_INNER_R]
+    P = [(-46.5, -29.4)] + run + ear + [(-51.57, -88.0)]
+    out = []
+    for i in range(len(P) - 1):
+        a0 = P[i - 1] if i else P[i]
+        a1, a2 = P[i], P[i + 1]
+        a3 = P[i + 2] if i + 2 < len(P) else a2
+        c1 = (a1[0] + (a2[0] - a0[0]) / 6, a1[1] + (a2[1] - a0[1]) / 6)
+        c2 = (a2[0] - (a3[0] - a1[0]) / 6, a2[1] - (a3[1] - a1[1]) / 6)
+        out.append('C %.2f %.2f %.2f %.2f %.2f %.2f' % (c1 + c2 + a2))
+    return ' '.join(out)
+
+
 TQ_SKULL_NEAR_BOTTOM = ('C 9.4 0.2 9.6 4.4 7.2 7.6 C 3.6 10 -3.4 9.9 -9.6 7.6 C -16.6 4.6 -21.6 -1 -25.6 -6.6 '
                         'C -30 -12.6 -34.4 -16.6 -38.6 -21.1 C -41.2 -23.3 -43.8 -25.6 -46.5 -29.4 '
-                        'C -51.3 -37.2 -54.6 -50 -54.1 -63.9 L -51.57 -88 C -50.98 -93.66 -44.17 -95.52 -39.1 -98.1 Z')
+                        + _tq_near_edge() + ' C -50.98 -93.66 -44.17 -95.52 -39.1 -98.1 Z')
 TQ_SKULL_FILL = TQ_SKULL_TOP_FAR + ' ' + TQ_SKULL_NEAR_BOTTOM
-TQ_NEAR_CHEEK = 'M -55.9 -61.7 C -56.4 -50 -54.9 -38.9 -51.4 -31.7 C -49.3 -27.8 -47.2 -25 -44.6 -22.2 C -43 -20 -41.6 -18.2 -40.2 -16.6'
-TQ_BRIDGE = 'M 31.6 -55 C 36.4 -51.4 41.6 -47 46.6 -42.4 C 47.6 -41.4 48.4 -40.4 49 -39.4'
+# round 4: the bridge starts 2.5 units further in, under the far eye's new place (TQ_FAR_EYE_IN), and keeps its end at the nose
+TQ_BRIDGE = 'M 29.1 -55 C 34.4 -51.3 40.4 -46.9 46.6 -42.4 C 47.6 -41.4 48.4 -40.4 49 -39.4'
+# Round-4 repair (R3 review minor): the far eye's outer corner touched the far contour, and with the full-weight bridge the
+# three lines made a dark knot; badger_turn_34.png draws the far eye as a full almond with white between it and the contour
+# (eye-aligned row scans: the far contour sat about 3 crop px, 2.8 units, too close to the far iris). The far eye and its
+# brow move 2.5 units toward the face centre; the bridge is drawn at detail weight (parts/heads/Head.tsx).
+TQ_FAR_EYE_IN = 2.5
 TQ_NOSE = ('M 39 -38.8 C 45.3 -39 50.6 -37.6 52.6 -33.8 C 54.1 -30.4 53.2 -26.1 50.2 -23.7 C 47.5 -21.7 44 -21 41.2 -21.3 '
            'C 37.8 -21.6 33.1 -23.2 30.3 -26.4 C 27.9 -29.2 28.1 -33.6 30.7 -36.2 C 32.9 -38.2 35.8 -38.8 39 -38.8 Z')
 TQ_PHILTRUM = 'M 41.3 -21.6 C 41 -17.7 40.6 -14.3 40.3 -11.2'
@@ -525,8 +596,11 @@ TQ_SHOCK_OPEN, TQ_SHOCK_TONGUE = (map_path(d, lambda x, y: (x, y)) for d in shoc
 TQ_MOUTH = {
     'neutral': {'strokes': ['M -17.5 -11.5 C -12.5 -7 -6.5 -4.6 1 -4.3 C 10 -4 21 -6 31 -7.8 C 37 -8.9 42 -9.8 45.6 -10.6'],
                 'details': [], 'fills': []},
-    'happy': {'strokes': ['M -18.6 -14.2 C -13.6 -7.2 -6.6 -3.8 1.6 -3.3 C 12.2 -2.6 24.2 -4.8 33.6 -7.4 C 38.6 -8.8 42.6 -10.4 46.2 -12.4'],
-              'details': ['M -18.6 -14.2 C -20.3 -16 -20.9 -18.4 -20.3 -20.8'], 'fills': []},
+    # round 4: the near curl is the smile stroke continued up past its end (tangent-continuous), not a separate detail stroke
+    # folding back over it (that read as a knob)
+    'happy': {'strokes': ['M -20.6 -20.4 C -20.5 -18.4 -19.9 -16.1 -18.6 -14.2 C -13.6 -7.2 -6.6 -3.8 1.6 -3.3 C 12.2 -2.6 24.2 -4.8 33.6 -7.4 '
+                          'C 38.6 -8.8 42.6 -10.4 46.2 -12.4'],
+              'details': [], 'fills': []},
     'worried': {'strokes': ['M -16.2 -5.2 C -12.6 -7.4 -7 -6.8 0 -6.2 C 9 -5.6 19 -7.2 29 -8.4 C 35.6 -9.1 41 -9.8 45.6 -10.6'],
                 'details': [], 'fills': []},
     # round 3: the same gasp, foreshortened for the turn (near half 0.86, far half 0.59 of the front's width, height 0.76 so
@@ -559,6 +633,16 @@ def rebuild_three_quarter(view, theta):
     m = (lambda d: d) if right else _mx
     g['skull']['fill'] = m(TQ_SKULL_FILL)
     g['skull']['strokes'] = [m(TQ_SKULL_TOP_FAR), m(TQ_NEAR_CHEEK)]
+    # the far eye (anatomical left in the screen-right turn) and its brow move toward the face centre
+    far_eye_side = 'L' if right else 'R'
+    inward = -TQ_FAR_EYE_IN if right else TQ_FAR_EYE_IN
+    for e in g['eyes']:
+        if e['side'] == far_eye_side:
+            e['c'] = {'x': round(e['c']['x'] + inward, 2), 'y': e['c']['y']}
+    for b in g['brows']:
+        if b['side'] == far_eye_side:
+            for k in ('outer', 'mid', 'inner'):
+                b[k] = {'x': round(b[k]['x'] + inward, 2), 'y': b[k]['y']}
     g['skull']['details'] = []
     g['bridge'] = m(TQ_BRIDGE)
     g['chin'] = None

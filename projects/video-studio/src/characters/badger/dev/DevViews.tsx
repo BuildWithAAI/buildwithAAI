@@ -177,7 +177,7 @@ const SpotsRight: React.FC<{scale: number; ox: number; oy: number}> = ({scale, o
 				);
 			})}
 			<text x={20} y={34} fontFamily="sans-serif" fontSize={18} fill={BRAND.nearBlack}>
-				{`BADGER right side: ${RIGHT_SPOTS.filter((s) => s.side === 'right').length} R- spots + the right lobe of L-WITHERS (coat_right + coat_top, decision D16)`}
+				{`BADGER right side: ${RIGHT_SPOTS.filter((s) => s.side === 'right').length} R- spots + the right lobe of L-WITHERS (coat_right + coat_top, decision D16) + the far forearm's L-09 edge record`}
 			</text>
 		</svg>
 	</AbsoluteFill>

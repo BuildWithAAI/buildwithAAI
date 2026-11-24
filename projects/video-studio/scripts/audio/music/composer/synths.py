@@ -8,8 +8,8 @@ Track source. Everything is seeded and deterministic.
     Pulse       plucky pulse/saw arpeggiator voice with a per-note filter envelope (SVF)
     BrassStab   detuned saw stack with a fast filter envelope and saturation (late-night hits)
     Sub         sine sub bass with glide (engine sub_bass)
-    SynthKick   tuned kick per hit (engine kick), velocity-scaled; kick_tuning() tunes each hit to the bass
-    FingerBass  the bass: a finger-plucked string (Karplus-Strong loop, triangle + noise excitation shaped per note)
+    SynthKick   the kick (engine kick), velocity-scaled; kick_tuning() gives every hit one fixed body pitch (52 Hz)
+    FingerBass  the bass: a finger-plucked string (waveguide loop with frequency-dependent loss, finger excitation)
     MutedGuitar plucked-string model voiced as a palm-muted electric guitar
 Audio helpers (not Part-based): reverse_swell, noise_swell, place.
 """
@@ -248,9 +248,8 @@ class Sub:
 
 @dataclass
 class SynthKick:
-    """A tuned kick per hit. f_end is the body pitch (Hz): 55 (A1) sits under a D-minor bass line.
-    A hit whose note carries meta `tune_hz` (see `kick_tuning`) is tuned to that pitch instead, so
-    the kick's body never beats against the bass note above it.
+    """A synth kick. f_end is the body pitch (Hz); a hit whose note carries meta `tune_hz` (see
+    `kick_tuning`: since critic round 2 one fixed 52 Hz for every hit) is tuned to that instead.
 
     Critic round 1 (KICK-FIX): the body decays in 0.11 s (was 0.2 s, an 808-style boom that rang
     into the bass and beat against B-flat, A-flat and G roots at 3-6 Hz) with 2 dB of drive (was 4)."""
@@ -300,10 +299,24 @@ def kick_pitch_for(bass_midi: int, default_hz: float = 55.0, lo: float = KICK_RA
     return default_hz
 
 
-def kick_tuning(score, kick: str = "kick", bass: str = "bass", default_hz: float = 55.0) -> int:
-    """Tune every hit in `kick` to the bass note sounding with it (meta `tune_hz`): the note held
-    at the hit, else the next one starting within half a beat. Run before humanising (it reads
-    the written beats). Returns how many hits were tuned away from `default_hz`."""
+KICK_FIXED_HZ = 52.0
+
+
+def kick_tuning(score, kick: str = "kick", bass: str = "bass", default_hz: float = 55.0, fixed_hz: float | None = KICK_FIXED_HZ) -> int:
+    """Tune the hits in `kick` (meta `tune_hz`). Returns how many hits were tuned away from `default_hz`.
+
+    fixed_hz (the default, critic round 2): every hit gets the same body pitch, 52 Hz. Retuned per
+    hit, the kick's spectral peak wandered over 61-75 Hz (3.6 semitones in the theme), an 808 idiom
+    the direction rules out; with its 0.11 s body any beat against the bass lasts under one cycle.
+    fixed_hz=None (round 1): each hit follows the bass note sounding with it (the note held at the
+    hit, else the next one starting within half a beat; kick_pitch_for). Run before humanising (it
+    reads the written beats)."""
+    if fixed_hz is not None:
+        if kick not in score.parts:
+            return 0
+        for h in score.parts[kick].notes:
+            h.meta["tune_hz"] = float(fixed_hz)
+        return len(score.parts[kick].notes) if abs(fixed_hz - default_hz) > 1e-6 else 0
     if kick not in score.parts or bass not in score.parts:
         return 0
     notes = sorted(score.parts[bass].notes, key=lambda x: x.start)
@@ -327,39 +340,79 @@ def muted_guitar(seed: str = "mgtr"):
                              body=(220.0, 3.0), mono=False, gain_db=0.0, seed=seed)
 
 
-def finger_pluck(midi: float, dur: float, vel: float = 0.8, sr: int = SR, t60: float = 3.5, damping: float = 0.55, pick_pos: float = 0.22,
-                 release: float = 0.06, tail: float = 0.25, harm_cut: float = 6.0, noise_mix: float = 0.5, seed: str = "finger") -> np.ndarray:
-    """One finger-plucked string note, mono: the engine's extended Karplus-Strong loop
-    (audiolib.synth.pluck: the same 3-tap loss and tuning filter, so the pitch and decay are exact)
-    with a different excitation.
+STRING_KNEE_HZ = 230.0  # FingerBass: a partial at this frequency decays twice as fast as the fundamental
 
-    The engine's excitation is a burst of noise low-passed at 600 Hz or more, whatever the note: for
-    a 55 Hz string that is 11-30 harmonics at equal strength, which reads mid-heavy and clavinet-like
-    (critic round 1: 44 % of the bass's power at 1-4 kHz, only 11 % under 150 Hz). A finger pushes
-    the string into a smooth triangle (its harmonics fall as 1/n^2), and the contact adds a little
-    noise. So the excitation here is a triangle peaked at the pick position, mixed (`noise_mix`) with
-    noise that is low-passed at `harm_cut` times the fundamental and comb-filtered at the pick
-    position; harder plucks open that cut a little. Measured on the theme's bass line, after the
-    bass strip (critic round 1 acceptance: <= -15 dB of the power at 1-4 kHz, >= -4 dB under 150 Hz):
-    -16.3 dB and -0.6 dB with the band strip's 2.5 kHz low-pass, -19.0 dB and -0.6 dB with the
-    beds' 1.5 kHz."""
+
+def string_loss(f0: float, t60: float, knee_hz: float = STRING_KNEE_HZ, sr: int = SR) -> tuple:
+    """(g, a) of the one-pole loss filter g (1 - a) / (1 - a z^-1) in a string loop at `f0`: the
+    fundamental decays to -60 dB in `t60` seconds and a partial at f decays at about
+    R0 (1 + (f / knee_hz)^2) dB/s (R0 = 60 / t60; matched exactly at 2 * knee_hz), as a real string's
+    losses grow with frequency. Per period the loop takes |H| of a partial, so its decay rate is
+    -20 log10 |H(f)| * f0 dB/s."""
+    r0 = 60.0 / max(t60, 0.01)
+    g = 10 ** (-r0 / (20.0 * f0))
+    fr = min(2.0 * knee_hz, 0.4 * sr)
+    q = 10 ** (r0 * (fr / knee_hz) ** 2 / (10.0 * f0))
+    c = math.cos(2 * math.pi * fr / sr)
+    b = 2.0 * (q - c) / (q - 1.0)
+    a = (b - math.sqrt(b * b - 4.0)) / 2.0
+    return g, a
+
+
+def _allpass_delay(eta: float, w: float) -> float:
+    """Phase delay (samples) at w of the first-order allpass (eta + z^-1) / (1 + eta z^-1)."""
+    ph = math.atan2(-math.sin(w), eta + math.cos(w)) - math.atan2(-eta * math.sin(w), 1 + eta * math.cos(w))
+    return -ph / w
+
+
+def _allpass_for(d: float, w: float) -> float:
+    """The allpass coefficient whose phase delay at w is d samples (Thiran's start, then secant steps)."""
+    e0 = (1 - d) / (1 + d)
+    e1 = e0 + 1e-4
+    f0, f1 = _allpass_delay(e0, w) - d, _allpass_delay(e1, w) - d
+    for _ in range(6):
+        if abs(f1) < 1e-10 or f1 == f0:
+            break
+        e0, e1 = e1, e1 - f1 * (e1 - e0) / (f1 - f0)
+        f0, f1 = f1, _allpass_delay(e1, w) - d
+    return e1
+
+
+def finger_pluck(midi: float, dur: float, vel: float = 0.8, sr: int = SR, t60: float = 3.5, knee_hz: float = STRING_KNEE_HZ, pick_pos: float = 0.22,
+                 release: float = 0.06, tail: float = 0.25, harm_cut: float = 6.0, noise_mix: float = 0.5, seed: str = "finger") -> np.ndarray:
+    """One finger-plucked string note, mono: a digital-waveguide string (Karplus-Strong loop) with a
+    frequency-dependent loss and a finger excitation.
+
+    The loop (critic round 2): a delay of N samples, a first-order allpass for the fractional delay and
+    a one-pole loss low-pass (string_loss), so each partial decays exponentially at its own rate,
+    faster the higher it is: with the default knee (230 Hz) and t60 3.5 s, the 8th and 16th harmonics
+    decay 3.1 and 7.8 times faster than the fundamental on E1, 4.4 and 11 times on A1, 6.4 and 16
+    times on D2 (measured; the critic asked for at least 3 and 5). The round-1 string used the
+    engine's 3-tap loss filter, which is almost flat at 30-90 Hz, so every harmonic decayed at the
+    fundamental's 17 dB/s and the note kept its attack brightness to the note-off: an organ's static
+    spectrum, not a plucked string's. The total loop delay at f0 (N + the allpass's and the low-pass's
+    phase delays) is exactly sr / f0, so the fundamental is in tune; the upper partials sit a few
+    cents flat-to-sharp of harmonic, as a real string's do.
+
+    The excitation (round 1): a finger pushes the string into a smooth triangle (harmonics falling as
+    1/n^2), mixed (`noise_mix`) with contact noise low-passed at `harm_cut` times the fundamental and
+    comb-filtered at the pick position; harder plucks open that cut a little. The note is muted `dur`
+    seconds in with a `release` fade and rendered for dur + release + `tail`. The recursion runs one
+    loop length at a time (every sample depends only on samples N or more earlier), with the filters'
+    states carried across blocks."""
     from scipy.signal import lfilter
 
     f0 = float(midi_to_hz(midi))
     period = sr / f0
-    s = float(np.clip(damping, 0.0, 0.95))
-    target = period - s
-    L = int(np.floor(target))
-    frac = target - L
-    if L < 3:
+    g, a = string_loss(f0, t60, knee_hz, sr)
+    w0 = 2 * math.pi * f0 / sr
+    tau_lp = math.atan2(a * math.sin(w0), 1 - a * math.cos(w0)) / w0
+    N = int(math.floor(period - tau_lp - 0.5))
+    if N < 8:
         raise ValueError("pitch too high for this string model at this sample rate")
-    g = 10 ** (-3.0 / (f0 * max(t60, 0.01)))
-    c0 = g * (1 - frac) * (1 - s)
-    c1 = g * ((1 - frac) * s + frac * (1 - s))
-    c2 = g * frac * s
+    eta = _allpass_for(period - tau_lp - N, w0)
     n = int(round((dur + release + tail) * sr))
-    y = np.zeros(n + L + 2)
-    off = L + 2
+    L = max(4, int(round(period)))  # one period of string displacement
     v = float(np.clip(vel, 0.0, 1.0))
     p = float(np.clip(pick_pos, 0.05, 0.95))
     x = np.arange(L) / L
@@ -368,21 +421,29 @@ def finger_pluck(midi: float, dur: float, vel: float = 0.8, sr: int = SR, t60: f
     tri /= max(float(np.max(np.abs(tri))), 1e-12)
     nz = rng("finger", seed, midi, round(dur, 4), round(v, 4)).uniform(-1, 1, L)
     cut = min(harm_cut * f0 * (0.5 + 0.8 * v), 0.45 * sr)
-    a = math.exp(-2 * math.pi * cut / sr)
-    nz = lfilter([1 - a], [1, -a], np.concatenate([nz, nz]))[L:]  # settled one-pole low-pass
+    c1 = math.exp(-2 * math.pi * cut / sr)
+    nz = lfilter([1 - c1], [1, -c1], np.concatenate([nz, nz]))[L:]  # settled one-pole low-pass
     k = max(1, int(round(p * L)))
     nz = nz - np.concatenate([np.zeros(k), nz[:-k]])
     nz /= max(float(np.max(np.abs(nz))), 1e-12)
     exc = (1.0 - noise_mix) * tri + noise_mix * nz
     exc -= exc.mean()
     exc *= v / max(float(np.max(np.abs(exc))), 1e-12)
-    y[off : off + L] = exc
+    y = np.zeros(n + N)
+    off = N  # y[off + i] is output sample i; the first N values are the string before the pluck
+    m = min(L, n)
+    y[off: off + m] = exc[:m]
+    b_ap, a_ap = [eta, 1.0], [1.0, eta]
+    b_lp, a_lp = [g * (1.0 - a)], [1.0, -a]
+    zi_ap, zi_lp = np.zeros(1), np.zeros(1)
     pos = off
     while pos < off + n:
-        end = min(pos + L, off + n)
-        y[pos:end] += c0 * y[pos - L : end - L] + c1 * y[pos - L - 1 : end - L - 1] + c2 * y[pos - L - 2 : end - L - 2]
+        end = min(pos + N, off + n)
+        u, zi_ap = lfilter(b_ap, a_ap, y[pos - N: end - N], zi=zi_ap)
+        w, zi_lp = lfilter(b_lp, a_lp, u, zi=zi_lp)
+        y[pos:end] += w
         pos = end
-    out = y[off : off + n]
+    out = y[off: off + n]
     m0 = int(round(dur * sr))
     if m0 < n:
         rt = np.arange(n - m0)
@@ -396,7 +457,7 @@ class FingerBass:
     a body resonance (Hz, dB). Same interface as the engine's PluckString."""
 
     t60: float = 3.5
-    damping: float = 0.55
+    knee_hz: float = STRING_KNEE_HZ
     pick_pos: float = 0.22
     release: float = 0.06
     harm_cut: float = 6.0
@@ -416,7 +477,7 @@ class FingerBass:
             if s0 >= n:
                 continue
             v = (max(1, vel) / 127.0) ** 1.4
-            note = finger_pluck(m, dur, v, sr, self.t60, self.damping, self.pick_pos, self.release, harm_cut=self.harm_cut,
+            note = finger_pluck(m, dur, v, sr, self.t60, self.knee_hz, self.pick_pos, self.release, harm_cut=self.harm_cut,
                                 noise_mix=self.noise_mix, seed=f"{self.seed}-{i}")
             k = min(n - s0, note.shape[0])
             out[s0 : s0 + k] += note[:k]

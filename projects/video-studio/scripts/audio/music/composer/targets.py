@@ -65,7 +65,7 @@ def write_targets(path: Path) -> Path:
     return path
 
 
-AAC_VARIANTS = 4  # extra encodes of last-bit dither variants, on top of the file itself
+AAC_VARIANTS = 9  # extra encodes of last-bit dither variants, on top of the file itself (10 in all; critic round 2: 5 was seed-dependent)
 
 
 def _encode_peak(exe: str, wav: Path, bitrate: str) -> float | None:

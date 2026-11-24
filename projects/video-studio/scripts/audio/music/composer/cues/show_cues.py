@@ -19,14 +19,26 @@ from composer import synths as S
 from composer.cues import common as C
 from composer.cues.theme import BADGER_KICK, BADGER_XSTICK, STING_FADERS, Theme
 from composer.instruments import K
-from composer.render import Arrangement, swell
+from composer.render import STING_CEILING_DBTP, Arrangement, swell
 
 BUMPER_BUS = [C.PK(250, -1.0, 0.9), C.PK(1000, -1.0, 1.0), C.PK(4500, 2.0, 0.7), C.HS(9000, 1.5)]
 
+# Critic round 2: the bumpers' first hit sat at sample 0 (only theme-5s had a pre-roll), so a fade-in or
+# a trim a frame early ate the attack. Every bumper now starts with two video frames of silence; the
+# file keeps its length and its metadata records the downbeat (downbeatSec, downbeatStartFrame()).
+BUMPER_PRE_ROLL = 2 / 30.0
+# The stings master at render.STING_CEILING_DBTP (-1.5 dBTP; the engine's sting preset says -1.0): at -1.0
+# the show sting decoded at -1.0 dBTP from Opus 128k and Scam of the Week at -0.7 from AAC 128k (critic
+# round 2). Scam of the Week, the densest landing, masters 0.5 dB lower again.
+SCAM_CEILING_DBTP = -2.0
 
-def _arr(cid: str, th: Theme, length: float, preset: str = "sting", fade: float = 0.5, faders: dict | None = None, swing: bool = True) -> Arrangement:
+
+def _arr(cid: str, th: Theme, length: float, preset: str = "sting", fade: float = 0.5, faders: dict | None = None, swing: bool = True,
+         pre_roll: float = BUMPER_PRE_ROLL, ceiling: float = STING_CEILING_DBTP) -> Arrangement:
+    """A bumper (or the show sting with pre_roll=0): `length` is the delivered file's length, pre-roll included."""
     th.finish(cid, swing=swing)
-    return Arrangement(cid, th.s, length, th.tracks({**STING_FADERS, **(faders or {})}), preset=preset, reverbs=C.reverbs(), fade_out=fade, bus_eq=BUMPER_BUS)
+    return Arrangement(cid, th.s, length - pre_roll, th.tracks({**STING_FADERS, **(faders or {})}), preset=preset, reverbs=C.reverbs(), fade_out=fade,
+                       bus_eq=BUMPER_BUS, pre_roll=pre_roll, ceiling_dbtp=ceiling)
 
 
 def _add_eq(arr: Arrangement, track: str, *bands) -> None:
@@ -130,7 +142,7 @@ def scam_of_the_week() -> Arrangement:
     line_t = 2.0 + 1.25
     P["vibes"].note("E5", line_t, 0.45, 76)       # the glint: a tritone fall
     P["vibes"].note("Bb4", line_t + 0.5, 1.4, 70)
-    return _arr("bumper-scam-of-the-week", th, 3.4, fade=0.5)
+    return _arr("bumper-scam-of-the-week", th, 3.4, fade=0.5, ceiling=SCAM_CEILING_DBTP)
 
 
 def developing() -> Arrangement:
@@ -226,7 +238,7 @@ def show_intro_sting() -> Arrangement:
     P["piano"].note("D1", STING_HIT2, 1.6, 66)
     P["piano"].note("D2", STING_HIT2, 1.6, 66)
     P["piano"].sustain(STING_HIT2 + 0.02, 3.6)
-    return _arr("intro-sting-show", th, 4.0, fade=0.6, swing=False)
+    return _arr("intro-sting-show", th, 4.0, fade=0.6, swing=False, pre_roll=0.0)  # timed to the sting's frames from sample 0
 
 
 # ------------------------------------------------------------------------------------------ end screen

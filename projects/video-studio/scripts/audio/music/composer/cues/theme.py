@@ -106,8 +106,14 @@ B_VIOLINS = {4: "G5", 5: "A5", 6: "Bb5", 7: "C#6"}
 # shared a track with, so on the button it sat 26-40 dB under the mix: now a dry click a phone carries
 BADGER_XSTICK = (96, 88)
 BADGER_XSTICK_DB = 1.0
-# Badger's octave-up pizzicato double (E-flat 4 to D4), its own track: fader dB
-BADGER_MID_DB = 11.0
+# Badger's octave-up pizzicato double (E-flat 4 to D4), its own track: fader dB. Critic round 2: at
+# +11 dB it peaked 6-7 dB over every other stem on his notes, so the master limiter took 8-10 dB off
+# the whole mix there (theme-full 8.3 dB, theme-15s 9.9 dB), and the figure read mid-register instead
+# of as his two dry low notes. Now +5 dB, held by a faster compressor, with a 1.5 kHz lift
+# (BADGER_MID_PRESENCE) so a phone speaker still carries him without raw gain.
+BADGER_MID_DB = 5.0
+BADGER_MID_COMP = dict(threshold_db=-24.0, ratio=4.0, attack_ms=0.5, release_ms=90.0, knee_db=6.0)
+BADGER_MID_PRESENCE = (1500.0, 4.0, 1.0)  # PK: Hz, dB, Q
 # Peak control on his two tracks (render.shave_peaks; the gain staging keeps their loudness). Measured
 # on theme-full: his stacked transients (cross-stick 50 %, the double 29 % of the window's peak) drove
 # the master limiter to 9.2 dB of gain reduction on his button, pulling everything down on his notes:
@@ -126,14 +132,15 @@ DRUM_KEYS = {"snare": K["snare"], "ghost": K["tap"], "hat": K["hat"], "ohat": K[
 
 
 def _badger_mid(pocket: bool):
-    """Badger's octave-up pizzicato double: compressed (fast attack) so its body, not its pluck, carries
-    on a phone speaker, and 3 dB lighter at 300 Hz (its fundamentals sit under a phone's range anyway)."""
+    """Badger's octave-up pizzicato double: compressed hard and fast (4:1, 0.5 ms) so its body, not its
+    pluck, carries, 3 dB lighter at 300 Hz (its fundamentals sit under a phone's range anyway) and
+    lifted at 1.5 kHz, where a phone speaker is loudest (critic round 2)."""
     from composer.render import Track
     from audiolib.dynamics import Compressor
 
     t = C.strings("badger_mid", "celli", "pizz", fader=BADGER_MID_DB, pan=-0.1, width=0.4, hall=-12.0, pocket=pocket)
-    t.eq = [*t.eq, C.PK(300, -3.0, 1.2)]
-    t.comp = Compressor(threshold_db=-16, ratio=2.5, attack_ms=2.0, release_ms=90, knee_db=6)  # make-up gain is in BADGER_MID_DB
+    t.eq = [*t.eq, C.PK(300, -3.0, 1.2), C.PK(*BADGER_MID_PRESENCE)]
+    t.comp = Compressor(**BADGER_MID_COMP)  # make-up gain is in BADGER_MID_DB
     t.peak_shave = dict(BADGER_MID_SHAVE)
     assert isinstance(t, Track)
     return t
@@ -440,12 +447,15 @@ class Theme:
 # theme-full: mix automation on the bus (dB per section, ramped over the beat before each section).
 # Critic round 1 asked for B at least 2 LU under A and A' at least 1.5 LU over it; the master limiter
 # keeps about 40 % of the B contrast and 60 % of the A' contrast that the arrangement writes, so the
-# arrangement does most of it and this ride the rest (measured, see the README).
-FULL_RIDE_DB = (("intro", 0, 0.0), ("A", 2, -0.4), ("B", 10, -1.1), ("A'", 18, 0.2), ("coda", 26, 0.0))
+# arrangement does most of it and this ride the rest (measured, see the README). Critic round 2: A'
+# sat on a +-0.5 LU plateau for 19 s, so its second phrase (bars 22-24) lifts 1 dB and the
+# turnaround bar before the coda (bar 25) comes back down 1 dB.
+FULL_RIDE_DB = (("intro", 0, 0.0), ("A", 2, -0.4), ("B", 10, -1.1), ("A'", 18, 0.2), ("A' lift", 22, 1.2), ("turnaround", 25, 0.2),
+                ("coda", 26, 0.0))
 
 
 def full_ride() -> list:
-    """(seconds, dB) breakpoints for Arrangement.bus_ride: each section's gain is reached on its first
+    """(seconds, dB) breakpoints for Arrangement.bus_ride: each gain is reached on its bar's first
     downbeat, ramping over the beat before it."""
     spb = 60.0 / BPM
     pts = [(0.0, FULL_RIDE_DB[0][2])]
@@ -474,7 +484,7 @@ FULL_GLUE = {"threshold_db": -18.0, "ratio": 1.5}
 
 
 def arrangement(cue_id: str, kind: str) -> Arrangement:
-    from composer.render import DEFAULT_GLUE, STANDALONE_CEILING_DBTP, SafeCompressor
+    from composer.render import DEFAULT_GLUE, STANDALONE_CEILING_DBTP, STING_CEILING_DBTP, SafeCompressor
 
     th = Theme()
     faders, glue, ceiling, pre_roll = None, None, None, 0.0
@@ -497,7 +507,7 @@ def arrangement(cue_id: str, kind: str) -> Arrangement:
         th.coda(0)
         length, preset, fade = 5.0 - PRE_ROLL_5S, "sting", 0.6
         pre_roll = PRE_ROLL_5S
-        faders = STING_FADERS
+        faders, ceiling = STING_FADERS, STING_CEILING_DBTP
     else:
         raise ValueError(kind)
     th.finish(cue_id)

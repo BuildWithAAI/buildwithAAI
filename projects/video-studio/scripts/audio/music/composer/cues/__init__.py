@@ -43,10 +43,13 @@ def _theme_cues() -> list:
 
 def _show_cues() -> list:
     out = []
+    pre = show_cues.BUMPER_PRE_ROLL
     for cid, (fn, title, mood, length, hits) in show_cues.BUMPERS.items():
         out.append(Cue(cid, f"Bumper: {title}", SHOW, "bumper", mood, "D minor" if cid != "bumper-one-fix" else "D major", theme.BPM, "sting", fn,
-                       hits=hits, description=f"Segment bumper for {title}, built from Zoo's motif ({length:.1f} s).",
-                       usage="Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+                       hits=[(pre + h, w) for h, w in hits], downbeat_sec=pre,
+                       description=f"Segment bumper for {title}, built from Zoo's motif ({length:.1f} s).",
+                       usage="Cut on the downbeat at the segment change: the file starts with two frames of silence, so start it at "
+                             "downbeatStartFrame(cue, cutFrame) (2 frames early). The music is finished before the file ends. -16 LUFS-I.",
                        instruments=["VCSL Kawai piano", "VCSL vibraphone", "VSCO 2 strings", "finger-plucked bass", "VCSL drums", "brass stab", "FM tine piano"]))
     out.append(Cue("intro-sting-show", "The Zoo & Badger Show: channel intro sting", SHOW, "intro-sting", "confident, deadpan button", "D minor", 138.5, "sting",
                    show_cues.show_intro_sting,

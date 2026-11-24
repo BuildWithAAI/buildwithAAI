@@ -29,7 +29,7 @@ _NOTE = re.compile(r"^([A-Ga-g])(#|b)?(-?\d)$")
 
 
 def bank(rel, include: str | None = None, exclude: str | None = None, layer_words: dict | None = None,
-         keep_layers=None, octave: int = 0, tune: bool = False) -> SampleBank:
+         keep_layers=None, octave: int = 0, tune: bool | str = False) -> SampleBank:
     """Index a VCSL folder. With `layer_words` ({"soft": 1, "med": 2, "loud": 3}), a word token sets
     the velocity layer and a bare number token is the round robin. `keep_layers` drops other layers
     (use it when only some layers cover every root, or the sampler would jump between distant roots).
@@ -38,9 +38,13 @@ def bank(rel, include: str | None = None, exclude: str | None = None, layer_word
     convention), so their samples sound an octave above the label. Measured here (harmonic product
     spectrum, every sample): Kawai grand +11.98, Yamaha upright +12.00, vibraphone +12.00, bowed
     vibraphone +12.00, marimba +11.99, glockenspiel +12.12, kalimba +12 (strongest partial) semitones;
-    the Steinway B and the concert harp use the standard convention (0). `tune=True` also measures
-    each sample's actual pitch near its corrected root and uses that (fractional) root, for sets that
-    are not tuned to A440 equal temperament (the kalimba's tines are up to 40 cents off)."""
+    the Steinway B and the concert harp use the standard convention (0).
+
+    `tune` measures each sample's actual pitch and uses that (fractional) root, for sets that are not
+    tuned to A440 equal temperament (measured_root): True or "harmonic" for harmonic instruments
+    (piano, harp: several partials, a +-1.5 semitone search, so a mislabelled sample is caught),
+    "peak" for bars and tines (glockenspiel, kalimba: their overtones are not harmonic, so only the
+    strongest peak within a semitone of the label is used)."""
     folder = paths.vcsl_dir(*rel) if isinstance(rel, (tuple, list)) else paths.vcsl_dir(rel)
     files = sorted(folder.rglob("*.wav"))
     if include:
@@ -76,7 +80,10 @@ def bank(rel, include: str | None = None, exclude: str | None = None, layer_word
         zones.append(Zone(f, root, layer, rr, "_".join(art)))
     if keep_layers is not None:
         zones = [z for z in zones if z.layer in set(keep_layers)]
+    if tune not in (False, True, "harmonic", "peak"):
+        raise ValueError(f"tune must be False, True, 'harmonic' or 'peak', not {tune!r}")
     if octave or tune:
+        method = "harmonic" if tune is True else tune
         fixed = []
         for z in zones:
             if z.root is None:
@@ -84,37 +91,134 @@ def bank(rel, include: str | None = None, exclude: str | None = None, layer_word
                 continue
             root = z.root + octave
             if tune:
-                root = measured_root(str(z.path), root)
+                root = measured_root(str(z.path), root, method)
             fixed.append(Zone(z.path, root, z.layer, z.rr, z.articulation))
         zones = fixed
     return SampleBank(zones)
 
 
-@lru_cache(maxsize=None)
-def measured_root(path: str, nominal: float, search_semitones: float = 1.0) -> float:
-    """The sample's actual pitch (fractional MIDI), from the strongest spectral peak within
-    +-`search_semitones` of `nominal`, over 1 s after the onset; `nominal` when nothing is found."""
+# measured_root(method="harmonic"): the partials that set the pitch. Under C3 a piano's or harp's
+# fundamental is weak (the Kawai's C1 and C2 strings: 25-40 dB under their 2nd-4th partials), so the
+# pitch comes from partials 2-4, as the ear hears it (critic round 2); from C3 up, from partials 1-3.
+LOW_REGISTER_MIDI = 48
+PARTIALS_LOW = (2, 3, 4)
+PARTIALS_HIGH = (1, 2, 3)
+PARTIAL_RANGE_DB = 15.0  # partials more than this under the strongest one are not used
+SEARCH_CENTS = 150.0  # coarse search half-width: a sample a semitone off its label is still found
+
+
+def _spectrum(path: str, start_s: float = 0.03, dur_s: float = 1.0, min_s: float = 0.25):
+    """Magnitude spectrum (zero-padded to about 0.05 Hz bins) of `dur_s` from just after the onset."""
     import numpy as np
     import soundfile as sf
 
     x, sr = sf.read(path, always_2d=True)
     m = x.mean(axis=1)
     if not np.any(m):
-        return float(nominal)
+        return None
+    i = int(np.argmax(np.abs(m) > 0.05 * np.abs(m).max()))
+    seg = m[i + int(start_s * sr): i + int((start_s + dur_s) * sr)]
+    if seg.size < int(min_s * sr):
+        return None
+    n = 1 << int(np.ceil(np.log2(sr / 0.05)))
+    return np.fft.rfftfreq(n, 1.0 / sr), np.abs(np.fft.rfft(seg * np.hanning(seg.size), n))
+
+
+def _peak(f, spec, fc: float, half_cents: float):
+    """(frequency, dB) of the strongest bin within +-half_cents of fc, with parabolic interpolation."""
+    import numpy as np
+
+    a = int(np.searchsorted(f, fc * 2 ** (-half_cents / 1200)))
+    b = int(np.searchsorted(f, fc * 2 ** (half_cents / 1200)))
+    if b - a < 3 or b >= spec.size - 1:
+        return None
+    j = a + int(np.argmax(spec[a:b]))
+    y0, y1, y2 = 20 * np.log10(spec[j - 1: j + 2] + 1e-20)
+    d = y0 - 2 * y1 + y2
+    p = 0.5 * (y0 - y2) / d if d != 0 else 0.0
+    return (j + p) * (f[1] - f[0]), y1 - 0.25 * (y0 - y2) * p
+
+
+def harmonic_cents(path: str, nominal: float):
+    """The sample's pitch in cents relative to `nominal` (MIDI), or None. Two stages:
+    1. coarse: the f0 within +-SEARCH_CENTS whose first eight harmonics (each within +-20 cents, so a
+       piano's stretched partials still count) carry the most level (dB above a -60 dB floor);
+    2. fine: partials 2-4 (under C3) or 1-3 at that f0, each located to a fraction of a cent; those
+       within PARTIAL_RANGE_DB of the strongest are averaged, weighted by power."""
+    import numpy as np
+
+    sp = _spectrum(path)
+    if sp is None:
+        return None
+    f, spec = sp
+    db = 20 * np.log10(spec + 1e-20)
+    level = np.maximum(db - (float(db.max()) - 60.0), 0.0)
+    f_nom = 440.0 * 2 ** ((nominal - 69) / 12)
+    df = f[1] - f[0]
+    best = None
+    for c in np.arange(-SEARCH_CENTS, SEARCH_CENTS + 0.5, 1.0):
+        f0 = f_nom * 2 ** (c / 1200)
+        score = 0.0
+        for k in range(1, 9):
+            a = int(k * f0 * 2 ** (-20 / 1200) / df)
+            b = int(k * f0 * 2 ** (20 / 1200) / df) + 1
+            if b >= spec.size:
+                break
+            score += float(level[a:b].max())
+        if best is None or score > best[0]:
+            best = (score, c)
+    f0 = f_nom * 2 ** (best[1] / 1200)
+    ks = PARTIALS_LOW if nominal < LOW_REGISTER_MIDI else PARTIALS_HIGH
+    found = []
+    for k in ks:
+        pk = _peak(f, spec, k * f0, 25.0)
+        if pk is not None:
+            found.append((1200 * np.log2(pk[0] / (k * f_nom)), pk[1]))
+    if not found:
+        return float(best[1])
+    strongest = max(lv for _, lv in found)
+    use = [(c, 10 ** ((lv - strongest) / 10)) for c, lv in found if lv >= strongest - PARTIAL_RANGE_DB]
+    return float(sum(c * w for c, w in use) / sum(w for _, w in use))
+
+
+@lru_cache(maxsize=None)
+def measured_root(path: str, nominal: float, method: str = "peak") -> float:
+    """The sample's actual pitch as a fractional MIDI root (`nominal` when nothing is found):
+    "harmonic" (harmonic_cents: pianos and harps) or "peak" (peak_cents: bars and tines)."""
+    if method == "harmonic":
+        c = harmonic_cents(path, nominal)
+    elif method == "peak":
+        c = peak_cents(path, nominal)
+    else:
+        raise ValueError(f"unknown method {method!r}")
+    return float(nominal) if c is None else round(float(nominal) + c / 100.0, 3)
+
+
+def peak_cents(path: str, nominal: float, search_semitones: float = 1.0):
+    """Cents from `nominal` of the strongest spectral bin within +-search_semitones, over 1 s after
+    the onset (a 2^17-point FFT), or None: for bars and tines, whose overtones are not harmonic. This
+    is the round-1 measurement, unchanged, so the glockenspiel's and kalimba's roots (and their
+    cached stems) stay the same."""
+    import numpy as np
+    import soundfile as sf
+
+    x, sr = sf.read(path, always_2d=True)
+    m = x.mean(axis=1)
+    if not np.any(m):
+        return None
     i = int(np.argmax(np.abs(m) > 0.05 * np.abs(m).max()))
     seg = m[i + int(0.03 * sr): i + int(1.03 * sr)]
     if seg.size < sr // 4:
-        return float(nominal)
+        return None
     n = 1 << 17
     spec = np.abs(np.fft.rfft(seg * np.hanning(seg.size), n))
     f = np.fft.rfftfreq(n, 1.0 / sr)
     f0 = 440.0 * 2 ** ((nominal - 69) / 12)
-    lo, hi = f0 * 2 ** (-search_semitones / 12), f0 * 2 ** (search_semitones / 12)
-    band = (f >= lo) & (f <= hi)
+    band = (f >= f0 * 2 ** (-search_semitones / 12)) & (f <= f0 * 2 ** (search_semitones / 12))
     if not band.any() or spec[band].max() <= 0:
-        return float(nominal)
+        return None
     fp = float(f[band][np.argmax(spec[band])])
-    return round(69 + 12 * np.log2(fp / 440.0), 3)
+    return 100.0 * (69 + 12 * np.log2(fp / 440.0) - nominal)
 
 
 ZITH = ("Chordophones", "Zithers")
@@ -128,7 +232,11 @@ MEMB = ("Membranophones", "Struck Membranophones")
 def piano(kind: str = "kawai") -> Sampler:
     if kind == "kawai":
         root = (*ZITH, "Grand Piano, Kawai")
-        return Sampler(bank((*root, "Sustains"), octave=12), release_bank=bank((*root, "Releases"), octave=12), normalize_layers="per_zone",
+        # tune=True (critic round 2): the recording's bass is stretch-tuned (C1-D#2 strings 10-26 cents flat,
+        # D4 13 cents flat), which beats against the exactly tuned bass and sub; and the file labelled
+        # A#-1 sounds A0 (27.4 Hz), so a written B-flat 0 played a semitone low. Every sustain sample now
+        # gets its measured root (harmonic_cents); the release noises keep their labels.
+        return Sampler(bank((*root, "Sustains"), octave=12, tune=True), release_bank=bank((*root, "Releases"), octave=12), normalize_layers="per_zone",
                        velocity_power=1.6, release_gain_db=-22.0, damper=(0.5, 0.12, 88), seed="kawai")
     if kind == "steinway":
         root = (*ZITH, "Grand Piano, Steinway B")
@@ -162,15 +270,17 @@ def marimba() -> Sampler:
 
 @lru_cache(maxsize=None)
 def glock() -> Sampler:
-    return Sampler(bank((*STRUCK, "Glockenspiel"), layer_words={"soft": 1, "medium": 2, "loud": 3}, octave=12, tune=True), normalize_layers="per_zone",
+    return Sampler(bank((*STRUCK, "Glockenspiel"), layer_words={"soft": 1, "medium": 2, "loud": 3}, octave=12, tune="peak"), normalize_layers="per_zone",
                    velocity_power=1.5, damper=(1.5, 1.5, 0), seed="glock")
 
 
 @lru_cache(maxsize=None)
 def harp() -> Sampler:
-    # only the mf and f layers cover every root (p/mp exist for a few notes only)
+    # only the mf and f layers cover every root (p/mp exist for a few notes only). tune=True (critic round 2):
+    # the samples are 1-30 cents flat (median -8 to -11 cents in the cues), and the harp doubles the vibes
+    # (0 cents) in the Zoora jingle's motif, the One Fix lift and the curious ostinato: 3-7 Hz beating
     return Sampler(bank(("Chordophones", "Composite Chordophones", "Concert Harp"), layer_words={"p": 1, "mp": 2, "mf": 3, "f": 4},
-                        keep_layers=(3, 4)), normalize_layers="per_zone", velocity_power=1.6, damper=(1.4, 0.8, 127), seed="harp")
+                        keep_layers=(3, 4), tune=True), normalize_layers="per_zone", velocity_power=1.6, damper=(1.4, 0.8, 127), seed="harp")
 
 
 @lru_cache(maxsize=None)
@@ -180,7 +290,7 @@ def bells() -> Sampler:
 
 @lru_cache(maxsize=None)
 def kalimba() -> Sampler:
-    return Sampler(bank(("Idiophones", "Plucked Idiophones", "Kalimba, Kenya"), octave=12, tune=True), velocity_power=1.5, damper=(0.8, 0.6, 127), seed="kalimba")
+    return Sampler(bank(("Idiophones", "Plucked Idiophones", "Kalimba, Kenya"), octave=12, tune="peak"), velocity_power=1.5, damper=(0.8, 0.6, 127), seed="kalimba")
 
 
 # ------------------------------------------------------------------------------------------ MuseScore (fluidsynth)

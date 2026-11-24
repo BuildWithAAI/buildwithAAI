@@ -10,7 +10,7 @@ import {BRAND} from '../palette';
 import type {ZooProps} from '../types';
 import {clamp} from './geometry';
 import {LineScaleContext} from './parts/Shape';
-import {ARM_POINT, ARM_POINT_WINDUP, ARM_REST, armAnglesFor, breathOffset, PIVOTS, POINT_HAND_CURL, POINT_HAND_SWITCH, POINT_LOOK, TYPING_LOOK} from './rig';
+import {ARM_POINT, ARM_POINT_WINDUP, ARM_REST, armAnglesFor, breathOffset, PIVOTS, POINT_LOOK, pointHandFor, TYPING_LOOK, withUpperArmLead} from './rig';
 import {Arm} from './parts/Arm';
 import {Head} from './parts/Head';
 import {Legs} from './parts/Legs';
@@ -72,12 +72,14 @@ const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | '
 	const pointing = p.pose === 'point';
 	const base = pointing ? armAnglesFor(ARM_POINT, p.poseAmount, undefined, {tuck: p.pointTuck}) : ARM_REST;
 	const w = pointing ? p.pointWindup : 0;
-	const leftAngles = {
+	// The wind-up is added after the rig's angles; the upper-arm lead (ZOO-P6) is applied again so it cannot undo it.
+	const wound = {
 		shoulder: base.shoulder + ARM_POINT_WINDUP.shoulder * w,
 		elbow: base.elbow + ARM_POINT_WINDUP.elbow * w,
 		wrist: base.wrist + ARM_POINT_WINDUP.wrist * w,
 	};
-	const leftHand = !pointing ? 'relaxed' : p.poseAmount >= POINT_HAND_SWITCH ? 'point' : p.poseAmount >= POINT_HAND_CURL ? 'curl' : 'relaxed';
+	const leftAngles = pointing ? withUpperArmLead(wound) : wound;
+	const leftHand = !pointing ? 'relaxed' : pointHandFor(p.poseAmount, leftAngles);
 	return (
 		<>
 			{/* Sleeves emerge from under the overshirt's shoulder and side contour, so the arms sit behind the torso. */}

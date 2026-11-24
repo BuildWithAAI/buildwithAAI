@@ -170,6 +170,44 @@ const monotoneThrough = (m: number, t: number, a: number): number => {
 export const POINT_OVERLAP = {elbowLead: 0.6, shoulderLag: 1.5, tuck: 6, tuckUntil: 0.32} as const;
 const leadLag = (a: number, p: number) => (a >= 0.5 ? a : 0.5 * Math.pow(2 * a, p));
 
+/**
+ * Upper-arm lead (repair round 4, decision ZOO-P6). Once the forearm has swung more than ~`from` deg away from the hang, the
+ * upper arm is abducted at least `ratio` x that swing (eased in between `from` and `full`), whatever the shoulder curve,
+ * the anticipation tuck or the wind-up would give. The R3 review measured the proof's in-betweens with the elbow still at
+ * the waist (abduction -1.7 / -0.9 deg) under a forearm swung 44-62 deg (f95-f96) and 42-57 deg on the way down (f188-f189):
+ * a tray-carry. The swing is the forearm's rotation from the hang (shoulder + elbow), so the rule holds on the raise and
+ * on the lowering alike; it never acts at rest or in the end pose (the end key is far above it).
+ */
+export const POINT_LEAD = {ratio: 0.3, from: 10, full: 20} as const;
+/** Lowest abduction (deg, >= 0) the lead allows for elbow flexion `flex` (deg, >= 0): solves A >= ratio x ramp(F) x F, F = A + flex. */
+export const leadAbduction = (abduction: number, flex: number): number => {
+	const {ratio, from, full} = POINT_LEAD;
+	let a = abduction;
+	for (let i = 0; i < 6; i++) {
+		const swing = Math.max(0, a + flex);
+		a = Math.max(abduction, ratio * swing * smoothstep((swing - from) / (full - from)));
+	}
+	return a;
+};
+/** Applies the upper-arm lead to a left-arm angle set (shoulder < 0 abducts; elbow < 0 flexes). */
+export const withUpperArmLead = (ang: ArmAngles): ArmAngles => {
+	const abd = leadAbduction(-ang.shoulder, Math.max(0, -ang.elbow));
+	return {...ang, shoulder: Math.min(ang.shoulder, -abd)};
+};
+/**
+ * Forearm swing (deg) below which the pointing arm shows the relaxed hand (repair round 4, ZOO-P6): the hand closes into
+ * the loose fist as soon as the forearm swings this far from the hang and opens again only when it is back near the hang,
+ * on the raise and on the lowering alike (round 3 switched by poseAmount, so on the way down the open hand reappeared at
+ * the end of a forearm still swung ~42 deg out: a "presenting" palm).
+ */
+export const POINT_FIST_SWING = 16;
+/** The pointing arm's hand shape for a poseAmount and its (final) joint angles: relaxed near the hang, loose fist, pointer. */
+export const pointHandFor = (poseAmount: number, ang: ArmAngles): 'relaxed' | 'curl' | 'point' => {
+	if (poseAmount >= POINT_HAND_SWITCH) return 'point';
+	const swing = -(ang.shoulder + ang.elbow);
+	return swing >= POINT_FIST_SWING || poseAmount >= 0.2 ? 'curl' : 'relaxed';
+};
+
 /** Options for armAnglesFor. */
 export type ArmAngleOptions = {
 	/**
@@ -198,11 +236,11 @@ export const armAnglesFor = (
 		const o = POINT_OVERLAP;
 		const k = clamp01(opts.tuck ?? 1);
 		const tuck = a < o.tuckUntil ? k * o.tuck * Math.pow(Math.sin((Math.PI * a) / o.tuckUntil), 2) : 0;
-		return {
+		return withUpperArmLead({
 			shoulder: monotoneThrough(mid.shoulder, target.shoulder, leadLag(a, o.shoulderLag)) + tuck,
 			elbow: monotoneThrough(mid.elbow, target.elbow, leadLag(a, o.elbowLead)),
 			wrist: monotoneThrough(mid.wrist, target.wrist, a),
-		};
+		});
 	}
 	const s = smoothstep(a / 0.85);
 	const e = smoothstep((a - 0.05) / 0.85);
@@ -263,8 +301,8 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	// Deadpan: flat straight mouth; the anatomical-left (screen-right) brow is subtly raised in its base shape.
 	neutral: {browL: B0, browR: B0, eyes: E0, mouth: 'closed', mod: MOD0, crease: 0},
 	// Small asymmetric smirk (repair round 4, decision ZOO-E4; zoo_expr_happy.png): its own closed-mouth drawing, a wide U-smile
-	// line with a soft lower-lip band (HAPPY_MOUTH), the screen-right corner lifting ~8.5 u and the left ~4, the moustache ends
-	// rising (screen right 7 u, left 3.4) so the smile shows under them, a short smile crease on the screen-right cheek, and the
+	// line with a soft lower-lip band (HAPPY_MOUTH), the screen-right corner lifting ~9 u and the left ~4, the moustache ends
+	// rising (screen right 8 u, left 4) so the smile shows under them, a short smile crease on the screen-right cheek, and the
 	// lower lids up with the upper lids slightly down (a smile squint). Rounds 1-3 only nudged the flat closed line's corners
 	// (3.2-4.5 / 6.4) under an almost unchanged moustache, which read as neutral or tired at bust size (ZOO-E2: no head yaw).
 	happy: {
@@ -273,7 +311,7 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 		eyes: {lidTop: -0.8, lidBottom: 3.8, scale: 1, iris: 1},
 		mouth: 'closed',
 		mouthSpec: HAPPY_MOUTH,
-		mod: {...MOD0, cornerL: 4, cornerR: 8.5, moustacheLiftR: 7, moustacheLiftL: 3.4},
+		mod: {...MOD0, cornerL: 4, cornerR: 9, moustacheLiftR: 8, moustacheLiftL: 4},
 		crease: 0,
 		cheek: 1,
 	},

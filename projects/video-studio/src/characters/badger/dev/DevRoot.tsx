@@ -68,7 +68,7 @@ const SpotsLeft: React.FC<{head: BadgerHead; scale: number; ox: number; oy: numb
 				);
 			})}
 			<text x={20} y={34} fontFamily="sans-serif" fontSize={18} fill={BRAND.nearBlack}>
-				{`BADGER left side: ${LEFT_SPOTS.length} body spots (sheet count 11)`}
+				{`BADGER left side: ${LEFT_SPOTS.filter((s) => s.side === 'left').length} body spots (sheet count 11) + the far forearm's R-08 edge record`}
 			</text>
 		</svg>
 	</AbsoluteFill>

@@ -1,0 +1,48 @@
+{
+ "about": "Measured tuning error (cents) of soundfont presets as fluidsynth renders them, per key and velocity bucket: composer/gmtune.py. Re-measure with `python3 scripts/audio/music/build.py --retune`.",
+ "method": {
+  "articulationWindowsS": {
+   "44": [
+    0.1,
+    0.7
+   ],
+   "45": [
+    0.03,
+    0.3
+   ],
+   "48": [
+    0.04,
+    0.32
+   ],
+   "49": [
+    0.3,
+    1.3
+   ]
+  },
+  "expressiveCc2": 96,
+  "partials": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "sampleRate": 48000,
+  "searchCents": 60,
+  "velStep": 16
+ },
+ "schema": 1,
+ "soundfonts": {
+  "59287cbb0f424ec7": {
+   "key": "musescore-lossless",
+   "package": "musescore-general-soundfont-lossless 0.2.1-1",
+   "presets": {
+    "40:45": {
+     "50:96": 11.33,
+     "51:96": 16.77,
+     "62:80": -4.86,
+     "63:80": -4.77
+    }
+   }
+  }
+ }
+}

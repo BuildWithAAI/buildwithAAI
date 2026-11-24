@@ -64,6 +64,9 @@ def safe(comp):
 # critic round 1: at -1.0 the theme read -0.3 dBTP after AAC 128 kb/s. The critic asked for -2.0; with the
 # worst of five AAC encodes (composer/targets.py) the 16-bit theme-full read -1.0 there, so -2.2 leaves margin
 STANDALONE_CEILING_DBTP = -2.2
+# critic round 2: at the engine's sting ceiling (-1.0 dBTP) the show sting decoded at -1.0 dBTP from Opus
+# 128k and a bumper at -0.7 from AAC 128k; every sting-profile cue now masters at -1.5 (composer/cues)
+STING_CEILING_DBTP = -1.5
 
 # Presets the music package adds to the engine's (audiolib.master.PRESETS):
 # - endscreen: the end-screen music with nobody speaking, -18 LUFS-I (4 LU under -14 narration).
@@ -75,15 +78,18 @@ MUSIC_PRESETS = {
 }
 
 
-def safe_preset(name: str, ceiling_dbtp: float | None = None):
+def safe_preset(name: str, ceiling_dbtp: float | None = None, target: float | None = None):
     """An engine (or music) preset with the NaN-safe compressor; `ceiling_dbtp` overrides the
-    true-peak ceiling (the standalone theme masters at -2.2 dBTP, see STANDALONE_CEILING_DBTP)."""
+    true-peak ceiling (the standalone theme masters at -2.2 dBTP, see STANDALONE_CEILING_DBTP) and
+    `target` the loudness target (in the preset's own measure)."""
     from dataclasses import replace
 
     p = MUSIC_PRESETS[name] if name in MUSIC_PRESETS else master.PRESETS[name]
     p = replace(p, comp=safe(p.comp))
     if ceiling_dbtp is not None:
         p = replace(p, ceiling_dbtp=float(ceiling_dbtp))
+    if target is not None:
+        p = replace(p, target=float(target))
     return p
 
 
@@ -95,6 +101,7 @@ class Reverb:
     room: object = "plate"  # preset name or audiolib.reverb.Room
     return_db: float = 0.0
     return_eq: list = field(default_factory=list)
+    width: float = 1.0  # stereo width of the return (mid/side: 1 = as the reverb made it, 0 = mono)
 
 
 @dataclass
@@ -120,6 +127,9 @@ class Track:
     gm_gain: float = fluid.DEFAULT_GAIN
     # take the stem's highest peaks down before the strip (see shave_peaks): {"shave_db": 8.0, "kind": "limit"}
     peak_shave: dict | None = None
+    # GM (soundfont) sources: correct each key's measured intonation with MIDI Tuning Standard messages
+    # (composer/gmtune.py; critic round 2: the VSCO 2 pizzicato is up to 30 cents off per key)
+    tune: bool = True
 
 
 @dataclass
@@ -141,6 +151,7 @@ class Arrangement:
     fade_out: float = 0.0
     fade_curve: str = "sine"
     ceiling_dbtp: float | None = None  # overrides the preset's true-peak ceiling
+    target_lufs: float | None = None  # overrides the preset's loudness target (in its own measure)
     pre_roll: float = 0.0  # seconds of digital silence before the first downbeat (non-loops)
     # mix automation on the bus, after the bus EQ and before the glue: (seconds, dB) breakpoints,
     # linear in dB between them and held beyond the ends (non-loops only)
@@ -213,12 +224,24 @@ def _source_key(src) -> str:
 RENDER_META = ("tune_hz",)  # note meta that changes how a source renders (SynthKick's per-hit tuning)
 
 
-def _stem_key(arr: Arrangement, tr: Track, total: float) -> str:
+def _stem_key(arr: Arrangement, tr: Track, total: float, tuning: dict | None = None) -> str:
     part = arr.score.parts[tr.part or tr.name]
     notes = [(n.pitch, round(n.start, 6), round(n.dur, 6), n.vel, *[n.meta[k] for k in RENDER_META if k in n.meta]) for n in part.notes]
-    payload = json.dumps([CACHE_VERSION, _source_key(tr.source), sorted(tr.only) if tr.only else None, tr.gm_gain, round(total, 6),
-                          arr.score._beats, arr.score._bpm, notes, sorted(part.ccs), sorted(part.bends)], default=str)
+    items = [CACHE_VERSION, _source_key(tr.source), sorted(tr.only) if tr.only else None, tr.gm_gain, round(total, 6),
+             arr.score._beats, arr.score._bpm, notes, sorted(part.ccs), sorted(part.bends)]
+    if tuning:
+        items.append(sorted(tuning.items()))
+    payload = json.dumps(items, default=str)
     return hashlib.sha256(payload.encode()).hexdigest()[:24]
+
+
+def gm_tuning(tr: Track, part) -> dict:
+    """{key: cents} for a GM track (composer/gmtune.py), {} for other sources or tune=False."""
+    from composer import gmtune
+
+    if not (isinstance(tr.source, GM) and tr.tune and not tr.source.drums):
+        return {}
+    return gmtune.corrections(tr.source, part.notes)
 
 
 def render_stems(arr: Arrangement, workdir: Path, cache: Path | None = None) -> dict:
@@ -234,9 +257,10 @@ def render_stems(arr: Arrangement, workdir: Path, cache: Path | None = None) -> 
             stems[tr.name] = pad_to(as_stereo(src), n)
             continue
         part = arr.score.parts[tr.part or tr.name]
+        tuning = gm_tuning(tr, part)
         cpath = None
         if cache is not None:
-            cpath = Path(cache) / f"{tr.name}-{_stem_key(arr, tr, total)}.npy"
+            cpath = Path(cache) / f"{tr.name}-{_stem_key(arr, tr, total, tuning)}.npy"
             used.add(cpath.name)
             legacy = Path(cache).parent / cpath.name  # stems cached before the cache was split per cue
             if not cpath.exists() and legacy.exists():
@@ -246,8 +270,10 @@ def render_stems(arr: Arrangement, workdir: Path, cache: Path | None = None) -> 
                 stems[tr.name] = pad_to(np.load(cpath), n)
                 continue
         if isinstance(src, GM):
+            from composer import gmtune
+
             s = _score_with(arr.score, part, src)
-            a = fluid.render_part(s, part.name, total, tail=3.0, gain=tr.gm_gain, workdir=workdir / "fluid" / tr.name)
+            a = gmtune.render_part(s, part.name, total, tuning, tail=3.0, gain=tr.gm_gain, workdir=workdir / "fluid" / tr.name)
         elif hasattr(src, "pieces"):  # Kit
             a = src.render(part, arr.score, total, only=tr.only)
         else:
@@ -385,6 +411,9 @@ def mix(arr: Arrangement, stems: dict):
         wet = convolve(sends[name], ir)[:, :N] * float(db_to_lin(rv.return_db))
         if rv.return_eq:
             wet = dsp.eq(wet, rv.return_eq, SR)
+        if rv.width != 1.0:
+            mid, side = 0.5 * (wet[0] + wet[1]), 0.5 * (wet[0] - wet[1]) * float(rv.width)
+            wet = np.vstack([mid + side, mid - side])
         bus += wet
         post[f"reverb_{name}"] = wet
         report["reverbs"][name] = {"rt60": room.rt60, "returnLufs": round(float(loudness.integrated(wet[:, pad : pad + L])), 2)}
@@ -427,8 +456,10 @@ def render(arr: Arrangement, workdir: Path, cache: Path | None = None) -> Render
     t1 = time.time()
     stems = fold(raw, arr.length) if arr.loop else raw
     pre, mrep, post = mix(arr, stems)
+    tunings = {tr.name: gm_tuning(tr, arr.score.parts[tr.part or tr.name]) for tr in arr.tracks if isinstance(tr.source, GM)}
+    mrep["gmTuningCents"] = {k: {str(key): c for key, c in v.items()} for k, v in tunings.items() if v}
     t2 = time.time()
-    out, rep = master.master(pre, safe_preset(arr.preset, arr.ceiling_dbtp), loop=arr.loop)
+    out, rep = master.master(pre, safe_preset(arr.preset, arr.ceiling_dbtp, arr.target_lufs), loop=arr.loop)
     if not np.all(np.isfinite(out)):
         raise RuntimeError(f"{arr.cue_id}: the master contains NaN or Inf")
     if arr.pre_roll > 0 and not arr.loop:

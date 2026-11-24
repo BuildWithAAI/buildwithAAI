@@ -213,7 +213,8 @@ spot('L-09', 'legFrontNear', 'upper', (210, 314, 7.6, 12.2, -3), FRONT_SHOULDER,
 # authored from badger_coat_right.png's OWN R-08 (dev/trace/coatmaps.py: 35.7% down the forearm from the elbow tip to the
 # wrist cut, coat_right's own size, the across axis foreshortened to EDGE_K, its own 1.6 deg tilt), placed on this rig's
 # forearm back contour (the far leg reuses the near leg's unmarked outline), centred on the contour so the leg clip shows
-# the half that wraps round that edge. Nothing here comes from L-09 or any other left record.
+# the part that wraps round that edge (its centre 2.3 units inside the contour, so about 6 units show, as on the walking
+# panel). Nothing here comes from L-09 or any other left record.
 from coatmaps import along as _along, size_units as _size_units, tilt_back as _tilt_back
 import math as _m
 
@@ -237,6 +238,10 @@ FL_ELBOW_Y, FL_WRIST_Y = 265.0, FRONT_WRIST[1]       # this rig's forearm, trace
 _y_r08 = FL_ELBOW_Y + _along('R-08') * (FL_WRIST_Y - FL_ELBOW_Y)
 _x_r08, (_tx, _ty) = _cubic_at_y(fu_strokes[1], _y_r08)    # the forearm's back contour (left-facing: back = +x)
 _ac, _al = _size_units('R-08', edge=True)
+# badger_pose_walking.png draws the far mark about 6 units wide inside the back contour, so the centre sits EDGE_IN units
+# inside the traced contour (toward -x here): about 6 units of it show inside the leg's outline
+EDGE_IN = 2.3
+_x_r08 -= EDGE_IN / KX
 # ellipse_path: rx across (x), ry along (y), rotated; the long axis follows the contour, its top leaning back (+x) by the
 # map's own tilt
 _rot_r08 = _m.degrees(_m.atan2(-_tx, _ty)) + _tilt_back('R-08')

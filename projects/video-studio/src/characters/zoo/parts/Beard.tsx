@@ -18,12 +18,26 @@ export const BEARD_BASE: Pt[] = [
 	[32, -773.7], [37, -783], [40, -789.5], [62, -793], [62, -720], [-62, -720],
 ];
 
-export const beardPoints = (hole: number, jawDrop: number): Pt[] =>
+/**
+ * Smile shift of the beard's inner edge (repair round 4, ZOO-E4): in a smile the cheeks bunch, so the lip-patch edge beside
+ * each mouth corner rises and opens a little (a tent around |x| ~22, up to `smileR` u on the screen-right side and `smileL`
+ * on the screen-left). Points of the outer jaw (|x| > 60) and of the soul patch (|x| < 9) do not move.
+ */
+export const smileShift = (p: Pt, smileR: number, smileL: number): [number, number] => {
+	const ax = Math.abs(p[0]);
+	if (ax > 60 || ax < 9 || p[1] < -790) return [0, 0];
+	const w = Math.max(0, 1 - Math.abs(ax - 22) / 12) * Math.max(0, Math.min(1, (p[1] + 792) / 14));
+	const s = p[0] > 0 ? smileR : smileL;
+	return [Math.sign(p[0]) * s * 0.3 * w, -s * w];
+};
+
+export const beardPoints = (hole: number, jawDrop: number, smileR = 0, smileL = 0): Pt[] =>
 	BEARD_BASE.map((p) => {
 		if (Math.abs(p[0]) > 60) return p.length === 3 ? p : [p[0], p[1] + (p[1] > -760 ? jawDrop : 0)];
 		const w = Math.max(0, Math.min(1, (p[1] + 769) / 7)); // 0 near the moustache tips -> 1 at the lip patch
-		const y = p[1] + hole * w;
-		return p.length === 3 ? [p[0], y, 'c'] : [p[0], y];
+		const [sx, sy] = smileShift(p, smileR, smileL);
+		const y = p[1] + hole * w + sy;
+		return p.length === 3 ? [p[0] + sx, y, 'c'] : [p[0] + sx, y];
 	});
 
 const beardShadow = (jawDrop: number) =>
@@ -61,11 +75,11 @@ export const moustachePts = (pts: Pt[], liftR: number, liftL = 0): Pt[] =>
 		return p.length === 3 ? [p[0] + dx, p[1] + dy, 'c'] : [p[0] + dx, p[1] + dy];
 	});
 
-export const Beard: React.FC<{hole: number; jawDrop: number}> = ({hole, jawDrop}) => (
+export const Beard: React.FC<{hole: number; jawDrop: number; smileR?: number; smileL?: number}> = ({hole, jawDrop, smileR = 0, smileL = 0}) => (
 	<g data-part="beard">
 		<Clipped clip={facePath(jawDrop)}>
-			<path d={smooth(beardPoints(hole, jawDrop))} fill={ZOO_COLORS.beard} />
-			<Clipped clip={smooth(beardPoints(hole, jawDrop))}>
+			<path d={smooth(beardPoints(hole, jawDrop, smileR, smileL))} fill={ZOO_COLORS.beard} />
+			<Clipped clip={smooth(beardPoints(hole, jawDrop, smileR, smileL))}>
 				<path d={beardShadow(jawDrop)} fill={ZOO_COLORS.beardShadow} />
 			</Clipped>
 		</Clipped>
