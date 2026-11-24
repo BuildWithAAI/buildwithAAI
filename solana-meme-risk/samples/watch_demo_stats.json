@@ -1,0 +1,101 @@
+{
+  "started_at": 1793580795.7376227,
+  "polls": 1,
+  "poll_errors": 0,
+  "launches_seen": 239,
+  "too_quiet": 109,
+  "queued": 130,
+  "scored": 44,
+  "errors": 0,
+  "decisions": {
+    "SKIP": 25,
+    "REDUCED": 19,
+    "NORMAL": 0
+  },
+  "finished_at": 1793581553.9978328,
+  "wall_minutes": 12.64,
+  "score_time_s": {
+    "p50": 16.07,
+    "p95": 75.68,
+    "max": 323.1
+  },
+  "launch_to_decision_s": {
+    "p50": 785.75,
+    "p95": 1001.9
+  },
+  "sources": {
+    "rpc": {
+      "cache_hits": 1606,
+      "network_calls": 11494,
+      "endpoints": {
+        "publicnode": {
+          "calls": 11366,
+          "ok": 11348,
+          "rate_limited": 0,
+          "errors": 10,
+          "nulls": 44,
+          "avg_latency_ms": 54.9,
+          "breaker": {
+            "state": "closed",
+            "failures": 0,
+            "trips": 1
+          }
+        },
+        "mainnet-beta": {
+          "calls": 128,
+          "ok": 126,
+          "rate_limited": 1,
+          "errors": 1,
+          "avg_latency_ms": 861.3,
+          "breaker": {
+            "state": "closed",
+            "failures": 0,
+            "trips": 0
+          }
+        }
+      }
+    },
+    "pumpfun": {
+      "calls": 104,
+      "cache_hits": 20,
+      "rate_limited": 0,
+      "errors": 1,
+      "not_found": 0,
+      "breaker": {
+        "state": "closed",
+        "failures": 0,
+        "trips": 0
+      }
+    },
+    "dexscreener": {
+      "calls": 0,
+      "cache_hits": 0,
+      "rate_limited": 0,
+      "errors": 0,
+      "not_found": 0,
+      "breaker": {
+        "state": "closed",
+        "failures": 0,
+        "trips": 0
+      }
+    },
+    "geckoterminal": {
+      "calls": 0,
+      "cache_hits": 0,
+      "rate_limited": 0,
+      "errors": 0,
+      "not_found": 0,
+      "breaker": {
+        "state": "closed",
+        "failures": 0,
+        "trips": 0
+      }
+    },
+    "cache": {
+      "hits": 1626,
+      "misses": 11537,
+      "writes": 11532
+    }
+  },
+  "db": "/workspace/solana-meme-risk/data/watch/scored_tokens.db"
+}
