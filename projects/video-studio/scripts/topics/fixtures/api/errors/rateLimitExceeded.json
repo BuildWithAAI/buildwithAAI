@@ -1,0 +1,14 @@
+{
+  "error": {
+    "code": 429,
+    "message": "Rate limit exceeded.",
+    "errors": [
+      {
+        "message": "Rate limit exceeded.",
+        "domain": "global",
+        "reason": "rateLimitExceeded"
+      }
+    ],
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}

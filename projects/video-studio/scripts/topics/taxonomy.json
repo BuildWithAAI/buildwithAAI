@@ -1,0 +1,1034 @@
+{
+  "version": 1,
+  "status": "PROPOSAL pending the owner's review. Our own topic tags, angles, titles, fact needs and risks: they are the topic finder's categorization, not YouTube's categories. Every pitch is built from these fields and our show formats, never from the source video's title, script or thumbnail.",
+  "rules": [
+    "Angles stay at concept level: no code, function names, addresses, step lists, kit or tool names (CLAUDE.md Channel 2 rules).",
+    "No price talk, buy calls, income or return claims; scam pitches appear only as warnings.",
+    "Badger is nonverbal; his Red Flag is shown, never spoken. Never at a victim's expense.",
+    "Every fact need is phrased as something to verify from a primary or named source; a source video is a lead, never a source."
+  ],
+  "angleTemplates": {
+    "zoora-security/explainer": "{concept} Zoo lays it out as a concept diagram, with no code, addresses or step lists. Badger's Red Flag: {redFlag}. Zoo's One Fix: {oneFix}. It ends on that fix as a check viewers can run today, with every figure attributed to a named source.",
+    "zoora-security/scam-of-the-week": "Case file: {label}. How it works: {conceptShort}. The tell: {redFlag}. The fix: {oneFix}. Built from regulators' and investigators' published descriptions, not one victim's story, and never at a victim's expense.",
+    "zoora-ai/pov-story": "Second person, fiction card on: {pov}. The story follows the pattern investigators describe ({conceptShort}) and ends on the consequence and the check that would have stopped it ({oneFix}), never a win to copy.",
+    "zoora-ai/explainer": "Zoo tests the pitch behind {label} against documented, sourced cases: {conceptShort}. Synthetic, labelled charts only and no income claims. It ends on the check a viewer can run before trusting it: {oneFix}."
+  },
+  "cueBoosts": {
+    "story": {"pov-story": 0.25},
+    "scamPattern": {"scam-of-the-week": 0.15},
+    "explainer": {"explainer": 0.1},
+    "news": {"explainer": 0.05}
+  },
+  "cues": {
+    "story": {
+      "en": ["pov", "my story", "i lost", "how i lost", "i got scammed", "i got drained", "i got hacked", "i almost", "true story", "story time", "storytime", "i gave", "i let", "i tried", "what happened when"],
+      "es": ["mi historia", "perdi", "me estafaron", "me robaron", "me hackearon", "casi pierdo", "historia real"],
+      "pt": ["minha historia", "perdi", "fui golpeado", "cai no golpe", "me hackearam", "quase perdi", "historia real"]
+    },
+    "news": {
+      "en": ["breaking", "news", "just happened", "this week", "exposed", "alert", "update"],
+      "es": ["noticia*", "urgente", "alerta", "ultima hora"],
+      "pt": ["noticia*", "urgente", "alerta", "ultima hora"]
+    },
+    "scamPattern": {
+      "en": ["scam*", "fraud*", "red flag*", "beware", "don't fall for", "dont fall for"],
+      "es": ["estafa*", "fraude*", "cuidado", "no caigas"],
+      "pt": ["golpe*", "fraude*", "cuidado", "nao caia"]
+    },
+    "explainer": {
+      "en": ["explained", "how it works", "how does", "what is", "guide", "breakdown", "deep dive"],
+      "es": ["explicado", "como funciona", "que es", "guia"],
+      "pt": ["explicado", "como funciona", "o que e", "guia"]
+    },
+    "howTo": {
+      "en": ["how to", "tutorial", "step by step", "step-by-step"],
+      "es": ["como hacer", "tutorial", "paso a paso"],
+      "pt": ["como fazer", "tutorial", "passo a passo"]
+    },
+    "attackTutorial": {
+      "en": ["how to build a drainer", "how to make a drainer", "how to create a drainer", "how to deploy a drainer", "drainer script*", "drainer source code", "free drainer", "drainer for sale", "how to hack a wallet", "how to hack wallets", "how to hack crypto", "how to steal crypto", "jailbreak prompt*", "how to jailbreak", "prompt injection payload*", "how to clone a voice", "how to make a deepfake"],
+      "es": ["como crear un drainer", "como hacer un drainer", "script de drainer", "como hackear una billetera", "como hackear billeteras", "como robar criptomonedas", "como clonar una voz", "como hacer un deepfake"],
+      "pt": ["como criar um drainer", "como fazer um drainer", "script de drainer", "como hackear uma carteira", "como hackear carteiras", "como roubar criptomoedas", "como clonar uma voz", "como fazer um deepfake"]
+    },
+    "incomeClaim": {
+      "en": ["make money", "making money", "made money", "passive income", "get rich", "profit*", "100x", "1000x", "10x gains", "millionaire", "quit my job", "free money"],
+      "es": ["ganar dinero", "gane dinero", "ingresos pasivos", "hacerse rico", "ganancias", "millonario", "dinero gratis"],
+      "pt": ["ganhar dinheiro", "ganhei dinheiro", "renda passiva", "ficar rico", "lucro*", "milionario", "dinheiro gratis"]
+    },
+    "priceContent": {
+      "en": ["price prediction*", "price target*", "price analysis", "to the moon", "next 100x", "next 1000x", "best crypto to buy", "coins to buy", "buy now"],
+      "es": ["prediccion de precio", "precio objetivo", "analisis de precio", "que cripto comprar", "mejor cripto para comprar", "monedas para comprar"],
+      "pt": ["previsao de preco", "preco alvo", "analise de preco", "qual cripto comprar", "melhor cripto para comprar", "moedas para comprar"]
+    },
+    "crypto": {
+      "en": ["crypto*", "bitcoin", "ethereum", "solana", "wallet*", "token*", "memecoin*", "meme coin*", "defi", "blockchain", "nft*", "web3", "exchange*", "trading", "trader*"],
+      "es": ["cripto*", "billetera*", "cartera*", "token*", "blockchain", "memecoin*", "trading"],
+      "pt": ["cripto*", "carteira*", "token*", "blockchain", "memecoin*", "trading"]
+    },
+    "security": {
+      "en": ["scam*", "hack*", "exploit*", "security", "phishing", "fraud*", "attack*", "stolen", "drain*", "vulnerab*", "malware", "injection"],
+      "es": ["estafa*", "hackeo*", "hackead*", "seguridad", "fraude*", "ataque*", "robo*", "inyeccion"],
+      "pt": ["golpe*", "hack*", "seguranca", "fraude*", "ataque*", "roubo*", "injecao"]
+    }
+  },
+  "topics": [
+    {
+      "id": "drainers",
+      "label": "wallet drainers",
+      "match": {
+        "strong": {
+          "en": ["wallet drainer*", "crypto drainer*", "drainer*", "wallet drained", "drained wallet*", "drained my wallet", "wallet got drained", "wallet emptied", "signature phishing", "permit phishing", "approval phishing", "ice phishing"],
+          "es": ["drainer*", "billetera vaciada", "vaciaron mi billetera", "cartera vaciada", "vaciaron mi cartera", "drenaron mi billetera", "drenador de billeteras"],
+          "pt": ["drainer*", "carteira drenada", "carteira esvaziada", "drenaram minha carteira", "esvaziaram minha carteira", "drenador de carteiras"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "explainer", "weight": 1.0, "evergreenTopic": "drainers"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.85, "evergreenTopic": "drainers"},
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 0.8, "evergreenTopic": "drainers"}
+      ],
+      "facts": ["How to review and revoke token approvals (wallet documentation)"],
+      "risks": ["Concept level only: no drainer kit names promoted, no code, no contract addresses.", "No real phishing domains, handles or project names from scam campaigns.", "Attribute every figure to its tracker and date it."],
+      "subtopics": [
+        {
+          "id": "permit-signatures",
+          "label": "gas-free signature requests",
+          "match": {"en": ["permit", "signature*", "signed", "signing", "sign a message", "one message", "off chain signature*", "gasless"], "es": ["firma*", "firmar", "firme", "permit"], "pt": ["assinatura*", "assinar", "assinei", "permit"]},
+          "concept": "A site asks for a signature instead of a transaction, and that signature quietly lets a contract move a token later.",
+          "conceptShort": "a gas-free signature that quietly grants spending rights",
+          "redFlag": "a 'sign to verify' or 'sign to claim' pop-up that is not a transaction",
+          "oneFix": "read what a signature allows before signing, and refuse anything the wallet cannot explain in plain words",
+          "pov": "you sign a gas-free 'verify your wallet' message to unlock a reward",
+          "titles": {
+            "explainer": ["The signature that empties a wallet without a transaction", "Why 'just a signature' can still cost you everything"],
+            "scam-of-the-week": ["Scam of the Week: the gas-free signature that drains a wallet"],
+            "pov-story": ["POV: You sign a gas-free message and your tokens walk away"]
+          },
+          "facts": ["How permit-style signatures work, from wallet or token-standard documentation (concept level, no code)", "A named tracker's figure for signature-phishing losses, with its method and date"],
+          "shortIdeas": ["One signature, no gas, empty wallet", "What your wallet should show you before you sign"]
+        },
+        {
+          "id": "fake-airdrop",
+          "label": "free-airdrop claim pages",
+          "match": {"en": ["airdrop*", "claim page*", "claim your", "free tokens", "free mint"], "es": ["airdrop*", "tokens gratis", "reclamar"], "pt": ["airdrop*", "tokens gratis", "resgatar"]},
+          "concept": "An unexpected token or message points to a 'claim' page, and claiming means approving or signing something that hands over access to your tokens.",
+          "conceptShort": "a 'claim' page that asks for an approval or a signature",
+          "redFlag": "a token you never bought, with a link telling you to claim more",
+          "oneFix": "ignore unexpected tokens and reach any claim only through the project's official channels, never through a link that found you",
+          "pov": "a token you never bought appears in your wallet with a link to claim a bigger reward",
+          "titles": {
+            "explainer": ["Free airdrops that cost a wallet: how claim pages work"],
+            "scam-of-the-week": ["Scam of the Week: the airdrop you never signed up for"],
+            "pov-story": ["POV: A token you never bought shows up with a link to claim more"]
+          },
+          "facts": ["How investigators describe fake-airdrop claim pages (attributed, concept level)", "Wallet guidance on hiding or ignoring unsolicited tokens"],
+          "shortIdeas": ["The airdrop that found you is the red flag", "Why you never claim a token you didn't expect"]
+        },
+        {
+          "id": "approvals",
+          "label": "forgotten token approvals",
+          "match": {"en": ["approval*", "approve", "revoke", "unlimited allowance", "allowance*"], "es": ["aprobacion*", "revocar", "permisos"], "pt": ["aprovacao", "aprovacoes", "revogar", "permissoes"]},
+          "concept": "An approval you gave an app long ago can still let a contract move that token today, even if you never use the app again.",
+          "conceptShort": "an old, unlimited approval that still lets a contract move a token",
+          "redFlag": "the word 'unlimited' in an approval prompt",
+          "oneFix": "review old approvals in your wallet or a reputable approvals checker and revoke the ones you no longer use",
+          "pov": "you approved a new trading app months ago and forgot all about it",
+          "titles": {
+            "explainer": ["The approval you forgot is still open: token allowances explained"],
+            "scam-of-the-week": ["Scam of the Week: the 'unlimited' approval"],
+            "pov-story": ["POV: An app you used once still has the keys to your tokens"]
+          },
+          "facts": ["How token approvals and allowances work (wallet or standards documentation, concept level)", "How to review and revoke approvals (wallet documentation)"],
+          "shortIdeas": ["The approval you forgot about", "'Unlimited' is the scariest word in a wallet pop-up"]
+        }
+      ],
+      "general": {
+        "label": "wallet drainers",
+        "concept": "A drainer gets you to approve or sign something on a convincing site, and a contract then moves whatever that approval allows.",
+        "conceptShort": "a convincing site plus one approval or signature",
+        "redFlag": "urgency plus a 'connect wallet' button on a site you reached through a link",
+        "oneFix": "slow down and read every approval and signature before you confirm it",
+        "pov": "you connect your wallet to a site a friend's hacked account recommended",
+        "titles": {
+          "explainer": ["Inside a wallet drainer: the one click that matters"],
+          "scam-of-the-week": ["Scam of the Week: the 'connect wallet' button that empties wallets"],
+          "pov-story": ["POV: You connect your wallet to a link from a friend's account"]
+        },
+        "facts": ["How security firms describe drainer-as-a-service operations (attributed)", "Annual drainer loss figures from a named tracker, with its method"],
+        "shortIdeas": ["The click before the drain", "Three seconds that save a wallet"]
+      }
+    },
+    {
+      "id": "address-poisoning",
+      "label": "address poisoning",
+      "match": {
+        "strong": {
+          "en": ["address poisoning", "poisoned address*", "zero value transfer*", "lookalike address*", "copy paste scam*", "wrong address scam*"],
+          "es": ["envenenamiento de direcciones", "envenenamiento de direccion", "direccion envenenada", "direcciones envenenadas"],
+          "pt": ["envenenamento de endereco*", "endereco envenenado", "enderecos envenenados"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "explainer", "weight": 1.0, "evergreenTopic": "address-poisoning"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.9, "evergreenTopic": "address-poisoning"},
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 0.8, "evergreenTopic": "address-poisoning"}
+      ],
+      "facts": [],
+      "risks": ["No real addresses, even partially; synthetic lookalikes only, labelled.", "Attribute every figure; no victim names."],
+      "subtopics": [],
+      "general": {
+        "label": "address poisoning",
+        "concept": "An attacker sends a tiny or zero-value transfer from an address that looks like one you use, hoping you copy it from your history next time.",
+        "conceptShort": "a lookalike address planted in your transaction history",
+        "redFlag": "a tiny transfer from an address that matches only the first and last few characters of one you know",
+        "oneFix": "never copy an address from your history; use a saved, verified contact and check the whole address",
+        "pov": "you copy the address from your recent transfers, like you always do",
+        "titles": {
+          "explainer": ["The copy-paste trap: how poisoned addresses work"],
+          "scam-of-the-week": ["Scam of the Week: the lookalike address in your history"],
+          "pov-story": ["POV: The address in your history is not the one you think"]
+        },
+        "facts": ["How address poisoning works, from a security firm's or wallet's published explanation (attributed)", "A reported address-poisoning loss as the primary source states it, with its date"],
+        "shortIdeas": ["First four, last four is not enough", "Why your transaction history can lie to you"]
+      }
+    },
+    {
+      "id": "phishing",
+      "label": "crypto phishing",
+      "match": {
+        "strong": {
+          "en": ["phishing", "fake website*", "fake site*", "fake metamask", "fake wallet app*", "fake wallet extension*", "sponsored result*", "search ad scam*", "malicious ad*", "lookalike domain*"],
+          "es": ["phishing", "pagina falsa", "sitio falso", "sitio web falso", "app falsa", "extension falsa", "anuncio falso"],
+          "pt": ["phishing", "site falso", "pagina falsa", "aplicativo falso", "app falso", "extensao falsa", "anuncio falso"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "explainer", "weight": 1.0, "evergreenTopic": "phishing"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.9, "evergreenTopic": "phishing"},
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 0.75, "evergreenTopic": "phishing"}
+      ],
+      "facts": [],
+      "risks": ["No real phishing domains, screenshots of live scam pages or QR codes.", "No logos or app UI of real wallets without checking their brand rules."],
+      "subtopics": [
+        {
+          "id": "search-ads",
+          "label": "sponsored search results",
+          "match": {"en": ["sponsored", "search ad*", "google ad*", "ad result*", "top result"], "es": ["anuncio*", "patrocinado"], "pt": ["anuncio*", "patrocinado"]},
+          "concept": "A paid search ad or lookalike result sits above the real one and leads to a copy of a wallet or exchange site.",
+          "conceptShort": "a paid search result that leads to a copy of the real site",
+          "redFlag": "a 'Sponsored' result for your wallet's name, or a domain one letter off",
+          "oneFix": "reach wallets and exchanges only through a bookmark you saved yourself",
+          "pov": "you search for your wallet app and click the first result",
+          "titles": {
+            "explainer": ["Why the first search result can be the scam"],
+            "scam-of-the-week": ["Scam of the Week: the sponsored result for your wallet"],
+            "pov-story": ["POV: You search for your wallet and click the top result"]
+          },
+          "facts": ["A search platform's or security firm's published description of malicious search ads aimed at crypto users (attributed)"],
+          "shortIdeas": ["Bookmark it once, never search it again"]
+        },
+        {
+          "id": "fake-apps",
+          "label": "fake wallet apps and extensions",
+          "match": {"en": ["fake app*", "fake wallet*", "fake extension*", "malicious extension*", "browser extension*", "app store"], "es": ["app falsa", "aplicacion falsa", "extension falsa", "billetera falsa"], "pt": ["app falso", "aplicativo falso", "extensao falsa", "carteira falsa"]},
+          "concept": "A copycat wallet app or browser extension looks like the real one, and the recovery phrase you type into it goes straight to the people who built it.",
+          "conceptShort": "a copycat wallet that collects the recovery phrase you type into it",
+          "redFlag": "a wallet app that asks you to 'import' your recovery phrase right after you install it",
+          "oneFix": "install wallets only from the link on the project's official site, and check the publisher",
+          "pov": "you reinstall your wallet from an app store listing that looks exactly right",
+          "titles": {
+            "explainer": ["Copycat wallets: how a fake app gets your recovery phrase"],
+            "scam-of-the-week": ["Scam of the Week: the wallet app that wants your recovery phrase"],
+            "pov-story": ["POV: You reinstall your wallet from the wrong listing"]
+          },
+          "facts": ["A platform's or security firm's report on fake wallet apps or extensions (attributed)"],
+          "shortIdeas": ["The listing that looked right"]
+        }
+      ],
+      "general": {
+        "label": "crypto phishing",
+        "concept": "Phishing copies a site, an app or a support channel you trust and waits for you to type a secret or approve something.",
+        "conceptShort": "a copy of something you trust, waiting for a secret or an approval",
+        "redFlag": "urgency plus a link you did not go looking for",
+        "oneFix": "go to the service yourself, from a bookmark, instead of following the link",
+        "pov": "an urgent 'security alert' email tells you to verify your wallet",
+        "titles": {
+          "explainer": ["Phishing, decoded: what every crypto lure has in common"],
+          "scam-of-the-week": ["Scam of the Week: the urgent 'verify your wallet' alert"],
+          "pov-story": ["POV: An urgent security alert asks you to verify your wallet"]
+        },
+        "facts": ["A regulator's or security firm's published phishing guidance for crypto users (attributed)"],
+        "shortIdeas": ["Urgency is the tell"]
+      }
+    },
+    {
+      "id": "key-management",
+      "label": "keys and self-custody",
+      "match": {
+        "strong": {
+          "en": ["seed phrase*", "recovery phrase*", "private key*", "hardware wallet*", "cold wallet*", "cold storage", "multisig", "multi sig", "self custody"],
+          "es": ["frase semilla", "frase de recuperacion", "clave privada", "claves privadas", "billetera fria", "cartera fria", "autocustodia"],
+          "pt": ["frase semente", "frase de recuperacao", "chave privada", "chaves privadas", "carteira fria", "autocustodia"]
+        },
+        "weak": {
+          "en": ["crypto security", "wallet security", "protect your crypto", "secure your crypto", "crypto hack*", "biggest hack*"],
+          "es": ["seguridad cripto", "seguridad criptomonedas", "proteger tus criptomonedas", "hackeo cripto"],
+          "pt": ["seguranca cripto", "seguranca criptomoedas", "proteger suas criptomoedas", "hack cripto"]
+        }
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "explainer", "weight": 1.0, "evergreenTopic": "key-management"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.6, "evergreenTopic": "key-management"},
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 0.7, "evergreenTopic": "key-management"}
+      ],
+      "facts": [],
+      "risks": ["No real key material, recovery phrases or addresses, even partial; synthetic examples labelled.", "No product endorsements; name device makers only in attributed facts."],
+      "subtopics": [
+        {
+          "id": "seed-phrase",
+          "label": "recovery phrases",
+          "match": {"en": ["seed phrase*", "recovery phrase*", "12 words", "24 words"], "es": ["frase semilla", "frase de recuperacion", "12 palabras", "24 palabras"], "pt": ["frase semente", "frase de recuperacao", "12 palavras", "24 palavras"]},
+          "concept": "A recovery phrase is the whole wallet in words: anyone who sees it, in a photo, a cloud note or a 'support' chat, can rebuild the wallet somewhere else.",
+          "conceptShort": "a recovery phrase that rebuilds the whole wallet for whoever sees it",
+          "redFlag": "anyone, anywhere, asking you to type or show your recovery phrase",
+          "oneFix": "keep the phrase offline, never photograph it, and type it only into the wallet you are restoring",
+          "pov": "you save your recovery phrase in a photo 'just in case'",
+          "titles": {
+            "explainer": ["Twelve words that are the whole wallet"],
+            "scam-of-the-week": ["Scam of the Week: the helper who needs your twelve words"],
+            "pov-story": ["POV: Your recovery phrase lives in your camera roll"]
+          },
+          "facts": ["Wallet documentation on what a recovery phrase is and why it must stay offline"],
+          "shortIdeas": ["No real support team ever asks for these words"]
+        },
+        {
+          "id": "hardware-wallet",
+          "label": "hardware wallets",
+          "match": {"en": ["hardware wallet*", "cold wallet*", "cold storage"], "es": ["billetera fria", "cartera fria", "billetera de hardware"], "pt": ["carteira fria", "carteira de hardware"]},
+          "concept": "A hardware wallet keeps keys off the computer, but it only protects you if you read what the device screen asks you to approve.",
+          "conceptShort": "keys kept off the computer, approved on the device screen",
+          "redFlag": "a device that arrives with a recovery phrase already filled in, or a 'firmware update' link from an email",
+          "oneFix": "buy from the maker, set it up yourself, and read the device screen before approving",
+          "pov": "you buy a discounted hardware wallet from a marketplace seller",
+          "titles": {
+            "explainer": ["What a hardware wallet protects you from, and what it can't"],
+            "scam-of-the-week": ["Scam of the Week: the hardware wallet that came pre-set-up"],
+            "pov-story": ["POV: Your discounted hardware wallet came with its own recovery card"]
+          },
+          "facts": ["Hardware-wallet makers' published guidance on buying and setting up devices"],
+          "shortIdeas": ["If it arrives set up, it is not yours"]
+        },
+        {
+          "id": "multisig",
+          "label": "multisig wallets",
+          "match": {"en": ["multisig", "multi sig", "multi signature", "signers"], "es": ["multifirma"], "pt": ["multiassinatura"]},
+          "concept": "A multisig needs several keys to agree, which helps only if the signers really check what they are approving.",
+          "conceptShort": "several keys that must agree before funds move",
+          "redFlag": "signers approving a transaction because the interface 'looked normal'",
+          "oneFix": "verify every transaction on an independent device before signing, even with several signers",
+          "pov": "you are one of three signers on a team treasury and the request looks routine",
+          "titles": {
+            "explainer": ["Multisig, explained: why more keys still need careful eyes"],
+            "scam-of-the-week": ["Scam of the Week: the routine-looking request for three signatures"],
+            "pov-story": ["POV: You are signer two of three, and the request looks routine"]
+          },
+          "facts": ["A published post-mortem of a multisig compromise (attributed, concept level)"],
+          "shortIdeas": ["Three signers, one bad screen"]
+        }
+      ],
+      "general": {
+        "label": "keys and self-custody",
+        "concept": "Whoever controls the keys controls the funds, so most losses come down to how a key or recovery phrase was stored, shared or approved.",
+        "conceptShort": "whoever holds the key moves the funds",
+        "redFlag": "a secret kept in a place that syncs, shares or screenshots",
+        "oneFix": "store keys offline and approve nothing you have not read on a screen you trust",
+        "pov": "you finally move your savings to self-custody after a scary headline",
+        "titles": {
+          "explainer": ["Self-custody without the panic: where keys actually leak"],
+          "scam-of-the-week": ["Scam of the Week: the message that asks for your keys"],
+          "pov-story": ["POV: You move your savings into your own wallet for the first time"]
+        },
+        "facts": ["Published guidance on key storage from a wallet maker or security firm (attributed)", "A named tracker's breakdown of losses from key compromises, with its method and date"],
+        "shortIdeas": ["Three habits that keep keys safe"]
+      }
+    },
+    {
+      "id": "bridge-security",
+      "label": "bridge hacks",
+      "match": {
+        "strong": {
+          "en": ["bridge hack*", "bridge exploit*", "cross chain bridge*", "bridge attack*"],
+          "es": ["hackeo de puente", "puente cross chain", "puente entre cadenas"],
+          "pt": ["hack de ponte", "ponte cross chain", "ponte entre blockchains"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "explainer", "weight": 1.0, "evergreenTopic": "bridge-security"}
+      ],
+      "facts": [],
+      "risks": ["Concept level only: no exploit steps, contracts or transaction hashes.", "Name no suspects; attribute any attribution claim to the investigator who made it."],
+      "subtopics": [],
+      "general": {
+        "label": "cross-chain bridges",
+        "concept": "A bridge holds assets on one chain and issues them on another, so whoever can fake or approve the messages between them can unlock what it holds.",
+        "conceptShort": "a vault on one chain that trusts messages from another",
+        "redFlag": "a bridge secured by a handful of keys nobody outside the team can check",
+        "oneFix": "know who can approve a bridge's messages before you trust it with funds",
+        "pov": "you move your savings across a bridge to chase a new chain's rewards",
+        "titles": {
+          "explainer": ["Why bridges get hit so hard: the vault-and-messenger problem"]
+        },
+        "facts": ["A published post-mortem of a bridge incident (attributed, concept level)", "A named tracker's figures for bridge losses, with its method and date"],
+        "shortIdeas": ["A bridge is a vault that believes messages"]
+      }
+    },
+    {
+      "id": "oracle-manipulation",
+      "label": "price-oracle manipulation",
+      "match": {
+        "strong": {
+          "en": ["oracle manipulation", "price oracle*", "flash loan*", "oracle attack*", "oracle exploit*"],
+          "es": ["manipulacion de oraculo*", "prestamo flash", "flash loan*"],
+          "pt": ["manipulacao de oraculo*", "emprestimo flash", "flash loan*"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "explainer", "weight": 1.0, "evergreenTopic": "oracle-manipulation"}
+      ],
+      "facts": [],
+      "risks": ["No exploit mechanics beyond concept level: no steps, per-step amounts or contract names.", "No price or investment talk."],
+      "subtopics": [],
+      "general": {
+        "label": "price oracles",
+        "concept": "A protocol reads a price from somewhere; if that price can be pushed for a moment, the protocol can be tricked into lending or paying out against it.",
+        "conceptShort": "a protocol trusting a price that can be pushed for a moment",
+        "redFlag": "a protocol that prices collateral from a single thin market",
+        "oneFix": "check where a protocol gets its prices before depositing",
+        "pov": "you deposit into a lending app that pays more than everyone else",
+        "titles": {
+          "explainer": ["When the price is wrong for one block: oracle attacks without jargon"]
+        },
+        "facts": ["A published post-mortem of an oracle-manipulation incident (attributed, concept level)"],
+        "shortIdeas": ["One wrong price, one empty pool"]
+      }
+    },
+    {
+      "id": "rug-pulls",
+      "label": "memecoin rug pulls",
+      "match": {
+        "strong": {
+          "en": ["rug pull*", "rugpull*", "rugged", "got rugged", "honeypot token*", "honeypot coin*", "memecoin scam*", "meme coin scam*", "pump and dump", "dev dumped", "dev sold", "liquidity pulled", "pump.fun", "pumpfun"],
+          "es": ["rug pull*", "estafa memecoin", "estafa de memecoin", "estafa meme coin", "memecoin estafa", "el dev vendio", "pump.fun"],
+          "pt": ["rug pull*", "golpe memecoin", "golpe da memecoin", "golpe de memecoin", "dev vendeu", "pump and dump", "pump.fun"]
+        },
+        "weak": {"en": ["memecoin*", "meme coin*"], "es": ["memecoin*"], "pt": ["memecoin*"]}
+      },
+      "fits": [
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 1.0, "evergreenTopic": "rug-pulls"},
+        {"channel": "zoora-security", "format": "explainer", "weight": 0.9, "evergreenTopic": "rug-pulls"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.8, "evergreenTopic": "rug-pulls"},
+        {"channel": "zoora-ai", "format": "explainer", "weight": 0.8, "evergreenTopic": "rug-pulls"}
+      ],
+      "facts": [],
+      "risks": ["No price predictions, buy calls, return figures or tickers presented as opportunities.", "Fictional tokens get invented names; real launchpads appear only in attributed facts and without logos.", "No real wallets, handles or chats; synthetic holder maps labelled illustrative."],
+      "subtopics": [
+        {
+          "id": "honeypot",
+          "label": "honeypot tokens",
+          "match": {"en": ["honeypot*", "can't sell", "cant sell", "cannot sell", "unable to sell"], "es": ["honeypot*", "no puedo vender", "no se puede vender"], "pt": ["honeypot*", "nao consigo vender", "nao da para vender"]},
+          "concept": "A honeypot token lets you buy but quietly blocks or taxes selling, so the chart keeps rising while nobody can get out.",
+          "conceptShort": "a token you can buy but cannot sell",
+          "redFlag": "a chart full of buys and almost no sells",
+          "oneFix": "check whether ordinary holders have been able to sell before you buy anything",
+          "pov": "you buy a token whose chart only goes up, and then you try to sell",
+          "titles": {
+            "explainer": ["Buy-only tokens: how a honeypot traps the buyers"],
+            "scam-of-the-week": ["Scam of the Week: the token you can buy but never sell"],
+            "pov-story": ["POV: Your token only goes up, and the sell button does nothing"]
+          },
+          "facts": ["A security firm's published description of honeypot tokens (attributed, concept level)"],
+          "shortIdeas": ["All buys, no sells: the honeypot tell"]
+        },
+        {
+          "id": "bundled-supply",
+          "label": "bundled supply and sniper wallets",
+          "match": {"en": ["bundle*", "bundled", "sniper*", "sniping", "insider wallet*", "dev wallet*", "side wallet*", "holder map*"], "es": ["sniper*", "billeteras de insiders", "bundle*"], "pt": ["sniper*", "carteiras de insiders", "bundle*"]},
+          "concept": "Insiders buy a large share of a new token through many wallets at launch, so the 'community' holding it is mostly the same few people.",
+          "conceptShort": "insiders holding most of the supply through many wallets",
+          "redFlag": "dozens of wallets that bought in the same block and were funded from the same place",
+          "oneFix": "look at who holds the supply and when they bought before you trust the chart",
+          "pov": "you join a launch that looks organic, with hundreds of holders in minutes",
+          "titles": {
+            "explainer": ["The crowd that is really five people: bundled launches explained"],
+            "scam-of-the-week": ["Scam of the Week: the launch where every holder is one person"],
+            "pov-story": ["POV: You join a launch where the crowd is one person"]
+          },
+          "facts": ["An on-chain analytics firm's published method for spotting bundled or sniped launches (attributed)"],
+          "shortIdeas": ["Hundreds of holders, one wallet behind them"]
+        },
+        {
+          "id": "launchpad",
+          "label": "memecoin launchpads",
+          "match": {"en": ["pump.fun", "pumpfun", "launchpad*", "bonding curve*", "token launch*"], "es": ["pump.fun", "lanzamiento de token*"], "pt": ["pump.fun", "lancamento de token*"]},
+          "concept": "Launchpads made creating a token take minutes, so most new tokens are launched, promoted and abandoned within days.",
+          "conceptShort": "tokens created in minutes and abandoned within days",
+          "redFlag": "a launch whose creator sells the moment the price moves",
+          "oneFix": "treat every new launch as a lottery ticket with known odds, not an investment",
+          "pov": "you launch your own memecoin on a launchpad to see what happens",
+          "titles": {
+            "explainer": ["Launch day and after: what the launchpad numbers show"],
+            "scam-of-the-week": ["Scam of the Week: the creator who sells on the first candle"],
+            "pov-story": ["POV: You launch a memecoin in five minutes"]
+          },
+          "facts": ["A published study or dashboard of token survival on a launchpad, with its method and date"],
+          "shortIdeas": ["Why most launches end the same way"]
+        }
+      ],
+      "general": {
+        "label": "rug pulls",
+        "concept": "A rug pull is an exit: the people who control a token's supply or liquidity sell or withdraw it, and holders are left with a token nobody can trade for much.",
+        "conceptShort": "insiders exiting with the liquidity",
+        "redFlag": "a team that controls most of the supply or can pull the liquidity",
+        "oneFix": "check who controls the supply and the liquidity before buying, and assume hype is paid",
+        "pov": "you buy into a memecoin everyone in a group chat is excited about",
+        "titles": {
+          "explainer": ["How a rug pull is built before the launch"],
+          "scam-of-the-week": ["Scam of the Week: the memecoin built to be dumped"],
+          "pov-story": ["POV: The group chat's favourite memecoin goes quiet"]
+        },
+        "facts": ["A named tracker's or regulator's description of rug pulls (attributed)", "A published figure on how often new tokens are abandoned, with its method and date"],
+        "shortIdeas": ["Who can pull the liquidity?", "Hype is often paid for"]
+      }
+    },
+    {
+      "id": "social-engineering",
+      "label": "social engineering",
+      "match": {
+        "strong": {
+          "en": ["pig butchering", "romance scam*", "recovery scam*", "fake support", "support scam*", "impersonation scam*", "wrong number", "social engineering", "investment scam*", "fake customer support", "tech support scam*"],
+          "es": ["estafa romantica", "estafa del amor", "estafas romanticas", "ingenieria social", "soporte falso", "falso soporte", "recuperacion de fondos", "numero equivocado", "estafa de inversion"],
+          "pt": ["golpe do amor", "golpe romantico", "engenharia social", "falso suporte", "suporte falso", "recuperacao de fundos", "numero errado", "golpe de investimento", "falso atendente"]
+        },
+        "weak": {"en": ["crypto scam*"], "es": ["estafa cripto"], "pt": ["golpe cripto"]}
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 1.0, "evergreenTopic": "social-engineering"},
+        {"channel": "zoora-security", "format": "explainer", "weight": 0.9, "evergreenTopic": "social-engineering"},
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 0.9, "evergreenTopic": "social-engineering"}
+      ],
+      "facts": [],
+      "risks": ["Never at a victim's expense; no real victims' messages, names or screenshots.", "No scammer scripts reproduced beyond what a warning needs; quote regulators' descriptions instead."],
+      "subtopics": [
+        {
+          "id": "pig-butchering",
+          "label": "long-con investment scams",
+          "match": {"en": ["pig butchering", "romance scam*", "wrong number", "investment scam*"], "es": ["estafa romantica", "estafa del amor", "numero equivocado", "estafa de inversion"], "pt": ["golpe do amor", "golpe romantico", "numero errado", "golpe de investimento"]},
+          "concept": "A stranger builds trust over weeks, then introduces a 'platform' that shows growing balances until the victim tries to withdraw.",
+          "conceptShort": "weeks of trust, then a platform that only shows gains",
+          "redFlag": "a new online friend who brings up an investment platform you have never heard of",
+          "oneFix": "never move money on the advice of someone you have only met online, and check any platform with your regulator",
+          "pov": "a wrong-number text turns into a friendship, and then into an investment tip",
+          "titles": {
+            "explainer": ["The long con: how trust becomes a fake trading platform"],
+            "scam-of-the-week": ["Scam of the Week: the friend who found you by 'accident'"],
+            "pov-story": ["POV: The stranger who texted the wrong number becomes your mentor"]
+          },
+          "facts": ["A law-enforcement or regulator warning describing this pattern (attributed)", "Reported loss figures from a named agency report, with its year"],
+          "shortIdeas": ["The withdrawal fee that never ends", "Why the platform always shows gains"]
+        },
+        {
+          "id": "recovery-scam",
+          "label": "fund-recovery scams",
+          "match": {"en": ["recovery scam*", "recover your crypto", "recover stolen crypto", "crypto recovery", "funds recovery"], "es": ["recuperacion de fondos", "recuperar criptomonedas", "recuperar tus criptomonedas"], "pt": ["recuperacao de fundos", "recuperar criptomoedas", "recuperar suas criptomoedas"]},
+          "concept": "After a loss, 'recovery experts' promise to trace and return the funds for an upfront fee, and the fee is the second loss.",
+          "conceptShort": "an upfront fee to 'recover' money that is already gone",
+          "redFlag": "anyone who promises to get stolen crypto back for a fee paid first",
+          "oneFix": "report losses to the police and your regulator, and never pay a recovery fee upfront",
+          "pov": "after losing your savings, an expert messages you offering to get it back",
+          "titles": {
+            "explainer": ["Scammed twice: how fake recovery services find victims"],
+            "scam-of-the-week": ["Scam of the Week: the expert who will get your crypto back"],
+            "pov-story": ["POV: A recovery expert finds you the day after you were scammed"]
+          },
+          "facts": ["A regulator's or law-enforcement warning about recovery scams (attributed)"],
+          "shortIdeas": ["If they found you after the loss, ask how"]
+        },
+        {
+          "id": "fake-support",
+          "label": "fake support agents",
+          "match": {"en": ["fake support", "support scam*", "fake customer support", "support agent*", "help desk"], "es": ["soporte falso", "falso soporte", "agente de soporte"], "pt": ["suporte falso", "falso suporte", "falso atendente", "atendente falso"]},
+          "concept": "Scammers watch public help requests and reply as 'support', steering the person to a form or chat that asks for a recovery phrase or a remote-access app.",
+          "conceptShort": "'support' that messages you first and asks for secrets",
+          "redFlag": "support that contacts you first, especially by direct message",
+          "oneFix": "open support tickets only from inside the official app or site, and never share a recovery phrase or your screen",
+          "pov": "you post that your transfer is stuck, and 'support' replies within a minute",
+          "titles": {
+            "explainer": ["Why real support never messages you first"],
+            "scam-of-the-week": ["Scam of the Week: the help desk that found you"],
+            "pov-story": ["POV: You ask for help online and support replies in a minute"]
+          },
+          "facts": ["An exchange's or wallet's published statement on how its support contacts users"],
+          "shortIdeas": ["Real support never DMs first"]
+        }
+      ],
+      "general": {
+        "label": "social engineering",
+        "concept": "Social engineering skips the code and goes after the person: trust, urgency or fear gets you to hand over access yourself.",
+        "conceptShort": "trust, urgency or fear instead of code",
+        "redFlag": "pressure to act now, plus a request for a secret or a payment",
+        "oneFix": "pause, and verify through a channel you found yourself",
+        "pov": "a familiar-looking message says your account will be closed in an hour",
+        "titles": {
+          "explainer": ["The hack that skips the computer and targets you"],
+          "scam-of-the-week": ["Scam of the Week: the countdown that rushes you"],
+          "pov-story": ["POV: You have one hour to 'verify' your account"]
+        },
+        "facts": ["A regulator's or law-enforcement summary of the most reported crypto fraud types, with its year"],
+        "shortIdeas": ["Urgency is a tactic"]
+      }
+    },
+    {
+      "id": "fake-job-malware",
+      "label": "fake job offers that install malware",
+      "match": {
+        "strong": {
+          "en": ["fake job*", "job interview scam*", "fake recruiter*", "fake interview*", "take home test", "coding test malware", "malicious repo*", "job scam*"],
+          "es": ["entrevista falsa", "oferta de trabajo falsa", "reclutador falso", "estafa de empleo"],
+          "pt": ["entrevista falsa", "vaga falsa", "recrutador falso", "golpe de emprego", "golpe da vaga"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "explainer", "weight": 1.0, "evergreenTopic": "fake-job-malware"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.9, "evergreenTopic": "fake-job-malware"},
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 0.9, "evergreenTopic": "fake-job-malware"}
+      ],
+      "facts": [],
+      "risks": ["Do not attribute campaigns to a country or group unless the cited advisory does, and say who said it.", "No malware names promoted, no code, no repository links."],
+      "subtopics": [],
+      "general": {
+        "label": "fake job interviews",
+        "concept": "A fake recruiter runs a convincing hiring process, and the take-home test or meeting app they send installs malware that hunts for wallets and passwords.",
+        "conceptShort": "a hiring test or meeting app that installs malware",
+        "redFlag": "an interview that requires running their code or installing their meeting app",
+        "oneFix": "never run a stranger's code or installer on the machine that holds your wallets",
+        "pov": "a dream crypto job offer asks you to run a short coding test",
+        "titles": {
+          "explainer": ["The interview that installs malware: fake jobs explained"],
+          "scam-of-the-week": ["Scam of the Week: the take-home test that steals wallets"],
+          "pov-story": ["POV: The final interview round is a file you have to run"]
+        },
+        "facts": ["A security firm's or government advisory on fake-job malware campaigns (attributed)"],
+        "shortIdeas": ["Never run the test on the machine with your wallet"]
+      }
+    },
+    {
+      "id": "sim-swap",
+      "label": "SIM swaps",
+      "match": {
+        "strong": {
+          "en": ["sim swap*", "sim hijack*", "sim swapping", "port out scam*", "phone number hijack*"],
+          "es": ["duplicado de sim", "duplicacion de sim", "clonacion de sim", "sim swap*"],
+          "pt": ["troca de chip", "clonagem de chip", "golpe do chip", "sim swap*"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 1.0, "evergreenTopic": "sim-swap"},
+        {"channel": "zoora-security", "format": "explainer", "weight": 0.9, "evergreenTopic": "social-engineering"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.85, "evergreenTopic": "social-engineering"}
+      ],
+      "facts": [],
+      "risks": ["No carrier blamed without a source; attribute any figures."],
+      "subtopics": [],
+      "general": {
+        "label": "SIM swaps",
+        "concept": "An attacker talks a phone carrier into moving your number to their SIM, then uses text-message codes to reset your accounts.",
+        "conceptShort": "your phone number moved to someone else's SIM",
+        "redFlag": "your phone suddenly losing signal for no reason",
+        "oneFix": "use an authenticator app or security key instead of text-message codes, and set a carrier account PIN",
+        "pov": "your phone drops to 'No service' in the middle of the afternoon",
+        "titles": {
+          "explainer": ["Why text-message codes are the weak link: SIM swaps explained"],
+          "scam-of-the-week": ["Scam of the Week: the phone number that changed hands"],
+          "pov-story": ["POV: Your phone says No Service, and your inbox starts filling up"]
+        },
+        "facts": ["A regulator's or carrier's published guidance on SIM-swap fraud (attributed)"],
+        "shortIdeas": ["No signal? Check your accounts"]
+      }
+    },
+    {
+      "id": "exchange-risk",
+      "label": "exchange failures",
+      "match": {
+        "strong": {
+          "en": ["withdrawals paused", "withdrawals halted", "exchange collapse*", "exchange hack*", "proof of reserves", "exchange frozen"],
+          "es": ["retiros pausados", "retiros suspendidos", "colapso del exchange", "hackeo de exchange", "prueba de reservas"],
+          "pt": ["saques suspensos", "saques pausados", "colapso da exchange", "hack de exchange", "prova de reservas"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 1.0, "evergreenTopic": "exchange-risk"},
+        {"channel": "zoora-security", "format": "explainer", "weight": 0.8, "evergreenTopic": "key-management"}
+      ],
+      "facts": [],
+      "risks": ["No claim that a named exchange is insolvent beyond what a court or regulator stated.", "No price talk."],
+      "subtopics": [],
+      "general": {
+        "label": "exchange failures",
+        "concept": "On an exchange you hold a promise, not the coins; when the exchange is hacked or insolvent, withdrawals stop and customers wait in line.",
+        "conceptShort": "a balance that is a promise, not coins you control",
+        "redFlag": "'temporary maintenance' on withdrawals with no clear end date",
+        "oneFix": "keep on an exchange only what you are actively trading, and know how its reserves are checked",
+        "pov": "your exchange pauses withdrawals 'for maintenance' on a Friday night",
+        "titles": {
+          "explainer": ["Not your keys: what happens when an exchange stops withdrawals"],
+          "pov-story": ["POV: Withdrawals are paused 'for maintenance'"]
+        },
+        "facts": ["A court filing, regulator release or exchange statement on a withdrawal freeze (attributed)"],
+        "shortIdeas": ["A balance is a promise"]
+      }
+    },
+    {
+      "id": "ai-security",
+      "label": "AI security",
+      "match": {
+        "strong": {
+          "en": ["prompt injection*", "indirect prompt injection", "jailbreak*", "ai agent hack*", "ai agent exploit*", "malicious plugin*", "malicious skill*", "malicious mcp", "mcp server*", "model context protocol", "deepfake*", "voice clone*", "cloned voice*", "voice cloning", "ai phishing", "ai washing", "ai-washing"],
+          "es": ["inyeccion de prompt*", "deepfake*", "clonacion de voz", "voz clonada", "phishing con ia", "jailbreak*"],
+          "pt": ["injecao de prompt*", "deepfake*", "clonagem de voz", "voz clonada", "phishing com ia", "jailbreak*"]
+        },
+        "weak": {
+          "en": ["ai security", "llm security", "ai hack*", "ai hacked", "ai vulnerabilit*", "ai scam*", "fake ai"],
+          "es": ["seguridad de la ia", "seguridad inteligencia artificial", "ciberseguridad ia", "ia hackeada", "estafa con ia", "estafas con ia"],
+          "pt": ["seguranca de ia", "seguranca inteligencia artificial", "ciberseguranca ia", "ia hackeada", "golpe com ia", "golpes com ia"]
+        }
+      },
+      "fits": [
+        {"channel": "zoora-security", "format": "explainer", "weight": 1.0, "evergreenTopic": "ai-security"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.9, "evergreenTopic": "ai-security"},
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 0.85, "evergreenTopic": "ai-security"}
+      ],
+      "facts": [],
+      "risks": ["No payloads, winning prompts, encoded messages or tool code.", "Do not imply an AI company or tool maker stole funds unless a cited source says so; describe who exploited what.", "Research demonstrations are labelled as research, not as losses."],
+      "subtopics": [
+        {
+          "id": "prompt-injection",
+          "label": "prompt injection",
+          "match": {"en": ["prompt injection*", "indirect prompt injection", "injected prompt*", "jailbreak*"], "es": ["inyeccion de prompt*", "jailbreak*"], "pt": ["injecao de prompt*", "jailbreak*"]},
+          "concept": "An AI model cannot reliably tell its instructions from the text it reads, so instructions hidden in a web page, email or document can take over what an AI assistant does.",
+          "conceptShort": "instructions hidden in content the AI reads",
+          "redFlag": "an AI assistant that can both read untrusted content and take actions",
+          "oneFix": "give AI tools the least access they need, and keep a human approval step before anything moves money or data",
+          "pov": "your AI assistant summarizes a web page, and the page has instructions of its own",
+          "titles": {
+            "explainer": ["Prompt injection, explained: when the text gives the orders"],
+            "scam-of-the-week": ["Scam of the Week: the web page that talks to your AI assistant"],
+            "pov-story": ["POV: Your AI assistant reads one web page and changes sides"]
+          },
+          "facts": ["OWASP's or NIST's published description of prompt injection in LLM applications (attributed)", "A documented prompt-injection incident or research demonstration, labelled as one or the other"],
+          "shortIdeas": ["The hidden sentence your AI obeyed"]
+        },
+        {
+          "id": "agent-exploits",
+          "label": "AI agents with access to money",
+          "match": {"en": ["ai agent hack*", "ai agent exploit*", "agent hacked", "agent exploit*", "ai agent drained", "agent drained"], "es": ["agente de ia hackeado", "agentes de ia hackeados"], "pt": ["agente de ia hackeado", "agentes de ia hackeados"]},
+          "concept": "An AI agent with a wallet or an API key can be talked, tricked or misconfigured into acting against its owner, because its instructions and its inputs share one channel.",
+          "conceptShort": "an agent that can be talked into acting against its owner",
+          "redFlag": "an agent holding keys or spending power with no limits and no human check",
+          "oneFix": "cap what an agent can spend, keep keys out of its reach, and log every action it takes",
+          "pov": "you give your AI agent a wallet so it can trade while you sleep",
+          "titles": {
+            "explainer": ["When the AI agent holds the wallet: what can go wrong"],
+            "scam-of-the-week": ["Scam of the Week: the message that talked an AI agent into paying"],
+            "pov-story": ["POV: Your AI agent had one job and a wallet"]
+          },
+          "facts": ["A documented case of an AI agent being manipulated into a transfer (attributed, concept level)"],
+          "shortIdeas": ["Never give an agent more than it can lose"]
+        },
+        {
+          "id": "malicious-plugins",
+          "label": "malicious AI plugins and tools",
+          "match": {"en": ["malicious plugin*", "malicious extension*", "malicious skill*", "plugin*", "mcp server*", "mcp", "model context protocol"], "es": ["plugin malicioso", "extension maliciosa", "plugins maliciosos"], "pt": ["plugin malicioso", "extensao maliciosa", "plugins maliciosos"]},
+          "concept": "Plugins, skills and tool servers extend what an AI can do, and a malicious one runs with whatever access the assistant already has.",
+          "conceptShort": "a plugin that inherits everything the assistant can touch",
+          "redFlag": "a free plugin that asks for broad access and promises 'alpha'",
+          "oneFix": "install AI tools only from sources you can verify, and review the access each one asks for",
+          "pov": "you install a free AI plugin that promises trading alpha",
+          "titles": {
+            "explainer": ["The plugin problem: how AI tools inherit your access"],
+            "scam-of-the-week": ["Scam of the Week: the free AI plugin with full access"],
+            "pov-story": ["POV: The free AI plugin wanted access to everything"]
+          },
+          "facts": ["A security audit or advisory on malicious AI plugins, skills or tool servers (attributed, with counts as published)"],
+          "shortIdeas": ["Check what the plugin can touch"]
+        },
+        {
+          "id": "deepfake-live",
+          "label": "deepfake giveaway livestreams",
+          "match": {"en": ["deepfake live*", "deepfake giveaway*", "deepfake stream*", "fake livestream*", "live giveaway*", "double your crypto", "crypto giveaway*", "livestream*"], "es": ["deepfake en vivo", "deepfake en directo", "en directo", "en vivo", "sorteo falso", "duplicar tus criptomonedas"], "pt": ["deepfake ao vivo", "ao vivo", "live falsa", "sorteio falso", "dobrar suas criptomoedas"]},
+          "concept": "A hijacked or lookalike channel streams a deepfaked founder or celebrity promising to double any crypto sent to an address.",
+          "conceptShort": "a deepfaked famous face promising to double what you send",
+          "redFlag": "any livestream that promises to send back more crypto than you send",
+          "oneFix": "treat every 'send some, get more back' offer as a scam, whoever appears to be saying it",
+          "pov": "a famous founder goes live and promises to double your coins",
+          "titles": {
+            "explainer": ["Deepfake giveaways: why 'send one, get two' never pays"],
+            "scam-of-the-week": ["Scam of the Week: the famous face on a fake livestream"],
+            "pov-story": ["POV: Your favourite founder is live, and doubling coins"]
+          },
+          "facts": ["A platform's or security firm's report on deepfake giveaway livestreams (attributed)"],
+          "shortIdeas": ["Nobody doubles your crypto"]
+        },
+        {
+          "id": "voice-clone",
+          "label": "voice-clone scam calls",
+          "match": {"en": ["voice clone*", "cloned voice*", "voice cloning", "ai voice scam*", "ai scam call*", "fake call*"], "es": ["clonacion de voz", "voz clonada", "llamada falsa", "voz falsa"], "pt": ["clonagem de voz", "voz clonada", "ligacao falsa", "voz falsa"]},
+          "concept": "A few seconds of someone's voice from social media can be enough to fake a call from them asking for urgent money.",
+          "conceptShort": "a familiar voice, faked from a short clip, asking for urgent money",
+          "redFlag": "a loved one's voice asking for money in a hurry and in secret",
+          "oneFix": "agree a family code word, and call back on a number you already have",
+          "pov": "your brother calls from a strange number, panicked, asking for money right now",
+          "titles": {
+            "explainer": ["How a voice-clone call works, and the family code word that stops it"],
+            "scam-of-the-week": ["Scam of the Week: the call that sounds exactly like family"],
+            "pov-story": ["POV: Your brother calls from a strange number, and he needs money now"]
+          },
+          "facts": ["A regulator's or law-enforcement warning about voice-clone scams (attributed)"],
+          "shortIdeas": ["Hang up and call back"]
+        },
+        {
+          "id": "deepfake-impersonation",
+          "label": "deepfake impersonation",
+          "match": {"en": ["deepfake*", "fake video*", "ai generated video*", "video call*"], "es": ["deepfake*", "video falso", "videollamada"], "pt": ["deepfake*", "video falso", "videochamada"]},
+          "concept": "Video and voice can now be faked well enough to impersonate a boss, a celebrity or a relative on a call or in an ad.",
+          "conceptShort": "a faked face or voice that borrows someone's trust",
+          "redFlag": "a familiar face asking for money or secrets through an unusual channel",
+          "oneFix": "verify any money request through a second channel you control",
+          "pov": "your company's chief executive joins a video call and asks for an urgent transfer",
+          "titles": {
+            "explainer": ["Seeing is not believing: deepfake impersonation, explained"],
+            "scam-of-the-week": ["Scam of the Week: the video call with a fake boss"],
+            "pov-story": ["POV: Your boss is on the video call, except it is not your boss"]
+          },
+          "facts": ["A documented deepfake impersonation case from a law-enforcement or court source (attributed)"],
+          "shortIdeas": ["Verify on a second channel"]
+        },
+        {
+          "id": "ai-washing",
+          "label": "AI-washing",
+          "match": {"en": ["ai washing", "ai-washing", "fake ai", "ai trading scam*", "ai powered scam*"], "es": ["ia falsa", "lavado de ia"], "pt": ["ia falsa", "lavagem de ia"]},
+          "concept": "'AI-powered' is a sales pitch, not a track record, and regulators have charged firms that claimed AI they did not use.",
+          "conceptShort": "'AI-powered' used as a pitch instead of a record",
+          "redFlag": "'AI' in the pitch, with no audited results behind it",
+          "oneFix": "ask for verifiable results and check the firm with your regulator",
+          "pov": "an app promises its AI picks winners every time",
+          "titles": {
+            "explainer": ["AI-washing: when 'powered by AI' is the whole product"],
+            "scam-of-the-week": ["Scam of the Week: the app that says its AI never loses"],
+            "pov-story": ["POV: The app's AI never loses, according to the app"]
+          },
+          "facts": ["A regulator's enforcement release on AI-washing (attributed)"],
+          "shortIdeas": ["AI-powered is not a track record"]
+        }
+      ],
+      "general": {
+        "label": "AI security",
+        "concept": "AI tools now read our email, browse the web and hold API keys, so attacks aimed at them land on us.",
+        "conceptShort": "AI tools with real access becoming the target",
+        "redFlag": "an AI tool with broad access and no human check",
+        "oneFix": "give each AI tool the least access it needs, and keep a human in the loop for money and secrets",
+        "pov": "you let an AI assistant manage your inbox and your exchange account",
+        "titles": {
+          "explainer": ["AI security for normal people: where the real risks are"],
+          "scam-of-the-week": ["Scam of the Week: the AI assistant that was turned"],
+          "pov-story": ["POV: Your AI assistant has access to everything"]
+        },
+        "facts": ["OWASP's or NIST's published guidance on LLM application risks (attributed)"],
+        "shortIdeas": ["Least access, always"]
+      }
+    },
+    {
+      "id": "ai-trading-agents",
+      "label": "AI trading agents",
+      "fitCue": {"cue": "crypto", "missingMultiplier": 0.7},
+      "match": {
+        "strong": {
+          "en": ["ai trading agent*", "ai trading bot*", "ai agent trad*", "ai agent crypto", "ai agents crypto", "crypto ai agent*", "ai hedge fund*", "ai agent wallet*"],
+          "es": ["agente de ia trading", "agentes de ia cripto", "bot de trading con ia", "agente de trading", "trading con ia"],
+          "pt": ["agente de ia trading", "agentes de ia cripto", "robo de trading", "bot de trading com ia", "trading com ia"]
+        },
+        "weak": {
+          "en": ["ai agent*", "autonomous agent*", "autonomous ai agent*"],
+          "es": ["agente de ia", "agentes de ia", "agentes de inteligencia artificial"],
+          "pt": ["agente de ia", "agentes de ia", "agentes de inteligencia artificial"]
+        }
+      },
+      "fits": [
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 1.0, "evergreenTopic": "ai-trading-agents"},
+        {"channel": "zoora-ai", "format": "explainer", "weight": 0.9, "evergreenTopic": "ai-trading-agents"},
+        {"channel": "zoora-security", "format": "explainer", "weight": 0.7, "evergreenTopic": "ai-security"}
+      ],
+      "facts": [],
+      "risks": ["No income or return claims; any figures are published results, attributed, with losses included.", "Synthetic, labelled charts only; no real tickers presented as opportunities.", "No product endorsements."],
+      "subtopics": [
+        {
+          "id": "live-tests",
+          "label": "AI trading tests with real money",
+          "match": {"en": ["live test*", "real money", "tested", "experiment*", "for 30 days", "challenge"], "es": ["dinero real", "prueba", "experimento"], "pt": ["dinheiro real", "teste", "experimento"]},
+          "concept": "Public tests of AI models trading real money mostly show how hard it is: some runs end ahead, many do not, and results vary from run to run.",
+          "conceptShort": "AI models trading real money in public tests",
+          "redFlag": "one winning screenshot presented as proof",
+          "oneFix": "ask for the full record, losses included, and how many runs there were",
+          "pov": "you give an AI model your savings for thirty days to see what happens",
+          "titles": {
+            "explainer": ["Can an AI trade for you? Reading the public tests honestly"],
+            "pov-story": ["POV: You let an AI trade your savings for a month"]
+          },
+          "facts": ["A documented public test of AI models trading real money, with its results as published"],
+          "shortIdeas": ["One good screenshot is not a record"]
+        },
+        {
+          "id": "agent-wallets",
+          "label": "AI agents holding wallets",
+          "match": {"en": ["wallet*", "my crypto", "gave an ai", "gave my ai", "access to my"], "es": ["billetera*", "cartera*", "mis criptomonedas"], "pt": ["carteira*", "minhas criptomoedas"]},
+          "concept": "An agent that can sign transactions can also be misled into signing the wrong ones, and every limit has to be set before it starts.",
+          "conceptShort": "an agent that signs transactions on your behalf",
+          "redFlag": "an agent with an unlimited wallet and no spending cap",
+          "oneFix": "fund an agent's wallet with only what you can afford to lose, and cap what it can send",
+          "pov": "you hand your AI agent a funded wallet and tell it to grow it",
+          "titles": {
+            "explainer": ["Giving an AI agent a wallet: the limits to set first"],
+            "pov-story": ["POV: You give an AI agent a wallet and one instruction"]
+          },
+          "facts": ["A documented case of an AI agent misusing a wallet or being manipulated through one (attributed)"],
+          "shortIdeas": ["Spending caps before autonomy"]
+        },
+        {
+          "id": "agent-funds",
+          "label": "autonomous AI funds",
+          "match": {"en": ["hedge fund*", "ai fund*"], "es": ["fondo de cobertura", "fondo de ia"], "pt": ["fundo de hedge", "fundo de ia"]},
+          "concept": "AI-run funds pitch autonomy and returns, but the record that matters is audited results, custody and who can override the agent.",
+          "conceptShort": "an AI-run fund pitched on autonomy",
+          "redFlag": "returns quoted without audited records or a named custodian",
+          "oneFix": "ask who holds the funds, who audits the results and who can stop the agent",
+          "pov": "you create an autonomous AI trading fund and friends want in",
+          "titles": {
+            "explainer": ["AI funds: the three questions to ask before anyone invests"],
+            "pov-story": ["POV: You launch an AI trading fund and your friends want in"]
+          },
+          "facts": ["A regulator's statement on AI claims in investment products (attributed)"],
+          "shortIdeas": ["Who can switch the agent off?"]
+        }
+      ],
+      "general": {
+        "label": "AI trading agents",
+        "concept": "AI agents that trade promise speed and tirelessness; the risks are those of any strategy plus new ones, like being manipulated through what they read.",
+        "conceptShort": "AI agents trading on your behalf",
+        "redFlag": "a promised win rate with no losing months",
+        "oneFix": "judge an agent by its full, verifiable record and by the limits around it",
+        "pov": "you build an AI agent that trades while you sleep",
+        "titles": {
+          "explainer": ["AI trading agents without the hype: what they can and cannot do"],
+          "pov-story": ["POV: You build an AI agent that trades while you sleep"]
+        },
+        "facts": ["Documented results of AI trading agents (attributed, with their limits)"],
+        "shortIdeas": ["What an agent cannot know"]
+      }
+    },
+    {
+      "id": "trading-bot-fraud",
+      "label": "trading-bot scams",
+      "match": {
+        "strong": {
+          "en": ["mev bot*", "arbitrage bot*", "front running bot*", "trading bot scam*", "bot scam*", "guaranteed profit*", "never loses", "passive income bot*", "copy trading scam*"],
+          "es": ["bot de arbitraje", "bot mev", "estafa bot", "bot de trading estafa", "ganancias garantizadas"],
+          "pt": ["bot de arbitragem", "bot mev", "golpe do robo", "robo de trading golpe", "lucro garantido"]
+        },
+        "weak": {"en": [], "es": [], "pt": []}
+      },
+      "fits": [
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 1.0, "evergreenTopic": "trading-bot-fraud"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.9, "evergreenTopic": "social-engineering"},
+        {"channel": "zoora-security", "format": "explainer", "weight": 0.8, "evergreenTopic": "social-engineering"}
+      ],
+      "facts": [],
+      "risks": ["No income claims, even quoted, without the scam framing and a claim-gate waiver.", "No real bot names, links or code; synthetic examples only."],
+      "subtopics": [
+        {
+          "id": "mev-bot-scam",
+          "label": "'deploy this bot' tutorials",
+          "match": {"en": ["mev bot*", "arbitrage bot*", "front running bot*", "deploy the contract", "smart contract bot*"], "es": ["bot mev", "bot de arbitraje"], "pt": ["bot mev", "bot de arbitragem"]},
+          "concept": "A tutorial promises a profitable bot if you deploy its code and fund it, and the code quietly sends the funding to the tutorial's author.",
+          "conceptShort": "a 'free bot' tutorial whose code pays its author",
+          "redFlag": "a video that asks you to paste code you cannot read and send it funds",
+          "oneFix": "never run or fund code you cannot read yourself, whatever the comments say",
+          "pov": "you follow a tutorial to launch a 'profitable' arbitrage bot",
+          "titles": {
+            "explainer": ["The free bot tutorial that pays its author"],
+            "scam-of-the-week": ["Scam of the Week: the arbitrage bot you deploy yourself"],
+            "pov-story": ["POV: You follow a video to launch a money-printing bot"]
+          },
+          "facts": ["A security firm's description of fake trading-bot tutorials (attributed, concept level)"],
+          "shortIdeas": ["If you can't read the code, don't fund it"]
+        }
+      ],
+      "general": {
+        "label": "trading-bot scams",
+        "concept": "Bots sold with guaranteed profits sell the promise, not the profits: dashboards show gains until withdrawals are blocked or fees appear.",
+        "conceptShort": "a bot sold on guaranteed profits",
+        "redFlag": "the words 'guaranteed' or 'never loses' anywhere near a trading product",
+        "oneFix": "walk away from any guaranteed return, and check the seller with your regulator",
+        "pov": "you buy an AI trading bot that 'never loses'",
+        "titles": {
+          "explainer": ["Why 'never loses' is the tell: trading-bot scams explained"],
+          "scam-of-the-week": ["Scam of the Week: the bot with a perfect record"],
+          "pov-story": ["POV: You buy a trading bot with a perfect record"]
+        },
+        "facts": ["A regulator's warning about trading-bot or AI trading schemes (attributed)"],
+        "shortIdeas": ["Guaranteed is the red flag"]
+      }
+    },
+    {
+      "id": "memecoin-callers",
+      "label": "memecoin callers",
+      "match": {
+        "strong": {
+          "en": ["memecoin caller*", "crypto caller*", "top caller*", "kol", "kols", "alpha group*", "alpha call*", "call group*", "paid shill*", "shilling"],
+          "es": ["grupo de senales", "llamadas cripto", "influencer cripto"],
+          "pt": ["grupo de sinais", "calls cripto", "influenciador cripto"]
+        },
+        "weak": {"en": ["caller*", "shill*"], "es": ["shill*"], "pt": ["shill*"]}
+      },
+      "fits": [
+        {"channel": "zoora-ai", "format": "pov-story", "weight": 1.0, "evergreenTopic": "memecoin-callers"},
+        {"channel": "zoora-security", "format": "explainer", "weight": 0.75, "evergreenTopic": "rug-pulls"},
+        {"channel": "zoora-security", "format": "scam-of-the-week", "weight": 0.7, "evergreenTopic": "rug-pulls"}
+      ],
+      "facts": [],
+      "risks": ["No real callers', groups' or handles' names; fictional composites only.", "No buy calls, tickers or price talk."],
+      "subtopics": [],
+      "general": {
+        "label": "memecoin callers",
+        "concept": "A 'call' can be an ad: some callers buy before they post, get paid to post, or both, and their followers' buying is the exit.",
+        "conceptShort": "a call that can be an ad, with followers as the exit",
+        "redFlag": "a caller who never discloses holdings or payments",
+        "oneFix": "treat every call as an advertisement until the caller discloses what they hold and who paid",
+        "pov": "you become a top caller, and projects start paying you to post",
+        "titles": {
+          "explainer": ["Who pays the caller? How memecoin calls really work"],
+          "scam-of-the-week": ["Scam of the Week: the 'alpha' call that was an ad"],
+          "pov-story": ["POV: Projects start paying you to post calls"]
+        },
+        "facts": ["Published investigations into paid or front-run memecoin calls (attributed)", "The SEC's or FTC's rules on disclosing paid promotion (attributed)"],
+        "shortIdeas": ["Every call is an ad until proven otherwise"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "status": "PROPOSAL pending the owner's review: the queries, floors, thresholds and weights are editorial choices. Change them here; the code reads them on every run.",
+  "compliance": {
+    "derivedMetricsAmendment": {
+      "accepted": false,
+      "acceptedOn": null,
+      "reference": null,
+      "why": "The outlier ratio, the engagement score and the ranking are metrics derived from YouTube API Data. YouTube's Developer Policies (III.E.4) forbid derived metrics unless the API project has accepted the 'Additional policies for derived metrics and data storage' amendment through the YouTube API Services Audit and Quota Extension Form (Section 5 -> 'Analytics & Reporting'). Set accepted to true, with the date and YouTube's reference, only after YouTube confirms it for the project this key belongs to. Until then live runs stop before the first API call; --fixtures runs (synthetic data) are unaffected."
+    },
+    "retentionDays": 30,
+    "retentionWhy": "Developer Policies III.E.4: API Data fetched with an API key may be kept no longer than 30 calendar days. Every run deletes cache entries and out/topics reports older than this; the value can be lowered, never raised."
+  },
+  "ownChannels": [
+    {"id": "UCjNibXSaZqeXSD36V6dyIVQ", "name": "Zoora AI (content/zoora-ai/CHANNEL.md)"}
+  ],
+  "excludeChannelIds": [],
+  "window": {
+    "days": 90,
+    "note": "search.list publishedAfter = the run date's UTC midnight minus this many days (a whole-day boundary keeps the search cache stable for a day)."
+  },
+  "search": {
+    "orders": ["viewCount"],
+    "pages": 1,
+    "safeSearch": null,
+    "note": "order=viewCount per the brief. Google warns that a non-relevance order combined with publishedAfter 'might result in a smaller or incomplete result set'; --orders viewCount,relevance widens the net at one extra search call per query."
+  },
+  "languages": {
+    "en": {"relevanceLanguage": "en", "regionCode": null, "weight": 1.0, "label": "English"},
+    "es": {"relevanceLanguage": "es", "regionCode": null, "weight": 0.95, "label": "Spanish"},
+    "pt": {"relevanceLanguage": "pt", "regionCode": null, "weight": 0.95, "label": "Portuguese"}
+  },
+  "queries": [
+    {"id": "en-crypto-security", "niche": "crypto security", "lang": "en", "priority": 1, "q": "crypto security|crypto hack|crypto scam|wallet security"},
+    {"id": "en-wallet-drainers", "niche": "wallet drainers", "lang": "en", "priority": 1, "q": "wallet drainer|crypto drainer|wallet drained|drained wallet"},
+    {"id": "en-ai-security", "niche": "AI security", "lang": "en", "priority": 1, "q": "AI security|LLM security|AI hacked|AI vulnerability"},
+    {"id": "en-prompt-injection", "niche": "prompt injection", "lang": "en", "priority": 1, "q": "prompt injection|prompt injection attack|indirect prompt injection"},
+    {"id": "en-deepfake-scams", "niche": "deepfake scams", "lang": "en", "priority": 1, "q": "deepfake scam|voice clone scam|AI scam call|deepfake fraud"},
+    {"id": "en-memecoin-rug-pulls", "niche": "memecoin rug pulls", "lang": "en", "priority": 1, "q": "memecoin rug pull|rug pull|memecoin scam|pump.fun rug"},
+    {"id": "en-ai-agents", "niche": "AI agents", "lang": "en", "priority": 2, "q": "AI agent crypto|AI trading agent|AI agent wallet|autonomous AI agent"},
+    {"id": "es-crypto-security", "niche": "crypto security", "lang": "es", "priority": 2, "q": "seguridad cripto|hackeo cripto|estafa cripto|seguridad criptomonedas"},
+    {"id": "es-wallet-drainers", "niche": "wallet drainers", "lang": "es", "priority": 2, "q": "wallet drainer|drainer cripto|billetera vaciada|vaciaron mi billetera"},
+    {"id": "es-ai-security", "niche": "AI security", "lang": "es", "priority": 2, "q": "seguridad inteligencia artificial|ciberseguridad IA|IA hackeada"},
+    {"id": "es-prompt-injection", "niche": "prompt injection", "lang": "es", "priority": 2, "q": "inyección de prompts|inyección de prompt|prompt injection"},
+    {"id": "es-deepfake-scams", "niche": "deepfake scams", "lang": "es", "priority": 2, "q": "estafa deepfake|clonación de voz estafa|estafa con IA|voz clonada estafa"},
+    {"id": "es-memecoin-rug-pulls", "niche": "memecoin rug pulls", "lang": "es", "priority": 2, "q": "rug pull memecoin|estafa memecoin|rug pull cripto"},
+    {"id": "es-ai-agents", "niche": "AI agents", "lang": "es", "priority": 3, "q": "agentes de IA cripto|agente de IA trading|agentes de inteligencia artificial cripto"},
+    {"id": "pt-crypto-security", "niche": "crypto security", "lang": "pt", "priority": 2, "q": "segurança cripto|golpe cripto|hack cripto|segurança criptomoedas"},
+    {"id": "pt-wallet-drainers", "niche": "wallet drainers", "lang": "pt", "priority": 2, "q": "wallet drainer|drainer cripto|carteira drenada|carteira esvaziada"},
+    {"id": "pt-ai-security", "niche": "AI security", "lang": "pt", "priority": 2, "q": "segurança inteligência artificial|cibersegurança IA|IA hackeada"},
+    {"id": "pt-prompt-injection", "niche": "prompt injection", "lang": "pt", "priority": 2, "q": "injeção de prompt|prompt injection"},
+    {"id": "pt-deepfake-scams", "niche": "deepfake scams", "lang": "pt", "priority": 2, "q": "golpe deepfake|golpe voz clonada|clonagem de voz golpe|golpe com IA"},
+    {"id": "pt-memecoin-rug-pulls", "niche": "memecoin rug pulls", "lang": "pt", "priority": 2, "q": "rug pull memecoin|golpe memecoin|rug pull cripto"},
+    {"id": "pt-ai-agents", "niche": "AI agents", "lang": "pt", "priority": 3, "q": "agentes de IA cripto|agente de IA trading|agentes de inteligência artificial cripto"}
+  ],
+  "format": {
+    "shortMaxSeconds": 180,
+    "shortWithoutAspectMaxSeconds": 60,
+    "note": "A Short is at most 3 minutes and vertical or square. player.embedWidth/embedHeight give the aspect ratio when YouTube knows it; without it only videos of 60 s or less count as Shorts."
+  },
+  "floors": {
+    "minViews": {
+      "long": {"en": 10000, "es": 4000, "pt": 4000},
+      "short": {"en": 50000, "es": 20000, "pt": 20000}
+    },
+    "baselineFloor": {"long": 1000, "short": 3000},
+    "minOutlier": 3.0,
+    "note": "minViews: a candidate needs at least this many views (Shorts count every start, so their floor is higher). baselineFloor: the median is never taken below this, so a 40-view channel cannot produce a 300x 'outlier'. minOutlier: the ratio a video needs to be listed."
+  },
+  "baseline": {
+    "uploadsPages": 1,
+    "maxVideos": 30,
+    "minVideos": 5,
+    "thinMinVideos": 3,
+    "minAgeDays": 7,
+    "maxAgeDays": 365,
+    "note": "The channel median uses its most recent uploads (one page of 50 by default), excluding the candidate itself, uploads younger than minAgeDays (still ramping), older than maxAgeDays, and live or upcoming broadcasts. It compares Shorts with Shorts and long-form with long-form, and prefers uploads published under the same view-counting rules as the candidate."
+  },
+  "scoring": {
+    "weights": {"outlier": 0.45, "recency": 0.2, "engagement": 0.15, "fit": 0.2},
+    "outlierSaturation": 32,
+    "recencyHalfLifeDays": 30,
+    "youngDays": 3,
+    "breadthBonusPerChannel": 3,
+    "breadthBonusMax": 9,
+    "confidence": {
+      "estimated-baseline": 0.6,
+      "mixed-format-baseline": 0.8,
+      "thin-baseline": 0.85,
+      "baseline-spans-view-count-change": 0.9,
+      "format-assumed": 0.95,
+      "young-video": 0.9,
+      "floor-applied": 0.9
+    },
+    "note": "rank = 100 x (weights . components) x confidence. Components are 0-1: outlier = log2(ratio)/log2(saturation); recency halves every recencyHalfLifeDays; engagement compares (likes + comments) per view with this run's median for the same format (0.5 when hidden); fit comes from taxonomy.json. These are the topic finder's own metrics, not YouTube data."
+  },
+  "output": {
+    "top": 25,
+    "exportTopPerChannel": 10,
+    "dubs": ["es", "pt-br"],
+    "dubsWhy": "The owner's launch dub languages (CLAUDE.md, 2026-11-24): Spanish and Brazilian Portuguese first."
+  },
+  "cacheTtlHours": {
+    "search.list": 24,
+    "videos.list": 24,
+    "channels.list": 72,
+    "playlistItems.list": 24
+  },
+  "channelFormats": {
+    "zoora-ai": ["pov-story", "explainer"],
+    "zoora-security": ["explainer", "scam-of-the-week"],
+    "note": "Fallback when scripts/batch/config.json is absent; that file (another workflow's) is read first."
+  },
+  "evergreenFallback": {
+    "zoora-security": ["drainers", "address-poisoning", "phishing", "key-management", "bridge-security", "oracle-manipulation", "rug-pulls", "social-engineering", "fake-job-malware", "ai-security"],
+    "note": "Fallback when content/zoora-security/channel.json (evergreen map) is absent."
+  }
+}

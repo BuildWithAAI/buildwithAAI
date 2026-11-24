@@ -1,0 +1,29 @@
+{
+  "error": {
+    "code": 403,
+    "message": "Permission denied on the service.",
+    "errors": [
+      {
+        "message": "Permission denied on the service.",
+        "domain": "global",
+        "reason": "forbidden"
+      }
+    ],
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "ACCESS_DENIED",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "youtube.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "Permission denied on the service."
+      }
+    ]
+  }
+}
