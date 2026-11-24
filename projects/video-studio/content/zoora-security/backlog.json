@@ -95,33 +95,29 @@
       "facts": [
         {
           "need": "Freysa: an AI agent guarding a prize pool was talked into paying out",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "factId": "freysa-prize-pool-47k",
+          "status": "fact-bank"
         },
         {
-          "need": "aixbt: an attacker with dashboard access queued prompts and the agent sent ETH",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "need": "aixbt: an attacker with dashboard access made the agent send ETH",
+          "factId": "aixbt-dashboard-breach",
+          "status": "fact-bank"
         },
         {
           "need": "Memory injection can make ElizaOS agents send crypto (a research demonstration)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "factId": "elizaos-memory-injection-study",
+          "status": "fact-bank"
+        },
+        {
+          "need": "A chatbot was tricked into relaying a command that made a trading bot send tokens",
+          "factId": "grok-bankrbot-morse-transfer",
+          "status": "fact-bank"
         },
         {
           "need": "An audit found hundreds of malicious skills in an AI agent marketplace",
           "factId": null,
           "status": "researched",
           "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: the counts hold"
-        },
-        {
-          "need": "A chatbot was tricked into relaying a command that made a trading bot send tokens",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds with care; the permission step is only alleged"
         },
         {
           "need": "OWASP or NIST guidance on prompt injection in LLM applications",
@@ -360,21 +356,21 @@
       ],
       "factTags": [
         "rug-pulls",
-        "memecoins"
+        "memecoins",
+        "token-survival",
+        "caveats"
       ],
       "research": null,
       "facts": [
         {
-          "need": "The share of new tokens that stop trading on day one (CoinGecko study)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds via secondary coverage"
+          "need": "How many new tokens stopped trading on their launch day (CoinGecko, Pump.fun tokens)",
+          "factId": "pumpfun-coingecko-launch-day-deaths",
+          "status": "fact-bank"
         },
         {
-          "need": "Bubblemaps' caveat that clusters alone do not prove wrongdoing",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds"
+          "need": "Bubblemaps' caveat: its conclusions are 'analysis and estimates'",
+          "factId": "bubblemaps-analysis-and-estimates",
+          "status": "fact-bank"
         },
         {
           "need": "Chainalysis on pump-and-dump patterns",

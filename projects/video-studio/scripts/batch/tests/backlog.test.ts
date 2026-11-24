@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {test} from 'node:test';
 import {crossBacklogProblems, parseBacklog} from '../lib/backlog.ts';
 import {loadConfig, parseConfig} from '../lib/config.ts';
+import {loadFactBank} from '../lib/factbank.ts';
 import {channelTopics, loadAll} from '../lib/load.ts';
 import type {Backlog} from '../lib/types.ts';
 import {UsageError} from '../lib/util.ts';
@@ -73,6 +74,20 @@ test('the backlogs name no private individuals and make no income promises', () 
 		for (const phrase of [/guaranteed returns?(?! ')/i, /passive income/i, /get rich/i]) {
 			for (const line of text.split('\n').filter((l) => phrase.test(l))) assert.match(line, /never|not|no |only|warning|pitch|regulator|red flag|banned|risks|'/i, `unguarded income phrase: ${line.trim()}`);
 		}
+	}
+});
+
+test('every fact-bank id the backlogs cite is in the fact bank, verified', (t) => {
+	const bankPath = join(STUDIO, 'content', 'facts', 'facts.jsonl');
+	const bank = loadFactBank(existsSync(bankPath) ? bankPath : null);
+	if (!bank.facts) return t.skip('content/facts/facts.jsonl (the fact bank workflow\'s file) is not in this checkout');
+	const {backlogs} = loadAll(STUDIO, REAL_CONFIG);
+	const cited = backlogs.flatMap((b) => b.ideas.flatMap((i) => i.facts.filter((f) => f.factId).map((f) => ({at: `${b.channel}/${i.id}`, id: f.factId as string}))));
+	assert.ok(cited.length >= 30, 'the planned stories reuse the seeded facts');
+	for (const c of cited) {
+		const fact = bank.facts.get(c.id);
+		assert.ok(fact, `${c.at}: ${c.id} is not in the fact bank`);
+		assert.notEqual(fact?.verification, 'unverified', `${c.at}: ${c.id} is unverified`);
 	}
 });
 

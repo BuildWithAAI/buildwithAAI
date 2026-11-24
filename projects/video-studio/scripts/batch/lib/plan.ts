@@ -12,7 +12,7 @@ import {loadFactBank} from './factbank.ts';
 import {loadAll} from './load.ts';
 import {assignWeeks, buildItems} from './schedule.ts';
 import type {Backlog, BatchConfig, PlanItem, WeekPlan} from './types.ts';
-import {isRecord, readJson, sha256, UsageError, writeJsonAtomic, writeTextAtomic} from './util.ts';
+import {isRecord, readJson, rel, sha256, UsageError, writeJsonAtomic, writeTextAtomic} from './util.ts';
 import {type IsoWeek, mondayOf, addDays, weekId} from './week.ts';
 import {cell, langLine, renderWriter} from './writer.ts';
 import {dateIn} from './zone.ts';
@@ -109,7 +109,8 @@ export const runPlan = (o: PlanOptions): PlanResult => {
 	let pinnedFiles: string[] = [];
 	if (!o.dryRun) {
 		const dir = weekDir(o.root, plan.week);
-		const bank = loadFactBank(o.factBank ?? (config.factBank.path ? join(o.root, config.factBank.path) : null));
+		const loadedBank = loadFactBank(o.factBank ?? (config.factBank.path ? join(o.root, config.factBank.path) : null));
+		const bank = loadedBank.path ? {...loadedBank, path: rel(o.root, loadedBank.path)} : loadedBank;
 		for (const item of plan.items.filter((i) => i.kind === 'long')) {
 			const c = config.channels.find((x) => x.channel === item.channel);
 			const b = backlogs.find((x) => x.channel === item.channel);

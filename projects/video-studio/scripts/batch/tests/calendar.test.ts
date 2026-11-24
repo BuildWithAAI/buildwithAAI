@@ -39,8 +39,10 @@ test('the facts label says where each idea stands', () => {
 	const idea = (facts: Array<{status: string; factId?: string}>) =>
 		testIdea('x', 'pov-story', 1, {facts: facts.map((f, i) => ({need: `n${i}`, factId: f.factId ?? null, status: f.status}))}) as unknown as Parameters<typeof factsLabel>[0];
 	assert.equal(factsLabel(idea([{status: 'fact-bank', factId: 'a'}, {status: 'fact-bank', factId: 'b'}]), false), 'all in the fact bank');
-	assert.equal(factsLabel(idea([{status: 'researched'}, {status: 'research needed'}]), true), 'research file; 1 of 2 facts still to research');
+	assert.equal(factsLabel(idea([{status: 'researched'}, {status: 'research needed'}]), true), 'research file; 1 still to research');
+	assert.equal(factsLabel(idea([{status: 'fact-bank', factId: 'a'}, {status: 'researched'}, {status: 'research needed'}]), true), 'research file; 1 of 3 in the fact bank; 1 still to research');
 	assert.equal(factsLabel(idea([{status: 'researched'}]), true), 'research file; move its facts into the bank');
-	assert.equal(factsLabel(idea([{status: 'researched'}, {status: 'research needed'}]), false), 'research first: 1 of 2 facts have checked leads, 1 to find');
+	assert.equal(factsLabel(idea([{status: 'researched'}, {status: 'research needed'}]), false), 'research first; 1 with checked leads; 1 to find');
+	assert.equal(factsLabel(idea([{status: 'fact-bank', factId: 'a'}, {status: 'research needed'}]), false), 'research first; 1 of 2 in the fact bank; 1 to find');
 	assert.equal(factsLabel(idea([{status: 'research needed'}, {status: 'research needed'}]), false), 'research first: 2 facts to find');
 });

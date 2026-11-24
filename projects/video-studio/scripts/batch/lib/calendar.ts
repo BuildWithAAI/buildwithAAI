@@ -20,8 +20,10 @@ export const factsLabel = (idea: Idea, hasResearchFile: boolean): string => {
 	const bank = idea.facts.filter((f) => f.status === 'fact-bank').length;
 	const leads = idea.facts.filter((f) => f.status === 'researched').length;
 	if (bank === total) return 'all in the fact bank';
-	if (hasResearchFile) return needed ? `research file; ${needed} of ${total} facts still to research` : 'research file; move its facts into the bank';
-	return leads || bank ? `research first: ${total - needed} of ${total} facts have checked leads, ${needed} to find` : `research first: ${total} facts to find`;
+	const inBank = bank ? `${bank} of ${total} in the fact bank` : '';
+	if (hasResearchFile) return [`research file`, inBank, needed ? `${needed} still to research` : bank ? '' : 'move its facts into the bank'].filter(Boolean).join('; ');
+	if (!leads && !bank) return `research first: ${total} facts to find`;
+	return [`research first`, inBank, leads ? `${leads} with checked leads` : '', needed ? `${needed} to find` : ''].filter(Boolean).join('; ');
 };
 
 const dayLabel = (date: string) => `${DAYS[(new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7]} ${shortDate(date)}`;

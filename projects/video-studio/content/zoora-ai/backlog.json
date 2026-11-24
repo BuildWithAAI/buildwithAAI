@@ -32,27 +32,43 @@
       "factTags": [
         "pump-fun",
         "callers",
+        "callout-rewards",
+        "side-wallets",
+        "bubblemaps",
         "memecoins"
       ],
       "research": "content/zoora-ai/pumpfun-top-caller/research.md",
       "facts": [
         {
-          "need": "When Pump.fun launched and which company operates it",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: verdict holds (search extracts of The Block and Decrypt; no direct read)"
+          "need": "When Pump.fun launched and what it lets anyone do",
+          "factId": "pumpfun-launch-month",
+          "status": "fact-bank"
         },
         {
-          "need": "How a bonding-curve launch graduates to Pump.fun's own DEX, with fees given 'at launch' or 'as of' a date",
+          "need": "Which company operates Pump.fun (named in the class action)",
           "factId": null,
           "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: PumpSwap launch holds; the 'official' current fee schedule is overstated"
+          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: verdict holds (search extracts; no direct read)"
         },
         {
-          "need": "What share of tokens stop trading on their launch day (CoinGecko study, with its method caveat)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds via secondary coverage; CoinGecko's own report was not seen"
+          "need": "Coins that finish the bonding curve move to Pump.fun's own exchange, PumpSwap",
+          "factId": "pumpswap-launch",
+          "status": "fact-bank"
+        },
+        {
+          "need": "PumpSwap's trading fee at launch (say 'at launch': fees changed since)",
+          "factId": "pumpswap-launch-fees",
+          "status": "fact-bank"
+        },
+        {
+          "need": "How many Pump.fun tokens stopped trading on their launch day (CoinGecko)",
+          "factId": "pumpfun-coingecko-launch-day-deaths",
+          "status": "fact-bank"
+        },
+        {
+          "need": "How few Pump.fun tokens lasted more than 90 days (CoinGecko)",
+          "factId": "pumpfun-coingecko-90-day-survivors",
+          "status": "fact-bank"
         },
         {
           "need": "How Pump.fun's paid callout rewards work and when they started, as of reporting",
@@ -61,16 +77,34 @@
           "lead": "content/zoora-ai/pumpfun-top-caller/research.md: partly holds; the programme changes often, so show an 'as of' date"
         },
         {
-          "need": "How callout rewards were spread across callers (Sparsity Research, as reported)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds in secondary coverage only"
+          "need": "How callout rewards were spread across wallets (Sparsity Research estimate)",
+          "factId": "pumpfun-callout-rewards-concentration",
+          "status": "fact-bank"
         },
         {
-          "need": "The side-wallet pattern as Bubblemaps describes it, with Bubblemaps' own caveats",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: the pattern and the caveats hold, attributed to Bubblemaps"
+          "need": "What followers of small-cap callers lost after the calls (Sparsity Research)",
+          "factId": "pumpfun-caller-followers-losses",
+          "status": "fact-bank"
+        },
+        {
+          "need": "The side-wallet pattern, as Bubblemaps alleges it",
+          "factId": "bubblemaps-side-wallet-pattern",
+          "status": "fact-bank"
+        },
+        {
+          "need": "Bubblemaps' own caveat: its findings are 'analysis and estimates'",
+          "factId": "bubblemaps-analysis-and-estimates",
+          "status": "fact-bank"
+        },
+        {
+          "need": "Bubblemaps: side wallets 'have become a business model'",
+          "factId": "bubblemaps-side-wallets-business-model",
+          "status": "fact-bank"
+        },
+        {
+          "need": "How much revenue the platform itself made (who earns either way)",
+          "factId": "pumpfun-revenue-1b-milestone",
+          "status": "fact-bank"
         },
         {
           "need": "What the August 2026 ruling in the Pump.fun class action decided, and that it is not a ruling on the merits",
@@ -127,15 +161,21 @@
         "ai-agents",
         "ai-trading",
         "prompt-injection",
-        "ai-washing"
+        "ai-washing",
+        "ai-hedge-funds",
+        "alpha-arena"
       ],
       "research": "content/zoora-ai/ai-agent-hedge-fund/research.md",
       "facts": [
         {
-          "need": "Alpha Arena Season 1: six AI models traded real money on crypto perpetuals with no human intervention, and four of six lost",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "need": "Alpha Arena Season 1: how the live-money test was set up",
+          "factId": "alpha-arena-season-1-setup",
+          "status": "fact-bank"
+        },
+        {
+          "need": "Alpha Arena Season 1: how it ended (most models lost money)",
+          "factId": "alpha-arena-season-1-result",
+          "status": "fact-bank"
         },
         {
           "need": "FINSABER: the apparent edge of LLM trading strategies shrinks over longer, broader backtests",
@@ -151,27 +191,28 @@
         },
         {
           "need": "Freysa: an AI agent guarding a prize pool was talked into paying out",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "factId": "freysa-prize-pool-47k",
+          "status": "fact-bank"
         },
         {
-          "need": "aixbt: an attacker with dashboard access queued prompts and the agent sent ETH from its wallet",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds; use the rounded figures its Must not say section gives"
+          "need": "aixbt: an attacker with dashboard access made the agent send ETH from its wallet",
+          "factId": "aixbt-dashboard-breach",
+          "status": "fact-bank"
         },
         {
           "need": "Memory injection can make agents built on ElizaOS send crypto (a research demonstration)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds (Princeton and Sentient paper)"
+          "factId": "elizaos-memory-injection-study",
+          "status": "fact-bank"
         },
         {
-          "need": "The SEC's first AI-washing settlements with two investment advisers (March 2024)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds; settled, neither admitting nor denying"
+          "need": "The SEC's first AI-washing cases against two investment advisers (March 2024)",
+          "factId": "sec-ai-washing-first-cases",
+          "status": "fact-bank"
+        },
+        {
+          "need": "What a real class action alleged about an 'autonomous AI' fund token (an allegation only)",
+          "factId": "ai16z-lawsuit-alleged-human-control",
+          "status": "fact-bank"
         },
         {
           "need": "The AI-agent token sector fell fast in early 2025",
@@ -289,9 +330,9 @@
       ],
       "factTags": [
         "ai-agents",
+        "prompt-injection",
         "malicious-plugins",
-        "infostealers",
-        "supply-chain"
+        "infostealers"
       ],
       "research": null,
       "facts": [
@@ -303,9 +344,8 @@
         },
         {
           "need": "Memory injection can make AI agents send crypto (a research demonstration)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "factId": "elizaos-memory-injection-study",
+          "status": "fact-bank"
         },
         {
           "need": "How infostealers take browser sessions, API keys and wallet files (security-firm reports)",
@@ -356,7 +396,8 @@
       "factTags": [
         "trading-bots",
         "ai-washing",
-        "regulators"
+        "sec",
+        "regulation"
       ],
       "research": null,
       "facts": [
@@ -379,10 +420,9 @@
           "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported; a civil default judgment is never 'convicted'"
         },
         {
-          "need": "The SEC's AI-washing settlements (March 2024)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "need": "The SEC's first AI-washing cases (March 2024)",
+          "factId": "sec-ai-washing-first-cases",
+          "status": "fact-bank"
         }
       ],
       "risks": [
@@ -760,15 +800,15 @@
       "factTags": [
         "memecoins",
         "rug-pulls",
-        "pump-fun"
+        "pump-fun",
+        "token-survival"
       ],
       "research": null,
       "facts": [
         {
-          "need": "The share of new tokens that stop trading on their launch day (CoinGecko study)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds via secondary coverage"
+          "need": "How many new tokens stopped trading on their launch day (CoinGecko, Pump.fun tokens)",
+          "factId": "pumpfun-coingecko-launch-day-deaths",
+          "status": "fact-bank"
         },
         {
           "need": "Solidus Labs' study of rug-pull and pump-and-dump traits, with Pump.fun's rebuttal",
@@ -819,15 +859,20 @@
       ],
       "factTags": [
         "ai-trading",
-        "llm-benchmarks"
+        "alpha-arena",
+        "ai-hedge-funds"
       ],
       "research": null,
       "facts": [
         {
-          "need": "Alpha Arena Season 1 results",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "need": "Alpha Arena Season 1: the live-money setup",
+          "factId": "alpha-arena-season-1-setup",
+          "status": "fact-bank"
+        },
+        {
+          "need": "Alpha Arena Season 1: the result",
+          "factId": "alpha-arena-season-1-result",
+          "status": "fact-bank"
         },
         {
           "need": "FINSABER on longer, broader backtests",
@@ -842,10 +887,9 @@
           "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: the main result holds"
         },
         {
-          "need": "Numerai: a real AI and crowdsourced fund whose returns are company-reported",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds as company-reported figures"
+          "need": "Numerai's assets under management, as the company reports them",
+          "factId": "numerai-aum-growth",
+          "status": "fact-bank"
         }
       ],
       "risks": [
@@ -885,15 +929,20 @@
       "factTags": [
         "memecoins",
         "pump-fun",
-        "coingecko"
+        "coingecko",
+        "token-survival"
       ],
       "research": null,
       "facts": [
         {
-          "need": "CoinGecko: the share of tokens that stopped trading on launch day",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds via secondary coverage"
+          "need": "CoinGecko: how many Pump.fun tokens stopped trading on launch day",
+          "factId": "pumpfun-coingecko-launch-day-deaths",
+          "status": "fact-bank"
+        },
+        {
+          "need": "CoinGecko: how few lasted more than 90 days",
+          "factId": "pumpfun-coingecko-90-day-survivors",
+          "status": "fact-bank"
         },
         {
           "need": "The share of tokens that graduate to a DEX, from several dated sources",
@@ -944,15 +993,14 @@
       "factTags": [
         "ai-washing",
         "sec",
-        "regulators"
+        "regulation"
       ],
       "research": null,
       "facts": [
         {
-          "need": "The SEC's AI-washing settlements with two advisers (March 2024)",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: holds"
+          "need": "The SEC's first AI-washing cases (March 2024)",
+          "factId": "sec-ai-washing-first-cases",
+          "status": "fact-bank"
         },
         {
           "need": "Later AI-washing actions (a public company; criminal charges)",
@@ -1003,22 +1051,20 @@
       ],
       "factTags": [
         "bubblemaps",
-        "memecoins",
-        "on-chain-analysis"
+        "side-wallets",
+        "caveats"
       ],
       "research": null,
       "facts": [
         {
-          "need": "Bubblemaps' caveat that a cluster alone is not proof of wrongdoing",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds"
+          "need": "Bubblemaps' caveat: its conclusions are 'analysis and estimates'",
+          "factId": "bubblemaps-analysis-and-estimates",
+          "status": "fact-bank"
         },
         {
-          "need": "The side-wallet pattern as Bubblemaps describes it",
-          "factId": null,
-          "status": "researched",
-          "lead": "content/zoora-ai/pumpfun-top-caller/research.md: holds, attributed"
+          "need": "The side-wallet pattern, as Bubblemaps alleges it",
+          "factId": "bubblemaps-side-wallet-pattern",
+          "status": "fact-bank"
         },
         {
           "need": "Plain definitions of bundled buys, clusters and snipers",

@@ -84,7 +84,8 @@ test('the WRITER packet carries the slots, the exact Short ids, the facts, the r
 	assert.match(w, /\*\*Long-form:\*\* 2026-11-30 11:00 CST \(`publishAt` 2026-11-30T17:00:00\.000Z\)/);
 	assert.match(w, /\*\*Shorts cut from it \(exactly 3\):\*\* `short-1` 2026-11-30 17:00 CST · `short-2` 2026-12-01 17:00 CST · `short-3` 2026-12-02 17:00 CST/);
 	assert.match(w, /`content\/zoora-ai\/pumpfun-top-caller\/research\.md` exists/);
-	assert.match(w, /\| 8 \| Regulators' advice on paid touts and single tips \(Investor\.gov, CFTC\) \| research needed \|/);
+	assert.match(w, /\| 15 \| Regulators' advice on paid touts and single tips \(Investor\.gov, CFTC\) \| research needed \|/);
+	assert.match(w, /\| 1 \| When Pump\.fun launched and what it lets anyone do \| fact-bank \| `pumpfun-launch-month` \|/);
 	assert.match(w, /no real caller names, handles or likenesses/);
 	assert.match(w, /Zoo \(title case, never "ZOO"\)/);
 	assert.match(w, /Never upload, publish or post anything\. `approve` runs only on the owner's own reply/);

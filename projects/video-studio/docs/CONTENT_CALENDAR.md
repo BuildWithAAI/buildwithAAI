@@ -21,12 +21,12 @@ Production in the days before; review sitting by Sun 29 Nov.
 
 | Date | Time | UTC | Channel | Item | What | Title or angle | Topic | Languages | Facts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Mon 30 Nov | 11:00 | 17:00 | Zoora AI | `ai1` | POV story | POV: You become a top caller on Pump.fun | `memecoin-callers` | en, es, pt-br | research file; 1 of 8 facts still to research |
+| Mon 30 Nov | 11:00 | 17:00 | Zoora AI | `ai1` | POV story | POV: You become a top caller on Pump.fun | `memecoin-callers` | en, es, pt-br | research file; 11 of 15 in the fact bank; 1 still to research |
 | Mon 30 Nov | 17:00 | 23:00 | Zoora AI | `ai1-s1` | Short 1 of `ai1` | The head start: what investigators say side wallets do before a call | `memecoin-callers` | en, es, pt-br |  |
 | Tue 1 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec1` | Explainer | How wallet drainers work, and how to spot one | `drainers` | en, es, pt-br | research first: 4 facts to find |
 | Tue 1 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s2` | Short 2 of `ai1` | Who really pays the caller | `memecoin-callers` | en, es, pt-br |  |
 | Wed 2 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s3` | Short 3 of `ai1` | Treat every call as an ad | `memecoin-callers` | en, es, pt-br |  |
-| Thu 3 Dec | 11:00 | 17:00 | Zoora AI | `ai2` | POV story | POV: You created an autonomous AI trading agent hedge fund | `ai-trading-agents` | en, es, pt-br | research file; 1 of 9 facts still to research |
+| Thu 3 Dec | 11:00 | 17:00 | Zoora AI | `ai2` | POV story | POV: You created an autonomous AI trading agent hedge fund | `ai-trading-agents` | en, es, pt-br | research file; 7 of 11 in the fact bank; 1 still to research |
 | Thu 3 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s1` | Short 1 of `ai2` | Four of six AI traders lost real money | `ai-trading-agents` | en, es, pt-br |  |
 | Fri 4 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s2` | Short 2 of `ai2` | The agent that paid out after one clever message | `ai-trading-agents` | en, es, pt-br |  |
 | Sat 5 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec2` | Scam of the Week | Scam of the Week: the 'support agent' who messages you first | `social-engineering` | en, es, pt-br | research first: 2 facts to find |
@@ -43,10 +43,10 @@ Production in the days before; review sitting by Sun 6 Dec.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Mon 7 Dec | 11:00 | 17:00 | Zoora AI | `ai1` | POV story | POV: You claim a free airdrop and your wallet empties | `drainers` | en, es, pt-br | research first: 4 facts to find |
 | Mon 7 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s1` | Short 1 of `ai1` | The signature that emptied the wallet | `drainers` | en, es, pt-br |  |
-| Tue 8 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec1` | Explainer | AI agents, prompt injection and malicious plugins | `ai-security` | en, es, pt-br | research first: 5 of 6 facts have checked leads, 1 to find |
+| Tue 8 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec1` | Explainer | AI agents, prompt injection and malicious plugins | `ai-security` | en, es, pt-br | research first; 4 of 6 in the fact bank; 1 with checked leads; 1 to find |
 | Tue 8 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s2` | Short 2 of `ai1` | Free airdrops that need a signature | `drainers` | en, es, pt-br |  |
 | Wed 9 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s3` | Short 3 of `ai1` | Revoke the approvals you forgot | `drainers` | en, es, pt-br |  |
-| Thu 10 Dec | 11:00 | 17:00 | Zoora AI | `ai2` | POV story | POV: You install a free AI agent plugin that promises alpha | `ai-security` | en, es, pt-br | research first: 2 of 4 facts have checked leads, 2 to find |
+| Thu 10 Dec | 11:00 | 17:00 | Zoora AI | `ai2` | POV story | POV: You install a free AI agent plugin that promises alpha | `ai-security` | en, es, pt-br | research first; 1 of 4 in the fact bank; 1 with checked leads; 2 to find |
 | Thu 10 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s1` | Short 1 of `ai2` | The 'prerequisite' that was the malware | `ai-security` | en, es, pt-br |  |
 | Fri 11 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s2` | Short 2 of `ai2` | Trade-only API keys, always | `ai-security` | en, es, pt-br |  |
 | Sat 12 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec2` | Scam of the Week | Scam of the Week: the deepfake giveaway livestream | `ai-security` | en, es, pt-br | research first: 3 facts to find |
@@ -61,7 +61,7 @@ Production in the days before; review sitting by Sun 13 Dec.
 
 | Date | Time | UTC | Channel | Item | What | Title or angle | Topic | Languages | Facts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Mon 14 Dec | 11:00 | 17:00 | Zoora AI | `ai1` | POV story | POV: You buy an AI trading bot that 'never loses' | `trading-bot-fraud` | en, es, pt-br | research first: 1 of 4 facts have checked leads, 3 to find |
+| Mon 14 Dec | 11:00 | 17:00 | Zoora AI | `ai1` | POV story | POV: You buy an AI trading bot that 'never loses' | `trading-bot-fraud` | en, es, pt-br | research first; 1 of 4 in the fact bank; 3 to find |
 | Mon 14 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s1` | Short 1 of `ai1` | The dashboard is the product | `trading-bot-fraud` | en, es, pt-br |  |
 | Tue 15 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec1` | Explainer | Social engineering: the hack that targets people | `social-engineering` | en, es, pt-br | research first: 3 facts to find |
 | Tue 15 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s2` | Short 2 of `ai1` | The words regulators flag | `trading-bot-fraud` | en, es, pt-br |  |
@@ -104,16 +104,16 @@ Production in the days before; review sitting by Sun 20 Dec.
 | Zoora AI | 9 | POV: You copy the address from your history and pay a stranger | POV story | `address-poisoning` | research first: 3 facts to find |
 | Zoora AI | 10 | POV: Your exchange pauses withdrawals 'for maintenance' | POV story | `exchange-risk` | research first: 3 facts to find |
 | Zoora AI | 11 | POV: Your phone loses signal, then your exchange account empties | POV story | `sim-swap` | research first: 3 facts to find |
-| Zoora AI | 12 | POV: You buy your friend's memecoin on day one | POV story | `rug-pulls` | research first: 1 of 3 facts have checked leads, 2 to find |
-| Zoora AI | 13 | Can an AI trade for you? What the live tests show | Explainer | `ai-trading-agents` | research first: 4 of 4 facts have checked leads, 0 to find |
-| Zoora AI | 14 | What happens to most new memecoins? The numbers | Explainer | `rug-pulls` | research first: 2 of 3 facts have checked leads, 1 to find |
-| Zoora AI | 15 | AI-washing: when 'powered by AI' is the pitch | Explainer | `ai-security` | research first: 1 of 3 facts have checked leads, 2 to find |
-| Zoora AI | 16 | Side wallets, bundles and snipers: reading a token's holder map | Explainer | `rug-pulls` | research first: 2 of 3 facts have checked leads, 1 to find |
+| Zoora AI | 12 | POV: You buy your friend's memecoin on day one | POV story | `rug-pulls` | research first; 1 of 3 in the fact bank; 2 to find |
+| Zoora AI | 13 | Can an AI trade for you? What the live tests show | Explainer | `ai-trading-agents` | research first; 3 of 5 in the fact bank; 2 with checked leads |
+| Zoora AI | 14 | What happens to most new memecoins? The numbers | Explainer | `rug-pulls` | research first; 2 of 4 in the fact bank; 1 with checked leads; 1 to find |
+| Zoora AI | 15 | AI-washing: when 'powered by AI' is the pitch | Explainer | `ai-security` | research first; 1 of 3 in the fact bank; 2 to find |
+| Zoora AI | 16 | Side wallets, bundles and snipers: reading a token's holder map | Explainer | `rug-pulls` | research first; 2 of 3 in the fact bank; 1 to find |
 | The Zoo & Badger Show | 5 | Address poisoning: the copy-paste trap | Explainer | `address-poisoning` | research first: 3 facts to find |
 | The Zoo & Badger Show | 5 | Scam of the Week: the 'AI investment club' group chat | Scam of the Week | `ai-security` | research first: 2 facts to find |
 | The Zoo & Badger Show | 6 | Keys, multisigs and why one leaked key can empty a vault | Explainer | `key-management` | research first: 3 facts to find |
 | The Zoo & Badger Show | 6 | Scam of the Week: the free airdrop that wants a signature | Scam of the Week | `drainers` | research first: 2 facts to find |
-| The Zoo & Badger Show | 7 | Rug pulls: what the warning signs look like | Explainer | `rug-pulls` | research first: 2 of 4 facts have checked leads, 2 to find |
+| The Zoo & Badger Show | 7 | Rug pulls: what the warning signs look like | Explainer | `rug-pulls` | research first; 2 of 4 in the fact bank; 2 to find |
 | The Zoo & Badger Show | 7 | Scam of the Week: the trading app that only shows gains | Scam of the Week | `social-engineering` | research first: 3 facts to find |
 | The Zoo & Badger Show | 8 | Why bridges get hacked | Explainer | `bridge-security` | research first: 3 facts to find |
 | The Zoo & Badger Show | 8 | Scam of the Week: the sponsored search result for your wallet app | Scam of the Week | `phishing` | research first: 3 facts to find |

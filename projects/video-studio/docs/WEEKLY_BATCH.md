@@ -62,6 +62,10 @@ exists), `facts`, `risks`, `languages` and `shortIdeas`.
 `facts` lists what the script needs, each with a status: `fact-bank` (a verified fact-bank id), `researched` (a
 research file has a fact-check verdict, with a `lead` saying where; it still goes into the fact bank before reuse) or
 `research needed`. No idea carries figures or sources itself: those live in the research files and the fact bank.
+The backlogs already cite 20 facts of the reusable fact bank 35 times (`content/facts/facts.jsonl`, each read
+directly on its source page on 2026-11-24 by the fact-bank workflow): the two planned stories, four later Zoora AI
+ideas and two security explainers reuse them instead of researching again. A test fails if a cited id leaves the bank
+or becomes unverified.
 
 `risks` are binding notes for that idea (names, how-tos, income framing, likeness, logos, drift). The backlog's
 `rules` are the channel rules every writer packet repeats.
