@@ -6,7 +6,7 @@
  */
 import {existsSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {type ApprovalRecord, parseApproval, verifyApproval} from './approval.ts';
+import {type ApprovalRecord, paidScheduleReason, parseApproval, verifyApproval} from './approval.ts';
 import {type ChannelsConfig, gatherInputs, type UploadInputs} from './inputs.ts';
 import {ledgerRefusals, openLedger} from './ledger.ts';
 import {buildPlan, type UploadPlan} from './plan.ts';
@@ -19,6 +19,8 @@ export type Prepared = {
 	approval: ApprovalRecord | null;
 	approvalSha256: string | null;
 	refusals: Reason[];
+	/** This exact plan's video is already on YouTube (its job says so): only follow-up steps remain. */
+	uploaded: boolean;
 };
 
 export type CommonPrepareOptions = {
@@ -54,13 +56,15 @@ export const prepareForApproval = async (opts: ForApprovalOptions): Promise<Prep
 	});
 	const plan = buildPlan(inputs, {publishAt: opts.publishAt, processingPolls: opts.processingPolls});
 	const refusals: Reason[] = [...inputs.kitFailures, ...ledgerReasons(opts.stateDir, plan, opts.allowSecondUpload)];
+	const paid = paidScheduleReason(plan);
+	if (paid) refusals.push(paid);
 	if (opts.publishAt) {
 		const lead = opts.channels.minLeadMinutes * 60_000;
 		if (Date.parse(opts.publishAt) < opts.nowMs + lead) {
 			refusals.push({code: 'publish-time-too-soon', message: `The publish time must be at least ${opts.channels.minLeadMinutes} minutes from now (YouTube publishes a past publishAt immediately).`});
 		}
 	}
-	return {inputs, plan, approval: null, approvalSha256: null, refusals};
+	return {inputs, plan, approval: null, approvalSha256: null, refusals, uploaded: false};
 };
 
 export type FromApprovalOptions = CommonPrepareOptions & {approvalPath: string};
@@ -119,5 +123,5 @@ export const prepareFromApproval = async (opts: FromApprovalOptions): Promise<Pr
 		...inputs.kitFailures,
 		...ledgerReasons(opts.stateDir, plan, opts.allowSecondUpload),
 	];
-	return {inputs, plan, approval: record, approvalSha256: sha256Hex(bytes), refusals};
+	return {inputs, plan, approval: record, approvalSha256: sha256Hex(bytes), refusals, uploaded};
 };

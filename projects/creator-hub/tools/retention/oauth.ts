@@ -4,7 +4,9 @@
  * for installed applications"), read-only scopes yt-analytics.readonly + youtube.readonly.
  *
  * Reused by import: comment-guard's client-secrets reader, token revocation, AuthError and Google endpoints, and the
- * dashboard's environment-variable token exchange (YT_ANALYTICS_*), so CI can run with repository secrets.
+ * dashboard's environment-variable token exchange (YT_ANALYTICS_*). Those variables are for a protected environment
+ * only (a private repository, or a GitHub Environment with required reviewers and a main-only branch policy): this
+ * repository is public, so its repository secrets are not a safe home for a channel's refresh token (README).
  * comment-guard's own `authorize` is not reused: it is fixed to the youtube.force-ssl scope and its consent page text.
  *
  * Tokens live in a file that MUST be gitignored (this repository is public): by default
@@ -15,17 +17,18 @@
  * tokens that expire after 7 days (set it to "In production"); unused tokens expire after 6 months; at most 100 live
  * refresh tokens per account and client (the oldest is dropped silently).
  */
-import {execFileSync} from 'node:child_process';
 import {createHash, randomBytes} from 'node:crypto';
 import {chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
-import {dirname, resolve} from 'node:path';
+import {dirname} from 'node:path';
 import {AuthError, readClientSecrets, revokeToken, type OAuthClient} from '../comment-guard/youtube.ts';
 import {resolveAccessToken, type TokenEnv} from '../dashboard/youtube-api.ts';
 import {ENDPOINTS, SCOPES, type Endpoints, type FetchLike, type TokenSource} from './api.ts';
+import {gitIgnoreStatus} from './gitignore.ts';
 
 export {AuthError, readClientSecrets, revokeToken};
+export {clientSecretsWarning, gitIgnoreStatus} from './gitignore.ts';
 export type {OAuthClient};
 
 export type Tokens = {accessToken: string | null; expiresAt: number | null; refreshToken: string; scope: string};
@@ -58,23 +61,6 @@ export const readTokenFile = (path: string): TokenFile | null => {
 		};
 	}
 	return {version: 1, kind: 'retention-oauth', client: {clientId, clientSecret}, accounts};
-};
-
-/** 'ignored', 'tracked' (git would commit it) or 'no-repo' (not in a git work tree, or git is missing). */
-export const gitIgnoreStatus = (path: string): 'ignored' | 'tracked' | 'no-repo' => {
-	let dir = dirname(resolve(path));
-	while (!existsSync(dir) && dirname(dir) !== dir) dir = dirname(dir); // git needs an existing folder to run in
-	try {
-		execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {cwd: dir, stdio: 'ignore'});
-	} catch {
-		return 'no-repo';
-	}
-	try {
-		execFileSync('git', ['check-ignore', '-q', resolve(path)], {cwd: dir, stdio: 'ignore'});
-		return 'ignored';
-	} catch (err) {
-		return (err as {status?: number}).status === 1 ? 'tracked' : 'no-repo';
-	}
 };
 
 /** Writes a secret file (0600) only where git ignores it. */
@@ -243,7 +229,7 @@ export const fileTokenSource = (options: FileTokenOptions): {source: TokenSource
 	return {source, account};
 };
 
-/** True when YT_ANALYTICS_* variables are set (CI, repository secrets). */
+/** True when YT_ANALYTICS_* variables are set (a protected CI environment only: README "Where to run it"). */
 export const hasEnvTokens = (env: TokenEnv): boolean => Boolean(env.YT_ANALYTICS_ACCESS_TOKEN?.trim() || (env.YT_ANALYTICS_CLIENT_ID?.trim() && env.YT_ANALYTICS_REFRESH_TOKEN?.trim()));
 
 /** Access tokens from the dashboard's YT_ANALYTICS_* variables (shared with tools/dashboard). */

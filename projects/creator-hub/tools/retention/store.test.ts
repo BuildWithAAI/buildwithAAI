@@ -3,7 +3,7 @@ import {mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {after, before, describe, it} from 'node:test';
-import {ageDays, deleteRecords, loadRecords, readPolicy, recordProblem, saveRecord, savePolicy, videosDir} from './store.ts';
+import {ageDays, deleteRecords, loadRecords, policyPath, readPolicy, readPolicyStatus, recordProblem, saveRecord, savePolicy, videosDir} from './store.ts';
 import {demoUploads, synthRecord} from './synth.ts';
 
 let dir = '';
@@ -46,11 +46,29 @@ describe('stored pulls', () => {
 });
 
 describe('the policy decision', () => {
-	it('is read from the data folder, or from the environment in CI', () => {
+	it('is read from the data folder, or from the environment', () => {
 		assert.equal(readPolicy(dir, {}), null);
-		savePolicy(dir, {version: 1, derivedMetrics: 'not-required', date: '2026-11-24', note: 'own channel only', recordedAt: '2026-11-24T12:00:00Z'});
-		assert.equal(readPolicy(dir, {})!.derivedMetrics, 'not-required');
-		assert.equal(readPolicy(dir, {RETENTION_DERIVED_METRICS: 'accepted', RETENTION_POLICY_DATE: '2026-12-01'})!.derivedMetrics, 'accepted');
+		savePolicy(dir, {version: 1, derivedMetrics: 'accepted', date: '2026-11-24', note: 'audit form submitted', recordedAt: '2026-11-24T12:00:00Z'});
+		assert.equal(readPolicy(dir, {})!.derivedMetrics, 'accepted');
+		assert.equal(readPolicy(dir, {RETENTION_DERIVED_METRICS: 'accepted', RETENTION_POLICY_DATE: '2026-12-01'})!.date, '2026-12-01');
 		assert.equal(readPolicy(join(dir, 'nowhere'), {RETENTION_DERIVED_METRICS: 'maybe'}), null, 'only the two decisions count');
+	});
+
+	it('accepts only "accepted" with its date, or a written exemption from YouTube quoted in the note', () => {
+		const exempt = {RETENTION_DERIVED_METRICS: 'exempted', RETENTION_POLICY_DATE: '2026-11-20'};
+		assert.equal(readPolicy(join(dir, 'nowhere'), {...exempt, RETENTION_POLICY_NOTE: 'they said it is fine'}), null, 'no quoted words, no exemption');
+		assert.equal(readPolicy(join(dir, 'nowhere'), {...exempt, RETENTION_POLICY_NOTE: 'YouTube API Services, case 123: "your own-channel analytics use does not need the amendment"'})!.derivedMetrics, 'exempted');
+		assert.equal(readPolicy(join(dir, 'nowhere'), {RETENTION_DERIVED_METRICS: 'accepted'}), null, 'accepted without its date');
+		assert.match(readPolicyStatus(join(dir, 'nowhere'), {RETENTION_DERIVED_METRICS: 'accepted', RETENTION_POLICY_DATE: 'soon'}).problem ?? '', /needs its date/);
+	});
+
+	it('no longer accepts a self-declared "not-required", even one recorded earlier', () => {
+		const other = join(dir, 'earlier');
+		mkdirSync(join(other, 'retention'), {recursive: true});
+		writeFileSync(policyPath(other), JSON.stringify({version: 1, derivedMetrics: 'not-required', date: '2026-11-24', note: 'own channel only', recordedAt: '2026-11-24T12:00:00Z'}));
+		const status = readPolicyStatus(other, {});
+		assert.equal(status.decision, null);
+		assert.match(status.problem ?? '', /"not-required" decision is no longer accepted: YouTube's policy has no self-exemption/);
+		assert.match(readPolicyStatus(other, {RETENTION_DERIVED_METRICS: 'not-required', RETENTION_POLICY_DATE: '2026-11-24'}).problem ?? '', /no self-exemption/);
 	});
 });

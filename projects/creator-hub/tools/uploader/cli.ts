@@ -2,11 +2,14 @@
  * YouTube uploader: uploads a rendered episode by API only after the owner approved that exact file.
  *
  *   node tools/uploader/cli.ts approve <kit.json> [--render long|short-<n>] [--publish-at "YYYY-MM-DD HH:MM"]
- *       Shows exactly what would be sent and, when the owner types the episode slug, writes the approval record.
+ *       Shows exactly what would be sent and, when the owner types the episode slug (or passes --confirm with the
+ *       approval code printed in that preview), writes the approval record.
  *   node tools/uploader/cli.ts plan <kit.json> --approval <approval.json>
  *       Prints exactly what would be sent. Refuses without a valid approval whose hashes match the files now.
  *   node tools/uploader/cli.ts upload <kit.json> --approval <approval.json> --apply
  *       Uploads as private (publishAt from the approval, if any), then thumbnail, captions, playlist. Resumable.
+ *       The owner types the slug again at the terminal first when the upload schedules a publish time or the
+ *       approval was not typed at a terminal. Agents never run approve --confirm or upload --apply.
  *   node tools/uploader/cli.ts auth --channel <slug> --client-secrets <client_secret.json>
  *   node tools/uploader/cli.ts status | categories
  *
@@ -18,20 +21,21 @@ import {createInterface} from 'node:readline/promises';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
 import {createApi} from './api.ts';
-import {type ApprovalRecord, createApproval} from './approval.ts';
+import {type ApprovalRecord, type ApprovedVia, createApproval, presenceReasons} from './approval.ts';
 import {applyUpload, renderReceipt} from './apply.ts';
 import {type Endpoints, GOOGLE, OWNER_TIME_ZONE, SCOPES} from './contracts.ts';
 import {ApiError, fetchTransport, NetworkError, type Transport} from './http.ts';
 import {DEFAULT_CHANNELS_FILE, loadChannels} from './inputs.ts';
 import {openLedger} from './ledger.ts';
 import {AuthError, authorize, clientFromEnv, createTokenSource, grantedScopes, readClientSecrets, readOAuthFile, revokeToken, scopeProblem, writeOAuthFile, EXPIRY_HELP} from './oauth.ts';
-import {renderPlan} from './plan.ts';
+import {approvalCode, renderPlan} from './plan.ts';
 import {EarlyRefusal, type Prepared, prepareForApproval, prepareFromApproval} from './prepare.ts';
 import {createQuotaTracker, QuotaBudgetError} from './quota.ts';
 import {PrivacyGuardError} from './requests.ts';
 import {type JobState, loadJob} from './state.ts';
 import {formatInZone, parsePublishTime, quotaDay, toUtcIso} from './time.ts';
 import {type Reason, Refusal, UsageError, writeJsonAtomic} from './util.ts';
+import {clientSecretsWarning} from '../retention/gitignore.ts';
 
 const TOOL_DIR = fileURLToPath(new URL('.', import.meta.url));
 const MIB = 1024 * 1024;
@@ -40,10 +44,14 @@ export const EXIT = {ok: 0, failed: 1, usage: 2, refused: 3, notApproved: 4} as 
 
 const HELP = `YouTube uploader (tools/uploader). Nothing is sent without the owner's approval record.
 
+Only the owner approves and uploads. Agents and scripts never run approve --confirm or upload --apply.
+
 Commands
   approve <kit.json>     Show the full upload plan and record the owner's approval (asks the owner to type the slug).
   plan <kit.json>        Print exactly what would be sent. Needs --approval; refuses unless the approval matches.
   upload <kit.json>      Same as plan (dry run). With --apply: upload as private, then thumbnail, captions, playlist.
+                         It asks the owner to type the slug first when the upload schedules a publish time or the
+                         approval was not typed at a terminal (no terminal: refused).
   auth --channel <slug>  One-time Google sign-in for a channel; saves tokens to the gitignored state folder.
   status                 Saved authorizations, today's quota, uploads in the ledger, unfinished jobs.
   categories             List YouTube's video categories (1 quota unit) to choose categoryId in channels.json.
@@ -51,10 +59,12 @@ Commands
 approve options
   --render <id>          kit render: long (default) or short-<n>
   --publish-at <time>    Schedule: "YYYY-MM-DD HH:MM" (read in ${OWNER_TIME_ZONE}) or ISO 8601 with an offset.
-                         Leave it out to keep the video private until you publish it in Studio.
+                         Leave it out to keep the video private until you publish it in Studio. Refused for a video
+                         with paid promotion: tick Paid promotion in Studio first and schedule it there.
   --thumbnail <file|none>, --spec <file>, --storyboard <file>, --video <file>
   --valid-days <n>       How long the approval stays valid (default 7, max approvalMaxDays in channels.json).
-  --confirm <slug>       Approve without the prompt (the owner typing the slug). Never pass this for the owner.
+  --confirm <code>       Approve without a terminal: the 12-character approval code printed at the end of the preview.
+                         It changes whenever the render or anything sent changes. Never pass this for the owner.
   --by <label>           Who approved, as a role (default "owner"). --note <text>. --out <file>.
 
 plan / upload options
@@ -65,7 +75,8 @@ plan / upload options
   --max-quota <units>    Cap on this run's quota units (default maxUnitsPerRun in channels.json).
   --chunk-mb <n>         Upload chunk size in MiB, a multiple of 0.25 (default 32).
   --restart-upload       Start a new session when the saved one expired. Check Studio for the video first.
-  --allow-second-upload  Upload a second, different file for the same episode render.
+  --allow-second-upload  Upload a second, different file for the same episode render, or a video whose title a
+                         recent upload on the channel already has (the duplicate check).
   --processing-polls <n> Shorts with a thumbnail: how often to check processing first (default 20, 1 unit each).
   --processing-interval <s> Seconds between those checks (default 30).
 
@@ -218,9 +229,12 @@ const approve = async (kitArg: string, values: Values, deps: Deps, p: Paths): Pr
 	});
 	const {plan, inputs} = prepared;
 	const out = values.out ? resolve(deps.cwd, values.out) : join(dirname(inputs.kitPath), `approval-${plan.renderId}.json`);
+	const channelTitle = savedChannelTitle(p.oauthPath, plan.channel, plan.destination.youtubeChannelId);
+	const code = approvalCode(plan);
 	deps.stdout(
 		renderPlan(plan, deps.endpoints, {
 			chunkBytes: chunkBytesOption(values['chunk-mb']),
+			channelTitle,
 			header: [`PREVIEW, NOT APPROVED: ${plan.channel}/${plan.slug} render "${plan.renderId}"`, `Nothing is sent by this command. Approving writes ${out}.`],
 		}),
 	);
@@ -228,29 +242,45 @@ const approve = async (kitArg: string, values: Values, deps: Deps, p: Paths): Pr
 		deps.stderr(reasonsText('\nCannot be approved: these would stop the upload.', prepared.refusals));
 		return EXIT.refused;
 	}
-	let confirmed = values.confirm === plan.slug;
-	if (values.confirm !== undefined && !confirmed) {
-		deps.stderr(`--confirm "${values.confirm}" does not match the episode slug "${plan.slug}". Not approved.\n`);
-		return EXIT.notApproved;
-	}
-	if (!confirmed && deps.prompt) {
+	let approvedVia: ApprovedVia | null = null;
+	if (values.confirm !== undefined) {
+		// the code binds what the owner reviewed: the slug does not (it stays the same across re-renders)
+		if (values.confirm.trim().toLowerCase() !== code) {
+			const why = values.confirm.trim() === plan.slug ? 'it is the episode slug; --confirm takes the approval code printed at the end of the preview' : 'it is not the approval code printed at the end of this preview (the plan may have changed since the owner reviewed it)';
+			deps.stderr(`--confirm "${values.confirm}" does not approve this plan: ${why}. Not approved, nothing written.\n`);
+			return EXIT.notApproved;
+		}
+		approvedVia = 'confirm-code';
+	} else if (deps.prompt) {
 		const answer = await deps.prompt(`\nApprove uploading exactly this (private${plan.publishAt ? `, scheduled ${formatInZone(Date.parse(plan.publishAt))}` : ''})? Type the episode slug "${plan.slug}" to approve, anything else to cancel: `);
-		confirmed = answer.trim() === plan.slug;
+		if (answer.trim() === plan.slug) approvedVia = 'terminal';
 	}
-	if (!confirmed) {
-		deps.stderr(`\nNot approved, nothing written.${deps.prompt ? '' : ` To approve without a terminal, the owner runs this again with --confirm ${plan.slug}.`}\n`);
+	if (!approvedVia) {
+		deps.stderr(`\nNot approved, nothing written.${deps.prompt ? '' : ' To approve without a terminal, the owner passes --confirm with the approval code printed at the end of the preview above.'}\n`);
 		return EXIT.notApproved;
 	}
 	const record: ApprovalRecord = createApproval(plan, {
 		nowMs: deps.now(),
 		approvedBy: values.by ?? 'owner',
+		approvedVia,
+		channelTitle,
 		validDays,
 		spec: inputs.spec?.rel ?? null,
 		...(values.note ? {note: values.note} : {}),
 	});
 	writeJsonAtomic(out, record, 0o644);
-	deps.stdout(`\nApproved. Approval record: ${out} (valid until ${formatInZone(Date.parse(record.expiresAt))}).\nNext: node tools/uploader/cli.ts upload ${kitArg} --approval ${out} --apply\n`);
+	deps.stdout(`\nApproved. Approval record: ${out} (valid until ${formatInZone(Date.parse(record.expiresAt))}). Keep it on this machine only.\nNext (the owner, at a terminal): node tools/uploader/cli.ts upload ${kitArg} --approval ${out} --apply\n`);
 	return EXIT.ok;
+};
+
+/** The title of the channel saved by "auth" for this slug, when it is the pinned one (for the preview and the record). */
+const savedChannelTitle = (oauthPath: string, slug: string, pinned: string | null): string | null => {
+	try {
+		const account = readOAuthFile(oauthPath).accounts[slug];
+		return account && pinned && account.channelId === pinned ? account.title || null : null;
+	} catch {
+		return null;
+	}
 };
 
 /* ------------------------------------------------------------------ plan / upload */
@@ -315,6 +345,34 @@ const upload = async (kitArg: string, values: Values, deps: Deps, p: Paths): Pro
 		deps.stdout(renderPlan(prepared.plan, deps.endpoints, {chunkBytes, header: [...planHeader(prepared, 'DRY RUN'), 'Nothing was sent. Add --apply to upload.']}));
 		return EXIT.ok;
 	}
+	const approval = prepared.approval as ApprovalRecord;
+	const presence = presenceReasons(approval);
+	let ownerPresent = false;
+	if (presence.length && !prepared.uploaded) {
+		// the record alone cannot prove the owner approved: anything that can run this CLI can write one
+		if (!deps.prompt) {
+			deps.stderr(
+				reasonsText('REFUSED: nothing was sent.', [
+					{code: 'owner-presence-required', message: `This upload needs the owner at a terminal, because ${presence.join(', and ')}. The owner runs this command himself and types the episode slug. Agents and scripts never run upload --apply.`},
+				]),
+			);
+			return EXIT.refused;
+		}
+		const shown = prepared.plan;
+		deps.stdout(
+			[
+				`About to upload ${shown.video.rel} (sha256 ${shown.video.sha256.slice(0, 16)}…) to YouTube channel ${shown.destination.youtubeChannelId ?? '(not pinned)'} as "${shown.insert.body.snippet.title}".`,
+				`It goes up private${shown.publishAt ? ` and YouTube makes it PUBLIC at ${formatInZone(Date.parse(shown.publishAt))} on its own` : ''}. Approved via ${approval.approvedVia} at ${formatInZone(Date.parse(approval.approvedAt))}.`,
+				'',
+			].join('\n'),
+		);
+		const answer = await deps.prompt(`Type the episode slug "${shown.slug}" to start the upload, anything else to stop: `);
+		if (answer.trim() !== shown.slug) {
+			deps.stderr('Not uploaded: the slug was not typed. Nothing was sent.\n');
+			return EXIT.notApproved;
+		}
+		ownerPresent = true;
+	}
 	const channels = prepared.inputs.config;
 	const result = await applyUpload(
 		prepared,
@@ -326,6 +384,7 @@ const upload = async (kitArg: string, values: Values, deps: Deps, p: Paths): Pro
 			maxUnitsPerRun: intOption(values['max-quota'], 'max-quota', 1, channels.dailyLimits.defaultUnits, channels.maxUnitsPerRun),
 			processingPolls: intOption(values['processing-polls'], 'processing-polls', 0, 120, 20),
 			processingIntervalMs: intOption(values['processing-interval'], 'processing-interval', 1, 600, 30) * 1000,
+			ownerPresent,
 		},
 	);
 	deps.stdout(`\n${renderReceipt(result, prepared.plan)}`);
@@ -352,6 +411,10 @@ const auth = async (values: Values, deps: Deps, p: Paths): Promise<number> => {
 		writeOAuthFile(p.oauthPath, file);
 		deps.stdout(`Revoked and removed the authorization for "${slug}".\n`);
 		return EXIT.ok;
+	}
+	if (values['client-secrets']) {
+		const warning = clientSecretsWarning(resolve(deps.cwd, values['client-secrets']));
+		if (warning) deps.stderr(`${warning}\n`);
 	}
 	const client = values['client-secrets'] ? readClientSecrets(resolve(deps.cwd, values['client-secrets'])) : (clientFromEnv(deps.env) ?? file.client);
 	if (!client) throw new UsageError('First sign-in needs --client-secrets <client_secret.json> (a "Desktop app" OAuth client; README "One-time setup").');

@@ -2,6 +2,9 @@
  * Idempotency: the ledger (ledger.json in the gitignored state folder) records every render the uploader has started
  * or finished, keyed by channel + the file's SHA-256. The same file is never uploaded twice to a channel, and a second
  * file for an episode's same render id needs --allow-second-upload. A lock file stops two runs of the same job.
+ *
+ * The ledger is local to one state folder. The check that works across machines is the channel's own list of recent
+ * uploads (apply.ts, duplicate check before every new upload session); an approval must still live on one machine.
  */
 import {existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
@@ -20,6 +23,8 @@ export type LedgerEntry = {
 	videoId: string | null;
 	planSha256: string;
 	approvalSha256: string;
+	/** The approval record's nonce (absent in entries written before it existed). */
+	approvalNonce?: string | null;
 	startedAt: string;
 	updatedAt: string;
 	completedAt: string | null;

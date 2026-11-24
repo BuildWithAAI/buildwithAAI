@@ -8,7 +8,7 @@ import {describe, it} from 'node:test';
 import {aggregate, type Comparison} from './aggregate.ts';
 import {analyzeRecords} from './analyze.ts';
 import {recommend} from './recommend.ts';
-import {demoUploads, nullUploads, synthRecord, type SynthUpload} from './synth.ts';
+import {demoUploads, nullUploads, synthRecord, type SynthScene, type SynthUpload} from './synth.ts';
 
 const NOW = new Date('2026-11-24T12:00:00Z');
 const run = (uploads: SynthUpload[]) => {
@@ -36,6 +36,14 @@ describe('injected effects are found (demo set)', () => {
 		assert.equal(c.status, 'supported');
 		assert.ok(c.estimate! > 2);
 		assert.ok((c.relative ?? 0) > 0);
+	});
+	it('its relative figure restates the within-channel estimate (estimate / longer openings\' mean), with that interval', () => {
+		const c = byId.get('hook-short:<3s:long')!;
+		const rest = Number(c.details.restMeanPp);
+		assert.ok(Math.abs(c.relative! - c.estimate! / rest) < 0.001, `${c.relative} vs ${c.estimate! / rest}`);
+		assert.ok(Math.abs(c.relativeCi95![0] - c.ci95![0] / rest) < 0.001 && Math.abs(c.relativeCi95![1] - c.ci95![1] / rest) < 0.001);
+		// the demo set's security channel has only long openings and lower retention: the raw means overstate the effect
+		assert.ok(Number(c.details.rawRelative) > 1.5 * c.relative!, `raw ${c.details.rawRelative} vs adjusted ${c.relative}`);
 	});
 	it('nothing that was not injected is supported', () => {
 		const supported = aggregates.comparisons.filter((c) => c.status === 'supported').map((c) => c.id).sort();
@@ -130,5 +138,42 @@ describe('language versions', () => {
 		const ups = demoUploads().map((u) => (u.lang === 'es' ? {...u, multiLanguageAudio: true} : u));
 		const {byId} = run(ups);
 		assert.equal(byId.get('language-average:es:long'), undefined);
+	});
+});
+
+describe('a channel mix that confounds the raw means', () => {
+	// Channel A holds viewers well and mostly opens short; channel B holds them less and mostly opens long. Within each
+	// channel the short opening helps a little. The raw group means then mostly measure the channel, not the opening.
+	const scenes = (hookMs: number): SynthScene[] => [
+		{id: 's01', type: 'hook', durationMs: hookMs},
+		{id: 's02', type: 'talk', durationMs: 10_000},
+		{id: 's03', type: 'talk', durationMs: 10_000},
+		{id: 's04', type: 'talk', durationMs: 10_000},
+		{id: 's05', type: 'endscreen', durationMs: 20_000},
+	];
+	const ups: SynthUpload[] = [];
+	const add = (channel: 'zoora-ai' | 'zoora-security', n: number, short: boolean, quality: number) =>
+		ups.push({videoId: `SYNcf${channel === 'zoora-ai' ? 'A' : 'B'}${String(n).padStart(5, '0')}`, channel, slug: `confounded-${n}`, lang: 'en', format: 'long', scenes: scenes(short ? 2000 : 5000), views: 4000, seed: 300 + n * 7 + (channel === 'zoora-ai' ? 0 : 1), quality, hookBonus: short ? 0.012 : 0});
+	for (let n = 1; n <= 8; n++) add('zoora-ai', n, n <= 6, 0.55);
+	for (let n = 1; n <= 8; n++) add('zoora-security', n, n <= 2, 1.7);
+	const {byId} = run(ups);
+	const c = byId.get('hook-short:<3s:long')!;
+
+	it('the raw difference is mostly the channel mix', () => {
+		assert.equal(c.n.group, 8);
+		assert.equal(c.n.rest, 8);
+		assert.ok(Number(c.details.rawDiffPp) > 2 * c.estimate!, `raw ${c.details.rawDiffPp} pp vs within-channel ${c.estimate} pp`);
+	});
+	it('the relative figure follows the within-channel estimate, not the raw means', () => {
+		const rest = Number(c.details.restMeanPp);
+		assert.ok(Math.abs(c.relative! - c.estimate! / rest) < 0.001);
+		assert.ok(c.relative! < Number(c.details.rawRelative) / 2, `adjusted ${c.relative} vs raw ${c.details.rawRelative}`);
+	});
+	it('a recommendation built from it would lead with the within-channel effect', () => {
+		const rec = recommend([{...c, status: 'supported', q: 0.01}])[0]!;
+		assert.match(rec.evidence, /^Within each channel, episodes whose opening scene is under 3 s kept \d+\.\d pp more of their viewers at 0:30/);
+		assert.match(rec.evidence, new RegExp(`about \\+${Math.round(c.relative! * 100)}% relative`));
+		assert.match(rec.evidence, /The raw averages, which mix the channels, were/);
+		assert.deepEqual(rec.numbers.relativeCi95, c.relativeCi95);
 	});
 });

@@ -7,6 +7,9 @@
  *   hash): the approval record binds all of them.
  * - channels.json (this folder): category, language, playlists and the pinned channel id per channel.
  * - an optional upload spec (--spec): localizations, extra caption languages, tags, category or playlist overrides.
+ *   Nobody else checks the spec's text, so its tags and translations go through the en/es/pt income-claim rules
+ *   (claims.ts), and every offer link a translation keeps needs its owner-approved disclosure in that language next to
+ *   it (disclosures.ts). Both are refusals.
  * - the episode's episode.json when present (tags, language).
  * Paths in the kit, the spec and approval records are relative to projects/video-studio unless absolute.
  */
@@ -14,7 +17,9 @@ import {existsSync, readFileSync, statSync} from 'node:fs';
 import {dirname, isAbsolute, join, relative, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import type {PublishKit} from '../../src/types.ts';
+import {COVERED_LANGUAGES, findClaims} from './claims.ts';
 import {DAILY_LIMITS, LANGUAGE_TAGS, LIMITS} from './contracts.ts';
+import {loadApprovedDisclosures, localizedDisclosureProblems} from './disclosures.ts';
 import {bcp47, fileStamp, type FileStamp, hashFile, isRecord, num, readJson, type Reason, sha256Hex, sniffImage, str, UsageError, utf8Bytes, videoMimeType, youtubeTagsLength} from './util.ts';
 
 export type {PublishKit};
@@ -324,8 +329,6 @@ const descriptionProblems = (text: string, where: string): string[] => [
 /** http(s) URLs in a text, without trailing punctuation. */
 export const urlsIn = (text: string): string[] => [...text.matchAll(/https?:\/\/[^\s<>"]+/g)].map((m) => m[0].replace(/[.,;:!?)\]]+$/, ''));
 
-const hasOffers = (kit: PublishKit): boolean => Array.isArray(kit.offers) && kit.offers.length > 0;
-
 /** SubRip check: plain UTF-8 (YouTube Help 2734698) with at least one timed cue. */
 export const srtProblems = (content: Buffer, where: string): string[] => {
 	let text: string;
@@ -405,7 +408,12 @@ export const gatherInputs = async (opts: GatherOptions): Promise<UploadInputs> =
 	const audioLanguage = bcp47(audioInput, LANGUAGE_TAGS);
 	if (!audioLanguage) problems.push(`audioLanguage "${audioInput}" is not a language code`);
 
+	// The spec's own text (tags, translations) is checked by nobody else: income claims in any of en/es/pt are refusals.
+	for (const tag of s?.tags ?? []) {
+		for (const hit of findClaims(tag)) problems.push(`tags: "${tag}" is an income or return claim (${hit.label}); remove it`);
+	}
 	const localizations: Record<string, {title: string; description: string}> = {};
+	const approvedDisclosures = Object.keys(s?.localizations ?? {}).length ? loadApprovedDisclosures(root, kit.channel) : null;
 	for (const [code, value] of Object.entries(s?.localizations ?? {})) {
 		const tag = bcp47(code, LANGUAGE_TAGS);
 		if (!tag) {
@@ -420,10 +428,15 @@ export const gatherInputs = async (opts: GatherOptions): Promise<UploadInputs> =
 		for (const url of urlsIn(value.description)) {
 			if (!allowed.has(url)) problems.push(`localizations.${code}: the link ${url} is not in the kit's description; translated descriptions may only repeat the kit's links`);
 		}
+		for (const [field, text] of [['title', value.title], ['description', value.description]] as const) {
+			for (const hit of findClaims(text)) problems.push(`localizations.${code}.${field}: income or return claim (${hit.label}): "${hit.match}". Rephrase it, even when describing a scam`);
+		}
+		if (!(COVERED_LANGUAGES as readonly string[]).includes(tag.toLowerCase().split('-')[0] ?? '')) {
+			warnings.push(`localizations.${code}: the income-claim rules cover English, Spanish and Portuguese only; read the ${tag} title and description yourself before approving`);
+		}
+		// every offer link keeps its owner-approved disclosure, in this language, next to it (FTC 16 CFR 255)
+		if (approvedDisclosures) problems.push(...localizedDisclosureProblems(value.description, `localizations.${code}`, tag, kit, approvedDisclosures, urlsIn));
 		localizations[tag] = value;
-	}
-	if (Object.keys(localizations).length && hasOffers(kit)) {
-		warnings.push('Localized descriptions: every affiliate link needs its disclosure, in that language, next to it (FTC 16 CFR 255). The uploader only checks that no new links were added.');
 	}
 
 	const playlistId = s && s.playlistId !== undefined ? s.playlistId : channelConfig.playlists[kind];

@@ -1,7 +1,11 @@
 /**
  * Test support only: builds a throwaway projects/video-studio layout in a temp folder with the fixture kit, a fake
- * rendered video (deterministic bytes), real PNG thumbnails, the storyboard and episode files, a channels.json and a
- * saved OAuth account, so every test starts from the same known files.
+ * rendered video (deterministic bytes), real PNG thumbnails, the storyboard and episode files, the asset tools' config
+ * with owner-approved es and pt-BR disclosures, a channels.json (channel id pinned) and a saved OAuth account, so every
+ * test starts from the same known files.
+ *
+ * The fixture kit has an affiliate offer, so its paid promotion is on, and the uploader never schedules such a video.
+ * Tests about scheduling use `paidPromotion: false`: the same kit with the offer, its link and its disclosure taken out.
  */
 import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -68,6 +72,38 @@ export const CHUNK = 262_144;
 /** 2026-11-24 12:00 UTC: tests run on a fixed clock. */
 export const NOW = Date.parse('2026-11-24T12:00:00.000Z');
 
+/** Owner-approved translations of the fixture offer's disclosure (the lines fixtures/upload-spec.example.json uses). */
+export const APPROVED_DISCLOSURES = {
+	'hardware-wallet': {
+		es: 'Enlace de afiliado: puedo ganar una comisión si compras. No te cuesta nada extra.',
+		'pt-br': 'Link de afiliado: posso ganhar uma comissão se você comprar. Não custa nada a mais para você.',
+	},
+};
+
+/** The fixture kit without its affiliate offer: no offer link, no affiliate disclosure, paid promotion off. */
+export const unpaidKit = (kit: Record<string, unknown>): Record<string, unknown> => {
+	const posts = kit.posts as Record<string, {text: string}>;
+	const youtube = posts.youtube as {text: string};
+	return {
+		...kit,
+		offers: [],
+		disclosures: (kit.disclosures as string[]).filter((d) => !/affiliate/i.test(d)),
+		posts: {
+			...posts,
+			youtube: {
+				...youtube,
+				text: youtube.text.replace('Contains an affiliate link (disclosure below).\n\n', '').replace(/Hardware wallet: \S+\nAffiliate link: [^\n]*\n\n/, ''),
+			},
+		},
+		settings: {
+			...(kit.settings as Record<string, unknown>),
+			paidPromotion: false,
+			reasons: ((kit.settings as {reasons: string[]}).reasons ?? []).map((r) => (r.startsWith('paidPromotion=') ? 'paidPromotion=false: no offers.' : r)),
+		},
+		checks: (kit.checks as {id: string; ok: boolean; detail: string}[]).map((c) => (c.id === 'disclosures' ? {...c, detail: 'No offer links.'} : c)),
+	};
+};
+
 export type Workspace = {
 	root: string;
 	videoStudio: string;
@@ -86,7 +122,20 @@ export type Workspace = {
 	cleanup(): void;
 };
 
-export const makeWorkspace = (opts: {playlists?: {long: string | null; short: string | null}; categoryId?: string | null; scope?: string; withAccount?: boolean} = {}): Workspace => {
+export type WorkspaceOptions = {
+	playlists?: {long: string | null; short: string | null};
+	categoryId?: string | null;
+	scope?: string;
+	withAccount?: boolean;
+	/** false: the fixture kit without its affiliate offer (a video the uploader may schedule). Default true. */
+	paidPromotion?: boolean;
+	/** false: channels.json does not pin youtubeChannelId (upload --apply refuses). Default true. */
+	pinned?: boolean;
+	/** false: no asset config, so no owner-approved translated disclosures. Default true. */
+	approvedDisclosures?: boolean;
+};
+
+export const makeWorkspace = (opts: WorkspaceOptions = {}): Workspace => {
 	const root = mkdtempSync(join(tmpdir(), 'uploader-test-'));
 	const videoStudio = join(root, 'video-studio');
 	const kitDir = join(videoStudio, 'out/publish/zoora-ai/uploader-fixture');
@@ -96,7 +145,8 @@ export const makeWorkspace = (opts: {playlists?: {long: string | null; short: st
 		writeFileSync(path, content);
 		return path;
 	};
-	const kitPath = write('out/publish/zoora-ai/uploader-fixture/kit.json', fixture('kit.json'));
+	const kitData = JSON.parse(fixture('kit.json')) as Record<string, unknown>;
+	const kitPath = write('out/publish/zoora-ai/uploader-fixture/kit.json', `${JSON.stringify(opts.paidPromotion === false ? unpaidKit(kitData) : kitData, null, 2)}\n`);
 	write('out/publish/zoora-ai/uploader-fixture/shorts-1.txt', fixture('shorts-1.txt'));
 	const videoPath = write('out/publish/zoora-ai/uploader-fixture/media/long.mp4', fakeVideo(VIDEO_BYTES));
 	const shortPath = write('out/publish/zoora-ai/uploader-fixture/media/short-1.mp4', fakeVideo(300_000, 99));
@@ -104,6 +154,9 @@ export const makeWorkspace = (opts: {playlists?: {long: string | null; short: st
 	write('out/publish/zoora-ai/uploader-fixture/media/thumbnails/en/v1.png', makePng(1280, 720, [11, 12, 15]));
 	const storyboardPath = write('content/zoora-ai/uploader-fixture/storyboard.json', fixture('storyboard.json'));
 	write('content/zoora-ai/uploader-fixture/episode.json', fixture('episode.json'));
+	if (opts.approvedDisclosures !== false) {
+		write('scripts/assets/config/channels.json', JSON.stringify({version: 1, defaults: {offerDisclosures: APPROVED_DISCLOSURES}, channels: {'zoora-ai': {displayName: 'Zoora AI'}}}, null, 2));
+	}
 
 	const channelsData = {
 		version: 1,
@@ -112,7 +165,12 @@ export const makeWorkspace = (opts: {playlists?: {long: string | null; short: st
 		minLeadMinutes: 60,
 		approvalMaxDays: 30,
 		channels: {
-			'zoora-ai': {youtubeChannelId: null, categoryId: opts.categoryId === undefined ? '28' : opts.categoryId, defaultLanguage: 'en', playlists: opts.playlists ?? {long: PLAYLIST_ID, short: SHORTS_PLAYLIST_ID}},
+			'zoora-ai': {
+				youtubeChannelId: opts.pinned === false ? null : CHANNEL_ID,
+				categoryId: opts.categoryId === undefined ? '28' : opts.categoryId,
+				defaultLanguage: 'en',
+				playlists: opts.playlists ?? {long: PLAYLIST_ID, short: SHORTS_PLAYLIST_ID},
+			},
 		},
 	};
 	const channelsPath = join(root, 'channels.json');

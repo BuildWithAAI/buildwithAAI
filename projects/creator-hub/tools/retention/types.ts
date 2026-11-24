@@ -185,6 +185,8 @@ export type SceneModel = {
 	expectedRate: number; // this upload's level + the channel's drop-off at this moment + the median template
 	excessRate: number; // lossRate - expectedRate; > 0 = loses more than expected
 	excessPpPer10s: number; // the same in percentage points of the video's views per 10 s
+	/** Sampling standard error of excessPpPer10s from the upload's playback count (RULES.noiseSe); null when unknown. */
+	sePpPer10s: number | null;
 };
 
 export type SceneMetrics = {
@@ -212,6 +214,8 @@ export type SceneMetrics = {
 	stopShare: number | null; // share of playbacks whose last watched segment is in this scene
 	/** % of the viewers still watching that left per 10 s; null when retention is near 0 at either end. */
 	lossRate: number | null;
+	/** The span the loss rate was read over (whole buckets inside the scene), in ms; null when not measured. */
+	lossSpanMs: number | null;
 	/** Enters scene-level comparisons: measurable, not the opening scene, not the end screen, known type. */
 	eligible: boolean;
 	model: SceneModel | null;

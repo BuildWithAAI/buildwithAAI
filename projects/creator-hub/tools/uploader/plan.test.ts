@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {afterEach, beforeEach, describe, it} from 'node:test';
 import {GOOGLE} from './contracts.ts';
 import {gatherInputs, parseSpec} from './inputs.ts';
-import {buildPlan, renderPlan} from './plan.ts';
-import {fixture, makeWorkspace, PLAYLIST_ID, SHORTS_PLAYLIST_ID, type Workspace} from './test-helpers.ts';
+import {approvalCode, buildPlan, renderPlan} from './plan.ts';
+import {CHANNEL_ID, fixture, makeWorkspace, PLAYLIST_ID, SHORTS_PLAYLIST_ID, type Workspace} from './test-helpers.ts';
 import {UsageError} from './util.ts';
 
 const CAPTION = '1\n00:00:00,000 --> 00:00:02,000\nHola.\n';
@@ -53,15 +53,16 @@ describe('upload plan', () => {
 		assert.doesNotMatch(text.split('Not sent:')[0] ?? '', /paidProductPlacement/);
 	});
 
-	it('counts quota per bucket: 1 upload call, and 1 + 1 + 50 + 400 + 50 units', async () => {
+	it('counts quota per bucket: 1 upload call, and 1 + 1 + 1 + 50 + 400 + 50 units', async () => {
 		const plan = buildPlan(await inputsFor(), {publishAt: null, processingPolls: 20});
 		assert.equal(plan.quota.uploadCalls, 1);
-		assert.equal(plan.quota.defaultUnits, 502);
+		assert.equal(plan.quota.defaultUnits, 503);
 		assert.deepEqual(
 			plan.quota.lines.map((l) => [l.method, l.units]),
 			[
 				['channels.list', 1],
 				['playlists.list', 1],
+				['playlistItems.list', 1],
 				['videos.insert', 1],
 				['thumbnails.set', 50],
 				['captions.insert', 400],
@@ -83,6 +84,26 @@ describe('upload plan', () => {
 		const retitled = buildPlan(await inputsFor(), {publishAt: null, processingPolls: 20});
 		assert.notEqual(retitled.digest.parts.insert, a.digest.parts.insert);
 		assert.equal(retitled.digest.parts.thumbnail, a.digest.parts.thumbnail);
+		assert.equal(approvalCode(a), a.digest.sha256.slice(0, 12));
+		assert.notEqual(approvalCode(retitled), approvalCode(a));
+	});
+
+	it('binds the destination channel: the pinned id is part of the digest, and an unpinned channel is a warning', async () => {
+		const pinned = buildPlan(await inputsFor(), {publishAt: null, processingPolls: 20});
+		assert.deepEqual(pinned.destination, {youtubeChannelId: CHANNEL_ID});
+		const other = {...ws.channels, channels: {...ws.channels.channels, 'zoora-ai': {...ws.channels.channels['zoora-ai']!, youtubeChannelId: 'UCsomeOtherChannel000001'}}};
+		const repinned = buildPlan(await gatherInputs({kitPath: ws.kitPath, videoStudioRoot: null, channels: other, renderId: 'long'}), {publishAt: null, processingPolls: 20});
+		assert.notEqual(repinned.digest.parts.channel, pinned.digest.parts.channel);
+		assert.equal(repinned.digest.parts.insert, pinned.digest.parts.insert);
+		const bare = makeWorkspace({pinned: false});
+		try {
+			const unpinned = buildPlan(await gatherInputs({kitPath: bare.kitPath, videoStudioRoot: null, channels: bare.channels, renderId: 'long'}), {publishAt: null, processingPolls: 20});
+			assert.equal(unpinned.destination.youtubeChannelId, null);
+			assert.match(unpinned.warnings.join('\n'), /does not pin youtubeChannelId for "zoora-ai": upload --apply refuses/);
+			assert.match(renderPlan(unpinned, GOOGLE, {chunkBytes: 262_144, header: []}), /Destination: NOT PINNED/);
+		} finally {
+			bare.cleanup();
+		}
 	});
 
 	it('plans a Short from shorts-<n>.txt: its own title and description, no captions or 16:9 thumbnail, the Shorts playlist', async () => {
@@ -112,10 +133,12 @@ describe('upload plan', () => {
 		assert.equal(plan.insert.query.part, 'snippet,status,localizations');
 		assert.deepEqual(Object.keys(plan.insert.body.localizations ?? {}), ['es', 'pt-BR']);
 		assert.deepEqual(plan.captions.map((c) => `${c.language}:${c.name}`), ['en:Captions', 'es:Subtítulos', 'pt-BR:Legendas']);
-		assert.equal(plan.quota.defaultUnits, 1 + 1 + 50 + 3 * 400 + 50);
+		assert.equal(plan.quota.defaultUnits, 1 + 1 + 1 + 50 + 3 * 400 + 50);
 		assert.deepEqual(plan.insert.body.snippet.tags, ['crypto security', 'wallet scams']);
 		assert.ok(plan.studioSteps.some((s) => /Dubbed audio: .*Studio > Languages/.test(s)));
-		assert.match(plan.warnings.join('\n'), /every affiliate link needs its disclosure/);
+		// each translation keeps the offer link next to its owner-approved disclosure in that language, so nothing is refused
+		assert.match(plan.insert.body.localizations?.es?.description ?? '', /go\.zoora\.ai\/go\/hardware-wallet[^\n]*\nEnlace de afiliado: puedo ganar una comisión/);
+		assert.doesNotMatch(plan.warnings.join('\n'), /income-claim rules cover/);
 	});
 
 	it('refuses spec keys that would change privacy, the schedule or the disclosure settings', () => {
@@ -131,6 +154,59 @@ describe('upload plan', () => {
 	it('refuses a translated description that adds a link the kit does not have', async () => {
 		const spec = ws.write('spec.json', JSON.stringify({version: 1, localizations: {es: {title: 'Hola', description: 'Compra aquí: https://affiliate.example/raw?ref=me'}}}));
 		await assert.rejects(inputsFor({spec}), /localizations\.es: the link https:\/\/affiliate\.example\/raw\?ref=me is not in the kit's description/);
+	});
+
+	describe('translations in the spec (nobody else checks them)', () => {
+		const LINK = 'https://go.zoora.ai/go/hardware-wallet?v=uploader-fixture&s=yt';
+		const ES = 'Enlace de afiliado: puedo ganar una comisión si compras. No te cuesta nada extra.';
+		const specWith = (localizations: Record<string, {title: string; description: string}>, extra: Record<string, unknown> = {}) => ws.write('spec.json', JSON.stringify({version: 1, localizations, ...extra}));
+		const refusal = async (spec: string): Promise<string> => {
+			try {
+				await inputsFor({spec});
+			} catch (error) {
+				assert.ok(error instanceof UsageError, String(error));
+				return error.reasons.map((r) => r.message).join('\n');
+			}
+			assert.fail('expected a refusal');
+		};
+
+		it('refuses an offer link without its owner-approved disclosure in that language next to it', async () => {
+			const dropped = await refusal(specWith({es: {title: 'Hola', description: `Billetera física: ${LINK}\n\nEl soporte real nunca te escribe primero.`}}));
+			assert.match(dropped, /localizations\.es: the "hardware-wallet" link is not next to its owner-approved es disclosure \("Enlace de afiliado: puedo ganar/);
+			const english = await refusal(specWith({es: {title: 'Hola', description: `Billetera física: ${LINK}\nAffiliate link: I may earn a commission if you buy. It costs you nothing extra.`}}));
+			assert.match(english, /not next to its owner-approved es disclosure/, 'the English disclosure is not the Spanish one');
+			const far = await refusal(specWith({es: {title: 'Hola', description: `${ES}\n1\n2\n3\n4\nBilletera física: ${LINK}`}}));
+			assert.match(far, /within 3 lines of the link/);
+			await inputsFor({spec: specWith({es: {title: 'Hola', description: `Billetera física: ${LINK}\n${ES}`}})});
+		});
+
+		it('refuses an offer link in a language with no owner-approved translation of its disclosure', async () => {
+			const italian = await refusal(specWith({it: {title: 'Ciao', description: `Portafoglio: ${LINK}\nLink di affiliazione: potrei guadagnare una commissione.`}}));
+			assert.match(italian, /no owner-approved it translation of it\. Add one under "offerDisclosures" > "hardware-wallet" > "it" in video-studio\/scripts\/assets\/config\/channels\.json/);
+			const bare = makeWorkspace({approvedDisclosures: false});
+			try {
+				const spec = bare.write('spec.json', JSON.stringify({version: 1, localizations: {es: {title: 'Hola', description: `Billetera física: ${LINK}\n${ES}`}}}));
+				await assert.rejects(gatherInputs({kitPath: bare.kitPath, videoStudioRoot: null, channels: bare.channels, renderId: 'long', spec}), /no owner-approved es translation of it.*could not be read: the file does not exist/s);
+			} finally {
+				bare.cleanup();
+			}
+		});
+
+		it('refuses income claims in a translated title or description, and in the spec tags', async () => {
+			const es = await refusal(specWith({es: {title: 'Ganancias garantizadas', description: 'El soporte real nunca te escribe primero.'}}));
+			assert.match(es, /localizations\.es\.title: income or return claim \(garantizado \/ garantido\): "garantizadas"/);
+			const pt = await refusal(specWith({'pt-br': {title: 'Golpes', description: 'Renda passiva de 10% ao mês, sem risco.'}}));
+			assert.match(pt, /localizations\.pt-br\.description: income or return claim \(sin riesgo \/ sem risco\)/);
+			assert.match(pt, /\(ingresos pasivos \/ renda passiva\)/);
+			assert.match(pt, /\(a percentage return \(es\/pt\)\)/);
+			const tags = await refusal(specWith({}, {tags: ['crypto security', 'guaranteed profits']}));
+			assert.match(tags, /tags: "guaranteed profits" is an income or return claim \(guaranteed\)/);
+		});
+
+		it('warns when a translation is in a language the claim rules do not cover', async () => {
+			const inputs = await inputsFor({spec: specWith({it: {title: 'Il supporto vero non scrive mai per primo', description: 'Una storia di fantasia.'}})});
+			assert.match(inputs.warnings.join('\n'), /localizations\.it: the income-claim rules cover English, Spanish and Portuguese only/);
+		});
 	});
 
 	it('needs a category chosen by the owner', async () => {
@@ -154,8 +230,10 @@ describe('upload plan', () => {
 		const plan = buildPlan(await inputsFor(), {publishAt: '2026-11-28T15:00:00.000Z', processingPolls: 20});
 		const text = renderPlan(plan, GOOGLE, {chunkBytes: 262_144, header: ['HEADER']});
 		for (const line of [
-			'GET https://www.googleapis.com/youtube/v3/channels?part=id%2Csnippet&mine=true',
+			`Destination: YouTube channel ${CHANNEL_ID} (pinned in channels.json for "zoora-ai").`,
+			'GET https://www.googleapis.com/youtube/v3/channels?part=id%2Csnippet%2CcontentDetails&mine=true',
 			`GET https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${PLAYLIST_ID}`,
+			"GET https://www.googleapis.com/youtube/v3/playlistItems?part=snippet%2Cstatus&playlistId=<the channel's uploads playlist, from channels.list>&maxResults=50",
 			'POST https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet%2Cstatus',
 			'x-upload-content-length: 716923',
 			'x-upload-content-type: video/mp4',
@@ -166,8 +244,9 @@ describe('upload plan', () => {
 			'POST https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=<new video id>&uploadType=media',
 			'POST https://www.googleapis.com/upload/youtube/v3/captions?part=snippet&uploadType=multipart',
 			'POST https://www.googleapis.com/youtube/v3/playlistItems?part=snippet',
-			'Quota: 502 units',
+			'Quota: 503 units',
 			'2026-11-28 09:00 CST',
+			`Approval code: ${plan.digest.sha256.slice(0, 12)}`,
 		]) {
 			assert.ok(text.includes(line), `plan text lacks: ${line}`);
 		}

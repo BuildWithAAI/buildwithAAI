@@ -3,9 +3,11 @@
 Shows where viewers leave each video, scene by scene, and which templates hold or lose viewers across episodes.
 It joins YouTube's audience-retention curve with our own scene timeline (we know every scene's start and end), so it
 can say, for one video, "viewers drop at Badger's Red Flag: 8.2 pp per 10 s, 5.3 pp more than expected at that
-moment", and across many, "openings under 3 s kept 81% at 0:30 vs 73% for longer ones (+3.7 pp, 95% CI +1.2 to
-+6.2, 7 vs 17 episodes)". Those two examples come from the SYNTHETIC demo set (`demo`), not from real videos. Every
-recommendation carries the numbers that triggered it, and nothing is recommended on thin data.
+moment" (only when that is more than 2 standard errors of sampling noise for the video's playbacks), and across many,
+"within each channel, openings under 3 s kept 3.7 pp more viewers at 0:30 (95% CI +1.2 to +6.2 pp; about +5%
+relative to the 73.3% that longer openings kept; 7 vs 17 episodes)". Those two examples come from the SYNTHETIC demo
+set (`demo`), not from real videos. Every recommendation carries the numbers that triggered it, and nothing is
+recommended on thin data.
 
 Status (2026-11-24): built and tested on synthetic fixtures only. The API client follows the official
 documentation read on 2026-11-24, but it has **never been run against the live YouTube API** from this machine,
@@ -14,20 +16,23 @@ YouTube.
 
 ## Before the first pull (owner, once)
 
-1. **Policy decision (required).** YouTube's API Developer Policies (III.E.4.h) forbid using API data "to create new or
-   derived data or metrics" unless the developer has accepted YouTube's
-   [derived-metrics amendment](https://developers.google.com/youtube/terms/derived-metrics-policy). This tool derives
-   metrics (drops per 10 s, comparisons, recommendations), so `pull`, `refresh` and `report` refuse to run (exit 4)
-   until you record a decision. To accept, submit the YouTube API Services audit and quota extension form for your
-   Google Cloud project and choose "Section 5: Use Cases, API Integration, and Feature Implementation", then
-   "Analytics & Reporting" (as that page says). Then:
-   ```sh
-   node tools/retention/cli.ts policy --derived-metrics accepted --date YYYY-MM-DD
-   # or, if you have decided it does not apply to you:
-   node tools/retention/cli.ts policy --derived-metrics not-required --date YYYY-MM-DD --note "why"
-   ```
-   The same exposure applies to any tool that computes ratios from YouTube API data (for example the dashboard's
-   rates per 1,000 views), so the decision covers more than this tool.
+1. **Policy decision (required).** YouTube's API Developer Policies (III.E.4.h, updated 2026-11-06) say "Your API
+   Clients must not ... (ii) access or use API Data to create new or derived data or metrics", and the
+   [derived-metrics page](https://developers.google.com/youtube/terms/derived-metrics-policy) (updated 2026-09-14)
+   permits them only "subject to your acceptance of the amendment to the Developer Policies" (both read 2026-11-24).
+   This tool derives metrics (drops per 10 s, comparisons, recommendations), so `pull`, `refresh` and `report` refuse
+   to run (exit 4) until one of the two decisions the policy allows is recorded:
+   - **Accepted.** Submit the YouTube API Services audit and quota extension form for your Google Cloud project and
+     choose "Section 5: Use Cases, API Integration, and Feature Implementation", then "Analytics & Reporting" (as that
+     page says). Then `node tools/retention/cli.ts policy --derived-metrics accepted --date YYYY-MM-DD`.
+   - **Exempted in writing.** Only if YouTube itself answered in writing that this use needs no amendment: quote their
+     words, with where they came from:
+     `node tools/retention/cli.ts policy --derived-metrics exempted --date YYYY-MM-DD --note 'YouTube API Services, case <id>: "<their words>"'`.
+
+   There is no self-exemption: deciding yourself that the amendment does not apply is not an option, and a
+   `not-required` decision recorded by an earlier version is no longer accepted. The same exposure applies to any
+   tool that computes ratios from YouTube API data (for example the dashboard's rates per 1,000 views), so the
+   decision covers more than this tool.
 2. **Google Cloud project.** Enable the *YouTube Analytics API* and the *YouTube Data API v3*. Create an OAuth client
    of type **Desktop app** and download its JSON. Set the OAuth consent screen to **In production**: in "Testing",
    Google issues refresh tokens that expire after 7 days.
@@ -38,7 +43,9 @@ YouTube.
    # a second channel: add --account security
    ```
    It asks for two **read-only** scopes, `yt-analytics.readonly` and `youtube.readonly`, and saves the tokens to
-   `data/retention/oauth.json` (gitignored, mode 600). It refuses to write tokens anywhere git would track.
+   `data/retention/oauth.json` (gitignored, mode 600). It refuses to write tokens anywhere git would track, and warns
+   when the client-secret JSON you pass sits where git would commit it: keep that file outside this public repository
+   (`client_secret*.json` and `*.apps.googleusercontent.com.json` are also gitignored in this folder).
 
 ## Use it
 
@@ -68,9 +75,28 @@ node tools/retention/cli.ts demo          # a SYNTHETIC example report, no YouTu
 | `demo` | Writes a synthetic report from the generated test set. |
 
 Common option `--data <dir>` (default `DATA_DIR` or `projects/creator-hub/data`). Exit codes: 0 ok, 1 failed, 2
-usage, 3 not authorized, 4 policy decision missing. In CI, set `YT_ANALYTICS_ACCESS_TOKEN`, or
-`YT_ANALYTICS_CLIENT_ID` + `YT_ANALYTICS_REFRESH_TOKEN` (+ `YT_ANALYTICS_CLIENT_SECRET`) as repository secrets (the
-dashboard reads the same variables), and `RETENTION_DERIVED_METRICS` + `RETENTION_POLICY_DATE`.
+usage, 3 not authorized, 4 policy decision missing.
+
+## Where to run it: your own computer
+
+Run this tool on the owner's computer, with the token file from `auth`. **Do not put its credentials in this
+repository's GitHub secrets.** The repository is public, its workflow logs and artifacts are public, and its
+workflows run on pushes to any branch, so a workflow edited on any branch could read repository secrets. A refresh
+token with `yt-analytics.readonly` + `youtube.readonly` reads every analytics figure of the channel.
+
+If a scheduled run is ever wanted anyway:
+
+- use a **private** repository, or a GitHub **Environment** (for example `retention`) that holds the
+  `YT_ANALYTICS_*` secrets, with **required reviewers** and a deployment branch policy of **`main` only**, so no other
+  branch's workflow can read them;
+- the tool already prints **counts only** when `CI` or `GITHUB_ACTIONS` is set: no views, drops, percentages or
+  recommendation titles reach the log (tested);
+- never upload `report.md`, `report.json` or `data/` as a plain artifact: encrypt them first, or keep them on the
+  runner.
+
+The variables it reads there: `YT_ANALYTICS_ACCESS_TOKEN`, or `YT_ANALYTICS_CLIENT_ID` + `YT_ANALYTICS_REFRESH_TOKEN`
+(+ `YT_ANALYTICS_CLIENT_SECRET`) (the dashboard reads the same ones), and `RETENTION_DERIVED_METRICS=accepted` +
+`RETENTION_POLICY_DATE` (or `exempted` + the date + `RETENTION_POLICY_NOTE` quoting YouTube's written answer).
 
 ## What each pull checks
 
@@ -108,9 +134,17 @@ YouTube values are copied as returned. Everything else is our calculation, and t
   hinge added), is capped at "worth watching" with the advice to move it in a few episodes. This is the honest limit
   of observational data, and an easy experiment to run.
 - **Episode level.** Openings under 3 s vs the rest (Welch's t) and the slope per extra second of opening, on
-  retention at 0:30 (long-form) or 0:05 (Shorts), centred within each channel. Languages: each dubbed upload minus the
-  English upload of the same episode (paired). Uploads with extra dubbed audio tracks (`--mla`) are left out of
-  language pairs because their curves blend languages.
+  retention at 0:30 (long-form) or 0:05 (Shorts), centred within each channel. The headline is that within-channel
+  difference in pp. A relative figure ("about +5%") is the same difference divided by the longer openings' mean, with
+  its interval; the raw group means are shown only as context, because they mix channels (in the demo set the raw
+  ratio is +11%, about twice the adjusted +5%). Languages: each dubbed upload minus the English upload of the same
+  episode (paired). Uploads with extra dubbed audio tracks (`--mla`) are left out of language pairs because their
+  curves blend languages.
+- **Per-upload drops and sampling noise.** One upload's scene is named under "Where viewers leave" only when its loss
+  beyond expected is more than 2 standard errors of sampling noise for that upload's playbacks (binomial: 100 ×
+  sqrt(share watching × q × (1 - q) / n) pp, per 10 s); smaller ones are counted as "within sampling noise". A
+  rewatch spot needs a rise of at least 1 pp and above 2 Poisson standard errors (100 × sqrt((in + out) / n) pp: about
+  11 pp at 100 playbacks, 1.1 pp at 10,000). Real curves are noisier than this, so it is a floor, not a test.
 
 ### Gates (rules.ts), and why
 
@@ -125,6 +159,7 @@ YouTube values are copied as returned. Everything else is our calculation, and t
 | Practical size | 1% of viewers per 10 s (scenes), 2 pp (hooks, languages), 0.5 pp per second (hook slope) | Smaller effects would take dozens of episodes to confirm and are unlikely to matter. |
 | False discoveries | Benjamini-Hochberg q ≤ 0.10 over every comparison in the report | The report runs dozens of tests; without this some "findings" would be chance. |
 | Staleness | 30 days | YouTube API Developer Policies III.E.4.b-c. |
+| Per-upload drop or rewatch spot | above 2 standard errors of sampling noise (and a rise of at least 1 pp) | At 100 playbacks a scene's loss moves several pp by chance alone; without this every small upload would name about 3 "drop" scenes. |
 
 Status of each comparison: **insufficient data** (below the episode minimum, or not identifiable), **no clear
 difference** (interval includes 0, or the effect is below the practical size), **worth watching** (interval and size
@@ -148,14 +183,17 @@ good).
 recommendations[], comparisons[], formats[], uploads[], rules, sources}`
 
 - `recommendations[]`: `{id, comparisonId, format, title, action, evidence, numbers: {estimate, unit, ci95, p, q,
-  episodes, group, rest, standardized, relative}, suggestedRule, recheck}`.
+  episodes, group, rest, standardized, relative, relativeCi95}, suggestedRule, recheck}`. `relative` is the estimate
+  divided by the comparison group's mean (two-group designs only), `relativeCi95` its interval.
 - `suggestedRule` kinds: `scene-length-cap {type|segment, maxSec}`, `prefer-scene {type|segment}`,
   `hook-length-cap {maxSec}`, `hook-room`, `prefer-badger-on-screen`, `review-badger-scenes`, `review-dub {lang}`,
   `prefer-dub {lang}`. These are **proposals**: they become binding only after the owner approves them.
 - `comparisons[]`: `{id, family, format, channel, group, label, outcome, unit, design, n, estimate, ci95, p, q,
-  status, reason, momentConfounded, details}`.
+  relative, relativeCi95, status, reason, momentConfounded, details}`. The hook comparison's `details` also carry the
+  raw, channel-mixed `rawDiffPp` and `rawRelative` (context only).
 - `uploads[]`: per upload, the exclusions, sample, hook metrics and every scene's metrics (`entry`, `exit`,
-  `dropPer10sPp`, `lossRate`, `model.excessRate`, `stopShare`, `typical.levelPp`, ...).
+  `dropPer10sPp`, `lossRate`, `lossSpanMs`, `model.excessRate`, `model.excessPpPer10s`, `model.sePpPer10s` (sampling
+  noise), `stopShare`, `typical.levelPp`, ...).
 
 ## Storage rules (YouTube API Developer Policies III.E.4, read 2026-11-24)
 
@@ -210,8 +248,8 @@ recommendations[], comparisons[], formats[], uploads[], rules, sources}`
 
 ## Files
 
-`cli.ts` (commands) · `api.ts` (YouTube calls) · `oauth.ts` (consent, tokens, gitignore guard) · `store.ts` (records,
-policy decision) · `timeline.ts` (join with video-studio) · `segments.ts` (show segments adapter) · `curve.ts`
+`cli.ts` (commands) · `api.ts` (YouTube calls) · `oauth.ts` (consent, tokens) · `gitignore.ts` (would git commit
+this file? shared with the uploader) · `store.ts` (records, policy decision) · `timeline.ts` (join with video-studio) · `segments.ts` (show segments adapter) · `curve.ts`
 (100-point curve) · `analyze.ts` (per upload) · `scenemodel.ts` (joint scene model) · `aggregate.ts` (comparisons,
 false-discovery control) · `recommend.ts` · `report.ts` · `rules.ts` (every threshold) · `stats.ts` · `synth.ts`
 (synthetic data) · `mock-google.ts` (test fake of Google) · `fixtures/video-studio/` (edge-case timelines and

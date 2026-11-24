@@ -60,6 +60,18 @@ export const RULES = {
 	durationTolerance: {ms: 1500, fraction: 0.02},
 	/** Developer Policies III.E.4.b-c: re-check authorization (and that the video still exists) every 30 days. */
 	staleDays: 30,
-	/** A scene where retention rises by at least this much is listed as a rewatch spot. */
+	/**
+	 * Sampling noise of one upload. With n playbacks and a share `entry` of them still watching, the viewers a scene
+	 * loses over its measured span are binomial: standard error 100 * sqrt(entry * q * (1 - q) / n) pp of views (q: the
+	 * share that leaves, the larger of the model's expectation and what was seen), scaled per 10 s. A per-upload "where
+	 * viewers leave" row needs its excess to be more than this many standard errors; smaller ones are counted as
+	 * within noise. Sampling noise is a floor (real curves are noisier still), so this filters, it does not prove.
+	 */
+	noiseSe: 2,
+	/**
+	 * A scene where retention rises by at least this much is listed as a rewatch spot, and only when the rise is also
+	 * more than noiseSe standard errors (watch counts are roughly Poisson: SE of the rise 100 * sqrt((entry + exit) / n)
+	 * pp, about 11 pp at n = 100 and 1.1 pp at n = 10,000).
+	 */
 	rewatchPp: 1,
 } as const;

@@ -5,6 +5,9 @@
  *
  * Exit codes: 0 ok, 1 failed, 2 usage, 3 not authorized, 4 policy decision missing.
  * Nothing here uploads, publishes or changes anything on YouTube: every API call is a read.
+ *
+ * Meant for the owner's own computer. In CI (CI or GITHUB_ACTIONS set) it prints counts only, never a metric or a
+ * finding, because this repository is public and so are its workflow logs (README "Where to run it").
  */
 import {existsSync, mkdirSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {isAbsolute, join, relative, resolve} from 'node:path';
@@ -13,11 +16,11 @@ import {parseArgs} from 'node:util';
 import {aggregate} from './aggregate.ts';
 import {analyzeRecords} from './analyze.ts';
 import {ApiError, createApi, ENDPOINTS, type Endpoints, type TokenSource} from './api.ts';
-import {AuthError, authorize, envTokenSource, fileTokenSource, hasEnvTokens, readClientSecrets, readTokenFile, revokeToken, writeTokenFile, type TokenFile} from './oauth.ts';
+import {AuthError, authorize, clientSecretsWarning, envTokenSource, fileTokenSource, hasEnvTokens, readClientSecrets, readTokenFile, revokeToken, writeTokenFile, type TokenFile} from './oauth.ts';
 import {recommend} from './recommend.ts';
 import {buildReportJson, renderReportMarkdown, topDrops} from './report.ts';
 import {RULES} from './rules.ts';
-import {ageDays, deleteRecords, loadRecords, POLICY_GATE, readPolicy, saveRecord, savePolicy, tokenPath, VIDEO_ID} from './store.ts';
+import {ageDays, deleteRecords, loadRecords, POLICY_GATE, policyProblem, readPolicy, readPolicyStatus, saveRecord, savePolicy, tokenPath, VIDEO_ID} from './store.ts';
 import {demoUploads, synthRecord} from './synth.ts';
 import {buildJoin, JoinError} from './timeline.ts';
 import {LANGS, type Audience, type JoinSnapshot, type PullChecks, type PullRecord} from './types.ts';
@@ -49,11 +52,17 @@ Commands
             This deletes only this tool's copies; nothing on YouTube changes.
   revoke    Revoke the saved authorization at Google (--account <key>), delete it and the pulls made with it.
   policy    Record your decision on YouTube's derived-metrics policy (pull, refresh and report need it):
-              --derived-metrics <accepted|not-required> --date <YYYY-MM-DD> [--note <text>]
+              --derived-metrics accepted --date <YYYY-MM-DD> [--note <text>]   (you accepted the amendment)
+              --derived-metrics exempted --date <YYYY-MM-DD> --note '<YouTube's written answer, quoted>'
+            There is no self-exemption: "not-required" is refused.
   demo      Write a SYNTHETIC demo report (no YouTube data) to out/retention-demo/ (or --out).
 
 Common: --data <dir> (default: DATA_DIR or projects/creator-hub/data).
+Run it on your own computer. In CI (CI or GITHUB_ACTIONS set) it prints counts only: the repository and its logs are public.
 Exit codes: 0 ok, 1 failed, 2 usage, 3 not authorized, 4 policy decision missing.`;
+
+/** CI logs of this public repository are public: print counts only there, never a metric or a finding. */
+export const countsOnly = (env: Record<string, string | undefined>): boolean => ['CI', 'GITHUB_ACTIONS'].some((k) => (env[k] ?? '').trim() !== '' && env[k]!.trim().toLowerCase() !== 'false' && env[k]!.trim() !== '0');
 
 export type CliDeps = {
 	env: Record<string, string | undefined>;
@@ -150,8 +159,11 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 		const account = values.account ?? 'default';
 		const tokensAt = tokenPath(dataDir);
 
+		const quiet = countsOnly(deps.env);
 		const policyOk = (): boolean => {
-			if (readPolicy(dataDir, deps.env)) return true;
+			const status = readPolicyStatus(dataDir, deps.env);
+			if (status.decision) return true;
+			if (status.problem) deps.printError(`Not usable: ${status.problem}.\n`);
 			deps.printError(POLICY_GATE);
 			return false;
 		};
@@ -166,6 +178,10 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 		switch (command) {
 			case 'auth': {
 				const existing = readTokenFile(tokensAt);
+				if (values['client-secrets']) {
+					const warning = clientSecretsWarning(fromCwd(values['client-secrets']));
+					if (warning) deps.printError(warning);
+				}
 				const client = values['client-secrets'] ? readClientSecrets(fromCwd(values['client-secrets'])) : existing?.client;
 				if (!client) throw new UsageError('First authorization: pass --client-secrets <file> (a "Desktop app" OAuth client JSON from Google Cloud Console).');
 				const tokens = await authorize({client, openUrl: deps.openUrl, endpoints: deps.endpoints, fetch: deps.fetch, now: () => deps.now().getTime()});
@@ -188,8 +204,16 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 					deps.print(`\n${POLICY_GATE}`);
 					return 0;
 				}
-				if (decision !== 'accepted' && decision !== 'not-required') throw new UsageError('--derived-metrics must be accepted or not-required.');
-				if (!values.date || !isDate(values.date)) throw new UsageError('--date YYYY-MM-DD is required (the day you accepted or decided).');
+				if (decision !== 'accepted' && decision !== 'exempted') {
+					throw new UsageError(
+						decision === 'not-required'
+							? '"not-required" is not a decision YouTube\'s policy allows: there is no self-exemption from the derived-metrics amendment. Accept it (--derived-metrics accepted), or record YouTube\'s written exemption (--derived-metrics exempted --note with their words in quotation marks).'
+							: '--derived-metrics must be accepted or exempted.',
+					);
+				}
+				if (!values.date || !isDate(values.date)) throw new UsageError('--date YYYY-MM-DD is required (the day you accepted, or the date of YouTube\'s written answer).');
+				const problem = policyProblem({derivedMetrics: decision, date: values.date, note: values.note ?? null});
+				if (problem) throw new UsageError(`Not recorded: ${problem}.`);
 				const path = savePolicy(dataDir, {version: 1, derivedMetrics: decision, date: values.date, note: values.note ?? null, recordedAt: deps.now().toISOString()});
 				deps.print(`Recorded your decision (derived metrics: ${decision}, ${values.date}) in ${show(path)}.`);
 				return 0;
@@ -233,7 +257,7 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 					account: used,
 				});
 				const file = saveRecord(dataDir, record);
-				deps.print(summaryOf(record, show(file), deps.now()));
+				deps.print(quiet ? `Pulled 1 upload (${record.curve.length} of 100 points); saved 1 record. Metrics are not printed in CI.` : summaryOf(record, show(file), deps.now()));
 				return 0;
 			}
 
@@ -304,7 +328,8 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 				writeAtomic(join(outDir, 'report.json'), `${JSON.stringify(buildReportJson(input), null, 2)}\n`);
 				const usable = analyses.filter((a) => a.usable).length;
 				deps.print(`${demo ? 'SYNTHETIC demo: ' : ''}${analyses.length} upload(s), ${usable} usable; ${recommendations.length} recommendation(s).`);
-				for (const r of recommendations) deps.print(`  - ${r.title}`);
+				if (quiet && !demo) deps.print('  Findings are not printed in CI; read report.md on your own computer and never upload it as a plain artifact.');
+				else for (const r of recommendations) deps.print(`  - ${r.title}`);
 				const stale = analyses.filter((a) => a.exclusions.some((e) => e.code === 'stale'));
 				if (stale.length) deps.print(`  ${stale.length} pull(s) are older than ${RULES.staleDays} days and were left out: run "refresh".`);
 				deps.print(`  wrote ${show(join(outDir, 'report.md'))} and ${show(join(outDir, 'report.json'))}`);
@@ -315,7 +340,7 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 				const {records, problems} = loadRecords(dataDir);
 				const now = deps.now();
 				deps.print(`Stored pulls in ${show(dataDir)}: ${records.length}${problems.length ? ` (+${problems.length} unreadable)` : ''}`);
-				for (const r of [...records].sort((a, b) => a.pulledAt.localeCompare(b.pulledAt))) {
+				for (const r of quiet ? [] : [...records].sort((a, b) => a.pulledAt.localeCompare(b.pulledAt))) {
 					const age = Math.floor(ageDays(r.pulledAt, now));
 					const views = r.stats?.views ?? null;
 					deps.print(
@@ -326,8 +351,8 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 				for (const p of problems) deps.print(`  unreadable: ${show(p.file)}: ${p.problem}`);
 				const file = existsSync(tokensAt) ? readTokenFile(tokensAt) : null;
 				deps.print(`Authorizations (${show(tokensAt)}): ${file ? Object.entries(file.accounts).map(([k, a]) => `${k} = "${a.title}" (${a.channelId}), saved ${a.savedAt.slice(0, 10)}`).join('; ') || 'none' : 'none'}${hasEnvTokens(deps.env) ? '; YT_ANALYTICS_* variables are set and take precedence' : ''}`);
-				const policy = readPolicy(dataDir, deps.env);
-				deps.print(`Derived-metrics policy decision: ${policy ? `${policy.derivedMetrics} (${policy.date})` : 'not recorded (pull and report will refuse; see "policy")'}`);
+				const status = readPolicyStatus(dataDir, deps.env);
+				deps.print(`Derived-metrics policy decision: ${status.decision ? `${status.decision.derivedMetrics} (${status.decision.date})` : status.problem ? `NOT USABLE: ${status.problem}` : 'not recorded (pull and report will refuse; see "policy")'}`);
 				return 0;
 			}
 

@@ -19,10 +19,11 @@ export type RequestSpec = {
 
 const q = (params: Record<string, string>): string => new URLSearchParams(params).toString();
 
+/** The signed-in channel; contentDetails names its uploads playlist (used by the duplicate check). Still 1 unit. */
 export const channelCheck = (ep: Endpoints): RequestSpec => ({
 	apiMethod: 'channels.list',
 	method: 'GET',
-	url: `${ep.api}/channels?${q({part: 'id,snippet', mine: 'true'})}`,
+	url: `${ep.api}/channels?${q({part: 'id,snippet,contentDetails', mine: 'true'})}`,
 	headers: {accept: 'application/json'},
 	body: null,
 });
@@ -31,6 +32,19 @@ export const playlistCheck = (ep: Endpoints, playlistId: string): RequestSpec =>
 	apiMethod: 'playlists.list',
 	method: 'GET',
 	url: `${ep.api}/playlists?${q({part: 'snippet', id: playlistId})}`,
+	headers: {accept: 'application/json'},
+	body: null,
+});
+
+/**
+ * The channel's 50 most recent uploads (its uploads playlist, as YouTube's own "my uploads" sample reads it; 1 unit).
+ * Before a NEW upload session the uploader refuses when one of them has the same title: an approval replayed from a
+ * second machine or a deleted state folder would otherwise upload, and schedule, a second copy.
+ */
+export const recentUploads = (ep: Endpoints, uploadsPlaylistId: string): RequestSpec => ({
+	apiMethod: 'playlistItems.list',
+	method: 'GET',
+	url: `${ep.api}/playlistItems?${q({part: 'snippet,status', playlistId: uploadsPlaylistId, maxResults: '50'})}`,
 	headers: {accept: 'application/json'},
 	body: null,
 });

@@ -1,2 +1,6 @@
-# Uploader state: OAuth tokens, ledger, quota counts, job files, locks and receipts. Never commit.
+# Uploader state: OAuth tokens, ledger, quota counts, job files, locks, staged copies and receipts. Never commit.
 .local/
+# The OAuth client JSON Google offers for download (client_secret_<id>.apps.googleusercontent.com.json). This
+# repository is public: keep it outside the repository (README "One-time setup"), never here.
+client_secret*.json
+*.apps.googleusercontent.com.json

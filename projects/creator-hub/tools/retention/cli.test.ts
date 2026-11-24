@@ -1,5 +1,6 @@
 /** CLI end to end: policy gate, auth, pull (mocked Google + the fixture video-studio tree), status, report, refresh, forget, revoke. */
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
 import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -66,11 +67,46 @@ describe('retention CLI', () => {
 		assert.equal(google.requests.length, 0, 'no API call before the decision');
 	});
 
+	it('refuses a self-declared exemption and an exemption without YouTube\'s quoted words', async () => {
+		const notRequired = await run(['policy', '--derived-metrics', 'not-required', '--date', '2026-11-24', '--note', 'own channel only']);
+		assert.equal(notRequired.code, 2);
+		assert.match(notRequired.err, /no self-exemption/);
+		const unquoted = await run(['policy', '--derived-metrics', 'exempted', '--date', '2026-11-24', '--note', 'support said it is fine']);
+		assert.equal(unquoted.code, 2);
+		assert.match(unquoted.err, /quotes YouTube's written answer/);
+		assert.equal((await run(['policy', '--derived-metrics', 'accepted'])).code, 2, 'accepted needs its date');
+		assert.equal((await pull('SYNcliEN001')).code, 4, 'nothing was recorded');
+	});
+
 	it('records the decision', async () => {
 		assert.equal((await run(['policy', '--derived-metrics', 'maybe', '--date', '2026-11-24'])).code, 2);
 		const r = await run(['policy', '--derived-metrics', 'accepted', '--date', '2026-11-24', '--note', 'form submitted']);
 		assert.equal(r.code, 0, r.err);
 		assert.match((await run(['policy'])).out, /Recorded: derived metrics "accepted" on 2026-11-24 \(form submitted\)/);
+	});
+
+	it('auth warns when the client-secrets file sits where git would commit it', async () => {
+		const repo = mkdtempSync(join(tmpdir(), 'retention-secrets-'));
+		try {
+			execFileSync('git', ['init', '-q'], {cwd: repo});
+			writeFileSync(join(repo, 'client_secret_1.apps.googleusercontent.com.json'), readFileSync(join(dir, 'client.json')));
+			const err: string[] = [];
+			await main(['auth', '--client-secrets', join(repo, 'client_secret_1.apps.googleusercontent.com.json'), '--data', join(dir, 'data-auth-warning')], {
+				env: {},
+				cwd: repo,
+				fetch: google.fetch,
+				endpoints: google.endpoints,
+				now: () => NOW,
+				print: () => {},
+				printError: (line) => err.push(line),
+				openUrl: (url) => approveInBrowser(url),
+				sleep: async () => {},
+			});
+			assert.match(err.join('\n'), /is inside a git work tree and git would commit it/);
+			assert.equal(existsSync(join(dir, 'data', 'retention', 'oauth.json')), false, 'the shared test data folder is untouched');
+		} finally {
+			rmSync(repo, {recursive: true, force: true});
+		}
 	});
 
 	it('says how to authorize when no tokens are saved (exit 3)', async () => {
@@ -154,6 +190,20 @@ describe('retention CLI', () => {
 		assert.match(r.out, /default = "Synthetic test channel"/);
 		assert.match(r.out, /Derived-metrics policy decision: accepted \(2026-11-24\)/);
 		assert.doesNotMatch(r.out, /rt-initial|at-/);
+	});
+
+	it('in CI prints counts only: no views, drops or findings in public logs', async () => {
+		const ci = {env: {CI: 'true'}};
+		const pulled = await run(['pull', '--video', 'SYNcliEN001', '--slug', 'zoora-ai/fixture-ret-story', '--lang', 'en', '--video-studio', VS], ci);
+		assert.equal(pulled.code, 0, pulled.err);
+		assert.match(pulled.out, /^Pulled 1 upload \(100 of 100 points\); saved 1 record\. Metrics are not printed in CI\.$/);
+		const status = await run(['status'], ci);
+		assert.match(status.out, /Stored pulls in data: 4/);
+		assert.doesNotMatch(status.out, /views|SYNcliEN001/);
+		const report = await run(['report', '--out', 'out-ci'], ci);
+		assert.equal(report.code, 0, report.err);
+		assert.match(report.out, /Findings are not printed in CI/);
+		assert.doesNotMatch(pulled.out + status.out + report.out, /steepest|pp\b|%/);
 	});
 
 	it('report writes report.md and report.json from the stored pulls', async () => {

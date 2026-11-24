@@ -47,7 +47,13 @@ export type Comparison = {
 	p: number | null;
 	q: number | null;
 	standardized: number | null; // d_z (mean / SD over episodes), Hedges' g for two groups, r² for a slope
-	relative: number | null; // two-group: raw group mean / raw rest mean - 1
+	/**
+	 * Two-group: the ADJUSTED estimate as a share of the rest group's mean (estimate / rest mean), so it restates the
+	 * number it is printed next to. The raw ratio of the group means mixes channels and is kept in details only.
+	 */
+	relative: number | null;
+	/** The 95% interval of `relative` (ci95 / rest mean). */
+	relativeCi95: [number, number] | null;
 	practical: number;
 	details: Record<string, number | string | null>;
 	status: ComparisonStatus;
@@ -145,7 +151,7 @@ const confoundCap = (
 
 const sceneComparisons = (videos: readonly VideoAnalysis[], format: Format, models: readonly SceneModelResult[]): Comparison[] => {
 	const out: Comparison[] = [];
-	const base = {format, outcome: SCENE_OUTCOME, unit: '%/10s' as const, goodWhen: 'negative' as const, design: 'scene-model' as const, q: null, relative: null, practical: RULES.practical.sceneRatePct};
+	const base = {format, outcome: SCENE_OUTCOME, unit: '%/10s' as const, goodWhen: 'negative' as const, design: 'scene-model' as const, q: null, relative: null, relativeCi95: null, practical: RULES.practical.sceneRatePct};
 	for (const channel of [...new Set(videos.map((v) => v.channel))].sort()) {
 		const inChannel = videos.filter((v) => v.channel === channel);
 		const model = models.find((m) => m.channel === channel && m.format === format) ?? null;
@@ -255,6 +261,8 @@ const hookComparisons = (videos: readonly VideoAnalysis[], format: Format): Comp
 	const verdict = classify(welch, enough, RULES.minEpisodes, RULES.practical.hookPp);
 	const rawShort = mean(short.map((p) => p.raw));
 	const rawRest = mean(rest.map((p) => p.raw));
+	// relative to the longer openings' mean, from the channel-adjusted estimate (not from the raw means, which mix channels)
+	const base = rawRest !== null && rawRest > 0 ? rawRest : null;
 	const two: Comparison = {
 		id: `hook-short:<${RULES.shortHookSec}s:${format}`,
 		family: 'hook-short',
@@ -272,11 +280,15 @@ const hookComparisons = (videos: readonly VideoAnalysis[], format: Format): Comp
 		p: welch ? welch.p : null,
 		q: null,
 		standardized: welch ? welch.g : null,
-		relative: rawShort !== null && rawRest !== null && rawRest > 0 ? rawShort / rawRest - 1 : null,
+		relative: welch && base !== null ? welch.estimate / base : null,
+		relativeCi95: welch && base !== null ? [welch.ci95[0] / base, welch.ci95[1] / base] : null,
 		practical: RULES.practical.hookPp,
 		details: {
 			groupMeanPp: round(rawShort, 1),
 			restMeanPp: round(rawRest, 1),
+			// raw: the plain difference of the group means, channels mixed (for transparency, never the headline)
+			rawDiffPp: rawShort !== null && rawRest !== null ? round(rawShort - rawRest, 2) : null,
+			rawRelative: rawShort !== null && base !== null ? round(rawShort / base - 1, 4) : null,
 			groupMedianLengthSec: round(median(short.map((p) => p.lengthSec)), 1),
 			restMedianLengthSec: round(median(rest.map((p) => p.lengthSec)), 1),
 		},
@@ -304,6 +316,7 @@ const hookComparisons = (videos: readonly VideoAnalysis[], format: Format): Comp
 		q: null,
 		standardized: fit ? fit.r2 : null,
 		relative: null,
+		relativeCi95: null,
 		practical: RULES.practical.hookSlopePpPerSec,
 		details: {
 			minLengthSec: round(lengths.length ? Math.min(...lengths) : null, 1),
@@ -355,6 +368,7 @@ const languageComparisons = (videos: readonly VideoAnalysis[], format: Format): 
 				q: null,
 				standardized: result ? result.dz : null,
 				relative: null,
+				relativeCi95: null,
 				practical: RULES.practical.languagePp,
 				details: {pairs: diffs.length},
 				...classify(result, diffs.length, RULES.minEpisodes, RULES.practical.languagePp),

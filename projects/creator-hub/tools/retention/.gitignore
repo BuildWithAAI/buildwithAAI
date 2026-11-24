@@ -1,0 +1,5 @@
+# The OAuth client JSON Google offers for download (client_secret_<id>.apps.googleusercontent.com.json). This
+# repository is public: keep it outside the repository (README "Before the first pull"), never here. Tokens and pulls
+# live in projects/creator-hub/data/ (ignored by the project's .gitignore).
+client_secret*.json
+*.apps.googleusercontent.com.json

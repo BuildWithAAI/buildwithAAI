@@ -32,7 +32,9 @@ export type Recommendation = {
 		group: number | null;
 		rest: number | null;
 		standardized: number | null;
+		/** The estimate as a share of the comparison group's mean (two-group designs), with its interval. */
 		relative: number | null;
+		relativeCi95: [number, number] | null;
 	};
 	suggestedRule: SuggestedRule | null;
 	recheck: string;
@@ -62,6 +64,8 @@ const n1 = (x: number): string => (Math.round(x * 10) / 10).toFixed(1);
 const n2 = (x: number): string => (Math.round(x * 100) / 100).toFixed(2);
 const signed = (x: number, digits = 1): string => `${x >= 0 ? '+' : '-'}${digits === 1 ? n1(Math.abs(x)) : n2(Math.abs(x))}`;
 const ci = (c: [number, number], digits = 1): string => `${signed(c[0], digits)} to ${signed(c[1], digits)}`;
+/** A share as a signed whole percent: 0.051 -> "+5%". */
+const pctSigned = (x: number): string => `${x >= 0 ? '+' : '-'}${Math.round(Math.abs(x) * 100)}%`;
 const formatName = (f: Format): string => (f === 'long' ? 'long-form' : 'Shorts');
 const at = (sec: number): string => `0:${String(sec).padStart(2, '0')}`;
 const halfStep = (x: number): number => Math.max(1, Math.round(x * 2) / 2);
@@ -77,6 +81,7 @@ const numbersOf = (c: Comparison): Recommendation['numbers'] => ({
 	rest: c.n.rest,
 	standardized: c.standardized,
 	relative: c.relative,
+	relativeCi95: c.relativeCi95,
 });
 
 const qText = (c: Comparison): string => `q = ${c.q!.toFixed(3)}`;
@@ -129,10 +134,16 @@ const hookRecommendation = (c: Comparison, slope: Comparison | null): Recommenda
 	const atSec = RULES.hookAtSec[c.format];
 	if (c.family === 'hook-short') {
 		const better = c.estimate! > 0;
-		const rel = c.relative !== null ? ` (${c.relative >= 0 ? '+' : '-'}${Math.round(Math.abs(c.relative) * 100)}% relative)` : '';
+		// Lead with the channel-adjusted effect, and state any relative figure as that same effect over the longer
+		// openings' mean: the raw group means mix channels and would roughly double the claim in the demo set.
+		const rel =
+			c.relative !== null && c.relativeCi95 !== null
+				? `; about ${pctSigned(c.relative)} relative to the ${c.details.restMeanPp}% that longer openings kept (95% CI ${pctSigned(c.relativeCi95[0])} to ${pctSigned(c.relativeCi95[1])})`
+				: '';
 		const evidence =
-			`Episodes whose opening scene is under ${RULES.shortHookSec} s kept ${c.details.groupMeanPp}% of viewers at ${at(atSec)} vs ${c.details.restMeanPp}% for longer openings ` +
-			`(${signed(c.estimate!)} pp within each channel${rel}; 95% CI ${ci(c.ci95!)} pp; ${qText(c)}; ${c.n.group} vs ${c.n.rest} episodes).` +
+			`Within each channel, episodes whose opening scene is under ${RULES.shortHookSec} s kept ${n1(Math.abs(c.estimate!))} pp ${better ? 'more' : 'fewer'} of their viewers at ${at(atSec)} than episodes with longer openings ` +
+			`(95% CI ${ci(c.ci95!)} pp${rel}; ${qText(c)}; ${c.n.group} vs ${c.n.rest} episodes). ` +
+			`The raw averages, which mix the channels, were ${c.details.groupMeanPp}% vs ${c.details.restMeanPp}%.` +
 			(slope ? ` Across all opening lengths, each extra second went with ${signed(slope.estimate!, 2)} pp at ${at(atSec)} (95% CI ${ci(slope.ci95!, 2)}).` : '');
 		return {
 			id: `rec:${c.id}`,

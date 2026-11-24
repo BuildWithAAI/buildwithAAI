@@ -6,6 +6,7 @@
  * III.E.4.f: historical data must be shown in its context of time, so every upload shows its pull date and window.
  */
 import type {Aggregates, Comparison, FormatSummary, GroupRow} from './aggregate.ts';
+import {lossNoisePpPer10s} from './analyze.ts';
 import type {Recommendation} from './recommend.ts';
 import {RULES} from './rules.ts';
 import type {Format, SceneMetrics, VideoAnalysis} from './types.ts';
@@ -122,17 +123,55 @@ const sceneLabel = (s: SceneMetrics): string => {
 };
 
 /**
- * The scenes where the most viewers left: by loss beyond the drop-off model's expectation when the upload has one,
- * else by raw loss per 10 s. Openings are included here (they are judged separately in the comparisons).
+ * A scene's loss to rank by, and its sampling standard error (both pp of views per 10 s): the loss beyond the drop-off
+ * model's expectation when the upload has a model, else the raw loss per 10 s.
  */
-export const topDrops = (v: VideoAnalysis, count = 3): SceneMetrics[] => {
+export const dropScore = (v: VideoAnalysis, s: SceneMetrics, modelled: boolean): {score: number | null; se: number | null} => {
+	if (modelled) return s.model ? {score: s.model.excessPpPer10s, se: s.model.sePpPer10s} : {score: null, se: null};
+	const seen = s.lostShare !== null ? Math.max(0, Math.min(1, s.lostShare)) : null;
+	const rate = seen !== null && s.durationMs > 0 ? (-1000 * Math.log(Math.max(1e-9, 1 - seen))) / (s.durationMs / 1000) : 0;
+	return {score: s.dropPer10sPp, se: lossNoisePpPer10s(v.sample.used, s.entry, rate, s.durationMs)};
+};
+
+/** Above sampling noise: more than RULES.noiseSe standard errors. Unknown noise never passes. */
+const beyondNoise = (d: {score: number | null; se: number | null}): boolean => d.score !== null && d.se !== null && d.score > RULES.noiseSe * d.se;
+
+const ranked = (v: VideoAnalysis) => {
 	const candidates = v.scenes.filter((s) => s.resolved && s.type !== 'endscreen');
 	const modelled = candidates.some((s) => s.model);
-	const score = (s: SceneMetrics): number | null => (modelled ? (s.model ? s.model.excessPpPer10s : null) : s.dropPer10sPp);
 	return candidates
-		.filter((s) => (score(s) ?? 0) > 0)
-		.sort((a, b) => score(b)! - score(a)!)
-		.slice(0, count);
+		.map((s) => ({s, ...dropScore(v, s, modelled)}))
+		.filter((d) => (d.score ?? 0) > 0)
+		.sort((a, b) => b.score! - a.score!);
+};
+
+/**
+ * The scenes where the most viewers left: by loss beyond the drop-off model's expectation when the upload has one,
+ * else by raw loss per 10 s, and only when that loss is more than RULES.noiseSe standard errors of sampling noise for
+ * the upload's playback count. Openings are included here (they are judged separately in the comparisons).
+ */
+export const topDrops = (v: VideoAnalysis, count = 3): SceneMetrics[] =>
+	ranked(v)
+		.filter(beyondNoise)
+		.slice(0, count)
+		.map((d) => d.s);
+
+/** Scenes that lost more than expected, but not by more than sampling noise: counted, never named as a drop. */
+export const dropsWithinNoise = (v: VideoAnalysis): {s: SceneMetrics; score: number; se: number | null}[] =>
+	ranked(v)
+		.filter((d) => !beyondNoise(d))
+		.map((d) => ({s: d.s, score: d.score!, se: d.se}));
+
+/** Rewatch spots: retention rose by at least RULES.rewatchPp AND by more than RULES.noiseSe Poisson standard errors. */
+export const rewatchSpots = (v: VideoAnalysis): SceneMetrics[] => {
+	const n = v.sample.used;
+	if (!n || n <= 0) return [];
+	return v.scenes.filter((s) => {
+		if (!s.resolved) return false;
+		const rise = -s.dropPp;
+		const se = 100 * Math.sqrt((Math.max(0, s.entry) + Math.max(0, s.exit)) / n);
+		return rise >= RULES.rewatchPp && rise > RULES.noiseSe * se;
+	});
 };
 
 const uploadSection = (v: VideoAnalysis): string[] => {
@@ -149,18 +188,31 @@ const uploadSection = (v: VideoAnalysis): string[] => {
 		'',
 	);
 	const drops = topDrops(v);
+	const modelled = v.scenes.some((s) => s.model);
+	const noise = dropsWithinNoise(v);
 	if (drops.length) {
-		lines.push('| Scene | Time | Retention in → out (YouTube) | Lost per 10 s | More than expected, per 10 s | Playbacks ended here |', '| --- | --- | --- | --- | --- | --- |');
+		lines.push(
+			`| Scene | Time | Retention in → out (YouTube) | Lost per 10 s | More than expected, per 10 s | Sampling noise (${RULES.noiseSe} SE) | Playbacks ended here |`,
+			'| --- | --- | --- | --- | --- | --- | --- |',
+		);
 		for (const s of drops) {
+			const se = dropScore(v, s, modelled).se;
 			lines.push(
-				`| ${cell(sceneLabel(s))} | ${time(s.startMs)}-${time(s.endMs)} | ${pct(s.entry)} → ${pct(s.exit)} | ${plain(s.dropPer10sPp, 1, ' pp')} | ${s.model ? signed(s.model.excessPpPer10s, 1, ' pp') : 'n/a'} | ${s.stopShare === null ? 'n/a' : pct(s.stopShare)} |`,
+				`| ${cell(sceneLabel(s))} | ${time(s.startMs)}-${time(s.endMs)} | ${pct(s.entry)} → ${pct(s.exit)} | ${plain(s.dropPer10sPp, 1, ' pp')} | ${s.model ? signed(s.model.excessPpPer10s, 1, ' pp') : 'n/a (no model yet)'} | ${se === null ? 'n/a' : `±${(RULES.noiseSe * se).toFixed(1)} pp`} | ${s.stopShare === null ? 'n/a' : pct(s.stopShare)} |`,
 			);
 		}
 	} else {
-		lines.push('No scene lost viewers faster than expected.');
+		lines.push(`No scene lost viewers ${modelled ? 'faster than expected' : 'fast enough'} beyond sampling noise.`);
 	}
-	const rewatch = v.scenes.filter((s) => s.resolved && s.dropPp <= -RULES.rewatchPp);
-	if (rewatch.length) lines.push('', `Rewatch spots (retention rose): ${rewatch.map((s) => `${s.id} ${s.type} (${signed(-s.dropPp, 1, ' pp')})`).join(', ')}.`);
+	if (noise.length) {
+		const top = noise[0]!;
+		lines.push(
+			'',
+			`${noise.length} other scene${noise.length === 1 ? '' : 's'} lost ${modelled ? 'more than expected' : 'viewers'} but within sampling noise for ${sample} (largest: ${top.s.id} ${top.s.segment ?? top.s.type}, ${signed(top.score, 1, ' pp')} per 10 s, noise ${top.se === null ? 'unknown' : `±${(RULES.noiseSe * top.se).toFixed(1)} pp`}); not named as drops.`,
+		);
+	}
+	const rewatch = rewatchSpots(v);
+	if (rewatch.length) lines.push('', `Rewatch spots (retention rose beyond sampling noise): ${rewatch.map((s) => `${s.id} ${s.type} (${signed(-s.dropPp, 1, ' pp')})`).join(', ')}.`);
 	const unresolved = v.scenes.filter((s) => !s.resolved).length;
 	if (unresolved) lines.push('', `${unresolved} scene${unresolved === 1 ? ' is' : 's are'} shorter than ${RULES.minBucketsPerScene} curve buckets (${plain((RULES.minBucketsPerScene * v.bucketMs) / 1000, 1)} s here) and not measured on its own.`);
 	lines.push('');
@@ -300,7 +352,12 @@ export const renderReportMarkdown = (input: ReportInput): string => {
 		for (const c of suggestive) lines.push(`- ${c.label} (${formatName(c.format)}${c.channel ? `, ${c.channel}` : ''}): ${estimateText(c)} ${c.unit}; q = ${c.q?.toFixed(3)}; ${c.n.episodes} episodes. ${c.reason[0]!.toUpperCase()}${c.reason.slice(1)}.`);
 		lines.push('');
 	}
-	lines.push('## Where viewers leave, per upload', '', 'The scenes of each upload that lost the most viewers beyond what the scene model expects at that moment (the raw loss when the channel does not have enough data yet). One upload is one observation, not a rule.', '');
+	lines.push(
+		'## Where viewers leave, per upload',
+		'',
+		`The scenes of each upload that lost the most viewers beyond what the scene model expects at that moment (the raw loss when the channel does not have enough data yet), listed only when that loss is more than ${RULES.noiseSe} standard errors of sampling noise for the upload's playback count. One upload is one observation, not a rule.`,
+		'',
+	);
 	const recent = [...usable].sort((a, b) => b.pulledAt.localeCompare(a.pulledAt) || a.videoId.localeCompare(b.videoId));
 	for (const v of recent.slice(0, 25)) lines.push(...uploadSection(v));
 	if (recent.length > 25) lines.push(`${recent.length - 25} more uploads are in report.json.`, '');
@@ -331,6 +388,8 @@ export const renderReportMarkdown = (input: ReportInput): string => {
 		`- **Typical curve** (retention levels, e.g. at 0:30): at each second, the median retention of at least ${RULES.baselineMinEpisodes} other episodes of the same channel and format (language versions averaged first; the episode itself left out), aligned in absolute time and cut at each video's end screen.`,
 		`- **Independent unit = episode.** Language versions share a script, so they count once. Template types and segments: the mean "beyond expected" per episode, then a t interval over episodes. Badger: a regression within scenes of the same template and segment, with standard errors clustered by episode.`,
 		`- **Gates.** Uploads need ${RULES.minViews}+ playbacks (or views), ${RULES.minBuckets}+ of 100 buckets, a duration within max(${RULES.durationTolerance.ms / 1000} s, ${RULES.durationTolerance.fraction * 100}%) of the timeline, and a pull at most ${RULES.staleDays} days old. Comparisons need ${RULES.minEpisodes}+ episodes per side (${RULES.minSlopeEpisodes} for a slope), a 95% t interval excluding 0, a practical effect (${RULES.practical.sceneRatePct}% of those watching per 10 s for scenes, ${RULES.practical.hookPp} pp for hooks, ${RULES.practical.hookSlopePpPerSec} pp per second of opening, ${RULES.practical.languagePp} pp for languages) and a Benjamini-Hochberg q of ${RULES.fdr} or less across all ${aggregates.comparisons.length} comparisons.`,
+		`- **Sampling noise, per upload.** With n playbacks, the viewers a scene loses are binomial: standard error 100 × sqrt(share watching × q × (1 - q) / n) pp of views over the scene, scaled per 10 s (q: the larger of the expected and the seen loss). A per-upload drop is named only above ${RULES.noiseSe} standard errors, and a rewatch spot only when its rise is at least ${RULES.rewatchPp} pp and above ${RULES.noiseSe} Poisson standard errors (100 × sqrt((in + out) / n)). This is a floor: real curves are noisier.`,
+		`- **Openings, relative.** The hook comparison's headline is the within-channel difference in pp. A relative figure, when given, is that same difference divided by the longer openings' mean, with its interval; the raw group means mix channels and are shown only as context.`,
 		'- **What this cannot show.** Correlation in past uploads, not cause: a template that sits next to a strong topic can look better than it is, and a segment that always sits at the same moment cannot be fully separated from that moment. The drop-off model and the per-upload level reduce this but do not remove it. Re-test every rule.',
 		'',
 		'Sources (read 2026-11-24):',

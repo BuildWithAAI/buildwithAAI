@@ -93,26 +93,61 @@ export const ageDays = (iso: string, now: Date): number => Math.max(0, (now.getT
 
 /* ------------------------------------------------------------------ the owner's policy decision */
 
+/**
+ * The two decisions YouTube's policy allows (Developer Policies III.E.4.h and III.L, derived-metrics-policy page, both
+ * read 2026-11-24): `accepted`, the developer accepted the derived-metrics amendment (through the audit and quota
+ * extension form, use case "Analytics & Reporting"), with the date; or `exempted`, YouTube itself confirmed in writing
+ * that this use needs no amendment, quoted in the note. The policy offers no self-exemption, so "I decided it does not
+ * apply" (the earlier `not-required`) is no longer a decision this tool accepts.
+ */
 export type PolicyDecision = {
 	version: 1;
-	/** accepted: the owner accepted YouTube's derived-metrics amendment; not-required: the owner decided it does not apply. */
-	derivedMetrics: 'accepted' | 'not-required';
-	date: string; // YYYY-MM-DD of the decision
+	derivedMetrics: 'accepted' | 'exempted';
+	date: string; // YYYY-MM-DD of the acceptance, or of YouTube's written answer
 	note: string | null;
 	recordedAt: string;
 };
 
-export const readPolicy = (dataDir: string, env: Record<string, string | undefined>): PolicyDecision | null => {
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+export const isPolicyDate = (value: string | null | undefined): value is string => typeof value === 'string' && DATE.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+/** A quoted passage of at least 20 characters ("..." or “...”): the words of YouTube's written exemption. */
+export const quotesExemption = (note: string | null | undefined): boolean => typeof note === 'string' && /["“][^"”]{20,}["”]/.test(note);
+
+/** Why a decision cannot be used (null = it can). */
+export const policyProblem = (decision: {derivedMetrics: unknown; date: unknown; note?: unknown}): string | null => {
+	if (decision.derivedMetrics === 'not-required') {
+		return 'a "not-required" decision is no longer accepted: YouTube\'s policy has no self-exemption. Accept the amendment (--derived-metrics accepted), or record YouTube\'s written exemption (--derived-metrics exempted --note "<their words, quoted>")';
+	}
+	if (decision.derivedMetrics !== 'accepted' && decision.derivedMetrics !== 'exempted') return 'the decision must be "accepted" or "exempted"';
+	if (!isPolicyDate(typeof decision.date === 'string' ? decision.date : null)) return 'the decision needs its date (YYYY-MM-DD)';
+	if (decision.derivedMetrics === 'exempted' && !quotesExemption(typeof decision.note === 'string' ? decision.note : null)) {
+		return 'an exemption needs a note that quotes YouTube\'s written answer (at least 20 characters inside quotation marks), with where it came from';
+	}
+	return null;
+};
+
+/** The recorded decision and, when one was found but cannot be used, why. */
+export const readPolicyStatus = (dataDir: string, env: Record<string, string | undefined>): {decision: PolicyDecision | null; problem: string | null} => {
 	const fromEnv = env.RETENTION_DERIVED_METRICS?.trim();
-	if (fromEnv === 'accepted' || fromEnv === 'not-required') {
-		return {version: 1, derivedMetrics: fromEnv, date: env.RETENTION_POLICY_DATE?.trim() || 'unknown', note: 'from RETENTION_DERIVED_METRICS', recordedAt: 'environment'};
+	if (fromEnv) {
+		const candidate = {derivedMetrics: fromEnv, date: env.RETENTION_POLICY_DATE?.trim() ?? '', note: env.RETENTION_POLICY_NOTE?.trim() ?? null};
+		const problem = policyProblem(candidate);
+		if (problem) return {decision: null, problem: `RETENTION_DERIVED_METRICS: ${problem}`};
+		return {decision: {version: 1, derivedMetrics: fromEnv as PolicyDecision['derivedMetrics'], date: candidate.date, note: candidate.note ?? 'from RETENTION_DERIVED_METRICS', recordedAt: 'environment'}, problem: null};
 	}
 	const path = policyPath(dataDir);
-	if (!existsSync(path)) return null;
+	if (!existsSync(path)) return {decision: null, problem: null};
 	const data: unknown = JSON.parse(readFileSync(path, 'utf8'));
-	if (!isRecord(data) || data.version !== 1 || (data.derivedMetrics !== 'accepted' && data.derivedMetrics !== 'not-required') || typeof data.date !== 'string') return null;
-	return {version: 1, derivedMetrics: data.derivedMetrics, date: data.date, note: typeof data.note === 'string' ? data.note : null, recordedAt: typeof data.recordedAt === 'string' ? data.recordedAt : ''};
+	if (!isRecord(data) || data.version !== 1) return {decision: null, problem: `${path} is not a policy decision (version 1)`};
+	const problem = policyProblem({derivedMetrics: data.derivedMetrics, date: data.date, note: data.note});
+	if (problem) return {decision: null, problem: `the recorded decision (${path}): ${problem}`};
+	return {
+		decision: {version: 1, derivedMetrics: data.derivedMetrics as PolicyDecision['derivedMetrics'], date: String(data.date), note: typeof data.note === 'string' ? data.note : null, recordedAt: typeof data.recordedAt === 'string' ? data.recordedAt : ''},
+		problem: null,
+	};
 };
+
+export const readPolicy = (dataDir: string, env: Record<string, string | undefined>): PolicyDecision | null => readPolicyStatus(dataDir, env).decision;
 
 export const savePolicy = (dataDir: string, decision: PolicyDecision): string => {
 	const path = policyPath(dataDir);
@@ -122,14 +157,15 @@ export const savePolicy = (dataDir: string, decision: PolicyDecision): string =>
 
 export const POLICY_GATE = [
 	'Policy check: YouTube API Services Developer Policies III.E.4.h say an API client must not "access or use API Data to create new or',
-	'derived data or metrics" unless the developer has accepted the amendment for derived metrics. This tool derives metrics (drops per',
-	'10 s, comparisons, recommendations) from YouTube Analytics data, so it only pulls once you have decided:',
+	'derived data or metrics"; the derived-metrics policy permits them only "subject to your acceptance of the amendment to the',
+	'Developer Policies". This tool derives metrics (drops per 10 s, comparisons, recommendations) from YouTube Analytics data, so it',
+	'only pulls once one of the two decisions the policy allows is recorded:',
 	'  1. Read https://developers.google.com/youtube/terms/derived-metrics-policy and the Developer Policies (section III.E.4).',
-	'  2. To accept: submit the YouTube API Services audit and quota extension form for your Google Cloud project, choosing',
-	'     "Section 5: Use Cases, API Integration, and Feature Implementation", then "Analytics & Reporting" (as that page says).',
-	'  3. Record your decision here (it stays in the gitignored data folder):',
+	'  2. Accept: submit the YouTube API Services audit and quota extension form for your Google Cloud project, choosing',
+	'     "Section 5: Use Cases, API Integration, and Feature Implementation", then "Analytics & Reporting" (as that page says), then:',
 	'       node tools/retention/cli.ts policy --derived-metrics accepted --date YYYY-MM-DD',
-	'     or, if you have decided the amendment does not apply to you:',
-	'       node tools/retention/cli.ts policy --derived-metrics not-required --date YYYY-MM-DD --note "why"',
-	'  In CI, set RETENTION_DERIVED_METRICS=accepted (or not-required) and RETENTION_POLICY_DATE instead.',
+	'  3. Or, only if YouTube answered in writing that this use needs no amendment, quote their words:',
+	'       node tools/retention/cli.ts policy --derived-metrics exempted --date YYYY-MM-DD --note \'YouTube API Services, ticket <id>: "<their words>"\'',
+	'  There is no self-exemption: deciding yourself that the amendment does not apply is not one of the options.',
+	'  The decision stays in the gitignored data folder. Run this tool on your own computer, not in CI (README "Where to run it").',
 ].join('\n');

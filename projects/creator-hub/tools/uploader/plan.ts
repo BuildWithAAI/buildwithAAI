@@ -4,7 +4,7 @@
  */
 import {type ApiMethod, type Endpoints, QUOTA} from './contracts.ts';
 import type {UploadInputs} from './inputs.ts';
-import {addToPlaylist, channelCheck, insertCaption, type InsertQuery, playlistCheck, processingStatus, type RequestSpec, setThumbnail, startUpload, uploadChunk} from './requests.ts';
+import {addToPlaylist, channelCheck, insertCaption, type InsertQuery, playlistCheck, processingStatus, recentUploads, type RequestSpec, setThumbnail, startUpload, uploadChunk} from './requests.ts';
 import {formatInZone} from './time.ts';
 import {canonicalJson, formatBytes, sha256Hex} from './util.ts';
 
@@ -23,7 +23,7 @@ export type VideoResourceBody = {
 	localizations?: Record<string, {title: string; description: string}>;
 };
 
-export const DIGEST_PARTS = ['video', 'insert', 'thumbnail', 'captions', 'playlist', 'storyboard'] as const;
+export const DIGEST_PARTS = ['video', 'insert', 'thumbnail', 'captions', 'playlist', 'storyboard', 'channel'] as const;
 export type DigestPart = (typeof DIGEST_PARTS)[number];
 
 export type UploadPlan = {
@@ -39,6 +39,8 @@ export type UploadPlan = {
 	captions: {language: string; name: string; source: 'kit' | 'file'; rel: string | null; bytes: number; sha256: string}[];
 	playlistId: string | null;
 	storyboard: {rel: string; version: number; sha256: string};
+	/** The YouTube channel this plan may upload to: channels.json youtubeChannelId (null until the owner pins it). */
+	destination: {youtubeChannelId: string | null};
 	digest: {sha256: string; parts: Record<DigestPart, string>};
 	quota: {defaultUnits: number; uploadCalls: number; lines: {method: ApiMethod; calls: number; units: number; note: string}[]};
 	paidPromotion: boolean;
@@ -84,13 +86,16 @@ const studioSteps = (inputs: UploadInputs, plan: Pick<UploadPlan, 'publishAt' | 
 	const paidReason = (settings.reasons.find((r) => r.startsWith('paidPromotion=')) ?? `paidPromotion=${settings.paidPromotion}`).replace(/\.+$/, '');
 	steps.push(
 		settings.paidPromotion
-			? `Paid promotion: in Studio > Content > this video > Details > Paid promotion, tick "My video contains paid promotion like a product placement, sponsorship, or endorsement" BEFORE it goes public (${paidReason}). The uploader does not send paidProductPlacementDetails because YouTube's docs disagree on whether it can be set.`
+			? `Paid promotion: in Studio > Content > this video > Details > Paid promotion, tick "My video contains paid promotion like a product placement, sponsorship, or endorsement" FIRST (${paidReason}), then publish or schedule it in Studio. ` +
+					"The uploader never schedules a video with paid promotion: it does not send paidProductPlacementDetails (YouTube's videos.insert page still leaves it out of the fields you can set; CLAUDE.md keeps it a Studio step), so a scheduled upload would go public undeclared if this step were missed."
 			: `Paid promotion: confirm the Studio "Paid promotion" box is unticked (${paidReason}). The uploader does not send paidProductPlacementDetails; since 2026-11-16 an upload that omits it is not declared free of paid placement.`,
 	);
 	steps.push(
 		plan.publishAt
 			? `Scheduled: YouTube publishes it at ${formatInZone(Date.parse(plan.publishAt))} unless you change it in Studio. Every Studio step above it must be done first.`
-			: 'It stays private: publish or schedule it in Studio when you are ready.',
+			: settings.paidPromotion
+				? 'It stays private and unscheduled: after ticking Paid promotion, publish or schedule it in Studio.'
+				: 'It stays private: publish or schedule it in Studio when you are ready.',
 	);
 	if (plan.renderKind === 'long') {
 		steps.push('End screen and cards: add them in Studio (no API). End screens need a video of 25 s or more and are not allowed on made-for-kids videos.');
@@ -117,6 +122,7 @@ export const buildPlan = (inputs: UploadInputs, opts: PlanOptions): UploadPlan =
 		: null;
 	const captions = inputs.captions.map((c) => ({language: c.language, name: c.name, source: c.source, rel: c.rel, bytes: c.bytes, sha256: c.sha256}));
 	const storyboard = {rel: inputs.storyboard.rel, version: inputs.storyboard.version, sha256: inputs.storyboard.sha256};
+	const destination = {youtubeChannelId: inputs.channelConfig.youtubeChannelId};
 
 	const partValues: Record<DigestPart, unknown> = {
 		video: {sha256: video.sha256, bytes: video.bytes, mimeType: video.mimeType},
@@ -125,6 +131,7 @@ export const buildPlan = (inputs: UploadInputs, opts: PlanOptions): UploadPlan =
 		captions: captions.map((c) => ({language: c.language, name: c.name, sha256: c.sha256, bytes: c.bytes})),
 		playlist: inputs.playlistId ? {playlistId: inputs.playlistId} : null,
 		storyboard: {version: storyboard.version, sha256: storyboard.sha256},
+		channel: {slug: inputs.channel, youtubeChannelId: destination.youtubeChannelId},
 	};
 	const parts = Object.fromEntries(DIGEST_PARTS.map((p) => [p, sha256Hex(canonicalJson(partValues[p]))])) as Record<DigestPart, string>;
 	const digest = {sha256: sha256Hex(canonicalJson(parts)), parts};
@@ -135,6 +142,7 @@ export const buildPlan = (inputs: UploadInputs, opts: PlanOptions): UploadPlan =
 	};
 	add('channels.list', 1, 'check the signed-in channel');
 	add('playlists.list', inputs.playlistId ? 1 : 0, 'check the playlist exists on this channel');
+	add('playlistItems.list', 1, "check the channel's 50 most recent uploads for one with the same title (a replayed approval)");
 	add('videos.insert', 1, 'the upload itself, from the separate Video Uploads bucket of 100 calls a day');
 	add('videos.list', thumbnail?.afterProcessing ? opts.processingPolls : 0, "at most; waits for a Short's processing before its thumbnail");
 	add('thumbnails.set', thumbnail ? 1 : 0, 'custom thumbnail');
@@ -156,12 +164,20 @@ export const buildPlan = (inputs: UploadInputs, opts: PlanOptions): UploadPlan =
 		captions,
 		playlistId: inputs.playlistId,
 		storyboard,
+		destination,
 		digest,
 		quota: {defaultUnits, uploadCalls, lines},
 		paidPromotion: inputs.kit.settings.paidPromotion,
 		settingsReasons: inputs.kit.settings.reasons,
 		studioSteps: [],
-		warnings: [...inputs.warnings],
+		warnings: [
+			...inputs.warnings,
+			...(destination.youtubeChannelId
+				? []
+				: [
+						`channels.json does not pin youtubeChannelId for "${inputs.channel}": upload --apply refuses until it does. Run "cli.ts auth --channel ${inputs.channel}", copy the channel id it prints into channels.json, then approve again (the approval names its destination channel).`,
+					]),
+		],
 	};
 	plan.studioSteps = studioSteps(inputs, plan);
 	return plan;
@@ -171,6 +187,10 @@ export const buildPlan = (inputs: UploadInputs, opts: PlanOptions): UploadPlan =
 
 const VIDEO_ID = '<new video id>';
 const SESSION = '<upload session URI from the Location header>';
+const UPLOADS = "<the channel's uploads playlist, from channels.list>";
+
+/** The code that approves exactly this plan without a terminal (approve --confirm <code>): the digest's first 12 hex. */
+export const approvalCode = (plan: Pick<UploadPlan, 'digest'>): string => plan.digest.sha256.slice(0, 12);
 
 const showRequest = (request: RequestSpec, bodyNote?: string): string[] => {
 	const lines = [`  ${request.method} ${request.url.replace(/%3C(.+?)%3E/g, (_, inner: string) => `<${decodeURIComponent(inner.replace(/\+/g, ' '))}>`)}`, '  authorization: Bearer <access token>'];
@@ -184,8 +204,11 @@ const showRequest = (request: RequestSpec, bodyNote?: string): string[] => {
 };
 
 /** The plan as the owner reads it: every request with its headers and body, the quota, and the Studio steps. */
-export const renderPlan = (plan: UploadPlan, ep: Endpoints, opts: {chunkBytes: number; header: string[]}): string => {
-	const out: string[] = [...opts.header, ''];
+export const renderPlan = (plan: UploadPlan, ep: Endpoints, opts: {chunkBytes: number; header: string[]; channelTitle?: string | null}): string => {
+	const destination = plan.destination.youtubeChannelId
+		? `Destination: YouTube channel ${opts.channelTitle ? `"${opts.channelTitle}" ` : ''}${plan.destination.youtubeChannelId} (pinned in channels.json for "${plan.channel}").`
+		: `Destination: NOT PINNED. channels.json has no youtubeChannelId for "${plan.channel}", so upload --apply refuses this plan.`;
+	const out: string[] = [...opts.header, destination, ''];
 	let n = 0;
 	const step = (title: string, method: ApiMethod, request: RequestSpec, bodyNote?: string) => {
 		n++;
@@ -195,6 +218,7 @@ export const renderPlan = (plan: UploadPlan, ep: Endpoints, opts: {chunkBytes: n
 	};
 	step('Confirm the signed-in channel', 'channels.list', channelCheck(ep));
 	if (plan.playlistId) step(`Confirm playlist ${plan.playlistId} belongs to that channel`, 'playlists.list', playlistCheck(ep, plan.playlistId));
+	step('Look for a recent upload with the same title (refused unless --allow-second-upload)', 'playlistItems.list', recentUploads(ep, UPLOADS));
 	step('Start the resumable upload (always private)', 'videos.insert', startUpload(ep, plan.insert.query, JSON.stringify(plan.insert.body), plan.video.bytes, plan.video.mimeType));
 	const chunks = Math.max(1, Math.ceil(plan.video.bytes / opts.chunkBytes));
 	const first = uploadChunk(SESSION, plan.video.mimeType, 0, Math.min(opts.chunkBytes, plan.video.bytes) - 1, plan.video.bytes, Buffer.alloc(0));
@@ -227,5 +251,6 @@ export const renderPlan = (plan: UploadPlan, ep: Endpoints, opts: {chunkBytes: n
 		for (const w of plan.warnings) out.push(`  - ${w}`);
 	}
 	out.push('', `Plan digest ${plan.digest.sha256} (storyboard v${plan.storyboard.version} ${plan.storyboard.sha256.slice(0, 12)}…, render ${plan.video.sha256.slice(0, 12)}…)`);
+	out.push(`Approval code: ${approvalCode(plan)} (it changes whenever anything above changes)`);
 	return `${out.join('\n')}\n`;
 };

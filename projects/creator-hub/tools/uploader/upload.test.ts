@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import {existsSync, readdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {afterEach, beforeEach, describe, it} from 'node:test';
 import {createApi} from './api.ts';
 import {type ApplyContext, type ApplyOptions, applyUpload} from './apply.ts';
-import {createApproval} from './approval.ts';
+import {createApproval, type ApprovedVia} from './approval.ts';
 import {GOOGLE} from './contracts.ts';
 import {createFakeYouTube, type FakeYouTube, parseMultipart} from './fake-youtube.ts';
 import {readOAuthFile} from './oauth.ts';
@@ -14,7 +14,7 @@ import {PrivacyGuardError, startUpload} from './requests.ts';
 import {loadJob} from './state.ts';
 import {CHANNEL_ID, CHUNK, clock, fakeVideo, makeWorkspace, PLAYLIST_ID, recordSleeps, SHORTS_PLAYLIST_ID, VIDEO_BYTES, type Workspace} from './test-helpers.ts';
 import {quotaDay} from './time.ts';
-import {Refusal} from './util.ts';
+import {Refusal, sha256Hex} from './util.ts';
 
 const PUBLISH = '2026-11-28T15:00:00.000Z';
 
@@ -27,7 +27,8 @@ describe('upload --apply', () => {
 	let logs: string[];
 
 	beforeEach(() => {
-		ws = makeWorkspace();
+		// most tests schedule a publish time, which the uploader never does for a video with paid promotion
+		ws = makeWorkspace({paidPromotion: false});
 		fake = createFakeYouTube({channelId: CHANNEL_ID, playlists: {[PLAYLIST_ID]: CHANNEL_ID}});
 		approvalPath = join(ws.kitDir, 'approval-long.json');
 		time = clock();
@@ -36,7 +37,7 @@ describe('upload --apply', () => {
 	});
 	afterEach(() => ws.cleanup());
 
-	const approve = async (opts: {renderId?: string; thumbnail?: string | null; publishAt?: string | null; path?: string} = {}) => {
+	const approve = async (opts: {renderId?: string; thumbnail?: string | null; publishAt?: string | null; path?: string; approvedVia?: ApprovedVia} = {}) => {
 		const prepared = await prepareForApproval({
 			kitPath: ws.kitPath,
 			videoStudioRoot: null,
@@ -50,7 +51,7 @@ describe('upload --apply', () => {
 			publishAt: opts.publishAt === undefined ? PUBLISH : opts.publishAt,
 		});
 		assert.deepEqual(prepared.refusals, []);
-		writeFileSync(opts.path ?? approvalPath, JSON.stringify(createApproval(prepared.plan, {nowMs: time.now(), approvedBy: 'owner', validDays: 7, spec: null})));
+		writeFileSync(opts.path ?? approvalPath, JSON.stringify(createApproval(prepared.plan, {nowMs: time.now(), approvedBy: 'owner', validDays: 7, spec: null, ...(opts.approvedVia ? {approvedVia: opts.approvedVia} : {})})));
 	};
 
 	const ctx = (overrides: Partial<ApplyContext> = {}): ApplyContext => ({
@@ -72,10 +73,11 @@ describe('upload --apply', () => {
 		maxUnitsPerRun: 3000,
 		processingPolls: 5,
 		processingIntervalMs: 30_000,
+		ownerPresent: true, // the CLI sets it after the owner typed the slug (cli.test.ts covers that prompt)
 		...overrides,
 	});
 	const run = async (o: Partial<ApplyOptions> = {}, c: Partial<ApplyContext> = {}, path = approvalPath) => {
-		const prepared = await prepareFromApproval({kitPath: ws.kitPath, approvalPath: path, videoStudioRoot: null, channels: ws.channels, stateDir: ws.stateDir, nowMs: time.now(), processingPolls: o.processingPolls ?? 5, allowSecondUpload: o.allowSecondUpload ?? false});
+		const prepared = await prepareFromApproval({kitPath: ws.kitPath, approvalPath: path, videoStudioRoot: null, channels: ws.channels, stateDir: c.stateDir ?? ws.stateDir, nowMs: time.now(), processingPolls: o.processingPolls ?? 5, allowSecondUpload: o.allowSecondUpload ?? false});
 		if (prepared.refusals.length) throw new Refusal(prepared.refusals);
 		return applyUpload(prepared, ctx(c), opts(o));
 	};
@@ -89,8 +91,11 @@ describe('upload --apply', () => {
 		assert.deepEqual(result.alerts, []);
 		assert.deepEqual(
 			fake.requests.map((r) => r.label),
-			['channels.list', 'playlists.list', 'videos.insert', 'upload.chunk', 'upload.chunk', 'upload.chunk', 'thumbnails.set', 'captions.insert', 'playlistItems.insert'],
+			['channels.list', 'playlists.list', 'playlistItems.list', 'videos.insert', 'upload.chunk', 'upload.chunk', 'upload.chunk', 'thumbnails.set', 'captions.insert', 'playlistItems.insert'],
 		);
+		// the duplicate check read the channel's uploads playlist before the upload session started
+		assert.equal(fake.byLabel('playlistItems.list')[0]?.url.searchParams.get('playlistId'), fake.uploadsPlaylistId);
+		assert.equal(fake.byLabel('channels.list')[0]?.url.searchParams.get('part'), 'id,snippet,contentDetails');
 		const insert = JSON.parse(fake.byLabel('videos.insert')[0]?.body.toString('utf8') ?? '{}');
 		assert.deepEqual(insert.status, {privacyStatus: 'private', publishAt: PUBLISH, selfDeclaredMadeForKids: false, containsSyntheticMedia: false});
 		assert.equal(fake.byLabel('videos.insert')[0]?.headers['x-upload-content-length'], String(VIDEO_BYTES));
@@ -112,6 +117,13 @@ describe('upload --apply', () => {
 		assert.equal(result.receipt?.publishAt, PUBLISH);
 		assert.ok(result.receiptPath && existsSync(result.receiptPath));
 		assert.ok(result.receipt?.studioSteps.some((s) => s.startsWith('Paid promotion')));
+		// the receipt records what was SENT, the approval's nonce and the channel it went to
+		assert.deepEqual(result.receipt?.uploadedFile, {path: 'out/publish/zoora-ai/uploader-fixture/media/long.mp4', sha256: sha256Hex(readFileSync(ws.videoPath)), bytes: VIDEO_BYTES, verified: 'bytes-sent'});
+		assert.match(result.receipt?.approvalNonce ?? '', /^[0-9a-f]{32}$/);
+		assert.deepEqual(result.receipt?.destination, {youtubeChannelId: CHANNEL_ID, title: 'Zoora AI (test)'});
+		assert.equal(JSON.parse(readFileSync(join(ws.stateDir, 'ledger.json'), 'utf8')).entries[0].approvalNonce, result.receipt?.approvalNonce);
+		// the private staged copy is gone once YouTube has the video
+		assert.deepEqual(readdirSync(join(ws.stateDir, 'staging')).filter((f) => !f.startsWith('.')), []);
 	});
 
 	describe('private enforcement', () => {
@@ -149,7 +161,7 @@ describe('upload --apply', () => {
 			assert.match(result.alerts.join('\n'), /reported privacy "public".*set it back to private/);
 			assert.equal(result.receipt?.privacyStatus, 'private');
 			assert.equal(result.receipt?.publishAt, null);
-			assert.equal(quotaToday().default, 502 + 50);
+			assert.equal(quotaToday().default, 503 + 50);
 		});
 	});
 
@@ -160,8 +172,8 @@ describe('upload --apply', () => {
 			await run();
 			const day = quotaToday();
 			assert.equal(day.uploads, 1);
-			assert.equal(day.default, 1 + 1 + 50 + 400 + 400 + 50);
-			assert.deepEqual(day.calls, {'channels.list': 1, 'playlists.list': 1, 'videos.insert': 1, 'thumbnails.set': 1, 'captions.insert': 2, 'playlistItems.insert': 1});
+			assert.equal(day.default, 1 + 1 + 1 + 50 + 400 + 400 + 50);
+			assert.deepEqual(day.calls, {'channels.list': 1, 'playlists.list': 1, 'playlistItems.list': 1, 'videos.insert': 1, 'thumbnails.set': 1, 'captions.insert': 2, 'playlistItems.insert': 1});
 			assert.equal(fake.captions.length, 1);
 		});
 
@@ -210,7 +222,7 @@ describe('upload --apply', () => {
 			assert.equal(fake.count('videos.insert'), 1);
 			assert.equal(fake.captions.length, 1);
 			// a render that was never uploaded gets no such leniency
-			const other = makeWorkspace();
+			const other = makeWorkspace({paidPromotion: false});
 			try {
 				const prepared = await prepareForApproval({kitPath: other.kitPath, videoStudioRoot: null, channels: other.channels, stateDir: other.stateDir, nowMs: Date.parse(PUBLISH) - 10 * 60_000, processingPolls: 5, allowSecondUpload: false, renderId: 'long', publishAt: PUBLISH});
 				assert.deepEqual(prepared.refusals.map((r) => r.code), ['publish-time-too-soon']);
@@ -337,13 +349,66 @@ describe('upload --apply', () => {
 			assert.equal(loadJob(join(ws.stateDir, 'jobs', readdir(ws.stateDir)))?.insert.status, 'session');
 		});
 
-		it('refuses to continue when the file changed during an interrupted upload', async () => {
+		it('sends the approved bytes even when the render on disk is rewritten mid-upload (it reads a private staged copy)', async () => {
 			await approve();
+			const approved = readFileSync(ws.videoPath);
 			fake.faults.push({on: 'upload.chunk', nth: 2, kind: 'network'});
-			const changing = async () => {
+			const rewrite = async () => {
 				writeFileSync(ws.videoPath, fakeVideo(VIDEO_BYTES, 1234));
 			};
-			await assert.rejects(run({}, {sleep: changing}), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'file-changed');
+			const result = await run({}, {sleep: rewrite});
+			assert.equal(result.complete, true);
+			assert.ok(uploadedBytes().equals(approved), 'YouTube got the approved bytes, not the rewritten file');
+			assert.equal(result.receipt?.uploadedFile.sha256, sha256Hex(approved));
+			assert.match(logs.join('\n'), /changed on disk during the upload; YouTube received the approved copy/);
+		});
+
+		it('refuses to continue when the staged copy itself changes during the upload', async () => {
+			await approve();
+			fake.faults.push({on: 'upload.chunk', nth: 2, kind: 'network'});
+			const tamper = async () => {
+				const staged = loadJob(join(ws.stateDir, 'jobs', readdir(ws.stateDir)))?.insert.staged?.path ?? '';
+				const st = statSync(staged);
+				writeFileSync(staged, fakeVideo(VIDEO_BYTES, 1234));
+				utimesSync(staged, st.atime, new Date(st.mtimeMs + 5000)); // a visibly different time, whatever the file system's resolution
+			};
+			await assert.rejects(run({}, {sleep: tamper}), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'file-changed');
+			assert.equal(fake.videos.size, 0, 'no video was created');
+		});
+
+		it('never sends the last chunk when the bytes read do not hash to the approval, even with size and mtime restored', async () => {
+			await approve();
+			fake.faults.push({on: 'upload.chunk', nth: 2, kind: 'network'});
+			const tamper = async () => {
+				const staged = loadJob(join(ws.stateDir, 'jobs', readdir(ws.stateDir)))?.insert.staged?.path ?? '';
+				const st = statSync(staged);
+				const bytes = readFileSync(staged);
+				bytes[VIDEO_BYTES - 10] ^= 0xff; // in the last chunk, which has not been sent yet
+				writeFileSync(staged, bytes);
+				// restore the modification time to the same millisecond (the middle of it: Date objects would round to the
+				// millisecond and float seconds can land just below it), so only the hash can tell the files apart
+				utimesSync(staged, st.atimeMs / 1000, (Math.floor(st.mtimeMs) + 0.5) / 1000);
+				assert.equal(Math.floor(statSync(staged).mtimeMs), Math.floor(st.mtimeMs));
+			};
+			await assert.rejects(run({}, {sleep: tamper}), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'render-hash-mismatch' && /last chunk was not sent/.test(error.message));
+			assert.equal(fake.videos.size, 0, 'YouTube never received the last byte, so no video exists');
+			assert.deepEqual(
+				fake.byLabel('upload.chunk').filter((r) => (r.headers['content-range'] ?? '').endsWith(`-${VIDEO_BYTES - 1}/${VIDEO_BYTES}`)),
+				[],
+				'the chunk with the last byte was never sent',
+			);
+		});
+
+		it('refuses a render swapped after the approval check (same size and mtime) before anything is sent', async () => {
+			await approve();
+			const prepared = await prepareFromApproval({kitPath: ws.kitPath, approvalPath, videoStudioRoot: null, channels: ws.channels, stateDir: ws.stateDir, nowMs: time.now(), processingPolls: 5, allowSecondUpload: false});
+			assert.deepEqual(prepared.refusals, []);
+			const st = statSync(ws.videoPath);
+			writeFileSync(ws.videoPath, Buffer.alloc(VIDEO_BYTES, 0x41));
+			utimesSync(ws.videoPath, st.atime, st.mtime);
+			await assert.rejects(applyUpload(prepared, ctx(), opts()), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'render-hash-mismatch' && /Nothing was sent/.test(error.message));
+			assert.equal(fake.requests.length, 0);
+			assert.equal(fake.videos.size, 0);
 		});
 	});
 
@@ -387,7 +452,7 @@ describe('upload --apply', () => {
 		});
 
 		it('refuses without the youtube.force-ssl scope or without an authorization', async () => {
-			const bare = makeWorkspace({scope: 'https://www.googleapis.com/auth/youtube.upload'});
+			const bare = makeWorkspace({scope: 'https://www.googleapis.com/auth/youtube.upload', paidPromotion: false});
 			try {
 				ws.cleanup();
 				ws = bare;
@@ -435,7 +500,8 @@ describe('upload --apply', () => {
 			const result = await run();
 			assert.equal(result.complete, true);
 			assert.equal(fake.playlistItems.length, 1);
-			assert.equal(fake.count('playlistItems.list'), 1);
+			// one lookup of the video in the playlist (the other playlistItems.list is the duplicate check)
+			assert.equal(fake.byLabel('playlistItems.list').filter((r) => r.url.searchParams.get('videoId')).length, 1);
 			assert.equal(fake.count('playlistItems.insert'), 1);
 		});
 
@@ -459,6 +525,150 @@ describe('upload --apply', () => {
 			fake.dropAudioLanguage = true;
 			const result = await run();
 			assert.match(result.receipt?.studioSteps.join('\n') ?? '', /Video language: YouTube did not keep defaultAudioLanguage "en"/);
+		});
+	});
+
+	describe('an approval used twice (another machine, a deleted state folder)', () => {
+		it('refuses a second upload from another state folder: the channel already has a recent upload with that title', async () => {
+			await approve();
+			assert.equal((await run()).complete, true);
+			const elsewhere = join(ws.root, 'state-on-another-machine');
+			const sent = fake.requests.length;
+			await assert.rejects(run({}, {stateDir: elsewhere}), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'duplicate-on-channel' && /scheduled for 2026-11-28 09:00 CST/.test(error.message));
+			assert.equal(fake.videos.size, 1, 'still one video');
+			assert.equal(fake.count('videos.insert'), 1);
+			assert.deepEqual(fake.requests.slice(sent).map((r) => r.label), ['channels.list', 'playlists.list', 'playlistItems.list'], 'only the read-only checks were sent');
+		});
+
+		it('refuses when a video with the same title is already on the channel, unless --allow-second-upload', async () => {
+			await approve();
+			fake.existingUploads.push({videoId: 'existing001', title: 'POV: "Support" DMs you first', privacyStatus: 'private', publishedAt: '2026-11-20T10:00:00Z'});
+			await assert.rejects(run(), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'duplicate-on-channel' && /youtu\.be\/existing001 \(private/.test(error.message));
+			assert.equal(fake.count('videos.insert'), 0);
+			const result = await run({allowSecondUpload: true});
+			assert.equal(result.complete, true);
+			assert.match(logs.join('\n'), /duplicate check skipped \(--allow-second-upload\)/);
+		});
+
+		it('does not run the duplicate check when it resumes its own session', async () => {
+			await approve();
+			fake.faults.push({on: 'upload.chunk', nth: 2, kind: 'network'});
+			const killed = async () => {
+				throw new Error('process killed');
+			};
+			await assert.rejects(run({}, {sleep: killed}), /process killed/);
+			const result = await run();
+			assert.equal(result.complete, true);
+			assert.equal(fake.count('playlistItems.list') - fake.byLabel('playlistItems.list').filter((r) => r.url.searchParams.get('videoId')).length, 1, 'one duplicate check, before the one session');
+		});
+	});
+
+	describe('the upload session address', () => {
+		it('never sends the token or the video to a session URI from the job file that is not on the upload endpoint', async () => {
+			await approve();
+			fake.faults.push({on: 'upload.chunk', nth: 1, kind: 'status', status: 400, reason: 'badRequest'});
+			await assert.rejects(run());
+			const jobFile = join(ws.stateDir, 'jobs', readdir(ws.stateDir));
+			const job = JSON.parse(readFileSync(jobFile, 'utf8'));
+			assert.match(job.insert.sessionUri, /^https:\/\/www\.googleapis\.com\//);
+			job.insert.sessionUri = 'https://attacker.example/upload?upload_id=x';
+			writeFileSync(jobFile, JSON.stringify(job));
+			const elsewhere: string[] = [];
+			const spy = async (r: Parameters<typeof fake.transport>[0]) => {
+				if (new URL(r.url).host === 'attacker.example') elsewhere.push(r.url);
+				return fake.transport(r);
+			};
+			await assert.rejects(run({}, {transport: spy}), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'session-invalid' && /not a YouTube upload address/.test(error.message));
+			assert.deepEqual(elsewhere, []);
+			// with --restart-upload it starts a new session on YouTube instead, after the duplicate check
+			const result = await run({restartUpload: true}, {transport: spy});
+			assert.equal(result.complete, true);
+			assert.deepEqual(elsewhere, []);
+		});
+
+		it('refuses a Location header on another origin, sending nothing to it', async () => {
+			await approve();
+			const elsewhere: string[] = [];
+			const rewriting = async (r: Parameters<typeof fake.transport>[0]) => {
+				if (new URL(r.url).host === 'evil.example') {
+					elsewhere.push(r.url);
+					return {status: 308, headers: {get: () => null}, text: ''};
+				}
+				const res = await fake.transport(r);
+				const location = res.headers.get('location');
+				if (!location) return res;
+				return {...res, headers: {get: (name: string) => (name.toLowerCase() === 'location' ? location.replace('https://www.googleapis.com', 'https://evil.example') : res.headers.get(name))}};
+			};
+			await assert.rejects(run({}, {transport: rewriting}), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'session-invalid');
+			assert.deepEqual(elsewhere, []);
+			assert.equal(loadJob(join(ws.stateDir, 'jobs', readdir(ws.stateDir)))?.insert.sessionUri, null, 'the address was never saved');
+		});
+	});
+
+	describe('owner presence, destination channel and paid promotion', () => {
+		it('refuses to start a scheduled upload unless the owner confirmed at a terminal for this run', async () => {
+			await approve({approvedVia: 'terminal'});
+			await assert.rejects(run({ownerPresent: false}), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'owner-presence-required' && /go public at 2026-11-28 09:00 CST/.test(error.message));
+			assert.equal(fake.requests.length, 0);
+			assert.equal(existsSync(join(ws.stateDir, 'jobs')), false, 'not even a job file');
+		});
+
+		it('refuses an approval recorded without the owner at a terminal, even unscheduled', async () => {
+			await approve({publishAt: null, approvedVia: 'confirm-code'});
+			await assert.rejects(run({ownerPresent: false}), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'owner-presence-required' && /approve --confirm/.test(error.message));
+			assert.equal(fake.requests.length, 0);
+		});
+
+		it('needs no second confirmation for an unscheduled upload the owner approved at a terminal', async () => {
+			await approve({publishAt: null, approvedVia: 'terminal'});
+			const result = await run({ownerPresent: false});
+			assert.equal(result.complete, true);
+			assert.equal(result.receipt?.publishAt, null);
+		});
+
+		it('finishes the follow-up steps of an uploaded video without asking again', async () => {
+			await approve();
+			fake.quotaExceeded.add('captions.insert');
+			await assert.rejects(run());
+			fake.quotaExceeded.clear();
+			const result = await run({ownerPresent: false});
+			assert.equal(result.complete, true);
+			assert.equal(fake.count('videos.insert'), 1);
+		});
+
+		it('refuses to upload until channels.json pins the destination channel', async () => {
+			const unpinned = makeWorkspace({paidPromotion: false, pinned: false});
+			try {
+				ws.cleanup();
+				ws = unpinned;
+				approvalPath = join(ws.kitDir, 'approval-long.json');
+				await approve();
+				await assert.rejects(run(), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'channel-not-pinned' && /copy the channel id it prints into channels\.json/.test(error.message));
+				assert.equal(fake.requests.length, 0);
+			} finally {
+				// afterEach cleans ws
+			}
+		});
+
+		it('never schedules a video with paid promotion, even if the earlier checks were bypassed', async () => {
+			const paid = makeWorkspace();
+			try {
+				ws.cleanup();
+				ws = paid;
+				approvalPath = join(ws.kitDir, 'approval-long.json');
+				await approve({publishAt: null});
+				const prepared = await prepareFromApproval({kitPath: ws.kitPath, approvalPath, videoStudioRoot: null, channels: ws.channels, stateDir: ws.stateDir, nowMs: time.now(), processingPolls: 5, allowSecondUpload: false});
+				const forged = {...prepared, plan: {...prepared.plan, publishAt: PUBLISH}};
+				await assert.rejects(applyUpload(forged, ctx(), opts()), (error: unknown) => error instanceof Refusal && error.reasons[0]?.code === 'paid-promotion-schedule');
+				assert.equal(fake.requests.length, 0);
+				// unscheduled, it uploads private with nothing that publishes it, and says to tick the box first
+				const result = await applyUpload(prepared, ctx(), opts());
+				assert.equal(result.complete, true);
+				assert.equal(JSON.parse(fake.byLabel('videos.insert')[0]?.body.toString('utf8') ?? '{}').status.publishAt, undefined);
+				assert.match(result.receipt?.studioSteps.join('\n') ?? '', /Paid promotion: .*tick .* FIRST/);
+			} finally {
+				// afterEach cleans ws
+			}
 		});
 	});
 });

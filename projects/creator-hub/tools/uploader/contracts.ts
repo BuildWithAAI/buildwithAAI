@@ -16,9 +16,16 @@
  *   that was never published; a time in the past publishes the video right away. snippet.tags[]: 500 characters,
  *   commas count, a tag with a space counts its quotation marks. snippet.defaultAudioLanguage: "the language spoken in
  *   the video's default audio track" (described, but NOT in the insert/update "you can set" lists: we send it and
- *   read it back). paidProductPlacementDetails.hasPaidProductPlacement: described as "Set to true if ...", absent
- *   from the insert/update "you can set" lists, while the 2026-11-16 revision-history entry says to specify it in
- *   videos.insert/update. The pages disagree, so the uploader never sends it: paid promotion stays a Studio step.
+ *   read it back). paidProductPlacementDetails.hasPaidProductPlacement: described as "Set to true if ...", a valid
+ *   videos.insert part name but absent from the insert/update "you can set" lists, while the revision history
+ *   (November 16, 2026, read again 2026-11-24) says "If you don't specify a value for the property in a
+ *   videos.insert or videos.update request, the video isn't declared as free of paid product placement". The pages
+ *   disagree, so the uploader never sends it (CLAUDE.md keeps it a Studio step) and never schedules a video with paid
+ *   promotion: it would go public undeclared if the Studio step were missed (approval.ts paidScheduleReason).
+ * - playlistItems.list (updated 2026-11-12, read 2026-11-24): 1 unit; maxResults 0-50 (default 5); parts
+ *   contentDetails, id, snippet, status. The official "my uploads" sample reads channels.list (mine=true,
+ *   part=contentDetails) relatedPlaylists.uploads, then playlistItems.list on it with maxResults 50: the uploader's
+ *   duplicate check before a new upload session.
  * - videos.update (updated 2026-11-12): https://developers.google.com/youtube/v3/docs/videos/update , 50 units.
  *   A part that is sent but omits a mutable property DELETES it ("the existing privacy setting will be removed and the
  *   video will revert to the default privacy setting"), except selfDeclaredMadeForKids and containsSyntheticMedia.

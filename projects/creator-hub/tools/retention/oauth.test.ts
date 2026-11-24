@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {after, before, describe, it} from 'node:test';
 import {SCOPES} from './api.ts';
 import {approveInBrowser, createMockGoogle} from './mock-google.ts';
-import {AuthError, authorize, envTokenSource, fileTokenSource, gitIgnoreStatus, hasEnvTokens, readTokenFile, writeSecretFile, writeTokenFile, type TokenFile} from './oauth.ts';
+import {AuthError, authorize, clientSecretsWarning, envTokenSource, fileTokenSource, gitIgnoreStatus, hasEnvTokens, readTokenFile, writeSecretFile, writeTokenFile, type TokenFile} from './oauth.ts';
 
 const client = {clientId: 'test-client.apps.googleusercontent.com', clientSecret: 'test-secret'};
 let dir = '';
@@ -102,6 +102,23 @@ describe('secrets never go where git would track them (the repository is public)
 			rmSync(repo, {recursive: true, force: true});
 		}
 	});
+	it('warns about a client-secret JSON that git would commit, and is quiet where git ignores it', () => {
+		const repo = mkdtempSync(join(tmpdir(), 'retention-git-'));
+		try {
+			execFileSync('git', ['init', '-q'], {cwd: repo});
+			writeFileSync(join(repo, '.gitignore'), 'secrets/\n');
+			assert.match(clientSecretsWarning(join(repo, 'client_secret_9.apps.googleusercontent.com.json')) ?? '', /git would commit it/);
+			assert.equal(clientSecretsWarning(join(repo, 'secrets', 'client_secret.json')), null);
+			assert.equal(clientSecretsWarning(join(dir, 'client_secret.json')), null, 'outside any work tree');
+			// in this repository, both tool folders ignore Google's client JSON by name
+			for (const tool of ['retention', 'uploader']) {
+				const here = new URL(`../${tool}/client_secret_1.apps.googleusercontent.com.json`, import.meta.url).pathname;
+				assert.equal(gitIgnoreStatus(here), 'ignored', tool);
+			}
+		} finally {
+			rmSync(repo, {recursive: true, force: true});
+		}
+	});
 	it('outside any git work tree it writes normally', () => {
 		assert.equal(gitIgnoreStatus(join(dir, 'x', 'y.json')), 'no-repo');
 	});
@@ -111,7 +128,7 @@ describe('secrets never go where git would track them (the repository is public)
 	});
 });
 
-describe('tokens from environment variables (CI, repository secrets; shared with tools/dashboard)', () => {
+describe('tokens from environment variables (a protected CI environment; shared with tools/dashboard)', () => {
 	it('uses YT_ANALYTICS_ACCESS_TOKEN as is, or exchanges the refresh token', async () => {
 		const google = createMockGoogle();
 		assert.equal(hasEnvTokens({}), false);

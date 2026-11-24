@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync, writeFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {afterEach, beforeEach, describe, it} from 'node:test';
 import {type Deps, EXIT, main} from './cli.ts';
@@ -15,7 +17,8 @@ describe('cli', () => {
 	let approval: string;
 
 	beforeEach(() => {
-		ws = makeWorkspace();
+		// these tests schedule a publish time, which the uploader never does for a video with paid promotion
+		ws = makeWorkspace({paidPromotion: false});
 		fake = createFakeYouTube({channelId: CHANNEL_ID, playlists: {[PLAYLIST_ID]: CHANNEL_ID}});
 		out = '';
 		err = '';
@@ -37,8 +40,12 @@ describe('cli', () => {
 	});
 	const common = () => ['--channels', ws.channelsPath, '--state-dir', ws.stateDir, '--chunk-mb', '0.25'];
 	const cli = (args: string[], overrides: Partial<Deps> = {}) => main([...args, ...common()], deps(overrides));
+	/** The approval code at the end of a preview, as the owner reads it before approving without a terminal. */
+	const codeIn = (text: string): string => /Approval code: ([0-9a-f]{12})/.exec(text)?.[1] ?? '';
+	const owner = async () => 'uploader-fixture';
 	const approveNow = async (extra: string[] = []) => {
-		const code = await cli(['approve', ws.kitPath, '--publish-at', '2026-11-28 09:00', '--confirm', 'uploader-fixture', ...extra]);
+		assert.equal(await cli(['approve', ws.kitPath, '--publish-at', '2026-11-28 09:00', ...extra]), EXIT.notApproved);
+		const code = await cli(['approve', ws.kitPath, '--publish-at', '2026-11-28 09:00', '--confirm', codeIn(out), ...extra]);
 		assert.equal(code, EXIT.ok, err);
 		out = '';
 		err = '';
@@ -55,7 +62,8 @@ describe('cli', () => {
 	it('approve previews without writing anything until the owner types the slug', async () => {
 		assert.equal(await cli(['approve', ws.kitPath]), EXIT.notApproved);
 		assert.match(out, /^PREVIEW, NOT APPROVED: zoora-ai\/uploader-fixture render "long"/);
-		assert.match(err, /--confirm uploader-fixture/);
+		assert.match(out, /Destination: YouTube channel "Zoora AI \(test\)" UCzooraFakeChannel000001 \(pinned in channels\.json/);
+		assert.match(err, /--confirm with the approval code printed at the end of the preview/);
 		assert.equal(existsSync(approval), false);
 
 		assert.equal(await cli(['approve', ws.kitPath, '--confirm', 'wrong-slug']), EXIT.notApproved);
@@ -74,7 +82,41 @@ describe('cli', () => {
 		const record = JSON.parse(readFileSync(approval, 'utf8'));
 		assert.equal(record.publishAt, '2026-11-28T15:00:00.000Z');
 		assert.equal(record.approvedBy, 'owner');
+		assert.equal(record.approvedVia, 'terminal');
+		assert.deepEqual(record.summary.destination, {youtubeChannelId: CHANNEL_ID, title: 'Zoora AI (test)'});
 		assert.equal(fake.requests.length, 0);
+	});
+
+	it('--confirm takes the approval code of the preview, never the slug, and a changed plan needs a new code', async () => {
+		assert.equal(await cli(['approve', ws.kitPath]), EXIT.notApproved);
+		const code = codeIn(out);
+		assert.match(code, /^[0-9a-f]{12}$/);
+		assert.equal(await cli(['approve', ws.kitPath, '--confirm', 'uploader-fixture']), EXIT.notApproved);
+		assert.match(err, /it is the episode slug; --confirm takes the approval code/);
+		assert.equal(existsSync(approval), false);
+		// the render changes after the owner saw the preview: the old code no longer approves anything
+		const bytes = readFileSync(ws.videoPath);
+		bytes[5] ^= 1;
+		writeFileSync(ws.videoPath, bytes);
+		assert.equal(await cli(['approve', ws.kitPath, '--confirm', code]), EXIT.notApproved);
+		assert.match(err, /not the approval code printed at the end of this preview/);
+		assert.equal(existsSync(approval), false);
+		out = '';
+		assert.equal(await cli(['approve', ws.kitPath]), EXIT.notApproved);
+		assert.notEqual(codeIn(out), code);
+		assert.equal(await cli(['approve', ws.kitPath, '--confirm', codeIn(out).toUpperCase()]), EXIT.ok, err);
+		assert.equal(JSON.parse(readFileSync(approval, 'utf8')).approvedVia, 'confirm-code');
+	});
+
+	it('refuses to approve a publish time for a video with paid promotion (exit 3)', async () => {
+		const paid = makeWorkspace();
+		try {
+			assert.equal(await main(['approve', paid.kitPath, '--publish-at', '2026-11-28 09:00', '--channels', paid.channelsPath, '--state-dir', paid.stateDir], deps({cwd: paid.root})), EXIT.refused);
+			assert.match(err, /\[paid-promotion-schedule\].*Approve it without a publish time/);
+			assert.equal(existsSync(join(paid.kitDir, 'approval-long.json')), false);
+		} finally {
+			paid.cleanup();
+		}
 	});
 
 	it('plan prints exactly what would be sent once approved, and the same plan as JSON', async () => {
@@ -111,29 +153,43 @@ describe('cli', () => {
 		assert.match(out, /Nothing was sent\. Add --apply to upload\./);
 		assert.equal(fake.requests.length, 0);
 
+		// a scheduled upload needs the owner at a terminal: no terminal, no upload
+		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply']), EXIT.refused);
+		assert.match(err, /\[owner-presence-required\].*go public at 2026-11-28 09:00 CST.*Agents and scripts never run upload --apply/s);
+		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply'], {prompt: async () => 'yes'}), EXIT.notApproved);
+		assert.equal(fake.requests.length, 0);
+
 		out = '';
-		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply']), EXIT.ok, err);
+		let asked = '';
+		const ownerTypes = async (q: string) => {
+			asked = q;
+			return 'uploader-fixture';
+		};
+		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply'], {prompt: ownerTypes}), EXIT.ok, err);
+		assert.match(asked, /Type the episode slug "uploader-fixture" to start the upload/);
+		assert.match(out, /YouTube makes it PUBLIC at 2026-11-28 09:00 CST on its own/);
 		assert.match(out, /Done: https:\/\/youtu\.be\/\S+ is private, scheduled for 2026-11-28 09:00 CST\./);
 		assert.match(out, /node scripts\/publish-kit\/cli\.ts zoora-ai\/uploader-fixture --youtube-id \S+/);
 		assert.equal(fake.count('videos.insert'), 1);
 
 		const sent = fake.requests.length;
-		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply']), EXIT.refused);
+		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply'], {prompt: owner}), EXIT.refused);
 		assert.match(err, /\[already-uploaded\]/);
 		assert.equal(fake.requests.length, sent);
 
 		out = '';
 		assert.equal(await cli(['status']), EXIT.ok);
 		assert.match(out, /complete +zoora-ai\/uploader-fixture long https:\/\/youtu\.be\//);
-		assert.match(out, /502 units of 10000, 1 upload calls of 100/);
+		assert.match(out, /503 units of 10000, 1 upload calls of 100/);
 	});
 
 	it('exits 1 with a resume hint when the run stops partway, and the next run finishes', async () => {
 		await approveNow();
 		fake.quotaExceeded.add('captions.insert');
-		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply']), EXIT.failed);
+		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply'], {prompt: owner}), EXIT.failed);
 		assert.match(err, /quota is used up.*midnight Pacific Time.*run the same command again to resume/s);
 		fake.quotaExceeded.clear();
+		// the video is on YouTube: finishing its captions and playlist publishes nothing, so no second prompt is needed
 		assert.equal(await cli(['upload', ws.kitPath, '--approval', approval, '--apply']), EXIT.ok, err);
 		assert.equal(fake.count('videos.insert'), 1);
 	});
@@ -178,6 +234,28 @@ describe('cli', () => {
 			assert.match(err, /pins "zoora-ai" to UCpinnedOtherChannel0001/);
 		} finally {
 			fresh.cleanup();
+		}
+	});
+
+	it('auth warns when the client-secrets file sits where git would commit it', async () => {
+		const repo = mkdtempSync(join(tmpdir(), 'uploader-git-'));
+		try {
+			execFileSync('git', ['init', '-q'], {cwd: repo});
+			const secrets = join(repo, 'client_secret_123.apps.googleusercontent.com.json');
+			writeFileSync(secrets, JSON.stringify({installed: {client_id: 'cid.apps.googleusercontent.com', client_secret: 'shh'}}));
+			const openUrl = async (consent: string) => {
+				const url = new URL(consent);
+				fake.pkceChallenge = url.searchParams.get('code_challenge');
+				const redirect = new URL(url.searchParams.get('redirect_uri') ?? '');
+				redirect.searchParams.set('code', 'test-code');
+				redirect.searchParams.set('state', url.searchParams.get('state') ?? '');
+				setTimeout(() => void fetch(redirect).catch(() => {}), 5);
+			};
+			fake.issued.push('at-0001');
+			assert.equal(await main(['auth', '--channel', 'zoora-ai', '--client-secrets', secrets, '--channels', ws.channelsPath, '--state-dir', join(repo, 'state-outside')], deps({openUrl, cwd: repo})), EXIT.ok, err);
+			assert.match(err, /client_secret_123\.apps\.googleusercontent\.com\.json is inside a git work tree and git would commit it/);
+		} finally {
+			rmSync(repo, {recursive: true, force: true});
 		}
 	});
 

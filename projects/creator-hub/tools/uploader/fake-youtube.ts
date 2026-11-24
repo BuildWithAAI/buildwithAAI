@@ -41,6 +41,10 @@ export type FakeYouTube = {
 	captions: {id: string; videoId: string; language: string; name: string; body: Buffer}[];
 	thumbnails: {videoId: string; mimeType: string; body: Buffer}[];
 	videos: Map<string, {bytes: Buffer; metadata: Record<string, unknown>; privacyStatus: string}>;
+	/** The channel's uploads playlist id (channels.list contentDetails.relatedPlaylists.uploads). */
+	uploadsPlaylistId: string;
+	/** Videos already on the channel before the test, newest first in listings after the ones this fake received. */
+	existingUploads: {videoId: string; title: string; privacyStatus: string; publishedAt: string}[];
 	/** Answer privacy as this value after an upload (simulates YouTube not honouring "private"). */
 	reportPrivacy: string | null;
 	/** Drop snippet.defaultAudioLanguage from the answer (simulates a field YouTube does not keep). */
@@ -99,6 +103,8 @@ export const createFakeYouTube = (opts: {channelId?: string; playlists?: Record<
 		captions: [],
 		thumbnails: [],
 		videos: new Map(),
+		uploadsPlaylistId: `UU${(opts.channelId ?? 'UCzooraFakeChannel000001').slice(2)}`,
+		existingUploads: [],
 		reportPrivacy: null,
 		dropAudioLanguage: false,
 		processing: [],
@@ -168,7 +174,17 @@ export const createFakeYouTube = (opts: {channelId?: string; playlists?: Record<
 
 		switch (name) {
 			case 'channels.list':
-				return res(200, {kind: 'youtube#channelListResponse', items: [{kind: 'youtube#channel', id: fake.channel.id, snippet: {title: fake.channel.title, customUrl: fake.channel.handle}}]});
+				return res(200, {
+					kind: 'youtube#channelListResponse',
+					items: [
+						{
+							kind: 'youtube#channel',
+							id: fake.channel.id,
+							snippet: {title: fake.channel.title, customUrl: fake.channel.handle},
+							...((url.searchParams.get('part') ?? '').split(',').includes('contentDetails') ? {contentDetails: {relatedPlaylists: {likes: '', uploads: fake.uploadsPlaylistId}}} : {}),
+						},
+					],
+				});
 			case 'playlists.list': {
 				const pid = url.searchParams.get('id') ?? '';
 				const owner = fake.playlists.get(pid);
@@ -236,6 +252,19 @@ export const createFakeYouTube = (opts: {channelId?: string; playlists?: Record<
 				return res(200, {kind: 'youtube#playlistItem', id: pid, snippet: b.snippet});
 			}
 			case 'playlistItems.list': {
+				if (url.searchParams.get('playlistId') === fake.uploadsPlaylistId) {
+					// the channel's uploads, newest first (what the owner sees with OAuth, private and scheduled ones included)
+					const received = [...fake.videos.entries()].reverse().map(([videoId, v]) => ({
+						videoId,
+						title: String(((v.metadata.snippet as Record<string, unknown> | undefined) ?? {}).title ?? ''),
+						privacyStatus: v.privacyStatus,
+						publishedAt: '2026-11-24T12:00:00Z',
+					}));
+					const all = [...received, ...fake.existingUploads].slice(0, Number(url.searchParams.get('maxResults') ?? 5));
+					return res(200, {
+						items: all.map((v, i) => ({kind: 'youtube#playlistItem', id: `upl${i}`, snippet: {title: v.title, publishedAt: v.publishedAt, resourceId: {kind: 'youtube#video', videoId: v.videoId}}, status: {privacyStatus: v.privacyStatus}})),
+					});
+				}
 				const found = fake.playlistItems.filter((p) => p.playlistId === url.searchParams.get('playlistId') && p.videoId === url.searchParams.get('videoId'));
 				return res(200, {items: found.map((p) => ({id: p.id}))});
 			}

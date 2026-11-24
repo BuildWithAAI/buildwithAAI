@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {afterEach, beforeEach, describe, it} from 'node:test';
-import {type ApprovalRecord, createApproval, parseApproval, verifyApproval} from './approval.ts';
+import {type ApprovalRecord, createApproval, parseApproval, presenceReasons, UnapprovablePlanError, verifyApproval} from './approval.ts';
+import {gatherInputs} from './inputs.ts';
+import {approvalCode, buildPlan} from './plan.ts';
 import {EarlyRefusal, prepareForApproval, prepareFromApproval} from './prepare.ts';
-import {makeWorkspace, NOW, type Workspace} from './test-helpers.ts';
+import {CHANNEL_ID, makeWorkspace, NOW, type Workspace} from './test-helpers.ts';
 
 const PUBLISH = '2026-11-28T15:00:00.000Z';
 
@@ -12,7 +14,8 @@ describe('approval record', () => {
 	let ws: Workspace;
 	let approvalPath: string;
 	beforeEach(() => {
-		ws = makeWorkspace();
+		// the schedule mechanics need a video the uploader may schedule: the fixture kit without its affiliate offer
+		ws = makeWorkspace({paidPromotion: false});
 		approvalPath = join(ws.kitDir, 'approval-long.json');
 	});
 	afterEach(() => ws.cleanup());
@@ -54,6 +57,7 @@ describe('approval record', () => {
 	it('accepts a fresh approval: render hash, storyboard version and plan digest all match', async () => {
 		const record = await approve();
 		assert.equal(record.kind, 'youtube-upload-approval');
+		assert.equal(record.version, 2);
 		assert.equal(record.summary.privacyStatus, 'private');
 		assert.equal(record.summary.publishAtLocal, '2026-11-28 09:00 CST');
 		assert.equal(record.render.bytes, 716_923);
@@ -61,6 +65,24 @@ describe('approval record', () => {
 		assert.deepEqual(prepared.refusals, []);
 		assert.equal(prepared.plan.digest.sha256, record.plan.sha256);
 		assert.match(prepared.approvalSha256 ?? '', /^[0-9a-f]{64}$/);
+	});
+
+	it('names the destination channel, a single-use nonce, how it was given and the approval code', async () => {
+		const record = await approve();
+		assert.deepEqual(record.summary.destination, {youtubeChannelId: CHANNEL_ID, title: null});
+		assert.match(record.nonce, /^[0-9a-f]{32}$/);
+		assert.notEqual((await approve()).nonce, record.nonce, 'every record gets its own nonce');
+		assert.equal(record.approvedVia, 'pipeline', 'a caller that does not say how the owner approved is not "terminal"');
+		const prepared = await check();
+		assert.equal(record.summary.approvalCode, approvalCode(prepared.plan));
+		assert.equal(record.summary.approvalCode, record.plan.sha256.slice(0, 12));
+	});
+
+	it('binds the destination channel: pinning another channel after approval is refused as a change', async () => {
+		await approve();
+		const repinned = {...ws.channels, channels: {...ws.channels.channels, 'zoora-ai': {...ws.channels.channels['zoora-ai']!, youtubeChannelId: 'UCsomeOtherChannel000001'}}};
+		const prepared = await prepareFromApproval({kitPath: ws.kitPath, approvalPath, videoStudioRoot: null, channels: repinned, stateDir: ws.stateDir, nowMs: NOW, processingPolls: 20, allowSecondUpload: false});
+		assert.match(prepared.refusals.find((r) => r.code === 'metadata-changed')?.message ?? '', /destination channel/);
 	});
 
 	it('refuses when the rendered file changed after approval (SHA-256 mismatch)', async () => {
@@ -139,9 +161,23 @@ describe('approval record', () => {
 		assert.ok(verifyApproval({...record, approvedAt: '2026-11-25T12:00:00.000Z'}, plan, opts).some((r) => r.code === 'approval-from-future'));
 	});
 
-	it('parses only complete records', () => {
+	it('parses only complete records, and refuses records from the earlier format', async () => {
 		assert.equal(parseApproval([], 'x').ok, false);
-		assert.equal(parseApproval({version: 1, kind: 'youtube-upload-approval'}, 'x').ok, false);
+		assert.equal(parseApproval({version: 2, kind: 'youtube-upload-approval'}, 'x').ok, false);
+		const old = parseApproval({version: 1, kind: 'youtube-upload-approval'}, 'old.json');
+		assert.ok(!old.ok && /earlier uploader \(record version 1/.test(old.reasons[0]?.message ?? ''));
+		const record = await approve();
+		for (const broken of [{...record, nonce: 'short'}, {...record, approvedVia: 'agent'}]) {
+			const parsed = parseApproval(broken, 'x');
+			assert.ok(!parsed.ok && parsed.reasons[0]?.code === 'approval-invalid', JSON.stringify(broken).slice(0, 60));
+		}
+	});
+
+	it('says when the owner must be at a terminal for the upload: a schedule, or an approval not typed there', () => {
+		assert.deepEqual(presenceReasons({publishAt: null, approvedVia: 'terminal'}), []);
+		assert.match(presenceReasons({publishAt: '2026-11-28T15:00:00.000Z', approvedVia: 'terminal'}).join(), /go public at 2026-11-28 09:00 CST/);
+		assert.match(presenceReasons({publishAt: null, approvedVia: 'confirm-code'}).join(), /approve --confirm/);
+		assert.match(presenceReasons({publishAt: null, approvedVia: 'pipeline'}).join(), /pipeline/);
 	});
 
 	it('cannot be created while the upload would be refused anyway', async () => {
@@ -157,5 +193,50 @@ describe('approval record', () => {
 			publishAt: new Date(NOW + 10 * 60_000).toISOString(),
 		});
 		assert.deepEqual(prepared.refusals.map((r) => r.code), ['publish-time-too-soon']);
+	});
+});
+
+describe('paid promotion is never scheduled', () => {
+	let ws: Workspace;
+	let approvalPath: string;
+	beforeEach(() => {
+		ws = makeWorkspace(); // the fixture kit: an affiliate offer, so paidPromotion=true
+		approvalPath = join(ws.kitDir, 'approval-long.json');
+	});
+	afterEach(() => ws.cleanup());
+
+	const prepare = (publishAt: string | null) =>
+		prepareForApproval({kitPath: ws.kitPath, videoStudioRoot: null, channels: ws.channels, stateDir: ws.stateDir, nowMs: NOW, processingPolls: 20, allowSecondUpload: false, renderId: 'long', publishAt});
+
+	it('refuses to approve a publish time for a video with paid promotion, naming the reason and what to do', async () => {
+		const prepared = await prepare(PUBLISH);
+		const reason = prepared.refusals.find((r) => r.code === 'paid-promotion-schedule');
+		assert.ok(reason, JSON.stringify(prepared.refusals));
+		assert.match(reason.message, /affiliate offer "hardware-wallet"/);
+		assert.match(reason.message, /Approve it without a publish time.*tick Paid promotion first and schedule it there/);
+		assert.throws(() => createApproval(prepared.plan, {nowMs: NOW, approvedBy: 'owner', validDays: 7, spec: null}), UnapprovablePlanError);
+	});
+
+	it('refuses a record that schedules it anyway, even with a digest computed by the uploader itself', async () => {
+		const unscheduled = await prepare(null);
+		assert.deepEqual(unscheduled.refusals, []);
+		const inputs = await gatherInputs({kitPath: ws.kitPath, videoStudioRoot: null, channels: ws.channels, renderId: 'long'});
+		const scheduled = buildPlan(inputs, {publishAt: PUBLISH, processingPolls: 20});
+		const forged = {...createApproval(unscheduled.plan, {nowMs: NOW, approvedBy: 'owner', validDays: 7, spec: null}), publishAt: PUBLISH, plan: {sha256: scheduled.digest.sha256, parts: scheduled.digest.parts}};
+		writeFileSync(approvalPath, JSON.stringify(forged));
+		const checked = await prepareFromApproval({kitPath: ws.kitPath, approvalPath, videoStudioRoot: null, channels: ws.channels, stateDir: ws.stateDir, nowMs: NOW, processingPolls: 20, allowSecondUpload: false});
+		assert.deepEqual(checked.refusals.map((r) => r.code), ['paid-promotion-schedule']);
+		assert.equal(verifyApproval(forged, scheduled, {nowMs: NOW, minLeadMinutes: 60, maxDays: 30}).some((r) => r.code === 'paid-promotion-schedule'), true);
+	});
+
+	it('approves it private and unscheduled, with the Studio step to tick Paid promotion before publishing', async () => {
+		const prepared = await prepare(null);
+		assert.deepEqual(prepared.refusals, []);
+		const record = createApproval(prepared.plan, {nowMs: NOW, approvedBy: 'owner', validDays: 7, spec: null});
+		assert.equal(record.publishAt, null);
+		assert.equal(record.summary.paidPromotion, true);
+		assert.equal(prepared.plan.insert.body.status.publishAt, undefined);
+		assert.match(prepared.plan.studioSteps[0] ?? '', /^Paid promotion: .*tick .* FIRST .*then publish or schedule it in Studio/);
+		assert.ok(prepared.plan.studioSteps.some((s) => /stays private and unscheduled: after ticking Paid promotion/.test(s)));
 	});
 });

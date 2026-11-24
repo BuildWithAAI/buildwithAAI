@@ -21,6 +21,7 @@ import {
 	listCategories,
 	playlistCheck,
 	processingStatus,
+	recentUploads,
 	type RequestSpec,
 	setThumbnail,
 } from './requests.ts';
@@ -39,13 +40,17 @@ export type ApiDeps = {
 	maxRetries?: number;
 };
 
+export type RecentUpload = {videoId: string; title: string; publishedAt: string | null; privacyStatus: string | null};
+
 export type Api = {
 	/** One authorized request: no quota, no retries. Throws NetworkError when no HTTP answer arrives. */
 	raw(request: RequestSpec, timeoutMs: number): Promise<HttpResponse>;
 	/** An API method call: quota per attempt, one token refresh on 401, retries when `retry` is set. */
 	call(request: RequestSpec, opts: {retry: boolean; timeoutMs?: number}): Promise<HttpResponse>;
 	refresh(): Promise<void>;
-	myChannel(): Promise<{id: string; title: string; handle: string | null}>;
+	myChannel(): Promise<{id: string; title: string; handle: string | null; uploadsPlaylistId: string | null}>;
+	/** The channel's most recent uploads (newest first, up to 50), with their privacy as the playlist item reports it. */
+	recentUploads(uploadsPlaylistId: string): Promise<RecentUpload[]>;
 	playlist(playlistId: string): Promise<{channelId: string; title: string} | null>;
 	setThumbnail(videoId: string, mimeType: string, content: Buffer): Promise<void>;
 	insertCaption(videoId: string, language: string, name: string, content: Buffer): Promise<{captionId: string | null; existed: boolean}>;
@@ -145,7 +150,19 @@ export const createApi = (deps: ApiDeps): Api => {
 			const item = items(json(await call(channelCheck(ep), {retry: true})))[0];
 			const snippet = item && isRecord(item.snippet) ? item.snippet : null;
 			if (!item || !str(item.id) || !snippet) throw new ApiError('channels.list', 404, 'noChannel', 'This Google account has no YouTube channel.');
-			return {id: String(item.id), title: str(snippet.title) ?? '', handle: str(snippet.customUrl)};
+			const related = isRecord(item.contentDetails) && isRecord(item.contentDetails.relatedPlaylists) ? item.contentDetails.relatedPlaylists : {};
+			return {id: String(item.id), title: str(snippet.title) ?? '', handle: str(snippet.customUrl), uploadsPlaylistId: str(related.uploads)};
+		},
+
+		async recentUploads(uploadsPlaylistId) {
+			return items(json(await call(recentUploads(ep, uploadsPlaylistId), {retry: true}))).flatMap((item) => {
+				const snippet = isRecord(item.snippet) ? item.snippet : null;
+				const resource = snippet && isRecord(snippet.resourceId) ? snippet.resourceId : null;
+				const videoId = resource ? str(resource.videoId) : null;
+				if (!snippet || !videoId) return [];
+				const status = isRecord(item.status) ? item.status : {};
+				return [{videoId, title: str(snippet.title) ?? '', publishedAt: str(snippet.publishedAt), privacyStatus: str(status.privacyStatus)}];
+			});
 		},
 
 		async playlist(playlistId) {

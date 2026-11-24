@@ -96,6 +96,19 @@ const prepare = (record: PullRecord, options: AnalyzeOptions): Prepared => {
 	};
 };
 
+/**
+ * Sampling noise of a scene's loss, in percentage points of the video's views per 10 s (RULES.noiseSe): with n
+ * playbacks, n * entry viewers are present, and the number who leave over the span at `ratePer10s` (% of those
+ * watching per 10 s) is binomial. Null when the sample or the span is unknown.
+ */
+export const lossNoisePpPer10s = (n: number | null, entry: number, ratePer10s: number, spanMs: number | null): number | null => {
+	if (n === null || !(n > 0) || spanMs === null || !(spanMs > 0)) return null;
+	const spanSec = spanMs / 1000;
+	const q = 1 - Math.exp((-Math.max(0, ratePer10s) * spanSec) / 1000);
+	const present = Math.max(0, Math.min(1, entry));
+	return 100 * Math.sqrt((present * q * (1 - q)) / n) * (10 / spanSec);
+};
+
 /** Where a video's content ends: the start of its end screen, or its full length. */
 const contentEndMs = (p: Prepared): number => {
 	const scenes = p.record.join.scenes;
@@ -174,6 +187,7 @@ const sceneMetrics = (p: Prepared, baseline: Baseline | null): SceneMetrics[] =>
 		const wLast = resolved ? dense.watch[kLast]! : 0;
 		const lossRate =
 			resolved && wFirst > LOSS_FLOOR && wLast > LOSS_FLOOR ? (-1000 * Math.log(wLast / wFirst)) / (((kLast - kFirst) * p.analysis.bucketMs) / 1000) : null;
+		const lossSpanMs = lossRate !== null ? (kLast - kFirst) * p.analysis.bucketMs : null;
 		return {
 			id: sc.id,
 			index: sc.index,
@@ -197,6 +211,7 @@ const sceneMetrics = (p: Prepared, baseline: Baseline | null): SceneMetrics[] =>
 			rrpDelta: rrpEntry !== null && rrpExit !== null ? rrpExit - rrpEntry : null,
 			stopShare: stopped !== null && totalStopped ? stopped / totalStopped : null,
 			lossRate,
+			lossSpanMs,
 			eligible: resolved && lossRate !== null && sc.index > 0 && sc.type !== 'endscreen' && sc.type !== 'unknown',
 			model: null,
 			typical: typ,
@@ -278,7 +293,13 @@ const applySceneModels = (analyses: VideoAnalysis[]): SceneModelResult[] => {
 				const expected = model.expected.get(`${v.videoId}|${s.id}`);
 				if (expected === undefined || s.lossRate === null) continue;
 				const excess = s.lossRate - expected;
-				s.model = {expectedRate: expected, excessRate: excess, excessPpPer10s: (excess / 100) * ((s.entry + s.exit) / 2) * 100};
+				s.model = {
+					expectedRate: expected,
+					excessRate: excess,
+					excessPpPer10s: (excess / 100) * ((s.entry + s.exit) / 2) * 100,
+					// the larger of the expected and the seen loss: a conservative noise floor for listing this scene
+					sePpPer10s: lossNoisePpPer10s(v.sample.used, s.entry, Math.max(expected, s.lossRate), s.lossSpanMs),
+				};
 				v.inSceneModel = true;
 			}
 		}

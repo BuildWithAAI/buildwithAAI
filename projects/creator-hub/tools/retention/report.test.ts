@@ -3,7 +3,7 @@ import {describe, it} from 'node:test';
 import {aggregate} from './aggregate.ts';
 import {analyzeRecords} from './analyze.ts';
 import {recommend} from './recommend.ts';
-import {buildReportJson, DISCLOSURE, renderReportMarkdown, SOURCES, type ReportInput} from './report.ts';
+import {buildReportJson, dropScore, dropsWithinNoise, DISCLOSURE, renderReportMarkdown, rewatchSpots, SOURCES, topDrops, type ReportInput} from './report.ts';
 import {RULES} from './rules.ts';
 import {demoUploads, nullUploads, synthRecord} from './synth.ts';
 import type {PullRecord} from './types.ts';
@@ -40,6 +40,14 @@ describe('recommendations', () => {
 		const hook = input.recommendations.find((r) => r.comparisonId.startsWith('hook-short'))!;
 		assert.deepEqual(hook.suggestedRule, {kind: 'hook-length-cap', appliesTo: {format: 'long', type: 'hook'}, maxSec: 3, note: 'opening scene at most this long'});
 	});
+	it('the hook recommendation leads with the within-channel effect; its relative figure restates that effect', () => {
+		const hook = input.recommendations.find((r) => r.comparisonId.startsWith('hook-short'))!;
+		assert.match(hook.evidence, /^Within each channel, episodes whose opening scene is under 3 s kept 3\.7 pp more of their viewers at 0:30/);
+		assert.match(hook.evidence, /about \+5% relative to the 73\.3% that longer openings kept \(95% CI \+2% to \+9%\)/);
+		assert.match(hook.evidence, /The raw averages, which mix the channels, were 81\.1% vs 73\.3%/);
+		assert.doesNotMatch(hook.evidence, /\+11% relative/, 'the channel-mixed ratio is never the headline');
+		assert.ok(Math.abs(hook.numbers.relative! - hook.numbers.estimate / 73.3) < 0.002);
+	});
 	it('never promises views or income', () => {
 		const text = input.recommendations.map((r) => `${r.title} ${r.action} ${r.evidence}`).join(' ');
 		assert.doesNotMatch(text, /\b(guarantee|will (get|earn|grow)|revenue|income|\$)/i);
@@ -59,6 +67,13 @@ describe('report.md', () => {
 	});
 	it('names where viewers left, scene by scene', () => {
 		assert.match(md, /\| s04 · BadgerRedFlag · talk "Badger's Red Flag" \| \d:\d{2}\.\d-\d:\d{2}\.\d \| \d+\.\d% → \d+\.\d% \|/);
+		assert.match(md, /\| Scene \| Time \| Retention in → out \(YouTube\) \| Lost per 10 s \| More than expected, per 10 s \| Sampling noise \(2 SE\) \| Playbacks ended here \|/);
+	});
+	it('names a scene only above sampling noise for the playback count, and counts the rest as within noise', () => {
+		const section = md.split('### zoora-security/synthetic-show-01 · en · long-form')[1]!.split('### ')[0]!;
+		assert.match(section, /\| s04 · BadgerRedFlag/);
+		assert.doesNotMatch(section, /\| s06 · Desk/, 'the +0.9 pp Desk scene is within noise at 3,217 playbacks');
+		assert.match(section, /other scenes? lost more than expected but within sampling noise for 3,217 playbacks/);
 	});
 	it('has per-channel template tables, the Badger line, opening and language sections', () => {
 		assert.match(md, /## Templates: zoora-ai \(long-form\)/);
@@ -99,5 +114,41 @@ describe('report.json', () => {
 	});
 	it('round-trips through JSON', () => {
 		assert.deepEqual(JSON.parse(JSON.stringify(json)).summary, json.summary);
+	});
+});
+
+describe('sampling noise', () => {
+	const NOW_ = new Date('2026-11-24T12:00:00Z');
+	const analyses = (views: number) => {
+		const ups = demoUploads().map((u) => (u.videoId === 'SYNsh000001' ? {...u, views} : u));
+		return analyzeRecords(ups.map(synthRecord), {now: NOW_}).analyses.find((a) => a.videoId === 'SYNsh000001')!;
+	};
+	it('every named drop is beyond 2 standard errors, every scene left out is not', () => {
+		for (const views of [120, 3217, 200_000]) {
+			const v = analyses(views);
+			for (const s of topDrops(v)) {
+				const d = dropScore(v, s, true);
+				assert.ok(d.score! > RULES.noiseSe * d.se!, `${views}: ${s.id} ${d.score} vs ${d.se}`);
+			}
+			for (const d of dropsWithinNoise(v)) assert.ok(d.se === null || d.score <= RULES.noiseSe * d.se, `${views}: ${d.s.id}`);
+		}
+	});
+	it('the noise shrinks with the square root of the playback count', () => {
+		const small = analyses(100).scenes.find((s) => s.id === 's04')!.model!.sePpPer10s!;
+		const large = analyses(10_000).scenes.find((s) => s.id === 's04')!.model!.sePpPer10s!;
+		assert.ok(small / large > 6 && small / large < 14, `${small} / ${large}`);
+	});
+	it('a small upload names fewer drops than the same upload with many playbacks', () => {
+		assert.ok(topDrops(analyses(100)).length <= topDrops(analyses(200_000)).length);
+	});
+	it('a rewatch spot needs a rise beyond Poisson noise, which shrinks with playbacks', () => {
+		const v = analyses(3217);
+		const rise = (n: number, dropPp: number) => {
+			const scene = {...v.scenes[2]!, resolved: true, dropPp, entry: 0.6, exit: 0.6 - dropPp / 100};
+			return rewatchSpots({...v, sample: {...v.sample, used: n}, scenes: [scene]}).length;
+		};
+		assert.equal(rise(100, -1.5), 0, 'at 100 playbacks a 1.5 pp rise is noise (SE about 11 pp)');
+		assert.equal(rise(1_000_000, -1.5), 1, 'at a million playbacks it is a rewatch spot');
+		assert.equal(rise(1_000_000, -0.5), 0, 'and never below the 1 pp minimum');
 	});
 });
