@@ -138,15 +138,17 @@ const SHOE: Pt[] = [
 	[40, -32.6], [48, -30.8], [56, -29.4], [62, -27.8], [66.4, -25.6], [70, -22], [72.6, -16.8], [73.8, -10.8], [73.4, -5.4],
 	[70.4, -1.75], [0, -1.75], [-66, -1.75], [-71.4, -6], [-72.4, -22], [-71.6, -34],
 ];
-const SHOE_SOLE: Pt[] = [[-76, -11], [0, -10.4], [76, -11.2], [76, 2], [-76, 2]];
-const SHOE_SHADOW: Pt[] = [[-76, -44], [-58, -44], [-56, -26], [-60, -11], [-76, -11]];
+const SHOE_SOLE: Pt[] = [[-76, -12.4], [0, -11.8], [76, -12.6], [76, 2], [-76, 2]];
+/** Line art in the soft sneakerLine grey (repair round 4, ZOO-C7: the sheet's shoe lines are mid-grey, not near-black): the
+ * midsole, three lace crossings on the instep, the toe-cap seam and the heel-counter seam. No shadow band (round 4: the
+ * sheet's uppers are flat off-white). */
 const SHOE_LINES: Pt[][] = [
-	[[-71.4, -10.8], [0, -10.2], [72, -11]],
-	[[8, -49], [14, -45.4]],
-	[[14, -43.6], [21, -40]],
-	[[21, -39], [28, -35.4]],
-	[[44, -24], [58, -22.6], [67.6, -22.2]],
-	[[-70, -34], [-58, -31], [-52, -22]],
+	[[-71.4, -12.2], [0, -11.6], [72, -12.4]], // midsole
+	[[3, -47.6], [7.4, -45.2]], // four lace dashes down the instep (zoo_turn_side.png)
+	[[10, -43.4], [14.4, -41]],
+	[[17, -39.2], [21.4, -36.8]],
+	[[24, -35], [28.4, -32.8]],
+	[[31, -31.6], [29, -24], [27, -17], [26.2, -12.4]], // the toe cap's rear seam (round 3: a horizontal toe line and a heel line the sheet does not draw)
 ];
 
 export const LegSide: React.FC = () => {
@@ -156,13 +158,12 @@ export const LegSide: React.FC = () => {
 			<g data-part="shoeR">
 				<path d={shoe} fill={ZOO_COLORS.sneaker} />
 				<Clipped clip={shoe}>
-					<path d={smooth(SHOE_SHADOW)} fill={ZOO_COLORS.sneakerShadow} />
 					<path d={smooth(SHOE_SOLE)} fill={ZOO_COLORS.sneakerSole} />
+					{SHOE_LINES.map((l, i) => (
+						<Stroke key={i} d={line(l)} width={i === 0 ? ZOO_LINE.detail * 1.15 : ZOO_LINE.detail * 0.9} color={ZOO_COLORS.sneakerLine} />
+					))}
 				</Clipped>
 				<Outline d={shoe} />
-				{SHOE_LINES.map((l, i) => (
-					<Stroke key={i} d={line(l)} width={i === 0 ? ZOO_LINE.detail : ZOO_LINE.fine} />
-				))}
 			</g>
 			<Shape name="legR" d={smooth(LEG)} fill={ZOO_COLORS.trousers} shadow={{d: LEG_SHADOW, fill: ZOO_COLORS.trousersShadow}} />
 			<Stroke d={LEG_CREASE} width={ZOO_LINE.fine} color={ZOO_COLORS.trousersShadow} />

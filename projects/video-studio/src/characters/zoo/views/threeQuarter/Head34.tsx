@@ -289,7 +289,8 @@ export const Head34: React.FC<Head34Props> = ({expression, mouth, blink, browLif
 	const spec = EXPRESSIONS[expression];
 	const shape = mouth ?? spec.mouth;
 	const mod = mouth ? explicitMod(spec.mod) : spec.mod;
-	const {hole, jaw} = mouthDrops(shape, mod);
+	const mouthSpec = mouth ? undefined : spec.mouthSpec;
+	const {hole, jaw} = mouthDrops(shape, mod, mouthSpec);
 	const {liftL, liftR} = browLifts(browLift);
 	const ls = useLineScale();
 	// The near brow's inner end and the far brow's inner end flank the forelock (x 22..38): lift it clear of both.
@@ -301,7 +302,7 @@ export const Head34: React.FC<Head34Props> = ({expression, mouth, blink, browLif
 			<HairBack34 />
 			<Ear34 />
 			<Shape name="face" d={face34Path(jaw)} fill={ZOO_COLORS.skin} shadow={{d: FACE_SHADOW, fill: ZOO_COLORS.skinShadow}} stroke={0} />
-			<Mouth shape={shape} mod={mod} project={tqMouth} />
+			<Mouth shape={shape} mod={mod} project={tqMouth} spec={mouthSpec} />
 			<Beard34 hole={hole} jawDrop={jaw} />
 			<Moustache34 liftR={mod.moustacheLiftR} />
 			<path data-part="jawOutline" d={jaw34Outline(jaw)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />

@@ -82,7 +82,12 @@ sp.part('farSide', [(190, 250, 'c'), (204, 252)] + cut(nfl, ymin=255) + [(214, 3
         [], [P('far_hind')], color='coatShadow')
 back = P('back')
 chest_up = cut(chest, ymax=270)
-sp.part('torso', [(203, 124, 'c')] + back + [(128, 352), (152, 346), (172, 330), (184, 300), (186, 280), (191, 258), (204, 248), (226, 256), (240, 282)]
+# Round-4 repair (sliced spots): the torso fill's lower front corner (it was (240, 282)) reached down over the FAR foreleg,
+# drawn before the torso, so the far forearm's edge mark (L-09 here, R-08 on the left-facing body) was cut along that
+# unstroked edge (23-30% of it hidden, a flat top). The corner now sits at (241, 266), just under the end of the torso's
+# chest stroke (y 268): the far leg's own fill and its chest-line stroke carry the outline below it, as before, and the
+# near leg (drawn after the torso) still covers its side of the corner.
+sp.part('torso', [(203, 124, 'c')] + back + [(128, 352), (152, 346), (172, 330), (184, 300), (186, 280), (191, 258), (204, 248), (226, 256), (241, 266)]
         + rev(chest_up) + [(240, 138, 'c')], [back, chest_up], group='torso')
 sp.part('haunch', hn + [(132, 352), (112, 338), (110, 300), (124, 274)], [hn])
 hp = P('hpaw')
@@ -115,7 +120,10 @@ sp.pivot('neck', 236, 132)
 sp.pivot('tagAnchor', 253, 142)
 sp.pivot('breath', 200, 200)
 sp.pivot('headCentroid', 255.0, 61.2)   # eyes+nose centroid of the sheet's sitting head (3/4 head is mounted on it)
-sp.spot('R-01', 'right', 'torso', (128, 262, 17.2 * K, 10.8 * K, -62), 'croup spot R-01 (the croup tilts down when sitting)')
+# Round-4 repair (R3 review minor, sliced spots): R-01 sat 10% under the haunch fill (drawn over the torso), so its lower
+# corner was cut off along the haunch's UNSTROKED top edge. It now sits where badger_pose_sitting.png draws the croup spot
+# (moments of its dark component: centre (136.1, 241.8), long axis -66 deg), fully above the thigh (dev check: 0% covered).
+sp.spot('R-01', 'right', 'torso', (136.1, 241.8, 17.2 * K, 10.8 * K, -66), 'croup spot R-01 (where the sitting panel draws it, clear of the thigh)')
 sp.spot('R-02', 'right', 'torso', (161, 214, 15.8 * K, 8.8 * K, -58), 'mid-back spot R-02 (the sheet draws the left withers patch here; coat maps control)')
 sp.spot('R-03', 'right', 'torso', (166, 246, 9.9 * K, 8.3 * K, -40), 'mid-flank spot R-03')
 sp.spot('R-04', 'right', 'torso', (197.1, 196.5, 10.8 * K, 7.4 * K, -84.5), 'right shoulder spot R-04')
@@ -124,7 +132,11 @@ sp.spot('L-WITHERS', 'left', 'torso', [(190, 134, 'c'), (188, 148), (187, 160), 
                                        (146, 204), (158, 180), (172, 160), (182, 140)],
         'withers patch L-WITHERS along the sloping back (traced from badger_pose_sitting.png; the tilted back shows its dorsal surface, decision BADGER-D16)')
 sp.spot('M-CHEST', 'midline', 'torso', (261.9, 184.5, 7.8, 4.2, 86.7), 'midline chest spot, turned with the chest')
-sp.spot('L-09', 'left', 'legFrontFar', (263.0, 272.1, 8.4, 4.4, -85.4), 'left forearm L-09 on the far front leg (edge)')
+# Round-4 repair (sliced spots): the far forearm's own fill and its chest-line stroke only start at y 268 (chest_lo; above
+# it the far leg runs on behind the brisket, under the torso), so the panel-traced mark at y 272.1 was cut flat along the
+# unstroked top of the far leg's fill (20% of it hidden). It now sits just below that: its top 1 px under y 268.
+SIT_FAR_VISIBLE_TOP = 268.0
+sp.spot('L-09', 'left', 'legFrontFar', (263.4, SIT_FAR_VISIBLE_TOP + 8.4 + 1.0, 8.4, 4.4, -85.4), 'left forearm L-09 on the far front leg (edge)')
 sp.spot('R-06', 'right', 'haunch', (171, 298, 11.6 * K, 7.2 * K, -69), 'front of the right thigh R-06 (on the folded haunch)')
 sp.spot('R-07', 'right', 'haunch', (122, 329, 11.1 * K, 6.1 * K, -80), 'right gaskin R-07, low on the folded haunch above the hock')
 sp.spot('R-08', 'right', 'legFrontNear', (226.1, 270.6, 10.1, 5.7, 86.7), 'right forearm R-08')
@@ -184,7 +196,9 @@ lp.pivot('neck', 340, 125)
 lp.pivot('tagAnchor', 366, 141)
 lp.pivot('breath', 240, 125)
 lp.pivot('headCentroid', 377.7, 44.0)   # eyes+nose centroid of the sheet's lying head
-lp.spot('R-01', 'right', 'torso', (118, 152, 17.2 * K, 10.8 * K, -55), 'croup spot R-01 (top of the rump, above the folded haunch)')
+# Round-4 repair (sliced spots): 2.5% of R-01 lay under the haunch fill's unstroked top edge (a straight cut); moved 4 px
+# up the rump so it clears the thigh.
+lp.spot('R-01', 'right', 'torso', (116, 148, 17.2 * K, 10.8 * K, -55), 'croup spot R-01 (top of the rump, above the folded haunch)')
 lp.spot('R-02', 'right', 'torso', (196.4, 134.4, 15.8 * K, 8.8 * K, -2.6), 'mid-back spot R-02')
 lp.spot('R-03', 'right', 'torso', (215.0, 172.1, 9.9 * K, 8.3 * K, -70), 'mid-flank spot R-03')
 lp.spot('R-04', 'right', 'torso', (285.8, 182.2, 10.8 * K, 7.4 * K, -68.6), 'right shoulder spot R-04')
@@ -238,38 +252,34 @@ sl = MirroredPose(sp, 'sitLeft')
 sl.spot('L-WITHERS', 'left', 'torso', [(190, 133, 'c'), (198, 156), (198, 173), (191, 186), (178, 197), (157, 204, 'c'), (148, 200), (170, 160), (185, 135)],
         'the large LEFT withers patch on the near side, along the sloping back at the withers (coat_left)')
 sl.spot('L-01', 'left', 'torso', (155, 227, 13, 7.2, -50), 'mid back behind the withers patch')
-sl.spot('L-02', 'left', 'torso', (128, 262, 10.5, 14, -70), 'croup / top of the rump')
+# Round-4 repair (R3 review minor, sliced spots): L-02 and L-04 lay 12% and 62% under the haunch fill (drawn over the
+# torso): L-02 was cut along the haunch's unstroked top edge and L-04 showed only as a cap above the thigh line. Each now
+# sits fully on the torso, and takes coat_left's OWN shape: its size and its tilt on badger_coat_left.png, turned by how
+# much the sit turns that body region (the sitting panel's croup spot against coat_right's R-01: -22.4 deg; the flank:
+# the sit's R-03 against coat_right's R-03, -22.2 deg). L-02: the croup, 3 px toward the tail from where the panel draws
+# the croup spot (coat_left puts the left spots a little further back); coat_left tilt -28 deg (long axis 14 px) ->
+# 118 deg mirrored + -22.4 = 95.6 deg.
+sl.spot('L-02', 'left', 'torso', (135.0, 244.6, 14, 10.5, 95.6), 'croup / top of the rump (clear of the thigh)')
 sl.spot('L-03', 'left', 'torso', (194, 204, 10, 11.5, -60), 'shoulder blade')
-sl.spot('L-04', 'left', 'torso', (160, 258, 10, 8, -45), 'mid flank')
+# L-04: the mid flank just above the thigh line (2 px clear of its stroke), 6 px further back than the sit's R-03;
+# coat_left tilt -8 deg (long axis 10 px) -> 8 deg mirrored + -22.2 = -14.2 deg.
+sl.spot('L-04', 'left', 'torso', (160, 245, 10, 8, -14.2), 'mid flank, above the thigh line')
 sl.spot('L-05', 'left', 'torso', (183, 242, 8.5, 5.5, -50), 'lower ribs above the brisket line')
 sl.spot('M-CHEST', 'midline', 'torso', (261.9, 184.5, 7.8, 4.2, 86.7), 'midline chest spot, turned with the chest', size_k=1.0)
 sl.spot('L-06', 'left', 'haunch', (171, 298, 7.5, 11.5, -60), 'front of the left thigh (on the folded haunch)')
 sl.spot('L-07', 'left', 'haunch', (125, 300, 5, 9.2, -40), 'back of the left thigh (rear of the folded haunch)')
 sl.spot('L-08', 'left', 'haunch', (124, 331, 4.6, 6, -70), 'left gaskin, low on the folded haunch above the hock')
-sl.spot('L-09', 'left', 'legFrontNear', (226.1, 270.6, 7.6, 12.2, -3), 'forearm of the near (left) front leg')
-# Round-3 repair (R2 final review, major): R-08 on the far (anatomical RIGHT) forearm is authored from badger_coat_right.png's
-# OWN R-08. v1/round 2 placed it with the right-facing sit's L-09 record, which made it an exact x-mirror of L-09 (a flipped
-# marking). Every number below comes from coat_right or from this sit's own far-leg geometry, never from an L- record:
-#  * height: on coat_right R-08's centre (y 313.8) sits 35.2% of the way down the right forearm, from the elbow tip (y 268,
-#    top of the leg's rear contour, row scan) to the wrist cut (FRONT_WRIST y 398). On the sit panel the far forearm runs
-#    from its elbow crease (y 238, the diagonal crease between the legs) to the wrist above the paw (y 338);
-#  * size: coat_right's own semi-axes (12.2 along the forearm, 8.0 across, CR px) scaled to the sit panel (K_SIT); the
-#    across-leg axis is foreshortened to 0.70 because only the far leg's outer edge shows (the sit panel draws its far
-#    forearm mark about 4.5 px wide against a 6.2-6.5 px half-width);
-#  * tilt: coat_right's own tilt against the forearm axis (-1.5 deg; that forearm is vertical), on this far leg's own axis;
-#  * place: centred on the far leg's front edge (the outline of the mirrored, unmarked silhouette), so the leg clip shows
-#    the half of the spot that wraps round that edge.
-# The test src/characters/badger/tests/spotsNoMirror.test.ts fails if any record is an x-mirror of another.
-K_SIT = 0.97 / 1.196
-CR_R08 = (408.0, 313.8, 12.2, 8.0, 88.5)          # gen_right.py R-08 (CR px)
-CR_ELBOW_Y, CR_WRIST_Y = 268.0, 398.0
-SIT_FAR_ELBOW_Y, SIT_FAR_WRIST_Y = 238.0, 338.0
-EDGE_K = 0.70
-SIT_FAR_EDGE = [tuple(p) for p in load('sit.json')['chest']]   # far leg's front edge (right-facing panel px)
+# Round-4 repair (R3 review minor): every forearm record of the left-facing bodies is placed from ITS OWN coat map
+# (dev/trace/coatmaps.py, measured on badger_coat_left.png / badger_coat_right.png): how far down the forearm (elbow tip ->
+# wrist cut), how far across from the front contour, the map's own size and its own tilt. Round 3 had placed L-09 at the
+# right sit's / right lie's R-08 centre (0.6 / 0.8 units from an x-mirror of R-08); now nothing here is placed from a
+# right-side record. Positions are written in the right-facing panel's px (where the anatomy was located, front = +x,
+# back = -x) and placed on the left-facing body (x -> -x, which keeps front as front and back as back).
+from coatmaps import along as _along, across_from_front as _across, size_units as _size_units, tilt_back as _tilt_back, EDGE_K
 
 
 def _edge_at(line, y):
-    """x and the line's direction (deg, y down) where the traced edge crosses height y."""
+    """x where a traced edge (points top -> bottom) crosses height y."""
     for a, b in zip(line, line[1:]):
         if (a[1] - y) * (b[1] - y) <= 0 and a[1] != b[1]:
             t = (y - a[1]) / (b[1] - a[1])
@@ -277,18 +287,56 @@ def _edge_at(line, y):
     raise ValueError('edge does not reach y=%s' % y)
 
 
-_u08 = (CR_R08[1] - CR_ELBOW_Y) / (CR_WRIST_Y - CR_ELBOW_Y)
-_y08 = SIT_FAR_ELBOW_Y + _u08 * (SIT_FAR_WRIST_Y - SIT_FAR_ELBOW_Y)
-_x08 = _edge_at(SIT_FAR_EDGE, _y08)
-_ya, _yb = _y08 - 12.0, _y08 + 12.0
-_leg_axis = math.degrees(math.atan2(_yb - _ya, _edge_at(SIT_FAR_EDGE, _yb) - _edge_at(SIT_FAR_EDGE, _ya)))
-_tilt08 = CR_R08[4] - 90.0
-# the shape is given in the right-facing panel's px and placed on the left-facing body (x -> -x maps an angle a to 180 - a):
-# the long axis lies on the left-facing far leg's axis (180 - _leg_axis) turned by coat_right's tilt
-_rot08 = 180.0 - ((180.0 - _leg_axis) + _tilt08)
-sl.spot('R-08', 'right', 'legFrontFar', (round(_x08, 2), round(_y08, 2), round(CR_R08[2] * K_SIT, 2), round(CR_R08[3] * K_SIT * EDGE_K, 2),
-                                         round(_rot08, 1)),
-        'right forearm R-08 on the far front leg (its outer edge), authored from badger_coat_right.png R-08', size_k=1.0,
+def _edge_at_x(line, x):
+    """y where a traced edge (points left -> right) crosses x."""
+    for a, b in zip(line, line[1:]):
+        if (a[0] - x) * (b[0] - x) <= 0 and a[0] != b[0]:
+            t = (x - a[0]) / (b[0] - a[0])
+            return a[1] + (b[1] - a[1]) * t
+    raise ValueError('edge does not reach x=%s' % x)
+
+
+def _axis_deg(p, q):
+    """Angle (deg, y down) of the direction p -> q (proximal -> distal along a forearm)."""
+    return math.degrees(math.atan2(q[1] - p[1], q[0] - p[0]))
+
+
+# blob(cx, cy, rx, ry, rot): rx lies along the direction rot. Forearm records put rx along the forearm (rot = the forearm
+# axis pointing from the elbow to the wrist) and lean the proximal end toward the BACK (-x in these right-facing panel px)
+# by the map's own tilt, which subtracts it from the axis angle.
+K_SIT = 0.97 / 1.196
+_SIT = load('sit.json')
+SIT_NEAR_BACK = [tuple(p[:2]) for p in _SIT['nf_left']]    # near forearm's rear contour (right-facing panel: back = -x)
+SIT_NEAR_FRONT = [tuple(p[:2]) for p in _SIT['nf_right']]  # near forearm's front contour
+# near forearm of the sit panel: the rear contour reaches its rearmost point (the elbow) at y 236 and both contours kink out
+# above the paw (the wrist) at y 338; the far forearm runs from its elbow crease (y 238, the diagonal crease between the
+# legs) to the wrist above the paw (y 338)
+SIT_NEAR_ELBOW_Y, SIT_NEAR_WRIST_Y = 236.0, 338.0
+SIT_FAR_ELBOW_Y, SIT_FAR_WRIST_Y = 238.0, 338.0
+SIT_FAR_EDGE = [tuple(p[:2]) for p in _SIT['chest']]   # far leg's front edge (right-facing panel px)
+
+# L-09 on the near (anatomical LEFT) forearm: coat_left's own place on its forearm (37.2% down, 38.5% across from the front)
+_y = SIT_NEAR_ELBOW_Y + _along('L-09') * (SIT_NEAR_WRIST_Y - SIT_NEAR_ELBOW_Y)
+_xf, _xb = _edge_at(SIT_NEAR_FRONT, _y), _edge_at(SIT_NEAR_BACK, _y)
+_x = _xf - _across('L-09') * (_xf - _xb)
+_mid = lambda yy: ((_edge_at(SIT_NEAR_FRONT, yy) + _edge_at(SIT_NEAR_BACK, yy)) / 2, yy)
+_rot = _axis_deg(_mid(_y - 14), _mid(_y + 14)) - _tilt_back('L-09')
+_ac, _al = _size_units('L-09')
+sl.spot('L-09', 'left', 'legFrontNear', (round(_x, 2), round(_y, 2), round(_al / 0.97, 2), round(_ac / 0.97, 2), round(_rot, 1)),
+        'forearm of the near (left) front leg, placed from badger_coat_left.png L-09', ref=('badger_coat_left.png', 209, 314))
+
+# R-08 on the far (anatomical RIGHT) forearm: badger_coat_right.png's own R-08 (35.7% down that forearm), coat_right's own
+# size with the across-leg axis foreshortened to EDGE_K (only the far leg's outer edge shows: the sit panel draws its far
+# forearm mark about 4.5 px wide against a 6.2-6.5 px half-width), its own tilt on this far leg's axis, centred on the far
+# leg's front edge (the outline of the mirrored, unmarked silhouette) so the leg clip shows the half that wraps round it.
+_ac, _al = _size_units('R-08', edge=True)
+# the far forearm's visible edge starts at y 268 (SIT_FAR_VISIBLE_TOP, above it the leg is behind the brisket): if the map's
+# place would put the top of the mark above that, it moves down just far enough to show whole (no flat cut)
+_y = max(SIT_FAR_ELBOW_Y + _along('R-08') * (SIT_FAR_WRIST_Y - SIT_FAR_ELBOW_Y), SIT_FAR_VISIBLE_TOP + _al / 0.97 * K_SIT + 1.0)
+_x = _edge_at(SIT_FAR_EDGE, _y)
+_rot = _axis_deg((_edge_at(SIT_FAR_EDGE, _y - 12), _y - 12), (_edge_at(SIT_FAR_EDGE, _y + 12), _y + 12)) - _tilt_back('R-08')
+sl.spot('R-08', 'right', 'legFrontFar', (round(_x, 2), round(_y, 2), round(_al / 0.97, 2), round(_ac / 0.97, 2), round(_rot, 1)),
+        'right forearm R-08 on the far front leg (its outer edge), authored from badger_coat_right.png R-08',
         ref=('badger_coat_right.png', 408, 314))
 sl.spot('L-NECK', 'left', 'neck', (208, 110, 4.6, 7.4, -20), 'side of the neck below the dark left ear, above the collar')
 
@@ -297,14 +345,39 @@ KLL = 0.97 / 1.124
 ll.spot('L-WITHERS', 'left', 'torso', [(212, 113, 'c'), (218, 130), (230, 145), (250, 153), (270, 149), (284, 136), (290, 116, 'c'), (250, 108)],
         'the large LEFT withers patch on the near side, high on the back at the withers (coat_left)', size_k=KLL)
 ll.spot('L-01', 'left', 'torso', (169, 136, 13, 7.2, -4), 'mid back behind the withers patch', size_k=KLL)
-ll.spot('L-02', 'left', 'torso', (118, 152, 10.5, 14, -40), 'croup / top of the rump, above the folded haunch', size_k=KLL)
+# Round-4 repair (sliced spots): L-02 lay 9% under the haunch fill's unstroked top edge (a straight cut, like the right
+# lie's R-01); moved 4 px up the rump so it clears the thigh.
+ll.spot('L-02', 'left', 'torso', (116, 148, 10.5, 14, -40), 'croup / top of the rump, above the folded haunch', size_k=KLL)
 ll.spot('L-03', 'left', 'torso', (271, 184, 10, 11.5, -25), 'shoulder blade', size_k=KLL)
-ll.spot('L-04', 'left', 'torso', (191, 174, 10, 8, -8), 'mid flank', size_k=KLL)
+# Round-4 repair (R3 review minor): L-04 (torso) and L-06 (haunch) both straddled the thigh's front contour and read as
+# two offset half-moons split by the thigh line. As coat_left places them, L-04 is on the flank AHEAD of the thigh edge
+# (4 px clear of its stroke) and L-06 is inside the thigh, about a quarter of the thigh's width behind its front edge
+# (coat_left: 24 of 98 px). Shapes are coat_left's own: L-04 tilt -8 deg -> 8 deg mirrored + the lie's flank turn
+# (its R-03 against coat_right's R-03: -52.2 deg) = -44.2 deg; L-06 tilt -8 deg (long axis 11.5 px) -> 98 deg mirrored +
+# the thigh turn (the lie's R-06 against coat_right's R-06: +9 deg) = 107 deg.
+ll.spot('L-04', 'left', 'torso', (205, 172, 10, 8, -44.2), 'mid flank, ahead of the thigh', size_k=KLL)
 ll.spot('L-05', 'left', 'torso', (238, 214, 8.5, 5.5, -6), 'lower ribs above the brisket line', size_k=KLL)
-ll.spot('L-06', 'left', 'haunch', (176, 188, 7.5, 11.5, -40), 'front of the left thigh (on the folded haunch)', size_k=KLL)
+ll.spot('L-06', 'left', 'haunch', (167, 190, 11.5, 7.5, 107), 'front of the left thigh (inside the folded haunch)', size_k=KLL)
 ll.spot('L-07', 'left', 'haunch', (124, 186, 5, 9.2, -20), 'back of the left thigh (rear of the folded haunch)', size_k=KLL)
 ll.spot('L-08', 'left', 'haunch', (130, 214, 4.6, 6, -50), 'left gaskin, low on the folded haunch', size_k=KLL)
-ll.spot('L-09', 'left', 'legFrontNear', (392, 238, 12.2, 7.6, -5), 'forearm of the near (left) front leg, lying along the ground', size_k=KLL)
+# L-09 on the near (anatomical LEFT) forearm, which lies forward along the ground: coat_left's own place on its forearm,
+# measured from the elbow tip (x 313, the rear foot of the elbow contour) to the wrist (x 458, where the forearm's top
+# contour turns down into the paw) and across from the forearm's FRONT surface, which faces up once the leg lies forward
+# (top contour nf_top; the ground-side contour nf_bottom). Round 3 had put it on the right lie's R-08 centre.
+_LIE = load('lie.json')
+LIE_NEAR_TOP = [tuple(p[:2]) for p in _LIE['nf_top']]
+LIE_NEAR_BOTTOM = [tuple(p[:2]) for p in _LIE['nf_bottom']]
+LIE_NEAR_ELBOW_X, LIE_NEAR_WRIST_X = 313.0, 458.0
+_x = LIE_NEAR_ELBOW_X + _along('L-09') * (LIE_NEAR_WRIST_X - LIE_NEAR_ELBOW_X)
+_yt, _yb = _edge_at_x(LIE_NEAR_TOP, _x), _edge_at_x(LIE_NEAR_BOTTOM, _x)
+_y = _yt + _across('L-09') * (_yb - _yt)
+_mid = lambda xx: (xx, (_edge_at_x(LIE_NEAR_TOP, xx) + _edge_at_x(LIE_NEAR_BOTTOM, xx)) / 2)
+_rot = _axis_deg(_mid(_x - 14), _mid(_x + 14)) - _tilt_back('L-09')
+_ac, _al = _size_units('L-09')
+KLL = 0.97 / 1.124
+ll.spot('L-09', 'left', 'legFrontNear', (round(_x, 2), round(_y, 2), round(_al / 0.97, 2), round(_ac / 0.97, 2), round(_rot, 1)),
+        'forearm of the near (left) front leg, lying along the ground; placed from badger_coat_left.png L-09', size_k=KLL,
+        ref=('badger_coat_left.png', 209, 314))
 ll.spot('L-NECK', 'left', 'neck', (326, 104, 4.6, 7.4, -10), 'side of the neck below the dark left ear, above the collar', size_k=KLL)
 
 poses = [sp, lp, sl, ll]

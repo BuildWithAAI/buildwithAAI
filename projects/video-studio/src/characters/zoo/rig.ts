@@ -9,6 +9,7 @@
  */
 import type {Expression} from '../types';
 import {clamp01, lerp, smoothstep} from './geometry';
+import {SHOCKED_MOUTH, type MouthSpec} from './mouth';
 
 export const FRONT = {
 	totalHeight: 900, // sole (y=0) to top of hair (y=-900)
@@ -239,6 +240,11 @@ export type ExpressionSpec = {
 	browR: BrowPose; // anatomical right (screen left)
 	eyes: EyePose;
 	mouth: 'closed' | 'slightlyOpen' | 'ah' | 'ee' | 'oh' | 'mbp';
+	/**
+	 * Optional: the expression's own drawing of its default `mouth` (repair round 4, decision ZOO-E3), used only when no
+	 * explicit mouth is passed. The six-shape lip-sync library is unchanged; lip-sync (an explicit mouth) uses the library.
+	 */
+	mouthSpec?: MouthSpec;
 	mod: MouthMod;
 	crease: number; // 0..1 worry crease between the brows
 };
@@ -273,13 +279,16 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 		mod: {...MOD0, cornerL: -1.3, cornerR: -1.1, wave: 0.7},
 		crease: 1,
 	},
-	// Shocked: brows high and arched, eyes wide with smaller irises, a wide open oval (ah at 60% height, 95% width).
+	// Shocked: brows high and arched, eyes wide with smaller irises, and its own open mouth (repair round 4, ZOO-E3): a gasp
+	// oval with an arched top and low corners (SHOCKED_MOUTH, mouth.ts), not the library ah squashed to 60% x 95% (rounds 1-3),
+	// which kept ah's flat top and read as an open grin.
 	shocked: {
 		browL: {lift: 7.6, inner: 0.6, outer: 0, arch: 3},
 		browR: {lift: 8.2, inner: 0.6, outer: 0, arch: 3},
 		eyes: {lidTop: 4.2, lidBottom: -1.8, scale: 1.1, iris: 0.72},
 		mouth: 'ah',
-		mod: {...MOD0, openScale: 0.6, widthScale: 0.95},
+		mouthSpec: SHOCKED_MOUTH,
+		mod: MOD0,
 		crease: 0,
 	},
 };

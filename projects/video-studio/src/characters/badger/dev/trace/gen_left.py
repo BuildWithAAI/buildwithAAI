@@ -88,10 +88,26 @@ torso_details = ['M 169 241 C 173 249 176 257 179 266']
 
 # ---------------------------------------------------------------- neck
 # the hidden extension below the collar stays inside the chest for neck rotations of -5..+22 deg
-neck_fill = '''M 186 72 C 196 90 206 106 216 120 C 226 132 236 142 248 148 L 238 168 L 186 196 L 152 194
-L 142 183 C 141 176 141 168 139 158 C 136 146 131 133 126 120 C 122 108 132 92 150 84 C 164 77 176 71 186 72 Z'''
+# Round-4 repair (R3 review, major: outline break at the nape of the left profile). On badger_coat_left.png the neck's back
+# line leaves the dark ear at its lower-back corner, steep at first (rows 78-90: x 184 -> 190, slope 0.5), and runs into the
+# old line. The rig's line used to start 2.8 px inside the ear's lower edge but under the profile head's skull fill, which
+# bulged past it, so between the ear and the line only the unstroked skull edge showed (no outline at rows 385-388 of the
+# review render), and the neck fill ran 2-5 px outside the line at the top (a coat sliver). Now:
+#  * NAPE_J (the ear outline's lower-back corner) is where the line leaves the ear, steeper at first (slope 0.62; the sheet
+#    0.5) and landing on the old line's end tangent above the collar (at most 1.3 px wider than before), and a straight
+#    extension runs 12 px further up INSIDE the ear (the ear, drawn later with the head, hides it and its cap at any head
+#    tilt within +-8 deg);
+#  * the neck fill's back edge IS the stroke's centre line (it can no longer poke out past it);
+#  * the profile head's skull fill tucks inside the line below NAPE_J and the head strokes its own back contour down to
+#    NAPE_J (gen_heads.py PROFILE_L), so a folded ear (worried, judge) uncovers an outlined nape, not an open edge.
+# KEEP IN SYNC with gen_heads.py NAPE_L_J.
+NAPE_J = (187.0, 76.0)
+NAPE_BACK = 'M 180.4 66 C 182.6 69.33 184.8 72.67 187 76 C 194.4 87.9 207.3 109 216 120'
+neck_fill = ('M 180.4 66 C 182.6 69.33 184.8 72.67 187 76 C 194.4 87.9 207.3 109 216 120 '
+             'C 226 132 236 142 248 148 L 238 168 L 186 196 L 152 194 '
+             'L 142 183 C 141 176 141 168 139 158 C 136 146 131 133 126 120 C 122 108 132 92 150 84 C 162 78 172 70 180.4 66 Z')
 neck_strokes = [
-    'M 183 76 C 194 90 205 106 216 120 C 220 125 224 128 229 132',
+    NAPE_BACK + ' C 220 125 224 128 229 132',
     'M 125 118 C 130 130 135 143 139 156 C 141 165 141 172 141 179',
 ]
 collar_fill = 'M 138 173 C 165 158 196 140 220 121 C 225 123 228 127 230 131 C 205 150 174 170 145 186 C 141 184 138 179 138 173 Z'
@@ -163,13 +179,13 @@ TAIL_TIP = (590, 321)
 spots = []
 
 
-def spot(sid, part, segment, d_or_ellipse, origin, ref, desc):
+def spot(sid, part, segment, d_or_ellipse, origin, ref, desc, side='left', crop='badger_coat_left.png'):
     if isinstance(d_or_ellipse, str):
         d = P(d_or_ellipse, origin)
     else:
         d = E(*d_or_ellipse, origin)
-    spots.append({'id': sid, 'side': 'left', 'part': part, 'segment': segment, 'path': d,
-                  'ref': {'crop': 'badger_coat_left.png', 'x': ref[0], 'y': ref[1]}, 'desc': desc})
+    spots.append({'id': sid, 'side': side, 'part': part, 'segment': segment, 'path': d,
+                  'ref': {'crop': crop, 'x': ref[0], 'y': ref[1]}, 'desc': desc})
 
 
 # L-WITHERS: large irregular patch high on the back by the left withers (shares the top line; clipped)
@@ -190,6 +206,43 @@ spot('L-06', 'legHindNear', 'upper', (430, 253, 7.5, 11.5, -8), HIND_HIP, (430, 
 spot('L-07', 'legHindNear', 'upper', (481, 272, 5, 9.2, -6), HIND_HIP, (481, 272), 'back of the thigh')      # rear thigh
 spot('L-08', 'legHindNear', 'upper', (501, 348, 4.6, 6, -30), HIND_HIP, (501, 348), 'gaskin, just above the hock')     # just above the hock
 spot('L-09', 'legFrontNear', 'upper', (210, 314, 7.6, 12.2, -3), FRONT_SHOULDER, (210, 314), 'forearm of the near (left) front leg')  # forearm
+
+# Round-4 repair (R3 review minor): the FAR front leg is the anatomical RIGHT foreleg. badger_pose_walking.png shows its
+# forearm mark as a dark edge on the far foreleg's BACK contour (the sit, lie and 3/4 bodies show theirs too), so the walk
+# rigs carry an edge record on legFrontFar (parts/SideBody.tsx draws far-leg spots for edge records only). It is R-08,
+# authored from badger_coat_right.png's OWN R-08 (dev/trace/coatmaps.py: 35.7% down the forearm from the elbow tip to the
+# wrist cut, coat_right's own size, the across axis foreshortened to EDGE_K, its own 1.6 deg tilt), placed on this rig's
+# forearm back contour (the far leg reuses the near leg's unmarked outline), centred on the contour so the leg clip shows
+# the half that wraps round that edge. Nothing here comes from L-09 or any other left record.
+from coatmaps import along as _along, size_units as _size_units, tilt_back as _tilt_back
+import math as _m
+
+
+def _cubic_at_y(d, y):
+    """x and unit tangent (pointing down) where the one-segment cubic path d crosses height y (CL px)."""
+    v = [float(t) for t in d.replace('M', ' ').replace('C', ' ').split()]
+    p0, p1, p2, p3 = (v[0], v[1]), (v[2], v[3]), (v[4], v[5]), (v[6], v[7])
+    B = lambda t, i: (1 - t) ** 3 * p0[i] + 3 * (1 - t) ** 2 * t * p1[i] + 3 * (1 - t) * t * t * p2[i] + t ** 3 * p3[i]
+    lo, hi = 0.0, 1.0
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if B(mid, 1) < y else (lo, mid)
+    t = (lo + hi) / 2
+    dx, dy = B(t + 1e-4, 0) - B(t - 1e-4, 0), B(t + 1e-4, 1) - B(t - 1e-4, 1)
+    L = _m.hypot(dx, dy)
+    return B(t, 0), (dx / L, dy / L)
+
+
+FL_ELBOW_Y, FL_WRIST_Y = 265.0, FRONT_WRIST[1]       # this rig's forearm, traced on coat_left (coatmaps.py rule)
+_y_r08 = FL_ELBOW_Y + _along('R-08') * (FL_WRIST_Y - FL_ELBOW_Y)
+_x_r08, (_tx, _ty) = _cubic_at_y(fu_strokes[1], _y_r08)    # the forearm's back contour (left-facing: back = +x)
+_ac, _al = _size_units('R-08', edge=True)
+# ellipse_path: rx across (x), ry along (y), rotated; the long axis follows the contour, its top leaning back (+x) by the
+# map's own tilt
+_rot_r08 = _m.degrees(_m.atan2(-_tx, _ty)) + _tilt_back('R-08')
+spot('R-08', 'legFrontFar', 'upper', (round(_x_r08, 2), round(_y_r08, 2), round(_ac / KX, 2), round(_al / KY, 2), round(_rot_r08, 1)),
+     FRONT_SHOULDER, (408, 314), 'right forearm R-08 on the far front leg (its back edge, as badger_pose_walking.png shows the far forearm mark), '
+     'authored from badger_coat_right.png R-08', side='right', crop='badger_coat_right.png')
 
 
 def seg(fill, strokes, origin, details=None):

@@ -251,8 +251,9 @@ const jointFillets = (edges: JointEdges, pivot: Pt, deg: number, far = false): {
 
 /**
  * A three-segment leg (upper / lower / paw). Each segment rotates about its own pivot; the chain is composed
- * explicitly. Far legs pass `far` and are filled with the coat's single shadow tone; they carry no visible spots
- * (their markings face away from the camera).
+ * explicitly. Far legs pass `far` and are filled with the coat's single shadow tone; their markings face away from the
+ * camera, so they carry only EDGE records (round 4: the far forearm's mark where it wraps round the leg's contour, as the
+ * walking panel draws it), clipped to the segment like any spot.
  *
  * Construction (decision BADGER-D26, revised): stroke-under-fill. (1) Every segment's exterior strokes, and the ring
  * of any joint that is bent, are drawn at TWICE the outline width. (2) The joint disks and the segment fills (with

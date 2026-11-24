@@ -2,22 +2,24 @@
  * Preview10s: the 10-second character proof (1920x1080, 30 fps, 300 frames, silent, #E6E8EB).
  * Staging reproduces the size-comparison panel (Zoo screen left, Badger view 'left' screen right, one ground line at
  * 85% height, one shared scale; spacing per decision INT-P2), with a flat contact shadow under each character
- * (decision INT-C1). Beats (Prompt 2), re-timed in integration rounds 1 and 2:
+ * (decision INT-C1). Beats (Prompt 2), re-timed in integration rounds 1-3:
  *   0-3 s   stand together. Zoo blinks (f38) and lifts one brow (f60-82). Badger leans his head slightly toward Zoo as in
  *           the panel, blinks (f22) and flicks his ears (f68-76).
  *   3-6 s   Zoo points to screen right: eyes lead (f84-89), wind-up (f85-90), swing f90-106 timed along the hand's arc
  *           (gesture.ts, decision INT-T1), a 1-2 deg settle (f106-113), then a moving hold (f113-181, decision INT-T2):
- *           the raised arm sinks ~0.05 poseAmount on one slow ease (the hand drops ~7 px) and Zoo gives one small nod
- *           toward the point with a blink (f124-142). Badger's eyes follow the hand (f89-94) and close as the fist passes
- *           over his head; his head is replaced by threeQuarterRightScreen at f97 under that blink, then his neck and
- *           gaze rise along the point (f99-112). After Zoo's nod he answers with a small curious head tilt (f140-180)
- *           and one blink (f158).
- *   6-10 s  Zoo lowers the arm (f181-197) back to deadpan. Badger looks up at him: eyes and neck lead (f183-190), both
- *           head swaps (3/4 -> front -> upLeftScreen, f190/f192) happen with his eyes closed (blink f188-197), then the
- *           neck eases up. After a beat he gives the judging look: a slow blink (f236-252) covers the swap to the front
- *           head, his eyes stay on Zoo, the brows flatten, the ears fold and the head tilts about 8 deg. Zoo blinks once
- *           (f264) and the shot holds to the end. One slow push-in (1.00 -> 1.04, f196-299, ART_GUIDE MO13) anchored on
- *           Badger's eyes carries the attention to his reaction.
+ *           the raised arm sinks ~0.06 poseAmount on one slow ease (the hand drops ~8 px) and Zoo gives one small nod
+ *           toward the point with a blink (f124-142). The rig's anticipation tuck acts only on the raise, while the fist
+ *           passes Badger's head, and is released before the forearm nears level (INT-T3), so the upper arm is ~11 deg out
+ *           at the level frames (f98, f186). Badger's eyes follow the hand (f89-94) and close as the fist passes over his head; his
+ *           head is replaced by threeQuarterRightScreen at f97 under that blink, then his neck and gaze rise along the
+ *           point (f99-112). After Zoo's nod he answers with a small curious head tilt (f140-180) and one blink (f158).
+ *   6-10 s  Zoo lowers the arm (f181-196, no tuck) back to deadpan. Badger looks up at him: eyes and neck lead (f183-190);
+ *           with his eyes closed (blink f188-198) the head turns through a held front breakdown (f190-193) to
+ *           upLeftScreen (f194), then the neck eases up. After a beat he gives the judging look: the neck eases down on
+ *           the up head (f234-240) as a slow blink closes, and with the eyes closed the head turns through a held
+ *           threeQuarterLeftScreen in-between (f241-243) to the front head (f244); the eyes open on Zoo, the brows
+ *           flatten, the ears fold and the head tilts about 8 deg. Zoo blinks once (f264) and the shot holds to the end.
+ *           One slow push-in (1.00 -> 1.04, f196-299, ART_GUIDE MO13) anchored on Badger's eyes carries the attention.
  * No audio: the proof is silent. Breathing on both characters is driven by the frame.
  * zooTrack and badgerTrack are exported so tools can rebuild any frame's character props (clearance checks, QA).
  */
@@ -28,7 +30,7 @@ import {ZooRig} from '../../characters/zoo/Zoo';
 import {BRAND} from '../../characters/palette';
 import type {BadgerHead, BadgerPose} from '../../characters/types';
 import {ContactShadow, FOOTPRINTS} from './contact';
-import {poseAmountForPath, pathForPoseAmount} from './gesture';
+import {pointPath} from './gesture';
 import {blinkAt, track} from './keys';
 import {BADGER_X, EASE, FRAME, GROUND_Y, PAIR_LINE_SCALE, PAIR_SCALE, ZOO_X} from './stage';
 
@@ -43,7 +45,7 @@ export const BEATS = {
 	hold: [113, 181],
 	/** Zoo's nod toward the point inside the moving hold: down to the deepest tilt, back up. */
 	zooNod: [124, 131, 142],
-	armDown: [181, 197],
+	armDown: [181, 196],
 	badgerBlink: 22,
 	badgerEarFlick: [68, 70, 76],
 	badgerTurn: 97,
@@ -51,8 +53,13 @@ export const BEATS = {
 	/** Badger's curious tilt in answer to the nod: in, held, out. */
 	badgerTilt: [140, 152, 168, 180],
 	badgerHoldBlink: 158,
-	badgerLookUp: {eyes: [183, 188], blink: 188, toFront: 190, toUp: 192},
-	judge: {blink: 236, swap: 242, brows: [244, 254], ears: [246, 258], tilt: [244, 262]},
+	/** Look-up: eyes lead, the blink closes, the front breakdown is held f190-193 (4 frames), the up head from f194. */
+	badgerLookUp: {eyes: [183, 188], blink: 188, toFront: 190, toUp: 194},
+	/**
+	 * Judging look: the neck eases down on the up head (neckDown), the slow blink closes, the 3/4-left in-between holds
+	 * f241-243 (3 frames), the front head arrives at `swap` with the eyes still closed, then brows, ears and tilt.
+	 */
+	judge: {neckDown: [234, 240], blink: 236, toThreeQuarter: 241, swap: 244, brows: [246, 256], ears: [247, 259], tilt: [245, 263]},
 	pushIn: [196, 299],
 } as const;
 
@@ -77,9 +84,23 @@ export const pushScale = (f: number) =>
  * moving hold then lets the raised arm sink to `sunk` on one slow sine ease (decision INT-T2). Near the end key the
  * shoulder and wrist carry that change (~3.2 and ~2.8 deg; the elbow stays put), so the hand drops ~9 px at the proof
  * scale, 7.6 px on screen with the breathing cycle included (round 1 drifted 0.008, under 2 px, and the gesture froze).
+ * The anticipation tuck (ZooRig pointTuck, the rig's elbow gather while the arm rises; decision INT-T3) is used only on
+ * the raise and only while the fist passes Badger's head: full up to poseAmount tuckRelease[0], released by
+ * tuckRelease[1], before the forearm comes within ~15 deg of level, so the upper arm is already opening when the forearm
+ * reaches level (~11 deg out at f98; with the tuck held to ~0.29 the elbow stayed at the waist under a level forearm, a
+ * "tray-carry" in-between). The lowering uses none and takes 15 frames, so its level frame (f186) also has ~11 deg. Both are timed on the arc-length table of the path the
+ * rig actually draws (gesture.ts pointPath), so the hand's peak speed stays ~45 px/frame.
  */
-export const POINT = {overshoot: 1, settle: 0.993, sunk: 0.93} as const;
+export const POINT = {overshoot: 1, settle: 0.993, sunk: 0.93, tuckRelease: [0.165, 0.205]} as const;
 const holdEase = Easing.inOut(Easing.sin);
+const smoothstep = (t: number) => {
+	const x = Math.max(0, Math.min(1, t));
+	return x * x * (3 - 2 * x);
+};
+/** pointTuck on the raise as a function of poseAmount (INT-T3). */
+export const raiseTuck = (poseAmount: number) => 1 - smoothstep((poseAmount - POINT.tuckRelease[0]) / (POINT.tuckRelease[1] - POINT.tuckRelease[0]));
+const RAISE_PATH = pointPath(raiseTuck);
+const LOWER_PATH = pointPath(0);
 
 /** poseAmount of the point at frame f: swing along the arc, settle, moving hold, then the same arc back down. */
 const pointAmount = (f: number): number => {
@@ -88,7 +109,7 @@ const pointAmount = (f: number): number => {
 	const [d0, d1] = BEATS.armDown;
 	if (f < s1) {
 		// Arc-length timing: the hand's on-screen speed follows EASE.swing (peak ~45 px/frame at the proof scale).
-		return poseAmountForPath(EASE.swing(Math.max(0, Math.min(1, (f - s0) / (s1 - s0)))));
+		return RAISE_PATH.poseAmountForPath(EASE.swing(Math.max(0, Math.min(1, (f - s0) / (s1 - s0)))));
 	}
 	if (f < h0) {
 		return track(
@@ -111,8 +132,8 @@ const pointAmount = (f: number): number => {
 		);
 	}
 	// Lower along the same arc from wherever the hold left the arm (velocity is zero at both ends of the hold ease).
-	const u0 = pathForPoseAmount(POINT.sunk);
-	return poseAmountForPath(u0 * (1 - EASE.swing(Math.max(0, Math.min(1, (f - d0) / (d1 - d0))))));
+	const u0 = LOWER_PATH.pathForPoseAmount(POINT.sunk);
+	return LOWER_PATH.poseAmountForPath(u0 * (1 - EASE.swing(Math.max(0, Math.min(1, (f - d0) / (d1 - d0))))));
 };
 
 export const zooTrack = (f: number) => {
@@ -167,6 +188,9 @@ export const zooTrack = (f: number) => {
 			],
 			EASE.inOut,
 		),
+		// The anticipation tuck belongs to the raise (INT-T3): kept while the fist passes Badger's head, released before the
+		// forearm nears level, never during the hold or the lowering (the rig would play it in reverse).
+		pointTuck: f < BEATS.swing[1] ? raiseTuck(pointAmount(f)) : 0,
 		poseAmount: pointAmount(f),
 	};
 };
@@ -183,6 +207,28 @@ export type BadgerState = {
 	lookY: number;
 };
 
+/**
+ * Neck values at the head swaps, chosen so the skull stays where the old head left it (measured on Badger-only renders:
+ * cranium top and head-coat centroid, integration round 3).
+ */
+const SWAP = {
+	/** 3/4-right head, end of its rise before the look-up (f190). */
+	threeQuarterRight: 8,
+	/**
+	 * Front breakdown of the look-up (neck, headTilt; + = up / nose up on this body): it starts under the 3/4 head's
+	 * skull with a counter-tilt and moves the skull to where the up head picks it up, rolling toward the up head's pitch.
+	 */
+	breakdown: {neck: [14, 10], tilt: [-8, 6]},
+	upStart: -2,
+	/** Judging look: the up head lowers to `upDown`, then the 3/4-left in-between and the front head take over. */
+	upDown: -8,
+	/** The in-between keeps some of the up head's pitch as a small roll toward the judging tilt. */
+	threeQuarterLeft: {neck: [3, 2], tilt: [5, 4]},
+	/** Front head: neck and total head rotation (neck + headTilt) at the swap, then the judging pose. */
+	front: {neck: 3, total: 13},
+	judge: {neck: 10, total: 8.5},
+} as const;
+
 export const badgerTrack = (f: number): BadgerState => {
 	const LU = BEATS.badgerLookUp;
 	const J = BEATS.judge;
@@ -190,9 +236,10 @@ export const badgerTrack = (f: number): BadgerState => {
 		blinkAt(f, BEATS.badgerBlink, 2, 1, 3, EASE.inOut),
 		blinkAt(f, BEATS.badgerTurnBlink, 2, 3, 3, EASE.inOut),
 		blinkAt(f, BEATS.badgerHoldBlink, 2, 1, 3, EASE.inOut),
-		blinkAt(f, LU.blink, 2, 3, 4, EASE.inOut),
-		// The judging look's slow blink: deliberate close, a held beat, a slow open.
-		blinkAt(f, J.blink, 5, 3, 8, EASE.inOut),
+		// The look-up blink holds the eyes closed across the front breakdown and the up head's first frame.
+		blinkAt(f, LU.blink, 2, LU.toUp - LU.blink - 2, 4, EASE.inOut),
+		// The judging look's slow blink: deliberate close, held across both swaps, a slow open on the front head.
+		blinkAt(f, J.blink, J.toThreeQuarter - J.blink, J.swap + 1 - J.toThreeQuarter, 8, EASE.inOut),
 	);
 	if (f < BEATS.badgerTurn) {
 		// The panel's slight lean toward Zoo (front head, +3 deg); an ear flick during Zoo's brow lift; the eyes start to
@@ -255,7 +302,7 @@ export const badgerTrack = (f: number): BadgerState => {
 				[99, 0],
 				[112, 5],
 				[LU.eyes[0], 5],
-				[LU.toFront, 8],
+				[LU.toFront, SWAP.threeQuarterRight],
 			],
 			EASE.inOut,
 		);
@@ -280,38 +327,89 @@ export const badgerTrack = (f: number): BadgerState => {
 		return {head: 'threeQuarterRightScreen', pose: 'stand', blink, headTilt, neckTurn, judge: 0, earsBack: 0, lookX, lookY};
 	}
 	if (f < LU.toUp) {
-		// Breakdown through the front head with the eyes closed: the neck value keeps the cranium where the 3/4 head left it.
-		return {head: 'front', pose: 'stand', blink, headTilt: 0, neckTurn: 9, judge: 0, earsBack: 0, lookX: -0.4, lookY: -0.6};
-	}
-	if (f < J.swap) {
-		// Looking up at Zoo: the up head starts where the breakdown left the cranium (neck -5), then the neck eases up.
+		// Breakdown through the front head with the eyes closed, held 4 frames and still rising, so the turn from the 3/4
+		// head (looking away) to the up head (looking at Zoo) reads as a turn through camera, not a pop.
+		const k = [LU.toFront, LU.toUp - 1] as const;
 		const neckTurn = track(
 			f,
 			[
-				[LU.toUp, -5],
-				[LU.toUp + 8, 0.8],
-				[LU.toUp + 13, 0],
+				[k[0], SWAP.breakdown.neck[0]],
+				[k[1], SWAP.breakdown.neck[1]],
 			],
-			EASE.out,
+			EASE.inOut,
 		);
+		const headTilt = track(
+			f,
+			[
+				[k[0], SWAP.breakdown.tilt[0]],
+				[k[1], SWAP.breakdown.tilt[1]],
+			],
+			EASE.inOut,
+		);
+		return {head: 'front', pose: 'stand', blink, headTilt, neckTurn, judge: 0, earsBack: 0, lookX: -0.4, lookY: -0.6};
+	}
+	if (f < J.toThreeQuarter) {
+		// Looking up at Zoo: the up head starts where the breakdown left the cranium, then the neck eases up. After the
+		// beat, the neck eases back down (the nose comes down toward level) as the slow blink closes.
+		const neckTurn =
+			f < J.neckDown[0]
+				? track(
+						f,
+						[
+							[LU.toUp, SWAP.upStart],
+							[LU.toUp + 8, 0.8],
+							[LU.toUp + 13, 0],
+						],
+						EASE.out,
+					)
+				: track(
+						f,
+						[
+							[J.neckDown[0], 0],
+							[J.neckDown[1], SWAP.upDown],
+						],
+						EASE.inOut,
+					);
 		return {head: 'upLeftScreen', pose: 'lookUp', blink, headTilt: 0, neckTurn, judge: 0, earsBack: 0, lookX: 0, lookY: 0};
 	}
+	if (f < J.swap) {
+		// In-between of the judging turn, eyes closed: the 3/4-left head (face turning from Zoo toward camera), held 3
+		// frames and still settling, so the profile-up to front change reads as a head turn.
+		const t = [J.toThreeQuarter, J.swap - 1] as const;
+		const neckTurn = track(
+			f,
+			[
+				[t[0], SWAP.threeQuarterLeft.neck[0]],
+				[t[1], SWAP.threeQuarterLeft.neck[1]],
+			],
+			EASE.inOut,
+		);
+		const headTilt = track(
+			f,
+			[
+				[t[0], SWAP.threeQuarterLeft.tilt[0]],
+				[t[1], SWAP.threeQuarterLeft.tilt[1]],
+			],
+			EASE.inOut,
+		);
+		return {head: 'threeQuarterLeftScreen', pose: 'stand', blink, headTilt, neckTurn, judge: 0, earsBack: 0, lookX: -0.6, lookY: -0.5};
+	}
 	// The judging look, on the frontal head so the lids and brows read: eyes stay on Zoo (side-eye), the brows flatten,
-	// the ears fold a little and the head tilts ~8 deg. The neck settles from where the up head held the cranium.
+	// the ears fold a little and the head tilts ~8 deg. The neck rises from where the 3/4 head held the cranium.
 	const neckTurn = track(
 		f,
 		[
-			[J.swap, 14],
-			[J.tilt[1], 10],
+			[J.swap, SWAP.front.neck],
+			[J.tilt[1], SWAP.judge.neck],
 		],
 		EASE.inOut,
 	);
 	const totalTilt = track(
 		f,
 		[
-			[J.swap, 1],
-			[J.tilt[0], 1],
-			[J.tilt[1], 8.5],
+			[J.swap, SWAP.front.total],
+			[J.tilt[0], SWAP.front.total],
+			[J.tilt[1], SWAP.judge.total],
 		],
 		EASE.inOut,
 	);
@@ -366,6 +464,7 @@ export const Preview10s: React.FC = () => {
 						pose="point"
 						poseAmount={z.poseAmount}
 						pointWindup={z.pointWindup}
+						pointTuck={z.pointTuck}
 						expression="neutral"
 						blink={z.blink}
 						browLift={z.browLift}

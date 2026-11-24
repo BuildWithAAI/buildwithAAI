@@ -176,30 +176,41 @@ const Arm: React.FC<{side: 1 | -1}> = ({side}) => {
 };
 
 // ---------------------------------------------------------------- legs, back pockets, heels (left authored, right mirrored)
+/**
+ * Repair round 4 (decision ZOO-S3; zoo_turn_back.png row-scanned): the trouser legs taper ~4-5 u per leg from the knee
+ * down (leg ~52-55 u wide at y -60..-100 against round 3's 56-61) with a small calf swell, and the hem DRAPES: it sits at
+ * ~-43 at the outer side and falls to ~-37 across the heel and the inner side, so a rounded heel counter shows under it.
+ */
 const LEG_L: Pt[] = [
-	[-80.5, -440], [3.5, -440], [3.5, -380], [2.1, -366, 'c'], [-1.5, -340], [-5.5, -300], [-9.5, -260], [-13.5, -220], [-14.9, -180], [-16.5, -140],
-	[-19.5, -100], [-22.1, -70], [-22.7, -40.4, 'c'], [-49.5, -38], [-78.5, -39, 'c'], [-79.1, -60], [-77.7, -90], [-79.1, -120], [-81.5, -150],
-	[-80.9, -200], [-78.1, -240], [-78.1, -290], [-78.7, -330], [-80.5, -400],
+	[-80.5, -440], [3.5, -440], [3.5, -380], [2.1, -366, 'c'], [-2.6, -340], [-7.6, -300], [-12.2, -260], [-16.4, -222], [-16.8, -190],
+	[-18, -160], [-19.9, -140], [-23, -100], [-25.2, -80], [-24, -62], [-25.4, -48], [-25.6, -37, 'c'],
+	// the hem, draping from the inner side over the heel to the outer corner
+	[-29, -36.6], [-40, -36.6], [-55, -37.4], [-64, -38.2], [-70.4, -40], [-73.8, -42.6], [-75, -47],
+	[-74.8, -54], [-76.4, -62], [-74.6, -80], [-76.2, -100], [-77, -120], [-78.6, -140], [-79.4, -178], [-76.6, -202], [-74.4, -222],
+	[-75.2, -260], [-76.6, -300], [-77, -340], [-77.6, -400],
 ];
-const LEG_SHADOWS_L: Pt[][] = [
-	// a ~10 u curved terminator under the shirt hem (v1: a 40 u band that read as a belt)
-	[[-84.5, -446], [7.5, -446], [7.5, -425], [-40, -423.4], [-84.5, -428]],
-	[[2.1, -366], [-1.5, -340], [-9.5, -260], [-14.9, -180], [-19.5, -100], [-22.7, -40], [-32.5, -40], [-26.5, -140], [-18.5, -260], [-8.5, -360]],
-];
+/** One flat shadow tone: a ~10 u curved terminator under the shirt hem (v1: a 40 u band that read as a belt). Round 4 drops
+ * the inseam band (the sheet's trousers are flat). */
+const LEG_SHADOWS_L: Pt[][] = [[[-84.5, -446], [7.5, -446], [7.5, -425], [-40, -423.4], [-84.5, -428]]];
 /** An open, curved jeans back-pocket line (repair round 1; v1 drew a closed flap rectangle). */
 const POCKET_L: Pt[] = [[-59.5, -409], [-56, -394], [-46, -383.4], [-33, -383.4], [-23, -394], [-19.5, -409]];
-// Repair round 1: the heel flares out toward the sole (v1 was a box).
+/**
+ * Back of the sneaker (repair round 4, outline centres of zoo_turn_back.png): a rounded heel counter that is narrow under
+ * the hem (~-77 at y -40) and swells out to ~-96 near the sole, with a straight inner side at ~-24 (rounds 1-3: a
+ * flat-topped box with vertical sides). Lines in the soft sneakerLine grey, as on the sheet: the midsole line and the
+ * heel-counter seam that curves from under the hem down and out to the midsole (round 3's horizontal band and heel-tab line
+ * are not on the sheet). No shadow band (the sheet's heels are flat off-white).
+ */
 const SHOE_L: Pt[] = [
-	[-80.5, -39], [-58.5, -41.6], [-30.5, -40], [-24.6, -32], [-22.8, -20], [-19.6, -9.4], [-21, -3], [-38.5, -1.75], [-70.5, -1.75], [-90.6, -2.4],
-	[-95.6, -8.6], [-93, -20], [-88.6, -32],
+	[-73.6, -48], [-50, -47], [-27.6, -45], [-25.6, -36], [-25, -28], [-24.4, -20], [-23.8, -12], [-23.6, -5], [-26, -1.75], [-60, -1.75],
+	[-93, -1.9], [-96.2, -5], [-96.6, -11], [-96, -17], [-94.4, -22], [-91.8, -25.8], [-88, -28.6], [-83.4, -31.4], [-79.2, -34.8], [-76.4, -39.4], [-75.2, -43.6],
 ];
-const SHOE_SOLE_L: Pt[] = [[-99.5, -10.6], [-56.5, -10], [-15.5, -10.6], [-15.5, 2], [-99.5, 2]];
-const SHOE_SHADOW_L: Pt[] = [[-90.5, -44], [-74.5, -44], [-78.5, -20], [-84.5, -10], [-90.5, -10]];
+const SHOE_SOLE_L: Pt[] = [[-100, -11], [-56.5, -10.8], [-15, -11], [-15, 2], [-100, 2]];
 const SHOE_LINES_L: Pt[][] = [
-	[[-95, -10.4], [-56.5, -9.8], [-19.8, -10.4]],
-	[[-89.5, -23], [-56.5, -21.6], [-23.9, -23]],
-	[[-55.5, -39], [-55.5, -28]],
+	[[-99, -11.2], [-60, -10.8], [-20, -11.2]], // midsole
+	[[-70.6, -36], [-72.6, -27.6], [-76.4, -20], [-80.8, -12.4]], // heel-counter seam
 ];
+const SHOE_LINE_W = [ZOO_LINE.detail * 1.15, ZOO_LINE.detail * 0.9];
 
 /**
  * The anatomical-right leg (screen right from behind) is the left one mirrored about LEG_AXIS, then authored for this view
@@ -208,7 +219,9 @@ const SHOE_LINES_L: Pt[][] = [
  * (`slimR`): silhouette 78.7 at y -100 and heel ~89 at y -30, against the sheet's 77.9 / 89.3 (round 2: 85 / 97).
  */
 const leanR = (y: number) => -5 * smoothstep((y + 300) / 260);
-const slimR = (y: number) => -3.5 * smoothstep((y + 340) / 120);
+// Repair round 4: the slimming eases off over the hem (to 40% at the hem's outer corner), where the sheet's right trouser
+// meets the heel at ~75 (silhouette), so the heel counter flows out of the trouser edge instead of from a notch.
+const slimR = (y: number) => -3.5 * smoothstep((y + 340) / 120) * (1 - 0.6 * smoothstep((y + 70) / 26));
 /** Right-leg point: mirror, lean, and slim the trouser's outer edge (`slim` false for the shoe, which only leans). */
 const rightLegPt = (p: Pt, slim = true): Pt => {
 	const x = 2 * LEG_AXIS - p[0] + leanR(p[1]) + (slim && p[0] < -50 ? slimR(p[1]) : 0);
@@ -223,13 +236,12 @@ const Leg: React.FC<{side: 1 | -1}> = ({side}) => {
 			<g data-part={side === 1 ? 'shoeL' : 'shoeR'}>
 				<path d={shoe} fill={ZOO_COLORS.sneaker} />
 				<Clipped clip={shoe}>
-					<path d={smooth(ms(SHOE_SHADOW_L))} fill={ZOO_COLORS.sneakerShadow} />
 					<path d={smooth(ms(SHOE_SOLE_L))} fill={ZOO_COLORS.sneakerSole} />
+					{SHOE_LINES_L.map((l, i) => (
+						<Stroke key={i} d={line(ms(l))} width={SHOE_LINE_W[i]} color={ZOO_COLORS.sneakerLine} />
+					))}
 				</Clipped>
 				<Outline d={shoe} />
-				{SHOE_LINES_L.map((l, i) => (
-					<Stroke key={i} d={line(ms(l))} width={i === 0 ? ZOO_LINE.detail : ZOO_LINE.fine} />
-				))}
 			</g>
 			<Shape d={smooth(m(LEG_L))} fill={ZOO_COLORS.trousers} shadow={{d: LEG_SHADOWS_L.map((p) => smooth(m(p))).join(' '), fill: ZOO_COLORS.trousersShadow}} />
 			<Stroke name="backPocket" d={line(m(POCKET_L))} width={ZOO_LINE.fine} />

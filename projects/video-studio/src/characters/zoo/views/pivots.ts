@@ -54,14 +54,14 @@ export const PIVOTS_SIDE: Table = {
 
 export const PIVOTS_BACK: Table = {
 	root: P(0, 0, null, 'x, y, scale; origin = centre of the footprint (crop x=154.5 of zoo_turn_back.png)'),
-	legs: P(3, -420, 'root', 'static; pair mirrored about x=3 inside this view'),
+	legs: P(3, -420, 'root', 'static; the right leg is the left mirrored about x=3 inside this view, leaned ~5 u in and slimmed below the knee (repair round 3, ZOO-K3)'),
 	torso: P(2, BACK_BODY.hem, 'root', 'breathe: scaleY about the hem'),
 	neck: P(4, -730, 'torso', 'breathe (translate)'),
 	head: P(BACK_BODY.headPivot.x, BACK_BODY.headPivot.y, 'neck', 'headTilt (deg); no face controls are visible from behind'),
 	shoulderL: P(-108, -686, 'torso', 'anatomical LEFT = screen left from behind; static hang'),
 	wristL: P(-110, -410.4, 'shoulderL', 'cuff bottom centre (repair round 2: forearms hang ~7 u further in, as on zoo_turn_back.png)'),
-	shoulderR: P(112, -686, 'torso', 'anatomical RIGHT = screen right; pair mirrored about x=2 inside this view'),
-	wristR: P(114, -410.4, 'shoulderR', ''),
+	shoulderR: P(110, -686, 'torso', 'anatomical RIGHT = screen right; pair mirrored about x=1 inside this view (repair round 3: was 2)'),
+	wristR: P(112, -410.4, 'shoulderR', ''),
 };
 
 const U = TYPING_LAYOUT.upper;
@@ -77,7 +77,7 @@ export const PIVOTS_TYPING: Table = {
 	elbowR: P(-250, -380, 'shoulderR', ''),
 	wristR: P(TYPING_LAYOUT.wristR.x, TYPING_LAYOUT.wristR.y, 'elbowR', 'near typing hand'),
 	wristL: P(TYPING_LAYOUT.wristL.x, TYPING_LAYOUT.wristL.y, 'torso', 'far typing hand; far forearm emerges from behind the torso'),
-	fingers: P(38, -9, 'wrist', 'finger knuckles at wrist-local x 38..43 (see KNUCKLES in views/Typing.tsx); typing=true rotates each about its knuckle'),
+	fingers: P(40, 26, 'wrist', 'fingertip lobes of each typing hand (views/Typing.tsx T_HAND, wrist-local x 24..62, tips at y ~27-28 before handScale); typing=true lifts each finger\'s tip lobe on its own rhythm (fingerLift: 0.3 u up and 0.08 u back per degree); the hand is one silhouette, so no finger rotates about a knuckle (repair rounds 2-3)'),
 	chair: P(TYPING_LAYOUT.chair.x, TYPING_LAYOUT.chair.y, 'root', '<Chair/> origin'),
 	desk: P(TYPING_LAYOUT.desk.x, TYPING_LAYOUT.desk.y, 'root', '<Desk/> origin'),
 	keyboard: P(TYPING_LAYOUT.keyboard.x, TYPING_LAYOUT.keyboard.y, 'root', '<Keyboard/> origin (on the desk top)'),

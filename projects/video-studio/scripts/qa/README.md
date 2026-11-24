@@ -31,7 +31,7 @@ Exit code 0 = no errors, 1 = errors (or warnings with `--fail-on warn`), 2 = bad
 A run that cannot finish (the composition's own metadata step throws, the browser dies) still writes `report.md`
 and `report.json` with the verdict **ERROR** and the reason, so an older report is never mistaken for this run.
 
-Tests: `node --test scripts/qa/tests/*.test.ts` (63 unit tests) and `node scripts/qa/selftest.ts` (16 fixtures rendered
+Tests: `node --test scripts/qa/tests/*.test.ts` (76 unit tests) and `node scripts/qa/selftest.ts` (16 fixtures rendered
 end to end: 14 planted defects, a clean control and a motion control that must stay clean; 3-5 minutes).
 
 ## The six check areas
@@ -42,7 +42,7 @@ end to end: 14 planted defects, a clean control and a motion control that must s
 | 2. Safe zones | `safe-area`, `shorts-ui`, `shorts-ads` | DOM boxes of text, captions, faces (head groups incl. Badger's ears) and hands against the zones below. Hands are hit-tested (`document.elementsFromPoint` on a 3x3 grid; a point is covered when something that paints sits above the hand there): a hand hidden behind a desk is not on screen and is not checked. One issue per character and side, however the hands move. |
 | 3. Captions and faces | `caption-face`, `text-face`, `text-face-zone`, `face-occluded` | Head boxes from the characters' own `data-part="head"` / `data-head` groups (exact, every view and transform). Clear zone per ART_GUIDE CV4c (information only). Faces painted over: scene frame vs the characters-only frame. |
 | 4. Contrast | `contrast` | Pixels: each frame is rendered as is and with every text paint transparent (same layout). Their difference is exactly the text's pixels, whatever is behind. WCAG ratio of glyph cores vs the pixels behind them and vs the 2-3 px ring around them (outlines count), per 1.5-em strip, worst strip reported. Minimum 4.5:1 (symbol-only text such as a decorative quote mark is information). |
-| 5. Off-model | `model-transform`, `model-effect`, `model-component`, `model-view`, `model-ssim`, `model-palette`, `model-pin`, `model-earcap`, `model-spots` | See below. |
+| 5. Off-model | `model-transform`, `model-effect`, `model-component`, `model-view`, `model-ssim`, `model-palette`, `model-pin`, `model-earcap`, `model-spots`, `model-provisional` | See below. |
 | 6. Banding, blotches, flicker | `banned`, `gradient`, `texture`, `flicker`, `flash`, `one-frame-state` | DOM: gradients, patterns, blur/glow/noise filters, shadows, blend modes, masks. Pixels: per-32-px-block plane fit (slope with a dither-sized residual and no edge steps = gradient; tolerant of Chrome's gradient dithering); non-flat, non-edge 16-px blocks outside text and characters = texture; one-frame pops between consecutive frames, motion-compensated (below); mean-brightness A-B-A = flash; DOM entities that exist for exactly one frame. |
 
 ### Off-model detection
@@ -63,7 +63,17 @@ committed fiber copy the way React's `findCurrentFiberUsingSlowPath` does). Then
 - **DOM facts:** the screen matrix gives mirroring (det < 0), stretching (> 2% anisotropy), skew and whole-body
   rotation; ancestor CSS/SVG filters and blend modes; whether the `data-character` group was rendered by the
   canonical component (a scene-drawn stand-in is caught); requested vs rendered view; Badger's `data-spot` ids
-  against the frozen per-view lists in `src/characters/manifest.v1.json`.
+  against the frozen per-view lists in `src/characters/manifest.v1.json` (the left-facing sit and lie against their own
+  LEFT coat-map lists `sitLeft` / `lieLeft`, not the right-facing poses' lists).
+- **Provisional drawings (`model-provisional`, always a warning, never an error):** a Badger instance whose drawn view
+  and pose (`data-view` / `data-pose`, else its props) is on `BADGER_PROVISIONAL_POSES`: today the left-facing sit and
+  lie (decision BADGER-D23, awaiting the owner's OK: their silhouette is the right-facing pose mirrored). Fine for
+  review sheets; keep them out of published episodes until the owner accepts them. The list is read the way the Badger
+  index exports it (`src/characters/badger/index.ts`, which Node cannot load because it pulls in the React components,
+  so `lib/provisional.ts` follows its re-export, named or `export *`, to `src/characters/badger/provisional.ts`). If the
+  index stops exporting it, nothing is provisional; if that module cannot be loaded, or the index defines the list
+  itself, the copy in `manifest.v1.json` (`provisional.badger`) is used. `report.json` records the list and where it
+  was read (`provisional`).
 - **Heuristics on S, checked against R and the manifest conventions:** Zoo's teal pin (present, within 12 units of
   its canonical position, on the screen-right side in front/3/4 views, absent in side/back); Badger's dark ear cap
   (a cap-sized `#19191C` blob in the top of the head, same side as R, screen right for the front head and screen
@@ -132,7 +142,8 @@ next scouted frame (a slide-in, a wipe, a fade) are information ("while animatin
 severity. Scene transitions are found from the scout frames (a run of frames with >= 30% of pixels changing, or
 >= 5% for 4+ frames with hysteresis, i.e. slides over flat backgrounds) and from two instances of the same
 character in one frame (both scenes mounted); pixel checks skip those frames and DOM findings there are
-information. Text fully hidden by a clip (0% visible) is not "cut" and is information.
+information, except `model-provisional`, which is about the asset, not the frame. A sheet that shows several
+instances of one character (`BadgerSheet`) therefore counts as a transition: its other findings are information. Text fully hidden by a clip (0% visible) is not "cut" and is information.
 
 **Roles.** A text is a caption when it is inside `data-part="caption"`, `data-caption`, `data-qa-role="caption"`, a
 class containing `caption`/`subtitle`, or a component whose name contains `Caption`/`Subtitle` (the episode's

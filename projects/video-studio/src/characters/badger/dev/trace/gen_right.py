@@ -215,13 +215,14 @@ tail = {'fill': S(tail_fill, TAIL_ROOT, True), 'strokes': [S(tail_fill, TAIL_ROO
 spots = []
 
 
-def spot(sid, part, segment, shape, origin, ref, desc, side='right'):
+def spot(sid, part, segment, shape, origin, ref, desc, side='right', crop=None):
     if isinstance(shape, tuple):
         d = S(blob(*shape), origin, True)
     else:
         d = S(shape, origin, True)
+    crop = crop or ('badger_coat_left.png' if (side == 'left' and part == 'legFrontFar') else 'badger_coat_right.png')
     spots.append({'id': sid, 'side': side, 'part': part, 'segment': segment, 'path': d,
-                  'ref': {'crop': 'badger_coat_right.png', 'x': ref[0], 'y': ref[1]}, 'desc': desc})
+                  'ref': {'crop': crop, 'x': ref[0], 'y': ref[1]}, 'desc': desc})
 
 
 # ellipses measured from the dark blobs of coat_right (centre, semi-axes, rotation in degrees)
@@ -234,6 +235,38 @@ spot('R-NECK', 'neck', None, (460.2, 124.4, 6.5, 3.8, -73.2), NECK_O, (460, 124)
 spot('R-06', 'legHindNear', 'upper', (189.9, 253.4, 11.0, 6.8, -69.0), HIND_HIP, (190, 253), 'front of the right thigh (stifle)')
 spot('R-07', 'legHindNear', 'upper', (115.9, 347.1, 10.5, 5.8, -57.4), HIND_HIP, (116, 347), 'right gaskin, just above the hock')
 spot('R-08', 'legFrontNear', 'upper', (408.0, 313.8, 12.2, 8.0, 88.5), FRONT_SHOULDER, (408, 314), 'forearm of the near (right) front leg')
+
+# Round-4 repair (R3 review minor): the FAR front leg is the anatomical LEFT foreleg, and badger_pose_walking.png (this facing)
+# draws its forearm mark as a dark edge on the far foreleg's BACK contour, about mid-forearm. The walk rigs now carry that
+# edge record on legFrontFar (parts/SideBody.tsx draws far-leg spots for edge records only). It is L-09, authored from
+# badger_coat_left.png's OWN L-09 (dev/trace/coatmaps.py: 37.2% down the forearm from the elbow tip to the wrist cut,
+# coat_left's own size, the across axis foreshortened to EDGE_K, its own 1.8 deg tilt), placed on this rig's forearm rear
+# contour (the far leg reuses the near leg's unmarked outline), centred on the contour so the leg clip shows the half that
+# wraps round that edge. Nothing here comes from R-08 or any other right record.
+from coatmaps import along as _along, size_units as _size_units, tilt_back as _tilt_back
+import math as _m
+
+
+def _poly_at_y(points, y):
+    """x and unit tangent (pointing down) of a traced polyline where it crosses height y."""
+    for a, b in zip(points, points[1:]):
+        if (a[1] - y) * (b[1] - y) <= 0 and a[1] != b[1]:
+            t = (y - a[1]) / (b[1] - a[1])
+            L = _m.hypot(b[0] - a[0], b[1] - a[1])
+            return a[0] + (b[0] - a[0]) * t, ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+    raise ValueError('edge does not reach y=%s' % y)
+
+
+FR_ELBOW_Y, FR_WRIST_Y = 267.0, FRONT_WRIST[1]       # this rig's forearm, traced on coat_right (coatmaps.py rule)
+_y_l09 = FR_ELBOW_Y + _along('L-09') * (FR_WRIST_Y - FR_ELBOW_Y)
+_x_l09, (_tx, _ty) = _poly_at_y([p[:2] for p in fr], _y_l09)   # the forearm's rear contour (right-facing: back = -x)
+_ac, _al = _size_units('L-09', edge=True)
+# blob(cx, cy, rx, ry, rot): rx along the rotated x axis; the long axis follows the contour (rot = its angle from +x, the
+# contour pointing down), its top leaning back (-x) by the map's own tilt (a smaller angle leans the top toward -x)
+_rot_l09 = _m.degrees(_m.atan2(_ty, _tx)) - _tilt_back('L-09')
+spot('L-09', 'legFrontFar', 'upper', (round(_x_l09, 2), round(_y_l09, 2), round(_al / KY, 2), round(_ac / KX, 2), round(_rot_l09, 1)),
+     FRONT_SHOULDER, (209, 314), 'left forearm L-09 on the far front leg (its back edge, as badger_pose_walking.png draws the far forearm mark), '
+     'authored from badger_coat_left.png L-09', side='left')
 # The withers patch L-WITHERS seen from the right (decision BADGER-D16, revised in round 2, 2026-11-24). The three coat maps
 # disagree here: coat_right draws only a thickened top line, coat_top puts the front half of the patch across the spine
 # (0.84 of the right half-width, which a level side view sees as a deep lobe below the top line). The turnaround (which
@@ -300,7 +333,8 @@ with open(sys.argv[2], 'w') as fh:
     json.dump({'const': 'RIGHT_SPOTS',
                'doc': ('Right-side markings for the RIGHT-view rig (badger_coat_right.png): 9 R- spots (R-01..R-08, R-NECK) '
                        'plus the right lobe of the withers patch (id L-WITHERS, side left) that the top coat map puts across the spine '
-                       '(decision BADGER-D16). Paths are in RIGHT_RIG part-local space.'),
+                       '(decision BADGER-D16), and the far (anatomical LEFT) forearm\'s edge record L-09 authored from badger_coat_left.png '
+                       '(round 4). Paths are in RIGHT_RIG part-local space.'),
                'spots': spots}, fh, indent=1)
 print('ok', len(spots), 'right-view spots; footprint centre CR', (FOOT_MIN + FOOT_MAX) / 2,
       '; far-front stand reach (units):', round(KX * (FRONT_FAR_DX - FRONT_FAR_MOUNT_DX), 1))

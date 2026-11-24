@@ -2,7 +2,9 @@
  * BadgerSheet: a still of the reusable Badger asset (1920x1080, #E6E8EB), rendered from the rig itself.
  * Row 1: the size-panel side view ('left', anatomical left toward camera) and the turnaround (front, 3/4, right side,
  * back). Row 2: poses: sitting and lying in both facings (the left-facing bodies carry the LEFT coat-map markings,
- * decision BADGER-D23), walking and looking up. Every full figure stands in a flat contact shadow (decision INT-C1).
+ * decision BADGER-D23), walking and looking up. The left-facing sit and lie are PROVISIONAL until the owner accepts
+ * D23 (their silhouette is the right-facing pose mirrored, BADGER_PROVISIONAL_POSES), so each carries a small, quiet
+ * caption under its ground line. Every full figure stands in a flat contact shadow (decision INT-C1).
  * Row 3: expressions (front busts) plus the 'judge' reaction.
  * Line weights per decision INT-L1: SL5 for the full-body rows, the sheet's close-up weight for the busts.
  * No labels are copied from the approved model sheet.
@@ -11,11 +13,13 @@ import React from 'react';
 import {AbsoluteFill} from 'remotion';
 import {FONTS} from '../../brand/fonts';
 import {Badger} from '../../characters/badger/Badger';
+import {isProvisionalBadgerPose} from '../../characters/badger/provisional';
 import {Head} from '../../characters/badger/parts/heads/Head';
 import {NeckFront} from '../../characters/badger/parts/Neck';
 import {LineScaleContext} from '../../characters/badger/parts/shared';
 import {BRAND} from '../../characters/palette';
 import type {BadgerPose, BadgerView, Expression} from '../../characters/types';
+import {PROVISIONAL_CAPTION} from './captions';
 import {ContactShadow, FOOTPRINTS, type Footprint} from './contact';
 import {closeLineScale, fullLineScale} from './stage';
 
@@ -30,14 +34,21 @@ const VIEWS: readonly {view: BadgerView; x: number; print: Footprint}[] = [
 
 /** Six poses on one ground line; the sit and lie pairs face each other so their different markings sit side by side. */
 const ROW2 = {ground: 736, scale: 0.5} as const;
-const POSES: readonly {pose: BadgerPose; view: BadgerView; x: number; walkPhase?: number; print: Footprint}[] = [
+const POSES: readonly {pose: BadgerPose; view: BadgerView; x: number; walkPhase?: number; print: Footprint; captionDx?: number}[] = [
 	{pose: 'sit', view: 'right', x: 160, print: FOOTPRINTS.badgerSitRight},
-	{pose: 'sit', view: 'left', x: 345, print: FOOTPRINTS.badgerSitLeft},
+	{pose: 'sit', view: 'left', x: 345, print: FOOTPRINTS.badgerSitLeft, captionDx: 23},
 	{pose: 'lie', view: 'right', x: 680, print: FOOTPRINTS.badgerLieRight},
-	{pose: 'lie', view: 'left', x: 1000, print: FOOTPRINTS.badgerLieLeft},
+	{pose: 'lie', view: 'left', x: 1000, print: FOOTPRINTS.badgerLieLeft, captionDx: 13},
 	{pose: 'walk', view: 'right', x: 1395, walkPhase: 0, print: FOOTPRINTS.badgerWalkRight},
 	{pose: 'lookUp', view: 'right', x: 1745, print: FOOTPRINTS.badgerLookUpRight},
 ];
+
+/**
+ * Caption under a provisional pose drawing (decision BADGER-D23): small and quiet, below the row's ground line.
+ * A pose's `captionDx` centres its caption on the drawing rather than on the root (the footprint centre): measured on
+ * the render, the left-facing sit spans x 291-446 px (root 345) and the left-facing lie 877-1150 px (root 1000).
+ */
+const CAPTION = {dy: 27, size: 17} as const;
 
 /** Front bust (neck, collar, tag, front head), origin at the collar line, as the expression panels. */
 const Bust: React.FC<{expression: Expression; judge?: number}> = ({expression, judge = 0}) => (
@@ -87,6 +98,21 @@ export const BadgerSheet: React.FC = () => (
 					breathe={false}
 					lineScale={fullLineScale(ROW2.scale)}
 				/>
+			))}
+			{POSES.filter((p) => isProvisionalBadgerPose(p.view, p.pose)).map((p) => (
+				<text
+					key={`provisional-${p.pose}-${p.view}`}
+					data-qa-role="badge"
+					x={p.x + (p.captionDx ?? 0)}
+					y={ROW2.ground + CAPTION.dy}
+					textAnchor="middle"
+					fontFamily={FONTS.body}
+					fontWeight={400}
+					fontSize={CAPTION.size}
+					fill={BRAND.slate}
+				>
+					{PROVISIONAL_CAPTION}
+				</text>
 			))}
 			{/* The busts draw the head parts directly, so they take the line scale from the shared context. */}
 			<LineScaleContext.Provider value={closeLineScale(ROW3.scale)}>

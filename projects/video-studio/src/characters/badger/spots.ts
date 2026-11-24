@@ -3,7 +3,8 @@
  * traces over the approved sheet crops. Do not add, remove or move markings here by hand:
  * PROJECT_INSTRUCTIONS.md freezes the approved simplified coat pattern.
  *
- * Body spots come from the LEFT coat map (reference/crops/badger_coat_left.png). Each record's `path` is a
+ * Body spots of the left view come from the LEFT coat map (reference/crops/badger_coat_left.png), plus one edge record of
+ * the far (anatomical RIGHT) forearm, R-08, authored from badger_coat_right.png (round 4). Each record's `path` is a
  * cubic-bezier path in its PART's local coordinates (origin = that part's pivot, world units, ZOO = 900) for
  * the left-side view, and it is rendered inside that part's group, clipped to the part outline, so it
  * moves with the part and can never slide or jump sides. No randomness anywhere.
@@ -41,13 +42,14 @@ export type BadgerSpot = {
 	readonly sameAs?: string;
 };
 
-/** Spots counted on badger_coat_left.png: 11 (1 large withers patch + 10 smaller spots). */
+/** Spots counted on badger_coat_left.png: 11 (1 large withers patch + 10 smaller spots). LEFT_SPOTS also holds the far
+ * forearm's R-08 edge record (side 'right'), so count the side-'left' records against this. */
 export const LEFT_SPOT_COUNT = 11;
 
 export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	{
 		id: "L-WITHERS",
-		side: 'left',
+		side: "left",
 		part: "torso",
 		path: "M -81.8 -81.5 C -73.3 -78.4 -60.1 -77.4 -45.1 -77.4 C -28.2 -77.4 -11.3 -78.4 1.9 -78.4 C 2.8 -64.8 -1.9 -51.2 -15 -41.8 C -28.2 -33.5 -46.1 -33.5 -59.2 -39.7 C -70.5 -46 -78 -61.7 -81.8 -81.5 Z",
 		ref: {crop: "badger_coat_left.png", x: 286, y: 162},
@@ -55,7 +57,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-01",
-		side: 'left',
+		side: "left",
 		part: "torso",
 		path: "M 69.5 -52.2 C 69.8 -48 64.5 -44.2 57.8 -43.7 C 51.1 -43.2 45.4 -46.1 45.1 -50.3 C 44.9 -54.4 50.1 -58.2 56.9 -58.7 C 63.6 -59.3 69.3 -56.3 69.5 -52.2 Z",
 		ref: {crop: "badger_coat_left.png", x: 391, y: 166},
@@ -63,7 +65,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-02",
-		side: 'left',
+		side: "left",
 		part: "torso",
 		path: "M 134.6 -22.9 C 138.1 -15.8 136.9 -7.7 132.1 -4.9 C 127.3 -2 120.6 -5.5 117.2 -12.6 C 113.8 -19.8 114.9 -27.9 119.8 -30.7 C 124.6 -33.5 131.2 -30.1 134.6 -22.9 Z",
 		ref: {crop: "badger_coat_left.png", x: 464, y: 198},
@@ -71,7 +73,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-03",
-		side: 'left',
+		side: "left",
 		part: "torso",
 		path: "M -67.6 -1.3 C -65.1 4.7 -66.8 11.6 -71.6 14 C -76.3 16.5 -82.1 13.6 -84.6 7.6 C -87.2 1.5 -85.4 -5.3 -80.7 -7.8 C -76 -10.2 -70.1 -7.3 -67.6 -1.3 Z",
 		ref: {crop: "badger_coat_left.png", x: 249, y: 218},
@@ -79,7 +81,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-04",
-		side: 'left',
+		side: "left",
 		part: "torso",
 		path: "M 28.1 -10.9 C 28.7 -6.3 25 -1.9 19.8 -1.1 C 14.7 -0.3 10.1 -3.4 9.5 -8 C 8.9 -12.5 12.6 -16.9 17.8 -17.7 C 22.9 -18.5 27.5 -15.4 28.1 -10.9 Z",
 		ref: {crop: "badger_coat_left.png", x: 350, y: 206},
@@ -87,7 +89,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-05",
-		side: 'left',
+		side: "left",
 		part: "torso",
 		path: "M -29.7 36.7 C -29.3 39.9 -32.7 42.8 -37.1 43.4 C -41.4 43.9 -45.2 41.7 -45.5 38.6 C -45.8 35.4 -42.5 32.4 -38.1 31.9 C -33.7 31.4 -29.9 33.6 -29.7 36.7 Z",
 		ref: {crop: "badger_coat_left.png", x: 290, y: 251},
@@ -95,7 +97,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-NECK",
-		side: 'left',
+		side: "left",
 		part: "neck",
 		path: "M -18.3 -40.8 C -19.1 -36.6 -21.7 -33.7 -24 -34.3 C -26.3 -34.8 -27.6 -38.6 -26.8 -42.8 C -26 -47 -23.4 -49.9 -21.1 -49.4 C -18.8 -48.8 -17.5 -45 -18.3 -40.8 Z",
 		ref: {crop: "badger_coat_left.png", x: 164, y: 128},
@@ -103,7 +105,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-06",
-		side: 'left',
+		side: "left",
 		part: "legHindNear",
 		segment: "upper",
 		path: "M -19.3 31.3 C -18.5 37.9 -21 43.7 -24.8 44.3 C -28.7 44.9 -32.5 40.1 -33.3 33.5 C -34.1 26.9 -31.7 21.1 -27.8 20.5 C -24 19.9 -20.2 24.7 -19.3 31.3 Z",
@@ -112,7 +114,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-07",
-		side: 'left',
+		side: "left",
 		part: "legHindNear",
 		segment: "upper",
 		path: "M 26.3 51.7 C 26.8 57 25.1 61.5 22.5 61.8 C 19.9 62.1 17.4 58.1 16.9 52.8 C 16.4 47.5 18.1 43 20.7 42.7 C 23.3 42.4 25.8 46.4 26.3 51.7 Z",
@@ -121,7 +123,7 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-08",
-		side: 'left',
+		side: "left",
 		part: "legHindNear",
 		segment: "upper",
 		path: "M 44.2 129.3 C 45.7 132.3 45.3 135.8 43.2 137.2 C 41.2 138.5 38.2 137.1 36.7 134.1 C 35.1 131.1 35.5 127.6 37.6 126.3 C 39.7 125 42.6 126.3 44.2 129.3 Z",
@@ -130,12 +132,21 @@ export const LEFT_SPOTS: readonly BadgerSpot[] = [
 	},
 	{
 		id: "L-09",
-		side: 'left',
+		side: "left",
 		part: "legFrontNear",
 		segment: "upper",
 		path: "M -0.4 53.9 C -0.1 61 -3 66.9 -6.9 67.1 C -10.9 67.3 -14.3 61.8 -14.7 54.8 C -15 47.7 -12.1 41.9 -8.1 41.6 C -4.2 41.4 -0.7 46.9 -0.4 53.9 Z",
 		ref: {crop: "badger_coat_left.png", x: 210, y: 314},
 		desc: "forearm of the near (left) front leg",
+	},
+	{
+		id: "R-08",
+		side: "right",
+		part: "legFrontFar",
+		segment: "upper",
+		path: "M 23.5 53.6 C 22.6 60.5 19.5 65.6 16.5 65.2 C 13.5 64.7 11.8 58.8 12.6 51.9 C 13.5 45.1 16.6 39.9 19.6 40.3 C 22.6 40.8 24.3 46.7 23.5 53.6 Z",
+		ref: {crop: "badger_coat_right.png", x: 408, y: 314},
+		desc: "right forearm R-08 on the far front leg (its back edge, as badger_pose_walking.png shows the far forearm mark), authored from badger_coat_right.png R-08",
 	},
 ];
 
@@ -223,7 +234,7 @@ export const FRONT_NECK_SPOTS: readonly BadgerSpot[] = [
 	},
 ];
 
-/** Right-side markings for the RIGHT-view rig (badger_coat_right.png): 9 R- spots (R-01..R-08, R-NECK) plus the right lobe of the withers patch (id L-WITHERS, side left) that the top coat map puts across the spine (decision BADGER-D16). Paths are in RIGHT_RIG part-local space. */
+/** Right-side markings for the RIGHT-view rig (badger_coat_right.png): 9 R- spots (R-01..R-08, R-NECK) plus the right lobe of the withers patch (id L-WITHERS, side left) that the top coat map puts across the spine (decision BADGER-D16), and the far (anatomical LEFT) forearm's edge record L-09 authored from badger_coat_left.png (round 4). Paths are in RIGHT_RIG part-local space. */
 export const RIGHT_SPOTS: readonly BadgerSpot[] = [
 	{
 		id: "R-01",
@@ -299,6 +310,15 @@ export const RIGHT_SPOTS: readonly BadgerSpot[] = [
 		path: "M -3.6 65.8 C -5.5 65.8 -7.9 63.9 -9.1 62.3 C -11 60.2 -11.6 56.5 -11.7 53.5 C -11.8 50.5 -11.3 46.8 -9.6 44.5 C -8.4 42.9 -6 40.8 -4.2 40.7 C -2.3 40.7 0.1 42.7 1.4 44.2 C 3.2 46.4 3.8 50.1 3.9 53.1 C 4 56 3.5 59.7 1.8 62 C 0.6 63.7 -1.8 65.7 -3.6 65.8 Z",
 		ref: {crop: "badger_coat_right.png", x: 408, y: 314},
 		desc: "forearm of the near (right) front leg",
+	},
+	{
+		id: "L-09",
+		side: "left",
+		part: "legFrontFar",
+		segment: "upper",
+		path: "M -25.1 67.9 C -26.3 68.1 -28 66 -29.1 64.7 C -30.9 62.4 -31.2 58.9 -31.6 55.9 C -32 53 -32.5 49.5 -31.3 46.8 C -30.7 45.2 -29.4 42.8 -28.2 42.6 C -27.1 42.5 -25.3 44.5 -24.3 45.9 C -22.6 48 -22.1 51.6 -21.7 54.6 C -21.4 57.6 -20.9 61.1 -22.1 63.7 C -22.8 65.2 -23.9 67.8 -25.1 67.9 Z",
+		ref: {crop: "badger_coat_left.png", x: 209, y: 314},
+		desc: "left forearm L-09 on the far front leg (its back edge, as badger_pose_walking.png draws the far forearm mark), authored from badger_coat_left.png L-09",
 	},
 	{
 		id: "L-WITHERS",
@@ -539,9 +559,9 @@ export const SIT_SPOTS: readonly BadgerSpot[] = [
 		id: "R-01",
 		side: "right",
 		part: "torso",
-		path: "M -89.1 -143.9 C -86.8 -142.7 -85.3 -138.9 -84.8 -136.1 C -84.1 -132.4 -85.8 -127.7 -87.7 -124.3 C -89.5 -120.8 -92.3 -116.7 -95.9 -115.3 C -98.4 -114.2 -102.5 -113.3 -104.6 -114.5 C -106.9 -115.7 -108.5 -119.5 -109 -122.2 C -109.7 -125.9 -108 -130.6 -106.1 -134.1 C -104.3 -137.5 -101.4 -141.6 -97.8 -143 C -95.3 -144.1 -91.3 -145.1 -89.1 -143.9 Z",
-		ref: {crop: "badger_pose_sitting.png", x: 128, y: 262},
-		desc: "croup spot R-01 (the croup tilts down when sitting)",
+		path: "M -80.4 -168.5 C -78.1 -167.6 -76.3 -163.7 -75.6 -161.1 C -74.6 -157.4 -76.1 -152.6 -77.6 -149 C -79.2 -145.4 -81.8 -141.2 -85.3 -139.6 C -87.7 -138.3 -91.7 -137.1 -94 -138.1 C -96.3 -139.1 -98.1 -142.9 -98.8 -145.6 C -99.7 -149.3 -98.3 -154 -96.8 -157.6 C -95.2 -161.2 -92.6 -165.4 -89.1 -167.1 C -86.7 -168.4 -82.6 -169.6 -80.4 -168.5 Z",
+		ref: {crop: "badger_pose_sitting.png", x: 136, y: 242},
+		desc: "croup spot R-01 (where the sitting panel draws it, clear of the thigh)",
 	},
 	{
 		id: "R-02",
@@ -595,8 +615,8 @@ export const SIT_SPOTS: readonly BadgerSpot[] = [
 		id: "L-09",
 		side: "left",
 		part: "legFrontFar",
-		path: "M 65.4 -127.1 C 66.6 -127 68.1 -125.1 68.9 -123.9 C 70.1 -121.9 70 -119 69.8 -116.6 C 69.6 -114.3 69.2 -111.5 67.7 -109.7 C 66.7 -108.6 65.1 -106.9 63.7 -107 C 62.6 -107.2 61.1 -109.1 60.3 -110.3 C 59.1 -112.3 59.2 -115.2 59.3 -117.6 C 59.6 -119.8 59.9 -122.7 61.5 -124.5 C 62.4 -125.6 64.1 -127.3 65.4 -127.1 Z",
-		ref: {crop: "badger_pose_sitting.png", x: 263, y: 272},
+		path: "M 65.9 -120.8 C 67.1 -120.7 68.5 -118.8 69.4 -117.6 C 70.6 -115.5 70.4 -112.7 70.3 -110.3 C 70.1 -108 69.7 -105.1 68.2 -103.3 C 67.2 -102.3 65.5 -100.6 64.2 -100.7 C 63 -100.8 61.6 -102.7 60.8 -103.9 C 59.6 -106 59.7 -108.8 59.8 -111.2 C 60 -113.5 60.4 -116.4 62 -118.2 C 62.9 -119.2 64.6 -120.9 65.9 -120.8 Z",
+		ref: {crop: "badger_pose_sitting.png", x: 263, y: 277},
 		desc: "left forearm L-09 on the far front leg (edge)",
 	},
 	{
@@ -639,8 +659,8 @@ export const LIE_SPOTS: readonly BadgerSpot[] = [
 		id: "R-01",
 		side: "right",
 		part: "torso",
-		path: "M -190.4 -126.1 C -188.4 -124.6 -187.4 -120.6 -187.2 -117.7 C -186.8 -113.9 -189.2 -109.5 -191.4 -106.4 C -193.7 -103.1 -197.1 -99.5 -200.7 -98.4 C -203.4 -97.6 -207.5 -97.3 -209.5 -98.6 C -211.6 -100.1 -212.6 -104.1 -212.8 -107 C -213.1 -110.8 -210.8 -115.2 -208.5 -118.3 C -206.3 -121.6 -202.9 -125.2 -199.3 -126.3 C -196.6 -127.1 -192.5 -127.4 -190.4 -126.1 Z",
-		ref: {crop: "badger_pose_lying.png", x: 118, y: 152},
+		path: "M -192.7 -130.5 C -190.7 -129.1 -189.6 -125 -189.4 -122.2 C -189.1 -118.4 -191.4 -114 -193.7 -110.9 C -195.9 -107.6 -199.3 -104 -202.9 -102.9 C -205.6 -102.1 -209.8 -101.8 -211.8 -103.1 C -213.8 -104.6 -214.8 -108.6 -215 -111.4 C -215.4 -115.3 -213 -119.7 -210.8 -122.8 C -208.5 -126.1 -205.1 -129.7 -201.6 -130.8 C -198.9 -131.6 -194.7 -131.9 -192.7 -130.5 Z",
+		ref: {crop: "badger_pose_lying.png", x: 116, y: 148},
 		desc: "croup spot R-01 (top of the rump, above the folded haunch)",
 	},
 	{
@@ -739,9 +759,9 @@ export const SIT_LEFT_SPOTS: readonly BadgerSpot[] = [
 		id: "L-02",
 		side: "left",
 		part: "torso",
-		path: "M 93.4 -138.7 C 90.4 -137.7 86.8 -135.4 85.4 -132.6 C 84.2 -130.4 83.2 -126.8 84.1 -124.5 C 84.9 -122.2 87.9 -120.1 90.3 -119.1 C 93.2 -117.9 97.4 -118.5 100.3 -119.6 C 103.3 -120.7 106.9 -122.9 108.4 -125.7 C 109.6 -128 110.5 -131.6 109.7 -133.8 C 108.8 -136.1 105.8 -138.3 103.5 -139.2 C 100.6 -140.4 96.4 -139.8 93.4 -138.7 Z",
-		ref: {crop: "badger_pose_sitting.png", x: 128, y: 262},
-		desc: "croup / top of the rump",
+		path: "M 89.8 -136.5 C 92.2 -136.7 95.1 -139.1 96.6 -141.1 C 98.4 -143.6 98.9 -147.8 98.7 -150.9 C 98.3 -154.2 97 -158.1 94.7 -160.3 C 92.9 -161.9 89.6 -163.7 87.2 -163.5 C 84.8 -163.3 81.9 -160.9 80.4 -158.8 C 78.6 -156.3 78.1 -152.1 78.3 -149 C 78.7 -145.8 80 -141.8 82.3 -139.7 C 84.1 -138 87.4 -136.2 89.8 -136.5 Z",
+		ref: {crop: "badger_pose_sitting.png", x: 135, y: 245},
+		desc: "croup / top of the rump (clear of the thigh)",
 	},
 	{
 		id: "L-03",
@@ -755,9 +775,9 @@ export const SIT_LEFT_SPOTS: readonly BadgerSpot[] = [
 		id: "L-04",
 		side: "left",
 		part: "torso",
-		path: "M 51.8 -140.8 C 50.5 -139.6 49.8 -136.8 49.9 -134.9 C 50 -132.6 51.5 -130.1 53.1 -128.5 C 54.8 -126.9 57.3 -125.3 59.6 -125.2 C 61.5 -125.1 64.2 -125.8 65.4 -127.1 C 66.7 -128.3 67.5 -131.1 67.3 -133 C 67.2 -135.3 65.7 -137.8 64.1 -139.5 C 62.4 -141 59.9 -142.6 57.6 -142.7 C 55.7 -142.8 53 -142.1 51.8 -140.8 Z",
-		ref: {crop: "badger_pose_sitting.png", x: 160, y: 258},
-		desc: "mid flank",
+		path: "M 49.2 -151.9 C 48.8 -150.1 49.5 -147.5 50.6 -145.9 C 51.8 -144 54.5 -142.6 56.7 -142 C 59 -141.4 62 -141.5 63.9 -142.4 C 65.5 -143.4 67.6 -145.3 68.1 -147.1 C 68.4 -148.9 67.7 -151.5 66.6 -153.1 C 65.4 -155 62.7 -156.4 60.5 -157 C 58.2 -157.6 55.3 -157.5 53.3 -156.6 C 51.7 -155.6 49.6 -153.7 49.2 -151.9 Z",
+		ref: {crop: "badger_pose_sitting.png", x: 160, y: 245},
+		desc: "mid flank, above the thigh line",
 	},
 	{
 		id: "L-05",
@@ -803,15 +823,15 @@ export const SIT_LEFT_SPOTS: readonly BadgerSpot[] = [
 		id: "L-09",
 		side: "left",
 		part: "legFrontNear",
-		path: "M -27.9 -119.2 C -28 -116.5 -27.6 -113 -26.1 -110.7 C -25 -109.2 -22.8 -107.2 -21 -107 C -19.4 -106.9 -17 -108.8 -15.7 -110.3 C -13.9 -112.3 -13.3 -115.7 -13 -118.5 C -12.9 -121.3 -13.3 -124.7 -14.8 -127 C -15.9 -128.6 -18.1 -130.6 -19.9 -130.7 C -21.5 -130.8 -23.9 -128.9 -25.2 -127.5 C -27 -125.5 -27.6 -122.1 -27.9 -119.2 Z",
-		ref: {crop: "badger_pose_sitting.png", x: 226, y: 271},
-		desc: "forearm of the near (left) front leg",
+		path: "M -23.3 -102.3 C -21.6 -102 -19.1 -103.8 -17.7 -105.1 C -15.5 -107.2 -14.7 -110.7 -14.2 -113.7 C -13.6 -116.7 -13.4 -120.4 -14.7 -122.9 C -15.7 -124.7 -17.5 -127.3 -19.1 -127.5 C -20.8 -127.7 -23.3 -125.9 -24.8 -124.6 C -26.8 -122.6 -27.7 -119 -28.2 -116 C -28.7 -113.1 -29.1 -109.4 -27.6 -106.8 C -26.8 -105.1 -25 -102.6 -23.3 -102.3 Z",
+		ref: {crop: "badger_coat_left.png", x: 209, y: 314},
+		desc: "forearm of the near (left) front leg, placed from badger_coat_left.png L-09",
 	},
 	{
 		id: "R-08",
 		side: "right",
 		part: "legFrontFar",
-		path: "M -63.9 -103.9 C -62.6 -104.1 -61.1 -106.3 -60.4 -107.8 C -59.1 -110.2 -59.3 -113.5 -59.6 -116.3 C -59.9 -119 -60.3 -122.4 -62 -124.4 C -63 -125.7 -64.8 -127.6 -66.1 -127.5 C -67.5 -127.4 -68.9 -125.1 -69.6 -123.7 C -70.9 -121.3 -70.7 -118 -70.4 -115.2 C -70.1 -112.4 -69.7 -109.1 -68.1 -107 C -67 -105.7 -65.2 -103.8 -63.9 -103.9 Z",
+		path: "M -65.4 -95.7 C -64.1 -95.7 -62.4 -98 -61.5 -99.3 C -59.8 -101.7 -59.7 -105.1 -59.7 -108.1 C -59.6 -111.1 -59.6 -114.6 -61 -117.1 C -62 -118.5 -63.5 -120.8 -64.8 -120.8 C -66.1 -120.8 -67.8 -118.6 -68.8 -117.2 C -70.3 -114.8 -70.4 -111.3 -70.6 -108.4 C -70.7 -105.4 -70.7 -101.9 -69.1 -99.5 C -68.3 -98.1 -66.7 -95.8 -65.4 -95.7 Z",
 		ref: {crop: "badger_coat_right.png", x: 408, y: 314},
 		desc: "right forearm R-08 on the far front leg (its outer edge), authored from badger_coat_right.png R-08",
 	},
@@ -847,8 +867,8 @@ export const LIE_LEFT_SPOTS: readonly BadgerSpot[] = [
 		id: "L-02",
 		side: "left",
 		part: "torso",
-		path: "M 192.2 -118.9 C 190.1 -116.4 188.2 -112.7 188.3 -109.7 C 188.4 -107.1 189.4 -103.5 191.2 -101.9 C 193.1 -100.4 196.8 -100 199.3 -100.3 C 202.5 -100.8 205.7 -103.4 207.7 -105.8 C 209.9 -108.3 211.8 -112 211.7 -115 C 211.6 -117.6 210.5 -121.2 208.7 -122.8 C 206.8 -124.3 203.1 -124.7 200.7 -124.4 C 197.5 -123.9 194.3 -121.3 192.2 -118.9 Z",
-		ref: {crop: "badger_pose_lying.png", x: 118, y: 152},
+		path: "M 194.5 -123.4 C 192.3 -120.9 190.4 -117.2 190.5 -114.1 C 190.7 -111.6 191.7 -108 193.5 -106.4 C 195.4 -104.9 199.1 -104.5 201.6 -104.8 C 204.7 -105.3 208 -107.9 210 -110.3 C 212.1 -112.8 214 -116.5 213.9 -119.5 C 213.8 -122.1 212.8 -125.7 211 -127.3 C 209.1 -128.8 205.4 -129.2 202.9 -128.9 C 199.8 -128.4 196.5 -125.8 194.5 -123.4 Z",
+		ref: {crop: "badger_pose_lying.png", x: 116, y: 148},
 		desc: "croup / top of the rump, above the folded haunch",
 	},
 	{
@@ -863,9 +883,9 @@ export const LIE_LEFT_SPOTS: readonly BadgerSpot[] = [
 		id: "L-04",
 		side: "left",
 		part: "torso",
-		path: "M 108.4 -89 C 108.1 -87.2 109.2 -84.6 110.4 -83.1 C 111.8 -81.5 114.6 -80.2 116.8 -80 C 119.2 -79.7 122.1 -80 124 -81.2 C 125.6 -82.4 127.3 -84.5 127.5 -86.3 C 127.9 -88.1 126.7 -90.7 125.5 -92.1 C 124.1 -93.8 121.3 -95 119.1 -95.3 C 116.7 -95.6 113.8 -95.3 111.9 -94 C 110.3 -92.9 108.6 -90.8 108.4 -89 Z",
-		ref: {crop: "badger_pose_lying.png", x: 191, y: 174},
-		desc: "mid flank",
+		path: "M 95.3 -96.6 C 94 -95.3 93.4 -92.6 93.5 -90.8 C 93.6 -88.5 95.2 -85.9 96.8 -84.4 C 98.4 -82.7 101.1 -81.2 103.4 -81.1 C 105.3 -81.1 108 -81.8 109.2 -83.1 C 110.4 -84.5 111.1 -87.2 111 -89 C 110.9 -91.2 109.3 -93.8 107.6 -95.4 C 106.1 -97.1 103.4 -98.5 101.1 -98.6 C 99.2 -98.6 96.5 -98 95.3 -96.6 Z",
+		ref: {crop: "badger_pose_lying.png", x: 205, y: 172},
+		desc: "mid flank, ahead of the thigh",
 	},
 	{
 		id: "L-05",
@@ -879,9 +899,9 @@ export const LIE_LEFT_SPOTS: readonly BadgerSpot[] = [
 		id: "L-06",
 		side: "left",
 		part: "haunch",
-		path: "M 129.2 -76.6 C 127.5 -74.6 125.8 -71.7 125.8 -69.2 C 125.8 -67.3 126.4 -64.5 127.6 -63.4 C 129 -62.2 131.8 -62.2 133.7 -62.6 C 136.2 -63 138.8 -65.2 140.4 -67.2 C 142.1 -69.2 143.8 -72.1 143.8 -74.6 C 143.8 -76.5 143.2 -79.3 142 -80.4 C 140.7 -81.6 137.9 -81.6 135.9 -81.2 C 133.5 -80.8 130.9 -78.6 129.2 -76.6 Z",
-		ref: {crop: "badger_pose_lying.png", x: 176, y: 188},
-		desc: "front of the left thigh (on the folded haunch)",
+		path: "M 148.2 -59 C 149.9 -59.5 151.4 -61.9 152.1 -63.6 C 153.1 -65.9 152.7 -69.3 151.9 -71.8 C 151.1 -74.3 149.6 -77.3 147.5 -78.6 C 145.9 -79.8 143.4 -80.8 141.7 -80.3 C 140 -79.8 138.4 -77.4 137.7 -75.7 C 136.7 -73.4 137.2 -70 138 -67.5 C 138.8 -65 140.2 -62 142.3 -60.7 C 143.9 -59.5 146.5 -58.5 148.2 -59 Z",
+		ref: {crop: "badger_pose_lying.png", x: 167, y: 190},
+		desc: "front of the left thigh (inside the folded haunch)",
 	},
 	{
 		id: "L-07",
@@ -903,9 +923,9 @@ export const LIE_LEFT_SPOTS: readonly BadgerSpot[] = [
 		id: "L-09",
 		side: "left",
 		part: "legFrontNear",
-		path: "M -119.7 -16.7 C -119.8 -15.1 -118.1 -12.6 -116.6 -11.2 C -114.7 -9.4 -111.2 -8.7 -108.5 -8.4 C -105.7 -8.1 -102.2 -8.3 -100 -9.8 C -98.3 -10.9 -96.2 -12.9 -96.1 -14.7 C -95.9 -16.4 -97.6 -18.9 -99.1 -20.2 C -101 -22 -104.5 -22.8 -107.2 -23 C -110 -23.4 -113.5 -23.1 -115.7 -21.7 C -117.4 -20.6 -119.5 -18.5 -119.7 -16.7 Z",
-		ref: {crop: "badger_pose_lying.png", x: 392, y: 238},
-		desc: "forearm of the near (left) front leg, lying along the ground",
+		path: "M -92.4 -23.3 C -92.2 -21.6 -89.9 -19.7 -88.2 -18.5 C -85.8 -17 -82.1 -17 -79.1 -17.3 C -76.1 -17.5 -72.5 -18.2 -70.3 -20.1 C -68.9 -21.5 -66.8 -23.8 -67 -25.5 C -67.2 -27.2 -69.4 -29.1 -71.1 -30.2 C -73.6 -31.7 -77.3 -31.7 -80.3 -31.5 C -83.3 -31.2 -87 -30.6 -89.1 -28.6 C -90.6 -27.3 -92.6 -24.9 -92.4 -23.3 Z",
+		ref: {crop: "badger_coat_left.png", x: 209, y: 314},
+		desc: "forearm of the near (left) front leg, lying along the ground; placed from badger_coat_left.png L-09",
 	},
 	{
 		id: "L-NECK",

@@ -82,6 +82,11 @@ export type SideSpots = {
 	readonly torso: readonly BadgerSpot[];
 	readonly neck: readonly BadgerSpot[];
 	readonly legFrontNear: readonly BadgerSpot[];
+	/**
+	 * Far front leg: EDGE records only (round 4): the far forearm's mark where it wraps round the leg's back contour, as
+	 * badger_pose_walking.png draws it (L-09 on the right rig, R-08 on the left rig, each authored from its own coat map).
+	 */
+	readonly legFrontFar: readonly BadgerSpot[];
 	readonly legHindNear: readonly BadgerSpot[];
 	readonly tail: readonly BadgerSpot[];
 };
@@ -90,6 +95,7 @@ export const spotsByPart = (spots: readonly BadgerSpot[]): SideSpots => ({
 	torso: spots.filter((s) => s.part === 'torso'),
 	neck: spots.filter((s) => s.part === 'neck'),
 	legFrontNear: spots.filter((s) => s.part === 'legFrontNear'),
+	legFrontFar: spots.filter((s) => s.part === 'legFrontFar'),
 	legHindNear: spots.filter((s) => s.part === 'legHindNear'),
 	tail: spots.filter((s) => s.part === 'tail'),
 });
@@ -136,7 +142,7 @@ const svgLeg = (a: LegAngles, dir: number): LegAngles => ({upper: -dir * a.upper
 /**
  * One side view of BADGER built from a traced rig. dir = -1 faces screen left (LEFT_RIG, left markings),
  * dir = +1 faces screen right (RIGHT_RIG, right markings). Part order, back to front: far hind leg, far front
- * leg (coatShadow, no markings), tail, neck, torso, near hind leg, near front leg, collar+tag, head.
+ * leg (coatShadow; only the far forearm's edge record), tail, neck, torso, near hind leg, near front leg, collar+tag, head.
  */
 export const SideBody: React.FC<{
 	rig: SideRig;
@@ -185,7 +191,7 @@ export const SideBody: React.FC<{
 	return (
 		<g transform={rootT}>
 			{hindFarOverride ?? <Leg geom={R.legHind} mount={mnt('hindFar', M.legHindFar)} angles={svgLeg(L.hindFar, dir)} uid={`${uid}-hf`} far />}
-			<Leg geom={R.legFront} mount={mnt('frontFar', M.legFrontFar)} angles={svgLeg(L.frontFar, dir)} uid={`${uid}-ff`} far />
+			<Leg geom={R.legFront} mount={mnt('frontFar', M.legFrontFar)} angles={svgLeg(L.frontFar, dir)} uid={`${uid}-ff`} far spots={spots.legFrontFar} />
 			<Tail geom={R.tail} mount={M.tail} wag={wag} bend={bend} uid={uid} />
 			<g transform={neckT}>
 				<NeckSide geom={R.neck} uid={uid} spots={spots.neck} />

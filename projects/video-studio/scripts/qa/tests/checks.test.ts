@@ -204,6 +204,10 @@ describe('character transforms and identity', () => {
 	});
 	it('knows the manifest conventions', () => {
 		assert.equal(expectedBadgerBody(manifest, 'right', 'sit'), manifest.badgerBody.sit);
+		// the left-facing sit and lie carry their own LEFT coat-map markings (BADGER-D23)
+		assert.equal(expectedBadgerBody(manifest, 'left', 'sit'), manifest.badgerBody.sitLeft);
+		assert.equal(expectedBadgerBody(manifest, 'left', 'lie'), manifest.badgerBody.lieLeft);
+		assert.ok(manifest.badgerBody.sitLeft?.includes('L-WITHERS') && !manifest.badgerBody.sitLeft.includes('R-01'));
 		assert.equal(expectedEarCapSide('front', 'left'), 'right');
 		assert.equal(expectedEarCapSide('front', 'back'), 'left');
 		assert.equal(expectedPin('front', 'stand'), 'right');

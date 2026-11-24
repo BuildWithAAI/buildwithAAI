@@ -6,6 +6,7 @@
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {hexToRgb, type RGB} from './color.ts';
+import {loadProvisional, type Provisional} from './provisional.ts';
 
 export type Manifest = {
 	version: string;
@@ -14,6 +15,8 @@ export type Manifest = {
 	badgerBody: Record<string, string[]>;
 	badgerHeadIds: string[];
 	colours: {pin: RGB; spot: RGB; earCap: RGB; line: RGB; tag: RGB};
+	/** Drawings the assets render but the owner has not accepted yet (BADGER_PROVISIONAL_POSES, see provisional.ts). */
+	provisional: Provisional;
 };
 
 type RawManifest = {
@@ -49,12 +52,16 @@ export const loadManifest = (projectRoot: string): Manifest => {
 		badgerBody,
 		badgerHeadIds: headIds,
 		colours: {pin: hexToRgb(pal.zoo.pin), spot: hexToRgb(pal.badger.spot), earCap: hexToRgb(pal.badger.earCap), line: hexToRgb(pal.line.color), tag: hexToRgb(pal.badger.tag)},
+		provisional: loadProvisional(projectRoot),
 	};
 };
 
-/** The frozen body-marking list for a Badger instance: sit and lie use the pose body, everything else the view. */
+/**
+ * The frozen body-marking list for a Badger instance: sit and lie use the pose body (the left-facing ones, drawn view
+ * 'left', have their own LEFT coat-map lists sitLeft / lieLeft, decision BADGER-D23), everything else the view.
+ */
 export const expectedBadgerBody = (m: Manifest, view: string | null, pose: string | null): string[] | null => {
-	if (pose === 'sit' || pose === 'lie') return m.badgerBody[pose] ?? null;
+	if (pose === 'sit' || pose === 'lie') return m.badgerBody[view === 'left' ? `${pose}Left` : pose] ?? null;
 	return view ? (m.badgerBody[view] ?? null) : null;
 };
 

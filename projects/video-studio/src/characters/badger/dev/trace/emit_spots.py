@@ -21,7 +21,8 @@ L.append('''/**
  * traces over the approved sheet crops. Do not add, remove or move markings here by hand:
  * PROJECT_INSTRUCTIONS.md freezes the approved simplified coat pattern.
  *
- * Body spots come from the LEFT coat map (reference/crops/badger_coat_left.png). Each record's `path` is a
+ * Body spots of the left view come from the LEFT coat map (reference/crops/badger_coat_left.png), plus one edge record of
+ * the far (anatomical RIGHT) forearm, R-08, authored from badger_coat_right.png (round 4). Each record's `path` is a
  * cubic-bezier path in its PART's local coordinates (origin = that part's pivot, world units, ZOO = 900) for
  * the left-side view, and it is rendered inside that part's group, clipped to the part outline, so it
  * moves with the part and can never slide or jump sides. No randomness anywhere.
@@ -59,7 +60,8 @@ export type BadgerSpot = {
 	readonly sameAs?: string;
 };
 
-/** Spots counted on badger_coat_left.png: 11 (1 large withers patch + 10 smaller spots). */
+/** Spots counted on badger_coat_left.png: 11 (1 large withers patch + 10 smaller spots). LEFT_SPOTS also holds the far
+ * forearm's R-08 edge record (side 'right'), so count the side-'left' records against this. */
 export const LEFT_SPOT_COUNT = 11;
 ''')
 L.append('export const LEFT_SPOTS: readonly BadgerSpot[] = [')
@@ -67,12 +69,12 @@ for s in left:
     seg = ("\n\t\tsegment: %s," % q(s['segment'])) if s.get('segment') else ''
     L.append('''\t{
 \t\tid: %s,
-\t\tside: 'left',
+\t\tside: %s,
 \t\tpart: %s,%s
 \t\tpath: %s,
 \t\tref: {crop: %s, x: %d, y: %d},
 \t\tdesc: %s,
-\t},''' % (q(s['id']), q(s['part']), seg, q(s['path']), q(s['ref']['crop']), s['ref']['x'], s['ref']['y'], q(s['desc'])))
+\t},''' % (q(s['id']), q(s.get('side', 'left')), q(s['part']), seg, q(s['path']), q(s['ref']['crop']), s['ref']['x'], s['ref']['y'], q(s['desc'])))
 L.append('];')
 L.append('')
 L.append('''export const spotsFor = (part: BadgerPartId, spots: readonly BadgerSpot[] = LEFT_SPOTS): readonly BadgerSpot[] =>

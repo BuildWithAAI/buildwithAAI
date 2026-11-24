@@ -68,6 +68,10 @@ export const ZOO_COLORS = {
 	sneaker: '#E7E9EC',
 	sneakerShadow: '#C9CED6',
 	sneakerSole: '#F4F6F8',
+	// Added 2026-11-24 (Zoo repair round 4, decision ZOO-C7): the sneakers' seam, lace and midsole LINE colour. The sheet
+	// draws them as soft mid-grey lines (cores ~#99948F on zoo_turn_front.png), not near-black. A line colour, not a shadow
+	// tone (sneakerShadow stays the one shadow tone), in the sneaker's cool grey family.
+	sneakerLine: '#8F949C',
 	pin: BRAND.teal, // tiny jellyfish pin, anatomical LEFT chest
 } as const;
 

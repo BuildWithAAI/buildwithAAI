@@ -7,6 +7,7 @@ import {applyTextTransform, type CharacterFact, type FrameFacts, type Rect, type
 import {inflate, intersectRect, rectArea, unionRect} from '../image.ts';
 import type {Finding, Severity} from '../issues.ts';
 import {expectedBadgerBody, type Manifest} from '../manifest.ts';
+import {provisionalMatch} from '../provisional.ts';
 import {THRESHOLDS as T} from '../thresholds.ts';
 import {outside, type Zones} from '../zones.ts';
 
@@ -413,6 +414,22 @@ export const characterDomFindings = (f: FrameFacts, manifest: Manifest): Finding
 			out.push({...base, check: 'model-view', severity: 'warn', key: `${c.key}|view|${reqView}`, message: `${who} was asked for view "${reqView}" but renders "${c.view}" (the asset fell back)`, measured: {requested: reqView, rendered: c.view}, score: 1});
 		// Badger's markings against the frozen manifest
 		if (c.kind === 'badger') {
+			// a drawing the owner has not accepted yet (BADGER_PROVISIONAL_POSES): always a warning, never an error
+			const props = c.props ?? {};
+			const drawnView = c.view ?? (typeof props.view === 'string' ? props.view : 'left');
+			const drawnPose = c.pose ?? (typeof props.pose === 'string' ? props.pose : 'stand');
+			const prov = provisionalMatch(manifest.provisional, drawnView, drawnPose);
+			if (prov)
+				out.push({
+					...base,
+					check: 'model-provisional',
+					severity: 'warn',
+					key: `${c.key}|provisional|${prov.view}|${prov.pose}`,
+					message: `${who} uses view '${prov.view}' with pose '${prov.pose}', a PROVISIONAL drawing awaiting the owner's OK (${manifest.provisional.decision ? `decision ${manifest.provisional.decision}, ` : ''}BADGER_PROVISIONAL_POSES): fine for review, keep it out of published episodes until the owner accepts it`,
+					measured: {view: prov.view, pose: prov.pose, decision: manifest.provisional.decision},
+					score: 1,
+					thumb: {kind: 'crop'},
+				});
 			const expected = expectedBadgerBody(manifest, c.view, c.pose);
 			if (expected) {
 				const body = c.spots.filter((s) => !s.startsWith('H-'));

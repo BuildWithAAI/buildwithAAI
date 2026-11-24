@@ -49,7 +49,8 @@ export const Head: React.FC<HeadProps> = ({expression, mouth, blink, browLift, l
 	const spec = EXPRESSIONS[expression];
 	const shape = mouth ?? spec.mouth;
 	const mod = mouth ? explicitMod(spec.mod) : spec.mod;
-	const {hole, jaw} = mouthDrops(shape, mod);
+	const mouthSpec = mouth ? undefined : spec.mouthSpec;
+	const {hole, jaw} = mouthDrops(shape, mod, mouthSpec);
 	const {liftL, liftR} = browLifts(browLift);
 	// The screen-left brow (anatomical right, BROW_R) passes under the forelock tip.
 	const forelockLift = forelockLiftFor(browTopIn(posed(BROW_R, spec.browR, liftR), FORELOCK_TIP.x - 2, FORELOCK_TIP.x + 11));
@@ -59,7 +60,7 @@ export const Head: React.FC<HeadProps> = ({expression, mouth, blink, browLift, l
 			<HairBack />
 			<Ears />
 			<FaceSkin jawDrop={jaw} />
-			<Mouth shape={shape} mod={mod} />
+			<Mouth shape={shape} mod={mod} spec={mouthSpec} />
 			<Beard hole={hole} jawDrop={jaw} />
 			<Moustache liftR={mod.moustacheLiftR} />
 			<path data-part="jawOutline" d={jawOutline(jaw)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />

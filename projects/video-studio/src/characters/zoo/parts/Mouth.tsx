@@ -18,9 +18,15 @@ const halfWidth = (spec: MouthSpec) => {
 	return Math.max(...pts.map((p) => Math.abs(p[0])));
 };
 
+/**
+ * The drawing for a mouth: the library shape, or the expression's own drawing of it when the expression has one and no
+ * explicit mouth was passed (repair round 4, ZOO-E3: shocked). Heads pass EXPRESSIONS[e].mouthSpec only in that case.
+ */
+export const mouthSpecFor = (shape: MouthShape, override?: MouthSpec): MouthSpec => override ?? MOUTHS[shape];
+
 /** Drops for the beard/jaw after modifiers (used by the head to keep the beard coherent). */
-export const mouthDrops = (shape: MouthShape, mod: MouthMod) => {
-	const s = MOUTHS[shape];
+export const mouthDrops = (shape: MouthShape, mod: MouthMod, override?: MouthSpec) => {
+	const s = mouthSpecFor(shape, override);
 	return {hole: s.hole * (s.hole > 0 ? mod.openScale : 1), jaw: s.jaw * (s.jaw > 0 ? mod.openScale : 1)};
 };
 
@@ -45,8 +51,14 @@ const makeMap = (spec: MouthSpec, mod: MouthMod, project: MouthProjection) => {
  * `project` lets other views reuse the same library: it receives the modified mouth-local point
  * (front-view units, anatomical left = +x) and returns head-space coordinates. It never mirrors.
  */
-export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: MouthProjection; lineScale?: number}> = ({shape, mod = MOD0, project = FRONT_PROJECTION, lineScale = 1}) => {
-	const spec = MOUTHS[shape];
+export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: MouthProjection; lineScale?: number; spec?: MouthSpec}> = ({
+	shape,
+	mod = MOD0,
+	project = FRONT_PROJECTION,
+	lineScale = 1,
+	spec: override,
+}) => {
+	const spec = mouthSpecFor(shape, override);
 	const M = makeMap(spec, mod, project);
 	const ls = useLineScale();
 	if (spec.kind === 'line') {
@@ -61,9 +73,10 @@ export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: Mouth
 	}
 	const opening = smooth([...spec.top, ...spec.bottom].map(M));
 	return (
-		<g data-part="mouth" data-shape={shape}>
+		<g data-part="mouth" data-shape={shape} data-variant={override ? 'expression' : undefined}>
 			<path d={opening} fill={ZOO_COLORS.mouthInterior} />
 			<Clipped clip={opening}>
+				{spec.cavity ? <path data-part="cavity" d={smooth(spec.cavity.map(M))} fill={ZOO_COLORS.brow} /> : null}
 				{spec.tongue ? <path d={smooth(spec.tongue.map(M))} fill={ZOO_COLORS.tongue} /> : null}
 				{spec.teeth ? (
 					<>

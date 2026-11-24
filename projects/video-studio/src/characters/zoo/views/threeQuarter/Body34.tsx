@@ -197,7 +197,9 @@ export const NearArm34: React.FC = () => (
 // ---------------------------------------------------------------- legs and shoes
 const LEG_NEAR: Pt[] = [
 	[-92, -440], [-10, -440], [-12, -330], [-14.6, -272], [-18.6, -250], [-24.6, -229], [-27, -207], [-35.6, -172], [-38, -146],
-	[-41.6, -120], [-45.4, -90], [-45.6, -66], [-44.6, -44, 'c'], [-74, -46.6], [-101, -50, 'c'], [-102, -70], [-100, -86],
+	[-41.6, -120], [-45.4, -90], [-45.6, -66], [-47.4, -54], [-49.4, -48.6, 'c'],
+	// repair round 4: the hem drapes (zoo_turn_34.png): high over the instep (~-53.5), down to ~-41 at the outer heel side
+	[-54, -50.4], [-60, -53], [-67, -54], [-74, -52.2], [-80, -48.4], [-86, -44.2], [-93, -41.6], [-101.6, -41.2, 'c'], [-102.6, -56], [-102, -70], [-100, -86],
 	[-99.6, -160], [-97.6, -188], [-94.2, -210], [-86.6, -236], [-86.6, -270], [-86, -330], [-89, -400],
 ];
 const LEG_NEAR_SHADOW = [
@@ -206,8 +208,9 @@ const LEG_NEAR_SHADOW = [
 ].join(' ');
 const LEG_FAR: Pt[] = [
 	[-12, -440], [66, -440], [64.4, -380], [61.6, -326], [59, -306], [57.6, -294], [54.6, -282], [53.4, -265], [50, -244],
-	[49.2, -222], [45, -198], [41.4, -176], [39.6, -138], [38.2, -110], [37.4, -96], [39.6, -81], [38.4, -64], [39.4, -50.4, 'c'],
-	[12, -49.6], [-14.6, -51.6, 'c'], [-15.6, -80], [-17, -108], [-17, -180], [-14.6, -196], [-14, -230], [-12, -300],
+	[49.2, -222], [45, -198], [41.4, -176], [39.6, -138], [38.2, -110], [37.4, -96], [39.6, -81], [38.4, -64], [39, -57.4, 'c'],
+	// repair round 4: the hem slopes down from the instep (~-57) to the heel (~-46), as on zoo_turn_34.png
+	[30.4, -53.4], [20, -48], [8, -44], [-4, -42.4], [-15.2, -43.2, 'c'], [-15.8, -60], [-15.6, -80], [-17, -108], [-17, -180], [-14.6, -196], [-14, -230], [-12, -300],
 ];
 const LEG_FAR_SHADOW = smooth([[66, -446], [-14, -446], [-14, -410], [30, -404], [66, -408]]) + ' ' + smooth([[-17, -300], [-17, -56], [0, -56], [-4, -200], [-6, -300]]);
 
@@ -216,58 +219,73 @@ const LEG_FAR_SHADOW = smooth([[66, -446], [-14, -446], [-14, -410], [30, -404],
  * box runs on to a round nose at x ~-22, over the far shoe's heel, as on the sheet (round 1 stopped at ~-36: a short clog).
  */
 const SHOE_NEAR: Pt[] = [
-	[-106, -38.6], [-100, -46.4], [-88, -53.4], [-73, -56.6], [-58, -55], [-50, -50], [-44, -43.6], [-38, -36.4], [-31, -31.4],
-	[-25.6, -26], [-22.4, -18.6], [-21.8, -10], [-24.6, -3], [-30, -1.75], [-72, -1.75], [-104, -1.9], [-107.4, -8], [-107.6, -24],
+	[-106, -38.6], [-100, -46.4], [-88, -53.4], [-73, -56.6], [-58, -55], [-50, -50], [-44.6, -43], [-40.8, -36.4], [-36.8, -30.4],
+	[-30.6, -26], [-22.8, -21.6], [-17.6, -17.2], [-14.6, -11.8], [-13.6, -6.6], [-15.2, -2.6], [-22, -1.75], [-72, -1.75], [-104, -1.9], [-107.4, -8], [-107.6, -24],
 ];
-const SHOE_NEAR_SOLE: Pt[] = [[-110, -12.4], [-72, -11.6], [-18, -12.2], [-18, 2], [-110, 2]];
-const SHOE_NEAR_SHADOW: Pt[] = [[-110, -60], [-94, -60], [-96, -30], [-100, -12], [-110, -12]];
+const SHOE_NEAR_SOLE: Pt[] = [[-110, -12.4], [-72, -11.6], [-10, -12.2], [-10, 2], [-110, 2]];
+/**
+ * Near sneaker line art (repair round 4, decision ZOO-S3; zoo_turn_34.png): in the soft sneakerLine grey, the midsole line,
+ * the lace panel on the instep (its inner edge and three bars, each lower one set toward the toe) and the vamp seam that
+ * rises from the midsole at the heel side, runs under the lace panel and follows the toe cap round to the front (round 3:
+ * two near-black dashes and one toe line on a plain slipper, with a grey shadow band down the heel side).
+ */
 const SHOE_NEAR_LINES: Pt[][] = [
-	[[-106.6, -12.2], [-72, -11.4], [-23.4, -12.2]], // sole line
-	[[-82, -46], [-70, -41.4], [-58, -42.6]], // laces
-	[[-84, -38], [-70, -33], [-54, -34.6]],
-	[[-60, -24.6], [-44, -21.6], [-28, -22.8]], // toe cap
+	[[-110, -11.8], [-72, -11.2], [-8, -11.8]], // midsole
+	[[-85.6, -48.6], [-81, -38.8], [-75.4, -29.6]], // lace panel edge
+	[[-84, -46.6], [-72, -47.8], [-60.6, -47]], // laces
+	[[-81.4, -41], [-69.6, -41.8], [-58.2, -41.2]],
+	[[-78.6, -35.4], [-67.4, -36], [-56.6, -35.6]],
+	[[-94, -11.6], [-88.4, -16], [-82.4, -22], [-76.6, -27.4], [-66, -30.2], [-53.6, -28.8], [-40, -25.4], [-29, -21.6], [-21, -16.4], [-16.6, -12.2]], // vamp / toe cap
 ];
 /** Far sneaker in profile pointing screen right; its heel tucks behind the near shoe. */
 // Repair round 2: a rounder, slightly shorter toe (round 1 tapered to a low point at x ~107: a pointed slipper).
+// Repair round 4 (zoo_turn_34.png outline centres): the heel's back edge is flush with the far trouser leg (~-16 at y -42,
+// slanting to ~-20 at -24, then hidden behind the near toe); round 3's heel reached x -40 and its top showed as a bump
+// between the legs.
 const SHOE_FAR: Pt[] = [
-	[-36, -46], [-22, -51.4], [-4, -55], [16, -57.6], [32, -57], [44, -52], [60, -44.4], [76, -38.4], [88, -33.4], [96.4, -29],
-	[101.6, -22.6], [103.4, -14], [101.8, -6], [97, -1.75], [60, -1.75], [-20, -1.75], [-38, -2.4], [-40.6, -16], [-39.6, -32],
+	[-15.6, -50], [-4, -55], [16, -57.6], [32, -57], [44, -52], [60, -44.4], [76, -38.4], [88, -33.4], [96.4, -29],
+	[101.6, -22.6], [103.4, -14], [101.8, -6], [97, -1.75], [60, -1.75], [-14, -1.75], [-19.6, -3.4], [-21, -12], [-20.2, -20], [-18.8, -28], [-17.4, -36], [-16.4, -43],
 ];
-const SHOE_FAR_SOLE: Pt[] = [[-44, -12.6], [30, -12], [108, -12.6], [108, 2], [-44, 2]];
-const SHOE_FAR_SHADOW: Pt[] = [[-42, -60], [-10, -60], [-14, -30], [-18, -12], [-42, -12]];
+const SHOE_FAR_SOLE: Pt[] = [[-26, -12.6], [30, -12], [108, -12.6], [108, 2], [-26, 2]];
+/** Far sneaker line art (repair round 4, zoo_turn_34.png): the midsole line, the laces as four short dashes down the instep
+ * (the sheet's row of lace marks along the eyestay) and the toe-cap seam curving down to the midsole (round 3: near-black
+ * dashes on a plain upper). */
 const SHOE_FAR_LINES: Pt[][] = [
-	[[-38.8, -12.6], [30, -11.8], [102.6, -12.4]],
-	[[42, -48.6], [52, -45.6], [60, -41]],
-	[[50, -41], [60, -37.6], [68, -33.6]],
-	[[62, -24], [80, -22.6], [97.6, -23.4]],
+	[[-24, -12.8], [30, -12.2], [106, -12.8]], // midsole
+	[[39.4, -50.8], [43.4, -48.8]], // laces
+	[[46.4, -47.4], [50.4, -45.4]],
+	[[53.4, -44], [57.4, -42.2]],
+	[[60.4, -40.6], [64.4, -38.8]],
+	[[74, -33.4], [69.8, -26.4], [66.2, -19.6], [64.4, -12.8]], // toe-cap seam
 ];
 
-export const Sneaker: React.FC<{outline: Pt[]; sole: Pt[]; shadow: Pt[]; lines: Pt[][]; name: string}> = ({outline, sole, shadow, lines, name}) => {
+/** A 3/4 sneaker: off-white upper, lighter sole, soft grey line art clipped to the shoe (the first line is the midsole,
+ * drawn a little heavier), near-black silhouette on top. No shadow band (repair round 4: the sheet's uppers are flat). */
+export const Sneaker: React.FC<{outline: Pt[]; sole: Pt[]; lines: Pt[][]; name: string}> = ({outline, sole, lines, name}) => {
 	const d = smooth(outline);
 	return (
 		<g data-part={name}>
 			<path d={d} fill={ZOO_COLORS.sneaker} />
 			<Clipped clip={d}>
-				<path d={smooth(shadow)} fill={ZOO_COLORS.sneakerShadow} />
 				<path d={smooth(sole)} fill={ZOO_COLORS.sneakerSole} />
+				{lines.map((l, i) => (
+					<Stroke key={i} d={line(l)} width={i === 0 ? ZOO_LINE.detail * 1.15 : ZOO_LINE.detail * 0.9} color={ZOO_COLORS.sneakerLine} />
+				))}
 			</Clipped>
 			<Outline d={d} />
-			{lines.map((l, i) => (
-				<Stroke key={i} d={line(l)} width={i === 0 ? ZOO_LINE.detail : ZOO_LINE.fine} />
-			))}
 		</g>
 	);
 };
 
 /** The 3/4 sneakers on their own (the seated typing pose puts the feet in the same place). */
-export const FarShoe34: React.FC = () => <Sneaker outline={SHOE_FAR} sole={SHOE_FAR_SOLE} shadow={SHOE_FAR_SHADOW} lines={SHOE_FAR_LINES} name="shoeL" />;
-export const NearShoe34: React.FC = () => <Sneaker outline={SHOE_NEAR} sole={SHOE_NEAR_SOLE} shadow={SHOE_NEAR_SHADOW} lines={SHOE_NEAR_LINES} name="shoeR" />;
+export const FarShoe34: React.FC = () => <Sneaker outline={SHOE_FAR} sole={SHOE_FAR_SOLE} lines={SHOE_FAR_LINES} name="shoeL" />;
+export const NearShoe34: React.FC = () => <Sneaker outline={SHOE_NEAR} sole={SHOE_NEAR_SOLE} lines={SHOE_NEAR_LINES} name="shoeR" />;
 
 export const Legs34: React.FC = () => (
 	<g data-part="legs" data-view="threeQuarter">
-		<Sneaker outline={SHOE_FAR} sole={SHOE_FAR_SOLE} shadow={SHOE_FAR_SHADOW} lines={SHOE_FAR_LINES} name="shoeL" />
+		<Sneaker outline={SHOE_FAR} sole={SHOE_FAR_SOLE} lines={SHOE_FAR_LINES} name="shoeL" />
 		<Shape name="legL" d={smooth(LEG_FAR)} fill={ZOO_COLORS.trousers} shadow={{d: LEG_FAR_SHADOW, fill: ZOO_COLORS.trousersShadow}} />
-		<Sneaker outline={SHOE_NEAR} sole={SHOE_NEAR_SOLE} shadow={SHOE_NEAR_SHADOW} lines={SHOE_NEAR_LINES} name="shoeR" />
+		<Sneaker outline={SHOE_NEAR} sole={SHOE_NEAR_SOLE} lines={SHOE_NEAR_LINES} name="shoeR" />
 		<Shape name="legR" d={smooth(LEG_NEAR)} fill={ZOO_COLORS.trousers} shadow={{d: LEG_NEAR_SHADOW, fill: ZOO_COLORS.trousersShadow}} />
 	</g>
 );

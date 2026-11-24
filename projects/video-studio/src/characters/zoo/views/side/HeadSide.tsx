@@ -16,7 +16,7 @@ import {LINE, ZOO_COLORS} from '../../../palette';
 import type {Expression, MouthShape} from '../../../types';
 import {clamp, clamp01, lerpPts, line, safeId, smooth, tapered, type Pt} from '../../geometry';
 import {featureScale, LID_MIN_SCALE, ZOO_LINE} from '../../lines';
-import {MOUTHS} from '../../mouth';
+import {MOUTHS, type MouthSpec} from '../../mouth';
 import {EXPRESSIONS, type BrowPose, type EyePose, type MouthMod} from '../../rig';
 import {BROW_R, posed} from '../../parts/Brows';
 import {HIGHLIGHT, lidProfile} from '../../parts/Eyes';
@@ -94,8 +94,8 @@ export const NeckSide: React.FC = () => <Shape name="neck" d={smooth(NECK)} fill
 type MouthGeo = {notch: boolean; top: Pt; corner: Pt; bottom: Pt; lineEnd: Pt; protrude: number; teeth: boolean; tongue: boolean; lowerLip: boolean};
 
 /** Profile mouth geometry from the front library shape (same opening heights, scaled by the expression). */
-const mouthGeo = (shape: MouthShape, mod: MouthMod, jawDrop: number): MouthGeo => {
-	const spec = MOUTHS[shape];
+const mouthGeo = (shape: MouthShape, mod: MouthMod, jawDrop: number, override?: MouthSpec): MouthGeo => {
+	const spec = override ?? MOUTHS[shape];
 	const m = SIDE_MOUTH;
 	const lift = -mod.cornerL + mod.wave * 0.6; // the visible corner is the anatomical right one (front's screen-left)
 	if (spec.kind === 'line') {
@@ -257,8 +257,9 @@ export const HeadSide: React.FC<HeadSideProps> = ({expression, mouth, blink, bro
 	const spec = EXPRESSIONS[expression];
 	const shape = mouth ?? spec.mouth;
 	const mod = mouth ? explicitMod(spec.mod) : spec.mod;
-	const {hole, jaw} = mouthDrops(shape, mod);
-	const g = mouthGeo(shape, mod, jaw);
+	const mouthSpec = mouth ? undefined : spec.mouthSpec;
+	const {hole, jaw} = mouthDrops(shape, mod, mouthSpec);
+	const g = mouthGeo(shape, mod, jaw, mouthSpec);
 	const face = faceProfile(g, jaw);
 	const faceD = smooth(face.fill);
 	// The opening ends at the lip fronts (repair round 1): nothing of the dark interior pokes out beyond the face line,

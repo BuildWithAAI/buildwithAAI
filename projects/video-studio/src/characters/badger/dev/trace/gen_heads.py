@@ -629,12 +629,30 @@ KX_CL, KY_CL = 0.9398, 1.0455
 C = lin(155, 100, KX_CL, KY_CL)
 EAR_PL = ('M 139 39 C 150 36 162 36 172 40 C 182 44 192 51 195 59 C 197 66 194 72 187 76 '
           'C 180 80 172 85 163 89 C 159 90 155 89 152 86 C 147 80 143 68 141 56 C 140 50 139 44 139 39 Z')
+# Round-4 repair (R3 review, major: outline break at the left profile's nape, every left walk frame). The neck's back line
+# (gen_left.py NAPE_BACK) now leaves the dark ear at NAPE_L_J, on the ear's outline at its lower-back corner, as on
+# badger_coat_left.png. The skull fill used to bulge 3-5 px past that line between the ear and row 84, over the line's
+# start (the head is drawn after the neck), so only its unstroked edge showed there. Now the skull's back edge comes down
+# from the occiput INTO NAPE_L_J (a 118 deg nape notch, hidden under the ear at rest: the back contour stays 2+ px inside the
+# ear's outline until it meets it at NAPE_L_J) and then tucks inside the neck line (clear of its inner edge below the ear
+# outline), and the head strokes that back edge from under the crown down to NAPE_L_J, so a
+# folded ear (worried 0.7, judge, earsBack 1) uncovers an outlined occiput and nape instead of an open edge. The ear
+# covers NAPE_L_J at rest; with headTilt the ear moves with it and still covers the line's start (gen_left.py extends the
+# neck line 12 px up inside the ear). KEEP IN SYNC with gen_left.py NAPE_J.
+NAPE_L_J = (187.0, 76.0)
+PL_CROWN_BACK = ((142, 37), (165, 37), (185, 43), (192, 57))
+PL_OCCIPUT = 'C 193.6 60.2 193.4 66 191.4 69.4 C 190.1 71.6 188.4 73.6 187 76'
+_pl_crown_tail = _split(*PL_CROWN_BACK, 0.7)[1]
+PL_BACK_STROKE = ('M %.2f %.2f C %.2f %.2f %.2f %.2f %.2f %.2f ' % (_pl_crown_tail[0] + _pl_crown_tail[1] + _pl_crown_tail[2]
+                                                                    + _pl_crown_tail[3])) + PL_OCCIPUT
 PROFILE_L = {
     'skull_fill': ('M 50 76 C 64 71 79 66 86 60 C 90 55 94 49 101 45 C 112 40 127 37 142 37 C 165 37 185 43 192 57 '
-                   'C 196 65 194 76 186 84 C 178 96 168 108 152 116 C 140 120 132 122 126 122 C 118 119 108 118 96 118 '
+                   + PL_OCCIPUT + ' C 185.2 78.2 183.2 81.4 181.2 85.2 C 177.6 92.2 167.4 108.6 152 116 '
+                   'C 140 120 132 122 126 122 C 118 119 108 118 96 118 '
                    'C 80 119 64 117 54 112 C 47 108 45 100 46 92 C 46 85 47 79 50 76 Z'),
     'skull_strokes': [_crown_under_ear(((142, 37), (165, 37), (185, 43), (192, 57)), 152) + ' C 127 37 112 40 101 45 C 94 49 90 55 86 60 C 79 66 64 71 49 77',
-                      'M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 119 120 123 122 127 124'],
+                      'M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 119 120 123 122 127 124',
+                      PL_BACK_STROKE],
     'details': ['M 154 101 C 151 107 146 111 139 114'],
     'nose': 'M 49 77.5 C 44 76.5 38 77.5 35 80.5 C 32.5 83.5 32.5 89 35.5 92 C 38 94.5 42 95 45 93.5 C 48 92 49.5 89 49.5 85.5 C 49.5 82 49.5 79.5 49 77.5 Z',
     'eye': (103.5, 67, 8.5, 4.6, 3.6, 2.5, -1, 4.9, -1.6, 0.4, 'L'),
@@ -949,8 +967,13 @@ def _throat_ctrl(J, tJ, L1, tL):
     return (J[0] + u[0] * k0, J[1] + u[1] * k0), (L1[0] - tL[0] * k0, L1[1] - tL[1] * k0)
 
 
+# the look-up head keeps the v1 skull back (its own nape construction, back_path below)
+PROFILE_L_UP = dict(PROFILE_L, skull_fill=('M 50 76 C 64 71 79 66 86 60 C 90 55 94 49 101 45 C 112 40 127 37 142 37 '
+                                           'C 165 37 185 43 192 57 C 196 65 194 76 186 84 C 178 96 168 108 152 116 '
+                                           'C 140 120 132 122 126 122 C 118 119 108 118 96 118 '
+                                           'C 80 119 64 117 54 112 C 47 108 45 100 46 92 C 46 85 47 79 50 76 Z'))
 heads['upLeftScreen'] = build_up(
-    'upLeftScreen', PROFILE_L, C, 1, 'rigLeft.ts',
+    'upLeftScreen', PROFILE_L_UP, C, 1, 'rigLeft.ts',
     lip_cut='M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 115 119.3 117 119.6 118.5 120',
     back_path='M 142 37 C 165 37 185 43 192 57 C 196 65 194 76 186 84 C 182 89 177 95 171 101',
     inner_band='M 139 39 C 140 44 141 50 141 56 C 143 68 147 80 152 86 C 153 80 151 70 149 60 C 147 52 144 45 139 39 Z',

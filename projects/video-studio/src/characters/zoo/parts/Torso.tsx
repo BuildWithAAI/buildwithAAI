@@ -16,8 +16,11 @@ import {Shape, Stroke, useLineScale} from './Shape';
 // the overshirt hem and hung a rounded tee tail over the trousers that zoo_turn_front.png does not show.
 // Repair round 1 (zoo_turn_front.png): the crewneck sits at -703.6 (v1 -715.8), so the neck shows ~30 u as on the
 // sheet, and the shoulder line runs at -714 / -707 / -699 at |x| = 60 / 80 / 100 (v1 was 4-9 u higher).
+// Repair round 4 (decision ZOO-K4; zoo_turn_front.png row/column scans): the tee ENDS at -451 with its hem line, and the
+// trousers (with the fly seam, Legs.tsx) show between the open overshirt panels down to the overshirt hem, as on the sheet
+// (INT-Z2 had run the tee down to the overshirt hem at -419).
 const TEE = smooth([
-	[-37, -727], [-28, -716], [-15, -706.6], [0, -703.6], [15, -706.6], [28, -716], [37, -727], [39, -700], [36, -419, 'c'], [-36, -419, 'c'],
+	[-37, -727], [-28, -716], [-15, -706.6], [0, -703.6], [15, -706.6], [28, -716], [37, -727], [39, -700], [36, -451, 'c'], [-36, -451, 'c'],
 	[-39, -690],
 ]);
 const TEE_RIB = line([[-25.6, -709.6], [-13, -701.4], [0, -699.2], [13, -701.4], [25.6, -709.6]]);

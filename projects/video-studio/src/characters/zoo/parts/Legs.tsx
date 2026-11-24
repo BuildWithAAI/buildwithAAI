@@ -1,63 +1,82 @@
 /**
  * Legs: near-black straight trousers and off-white low-top sneakers. The legs and shoes are a
  * symmetric garment pair (no markings), authored for the anatomical LEFT side (screen right) and
- * mirrored for the right. Measured from zoo_turn_front.png: outer edge +-80 at the hip to +-86 at
- * the ankle, inseam from the crotch (-392) to +-27 at the hem (-54), sneakers ~95 wide.
+ * mirrored for the right (decision ZOO-S1). The two legs of zoo_turn_front.png differ by drawing jitter (the screen-left
+ * leg and shoe sit ~4 u further out), so every number below is the AVERAGE of the two sheet legs, measured on the same
+ * world grid (repair round 4, decision ZOO-S3).
  */
 import React from 'react';
 import {ZOO_COLORS} from '../../palette';
-import {line, mirrorX, smooth, type Pt} from '../geometry';
+import {line, mirrorX, smooth, smoothRange, type Pt} from '../geometry';
 import {ZOO_LINE} from '../lines';
 import {Clipped, Outline, Shape, Stroke} from './Shape';
 
-// Repair round 1: the hem drapes over the shoe tongue. Repair round 2: the break is raised 8 u (-44.6 -> -52.6 in the middle),
-// so ~52 u of sneaker shows below it as on zoo_turn_front.png (~55; round 1 showed ~46).
-// Repair round 3: the outer top point is a corner. As a smooth point the spline bulged ~5 u outward just under the overshirt
-// hem (trouser edge at ~85 at y -425 against the sheet's ~78), which showed once the hem corner was rounded.
+/**
+ * Trouser leg (path = outline centre). Repair round 4 (zoo_turn_front.png, both legs row-scanned and averaged): lean
+ * straight legs that taper from ~73 u at the thigh to ~50 u at the ankle (outer edge ~75 at the knee and 76-77 at the
+ * calf, inner edge 26-28 at the ankle), a soft break where the hem bunches (~-70), and a hem that DRAPES over the shoe:
+ * highest over the instep (~-56.6 at x 60) and sloping down to the inner ankle (~-41.6 at x 30), so ~32 u of white upper
+ * shows on the inner side. Round 3's legs were 61-64 u wide at the calf with a flat hem at -52..-56 across the whole shoe,
+ * which showed a tall white shaft with a vertical inner edge (a high-top). The crotch rises to -394 and the leg gap opens
+ * at ~-382 (round 3: -368). The top runs to -460 so the trousers show between the open overshirt panels under the tee's
+ * hem (-451, Torso.tsx).
+ */
 const LEG: Pt[] = [
-	[0, -434], [78, -434, 'c'], [78.2, -380], [77.6, -300], [79.4, -200], [80.6, -120], [81.8, -70], [81.4, -58.2, 'c'], [66, -54.2],
-	[52, -52.6], [36, -54], [26.4, -56, 'c'], [22.2, -100], [15.6, -170], [10.2, -250], [5, -320], [1.6, -372], [0, -392],
+	[0, -460], [77.4, -460, 'c'], [77.2, -420], [76, -370], [74.6, -310], [73, -262], [74.4, -232], [76.2, -195], [77.2, -150],
+	[76.6, -110], [75.8, -92], [77.6, -81], [80.2, -71], [79.6, -61], [78.6, -51.6, 'c'],
+	// the hem: a break over the instep, draping down to the inner ankle
+	[75.6, -52.4], [71.6, -54.4], [66, -56.2], [60, -56.6], [54.6, -55.8], [50, -54], [46, -51], [42, -48], [37.6, -45], [33.4, -43],
+	[30.2, -41.6, 'c'],
+	// the inseam, up to the crotch
+	[29.6, -50], [28.8, -60], [26.6, -70], [28, -81], [27.4, -92], [26.4, -102], [22.2, -140], [19.6, -180], [17.8, -220], [14.8, -260],
+	[10.4, -300], [6.2, -340], [3.6, -365], [1.9, -382], [0, -394],
 ];
-/** Under the shirt hem, and along the inseam. */
-const LEG_SHADOWS: Pt[][] = [
-	[[0, -440], [84, -440], [84, -405], [40, -399], [12, -397], [0, -395]],
-	[[0, -392], [2, -372], [5.6, -320], [10.8, -250], [16.4, -170], [22, -100], [25.4, -44], [34, -44], [29, -170], [18, -320], [7, -390]],
-];
+/** Key point indices of LEG: the outline runs from the top-outer corner round to the crotch (not up the centre line). */
+const LEG_OUTLINE = {from: 1, to: LEG.length - 1} as const;
+/** The fly: one soft seam from the tee hem to the crotch, between the open overshirt panels (zoo_turn_front.png). */
+const FLY: Pt[] = [[1, -451], [1, -425], [0.7, -405], [0, -395.6]];
 
 /**
- * Path bottom sits at y = -1.75 so the outline's outer edge touches the ground (y = 0). Repair round 1 (row scan of
- * zoo_turn_front.png): a rounded low-top, narrow at the ankle (outer edge ~82 at y -50) with a convex toe box that
- * flares to ~109 only near the sole (v1 was a straight trapezoid, 8-13 u wider at y -50..-30).
+ * Sneaker (path bottom at y = -1.75, so the outline's outer edge touches the ground). Repair round 4 (outline centres of
+ * both sheet shoes, averaged): the upper is a convex dome under the hem; the outer edge falls almost straight from the hem
+ * (~79 at -50) and flares into a round toe from ~-38 (~90 at -30, ~103 at -20, ~109 at -8); the inner edge is a near-vertical
+ * ~28-30 from the inner ankle to the sole. The top of the shoe is hidden under the trouser hem.
  */
-// Repair round 2: the inner edge flares in slightly toward the sole too (x ~30 at -40 to ~24 at the sole), as on the sheet
-// (round 1's inner edge was vertical, so the shoe flared only outward).
 const SHOE: Pt[] = [
-	[34, -62], [58, -63.8], [79.8, -61.6], [82.6, -49], [84.4, -40], [89.6, -30.4], [96.6, -24], [102.8, -19.4], [107, -12.6],
-	[109.2, -6.4], [106.6, -2.4], [96, -1.75], [60, -1.75], [27.2, -2.2], [25, -7.6], [26.8, -22], [29.8, -40], [31.4, -52],
+	[30.6, -46], [31.4, -60], [44, -66], [60, -67], [73, -64.6], [77.8, -58], [79.2, -50], [80.6, -46], [82.6, -42], [84.8, -38],
+	[87.2, -34], [90, -30], [94.2, -26], [100, -22], [104.6, -18], [107.4, -14], [108.8, -10], [109.4, -5.6], [108.2, -2.4], [103, -1.75],
+	[60, -1.75], [32, -1.75], [28.6, -3.4], [27.8, -8], [28.2, -16], [28.6, -26], [29.2, -34], [30, -40],
 ];
-const SOLE: Pt[] = [[112, -11.6], [100, -10.8], [60, -10.4], [22, -11], [22, 2], [112, 2]];
-/** One flat shadow tone: a narrow terminator along the inner edge (no full-height band). */
-const SHOE_SHADOW: Pt[] = [[20, -66], [37.6, -66], [36, -40], [33, -22], [31.6, -12], [20, -12]];
-const SOLE_LINE: Pt[] = [[108.6, -11.4], [96, -10.8], [60, -10.4], [25, -11]];
-/** Toe cap seam and three crossing lace bars on the tongue. */
-const TOE_LINE: Pt[] = [[100.6, -21.6], [86, -18.2], [66, -17], [46, -17.6]];
+/** The sole below the midsole line (sneakerSole). */
+const SOLE: Pt[] = [[112, -9.4], [60, -9.2], [22, -9.4], [22, 2], [112, 2]];
+/**
+ * Line art in ZOO_COLORS.sneakerLine (soft mid-grey, as on the sheet; round 3 drew them near-black, which read as a
+ * canvas high-top): the midsole line, the vamp/toe-cap seam that arches from the inner sole over the toe box and back
+ * down near the toe, and the lace panel on the instep: its inner edge and three lace bars, each lower bar set further
+ * toward the outward-turned toe.
+ */
+const MIDSOLE: Pt[] = [[26, -9.2], [60, -9.1], [111, -9.6]];
+const VAMP: Pt[] = [[27.4, -11.4], [34, -14.6], [41.4, -19.4], [49.6, -23.8], [59.6, -26.2], [70.6, -26.4], [80.4, -24.8], [89.4, -21.2], [96.4, -16.4], [101.6, -10]];
+const LACE_EDGE: Pt[] = [[47.2, -48.6], [49.6, -38.4], [53.2, -28.6]];
 const LACES: Pt[][] = [
-	[[49.4, -47.6], [61.4, -45.6], [73.6, -47.2]],
-	[[50.2, -41.2], [62, -39.2], [74.2, -40.8]],
-	[[52.4, -34.8], [62.4, -33.2], [72, -34.6]],
+	[[47.8, -46.4], [61, -47], [74.6, -45.4]],
+	[[50.4, -40.2], [64.4, -40.6], [78.2, -39.2]],
+	[[52.6, -33.6], [67, -33.8], [80.8, -32.4]],
 ];
+/** Line widths: the sheet's midsole line is the heaviest of the shoe lines. */
+const SHOE_LINE_W = {midsole: ZOO_LINE.detail * 1.15, seam: ZOO_LINE.detail * 0.9} as const;
 
 const mirrorIf = (side: 1 | -1) => (p: Pt[]) => (side === 1 ? p : mirrorX(p));
 
 const Leg: React.FC<{side: 1 | -1}> = ({side}) => {
-	const m = mirrorIf(side);
+	const pts = mirrorIf(side)(LEG);
 	return (
-		<Shape
-			name={side === 1 ? 'legL' : 'legR'}
-			d={smooth(m(LEG))}
-			fill={ZOO_COLORS.trousers}
-			shadow={{d: LEG_SHADOWS.map((s) => smooth(m(s))).join(' '), fill: ZOO_COLORS.trousersShadow}}
-		/>
+		<g data-part={side === 1 ? 'legL' : 'legR'}>
+			{/* Flat trousers, as on the sheet (round 3's under-hem band read as a belt and its inseam band as a thick inner
+			    line). The outline skips the centre line above the crotch, where the two legs overlap (the fly is drawn once). */}
+			<Shape d={smooth(pts)} fill={ZOO_COLORS.trousers} stroke={0} />
+			<Outline d={smoothRange(pts, LEG_OUTLINE.from, LEG_OUTLINE.to)} />
+		</g>
 	);
 };
 
@@ -68,15 +87,15 @@ const Shoe: React.FC<{side: 1 | -1}> = ({side}) => {
 		<g data-part={side === 1 ? 'shoeL' : 'shoeR'}>
 			<path d={shoe} fill={ZOO_COLORS.sneaker} />
 			<Clipped clip={shoe}>
-				<path d={smooth(m(SHOE_SHADOW))} fill={ZOO_COLORS.sneakerShadow} />
 				<path d={smooth(m(SOLE))} fill={ZOO_COLORS.sneakerSole} />
+				<Stroke name="midsole" d={line(m(MIDSOLE))} width={SHOE_LINE_W.midsole} color={ZOO_COLORS.sneakerLine} />
+				<Stroke name="vamp" d={line(m(VAMP))} width={SHOE_LINE_W.seam} color={ZOO_COLORS.sneakerLine} />
+				<Stroke name="laceEdge" d={line(m(LACE_EDGE))} width={SHOE_LINE_W.seam} color={ZOO_COLORS.sneakerLine} />
+				{LACES.map((l, i) => (
+					<Stroke key={i} name="lace" d={line(m(l))} width={SHOE_LINE_W.seam} color={ZOO_COLORS.sneakerLine} />
+				))}
 			</Clipped>
 			<Outline d={shoe} />
-			<Stroke d={line(m(SOLE_LINE))} width={ZOO_LINE.detail} />
-			<Stroke d={line(m(TOE_LINE))} width={ZOO_LINE.fine} />
-			{LACES.map((l, i) => (
-				<Stroke key={i} d={line(m(l))} width={ZOO_LINE.fine} />
-			))}
 		</g>
 	);
 };
@@ -87,5 +106,6 @@ export const Legs: React.FC = () => (
 		<Shoe side={-1} />
 		<Leg side={1} />
 		<Leg side={-1} />
+		<Stroke name="fly" d={line(FLY)} width={ZOO_LINE.fine} color={ZOO_COLORS.trousersShadow} />
 	</g>
 );

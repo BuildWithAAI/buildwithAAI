@@ -37,6 +37,7 @@ export const CHECKS = {
 	'model-pin': {area: 'model', title: "Zoo's pin missing, moved or on the wrong side"},
 	'model-earcap': {area: 'model', title: "Badger's dark ear cap on the wrong side"},
 	'model-spots': {area: 'model', title: "Badger's markings differ from the frozen set"},
+	'model-provisional': {area: 'model', title: "Provisional drawing, awaiting the owner's OK"},
 	// 6. banding, blotches and flicker
 	banned: {area: 'banding', title: 'Banned render technique (gradient, blur, glow, pattern, blend)'},
 	gradient: {area: 'banding', title: 'Smooth gradient (banding risk after YouTube compression)'},

@@ -469,6 +469,7 @@ const runChecks = async (args: Args, shared: Shared, outDir: string): Promise<Ru
 				ignoredBadges: [...badges],
 				scoutMotion: scoutStats,
 				probeMs: {scout: probeCost([...domFacts.values()]), pixels: probeCost([...pFacts.values()])},
+				provisional: manifest.provisional,
 			},
 			issues,
 		);

@@ -30,7 +30,8 @@ import {
 } from '../src/characters/badger/spots';
 import {ZOO_LINE} from '../src/characters/zoo/lines';
 import {BEATS, POINT} from '../src/compositions/characters/Preview10s';
-import {POINT_PATH_LENGTH, pathForPoseAmount} from '../src/compositions/characters/gesture';
+import {PROVISIONAL_CAPTION} from '../src/compositions/characters/captions';
+import {POINT_PATH_LENGTH, pathForPoseAmount, pointPath} from '../src/compositions/characters/gesture';
 import {FOOTPRINTS} from '../src/compositions/characters/contact';
 import {closeLineScale, fullLineScale, GROUND_Y, FRAME, PAIR_LINE_SCALE, PAIR_SCALE, PAIR_SPACING} from '../src/compositions/characters/stage';
 
@@ -75,8 +76,8 @@ const integrationDecisions = [
 		character: 'both',
 		id: 'INT-P2',
 		sheet: `The panel stands the pair ${SIZE_COMPARISON.spacingUnits} units apart (ground point to ground point); Badger's head sits just beside Zoo's hanging hand.`,
-		chosen: `When Zoo points to screen right over Badger, the pair stands ${PAIR_SPACING} units apart and Badger is drawn in front of Zoo (depth), for the whole shot (no sliding). Scale and ground line stay the panel's.`,
-		why: "Re-measured on the repaired point path (ZOO-P2) in integration round 1: at the panel spacing the swinging hand overlaps Badger's pale ear at poseAmount ~0.2 (front and 3/4 heads), which reads as touching him. At 560 units the closest approach is 24.5 px at the proof scale (poseAmount ~0.26). Re-measured in integration round 2 on the round-2 arc (ZOO-P4 with POINT_OVERLAP) from Zoo-only and Badger-only renders of the proof: the fist passes 26.9 px (30.5 u) from the pale ear's tip at f96 on the way up and 30.9 px (35.1 u) at f188 on the way down, and Badger's eyes close as it passes (blinks f94-99 and f188-197), so the near miss reads as his reflex. A neck dip, head tilt or ear fold on Badger does not widen it (his neck pivots his head toward the hand); only a wider spacing would. Spacing is staging, not anatomy; relative scale is unchanged.",
+		chosen: `When Zoo points to screen right over Badger, the pair stands ${PAIR_SPACING} units apart and Badger is drawn in front of Zoo (depth), for the whole shot (no sliding). Scale and ground line stay the panel's. Integration round 3: 560 -> ${PAIR_SPACING}.`,
+		why: "Spacing is staging, not anatomy; relative scale is unchanged. Round 1: at the panel spacing the swinging hand overlaps Badger's pale ear (poseAmount ~0.2), so the pair moved to 560 units (closest pass 24.5 px at the proof scale). Round 2 measured 26.9 px (f96) and 30.9 px (f188). Round 3: the repaired arm opens earlier (ZOO-P5), and at 560 the fist passed 20.5 px from the pale ear at f96 (23.7 px at f188). At 570 units, with the raise timing of INT-T3, Zoo-only and Badger-only renders of all 300 frames give a closest pass of 27.2 px at f96 (raise) and 29.1 px at f187 (lowering); every other frame is >= 32 px. Between rendered frames the hand's continuous path stays >= 27.2 px on the raise and dips to 23.3 px between f187 and f188 on the lowering (probe renders at poseAmount steps of 0.0075), so the margin holds at this frame rate. Badger's eyes close as it passes (blinks f94-99 and f188-198). A neck dip, head tilt or ear fold on Badger does not widen the gap: measured in round 3 at 560 units, an ear fold of 0.4 brings his head 5 px closer at f95 and a 4 deg neck dip 8 px closer, because the neck pivots the head toward the hand; only spacing does.",
 	},
 	{
 		character: 'both',
@@ -89,8 +90,15 @@ const integrationDecisions = [
 		character: 'zoo',
 		id: 'INT-T1',
 		sheet: 'zoo_pose_point.png shows the end pose only; Prompt 1 asks for restrained, purposeful gestures.',
-		chosen: `The point is timed along the hand's arc, not in poseAmount: gesture.ts maps a path fraction to poseAmount through the rig's own pivots and angle function (hand path ${Math.round(POINT_PATH_LENGTH)} units). The swing eases the path fraction with bezier(0.38,0,0.4,1) over 16 frames (f${BEATS.swing[0]}-${BEATS.swing[1]}), ends past the hold pose and settles back ~1-2 deg (poseAmount ${POINT.overshoot} -> ${POINT.settle}, f${BEATS.settle[0]}-${BEATS.settle[1]}), holds (decision INT-T2) and lowers along the same arc over 16 frames (f${BEATS.armDown[0]}-${BEATS.armDown[1]}).`,
-		why: `The rig's joint path (round 2: monotone cubics through ARM_POINT_MID with POINT_OVERLAP timing) moves the hand ${Math.round(pathForPoseAmount(0.5) * 100)}% of its travel in the first half of poseAmount, so easing poseAmount directly snaps the swing (v1: 123 px in one frame). Arc-length timing peaks at ~45 px/frame at the proof scale (round 2, measured 44.5), like the lowering, and the hand-shape swaps (fist at 0.08, pointer at 0.4) land on fast frames (f95, f99).`,
+		chosen: `The point is timed along the hand's arc, not in poseAmount: gesture.ts maps a path fraction to poseAmount through the rig's own pivots and angle function, on a table built for the pointTuck the composition passes (pointPath; hand path ${Math.round(POINT_PATH_LENGTH)} units with the rig's default tuck, ${Math.round(pointPath(0).length)} with none). The swing eases the path fraction with bezier(0.38,0,0.4,1) over ${BEATS.swing[1] - BEATS.swing[0]} frames (f${BEATS.swing[0]}-${BEATS.swing[1]}), ends past the hold pose and settles back ~1-2 deg (poseAmount ${POINT.overshoot} -> ${POINT.settle}, f${BEATS.settle[0]}-${BEATS.settle[1]}), holds (decision INT-T2) and lowers along the tuck-free arc over ${BEATS.armDown[1] - BEATS.armDown[0]} frames (f${BEATS.armDown[0]}-${BEATS.armDown[1]}; 16 in round 2, see INT-T3).`,
+		why: `The rig's joint path (monotone cubics through ARM_POINT_MID with POINT_OVERLAP timing) moves the hand ${Math.round(pathForPoseAmount(0.5) * 100)}% of its travel in the first half of poseAmount, so easing poseAmount directly snaps the swing (v1: 123 px in one frame). Arc-length timing peaks at ~45 px/frame at the proof scale (round 3, measured on the joint chain: 45.4 px/frame on the raise, 47.9 on the lowering). A table built for another tuck than the one passed puts up to ~60 px into one frame. The hand-shape swaps (fist at 0.08, pointer at 0.4) land on fast frames (f95, f100 on the raise; f186, f190 on the lowering).`,
+	},
+	{
+		character: 'zoo',
+		id: 'INT-T3',
+		sheet: 'zoo_pose_point.png shows only the end pose. The round-2 review found a 3-4 frame "tray-carry" in-between (the upper arm hanging with the elbow at the waist while the forearm swings level), on the way up and in reverse on the way down; repair round 3 re-timed the rig (ZOO-P5: upper arm ~10 deg out when the forearm is level) and added ZooRig pointTuck so a composition can keep the anticipation tuck off the lowering.',
+		chosen: `Preview10s uses the tuck only on the raise and only while the fist passes Badger's head: pointTuck is a function of poseAmount, 1 up to ${POINT.tuckRelease[0]} and eased to 0 by ${POINT.tuckRelease[1]} (frames f90-96 carry it; it is gone at f97), and 0 through the hold and the lowering. Both are timed on the arc table of that exact path. The lowering takes ${BEATS.armDown[1] - BEATS.armDown[0]} frames (round 2: 16) so the frame nearest the forearm's level crossing is sampled after the upper arm has opened. Per frame on the joint chain (forearm angle from level / upper-arm abduction from rest): raise f95 -44.9/-1.7, f96 -26.8/-0.9, f97 -12.7/6.8, f98 2.4/11.3, f99 15.1/17.0; lowering f185 18.6/19.1, f186 2.8/11.5, f187 -14.9/6.3, f188 -31.9/3.1, f189 -47.0/1.4.`,
+		why: "At full strength the tuck holds the elbow in until poseAmount ~0.29: with it, f96-f97 were tray-carry frames (abduction -1.0 and 4.6 deg with the forearm at -27 and -11 deg). Without it the fist passes Badger's pale ear 8 px closer (continuous closest pass 19.2 px instead of 27.2 px at 570 units), so it is kept exactly while the fist passes the ear and released before the forearm comes within ~15 deg of level. With the reviewer's standard (upper arm out >= 10-12 deg where the forearm is level), the level frames have 11.3 and 11.5 deg; the frames just before level (f97, f187) have the forearm 13-15 deg below level with the elbow 15-17 units out (elbow pivot x 127-128, at the edge of the round-2 review's 'pinned at the waist' range x 101-129), and f96 still has the elbow tucked (the tuck is at full strength there) with the forearm 27 deg below level. The rig's tuck-free path itself has only ~7 deg of abduction at -12 deg and 10 deg at level (ZOO-P5), and pointTuck and pointWindup can only close the arm, so a wider opening needs a rig change (ZOO-P5's shoulderLag), not timing.",
 	},
 	{
 		character: 'zoo',
@@ -117,15 +125,22 @@ const integrationDecisions = [
 		character: 'badger',
 		id: 'INT-A2',
 		sheet: 'Prompt 2: Badger looks toward the gesture with a small head turn, looks up at Zoo, then gives a restrained judging reaction. Prompt 1: emotion through brows, folded ears, head angle and tail; eyes open between natural blinks.',
-		chosen: `Every head replacement in the proof happens with Badger's eyes closed: the turn to the 3/4 head under a blink (f${BEATS.badgerTurn}), the look-up swaps (3/4 -> front breakdown -> upLeftScreen, f${BEATS.badgerLookUp.toFront}/${BEATS.badgerLookUp.toUp}) under a blink with the eyes and the neck leading, the neck values chosen so the cranium stays close across each swap (re-measured in round 2 with the re-authored 3/4 head, BADGER-D36/D37, and unchanged from round 1: the skull top rises 9 px at f${BEATS.badgerTurn}, in the direction of the rising neck that follows, and drops 7 px at f${BEATS.badgerLookUp.toFront} and 5 px at f${BEATS.badgerLookUp.toUp}, each inside the closed-eye frames; a neckTurn or headTilt correction would trade it for a 10-15 px sideways jump). The judging look plays on the FRONT head (eyes kept on Zoo, judge brows, ears 0.42, ~8 deg tilt) after a slow blink covers the swap from the up head, with one slow push-in (1.00 -> 1.04, f${BEATS.pushIn[0]}-${BEATS.pushIn[1]}, ART_GUIDE MO13) anchored on his eyes. Idle life in 0-3 s: one blink and one ear flick.`,
-		why: 'The v1 look-up swapped three silhouettes in three frames with no blink (a pop and head-bob), and the judge on the pitched profile head moved each cue by only 2-7 px. On the front head each cue moves 6-8 px and the brows and lids read.',
+		chosen: `Every head replacement in the proof happens with Badger's eyes closed, and the two big turns go through held in-betweens (integration round 3). The turn to the 3/4 head under a blink (f${BEATS.badgerTurn}). The look-up: the eyes and neck lead (f${BEATS.badgerLookUp.eyes[0]}-${BEATS.badgerLookUp.eyes[1]}), then, eyes closed, a front-head breakdown held ${BEATS.badgerLookUp.toUp - BEATS.badgerLookUp.toFront} frames (f${BEATS.badgerLookUp.toFront}-${BEATS.badgerLookUp.toUp - 1}; round 2: 2) that keeps rising and rolls toward the up head's pitch, then upLeftScreen (f${BEATS.badgerLookUp.toUp}); the blink holds until that frame. The judging look: on the up head the neck eases down over ${BEATS.judge.neckDown[1] - BEATS.judge.neckDown[0]} frames (f${BEATS.judge.neckDown[0]}-${BEATS.judge.neckDown[1]}) while a slow blink closes (f${BEATS.judge.blink}), then threeQuarterLeftScreen holds ${BEATS.judge.swap - BEATS.judge.toThreeQuarter} frames (f${BEATS.judge.toThreeQuarter}-${BEATS.judge.swap - 1}, a slight upward roll), then the front head (f${BEATS.judge.swap}); the eyes open on Zoo, the judge brows, ears 0.42 and the ~8 deg tilt follow, with one slow push-in (1.00 -> 1.04, f${BEATS.pushIn[0]}-${BEATS.pushIn[1]}, ART_GUIDE MO13) anchored on his eyes. Neck and tilt at each swap keep the skull where the old head left it, measured on Badger-only renders (centroid of the skull's top 70 px): +6.0 px down at f${BEATS.badgerLookUp.toFront} (the turn dips as it starts), 3.5 px at f${BEATS.badgerLookUp.toUp}, 4.2 px sideways at f${BEATS.judge.toThreeQuarter} and 4.5 px up at f${BEATS.judge.swap}. Idle life in 0-3 s: one blink and one ear flick.`,
+		why: 'The round-2 review found the judge swap popping in one frame from the profile pitched up at Zoo to a level frontal head (the nose moved half a head length and the ears changed from one hanging profile ear to two frontal ears), and the look-up going 3/4-right, front, up-left in three frames. Lowering the up head first and passing through the 3/4-left head turns both into readable head turns; the judging look stays on the front head because there the lids and brows read (on the pitched profile each cue moved only 2-7 px).',
 	},
 	{
 		character: 'badger',
 		id: 'INT-S1',
-		sheet: 'BADGER-D23 (revised): sit and lie exist in both facings.',
-		chosen: 'BadgerSheet shows sit and lie in both facings (each pair faces each other so the left- and right-side markings sit side by side), plus walk and look-up, at scale 0.5.',
-		why: 'The asset sheet should show every implemented pose body; the left-facing ones carry different markings (LEFT coat map).',
+		sheet: 'BADGER-D23 (revised): sit and lie exist in both facings; round 3: the left-facing ones are PROVISIONAL pending the owner (BADGER_PROVISIONAL_POSES).',
+		chosen: `BadgerSheet shows sit and lie in both facings (each pair faces each other so the left- and right-side markings sit side by side), plus walk and look-up, at scale 0.5. Each left-facing sit and lie carries a small, quiet caption below its ground line, centred on the drawing (not the root), "${PROVISIONAL_CAPTION}" (Inter 400, 17 px, slate; marked as an owner-only review badge for QA), drawn for every pose on BADGER_PROVISIONAL_POSES.`,
+		why: 'The asset sheet should show every implemented pose body; the left-facing ones carry different markings (LEFT coat map) but reuse the right-facing silhouette mirrored, so the sheet must not present them as finished until the owner accepts D23.',
+	},
+	{
+		character: 'badger',
+		id: 'INT-Q1',
+		sheet: 'BADGER-D23 is provisional: the left-facing sit and lie keep working, and tools should warn wherever a scene uses them.',
+		chosen: 'Visual QA (scripts/qa) reports model-provisional, always a WARNING and never an error, for any Badger instance whose drawn view and pose are on BADGER_PROVISIONAL_POSES (today view left with sit or lie). It reads the list the way the Badger index exports it (src/characters/badger/index.ts; Node follows its re-export to src/characters/badger/provisional.ts because the index also loads the React components), falls back to this manifest\'s provisional.badger, and reports nothing once the index stops exporting it. Unit tests: scripts/qa/tests/provisional.test.ts.',
+		why: 'A warning keeps the poses usable for reviews and sheets while making every episode use visible in the QA report until the owner decides.',
 	},
 ];
 
@@ -217,7 +232,7 @@ const manifest = {
 			back: 'anatomical LEFT = screen LEFT: dark ear on screen left; top-map markings T-* projected onto the back',
 			threeQuarter: 'right flank toward camera, head threeQuarterRightScreen',
 			heads: 'replaceable head views: front, threeQuarterLeftScreen, threeQuarterRightScreen, profileLeftScreen, profileRightScreen, upLeftScreen, upRightScreen; dark cap always on the anatomical LEFT ear, small spot on the pale RIGHT ear',
-			poses: "sit and lie exist in both facings: view 'left' gives the left-facing bodies (LEFT coat-map markings, head threeQuarterLeftScreen; their unmarked outline is the right-facing silhouette mirrored about the root, decision BADGER-D23), any other view the right-facing panels (right-side markings); walk and lookUp on both side rigs; no marking is ever mirrored",
+			poses: "sit and lie exist in both facings: view 'left' gives the left-facing bodies (LEFT coat-map markings, head threeQuarterLeftScreen; their unmarked outline is the right-facing silhouette mirrored about the root, decision BADGER-D23, PROVISIONAL until the owner accepts it: see provisional.badger), any other view the right-facing panels (right-side markings); walk and lookUp on both side rigs; no marking is ever mirrored",
 		},
 	},
 	pivots: roundAll({
@@ -274,10 +289,17 @@ const manifest = {
 			buttons: ZOO_MANIFEST.conventions.buttons,
 		},
 	},
+	provisional: {
+		badger: {
+			...BADGER_MANIFEST.provisional,
+			source: 'BADGER_PROVISIONAL_POSES (src/characters/badger/provisional.ts, exported by src/characters/badger/index.ts)',
+			tools: 'visual QA warns model-provisional for these drawings (decision INT-Q1); BadgerSheet captions them (INT-S1)',
+		},
+	},
 	proof: {
 		composition: 'Preview10s (src/compositions/characters/Preview10s.tsx), 1920x1080, 30 fps, 300 frames, silent',
 		beats: BEATS,
-		note: 'frame numbers at 30 fps; see decisions INT-T1, INT-T2, INT-A2, INT-C1 and docs/CHARACTERS.md',
+		note: 'frame numbers at 30 fps; see decisions INT-T1, INT-T2, INT-T3, INT-A2, INT-C1 and docs/CHARACTERS.md',
 	},
 	decisions: [...zooDecisions, ...badgerDecisions, ...integrationDecisions],
 };

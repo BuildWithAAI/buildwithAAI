@@ -19,6 +19,11 @@ export type MouthSpec =
 			/** Lower edge, right -> left (corners excluded). */
 			bottom: Pt[];
 			tongue?: Pt[];
+			/**
+			 * The dark upper cavity above the tongue (repair round 4), drawn in the hair/brow ink (ZOO_COLORS.brow, the face's
+			 * near-black brown accent, as in the front crown hollow, ZOO-H1) and clipped to the opening.
+			 */
+			cavity?: Pt[];
 			teeth?: {shape: Pt[]; divider: Pt[]};
 			hole: number;
 			jaw: number;
@@ -39,13 +44,22 @@ export const MOUTHS: Record<MouthShape, MouthSpec> = {
 		hole: 1,
 		jaw: 0.5,
 	},
+	// Repair round 4 (decision ZOO-M3; re-traced from zoo_mouth_ah.png): an oval with an ARCHED top, narrowest at its top row,
+	// the corners at ~47% of the opening's height and the widest row at ~57%, a round bottom; ~28 x 16 u with the rim (the
+	// panel's 24 x 16.5 widened to the turnaround moustache, ZOO-M1/M2). The arch sits ~2 u under the moustache's lower edge
+	// so it shows as an arch with skin around it, as on the panel. Round 1-3's ah was a flat-topped D, widest at its top row
+	// with straight sides (32 cols at 8-17% of its height), which read as an open grin. The cavity above the tongue is
+	// near-black, as on the panel.
 	ah: {
 		kind: 'open',
-		top: [[-12, -2.6], [-7.2, -4.5], [0, -4.9], [7.2, -4.5], [12.6, -2.6]],
-		bottom: [[13.4, 2.6], [11.4, 8.8], [6, 12.8], [0, 13.8], [-6, 12.8], [-11, 8.8], [-13, 2.6]],
-		tongue: [[-11, 11.5], [-5.5, 7], [0, 6.3], [5.5, 7], [11.5, 11.5], [0, 17]],
-		hole: 6.5,
-		jaw: 2.5,
+		top: [[-13.4, 3.4], [-12.4, 0.6], [-8.4, -2], [0, -3.8], [8.4, -2], [12.4, 0.6], [13.4, 3.4]],
+		bottom: [[13.6, 6.4], [12, 9.2], [7.6, 11], [0, 11.6], [-7.6, 11], [-12, 9.2], [-13.6, 6.4]],
+		tongue: [[-12.6, 10.2], [-6.2, 6.4], [0, 5.6], [6.2, 6.4], [12.6, 10.2], [0, 15.6]],
+		cavity: [[-16, -7], [16, -7], [16, 8], [12, 8], [6.2, 5.2], [0, 4.4], [-6.2, 5.2], [-12, 8], [-16, 8]],
+		// the panel's lip patch drops ~6 u and its chin not at all (chin outline -741.6 vs closed -742.1): round 1-3 dropped the
+		// chin 2.5 u
+		hole: 6.8,
+		jaw: 1,
 	},
 	ee: {
 		kind: 'open',
@@ -58,13 +72,17 @@ export const MOUTHS: Record<MouthShape, MouthSpec> = {
 		hole: 2,
 		jaw: 1,
 	},
+	// Repair round 4 (ZOO-M3; zoo_mouth_oh.png): an egg, narrow at the top and widest at ~55% of its height, ~13.4 x 13 u with
+	// the rim (panel ~13 x 12.5); round 1-3's oh widened to full width within 6 px of its top and kept straight sides (a
+	// tombstone, 14.8 x 14 u).
 	oh: {
 		kind: 'open',
-		top: [[-5.6, -2.2], [0.3, -4], [6.2, -2.2]],
-		bottom: [[7.8, 2.8], [6.4, 7.8], [0.3, 10.2], [-5.8, 7.8], [-7.2, 2.8]],
-		tongue: [[-6.6, 8.2], [0.3, 5.6], [7.2, 8.2], [0.3, 12.6]],
-		hole: 5,
-		jaw: 2,
+		top: [[-5.8, 1.6], [-5, -1.4], [-2.8, -3.4], [0.3, -4], [3.4, -3.4], [5.6, -1.4], [6.4, 1.6]],
+		bottom: [[6.6, 3.8], [5.6, 6.2], [3.2, 7.8], [0.3, 8.3], [-2.6, 7.8], [-5, 6.2], [-6, 3.8]],
+		tongue: [[-6.4, 6.6], [0.3, 3.4], [7, 6.6], [0.3, 10.6]],
+		cavity: [[-9, -6], [9.6, -6], [9.6, 4.6], [5, 4.6], [0.3, 2.4], [-4.4, 4.6], [-9, 4.6]],
+		hole: 4.4,
+		jaw: 0.6,
 	},
 	mbp: {
 		kind: 'line',
@@ -74,6 +92,24 @@ export const MOUTHS: Record<MouthShape, MouthSpec> = {
 		hole: -0.8,
 		jaw: -0.3,
 	},
+};
+
+/**
+ * The shocked expression's own open mouth (repair round 4, decision ZOO-E3; zoo_expr_shocked.png at 0.699 u/px): a gasp, not
+ * a grin. An arched top that is narrowest at its top row, low corners and the widest rows in the lower half (43-83% of the
+ * height), a broad round bottom; ~23 x 11.5 u with the rim. It is a drawing of the "ah" library shape as the shocked panel
+ * performs it, used only when the expression is shocked and no explicit mouth is passed, so the fixed six-shape lip-sync
+ * library is unchanged. Round 1-3 squashed the library ah (60% open, 95% wide), which kept ah's flat top and read as an
+ * excited open smile.
+ */
+export const SHOCKED_MOUTH: MouthSpec = {
+	kind: 'open',
+	top: [[-11.2, 3.2], [-10.4, 0.4], [-7.8, -2], [-4.4, -3.3], [0, -3.6], [4.4, -3.3], [7.8, -2], [10.4, 0.4], [11.2, 3.2]],
+	bottom: [[11, 5], [7.8, 5.8], [0, 6.1], [-7.8, 5.8], [-11, 5]],
+	tongue: [[-10.4, 6.4], [-5, 3.6], [0, 3], [5, 3.6], [10.4, 6.4], [0, 9.6]],
+	cavity: [[-14, -7], [14, -7], [14, 3.2], [8, 3.2], [5, 2.2], [0, 1.6], [-5, 2.2], [-8, 3.2], [-14, 3.2]],
+	hole: 4,
+	jaw: 0.6,
 };
 
 /** Openness order used by amplitude-driven sync. */

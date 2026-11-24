@@ -115,6 +115,8 @@ export type ReportMeta = {
 	scoutMotion: Array<[number, number, number]>;
 	/** In-page measurement time of the probe per frame (ms): median and maximum, per pass. */
 	probeMs?: Record<string, {median: number; max: number}>;
+	/** The provisional drawings the model-provisional check warns about, and where the list was read. */
+	provisional?: {source: string; decision: string | null; poses: Array<{view: string; pose: string}>};
 };
 
 const SEV_LABEL: Record<Severity, string> = {error: 'ERROR', warn: 'warn', info: 'info'};

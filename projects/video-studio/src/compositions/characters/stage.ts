@@ -17,11 +17,14 @@ export const PAIR_SCALE = 0.88;
 /**
  * Ground-point spacing for scenes where Zoo points to screen right over Badger (decision INT-P2). Re-measured in
  * integration round 1 on the repaired point path (ZOO-P2): at the panel's 482.9 units the swinging hand overlaps
- * Badger's pale ear at poseAmount ~0.2 (front and 3/4 heads alike), so the pair keeps standing 560 units apart (77 units
- * wider than the panel), where the closest approach is ~24 px at this scale. Scale and ground line are the panel's; use
- * SIZE_COMPARISON.spacingUnits for shots without that gesture.
+ * Badger's pale ear at poseAmount ~0.2 (front and 3/4 heads alike), so the pair stood 560 units apart. Integration
+ * round 3: the round-3 arm opens earlier (ZOO-P5, upper arm ~10 deg out when the forearm is level), so at 560 the fist
+ * passed 20.5 px from the pale ear (f96); 570 units (87 wider than the panel) keeps every frame >= 24 px (measured on
+ * Zoo-only and Badger-only renders of all 300 frames; see INT-P2). A neck dip, head tilt or ear fold does not help: his
+ * head pivots toward the hand. Scale and ground line are the panel's; use SIZE_COMPARISON.spacingUnits for shots
+ * without that gesture.
  */
-export const PAIR_SPACING = 560;
+export const PAIR_SPACING = 570;
 const pairMaxX = PAIR_SPACING + (SIZE_COMPARISON.pairExtent.maxX - SIZE_COMPARISON.spacingUnits);
 const pairCentre = (SIZE_COMPARISON.pairExtent.minX + pairMaxX) / 2;
 /** Zoo's ground point; the pair (Zoo hands .. Badger tail tip) is centred horizontally. */

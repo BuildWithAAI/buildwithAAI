@@ -1,10 +1,19 @@
 /**
  * Binding rule (docs/PROJECT_INSTRUCTIONS.md): never horizontally flip Badger or his markings to make another view.
  * Every marking record in spots.ts (body spots of every view and pose, front-neck spots and every head view's marking
- * paths) is compared with the x-mirror (x -> -x in the record's own space) of every other record. The test FAILS when a
- * record's outline lies within TOLERANCE units of another record's mirrored outline (symmetric Hausdorff distance of the
- * densely sampled outlines, so point order, direction and number formatting cannot hide a copy).
- * The only allowed mirror pairs are midline M-* records with the same id in the two facings of one pose
+ * paths) is compared with the x-mirror of every other record, twice:
+ *  1. IN PLACE (x -> -x in the record's own space): the test FAILS when a record's outline lies within TOLERANCE (0.25)
+ *     units of another record's mirrored outline (symmetric Hausdorff distance of the densely sampled outlines, so point
+ *     order, direction and number formatting cannot hide a copy).
+ *  2. MOVED OR RESCALED COPIES (round 4, R3 review): for two records of one body that can show mirror anatomy (the same
+ *     collection, or the two facings of one pose or head view: SIT / SIT_LEFT, LIE / LIE_LEFT, LEFT / RIGHT side rigs,
+ *     the 3/4, profile and look-up head pairs), on the same or the mirror part, whose centres lie within POS_TOLERANCE
+ *     (20) units of mirror places, each outline is moved to its own centroid and divided by its RMS radius, so a flipped
+ *     copy that was also moved, or rescaled by up to 30%, still matches. The test FAILS when the normalised outlines lie
+ *     within NORM_TOLERANCE (1.0) units of each other's mirror (normalised Hausdorff distance times the pair's mean RMS
+ *     radius), unless the pair is in COAT_MAP_SYMMETRIC with the evidence that the approved sheet draws those two marks
+ *     that way. Every allow-list entry must still match (stale entries fail too), so the list stays exact.
+ * The only other allowed mirror pairs are midline M-* records with the same id in the two facings of one pose
  * (e.g. SIT_SPOTS M-CHEST and SIT_LEFT_SPOTS M-CHEST): a midline mark is symmetric anatomy.
  * Run: cd projects/video-studio && node --test src/characters/badger/tests/spotsNoMirror.test.ts
  */
@@ -13,9 +22,13 @@ import assert from 'node:assert/strict';
 import * as SPOTS from '../spots.ts';
 
 const TOLERANCE = 0.25;
+/** Normalised check: units at the pair's mean RMS radius. */
+const NORM_TOLERANCE = 1.0;
+/** Normalised check: largest distance (units) between one centre and the mirror of the other. */
+const POS_TOLERANCE = 20;
 
 type Pt = readonly [number, number];
-type Rec = {collection: string; id: string; side: string; label: string; d: string};
+type Rec = {collection: string; id: string; side: string; part: string; label: string; d: string};
 
 const TOKEN = /[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g;
 
@@ -136,12 +149,13 @@ export const collectRecords = (mod: Record<string, unknown>): Rec[] => {
 	const out: Rec[] = [];
 	for (const [name, value] of Object.entries(mod)) {
 		if (!Array.isArray(value)) continue;
-		for (const r of value as {id?: string; side?: string; path?: string; paths?: Record<string, string | undefined>}[]) {
+		for (const r of value as {id?: string; side?: string; part?: string; path?: string; paths?: Record<string, string | undefined>}[]) {
 			if (typeof r?.path === 'string') {
-				out.push({collection: name, id: String(r.id), side: String(r.side), label: `${name} ${r.id}`, d: r.path});
+				out.push({collection: name, id: String(r.id), side: String(r.side), part: String(r.part ?? ''), label: `${name} ${r.id}`, d: r.path});
 			} else if (r?.paths && typeof r.paths === 'object') {
 				for (const [view, d] of Object.entries(r.paths)) {
-					if (typeof d === 'string') out.push({collection: `${name}.${view}`, id: String(r.id), side: String(r.side), label: `${name} ${r.id} [${view}]`, d});
+					if (typeof d === 'string')
+						out.push({collection: `${name}.${view}`, id: String(r.id), side: String(r.side), part: 'head', label: `${name} ${r.id} [${view}]`, d});
 				}
 			}
 		}
@@ -175,6 +189,87 @@ export const findMirrors = (recs: readonly Rec[], tolerance = TOLERANCE): Mirror
 	return hits;
 };
 
+/** Centroid and RMS radius of a sampled outline. */
+const frame = (ps: readonly Pt[]): {cx: number; cy: number; r: number} => {
+	const cx = ps.reduce((a, p) => a + p[0], 0) / ps.length;
+	const cy = ps.reduce((a, p) => a + p[1], 0) / ps.length;
+	const r = Math.sqrt(ps.reduce((a, p) => a + (p[0] - cx) ** 2 + (p[1] - cy) ** 2, 0) / ps.length);
+	return {cx, cy, r};
+};
+const normalise = (ps: readonly Pt[]): {pts: Pt[]; r: number} => {
+	const f = frame(ps);
+	return {pts: ps.map(([x, y]) => [(x - f.cx) / f.r, (y - f.cy) / f.r] as const), r: f.r};
+};
+
+/** Largest accepted scale ratio between a record and a rescaled mirror copy. */
+const MAX_SCALE_RATIO = 1.3;
+
+/**
+ * Centre- and scale-normalised mirror distance in units: the symmetric Hausdorff distance between A and the x-mirror of B
+ * after both are moved to their centroids and divided by their RMS radii, times the mean RMS radius. Infinity when the
+ * scales differ by more than MAX_SCALE_RATIO or the normalised boxes rule a match out.
+ */
+export const normalisedMirrorDistance = (A: readonly Pt[], B: readonly Pt[], cutoffUnits = 2): number => {
+	const a = normalise(A);
+	const b = normalise(B);
+	if (Math.max(a.r, b.r) / Math.min(a.r, b.r) > MAX_SCALE_RATIO) return Infinity;
+	const mean = (a.r + b.r) / 2;
+	const M = mirrorX(b.pts);
+	const ba = box(a.pts);
+	const bm = box(M);
+	const c = cutoffUnits / mean;
+	if (Math.abs(ba.x0 - bm.x0) > c || Math.abs(ba.x1 - bm.x1) > c || Math.abs(ba.y0 - bm.y0) > c || Math.abs(ba.y1 - bm.y1) > c) return Infinity;
+	return Math.max(directed(a.pts, M), directed(M, a.pts)) * mean;
+};
+
+/**
+ * Pairs the approved sheet itself draws as near mirror images (centre- and scale-normalised within NORM_TOLERANCE), each
+ * authored from its own map. Labels are '<collection> <id>' or '<collection> <id> [<head view>]', as findMirrors prints
+ * them; order does not matter. Keep this list exact: an entry that no longer matches fails the test.
+ */
+export const COAT_MAP_SYMMETRIC: readonly {readonly a: string; readonly b: string; readonly reason: string}[] = [];
+
+const pairKey = (a: string, b: string) => [a, b].sort().join(' <-> ');
+
+/**
+ * The body a record belongs to and, for a body drawn in two facings, which one. Records of one family share one space in
+ * which x -> -x maps one side's anatomy onto the other's (pose roots, part pivots, head pivots).
+ */
+const family = (collection: string): string => {
+	const [name, view] = collection.split('.');
+	if (name === 'HEAD_MARKINGS') return `HEAD.${(view ?? '').replace(/(Left|Right)Screen$/, '')}`;
+	return name.replace(/^(LEFT|RIGHT)_SPOTS$/, 'SIDE_SPOTS').replace(/_LEFT_SPOTS$/, '_SPOTS');
+};
+/** Parts that are each other's mirror (front / back views); every other part pairs only with itself. */
+const MIRROR_PART: Record<string, string> = {legFrontLeft: 'legFrontRight', legFrontRight: 'legFrontLeft', legHindLeft: 'legHindRight', legHindRight: 'legHindLeft'};
+const partsMatch = (a: Rec, b: Rec) => a.part === b.part || MIRROR_PART[a.part] === b.part;
+
+export type NearMirrorHit = {a: string; b: string; distance: number; allowed: boolean; reason?: string};
+
+export const findNearMirrors = (recs: readonly Rec[], tolerance = NORM_TOLERANCE, posTolerance = POS_TOLERANCE): NearMirrorHit[] => {
+	const pts = recs.map((r) => samplePath(r.d));
+	const centres = pts.map(frame);
+	const allow = new Map(COAT_MAP_SYMMETRIC.map((e) => [pairKey(e.a, e.b), e.reason] as const));
+	const hits: NearMirrorHit[] = [];
+	for (let i = 0; i < recs.length; i++) {
+		for (let j = i + 1; j < recs.length; j++) {
+			if (family(recs[i].collection) !== family(recs[j].collection) || !partsMatch(recs[i], recs[j])) continue;
+			if (Math.hypot(centres[i].cx + centres[j].cx, centres[i].cy - centres[j].cy) > posTolerance) continue;
+			const dist = normalisedMirrorDistance(pts[i], pts[j], Math.max(2, tolerance * 2));
+			if (!(dist <= tolerance)) continue;
+			const reason = allow.get(pairKey(recs[i].label, recs[j].label));
+			hits.push({
+				a: recs[i].label,
+				b: recs[j].label,
+				distance: Math.round(dist * 1000) / 1000,
+				allowed: allowedMirror(recs[i], recs[j]) || reason !== undefined,
+				...(reason ? {reason} : {}),
+			});
+		}
+	}
+	return hits;
+};
+
 const RECORDS = collectRecords(SPOTS as unknown as Record<string, unknown>);
 
 test('spots.ts exposes the marking records of every view and pose', () => {
@@ -200,8 +295,8 @@ test('the detector catches a planted mirror copy and ignores a shifted one', () 
 	assert.ok(mirrorDistance(pts, mirrored) <= TOLERANCE);
 	assert.ok(mirrorDistance(pts, reversed) <= TOLERANCE);
 	assert.ok(!(mirrorDistance(pts, shifted) <= TOLERANCE));
-	const planted: Rec = {collection: 'SIT_LEFT_SPOTS', id: 'R-99', side: 'right', label: 'planted', d: flip(src.d)};
-	const plantedMidline: Rec = {collection: 'SIT_LEFT_SPOTS', id: 'M-CHEST', side: 'midline', label: 'planted midline', d: flip(src.d)};
+	const planted: Rec = {collection: 'SIT_LEFT_SPOTS', id: 'R-99', side: 'right', part: src.part, label: 'planted', d: flip(src.d)};
+	const plantedMidline: Rec = {collection: 'SIT_LEFT_SPOTS', id: 'M-CHEST', side: 'midline', part: src.part, label: 'planted midline', d: flip(src.d)};
 	assert.deepEqual(
 		findMirrors([src, planted]).map((h) => h.allowed),
 		[false],
@@ -222,5 +317,48 @@ test('no marking record is the x-mirror of another record (midline M-* pairs exc
 		bad.map((h) => `${h.a} is the x-mirror of ${h.b} within ${h.distance} u`),
 		[],
 		'a marking path was produced by flipping another record (binding rule: never flip asymmetric markings)',
+	);
+});
+
+test('the normalised detector catches a flipped copy that was moved and rescaled, and ignores a different shape', () => {
+	const src = RECORDS.find((r) => r.collection === 'SIT_SPOTS' && r.id === 'R-08');
+	assert.ok(src, 'SIT_SPOTS R-08 exists');
+	const pts = samplePath(src.d);
+	const f = frame(pts);
+	// x-mirror about the record's own centre, then moved 6 units and scaled 1.08 (well past the in-place tolerance)
+	const moved = pts.map(([x, y]) => [f.cx + 6 - (x - f.cx) * 1.08, f.cy + 2 + (y - f.cy) * 1.08] as const);
+	assert.ok(!(mirrorDistance(pts, moved) <= TOLERANCE), 'the in-place check misses a moved copy');
+	assert.ok(normalisedMirrorDistance(pts, moved) <= 0.05, 'the normalised check catches it');
+	// planted as a left-facing record at the mirror place (moved 6 units, rescaled 1.08): reported and not allowed
+	const fmt = (ps: readonly Pt[]) => 'M ' + ps.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' L ') + ' Z';
+	const copy = pts.map(([x, y]) => [-(f.cx + 6) - (x - f.cx) * 1.08 + 2 * f.cx - 2 * f.cx, f.cy + 2 + (y - f.cy) * 1.08] as const);
+	const plantedCopy: Rec = {collection: 'SIT_LEFT_SPOTS', id: 'L-99', side: 'left', part: src.part, label: 'planted moved copy', d: fmt(copy)};
+	assert.deepEqual(
+		findNearMirrors([src, plantedCopy]).map((h) => h.allowed),
+		[false],
+	);
+	// the same mark turned 25 degrees is a different drawing, not a mirror copy
+	const a = (25 * Math.PI) / 180;
+	const turned = pts.map(([x, y]) => {
+		const X = -(x - f.cx);
+		const Y = y - f.cy;
+		return [f.cx + X * Math.cos(a) - Y * Math.sin(a), f.cy + X * Math.sin(a) + Y * Math.cos(a)] as const;
+	});
+	assert.ok(!(normalisedMirrorDistance(pts, turned) <= NORM_TOLERANCE), 'a turned mark is not reported');
+});
+
+test('no marking record is a moved or rescaled x-mirror of another (allow-listed sheet-symmetric pairs excepted)', () => {
+	const hits = findNearMirrors(RECORDS);
+	for (const h of hits.filter((x) => x.allowed)) console.log(`allowed: ${h.a} <-> ${h.b} (${h.distance} u)${h.reason ? `: ${h.reason}` : ' (midline pair)'}`);
+	assert.deepEqual(
+		hits.filter((h) => !h.allowed).map((h) => `${h.a} is a normalised x-mirror of ${h.b} within ${h.distance} u`),
+		[],
+		'a marking path looks like another record flipped and nudged: author it from its own coat map, or add the pair to COAT_MAP_SYMMETRIC with the sheet evidence',
+	);
+	const found = new Set(hits.map((h) => pairKey(h.a, h.b)));
+	assert.deepEqual(
+		COAT_MAP_SYMMETRIC.filter((e) => !found.has(pairKey(e.a, e.b))).map((e) => pairKey(e.a, e.b)),
+		[],
+		'stale COAT_MAP_SYMMETRIC entries (the pair no longer matches): remove them',
 	);
 });
