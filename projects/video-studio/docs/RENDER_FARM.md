@@ -179,6 +179,7 @@ build; the workflow has no `pull_request` trigger, so forks cannot run it with t
   read from github/docs `main` at commit `e0b0c900`, 2026-11-24). Larger runners are billed even in public
   repositories; the farm uses only the standard `ubuntu-24.04` runner. If the repository ever becomes private, the
   same minutes are billed against the plan (standard Linux 2-core: $0.006 per minute).
+  Measured: GitHub's usage API reports 0 billable milliseconds for every job of the self-test runs.
 - **Runner size (public repositories):** 4 vCPU, 16 GB RAM, 14 GB SSD, x64. The farm renders with
   `REMOTION_CONCURRENCY=3`, the repo's tested setting, leaving a core for the encoder.
 - **Storage.** GitHub's billing page measures artifact and cache storage against the plan for private repositories;
@@ -238,6 +239,30 @@ commits at least a month old.
 All are fast and non-sensitive. Push a change to any of them to run them. The Spanish and Portuguese fixture lines are
 machine translations (`translation.status: "machine"`), so the voice step warns about them; they are test audio only.
 
+## Measured on GitHub (2026-11-24)
+
+Run [45344567383](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/45344567383): all 12 jobs passed, 2 min 27 s
+from push to summary.
+
+| Job | Time |
+| --- | --- |
+| plan | 16 s |
+| 3 voice jobs (en, es, pt-br), in parallel | 45-49 s each: narration build 10-17 s; Kokoro models, pip wheels and ffmpeg all from cache |
+| 7 render jobs, in parallel | 32-51 s each: `npm ci` 6 s (npm cache hit), browser download 2 s, a 3-second 1080p TestCard render 13 s |
+| summary | 20 s |
+
+- GitHub's usage API reports 0 billable milliseconds for all 12 jobs (public repository).
+- ChartShort rendered at 1080x1920, 30 fps (the Shorts format).
+- Narration hand-off: the job whose props name the es narration downloaded 1 artifact ("unpacked 1 narration track(s):
+  es"); the job without them downloaded all 3 ("en, es, pt-br").
+- Earlier runs: [45342983546](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/45342983546) was cancelled
+  after `apt-get install ffmpeg` hung on 2 of 3 voice runners (replaced by the pinned wheel);
+  [45344153170](https://github.com/BuildWithAAI/buildwithAAI/actions/runs/45344153170) failed by design: its 6 test
+  renders and 3 voice jobs passed, and the encrypted self-test was refused because the repository's
+  `RENDER_ARTIFACT_KEY` is shorter than 32 characters. Nothing was uploaded for it.
+- Episode render speed is not measured yet: no voiced storyboard exists in `content/` so far. The summary's render
+  time per output will show it on the first episode.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -250,3 +275,4 @@ machine translations (`translation.status: "machine"`), so the voice step warns 
 | Render failed | For test requests the log is in the job. For encrypted requests, download the artifact and decrypt `logs/<artifact>.log.enc`. |
 | A job failed for an outside reason (network) | "Re-run failed jobs" on the run page works: artifacts are uploaded with `overwrite: true` and narration artifacts live for a day. |
 | Nothing ran after a push | Only pushes that change `projects/video-studio/render-requests/**` start the workflow. |
+| `gh run download` fails with "Forbidden" in a cloud session | Artifact downloads redirect to `*.blob.core.windows.net` (for example `productionresultssa0.blob.core.windows.net`), which a restricted session network blocks. Download on your own computer, or have the host allowed. |
