@@ -10,6 +10,9 @@ fetch_many(rpc, sigs, log_every=200): fetch a list of signature rows
 
 import json
 import os
+import time
+
+_LAST_BLOCK = 0.0
 
 from rpc import RPCError
 
@@ -102,7 +105,14 @@ def block_accounts(rpc, slot):
     if os.path.exists(gz):
         with gzip.open(gz, "rt") as f:
             return json.load(f)["result"]
+    # mainnet-beta allows getBlock 6 times per 10 s per IP: keep this process
+    # at <= 1 call per 1.8 s on top of RPC's own pacing.
+    global _LAST_BLOCK
+    wait = _LAST_BLOCK + 1.8 - time.time()
+    if wait > 0:
+        time.sleep(wait)
     res = rpc.call("getBlock", params)
+    _LAST_BLOCK = time.time()
     if os.path.exists(plain):
         with open(plain, "rb") as fi, gzip.open(gz + ".tmp", "wb", compresslevel=6) as fo:
             fo.write(fi.read())

@@ -225,6 +225,22 @@ for (let seed = 1; seed <= 200; seed++) {
 			if (new Set(vl).size !== vl.length) verbatimDup++;
 		}
 }
+// narrow ranges (zoomed or real-data shots: 0.05-5% wide), from tiny token prices to large caps, where 3 digits are
+// not enough to tell the ticks apart
+for (let e = -7; e <= 9; e += 0.25)
+	for (const width of [0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05]) {
+		const lo = 10 ** e * 1.2345, hi = lo * (1 + width);
+		const sc = priceScale([{t: 0, o: lo, h: hi, l: lo, c: hi, v: 1}], 0, 600, 'linear');
+		linWindows++;
+		const {ticks, step} = linearTicks(sc.min, sc.max);
+		const labels = ticks.map((t) => fmtUsdSig(t, labelSig(ticks, step)));
+		if (ticks.length < 4 || ticks.length > 7) linOutOfBand++;
+		if (new Set(labels).size !== labels.length) linDup++;
+		if (labels.some((l, k) => !(Math.abs(parseUsd(l) - ticks[k]) <= step / 2))) linMisread++;
+		const vl = sc.ticks.map(fmtUsdVerbatim);
+		if (new Set(vl).size !== vl.length) verbatimDup++;
+	}
+check2(verbatimDup > 0, 'negative control: the verbatim linear labels showed no duplicates');
 check2(linOutOfBand === 0 && linDup === 0 && linMisread === 0, `linear ticks: ${linOutOfBand} out of 4-7, ${linDup} duplicate, ${linMisread} misread`);
 
 // ---- L4/CD7 callout percentage: the glyph direction and the sign come from the rounded value ----

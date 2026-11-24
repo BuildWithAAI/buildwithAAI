@@ -83,7 +83,7 @@ export const linearTicks = (min: number, max: number): {ticks: number[]; step: n
 			for (const m of mults) {
 				const step = Number((m * 10 ** e).toPrecision(12));
 				const ticks: number[] = [];
-				for (let k = Math.ceil(min / step - 1e-9); k * step <= max + step * 1e-9; k++) ticks.push(Number((k * step).toPrecision(12)));
+				for (let k = Math.max(1, Math.ceil(min / step - 1e-9)); k * step <= max + step * 1e-9; k++) ticks.push(Number((k * step).toPrecision(12))); // prices > 0 (V2)
 				out.push({step, ticks});
 			}
 		return out;
