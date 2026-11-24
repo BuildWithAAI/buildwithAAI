@@ -1,0 +1,38 @@
+flowchart LR
+  subgraph Sources[Read-only sources]
+    SMR[solana-meme-risk CLI<br/>public RPC + pump.fun]
+    BLO[Blofin public REST<br/>tickers, mark, funding, books, candles]
+    BNV[Binance data-api spot klines<br/>candle fallback]
+    BIL[billy research files]
+    TA[trader_audit db - MISSING]:::missing
+    TH[terminal_hud app - MISSING]:::missing
+    FX[forex / stocks adapters - placeholders]:::missing
+    LTF[longterm holdings feed - none yet]:::missing
+  end
+  subgraph Store[data/aai.db  SQLite WAL]
+    MD[instruments, quotes, candles, funding]
+    SG[signals]
+    OMS[ideas, risk_decisions, orders, fills, positions]
+    LT[lt_* tables]
+    AL[audit_log  hash-chained, append-only]
+  end
+  SMR --> SG
+  BLO --> MD
+  BNV --> MD
+  BIL -. research only .-> SG
+  TA -.-> SG
+  SG --> RE{Risk engine<br/>1-3% per trade, 6% total,<br/>sector caps, kill switch}
+  MD --> RE
+  RE -->|approved| PL[Paper OMS / ledger]
+  RE -->|rejected + reasons| AL
+  PL --> OMS --> AL
+  LTF -.-> LT
+  LT --> LG{LT-01..LT-10 guards}
+  LG --> DT[Draft tickets]
+  DT -->|Zoorped confirms verbatim| AL
+  RE -. never touches .-> LT
+  OMS --> HUD[HUD Flask /api/*]
+  LT --> HUD
+  AL --> HUD
+  HUD -.-> TH
+  classDef missing stroke-dasharray: 5 5
