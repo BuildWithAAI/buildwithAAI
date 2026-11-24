@@ -20,10 +20,19 @@ const PALM: Pt[] = [
 	[-26.4, 94.6], [-29.4, 90.4], [-29.6, 82], [-28.4, 66], [-26.4, 48], [-24.6, 30], [-23.4, 12], [-21.6, -6],
 ];
 const THUMB: Pt[] = [[-21, 0], [-28.6, 14], [-31, 30], [-30, 45], [-26.6, 56.6], [-21.6, 60], [-17.6, 56], [-17.8, 42], [-16.6, 26], [-14, 10]];
+/**
+ * The visible thumb line (integration fix INT-Z1, checked against zoo_turn_front.png): only where the thumb lies
+ * over the back of the hand, from the outer edge round the tip and up the thumb/index notch to mid-hand. Above
+ * that the thumb joins the hand with no line, as on the sheet; its outer silhouette comes from the underlay.
+ * (A full thumb outline ran up to the cuff and read as a separate hook.)
+ */
+const THUMB_EDGE: Pt[] = [[-30, 45], [-26.6, 56.6], [-21.6, 60], [-17.6, 56], [-17.8, 42], [-16.6, 26]];
+// Finger separations run about a third of the way up the hand, as on zoo_turn_front.png (INT-Z1; they were
+// 7 units long and the fingertips read as bumps).
 const FINGER_LINES: Pt[][] = [
-	[[3, 63.6], [5, 56.6]],
-	[[-6.6, 73.8], [-4.6, 66.6]],
-	[[-17.4, 84.2], [-15.4, 76.4]],
+	[[3, 63.6], [4.8, 54], [5.6, 46]],
+	[[-6.6, 73.8], [-5, 63], [-4.4, 55]],
+	[[-17.4, 84.2], [-16, 76], [-15.4, 70]],
 ];
 const PALM_SHADOW = smooth([[-30, 40], [-16, 46], [-13, 70], [-21, 97], [-34, 97]]);
 
@@ -74,7 +83,12 @@ export const HandFill: React.FC<{shape: HandShape}> = ({shape}) => {
 			{lines.map((l, i) => (
 				<path key={i} d={line(l)} fill="none" stroke={LINE.color} strokeWidth={LINE.detailWidth} strokeLinecap="round" />
 			))}
-			{thumb ? <path d={thumb} fill={ZOO_COLORS.skin} stroke={LINE.color} strokeWidth={LINE.width} strokeLinejoin="round" /> : null}
+			{thumb ? (
+				<>
+					<path d={thumb} fill={ZOO_COLORS.skin} />
+					<path d={line(THUMB_EDGE)} fill="none" stroke={LINE.color} strokeWidth={LINE.width} strokeLinejoin="round" strokeLinecap="round" />
+				</>
+			) : null}
 		</g>
 	);
 };

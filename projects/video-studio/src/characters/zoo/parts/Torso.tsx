@@ -10,8 +10,10 @@ import {line, mirrorX, smooth, type Pt} from '../geometry';
 import {JellyfishPin} from './Pin';
 import {Shape, Stroke} from './Shape';
 
+// The hem points are corners (integration fix INT-Z2): as smooth points the closed spline overshot ~30 units below
+// the overshirt hem and hung a rounded tee tail over the trousers that zoo_turn_front.png does not show.
 const TEE = smooth([
-	[-37, -733], [-27, -724.6], [-14, -718], [0, -715.8], [14, -718], [27, -724.6], [37, -733], [39, -700], [36, -419], [-36, -419],
+	[-37, -733], [-27, -724.6], [-14, -718], [0, -715.8], [14, -718], [27, -724.6], [37, -733], [39, -700], [36, -419, 'c'], [-36, -419, 'c'],
 	[-39, -700],
 ]);
 const TEE_RIB = line([[-25.4, -720.6], [-13, -713.8], [0, -711.8], [13, -713.8], [25.4, -720.6]]);
