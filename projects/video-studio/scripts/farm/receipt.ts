@@ -468,7 +468,7 @@ export const verifyReceipt = (
 			if (have.get(targetKey(t))?.contentSha256 !== h) stale.add(dir);
 		}
 		if (stale.size) {
-			return fail(`the gate receipt ${rel} is stale: ${[...stale].join(', ')} changed after validate wrote it, or holds a file that was never committed (validate hashes every file there that git does not ignore)`);
+			return fail(`the gate receipt ${rel} is stale: ${[...stale].join(', ')} changed after validate wrote it, or holds a file never committed (validate binds every file git does not ignore)`);
 		}
 		const code = gateCode ?? claimGateFingerprint(project).codeSha256;
 		if (r.claimGate.codeSha256 !== code) return fail(`the gate receipt ${rel} was written by claim gate code that differs from this commit's (scripts/claims or a file it imports changed since, or had uncommitted changes then)`);

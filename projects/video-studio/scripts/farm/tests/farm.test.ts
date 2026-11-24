@@ -173,10 +173,11 @@ const quiet = async <T,>(fn: () => T | Promise<T>): Promise<T> => {
 	}
 };
 
-// The owner's step before the push: validate (with the names list) writes ep-secret's gate receipt, and the receipt is
-// committed with the request. The self-test renders no script, so it needs none.
+// The owner's step before the push: git add the requests, validate (with the names list) writes ep-secret's gate
+// receipt, and the receipt is committed with the request. The self-test renders no script, so it needs none.
 put('render-requests/farm-selftest.json', selftest);
 put('render-requests/ep-secret.json', secretEpisode);
+git('add', '-A');
 const validated = harness({});
 cmdValidate(validated.ctx, [join(project, 'render-requests/ep-secret.json'), join(project, 'render-requests/farm-selftest.json')]);
 assert.match(validated.logs.join('\n'), /ep-secret\.json: ok [^\n]*private names checked\); gate receipt render-requests\/receipts\/ep-secret\.json written/);
@@ -232,7 +233,7 @@ test('plan: matrices for the push (masters, dubs after their master), props and 
 	const h = harness({FARM_EVENT: 'push', FARM_BEFORE: base, FARM_HEAD: head, [KEY_ENV]: KEY});
 	cmdPlan(h.ctx);
 	assert.deepEqual([...new Set(gateModes)], ['skip'], 'CI runs every claim gate with --no-names');
-	assert.match(h.summary(), /Private names were checked on the owner's computer before the push \(gate receipts match\): ep-secret \(4 script\(s\), validated \d{4}-\d{2}-\d{2}T/);
+	assert.match(h.summary(), /Gate receipts match \(each records that validate passed the claim gate with the private names list on exactly this request and these scripts; CI cannot check the names itself, and a receipt is evidence, not a signature\): ep-secret \(4 script\(s\), validated \d{4}-\d{2}-\d{2}T/);
 	assert.match(h.summary(), /Gate receipts changed: 1 \(a receipt is not a request: it never starts a render\)/);
 	const o = h.outputs();
 	const render = JSON.parse(o.render_matrix).include;

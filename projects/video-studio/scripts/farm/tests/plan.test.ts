@@ -176,8 +176,11 @@ test('push to a new branch (before = 000...0) or an unknown base falls back to t
 	const zero = detectChanges(input({before: '0'.repeat(40), head}), git);
 	assert.deepEqual(zero.ids, ['branchy']);
 	assert.match(zero.how, /head commit/);
+	assert.equal(zero.headOnly, true, 'the plan says only the head commit was read');
 	const unknown = detectChanges(input({before: 'f'.repeat(40), head}), git);
 	assert.deepEqual(unknown.ids, ['branchy']);
+	assert.equal(unknown.headOnly, true);
+	assert.equal(detectChanges(input({before: c2, head}), git).headOnly, false);
 });
 
 test('the root commit renders every request file', () => {

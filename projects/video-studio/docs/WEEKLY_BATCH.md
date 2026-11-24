@@ -107,7 +107,16 @@ One per episode, for the Claude session that writes it, in the style of the dail
 - a storyboard skeleton for the right renderer (the episode engine, or the show for channel 2) and an `episode.json`
   skeleton for the publish kit (made for kids No, altered content No, no offers);
 - the build steps in order: fact tags → claim gate → dubs (+ their gates) → voice (dubs `--fit-to en`) → publish kit
-  → renders → thumbnails → `review`.
+  → renders → thumbnails → `review`. The render step has two branches: with the private names list (add, validate
+  last, commit the request, its receipt and the script folder together, check, push), and without it (render locally,
+  push nothing, never create a list).
+
+Everything in `out/batch/<week>/` (plan.json, plan.md, WRITER.md, render-request.json) is a generated snapshot: it is
+gitignored and exists only in the checkout that made it. Before a writer session starts, and after any change to
+`scripts/batch/**`, the backlogs, `scripts/batch/config.json`, the fact bank or the farm flow, re-run
+`node scripts/batch/cli.ts plan --week <w>` (add `--no-pin` while the week is still a preview), so no session follows
+an outdated packet or copies an outdated farm draft. Work only from the fresh WRITER.md. Re-running plan on a pinned
+week leaves the backlogs as they are.
 
 ## Rendering on the farm
 
@@ -122,14 +131,18 @@ Each episode gets a draft request for the render farm (docs/RENDER_FARM.md), `ou
 - encrypted to the owner's public key.
 
 The tests check every draft with the farm's own validator. The weekly session copies a draft to
-`render-requests/<id>.json`, validates it there (which writes its gate receipt) and pushes both; pushing is what starts
-the farm, so `plan` never does it.
+`render-requests/<id>.json`, adds it and the episode's `content/<channel>/<slug>/` folder to git, and validates it
+there last, which writes its gate receipt, `render-requests/receipts/<id>.json`. Then it commits the request, its
+receipt and that folder together, runs `farm.ts check` and pushes (docs/RENDER_FARM.md, "Request a render", has the
+commands). The push is what starts the farm, so the batch `plan` command never pushes. A session without the private
+names list renders locally instead and pushes nothing (its WRITER.md says how).
 
 - **Gate before push.** The farm needs the storyboards pushed, and the repository is public: a script becomes readable
   the moment it is pushed, before its video is published, and history is never rewritten. So every claim gate must pass
   first. `node scripts/farm/farm.ts validate render-requests/<id>.json` runs them all and refuses the request
   otherwise. It needs the private names list (`data/private/names.txt`, never committed) and writes the gate receipt
-  `render-requests/receipts/<id>.json`: commit it with the request and the episode's `content/` folder. The farm's
+  `render-requests/receipts/<id>.json`: commit it with the request and the episode's `content/<channel>/<slug>/`
+  folder (only that folder: `git add content/` would push other episodes' scripts that have not passed the gate). The farm's
   `plan` job runs the gates again on GitHub without the list and refuses a request whose receipt is missing or stale
   (docs/RENDER_FARM.md, "Gate receipts"); run `validate` last, before every push. When a script must
   not be public before its release, render locally instead (`bash out/publish/<channel>/<slug>/render-plan.sh`).

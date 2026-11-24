@@ -92,6 +92,11 @@ test('the WRITER packet carries the slots, the exact Short ids, the facts, the r
 	assert.match(w, /an invented ticker that a web search shows is no live token, e\.g\. \$QZLX \/ SOL/);
 	assert.match(w, /Never upload, publish or post anything\. `approve` runs only on the owner's own reply/);
 	assert.match(w, /--fit-to en --voice im_nicola/);
+	// step 5, gate before push: add, validate last, commit together, check, push; and the branch for a session without the names list
+	assert.match(w, /`git status --short --untracked-files=all content\/zoora-ai\/pumpfun-top-caller` lists everything that goes public with the commit/);
+	assert.match(w, /Then `git add render-requests\/batch-2026-w49-ai1\.json content\/zoora-ai\/pumpfun-top-caller` and run `node scripts\/farm\/farm\.ts validate render-requests\/batch-2026-w49-ai1\.json` last/);
+	assert.match(w, /writes the gate receipt `render-requests\/receipts\/batch-2026-w49-ai1\.json`\. `git add` the receipt, commit the request, its receipt and `content\/zoora-ai\/pumpfun-top-caller` together, run `node scripts\/farm\/farm\.ts check render-requests\/batch-2026-w49-ai1\.json`, then push/);
+	assert.match(w, /\n {3}- Without the list: do not create one \(an empty or guessed list compares nothing, and validate refuses it\), and commit or push neither the request nor `content\/zoora-ai\/pumpfun-top-caller` \(a pushed script is public for good\)\. Render locally instead: `bash out\/publish\/zoora-ai\/pumpfun-top-caller\/render-plan\.sh long` and `shorts`\. Say in your hand-off that the owner's `farm\.ts validate` is still needed before anything is pushed\./);
 	const skeleton = JSON.parse(/### Storyboard skeleton[\s\S]*?```json\n([\s\S]*?)\n```/.exec(w)?.[1] ?? '{}') as {fiction: boolean; shorts: Array<{id: string}>; channel: string};
 	assert.equal(skeleton.channel, 'zoora-ai');
 	assert.equal(skeleton.fiction, true);

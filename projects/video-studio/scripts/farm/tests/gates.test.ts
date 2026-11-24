@@ -11,6 +11,7 @@ import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {after, test} from 'node:test';
 import {fileURLToPath} from 'node:url';
+import {cmdValidate, type Ctx} from '../farm.ts';
 import {gateArgs, spawnGateRunner, type GateTarget, type NamesMode} from '../gates.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -146,4 +147,47 @@ test('two validate processes at the same time on one machine (one temp folder) b
 	assert.equal(b.code, 0, b.err);
 	for (const slug of ['a', 'b']) assert.ok(existsSync(join(q, `render-requests/receipts/${slug}.json`)), `${slug}: its receipt`);
 	assert.deepEqual(readdirSync(shared).filter((f) => f.startsWith('farm-gate-')), [], 'no report folder left behind');
+});
+
+test('validate with the real runner: a passing gate that writes no report, or a report for another script, gets no receipt', () => {
+	const e = join(root, 'e2e');
+	put(e, 'scripts/claims/check.ts', STUB);
+	put(e, 'scripts/claims/package.json', '{"type": "module"}\n');
+	put(e, '.gitignore', 'data/\n');
+	put(e, 'src/episode/index.ts', '');
+	put(e, 'scripts/farm/keys/owner.pub.pem', generateKeyPairSync('rsa', {modulusLength: 3072}).publicKey.export({type: 'spki', format: 'pem'}) as string);
+	put(e, 'data/private/names.txt', '# invented names only\nTesty McFakename\n');
+	put(e, 'content/zoora-ai/ep/storyboard.json', '{"lang": "en"}\n');
+	put(e, 'render-requests/ep.json', JSON.stringify({id: 'ep', entry: 'src/episode/index.ts', jobs: [{composition: 'Episode', kind: 'video', output: 'out/ep.mp4', props: {channel: 'zoora-ai', slug: 'ep', lang: 'en'}}]}));
+	const gitEnv = {...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.invalid', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.invalid'};
+	for (const args of [['init', '-q', '-b', 'main'], ['add', '-A'], ['commit', '-q', '-m', 'base']]) execFileSync('git', args, {cwd: e, env: gitEnv});
+	const validate = (env: Record<string, string>) => {
+		const errs: string[] = [];
+		const logs: string[] = [];
+		const ctx: Ctx = {project: e, env: {PATH: process.env.PATH, ...env}, temp: join(root, 'e2e-temp'), log: (m) => logs.push(m), gateTemp: parent};
+		const error = console.error;
+		console.error = (m: unknown) => errs.push(String(m));
+		try {
+			cmdValidate(ctx, [join(e, 'render-requests/ep.json')]);
+			return {threw: null as Error | null, err: errs.join('\n'), log: logs.join('\n')};
+		} catch (x) {
+			return {threw: x as Error, err: errs.join('\n'), log: logs.join('\n')};
+		} finally {
+			console.error = error;
+		}
+	};
+	const receipt = join(e, 'render-requests/receipts/ep.json');
+	for (const [what, env] of [
+		['no report', {STUB_REPORTS: '0'}],
+		['a report for another slug', {STUB_REPORT: JSON.stringify({...good, slug: 'other'})}],
+	] as const) {
+		const r = validate(env);
+		assert.ok(r.threw, what);
+		assert.match(r.err, /zoora-ai\/ep \(en\): the claim gate passed without reporting that it checked data\/private\/names\.txt, so no receipt was written/, what);
+		assert.ok(!existsSync(receipt), what);
+	}
+	const ok = validate({STUB_REPORT: JSON.stringify(good)});
+	assert.equal(ok.threw, null, ok.err);
+	assert.match(ok.log, /1 gate check\(s\) pass, private names checked\); gate receipt render-requests\/receipts\/ep\.json written/);
+	assert.ok(existsSync(receipt));
 });

@@ -190,18 +190,32 @@ bash out/publish/<channel>/<slug>/render-plan.sh all        # long, shorts, thum
 **Or render on the farm** ([RENDER_FARM.md](RENDER_FARM.md)): every language and format at once on GitHub's runners,
 8 at a time, outputs encrypted to the owner's public key. The weekly batch writes a draft per episode with the English
 voice, the es and pt-br dubs fitted to it, one render job per output, and the dub tracks as WAV. The farm renders the
-storyboards as they are in the pushed commit, so commit `content/<channel>/<slug>/` with the request, once its gates
-pass.
+storyboards as they are in the pushed commit, so the request, its gate receipt (`render-requests/receipts/<id>.json`)
+and every `content/<channel>/<slug>/` it voices or renders go in one commit, made right after `farm.ts validate`
+passes ([RENDER_FARM.md](RENDER_FARM.md), "Gate receipts"). Validate runs last, after every edit, and only where
+`data/private/names.txt` exists (the owner's computer); a session without the list renders locally instead and
+pushes nothing. Add the files to git before validate (it binds what will be committed), and read the `git status`
+list first: everything in it goes public with the commit.
 
 ```bash
 cp out/batch/2026-W49/ai1/render-request.json render-requests/batch-2026-w49-ai1.json   # file name = the request id
-node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts validate render-requests/batch-2026-w49-ai1.json
-git add render-requests/batch-2026-w49-ai1.json && git commit -m "Render batch-2026-w49-ai1" -- render-requests/batch-2026-w49-ai1.json && git push
+git status --short --untracked-files=all -- render-requests/batch-2026-w49-ai1.json content/zoora-ai/pumpfun-top-caller
+git add render-requests/batch-2026-w49-ai1.json content/zoora-ai/pumpfun-top-caller
+# last, after every edit, where data/private/names.txt exists; it writes render-requests/receipts/batch-2026-w49-ai1.json
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts validate render-requests/batch-2026-w49-ai1.json \
+  && git add render-requests/receipts/batch-2026-w49-ai1.json \
+  && git commit -m "Render batch-2026-w49-ai1" -- render-requests/batch-2026-w49-ai1.json render-requests/receipts/batch-2026-w49-ai1.json content/zoora-ai/pumpfun-top-caller \
+  && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts check render-requests/batch-2026-w49-ai1.json \
+  && git push
 ```
 
-The push starts "Video render farm" in the Actions tab. **Read gap 1 below first: today the farm's plan refuses every
-real episode, show or thumbnail request on GitHub.** Then, on the owner's computer (artifact downloads are blocked from
-cloud sessions):
+One chain: if validate refuses, nothing is committed; if check refuses, nothing is pushed (fix it and amend the commit
+first). The push starts "Video render farm" in the
+Actions tab. The plan re-runs the claim gate with `--no-names` and refuses the request if its gate receipt is missing,
+stale or edited. A push of the receipt alone starts no run: change the request, validate again and push both (or run
+the workflow by hand once it is on the default branch). Until `scripts/farm/keys/owner.pub.pem` is committed, the plan
+also refuses every encrypted request, which is every real one, and no real request has been through the receipt check
+on GitHub yet (gap 1). Then, on the owner's computer (artifact downloads are blocked from cloud sessions):
 
 ```bash
 gh run download <run-id> --repo BuildWithAAI/buildwithAAI --pattern 'render_<id>_*' --dir ~/renders/<id>
@@ -377,8 +391,10 @@ in a cloud session. Never in files, flags, chat or this repository. The tools' o
 
 **Claim gate:**
 
-- [ ] `data/private/names.txt` (gitignored) on every machine that runs the gates: the real names and handles behind
-      every "[named person]" in the research files, one per line. Without it every claim gate fails.
+- [ ] `data/private/names.txt` (gitignored) on every machine that runs the gates or `farm.ts validate` (never CI: the
+      farm's plan runs the gate with `--no-names` and checks the gate receipt instead): the real names and handles
+      behind every "[named person]" in the research files, one per line. Without it every local claim gate fails, and
+      validate refuses an empty or comment-only list.
 
 **YouTube uploads (OAuth client)**, [uploader README](../../creator-hub/tools/uploader/README.md) "One-time setup":
 
@@ -464,15 +480,16 @@ test upload, a test channel and account, a test draft.
 
 **Known gaps:**
 
-1. **On GitHub, the farm's plan refuses every real episode, show or thumbnail request.** The claim gate fails
-   without `data/private/names.txt` (`no-names-list`). That file is gitignored, so a runner never has it, and
-   `scripts/farm/gates.ts` does not pass `--no-names`. Checked 2026-11-24 in a scratch copy of HEAD: a request
-   rendering a storyboard that passes the gate with `--no-names` was refused by `farm.ts validate` without the list
-   ("the claim gate FAILS") and accepted with one ("1 gate check(s) pass"). The self-tests render no episode, so no
-   farm run has met it. It needs a farm change: pass `--no-names` only in GitHub Actions, where the owner's local
-   `validate` with the list has already checked names before the push, say so in the run summary, and add a test.
-   Until then render real episodes locally (`render-plan.sh`), voice dubs locally with `--fit-to en`, and export each
-   dub track with the farm's own audio command: `npx remotion render src/episode/index.ts Episode
+1. **Gate receipts have not run on GitHub with a real episode.** A runner never has `data/private/names.txt`, so the
+   farm's plan runs the claim gate with `--no-names` and requires the gate receipt that `farm.ts validate` writes where
+   the list exists ([RENDER_FARM.md](RENDER_FARM.md), "Gate receipts"; built 2026-11-24 and tested locally in
+   `scripts/farm/tests/receipt.test.ts`, with the real claim gate on its fixture, a CRLF owner checkout and a clean CI
+   clone). Real requests are still refused today, at the owner-key check: every real request is encrypted, so none can
+   run before `scripts/farm/keys/owner.pub.pem` is committed, and one with voice also needs `RENDER_HANDOFF_KEY`
+   (gap 5). The names check is only as current as the last validate against the current list. The first real request
+   is the live test (its plan summary must say the gate receipts match); until one passes, keep the local route ready:
+   render real episodes locally (`render-plan.sh`), voice dubs locally with `--fit-to en`, and export each dub track
+   with the farm's own audio command: `npx remotion render src/episode/index.ts Episode
    out/publish/<channel>/<slug>/media/dubs/es/long.wav --codec=wav --config=scripts/farm/remotion.audio.config.ts
    --props='{"channel":"<channel>","slug":"<slug>","lang":"es"}'` (not yet run on a real episode).
 2. The farm does not hand its narration back: for an encrypted request the voice archive opens only inside the run.
@@ -500,7 +517,7 @@ The same results in the working tree and in a clean export of HEAD `6d401b4`.
 
 | Suite | Command | Result |
 | --- | --- | --- |
-| Render farm | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/farm/tests/*.test.ts` | 82 pass, 0 fail |
+| Render farm | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/farm/tests/*.test.ts` | 118 pass, 0 fail (re-run in the working tree with the gate receipt fixes; 82 at `6d401b4`) |
 | Assets | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/assets/tests/*.test.ts` | 35 pass, 0 fail |
 | Fact bank | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/facts/tests/*.test.ts` | 62 pass, 0 fail |
 | Weekly batch | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/batch/tests/*.test.ts` | 62 pass, 0 fail |
