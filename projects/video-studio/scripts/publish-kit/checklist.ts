@@ -85,7 +85,11 @@ export const buildChecklist = (input: ChecklistInput): string => {
 			: `Paid promotion: leave it unticked. settings.paidPromotion is false: ${paidWhy}`,
 	);
 	if (kit.captions.srt) box(`Captions: upload ${code('captions.srt')} (or ${code('captions.vtt')}) as ${e.lang}.`);
-	box(`Pin the comment in ${code('pinned-comment.txt')}.`);
+	box(
+		kit.settings.madeForKids
+			? `Comments are off on made-for-kids videos, so ${code('pinned-comment.txt')} cannot be posted: fix the made-for-kids check first.`
+			: `Pin the comment in ${code('pinned-comment.txt')}.`,
+	);
 	box('After upload, check Studio for an automatic AI or branded-content label and correct a wrong one.');
 	if (!e.youtubeVideoId) box(`Once uploaded, run ${code(`node scripts/publish-kit/cli.ts ${ref} --youtube-id <id>`)} so kit.json, the newsletter and the X posts link the video itself.`);
 	L.push('');

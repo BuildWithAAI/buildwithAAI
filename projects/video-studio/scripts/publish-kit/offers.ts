@@ -5,7 +5,9 @@
  */
 import {existsSync} from 'node:fs';
 import {join} from 'node:path';
-import type {Offer, OfferRegistry, Platform, ResolvedOffer, Source} from './types.ts';
+import {disclosureWordingProblems} from './disclosure.ts';
+import {findRules, INCOME_CLAIMS} from './lint.ts';
+import type {Offer, OfferRegistry, Platform, Relationship, ResolvedOffer, Source} from './types.ts';
 import {InputError, isRecord, readJsonFile} from './util.ts';
 
 export const DEFAULT_HUB = 'https://go.zoora.ai';
@@ -31,7 +33,11 @@ export const OFFER_ID = /^[a-z0-9-]{2,40}$/;
 const COUNTRY = /^[A-Z]{2}$/;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Validates the registry fields this tool relies on. The hub validates the rest at its own startup. */
+/**
+ * Validates the registry fields this tool relies on. The hub validates the rest at its own startup.
+ * The kit prints each disclosure word for word next to the offer, so a disclosure must name the relationship and
+ * the benefit, and no published offer text (name, disclosure, restricted reason) may carry a claim.
+ */
 export const checkRegistry = (input: unknown): {registry: OfferRegistry; errors: string[]} => {
 	const errors: string[] = [];
 	if (!isRecord(input) || input.version !== 1 || !Array.isArray(input.offers)) {
@@ -52,6 +58,12 @@ export const checkRegistry = (input: unknown): {registry: OfferRegistry; errors:
 		if (typeof raw.disclosure !== 'string' || !raw.disclosure.trim()) problems.push('"disclosure" must be a non-empty string');
 		if (!CATEGORIES.includes(raw.category as string)) problems.push(`"category" must be one of ${CATEGORIES.join(', ')}`);
 		if (!RELATIONSHIPS.includes(raw.relationship as string)) problems.push(`"relationship" must be one of ${RELATIONSHIPS.join(', ')}`);
+		else if (typeof raw.disclosure === 'string' && raw.disclosure.trim()) problems.push(...disclosureWordingProblems(raw.disclosure, raw.relationship as Relationship));
+		if (raw.restrictedReason !== undefined && typeof raw.restrictedReason !== 'string') problems.push('"restrictedReason" must be a string');
+		for (const key of ['name', 'disclosure', 'restrictedReason'] as const) {
+			const value = raw[key];
+			if (typeof value === 'string') problems.push(...findRules(INCOME_CLAIMS, value, key).map((h) => `"${key}" contains ${h.label} ("${h.match}")`));
+		}
 		if (raw.unknownCountry !== 'allow' && raw.unknownCountry !== 'block') problems.push('"unknownCountry" must be "allow" or "block"');
 		if (typeof raw.active !== 'boolean') problems.push('"active" must be true or false');
 		for (const key of ['blockedCountries', 'allowedCountries'] as const) {

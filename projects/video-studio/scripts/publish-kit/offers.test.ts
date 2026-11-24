@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {after, describe, it} from 'node:test';
 import {checkRegistry, hubBase, hubLink, hubPage, isLive, isRestricted, loadRegistry, offerDisclosure, resolveOffers, RISK_LINE} from './offers.ts';
+import {PROJECT, testRegistry} from './test-helpers.ts';
 import type {Offer} from './types.ts';
 import {InputError} from './util.ts';
 
@@ -38,6 +39,25 @@ describe('checkRegistry', () => {
 		assert.match(all, /duplicate id/);
 		assert.match(all, /"uk": "blockedCountries" must be a list of ISO country codes/);
 		assert.deepEqual(checkRegistry({offers: []}).errors, ['expected {"version": 1, "offers": [...]}']);
+	});
+	it('refuses a disclosure that discloses nothing, and claims in published offer text (review 2026-11-24)', () => {
+		const {errors} = checkRegistry({
+			version: 1,
+			offers: [
+				offer({id: 'weak', disclosure: 'Great wallet, I use it every day. Get 20% off today only!'}),
+				offer({id: 'own', relationship: 'own-product', category: 'own-product', disclosure: 'Affiliate link: I may earn a commission.'}),
+				offer({id: 'hype', name: 'Wallet that will hit $1,000', restrictedReason: 'Not available here, but you cannot lose.'}),
+			],
+		});
+		const all = errors.join('\n');
+		assert.match(all, /"weak": "disclosure" does not disclose: it must name the relationship/);
+		assert.match(all, /"own": "disclosure" does not disclose: it must say it is your own product/);
+		assert.match(all, /"hype": "name" contains a price prediction/);
+		assert.match(all, /"hype": "restrictedReason" contains a no-lose promise/);
+	});
+	it('the shared example registry and the test registry pass the wording rules', () => {
+		assert.deepEqual(checkRegistry(JSON.parse(readFileSync(join(PROJECT, '../creator-hub/config/offers.example.json'), 'utf8'))).errors, []);
+		assert.deepEqual(checkRegistry(testRegistry()).errors, []);
 	});
 });
 

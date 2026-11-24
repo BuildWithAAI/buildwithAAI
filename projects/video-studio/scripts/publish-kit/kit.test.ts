@@ -3,8 +3,8 @@ import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {describe, it} from 'node:test';
 import {buildKit, type BuildOptions} from './kit.ts';
-import {exampleEpisode, HUB, NOW, PROJECT, testRegistry} from './test-helpers.ts';
-import type {Episode, OfferRegistry} from './types.ts';
+import {exampleCaptions, exampleEpisode, exampleJson, HUB, NOW, PROJECT, testRegistry} from './test-helpers.ts';
+import type {Caption, Episode, OfferRegistry} from './types.ts';
 
 const opts = (registry: OfferRegistry = testRegistry(), over: Partial<BuildOptions> = {}): BuildOptions => ({
 	hub: HUB,
@@ -22,6 +22,18 @@ const detail = (e: Episode, id: string, o: BuildOptions = opts()): string => bui
 
 /** Scenes as episode.json input (durations), to rebuild the example with changes. */
 const sceneFiles = (e: Episode) => e.scenes.map((s) => ({id: s.id, ...(s.chapter ? {chapter: s.chapter} : {}), durationSec: s.endSec - s.startSec, ...(s.offers.length ? {offers: s.offers} : {})}));
+
+/** The example captions with scene `id`'s narration replaced by `said`, one caption per word. */
+const narrate = (id: string, said: string): Caption[] => {
+	const scene = exampleEpisode().scenes.find((s) => s.id === id);
+	assert.ok(scene, id);
+	const [from, to] = [scene.startSec * 1000, scene.endSec * 1000];
+	const words = said.split(' ');
+	const step = Math.floor((to - from - 1000) / words.length);
+	const spoken = words.map((w, i) => ({text: ` ${w}`, startMs: from + 500 + i * step, endMs: from + 460 + (i + 1) * step, timestampMs: null, confidence: null}));
+	const all = exampleCaptions() as Caption[];
+	return [...all.filter((c) => c.startMs < from), ...spoken, ...all.filter((c) => c.startMs >= to)];
+};
 
 const KIT_KEYS = ['version', 'channel', 'slug', 'youtubeVideoId', 'title', 'titleOptions', 'summary', 'chapters', 'sources', 'offers', 'disclosures', 'posts', 'captions', 'renders', 'settings', 'checks', 'generatedAt'];
 
@@ -173,5 +185,60 @@ describe('failing checks', () => {
 		const scenes = sceneFiles(exampleEpisode()).map((s) => (s.id === 's06' ? {...s, durationSec: 160} : s));
 		const e = exampleEpisode({scenes});
 		assert.deepEqual(failing(e), ['short-durations', 'x-video-length']);
+	});
+});
+
+describe('compliance review 2026-11-24', () => {
+	it('a negated spoken disclosure does not count, and a claim in the narration fails', () => {
+		const e = exampleEpisode({}, {captions: narrate('s06', 'This video is not sponsored and there is no affiliate deal. Buy now before it sells out.')});
+		assert.deepEqual(failing(e), ['spoken-disclosure', 'income-claims']);
+		assert.match(detail(e, 'spoken-disclosure'), /scene s06 promotes "hardware-wallet" but its narration does not say the affiliate relationship/);
+		assert.match(detail(e, 'income-claims'), /narration \(captions\.json\), scene s06: a buy call \("Buy now"\)/);
+	});
+	it('a positive spoken disclosure after a negated one passes', () => {
+		const e = exampleEpisode({}, {captions: narrate('s06', 'Nobody sponsored this video. But the wallet link below is an affiliate link, so I may earn a commission.')});
+		assert.deepEqual(failing(e), []);
+	});
+	it('a restricted offer named in a Short title or a tag fails, not only in post text', () => {
+		const j = exampleJson() as {shortCuts: Record<string, unknown>[]; tags: string[]};
+		const e = exampleEpisode({offers: ['hardware-wallet', 'demo-exchange'], shortCuts: [{...j.shortCuts[0], title: 'Demo Exchange sign-ups explained'}, j.shortCuts[1]], tags: [...j.tags, 'demo exchange']});
+		assert.deepEqual(failing(e), ['restricted-offers']);
+		assert.match(detail(e, 'restricted-offers'), /restricted offer "demo-exchange" \(Demo Exchange\) is named in short 1 title and tags\[8\]/);
+	});
+	it('a restricted offer named in the narration fails', () => {
+		const e = exampleEpisode({offers: ['hardware-wallet', 'demo-exchange']}, {captions: narrate('s03', 'The fake page copies the Demo Exchange login screen.')});
+		assert.match(detail(e, 'restricted-offers'), /is named in narration \(captions\.json\)/);
+	});
+	it('made for kids fails on these adult channels, and the checklist does not ask to pin a comment', () => {
+		const e = exampleEpisode({madeForKids: {value: true, reason: 'cartoon characters so maybe kids'}});
+		const {kit, files} = buildKit(e, opts());
+		assert.deepEqual(
+			kit.checks.filter((c) => !c.ok).map((c) => c.id),
+			['made-for-kids'],
+		);
+		assert.match(detail(e, 'made-for-kids'), /for adults .*comments, cards and end screens .*removes a video from YouTube Kids/);
+		assert.match(files['checklist.md'], /Comments are off on made-for-kids videos/);
+		assert.doesNotMatch(files['checklist.md'], /Pin the comment/);
+	});
+	it('kit.disclosures holds only self-contained lines when an offer is restricted', () => {
+		const {kit, files} = buildKit(exampleEpisode({offers: ['hardware-wallet', 'demo-exchange']}), opts());
+		assert.deepEqual(kit.disclosures, [
+			'Disclosure: some links for this video are affiliate links. If you use them, I may earn money. Each one is labelled next to the link.',
+			'Affiliate link: I may earn a commission if you buy. It costs you nothing extra.',
+			'Fictional story: the people, chats and wallets in this video are made up and animated.',
+			'Education only, not financial advice.',
+		]);
+		// the description still covers the region-filtered page, with its line and disclosure together
+		assert.match(files['youtube-description.txt'], /^Disclosure: some links for this video are affiliate or referral links\./);
+		assert.match(files['youtube-description.txt'], /only where they are available in your country: \S+\nSome of them are affiliate or referral links that may earn me money; each one is disclosed on that page\./);
+	});
+	it('a registry disclosure that discloses nothing fails even when the registry loader is bypassed', () => {
+		const registry = testRegistry();
+		registry.offers[0] = {...registry.offers[0], disclosure: 'Great wallet, I use it every day. Get 20% off today only!'};
+		assert.match(detail(exampleEpisode(), 'disclosures', opts(registry)), /offer "hardware-wallet": "disclosure" does not disclose/);
+	});
+	it('the Instagram caption carries the bio-link disclosure', () => {
+		const {kit} = buildKit(exampleEpisode(), opts());
+		assert.match(kit.posts.instagram.text, /^POV: You almost sign a wallet drainer\nDisclosure: some links in my bio are affiliate links\. If you use them, I may earn money\.\n/);
 	});
 });

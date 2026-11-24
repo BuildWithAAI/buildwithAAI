@@ -14,7 +14,6 @@ import {
 	MEASURE,
 	NOT_ADVICE,
 	pinnedComment,
-	restrictedLines,
 	shortDescription,
 	shortFile,
 	topDisclosure,
@@ -73,14 +72,12 @@ export const buildKit = (e: Episode, opts: BuildOptions): BuildResult => {
 	const renders = buildRenders(e);
 	const checks = runChecks({ctx, texts, missingOffers: missing, registryIsExample: opts.registryIsExample, chapterProblems, destinationHosts: destinationHosts(opts.registry)});
 
-	const top = topDisclosure(offers);
-	const disclosures = [
-		...(top ? [top] : []),
-		...new Set(offers.map((o) => o.disclosure)),
-		...(offers.some((o) => o.restricted) ? [restrictedLines(ctx, PLATFORM_SOURCE.youtube)[1]] : []),
-		...e.disclosures,
-		NOT_ADVICE,
-	];
+	// Only self-contained lines that stay true wherever they are reused (the newsletter and the article leave out
+	// region-restricted offers): the general line covers the offers shown everywhere. The region-filtered page line
+	// and its disclosure stay in the description and pinned comment; restricted disclosures stay in kit.offers.
+	const open = offers.filter((o) => !o.restricted);
+	const general = topDisclosure(open);
+	const disclosures = [...(general ? [general] : []), ...new Set(open.map((o) => o.disclosure)), ...e.disclosures, NOT_ADVICE];
 
 	const promoting = e.shorts.filter((s) => s.offers.length);
 	const n = e.shorts.length;

@@ -68,9 +68,6 @@ export const utf16Units = (text: string): number => text.length;
 export const youtubeTagsLength = (tags: readonly string[]): number =>
 	tags.reduce((sum, tag) => sum + tag.length + (/\s/.test(tag) ? 2 : 0), 0) + Math.max(0, tags.length - 1);
 
-/** Hashtags as a platform sees them: "#" plus letters, digits or "_", at the start or after a space or bracket. */
-export const countHashtags = (text: string): number => [...text.matchAll(/(?:^|[\s(\[{"'“‘])#[\p{L}\p{N}_]+/gu)].length;
-
 const X_RANGES: readonly [number, number][] = [
 	[0, 4351],
 	[8192, 8205],
@@ -78,10 +75,30 @@ const X_RANGES: readonly [number, number][] = [
 	[8242, 8247],
 ];
 const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
-const SCHEME_URL = /https?:\/\/[^\s]+/gi;
-/** Bare domains X also links (e.g. "go.zoora.ai"); counted conservatively as max(23, length). */
-const BARE_DOMAIN = /(?<![\w@./-])(?:[a-z0-9-]+\.)+(?:com|org|net|io|ai|co|xyz|app|dev|gov|edu|me|tv|gg|fun|info|news)\b(?:\/[^\s]*)?/gi;
-const TRAILING_PUNCTUATION = /[.,!?:;)\]}'"”’]+$/;
+
+/*
+ * URLs as X (twitter-text v3) finds them, so the count never comes out lower than X's:
+ * - "https://" plus a host, or a bare domain (ASCII or Latin-accented labels and a letter-only TLD). Bare domains
+ *   do not start right after a letter, digit, "@", "$" or "#", nor after ".", "/" or "-" glued to such a character.
+ * - A port, path and query continue the URL only with characters X keeps inside one, so an emoji, "…", "»" or CJK
+ *   text right after a link is counted as text; the URL ends on a character X lets a URL end on.
+ * - A URL counts 23 when its TLD is one X certainly links (KNOWN_TLDS). Any other "domain" may be a URL that ends
+ *   early (at an inner label, or inside a label before a non-ASCII character) or plain text, so it counts the
+ *   larger of the two: max(its own weight, 23 + the rest after the earliest possible end), and its path is text.
+ */
+const LATIN = String.raw`\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F\u0253\u0254\u0256\u0257\u0259\u025B\u0263\u0268\u026F\u0272\u0289\u028B\u02BB\u0300-\u036F\u1E00-\u1EFF`;
+const SCHEME_HOST = /(?<![A-Za-z0-9@＠$#＃])https?:\/\/((?:[\p{L}\p{N}\p{M}](?:[\p{L}\p{N}\p{M}-]*[\p{L}\p{N}\p{M}])?\.)+[\p{L}\p{N}\p{M}](?:[\p{L}\p{N}\p{M}-]*[\p{L}\p{N}\p{M}])?)/giu;
+const BARE_HOST = new RegExp(
+	String.raw`(?<![A-Za-z0-9@＠$#＃])(?<![A-Za-z0-9@＠$#＃_./-][./-])((?:[a-z0-9${LATIN}](?:[a-z0-9${LATIN}-]*[a-z0-9${LATIN}])?\.)+(?:(?:[a-z]{2,63}|xn--[a-z0-9-]+)(?![a-z0-9@+-])|(?:(?![\x00-\x7F])[\p{L}\p{M}])+))`,
+	'giu',
+);
+const URL_TAIL = /(?::\d+)?(?:[/?][a-z0-9!*';:=+,.$/%#[\]\-_~@|&?]*)?/iy;
+const URL_TAIL_END = /[^a-z0-9\-_=#/]+$/i;
+/** TLDs every version of X's list has had (checked against twitter-text 3.1.0); any other counts conservatively. */
+const KNOWN_TLDS = new Set(
+	'com org net edu gov io ai co app dev xyz me tv gg fun info news be us uk de fr es it nl eu ca au jp in br ch link cash finance exchange money md ly to sh so fm cc'.split(' '),
+);
+const MAX_URL = 4096; // twitter-text: longer "URLs" are text
 
 const segmenter = new Intl.Segmenter('en', {granularity: 'grapheme'});
 
@@ -102,23 +119,58 @@ const plainWeight = (text: string): number => {
 
 type Span = {start: number; end: number; weight: number};
 
-const urlSpans = (text: string): Span[] => {
-	const spans: Span[] = [];
-	const add = (re: RegExp, weightOf: (url: string) => number): void => {
-		for (const match of text.matchAll(re)) {
-			const start = match.index ?? 0;
-			const url = match[0].replace(TRAILING_PUNCTUATION, '');
-			const end = start + url.length;
-			if (spans.some((s) => start < s.end && end > s.start)) continue;
-			spans.push({start, end, weight: weightOf(url)});
-		}
-	};
-	add(SCHEME_URL, () => LIMITS.xUrlWeight);
-	add(BARE_DOMAIN, (url) => Math.max(LIMITS.xUrlWeight, url.length));
-	return spans.sort((a, b) => a.start - b.start);
+/**
+ * The URL at a match (scheme + host, or a bare domain): its span and weight, by the rules above. With
+ * `wholeTail`, the span also covers the path of a domain whose TLD is not known (for hashtag counting).
+ */
+const urlAt = (text: string, start: number, hostStart: number, host: string, wholeTail: boolean): Span => {
+	const hostEnd = hostStart + host.length;
+	const labels = host.split('.');
+	URL_TAIL.lastIndex = hostEnd;
+	const tailEnd = hostEnd + (URL_TAIL.exec(text)?.[0] ?? '').replace(URL_TAIL_END, '').length;
+	const known = KNOWN_TLDS.has(labels[labels.length - 1].toLowerCase()) && host.length <= 253 && labels.every((l) => l.length <= 63) && tailEnd - start <= MAX_URL;
+	if (known) return {start, end: tailEnd, weight: LIMITS.xUrlWeight};
+	// earliest end of a URL X could see here: after the second label's ASCII run (a TLD is never followed by an
+	// ASCII letter, digit or "-"), or after its first character when it starts with a non-ASCII one (Unicode TLD)
+	const earliest = hostStart + labels[0].length + 1 + Math.max(1, /^[0-9a-z-]*/i.exec(labels[1])?.[0].length ?? 0);
+	const weight = Math.max(plainWeight(text.slice(start, hostEnd)), LIMITS.xUrlWeight + plainWeight(text.slice(earliest, hostEnd)));
+	return {start, end: wholeTail ? tailEnd : hostEnd, weight};
 };
 
-/** X's weighted length (twitter-text v3 rules, see LIMITS.xWeighted). */
+/** Every URL X would count as 23 (or might), left to right. */
+const urlSpans = (text: string, wholeTail = false): Span[] => {
+	const spans: Span[] = [];
+	for (let at = 0; at < text.length; ) {
+		SCHEME_HOST.lastIndex = at;
+		BARE_HOST.lastIndex = at;
+		const scheme = SCHEME_HOST.exec(text);
+		const bare = BARE_HOST.exec(text);
+		const first = scheme && (!bare || scheme.index <= bare.index) ? scheme : bare;
+		if (!first) break;
+		const host = first[1];
+		const span = urlAt(text, first.index, first.index + first[0].length - host.length, host, wholeTail);
+		spans.push(span);
+		at = span.end;
+	}
+	return spans;
+};
+
+/** Hashtags as Instagram and TikTok see them (twitter-text's rule as a proxy): "#" or "＃" not glued to a letter,
+ * digit, "_" or "&", then letters, digits or "_" with at least one letter. Hashtags inside URLs do not count. */
+const HASHTAG = /(?<![\p{L}\p{N}\p{M}_&])[#＃](?![\uFE0F\u20E3])[\p{L}\p{N}\p{M}_]*\p{L}[\p{L}\p{N}\p{M}_]*/gu;
+
+export const countHashtags = (input: string): number => {
+	const text = input.normalize('NFC');
+	let plain = '';
+	let at = 0;
+	for (const span of urlSpans(text, true)) {
+		plain += `${text.slice(at, span.start)} `;
+		at = span.end;
+	}
+	return [...`${plain}${text.slice(at)}`.matchAll(HASHTAG)].length;
+};
+
+/** X's weighted length (twitter-text v3 rules, see LIMITS.xWeighted); it may over-count, never under-count. */
 export const xWeightedLength = (input: string): number => {
 	const text = input.normalize('NFC');
 	let weight = 0;

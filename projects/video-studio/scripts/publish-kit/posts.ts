@@ -5,8 +5,10 @@
  * - Offers restricted by region are never named in post text (it is visible in every country). They are only
  *   reachable through the hub's region-filtered link page.
  * - Shorts, TikTok and Instagram captions have no clickable links, so they say "Link in bio: <hub host>";
- *   a clip that promotes an offer carries that offer's disclosure in its own caption.
+ *   a clip that promotes an offer, or whose title or hook names one, carries that offer's disclosure in its own
+ *   caption. The Instagram feed caption of an episode with offers opens with a disclosure of the bio links.
  */
+import {names} from './disclosure.ts';
 import {LIMITS, utf16Units, utf8Bytes, xWeightedLength} from './limits.ts';
 import {hubLink, hubPage, PLATFORM_SOURCE} from './offers.ts';
 import type {Chapter} from './timing.ts';
@@ -33,17 +35,33 @@ const joinOr = (items: readonly string[]): string =>
 
 const hashtagLine = (e: Episode, max: number): string => e.hashtags.slice(0, max).map((h) => `#${h}`).join(' ');
 
+/** "are affiliate or referral links", "go to my own products"...: what the offers' links are. */
+const linkKinds = (offers: readonly ResolvedOffer[]): string => {
+	const kinds = new Set<Relationship>(offers.map((o) => o.offer.relationship));
+	const paid = [kinds.has('affiliate') ? 'affiliate' : '', kinds.has('referral') ? 'referral' : '', kinds.has('sponsor') ? 'sponsored' : ''].filter(Boolean);
+	const own = kinds.has('own-product');
+	return paid.length ? `are ${joinOr(paid)} links${own ? ', and some go to my own products' : ''}` : 'go to my own products';
+};
+
 /**
  * "Disclosure: some links for this video are affiliate or referral links. ..." or null without offers.
  * Worded to read correctly anywhere (description, pinned comment, and kit.disclosures reused by the newsletter).
  */
-export const topDisclosure = (offers: readonly ResolvedOffer[]): string | null => {
-	if (!offers.length) return null;
-	const kinds = new Set<Relationship>(offers.map((o) => o.offer.relationship));
-	const paid = [kinds.has('affiliate') ? 'affiliate' : '', kinds.has('referral') ? 'referral' : '', kinds.has('sponsor') ? 'sponsored' : ''].filter(Boolean);
-	const own = kinds.has('own-product');
-	const what = paid.length ? `are ${joinOr(paid)} links${own ? ', and some go to my own products' : ''}` : 'go to my own products';
-	return `Disclosure: some links for this video ${what}. If you use them, I may earn money. Each one is labelled next to the link.`;
+export const topDisclosure = (offers: readonly ResolvedOffer[]): string | null =>
+	offers.length ? `Disclosure: some links for this video ${linkKinds(offers)}. If you use them, I may earn money. Each one is labelled next to the link.` : null;
+
+/** The same for captions whose only link is the profile link (the hub's region-filtered page). */
+export const bioDisclosure = (offers: readonly ResolvedOffer[]): string | null =>
+	offers.length ? `Disclosure: some links in my bio ${linkKinds(offers)}. If you use them, I may earn money.` : null;
+
+/** Offers that may be named (not restricted by region) whose name appears in any of the texts. */
+export const namedOffers = (offers: readonly ResolvedOffer[], ...texts: string[]): ResolvedOffer[] =>
+	offers.filter((o) => !o.restricted && texts.some((t) => names(t, o.offer.name)));
+
+/** The offers a clip must disclose: those its scenes promote, plus any its title or hook names. Restricted offers never. */
+export const clipOffers = (ctx: PostContext, short: Short): ResolvedOffer[] => {
+	const named = namedOffers(ctx.offers, short.title, short.hook);
+	return ctx.offers.filter((o) => !o.restricted && (short.offers.includes(o.id) || named.includes(o)));
 };
 
 /** The link-page line (and its disclosure) that stands in for every offer restricted by region. */
@@ -88,9 +106,10 @@ export const pinnedComment = (ctx: PostContext): string => {
 	return lines.join('\n');
 };
 
-/** Disclosure lines for the offers a clip promotes (restricted offers are never named; a check fails instead). */
-const mentionLines = (ctx: PostContext, short: Short): string[] =>
-	ctx.offers.filter((o) => short.offers.includes(o.id) && !o.restricted).map((o) => `Mentioned: ${o.offer.name}. ${o.disclosure}`);
+const mentionLine = (o: ResolvedOffer): string => `Mentioned: ${o.offer.name}. ${o.disclosure}`;
+
+/** Disclosure lines for the offers a clip promotes or names (restricted offers are never named; a check fails instead). */
+const mentionLines = (ctx: PostContext, short: Short): string[] => clipOffers(ctx, short).map(mentionLine);
 
 const youtubeName = (e: Episode): string => e.channelInfo.handle ?? e.channelInfo.displayName;
 
@@ -112,13 +131,13 @@ export const bioCaption = (ctx: PostContext, short: Short, maxHashtags: number):
 };
 
 /**
- * X: the hook, a hub link (s=x) with its disclosure for each offer the clip promotes, and the full episode.
- * Hashtags are dropped when they would pass 280 weighted characters; a disclosure never is, so an over-long
- * post fails the x-post check and the owner shortens the hook.
+ * X: the hook, a hub link (s=x) with its disclosure for each offer the clip promotes or names, and the full
+ * episode. Hashtags are dropped when they would pass 280 weighted characters; a disclosure never is, so an
+ * over-long post fails the x-post check and the owner shortens the hook.
  */
 export const xPost = (ctx: PostContext, short: Short): string => {
 	const e = ctx.episode;
-	const promoted = ctx.offers.filter((o) => short.offers.includes(o.id) && !o.restricted);
+	const promoted = clipOffers(ctx, short);
 	const restricted = ctx.offers.some((o) => short.offers.includes(o.id) && o.restricted);
 	const watch = watchUrl(e);
 	const lines = [
@@ -132,9 +151,16 @@ export const xPost = (ctx: PostContext, short: Short): string => {
 	return tags && xWeightedLength(withTags) <= LIMITS.xWeighted ? withTags : lines.join('\n');
 };
 
+/**
+ * Instagram feed post. Its "Link in bio" leads to the hub page with the episode's offers, so with any offer the
+ * caption opens (before Instagram's "more" fold) with a disclosure of the bio links, plus the disclosure of each
+ * offer the title or summary names.
+ */
 export const instagramCaption = (ctx: PostContext): string => {
 	const e = ctx.episode;
-	const lines = [e.title, '', e.summary, '', `Full episode on YouTube: ${youtubeName(e)}`, `Link in bio: ${hubHost(ctx)}`];
+	const bio = bioDisclosure(ctx.offers);
+	const disclosures = [...(bio ? [bio] : []), ...namedOffers(ctx.offers, e.title, e.summary).map(mentionLine)];
+	const lines = [e.title, ...disclosures, '', e.summary, '', `Full episode on YouTube: ${youtubeName(e)}`, `Link in bio: ${hubHost(ctx)}`];
 	const tags = hashtagLine(e, LIMITS.instagramHashtags);
 	if (tags) lines.push('', tags);
 	return lines.join('\n');

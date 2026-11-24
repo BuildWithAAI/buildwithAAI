@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {describe, it} from 'node:test';
 import {LIMITS, xWeightedLength} from './limits.ts';
 import {resolveOffers} from './offers.ts';
-import {bioCaption, instagramCaption, pinnedComment, shortDescription, topDisclosure, xPost, youtubeDescription, type PostContext} from './posts.ts';
+import {bioCaption, bioDisclosure, clipOffers, instagramCaption, pinnedComment, shortDescription, topDisclosure, xPost, youtubeDescription, type PostContext} from './posts.ts';
 import {buildChapters} from './timing.ts';
 import {exampleEpisode, HUB, NOW, testRegistry} from './test-helpers.ts';
 import type {Episode} from './types.ts';
@@ -85,5 +85,30 @@ describe('clips: Shorts, TikTok, Reels and X', () => {
 		const caption = instagramCaption(ctx);
 		assert.ok(caption.includes('Link in bio: go.zoora.ai'));
 		assert.equal((caption.match(/#\w+/g) ?? []).length, 5);
+	});
+	it('the Instagram caption opens with a disclosure of the bio links when the episode has offers (review 2026-11-24)', () => {
+		const lines = instagramCaption(ctx).split('\n');
+		assert.equal(lines[1], bioDisclosure(ctx.offers));
+		assert.equal(lines[1], 'Disclosure: some links in my bio are affiliate links. If you use them, I may earn money.');
+		const noOffers = instagramCaption(context(exampleEpisode({offers: [], scenes: exampleEpisode().scenes.map(({id, chapter, endSec, startSec}) => ({id, ...(chapter ? {chapter} : {}), durationSec: endSec - startSec}))})));
+		assert.ok(!noOffers.includes('Disclosure'));
+	});
+	it('the Instagram caption adds the disclosure of an offer its summary names', () => {
+		const named = exampleEpisode({summary: 'We test the Test hardware wallet against a fake airdrop drainer and show why it helps.'});
+		const caption = instagramCaption(context(named));
+		assert.ok(caption.includes('Mentioned: Test hardware wallet. Affiliate link: I may earn a commission if you buy. It costs you nothing extra.'), caption);
+		assert.ok(caption.indexOf('Mentioned:') < caption.indexOf('We test the'), 'disclosures come before the "more" fold');
+	});
+	it('a clip whose hook names an offer carries its disclosure even when its scenes do not promote it', () => {
+		const clip = {...first, hook: 'Why the Test hardware wallet asks you to confirm on its screen.'};
+		assert.deepEqual(clipOffers(ctx, clip).map((o) => o.id), ['hardware-wallet']);
+		for (const text of [shortDescription(ctx, clip), bioCaption(ctx, clip, 5)]) assert.ok(text.includes('Mentioned: Test hardware wallet. Affiliate link:'), text);
+		assert.ok(xPost(ctx, clip).includes('/go/hardware-wallet?v=_example&s=x\nAffiliate link:'));
+	});
+	it('a restricted offer is never added to a clip, even when the hook names it', () => {
+		const e2 = exampleEpisode({offers: ['hardware-wallet', 'demo-exchange']});
+		const clip = {...e2.shorts[0], hook: 'Demo Exchange sign-ups explained'};
+		assert.deepEqual(clipOffers(context(e2), clip), []);
+		assert.ok(!bioCaption(context(e2), clip, 5).includes('Mentioned:'));
 	});
 });

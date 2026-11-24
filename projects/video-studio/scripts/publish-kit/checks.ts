@@ -1,14 +1,16 @@
 /**
- * The kit's checks[]: platform limits, chapter rules, disclosures, claim and placeholder lint, hub-only links,
- * restricted offers, offer status, and the audience and AI settings. Each check reports ok plus a detail line.
+ * The kit's checks[]: platform limits, chapter rules, disclosures, claim and placeholder lint (posts, metadata and
+ * narration), hub-only links, restricted offers, offer status, and the audience and AI settings. Each check
+ * reports ok plus a detail line.
  */
-import {CUE_RULES, textBetween, toCues} from './captions.ts';
+import {captionText, CUE_RULES, textBetween, toCues} from './captions.ts';
+import {disclosureWordingProblems, names, saysDisclosure, SPOKEN_EXAMPLE} from './disclosure.ts';
 import {LIMITS, countHashtags, utf16Units, utf8Bytes, xWeightedLength, youtubeTagsLength} from './limits.ts';
 import {checkLinks, findRules, INCOME_CLAIMS, PLACEHOLDERS, type LinkContext} from './lint.ts';
 import {PLATFORM_SOURCE} from './offers.ts';
-import {restrictedLines, topDisclosure, type ClipText, type PostContext} from './posts.ts';
+import {bioDisclosure, clipOffers, namedOffers, restrictedLines, topDisclosure, type ClipText, type PostContext} from './posts.ts';
 import type {Episode, PublishKit, ResolvedOffer} from './types.ts';
-import {clock} from './util.ts';
+import {clock, joinAnd} from './util.ts';
 
 export type Check = PublishKit['checks'][number];
 
@@ -31,8 +33,7 @@ export type CheckInput = {
 	destinationHosts: string[];
 };
 
-/** Words that make a spoken line a disclosure (FTC: say what the relationship is). */
-export const SPOKEN_DISCLOSURE = /\b(?:affiliate|referral|commission|sponsor(?:ed|ship)?|paid (?:promotion|partnership)|partner(?:ship)?|I built|my own (?:product|project|app|tool|company|business)|I own|we own|I hold)\b/i;
+const NARRATION = 'narration (captions.json)';
 
 const check = (id: string, problems: string[], okDetail: string): Check => ({id, ok: problems.length === 0, detail: problems.length ? problems.join(' | ') : okDetail});
 
@@ -147,12 +148,26 @@ export const runChecks = (input: CheckInput): Check[] => {
 		if (!texts.pinned.includes(top)) disc.push('the pinned comment has no disclosure line');
 		disc.push(...linkPairs(texts.youtube, 'description', offers, ctx), ...linkPairs(texts.pinned, 'pinned comment', offers, ctx));
 	}
+	// every caption that promotes or names an offer carries its disclosure, wherever the name comes from (hook, title, hashtags)
 	for (const clip of allClips) {
-		for (const o of offers.filter((x) => clip.short.offers.includes(x.id) && !x.restricted)) {
-			if (!clip.text.includes(o.disclosure)) disc.push(`a caption for Short ${clip.short.n} promotes "${o.id}" without its disclosure`);
+		for (const o of new Set([...clipOffers(ctx, clip.short), ...namedOffers(offers, clip.text)])) {
+			if (!clip.text.includes(o.disclosure)) disc.push(`a caption for Short ${clip.short.n} ${clip.short.offers.includes(o.id) ? 'promotes' : 'names'} "${o.id}" without its disclosure`);
 		}
 	}
-	checks.push(check('disclosures', [...new Set(disc)], offers.length ? 'disclosure first in the description, next to every link, in the pinned comment and in every clip that promotes an offer' : 'no offers, so no link disclosures are needed'));
+	// the registry loader refuses these too; checked again for callers that build a kit from their own registry
+	for (const o of offers) disc.push(...disclosureWordingProblems(o.offer.disclosure, o.offer.relationship).map((p) => `offer "${o.id}": ${p}`));
+	const bio = bioDisclosure(offers);
+	if (bio && !texts.instagram.includes(bio)) disc.push('instagram.txt does not disclose that the bio links include affiliate or own-product links');
+	for (const o of namedOffers(offers, texts.instagram)) if (!texts.instagram.includes(o.disclosure)) disc.push(`instagram.txt names "${o.id}" without its disclosure`);
+	checks.push(
+		check(
+			'disclosures',
+			[...new Set(disc)],
+			offers.length
+				? 'disclosure first in the description, next to every link, in the pinned comment, in every clip that promotes or names an offer, and at the top of the Instagram caption'
+				: 'no offers, so no link disclosures are needed',
+		),
+	);
 
 	const spoken: string[] = [];
 	for (const o of offers.filter((x) => !x.restricted)) {
@@ -168,17 +183,28 @@ export const runChecks = (input: CheckInput): Check[] => {
 		}
 		for (const s of scenes) {
 			const said = textBetween(e.captions, s.startSec * 1000, s.endSec * 1000);
-			if (!SPOKEN_DISCLOSURE.test(said)) spoken.push(`scene ${s.id} promotes "${o.id}" but its captions contain no spoken disclosure (say e.g. "this is an affiliate link")`);
+			if (!saysDisclosure(said, o)) {
+				const what = o.offer.relationship === 'own-product' ? 'that it is your own product' : `the ${o.offer.relationship} relationship`;
+				spoken.push(`scene ${s.id} promotes "${o.id}" but its narration does not say ${what} (a negated mention such as "this is not sponsored" does not count); say e.g. "${SPOKEN_EXAMPLE[o.offer.relationship]}"`);
+			}
 		}
 	}
-	checks.push(check('spoken-disclosure', spoken, offers.length ? 'every scene that promotes an offer says a disclosure (from captions.json)' : 'no offers to disclose'));
+	checks.push(check('spoken-disclosure', spoken, offers.length ? 'every scene that promotes an offer states the relationship in its narration (from captions.json; negated mentions do not count)' : 'no offers to disclose'));
 
-	// lint
+	// lint: metadata, every post and the narration
 	const posts = postTexts(texts);
-	const lint = [...metadataTexts(e), ...posts];
-	const claims = lint.flatMap(([where, t]) => findRules(INCOME_CLAIMS, t, where)).map((h) => `${h.where}: ${h.label} ("${h.match}")`);
-	checks.push(check('income-claims', claims, `no income, return, guarantee, price or buy-call wording in ${lint.length} texts`));
-	const holders = lint.flatMap(([where, t]) => findRules(PLACEHOLDERS, t, where)).map((h) => `${h.where}: ${h.label} ("${h.match}")`);
+	const narration: Labelled[] = e.captions ? [[NARRATION, captionText(e.captions)]] : [];
+	const lint = [...metadataTexts(e), ...posts, ...narration];
+	/** "narration (captions.json), scene s06" when the matched words fall inside one scene. */
+	const place = (where: string, match: string): string => {
+		const captions = e.captions;
+		if (where !== NARRATION || !captions) return where;
+		const scene = e.scenes.find((s) => textBetween(captions, s.startSec * 1000, s.endSec * 1000).includes(match));
+		return scene ? `${where}, scene ${scene.id}` : where;
+	};
+	const claims = lint.flatMap(([where, t]) => findRules(INCOME_CLAIMS, t, where)).map((h) => `${place(h.where, h.match)}: ${h.label} ("${h.match}")`);
+	checks.push(check('income-claims', claims, `no income, return, price, guarantee, bonus or buy-call wording in ${lint.length} texts${narration.length ? ', the narration included' : ''}`));
+	const holders = lint.flatMap(([where, t]) => findRules(PLACEHOLDERS, t, where)).map((h) => `${place(h.where, h.match)}: ${h.label} ("${h.match}")`);
 	checks.push(check('placeholders', holders, 'no TODO, REPLACE, lorem ipsum or example.com left in the texts'));
 
 	const linkCtx: LinkContext = {
@@ -190,17 +216,28 @@ export const runChecks = (input: CheckInput): Check[] => {
 	};
 	checks.push(check('links-via-hub', posts.flatMap(([where, t]) => checkLinks(t, where, linkCtx)), 'every offer link goes through the hub; no raw affiliate URLs'));
 
-	// offers
+	// offers: a restricted offer is never named anywhere a viewer in a blocked country sees (posts, titles, Short
+	// titles and hooks, chapters, tags, narration), nor promoted in a scene
 	const restricted = offers.filter((o) => o.restricted);
-	const restrictedProblems = [
-		...restricted.flatMap((o) => posts.filter(([, t]) => t.toLowerCase().includes(o.offer.name.toLowerCase())).map(([where]) => `${where} names restricted offer "${o.id}"`)),
-		...restricted.flatMap((o) =>
-			e.scenes
+	const restrictedProblems = restricted.flatMap((o) => {
+		const where = [...new Set(lint.filter(([, t]) => names(t, o.offer.name)).map(([w]) => w))];
+		const rules = [...o.offer.blockedCountries, ...(o.offer.allowedCountries ?? []).map((c) => `only ${c}`)].join(', ') || 'unknown countries blocked';
+		return [
+			...(where.length ? [`restricted offer "${o.id}" (${o.offer.name}) is named in ${joinAnd(where)}; text seen in every country must not name it`] : []),
+			...e.scenes
 				.filter((s) => s.offers.includes(o.id))
-				.map((s) => `scene ${s.id} promotes "${o.id}", which is restricted by region (${[...o.offer.blockedCountries, ...(o.offer.allowedCountries ?? []).map((c) => `only ${c}`)].join(', ') || 'unknown countries blocked'}); a video is visible in every country, so it must not promote it`),
+				.map((s) => `scene ${s.id} promotes "${o.id}", which is restricted by region (${rules}); a video is visible in every country, so it must not promote it`),
+		];
+	});
+	checks.push(
+		check(
+			'restricted-offers',
+			restrictedProblems,
+			restricted.length
+				? `${restricted.map((o) => o.id).join(', ')}: reachable only through the hub's region-filtered page; never named in posts, titles, Short titles, chapters, tags or narration, nor promoted in scenes`
+				: 'no region-restricted offers',
 		),
-	];
-	checks.push(check('restricted-offers', restrictedProblems, restricted.length ? `${restricted.map((o) => o.id).join(', ')}: reachable only through the hub's region-filtered page, never named in posts or promoted in scenes` : 'no region-restricted offers'));
+	);
 
 	const offerProblems = [
 		...input.missingOffers.map((id) => `"${id}" is not in the offer registry, so it has no disclosure and was left out`),
@@ -209,8 +246,15 @@ export const runChecks = (input: CheckInput): Check[] => {
 	if (offerProblems.length && input.registryIsExample) offerProblems.push('creator-hub/config/offers.json does not exist, so the placeholder offers.example.json was used');
 	checks.push(check('offers-live', offerProblems, offers.length ? `${offers.length} offer${offers.length === 1 ? '' : 's'} active in the registry` : 'no offers'));
 
-	// settings
-	checks.push(check('made-for-kids', [], `madeForKids ${e.madeForKids.value} (${e.madeForKids.defaulted ? 'studio default' : 'set in episode.json'}): ${e.madeForKids.reason}`));
+	// settings: both channels are for adults, and a made-for-kids video loses the comments the pinned comment needs
+	const kids = e.madeForKids.value
+		? [
+				'madeForKids is true, but these channels make crypto and AI security videos for adults (docs/PROJECT_INSTRUCTIONS.md): set it to false with the reason, or do not publish the video here',
+				`YouTube turns off comments, cards and end screens on made-for-kids videos, so the pinned comment (safety line${offers.length ? ' and offer disclosures' : ''}) cannot be posted`,
+				...(offers.length || input.missingOffers.length || e.paidPromotion?.value ? ['the episode has paid promotion, and ticking that box removes a video from YouTube Kids'] : []),
+			]
+		: [];
+	checks.push(check('made-for-kids', kids, `madeForKids ${e.madeForKids.value} (${e.madeForKids.defaulted ? 'studio default' : 'set in episode.json'}): ${e.madeForKids.reason}`));
 	checks.push(check('synthetic-media', [], `containsSyntheticMedia ${e.containsSyntheticMedia.value} (${e.containsSyntheticMedia.defaulted ? 'studio default' : 'set in episode.json'}): ${e.containsSyntheticMedia.reason}`));
 
 	// captions

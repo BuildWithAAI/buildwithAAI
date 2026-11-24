@@ -90,6 +90,12 @@ In `kit.json`, `posts.<platform>` holds clip 1 for the clip platforms. Its `note
 `projects/video-studio`. `settings.reasons` gives the reason for `madeForKids`, `containsSyntheticMedia` and
 `paidPromotion`, in that order.
 
+`disclosures` holds only self-contained lines that stay true wherever they are reused (the newsletter and the
+article leave region-restricted offers out): the general line for the offers shown everywhere, each of their
+disclosures, the episode's own lines and "Education only, not financial advice." The region-filtered page line and
+its disclosure appear only in the description and pinned comment. A restricted offer's disclosure stays in
+`offers[]`, for the hub page.
+
 ## Rules applied
 
 - **Links.** Every offer link has the form `${HUB_BASE_URL || 'https://go.zoora.ai'}/go/<offerId>?v=<slug>&s=<source>`,
@@ -100,17 +106,38 @@ In `kit.json`, `posts.<platform>` holds clip 1 for the clip platforms. Its `note
   - The YouTube description and the pinned comment open with a disclosure line.
   - Each link's registry disclosure sits on the next line.
   - Exchange offers whose disclosure omits risk get the hub's risk line.
-  - A clip that includes a scene promoting an offer carries that disclosure in every platform's caption.
+  - A clip carries an offer's disclosure in every platform's caption when one of its scenes promotes the offer,
+    or when its title, hook or hashtags name it.
+  - The Instagram feed caption opens, above Instagram's "more" fold, with a disclosure of the bio links
+    ("Disclosure: some links in my bio are affiliate links. ..."), plus the disclosure of any offer the title or
+    summary names.
+  - The registry disclosure must name the relationship (affiliate, referral, sponsored or paid; for an own
+    product, that it is yours) and the benefit (earn, commission, fee, paid...). The kit prints it word for word,
+    so a registry that breaks this rule, or carries a claim in an offer's name, disclosure or `restrictedReason`,
+    is refused (exit 2).
+  - `spoken-disclosure` reads each promoting scene's narration in `captions.json`. It accepts the registry
+    sentence read out, or a phrase that states the relationship ("this is an affiliate link", "I may earn a
+    commission", "sponsored by", and for own products "I built this", "my own product"). A phrase after a
+    negation in the same clause ("this is not sponsored", "no affiliate deal") does not count. It recognises
+    English wording only.
 
   The checklist then covers the parts the kit cannot do for you:
   - Say the disclosure out loud and show it on screen in the video itself.
   - Tick YouTube's paid-promotion box. `settings.paidPromotion` is true with the reason.
   - Use TikTok's content disclosure setting, and Instagram's Paid partnership label where it applies.
 - **Region-restricted offers.** These are offers with blocked or allow-listed countries, or with
-  `unknownCountry: "block"`. They are never named in post text, because post text is visible in every country.
-  They are reachable only through the hub's region-filtered page. A scene that promotes one fails the
-  `restricted-offers` check, because a video is visible in every country too. Memecoin launchpads are refused
-  as offers.
+  `unknownCountry: "block"`. They are never named (case-insensitive, whole words, `Demo Exchange` also matches
+  `demo-exchange` and `#DemoExchange`) in post text, titles, Short titles and hooks, chapters, tags or the
+  narration, because all of them are seen in every country. They are reachable only through the hub's
+  region-filtered page. A scene that promotes one fails the `restricted-offers` check, because a video is visible
+  in every country too. Memecoin launchpads are refused as offers.
+- **Claims.** `income-claims` lints every title, Short title and hook, chapter, tag, post and the full narration
+  (`captions.json`), with the rules in `lint.ts`: guarantees, earnings figures in any currency or coin, percentage
+  returns and APY, price predictions ("could hit $500", "BTC to $250k by December"), "can't lose", "turn $100
+  into...", "100% safe", sign-up and deposit bonuses, and buy calls. A narration hit names its scene.
+- **Audience.** Both channels are for adults (`docs/PROJECT_INSTRUCTIONS.md`), so `madeForKids: true` fails the
+  `made-for-kids` check. YouTube would also turn off comments, cards and end screens, so the pinned comment could
+  not be posted.
 
 ### Platform limits
 
@@ -123,6 +150,16 @@ limits come from search-index extracts. Re-check them in a browser.
 | Shorts | ≤ 3:00. Description links are not clickable, so set the Related video |
 | X | 280 weighted characters (twitter-text v3: every URL counts 23, emoji and CJK count 2). Videos ≤ 2:20 without Premium |
 | Instagram and Reels | Captions ≤ 2,200 characters. **5 hashtags**, the cap Instagram announced in December 2025; Meta's API reference still says 30. Reels ≤ 3:00 |
+
+The X count never comes out lower than X's own, so a post that passes `x-post` fits. URLs with a well-known TLD
+(`com`, `ai`, `be`, `cash`, `link`, `us`... see `KNOWN_TLDS` in `limits.ts`) count exactly 23, with or without
+`https://`. A URL ends where X ends it, so an emoji, `…`, `»` or CJK text glued to it counts as text. Anything else
+shaped like a domain (`Node.js`, a Unicode TLD) counts as the most X could make of it, so it may count a little
+more than X. A table of strings with their twitter-text 3.1.0 counts in `limits.test.ts` keeps this checked; a
+fuzz run of 120,000 mixed strings against twitter-text 3.1.0 on 2026-11-24 found no under-count.
+
+Hashtags are counted as twitter-text finds them: `#` or `＃` not glued to a letter, digit, `_` or `&`, with at
+least one letter (`scams:#airdrop` counts, `#1` does not), and none inside URLs.
 | TikTok | Captions ≤ 2,200 UTF-16 units, the Content Posting API limit (the app allows 4,000). Captions have no clickable links. Its Branded Content Policy prohibits paid promotion of financial services, including crypto |
 
 ### Checks in `kit.json`
@@ -131,10 +168,10 @@ limits come from search-index extracts. Re-check them in a browser.
 | --- | --- |
 | Platform limits | `youtube-title`, `youtube-description`, `youtube-tags`, `shorts-text`, `tiktok-caption`, `reels-caption`, `instagram-caption`, `x-post`, `hashtags` |
 | Timing | `chapters`, `short-durations`, `x-video-length` |
-| Disclosures | `disclosures`, `spoken-disclosure` (from captions, per promoting scene) |
-| Text | `income-claims` (lint list in `lint.ts`), `placeholders` |
-| Links and offers | `links-via-hub` (no raw affiliate URLs), `restricted-offers`, `offers-live` |
-| Settings and captions | `made-for-kids`, `synthetic-media`, `captions` |
+| Disclosures | `disclosures` (description, pinned comment, every clip that promotes or names an offer, Instagram), `spoken-disclosure` (from captions, per promoting scene; negations do not count) |
+| Text | `income-claims` (lint list in `lint.ts`; metadata, posts and narration), `placeholders` |
+| Links and offers | `links-via-hub` (no raw affiliate URLs), `restricted-offers` (never named anywhere seen worldwide), `offers-live` |
+| Settings and captions | `made-for-kids` (fails when true), `synthetic-media`, `captions` |
 
 ## Render plan
 
@@ -165,3 +202,7 @@ limits come from search-index extracts. Re-check them in a browser.
 - No per-Short caption files are cut. Shorts use YouTube's auto-captions or burned-in captions.
 - No uploads and no API calls. YouTube upload settings (`selfDeclaredMadeForKids`, `containsSyntheticMedia`)
   come from `kit.json` when an uploader exists.
+- `spoken-disclosure` and the claim rules recognise English only. A dubbed episode's captions fail the spoken
+  check until someone confirms the disclosure by ear.
+- `lint.ts` imports nothing, so other tools can share it. creator-hub's newsletter lint and the hub's own registry
+  check still keep their own, older rules.
