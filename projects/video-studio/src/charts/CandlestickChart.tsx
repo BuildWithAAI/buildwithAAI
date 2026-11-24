@@ -18,6 +18,7 @@ export type CandlestickChartProps = {
 	showVolume?: boolean; // default true
 	lastPrice?: boolean; // default true (L8)
 	callout?: {candlesBack: number; label: string} | null; // e.g. {candlesBack: 12, label: 'vs 1 h ago'} on 5m data
+	calloutVisible?: boolean; // default true; false hides the callout on this frame and keeps its space (revealPlan)
 	hollowUp?: boolean; // close-ups only (L10)
 	draft?: boolean; // prints `seed N` after the fictional-token label (CHART_SPEC 8: draft renders only)
 };

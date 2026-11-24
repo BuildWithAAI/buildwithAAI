@@ -208,10 +208,23 @@ export const layoutChart = (o: ChartOptions, frame: number): ChartModel => {
 	const footerTop = innerY + innerH - footerH;
 
 	// ---- slots (L5, A1: from the shot's final count) and scale (L6: one scale from every candle the shot shows)
-	const L = slots(n, innerX, innerW - AXIS_COL);
+	const L = evenSlots(n, innerX, innerW - AXIS_COL);
 	if (L.bodyW < 7) throw new Error(`body ${L.bodyW}px < 7px (G3): show fewer candles (longer interval) or widen the box`);
 	const plotRight = L.x0 + L.plotW;
 	const sc = priceScale(cs, priceTop, priceH, modeFor);
+	// L7 ticks: log keeps the spec's 1-2-5 per decade; linear uses 1-2-5 steps with 4-7 ticks (chartFormat.linearTicks).
+	// Labels and the pill carry enough digits for the step, and every label must decode back to its own tick.
+	const lin = sc.mode === 'linear' ? linearTicks(sc.min, sc.max) : null;
+	const tickValues = lin ? lin.ticks : sc.ticks;
+	const sig = labelSig(tickValues, lin ? lin.step : null);
+	const tickText = tickValues.map((t) => fmtUsdSig(t, sig));
+	tickText.forEach((s, k) => {
+		const t = tickValues[k];
+		const err = Math.abs(parseUsd(s) - t);
+		if (!(lin ? err <= lin.step / 2 : err <= t * 1e-9)) throw new Error(`tick label "${s}" does not read as its tick ${t} (R2)`);
+		if (textWidth(s, TEXT.axis.size, TEXT.axis.weight) > AXIS_COL - LABEL_DX) throw new Error(`tick label "${s}" is wider than the ${AXIS_COL} px axis column`);
+	});
+	if (new Set(tickText).size !== tickText.length) throw new Error(`duplicate tick labels: ${tickText.join(', ')} (R2)`);
 
 	// ---- what is visible now (A2-A5)
 	const shown = o.reveal ? revealAt(cs, frame, o.reveal.startFrame, o.reveal.framesPerCandle, o.reveal.mode) : cs;
@@ -247,33 +260,39 @@ export const layoutChart = (o: ChartOptions, frame: number): ChartModel => {
 	let pill: ChartModel['pill'] = null;
 	let lastLine: Rect[] = [];
 	let pillY: number | null = null;
+	const ticks = tickValues.map((t, k) => ({t, text: tickText[k], y: Math.round(sc.y(t))})).sort((a, b) => a.y - b.y);
 	if (lastPrice && last) {
 		pillY = Math.round(sc.y(last.c));
-		const text = fmtUsd(last.c);
-		const w = Math.min(PILL_W_MAX, Math.max(PILL_W, Math.ceil(textWidth(text, TEXT.pill.size, TEXT.pill.weight)) + 2 * (LABEL_DX - PILL_DX) + 8));
+		const text = fmtUsdSig(last.c, sig); // at least the labels' precision, so the pill never reads as a different level
+		const need = Math.ceil(textWidth(text, TEXT.pill.size, TEXT.pill.weight)) + 2 * (LABEL_DX - PILL_DX) + 8;
+		if (need > PILL_W_MAX) throw new Error(`pill text "${text}" does not fit the ${AXIS_COL} px axis column`);
+		const w = Math.max(PILL_W, need);
 		pill = {
 			rect: {x: plotRight + PILL_DX, y: pillY - PILL_H / 2, w, h: PILL_H},
 			r: PILL_R,
 			fill: fillFor(T, direction(last)),
 			label: {text, x: plotRight + LABEL_DX, y: pillY + 9},
 		};
-		for (let x = L.x0; x < plotRight; x += 2 * DASH) lastLine.push({x, y: pillY - 1, w: Math.min(DASH, plotRight - x), h: 2});
+		const py = pillY;
+		if (!ticks.some((k) => Math.abs(k.y - py) < LAST_LINE_SKIP))
+			for (let x = L.x0; x < plotRight; x += 2 * DASH) lastLine.push({x, y: pillY - 1, w: Math.min(DASH, plotRight - x), h: 2});
 	}
 
 	// ---- gridlines and tick labels (L7): 2 px rects at round(y) - 1; labels de-cluttered once per shot, then hidden near the pill
-	const ticks = sc.ticks.map((t) => ({t, y: Math.round(sc.y(t))})).sort((a, b) => a.y - b.y);
 	const grid = ticks.map((k) => ({x: L.x0, y: k.y - 1, w: L.plotW, h: 2}));
 	const kept: typeof ticks = [];
 	for (const k of ticks) if (!kept.length || k.y - kept[kept.length - 1].y >= LABEL_MIN_GAP) kept.push(k);
-	const tickLabels = kept.filter((k) => pillY === null || Math.abs(k.y - pillY) > PILL_CLEAR).map((k) => ({text: fmtUsd(k.t), x: plotRight + LABEL_DX, y: k.y + 9}));
+	const tickLabels = kept
+		.filter((k) => pillY === null || Math.abs(k.y - pillY) >= PILL_H / 2 + PILL_CLEAR)
+		.map((k) => ({text: k.text, x: plotRight + LABEL_DX, y: k.y + 9}));
 
 	// ---- footer (L4, A8: the callout uses completed candles only)
 	const calloutBase = footerTop + 38;
 	let callout: ChartModel['callout'] = null;
-	if (o.callout) {
+	if (o.callout && (o.calloutVisible ?? true)) {
 		const r = calloutValue(shown, completed, o.callout.candlesBack);
 		if (r !== null) {
-			const dir: Dir = r > 0 ? 'up' : r < 0 ? 'down' : 'flat';
+			const dir: Dir = fmtPctDisplay(r).dir; // from the rounded value: the glyph always agrees with the number (CD7)
 			const gx = innerX, gb = calloutBase - 1;
 			const glyph =
 				dir === 'down'
