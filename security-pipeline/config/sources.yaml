@@ -1,0 +1,31 @@
+# Threat-intel sources. type: defillama_hacks | rekt | rss | bybit_announcements | blofin_announcements | google_news
+# filter: security = keep only items matching a security/incident rule; all = keep everything.
+# Status column = result of live verification on 2026-11-01.
+sources:
+  - {name: defillama_hacks, type: defillama_hacks, url: "https://api.llama.fi/hacks"}                      # OK, structured incident DB
+  - {name: rekt_news, type: rekt, url: "https://rekt.news/"}                                                # OK (HTML; RSS endpoints return 500)
+  - {name: coindesk, type: rss, url: "https://www.coindesk.com/arc/outboundfeeds/rss", filter: security}   # OK
+  - {name: cointelegraph_hacks, type: rss, url: "https://cointelegraph.com/rss/tag/hacks", filter: all}     # OK
+  - {name: cointelegraph, type: rss, url: "https://cointelegraph.com/rss", filter: security}               # OK
+  - {name: decrypt, type: rss, url: "https://decrypt.co/feed", filter: security}                          # OK
+  - {name: the_block, type: rss, url: "https://www.theblock.co/rss.xml", filter: security}                # OK
+  - {name: the_defiant, type: rss, url: "https://thedefiant.io/feed", filter: security}                   # OK
+  - {name: protos, type: rss, url: "https://protos.com/feed/", filter: security}                          # OK
+  - {name: cryptoslate, type: rss, url: "https://cryptoslate.com/feed/", filter: security}                # OK
+  - {name: web3isgoinggreat, type: rss, url: "https://www.web3isgoinggreat.com/feed.xml", filter: security} # OK
+  - {name: slowmist_medium, type: rss, url: "https://slowmist.medium.com/feed", filter: all}              # OK
+  - {name: chainalysis_blog, type: rss, url: "https://www.chainalysis.com/blog/feed/", filter: security}  # OK
+  - {name: trm_labs_blog, type: rss, url: "https://www.trmlabs.com/blog/rss.xml", filter: security}      # OK
+  - {name: bleepingcomputer, type: rss, url: "https://www.bleepingcomputer.com/feed/", filter: crypto_security}  # OK (filtered to crypto)
+  - {name: the_record, type: rss, url: "https://therecord.media/feed", filter: crypto_security}         # OK (filtered to crypto)
+  - {name: peckshield_medium, type: rss, url: "https://medium.com/feed/@peckshield", filter: all, max_age_days: 120, enabled: false}  # DISABLED 2026-11-01: stale since 2021 (PeckShield posts on X); covered by gnews_peckshield_certik
+  - {name: certik_blog, type: rss, url: "https://www.certik.com/resources/blog/rss.xml", filter: all, enabled: false}    # DISABLED 2026-11-01: 404, CertiK has no public RSS; covered by gnews_peckshield_certik
+  - {name: bybit_announcements, type: bybit_announcements, url: "https://announcements.bybit.com/en/"}   # OK (HTML/Next.js data)
+  - {name: blofin_announcements, type: blofin_announcements, url: "https://blofin.com/en/support"}       # FAILS: Cloudflare 403 - kept enabled so the gap stays visible; gnews_blofin covers BloFin news
+  # Google News RSS search (no key) as targeted coverage for entities without their own feed
+  - {name: gnews_bybit, type: google_news, query: "Bybit (hack OR exploit OR phishing OR outage OR breach OR scam OR withdrawal)"}
+  - {name: gnews_blofin, type: google_news, query: "BloFin"}
+  - {name: gnews_solana_drainer, type: google_news, query: "(Solana OR Phantom OR pump.fun) (drainer OR phishing OR exploit OR hack OR malware OR scam)"}
+  - {name: gnews_mt5, type: google_news, query: "(MetaTrader OR MT5 OR MetaQuotes) (malware OR scam OR hack OR fake OR breach)"}
+  - {name: gnews_peckshield_certik, type: google_news, query: "(PeckShield OR CertiK OR SlowMist OR ZachXBT OR Cyvers) (exploit OR hack OR drained OR stolen)"}
+  - {name: gnews_wallet_security, type: google_news, query: "(Ledger OR MetaMask OR \"crypto wallet\") (phishing OR malware OR drainer OR vulnerability OR supply chain)"}

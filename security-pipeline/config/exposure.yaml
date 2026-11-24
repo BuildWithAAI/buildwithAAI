@@ -1,0 +1,54 @@
+# Zoorped personal exposure profile. Drives the relevance score and wallet monitoring.
+# PUBLIC information only. Never put private keys, seed phrases, passwords or API secrets here.
+
+owner: Zoorped
+timezone: America/Chicago
+
+# weight 0..1 = how directly an incident at this entity affects you.
+entities:
+  - {name: Bybit,      weight: 1.0, kind: exchange, aliases: [Bybit],                    domains: [bybit.com, bybit.eu]}
+  - {name: BloFin,     weight: 1.0, kind: exchange, aliases: [BloFin, Blofin],           domains: [blofin.com]}
+  - {name: Phantom,    weight: 0.9, kind: wallet,   aliases: [Phantom wallet, Phantom], exclude: [Phantom Hacker, Phantom Blade, Phantom Liberty], context_required: [wallet, solana, crypto, seed, drainer, extension, token, airdrop, "\\bsol\\b", web3],  domains: [phantom.com, phantom.app]}
+  - {name: pump.fun,   weight: 0.9, kind: dapp,     aliases: [pump.fun, pumpfun, Pump.fun, PumpSwap], domains: [pump.fun]}
+  - {name: MetaTrader 5, weight: 0.85, kind: platform, aliases: [MetaTrader, MT5, MetaQuotes, MQL5], domains: [metatrader5.com, metaquotes.net, mql5.com]}
+  - {name: Forex broker/VPS infrastructure, weight: 0.8, kind: topic, aliases: [FX broker, FX brokers, forex broker, forex brokers, VPS, trading cloud, server host, MT4]}
+  - {name: Ledger,     weight: 0.8, kind: wallet,   aliases: [Ledger Live, Ledger Connect Kit, Ledger], exclude: [XRP Ledger, XRPL Ledger, public ledger, distributed ledger], domains: [ledger.com]}
+  - {name: Jupiter,    weight: 0.75, kind: dapp,    aliases: [Jupiter Exchange, Jupiter aggregator, Jupiter DEX, Jupiter, JUP], context_required: [solana, swap, dex, token, crypto, defi, jup, wallet, exploit, airdrop], domains: [jup.ag]}
+  - {name: Raydium,    weight: 0.75, kind: dapp,    aliases: [Raydium],                  domains: [raydium.io]}
+  - {name: MetaMask,   weight: 0.7, kind: wallet,   aliases: [MetaMask],                 domains: [metamask.io]}
+  - {name: Solana,     weight: 0.6, kind: chain,    aliases: [Solana],                   domains: [solana.com]}
+
+# attack classes that matter for this setup even when the victim is someone else
+attack_class_boosts:
+  drainer_phishing: 0.30   # hot wallets + memecoin dapps = top drainer target profile
+  supply_chain: 0.25       # malicious JS / compromised front-ends & extensions
+  malware: 0.30            # infostealers target browser wallets, exchange sessions, MT5 VPS
+  exchange_hack: 0.20      # CEX contagion: withdrawal halts, SAFU drawdowns, market shock
+  sim_swap: 0.30
+
+# extra legit domains for lookalike detection (in addition to entities[].domains)
+legit_domains:
+  - jup.ag
+  - solscan.io
+  - solana.fm
+  - explorer.solana.com
+  - rugcheck.xyz
+  - revoke.cash
+  - etherscan.io
+  - dexscreener.com
+  - birdeye.so
+  - photon-sol.tinyastro.io
+  - bullx.io
+  - tradingview.com
+  - bybit-exchange.github.io   # official Bybit API docs
+  - docs.blofin.com
+
+# Wallet monitoring: add PUBLIC addresses only. Empty lists are fine.
+wallets:
+  evm: []
+  #  - {address: "0x...", label: "metamask-main", chains: [ethereum, base, arbitrum, optimism]}
+  solana: []
+  #  - {address: "...base58...", label: "phantom-burner-1"}
+
+# Your own denylist of known-bad addresses (public). Merged with free public lists.
+known_bad_addresses: []
