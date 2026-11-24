@@ -1,0 +1,66 @@
+# perps-pipeline default configuration (Phase 1: research + paper only).
+# All monetary values are in USDT. Rates are decimals (0.015 == 1.5%).
+project:
+  data_dir: data
+  reports_dir: reports
+  state_dir: state
+
+exchange:
+  default: blofin          # blofin | bybit (bybit untested from this box: geo-blocked)
+
+universe:
+  base: [BTC-USDT, ETH-USDT, SOL-USDT]
+  top_volume_extra: 0      # add N extra USDT perps ranked by 24h quote volume (resolved at runtime)
+  min_24h_quote_volume: 50000000
+
+capital:
+  initial_equity: 100.0
+
+fees:                       # VIP0 / regular tier, verified 2026-11 from public fee pages
+  blofin: {maker: 0.0002, taker: 0.0006}
+  bybit:  {maker: 0.0002, taker: 0.00055}
+
+slippage:
+  market_bps: 2.0           # adverse slippage applied to market entries/exits
+  stop_bps: 3.0             # additional adverse slippage on stop-market fills
+  atr_frac: 0.0             # optional: extra slippage as a fraction of ATR
+
+risk:
+  risk_per_trade: 0.015     # default 1.5% of equity
+  hard_cap: 0.03            # cannot exceed unless allow_above_hard_cap: true
+  allow_above_hard_cap: false
+  absolute_max: 0.12        # never exceeded, even with override
+  min_risk_per_trade: 0.01
+  daily_loss_limit: 0.05    # stop opening new trades after -5% on the UTC day
+  max_concurrent_positions: 3
+  max_leverage: 10.0        # cap on implied leverage (notional / equity)
+  margin_leverage: 10.0     # isolated-margin leverage setting used for liquidation math
+  maintenance_margin_rate: 0.005
+  liquidation_buffer: 0.25  # stop must sit at least 25% of the entry->liq distance inside liq
+  max_drawdown_kill: 0.30   # kill-switch trips at 30% peak-to-trough drawdown
+  kill_switch: false        # manual kill switch: blocks all new entries
+  kill_switch_file: state/KILL
+
+execution:
+  enabled: false            # Phase 1 has NO execution layer. This flag is informational only.
+
+backtest:
+  is_fraction: 0.7          # first 70% in-sample, last 30% out-of-sample
+  walk_forward_folds: 4
+  take_profit_fee: taker    # conservative: treat TP fills as taker (set maker for resting limit TP)
+  same_bar_policy: stop_first
+  research_ignore_drawdown_kill: true   # research measures the full sample; kill switch still applies in paper
+
+backfill:
+  days:                     # history depth per timeframe
+    1H: 730
+    4H: 730
+    15m: 365
+    5m: 365
+  include_1m_days: 0
+
+paper:
+  strategies:
+    - {name: range_breakout, timeframe: 15m}
+    - {name: ema_pullback, timeframe: 1H}
+  max_signal_age_bars: 1

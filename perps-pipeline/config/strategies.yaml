@@ -1,0 +1,59 @@
+# Strategy parameters. `params` are defaults; `sweep` defines the IS robustness/optimisation grid.
+range_breakout:
+  style: scalp
+  timeframes: [5m, 15m]
+  params:
+    lookback_hours: 24      # breakout of the trailing 24h high/low (converted to bars per timeframe)
+    atr_period: 14
+    atr_stop_mult: 1.5
+    take_profit_r: 2.0
+    trail_atr_mult: 0.0     # 0 disables trailing
+    trend_ema: 200          # only long above / short below this EMA (0 disables)
+    volume_mult: 1.2        # breakout bar volume must exceed this x rolling median (0 disables)
+    max_hold_bars: 96
+    allow_short: true
+  sweep:
+    lookback_hours: [12, 24, 48]
+    atr_stop_mult: [1.0, 1.5, 2.0]
+    take_profit_r: [1.5, 2.0, 3.0]
+
+ema_pullback:
+  style: swing
+  timeframes: [1H, 4H]
+  params:
+    fast_ema: 20
+    slow_ema: 50
+    trend_ema: 200
+    pullback_atr: 0.5       # low must come within this many ATR of fast EMA
+    atr_period: 14
+    atr_stop_mult: 2.0
+    take_profit_r: 2.5
+    trail_atr_mult: 3.0
+    max_hold_bars: 120
+    allow_short: true
+  sweep:
+    fast_ema: [13, 20, 34]
+    atr_stop_mult: [1.5, 2.0, 2.5]
+    take_profit_r: [2.0, 3.0]
+    trail_atr_mult: [0.0, 3.0]
+
+vol_squeeze:
+  style: swing
+  timeframes: [15m, 1H, 4H]
+  params:
+    bb_period: 20
+    bb_std: 2.0
+    squeeze_lookback: 120   # bandwidth percentile window
+    squeeze_pct: 0.2        # bandwidth must be in bottom 20% of window within the last `squeeze_recent` bars
+    squeeze_recent: 6
+    atr_period: 14
+    atr_stop_mult: 1.5
+    take_profit_r: 2.5
+    trail_atr_mult: 2.5
+    trend_ema: 0
+    max_hold_bars: 72
+    allow_short: true
+  sweep:
+    squeeze_pct: [0.1, 0.2, 0.3]
+    atr_stop_mult: [1.0, 1.5, 2.0]
+    take_profit_r: [2.0, 3.0]

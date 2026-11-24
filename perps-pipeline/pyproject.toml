@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "perps-pipeline"
+version = "0.1.0"
+description = "Research + paper-trading pipeline for crypto USDT perpetual futures (public market data only; no live execution)."
+requires-python = ">=3.11"
+readme = "README.md"
+dependencies = [
+  "pandas==3.1.0",
+  "numpy==2.5.4",
+  "pyarrow==26.0.0",
+  "requests==2.34.2",
+  "PyYAML==6.0.3",
+  "matplotlib==3.11.2",
+  "typer==0.27.3",
+  "pydantic==2.14.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.2.0", "ruff==0.17.3", "mypy==2.4.1", "types-requests", "types-PyYAML"]
+
+[project.scripts]
+perps = "perps.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["network: hits public exchange endpoints (deselect with -m 'not network')"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501", "B008", "E741"]  # E741: o/h/l/c is the OHLC convention
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+warn_unused_ignores = true
+check_untyped_defs = true

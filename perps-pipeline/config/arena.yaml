@@ -1,0 +1,64 @@
+# Live paper-trading "arena": competing strategy arms, each with its own simulated $100 sub-account.
+# SIMULATION ONLY. Public market data; no order is ever sent anywhere. Version-1 parameters below are
+# the seed; the learning layer writes new versions to state/arena/params/<arm>.json (with reasons).
+exchange: blofin
+symbols: [BTC-USDT, ETH-USDT, SOL-USDT]
+initial_equity: 100.0
+
+limits:                      # applied to every arm (per-arm overrides allowed under arms.<name>.limits)
+  risk_per_trade: 0.015      # default 1.5% of the arm's equity
+  min_risk: 0.01             # floor 1%
+  max_risk: 0.03             # hard cap 3% (validated; cannot be exceeded by config or by learning)
+  max_leverage: 10.0         # implied leverage cap: notional / arm equity <= 10x
+  margin_leverage: 10.0      # isolated-margin setting used for the liquidation estimate
+  maintenance_margin_rate: 0.005
+  liquidation_buffer: 0.25
+  max_concurrent: 2          # positions + resting orders per arm
+  one_per_symbol: true
+  daily_loss_limit: 0.05     # no new entries after -5% on the UTC day
+  max_drawdown_kill: 0.30    # arm is retired (no new entries) at -30% from its peak
+  max_signal_age_min: 10     # entries only on bars that closed <= this many minutes ago (or 1 arm bar)
+
+learning:
+  min_trades: 20             # no parameter change before this many closed trades
+  min_trades_between_changes: 20
+  cut_risk_after: 30         # E[R] < cut_risk_er after this many trades -> risk to 1%
+  cut_risk_er: -0.3
+  bench_after: 40            # E[R] < bench_er after this many trades -> arm benched (no new entries)
+  bench_er: -0.5
+
+arms:
+  momentum_breakout:
+    kind: range_breakout
+    timeframe: 15m
+    params: {lookback_hours: 24, atr_period: 14, atr_stop_mult: 1.5, take_profit_r: 2.0, trail_atr_mult: 0.0,
+             trend_ema: 200, volume_mult: 1.2, max_hold_bars: 96}
+  ema_trend_pullback:
+    kind: ema_pullback
+    timeframe: 1H
+    params: {fast_ema: 20, slow_ema: 50, trend_ema: 200, pullback_atr: 0.5, atr_period: 14, atr_stop_mult: 2.0,
+             take_profit_r: 2.5, trail_atr_mult: 3.0, max_hold_bars: 120,
+             regime_tf: 4H, regime_fast: 50, regime_slow: 200, regime_slope_bars: 5}
+  vol_squeeze:
+    kind: vol_squeeze
+    timeframe: 1H
+    params: {bb_period: 20, bb_std: 2.0, squeeze_lookback: 120, squeeze_pct: 0.2, squeeze_recent: 6,
+             atr_period: 14, atr_stop_mult: 1.5, take_profit_r: 2.5, trail_atr_mult: 2.5, trend_ema: 0,
+             max_hold_bars: 72}
+  funding_fade:
+    kind: funding_fade
+    timeframe: 1H
+    params: {lookback_days: 90, high_pct: 0.95, low_pct: 0.05, min_short_rate: 0.0001, max_long_rate: -0.00005,
+             confirm_ema: 20, atr_period: 14, atr_stop_mult: 2.0, take_profit_r: 2.0, trail_atr_mult: 0.0,
+             max_hold_bars: 24}
+  oi_divergence:
+    kind: oi_divergence
+    timeframe: 15m
+    params: {window_hours: 4, price_move: 0.01, oi_move: 0.01, min_snapshots: 48, snapshot_tolerance_min: 20,
+             atr_tf: 1H, atr_period: 14, atr_stop_mult: 1.5, take_profit_r: 2.0, trail_atr_mult: 0.0,
+             max_hold_bars: 48}
+  maker_scalp:
+    kind: maker_scalp
+    timeframe: 5m
+    params: {trend_tf: 1H, trend_fast: 20, trend_slow: 50, entry_ema: 20, entry_offset_atr: 0.2, atr_period: 14,
+             atr_stop_mult: 1.2, take_profit_r: 1.5, trail_atr_mult: 0.0, order_ttl_min: 30, max_hold_bars: 24}
