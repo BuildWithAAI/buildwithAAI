@@ -15,6 +15,7 @@ Modules (import what you need):
     reverb    synthesised-IR convolution reverb (room, plate, hall, cathedral)
     mix       channel strips + bus (reverb send, glue compressor, pedalboard inserts)
     master    presets bed / sting / standalone, export (24-bit WAV + AAC preview + report)
+    duck      speech detection and bed ducking under narration, per-frame gains for Remotion
     analysis  the measurements behind scripts/audio/metrics.py
 
 Scripts outside scripts/audio (e.g. scripts/audio/music/*.py) do:

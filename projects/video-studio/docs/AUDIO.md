@@ -1,6 +1,6 @@
 # Audio engine: music, stings and SFX from code
 
-Version 1, 2026-11-24. Code: `scripts/audio/` (engine package `audiolib`, CLIs `metrics.py`, `render_reference.py`, `selfcheck.py`, `setup.sh`). Licences and evidence: `docs/AUDIO_LICENSES.md`. The composer owns `scripts/audio/music/**`, the sound designer `scripts/audio/sfx/**`; both build on this engine.
+Version 1, 2026-11-24. Code: `scripts/audio/` (engine package `audiolib`, CLIs `metrics.py`, `duck.py`, `render_reference.py`, `selfcheck.py`, `setup.sh`). Licences and evidence: `docs/AUDIO_LICENSES.md`. The composer owns `scripts/audio/music/**`, the sound designer `scripts/audio/sfx/**`; both build on this engine.
 
 The owner's standard applies: broadcast and professional-YouTube quality, every sound fully owned. Everything here is deterministic (seeded), renders at **48 kHz**, and is measured before anyone listens.
 
@@ -11,7 +11,7 @@ cd projects/video-studio
 scripts/audio/setup.sh                       # idempotent: apt pins, .venv-audio, sha256 checks, VCSL, selfcheck
 python3 scripts/audio/render_reference.py    # 20 s trio -> out/audio/reference/ (about 12 s)
 python3 scripts/audio/metrics.py out/audio/reference/reference_standalone.wav --profile standalone
-.venv-audio/bin/python -m unittest discover -s scripts/audio/tests -t scripts/audio   # 85 tests, about 20 s
+.venv-audio/bin/python -m unittest discover -s scripts/audio/tests -t scripts/audio   # 89 tests, about 20 s
 ```
 
 Every CLI re-executes itself inside `.venv-audio` (`audiolib.venv.ensure_venv`), so `python3` is enough. A script in `scripts/audio/music/` or `scripts/audio/sfx/` starts with:
@@ -133,9 +133,22 @@ pedalboard is the plugin host (`inserts=` takes any pedalboard plugins: Chorus, 
 
 YouTube publishes no loudness target; -14 LUFS-I / -1 dBTP is the community-measured reference (`docs/research/platform-facts-2026-11-23.md`), and the narration is normalised to -14 LUFS by `scripts/voice`.
 
-### Beds under voice
+### Beds under voice: ducking (`duck.py`, `audiolib.duck`)
 
-A bed at -26 LUFS-S sits about 12 LU under -14 LUFS narration before any ducking, and its 1-4 kHz pocket keeps consonants clear. In the video mix, duck the bed a further 4-8 dB while Zoo speaks (starting values: about 150 ms attack before the first word, 400-600 ms release after the last), so the music breathes in pauses and under Badger's reactions. Keep SFX peaks for punchlines in the gaps between lines. These are starting values for the composer and the video mix to tune by ear.
+A bed mastered at -26 LUFS-S sits about 12 LU under -14 LUFS narration before any ducking, and its 1-4 kHz pocket keeps consonants clear. Duck it further while Zoo speaks:
+
+```bash
+python3 scripts/audio/duck.py --bed bed.wav --voice public/generated/<channel>/<slug>/en/narration.wav \
+    --out out/audio/<slug>/bed_ducked.wav --frames out/audio/<slug>/bed_gain.json --fps 30
+```
+
+- Speech detection: 150 Hz-4 kHz RMS in 30 ms windows every 10 ms, within 30 dB of the voice's loud level; gaps under 0.35 s (between words) stay ducked so the music does not pump, real pauses let it up. `activity_from_intervals()` takes word timings instead.
+- Gain: -6 dB under speech (`--depth`), 150 ms attack, 500 ms release, 120 ms lookahead (the duck is complete when the first word lands; the release starts only after the speech ends); straight dB ramps, interpolated per sample (no zipper noise). Starting values: tune per show (4-8 dB).
+- Output: the ducked bed (24-bit WAV, the bed looped or cut to the voice's length; loop beds must be mastered with `loop=True`), and optionally `{"fps": 30, "gains": [...]}` per-frame linear gains for `<Audio volume={(f) => gains[f]} />` when the bed plays un-ducked in Remotion.
+- Measured on the voice step's 62.6 s demo narration (`public/generated/_dev/engine-demo/en/narration.wav`, Kokoro, -14 LUFS) with the reference bed: 14 speech segments found, sentence pauses of 0.4-1.1 s opened, 58 % of the time ducked, -6.0 dB under speech, 0.0 dB in pauses, **voice 18.5 LU over the bed under speech**.
+- Keep SFX accents for punchlines in the gaps between lines.
+
+**Final program loudness.** The narration is normalised to -14 LUFS as a mono file. ffmpeg's mono-to-stereo upmix applies -3 dB per side, so it stays -14 LUFS as stereo (measured: -13.9 mono, -14.0 upmixed); a plain copy of the mono channel to both sides at unity reads +3 LU (-11 LUFS). Whatever the renderer does, measure the delivered stereo program (extract the MP4's audio, run `metrics.py --profile standalone`), and when the voice + bed + SFX mix is built in Python, finish it with `master.master(mix, "standalone")`.
 
 ## Metrics (`scripts/audio/metrics.py`)
 
