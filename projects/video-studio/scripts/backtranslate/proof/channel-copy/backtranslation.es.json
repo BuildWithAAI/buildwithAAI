@@ -1,0 +1,34 @@
+{
+  "about": "Literal back-translation of the Spanish channel-description draft (content/zoora-ai/channel-copy.md, block description-es), made 2026-11-24 by a Claude session (wave 3). NOT blind: this session had read the English description first.",
+  "lang": "es",
+  "method": "claude-session",
+  "by": "wave-3 proof session",
+  "blind": false,
+  "date": "2026-11-24",
+  "items": {
+    "copy.description.p1": {
+      "text": "Historias en primera persona sobre cripto, memecoins e inteligencia artificial, contadas desde tu punto de vista.",
+      "bt": "Stories in first person about crypto, memecoins and artificial intelligence, told from your point of view."
+    },
+    "copy.description.p2": {
+      "text": "En cada episodio vives una vida: el que anuncia memecoins y todos siguen, el fundador de un agente de trading con IA, la persona que acaba de firmar la transacción equivocada. Los personajes son ficticios; los patrones salen de casos reales y documentados. Ves cómo empieza, cómo sale mal y qué hicieron distinto quienes lograron salir.",
+      "bt": "In each episode you live a life: the one who announces memecoins and everyone follows, the founder of a trading agent with AI, the person who has just signed the wrong transaction. The characters are fictional; the patterns come out of real and documented cases. You see how it starts, how it goes wrong and what those who managed to get out did differently."
+    },
+    "copy.description.p3": {
+      "text": "Te acompañan Zoo, tranquilo y difícil de impresionar, y su perro Badger, que juzga a todos por igual.",
+      "bt": "Accompanying you are Zoo, calm and hard to impress, and his dog Badger, who judges everyone equally."
+    },
+    "copy.description.p4": {
+      "text": "Este canal no es asesoría financiera y no te va a hacer rico. No hay señales de trading ni predicciones de precios, y nadie aquí te dirá que compres nada. Cualquier cifra de mercado en una historia tiene fuente o está marcada como ficción.",
+      "bt": "This channel is not financial advice and it is not going to make you rich. There are no trading signals nor price predictions, and nobody here will tell you to buy anything. Any market figure in a story has a source or is marked as fiction."
+    },
+    "copy.description.p5": {
+      "text": "Aprende las lecciones caras por el camino barato.",
+      "bt": "Learn the expensive lessons by the cheap road/way."
+    },
+    "copy.description.p6": {
+      "text": "Zoora AI es un proyecto de Zoora Technologies.",
+      "bt": "Zoora AI is a project of Zoora Technologies."
+    }
+  }
+}

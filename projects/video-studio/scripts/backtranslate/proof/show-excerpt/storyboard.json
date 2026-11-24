@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "channel": "_test",
+  "slug": "show-excerpt",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "FixtureSwap reports $4.2M drain (developing) - test excerpt",
+  "fiction": false,
+  "news": {"format": "daily-short", "developing": {"label": "DEVELOPING", "asOf": "2026-11-24T08:00:00Z"}},
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "segment": "coldOpen",
+      "narration": "One leaked key. {$4.2M|Four point two million dollars} gone, according to FixtureSwap [src:src-wire]. Good morning.",
+      "onScreen": {"kicker": "Tuesday, Nov 24 · Daily brief"}
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "segment": "headline",
+      "narration": "FixtureSwap says attackers drained {$4.2M|four point two million dollars} from its liquidity pools [src:src-wire]. The company calls the investigation ongoing, and says the figures may change [src:src-pm].",
+      "onScreen": {"title": "FixtureSwap reports $4.2M drain", "developing": "DEVELOPING", "loss": "$4.2M"}
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "segment": "howItWorked",
+      "narration": "According to FixtureSwap's preliminary review, a compromised deployer key was used to upgrade the pool contract [src:src-pm]. Example Security Lab says the funds then moved to a newly funded address, and across a bridge [src:src-lab].",
+      "onScreen": {"nodes": ["Leaked deployer key", "Pool contract upgraded", "New address", "Bridge to another network"]}
+    },
+    {
+      "id": "s04",
+      "type": "talk",
+      "segment": "scamOfTheWeek",
+      "narration": "Scam of the week: fake wallet support. Example Security Lab warns that accounts posing as support allegedly ask users for their recovery phrase [src:src-lab2]. Real support never asks for it.",
+      "onScreen": {"title": "Fake \"wallet support\" accounts", "fix": "Never share it. Real support never asks."}
+    },
+    {
+      "id": "s05",
+      "type": "talk",
+      "segment": "zooOneFix",
+      "narration": "Zoo's one fix, for teams: keep upgrade keys in a multisig with a time delay, so one leaked key cannot change a contract on the spot.",
+      "onScreen": {"fix": "Put upgrade keys in a multisig with a time delay"}
+    }
+  ],
+  "sources": [
+    {"id": "src-wire", "title": "FixtureSwap says attackers drained $4.2 million from its pools", "url": "https://news.example.com/2026/11/23/fixtureswap-drain", "accessed": "2026-11-24", "status": "verified"},
+    {"id": "src-pm", "title": "Incident update", "url": "https://fixtureswap.example/blog/incident-update", "accessed": "2026-11-24", "status": "verified"},
+    {"id": "src-lab", "title": "Alert: FixtureSwap outflows", "url": "https://lab.example.org/alerts/fixtureswap", "accessed": "2026-11-24", "status": "verified"},
+    {"id": "src-lab2", "title": "Warning: fake wallet-support accounts", "url": "https://lab.example.org/alerts/fake-support", "accessed": "2026-11-24", "status": "verified"}
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "_engine-demo",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Why most new memecoins die on day one",
+  "fiction": false,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Most new memecoins on {Pump.fun|Pump dot fun} never see day two. [src:cg-cryptonews,cg-cryptobriefing]",
+      "onScreen": {"kicker": "Explainer", "title": "Dead on day one", "subtitle": "What the launch data shows"},
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "lookUp"}
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "CoinGecko tracked {18.67 million|nearly nineteen million} of them. [src:cg-cryptonews,cg-cryptobriefing] {68.67%|Nearly sixty-nine percent} made their last bonding-curve trade on launch day. [src:cg-cryptonews,cg-cryptobriefing] Ninety days later, only {4.55%|four and a half percent} were still trading. [src:cg-cryptonews,cg-cryptobriefing]",
+      "onScreen": {
+        "title": "The launch-day numbers",
+        "bullets": ["18.67M tokens tracked", "68.67%: last curve trade on day one", "4.55% still trading after 90 days"],
+        "cues": ["tracked", "last", "still"],
+        "lowerThird": ["Zoo", "Host · Zoora AI"]
+      },
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": false}
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "Here's day one, on a made-up coin. A launch, a burst of buying, then one big sell-off, and a slow bleed.",
+      "onScreen": {"pair": "$EXAMPLE / SOL", "cues": ["burst", "sell-off"]},
+      "chart": {"seed": 24, "illustrative": true},
+      "zoo": {"expression": "worried"},
+      "badger": {"present": true, "reaction": "worried"},
+      "transitionIn": "fade"
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Before you touch a new coin, ask: who holds the supply? What else did the creator launch? And who's paid to hype it?",
+      "onScreen": {
+        "title": "Before you touch a new coin",
+        "steps": ["Who holds the supply?", "What else did the creator launch?", "Who is paid to hype it?"],
+        "cues": ["holds", "else", "paid"],
+        "badgerCue": "hype"
+      },
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "judge"},
+      "transitionIn": "slide"
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "Because on-chain analysts at Bubblemaps warned: side wallets have become a business model. [src:bm-side-wallets]",
+      "onScreen": {
+        "quote": "Side wallets have become a business model.",
+        "attribution": "Bubblemaps, on-chain analytics firm"
+      },
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": false}
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "If you'd rather read the data than chase the hype, subscribe.",
+      "onScreen": {"title": "Read the data, not the hype", "cues": ["subscribe"]},
+      "zoo": {"expression": "happy"},
+      "badger": {"present": true, "reaction": "happy"}
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "Next: who's really on the other side of your trade?",
+      "onScreen": {"title": "Next: who's on the other side of your trade?"},
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "lookUp"},
+      "minDurationSec": 20,
+      "transitionIn": "fade"
+    }
+  ],
+  "sources": [
+    {
+      "id": "cg-cryptonews",
+      "title": "CoinGecko launch-day survival study",
+      "url": "https://crypto.news/pump-funs-token-factory-has-a-69-launch-day-death-rate-coingecko/",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "cg-cryptobriefing",
+      "title": "CoinGecko survival study",
+      "url": "https://cryptobriefing.com/pump-fun-token-survival-rate-study/",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "bm-side-wallets",
+      "title": "Bubblemaps urges launchpads to audit top traders, Nov 6, 2026",
+      "url": "https://www.tokenpost.com/news/investing/52014",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "shorts": [{"id": "short1", "sceneIds": ["s01", "s03", "s06"], "title": "Most memecoins never see day two"}],
+  "thumbnails": [
+    {"id": "a", "text": "DEAD ON DAY ONE", "expression": "neutral", "badger": true, "badgerReaction": "judge"},
+    {"id": "b", "text": "WHY MEMECOINS DIE", "expression": "worried", "badger": true, "badgerReaction": "worried"},
+    {"id": "c", "text": "NEVER SEE DAY TWO", "expression": "shocked", "badger": false}
+  ]
+}

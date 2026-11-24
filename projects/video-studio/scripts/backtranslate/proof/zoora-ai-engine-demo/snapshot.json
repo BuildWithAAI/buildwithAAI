@@ -1,0 +1,22 @@
+{
+  "about": "Snapshot of content/zoora-ai/_engine-demo (written by the Demo workflow, 2026-11-24) so the proof run is reproducible even if that episode changes. The live folder is checked too: proof/run.ts reports any segment whose text changed since this snapshot.",
+  "source": "content/zoora-ai/_engine-demo",
+  "copiedAt": "2026-11-24",
+  "files": {
+    "storyboard.json": {
+      "sha256": "b35adab651523936fad567374cfd406a7d3e29c2a467e5992a3d3a77b9f29791",
+      "bytes": 4677,
+      "mtime": "2026-11-24T08:11:46Z"
+    },
+    "storyboard.es.json": {
+      "sha256": "d36037beeecb98eeb4bd45970353796a9856f9f38cd7bcfdc72194915d16f690",
+      "bytes": 6194,
+      "mtime": "2026-11-24T08:11:47Z"
+    },
+    "storyboard.pt-br.json": {
+      "sha256": "d830e60e2434ed6913252da46ab315e0fbf8722f1c66d59aa8821309c92fd5de",
+      "bytes": 6121,
+      "mtime": "2026-11-24T08:11:48Z"
+    }
+  }
+}

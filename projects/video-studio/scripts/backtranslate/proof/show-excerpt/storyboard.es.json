@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "channel": "_test",
+  "slug": "show-excerpt",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "FixtureSwap reporta un drenaje de US$ 4,2 millones (en desarrollo) - extracto de prueba",
+  "fiction": false,
+  "news": {"format": "daily-short", "developing": {"label": "EN DESARROLLO", "asOf": "2026-11-24T08:00:00Z"}},
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "segment": "coldOpen",
+      "narration": "Una clave filtrada. {US$ 4,2 millones|Cuatro coma dos millones de dólares} perdidos, según FixtureSwap [src:src-wire]. Buenos días.",
+      "onScreen": {"kicker": "Martes, 24 nov · Resumen diario"}
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "segment": "headline",
+      "narration": "FixtureSwap dice que unos atacantes drenaron {US$ 4,2 millones|cuatro coma dos millones de dólares} de sus pools de liquidez [src:src-wire]. La empresa dice que la investigación sigue en curso, y que las cifras podrían cambiar [src:src-pm].",
+      "onScreen": {"title": "FixtureSwap reporta un drenaje de US$ 4,2 millones", "developing": "EN DESARROLLO", "loss": "US$ 4,2 M"}
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "segment": "howItWorked",
+      "narration": "Según la revisión preliminar de FixtureSwap, se usó una clave de despliegue comprometida para actualizar el contrato del pool [src:src-pm]. Example Security Lab dice que luego los fondos pasaron a una dirección que acababa de recibir fondos, y cruzaron un puente [src:src-lab].",
+      "onScreen": {"nodes": ["Clave de despliegue filtrada", "Contrato del pool actualizado", "Dirección nueva", "Puente a otra red"]}
+    },
+    {
+      "id": "s04",
+      "type": "talk",
+      "segment": "scamOfTheWeek",
+      "narration": "La estafa de la semana: falso soporte de billeteras. Example Security Lab advierte que cuentas que se hacen pasar por soporte supuestamente piden a los usuarios su frase de recuperación [src:src-lab2]. El soporte real nunca la pide.",
+      "onScreen": {"title": "Cuentas falsas de \"soporte de billetera\"", "fix": "Nunca la compartas. El soporte real nunca la pide."}
+    },
+    {
+      "id": "s05",
+      "type": "talk",
+      "segment": "zooOneFix",
+      "narration": "El consejo de Zoo, para equipos: guarden las claves de actualización en una multifirma con un retraso de tiempo, para que una sola clave filtrada no pueda cambiar un contrato al instante.",
+      "onScreen": {"fix": "Guarden las claves de actualización en una multifirma con retraso de tiempo"}
+    }
+  ],
+  "sources": [
+    {"id": "src-wire", "title": "FixtureSwap says attackers drained $4.2 million from its pools", "url": "https://news.example.com/2026/11/23/fixtureswap-drain", "accessed": "2026-11-24", "status": "verified"},
+    {"id": "src-pm", "title": "Incident update", "url": "https://fixtureswap.example/blog/incident-update", "accessed": "2026-11-24", "status": "verified"},
+    {"id": "src-lab", "title": "Alert: FixtureSwap outflows", "url": "https://lab.example.org/alerts/fixtureswap", "accessed": "2026-11-24", "status": "verified"},
+    {"id": "src-lab2", "title": "Warning: fake wallet-support accounts", "url": "https://lab.example.org/alerts/fake-support", "accessed": "2026-11-24", "status": "verified"}
+  ],
+  "translation": {"status": "machine", "method": "machine", "reviewed": false}
+}

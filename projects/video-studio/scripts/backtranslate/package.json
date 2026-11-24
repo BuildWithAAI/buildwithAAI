@@ -1,0 +1,6 @@
+{
+  "name": "zoora-backtranslate",
+  "private": true,
+  "type": "module",
+  "description": "Back-translation check for Spanish and Brazilian Portuguese storyboards (scripts/backtranslate). Run with node directly; see README.md. No dependencies, no network."
+}

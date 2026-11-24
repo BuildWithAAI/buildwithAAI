@@ -1,0 +1,34 @@
+{
+  "about": "Literal back-translation of the Brazilian Portuguese channel-description draft (content/zoora-ai/channel-copy.md, block description-pt-br), made 2026-11-24 by a Claude session (wave 3). NOT blind: this session had read the English description first.",
+  "lang": "pt-br",
+  "method": "claude-session",
+  "by": "wave-3 proof session",
+  "blind": false,
+  "date": "2026-11-24",
+  "items": {
+    "copy.description.p1": {
+      "text": "Histórias em primeira pessoa sobre cripto, memecoins e inteligência artificial, contadas do seu ponto de vista.",
+      "bt": "Stories in first person about crypto, memecoins and artificial intelligence, told from your point of view."
+    },
+    "copy.description.p2": {
+      "text": "Em cada episódio você vive uma vida: o influenciador de memecoins que todo mundo segue, o fundador de um agente de trading com IA, a pessoa que acabou de assinar a transação errada. Os personagens são fictícios; os padrões vêm de casos verdadeiros e documentados. Você vê como começa, como dá errado e o que fizeram de diferente as pessoas que conseguiram sair.",
+      "bt": "In each episode you live a life: the memecoin influencer that everybody follows, the founder of a trading agent with AI, the person who has just signed the wrong transaction. The characters are fictional; the patterns come from true and documented cases. You see how it starts, how it goes wrong and what the people who managed to get out did differently."
+    },
+    "copy.description.p3": {
+      "text": "Seus anfitriões são o Zoo, calmo e difícil de impressionar, e o cachorro dele, o Badger, que julga todo mundo do mesmo jeito.",
+      "bt": "Your hosts are Zoo, calm and hard to impress, and his dog, Badger, who judges everybody the same way."
+    },
+    "copy.description.p4": {
+      "text": "Este canal não é consultoria financeira e não vai deixar você rico. Não tem sinais de trading nem previsão de preços, e ninguém aqui vai mandar você comprar nada. Todo número de mercado numa história tem fonte ou está marcado como ficção.",
+      "bt": "This channel is not financial consultancy and is not going to make you rich. There are no trading signals nor price prediction, and nobody here is going to tell/order you to buy anything. Every market number in a story has a source or is marked as fiction."
+    },
+    "copy.description.p5": {
+      "text": "Aprenda as lições caras do jeito barato.",
+      "bt": "Learn the expensive lessons the cheap way."
+    },
+    "copy.description.p6": {
+      "text": "O Zoora AI é feito pela Zoora Technologies.",
+      "bt": "Zoora AI is made by Zoora Technologies."
+    }
+  }
+}

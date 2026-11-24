@@ -1,0 +1,275 @@
+/**
+ * Deliberate meaning errors for the proof run and the tests. Each one edits ONE string of a scratch copy of a
+ * translation and supplies the literal back-translation of the edited text (what an honest back-translator would
+ * write), then names the findings that must catch it.
+ *
+ * Core set (C1-C5): the real dubbed episode content/zoora-ai/_engine-demo (its snapshot): a transposed statistic, an
+ * inverted claim, "only" flipped to "more than", a dropped attribution and a swapped organisation.
+ * D1-D8: the engine dev fixture (src/episode/dev/fixtures/engine-demo): shifted number, inverted and softened
+ * warnings, lost attribution, a translated name, a dropped [src] tag, a dropped sentence, an instruction made optional.
+ * S1-S4: the news channel's own risks on the show excerpt: "may" hardened to "will", "allegedly" lost, "according to"
+ * dropped, the Spanish "mil" trap.
+ */
+import type {TargetLang} from '../lib/types.ts';
+
+export type Injection = {
+	key: string;
+	title: string;
+	kind: string;
+	/**
+	 * 'content-demo' = the snapshot of content/zoora-ai/_engine-demo in proof/zoora-ai-engine-demo;
+	 * 'engine-demo' = src/episode/dev/fixtures/engine-demo; 'show-excerpt' = proof/show-excerpt (news-channel test data).
+	 */
+	fixture: 'content-demo' | 'engine-demo' | 'show-excerpt';
+	lang: TargetLang;
+	segment: string;
+	find: string;
+	replace: string;
+	/** Literal back-translation of the edited segment (display text, tags kept). */
+	back: string;
+	/** At least one of these codes must appear on the segment, at `minSeverity` or above. */
+	expect: string[];
+	minSeverity: 'high' | 'medium';
+	core: boolean;
+};
+
+export const INJECTIONS: Injection[] = [
+	{
+		key: 'C1-statistic',
+		title: 'A statistic transposed: 68.67% became 86.67% (captions and voice)',
+		kind: 'numbers',
+		fixture: 'content-demo',
+		lang: 'es',
+		segment: 's02.narration',
+		find: '{El 68,67%|Casi el sesenta y nueve por ciento}',
+		replace: '{El 86,67%|Casi el ochenta y siete por ciento}',
+		back: 'CoinGecko tracked 18.67 million of them. [src:cg-cryptonews,cg-cryptobriefing] The 86.67% made its last trade/operation on the launch curve on the first day. [src:cg-cryptonews,cg-cryptobriefing] Ninety days later, only 4.55% was still trading/listed. [src:cg-cryptonews,cg-cryptobriefing]',
+		expect: ['number-changed'],
+		minSeverity: 'high',
+		core: true,
+	},
+	{
+		key: 'C2-inverted',
+		title: 'A claim inverted: "most new memecoins never see day two" became "...reach day two"',
+		kind: 'negation',
+		fixture: 'content-demo',
+		lang: 'pt-br',
+		segment: 's01.narration',
+		find: 'nunca chega ao segundo dia',
+		replace: 'chega ao segundo dia',
+		back: 'Most of the new memecoins on Pump.fun reach the second day. [src:cg-cryptonews,cg-cryptobriefing]',
+		expect: ['negation-lost'],
+		minSeverity: 'high',
+		core: true,
+	},
+	{
+		key: 'C3-only',
+		title: 'A qualifier flipped: "only 4.55%" became "more than 4.55%"',
+		kind: 'numbers (qualifiers)',
+		fixture: 'content-demo',
+		lang: 'es',
+		segment: 's02.narration',
+		find: 'solo {el 4,55%|el cuatro y medio por ciento}',
+		replace: 'más {del 4,55%|del cuatro y medio por ciento}',
+		back: 'CoinGecko tracked 18.67 million of them. [src:cg-cryptonews,cg-cryptobriefing] The 68.67% made its last trade/operation on the launch curve on the first day. [src:cg-cryptonews,cg-cryptobriefing] Ninety days later, more than 4.55% was still trading/listed. [src:cg-cryptonews,cg-cryptobriefing]',
+		expect: ['number-qualifier-flipped'],
+		minSeverity: 'high',
+		core: true,
+	},
+	{
+		key: 'C4-attribution',
+		title: 'Attribution dropped: "Bubblemaps analysts warned:" is gone, so Zoo asserts it himself',
+		kind: 'hedges and attribution',
+		fixture: 'content-demo',
+		lang: 'es',
+		segment: 's05.narration',
+		find: 'Porque los analistas on-chain de {Bubblemaps|Bábol maps} advirtieron: las billeteras',
+		replace: 'Porque las billeteras',
+		back: 'Because the secondary wallets have become a business model. [src:bm-side-wallets]',
+		expect: ['attribution-lost'],
+		minSeverity: 'high',
+		core: true,
+	},
+	{
+		key: 'C5-swapped-org',
+		title: 'The data source swapped: CoinGecko became CoinMarketCap',
+		kind: 'named entities',
+		fixture: 'content-demo',
+		lang: 'pt-br',
+		segment: 's02.narration',
+		find: 'A {CoinGecko|Côin Guéco} acompanhou',
+		replace: 'A {CoinMarketCap|Côin Márquet Quép} acompanhou',
+		back: 'CoinMarketCap followed/tracked 18.67 million of them. [src:cg-cryptonews,cg-cryptobriefing] 68.67% made the last trade on the launch curve on the first day. [src:cg-cryptonews,cg-cryptobriefing] Ninety days later, only 4.55% were still traded. [src:cg-cryptonews,cg-cryptobriefing]',
+		expect: ['entity-swapped'],
+		minSeverity: 'high',
+		core: true,
+	},
+	{
+		key: 'D1-number',
+		title: 'A number shifted: ten thousand strangers became a hundred thousand',
+		kind: 'numbers',
+		fixture: 'engine-demo',
+		lang: 'es',
+		segment: 's01.narration',
+		find: 'Diez mil desconocidos',
+		replace: 'Cien mil desconocidos',
+		back: 'You publish a single chart. One hundred thousand strangers buy your coin in less than an hour.',
+		expect: ['number-changed'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'D2-negation',
+		title: 'A warning inverted: "never buy the candle" became "buy the candle"',
+		kind: 'negation',
+		fixture: 'engine-demo',
+		lang: 'es',
+		segment: 's04.narration',
+		find: 'Y nunca compres la vela',
+		replace: 'Y compra la vela',
+		back: 'So before following any caller, do three things. Review/check who bought before the publication/post. Review/check how fast they sold. And buy the candle that everyone is shouting about.',
+		expect: ['negation-lost'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'D3-never',
+		title: 'An absolute warning softened: "Never buy" became "Avoid buying"',
+		kind: 'negation',
+		fixture: 'engine-demo',
+		lang: 'pt-br',
+		segment: 's04.onScreen.steps.2',
+		find: 'Nunca compre',
+		replace: 'Evite comprar',
+		back: 'Avoid buying the candle that everyone shouts',
+		expect: ['never-softened'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'D4-attribution',
+		title: 'Attribution lost: "As one caller put it:" dropped, so the quote reads as Zoo\'s own claim',
+		kind: 'hedges and attribution',
+		fixture: 'engine-demo',
+		lang: 'pt-br',
+		segment: 's05.narration',
+		find: 'Como disse um caller: ',
+		replace: '',
+		back: 'Nobody checks the wallet. Everybody checks the chart.',
+		expect: ['attribution-lost'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'D5-name',
+		title: 'A name translated: Badger became "el tejón" (the badger)',
+		kind: 'named entities and glossary',
+		fixture: 'engine-demo',
+		lang: 'es',
+		segment: 's06.narration',
+		find: 'Badger vigila',
+		replace: 'El tejón vigila',
+		back: "If this saved you from a bad trade/operation, subscribe. The badger watches the charts so that you don't have to do it.",
+		expect: ['glossary-wrong-rendering', 'glossary-name-changed'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'D6-claim-tag',
+		title: 'A claim lost its source: [src:demo-pattern] dropped',
+		kind: 'claim tags',
+		fixture: 'engine-demo',
+		lang: 'es',
+		segment: 's02.narration',
+		find: ' [src:demo-pattern]',
+		replace: '',
+		back: 'This is how the game works. First, you buy early and in silence. Then you publish the signal/call for your followers. They buy, the price jumps and you sell while they buy.',
+		expect: ['claim-tag-missing'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'D7-sentence',
+		title: 'A sentence dropped: "Check how fast they sold" is gone',
+		kind: 'sentence count',
+		fixture: 'engine-demo',
+		lang: 'pt-br',
+		segment: 's04.narration',
+		find: 'Veja com que rapidez eles venderam. ',
+		replace: '',
+		back: 'So, before following any caller, do three things. See/check who bought before the post. And never buy the candle that everybody is shouting.',
+		expect: ['sentence-missing'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'D8-instruction',
+		title: 'An instruction softened: "do three things" became "you can do three things"',
+		kind: 'modality',
+		fixture: 'engine-demo',
+		lang: 'pt-br',
+		segment: 's04.narration',
+		find: 'faça três coisas',
+		replace: 'você pode fazer três coisas',
+		back: 'So, before following any caller, you can do three things. See/check who bought before the post. See/check how quickly they sold. And never buy the candle that everybody is shouting.',
+		expect: ['instruction-softened', 'warning-softened'],
+		minSeverity: 'medium',
+		core: false,
+	},
+	{
+		key: 'S1-may-will',
+		title: 'A hedge hardened: "the figures may change" became "the figures are going to change"',
+		kind: 'modality',
+		fixture: 'show-excerpt',
+		lang: 'es',
+		segment: 's02.narration',
+		find: 'las cifras podrían cambiar',
+		replace: 'las cifras van a cambiar',
+		back: 'FixtureSwap says that some attackers drained US$ 4.2 million from its liquidity pools [src:src-wire]. The company says that the investigation continues ongoing, and that the figures are going to change [src:src-pm].',
+		expect: ['modality-hardened', 'possibility-lost'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'S2-alleged',
+		title: '"Allegedly" lost: the accusation is now stated as fact',
+		kind: 'hedges and attribution',
+		fixture: 'show-excerpt',
+		lang: 'es',
+		segment: 's04.narration',
+		find: 'supuestamente piden',
+		replace: 'piden',
+		back: 'The scam of the week: fake wallet support. Example Security Lab warns that accounts that pretend to be support ask the users for their recovery phrase [src:src-lab2]. The real support never asks for it.',
+		expect: ['hedge-lost'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'S3-according-to',
+		title: '"According to FixtureSwap\'s preliminary review" dropped',
+		kind: 'hedges and attribution',
+		fixture: 'show-excerpt',
+		lang: 'es',
+		segment: 's03.narration',
+		find: 'Según la revisión preliminar de FixtureSwap, se usó',
+		replace: 'Se usó',
+		back: 'A compromised deployment key was used to update the contract of the pool [src:src-pm]. Example Security Lab says that then the funds passed to an address that had just received funds, and crossed a bridge [src:src-lab].',
+		expect: ['attribution-lost'],
+		minSeverity: 'high',
+		core: false,
+	},
+	{
+		key: 'S4-mil',
+		title: 'The "mil" trap: $4.2 million became US$ 4,2 mil ($4,200)',
+		kind: 'numbers',
+		fixture: 'show-excerpt',
+		lang: 'es',
+		segment: 's02.narration',
+		find: '{US$ 4,2 millones|cuatro coma dos millones de dólares}',
+		replace: '{US$ 4,2 mil|cuatro mil doscientos dólares}',
+		back: 'FixtureSwap says that some attackers drained US$ 4.2 thousand from its liquidity pools [src:src-wire]. The company says that the investigation continues ongoing, and that the figures could change [src:src-pm].',
+		expect: ['number-changed'],
+		minSeverity: 'high',
+		core: false,
+	},
+];
