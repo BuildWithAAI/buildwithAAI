@@ -48,7 +48,7 @@ export const CtaScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const dFit = useFit(disclosure, L.disclosure, ctx.lang);
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
-	const g = ctaBlock(L, {title: title ? tFit.height : 0, disclosure: disclosure ? dFit.height : 0}, !vertical);
+	const g = ctaBlock(L, {title: title ? tFit.height : 0, disclosure: disclosure ? dFit.height : 0}, true);
 	if (!g.fits) throw new Error(`cta ${ctx.sc.id}: the CTA block needs ${g.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten the title or disclosure.`);
 	const centreX = L.card ? L.card.x + L.card.w / 2 : FRAME[ctx.format].width / 2;
 	const btn: Box = {x: Math.round(centreX - L.button.w / 2), y: g.buttonY, w: L.button.w, h: L.button.h};

@@ -63,7 +63,7 @@ export const QuoteScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const sFit = useFit(source, L.source, ctx.lang);
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
-	const g = quoteBlock(L, {quote: qFit.height, attribution: attribution ? aFit.height : 0, source: source ? sFit.height : 0}, !vertical);
+	const g = quoteBlock(L, {quote: qFit.height, attribution: attribution ? aFit.height : 0, source: source ? sFit.height : 0}, true);
 	if (!g.fits) throw new Error(`quote ${ctx.sc.id}: the quote card needs ${g.cardH}px; the column has ${L.column.bottom - L.column.top}px. Shorten the quote.`);
 	const card: Box = {x: L.card.x, y: g.cardY, w: L.card.w, h: g.cardH};
 	const unspaced = UNSPACED.has(ctx.lang);

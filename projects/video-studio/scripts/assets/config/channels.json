@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "notes": "Asset multiplier settings per channel (docs/ASSETS.md). No secrets here. null = not decided yet: the tools report it as an owner input instead of guessing. Hub and site URLs are planned, not live: the hub (go.zoora.ai) is not deployed yet and articles are not hosted anywhere yet.",
+  "defaults": {
+    "brand": "Zoora AI",
+    "hubOrigin": "https://go.zoora.ai",
+    "defaultSite": "hub",
+    "sites": {
+      "hub": {
+        "articleBase": "https://go.zoora.ai/articles",
+        "siteName": "Zoora AI",
+        "offers": true,
+        "notes": "Planned: creator-hub serves the static article folder at /articles (needs a small static route in creator-hub; see docs/ASSETS.md)."
+      },
+      "pages": {
+        "articleBase": "https://zoora.ai/articles",
+        "siteName": "Zoora",
+        "offers": false,
+        "notes": "Optional mirror on the zoora.ai GitHub Pages site. LAUNCH.md copy rules apply there, so this build carries no offer links."
+      }
+    },
+    "newsletterLangs": ["en"],
+    "podcastMinSec": 180
+  },
+  "channels": {
+    "zoora-security": {
+      "displayName": "The Zoo & Badger Show",
+      "youtubeChannelUrl": null,
+      "hashtags": {
+        "en": ["CryptoSecurity", "AISecurity", "ScamAlert"],
+        "es": ["SeguridadCripto", "SeguridadIA", "Estafas"],
+        "pt-br": ["SegurancaCripto", "SegurancaIA", "Golpes"]
+      },
+      "podcast": {
+        "enabled": true,
+        "coverFile": null,
+        "coverComposition": "PodcastCover",
+        "shows": {
+          "en": {
+            "title": "The Zoo & Badger Show",
+            "description": "Zoo and his dog Badger break down crypto and AI security incidents: how the scam or exploit worked, what is confirmed, and one fix you can use. Animated. Not financial advice.",
+            "author": "Zoora AI",
+            "ownerName": "Zoora AI",
+            "ownerEmail": null,
+            "feedUrl": null,
+            "mediaBase": null,
+            "imageUrl": null,
+            "link": "https://go.zoora.ai/articles/zoora-security/",
+            "categories": [["Technology"], ["News", "Tech News"]],
+            "explicit": false,
+            "type": "episodic",
+            "copyright": "© 2026 Zoora AI",
+            "guid": null,
+            "locked": true
+          }
+        }
+      }
+    },
+    "zoora-ai": {
+      "displayName": "Zoora AI",
+      "youtubeChannelUrl": "https://www.youtube.com/@ZooraTechnologies",
+      "hashtags": {
+        "en": ["CryptoScams", "AI", "Memecoins"],
+        "es": ["Cripto", "IA", "Estafas"],
+        "pt-br": ["Cripto", "IA", "Golpes"]
+      },
+      "podcast": {
+        "enabled": false,
+        "reason": "The podcast is The Zoo & Badger Show (zoora-security). Zoora AI story episodes stay video-only unless the owner decides otherwise."
+      }
+    }
+  }
+}

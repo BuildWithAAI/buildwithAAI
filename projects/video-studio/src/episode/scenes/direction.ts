@@ -125,7 +125,8 @@ export const directScene = (d: DirectionInput): Direction => {
 		}
 		case 'chart': {
 			const p = d.chart;
-			baseLook = d.zooView === 'front' ? {lookX: landscape ? 0.6 : 0, lookY: landscape ? 0 : -0.6} : undefined;
+			// he watches the chart: to his right in landscape (the 3/4 view already faces it), above him in Shorts
+			baseLook = landscape ? (d.zooView === 'front' ? {lookX: 0.6, lookY: 0} : undefined) : {lookX: 0, lookY: -0.6};
 			if (p?.rugDone !== null && p?.rugDone !== undefined) {
 				// MO17 reaction beat: the rug completes, ZOO holds, then turns to camera (swap on a blink) for a deadpan beat
 				const turn = Math.min(frames - 20, p.rugDone + 16);

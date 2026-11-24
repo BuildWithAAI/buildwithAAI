@@ -6,7 +6,7 @@ import {describe, it} from 'node:test';
 import {buildReportUrl, fetchVideoReport, mapReportRows, PAGE_SIZE, REPORTS_URL, resolveAccessToken, TOKEN_URL, YouTubeApiError, type FetchLike} from './youtube-api.ts';
 
 const FIXTURE = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/api-report.json', import.meta.url)), 'utf8'));
-const TOKEN = 'ya29.test-token-not-real';
+const TOKEN = 'test-access-token-not-real';
 
 type Call = {url: string; init: RequestInit | undefined};
 const mockFetch = (responses: (() => Response)[]): {fetch: FetchLike; calls: Call[]} => {

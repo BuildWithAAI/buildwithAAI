@@ -65,7 +65,7 @@ export type BadgerPlace = {x: number; y: number; scale: number; view: BadgerView
 const ZOO_MED_Y = 1480;
 const ZOO_MED_S = 1.5;
 
-/** Vertical extent of a content block. Landscape blocks are centred in it; vertical (Shorts) blocks start at `top`. */
+/** Vertical extent of a content block; the block is centred in it. */
 export type Column = {top: number; bottom: number};
 
 /** For dynamic blocks, a TextSpec's box gives x, width and the MAXIMUM height; y is computed by the template. */
@@ -190,7 +190,7 @@ export const LAYOUTS = {
 		},
 		vertical: {
 			chart: {x: 54, y: 290, w: 972, h: 740},
-			solo: {zoo: {x: 330, y: 2060, scale: 1.1, view: 'threeQuarter'}},
+			solo: {zoo: {x: 470, y: 2060, scale: 1.1, view: 'threeQuarter'}},
 			pair: null,
 			chip: t({x: 54, y: 1046, w: 972, h: 50}, 'body', 700, 28, 24, 1, 1.0, 'right'),
 			sources: {...SRC_V, box: {x: 476, y: 1110, w: 550, h: 40}},
@@ -201,10 +201,10 @@ export const LAYOUTS = {
 			zoo: {x: 1500, y: ZOO_MED_Y, scale: ZOO_MED_S},
 			badger: {x: 885, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'right', head: 'front', inFront: true},
 			column: {top: 110, bottom: 990},
-			title: t({x: 96, y: 0, w: 900, h: 140}, 'heading', 900, 62, 40, 2, 1.1, 'left', {balance: true}),
+			title: t({x: 96, y: 0, w: 900, h: 150}, 'heading', 900, 68, 40, 2, 1.1, 'left', {balance: true}),
 			list: {x: 96, w: 900},
-			item: t({x: 0, y: 0, w: 900 - 72 - 26, h: 140}, 'heading', 800, 48, 30, 2, 1.18, 'left', {balance: true}),
-			badge: 72,
+			item: t({x: 0, y: 0, w: 900 - 80 - 28, h: 150}, 'heading', 800, 58, 32, 2, 1.16, 'left', {balance: true}),
+			badge: 80,
 			gap: 28,
 			sources: src({x: 1000, y: 60, w: 824, h: 40}, 'right'),
 		},
@@ -228,7 +228,7 @@ export const LAYOUTS = {
 			card: {x: 96, w: 1000},
 			pad: 56,
 			markSize: 150,
-			quote: t({x: 152, y: 0, w: 888, h: 420}, 'heading', 800, 66, 34, 5, 1.18, 'left', {balance: true}),
+			quote: t({x: 152, y: 0, w: 888, h: 440}, 'heading', 800, 82, 34, 5, 1.14, 'left', {balance: true}),
 			attribution: t({x: 152, y: 0, w: 888, h: 92}, 'body', 700, 36, 26, 2, 1.2, 'left'),
 			source: t({x: 152, y: 0, w: 888, h: 80}, 'body', 600, 28, 24, 2, 1.3, 'left'),
 		},
@@ -239,7 +239,7 @@ export const LAYOUTS = {
 			card: {x: 54, w: 972},
 			pad: 44,
 			markSize: 110,
-			quote: t({x: 98, y: 0, w: 884, h: 300}, 'heading', 800, 54, 30, 5, 1.18, 'left', {balance: true}),
+			quote: t({x: 98, y: 0, w: 884, h: 320}, 'heading', 800, 62, 30, 5, 1.14, 'left', {balance: true}),
 			attribution: t({x: 98, y: 0, w: 884, h: 84}, 'body', 700, 34, 26, 2, 1.2, 'left'),
 			source: t({x: 98, y: 0, w: 884, h: 72}, 'body', 600, 26, 24, 2, 1.3, 'left'),
 		},

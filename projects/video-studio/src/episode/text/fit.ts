@@ -111,17 +111,36 @@ const balanced = (text: string, n: number, size: number, spec: FitSpec, measure:
 	return best;
 };
 
+/** A fit with fewer lines wins if it needs at most this much smaller type (e.g. one line at 46 px beats two at 48). */
+export const FEWER_LINES_TOLERANCE = 0.86;
+
+/** Largest size (>= floor) at which the text wraps into at most `n` lines within the box, or null. */
+const largestFor = (t: string, n: number, spec: FitSpec, measure: Measure, from: number): {size: number; lines: string[]} | null => {
+	for (let size = from; size >= spec.minSize; size--) {
+		const w = wrapText(t, spec.maxWidth, size, measure, spec.unspaced);
+		if (w.broke) continue; // prefer shrinking over splitting a word
+		if (w.lines.length <= n && w.lines.length * size * spec.lineHeight <= spec.maxHeight) return {size, lines: w.lines};
+	}
+	return null;
+};
+
 export const fitText = (text: string, spec: FitSpec, measure: Measure): FitResult => {
 	const t = text.trim();
 	if (!t) return {fontSize: spec.maxSize, lines: [], width: 0, height: 0, wrappedPastPreferred: false, brokeWord: false, truncated: false, overflow: false};
 	const maxSize = Math.max(spec.minSize, Math.floor(spec.maxSize));
-	for (let size = maxSize; size >= spec.minSize; size--) {
-		const w = wrapText(t, spec.maxWidth, size, measure, spec.unspaced);
-		if (w.broke) continue; // prefer shrinking over splitting a word
-		if (w.lines.length <= spec.maxLines && w.lines.length * size * spec.lineHeight <= spec.maxHeight) {
-			const lines = spec.balance && w.lines.length > 1 ? balanced(t, w.lines.length, size, spec, measure) : w.lines;
-			return result(lines, size, spec, measure, false, false);
+	const best = largestFor(t, spec.maxLines, spec, measure, maxSize);
+	if (best) {
+		// prefer fewer lines when they cost little size: fewer, larger-looking lines read faster
+		let pick = best;
+		for (let n = 1; n < best.lines.length; n++) {
+			const alt = largestFor(t, n, spec, measure, best.size);
+			if (alt && alt.size >= best.size * FEWER_LINES_TOLERANCE) {
+				pick = alt;
+				break;
+			}
 		}
+		const lines = spec.balance && pick.lines.length > 1 ? balanced(t, pick.lines.length, pick.size, spec, measure) : pick.lines;
+		return result(lines, pick.size, spec, measure, false, false);
 	}
 	// floor reached: wrap onto more lines while the box height allows
 	const w = wrapText(t, spec.maxWidth, spec.minSize, measure, spec.unspaced);

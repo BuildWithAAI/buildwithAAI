@@ -30,6 +30,9 @@ It writes to `out/dashboard/` (gitignored):
 Exit codes: 0 means the files were written. 1 means an input is broken, and nothing was written.
 2 means a usage error.
 
+These files contain your revenue figures and the names of your input files, so keep them private. Do
+not publish `index.html`.
+
 ## Inputs
 
 All inputs are optional; the dashboard uses what it gets. Default locations are under `DATA_DIR`

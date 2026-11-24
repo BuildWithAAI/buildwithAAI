@@ -1,7 +1,7 @@
 /**
  * Steps: numbered steps revealed on their word timings. Slate number badges joined by a silver rail that grows as the
  * steps arrive; the current step's text is full ink, earlier ones muted. ZOO glances toward each new step. Title and
- * list form one block, centred in the column (landscape) or hanging from the top of the text zone (Shorts).
+ * list form one block, centred in the text column of either format.
  */
 import React from 'react';
 import {useCurrentFrame} from 'remotion';
@@ -43,7 +43,7 @@ export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		L.badge,
 		L.gap,
 	);
-	const block = placeBlock(L.column, title ? titleFit.height : 0, rows.total, !vertical);
+	const block = placeBlock(L.column, title ? titleFit.height : 0, rows.total, true);
 	if (!block.fits) throw new Error(`steps ${ctx.sc.id}: the title and ${steps.length} steps need ${block.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten them.`);
 	const y0 = block.listY;
 	const revealed = dir.reveals.filter((r) => frame >= r).length;

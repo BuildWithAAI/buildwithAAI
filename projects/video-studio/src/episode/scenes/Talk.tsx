@@ -2,7 +2,7 @@
  * Talk: ZOO talking, with up to 4 bullets that appear on their word timings. ZOO points at the first bullet (and the
  * last of three or more) in landscape; other bullets get a 2-frame eye dart. The newest bullet is the dark card, so
  * the eye lands on the point being made; earlier bullets turn light. Title and list form one block, centred in the
- * column (landscape) or hanging from the top of the text zone (Shorts).
+ * text column of either format.
  */
 import React from 'react';
 import {useCurrentFrame} from 'remotion';
@@ -53,7 +53,7 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		L.itemPad.y,
 		L.gap,
 	);
-	const block = placeBlock(L.column, title ? titleFit.height : 0, stack.total, !vertical);
+	const block = placeBlock(L.column, title ? titleFit.height : 0, stack.total, true);
 	if (!block.fits) throw new Error(`talk ${ctx.sc.id}: the title and ${bullets.length} bullets need ${block.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten them.`);
 	const revealed = dir.reveals.filter((r) => frame >= r).length;
 	const titleBox: Box = {...L.title.box, y: block.titleY, h: Math.ceil(titleFit.height)};
