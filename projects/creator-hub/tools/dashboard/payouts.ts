@@ -291,9 +291,13 @@ export const addMoney = (target: {usd: number; other: Money[]}, amount: number, 
 /** Rounds to cents so float noise never shows (0.1 + 0.2). */
 export const cents = (value: number): number => Math.round(value * 100) / 100;
 
-export const formatMoney = (money: Money[]): string =>
-	money
-		.filter((m) => cents(m.amount) !== 0)
-		.sort((a, b) => a.currency.localeCompare(b.currency))
-		.map((m) => `${m.currency} ${cents(m.amount).toFixed(2)}`)
+/** "EUR 1,019.75; GBP 3.00": amounts of the same currency are added first; zero totals are left out. */
+export const formatMoney = (money: Money[]): string => {
+	const totals = new Map<string, number>();
+	for (const m of money) totals.set(m.currency, (totals.get(m.currency) ?? 0) + m.amount);
+	return [...totals]
+		.filter(([, amount]) => cents(amount) !== 0)
+		.sort((a, b) => a[0].localeCompare(b[0]))
+		.map(([currency, amount]) => `${currency} ${cents(amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`)
 		.join('; ');
+};

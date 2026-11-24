@@ -5,7 +5,7 @@
  */
 import {formatMoney} from './payouts.ts';
 import {pooledPer1k, ratio} from './stats.ts';
-import type {DashboardVideo, OfferSummary} from './model.ts';
+import {UNMAPPED_OFFER, type DashboardVideo, type OfferSummary} from './model.ts';
 
 export const RULES = {
 	milestoneEvery: 10, // recommendations.md is rewritten at 10, 20, 30 ... videos with YouTube data
@@ -102,11 +102,17 @@ export const buildReport = (videos: DashboardVideo[], offers: OfferSummary[], op
 			const p = pooled(group, metric);
 			const {verdict, rule} = judge(p.rate, channelRate, p.n, p.views, tooSmall);
 			const label = format === 'long' ? 'Long videos' : 'Shorts';
+			// Context from the other metrics, so a format is never judged on one number alone.
+			const context = (Object.values(METRICS) as Metric[])
+				.filter((m) => m.key !== metric.key && (m.key !== 'clicks' || options.hubLoaded))
+				.map((m) => ({m, group: pooled(group, m).rate, all: pooled(withViews, m).rate}))
+				.filter((c) => c.group !== null && c.all !== null)
+				.map((c) => `${c.m.format(c.group!)} ${c.m.label.replace(/ \(.*\)$/, '')} (channel ${c.m.format(c.all!)})`);
 			findings.push({
 				dimension: 'format',
 				group: label,
 				verdict,
-				reason: `${p.rate === null ? 'no data' : metric.format(p.rate)} per 1K views over ${p.n} video(s) and ${n0(p.views)} views, vs ${channelRate === null ? 'n/a' : metric.format(channelRate)} for the whole channel. ${rule}.`,
+				reason: `${p.rate === null ? 'no data' : metric.format(p.rate)} per 1K views over ${p.n} video(s) and ${n0(p.views)} views, vs ${channelRate === null ? 'n/a' : metric.format(channelRate)} for the whole channel. ${rule}.${context.length > 0 ? ` For context: ${context.join('; ')}.` : ''}`,
 			});
 		}
 
@@ -140,7 +146,7 @@ export const buildReport = (videos: DashboardVideo[], offers: OfferSummary[], op
 	}
 
 	// Offers: earnings per click when payouts were imported, else conversion counts only.
-	const judged = offers.filter((o) => o.offerId !== '(no offer id)');
+	const judged = offers.filter((o) => o.offerId !== UNMAPPED_OFFER);
 	const covered = judged.filter((o) => o.conversions !== null && o.clicks > 0);
 	const totalClicks = covered.reduce((n, o) => n + o.clicks, 0);
 	const totalUsd = covered.reduce((n, o) => n + (o.revenueUsd ?? 0), 0);
@@ -215,6 +221,9 @@ export const parseState = (input: unknown): MilestoneState => {
 /** Backslash-escapes characters that Markdown would treat as formatting in titles and tags. */
 export const mdEscape = (text: string): string => text.replace(/[\r\n]+/g, ' ').replace(/([\\`*_{}[\]()#+!|<>~])/g, '\\$1');
 
+/** Text generated here, made safe for a table cell: only pipes and line breaks matter. */
+const mdCell = (text: string): string => text.replace(/[\r\n]+/g, ' ').replace(/\|/g, '\\|');
+
 const SECTIONS: {verdict: Verdict; title: string; intro: string}[] = [
 	{verdict: 'double-down', title: 'Double down', intro: 'Clearly above the comparison rate, with enough videos and views to take seriously.'},
 	{verdict: 'test', title: 'Test', intro: 'Promising, but too few videos or views to be sure. Make a few more before deciding.'},
@@ -256,14 +265,14 @@ export const renderRecommendations = (report: Report, options: {generatedAt: str
 		for (const o of report.offers) {
 			const other = formatMoney(o.revenueOther);
 			push(
-				`| ${mdEscape(o.offerId)} | ${o.clicks.toLocaleString('en-US')} | ${o.conversions ?? 'n/a'} | ${o.revenueUsd === null ? 'n/a' : usd(o.revenueUsd)}${other ? ` + ${other}` : ''} | ${SECTIONS.find((s) => s.verdict === o.verdict)?.title ?? o.verdict} | ${mdEscape(o.reason)} |`,
+				`| ${mdEscape(o.offerId)} | ${o.clicks.toLocaleString('en-US')} | ${o.conversions ?? 'n/a'} | ${o.revenueUsd === null ? 'n/a' : usd(o.revenueUsd)}${other ? ` + ${other}` : ''} | ${SECTIONS.find((s) => s.verdict === o.verdict)?.title ?? o.verdict} | ${mdCell(o.reason)} |`,
 			);
 		}
 		push('', 'Keep every affiliate or referral link next to its disclosure, and never present an offer as a way to make money.', '');
 	}
 	if (report.notes.length > 0) {
 		push('## Notes', '');
-		for (const note of report.notes) push(`- ${mdEscape(note)}`);
+		for (const note of report.notes) push(`- ${note}`);
 		push('');
 	}
 	push(

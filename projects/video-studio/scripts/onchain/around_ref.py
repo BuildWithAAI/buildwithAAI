@@ -63,6 +63,18 @@ def venue_owner(tx, mint, ref_wallet):
     return best
 
 
+def token_account_of(tx, owner, mint):
+    """Address of `owner`'s token account for `mint` in this transaction (or None).
+    Newer venues keep many tokens' vaults under one shared owner, so the vault's
+    own address, not its owner, is what identifies one token's venue history."""
+    keys = [k["pubkey"] if isinstance(k, dict) else k for k in tx["transaction"]["message"]["accountKeys"]]
+    meta = tx["meta"]
+    for tb in (meta.get("postTokenBalances") or []) + (meta.get("preTokenBalances") or []):
+        if tb.get("owner") == owner and tb.get("mint") == mint and tb["accountIndex"] < len(keys):
+            return keys[tb["accountIndex"]]
+    return None
+
+
 def wallet_rows(tx, mint, exclude=()):
     """Every owner whose balance of `mint` changed: token delta (ui units), SOL delta."""
     tok = trades.token_deltas_by_owner(tx)

@@ -28,6 +28,7 @@ export type TextSpec = {
 	valign?: 'top' | 'center' | 'bottom';
 	uppercase?: boolean;
 	balance?: boolean;
+	ellipsis?: boolean; // shorten with an ellipsis instead of failing (sources lines only)
 };
 
 const t = (box: Box, role: FontRole, weight: number, maxSize: number, minSize: number, maxLines: number, lineHeight: number, align: TextSpec['align'], extra: Partial<TextSpec> = {}): TextSpec => ({
@@ -64,17 +65,54 @@ export type BadgerPlace = {x: number; y: number; scale: number; view: BadgerView
 const ZOO_MED_Y = 1480;
 const ZOO_MED_S = 1.5;
 
-export type HookLayout = {zoo: ZooPlace; badger: BadgerPlace; kicker: TextSpec; title: TextSpec; subtitle: TextSpec | null};
-export type TalkLayout = {zoo: ZooPlace; badger: BadgerPlace; title: TextSpec; list: Box; item: TextSpec; itemPad: {x: number; y: number}; marker: number; gap: number};
+/** Vertical extent of a content block. Landscape blocks are centred in it; vertical (Shorts) blocks start at `top`. */
+export type Column = {top: number; bottom: number};
+
+/** For dynamic blocks, a TextSpec's box gives x, width and the MAXIMUM height; y is computed by the template. */
+export type HookLayout = {zoo: ZooPlace; badger: BadgerPlace; column: Column; kicker: TextSpec; title: TextSpec; subtitle: TextSpec | null; sources: TextSpec};
+export type TalkLayout = {
+	zoo: ZooPlace;
+	badger: BadgerPlace;
+	column: Column;
+	title: TextSpec;
+	list: {x: number; w: number};
+	item: TextSpec;
+	itemPad: {x: number; y: number};
+	marker: number;
+	gap: number;
+	sources: TextSpec;
+};
 export type ChartLayout = {
 	chart: Box;
 	solo: {zoo: ZooPlace};
 	pair: {zoo: ZooPlace; badger: BadgerPlace} | null; // null: Badger reacts in an insert shot instead
-	chip: TextSpec; // illustrative label outside the chart panel
+	chip: TextSpec; // illustrative label outside the chart panel (right-aligned)
+	sources: TextSpec;
 };
-export type StepsLayout = {zoo: ZooPlace; badger: BadgerPlace; title: TextSpec; list: Box; item: TextSpec; badge: number; gap: number};
-export type QuoteLayout = {zoo: ZooPlace; badger: BadgerPlace; card: Box; mark: {x: number; y: number; size: number}; quote: TextSpec; attribution: TextSpec; source: TextSpec};
-export type CtaLayout = {zoo: ZooPlace; badger: BadgerPlace; card: Box | null; title: TextSpec; button: Box; buttonLabel: TextSpec; disclosure: TextSpec};
+export type StepsLayout = {zoo: ZooPlace; badger: BadgerPlace; column: Column; title: TextSpec; list: {x: number; w: number}; item: TextSpec; badge: number; gap: number; sources: TextSpec};
+export type QuoteLayout = {
+	zoo: ZooPlace;
+	badger: BadgerPlace;
+	column: Column;
+	card: {x: number; w: number};
+	pad: number;
+	markSize: number;
+	quote: TextSpec;
+	attribution: TextSpec;
+	source: TextSpec;
+};
+export type CtaLayout = {
+	zoo: ZooPlace;
+	badger: BadgerPlace;
+	column: Column;
+	card: {x: number; w: number} | null;
+	pad: number;
+	title: TextSpec;
+	button: {w: number; h: number};
+	buttonLabel: TextSpec;
+	disclosure: TextSpec;
+	sources: TextSpec;
+};
 export type EndLayout = {
 	zoo: ZooPlace;
 	badger: BadgerPlace;
@@ -85,138 +123,166 @@ export type EndLayout = {
 	subscribeLabel: TextSpec | null;
 };
 
-/** Badger insert shot (vertical): the reaction cut, Badger alone at the largest scale whose outline stays <= 6 px. */
+/** Badger insert shot: the reaction cut, Badger alone at the largest scale whose outline stays <= 6 px (1.7). */
 export const BADGER_INSERT: Record<Format, BadgerPlace> = {
-	landscape: {x: 960, y: 1450, scale: 1.7, view: 'left'},
-	vertical: {x: 600, y: 1700, scale: 1.7, view: 'left'},
+	landscape: {x: 1150, y: 1450, scale: 1.7, view: 'left', head: 'front'},
+	vertical: {x: 640, y: 1690, scale: 1.7, view: 'left', head: 'front'},
 };
+
+/** The small sources line: one line, ellipsized if a long title does not fit (the full source is in the description). */
+const src = (box: Box, align: TextSpec['align']): TextSpec => t(box, 'body', 600, 26, 24, 1, 1.0, align, {valign: 'center', ellipsis: true});
+const SRC_V = src({x: 426, y: 1242, w: 600, h: 40}, 'right'); // above the caption band, right of any face
 
 export const LAYOUTS = {
 	hook: {
 		landscape: {
 			zoo: {x: 1250, y: ZOO_MED_Y, scale: ZOO_MED_S},
 			badger: {x: 1880, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'left', head: 'front', inFront: true},
-			kicker: t({x: 96, y: 150, w: 760, h: 64}, 'heading', 800, 38, 28, 1, 1.0, 'left'),
-			title: t({x: 96, y: 236, w: 860, h: 560}, 'display', 400, 150, 72, 3, 1.02, 'left', {uppercase: true, balance: true, valign: 'top'}),
-			subtitle: t({x: 96, y: 820, w: 800, h: 150}, 'body', 600, 44, 30, 2, 1.3, 'left'),
+			column: {top: 120, bottom: 960},
+			kicker: t({x: 96, y: 0, w: 760, h: 64}, 'heading', 800, 38, 28, 1, 1.0, 'left'),
+			title: t({x: 96, y: 0, w: 860, h: 560}, 'display', 400, 150, 72, 3, 1.02, 'left', {uppercase: true, balance: true, valign: 'top'}),
+			subtitle: t({x: 96, y: 0, w: 800, h: 150}, 'body', 600, 44, 30, 2, 1.3, 'left', {balance: true}),
+			sources: src({x: 96, y: 978, w: 900, h: 40}, 'left'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2160, scale: 1.4},
 			badger: BADGER_INSERT.vertical,
-			kicker: t({x: 54, y: 290, w: 972, h: 60}, 'heading', 800, 36, 26, 1, 1.0, 'center'),
-			title: t({x: 54, y: 370, w: 972, h: 400}, 'display', 400, 150, 70, 3, 1.02, 'center', {uppercase: true, balance: true, valign: 'top'}),
+			column: {top: 290, bottom: 790},
+			kicker: t({x: 54, y: 0, w: 972, h: 60}, 'heading', 800, 36, 26, 1, 1.0, 'center'),
+			title: t({x: 54, y: 0, w: 972, h: 400}, 'display', 400, 150, 70, 3, 1.02, 'center', {uppercase: true, balance: true, valign: 'top'}),
 			subtitle: null,
+			sources: SRC_V,
 		},
 	} satisfies Record<Format, HookLayout>,
 	talk: {
 		landscape: {
-			zoo: {x: 470, y: ZOO_MED_Y, scale: ZOO_MED_S},
-			badger: {x: 1093, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'left', head: 'front', inFront: true},
-			title: t({x: 1010, y: 96, w: 814, h: 110}, 'heading', 900, 62, 40, 1, 1.1, 'left', {valign: 'bottom'}),
-			list: {x: 1010, y: 232, w: 814, h: 760},
-			item: t({x: 0, y: 0, w: 814 - 2 * 28 - 40, h: 160}, 'heading', 800, 50, 32, 2, 1.18, 'left'),
+			zoo: {x: 440, y: ZOO_MED_Y, scale: ZOO_MED_S},
+			badger: {x: 1080, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'left', head: 'front', inFront: true},
+			column: {top: 110, bottom: 990},
+			title: t({x: 1010, y: 0, w: 814, h: 140}, 'heading', 900, 62, 40, 2, 1.1, 'left', {balance: true}),
+			list: {x: 1010, w: 814},
+			item: t({x: 0, y: 0, w: 814 - 2 * 28 - 40, h: 160}, 'heading', 800, 50, 32, 2, 1.18, 'left', {balance: true}),
 			itemPad: {x: 28, y: 24},
 			marker: 40,
 			gap: 22,
+			sources: src({x: 96, y: 60, w: 860, h: 40}, 'left'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2160, scale: 1.3},
 			badger: BADGER_INSERT.vertical,
-			title: t({x: 54, y: 290, w: 972, h: 80}, 'heading', 900, 56, 36, 1, 1.1, 'center', {valign: 'bottom'}),
-			list: {x: 54, y: 386, w: 972, h: 470},
-			item: t({x: 0, y: 0, w: 972 - 2 * 24 - 36, h: 110}, 'heading', 800, 44, 30, 2, 1.16, 'left'),
+			column: {top: 290, bottom: 860},
+			title: t({x: 54, y: 0, w: 972, h: 130}, 'heading', 900, 56, 36, 2, 1.1, 'center', {balance: true}),
+			list: {x: 54, w: 972},
+			item: t({x: 0, y: 0, w: 972 - 2 * 24 - 36, h: 110}, 'heading', 800, 44, 30, 2, 1.16, 'left', {balance: true}),
 			itemPad: {x: 24, y: 16},
 			marker: 36,
 			gap: 14,
+			sources: SRC_V,
 		},
 	} satisfies Record<Format, TalkLayout>,
 	chart: {
 		landscape: {
 			chart: {x: 880, y: 96, w: 944, h: 840},
 			solo: {zoo: {x: 420, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'threeQuarter'}},
-			pair: {zoo: {x: 260, y: 990, scale: 0.8, view: 'threeQuarter'}, badger: {x: 610, y: 990, scale: 0.8, view: 'right', pose: 'sit', inFront: true}},
+			pair: {zoo: {x: 250, y: 1000, scale: 0.84, view: 'threeQuarter'}, badger: {x: 610, y: 1000, scale: 0.84, view: 'right', pose: 'sit', inFront: true}},
 			chip: t({x: 880, y: 956, w: 944, h: 56}, 'body', 700, 30, 24, 1, 1.0, 'right'),
+			sources: src({x: 880, y: 964, w: 520, h: 40}, 'left'),
 		},
 		vertical: {
 			chart: {x: 54, y: 290, w: 972, h: 740},
 			solo: {zoo: {x: 330, y: 2060, scale: 1.1, view: 'threeQuarter'}},
 			pair: null,
 			chip: t({x: 54, y: 1046, w: 972, h: 50}, 'body', 700, 28, 24, 1, 1.0, 'right'),
+			sources: {...SRC_V, box: {x: 476, y: 1110, w: 550, h: 40}},
 		},
 	} satisfies Record<Format, ChartLayout>,
 	steps: {
 		landscape: {
 			zoo: {x: 1500, y: ZOO_MED_Y, scale: ZOO_MED_S},
 			badger: {x: 885, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'right', head: 'front', inFront: true},
-			title: t({x: 96, y: 96, w: 900, h: 110}, 'heading', 900, 62, 40, 1, 1.1, 'left', {valign: 'bottom'}),
-			list: {x: 96, y: 236, w: 900, h: 740},
-			item: t({x: 0, y: 0, w: 900 - 72 - 26, h: 140}, 'heading', 800, 46, 30, 2, 1.18, 'left'),
+			column: {top: 110, bottom: 990},
+			title: t({x: 96, y: 0, w: 900, h: 140}, 'heading', 900, 62, 40, 2, 1.1, 'left', {balance: true}),
+			list: {x: 96, w: 900},
+			item: t({x: 0, y: 0, w: 900 - 72 - 26, h: 140}, 'heading', 800, 48, 30, 2, 1.18, 'left', {balance: true}),
 			badge: 72,
-			gap: 26,
+			gap: 28,
+			sources: src({x: 1000, y: 60, w: 824, h: 40}, 'right'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2170, scale: 1.3},
 			badger: BADGER_INSERT.vertical,
-			title: t({x: 54, y: 290, w: 972, h: 80}, 'heading', 900, 56, 36, 1, 1.1, 'center', {valign: 'bottom'}),
-			list: {x: 54, y: 386, w: 972, h: 470},
-			item: t({x: 0, y: 0, w: 972 - 60 - 22, h: 100}, 'heading', 800, 42, 28, 2, 1.16, 'left'),
+			column: {top: 290, bottom: 860},
+			title: t({x: 54, y: 0, w: 972, h: 130}, 'heading', 900, 56, 36, 2, 1.1, 'center', {balance: true}),
+			list: {x: 54, w: 972},
+			item: t({x: 0, y: 0, w: 972 - 60 - 22, h: 100}, 'heading', 800, 42, 28, 2, 1.16, 'left', {balance: true}),
 			badge: 60,
 			gap: 16,
+			sources: SRC_V,
 		},
 	} satisfies Record<Format, StepsLayout>,
 	quote: {
 		landscape: {
 			zoo: {x: 1620, y: ZOO_MED_Y, scale: ZOO_MED_S},
 			badger: {x: 985, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'right', head: 'front', inFront: true},
-			card: {x: 96, y: 110, w: 1000, h: 800},
-			mark: {x: 150, y: 150, size: 150},
-			quote: t({x: 152, y: 300, w: 888, h: 400}, 'heading', 800, 62, 34, 5, 1.2, 'left', {valign: 'top'}),
-			attribution: t({x: 152, y: 724, w: 888, h: 56}, 'body', 700, 36, 26, 1, 1.15, 'left'),
-			source: t({x: 152, y: 790, w: 888, h: 92}, 'body', 600, 28, 24, 2, 1.3, 'left'),
+			column: {top: 110, bottom: 970},
+			card: {x: 96, w: 1000},
+			pad: 56,
+			markSize: 150,
+			quote: t({x: 152, y: 0, w: 888, h: 420}, 'heading', 800, 66, 34, 5, 1.18, 'left', {balance: true}),
+			attribution: t({x: 152, y: 0, w: 888, h: 92}, 'body', 700, 36, 26, 2, 1.2, 'left'),
+			source: t({x: 152, y: 0, w: 888, h: 80}, 'body', 600, 28, 24, 2, 1.3, 'left'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2160, scale: 1.25},
 			badger: BADGER_INSERT.vertical,
-			card: {x: 54, y: 290, w: 972, h: 600},
-			mark: {x: 100, y: 320, size: 110},
-			quote: t({x: 102, y: 420, w: 876, h: 300}, 'heading', 800, 52, 30, 5, 1.18, 'left', {valign: 'top'}),
-			attribution: t({x: 102, y: 742, w: 876, h: 48}, 'body', 700, 34, 26, 1, 1.15, 'left'),
-			source: t({x: 102, y: 796, w: 876, h: 80}, 'body', 600, 26, 24, 2, 1.3, 'left'),
+			column: {top: 290, bottom: 900},
+			card: {x: 54, w: 972},
+			pad: 44,
+			markSize: 110,
+			quote: t({x: 98, y: 0, w: 884, h: 300}, 'heading', 800, 54, 30, 5, 1.18, 'left', {balance: true}),
+			attribution: t({x: 98, y: 0, w: 884, h: 84}, 'body', 700, 34, 26, 2, 1.2, 'left'),
+			source: t({x: 98, y: 0, w: 884, h: 72}, 'body', 600, 26, 24, 2, 1.3, 'left'),
 		},
 	} satisfies Record<Format, QuoteLayout>,
 	cta: {
 		landscape: {
-			zoo: {x: 470, y: ZOO_MED_Y, scale: ZOO_MED_S},
-			badger: {x: 1093, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'left', head: 'front', inFront: true},
-			card: {x: 1120, y: 150, w: 704, h: 780},
-			title: t({x: 1168, y: 196, w: 608, h: 300}, 'heading', 900, 68, 40, 4, 1.1, 'center', {valign: 'center', balance: true}),
-			button: {x: 1188, y: 530, w: 568, h: 112},
-			buttonLabel: t({x: 1188, y: 530, w: 568, h: 112}, 'heading', 900, 48, 30, 1, 1.0, 'center', {valign: 'center', uppercase: true}),
-			disclosure: t({x: 1168, y: 690, w: 608, h: 200}, 'body', 700, 34, 26, 4, 1.25, 'center', {valign: 'center'}),
+			zoo: {x: 440, y: ZOO_MED_Y, scale: ZOO_MED_S},
+			badger: {x: 1080, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'left', head: 'front', inFront: true},
+			column: {top: 110, bottom: 970},
+			card: {x: 1120, w: 704},
+			pad: 52,
+			title: t({x: 1168, y: 0, w: 608, h: 300}, 'heading', 900, 68, 40, 4, 1.1, 'center', {balance: true}),
+			button: {w: 568, h: 112},
+			buttonLabel: t({x: 0, y: 0, w: 568, h: 112}, 'heading', 900, 48, 30, 1, 1.0, 'center', {valign: 'center', uppercase: true}),
+			disclosure: t({x: 1168, y: 0, w: 608, h: 200}, 'body', 700, 34, 26, 4, 1.25, 'center', {balance: true}),
+			sources: src({x: 96, y: 60, w: 860, h: 40}, 'left'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2170, scale: 1.3},
 			badger: BADGER_INSERT.vertical,
+			column: {top: 290, bottom: 860},
 			card: null,
-			title: t({x: 54, y: 290, w: 972, h: 220}, 'heading', 900, 64, 40, 3, 1.1, 'center', {valign: 'center', balance: true}),
-			button: {x: 190, y: 534, w: 700, h: 110},
-			buttonLabel: t({x: 190, y: 534, w: 700, h: 110}, 'heading', 900, 48, 30, 1, 1.0, 'center', {valign: 'center', uppercase: true}),
-			disclosure: t({x: 80, y: 678, w: 920, h: 146}, 'body', 700, 32, 26, 4, 1.25, 'center', {valign: 'center'}), // inside a 54..1026 plate
+			pad: 24,
+			title: t({x: 54, y: 0, w: 972, h: 220}, 'heading', 900, 64, 40, 3, 1.1, 'center', {balance: true}),
+			button: {w: 700, h: 110},
+			buttonLabel: t({x: 0, y: 0, w: 700, h: 110}, 'heading', 900, 48, 30, 1, 1.0, 'center', {valign: 'center', uppercase: true}),
+			disclosure: t({x: 80, y: 0, w: 920, h: 150}, 'body', 700, 32, 26, 4, 1.25, 'center', {balance: true}), // inside a 54..1026 plate
+			sources: SRC_V,
 		},
 	} satisfies Record<Format, CtaLayout>,
 	endscreen: {
 		landscape: {
-			zoo: {x: 300, y: 990, scale: 0.66},
-			badger: {x: 619, y: 990, scale: 0.66, view: 'left', head: 'front', inFront: true},
+			zoo: {x: 300, y: 990, scale: 0.72},
+			badger: {x: 648, y: 990, scale: 0.72, view: 'left', head: 'front', inFront: true},
 			outro: t({x: 96, y: 96, w: 900, h: 250}, 'heading', 900, 72, 44, 3, 1.1, 'left', {valign: 'top', balance: true}),
 			// two stacked 16:9 zones (736x414) for video/playlist elements, and one circle for the subscribe element
 			slots: [
 				{x: 1088, y: 150, w: 736, h: 414},
 				{x: 1088, y: 594, w: 736, h: 414},
 			],
-			subscribe: {cx: 880, cy: 600, r: 120},
+			subscribe: {cx: 900, cy: 540, r: 120},
 			slotLabel: t({x: 1088, y: 90, w: 736, h: 48}, 'heading', 800, 36, 28, 1, 1.0, 'left', {valign: 'bottom'}),
-			subscribeLabel: t({x: 740, y: 736, w: 280, h: 44}, 'heading', 800, 30, 24, 1, 1.0, 'center'),
+			subscribeLabel: t({x: 760, y: 676, w: 280, h: 44}, 'heading', 800, 30, 24, 1, 1.0, 'center'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2160, scale: 1.4},
@@ -243,12 +309,8 @@ export const FICTION_CARD: Record<Format, TextSpec> = {
 	landscape: t({x: 96, y: 56, w: 1100, h: 56}, 'body', 700, 28, 24, 1, 1.0, 'left', {valign: 'center'}),
 	vertical: t({x: 54, y: 200, w: 760, h: 76}, 'body', 700, 26, 24, 2, 1.15, 'left', {valign: 'center'}),
 };
-export const SOURCES_CARD: Record<Format, TextSpec> = {
-	landscape: t({x: 96, y: 990, w: 1300, h: 40}, 'body', 600, 26, 24, 1, 1.0, 'left', {valign: 'center'}),
-	vertical: t({x: 54, y: 1250, w: 972, h: 40}, 'body', 600, 24, 24, 1, 1.0, 'left', {valign: 'center'}),
-};
 /** Dev / review badges (English by design: they are markers for the owner, never viewer copy). */
 export const BADGE_AREA: Record<Format, {right: number; y: number}> = {
-	landscape: {right: 1824, y: 56},
-	vertical: {right: 1026, y: 200},
+	landscape: {right: 1824, y: 6},
+	vertical: {right: 1026, y: 140},
 };

@@ -16,6 +16,8 @@ import {BURST_RULE, type PreparedIdentity, type RuleContext, RULES} from './rule
 
 export const HOLD_AT = 7;
 export const REVIEW_AT = 4;
+/** YouTube allows 10,000 characters; scams are short, so only the start of very long comments is read. */
+export const MAX_ANALYZED_CHARS = 4000;
 
 export type Action = 'hold' | 'review' | 'allow';
 
@@ -86,10 +88,11 @@ const scoreOne = (comment: CommentInput, identity: PreparedIdentity, ownHandles:
 		return {score: 0, action: 'allow', reasons: [{rule: 'trusted-author', weight: 0, explanation: 'Written by a channel on your trusted list.', evidence: comment.authorName}]};
 	}
 
-	const text = removeOwnHandles(stripReplyPrefix(comment.text), ownHandles);
+	const text = removeOwnHandles(stripReplyPrefix(comment.text.slice(0, MAX_ANALYZED_CHARS)), ownHandles);
 	const {unquoted, quotes} = splitQuotes(text);
-	const author = makeView(comment.authorName);
-	const authorSkeleton = nameSkeleton(comment.authorName);
+	const authorName = comment.authorName.slice(0, 200);
+	const author = makeView(authorName);
+	const authorSkeleton = nameSkeleton(authorName);
 	const context = (view: ReturnType<typeof makeView>): RuleContext => ({text: view, author, authorSkeleton, identity});
 	const full = context(makeView(text));
 	const outside = quotes.length ? context(makeView(unquoted)) : full;

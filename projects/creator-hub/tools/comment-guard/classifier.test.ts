@@ -4,7 +4,7 @@ import {describe, it} from 'node:test';
 import {type Action, classify, classifyAll, type CommentInput, findBursts, HOLD_AT, type Identity, REVIEW_AT} from './classifier.ts';
 import {RULES} from './rules.ts';
 
-type Fixture = {id: string; label: 'scam' | 'legit'; kind: string; author: string; authorChannelId: string; text: string};
+type Fixture = {id: string; label: 'scam' | 'legit'; kind: string; round: number; author: string; authorChannelId: string; text: string};
 const data = JSON.parse(readFileSync(new URL('./fixtures/comments.json', import.meta.url), 'utf8')) as {
 	identity: Identity;
 	comments: Fixture[];
@@ -39,6 +39,11 @@ describe('classifier on the labelled fixtures', () => {
 				(label) => `${pad(label, 10)}${ACTIONS.map((a) => pad(matrix[label][a])).join('')}${pad(label === 'scam' ? scams : legits)}`,
 			),
 			`recall (hold or review) ${recall.toFixed(3)} | hold-only recall ${holdRecall.toFixed(3)} | false-positive rate (legit held or flagged) ${falsePositiveRate.toFixed(3)}`,
+			...[0, 1, 2, 3].map((round) => {
+				const rows = fixtures.map((f, i) => ({f, v: verdicts[i]})).filter(({f}) => f.round === round);
+				const count = (label: string, ok: (a: Action) => boolean) => rows.filter(({f, v}) => f.label === label && ok(v.action)).length;
+				return `  round ${round}: scams flagged ${count('scam', (a) => a !== 'allow')}/${count('scam', () => true)} (held ${count('scam', (a) => a === 'hold')}), legit flagged ${count('legit', (a) => a !== 'allow')}/${count('legit', () => true)}`;
+			}),
 		];
 		const misses = fixtures.flatMap((f, i) =>
 			(f.label === 'scam' && verdicts[i].action === 'allow') || (f.label === 'legit' && verdicts[i].action !== 'allow') ? [describeMiss(i)] : [],
@@ -169,6 +174,24 @@ describe('rules', () => {
 		const v = scam('Is @ZooraExampleBot on Telegram the official bot?');
 		assert.ok(!v.reasons.some((r) => r.rule === 'messaging-handle'));
 		assert.equal(v.action, 'allow');
+	});
+});
+
+describe('robustness', () => {
+	it('stays fast on hostile input (no catastrophic regex backtracking)', () => {
+		const hostile = ['a '.repeat(5000), '9'.repeat(10000), '1 '.repeat(5000), "'a".repeat(5000), '"'.repeat(10000), 'w h a t s '.repeat(1000), '+1 '.repeat(3000), 'mrs '.repeat(2500)];
+		for (const text of hostile) {
+			const started = performance.now();
+			classifyAll([{id: 'h', text, authorName: text.slice(0, 200), authorChannelId: 'UChostile'}], identity);
+			assert.ok(performance.now() - started < 500, `slow on ${JSON.stringify(text.slice(0, 20))}`);
+		}
+	});
+
+	it('scores 2,000 comments in well under ten seconds', () => {
+		const many = Array.from({length: 2000}, (_, i) => ({id: String(i), text: `Comment ${i}: great video about wallets and the Telegram bot ${i % 40}`, authorName: `@user${i}`, authorChannelId: `UC${i}`}));
+		const started = performance.now();
+		classifyAll(many, identity);
+		assert.ok(performance.now() - started < 10_000);
 	});
 });
 

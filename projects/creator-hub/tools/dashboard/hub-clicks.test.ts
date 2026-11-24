@@ -62,8 +62,8 @@ describe('hub clicks', () => {
 	});
 	after(() => rmSync(dir, {recursive: true, force: true}));
 
-	it('reads the database read-only with the hub rule: humans, redirected, once per visitor, offer and UTC day', () => {
-		const {hub, issues} = readHubDb(dbFile);
+	it('reads the database read-only with the hub rule: humans, redirected, once per visitor, offer and UTC day', async () => {
+		const {hub, issues} = await readHubDb(dbFile);
 		assert.deepEqual(issues, []);
 		assert.ok(hub);
 		assert.deepEqual(flat(hub.clicks), EXPECTED);
@@ -74,8 +74,8 @@ describe('hub clicks', () => {
 		db.close();
 	});
 
-	it('limits the database to a date range', () => {
-		const {hub} = readHubDb(dbFile, {start: DAY2, end: DAY2 + DAY_MS});
+	it('limits the database to a date range', async () => {
+		const {hub} = await readHubDb(dbFile, {start: DAY2, end: DAY2 + DAY_MS});
 		assert.deepEqual(flat(hub?.clicks ?? []), ['-fixture011|hardware-wallet|shorts|1', 'fixture0001|hardware-wallet|email|1']);
 	});
 
@@ -102,19 +102,19 @@ describe('hub clicks', () => {
 		assert.equal(hub?.clicks.find((c) => c.videoId === 'fixture0010')?.source, null);
 	});
 
-	it('skips bad rows with one warning and rejects files that are not hub exports', () => {
+	it('skips bad rows with one warning and rejects files that are not hub exports', async () => {
 		const {hub, issues} = parseHubCsv('video_id,offer_id,source,hub_clicks\nabc,BAD OFFER,yt,1\nabc,ok-offer,yt,-2\nabc,ok-offer,yt,3\n', 'x.csv');
 		assert.equal(hub?.clicks.length, 1);
 		assert.match(issues[0]?.message ?? '', /2 row\(s\) skipped/);
 		assert.equal(parseHubCsv('a,b\n1,2\n', 'other.csv').issues[0]?.level, 'error');
-		assert.match(readHubDb(join(dir, 'missing.sqlite')).issues[0]?.message ?? '', /not found/);
+		assert.match((await readHubDb(join(dir, 'missing.sqlite'))).issues[0]?.message ?? '', /not found/);
 	});
 
-	it('refuses a SQLite file without a clicks table', () => {
+	it('refuses a SQLite file without a clicks table', async () => {
 		const other = join(dir, 'other.sqlite');
 		const db = new DatabaseSync(other);
 		db.exec('CREATE TABLE t (x)');
 		db.close();
-		assert.match(readHubDb(other).issues[0]?.message ?? '', /no clicks table/);
+		assert.match((await readHubDb(other)).issues[0]?.message ?? '', /no clicks table/);
 	});
 });

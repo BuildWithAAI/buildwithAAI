@@ -300,7 +300,7 @@ ${input.hubLoaded ? `<details><summary>Show as a table</summary>${tableOf((v) =>
 </section>
 
 <section aria-labelledby="ctr"><h2 id="ctr">Click-through rate vs the channel median</h2>
-<p class="small muted">Thumbnail impressions click-through rate from the Studio export. Shorts are left out: most Shorts views come from the Shorts feed, where Studio shows no thumbnail CTR.</p>
+<p class="small muted">Thumbnail impressions click-through rate from the Studio export, for long videos with 100 or more views (YouTube Help notes that CTR varies widely below 100 views). Shorts are left out: Studio's Shorts report has no thumbnail click-through rate.</p>
 <div class="card">${ctrChart}</div>
 ${ctrItems.length > 0 ? `<details><summary>Show as a table</summary>${table('Click-through rate, table view', [{label: 'Video'}, {label: 'Impressions', num: true}, {label: 'CTR', num: true}, {label: 'Median', num: true}], ctrVideos.map((v) => [esc(videoName(v)), esc(int(v.impressions)), esc(pct(v.ctr)), esc(pct(ctrMedian))]))}</details>` : ''}
 </section>

@@ -190,7 +190,7 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 	let hub: HubClicks | null = null;
 	const hubFile = values['hub-csv'] ? at(values['hub-csv']) : values['hub-db'] ? at(values['hub-db']) : join(dataDir, 'hub.sqlite');
 	if (values['hub-csv'] || values['hub-db'] || existsSync(hubFile)) {
-		const read = values['hub-csv'] ? readHubCsv(hubFile, range) : readHubDb(hubFile, range);
+		const read = values['hub-csv'] ? readHubCsv(hubFile, range) : await readHubDb(hubFile, range);
 		add(read.issues);
 		hub = read.hub;
 		if (hub) inputs.push(`hub clicks: ${show(hubFile)} (${hub.origin})`);

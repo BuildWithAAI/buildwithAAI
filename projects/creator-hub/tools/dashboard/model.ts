@@ -109,6 +109,9 @@ export type Unattributed = {
 	unknownVideoPayouts: Map<string, {conversions: number; usd: number; other: Money[]}>;
 };
 
+/** Offer row for payouts whose programme or offer name is not mapped to a hub offer id. */
+export const UNMAPPED_OFFER = '(offer not mapped)';
+
 export type OfferSummary = {
 	offerId: string;
 	clicks: number; // de-duplicated human redirects, every source and video

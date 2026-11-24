@@ -17,6 +17,7 @@ export type FitSpec = {
 	lineHeight: number; // multiple of the font size
 	unspaced?: boolean; // zh/ja: break between characters (with kinsoku rules)
 	balance?: boolean; // even out line lengths (titles)
+	ellipsis?: boolean; // at the floor, cut the text with "…" instead of overflowing (source lines only)
 };
 
 export type FitResult = {
@@ -26,6 +27,7 @@ export type FitResult = {
 	height: number; // lines × size × lineHeight
 	wrappedPastPreferred: boolean; // floor reached, more lines than maxLines
 	brokeWord: boolean; // a single word wider than the box had to be split
+	truncated: boolean; // shortened with an ellipsis (spec.ellipsis)
 	overflow: boolean; // does not fit the box even at the floor
 };
 
@@ -90,7 +92,7 @@ export const wrapText = (text: string, maxWidth: number, size: number, measure: 
 const result = (lines: string[], size: number, spec: FitSpec, measure: Measure, broke: boolean, past: boolean): FitResult => {
 	const height = lines.length * size * spec.lineHeight;
 	const width = Math.max(0, ...lines.map((l) => measure(l, size)));
-	return {fontSize: size, lines, width, height, wrappedPastPreferred: past, brokeWord: broke, overflow: height > spec.maxHeight + 0.5 || width > spec.maxWidth + 0.5};
+	return {fontSize: size, lines, width, height, wrappedPastPreferred: past, brokeWord: broke, truncated: false, overflow: height > spec.maxHeight + 0.5 || width > spec.maxWidth + 0.5};
 };
 
 /** Even out the lines: the narrowest width that still wraps into the same number of lines. */
@@ -111,7 +113,7 @@ const balanced = (text: string, n: number, size: number, spec: FitSpec, measure:
 
 export const fitText = (text: string, spec: FitSpec, measure: Measure): FitResult => {
 	const t = text.trim();
-	if (!t) return {fontSize: spec.maxSize, lines: [], width: 0, height: 0, wrappedPastPreferred: false, brokeWord: false, overflow: false};
+	if (!t) return {fontSize: spec.maxSize, lines: [], width: 0, height: 0, wrappedPastPreferred: false, brokeWord: false, truncated: false, overflow: false};
 	const maxSize = Math.max(spec.minSize, Math.floor(spec.maxSize));
 	for (let size = maxSize; size >= spec.minSize; size--) {
 		const w = wrapText(t, spec.maxWidth, size, measure, spec.unspaced);
@@ -124,5 +126,14 @@ export const fitText = (text: string, spec: FitSpec, measure: Measure): FitResul
 	// floor reached: wrap onto more lines while the box height allows
 	const w = wrapText(t, spec.maxWidth, spec.minSize, measure, spec.unspaced);
 	const lines = spec.balance && w.lines.length > 1 && !w.broke ? balanced(t, w.lines.length, spec.minSize, spec, measure) : w.lines;
-	return result(lines, spec.minSize, spec, measure, w.broke, lines.length > spec.maxLines);
+	const r = result(lines, spec.minSize, spec, measure, w.broke, lines.length > spec.maxLines);
+	if (!r.overflow || !spec.ellipsis) return r;
+	// ellipsis: keep the lines that fit, then shorten the last one word by word until "…" fits
+	const keep = Math.max(1, Math.min(spec.maxLines, Math.floor(spec.maxHeight / (spec.minSize * spec.lineHeight))));
+	const kept = w.lines.slice(0, keep);
+	const sep = spec.unspaced ? '' : ' ';
+	let last = units(kept[keep - 1] + sep + w.lines.slice(keep).join(sep), spec.unspaced ?? false);
+	while (last.length > 1 && measure(joinUnits(last, spec.unspaced ?? false) + '…', spec.minSize) > spec.maxWidth) last = last.slice(0, -1);
+	kept[keep - 1] = joinUnits(last, spec.unspaced ?? false).replace(/[\s,;:·-]+$/u, '') + '…';
+	return {...result(kept, spec.minSize, spec, measure, w.broke, false), truncated: true};
 };

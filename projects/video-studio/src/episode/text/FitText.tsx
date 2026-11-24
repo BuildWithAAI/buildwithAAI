@@ -30,6 +30,7 @@ export const useFit = (text: string, spec: TextSpec, lang: Lang, box: Box = spec
 				lineHeight: spec.lineHeight,
 				unspaced: UNSPACED.has(lang),
 				balance: spec.balance,
+				ellipsis: spec.ellipsis,
 			},
 			measureFor(font),
 		);
@@ -40,7 +41,7 @@ export const useFit = (text: string, spec: TextSpec, lang: Lang, box: Box = spec
 		}
 		return r;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [text, lang, box.w, box.h, spec.maxSize, spec.minSize, spec.maxLines, spec.lineHeight, spec.uppercase, spec.balance, font.fontFamily, font.fontWeight]);
+	}, [text, lang, box.w, box.h, spec.maxSize, spec.minSize, spec.maxLines, spec.lineHeight, spec.uppercase, spec.balance, spec.ellipsis, font.fontFamily, font.fontWeight]);
 };
 
 export type LinesProps = {

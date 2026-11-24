@@ -120,6 +120,7 @@ const APP_BEFORE_CONTACT = new RegExp(String.raw`\b(?:${APPS}|signal|tg|wa|line\
 const HANDLE_THEN_APP = new RegExp(String.raw`@[a-z_][a-z0-9_.]{3,}\s*(?:on|via|at|in|@)\s+(?:${APPS}|signal|tg|wa|instagram|insta|ig)\b`, 'u');
 const APP_BEFORE_CONTACT_OTHER = new RegExp(OTHER_APPS, 'gu');
 const HANDLE = /@[a-z_][a-z0-9_.]{3,}/u;
+const EMAIL = /\b[a-z0-9][a-z0-9._%+-]{1,63}@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\b/u;
 const HANDLE_ANY = /(?<![\p{L}\p{N}_.])@[\p{L}_][\p{L}\p{N}_.]{3,}/u;
 
 const PHONE_CANDIDATE = /(?:(?<![\p{N}+])\+\s{0,2}|(?<![\p{L}\p{N}]))\(?\d(?:[\s().\-/]{0,3}\d){6,18}(?![\p{L}\p{N}])/gu;
@@ -133,7 +134,9 @@ export type PhoneMatch = {match: string; lettersAsDigits: boolean; spacedDigits:
  * other scripts (already folded to ASCII by the views) and the letters O or l typed for 0 or 1. Decimals,
  * dates, years, timestamps and round amounts such as 1000000000 are not phone numbers.
  */
-export const findPhoneNumber = (text: string): PhoneMatch | null => {
+export const findPhoneNumber = (input: string): PhoneMatch | null => {
+	// 16+ digits in a row can never be a phone number (E.164 allows 15); blanking them keeps scanning fast.
+	const text = input.replace(/\d{16,}/g, (run) => ' '.repeat(run.length));
 	let swapped = text;
 	for (let i = 0; i < 3; i++) {
 		swapped = swapped
@@ -190,6 +193,7 @@ const CONTACT_ME = rx(
 		String.raw`\bask me how\b`,
 		String.raw`\bhit me up\b|\bhmu\b`,
 		String.raw`\bcall me\s+(?:on|at|via|now|\+|\d)`,
+		String.raw`\b(?:text|message|whatsapp|call|sms)\s+(?:\S+\s+)?(?:to|at|on)\s+\+?\(?\d`,
 		String.raw`\badd me (?:on|via|at)\s+(?:${APPS}|signal|ig|instagram|snap(?:chat)?|discord)\b`,
 		String.raw`\b(?:my|our)\s+(?:${APPS}|signal|tg|wa|contact)\s*(?:number|handle|id|username|contact|line)?\s*(?:is\s*)?[:👉=>\-→➡]*\s*(?:@|\+|\d|t\.me)`,
 		String.raw`\bjoin (?:my|our) (?:vip |private |premium |exclusive |free |paid )?(?:${APPS}|signal|discord|group|channel|community|class|team|chat)\b`,
@@ -209,13 +213,15 @@ const CONTACT_ME_OTHER =
 	/(?<![\p{L}\p{N}])(?:пишите|напишите|пиши|напиши|свяжитесь|звоните)\s+(?:мне|нам)|(?<![\p{L}\p{N}])пишите в (?:телеграм|ватсап|лс)|راسلني|كلمني|تواصل(?:وا)? (?:معي|معنا)/u;
 
 const HANDLER_TARGET = String.raw`(?:him|her|them|this (?:man|woman|lady|guy|expert|hacker|company|team)|the (?:expert|hacker|team|company|agent|manager|admin)|(?:our|the) (?:help ?desk|support|support team|team|admin|manager|agent)|support|mr|mrs|ms|miss|madam|dr|sir|prof|expert|coach|mentor|hacker|agent)`;
+const CONTACT_THEM_OTHER = /(?<![\p{L}\p{N}])(?:пишите|напишите|пиши|напиши|звоните|обращайтесь)\s+(?:ему|ей|им|к)(?![\p{L}\p{N}])/u;
+
 const CONTACT_THEM = rx(
 	[
 		String.raw`\b${CONTACT_VERBS}\s+${HANDLER_TARGET}\b`,
 		String.raw`\b(?:consult|hire|connect with|link up with)\s+${HANDLER_TARGET}\b`,
 		String.raw`\b(?:${CONTACT_VERBS}|follow|join|subscribe to|look up|search(?: for)?)\s+@[a-z_]`,
 		String.raw`\b(?:search|look up|find|google)\s+(?:for\s+)?(?:her|him|them|his|their)(?:\s+(?:name|profile|page))?\s+on\s+(?:${APPS}|signal|instagram|insta|ig|facebook|google|youtube|tiktok)\b`,
-		String.raw`\b${CONTACT_VERBS}\s+(?!my\b|our\b|your\b|the bank\b)(?:[\w.'&-]+\s+){1,4}(?:on|via|through|thru)\s+(?:${APPS}|signal|tg|wa|instagram|insta|ig)\b`,
+		String.raw`\b(?:${CONTACT_VERBS}|look for|search for|look up|find)\s+(?!my\b|our\b|your\b|the bank\b)(?:[\w.'&-]+\s+){1,4}(?:on|via|through|thru)\s+(?:${APPS}|signal|tg|wa|instagram|insta|ig)\b`,
 		String.raw`\b(?:she|he|they)(?:'s| is| are)\s+(?:on|available on|reachable on|active on)\s+(?:${APPS}|signal|instagram|insta|ig)\b`,
 		String.raw`\b(?:her|his|their)\s+(?:${APPS}|signal|contact|number|handle|info|details|email|username|tg|wa)\s*(?:is\s*[:👉=\-→➡]*\s*(?:@|\+|\d|t\.me)|number|id|handle|info|:|👉|-|→|➡|@|\+|link)`,
 		String.raw`\byou can (?:reach|contact|message|text|find|write to|get) (?:him|her|them|the expert|the team)\b`,
@@ -258,6 +264,7 @@ const HANDLER_ROLE = rx([
 	String.raw`\brecovery (?:expert|specialist|agent|agency|hacker|company|firm|team|service|desk|professional|consultant)s?\b`,
 	String.raw`\b(?:fund|funds|asset|crypto|bitcoin|wallet) (?:recovery|retrieval|tracing)\b`,
 	String.raw`\b(?:recovery|retrieval|tracing) (?:expert|specialist|agent|agency|hacker|company|firm|team|service|desk|professional|consultant)s?\b`,
+	String.raw`\b(?:blockchain|crypto|cyber|bitcoin) (?:forensics?|investigator|detective|tracer)s?(?: (?:expert|specialist|team|agency|company))?\b`,
 	String.raw`\b(?:ethical|certified|genuine|legit|professional|licensed|trusted|reliable|verified|registered) (?:hacker|broker|trader|account manager|investment manager|advisor|adviser)s?\b`,
 	String.raw`\b(?:expert|professional|pro) (?:trader|broker|hacker)s?\b`,
 	String.raw`\bbinary options?\b`,
@@ -289,7 +296,7 @@ const INCOME_CLAIM = rx([
 ]);
 
 const RECOVERY_CLAIM = rx([
-	String.raw`\b(?:recover(?:ed|ing|s)?|retriev(?:e|ed|ing))\s+(?:(?:all|every|each)\s+)?(?:of\s+)?(?:my|your|our|his|her|their|the|it|them|everything|all)\b`,
+	String.raw`\b(?:recover(?:ed|ing|s)?|retriev(?:e|ed|ing))\s+(?:(?:all|every|each|\d+\s?%)\s+)?(?:of\s+)?(?:my|your|our|his|her|their|the|it|them|everything|all|a hacked|hacked|stolen|lost)\b`,
 	String.raw`\b(?:got|get|gotten) (?:my|all my|our|his|her|their) ${GAP}{0,30}\bback\b`,
 	String.raw`\b(?:got|get|gotten) (?:everything|it all|all of it|it|them) back\b`,
 	String.raw`\bhelp(?:ed|s)? (?:me|you|us|people|victims) (?:to )?(?:recover|get (?:my|your|it|them) back)\b`,
@@ -312,6 +319,7 @@ const GUARANTEED = rx([
 	String.raw`\brisk[- ]free (?:profits?|returns?|investment|trading|income)\b`,
 	String.raw`\b\d+(?:\.\d+)?\s?% (?:daily|weekly|monthly|per day|per week|a day|a week|every day|every week|roi)\b`,
 	String.raw`\b(?:\d+x|x\d+)\s+(?:in|within)\s+(?:a|one|\d+)\s+(?:day|week|month|hour)s?\b`,
+	String.raw`\binto\s+${MONEY}\s+(?:in|within)\s+(?:just\s+|only\s+)?(?:a|one|two|three|\d+)\s+(?:day|week|month)s?\b`,
 ]);
 
 const LEGIT_CLAIM = rx([
@@ -319,6 +327,7 @@ const LEGIT_CLAIM = rx([
 	String.raw`\b(?:not|no)\s+(?:a\s+)?scam\b|\bnot fake\b`,
 	String.raw`\b(?:she|he|they|this (?:man|woman|lady|guy|company|team))(?:'s| is| are)\s+(?:so |very |really |truly |totally |completely )?(?:legit|legitimate|genuine|trustworthy|reliable|the real deal|honest|the best|the real one)\b`,
 	String.raw`\bis the real deal\b`,
+	String.raw`\b(?:mrs?|ms|miss|madam|dr|expert|coach|mentor|hacker|agent|broker)\.?\s+\w+(?:\s+\w+)?\s+is\s+(?:the best|legit|a genius|a blessing|a legend|amazing|the real deal)\b`,
 	String.raw`\b(?:legit|genuine|real|trusted|reliable) and (?:reliable|trusted|legit|genuine|honest|trustworthy)\b`,
 	String.raw`\bonly (?:legit|real|genuine|trusted|reliable) (?:one|person|expert|hacker|broker|trader|account manager|team|company)\b`,
 	String.raw`\bgod bless (?:her|him|them|mrs?|ms|madam|expert)\b`,
@@ -356,7 +365,8 @@ const PRIZE = rx([
 const CLAIM = rx(
 	[
 		String.raw`\bclaim\s+(?:your|ur|yours|it|the|my|free|now|this|these|before|reward|prize|gift|airdrop|bonus|tokens?|btc|eth|sol|usdt)\b`,
-		String.raw`\bfree\s+(?:[$€£]?\d[\d.,]*\s*)?(?:btc|bitcoin|eth|ethereum|sol|solana|usdt|crypto|tokens?|coins?|airdrops?|nfts?|money)\b`,
+		String.raw`\bfree\s+(?:[$€£]?\d[\d.,]*\s*(?:in|of|worth of)?\s*)?(?:btc|bitcoin|eth|ethereum|sol|solana|usdt|crypto|tokens?|coins?|airdrops?|nfts?|money)\b`,
+		String.raw`\buse my (?:referral|invite|promo|ref) (?:code|link)\b`,
 		String.raw`\b(?:drop|drops|leave|post|comment)\s+(?:your|ur|their)\s+(?:wallet|sol|eth|btc|usdt)?\s*address(?:es)?\b`,
 		String.raw`\b(?:receive|get|grab|collect)\s+(?:the|your|free|an?)\s+(?:airdrop|reward|bonus|gift|prize)\b`,
 		String.raw`\bfirst\s+\d+\s+(?:people|persons|users|members|subscribers|viewers)\b`,
@@ -370,10 +380,12 @@ const CLAIM = rx(
 const SECRET = String.raw`(?:seed\s?(?:phrase|words?)|seed\b|recovery\s?(?:phrase|words?|key|seed)|secret\s?(?:recovery\s)?(?:phrase|words?|key)|mnemonic(?:\s?phrase)?|private\s?keys?|(?:12|24|twelve|twenty[- ]?four)[- ]?words?|passphrase|key\s?phrase|wallet\s?(?:phrase|keys?|seed))`;
 const SEED_VERB = String.raw`(?:send|share|give|dm|pm|message|text|provide|submit|drop|tell|forward|email|upload|reveal|disclose|hand over|whats\s?app|telegram)`;
 const RECIPIENT = String.raw`(?:me|us|him|her|them|the (?:team|support|agent|admin|bot|form)|our (?:team|support|agent|admin|bot))`;
+/** "your wallet's 24 words", "your main Phantom seed phrase". */
+const SECRET_OWNER = String.raw`(?:your|ur|yo|you'?re)\s*(?:(?:wallet'?s?|metamask|phantom|trust wallet|ledger|exodus|account'?s?|main|original|full|old|new)\s+){0,2}`;
 const SEED_REQUEST = rx(
 	[
 		// "send me your seed phrase", "share your 12 words", "dm us your private key"
-		String.raw`\b${SEED_VERB}\s+(?:(?:it\s+)?(?:to\s+)?${RECIPIENT}\s+)?(?:with\s+)?(?:your|ur|yo|you'?re)\s*${SECRET}`,
+		String.raw`\b${SEED_VERB}\s+(?:(?:it\s+)?(?:to\s+)?${RECIPIENT}\s+)?(?:with\s+)?${SECRET_OWNER}${SECRET}`,
 		// "send me the seed phrase", "give her 12 words"
 		String.raw`\b${SEED_VERB}\s+(?:to\s+)?${RECIPIENT}\s+(?:the\s+)?${SECRET}`,
 		// "share the secret phrase with me"
@@ -399,7 +411,7 @@ const WALLET_CONNECT = rx(
  * portal, dapp, site or link to do it: then it is a drainer. Entering a secret there counts as a seed request.
  */
 const ENTRY_VERB = String.raw`(?:import|enter|type|input|paste|submit)`;
-const SECRET_ENTRY = new RegExp(String.raw`\b${ENTRY_VERB}\s+(?:your|ur)\s+${SECRET}`, 'gu');
+const SECRET_ENTRY = new RegExp(String.raw`\b${ENTRY_VERB}\s+${SECRET_OWNER}${SECRET}`, 'gu');
 const WALLET_ENTRY = new RegExp(String.raw`\b${ENTRY_VERB}\s+(?:your|ur)\s+(?:\w+\s+)?wallets?\b`, 'gu');
 const ENTRY_PLACE = /\b(?:portal|dapp|site|website|link|bot|form|page|url)\b|\[\s*\.\s*\]/u;
 
@@ -423,12 +435,15 @@ const INVESTMENT_PITCH = rx([
 	String.raw`\binvestment (?:opportunit(?:y|ies)|plans?|platform|packages?|scheme|program(?:me)?)\b`,
 	String.raw`\b(?:bitcoin|crypto|btc|cloud) mining (?:investment|platform|plans?|contracts?)\b`,
 	String.raw`\bpassive income\b`,
+	String.raw`\b(?:will|can|could|gonna) (?:change your (?:life|finances)|make you (?:rich|a millionaire))\b`,
+	String.raw`\b(?:free|daily|vip|premium) (?:daily |trading |crypto )?signals\b`,
 	String.raw`\bsignals? (?:that|which) (?:actually |really )?work\b|\b(?:vip|premium|paid|private) (?:signals?|calls?|pump) (?:group|channel)s?\b`,
 ]);
 
 const PROFILE_BAIT = rx([
-	String.raw`\b(?:check|click|visit|tap|see|view|open)\s+(?:on\s+)?(?:my|the)\s+(?:profile|bio|name|pfp|avatar)\b`,
+	String.raw`\b(?:check|click|visit|tap|see|view|open)\s+(?:on\s+)?(?:my|the)\s+(?:profile|bio|name|pfp|avatar|channel)\b`,
 	String.raw`\b(?:link|info|details|contact|number|wallet|address|telegram|whatsapp|strategy)\s+(?:is\s+)?(?:in|on)\s+(?:my|her|his|their)\s+(?:bio|profile|channel|about|name|page)\b`,
+	String.raw`\b(?:bot|app|exchange|platform|site|website|course|group|code)\s+(?:is\s+)?(?:in|on)\s+my\s+(?:bio|profile|about)\b`,
 ]);
 
 /* ------------------------------------------------------------------ dampeners */
@@ -468,7 +483,12 @@ const messagingHandle = (view: View): string | null => {
 		}
 		return null;
 	};
-	return check(APP_BEFORE_CONTACT, view.latin) ?? check(APP_BEFORE_CONTACT_OTHER, view.lower) ?? first(HANDLE_THEN_APP, view.latin);
+	return (
+		check(APP_BEFORE_CONTACT, view.latin) ??
+		check(APP_BEFORE_CONTACT_OTHER, view.lower) ??
+		first(HANDLE_THEN_APP, view.latin) ??
+		first(EMAIL, view.latin)
+	);
 };
 
 const seedRequest = (latin: string): string | null =>
@@ -577,7 +597,7 @@ export const RULES: Rule[] = [
 		id: 'messaging-handle',
 		weight: 4,
 		kind: 'text',
-		explanation: 'Gives a messaging-app username or number to contact.',
+		explanation: 'Gives a messaging-app username, phone number or e-mail address to contact.',
 		test: (ctx) => messagingHandle(ctx.text),
 	},
 	{
@@ -619,7 +639,7 @@ export const RULES: Rule[] = [
 		weight: 3,
 		kind: 'text',
 		explanation: 'Sends readers to a third party in private ("contact her on WhatsApp"): typical of "handler" scams.',
-		test: (ctx) => request(CONTACT_THEM, ctx.text.latin),
+		test: (ctx) => request(CONTACT_THEM, ctx.text.latin) ?? first(CONTACT_THEM_OTHER, ctx.text.lower),
 	},
 	{
 		id: 'handler-role',

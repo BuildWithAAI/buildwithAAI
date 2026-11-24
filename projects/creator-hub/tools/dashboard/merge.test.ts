@@ -102,7 +102,7 @@ describe('merge', () => {
 		assert.deepEqual([get('password-manager')?.clicks, get('password-manager')?.conversions, get('password-manager')?.revenueUsd], [52, 4, 1005.5]);
 		assert.deepEqual(get('password-manager')?.revenueOther, [{currency: 'EUR', amount: 1019.75}]);
 		assert.deepEqual([get('exchange-demo')?.clicks, get('exchange-demo')?.conversions, get('exchange-demo')?.revenueUsd], [40, null, null]);
-		assert.deepEqual([get('(no offer id)')?.conversions, get('(no offer id)')?.revenueUsd], [1, 9]);
+		assert.deepEqual([get('(offer not mapped)')?.conversions, get('(offer not mapped)')?.revenueUsd], [1, 9]);
 		assert.equal(offers[0]?.offerId, 'hardware-wallet', 'sorted by clicks');
 	});
 

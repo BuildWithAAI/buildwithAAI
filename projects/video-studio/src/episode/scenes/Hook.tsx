@@ -26,7 +26,7 @@ export const HookScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
 	// vertical rhythm: kicker, title, rule, subtitle, centred in the text column
-	const area = vertical ? {top: 290, bottom: 790} : {top: 130, bottom: 980};
+	const area = L.column;
 	const kH = kicker ? L.kicker.box.h + 30 : 0;
 	const ruleH = 8;
 	const sH = subtitle ? 30 + sFit.height : 0;

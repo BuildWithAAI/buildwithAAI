@@ -196,7 +196,10 @@
   "exit": "First side sell median ~1.5 min after the public buy (IQR ~20 s - 3 min); last side sell median ~7 min (IQR ~1-11 min); winners were sold in many small pieces (up to ~30 sells per wallet).",
   "public_wallet_exit": "The public wallet usually sold in the same block as the side wallets' final sell (median hold ~7 min).",
   "pnl_shape": "Group result per token: median about +0.6 SOL, IQR about -0.4 to +7 SOL; a few big winners (up to ~+30 SOL) carry the total. The public wallet lost on most tokens (profitable on 3 of 25).",
-  "token_age_example": "In the fastest example the token was about 10 s old when the four wallets bought."
+  "token_age_example": "Token age when the group bought, in the three charted examples: about 10 s, 70 s and 270 s after creation.",
+  "charted_examples": "Peak after the public buy in the three charts: about 1.6x, 2.9x and 2.2x the public wallet's entry price; each ended below the public entry (lows about 0.53x, 0.40x and 0.57x within 30 min).",
+  "bots": "Around these launches most transactions were failed or no-op bot attempts: in one 40-minute window, about 5,600 transactions touched the curve, about 1,500 succeeded and only about 480 actually traded.",
+  "public_wallet_behaviour": "In the staged-exit example the public wallet added three more buys (at about +1, +5 and +9 min) while the side wallets were selling, then sold everything in the same block as the side wallets' last sell."
  },
  "script_note": "The claim figures above (token count, dollar totals) identify the real case. Do not put them on screen; the story uses fictional composites."
 }

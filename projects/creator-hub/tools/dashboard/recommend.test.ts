@@ -104,7 +104,7 @@ describe('recommendation rules', () => {
 			offer('tiny', 10, 1, 30),
 			offer('steady-one', 80, 4, 26, {requests: 50, blocked: 20}),
 			offer('uncovered', 70, null, null),
-			offer('(no offer id)', 0, 1, 9),
+			offer('(offer not mapped)', 0, 1, 9),
 		];
 		const report = buildReport(many(10, {revenueUsd: 10}), offers, {channel: 'zoora-ai', hubLoaded: true});
 		const verdict = (id: string) => report.offers.find((o) => o.offerId === id);
@@ -117,7 +117,7 @@ describe('recommendation rules', () => {
 		assert.equal(verdict('steady-one')?.verdict, 'steady');
 		assert.equal(verdict('uncovered')?.verdict, 'too-early');
 		assert.match(verdict('uncovered')?.reason ?? '', /no payout file covers this offer/);
-		assert.equal(verdict('(no offer id)'), undefined);
+		assert.equal(verdict('(offer not mapped)'), undefined);
 		assert.ok(report.notes.some((n) => /Offer steady-one: 40% of 50 human requests were blocked by region rules/.test(n)));
 		const md = renderRecommendations(report, {generatedAt: '2026-11-24', brandName: 'Zoora AI'});
 		assert.match(md, /\| strong \| 60 \| 4 \| \$60\.00 \| Double down \|/);

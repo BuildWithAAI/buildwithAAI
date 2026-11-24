@@ -6,7 +6,7 @@
  * keeps its video and source.
  */
 import {existsSync, readFileSync, statSync} from 'node:fs';
-import {DatabaseSync} from 'node:sqlite';
+import type {DatabaseSync} from 'node:sqlite';
 import {parseSource, parseVideoId} from '../../src/server/offers.ts';
 import {CsvError, MAX_CSV_BYTES, parseCsv, unprotectCell} from './csv.ts';
 import type {ClickCount, HubClicks, Issue, OutcomeCount} from './model.ts';
@@ -33,11 +33,13 @@ const clickCount = (videoId: unknown, offerId: string, source: unknown, clicks: 
 	clicks,
 });
 
-export const readHubDb = (file: string, range: TimeRange = ALL_TIME): Result => {
+/** node:sqlite is loaded only when a database is read, so other runs print no experimental-feature warning. */
+export const readHubDb = async (file: string, range: TimeRange = ALL_TIME): Promise<Result> => {
 	if (!existsSync(file)) return {hub: null, issues: [{level: 'error', where: file, message: 'hub database not found'}]};
 	let db: DatabaseSync | null = null;
 	try {
-		db = new DatabaseSync(file, {readOnly: true});
+		const sqlite = await import('node:sqlite');
+		db = new sqlite.DatabaseSync(file, {readOnly: true});
 		const table = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'clicks'").get();
 		if (!table) return {hub: null, issues: [{level: 'error', where: file, message: 'no clicks table: is this the hub database (hub.sqlite)?'}]};
 		const clicks = db

@@ -1,7 +1,8 @@
 /**
  * Talk: ZOO talking, with up to 4 bullets that appear on their word timings. ZOO points at the first bullet (and the
  * last of three or more) in landscape; other bullets get a 2-frame eye dart. The newest bullet is the dark card, so
- * the eye lands on the point being made; earlier bullets turn light.
+ * the eye lands on the point being made; earlier bullets turn light. Title and list form one block, centred in the
+ * column (landscape) or hanging from the top of the text zone (Shorts).
  */
 import React from 'react';
 import {useCurrentFrame} from 'remotion';
@@ -24,6 +25,16 @@ export const stackCards = (textHeights: number[], padY: number, gap: number): {t
 	return {tops, heights, total: heights.length ? y - gap : 0};
 };
 
+/** Title-over-list block placement (pure, shared with the fit test). */
+export const TITLE_GAP = 44;
+export const placeBlock = (column: {top: number; bottom: number}, titleH: number, listH: number, centred: boolean): {titleY: number; listY: number; height: number; fits: boolean} => {
+	const gap = titleH > 0 && listH > 0 ? TITLE_GAP : 0;
+	const height = Math.ceil(titleH) + gap + listH;
+	const room = column.bottom - column.top;
+	const top = centred ? Math.round(column.top + Math.max(0, (room - height) / 2)) : column.top;
+	return {titleY: top, listY: top + Math.ceil(titleH) + gap, height, fits: height <= room + 0.5};
+};
+
 export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const frame = useCurrentFrame();
 	const L = LAYOUTS.talk[ctx.format];
@@ -42,11 +53,10 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		L.itemPad.y,
 		L.gap,
 	);
-	const listBox: Box = title ? L.list : {...L.list, y: L.title.box.y, h: L.list.h + (L.list.y - L.title.box.y)};
-	if (stack.total > listBox.h + 0.5) throw new Error(`talk ${ctx.sc.id}: ${bullets.length} bullets need ${stack.total}px but the list has ${listBox.h}px; shorten them`);
-	// centre the stack in the list area (landscape) / top-align (vertical, nearer the title)
-	const y0 = vertical ? listBox.y : Math.round(listBox.y + (listBox.h - stack.total) / 2);
+	const block = placeBlock(L.column, title ? titleFit.height : 0, stack.total, !vertical);
+	if (!block.fits) throw new Error(`talk ${ctx.sc.id}: the title and ${bullets.length} bullets need ${block.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten them.`);
 	const revealed = dir.reveals.filter((r) => frame >= r).length;
+	const titleBox: Box = {...L.title.box, y: block.titleY, h: Math.ceil(titleFit.height)};
 	return (
 		<SceneBg>
 			<CharacterLayer
@@ -54,13 +64,13 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 				zoo={ctx.sc.zoo?.present === false ? null : {place: L.zoo, schedule: dir.zoo}}
 				badger={badgerPlace && !vertical ? {place: badgerPlace, schedule: dir.badger} : null}
 			/>
-			{title ? <Lines fit={titleFit} spec={L.title} lang={ctx.lang} color={C.ink} style={{clipPath: `inset(0 ${(1 - entry(frame, 2, 12)) * 100}% 0 0)`}} /> : null}
+			{title ? <Lines fit={titleFit} spec={L.title} lang={ctx.lang} color={C.ink} box={titleBox} style={{clipPath: `inset(0 ${(1 - entry(frame, 2, 12)) * 100}% 0 0)`}} /> : null}
 			{bullets.map((b, i) => {
 				const at = dir.reveals[i] ?? 0;
 				const p = entry(frame, at, 9);
 				if (p <= 0) return null;
 				const active = i === revealed - 1;
-				const box: Box = {x: listBox.x, y: y0 + stack.tops[i], w: listBox.w, h: stack.heights[i]};
+				const box: Box = {x: L.list.x, y: block.listY + stack.tops[i], w: L.list.w, h: stack.heights[i]};
 				const fill = active ? C.slate : C.card;
 				const ink = active ? C.onDark : C.ink;
 				const textBox: Box = {x: L.itemPad.x + L.marker, y: L.itemPad.y, w: L.item.box.w, h: Math.ceil(fits[i].height)}; // relative to the card
@@ -68,7 +78,7 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 				const firstLine = fits[i].fontSize * L.item.lineHeight;
 				return (
 					<div
-						key={i}
+						key={b + i}
 						style={{position: 'absolute', left: box.x, top: box.y, width: box.w, height: box.h, clipPath: `inset(0 ${(1 - p) * 100}% 0 0)`, transform: `translateX(${(1 - p) * 30}px)`}}
 					>
 						<div style={{position: 'absolute', inset: 0, boxSizing: 'border-box', backgroundColor: fill, border: `${OUTLINE}px solid ${C.ink}`, borderRadius: R.l}} />

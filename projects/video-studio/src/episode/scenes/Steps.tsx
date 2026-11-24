@@ -1,6 +1,7 @@
 /**
  * Steps: numbered steps revealed on their word timings. Slate number badges joined by a silver rail that grows as the
- * steps arrive; the current step's text is full ink, earlier ones muted. ZOO glances toward each new step.
+ * steps arrive; the current step's text is full ink, earlier ones muted. ZOO glances toward each new step. Title and
+ * list form one block, centred in the column (landscape) or hanging from the top of the text zone (Shorts).
  */
 import React from 'react';
 import {useCurrentFrame} from 'remotion';
@@ -11,6 +12,7 @@ import {fontFor} from '../i18n/fonts';
 import {CharacterLayer, entry, SceneBg, useDirection, type SceneCtx} from './parts';
 import {BadgerInsert, inInsert} from './Insert';
 import {list, str} from '../validate';
+import {placeBlock} from './Talk';
 
 /** Row layout (pure, shared with the fit test): each row is max(badge, text) tall, rows `gap` apart. */
 export const stackRows = (textHeights: number[], badge: number, gap: number): {tops: number[]; heights: number[]; total: number} => {
@@ -41,13 +43,13 @@ export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		L.badge,
 		L.gap,
 	);
-	const listBox: Box = title ? L.list : {...L.list, y: L.title.box.y, h: L.list.h + (L.list.y - L.title.box.y)};
-	if (rows.total > listBox.h + 0.5) throw new Error(`steps ${ctx.sc.id}: ${steps.length} steps need ${rows.total}px but the list has ${listBox.h}px; shorten them`);
-	const y0 = vertical ? listBox.y : Math.round(listBox.y + (listBox.h - rows.total) / 2);
+	const block = placeBlock(L.column, title ? titleFit.height : 0, rows.total, !vertical);
+	if (!block.fits) throw new Error(`steps ${ctx.sc.id}: the title and ${steps.length} steps need ${block.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten them.`);
+	const y0 = block.listY;
 	const revealed = dir.reveals.filter((r) => frame >= r).length;
 	const num = fontFor(ctx.lang, 'heading', 900);
-	const cx = listBox.x + L.badge / 2;
-	const rowCenter = (i: number) => y0 + rows.tops[i] + Math.min(rows.heights[i], L.badge) / 2;
+	const cx = L.list.x + L.badge / 2;
+	const rowCenter = (i: number) => y0 + rows.tops[i] + rows.heights[i] / 2;
 	// the rail grows from badge to badge as steps arrive
 	const railTo = (() => {
 		if (revealed < 2) return null;
@@ -55,6 +57,7 @@ export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		const p = entry(frame, dir.reveals[i], 10);
 		return rowCenter(i - 1) + (rowCenter(i) - rowCenter(i - 1)) * p;
 	})();
+	const titleBox: Box = {...L.title.box, y: block.titleY, h: Math.ceil(titleFit.height)};
 	return (
 		<SceneBg>
 			<CharacterLayer
@@ -62,22 +65,20 @@ export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 				zoo={ctx.sc.zoo?.present === false ? null : {place: L.zoo, schedule: dir.zoo}}
 				badger={badgerPlace && !vertical ? {place: badgerPlace, schedule: dir.badger} : null}
 			/>
-			{title ? <Lines fit={titleFit} spec={L.title} lang={ctx.lang} color={C.ink} style={{clipPath: `inset(0 ${(1 - entry(frame, 2, 12)) * 100}% 0 0)`}} /> : null}
+			{title ? <Lines fit={titleFit} spec={L.title} lang={ctx.lang} color={C.ink} box={titleBox} style={{clipPath: `inset(0 ${(1 - entry(frame, 2, 12)) * 100}% 0 0)`}} /> : null}
 			{railTo !== null ? <div style={{position: 'absolute', left: cx - 3, top: rowCenter(0), width: 6, height: railTo - rowCenter(0), backgroundColor: C.silver}} /> : null}
 			{steps.map((s, i) => {
 				const at = dir.reveals[i] ?? 0;
 				const p = entry(frame, at, 9);
 				if (p <= 0) return null;
-				const top = y0 + rows.tops[i];
-				const textBox: Box = {x: listBox.x + L.badge + 26, y: Math.round(top + (rows.heights[i] - fits[i].height) / 2), w: L.item.box.w, h: Math.ceil(fits[i].height)};
+				const textBox: Box = {x: L.list.x + L.badge + 26, y: Math.round(rowCenter(i) - fits[i].height / 2), w: L.item.box.w, h: Math.ceil(fits[i].height)};
 				const current = i === revealed - 1;
-				const scale = 0.7 + 0.3 * p;
 				return (
-					<React.Fragment key={i}>
+					<React.Fragment key={s + i}>
 						<div
 							style={{
 								position: 'absolute',
-								left: listBox.x,
+								left: L.list.x,
 								top: Math.round(rowCenter(i) - L.badge / 2),
 								width: L.badge,
 								height: L.badge,
@@ -85,7 +86,7 @@ export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 								borderRadius: L.badge / 2,
 								backgroundColor: C.slate,
 								border: `${OUTLINE}px solid ${C.ink}`,
-								transform: `scale(${scale})`,
+								transform: `scale(${0.7 + 0.3 * p})`,
 								color: C.onDark,
 								fontFamily: num.fontFamily,
 								fontWeight: num.fontWeight,
@@ -96,8 +97,8 @@ export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 						>
 							{String(i + 1)}
 						</div>
-						<div style={{position: 'absolute', inset: 0, clipPath: `inset(0 ${Math.max(0, 1920 - (textBox.x + textBox.w * p + 8))}px 0 0)`}}>
-							<Lines fit={fits[i]} spec={L.item} lang={ctx.lang} color={current ? C.ink : C.inkMuted} box={textBox} />
+						<div style={{position: 'absolute', left: textBox.x, top: textBox.y - 8, width: textBox.w, height: textBox.h + 16, overflow: 'hidden', clipPath: `inset(0 ${(1 - p) * 100}% 0 0)`}}>
+							<Lines fit={fits[i]} spec={L.item} lang={ctx.lang} color={current ? C.ink : C.inkMuted} box={{x: 0, y: 8, w: textBox.w, h: textBox.h}} />
 						</div>
 					</React.Fragment>
 				);

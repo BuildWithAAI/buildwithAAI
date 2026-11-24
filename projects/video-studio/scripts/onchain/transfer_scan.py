@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rpc import RPC  # noqa: E402
 import trades  # noqa: E402
 import txfetch  # noqa: E402
-from around_ref import venue_owner, signers_of  # noqa: E402
+from around_ref import venue_owner, signers_of, token_account_of  # noqa: E402
 
 
 def sigs_window(rpc, address, start_before, t0, max_pages, until=None):
@@ -64,11 +64,14 @@ def scan(rpc, ref, before_s, after_s, max_pages):
     mint, wallet = ref["mint"], ref["ref_wallet"]
     rtx = txfetch.get_tx(rpc, ref["ref_signature"])
     venue = venue_owner(rtx, mint, wallet)
+    # the venue's own token account for this mint (vault): its history holds only
+    # this token's venue trades, even when one owner keeps many tokens' vaults
+    vault = token_account_of(rtx, venue, mint) or venue
     t_ref = rtx["blockTime"]
     t0, t1 = t_ref - before_s, t_ref + after_s
     start = txfetch.cursor_at_time(rpc, t1 + 2)[0] if after_s > 0 else ref["ref_signature"]
     m_rows, m_meta = sigs_window(rpc, mint, start, t0, max_pages)
-    v_rows, v_meta = sigs_window(rpc, venue, start, t0, max_pages)
+    v_rows, v_meta = sigs_window(rpc, vault, start, t0, max_pages)
     m_ok = {r["signature"]: r for r in m_rows if not r.get("err") and (r.get("blockTime") or 0) <= t1}
     v_ok = {r["signature"] for r in v_rows if not r.get("err")}
     # the venue list must cover at least the same time span as the mint list
@@ -89,7 +92,8 @@ def scan(rpc, ref, before_s, after_s, max_pages):
         moves.append({"signature": r["signature"], "slot": r["slot"], "tx_index": r.get("transactionIndex"),
                       "blockTime": r["blockTime"], "dt_s": r["blockTime"] - t_ref, "venue": trades.venue_of(tx),
                       "signers": signers_of(tx), "owners": owners})
-    return {**ref, "venue_account": venue, "ref_time": t_ref, "ref_slot": rtx["slot"], "window": [t0, t1],
+    return {**ref, "venue_account": venue, "venue_vault": vault, "ref_time": t_ref, "ref_slot": rtx["slot"],
+            "window": [t0, t1],
             "mint_sigs": len(m_rows), "mint_ok_in_window": len(m_ok), "venue_sigs": len(v_rows),
             "paging": {"mint": m_meta, "venue": v_meta, "venue_floor": v_floor},
             "non_venue_txs": len(diff), "moves": moves}

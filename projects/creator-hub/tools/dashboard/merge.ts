@@ -11,7 +11,7 @@
  * defines as a count).
  */
 import type {Source} from '../../src/types.ts';
-import type {ApiVideo, CatalogEntry, DashboardVideo, FormatSource, HubClicks, Issue, KitInfo, Money, OfferSummary, PayoutRow, StudioVideo, Unattributed} from './model.ts';
+import {UNMAPPED_OFFER, type ApiVideo, type CatalogEntry, type DashboardVideo, type FormatSource, type HubClicks, type Issue, type KitInfo, type Money, type OfferSummary, type PayoutRow, type StudioVideo, type Unattributed} from './model.ts';
 import {addMoney, cents, type Rate} from './payouts.ts';
 
 /** Videos up to this length (seconds) are taken to be Shorts when nothing else says so (Shorts can be 3 minutes). */
@@ -114,7 +114,7 @@ export const mergeInputs = (input: MergeInput): MergeResult => {
 		noVideoPayouts: {conversions: 0, usd: 0, other: []},
 		unknownVideoPayouts: new Map(),
 	};
-	const covered = new Set([...(input.coveredOffers ?? []), ...(input.payouts ?? []).map((row) => row.offerId ?? '(no offer id)')]);
+	const covered = new Set([...(input.coveredOffers ?? []), ...(input.payouts ?? []).map((row) => row.offerId ?? UNMAPPED_OFFER)]);
 	const offers = new Map<string, OfferSummary>();
 	const offer = (id: string): OfferSummary => {
 		let summary = offers.get(id);
@@ -154,7 +154,7 @@ export const mergeInputs = (input: MergeInput): MergeResult => {
 	// Payouts.
 	const payouts = new Map<string, Money2>();
 	for (const row of input.payouts ?? []) {
-		const summary = offer(row.offerId ?? '(no offer id)');
+		const summary = offer(row.offerId ?? UNMAPPED_OFFER);
 		summary.conversions = (summary.conversions ?? 0) + row.conversions;
 		const offerMoney = {usd: summary.revenueUsd ?? 0, other: summary.revenueOther};
 		addMoney(offerMoney, row.amount, row.currency, input.rates);
