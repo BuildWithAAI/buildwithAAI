@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "checks": 753,
+  "experts": 25,
+  "includes": 1,
+  "roadmap_ideas": 75,
+  "unique_magics": 25,
+  "errors": [],
+  "scope": "Lexical/policy tokens only: not MQL5 compilation, runtime testing, or profitability validation."
+}
