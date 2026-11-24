@@ -2,6 +2,7 @@
  * ffprobe facts about each output (resolution, duration, frame rate, codecs, size) and the job summaries built from
  * them. Summaries hold measurements and validated ids only: no props, narration, titles or frames.
  */
+import {closeSync, fstatSync, openSync, readSync} from 'node:fs';
 
 export type ProbeInfo = {
 	width: number | null;
@@ -88,6 +89,68 @@ export const parseProbe = (json: unknown, kind: 'video' | 'still' | 'audio'): Pr
 		sizeBytes: num(format.size),
 		format: str(format.format_name),
 	};
+};
+
+const WAV_CODECS: Record<string, string> = {'1/8': 'pcm_u8', '1/16': 'pcm_s16le', '1/24': 'pcm_s24le', '1/32': 'pcm_s32le', '3/32': 'pcm_f32le', '3/64': 'pcm_f64le'};
+
+/**
+ * Facts about a RIFF/WAVE file read from its header (the voice jobs have no ffprobe): sample rate, channels, codec and
+ * duration (data bytes / byte rate). Null when the file is not a WAV this can read.
+ */
+export const wavInfo = (path: string): ProbeInfo | null => {
+	let fd: number;
+	try {
+		fd = openSync(path, 'r');
+	} catch {
+		return null;
+	}
+	try {
+		const size = fstatSync(fd).size;
+		const read = (pos: number, len: number): Buffer => {
+			const b = Buffer.alloc(len);
+			return b.subarray(0, readSync(fd, b, 0, len, pos));
+		};
+		const head = read(0, 12);
+		if (head.length < 12 || head.toString('latin1', 0, 4) !== 'RIFF' || head.toString('latin1', 8, 12) !== 'WAVE') return null;
+		let pos = 12;
+		let fmt: Buffer | null = null;
+		let dataBytes: number | null = null;
+		for (let guard = 0; pos + 8 <= size && guard < 64; guard++) {
+			const h = read(pos, 8);
+			if (h.length < 8) break;
+			const id = h.toString('latin1', 0, 4);
+			const len = h.readUInt32LE(4);
+			if (id === 'fmt ') fmt = read(pos + 8, Math.min(len, 64));
+			if (id === 'data') {
+				dataBytes = Math.min(len, size - pos - 8);
+				break;
+			}
+			pos += 8 + len + (len % 2);
+		}
+		if (!fmt || fmt.length < 16 || dataBytes === null) return null;
+		let format = fmt.readUInt16LE(0);
+		const channels = fmt.readUInt16LE(2);
+		const sampleRate = fmt.readUInt32LE(4);
+		const byteRate = fmt.readUInt32LE(8);
+		const bits = fmt.readUInt16LE(14);
+		if (format === 0xfffe && fmt.length >= 26) format = fmt.readUInt16LE(24); // WAVE_FORMAT_EXTENSIBLE: the sub-format
+		if (!byteRate || !sampleRate || !channels) return null;
+		return {
+			width: null,
+			height: null,
+			durationSec: Math.round((dataBytes / byteRate) * 1000) / 1000,
+			fps: null,
+			videoCodec: null,
+			audioCodec: WAV_CODECS[`${format}/${bits}`] ?? null,
+			pixFmt: null,
+			sampleRate,
+			channels,
+			sizeBytes: size,
+			format: 'wav',
+		};
+	} finally {
+		closeSync(fd);
+	}
 };
 
 export const fmtSeconds = (sec: number | null): string => {

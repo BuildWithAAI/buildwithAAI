@@ -1,0 +1,8 @@
+# CI-only tools for the render farm's voice jobs (.github/workflows/video-render.yml); not a project dependency.
+# Installed with: python -m pip install --require-hashes --no-deps -r scripts/farm/ci-tools.txt
+#
+# imageio-ffmpeg (BSD-2-Clause) ships a static ffmpeg build (9.0.2, --enable-gpl, with the loudnorm filter and the
+# pcm_s16le/pcm_f32le encoders the voice step uses). GitHub's Ubuntu 24.04 image has no ffmpeg, and apt-get hung for
+# more than 4 minutes on 2 of 3 runners on 2026-11-24, so the farm installs this pinned wheel instead; the pip cache
+# makes it a cache hit after the first run. The hash is the manylinux_2_28_x86_64 wheel's sha256 from PyPI.
+imageio-ffmpeg==0.8.1 --hash=sha256:050d6850601c3b3890bd2b28306f3b842b3daea390a561101174375a1c460bda

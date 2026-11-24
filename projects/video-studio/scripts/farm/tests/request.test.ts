@@ -57,6 +57,7 @@ test('the shipped self-test requests and the example are valid', () => {
 	for (const [file, id] of [
 		[join(PROJECT, 'render-requests', 'farm-selftest.json'), 'farm-selftest'],
 		[join(PROJECT, 'render-requests', 'farm-selftest-voice.json'), 'farm-selftest-voice'],
+		[join(PROJECT, 'render-requests', 'farm-selftest-encrypted.json'), 'farm-selftest-encrypted'],
 		[join(FARM, 'examples', 'episode-en-es-ptbr.json'), 'episode-en-es-ptbr'],
 	] as const) {
 		const v = parseRequest(readFileSync(file, 'utf8'), id);

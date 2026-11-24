@@ -1,10 +1,11 @@
 // node --test scripts/farm/tests/probe.test.ts
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
-import {test} from 'node:test';
+import {after, test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {fmtBytes, fmtSeconds, isProbe, jobSummary, parseProbe, parseRate, runSummary, type RenderProbe, type VoiceProbe} from '../probe.ts';
+import {fmtBytes, fmtSeconds, isProbe, jobSummary, parseProbe, parseRate, runSummary, wavInfo, type RenderProbe, type VoiceProbe} from '../probe.ts';
 
 const FIX = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const fixture = (name: string): unknown => JSON.parse(readFileSync(join(FIX, name), 'utf8'));
@@ -99,4 +100,63 @@ test('isProbe recognizes probe records only', () => {
 	assert.ok(isProbe(voice));
 	assert.ok(!isProbe({type: 'render'}));
 	assert.ok(!isProbe(null));
+});
+
+// ---- wavInfo: the voice jobs read narration.wav headers themselves ------------------------------------------------
+
+const tmp = mkdtempSync(join(tmpdir(), 'farm-wav-'));
+after(() => rmSync(tmp, {recursive: true, force: true}));
+
+/** A RIFF/WAVE file: optional LIST chunk before data, PCM (1) or float (3), optionally WAVE_FORMAT_EXTENSIBLE. */
+const wav = (name: string, o: {format: number; channels: number; rate: number; bits: number; frames: number; list?: boolean; extensible?: boolean}) => {
+	const block = (o.channels * o.bits) / 8;
+	const fmt = Buffer.alloc(o.extensible ? 40 : 16);
+	fmt.writeUInt16LE(o.extensible ? 0xfffe : o.format, 0);
+	fmt.writeUInt16LE(o.channels, 2);
+	fmt.writeUInt32LE(o.rate, 4);
+	fmt.writeUInt32LE(o.rate * block, 8);
+	fmt.writeUInt16LE(block, 12);
+	fmt.writeUInt16LE(o.bits, 14);
+	if (o.extensible) {
+		fmt.writeUInt16LE(22, 16);
+		fmt.writeUInt16LE(o.bits, 18);
+		fmt.writeUInt16LE(o.format, 24);
+	}
+	const chunk = (id: string, body: Buffer) => {
+		const h = Buffer.alloc(8);
+		h.write(id, 0, 'latin1');
+		h.writeUInt32LE(body.length, 4);
+		return Buffer.concat([h, body, body.length % 2 ? Buffer.alloc(1) : Buffer.alloc(0)]);
+	};
+	const parts = [chunk('fmt ', fmt)];
+	if (o.list) parts.push(chunk('LIST', Buffer.from('INFOISFT\x05\x00\x00\x00Lavf\x00', 'latin1')));
+	parts.push(chunk('data', Buffer.alloc(o.frames * block)));
+	const body = Buffer.concat([Buffer.from('WAVE', 'latin1'), ...parts]);
+	const riff = Buffer.alloc(8);
+	riff.write('RIFF', 0, 'latin1');
+	riff.writeUInt32LE(body.length, 4);
+	const p = join(tmp, name);
+	writeFileSync(p, Buffer.concat([riff, body]));
+	return p;
+};
+
+test('wavInfo reads the voice step\'s 24 kHz mono 16-bit narration (with a LIST chunk) like ffprobe does', () => {
+	const p = wav('n.wav', {format: 1, channels: 1, rate: 24000, bits: 16, frames: 24000 * 7.3, list: true});
+	const i = wavInfo(p);
+	assert.ok(i);
+	assert.deepEqual([i.durationSec, i.sampleRate, i.channels, i.audioCodec, i.format, i.width], [7.3, 24000, 1, 'pcm_s16le', 'wav', null]);
+	// The real fixture (ffprobe of an es narration.wav) agrees on the fields wavInfo reports.
+	const real = parseProbe(fixture('ffprobe-narration-wav.json'), 'audio');
+	assert.deepEqual([real.sampleRate, real.channels, real.audioCodec], [i.sampleRate, i.channels, i.audioCodec]);
+});
+
+test('wavInfo: float and WAVE_FORMAT_EXTENSIBLE files; non-WAV and truncated files give null', () => {
+	const f = wavInfo(wav('f.wav', {format: 3, channels: 2, rate: 48000, bits: 32, frames: 4800, extensible: true}));
+	assert.deepEqual([f?.durationSec, f?.audioCodec, f?.channels], [0.1, 'pcm_f32le', 2]);
+	writeFileSync(join(tmp, 'x.wav'), 'RIFFfake');
+	assert.equal(wavInfo(join(tmp, 'x.wav')), null);
+	assert.equal(wavInfo(join(tmp, 'missing.wav')), null);
+	const whole = readFileSync(wav('t.wav', {format: 1, channels: 1, rate: 24000, bits: 16, frames: 100}));
+	writeFileSync(join(tmp, 'cut.wav'), whole.subarray(0, 30));
+	assert.equal(wavInfo(join(tmp, 'cut.wav')), null);
 });

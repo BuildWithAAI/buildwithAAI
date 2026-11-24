@@ -51,7 +51,7 @@ import {
 	voiceProbeArtifact,
 	type Git,
 } from './plan.ts';
-import {isProbe, jobSummary, parseProbe, runSummary, type AnyProbe, type ProbeInfo, type RenderProbe, type VoiceProbe} from './probe.ts';
+import {isProbe, jobSummary, parseProbe, runSummary, wavInfo, type AnyProbe, type ProbeInfo, type RenderProbe, type VoiceProbe} from './probe.ts';
 import {
 	COMPOSITION_RE,
 	ID_RE,
@@ -266,7 +266,10 @@ export const runTool = (ctx: Ctx, cmd: string, args: string[], opts: {logFile: s
 		child.on('close', (code) => finish(code ?? 1));
 	});
 
-/** ffprobe JSON for a file: Remotion's bundled ffprobe in render jobs (runners have no ffmpeg), the system one otherwise. */
+/**
+ * ffprobe JSON for a render output: Remotion's bundled ffprobe (the runner image has no ffmpeg), or the system one when
+ * FARM_FFPROBE=system.
+ */
 const ffprobe = (ctx: Ctx, file: string, viaRemotion: boolean): unknown | null => {
 	const cmd = viaRemotion ? ctx.env.FARM_NPX || 'npx' : 'ffprobe';
 	const pre: string[] = viaRemotion ? ['--no-install', 'remotion', 'ffprobe'] : [];
@@ -452,7 +455,7 @@ export const cmdVoicePack = (ctx: Ctx): void => {
 	}
 	const files = verifyStaging(stage, st.encrypt);
 	const narration = join(genDir, 'narration.wav');
-	const raw = built && existsSync(narration) ? ffprobe(ctx, narration, false) : null;
+	const info = built ? wavInfo(narration) : null;
 	const rec: VoiceProbe = {
 		type: 'voice',
 		request: st.request,
@@ -465,7 +468,7 @@ export const cmdVoicePack = (ctx: Ctx): void => {
 		ok: built,
 		exitCode: st.exitCode ?? null,
 		buildSeconds: st.buildSeconds ?? null,
-		info: raw ? parseProbe(raw, 'audio') : null,
+		info,
 	};
 	writeFileSync(join(probes, `${voiceProbeArtifact(st.request, st.vindex)}.json`), JSON.stringify(rec));
 	addSummary(ctx, jobSummary(rec));

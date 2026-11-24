@@ -101,18 +101,25 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: projects/video-studio/scripts/voice/requirements*.txt
+          cache-dependency-path: |
+            projects/video-studio/scripts/voice/requirements*.txt
+            projects/video-studio/scripts/farm/ci-tools.txt
       - name: Restore the Kokoro model cache
         id: kokoro-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: projects/video-studio/.cache/kokoro
           key: ${{ needs.plan.outputs.kokoro_key }}
-      - name: Install ffmpeg (the voice step's loudness normalization)
+      - name: Install ffmpeg (static build, sha256-pinned wheel; the voice step's loudness normalization)
+        timeout-minutes: 10
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends ffmpeg > /dev/null
-          ffmpeg -hide_banner -version | head -n 1
+          # The runner image has no ffmpeg and apt-get proved unreliable here (see scripts/farm/ci-tools.txt).
+          python -m pip install --disable-pip-version-check --quiet --require-hashes --no-deps -r scripts/farm/ci-tools.txt
+          exe="$(python -c 'import imageio_ffmpeg, os; p = imageio_ffmpeg.get_ffmpeg_exe(); assert os.path.isabs(p), p; print(p)')"
+          mkdir -p "$RUNNER_TEMP/bin"
+          ln -sf "$exe" "$RUNNER_TEMP/bin/ffmpeg"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/ffmpeg" -hide_banner -version | sed -n 1p
       - name: Set up Kokoro (pinned packages, sha256-verified model files)
         env:
           VOICE_SKIP_CJK: ${{ matrix.cjk && '0' || '1' }}

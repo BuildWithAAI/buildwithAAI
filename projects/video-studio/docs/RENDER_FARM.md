@@ -35,8 +35,11 @@ push render-requests/<id>.json ──► plan ──► voice (1 job per languag
 2. **voice** runs `scripts/voice/setup.sh` and `scripts/voice/build.py` once per voice entry (one language each), on
    Python 3.13. The Kokoro model files are cached with `actions/cache`, keyed by the two model sha256s pinned in
    `setup.sh` (`kokoro-models-ae315a79…-bca610b8…`), so after the first run every voice job starts with the models
-   already there; pip wheels are cached by `actions/setup-python`. ffmpeg (loudness normalization) comes from apt.
-   The job packs `public/generated/<channel>/<slug>/<lang>/` into an artifact that lives for 1 day.
+   already there; pip wheels are cached by `actions/setup-python`. ffmpeg (the voice step's loudness normalization)
+   comes from a sha256-pinned PyPI wheel, `imageio-ffmpeg` 0.8.1 (a static ffmpeg 9.0.2 build with `loudnorm`), listed
+   in `scripts/farm/ci-tools.txt`: the Ubuntu 24.04 image has no ffmpeg, and in the first live run `apt-get install
+   ffmpeg` hung for over 4 minutes on 2 of 3 runners. The job packs `public/generated/<channel>/<slug>/<lang>/` into
+   an artifact that lives for 1 day, and reports each narration's duration from its WAV header.
 3. **render** runs one job per request job: `npm ci`, the narration it needs (only its own language when its props
    name `channel`, `slug` and `lang`, otherwise all of the request's), `npx remotion browser ensure` (Remotion downloads
    its own Chrome Headless Shell; `remotion.config.ts` only uses `/opt/pw-browsers` where that exists), then
@@ -221,11 +224,16 @@ commits at least a month old.
 
 ## Self-test
 
-`render-requests/farm-selftest.json` (TestCard video and still, ChartTest still, ChartShort 1080x1920 video) and
-`render-requests/farm-selftest-voice.json` (Zoo's voice-check line in en, es and pt-br from
-`scripts/farm/fixtures/_farm/voice-selftest/`, handed to a TestCard still) are fast, non-sensitive and unencrypted.
-Push a change to either file to run them. The Spanish and Portuguese fixture lines are machine translations
-(`translation.status: "machine"`), so the voice step warns about them; they are test audio only.
+- `render-requests/farm-selftest.json`: TestCard video and still, ChartTest still (PNG), ChartLight still (JPEG),
+  ChartShort 1080x1920 video. Unencrypted.
+- `render-requests/farm-selftest-voice.json`: Zoo's voice-check line voiced in en, es and pt-br in parallel from
+  `scripts/farm/fixtures/_farm/voice-selftest/`, all three handed to a TestCard render job. Unencrypted.
+- `render-requests/farm-selftest-encrypted.json`: the same path with encryption on (one es narration, one TestCard
+  video): the narration travels encrypted between jobs, and the artifact holds only ciphertext. It needs
+  `RENDER_ARTIFACT_KEY`.
+
+All are fast and non-sensitive. Push a change to any of them to run them. The Spanish and Portuguese fixture lines are
+machine translations (`translation.status: "machine"`), so the voice step warns about them; they are test audio only.
 
 ## Troubleshooting
 

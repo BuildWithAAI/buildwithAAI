@@ -7,6 +7,7 @@
     {"composition": "TestCard", "kind": "video", "output": "out/farm-selftest/testcard.mp4", "props": {"title": "Render farm", "subtitle": "Self-test on a free GitHub runner"}},
     {"composition": "TestCard", "kind": "still", "frame": 45, "output": "out/farm-selftest/testcard.png", "props": {"title": "Render farm", "subtitle": "Self-test still, frame 45"}},
     {"composition": "ChartTest", "kind": "still", "entry": "src/charts/dev/index.ts", "output": "out/farm-selftest/chart-test.png", "props": {}},
+    {"composition": "ChartLight", "kind": "still", "entry": "src/charts/dev/index.ts", "output": "out/farm-selftest/chart-light.jpg", "props": {}},
     {"composition": "ChartShort", "kind": "video", "entry": "src/charts/dev/index.ts", "output": "out/farm-selftest/chart-short.mp4", "props": {}}
   ]
 }

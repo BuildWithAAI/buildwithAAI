@@ -9,6 +9,6 @@
     {"channel": "_farm", "slug": "voice-selftest", "lang": "pt-br", "voice": "im_nicola"}
   ],
   "jobs": [
-    {"composition": "TestCard", "kind": "still", "frame": 45, "output": "out/farm-selftest-voice/testcard.png", "props": {"title": "Voice hand-off", "subtitle": "en, es and pt-br narration unpacked"}}
+    {"composition": "TestCard", "kind": "video", "output": "out/farm-selftest-voice/testcard.mp4", "props": {"title": "Voice hand-off", "subtitle": "en, es and pt-br narration unpacked"}}
   ]
 }

@@ -1,0 +1,12 @@
+{
+  "id": "farm-selftest-encrypted",
+  "entry": "src/index.ts",
+  "encrypt": true,
+  "retentionDays": 1,
+  "voice": [
+    {"channel": "_farm", "slug": "voice-selftest", "lang": "es", "voice": "im_nicola"}
+  ],
+  "jobs": [
+    {"composition": "TestCard", "kind": "video", "output": "out/farm-selftest-encrypted/testcard.mp4", "props": {"title": "Encrypted self-test", "subtitle": "Only ciphertext leaves the runner"}}
+  ]
+}
