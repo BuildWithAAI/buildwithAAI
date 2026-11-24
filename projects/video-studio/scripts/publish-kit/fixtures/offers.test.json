@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "offers": [
+    {
+      "id": "hardware-wallet",
+      "name": "Test hardware wallet",
+      "url": "https://shop.wallet.test/?aff=fixture",
+      "category": "security",
+      "relationship": "affiliate",
+      "disclosure": "Affiliate link: I may earn a commission if you buy. It costs you nothing extra.",
+      "blockedCountries": [],
+      "unknownCountry": "allow",
+      "active": true,
+      "notes": "Test fixture only: the .test domain cannot resolve."
+    },
+    {
+      "id": "demo-exchange",
+      "name": "Demo Exchange",
+      "url": "https://exchange.test/invite?ref=fixture",
+      "category": "exchange",
+      "relationship": "referral",
+      "disclosure": "Referral link: I earn a share of fees if you sign up and trade.",
+      "blockedCountries": ["US", "GB"],
+      "unknownCountry": "block",
+      "active": true,
+      "notes": "Test fixture only: a region-restricted exchange without a risk line in its disclosure."
+    },
+    {
+      "id": "own-course",
+      "name": "Wallet Safety Course",
+      "url": "https://course.zoora.test/",
+      "category": "own-product",
+      "relationship": "own-product",
+      "disclosure": "My own product: I built this course and earn money from it.",
+      "blockedCountries": [],
+      "unknownCountry": "allow",
+      "active": true,
+      "expires": "2026-11-30"
+    }
+  ]
+}

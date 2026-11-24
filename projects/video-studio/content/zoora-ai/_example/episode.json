@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "_example",
+  "lang": "en",
+  "titleOptions": [
+    "POV: You almost sign a wallet drainer",
+    "The free airdrop that empties your wallet",
+    "Badger's red flag: read before you sign"
+  ],
+  "title": "POV: You almost sign a wallet drainer",
+  "summary": "A stranger offers you a free airdrop and a claim link. We follow this fictional scam step by step, show how one signature can hand a drainer your tokens, and end with Zoo's one fix: read every signature request, and keep your savings on a wallet you never connect to claim pages.",
+  "youtubeVideoId": null,
+  "scenes": [
+    {"id": "s01", "chapter": "Cold open: a free airdrop", "durationSec": 14},
+    {"id": "s02", "durationSec": 16},
+    {"id": "s03", "chapter": "How the fake claim page works", "durationSec": 38},
+    {"id": "s04", "durationSec": 22},
+    {"id": "s05", "chapter": "Badger's red flag: the signature request", "durationSec": 30},
+    {"id": "s06", "chapter": "Zoo's one fix", "durationSec": 40, "offers": ["hardware-wallet"]},
+    {"id": "s07", "chapter": "Recap", "durationSec": 20},
+    {"id": "s08", "durationSec": 20}
+  ],
+  "sources": [
+    {"title": "FTC: What to know about cryptocurrency and scams", "url": "https://consumer.ftc.gov/articles/what-know-about-cryptocurrency-and-scams"},
+    {"title": "FTC: Report fraud", "url": "https://reportfraud.ftc.gov/"}
+  ],
+  "offers": ["hardware-wallet"],
+  "hashtags": ["CryptoSecurity", "WalletDrainer", "ScamAwareness", "Web3Safety", "Crypto"],
+  "tags": ["crypto security", "wallet drainer", "fake airdrop", "crypto scam", "signature request", "hardware wallet", "web3 safety", "Zoora AI"],
+  "cta": "Subscribe for the next scam breakdown.",
+  "disclosures": ["Fictional story: the people, chats and wallets in this video are made up and animated."],
+  "madeForKids": {
+    "value": false,
+    "reason": "Not made for kids: crypto wallet security for adults, told in a restrained adult cartoon style with no toys, songs or child-directed language."
+  },
+  "containsSyntheticMedia": {
+    "value": false,
+    "reason": "Clearly animated 2D vector art with a generic synthetic narration voice for a fictional host; YouTube's GenAI label covers realistic content and exempts animation."
+  },
+  "shortCuts": [
+    {"id": "short1", "from": "s01", "to": "s02", "title": "POV: a stranger offers you a free airdrop", "hook": "The airdrop is free. The signature is not."},
+    {"id": "short2", "from": "s05", "to": "s06", "title": "Badger's red flag: read before you sign", "hook": "A free gift that needs your signature is a red flag."}
+  ],
+  "render": {
+    "entry": "src/episode/index.ts",
+    "composition": "Episode",
+    "shortComposition": "EpisodeShort",
+    "thumbnailComposition": "Thumbnail"
+  }
+}
