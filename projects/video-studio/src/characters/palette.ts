@@ -31,8 +31,11 @@ export const ZOO_COLORS = {
 	skinShadow: '#DDA27F',
 	hair: '#5E4637',
 	hairShadow: '#443329',
-	beard: '#5E4637',
-	beardShadow: '#443329',
+	// Decision ZOO-C2 (2026-11-24): the sheet renders the beard lighter and warmer than the hair
+	// (pixel medians: chin #845D40, cheek #77563F, moustache #6A4C34 vs hair #594235), so the beard
+	// base is #7A5940 with one shadow tone. Hair keeps #5E4637.
+	beard: '#7A5940',
+	beardShadow: '#5E4535',
 	eyeIris: '#5A3E2B', // brown
 	eyeWhite: '#FFFFFF',
 	pupil: BRAND.nearBlack,
@@ -66,6 +69,9 @@ export const BADGER_COLORS = {
 	pupil: BRAND.nearBlack,
 	mouth: '#3A2A28',
 	tongue: '#C97A72',
+	// Added 2026-11-24 (Badger rig): the soft grey brow strokes of the neutral face (sheet samples ~#7A7A7C
+	// at the line core). A line colour, not a shadow tone; expressive/judging brows use LINE.color.
+	brow: '#8E9299',
 	collar: '#393F45',
 	collarShadow: '#2B3035',
 	tag: BRAND.teal,
